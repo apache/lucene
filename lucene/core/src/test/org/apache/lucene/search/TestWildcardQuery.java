@@ -274,7 +274,7 @@ public class TestWildcardQuery extends LuceneTestCase {
   public void testInterleavedStarQuestionDoesNotBlowUp() {
     // '*?' repeated does not collapse (the '*' are not consecutive), but it
     // must still build a linearly-sized automaton rather than exploding the way
-    // repeated '*' used to before this fix (gh-16134).
+    // repeated '*' used to before this fix (GITHUB#16134).
     int n = 5000;
     Automaton a = WildcardQuery.toAutomaton(new Term("field", "*?".repeat(n)));
     assertTrue(
