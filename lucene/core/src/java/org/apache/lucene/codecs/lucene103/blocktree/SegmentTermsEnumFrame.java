@@ -216,6 +216,8 @@ final class SegmentTermsEnumFrame {
     numSuffixLengthBytes >>>= 1;
 
     if (isLeafBlock) {
+      // TODO: If this frame reused from a stale non leaf frame, we could reset/clear
+      // suffixLengthBytes and suffixLengthsReader.
       if (allEqual) {
         // Leaf blocks store term suffix lengths only. Here allEqual means every term has this same
         // decoded suffix length(Instead of numSuffixLengthBytes, we save suffixLength directly for
