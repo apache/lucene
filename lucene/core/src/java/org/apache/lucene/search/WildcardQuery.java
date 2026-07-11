@@ -69,22 +69,19 @@ public class WildcardQuery extends AutomatonQuery {
 
     String wildcardText = wildcardquery.text();
 
-    boolean lastWasWildcardString = false;
     for (int i = 0; i < wildcardText.length(); ) {
       final int c = wildcardText.codePointAt(i);
       int length = Character.charCount(c);
       switch (c) {
         case WILDCARD_STRING -> {
-          // collapse consecutive '*' into a single any-string automaton
-          if (!lastWasWildcardString) {
+          // Collapse consecutive '*' ("**" is equivalent to "*"): only append an
+          // any-string automaton when the previous segment isn't already one.
+          if (automata.isEmpty()
+              || Operations.isTotal(automata.get(automata.size() - 1)) == false) {
             automata.add(Automata.makeAnyString());
-            lastWasWildcardString = true;
           }
         }
-        case WILDCARD_CHAR -> {
-          automata.add(Automata.makeAnyChar());
-          lastWasWildcardString = false;
-        }
+        case WILDCARD_CHAR -> automata.add(Automata.makeAnyChar());
         case WILDCARD_ESCAPE -> {
           // add the escaped codepoint as a literal if it exists; a trailing
           // '\' is parsed leniently as a literal '\'
@@ -95,12 +92,8 @@ public class WildcardQuery extends AutomatonQuery {
           } else {
             automata.add(Automata.makeChar(c));
           }
-          lastWasWildcardString = false;
         }
-        default -> {
-          automata.add(Automata.makeChar(c));
-          lastWasWildcardString = false;
-        }
+        default -> automata.add(Automata.makeChar(c));
       }
       i += length;
     }
