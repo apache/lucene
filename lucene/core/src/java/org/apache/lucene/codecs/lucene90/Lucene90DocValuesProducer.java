@@ -1940,26 +1940,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     final LongValues values = getNumericValues(entry);
     final int denseFixedCardinality = fixedCardinality(entry, skipperEntry);
 
-    // For GCD/delta encoded entries, capture raw packed values for rangeIntoBitSet optimization.
-    // The decoded `values` wrapper applies mul*get+delta per call; using raw values with
-    // transformed bounds avoids this per-value decode cost.
     final boolean hasGcdEncoding =
         entry.bitsPerValue > 0
             && entry.blockShift < 0
             && entry.table == null
             && (entry.gcd != 1 || entry.minValue != 0);
-    final LongValues rawValues;
-    final long mul, delta;
-    if (hasGcdEncoding) {
-      RandomAccessInput rawSlice = data.randomAccessSlice(entry.valuesOffset, entry.valuesLength);
-      rawValues = getDirectReaderInstance(rawSlice, entry.bitsPerValue, 0L, entry.numValues);
-      mul = entry.gcd;
-      delta = entry.minValue;
-    } else {
-      rawValues = null;
-      mul = 1;
-      delta = 0;
-    }
 
     if (entry.docsWithFieldOffset == -1) {
       // dense
@@ -1968,6 +1953,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         int doc = -1;
         long start, end;
         int count;
+        LongValues rawValues;
 
         @Override
         public int nextDoc() throws IOException {
@@ -2016,7 +2002,8 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
         @Override
         public void rangeIntoBitSet(
-            int fromDoc, int toDoc, long minValue, long maxValue, FixedBitSet bitSet, int offset) {
+            int fromDoc, int toDoc, long minValue, long maxValue, FixedBitSet bitSet, int offset)
+            throws IOException {
           int endDoc = Math.min(toDoc, maxDoc);
           if (fromDoc >= endDoc) {
             return;
@@ -2029,10 +2016,16 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           }
           LongValues v;
           long lo, hi;
-          if (rawValues != null) {
-            long[] bounds = transformGcdBounds(minValue, maxValue, mul, delta);
+          if (hasGcdEncoding) {
+            long[] bounds = transformGcdBounds(minValue, maxValue, entry.gcd, entry.minValue);
             if (bounds == null) {
               return;
+            }
+            if (rawValues == null) {
+              RandomAccessInput rawSlice =
+                  data.randomAccessSlice(entry.valuesOffset, entry.valuesLength);
+              rawValues =
+                  getDirectReaderInstance(rawSlice, entry.bitsPerValue, 0L, entry.numValues);
             }
             v = rawValues;
             lo = bounds[0];
@@ -2087,6 +2080,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         boolean set;
         long start, end;
         int count;
+        LongValues rawValues;
 
         @Override
         public int nextDoc() throws IOException {
@@ -2153,11 +2147,17 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           }
           LongValues v;
           long lo, hi;
-          if (rawValues != null) {
-            long[] bounds = transformGcdBounds(minValue, maxValue, mul, delta);
+          if (hasGcdEncoding) {
+            long[] bounds = transformGcdBounds(minValue, maxValue, entry.gcd, entry.minValue);
             if (bounds == null) {
               set = false;
               return;
+            }
+            if (rawValues == null) {
+              RandomAccessInput rawSlice =
+                  data.randomAccessSlice(entry.valuesOffset, entry.valuesLength);
+              rawValues =
+                  getDirectReaderInstance(rawSlice, entry.bitsPerValue, 0L, entry.numValues);
             }
             v = rawValues;
             lo = bounds[0];
