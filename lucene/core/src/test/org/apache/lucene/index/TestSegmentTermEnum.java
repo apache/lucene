@@ -139,24 +139,36 @@ public class TestSegmentTermEnum extends LuceneTestCase {
     writer.addDocument(doc);
   }
 
+  // TODO: for debug, will be removed.
   public void testDeepSubBlock() throws Exception {
     Directory dir = newDirectory();
     // Set minTermBlockSize to 2, maxTermBlockSize to 3, to generate deep subBlock.
-    PostingsFormat postingsFormat = getDefaultPostingsFormat(2, 3);
+    PostingsFormat postingsFormat = getDefaultPostingsFormat(20, 40);
 
     IndexWriter writer =
         new IndexWriter(dir, newIndexWriterConfig().setCodec(alwaysPostingsFormat(postingsFormat)));
     String[] categories =
         new String[] {
-          "regular",
-          "request1",
-          "request2",
-          "request3",
-          "request4",
-          "rest1",
-          "rest2",
-          "rest3",
-          "rest4"
+          "request0",
+          "request01",
+          "request002",
+          "request0003",
+          "request00004",
+          "request000005",
+          "request0000006",
+          "request00000007",
+          "request000000008",
+          "request0000000009",
+          "request00000000010",
+          "request000000000011",
+          "request0000000000012",
+          "request00000000000013",
+          "request000000000000014",
+          "request0000000000000015",
+          "request00000000000000016",
+          "request000000000000000017",
+          "request0000000000000000018",
+          "request00000000000000000019"
         };
 
     for (String category : categories) {

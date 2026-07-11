@@ -276,13 +276,28 @@ public final class Simple64 {
   }
 
   /**
-   * Decode all integers packed in {@code word} into {@code out[outOffset..]}.
+   * Decode all slots represented by {@code word}'s selector into {@code out[outOffset..]}.
    *
    * @return number of integers written
    */
   public static int decodeOneLong(long word, int[] out, int outOffset) {
     int selector = selector(word);
     int count = COUNTS[selector];
+    decodeOneLong(word, selector, out, outOffset, count);
+    return count;
+  }
+
+  /**
+   * Decode exactly {@code count} integers from {@code word} into {@code out[outOffset..]}.
+   *
+   * <p>This is useful for the last packed word, whose selector may represent more slots than the
+   * original number of remaining values.
+   *
+   * @return number of integers written
+   */
+  public static int decodeOneLong(long word, int[] out, int outOffset, int count) {
+    int selector = selector(word);
+    assert count <= COUNTS[selector];
     decodeOneLong(word, selector, out, outOffset, count);
     return count;
   }
