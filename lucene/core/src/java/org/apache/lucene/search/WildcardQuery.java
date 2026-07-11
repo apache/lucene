@@ -76,8 +76,7 @@ public class WildcardQuery extends AutomatonQuery {
         case WILDCARD_STRING -> {
           // Collapse consecutive '*' ("**" is equivalent to "*"): only append an
           // any-string automaton when the previous segment isn't already one.
-          if (automata.isEmpty()
-              || Operations.isTotal(automata.get(automata.size() - 1)) == false) {
+          if (automata.isEmpty() || Operations.isTotal(automata.getLast()) == false) {
             automata.add(Automata.makeAnyString());
           }
         }
