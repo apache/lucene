@@ -179,6 +179,10 @@ Optimizations
 Bug Fixes
 ---------------------
 
+* GITHUB#14137: FixedShingleFilter no longer emits the stream's first token with a 0
+  position increment (which failed indexing) when an earlier graph route at the base
+  position was too short to form a shingle. (Vismay Tiwari)
+
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
 
