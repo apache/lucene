@@ -50,12 +50,12 @@ public class TestVectorScorer extends LuceneTestCase {
         case BYTE:
           vectorScorer = context.reader().getByteVectorValues("field").scorer(new byte[] {1, 2});
           break;
-        case FLOAT32:
-          vectorScorer = context.reader().getFloatVectorValues("field").scorer(new float[] {1, 2});
-          break;
         case FLOAT16:
           Float16VectorValues val = context.reader().getFloat16VectorValues("field");
           vectorScorer = val.scorer(new short[] {1, 2});
+          break;
+        case FLOAT32:
+          vectorScorer = context.reader().getFloatVectorValues("field").scorer(new float[] {1, 2});
           break;
         default:
           throw new IllegalArgumentException("unexpected vector encoding: " + encoding);
@@ -90,7 +90,7 @@ public class TestVectorScorer extends LuceneTestCase {
         }
         doc.add(new KnnFloat16VectorField(field, v, EUCLIDEAN));
       } else {
-        doc.add(new KnnFloatVectorField(field, contents[i]));
+        doc.add(new KnnFloatVectorField(field, contents[i], EUCLIDEAN));
       }
       doc.add(new StringField("id", "id" + i, Field.Store.YES));
       writer.addDocument(doc);

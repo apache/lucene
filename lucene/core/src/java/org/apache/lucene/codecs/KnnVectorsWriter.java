@@ -197,7 +197,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
   }
 
   /**
-   * Tracks state of one sub-reader of float vectors that we are merging.
+   * Tracks state of one sub-reader of float16 vectors that we are merging.
    *
    * @lucene.internal
    */
@@ -312,19 +312,13 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
   public static final class MergedVectorValues {
     private MergedVectorValues() {}
 
-    private static void validateFieldEncoding(FieldInfo fieldInfo, VectorEncoding... expected) {
+    private static void validateFieldEncoding(FieldInfo fieldInfo, VectorEncoding expected) {
       assert fieldInfo != null && fieldInfo.hasVectorValues();
       VectorEncoding fieldEncoding = fieldInfo.getVectorEncoding();
-      for (VectorEncoding exp : expected) {
-        if (fieldEncoding == exp) {
-          return;
-        }
+      if (fieldEncoding != expected) {
+        throw new UnsupportedOperationException(
+            "Cannot merge vectors encoded as [" + fieldEncoding + "] as " + expected);
       }
-      throw new UnsupportedOperationException(
-          "Cannot merge vectors encoded as ["
-              + fieldEncoding
-              + "] as "
-              + Arrays.toString(expected));
     }
 
     /**
@@ -382,7 +376,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
           mergeState);
     }
 
-    /** Returns a merged view over all the segment's {@link FloatVectorValues}. */
+    /** Returns a merged view over all the segment's {@link Float16VectorValues}. */
     public static Float16VectorValues mergeFloat16VectorValues(
         FieldInfo fieldInfo, MergeState mergeState) throws IOException {
       validateFieldEncoding(fieldInfo, VectorEncoding.FLOAT16);

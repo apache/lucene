@@ -545,7 +545,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       assert shortStrings.length == value.length
           : " read " + s + " when expecting " + value.length + " shorts";
       for (int i = 0; i < shortStrings.length; i++) {
-        value[i] = Short.parseShort(shortStrings[i]);
+        value[i] = Short.parseShort(shortStrings[i].trim());
       }
     }
 

@@ -40,16 +40,6 @@ public abstract class BaseQuantizedByteVectorValues extends ByteVectorValues
     throw new UnsupportedOperationException();
   }
 
-  /**
-   * Return a {@link VectorScorer} for the given fp16 query vector.
-   *
-   * @param query the query vector
-   * @return a {@link VectorScorer} instance or null
-   */
-  public VectorScorer scorer(short[] query) throws IOException {
-    throw new UnsupportedOperationException();
-  }
-
   @Override
   public IndexInput getSlice() {
     return null;

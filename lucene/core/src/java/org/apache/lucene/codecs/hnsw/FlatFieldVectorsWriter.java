@@ -53,9 +53,9 @@ public abstract class FlatFieldVectorsWriter<T> extends KnnFieldVectorsWriter<T>
   @SuppressWarnings("unchecked")
   public KnnVectorValues asKnnVectorValues(VectorEncoding encoding, int dim) throws IOException {
     return switch (encoding) {
-      case FLOAT32 -> FloatVectorValues.fromFloats((List<float[]>) getVectors(), dim);
-      case FLOAT16 -> Float16VectorValues.fromFloats16((List<short[]>) getVectors(), dim);
       case BYTE -> ByteVectorValues.fromBytes((List<byte[]>) getVectors(), dim);
+      case FLOAT16 -> Float16VectorValues.fromFloats16((List<short[]>) getVectors(), dim);
+      case FLOAT32 -> FloatVectorValues.fromFloats((List<float[]>) getVectors(), dim);
     };
   }
 

@@ -1259,19 +1259,6 @@ final class IndexingChain implements Accountable {
     int consumed = 0;
     int batchDocID;
     switch (encoding) {
-      case FLOAT32 -> {
-        KnnFieldVectorsWriter<float[]> writer =
-            (KnnFieldVectorsWriter<float[]>) pf.knnFieldVectorsWriter;
-        while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-          ColumnValidation.checkDocID(column, batchDocID, numDocs);
-          ColumnValidation.checkVectorDocIDStrictlyIncreasing(column, batchDocID, prevBatchDocID);
-          float[] vec = (float[]) cursor.value();
-          ColumnValidation.checkVectorDimension(column, vec.length, dimension, batchDocID);
-          writer.addValue(baseDocID + batchDocID, vec);
-          prevBatchDocID = batchDocID;
-          consumed++;
-        }
-      }
       case BYTE -> {
         KnnFieldVectorsWriter<byte[]> writer =
             (KnnFieldVectorsWriter<byte[]>) pf.knnFieldVectorsWriter;
@@ -1292,6 +1279,19 @@ final class IndexingChain implements Accountable {
           ColumnValidation.checkDocID(column, batchDocID, numDocs);
           ColumnValidation.checkVectorDocIDStrictlyIncreasing(column, batchDocID, prevBatchDocID);
           short[] vec = (short[]) cursor.value();
+          ColumnValidation.checkVectorDimension(column, vec.length, dimension, batchDocID);
+          writer.addValue(baseDocID + batchDocID, vec);
+          prevBatchDocID = batchDocID;
+          consumed++;
+        }
+      }
+      case FLOAT32 -> {
+        KnnFieldVectorsWriter<float[]> writer =
+            (KnnFieldVectorsWriter<float[]>) pf.knnFieldVectorsWriter;
+        while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+          ColumnValidation.checkDocID(column, batchDocID, numDocs);
+          ColumnValidation.checkVectorDocIDStrictlyIncreasing(column, batchDocID, prevBatchDocID);
+          float[] vec = (float[]) cursor.value();
           ColumnValidation.checkVectorDimension(column, vec.length, dimension, batchDocID);
           writer.addValue(baseDocID + batchDocID, vec);
           prevBatchDocID = batchDocID;
@@ -1704,12 +1704,12 @@ final class IndexingChain implements Accountable {
       case BYTE ->
           ((KnnFieldVectorsWriter<byte[]>) pf.knnFieldVectorsWriter)
               .addValue(docID, ((KnnByteVectorField) field).vectorValue());
-      case FLOAT32 ->
-          ((KnnFieldVectorsWriter<float[]>) pf.knnFieldVectorsWriter)
-              .addValue(docID, ((KnnFloatVectorField) field).vectorValue());
       case FLOAT16 ->
           ((KnnFieldVectorsWriter<short[]>) pf.knnFieldVectorsWriter)
               .addValue(docID, ((KnnFloat16VectorField) field).vectorValue());
+      case FLOAT32 ->
+          ((KnnFieldVectorsWriter<float[]>) pf.knnFieldVectorsWriter)
+              .addValue(docID, ((KnnFloatVectorField) field).vectorValue());
     }
   }
 

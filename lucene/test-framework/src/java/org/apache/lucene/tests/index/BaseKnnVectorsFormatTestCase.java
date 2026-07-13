@@ -145,12 +145,12 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
   protected void addRandomFields(Document doc) {
     switch (vectorEncoding) {
       case BYTE -> doc.add(new KnnByteVectorField("v2", randomVector8(30), similarityFunction));
-      case FLOAT32 ->
-          doc.add(new KnnFloatVectorField("v2", randomNormalizedVector(30), similarityFunction));
       case FLOAT16 ->
           doc.add(
               new KnnFloat16VectorField(
                   "v2", randomNormalizedFloat16Vector(30), similarityFunction));
+      case FLOAT32 ->
+          doc.add(new KnnFloatVectorField("v2", randomNormalizedVector(30), similarityFunction));
     }
   }
 
@@ -975,14 +975,14 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                 doc.add(new KnnByteVectorField(fieldName, b, fieldSimilarityFunctions[field]));
                 fieldTotals[field] += b[0];
               }
-              case FLOAT32 -> {
-                float[] v = randomNormalizedVector(fieldDims[field]);
-                doc.add(new KnnFloatVectorField(fieldName, v, fieldSimilarityFunctions[field]));
-                fieldTotals[field] += v[0];
-              }
               case FLOAT16 -> {
                 short[] v = randomNormalizedFloat16Vector(fieldDims[field]);
                 doc.add(new KnnFloat16VectorField(fieldName, v, fieldSimilarityFunctions[field]));
+                fieldTotals[field] += v[0];
+              }
+              case FLOAT32 -> {
+                float[] v = randomNormalizedVector(fieldDims[field]);
+                doc.add(new KnnFloatVectorField(fieldName, v, fieldSimilarityFunctions[field]));
                 fieldTotals[field] += v[0];
               }
             }
@@ -1010,9 +1010,9 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                 }
               }
             }
-            case FLOAT32 -> {
+            case FLOAT16 -> {
               for (LeafReaderContext ctx : r.leaves()) {
-                FloatVectorValues vectorValues = ctx.reader().getFloatVectorValues(fieldName);
+                Float16VectorValues vectorValues = ctx.reader().getFloat16VectorValues(fieldName);
                 if (vectorValues != null) {
                   docCount += vectorValues.size();
                   KnnVectorValues.DocIndexIterator iterator = vectorValues.iterator();
@@ -1023,9 +1023,9 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                 }
               }
             }
-            case FLOAT16 -> {
+            case FLOAT32 -> {
               for (LeafReaderContext ctx : r.leaves()) {
-                Float16VectorValues vectorValues = ctx.reader().getFloat16VectorValues(fieldName);
+                FloatVectorValues vectorValues = ctx.reader().getFloatVectorValues(fieldName);
                 if (vectorValues != null) {
                   docCount += vectorValues.size();
                   KnnVectorValues.DocIndexIterator iterator = vectorValues.iterator();
@@ -1950,15 +1950,15 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
               fieldValuesCheckSum += b[0];
               doc.add(new KnnByteVectorField("knn_vector", b, similarityFunction));
             }
-            case FLOAT32 -> {
-              float[] v = randomNormalizedVector(dim);
-              fieldValuesCheckSum += v[0];
-              doc.add(new KnnFloatVectorField("knn_vector", v, similarityFunction));
-            }
             case FLOAT16 -> {
               short[] v = randomNormalizedFloat16Vector(dim);
               fieldValuesCheckSum += v[0];
               doc.add(new KnnFloat16VectorField("knn_vector", v, similarityFunction));
+            }
+            case FLOAT32 -> {
+              float[] v = randomNormalizedVector(dim);
+              fieldValuesCheckSum += v[0];
+              doc.add(new KnnFloatVectorField("knn_vector", v, similarityFunction));
             }
           }
           fieldDocCount++;
@@ -1999,9 +1999,9 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
               }
             }
           }
-          case FLOAT32 -> {
+          case FLOAT16 -> {
             for (LeafReaderContext ctx : r.leaves()) {
-              FloatVectorValues vectorValues = ctx.reader().getFloatVectorValues("knn_vector");
+              Float16VectorValues vectorValues = ctx.reader().getFloat16VectorValues("knn_vector");
               if (vectorValues != null) {
                 docCount += vectorValues.size();
                 StoredFields storedFields = ctx.reader().storedFields();
@@ -2020,9 +2020,9 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
               }
             }
           }
-          case FLOAT16 -> {
+          case FLOAT32 -> {
             for (LeafReaderContext ctx : r.leaves()) {
-              Float16VectorValues vectorValues = ctx.reader().getFloat16VectorValues("knn_vector");
+              FloatVectorValues vectorValues = ctx.reader().getFloatVectorValues("knn_vector");
               if (vectorValues != null) {
                 docCount += vectorValues.size();
                 StoredFields storedFields = ctx.reader().storedFields();

@@ -181,9 +181,9 @@ public class FieldExistsQuery extends Query {
         } else if (fieldInfo.getVectorDimension() != 0) { // the field indexes vectors
           iterator =
               switch (fieldInfo.getVectorEncoding()) {
-                case FLOAT32 -> context.reader().getFloatVectorValues(field).iterator();
-                case FLOAT16 -> context.reader().getFloat16VectorValues(field).iterator();
                 case BYTE -> context.reader().getByteVectorValues(field).iterator();
+                case FLOAT16 -> context.reader().getFloat16VectorValues(field).iterator();
+                case FLOAT32 -> context.reader().getFloatVectorValues(field).iterator();
               };
         } else if (fieldInfo.getDocValuesType()
             != DocValuesType.NONE) { // the field indexes doc values
@@ -296,20 +296,20 @@ public class FieldExistsQuery extends Query {
   private int getVectorValuesSize(FieldInfo fi, LeafReader reader) throws IOException {
     assert fi.name.equals(field);
     return switch (fi.getVectorEncoding()) {
-      case FLOAT32 -> {
-        FloatVectorValues floatVectorValues = reader.getFloatVectorValues(field);
-        assert floatVectorValues != null : "unexpected null float vector values";
-        yield floatVectorValues.size();
+      case BYTE -> {
+        ByteVectorValues byteVectorValues = reader.getByteVectorValues(field);
+        assert byteVectorValues != null : "unexpected null byte vector values";
+        yield byteVectorValues.size();
       }
       case FLOAT16 -> {
         Float16VectorValues float16VectorValues = reader.getFloat16VectorValues(field);
         assert float16VectorValues != null : "unexpected null float vector values";
         yield float16VectorValues.size();
       }
-      case BYTE -> {
-        ByteVectorValues byteVectorValues = reader.getByteVectorValues(field);
-        assert byteVectorValues != null : "unexpected null byte vector values";
-        yield byteVectorValues.size();
+      case FLOAT32 -> {
+        FloatVectorValues floatVectorValues = reader.getFloatVectorValues(field);
+        assert floatVectorValues != null : "unexpected null float vector values";
+        yield floatVectorValues.size();
       }
     };
   }

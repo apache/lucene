@@ -909,11 +909,11 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           case BYTE:
             vectorValues = leafReader.getByteVectorValues("field");
             break;
-          case FLOAT32:
-            vectorValues = leafReader.getFloatVectorValues("field");
-            break;
           case FLOAT16:
             vectorValues = leafReader.getFloat16VectorValues("field");
+            break;
+          case FLOAT32:
+            vectorValues = leafReader.getFloatVectorValues("field");
             break;
           default:
             throw new AssertionError();

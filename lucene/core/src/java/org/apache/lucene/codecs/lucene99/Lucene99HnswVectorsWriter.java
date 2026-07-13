@@ -425,8 +425,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       KnnVectorValues vectorValues =
           switch (fieldInfo.getVectorEncoding()) {
             case BYTE -> flatVectorsReader.getByteVectorValues(fieldInfo.name);
-            case FLOAT32 -> flatVectorsReader.getFloatVectorValues(fieldInfo.name);
             case FLOAT16 -> flatVectorsReader.getFloat16VectorValues(fieldInfo.name);
+            case FLOAT32 -> flatVectorsReader.getFloatVectorValues(fieldInfo.name);
           };
       int totalVectorCount = vectorValues == null ? 0 : vectorValues.size();
       if (totalVectorCount > 0 && shouldCreateGraph(tinySegmentsThreshold, totalVectorCount)) {
@@ -706,19 +706,19 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
                 beamWidth,
                 infoStream,
                 tinySegmentsThreshold);
-        case FLOAT32 ->
+        case FLOAT16 ->
             new FieldWriter<>(
                 scorer,
-                (FlatFieldVectorsWriter<float[]>) flatFieldVectorsWriter,
+                (FlatFieldVectorsWriter<short[]>) flatFieldVectorsWriter,
                 fieldInfo,
                 M,
                 beamWidth,
                 infoStream,
                 tinySegmentsThreshold);
-        case FLOAT16 ->
+        case FLOAT32 ->
             new FieldWriter<>(
                 scorer,
-                (FlatFieldVectorsWriter<short[]>) flatFieldVectorsWriter,
+                (FlatFieldVectorsWriter<float[]>) flatFieldVectorsWriter,
                 fieldInfo,
                 M,
                 beamWidth,

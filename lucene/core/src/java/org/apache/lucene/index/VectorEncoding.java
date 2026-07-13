@@ -31,7 +31,10 @@ public enum VectorEncoding {
   /** Encodes vector using 32 bits of precision per sample in IEEE floating point format. */
   FLOAT32(4),
 
-  /** Encodes vector using 16 bits of precision per sample in IEEE floating point format. */
+  /**
+   * Encodes vector using 16 bits of precision per sample in IEEE half-precision floating-point
+   * format.
+   */
   FLOAT16(2);
 
   /**
@@ -42,10 +45,5 @@ public enum VectorEncoding {
 
   VectorEncoding(int byteSize) {
     this.byteSize = byteSize;
-  }
-
-  /** Returns true if this is a floating-point encoding ({@link #FLOAT32} or {@link #FLOAT16}). */
-  public boolean isFloatingPoint() {
-    return this == FLOAT32 || this == FLOAT16;
   }
 }

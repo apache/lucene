@@ -127,10 +127,7 @@ public abstract class OffHeapFloat16VectorValues extends Float16VectorValues
     }
   }
 
-  /**
-   * Dense vector values that are stored off-heap. This is the most common case when every doc has a
-   * vector.
-   */
+  /** Dense vector values that are stored off-heap. This is the case when every doc has a vector. */
   public static class DenseOffHeapVectorValues extends OffHeapFloat16VectorValues {
 
     public DenseOffHeapVectorValues(
@@ -192,7 +189,7 @@ public abstract class OffHeapFloat16VectorValues extends Float16VectorValues
   private static class SparseOffHeapVectorValues extends OffHeapFloat16VectorValues {
     private final DirectMonotonicReader ordToDoc;
     private final IndexedDISI disi;
-    // dataIn was used to init a new IndexedDIS for #randomAccess()
+    // dataIn was used to init a new IndexedDISI for #randomAccess()
     private final IndexInput dataIn;
     private final OrdToDocDISIReaderConfiguration configuration;
 

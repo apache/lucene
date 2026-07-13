@@ -340,7 +340,7 @@ public abstract non-sealed class LeafReader extends IndexReader {
    * TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO}.
    *
    * @param field the vector field to search
-   * @param target the short vector-valued query
+   * @param target the fp16 vector-valued query
    * @param k the number of docs to return
    * @param acceptDocs {@link AcceptDocs} that represents the allowed documents to match
    * @param visitedLimit the maximum number of nodes that the search is allowed to visit
@@ -416,7 +416,7 @@ public abstract non-sealed class LeafReader extends IndexReader {
    * FieldInfo}. The return value is never {@code null}.
    *
    * @param field the vector field to search
-   * @param target the short vector-valued query
+   * @param target the fp16 vector-valued query
    * @param knnCollector collector with settings for gathering the vector results.
    * @param acceptDocs {@link AcceptDocs} that represents the allowed documents to match
    * @lucene.experimental

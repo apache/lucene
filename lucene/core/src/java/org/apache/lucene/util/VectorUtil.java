@@ -479,6 +479,27 @@ public final class VectorUtil {
     return v;
   }
 
+  /**
+   * Checks if a float16 vector, encoded as {@code short[]}, only has finite components. A float16
+   * value is non-finite (i.e. an infinity or NaN) when all five exponent bits are set, which is
+   * detected by {@code (v[i] & 0x7C00) == 0x7C00}. This bitmask check is used instead of {@code
+   * Float.isFinite(Float.float16ToFloat(v[i]))} because it avoids a per-element half-to-single
+   * precision conversion and is measurably faster.
+   *
+   * @param v shorts containing a float16 vector
+   * @return the vector for call-chaining
+   * @throws IllegalArgumentException if any component of the vector is not finite
+   */
+  public static short[] checkFiniteFloat16(short[] v) {
+    for (int i = 0; i < v.length; i++) {
+      if ((v[i] & 0x7C00) == 0x7C00) {
+        throw new IllegalArgumentException(
+            "non-finite float16 value at vector[" + i + "]=" + Float.float16ToFloat(v[i]));
+      }
+    }
+    return v;
+  }
+
   /** Returns true if all dimensions of provided vector are zero, false otherwise. */
   public static boolean isZeroVector(float[] v) {
     for (float value : v) {

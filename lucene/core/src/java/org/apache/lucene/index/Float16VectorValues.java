@@ -99,9 +99,9 @@ public abstract class Float16VectorValues extends KnnVectorValues {
   }
 
   /**
-   * Creates a {@link Float16VectorValues} from a list of float arrays.
+   * Creates a {@link Float16VectorValues} from a list of float16 vectors.
    *
-   * @param vectors the list of float arrays
+   * @param vectors the list of float16 vectors, each stored as a {@code short[]}
    * @param dim the dimension of the vectors
    * @return a {@link Float16VectorValues} instance
    */

@@ -20,6 +20,7 @@ import static org.apache.lucene.search.knn.KnnSearchStrategy.Hnsw.DEFAULT;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Objects;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.document.KnnFloat16VectorField;
 import org.apache.lucene.index.FieldInfo;
@@ -29,6 +30,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.VectorUtil;
 
 /**
  * Uses {@link KnnVectorsReader#search(String, short[], KnnCollector, AcceptDocs)} to perform
@@ -92,7 +94,7 @@ public class KnnFloat16VectorQuery extends AbstractKnnVectorQuery {
   public KnnFloat16VectorQuery(
       String field, short[] target, int k, Query filter, KnnSearchStrategy searchStrategy) {
     super(field, k, filter, searchStrategy);
-    this.target = target;
+    this.target = VectorUtil.checkFiniteFloat16(Objects.requireNonNull(target, "target"));
   }
 
   @Override

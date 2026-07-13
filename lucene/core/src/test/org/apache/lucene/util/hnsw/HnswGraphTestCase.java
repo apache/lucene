@@ -124,10 +124,10 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     return switch (getVectorEncoding()) {
       case BYTE ->
           flatVectorScorer.getRandomVectorScorer(similarityFunction, vectorsCopy, (byte[]) query);
-      case FLOAT32 ->
-          flatVectorScorer.getRandomVectorScorer(similarityFunction, vectorsCopy, (float[]) query);
       case FLOAT16 ->
           flatVectorScorer.getRandomVectorScorer(similarityFunction, vectorsCopy, (short[]) query);
+      case FLOAT32 ->
+          flatVectorScorer.getRandomVectorScorer(similarityFunction, vectorsCopy, (float[]) query);
     };
   }
 
@@ -178,18 +178,18 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                         (T) ((ByteVectorValues) vectors).vectorValue(ord),
                         similarityFunction));
               }
-              case FLOAT32 -> {
-                doc.add(
-                    knnVectorField(
-                        "field",
-                        (T) ((FloatVectorValues) vectors).vectorValue(ord),
-                        similarityFunction));
-              }
               case FLOAT16 -> {
                 doc.add(
                     knnVectorField(
                         "field",
                         (T) ((Float16VectorValues) vectors).vectorValue(ord),
+                        similarityFunction));
+              }
+              case FLOAT32 -> {
+                doc.add(
+                    knnVectorField(
+                        "field",
+                        (T) ((FloatVectorValues) vectors).vectorValue(ord),
                         similarityFunction));
               }
             }
@@ -250,18 +250,18 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                       (T) ((ByteVectorValues) vectors).vectorValue(i),
                       similarityFunction));
             }
-            case FLOAT32 -> {
-              doc.add(
-                  knnVectorField(
-                      vectorFieldName,
-                      (T) ((FloatVectorValues) vectors).vectorValue(i),
-                      similarityFunction));
-            }
             case FLOAT16 -> {
               doc.add(
                   knnVectorField(
                       vectorFieldName,
                       (T) ((Float16VectorValues) vectors).vectorValue(i),
+                      similarityFunction));
+            }
+            case FLOAT32 -> {
+              doc.add(
+                  knnVectorField(
+                      vectorFieldName,
+                      (T) ((FloatVectorValues) vectors).vectorValue(i),
                       similarityFunction));
             }
           }
@@ -300,11 +300,11 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
       case BYTE -> {
         return (T) ((ByteVectorValues) vectors).vectorValue(ord);
       }
-      case FLOAT32 -> {
-        return (T) ((FloatVectorValues) vectors).vectorValue(ord);
-      }
       case FLOAT16 -> {
         return (T) ((Float16VectorValues) vectors).vectorValue(ord);
+      }
+      case FLOAT32 -> {
+        return (T) ((FloatVectorValues) vectors).vectorValue(ord);
       }
     }
     throw new AssertionError("unknown encoding " + vectors.getEncoding());
@@ -829,12 +829,12 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
             case BYTE ->
                 similarityFunction.compare(
                     ((ByteVectorValues) vectorValues).vectorValue(i), (byte[]) target);
-            case FLOAT32 ->
-                similarityFunction.compare(
-                    ((FloatVectorValues) vectorValues).vectorValue(i), (float[]) target);
             case FLOAT16 ->
                 similarityFunction.compare(
                     ((Float16VectorValues) vectorValues).vectorValue(i), (short[]) target);
+            case FLOAT32 ->
+                similarityFunction.compare(
+                    ((FloatVectorValues) vectorValues).vectorValue(i), (float[]) target);
           };
       minScore = Math.min(minScore, score);
     }
@@ -1442,17 +1442,17 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                 "vectors do not match for doc=" + uDoc,
                 (byte[]) vectorValue(u, ord),
                 (byte[]) vectorValue(v, ord));
+        case FLOAT16 ->
+            assertArrayEquals(
+                "vectors do not match for doc=" + uDoc,
+                (short[]) vectorValue(u, ord),
+                (short[]) vectorValue(v, ord));
         case FLOAT32 ->
             assertArrayEquals(
                 "vectors do not match for doc=" + uDoc,
                 (float[]) vectorValue(u, ord),
                 (float[]) vectorValue(v, ord),
                 1e-4f);
-        case FLOAT16 ->
-            assertArrayEquals(
-                "vectors do not match for doc=" + uDoc,
-                (short[]) vectorValue(u, ord),
-                (short[]) vectorValue(v, ord));
         default ->
             throw new IllegalArgumentException("unknown vector encoding: " + getVectorEncoding());
       }

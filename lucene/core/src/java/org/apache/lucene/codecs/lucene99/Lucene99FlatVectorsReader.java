@@ -372,8 +372,8 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
       int byteSize =
           switch (info.getVectorEncoding()) {
             case BYTE -> Byte.BYTES;
-            case FLOAT32 -> Float.BYTES;
             case FLOAT16 -> Short.BYTES;
+            case FLOAT32 -> Float.BYTES;
           };
       long vectorBytes = Math.multiplyExact((long) infoVectorDimension, byteSize);
       long numBytes = Math.multiplyExact(vectorBytes, size);

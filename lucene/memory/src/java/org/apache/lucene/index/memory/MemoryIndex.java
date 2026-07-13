@@ -815,28 +815,6 @@ public class MemoryIndex {
                 + vectorField.name()
                 + "] is not a byte vector field, but the field info is configured for byte vectors");
       }
-      case FLOAT32 -> {
-        if (vectorField instanceof KnnFloatVectorField floatVectorField) {
-          if (info.floatVectorCount == 1) {
-            throw new IllegalArgumentException(
-                "Only one value per field allowed for float vector field ["
-                    + vectorField.name()
-                    + "]");
-          }
-          info.floatVectorCount++;
-          if (info.floatVectorValues == null) {
-            info.floatVectorValues = new float[1][];
-          }
-          info.floatVectorValues[0] =
-              ArrayUtil.copyOfSubArray(
-                  floatVectorField.vectorValue(), 0, info.fieldInfo.getVectorDimension());
-          return;
-        }
-        throw new IllegalArgumentException(
-            "Field ["
-                + vectorField.name()
-                + "] is not a float vector field, but the field info is configured for float vectors");
-      }
 
       case FLOAT16 -> {
         if (vectorField instanceof KnnFloat16VectorField float16VectorField) {
@@ -859,6 +837,29 @@ public class MemoryIndex {
             "Field ["
                 + vectorField.name()
                 + "] is not a float16 vector field, but the field info is configured for float16 vectors");
+      }
+
+      case FLOAT32 -> {
+        if (vectorField instanceof KnnFloatVectorField floatVectorField) {
+          if (info.floatVectorCount == 1) {
+            throw new IllegalArgumentException(
+                "Only one value per field allowed for float vector field ["
+                    + vectorField.name()
+                    + "]");
+          }
+          info.floatVectorCount++;
+          if (info.floatVectorValues == null) {
+            info.floatVectorValues = new float[1][];
+          }
+          info.floatVectorValues[0] =
+              ArrayUtil.copyOfSubArray(
+                  floatVectorField.vectorValue(), 0, info.fieldInfo.getVectorDimension());
+          return;
+        }
+        throw new IllegalArgumentException(
+            "Field ["
+                + vectorField.name()
+                + "] is not a float vector field, but the field info is configured for float vectors");
       }
     }
   }
@@ -1268,11 +1269,13 @@ public class MemoryIndex {
     /** the float vectors added for this field */
     private float[][] floatVectorValues;
 
+    /** the float16 vectors added for this field */
     private short[][] float16VectorValues;
 
     /** Number of byte vectors added for this field */
     private int byteVectorCount;
 
+    /** Number of float16 vectors added for this field */
     private int float16VectorCount;
 
     /** the byte vectors added for this field */
