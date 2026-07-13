@@ -52,6 +52,10 @@ public interface HnswBuilder {
    * may throw an exception to abort the build promptly, e.g. {@link
    * org.apache.lucene.index.MergePolicy.MergeAbortedException} when the merge that triggered the
    * build has been aborted.
+   *
+   * <p>The check must be non-null and can be set at most once.
+   *
+   * @throws IllegalStateException if the check was already set
    */
   void setAbortCheck(IORunnable abortCheck);
 

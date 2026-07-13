@@ -213,6 +213,10 @@ public class HnswGraphBuilder implements HnswBuilder {
 
   @Override
   public void setAbortCheck(IORunnable abortCheck) {
+    Objects.requireNonNull(abortCheck);
+    if (this.abortCheck != null) {
+      throw new IllegalStateException("abort check was already set");
+    }
     this.abortCheck = abortCheck;
   }
 
