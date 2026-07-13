@@ -2046,7 +2046,10 @@ public class TestJoinUtil extends LuceneTestCase {
 
     float minScore = Float.POSITIVE_INFINITY;
     float maxScore = Float.NEGATIVE_INFINITY;
-    float total;
+    // Accumulated in double precision, because float addition isn't associative, so summing the
+    // same scores
+    // in a different order may round to a different float.
+    double total;
     int count;
 
     void addScore(float score) {
@@ -2065,9 +2068,9 @@ public class TestJoinUtil extends LuceneTestCase {
         case None:
           return 1f;
         case Total:
-          return total;
+          return (float) total;
         case Avg:
-          return total / count;
+          return (float) (total / count);
         case Min:
           return minScore;
         case Max:

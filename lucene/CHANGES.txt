@@ -151,6 +151,10 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#16382: WildcardQuery.toAutomaton now collapses consecutive unescaped '*'
+  wildcards into a single any-string automaton, avoiding a quadratic blow-up in
+  automaton size for patterns with many repeated asterisks. (Vismay Tiwari)
+
 * GITHUB#16307: ReqExclBulkScorer now skips runs of excluded docs via
   TwoPhaseIterator#docIDRunEnd for two-phase excluded clauses (e.g. a doc-values
   not-equals filter), instead of advancing one doc at a time. (Jim Ferenczi)
@@ -178,6 +182,7 @@ Optimizations
 
 Bug Fixes
 ---------------------
+
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
 
@@ -303,6 +308,8 @@ API Changes
 * GITHUB#16286: Introduce BinaryDocValues#binaryValues to help speed up the
   retrieval of many binary doc values at once. (Costin Leau)
 
+* GITHUB#16363: Add API to use a custom `DictionarySuggester` instead of hardcoded `GeneratingSuggester`
+
 New Features
 ---------------------
 
@@ -318,6 +325,8 @@ Improvements
                 in favour of providing a GroupSelector supplier. (Binlong Gao)
 
 * GITHUB#16305: Alter TopGroups.merge() to not return null if no groups. (Binlong Gao)
+
+* GITHUB#16271: Add detail to KNN no-match explanations. (Jakub Slowinski)
 
 Optimizations
 ---------------------
@@ -336,6 +345,13 @@ Optimizations
 
 * GITHUB#16352: Better cost() estimation for SkipBlockRangeIterator. (Alan Woodward)
 
+* GITHUB#16285: Apply GCD bound transform to sorted numeric rangeIntoBitSet, comparing raw
+  encoded values directly instead of decoding every packed value. (Costin Leau)
+
+* GITHUB#16307: ReqExclBulkScorer now skips runs of excluded docs via
+  TwoPhaseIterator#docIDRunEnd for two-phase excluded clauses (e.g. a doc-values
+  not-equals filter), instead of advancing one doc at a time. (Jim Ferenczi)
+
 * GITHUB#16362: Add TwoPhaseIterator.applyMask() to support bulk matching for more
   expensive queries. (Alan Woodward)
 
@@ -349,12 +365,16 @@ Bug Fixes
 ---------------------
 * GITHUB#16350: Disable bulk-scoring in monitor queries. (Alan Woodward)
 
-* GITHUB#16295: SingletonSortedNumericDocValues now delegates rangeIntoBitSet
-  to the wrapped NumericDocValues, enabling optimized range evaluation for
-  single-valued sorted numeric fields. (Costin Leau)
+* GITHUB#16378: Accumulate join Total/Avg scores in double precision in
+  TermsWithScoreCollector and JoinUtil's numeric point join, fixing
+  intermittent failures caused by non-associative float addition. (Luca Cavanna)
 
 * GITHUB#16296: Fix missing null check in RamUsageEstimator.sizeOf(Accountable)
   to be consistent with sizeOf(String) and sizeOf(Accountable[]). (Tim Grein)
+
+* GITHUB#16295: SingletonSortedNumericDocValues now delegates rangeIntoBitSet
+  to the wrapped NumericDocValues, enabling optimized range evaluation for
+  single-valued sorted numeric fields. (Costin Leau)
 
 Other
 ---------------------
@@ -364,6 +384,9 @@ Other
 * GITHUB#16308: upgrade opennlp to 2.5.10 (Dawid Weiss)
 
 * GITHUB#16315: Fix flaky test TestIndexOptions > testMultiValueForcesDeoptimization (neoremind)
+
+* GITHUB#16300: Reduce memory pressure in TestTermInSetQuery.testDuel stress runs.
+  (Sanghun Lee)
 
 ======================= Lucene 10.5.0 =======================
 
