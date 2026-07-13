@@ -62,6 +62,9 @@ Optimizations
 * GITHUB#16370: Sort two-phase iterators by matchCost in DenseConjunctionBulkScorer.
   (Alan Woodward)
 
+* GITHUB#16380: Speed up filtered disjunction queries when the filter is part of the
+  index sort by advancing the filter before calculating impacts. (Alan Woodward)
+
 Bug Fixes
 ---------------------
 * GITHUB#16350: Disable bulk-scoring in monitor queries. (Alan Woodward)
