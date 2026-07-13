@@ -488,7 +488,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
 
     @Override
-    public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
+    public DocValuesSkipper getSkipper(FieldInfo field) {
       throw new UnsupportedOperationException("This method is for searching not for merging");
     }
   }

@@ -74,7 +74,7 @@ public final class NumericFieldStats {
     return new Stats(decodeLong(minPacked), decodeLong(maxPacked), docCount);
   }
 
-  private static Stats getStatsFromSkipper(IndexReader reader, String field) throws IOException {
+  private static Stats getStatsFromSkipper(IndexReader reader, String field) {
     Long min = null;
     Long max = null;
     int docCount = 0;

@@ -1823,7 +1823,7 @@ public class AssertingLeafReader extends FilterLeafReader {
   }
 
   @Override
-  public DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+  public DocValuesSkipper getDocValuesSkipper(String field) {
     DocValuesSkipper skipper = super.getDocValuesSkipper(field);
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (skipper != null) {
