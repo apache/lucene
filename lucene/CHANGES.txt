@@ -324,7 +324,7 @@ Improvements
 
 * GITHUB#16271: Add detail to KNN no-match explanations. (Jakub Slowinski)
 
-* GITHUB#16170: Remove unused public methods in AllGroupHeadsCollector. (Binlong Gao)
+* GITHUB#16385: Remove unused public methods in AllGroupHeadsCollector. (Binlong Gao)
 
 Optimizations
 ---------------------
