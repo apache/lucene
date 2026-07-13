@@ -31,6 +31,7 @@ import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.InfoStream;
 
 /**
@@ -131,6 +132,13 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     this.infoStream = infoStream;
     for (HnswBuilder worker : workers) {
       worker.setInfoStream(infoStream);
+    }
+  }
+
+  @Override
+  public void setAbortCheck(IORunnable abortCheck) {
+    for (HnswBuilder worker : workers) {
+      worker.setAbortCheck(abortCheck);
     }
   }
 
