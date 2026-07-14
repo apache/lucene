@@ -191,8 +191,6 @@ Bug Fixes
   been aborted, so IndexWriter#rollback and abortMerges no longer block until the entire graph is
   built. (Jeho Jeong)
 
-* GITHUB#16389: Fix double-counting of the underlying Automaton in AutomatonQuery#ramBytesUsed. (Sasilekha R)
-
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
 
@@ -388,6 +386,9 @@ Bug Fixes
 * GITHUB#16295: SingletonSortedNumericDocValues now delegates rangeIntoBitSet
   to the wrapped NumericDocValues, enabling optimized range evaluation for
   single-valued sorted numeric fields. (Costin Leau)
+
+* GITHUB#16389: Fix double-counting of the underlying Automaton in
+  AutomatonQuery#ramBytesUsed. (Sasilekha R)
 
 Other
 ---------------------
