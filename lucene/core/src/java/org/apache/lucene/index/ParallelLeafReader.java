@@ -428,7 +428,7 @@ public class ParallelLeafReader extends LeafReader {
   }
 
   @Override
-  public DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+  public DocValuesSkipper getDocValuesSkipper(String field) {
     ensureOpen();
     LeafReader reader = fieldToReader.get(field);
     return reader == null ? null : reader.getDocValuesSkipper(field);

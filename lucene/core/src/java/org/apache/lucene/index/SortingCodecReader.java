@@ -711,7 +711,7 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
+      public DocValuesSkipper getSkipper(FieldInfo field) {
         // We can hardly return information about min/max values if doc IDs have been reordered.
         return null;
       }

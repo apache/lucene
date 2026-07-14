@@ -1724,7 +1724,7 @@ public class MemoryIndex {
     }
 
     @Override
-    public DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+    public DocValuesSkipper getDocValuesSkipper(String field) {
       // Skipping isn't needed on a 1-doc index.
       return null;
     }
