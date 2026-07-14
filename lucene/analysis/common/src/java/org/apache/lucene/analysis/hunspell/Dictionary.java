@@ -1609,8 +1609,7 @@ public class Dictionary {
     }
     Path tmpPath = Paths.get(tmpDir);
     if (!Files.isWritable(tmpPath)) {
-      throw new IOException(
-          "Temporary path not present or writeable?: " + tmpPath.toAbsolutePath());
+      throw new IOException("Temporary path not present or writable?: " + tmpPath.toAbsolutePath());
     }
     return tmpPath;
   }
@@ -1622,9 +1621,9 @@ public class Dictionary {
     final String[] starting, ending, middle;
 
     Breaks(Collection<String> starting, Collection<String> ending, Collection<String> middle) {
-      this.starting = starting.toArray(new String[0]);
-      this.ending = ending.toArray(new String[0]);
-      this.middle = middle.toArray(new String[0]);
+      this.starting = starting.toArray(String[]::new);
+      this.ending = ending.toArray(String[]::new);
+      this.middle = middle.toArray(String[]::new);
     }
 
     boolean isNotEmpty() {

@@ -69,8 +69,8 @@ def outputFileOption = buildOptions.addFileOption("standardOutput", "Path to the
 
 tasks.register("run", JavaExec, {
   description = "Run a perf test (optional: -PtaskAlg=conf/your-algorithm-file -PmaxHeapSize=1G). Before" +
-      " running this, you need to download the dataset the benchmark runs against (e.g., by getReuters" +
-      " task). See dataset download tasks for more details."
+  " running this, you need to download the dataset the benchmark runs against (e.g., by getReuters" +
+  " task). See dataset download tasks for more details."
   group = "Utility launchers"
 
   mainClass = 'org.apache.lucene.benchmark.byTask.Benchmark'

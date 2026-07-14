@@ -38,10 +38,8 @@ import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
-import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.MergeState;
@@ -475,7 +473,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
             mergeState.intraMergeTaskExecutor == null
                 ? null
                 : new TaskExecutor(mergeState.intraMergeTaskExecutor),
-            numMergeWorkers);
+            numMergeWorkers,
+            mergeState::checkAborted);
     for (int i = 0; i < mergeState.liveDocs.length; i++) {
       if (hasVectorValues(mergeState.fieldInfos[i], fieldInfo.name)) {
         merger.addReader(
@@ -628,10 +627,11 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       FieldInfo fieldInfo,
       RandomVectorScorerSupplier scorerSupplier,
       TaskExecutor parallelMergeTaskExecutor,
-      int numParallelMergeWorkers) {
+      int numParallelMergeWorkers,
+      IORunnable abortCheck) {
     if (mergeExec != null) {
       return new ConcurrentHnswMerger(
-          fieldInfo, scorerSupplier, M, beamWidth, mergeExec, numMergeWorkers);
+          fieldInfo, scorerSupplier, M, beamWidth, mergeExec, numMergeWorkers, abortCheck);
     }
     if (parallelMergeTaskExecutor != null && numParallelMergeWorkers > 1) {
       return new ConcurrentHnswMerger(
@@ -640,9 +640,10 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
           M,
           beamWidth,
           parallelMergeTaskExecutor,
-          numParallelMergeWorkers);
+          numParallelMergeWorkers,
+          abortCheck);
     }
-    return new IncrementalHnswGraphMerger(fieldInfo, scorerSupplier, M, beamWidth);
+    return new IncrementalHnswGraphMerger(fieldInfo, scorerSupplier, M, beamWidth, abortCheck);
   }
 
   @Override
@@ -736,20 +737,10 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       this.flatFieldVectorsWriter = Objects.requireNonNull(flatFieldVectorsWriter);
       this.graphThreshold = tinySegmentsThreshold;
       this.scorerSupplier =
-          switch (fieldInfo.getVectorEncoding()) {
-            case BYTE ->
-                scorer.getRandomVectorScorerSupplier(
-                    fieldInfo.getVectorSimilarityFunction(),
-                    ByteVectorValues.fromBytes(
-                        (List<byte[]>) flatFieldVectorsWriter.getVectors(),
-                        fieldInfo.getVectorDimension()));
-            case FLOAT32 ->
-                scorer.getRandomVectorScorerSupplier(
-                    fieldInfo.getVectorSimilarityFunction(),
-                    FloatVectorValues.fromFloats(
-                        (List<float[]>) flatFieldVectorsWriter.getVectors(),
-                        fieldInfo.getVectorDimension()));
-          };
+          scorer.getRandomVectorScorerSupplier(
+              fieldInfo.getVectorSimilarityFunction(),
+              flatFieldVectorsWriter.asKnnVectorValues(
+                  fieldInfo.getVectorEncoding(), fieldInfo.getVectorDimension()));
 
       if (graphThreshold <= 0) {
         // Initialize graph builder if optimization is disabled

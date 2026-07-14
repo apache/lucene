@@ -378,7 +378,7 @@ public class TestTaxonomyCombined extends FacetTestCase {
       }
     }
     // (also test invalid categories:)
-    assertEquals(TaxonomyReader.INVALID_ORDINAL, tr.getOrdinal(new FacetLabel("non-existant")));
+    assertEquals(TaxonomyReader.INVALID_ORDINAL, tr.getOrdinal(new FacetLabel("non-existent")));
     assertEquals(
         TaxonomyReader.INVALID_ORDINAL, tr.getOrdinal(new FacetLabel("Author", "Jules Verne")));
 
@@ -825,7 +825,7 @@ public class TestTaxonomyCombined extends FacetTestCase {
     stop.set(true);
     thread.join();
     assertNull(
-        "Unexpcted exception at retry "
+        "Unexpected exception at retry "
             + retry
             + " retrieval "
             + retrieval[0]
@@ -1083,7 +1083,7 @@ public class TestTaxonomyCombined extends FacetTestCase {
       for (int i = k - roundSize + 1; i <= k && i < count; i++) {
         round.add(String.format(Locale.ROOT, "category %d of %d", i, k));
       }
-      result[k / roundSize - 1] = round.toArray(new String[0]);
+      result[k / roundSize - 1] = round.toArray(String[]::new);
     } while (k <= count);
     return result;
   }

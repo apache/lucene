@@ -147,7 +147,7 @@ public class TestTermsEnum2 extends LuceneTestCase {
   }
 
   /** mixes up seek and next for all terms */
-  public void testSeekingAndNexting() throws Exception {
+  public void testSeekAndNext() throws Exception {
     for (int i = 0; i < numIterations; i++) {
       TermsEnum te = MultiTerms.getTerms(reader, "field").iterator();
 

@@ -89,8 +89,8 @@ public class OpenNLPLemmatizerFilter extends TokenFilter {
         typeList.add(attributeSource.getAttribute(TypeAttribute.class).type());
       }
     }
-    String[] sentenceTokens = tokenList.toArray(new String[0]);
-    String[] sentenceTokenTypes = typeList.toArray(new String[0]);
+    String[] sentenceTokens = tokenList.toArray(String[]::new);
+    String[] sentenceTokenTypes = typeList.toArray(String[]::new);
     lemmas = lemmatizerOp.lemmatize(sentenceTokens, sentenceTokenTypes);
     sentenceTokenAttrsIter = sentenceAttributes.iterator();
     return sentenceAttributeExtractor.getSentenceAttributes();

@@ -73,7 +73,7 @@ final class SuffixingNGramTokenFilter extends TokenFilter {
 
   /** Returns the next token in the stream, or null at EOS. */
   @Override
-  public final boolean incrementToken() throws IOException {
+  public boolean incrementToken() throws IOException {
     while (true) {
       if (curTermBuffer == null) {
 

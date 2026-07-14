@@ -226,8 +226,8 @@ public class TestMultiTermsEnum extends LuceneTestCase {
       }
 
       @Override
-      public void checkIntegrity() throws IOException {
-        delegate.checkIntegrity();
+      public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+        delegate.checkIntegrity(merge);
       }
 
       @Override

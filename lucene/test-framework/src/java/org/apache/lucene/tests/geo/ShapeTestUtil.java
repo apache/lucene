@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.tests.geo;
 
-import com.carrotsearch.randomizedtesting.RandomizedContext;
 import com.carrotsearch.randomizedtesting.generators.BiasedNumbers;
 import java.util.ArrayList;
 import java.util.Random;
@@ -243,7 +242,7 @@ public class ShapeTestUtil {
 
   /** Keep it simple, we don't need to take arbitrary Random for geo tests */
   private static Random random() {
-    return RandomizedContext.current().getRandom();
+    return LuceneTestCase.nonAssertingRandom(LuceneTestCase.random());
   }
 
   /** Simple slow point in polygon check (for testing) */
@@ -295,22 +294,22 @@ public class ShapeTestUtil {
     boolean c = false;
     int i, j;
     int nvert = polyYs.length;
-    double[] verty = polyYs;
-    double[] vertx = polyXs;
+    double[] vertY = polyYs;
+    double[] vertX = polyXs;
     double testy = y;
     double testx = x;
     for (i = 0, j = 1; j < nvert; ++i, ++j) {
-      if (testy == verty[j] && testy == verty[i]
-          || ((testy <= verty[j] && testy >= verty[i])
-              != (testy >= verty[j] && testy <= verty[i]))) {
-        if ((testx == vertx[j] && testx == vertx[i])
-            || ((testx <= vertx[j] && testx >= vertx[i]) != (testx >= vertx[j] && testx <= vertx[i])
-                && GeoUtils.orient(vertx[i], verty[i], vertx[j], verty[j], testx, testy) == 0)) {
+      if (testy == vertY[j] && testy == vertY[i]
+          || ((testy <= vertY[j] && testy >= vertY[i])
+              != (testy >= vertY[j] && testy <= vertY[i]))) {
+        if ((testx == vertX[j] && testx == vertX[i])
+            || ((testx <= vertX[j] && testx >= vertX[i]) != (testx >= vertX[j] && testx <= vertX[i])
+                && GeoUtils.orient(vertX[i], vertY[i], vertX[j], vertY[j], testx, testy) == 0)) {
           // return true if point is on boundary
           return true;
-        } else if (((verty[i] > testy) != (verty[j] > testy))
+        } else if (((vertY[i] > testy) != (vertY[j] > testy))
             && (testx
-                < (vertx[j] - vertx[i]) * (testy - verty[i]) / (verty[j] - verty[i]) + vertx[i])) {
+                < (vertX[j] - vertX[i]) * (testy - vertY[i]) / (vertY[j] - vertY[i]) + vertX[i])) {
           c = !c;
         }
       }

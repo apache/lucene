@@ -21,6 +21,8 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.tests.index.AssertingLeafReader;
+import org.apache.lucene.util.FixedBitSet;
 
 /**
  * Tests {@link DocValuesRangeIterator#forRange(SortedNumericDocValues, DocValuesSkipper, long,
@@ -75,7 +77,7 @@ public class TestSortedNumericDocValuesRangeIterator extends BaseDocValuesSkippe
   }
 
   private static boolean docHasValue(int doc) {
-    return doc < 1024 || (doc < 2048 && (doc & 1) == 0);
+    return doc < DENSE_END || (doc < 2048 && (doc & 1) == 0);
   }
 
   private static List<Integer> expectedMatches() {
@@ -89,13 +91,21 @@ public class TestSortedNumericDocValuesRangeIterator extends BaseDocValuesSkippe
   }
 
   private static SortedNumericDocValues sortedNumericDocValues(long queryMin, long queryMax) {
+    SortedNumericDocValues values = newSortedNumericDocValues(queryMin, queryMax);
+    // Enforce the forward-only iteration contracts like real sparse implementations rely on.
+    return AssertingLeafReader.AssertingSortedNumericDocValues.create(values, MAX_DOC);
+  }
+
+  private static SortedNumericDocValues newSortedNumericDocValues(long queryMin, long queryMax) {
     return new SortedNumericDocValues() {
       int doc = -1;
       int valueIdx = 0;
 
       @Override
       public boolean advanceExact(int target) throws IOException {
-        throw new UnsupportedOperationException();
+        doc = target;
+        valueIdx = 0;
+        return docHasValue(target);
       }
 
       @Override
@@ -111,13 +121,13 @@ public class TestSortedNumericDocValuesRangeIterator extends BaseDocValuesSkippe
       @Override
       public int advance(int target) throws IOException {
         valueIdx = 0;
-        if (target < 1024) {
-          return doc = target;
-        } else if (target < 2048) {
-          doc = target + (target & 1);
-          return doc < 2048 ? doc : (doc = DocIdSetIterator.NO_MORE_DOCS);
-        } else {
+        if (target >= 2048) {
           return doc = DocIdSetIterator.NO_MORE_DOCS;
+        } else if (target < DENSE_END) {
+          return doc = target;
+        } else {
+          int d = target + (target & 1);
+          return doc = (d >= 2048) ? DocIdSetIterator.NO_MORE_DOCS : d;
         }
       }
 
@@ -156,6 +166,14 @@ public class TestSortedNumericDocValuesRangeIterator extends BaseDocValuesSkippe
     return DocValuesRangeIterator.forRange(values, skipper, QUERY_MIN, QUERY_MAX);
   }
 
+  private static FixedBitSet expectedBitSet() {
+    FixedBitSet bitSet = new FixedBitSet(2048);
+    for (int doc : expectedMatches()) {
+      bitSet.set(doc);
+    }
+    return bitSet;
+  }
+
   // --- Correctness: all matching docs are found and no false positives ---
 
   public void testCorrectResultsSingleLevel() throws IOException {
@@ -164,6 +182,24 @@ public class TestSortedNumericDocValuesRangeIterator extends BaseDocValuesSkippe
 
   public void testCorrectResultsMultipleLevels() throws IOException {
     assertEquals(expectedMatches(), collectMatches(createIterator(true)));
+  }
+
+  public void testTwoPhaseIntoBitSetMatchesExpected() throws IOException {
+    DocValuesRangeIterator iterator = createIterator(true);
+    assertEquals(0, iterator.approximation().nextDoc());
+
+    FixedBitSet actual = new FixedBitSet(2048);
+    iterator.intoBitSet(2048, actual, 0);
+
+    assertEquals(expectedBitSet(), actual);
+  }
+
+  public void testDefaultRangeIntoBitSetMatchesExpected() throws IOException {
+    SortedNumericDocValues values = sortedNumericDocValues(QUERY_MIN, QUERY_MAX);
+    FixedBitSet actual = new FixedBitSet(2048);
+    values.rangeIntoBitSet(0, 2048, QUERY_MIN, QUERY_MAX, actual, 0);
+
+    assertEquals(expectedBitSet(), actual);
   }
 
   // --- Multi-value specific behavior ---
@@ -294,12 +330,12 @@ public class TestSortedNumericDocValuesRangeIterator extends BaseDocValuesSkippe
     DocValuesRangeIterator iter = createIterator(true);
     SkipBlockRangeIterator approx = (SkipBlockRangeIterator) iter.approximation();
 
-    approx.advance(1024);
+    approx.advance(1088);
     assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, approx.getMatch());
     // Even doc has a value → match
     assertTrue(iter.matches());
 
-    approx.advance(1025);
+    approx.advance(1089);
     assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, approx.getMatch());
     // Odd doc has no value → no match
     assertFalse(iter.matches());
@@ -359,8 +395,32 @@ public class TestSortedNumericDocValuesRangeIterator extends BaseDocValuesSkippe
     DocValuesRangeIterator iter = createIterator(true);
     SkipBlockRangeIterator approx = (SkipBlockRangeIterator) iter.approximation();
 
+    // YES block in second repetition (dense up to DENSE_END=1088)
     approx.advance(1024);
+    assertEquals(SkipBlockRangeIterator.Match.YES, approx.getMatch());
+    assertEquals(1088, iter.docIDRunEnd());
+
+    // YES_IF_PRESENT blocks have gaps, so docIdRunEnd = doc + 1
+    approx.advance(1088);
     assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, approx.getMatch());
-    assertEquals(1025, iter.docIDRunEnd());
+    assertEquals(1089, iter.docIDRunEnd());
+  }
+
+  public void testIntoBitSetAfterMatchesOnSparseRegion() throws IOException {
+    DocValuesRangeIterator iter = createIterator(true);
+    SkipBlockRangeIterator approx = (SkipBlockRangeIterator) iter.approximation();
+    // Doc 1537 is in the sparse region, in a block with mixed values -> MAYBE
+    approx.advance(1537);
+    assertEquals(SkipBlockRangeIterator.Match.MAYBE, approx.getMatch());
+    assertFalse(iter.matches());
+    FixedBitSet bitSet = new FixedBitSet(MAX_DOC);
+    iter.intoBitSet(MAX_DOC, bitSet, 0);
+    FixedBitSet expected = new FixedBitSet(MAX_DOC);
+    for (int doc = 1537; doc < MAX_DOC; doc++) {
+      if (docHasValue(doc) && valueInRange(doc)) {
+        expected.set(doc);
+      }
+    }
+    assertEquals(expected, bitSet);
   }
 }

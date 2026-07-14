@@ -61,7 +61,7 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
    *     (i.e., one that is not in any higher scored field.
    */
   public DisjunctionMaxQuery(Collection<? extends Query> disjuncts, float tieBreakerMultiplier) {
-    Objects.requireNonNull(disjuncts, "Collection of Querys must not be null");
+    Objects.requireNonNull(disjuncts, "Collection of Query objects must not be null");
     if (tieBreakerMultiplier < 0 || tieBreakerMultiplier > 1) {
       throw new IllegalArgumentException("tieBreakerMultiplier must be in [0, 1]");
     }
@@ -282,15 +282,27 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
     List<Query> rewrittenDisjuncts = new ArrayList<>();
     for (Query sub : disjuncts) {
       Query rewrittenSub = sub.rewrite(indexSearcher);
-      actuallyRewritten |= rewrittenSub != sub;
-      rewrittenDisjuncts.add(rewrittenSub);
+      if (rewrittenSub != sub || rewrittenSub instanceof MatchNoDocsQuery) {
+        actuallyRewritten = true;
+      }
+      if (rewrittenSub instanceof MatchNoDocsQuery == false) {
+        rewrittenDisjuncts.add(rewrittenSub);
+      }
     }
 
-    if (actuallyRewritten) {
-      return new DisjunctionMaxQuery(rewrittenDisjuncts, tieBreakerMultiplier);
+    if (actuallyRewritten == false) {
+      return super.rewrite(indexSearcher);
     }
 
-    return super.rewrite(indexSearcher);
+    if (rewrittenDisjuncts.isEmpty()) {
+      return new MatchNoDocsQuery("empty DisjunctionMaxQuery");
+    }
+
+    if (rewrittenDisjuncts.size() == 1) {
+      return rewrittenDisjuncts.get(0);
+    }
+
+    return new DisjunctionMaxQuery(rewrittenDisjuncts, tieBreakerMultiplier);
   }
 
   @Override

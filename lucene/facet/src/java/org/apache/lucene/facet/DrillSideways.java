@@ -194,7 +194,7 @@ public class DrillSideways {
     if (sort != null) {
       int limit = searcher.getIndexReader().maxDoc();
       if (limit == 0) {
-        limit = 1; // the collector does not alow numHits = 0
+        limit = 1; // the collector does not allow numHits = 0
       }
       final int fTopN = Math.min(topN, limit);
       final TopFieldCollectorManager collectorManager =
@@ -226,7 +226,7 @@ public class DrillSideways {
       throws IOException {
     int limit = searcher.getIndexReader().maxDoc();
     if (limit == 0) {
-      limit = 1; // the collector does not alow numHits = 0
+      limit = 1; // the collector does not allow numHits = 0
     }
     final int fTopN = Math.min(topN, limit);
     final TopScoreDocCollectorManager collectorManager =
@@ -373,7 +373,7 @@ public class DrillSideways {
     final String[] drillSidewaysDims;
     final FacetsCollector[] drillSidewaysCollectors;
     if (query.getDims().isEmpty() == false) {
-      drillSidewaysDims = query.getDims().keySet().toArray(new String[0]);
+      drillSidewaysDims = query.getDims().keySet().toArray(String[]::new);
       int numDims = query.getDims().size();
       assert drillSidewaysCollectorManagers != null;
       assert drillSidewaysCollectorManagers.size() == numDims;

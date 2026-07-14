@@ -46,6 +46,7 @@ import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.SlowImpactsEnum;
@@ -1176,7 +1177,7 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     }
 
     @Override
-    public final PostingsEnum postings(PostingsEnum reuse, int flags) throws IOException {
+    public PostingsEnum postings(PostingsEnum reuse, int flags) throws IOException {
       final TVPostingsEnum docsEnum;
       if (reuse != null && reuse instanceof TVPostingsEnum tvpe) {
         docsEnum = tvpe;
@@ -1349,9 +1350,9 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    indexReader.checkIntegrity();
-    CodecUtil.checksumEntireFile(vectorsStream);
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+    indexReader.checkIntegrity(merge);
+    CodecUtil.checksumEntireFile(vectorsStream, merge);
   }
 
   @Override

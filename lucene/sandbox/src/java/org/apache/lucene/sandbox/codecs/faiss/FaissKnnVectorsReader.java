@@ -37,6 +37,7 @@ import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
@@ -119,7 +120,10 @@ final class FaissKnnVectorsReader extends KnnVectorsReader {
           throw new CorruptIndexException("Duplicate field: " + fieldMeta.name, meta);
         }
         IndexInput indexInput = data.slice(fieldMeta.name, fieldMeta.offset, fieldMeta.length);
-        indexMap.put(fieldMeta.name, FaissLibrary.INSTANCE.readIndex(indexInput));
+        FieldInfo fi = state.fieldInfos.fieldInfo(fieldMeta.name);
+        indexMap.put(
+            fieldMeta.name,
+            FaissLibrary.INSTANCE.readIndex(indexInput, fi.getVectorSimilarityFunction()));
       }
     } catch (Throwable t) {
       IOUtils.closeWhileSuppressingExceptions(t, this);
@@ -146,10 +150,10 @@ final class FaissKnnVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    rawVectorsReader.checkIntegrity();
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+    rawVectorsReader.checkIntegrity(merge);
     // TODO: Evaluate if we need an explicit check for validity of Faiss indexes
-    CodecUtil.checksumEntireFile(data);
+    CodecUtil.checksumEntireFile(data, merge);
   }
 
   @Override

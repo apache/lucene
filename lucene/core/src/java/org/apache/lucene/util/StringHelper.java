@@ -434,7 +434,7 @@ public abstract class StringHelper {
     BigInteger unsignedX0 = BigInteger.valueOf(x0).and(mask64);
     BigInteger unsignedX1 = BigInteger.valueOf(x1).and(mask64);
 
-    // Concatentate bits of x0 and x1, as unsigned 128 bit integer:
+    // Concatenate bits of x0 and x1, as unsigned 128 bit integer:
     nextId = new AtomicReference<>(unsignedX0.shiftLeft(64).or(unsignedX1));
   }
 

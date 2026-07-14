@@ -21,6 +21,7 @@ import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.SKIP_IND
 import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.TERMS_DICT_BLOCK_LZ4_SHIFT;
 
 import java.io.IOException;
+import java.util.Arrays;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.index.BaseTermsEnum;
@@ -33,6 +34,7 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
@@ -107,6 +109,10 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
                 state.segmentSuffix);
 
         readFields(in, state.fieldInfos);
+
+        if (version < Lucene90DocValuesFormat.VERSION_SKIPPER_MAX_VALUE_COUNT) {
+          inferMaxValueCounts(state.fieldInfos);
+        }
 
       } catch (Throwable exception) {
         priorE = exception;
@@ -216,6 +222,55 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         true);
   }
 
+  private void inferMaxValueCounts(FieldInfos fieldInfos) {
+    for (var cursor : skippers) {
+      DocValuesSkipperEntry entry = cursor.value;
+      if (entry.maxValueCount == -1 && entry.docCount != 0) {
+        int fieldNumber = cursor.key;
+        FieldInfo info = fieldInfos.fieldInfo(fieldNumber);
+        int inferredMaxValueCount = -1;
+        if (info != null) {
+          switch (info.getDocValuesType()) {
+            case NUMERIC, SORTED -> inferredMaxValueCount = 1;
+            case SORTED_NUMERIC -> {
+              SortedNumericEntry sne = sortedNumerics.get(fieldNumber);
+              if (sne != null && sne.numValues == sne.numDocsWithField) {
+                inferredMaxValueCount = 1;
+              }
+            }
+            case SORTED_SET -> {
+              SortedSetEntry sse = sortedSets.get(fieldNumber);
+              if (sse != null) {
+                if (sse.singleValueEntry != null) {
+                  inferredMaxValueCount = 1;
+                } else if (sse.ordsEntry != null
+                    && sse.ordsEntry.numValues == sse.ordsEntry.numDocsWithField) {
+                  inferredMaxValueCount = 1;
+                }
+              }
+            }
+            // $CASES-OMITTED$
+            default -> {
+              // leave as -1
+            }
+          }
+        }
+        if (inferredMaxValueCount != -1) {
+          skippers.put(
+              fieldNumber,
+              new DocValuesSkipperEntry(
+                  entry.offset,
+                  entry.length,
+                  entry.minValue,
+                  entry.maxValue,
+                  entry.docCount,
+                  entry.maxDocId,
+                  inferredMaxValueCount));
+        }
+      }
+    }
+  }
+
   private void readFields(IndexInput meta, FieldInfos infos) throws IOException {
     for (int fieldNumber = meta.readInt(); fieldNumber != -1; fieldNumber = meta.readInt()) {
       FieldInfo info = infos.fieldInfo(fieldNumber);
@@ -255,8 +310,15 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     long minValue = meta.readLong();
     int docCount = meta.readInt();
     int maxDocID = meta.readInt();
+    final int maxValueCount;
+    if (version >= Lucene90DocValuesFormat.VERSION_SKIPPER_MAX_VALUE_COUNT) {
+      maxValueCount = meta.readInt();
+    } else {
+      maxValueCount = docCount == 0 ? 0 : -1;
+    }
 
-    return new DocValuesSkipperEntry(offset, length, minValue, maxValue, docCount, maxDocID);
+    return new DocValuesSkipperEntry(
+        offset, length, minValue, maxValue, docCount, maxDocID, maxValueCount);
   }
 
   private void readNumeric(IndexInput meta, NumericEntry entry) throws IOException {
@@ -389,7 +451,201 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
   }
 
   private record DocValuesSkipperEntry(
-      long offset, long length, long minValue, long maxValue, int docCount, int maxDocId) {}
+      long offset,
+      long length,
+      long minValue,
+      long maxValue,
+      int docCount,
+      int maxDocId,
+      int maxValueCount) {}
+
+  // Cached VectorizationProvider instance to avoid repeated stack walks in ensureCaller()
+  private static final org.apache.lucene.internal.vectorization.DocValuesRangeSupport
+      DOC_VALUES_RANGE_SUPPORT =
+          org.apache.lucene.internal.vectorization.VectorizationProvider.getInstance()
+              .getDocValuesRangeSupport();
+  private static final org.apache.lucene.internal.vectorization.DocValuesBulkDecodeSupport
+      DOC_VALUES_BULK_DECODE_SUPPORT =
+          org.apache.lucene.internal.vectorization.VectorizationProvider.getInstance()
+              .getDocValuesBulkDecodeSupport();
+
+  static void rangeIntoBitSet(
+      org.apache.lucene.util.LongValues values,
+      int fromDoc,
+      int toDoc,
+      long minValue,
+      long maxValue,
+      FixedBitSet bitSet,
+      int offset) {
+    DOC_VALUES_RANGE_SUPPORT.rangeIntoBitSet(
+        values, fromDoc, toDoc, minValue, maxValue, bitSet, offset);
+  }
+
+  /**
+   * Transforms query bounds {@code [minValue, maxValue]} into the encoded domain where stored
+   * values satisfy {@code stored = raw * mul + delta}. Returns {@code {encodedMin, encodedMax}} or
+   * {@code null} if the range is empty (no raw value can match).
+   */
+  private static long[] transformGcdBounds(long minValue, long maxValue, long mul, long delta) {
+    assert mul > 0;
+    long encodedMin = saturatingShiftLower(minValue, delta);
+    long encodedMax = saturatingShiftUpper(maxValue, delta);
+    if (mul != 1) {
+      encodedMin = Math.ceilDiv(encodedMin, mul);
+      encodedMax = Math.floorDiv(encodedMax, mul);
+    }
+    encodedMin = Math.max(0, encodedMin);
+    if (encodedMin > encodedMax) {
+      return null;
+    }
+    return new long[] {encodedMin, encodedMax};
+  }
+
+  /**
+   * Maps the raw query bounds {@code [minValue, maxValue]} into the encoded domain and runs the
+   * SIMD range scan directly on packed values.
+   */
+  private static void rangeGcdDeltaIntoBitSet(
+      LongValues values,
+      int fromDoc,
+      int toDoc,
+      long minValue,
+      long maxValue,
+      long mul,
+      long delta,
+      FixedBitSet bitSet,
+      int offset) {
+    long[] bounds = transformGcdBounds(minValue, maxValue, mul, delta);
+    if (bounds != null) {
+      rangeIntoBitSet(values, fromDoc, toDoc, bounds[0], bounds[1], bitSet, offset);
+    }
+  }
+
+  /**
+   * Returns {@code minValue - delta}, saturating to {@code Long.MIN_VALUE} when the real value
+   * would underflow (every non-negative stored value satisfies the lower bound) or to {@code
+   * Long.MAX_VALUE} when it would overflow (no stored value can satisfy the lower bound). Stored
+   * values are non-negative, so the caller can keep using the SIMD path with these saturated
+   * sentinels.
+   */
+  private static long saturatingShiftLower(long minValue, long delta) {
+    try {
+      return Math.subtractExact(minValue, delta);
+    } catch (
+        @SuppressWarnings("unused")
+        ArithmeticException overflow) {
+      return delta > 0 ? Long.MIN_VALUE : Long.MAX_VALUE;
+    }
+  }
+
+  /**
+   * Symmetric counterpart of {@link #saturatingShiftLower}: returns {@code maxValue - delta},
+   * saturating to {@code Long.MAX_VALUE} when the real value would overflow (every stored value
+   * satisfies the upper bound) or to {@code Long.MIN_VALUE} when it would underflow (no stored
+   * value can satisfy the upper bound).
+   */
+  private static long saturatingShiftUpper(long maxValue, long delta) {
+    try {
+      return Math.subtractExact(maxValue, delta);
+    } catch (
+        @SuppressWarnings("unused")
+        ArithmeticException overflow) {
+      return delta < 0 ? Long.MAX_VALUE : Long.MIN_VALUE;
+    }
+  }
+
+  private static int fixedCardinality(
+      SortedNumericEntry entry, DocValuesSkipperEntry skipperEntry) {
+    if (skipperEntry == null
+        || skipperEntry.maxValueCount <= 1
+        || entry.numDocsWithField == 0
+        || entry.numValues % entry.numDocsWithField != 0) {
+      return -1;
+    }
+    long cardinality = entry.numValues / entry.numDocsWithField;
+    if (cardinality > Integer.MAX_VALUE || cardinality != skipperEntry.maxValueCount) {
+      return -1;
+    }
+    return (int) cardinality;
+  }
+
+  private static boolean sortedNumericMatchesRange(
+      LongValues values, long start, long end, long minValue, long maxValue) {
+    for (long valueOffset = start; valueOffset < end; valueOffset++) {
+      long value = values.get(valueOffset);
+      if (value >= minValue) {
+        return value <= maxValue;
+      }
+    }
+    return false;
+  }
+
+  private static boolean canBulkDecodeByteAligned(NumericEntry entry) {
+    return entry.blockShift < 0 && entry.bitsPerValue > 0 && (entry.bitsPerValue & 0x07) == 0;
+  }
+
+  private static boolean isContiguous(int size, int[] docs, int docsOffset) {
+    return size == 0 || docs[docsOffset + size - 1] - docs[docsOffset] == size - 1;
+  }
+
+  private static int paddingBytesNeededForBulkDecode(int bitsPerValue) {
+    if (bitsPerValue == 24) {
+      return 1;
+    } else if (bitsPerValue == 40 || bitsPerValue == 48 || bitsPerValue == 56) {
+      return Long.BYTES - bitsPerValue / Byte.SIZE;
+    }
+    return 0;
+  }
+
+  private static byte[] bulkDecodeByteAlignedValues(
+      RandomAccessInput slice,
+      NumericEntry entry,
+      int size,
+      int[] docs,
+      int docsOffset,
+      long[] values,
+      int valuesOffset,
+      byte[] bytes)
+      throws IOException {
+    if (canBulkDecodeByteAligned(entry) == false || isContiguous(size, docs, docsOffset) == false) {
+      return null;
+    }
+
+    final int bytesPerValue = entry.bitsPerValue / Byte.SIZE;
+    final long byteCountLong = (long) size * bytesPerValue;
+    if (byteCountLong > Integer.MAX_VALUE) {
+      return null;
+    }
+    final int byteCount = (int) byteCountLong;
+    final int readByteCount =
+        byteCount == 0 ? 0 : byteCount + paddingBytesNeededForBulkDecode(entry.bitsPerValue);
+    final long offset = byteCount == 0 ? 0 : (long) docs[docsOffset] * bytesPerValue;
+    if (offset + readByteCount > slice.length()) {
+      return null;
+    }
+    if (bytes.length < readByteCount) {
+      bytes = new byte[readByteCount];
+    }
+    if (byteCount != 0) {
+      slice.readBytes(offset, bytes, 0, readByteCount);
+      DOC_VALUES_BULK_DECODE_SUPPORT.decodeByteAligned(
+          bytes, 0, entry.bitsPerValue, values, valuesOffset, size);
+    }
+    return bytes;
+  }
+
+  private static void applyTable(long[] values, int valuesOffset, long[] table, int size) {
+    for (int i = valuesOffset, end = valuesOffset + size; i < end; i++) {
+      values[i] = table[(int) values[i]];
+    }
+  }
+
+  private static void applyGcdDelta(
+      long[] values, int valuesOffset, long mul, long delta, int size) {
+    for (int i = valuesOffset, end = valuesOffset + size; i < end; i++) {
+      values[i] = mul * values[i] + delta;
+    }
+  }
 
   private static class NumericEntry {
     long[] table;
@@ -506,6 +762,16 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     public int docIDRunEnd() throws IOException {
       return maxDoc;
     }
+
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      assert offset <= doc;
+      upTo = Math.min(upTo, maxDoc);
+      if (upTo > doc) {
+        bitSet.set(doc - offset, upTo - offset);
+        advance(upTo);
+      }
+    }
   }
 
   private abstract static class SparseNumericDocValues extends NumericDocValues {
@@ -573,6 +839,21 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           public long longValue() throws IOException {
             return entry.minValue;
           }
+
+          @Override
+          public void longValues(
+              int size,
+              int[] docs,
+              int docsOffset,
+              long[] values,
+              int valuesOffset,
+              long defaultValue)
+              throws IOException {
+            Arrays.fill(values, valuesOffset, valuesOffset + size, entry.minValue);
+            if (size != 0) {
+              doc = docs[docsOffset + size - 1];
+            }
+          }
         };
       } else {
         final RandomAccessInput slice =
@@ -591,6 +872,20 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
             public long longValue() throws IOException {
               return vBPVReader.getLongValue(doc);
             }
+
+            @Override
+            public void longValues(
+                int size,
+                int[] docs,
+                int docsOffset,
+                long[] values,
+                int valuesOffset,
+                long defaultValue)
+                throws IOException {
+              // Delegate to help performance: when the super call inlines, calls to
+              // #advanceExact/#longValue become monomorphic.
+              super.longValues(size, docs, docsOffset, values, valuesOffset, defaultValue);
+            }
           };
         } else {
           final LongValues values =
@@ -598,26 +893,125 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           if (entry.table != null) {
             final long[] table = entry.table;
             return new DenseNumericDocValues(maxDoc) {
+              private byte[] bulkBytes = new byte[0];
+
               @Override
               public long longValue() throws IOException {
                 return table[(int) values.get(doc)];
+              }
+
+              @Override
+              public void longValues(
+                  int size,
+                  int[] docs,
+                  int docsOffset,
+                  long[] values,
+                  int valuesOffset,
+                  long defaultValue)
+                  throws IOException {
+                byte[] bytes =
+                    bulkDecodeByteAlignedValues(
+                        slice, entry, size, docs, docsOffset, values, valuesOffset, bulkBytes);
+                if (bytes == null) {
+                  super.longValues(size, docs, docsOffset, values, valuesOffset, defaultValue);
+                } else {
+                  applyTable(values, valuesOffset, table, size);
+                  bulkBytes = bytes;
+                  if (size != 0) {
+                    doc = docs[docsOffset + size - 1];
+                  }
+                }
               }
             };
           } else if (entry.gcd == 1 && entry.minValue == 0) {
             // Common case for ordinals, which are encoded as numerics
             return new DenseNumericDocValues(maxDoc) {
+              private byte[] bulkBytes = new byte[0];
+
               @Override
               public long longValue() throws IOException {
                 return values.get(doc);
+              }
+
+              @Override
+              public void longValues(
+                  int size,
+                  int[] docs,
+                  int docsOffset,
+                  long[] values,
+                  int valuesOffset,
+                  long defaultValue)
+                  throws IOException {
+                byte[] bytes =
+                    bulkDecodeByteAlignedValues(
+                        slice, entry, size, docs, docsOffset, values, valuesOffset, bulkBytes);
+                if (bytes == null) {
+                  super.longValues(size, docs, docsOffset, values, valuesOffset, defaultValue);
+                } else {
+                  bulkBytes = bytes;
+                  if (size != 0) {
+                    doc = docs[docsOffset + size - 1];
+                  }
+                }
+              }
+
+              @Override
+              public void rangeIntoBitSet(
+                  int fromDoc,
+                  int toDoc,
+                  long minValue,
+                  long maxValue,
+                  FixedBitSet bitSet,
+                  int offset) {
+                // Bulk range evaluation via DocValuesRangeSupport
+                Lucene90DocValuesProducer.rangeIntoBitSet(
+                    values, fromDoc, toDoc, minValue, maxValue, bitSet, offset);
               }
             };
           } else {
             final long mul = entry.gcd;
             final long delta = entry.minValue;
             return new DenseNumericDocValues(maxDoc) {
+              private byte[] bulkBytes = new byte[0];
+
               @Override
               public long longValue() throws IOException {
                 return mul * values.get(doc) + delta;
+              }
+
+              @Override
+              public void longValues(
+                  int size,
+                  int[] docs,
+                  int docsOffset,
+                  long[] values,
+                  int valuesOffset,
+                  long defaultValue)
+                  throws IOException {
+                byte[] bytes =
+                    bulkDecodeByteAlignedValues(
+                        slice, entry, size, docs, docsOffset, values, valuesOffset, bulkBytes);
+                if (bytes == null) {
+                  super.longValues(size, docs, docsOffset, values, valuesOffset, defaultValue);
+                } else {
+                  applyGcdDelta(values, valuesOffset, mul, delta, size);
+                  bulkBytes = bytes;
+                  if (size != 0) {
+                    doc = docs[docsOffset + size - 1];
+                  }
+                }
+              }
+
+              @Override
+              public void rangeIntoBitSet(
+                  int fromDoc,
+                  int toDoc,
+                  long minValue,
+                  long maxValue,
+                  FixedBitSet bitSet,
+                  int offset) {
+                Lucene90DocValuesProducer.rangeGcdDeltaIntoBitSet(
+                    values, fromDoc, toDoc, minValue, maxValue, mul, delta, bitSet, offset);
               }
             };
           }
@@ -798,6 +1192,16 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     public int docIDRunEnd() throws IOException {
       return maxDoc;
     }
+
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      assert offset <= doc;
+      upTo = Math.min(upTo, maxDoc);
+      if (upTo > doc) {
+        bitSet.set(doc - offset, upTo - offset);
+        advance(upTo);
+      }
+    }
   }
 
   private abstract static class SparseBinaryDocValues extends BinaryDocValues {
@@ -872,6 +1276,27 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
             bytesSlice.readBytes((long) doc * length, bytes.bytes, 0, length);
             return bytes;
           }
+
+          @Override
+          public void binaryValues(
+              int size, int[] docs, int docsOffset, BytesRef[] values, int valuesOffset)
+              throws IOException {
+            if (size == 0) {
+              return;
+            }
+            byte[] bulk = new byte[size * length];
+            if (isContiguous(size, docs, docsOffset)) {
+              bytesSlice.readBytes((long) docs[docsOffset] * length, bulk, 0, bulk.length);
+            } else {
+              for (int di = docsOffset, bi = 0, end = docsOffset + size; di < end; di++, bi++) {
+                bytesSlice.readBytes((long) docs[di] * length, bulk, bi * length, length);
+              }
+            }
+            for (int i = 0; i < size; i++) {
+              values[valuesOffset + i] = new BytesRef(bulk, i * length, length);
+            }
+            doc = docs[docsOffset + size - 1];
+          }
         };
       } else {
         // variable length
@@ -893,6 +1318,41 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
             bytes.length = (int) (addresses.get(doc + 1L) - startOffset);
             bytesSlice.readBytes(startOffset, bytes.bytes, 0, bytes.length);
             return bytes;
+          }
+
+          @Override
+          public void binaryValues(
+              int size, int[] docs, int docsOffset, BytesRef[] values, int valuesOffset)
+              throws IOException {
+            if (size == 0) {
+              return;
+            }
+            if (isContiguous(size, docs, docsOffset)) {
+              long firstStart = addresses.get(docs[docsOffset]);
+              long lastEnd = addresses.get(docs[docsOffset + size - 1] + 1L);
+              int totalBytes = (int) (lastEnd - firstStart);
+              byte[] bulk = new byte[totalBytes];
+              bytesSlice.readBytes(firstStart, bulk, 0, totalBytes);
+              for (int di = docsOffset, vi = valuesOffset, end = docsOffset + size;
+                  di < end;
+                  di++, vi++) {
+                int offset = (int) (addresses.get(docs[di]) - firstStart);
+                int len = (int) (addresses.get(docs[di] + 1L) - addresses.get(docs[di]));
+                values[vi] = new BytesRef(bulk, offset, len);
+              }
+            } else {
+              for (int di = docsOffset, vi = valuesOffset, end = docsOffset + size;
+                  di < end;
+                  di++, vi++) {
+                int d = docs[di];
+                long startOffset = addresses.get(d);
+                int len = (int) (addresses.get(d + 1L) - startOffset);
+                byte[] b = new byte[len];
+                bytesSlice.readBytes(startOffset, b, 0, len);
+                values[vi] = new BytesRef(b, 0, len);
+              }
+            }
+            doc = docs[docsOffset + size - 1];
           }
         };
       }
@@ -1015,6 +1475,16 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           public int docIDRunEnd() throws IOException {
             return maxDoc;
           }
+
+          @Override
+          public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+            assert offset <= doc;
+            upTo = Math.min(upTo, maxDoc);
+            if (upTo > doc) {
+              bitSet.set(doc - offset, upTo - offset);
+              advance(upTo);
+            }
+          }
         };
       } else if (ordsEntry.docsWithFieldOffset >= 0) { // sparse but non-empty
         final IndexedDISI disi =
@@ -1107,6 +1577,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       @Override
       public int docIDRunEnd() throws IOException {
         return ords.docIDRunEnd();
+      }
+
+      @Override
+      public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+        ords.intoBitSet(upTo, bitSet, offset);
       }
     };
   }
@@ -1443,10 +1918,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
   @Override
   public SortedNumericDocValues getSortedNumeric(FieldInfo field) throws IOException {
     SortedNumericEntry entry = sortedNumerics.get(field.number);
-    return getSortedNumeric(entry);
+    return getSortedNumeric(entry, skippers.get(field.number));
   }
 
-  private SortedNumericDocValues getSortedNumeric(SortedNumericEntry entry) throws IOException {
+  private SortedNumericDocValues getSortedNumeric(
+      SortedNumericEntry entry, DocValuesSkipperEntry skipperEntry) throws IOException {
     if (entry.numValues == entry.numDocsWithField) {
       return DocValues.singleton(getNumeric(entry));
     }
@@ -1462,6 +1938,13 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         DirectMonotonicReader.getInstance(entry.addressesMeta, addressesInput, merging);
 
     final LongValues values = getNumericValues(entry);
+    final int denseFixedCardinality = fixedCardinality(entry, skipperEntry);
+
+    final boolean hasGcdEncoding =
+        entry.bitsPerValue > 0
+            && entry.blockShift < 0
+            && entry.table == null
+            && (entry.gcd != 1 || entry.minValue != 0);
 
     if (entry.docsWithFieldOffset == -1) {
       // dense
@@ -1470,6 +1953,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         int doc = -1;
         long start, end;
         int count;
+        LongValues rawValues;
 
         @Override
         public int nextDoc() throws IOException {
@@ -1517,8 +2001,68 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         }
 
         @Override
+        public void rangeIntoBitSet(
+            int fromDoc, int toDoc, long minValue, long maxValue, FixedBitSet bitSet, int offset)
+            throws IOException {
+          int endDoc = Math.min(toDoc, maxDoc);
+          if (fromDoc >= endDoc) {
+            return;
+          }
+          if (entry.bitsPerValue == 0) {
+            if (entry.minValue >= minValue && entry.minValue <= maxValue) {
+              bitSet.set(fromDoc - offset, endDoc - offset);
+            }
+            return;
+          }
+          LongValues v;
+          long lo, hi;
+          if (hasGcdEncoding) {
+            long[] bounds = transformGcdBounds(minValue, maxValue, entry.gcd, entry.minValue);
+            if (bounds == null) {
+              return;
+            }
+            if (rawValues == null) {
+              RandomAccessInput rawSlice =
+                  data.randomAccessSlice(entry.valuesOffset, entry.valuesLength);
+              rawValues =
+                  getDirectReaderInstance(rawSlice, entry.bitsPerValue, 0L, entry.numValues);
+            }
+            v = rawValues;
+            lo = bounds[0];
+            hi = bounds[1];
+          } else {
+            v = values;
+            lo = minValue;
+            hi = maxValue;
+          }
+          int cardinality = denseFixedCardinality;
+          if (cardinality > 1) {
+            DOC_VALUES_RANGE_SUPPORT.sortedNumericRangeIntoBitSet(
+                v, fromDoc, endDoc, cardinality, lo, hi, bitSet, offset);
+            return;
+          }
+          for (int currentDoc = fromDoc; currentDoc < endDoc; currentDoc++) {
+            long startOffset = addresses.get(currentDoc);
+            long endOffset = addresses.get(currentDoc + 1L);
+            if (sortedNumericMatchesRange(v, startOffset, endOffset, lo, hi)) {
+              bitSet.set(currentDoc - offset);
+            }
+          }
+        }
+
+        @Override
         public int docIDRunEnd() throws IOException {
           return maxDoc;
+        }
+
+        @Override
+        public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+          assert offset <= doc;
+          upTo = Math.min(upTo, maxDoc);
+          if (upTo > doc) {
+            bitSet.set(doc - offset, upTo - offset);
+            advance(upTo);
+          }
         }
       };
     } else {
@@ -1536,6 +2080,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         boolean set;
         long start, end;
         int count;
+        LongValues rawValues;
 
         @Override
         public int nextDoc() throws IOException {
@@ -1575,6 +2120,62 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         public int docValueCount() {
           set();
           return count;
+        }
+
+        @Override
+        public void rangeIntoBitSet(
+            int fromDoc, int toDoc, long minValue, long maxValue, FixedBitSet bitSet, int offset)
+            throws IOException {
+          set = false;
+          int endDoc = Math.min(toDoc, maxDoc);
+          if (fromDoc >= endDoc) {
+            return;
+          }
+          int currentDoc = disi.docID();
+          if (currentDoc < fromDoc) {
+            currentDoc = disi.advance(fromDoc);
+          }
+          if (currentDoc >= endDoc) {
+            return;
+          }
+          if (entry.bitsPerValue == 0) {
+            if (entry.minValue >= minValue && entry.minValue <= maxValue) {
+              disi.intoBitSet(endDoc, bitSet, offset);
+            }
+            set = false;
+            return;
+          }
+          LongValues v;
+          long lo, hi;
+          if (hasGcdEncoding) {
+            long[] bounds = transformGcdBounds(minValue, maxValue, entry.gcd, entry.minValue);
+            if (bounds == null) {
+              set = false;
+              return;
+            }
+            if (rawValues == null) {
+              RandomAccessInput rawSlice =
+                  data.randomAccessSlice(entry.valuesOffset, entry.valuesLength);
+              rawValues =
+                  getDirectReaderInstance(rawSlice, entry.bitsPerValue, 0L, entry.numValues);
+            }
+            v = rawValues;
+            lo = bounds[0];
+            hi = bounds[1];
+          } else {
+            v = values;
+            lo = minValue;
+            hi = maxValue;
+          }
+          for (; currentDoc < endDoc; currentDoc = disi.nextDoc()) {
+            int index = disi.index();
+            long startOffset = addresses.get(index);
+            long endOffset = addresses.get(index + 1L);
+            if (sortedNumericMatchesRange(v, startOffset, endOffset, lo, hi)) {
+              bitSet.set(currentDoc - offset);
+            }
+          }
+          set = false;
         }
 
         @Override
@@ -1691,6 +2292,16 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           public int docIDRunEnd() throws IOException {
             return maxDoc;
           }
+
+          @Override
+          public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+            assert offset <= doc;
+            upTo = Math.min(upTo, maxDoc);
+            if (upTo > doc) {
+              bitSet.set(doc - offset, upTo - offset);
+              advance(upTo);
+            }
+          }
         };
       } else if (ordsEntry.docsWithFieldOffset >= 0) { // sparse but non-empty
         final IndexedDISI disi =
@@ -1772,7 +2383,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       }
     }
 
-    final SortedNumericDocValues ords = getSortedNumeric(ordsEntry);
+    final SortedNumericDocValues ords = getSortedNumeric(ordsEntry, null);
     return new BaseSortedSetDocValues(entry, data) {
 
       @Override
@@ -1814,14 +2425,19 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       public int docIDRunEnd() throws IOException {
         return ords.docIDRunEnd();
       }
+
+      @Override
+      public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+        ords.intoBitSet(upTo, bitSet, offset);
+      }
     };
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    CodecUtil.checksumEntireFile(data);
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+    CodecUtil.checksumEntireFile(data, merge);
     if (skipIndexData != null) {
-      CodecUtil.checksumEntireFile(skipIndexData);
+      CodecUtil.checksumEntireFile(skipIndexData, merge);
     }
   }
 
@@ -2003,6 +2619,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       @Override
       public int docCount() {
         return entry.docCount;
+      }
+
+      @Override
+      public int maxValueCount() {
+        return entry.maxValueCount;
       }
     };
   }
