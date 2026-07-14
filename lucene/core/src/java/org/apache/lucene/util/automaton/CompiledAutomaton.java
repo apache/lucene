@@ -496,10 +496,10 @@ public class CompiledAutomaton implements Accountable {
    * Returns {@code true} if this {@link CompiledAutomaton} internally holds the given {@link
    * Automaton} instance. This is only the case on the {@link AUTOMATON_TYPE#NORMAL} paths built
    * without a UTF-8 conversion (typically {@code isBinary=true} construction): the DFA path retains
-   * it as {@link #automaton}. Returns {@code false} for {@link AUTOMATON_TYPE#NONE},
-   * {@link AUTOMATON_TYPE#ALL} and {@link AUTOMATON_TYPE#SINGLE} -- those short-circuit
-   * and keep no reference -- and for {@code isBinary=false} construction, where the
-   * internal automaton is a distinct UTF-8 conversion of the input.
+   * it as {@link #automaton}. Returns {@code false} for {@link AUTOMATON_TYPE#NONE}, {@link
+   * AUTOMATON_TYPE#ALL} and {@link AUTOMATON_TYPE#SINGLE} -- those short-circuit and keep no
+   * reference -- and for {@code isBinary=false} construction, where the internal automaton is a
+   * distinct UTF-8 conversion of the input.
    *
    * <p>Useful for callers that keep their own reference to the same {@link Automaton} and want to
    * avoid double-counting it in their own {@link Accountable#ramBytesUsed()} calculation.
