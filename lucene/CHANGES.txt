@@ -80,6 +80,9 @@ Bug Fixes
   to the wrapped NumericDocValues, enabling optimized range evaluation for
   single-valued sorted numeric fields. (Costin Leau)
 
+* GITHUB#16389: Fix double-counting of the underlying Automaton in
+  AutomatonQuery#ramBytesUsed. (Sasilekha R)
+
 Other
 ---------------------
 * GITHUB#16266: Remove deprecated search(Query, Collector) calls in QueryUtils by replacing
