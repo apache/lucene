@@ -18,6 +18,10 @@ Bug Fixes
   including the default codec. Since 10.4.0 the merger tested the per-field wrapper instead
   of the unwrapped reader, so every merge rebuilt the graph from scratch. (Jeho Jeong)
 
+* GITHUB#16367: HNSW graph construction now periodically checks whether the surrounding merge has
+  been aborted, so IndexWriter#rollback and abortMerges no longer block until the entire graph is
+  built. (Jeho Jeong)
+
 ======================= Lucene 10.5.0 =======================
 
 API Changes
