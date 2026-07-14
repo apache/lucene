@@ -1212,14 +1212,11 @@ public class TestIndexWriterReader extends LuceneTestCase {
     Comparator<LeafReader> leafSorter =
         Comparator.comparingLong(
             r -> {
-              try {
-                PointValues points = r.getPointValues(FIELD_NAME);
-                if (points != null) {
-                  byte[] sortValue =
-                      ASC_SORT ? points.getMinPackedValue() : points.getMaxPackedValue();
-                  return LongPoint.decodeDimension(sortValue, 0);
-                }
-              } catch (IOException _) {
+              PointValues points = r.getPointValues(FIELD_NAME);
+              if (points != null) {
+                byte[] sortValue =
+                    ASC_SORT ? points.getMinPackedValue() : points.getMaxPackedValue();
+                return LongPoint.decodeDimension(sortValue, 0);
               }
               return MISSING_VALUE;
             });

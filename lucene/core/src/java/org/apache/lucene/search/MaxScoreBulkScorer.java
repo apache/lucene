@@ -109,6 +109,23 @@ final class MaxScoreBulkScorer extends BulkScorer {
     int outerWindowMin = min;
     outer:
     while (outerWindowMin < max) {
+      if (filter != null) {
+        // The filter is a required clause, so there cannot be any match before its next doc ID.
+        // Advance it first so that we don't waste time computing score bounds, which requires
+        // decoding impacts, for a range of doc IDs that the filter cannot possibly match. This
+        // matters most when the filter is much sparser than the disjunction's clauses, e.g. when
+        // it correlates with the index sort.
+        if (filter.doc < outerWindowMin) {
+          filter.doc = filter.approximation.advance(outerWindowMin);
+        }
+        if (filter.doc > outerWindowMin) {
+          outerWindowMin = filter.doc;
+          if (outerWindowMin >= max) {
+            break;
+          }
+        }
+      }
+
       int outerWindowMax = computeOuterWindowMax(outerWindowMin);
       outerWindowMax = Math.min(outerWindowMax, max);
 
