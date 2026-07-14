@@ -57,6 +57,12 @@ public final class FixedShingleFilter extends GraphTokenFilter {
 
   private final CharTermAttribute buffer = new CharTermAttributeImpl();
 
+  // Sum of the base-position increments seen since the last emitted shingle. Base
+  // positions that fail to form a shingle still contribute their increment, so the
+  // next emitted shingle keeps the full increment and the stream's first token is
+  // never emitted with a 0 increment.
+  private int accumulatedPosInc;
+
   /**
    * Creates a FixedShingleFilter over an input token stream
    *
@@ -99,12 +105,11 @@ public final class FixedShingleFilter extends GraphTokenFilter {
         if (incrementBaseToken() == false) {
           return false;
         }
-        // starting a shingle at a new base position, use base position increment
-        shinglePosInc = incAtt.getPositionIncrement();
-      } else {
-        // starting a new shingle at the same base with a different graph, use a 0
-        // position increment
-        shinglePosInc = 0;
+        // Moving to a new base position accumulates its increment. A base whose
+        // graph routes are all too short to form a shingle (the "continue outer"
+        // below) emits nothing, so its increment must carry over to the next
+        // shingle we do emit rather than being lost.
+        accumulatedPosInc += incAtt.getPositionIncrement();
       }
 
       startOffset = offsetAtt.startOffset();
@@ -154,11 +159,21 @@ public final class FixedShingleFilter extends GraphTokenFilter {
       }
       break;
     }
+    // The first shingle emitted since the last emission carries the accumulated
+    // increment; further graph routes stacked at the same base then get 0.
+    shinglePosInc = accumulatedPosInc;
+    accumulatedPosInc = 0;
     clearAttributes();
     this.offsetAtt.setOffset(startOffset, endOffset);
     this.incAtt.setPositionIncrement(shinglePosInc);
     this.termAtt.setEmpty().append(buffer);
     this.typeAtt.setType("shingle");
     return true;
+  }
+
+  @Override
+  public void reset() throws IOException {
+    super.reset();
+    accumulatedPosInc = 0;
   }
 }
