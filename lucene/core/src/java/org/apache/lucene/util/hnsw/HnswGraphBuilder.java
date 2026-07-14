@@ -33,6 +33,7 @@ import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.hnsw.HnswUtil.Component;
 
@@ -83,6 +84,7 @@ public class HnswGraphBuilder implements HnswBuilder {
   protected final HnswLock hnswLock;
 
   protected InfoStream infoStream = InfoStream.getDefault();
+  private IORunnable abortCheck;
   protected boolean frozen;
 
   /**
@@ -210,6 +212,15 @@ public class HnswGraphBuilder implements HnswBuilder {
   }
 
   @Override
+  public void setAbortCheck(IORunnable abortCheck) {
+    Objects.requireNonNull(abortCheck);
+    if (this.abortCheck != null) {
+      throw new IllegalStateException("abort check was already set");
+    }
+    this.abortCheck = abortCheck;
+  }
+
+  @Override
   public OnHeapHnswGraph getCompletedGraph() throws IOException {
     if (!frozen) {
       finish();
@@ -279,6 +290,9 @@ public class HnswGraphBuilder implements HnswBuilder {
       throws IOException {
     if (frozen) {
       throw new IllegalStateException("Graph builder is already frozen");
+    }
+    if (abortCheck != null) {
+      abortCheck.run();
     }
     final int nodeLevel = getRandomGraphLevel(ml, random);
     // first add nodes to all levels

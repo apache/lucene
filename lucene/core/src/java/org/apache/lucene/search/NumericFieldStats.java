@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.search;
 
-import java.io.IOException;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
@@ -51,9 +50,8 @@ public final class NumericFieldStats {
    * @param field the name of the numeric field
    * @return a {@link Stats} containing the global min, max, and doc count, or {@code null} if
    *     neither {@link PointValues} nor {@link DocValuesSkipper} are available for the field
-   * @throws IOException if an I/O error occurs
    */
-  public static Stats getStats(IndexReader reader, String field) throws IOException {
+  public static Stats getStats(IndexReader reader, String field) {
     final Stats result = getStatsFromPoints(reader, field);
     if (result != null) {
       return result;
@@ -61,7 +59,7 @@ public final class NumericFieldStats {
     return getStatsFromSkipper(reader, field);
   }
 
-  private static Stats getStatsFromPoints(IndexReader reader, String field) throws IOException {
+  private static Stats getStatsFromPoints(IndexReader reader, String field) {
     final byte[] minPacked = PointValues.getMinPackedValue(reader, field);
     final byte[] maxPacked = PointValues.getMaxPackedValue(reader, field);
     if (minPacked == null
