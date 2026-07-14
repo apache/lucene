@@ -25,6 +25,7 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.CollectionUtil;
+import org.apache.lucene.util.FixedBitSet;
 
 /**
  * A conjunction of DocIdSetIterators. Requires that all of its sub-iterators must be on the same
@@ -229,6 +230,7 @@ final class ConjunctionDISI extends FilterDocIdSetIterator {
     private final BitSetIterator[] bitSetIterators;
     private final BitSet[] bitSets;
     private final int minLength;
+    private FixedBitSet scratch;
 
     BitSetConjunctionDISI(DocIdSetIterator lead, Collection<BitSetIterator> bitSetIterators) {
       super(lead);
@@ -262,12 +264,56 @@ final class ConjunctionDISI extends FilterDocIdSetIterator {
       return doNext(lead.advance(target));
     }
 
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      assert offset <= docID() : "offset=" + offset + " docID()=" + docID() + " upTo=" + upTo;
+      int doc = docID();
+      if (doc >= upTo) {
+        return;
+      }
+
+      // Bulk masking has fixed per-window cost; sparse leads are cheaper to advance per doc.
+      if (lead.cost() < bitSet.length()) {
+        super.intoBitSet(upTo, bitSet, offset);
+        return;
+      }
+
+      int bulkUpTo = Math.min(upTo, minLength);
+      long destinationEnd = (long) offset + bitSet.length();
+      if (destinationEnd < bulkUpTo) {
+        bulkUpTo = (int) destinationEnd;
+      }
+
+      if (doc < bulkUpTo) {
+        if (scratch == null || scratch.length() != bitSet.length()) {
+          scratch = new FixedBitSet(bitSet.length());
+        } else {
+          scratch.clear();
+        }
+
+        lead.intoBitSet(bulkUpTo, scratch, offset);
+        for (BitSet bitSetMask : bitSets) {
+          bitSetMask.applyMask(scratch, offset);
+        }
+        bitSet.or(scratch);
+
+        doNext(lead.docID());
+      }
+
+      if (docID() < upTo) {
+        super.intoBitSet(upTo, bitSet, offset);
+      }
+    }
+
     private int doNext(int doc) throws IOException {
       advanceLead:
       for (; ; doc = lead.nextDoc()) {
         if (doc >= minLength) {
           if (doc != NO_MORE_DOCS) {
             lead.advance(NO_MORE_DOCS);
+          }
+          for (BitSetIterator iterator : bitSetIterators) {
+            iterator.setDocId(NO_MORE_DOCS);
           }
           return NO_MORE_DOCS;
         }
