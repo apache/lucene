@@ -338,6 +338,12 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#16394: ConstantScoreScorer#nextDocsAndScores now drains disjunction-backed iterators in
+  bulk via DocIdSetIterator#intoBitSet instead of one nextDoc() call per match, avoiding a
+  priority-queue update per matching doc under MaxScoreBulkScorer's term-at-a-time scoring.
+  Iterators that are cheap to advance one doc at a time keep the doc-at-a-time loop.
+  (Chengxi Shi)
+
 * GITHUG#16280: Single-pass writeString fast path for short strings in ByteBuffersDataOutput (neoremind)
 
 * GITHUB#16146: Speed up no-score filtered-optional Boolean queries by routing dense conjunctions with cached FixedBitSet filters
