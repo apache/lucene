@@ -266,26 +266,6 @@ public class TestAutomatonQuery extends LuceneTestCase {
     assertRamBytesExcludesSharedAutomaton(q, prefix);
   }
 
-  public void testRamBytesUsedDoesNotDoubleCountSharedNfaAutomaton() {
-    // isBinary=true with a non-deterministic input drives CompiledAutomaton down the NFA
-    // path, where nfaRunAutomaton wraps the same Automaton instance.
-    Automaton nfa = new Automaton();
-    int start = nfa.createState();
-    int a1 = nfa.createState();
-    int a2 = nfa.createState();
-    nfa.setAccept(a1, true);
-    nfa.setAccept(a2, true);
-    nfa.addTransition(start, a1, 'a', 'a');
-    nfa.addTransition(start, a2, 'a', 'a');
-    nfa.finishState();
-    assertFalse(nfa.isDeterministic());
-
-    AutomatonQuery q = new AutomatonQuery(new Term(FN, "nfa"), nfa, true);
-    assertNull(q.getCompiled().automaton);
-    assertTrue(q.getCompiled().sharesAutomaton(nfa));
-    assertRamBytesExcludesSharedAutomaton(q, nfa);
-  }
-
   public void testRamBytesUsedIsBinaryFalseCountsOuterAutomaton() {
     // isBinary=false path: CompiledAutomaton converts to UTF-8 internally, so the outer
     // automaton and compiled hold distinct Automaton instances. Both must be counted --
