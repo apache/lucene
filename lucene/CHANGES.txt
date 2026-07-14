@@ -313,6 +313,8 @@ API Changes
 
 * GITHUB#16363: Add API to use a custom `DictionarySuggester` instead of hardcoded `GeneratingSuggester`
 
+* GITHUB#16387: Don't throw IOException from PointValues metadata methods. (Alan Woodward)
+
 New Features
 ---------------------
 
