@@ -394,6 +394,8 @@ final class SegmentTermsEnumFrame {
     if (ord >= currentSuffixLengthLongStartOrd + currentSuffixLengthLongValueCount) {
       skipSuffixLengthLongs(ord);
     }
+
+    // TODO: Maybe cache the selector.
     return Simple64.decodeOneInt(
         suffixLengthLongs[suffixLengthLongIndex], ord - currentSuffixLengthLongStartOrd);
   }
