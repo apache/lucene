@@ -230,6 +230,7 @@ final class SegmentTermsEnumFrame {
         suffixLength = numSuffixLengthBytes;
         // This frame maybe reused from a stale frame, so reset stale frame's state.
         suffixLengths = null;
+        suffixLengthLongs = null;
       } else {
         // This frame maybe reused from a stale frame, so reset stale frame's state.
         suffixLength = -1;
@@ -247,6 +248,7 @@ final class SegmentTermsEnumFrame {
       // This frame maybe reused from a stale frame, so reset stale frame's state.
       suffixLength = -1;
       suffixLengths = null;
+      suffixLengthLongs = null;
       if (suffixLengthBytes == null || suffixLengthBytes.length < numSuffixLengthBytes) {
         suffixLengthBytes = new byte[ArrayUtil.oversize(numSuffixLengthBytes, 1)];
       }

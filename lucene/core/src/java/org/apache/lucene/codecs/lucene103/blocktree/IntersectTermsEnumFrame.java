@@ -215,6 +215,7 @@ final class IntersectTermsEnumFrame {
         suffixLength = numSuffixLengthBytes;
         // This frame maybe reused from a stale frame, so reset stale frame's state.
         suffixLengths = null;
+        suffixLengthLongs = null;
       } else {
         // This frame maybe reused from a stale frame, so reset stale frame's state.
         // We can't reset suffixLength to -1, since IntersectTermsEnum#seekToStartTerm uses
@@ -238,6 +239,7 @@ final class IntersectTermsEnumFrame {
       // suffixLength to -1, the length will be -1.
       //      suffixLength = -1;
       suffixLengths = null;
+      suffixLengthLongs = null;
       if (suffixLengthBytes.length < numSuffixLengthBytes) {
         suffixLengthBytes = new byte[ArrayUtil.oversize(numSuffixLengthBytes, 1)];
       }
