@@ -181,7 +181,7 @@ final class IndexingChain implements Accountable {
       @Override
       public NumericDocValues getNumericDocValues(String field) {
         PerField pf = getPerField(field);
-        if (pf == null) {
+        if (pf == null || pf.fieldInfo == null) {
           return null;
         }
         if (pf.fieldInfo.getDocValuesType() == DocValuesType.NUMERIC) {
@@ -193,7 +193,7 @@ final class IndexingChain implements Accountable {
       @Override
       public BinaryDocValues getBinaryDocValues(String field) {
         PerField pf = getPerField(field);
-        if (pf == null) {
+        if (pf == null || pf.fieldInfo == null) {
           return null;
         }
         if (pf.fieldInfo.getDocValuesType() == DocValuesType.BINARY) {
@@ -205,7 +205,7 @@ final class IndexingChain implements Accountable {
       @Override
       public SortedDocValues getSortedDocValues(String field) throws IOException {
         PerField pf = getPerField(field);
-        if (pf == null) {
+        if (pf == null || pf.fieldInfo == null) {
           return null;
         }
         if (pf.fieldInfo.getDocValuesType() == DocValuesType.SORTED) {
@@ -217,7 +217,7 @@ final class IndexingChain implements Accountable {
       @Override
       public SortedNumericDocValues getSortedNumericDocValues(String field) throws IOException {
         PerField pf = getPerField(field);
-        if (pf == null) {
+        if (pf == null || pf.fieldInfo == null) {
           return null;
         }
         if (pf.fieldInfo.getDocValuesType() == DocValuesType.SORTED_NUMERIC) {
@@ -229,7 +229,7 @@ final class IndexingChain implements Accountable {
       @Override
       public SortedSetDocValues getSortedSetDocValues(String field) throws IOException {
         PerField pf = getPerField(field);
-        if (pf == null) {
+        if (pf == null || pf.fieldInfo == null) {
           return null;
         }
         if (pf.fieldInfo.getDocValuesType() == DocValuesType.SORTED_SET) {
