@@ -83,11 +83,10 @@ final class SegmentTermsEnumFrame {
   // True if all entries have the same length.
   boolean allEqual;
   // only used when the block is a leaf and allEqual == false.
-  int[] suffixLengths;
   long[] suffixLengthLongs;
   int suffixLengthLongIndex;
-  int suffixLengthsStart;
-  int suffixLengthsLength;
+  int currentSuffixLengthLongStartOrd;
+  int currentSuffixLengthLongValueCount;
 
   long lastSubFP;
 
@@ -229,7 +228,6 @@ final class SegmentTermsEnumFrame {
         // allEqual leaf block).
         suffixLength = numSuffixLengthBytes;
         // This frame maybe reused from a stale frame, so reset stale frame's state.
-        suffixLengths = null;
         suffixLengthLongs = null;
       } else {
         // This frame maybe reused from a stale frame, so reset stale frame's state.
@@ -238,8 +236,8 @@ final class SegmentTermsEnumFrame {
         suffixLengthLongs = new long[numLongs];
         ste.in.readLongs(suffixLengthLongs, 0, numLongs);
         suffixLengthLongIndex = 0;
-        suffixLengthsStart = 0;
-        suffixLengthsLength = 0;
+        currentSuffixLengthLongStartOrd = 0;
+        currentSuffixLengthLongValueCount = 0;
       }
     } else {
       // Non-leaf blocks store encoded VInt/VLong bytes containing both suffix lengths and sub-block
@@ -247,7 +245,6 @@ final class SegmentTermsEnumFrame {
       // equal.
       // This frame maybe reused from a stale frame, so reset stale frame's state.
       suffixLength = -1;
-      suffixLengths = null;
       suffixLengthLongs = null;
       if (suffixLengthBytes == null || suffixLengthBytes.length < numSuffixLengthBytes) {
         suffixLengthBytes = new byte[ArrayUtil.oversize(numSuffixLengthBytes, 1)];
@@ -389,19 +386,23 @@ final class SegmentTermsEnumFrame {
     assert allEqual == false;
     // Normally it would not happen. Except if a seek moves backward within the same loaded block,
     // and we don't want reload this block. See: https://github.com/apache/lucene/pull/13253.
-    if (ord < suffixLengthsStart) {
+    if (ord < currentSuffixLengthLongStartOrd) {
       suffixLengthLongIndex = 0;
-      suffixLengthsStart = 0;
-      suffixLengthsLength = 0;
+      currentSuffixLengthLongStartOrd = 0;
+      currentSuffixLengthLongValueCount = 0;
     }
-    if (ord >= suffixLengthsStart + suffixLengthsLength) {
-      decodeSuffixLengths(ord);
+    if (ord >= currentSuffixLengthLongStartOrd + currentSuffixLengthLongValueCount) {
+      skipSuffixLengthLongs(ord);
     }
-    return suffixLengths[ord - suffixLengthsStart];
+    return Simple64.decodeOneInt(
+        suffixLengthLongs[suffixLengthLongIndex], ord - currentSuffixLengthLongStartOrd);
   }
 
-  private void decodeSuffixLengths(int ord) {
-    int start = suffixLengthsStart + suffixLengthsLength;
+  private void skipSuffixLengthLongs(int ord) {
+    int start = currentSuffixLengthLongStartOrd + currentSuffixLengthLongValueCount;
+    if (currentSuffixLengthLongValueCount > 0) {
+      suffixLengthLongIndex++;
+    }
     while (true) {
       assert suffixLengthLongIndex < suffixLengthLongs.length;
       long word = suffixLengthLongs[suffixLengthLongIndex];
@@ -409,13 +410,8 @@ final class SegmentTermsEnumFrame {
       int decodedCount = Math.min(packedCount, entCount - start);
       assert decodedCount > 0;
       if (ord < start + decodedCount) {
-        suffixLengthLongIndex++;
-        suffixLengthsStart = start;
-        suffixLengthsLength = decodedCount;
-        if (suffixLengths == null || suffixLengths.length < decodedCount) {
-          suffixLengths = new int[decodedCount];
-        }
-        Simple64.decodeOneLong(word, suffixLengths, 0, decodedCount);
+        currentSuffixLengthLongStartOrd = start;
+        currentSuffixLengthLongValueCount = decodedCount;
         return;
       }
       suffixLengthLongIndex++;

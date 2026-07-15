@@ -182,6 +182,23 @@ public class TestSimple64 extends LuceneTestCase {
     assertArrayEquals(input, Arrays.copyOfRange(out, 2, 2 + input.length));
   }
 
+  public void testDecodeOneInt() {
+    for (int s = 0; s < Simple64.numSelectors(); s++) {
+      int count = Simple64.selectorCount(s);
+      int maxVal = (int) Simple64.selectorMask(s);
+      int[] input = new int[count];
+      for (int i = 0; i < count; i++) {
+        input[i] = (int) (((long) random().nextInt() & 0x7FFFFFFFL) % ((long) maxVal + 1));
+      }
+      input[0] = maxVal;
+      long word = Simple64.encodeOneLong(input, 0, count);
+      assertEquals("selector " + s, s, (int) (word >>> 60));
+      for (int i = 0; i < count; i++) {
+        assertEquals("selector " + s + " index " + i, input[i], Simple64.decodeOneInt(word, i));
+      }
+    }
+  }
+
   public void testSuffixLengths() {
     int[] input = {
       3, 1, 4, 1, 5, 9, 2, 6, 5, 3, 5, 8, 9, 7, 9, 3, 2, 3, 8, 4, 6, 2, 6, 4, 3, 3, 8, 3

@@ -302,6 +302,14 @@ public final class Simple64 {
     return count;
   }
 
+  /** Decode the integer at {@code index} from {@code word}. */
+  public static int decodeOneInt(long word, int index) {
+    int selector = selector(word);
+    assert index >= 0 && index < COUNTS[selector];
+    int bits = BITS[selector];
+    return (int) ((word >>> (index * bits)) & MASKS[selector]);
+  }
+
   /** Return the number of integers packed in {@code word} without fully decoding it. */
   public static int count(long word) {
     return COUNTS[selector(word)];
