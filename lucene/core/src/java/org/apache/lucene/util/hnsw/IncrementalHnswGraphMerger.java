@@ -33,6 +33,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.InfoStream;
 
 /**
@@ -46,6 +47,7 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
   protected final RandomVectorScorerSupplier scorerSupplier;
   protected final int M;
   protected final int beamWidth;
+  protected final IORunnable abortCheck;
 
   protected List<GraphReader> graphReaders = new ArrayList<>();
   protected GraphReader largestGraphReader;
@@ -71,10 +73,26 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
    */
   public IncrementalHnswGraphMerger(
       FieldInfo fieldInfo, RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth) {
+    this(fieldInfo, scorerSupplier, M, beamWidth, null);
+  }
+
+  /**
+   * @param fieldInfo FieldInfo for the field being merged
+   * @param abortCheck optional check invoked before every node insertion during graph construction;
+   *     may throw {@link org.apache.lucene.index.MergePolicy.MergeAbortedException} to abort the
+   *     build when the surrounding merge has been aborted, or null
+   */
+  public IncrementalHnswGraphMerger(
+      FieldInfo fieldInfo,
+      RandomVectorScorerSupplier scorerSupplier,
+      int M,
+      int beamWidth,
+      IORunnable abortCheck) {
     this.fieldInfo = fieldInfo;
     this.scorerSupplier = scorerSupplier;
     this.M = M;
     this.beamWidth = beamWidth;
+    this.abortCheck = abortCheck;
   }
 
   /**
@@ -211,6 +229,9 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
       KnnVectorValues mergedVectorValues, InfoStream infoStream, int maxOrd) throws IOException {
     HnswBuilder builder = createBuilder(mergedVectorValues, maxOrd);
     builder.setInfoStream(infoStream);
+    if (abortCheck != null) {
+      builder.setAbortCheck(abortCheck);
+    }
     return builder.build(maxOrd);
   }
 

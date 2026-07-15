@@ -343,7 +343,7 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
     }
 
     @Override
-    public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
+    public DocValuesSkipper getSkipper(FieldInfo field) {
       DocValuesProducer producer = fields.get(field.number);
       return producer == null ? null : producer.getSkipper(field);
     }

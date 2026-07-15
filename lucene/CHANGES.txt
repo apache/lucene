@@ -98,6 +98,11 @@ API Changes
 * GITHUB#16052: Remove IOException from LeafReader#getPointValues, LeafReader#terms,
   LeafReader#getDocCount signatures. (Ignacio Vera)
 
+* GITHUB#16388: Remove IOException from LeafReader#getDocValuesSkipper signature.
+  (Alan Woodward)
+
+* GITHUB#16387: Don't throw IOException from PointValues metadata methods. (Alan Woodward)
+
 * GITHUB#16281: The checkIntegrity() method of codec Producer APIs gains a OneMerge parameter,
   which is used to check for aborted merges during checksum validation. (Tanguy Leroux)
 
@@ -151,6 +156,10 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#16382: WildcardQuery.toAutomaton now collapses consecutive unescaped '*'
+  wildcards into a single any-string automaton, avoiding a quadratic blow-up in
+  automaton size for patterns with many repeated asterisks. (Vismay Tiwari)
+
 * GITHUB#16307: ReqExclBulkScorer now skips runs of excluded docs via
   TwoPhaseIterator#docIDRunEnd for two-phase excluded clauses (e.g. a doc-values
   not-equals filter), instead of advancing one doc at a time. (Jim Ferenczi)
@@ -178,7 +187,6 @@ Optimizations
 
 Bug Fixes
 ---------------------
-
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
 
@@ -359,6 +367,9 @@ Optimizations
 * GITHUB#16370: Sort two-phase iterators by matchCost in DenseConjunctionBulkScorer.
   (Alan Woodward)
 
+* GITHUB#16380: Speed up filtered disjunction queries when the filter is part of the
+  index sort by advancing the filter before calculating impacts. (Alan Woodward)
+
 Bug Fixes
 ---------------------
 * GITHUB#16350: Disable bulk-scoring in monitor queries. (Alan Woodward)
@@ -373,6 +384,13 @@ Bug Fixes
 * GITHUB#16295: SingletonSortedNumericDocValues now delegates rangeIntoBitSet
   to the wrapped NumericDocValues, enabling optimized range evaluation for
   single-valued sorted numeric fields. (Costin Leau)
+
+* GITHUB#16389: Fix double-counting of the underlying Automaton in
+  AutomatonQuery#ramBytesUsed. (Sasilekha R)
+
+* GITHUB#16367: HNSW graph construction now periodically checks whether the surrounding merge has
+  been aborted, so IndexWriter#rollback and abortMerges no longer block until the entire graph is
+  built. (Jeho Jeong)
 
 Other
 ---------------------

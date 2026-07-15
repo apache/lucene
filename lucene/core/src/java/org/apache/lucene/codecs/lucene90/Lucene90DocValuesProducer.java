@@ -2516,13 +2516,16 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
   }
 
   @Override
-  public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
+  public DocValuesSkipper getSkipper(FieldInfo field) {
     final DocValuesSkipperEntry entry = skippers.get(field.number);
 
     final IndexInput skipperSource = skipIndexData != null ? skipIndexData : data;
-    final IndexInput input = skipperSource.slice("doc value skipper", entry.offset, entry.length);
+
     // TODO: should we write to disk the actual max level for this segment?
     return new DocValuesSkipper() {
+
+      IndexInput input;
+
       final int[] minDocID = new int[SKIP_INDEX_MAX_LEVEL];
       final int[] maxDocID = new int[SKIP_INDEX_MAX_LEVEL];
 
@@ -2539,6 +2542,9 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
       @Override
       public void advance(int target) throws IOException {
+        if (input == null) {
+          input = skipperSource.slice("doc value skipper", entry.offset, entry.length);
+        }
         if (target > entry.maxDocId) {
           // skipper is exhausted
           for (int i = 0; i < SKIP_INDEX_MAX_LEVEL; i++) {
