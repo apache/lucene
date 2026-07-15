@@ -82,7 +82,7 @@ public abstract class DocValuesProducer implements Closeable {
    * thread-safe: it will only be used by a single thread. The return value is undefined if {@link
    * FieldInfo#docValuesSkipIndexType()} returns {@link DocValuesSkipIndexType#NONE}.
    */
-  public abstract DocValuesSkipper getSkipper(FieldInfo field) throws IOException;
+  public abstract DocValuesSkipper getSkipper(FieldInfo field);
 
   /**
    * Returns a {@link DocValuesField} providing global statistics and skipper access. The default
@@ -91,7 +91,7 @@ public abstract class DocValuesProducer implements Closeable {
    *
    * @lucene.experimental
    */
-  public DocValuesField getDocValuesField(FieldInfo field) throws IOException {
+  public DocValuesField getDocValuesField(FieldInfo field) {
     final DocValuesSkipper skipper = getSkipper(field);
     if (skipper == null) {
       return null;

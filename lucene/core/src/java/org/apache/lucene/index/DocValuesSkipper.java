@@ -153,7 +153,7 @@ public abstract class DocValuesSkipper {
    * @param reader the index reader to be queried
    * @param field the field to retrieve values for
    */
-  public static long globalMinValue(IndexReader reader, String field) throws IOException {
+  public static long globalMinValue(IndexReader reader, String field) {
     long minValue = Long.MAX_VALUE;
     for (LeafReaderContext ctx : reader.leaves()) {
       if (ctx.reader().getFieldInfos().fieldInfo(field) == null) {
@@ -177,7 +177,7 @@ public abstract class DocValuesSkipper {
    * @param reader the index reader to be queried
    * @param field the field to retrieve values for
    */
-  public static long globalMaxValue(IndexReader reader, String field) throws IOException {
+  public static long globalMaxValue(IndexReader reader, String field) {
     long maxValue = Long.MIN_VALUE;
     for (LeafReaderContext ctx : reader.leaves()) {
       if (ctx.reader().getFieldInfos().fieldInfo(field) == null) {
@@ -200,7 +200,7 @@ public abstract class DocValuesSkipper {
    * @param reader the index reader to be queried
    * @param field the field to retrieve values for
    */
-  public static int globalDocCount(IndexReader reader, String field) throws IOException {
+  public static int globalDocCount(IndexReader reader, String field) {
     int docCount = 0;
     for (LeafReaderContext ctx : reader.leaves()) {
       DocValuesSkipper skipper = ctx.reader().getDocValuesSkipper(field);

@@ -1321,4 +1321,161 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
       return 31 * classHash() + delegate.hashCode();
     }
   }
+
+  /**
+   * If the filter has no matches for a long prefix of the doc ID space (e.g. because the filtered
+   * field correlates with the index sort), {@link MaxScoreBulkScorer} should consult the filter's
+   * position before computing outer-window score bounds, so that it never spends time computing
+   * bounds over the empty prefix. Concretely: the very first window for which bounds are computed
+   * should already start at or after the filter's first match, rather than at the requested {@code
+   * min}.
+   */
+  public void testFilterGapSkipsBoundsComputationForEmptyPrefix() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig());
+    int numDocs = 1000;
+    int filterStart = numDocs - 100; // filter only matches the last 100 docs
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      doc.add(new TextField("body", "dense1", Field.Store.NO));
+      doc.add(new TextField("body", "dense2", Field.Store.NO));
+      if (i >= filterStart) {
+        doc.add(new StringField("filter", "yes", Field.Store.NO));
+      }
+      w.addDocument(doc);
+    }
+    w.close();
+
+    DirectoryReader reader = DirectoryReader.open(dir);
+    IndexSearcher searcher = new IndexSearcher(reader);
+    searcher.setQueryCache(null);
+
+    // Smallest `target`/`upTo` ever passed to advanceShallow()/getMaxScore() on an essential
+    // scorer. Once the fix is in place this should never be smaller than filterStart, since bounds
+    // should never be computed for the empty prefix before the filter's first match.
+    int[] minAdvanceShallowTarget = {Integer.MAX_VALUE};
+    int[] minGetMaxScoreUpTo = {Integer.MAX_VALUE};
+
+    Query dense1 =
+        new CountingScorerQuery(
+            new TermQuery(new Term("body", "dense1")), minAdvanceShallowTarget, minGetMaxScoreUpTo);
+    Query dense2 = new TermQuery(new Term("body", "dense2"));
+
+    BooleanQuery innerOr =
+        new BooleanQuery.Builder().add(dense1, Occur.SHOULD).add(dense2, Occur.SHOULD).build();
+
+    Query filter = new TermQuery(new Term("filter", "yes"));
+
+    BooleanQuery outerQuery =
+        new BooleanQuery.Builder().add(innerOr, Occur.MUST).add(filter, Occur.FILTER).build();
+
+    Query rewritten = searcher.rewrite(outerQuery);
+    Weight weight = searcher.createWeight(rewritten, ScoreMode.TOP_SCORES, 1f);
+    for (LeafReaderContext ctx : reader.leaves()) {
+      ScorerSupplier ss = weight.scorerSupplier(ctx);
+      if (ss != null) {
+        BulkScorer bs = ss.bulkScorer();
+        assertTrue(
+            "Expected MaxScoreBulkScorer but got " + bs.getClass().getSimpleName(),
+            bs instanceof MaxScoreBulkScorer);
+        bs.score(
+            new LeafCollector() {
+              @Override
+              public void setScorer(Scorable scorer) {}
+
+              @Override
+              public void collect(int doc) {}
+            },
+            null,
+            0,
+            DocIdSetIterator.NO_MORE_DOCS);
+      }
+    }
+
+    int minTarget = Math.min(minAdvanceShallowTarget[0], minGetMaxScoreUpTo[0]);
+    assertTrue(
+        "Expected advanceShallow()/getMaxScore() to never be called with a target before the "
+            + "filter's first match ("
+            + filterStart
+            + "), but saw target "
+            + minTarget,
+        minTarget >= filterStart);
+
+    reader.close();
+    dir.close();
+  }
+
+  /**
+   * A query wrapper that counts the smallest target/upTo ever passed to advanceShallow()/
+   * getMaxScore() on its scorer. This lets us detect whether MaxScoreBulkScorer computed score
+   * bounds for doc IDs before a given point, without exposing internal state.
+   */
+  private static class CountingScorerQuery extends Query {
+    private final Query delegate;
+    private final int[] minAdvanceShallowTarget;
+    private final int[] minGetMaxScoreUpTo;
+
+    CountingScorerQuery(Query delegate, int[] minAdvanceShallowTarget, int[] minGetMaxScoreUpTo) {
+      this.delegate = delegate;
+      this.minAdvanceShallowTarget = minAdvanceShallowTarget;
+      this.minGetMaxScoreUpTo = minGetMaxScoreUpTo;
+    }
+
+    @Override
+    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
+        throws IOException {
+      Weight inner = delegate.createWeight(searcher, scoreMode, boost);
+      return new FilterWeight(this, inner) {
+        @Override
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+          ScorerSupplier innerSS = inner.scorerSupplier(context);
+          if (innerSS == null) return null;
+          return new ScorerSupplier() {
+            @Override
+            public Scorer get(long leadCost) throws IOException {
+              Scorer innerScorer = innerSS.get(leadCost);
+              return new FilterScorer(innerScorer) {
+                @Override
+                public int advanceShallow(int target) throws IOException {
+                  minAdvanceShallowTarget[0] = Math.min(minAdvanceShallowTarget[0], target);
+                  return in.advanceShallow(target);
+                }
+
+                @Override
+                public float getMaxScore(int upTo) throws IOException {
+                  minGetMaxScoreUpTo[0] = Math.min(minGetMaxScoreUpTo[0], upTo);
+                  return in.getMaxScore(upTo);
+                }
+              };
+            }
+
+            @Override
+            public long cost() {
+              return innerSS.cost();
+            }
+          };
+        }
+      };
+    }
+
+    @Override
+    public void visit(QueryVisitor visitor) {
+      delegate.visit(visitor);
+    }
+
+    @Override
+    public String toString(String field) {
+      return "CountingScorer(" + delegate.toString(field) + ")";
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      return obj instanceof CountingScorerQuery csq && delegate.equals(csq.delegate);
+    }
+
+    @Override
+    public int hashCode() {
+      return 31 * classHash() + delegate.hashCode();
+    }
+  }
 }

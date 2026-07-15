@@ -113,7 +113,7 @@ abstract class DocValuesLeafReader extends LeafReader {
   }
 
   @Override
-  public DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+  public DocValuesSkipper getDocValuesSkipper(String field) {
     throw new UnsupportedOperationException();
   }
 }
