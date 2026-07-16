@@ -187,6 +187,11 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#15769: PathHierarchyTokenizer again emits all path tokens at the same position, so query
+  parsers treat them as synonyms and the documented "ancestor path" search works as designed. This
+  had been broken since 10.0 by GITHUB#12875, which made every token increment the position and
+  turned such queries into phrases. (Hoss Man, Vismay Tiwari)
+
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
 
