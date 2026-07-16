@@ -98,7 +98,7 @@ public class Lucene102BinaryFlatVectorsScorer implements FlatVectorsScorer {
   public RandomVectorScorer getRandomVectorScorer(
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, short[] target)
       throws IOException {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   @Override
