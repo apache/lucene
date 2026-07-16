@@ -2041,12 +2041,13 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
                 v, fromDoc, endDoc, cardinality, lo, hi, bitSet, offset);
             return;
           }
+          long startOffset = addresses.get(fromDoc);
           for (int currentDoc = fromDoc; currentDoc < endDoc; currentDoc++) {
-            long startOffset = addresses.get(currentDoc);
             long endOffset = addresses.get(currentDoc + 1L);
             if (sortedNumericMatchesRange(v, startOffset, endOffset, lo, hi)) {
               bitSet.set(currentDoc - offset);
             }
+            startOffset = endOffset;
           }
         }
 
