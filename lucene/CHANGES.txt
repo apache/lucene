@@ -321,6 +321,9 @@ New Features
   and document length instead of corpus statistics such as document frequency. It also supports k3
   query-term frequency saturation. (Tianxiao Wei)
 
+* GITHUB#15979: Add a de-duplicating HNSW vector format (Lucene106DedupHnswVectorsFormat) that stores
+  each distinct vector once, shared across all documents and fields that reference it. (Kaival Parikh)
+
 Improvements
 ---------------------
 
