@@ -21,6 +21,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Locale;
 import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.util.BitSet;
 
@@ -110,6 +111,7 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
     if (frozen) {
       throw new IllegalStateException("This HnswGraphBuilder is frozen and cannot be updated");
     }
+    long startTimeNs = System.nanoTime();
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
       String graphSizes = "";
       for (HnswGraph g : graphs) {
@@ -139,6 +141,17 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
       }
     }
 
+    if (infoStream.isEnabled(HNSW_COMPONENT)) {
+      double elapsedMs = (System.nanoTime() - startTimeNs) / 1_000_000.0;
+      infoStream.message(
+          HNSW_COMPONENT,
+          String.format(
+              Locale.ROOT,
+              "merge completed: %d vectors from merging %d graphs in %.2f ms",
+              maxOrd,
+              graphs.length,
+              elapsedMs));
+    }
     return getCompletedGraph();
   }
 
