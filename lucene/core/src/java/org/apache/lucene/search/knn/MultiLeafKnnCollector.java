@@ -45,6 +45,10 @@ public final class MultiLeafKnnCollector extends KnnCollector.Decorator {
   private final int interval;
   private boolean kResultsCollected = false;
   private float cachedGlobalMinSim = Float.NEGATIVE_INFINITY;
+  // visitedCount() at the last periodic global sync, so the sync test detects interval
+  // *crossings* rather than exact multiples (visitedCount is batch-incremented since 10.4's
+  // bulk-batched searchLevel / exhaustive scan, so exact multiples are rarely ever hit).
+  private long lastGlobalUpdateVisitedCount = 0;
   private final AbstractKnnCollector subCollector;
 
   /**
@@ -103,8 +107,15 @@ public final class MultiLeafKnnCollector extends KnnCollector.Decorator {
     boolean globalSimUpdated = nonCompetitiveQueue.offer(similarity);
 
     if (kResultsCollected) {
-      // as we've collected k results, we can start do periodic updates with the global queue
-      if (firstKResultsCollected || (subCollector.visitedCount() & interval) == 0) {
+      // as we've collected k results, we can start do periodic updates with the global queue.
+      // Sync whenever more than `interval` vectors were visited since the last sync: the
+      // previous exact-hit test `(visitedCount() & interval) == 0` assumed visitedCount
+      // increments by 1 per visit, but the 10.4 bulk-batched searchLevel (LUCENE #15021) and
+      // exhaustive-scan paths increment it in batch strides that skip the exact multiples,
+      // effectively disabling periodic syncing (CLOUDP-406320).
+      if (firstKResultsCollected
+          || subCollector.visitedCount() - lastGlobalUpdateVisitedCount > interval) {
+        lastGlobalUpdateVisitedCount = subCollector.visitedCount();
         // BlockingFloatHeap#offer requires input to be sorted in ascending order, so we can't
         // pass in the underlying updatesQueue array as-is since it is only partially ordered
         // (see GH#13462):
