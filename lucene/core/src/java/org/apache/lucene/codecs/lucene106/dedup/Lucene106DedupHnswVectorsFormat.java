@@ -16,6 +16,13 @@
  */
 package org.apache.lucene.codecs.lucene106.dedup;
 
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_NUM_MERGE_WORKER;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.HNSW_GRAPH_THRESHOLD;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.MAXIMUM_BEAM_WIDTH;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.MAXIMUM_MAX_CONN;
+
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import org.apache.lucene.codecs.KnnVectorsFormat;
@@ -30,7 +37,6 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.util.hnsw.HnswGraph;
-import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 
 /**
  * An HNSW vector format that de-duplicates raw vectors.
@@ -45,62 +51,19 @@ import org.apache.lucene.util.hnsw.HnswGraphBuilder;
  * @lucene.experimental
  */
 public final class Lucene106DedupHnswVectorsFormat extends KnnVectorsFormat {
-  public static final int VERSION_START = 0;
-  public static final int VERSION_CURRENT = VERSION_START;
-
-  /**
-   * A maximum configurable maximum max conn.
-   *
-   * <p>NOTE: We eagerly populate `float[MAX_CONN*2]` and `int[MAX_CONN*2]`, so exceptionally large
-   * numbers here will use an inordinate amount of heap
-   */
-  public static final int MAXIMUM_MAX_CONN = 512;
-
-  /** Default number of maximum connections per node */
-  public static final int DEFAULT_MAX_CONN = HnswGraphBuilder.DEFAULT_MAX_CONN;
-
-  /**
-   * The maximum size of the queue to maintain while searching during graph construction. This
-   * maximum value preserves the ratio of the `DEFAULT_BEAM_WIDTH`/`DEFAULT_MAX_CONN` (i.e. `6.25 *
-   * 16 = 3200`).
-   */
-  public static final int MAXIMUM_BEAM_WIDTH = 3200;
-
-  /**
-   * Default number of the size of the queue maintained while searching during a graph construction.
-   */
-  public static final int DEFAULT_BEAM_WIDTH = HnswGraphBuilder.DEFAULT_BEAM_WIDTH;
-
-  /** Default to use single-thread merge */
-  public static final int DEFAULT_NUM_MERGE_WORKER = 1;
-
-  /**
-   * Minimum estimated search effort (in terms of expected visited nodes) required before building
-   * an HNSW graph for a segment.
-   *
-   * <p>This threshold is compared against the value produced by {@link
-   * org.apache.lucene.util.hnsw.HnswGraphSearcher#expectedVisitedNodes(int, int)}, which estimates
-   * how many nodes would be visited during a vector search based on the current graph size and
-   * {@code k} (neighbours to find).
-   *
-   * <p>If the estimated number of visited nodes falls below this threshold, HNSW graph construction
-   * is skipped for that segment - typically for small flushes or low document count segments -
-   * since the overhead of building the graph would outweigh its search benefits.
-   *
-   * <p>Default: {@code 100}
-   */
-  public static final int HNSW_GRAPH_THRESHOLD = 100;
+  private static final String NAME = "Lucene106DedupHnswVectorsFormat";
 
   /**
    * Controls how many of the nearest neighbor candidates are connected to the new node. Defaults to
-   * {@link Lucene106DedupHnswVectorsFormat#DEFAULT_MAX_CONN}. See {@link HnswGraph} for more
-   * details.
+   * {@link org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat#DEFAULT_MAX_CONN}. See
+   * {@link HnswGraph} for more details.
    */
   private final int maxConn;
 
   /**
    * The number of candidate neighbors to track while searching the graph for each newly inserted
-   * node. Defaults to {@link Lucene106DedupHnswVectorsFormat#DEFAULT_BEAM_WIDTH}. See {@link
+   * node. Defaults to {@link
+   * org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat#DEFAULT_BEAM_WIDTH}. See {@link
    * HnswGraph} for details.
    */
   private final int beamWidth;
@@ -114,7 +77,7 @@ public final class Lucene106DedupHnswVectorsFormat extends KnnVectorsFormat {
   /**
    * The threshold to use to bypass HNSW graph building for tiny segments in terms of k for a graph
    * i.e. number of docs to match the query (default is {@link
-   * Lucene106DedupHnswVectorsFormat#HNSW_GRAPH_THRESHOLD}).
+   * org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat#HNSW_GRAPH_THRESHOLD}).
    *
    * <ul>
    *   <li>0 indicates that the graph is always built.
@@ -181,7 +144,7 @@ public final class Lucene106DedupHnswVectorsFormat extends KnnVectorsFormat {
    * @param tinySegmentsThreshold the expected number of vector operations to return k nearest
    *     neighbors of the current graph size
    */
-  Lucene106DedupHnswVectorsFormat(
+  public Lucene106DedupHnswVectorsFormat(
       int maxConn,
       int beamWidth,
       int numMergeWorkers,
@@ -237,12 +200,15 @@ public final class Lucene106DedupHnswVectorsFormat extends KnnVectorsFormat {
 
   @Override
   public int getMaxDimensions(String fieldName) {
-    return 1024;
+    return DEFAULT_MAX_DIMENSIONS;
   }
 
   @Override
   public String toString() {
-    return "Lucene106DedupHnswVectorsFormat(name=Lucene106DedupHnswVectorsFormat, maxConn="
+    return NAME
+        + "(name="
+        + NAME
+        + ", maxConn="
         + maxConn
         + ", beamWidth="
         + beamWidth
