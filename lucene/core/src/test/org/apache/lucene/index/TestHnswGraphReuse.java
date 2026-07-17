@@ -20,9 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloatVectorField;
-import org.apache.lucene.document.StringField;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
@@ -55,11 +53,9 @@ public class TestHnswGraphReuse extends LuceneTestCase {
       cfg.setMergePolicy(NoMergePolicy.INSTANCE);
       try (IndexWriter w = new IndexWriter(dir, cfg)) {
         Random r = random();
-        int id = 0;
         for (int s = 0; s < SEGMENTS; s++) {
-          for (int i = 0; i < DOCS_PER_SEGMENT; i++, id++) {
+          for (int i = 0; i < DOCS_PER_SEGMENT; i++) {
             Document doc = new Document();
-            doc.add(new StringField("id", Integer.toString(id), Field.Store.NO));
             float[] v = new float[DIM];
             for (int j = 0; j < DIM; j++) {
               v[j] = r.nextFloat();
@@ -69,7 +65,6 @@ public class TestHnswGraphReuse extends LuceneTestCase {
           }
           w.flush();
         }
-        w.commit();
       }
 
       List<String> hnswMessages = new ArrayList<>();
