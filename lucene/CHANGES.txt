@@ -7,6 +7,9 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
+* GITHUB#14399: Add a default LeafFieldComparator#disableSkipping method so document skipping can be
+  disabled per segment. (Serhiy Bzhezytskyy)
+
 * GITHUB#15929: Rename CollectionStatistics to FieldStats and TermStatistics to TermStats. (Zhou Hui)
 
 * GITHUB#15763: Deprecate Operations.complement() method. This operation can be slow and is not
@@ -193,6 +196,10 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#14399: TopFieldCollector now decides per segment whether the search sort is a prefix of the
+  index sort, instead of caching the decision from the first segment. This fixes incorrect results
+  when searching a MultiReader that combines indexes with different index sorts. (Serhiy Bzhezytskyy)
+
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
 
