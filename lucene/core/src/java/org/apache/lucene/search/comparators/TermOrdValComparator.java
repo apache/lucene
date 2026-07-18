@@ -434,6 +434,13 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
           }
         } else if (sortMissingLast || dense) {
           minOrd = 0;
+        } else if (bottomValue == null && singleSort) {
+          // The worst entry in the queue is itself a missing value and there is no tie breaker, so
+          // another missing value can no longer compete: missing values are no longer competitive.
+          // (bottomValue==null is stronger than bottomOrd==missingOrd, which can also be produced
+          // by
+          // a real value that maps before ord 0 in this segment.)
+          minOrd = 0;
         } else {
           // Missing values are still competitive.
           minOrd = -1;
