@@ -1239,6 +1239,47 @@ public class TestSortOptimization extends LuceneTestCase {
     dir.close();
   }
 
+  /**
+   * GITHUB#12370: when the sort field is missing from the whole index (not just one segment) and
+   * the sort has no tie breaker, all documents tie on the missing value, so once the top-N queue is
+   * full the remaining documents are non-competitive and must be skipped rather than fully
+   * collected.
+   */
+  public void testStringSortOptimizationFieldMissingInWholeIndex() throws IOException {
+    final Directory dir = newDirectory();
+    final IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
+
+    // None of the documents index the sort field, so it is absent from every segment's FieldInfos.
+    final int numDocs = atLeast(10000);
+    for (int i = 0; i < numDocs; i++) {
+      final Document doc = new Document();
+      doc.add(new StringField("other", Integer.toString(i), Field.Store.NO));
+      writer.addDocument(doc);
+    }
+
+    final DirectoryReader reader = DirectoryReader.open(writer);
+    writer.close();
+
+    final int numHits = 5;
+
+    { // ascending, sort-missing-first (the default for SortedSetSortField): missing is the best
+      // value, but with no tie breaker a second missing value can never displace one already in the
+      // queue, so the tail should be skipped.
+      SortField sortField = new SortedSetSortField("field_does_not_exist", false);
+      TopDocs topDocs = assertSearchHits(reader, new Sort(sortField), numHits, null);
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), numDocs);
+    }
+
+    { // descending, sort-missing-first
+      SortField sortField = new SortedSetSortField("field_does_not_exist", true);
+      TopDocs topDocs = assertSearchHits(reader, new Sort(sortField), numHits, null);
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), numDocs);
+    }
+
+    reader.close();
+    dir.close();
+  }
+
   private void doTestStringSortOptimization(DirectoryReader reader) throws IOException {
     final int numDocs = reader.numDocs();
     final int numHits = 5;
