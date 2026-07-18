@@ -52,9 +52,9 @@ final class SegmentTermsEnumFrame {
   byte[] suffixLengthBytes;
   final ByteArrayDataInput suffixLengthsReader;
 
-  int[] suffixes;
-  int[] positions;
-  int[] offsets;
+  int[] suffixLengths;
+  int[] suffixLengthPositions;
+  int[] suffixOffsets;
   int[] termBlockOrds;
   int[] lastSubIndices;
   FixedBitSet termExists;
@@ -213,7 +213,7 @@ final class SegmentTermsEnumFrame {
         suffix = suffixLengthsReader.readVInt();
       } else {
         // Handle subCode for non leaf block.
-        positions = new int[entCount];
+        suffixLengthPositions = new int[entCount];
         termExists = new FixedBitSet(entCount);
         subCodes = new long[entCount];
         termBlockOrds = new int[entCount];
@@ -232,11 +232,11 @@ final class SegmentTermsEnumFrame {
           lastSubIndex = 0;
         }
         termBlockOrds[0] = termBlockOrd;
-        positions[0] = suffixLengthsReader.getPosition();
+        suffixLengthPositions[0] = suffixLengthsReader.getPosition();
         lastSubIndices[0] = lastSubIndex;
-        for (int i = 1; i < suffixes.length; i++) {
+        for (int i = 1; i < suffixLengths.length; i++) {
           code = suffixLengthsReader.readVInt();
-          suffixes[i] = code >>> 1;
+          suffixLengths[i] = code >>> 1;
           if ((code & 1) == 0) {
             termExists.set(i);
             termBlockOrd++;
@@ -246,19 +246,19 @@ final class SegmentTermsEnumFrame {
             lastSubIndex = i;
           }
           termBlockOrds[i] = termBlockOrd;
-          positions[i] = suffixLengthsReader.getPosition();
+          suffixLengthPositions[i] = suffixLengthsReader.getPosition();
           lastSubIndices[i] = lastSubIndex;
         }
       }
       // Reset suffixLengthsReader's position.
       suffixLengthsReader.setPosition(0);
     } else {
-      suffixes = new int[entCount];
-      positions = new int[entCount];
+      suffixLengths = new int[entCount];
+      suffixLengthPositions = new int[entCount];
       if (isLeafBlock) {
-        for (int i = 0; i < suffixes.length; i++) {
-          suffixes[i] = suffixLengthsReader.readVInt();
-          positions[i] = suffixLengthsReader.getPosition();
+        for (int i = 0; i < suffixLengths.length; i++) {
+          suffixLengths[i] = suffixLengthsReader.readVInt();
+          suffixLengthPositions[i] = suffixLengthsReader.getPosition();
         }
       } else {
         // Handle subCode for non leaf block.
@@ -268,9 +268,9 @@ final class SegmentTermsEnumFrame {
         lastSubIndices = new int[entCount];
         int termBlockOrd = 0;
         int lastSubIndex = -1;
-        for (int i = 0; i < suffixes.length; i++) {
+        for (int i = 0; i < suffixLengths.length; i++) {
           code = suffixLengthsReader.readVInt();
-          suffixes[i] = code >>> 1;
+          suffixLengths[i] = code >>> 1;
           if ((code & 1) == 0) {
             termExists.set(i);
             termBlockOrd++;
@@ -280,14 +280,14 @@ final class SegmentTermsEnumFrame {
             lastSubIndex = i;
           }
           termBlockOrds[i] = termBlockOrd;
-          positions[i] = suffixLengthsReader.getPosition();
+          suffixLengthPositions[i] = suffixLengthsReader.getPosition();
           lastSubIndices[i] = lastSubIndex;
         }
       }
       // Reset suffixLengthsReader's position.
       suffixLengthsReader.setPosition(0);
-      offsets = getOffsets(suffixes);
-      assert assertOffset(suffixes, offsets);
+      suffixOffsets = getOffsets(suffixLengths);
+      assert assertOffset(suffixLengths, suffixOffsets);
     }
 
     /*if (DEBUG) {
@@ -772,7 +772,7 @@ final class SegmentTermsEnumFrame {
     }
 
     assert prefixMatches(target);
-    assert assertOffset(suffixes, offsets);
+    assert assertOffset(suffixLengths, suffixOffsets);
 
     int start = nextEnt;
     int end = entCount - 1;
@@ -781,8 +781,8 @@ final class SegmentTermsEnumFrame {
     while (start <= end) {
       int mid = (start + end) >>> 1;
       nextEnt = mid + 1;
-      startBytePos = offsets[mid];
-      suffix = suffixes[mid];
+      startBytePos = suffixOffsets[mid];
+      suffix = suffixLengths[mid];
 
       // Binary search bytes in the suffix, comparing to the target
       cmp =
@@ -870,7 +870,7 @@ final class SegmentTermsEnumFrame {
     }
 
     assert prefixMatches(target);
-    assert assertOffset(suffixes, offsets);
+    assert assertOffset(suffixLengths, suffixOffsets);
 
     int start = nextEnt;
     int end = entCount - 1;
@@ -986,7 +986,7 @@ final class SegmentTermsEnumFrame {
     }
 
     assert prefixMatches(target);
-    assert assertOffset(suffixes, offsets);
+    assert assertOffset(suffixLengths, suffixOffsets);
 
     int start = nextEnt;
     int end = entCount - 1;
@@ -997,8 +997,8 @@ final class SegmentTermsEnumFrame {
     while (start <= end) {
       mid = (start + end) >>> 1;
       nextEnt = mid + 1;
-      startBytePos = offsets[mid];
-      suffix = suffixes[mid];
+      startBytePos = suffixOffsets[mid];
+      suffix = suffixLengths[mid];
 
       // Binary search bytes in the suffix, comparing to the target
       cmp =
@@ -1106,19 +1106,19 @@ final class SegmentTermsEnumFrame {
     suffixesReader.setPosition(startBytePos + suffix);
 
     // Set suffixLengthsReader's position.
-    suffixLengthsReader.setPosition(positions[currentEnt]);
+    suffixLengthsReader.setPosition(suffixLengthPositions[currentEnt]);
   }
 
   // Set suffixesReader's position.
   private void setSuffixesReaderUnEqual() {
     int currentEnt = nextEnt - 1;
 
-    startBytePos = offsets[currentEnt];
-    suffix = suffixes[currentEnt];
+    startBytePos = suffixOffsets[currentEnt];
+    suffix = suffixLengths[currentEnt];
     suffixesReader.setPosition(startBytePos + suffix);
 
     // Set suffixLengthsReader's position.
-    suffixLengthsReader.setPosition(positions[currentEnt]);
+    suffixLengthsReader.setPosition(suffixLengthPositions[currentEnt]);
   }
 
   private void fillTerm() {
