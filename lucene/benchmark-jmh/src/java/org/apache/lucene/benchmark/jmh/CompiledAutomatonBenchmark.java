@@ -43,7 +43,7 @@ import org.openjdk.jmh.annotations.Warmup;
 @State(Scope.Benchmark)
 public class CompiledAutomatonBenchmark {
 
-  @Param({"5", "120"})
+  @Param({"5", "60"})
   public int numTransitions;
 
   private CompiledAutomaton compiled;
@@ -67,8 +67,8 @@ public class CompiledAutomatonBenchmark {
     Random rand = new Random(42);
     inputs = new BytesRef[1000];
     for (int i = 0; i < inputs.length; i++) {
-      // Pick a random label that falls within our transitions' ranges
-      int label = rand.nextInt(numTransitions * 2);
+      // Pick a random odd label that falls within our transitions' ranges but always misses
+      int label = rand.nextInt(numTransitions) * 2 + 1;
       inputs[i] = new BytesRef(new byte[]{(byte) label});
     }
     output = new BytesRefBuilder();
