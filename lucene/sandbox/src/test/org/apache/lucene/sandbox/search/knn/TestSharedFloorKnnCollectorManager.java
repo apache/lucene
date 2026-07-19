@@ -185,7 +185,8 @@ public class TestSharedFloorKnnCollectorManager extends LuceneTestCase {
    * The distributed wiring this manager exists for, in miniature: two disjoint indexes standing in
    * for two shards of one corpus, each searched through its own manager with its true {@code
    * globalShare}, both wired to one shared floor. The merged result must not lose recall against
-   * stock search of the same two indexes.
+   * stock search of the same two indexes. The 0.05 slack is a tripwire over a toy index, not the
+   * acceptance threshold; the benchmark harness holds matched-recall comparisons to 0.005.
    */
   public void testDisjointIndexesSharingOneFloorKeepMergedRecall() throws IOException {
     int dim = 16;
