@@ -159,4 +159,33 @@ public class TestBlockingFloatHeap extends LuceneTestCase {
       assertEquals("polled values must be exactly the offered values", v + 1f, values[v], 0.0f);
     }
   }
+
+  public void testBatchOfferKeepsTheLargestValues() {
+    // The batch path is how GlobalKnnFloor ingests scores, so pin its contract directly: the heap
+    // retains the largest maxSize values seen, and a batch element below the running top of a full
+    // heap ends the batch early (input is ascending, walked descending), skipping the tail.
+    BlockingFloatHeap heap = new BlockingFloatHeap(3);
+    heap.offer(new float[] {10f, 20f, 30f}, 3);
+    assertEquals(10f, heap.peek(), 0f);
+
+    heap.offer(new float[] {1f, 2f, 15f, 25f, 35f}, 5);
+    assertEquals(3, heap.size());
+    assertEquals(25f, heap.poll(), 0f);
+    assertEquals(30f, heap.poll(), 0f);
+    assertEquals(35f, heap.poll(), 0f);
+    assertEquals(0, heap.size());
+  }
+
+  public void testBatchOfferRespectsLen() {
+    BlockingFloatHeap heap = new BlockingFloatHeap(4);
+    heap.offer(new float[] {7f, 3f}, 1);
+    assertEquals(1, heap.size());
+    assertEquals(7f, heap.peek(), 0f);
+  }
+
+  public void testBatchOfferValidatesLen() {
+    BlockingFloatHeap heap = new BlockingFloatHeap(2);
+    expectThrows(IllegalArgumentException.class, () -> heap.offer(new float[] {1f}, -1));
+    expectThrows(IllegalArgumentException.class, () -> heap.offer(new float[] {1f}, 2));
+  }
 }

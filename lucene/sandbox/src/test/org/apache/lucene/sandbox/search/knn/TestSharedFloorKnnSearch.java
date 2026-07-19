@@ -39,10 +39,12 @@ import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.knn.KnnCollectorManager;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.NamedThreadFactory;
@@ -55,6 +57,10 @@ import org.apache.lucene.util.NamedThreadFactory;
  * point is to exercise the floor path; the activation default is covered by its own test. The k
  * values exceed {@link FloorAwareKnnCollector#DEFAULT_MIN_EXPLORATION_SLOTS}, since at or below it
  * the clamp neutralizes the floor by design and the tests would not be testing anything.
+ *
+ * <p>The recall assertions allow 0.05 of slack: over tiny random indexes and a handful of queries
+ * they are regression tripwires, not the recall acceptance gate. That gate lives in the benchmark
+ * harness, which holds the floor to within 0.005 of stock at matched recall.
  */
 public class TestSharedFloorKnnSearch extends LuceneTestCase {
 
@@ -398,6 +404,175 @@ public class TestSharedFloorKnnSearch extends LuceneTestCase {
           }
         }
       }
+    }
+  }
+
+  /**
+   * The visit-reduction half of the mechanism's contract, pinned as a regression: a floor that is
+   * seeded early must make a search visit strictly fewer vectors than the same search whose floor
+   * only warms up as local results arrive. The seed here is the query's exact k-th best similarity
+   * advertised before the search starts — the tightest valid bound, and what a scout shard
+   * approximates. Both arms use the same manager configuration and run the identical single-pass
+   * strategy (the recording wrapper reports non-optimistic, so the re-entry pass cannot add a
+   * second variable); the only difference between them is when the floor becomes defined. The
+   * recall cost of tight seeded bounds is covered separately by {@link
+   * #testSlackAdvertisedBoundPreservesRecall}.
+   */
+  public void testSeededFloorReducesVisitedVectors() throws IOException {
+    int dim = 16;
+    int numDocs = 2000;
+    int k = 100;
+    int numQueries = 5;
+    float[][] vectors = new float[numDocs][];
+    for (int i = 0; i < numDocs; i++) {
+      vectors[i] = randomVector(dim);
+    }
+    try (Directory dir = newDirectory()) {
+      indexInSegments(dir, vectors, 5);
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        for (int i = 0; i < numQueries; i++) {
+          float[] query = randomVector(dim);
+
+          GlobalKnnFloor unseededFloor = new GlobalKnnFloor(k);
+          RecordingKnnCollectorManager unseeded = singlePassManager(unseededFloor);
+          searcher.search(new ManagedKnnQuery(FIELD, query, k, unseeded), k);
+
+          GlobalKnnFloor seededFloor = new GlobalKnnFloor(k);
+          seededFloor.advertise(exactKthBestScore(reader, query, k));
+          RecordingKnnCollectorManager seeded = singlePassManager(seededFloor);
+          searcher.search(new ManagedKnnQuery(FIELD, query, k, seeded), k);
+
+          assertTrue(
+              "a seeded floor must save visits: seeded="
+                  + seeded.totalVisits()
+                  + " unseeded="
+                  + unseeded.totalVisits(),
+              seeded.totalVisits() < unseeded.totalVisits());
+        }
+      }
+    }
+  }
+
+  /**
+   * The invariant every safety argument rests on: at no point may the floor exceed the query's
+   * exact final k-th best similarity, because a floor that did could prune a true top-k hit. The
+   * floor is the k-th best of a subset of the hits, so after a full search it must read at or
+   * below the exact value — and an advertised exact bound must pin it at exactly that value.
+   */
+  public void testFloorNeverExceedsExactKthBest() throws IOException {
+    int dim = 16;
+    int numDocs = 1200;
+    int k = 64;
+    int numQueries = 10;
+    float[][] vectors = new float[numDocs][];
+    for (int i = 0; i < numDocs; i++) {
+      vectors[i] = randomVector(dim);
+    }
+    try (Directory dir = newDirectory()) {
+      indexInSegments(dir, vectors, 4);
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        for (int i = 0; i < numQueries; i++) {
+          float[] query = randomVector(dim);
+          float exactKth = exactKthBestScore(reader, query, k);
+
+          SharedFloorKnnQuery floored = new SharedFloorKnnQuery(FIELD, query, k);
+          searcher.search(floored, k);
+          float floor = floored.manager.getGlobalFloor().floor();
+          assertTrue(
+              "the floor must be defined once every leaf has published",
+              floor > Float.NEGATIVE_INFINITY);
+          assertTrue(
+              "floor " + floor + " must never exceed the exact k-th best " + exactKth,
+              floor <= exactKth);
+
+          SharedFloorKnnQuery advertised = new SharedFloorKnnQuery(FIELD, query, k);
+          advertised.manager.getGlobalFloor().advertise(exactKth);
+          searcher.search(advertised, k);
+          assertEquals(
+              "an advertised exact bound must pin the floor at that bound",
+              exactKth,
+              advertised.manager.getGlobalFloor().floor(),
+              0.0f);
+        }
+      }
+    }
+  }
+
+  /** A recording manager running the shared-floor configuration in the single-pass strategy. */
+  private static RecordingKnnCollectorManager singlePassManager(GlobalKnnFloor floor) {
+    return new RecordingKnnCollectorManager(
+        new SharedFloorKnnCollectorManager(
+            floor.k(), floor, FloorAwareKnnCollector.DEFAULT_GREEDINESS, 1),
+        false);
+  }
+
+  /**
+   * Wraps a manager and records every collector it creates, so a test can total the vectors a
+   * search visited. The reported strategy may differ from the delegate's: reporting
+   * non-optimistic keeps a comparison single-pass, so that visit counts differ only in when the
+   * floor engaged rather than in what the re-entry pass searched. Like the manager it wraps, an
+   * instance carries single-execution state and must not be reused across queries.
+   */
+  private static class RecordingKnnCollectorManager implements KnnCollectorManager {
+    private final KnnCollectorManager delegate;
+    private final boolean optimistic;
+    private final List<KnnCollector> collectors = new ArrayList<>();
+
+    RecordingKnnCollectorManager(KnnCollectorManager delegate, boolean optimistic) {
+      this.delegate = delegate;
+      this.optimistic = optimistic;
+    }
+
+    @Override
+    public KnnCollector newCollector(
+        int visitedLimit, KnnSearchStrategy searchStrategy, LeafReaderContext context)
+        throws IOException {
+      return record(delegate.newCollector(visitedLimit, searchStrategy, context));
+    }
+
+    @Override
+    public KnnCollector newOptimisticCollector(
+        int visitedLimit, KnnSearchStrategy searchStrategy, LeafReaderContext context, int k)
+        throws IOException {
+      return record(delegate.newOptimisticCollector(visitedLimit, searchStrategy, context, k));
+    }
+
+    @Override
+    public boolean isOptimistic() {
+      return optimistic;
+    }
+
+    private KnnCollector record(KnnCollector collector) {
+      collectors.add(collector);
+      return collector;
+    }
+
+    long totalVisits() {
+      long sum = 0;
+      for (KnnCollector collector : collectors) {
+        sum += collector.visitedCount();
+      }
+      return sum;
+    }
+  }
+
+  /**
+   * A {@link KnnFloatVectorQuery} routed through a caller-provided manager. Carries
+   * single-execution state through the manager and must not be reused.
+   */
+  private static class ManagedKnnQuery extends KnnFloatVectorQuery {
+    private final KnnCollectorManager manager;
+
+    ManagedKnnQuery(String field, float[] target, int k, KnnCollectorManager manager) {
+      super(field, target, k);
+      this.manager = manager;
+    }
+
+    @Override
+    protected KnnCollectorManager getKnnCollectorManager(int k, IndexSearcher searcher) {
+      return manager;
     }
   }
 

@@ -332,8 +332,9 @@ public final class SharedFloorKnnCollectorManager implements KnnCollectorManager
       int visitedLimit, KnnSearchStrategy searchStrategy, LeafReaderContext context, int perLeafK)
       throws IOException {
     // The local queue is sized to the segment's pro-rata share; the floor itself always tracks
-    // the full k best across the query. Activation is decided by the query's k, not the segment's
-    // share: the policy is about the query.
+    // the full k best across the query. Whether floor sharing engages is decided by the query's
+    // k against floorActivationK, never by this segment's perLeafK, so that every segment of the
+    // same query makes the same engage decision.
     TopKnnCollector collector = new TopKnnCollector(perLeafK, visitedLimit, searchStrategy);
     if (k < floorActivationK) {
       return collector;

@@ -20,7 +20,11 @@ package org.apache.lucene.sandbox.search.knn;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * A blocking bounded min heap that stores floats. The top element is the lowest value of the heap.
+ * A bounded min heap that stores floats. The top element is the lowest value of the heap.
+ *
+ * <p>Despite the name (kept from the historical class this one was resurrected from), nothing
+ * blocks: every operation takes an internal lock and returns immediately, which is what {@link
+ * GlobalKnnFloor} needs from a heap shared by concurrent publishers.
  *
  * <p>A primitive priority queue that maintains a partial ordering of its elements such that the
  * least element can always be found in constant time. Implementation is based on {@link
@@ -85,6 +89,9 @@ final class BlockingFloatHeap {
     }
     lock.lock();
     try {
+      // Walk the ascending input from largest to smallest: once the heap is full, a value that
+      // loses to the current top implies every remaining (smaller) value loses too, so the rest
+      // of the batch can be skipped.
       for (int i = len - 1; i >= 0; i--) {
         if (size < maxSize) {
           push(values[i]);
@@ -128,7 +135,10 @@ final class BlockingFloatHeap {
   }
 
   /**
-   * Retrieves, but does not remove, the head of this heap.
+   * Retrieves, but does not remove, the head of this heap. Unlike {@link #poll()}, an empty heap
+   * is not an error: the stale value in the heap slot is returned, which is meaningless, so
+   * callers must check {@link #size()} first — as {@link GlobalKnnFloor} does before publishing
+   * the heap's top.
    *
    * @return the head of the heap, the smallest value
    */

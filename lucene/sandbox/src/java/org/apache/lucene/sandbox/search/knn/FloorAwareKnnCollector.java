@@ -173,9 +173,11 @@ public final class FloorAwareKnnCollector extends KnnCollector.Decorator {
   private final boolean publishToFloor;
 
   /**
-   * The best {@code max(minExplorationSlots, (1 - greediness) * k)} similarities seen by this
+   * The best {@code max(minExplorationSlots, (1 - greediness) * gateK)} similarities seen by this
    * collector, competitive or not. Its minimum caps the effective bound, implementing the
-   * greediness clamp.
+   * greediness clamp. The sizing follows {@code gateK}, not the local queue's capacity: the clamp
+   * protects the share-sized search the gate defines, so a gate below the queue size narrows the
+   * clamp with it (see the class comment's caution about low greediness with a below-queue gate).
    */
   private final FloatHeap nonCompetitiveQueue;
 
