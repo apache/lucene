@@ -35,7 +35,7 @@ import org.apache.lucene.util.InfoStream;
  * <p>The assertion keys on the InfoStream message of {@code MergingHnswGraphBuilder}, used by the
  * single threaded merger that the default format selects ({@code numMergeWorkers} is 1).
  */
-public class TestHnswGraphReuse extends LuceneTestCase {
+public class TestHnswGraphReuseDuringMerge extends LuceneTestCase {
 
   private static final int DIM = 8;
   private static final int SEGMENTS = 2;
