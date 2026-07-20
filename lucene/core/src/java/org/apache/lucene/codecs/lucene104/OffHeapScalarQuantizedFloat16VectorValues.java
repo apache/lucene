@@ -25,7 +25,7 @@ import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.codecs.lucene95.HasIndexSlice;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
-import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
@@ -37,22 +37,16 @@ import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
 
 /**
- * Reads quantized vector values from the index input and returns float vector values after
+ * Reads quantized vector values from the index input and returns float16 vector values after
  * dequantizing them.
  *
- * <p>This class provides functionality to read quantized vectors which are stored in the index, and
- * then dequantize them back to float vectors with some precision loss. The implementation is based
- * on {@code OffHeapScalarQuantizedVectorValues} with modifications to the {@code vectorValue()}
- * method to return float vectors after dequantizing the vectors.
- *
- * <p>Usage: This class is used for read-only indexes where full-precision float vectors have been
- * dropped from the index to save storage space. Full-precision vectors can be removed from an index
- * using a method as implemented in {@code
- * TestLucene104ScalarQuantizedVectorsFormat.simulateEmptyRawVectors()}.
+ * <p>Used for read-only indexes whose full-precision vectors have been dropped to save storage:
+ * only the scalar-quantized bytes remain, so {@link #vectorValue(int)} reconstructs float16 values
+ * by dequantizing them, with some precision loss.
  *
  * @lucene.internal
  */
-abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
+abstract class OffHeapScalarQuantizedFloat16VectorValues extends Float16VectorValues
     implements HasIndexSlice {
 
   final int dimension;
@@ -61,7 +55,7 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
   final FlatVectorsScorer vectorsScorer;
 
   final IndexInput slice;
-  final float[] vectorValue;
+  final short[] vectorValue;
   final byte[] byteValue;
   final ByteBuffer byteBuffer;
   final byte[] unpackedByteVectorValue;
@@ -72,7 +66,7 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
   final ScalarEncoding encoding;
   final float[] centroid;
 
-  OffHeapScalarQuantizedFloatVectorValues(
+  OffHeapScalarQuantizedFloat16VectorValues(
       int dimension,
       int size,
       float[] centroid,
@@ -91,7 +85,7 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
     int docPackedLength = encoding.getDocPackedLength(dimension);
     this.byteSize = docPackedLength + (Float.BYTES * 3) + Integer.BYTES;
     this.byteBuffer = ByteBuffer.allocate(docPackedLength);
-    this.vectorValue = new float[dimension];
+    this.vectorValue = new short[dimension];
     this.byteValue = byteBuffer.array();
     this.unpackedByteVectorValue = new byte[dimension];
   }
@@ -107,7 +101,7 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
   }
 
   @Override
-  public float[] vectorValue(int targetOrd) throws IOException {
+  public short[] vectorValue(int targetOrd) throws IOException {
     if (lastOrd == targetOrd) {
       return vectorValue;
     }
@@ -178,7 +172,7 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
     return slice;
   }
 
-  static OffHeapScalarQuantizedFloatVectorValues load(
+  static OffHeapScalarQuantizedFloat16VectorValues load(
       OrdToDocDISIReaderConfiguration configuration,
       int dimension,
       int size,
@@ -191,20 +185,20 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
       IndexInput vectorData)
       throws IOException {
     if (configuration.isEmpty()) {
-      return new OffHeapScalarQuantizedFloatVectorValues.EmptyOffHeapVectorValues(
+      return new OffHeapScalarQuantizedFloat16VectorValues.EmptyOffHeapVectorValues(
           dimension, similarityFunction, vectorsScorer);
     }
     assert centroid != null;
     IndexInput bytesSlice =
         vectorData.slice(
-            "scalar-quantized-float-vector-data",
+            "scalar-quantized-float16-vector-data",
             quantizedVectorDataOffset,
             quantizedVectorDataLength);
     if (configuration.isDense()) {
-      return new OffHeapScalarQuantizedFloatVectorValues.DenseOffHeapVectorValues(
+      return new OffHeapScalarQuantizedFloat16VectorValues.DenseOffHeapVectorValues(
           dimension, size, centroid, encoding, similarityFunction, vectorsScorer, bytesSlice);
     } else {
-      return new OffHeapScalarQuantizedFloatVectorValues.SparseOffHeapVectorValues(
+      return new OffHeapScalarQuantizedFloat16VectorValues.SparseOffHeapVectorValues(
           configuration,
           dimension,
           size,
@@ -218,7 +212,7 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
   }
 
   /** Dense off-heap scalar quantized vector values */
-  private static class DenseOffHeapVectorValues extends OffHeapScalarQuantizedFloatVectorValues {
+  private static class DenseOffHeapVectorValues extends OffHeapScalarQuantizedFloat16VectorValues {
     DenseOffHeapVectorValues(
         int dimension,
         int size,
@@ -231,9 +225,9 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
     }
 
     @Override
-    public OffHeapScalarQuantizedFloatVectorValues.DenseOffHeapVectorValues copy()
+    public OffHeapScalarQuantizedFloat16VectorValues.DenseOffHeapVectorValues copy()
         throws IOException {
-      return new OffHeapScalarQuantizedFloatVectorValues.DenseOffHeapVectorValues(
+      return new OffHeapScalarQuantizedFloat16VectorValues.DenseOffHeapVectorValues(
           dimension, size, centroid, encoding, similarityFunction, vectorsScorer, slice.clone());
     }
 
@@ -243,8 +237,8 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
     }
 
     @Override
-    public VectorScorer scorer(float[] target) throws IOException {
-      OffHeapScalarQuantizedFloatVectorValues.DenseOffHeapVectorValues copy = copy();
+    public VectorScorer scorer(short[] target) throws IOException {
+      OffHeapScalarQuantizedFloat16VectorValues.DenseOffHeapVectorValues copy = copy();
       DocIndexIterator iterator = copy.iterator();
       RandomVectorScorer scorer =
           vectorsScorer.getRandomVectorScorer(similarityFunction, copy, target);
@@ -273,10 +267,10 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
   }
 
   /** Sparse off-heap scalar quantized vector values */
-  private static class SparseOffHeapVectorValues extends OffHeapScalarQuantizedFloatVectorValues {
+  private static class SparseOffHeapVectorValues extends OffHeapScalarQuantizedFloat16VectorValues {
     private final DirectMonotonicReader ordToDoc;
     private final IndexedDISI disi;
-    // dataIn was used to init a new IndexedDIS for #randomAccess()
+    // dataIn was used to init a new IndexedDISI for #randomAccess()
     private final IndexInput dataIn;
     private final OrdToDocDISIReaderConfiguration configuration;
 
@@ -299,9 +293,9 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
     }
 
     @Override
-    public OffHeapScalarQuantizedFloatVectorValues.SparseOffHeapVectorValues copy()
+    public OffHeapScalarQuantizedFloat16VectorValues.SparseOffHeapVectorValues copy()
         throws IOException {
-      return new OffHeapScalarQuantizedFloatVectorValues.SparseOffHeapVectorValues(
+      return new OffHeapScalarQuantizedFloat16VectorValues.SparseOffHeapVectorValues(
           configuration,
           dimension,
           size,
@@ -342,8 +336,8 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
     }
 
     @Override
-    public VectorScorer scorer(float[] target) throws IOException {
-      OffHeapScalarQuantizedFloatVectorValues.SparseOffHeapVectorValues copy = copy();
+    public VectorScorer scorer(short[] target) throws IOException {
+      OffHeapScalarQuantizedFloat16VectorValues.SparseOffHeapVectorValues copy = copy();
       DocIndexIterator iterator = copy.iterator();
       RandomVectorScorer scorer =
           vectorsScorer.getRandomVectorScorer(similarityFunction, copy, target);
@@ -367,7 +361,7 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
   }
 
   /** Empty vector values */
-  private static class EmptyOffHeapVectorValues extends OffHeapScalarQuantizedFloatVectorValues {
+  private static class EmptyOffHeapVectorValues extends OffHeapScalarQuantizedFloat16VectorValues {
     EmptyOffHeapVectorValues(
         int dimension,
         VectorSimilarityFunction similarityFunction,
@@ -388,7 +382,7 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
     }
 
     @Override
-    public OffHeapScalarQuantizedFloatVectorValues.DenseOffHeapVectorValues copy() {
+    public OffHeapScalarQuantizedFloat16VectorValues.DenseOffHeapVectorValues copy() {
       throw new UnsupportedOperationException();
     }
 
@@ -398,7 +392,7 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
     }
 
     @Override
-    public VectorScorer scorer(float[] target) {
+    public VectorScorer scorer(short[] target) {
       return null;
     }
   }
