@@ -62,6 +62,7 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.FixedBitSetCollector;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.RamUsageTester;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
@@ -2647,5 +2648,23 @@ public class TestPointQueries extends LuceneTestCase {
             + RamUsageEstimator.sizeOfObject(q.lowerPoint)
             + RamUsageEstimator.sizeOfObject(q.upperPoint);
     assertEquals(expected, q.ramBytesUsed());
+  }
+
+  public void testRamBytesUsedMatchesActualWithinTolerance() {
+    // Independent cross-check against a full object-graph walk; guards against the
+    // case where the byte-exact test and the implementation drift together.
+    // Mirrors TestTermInSetQuery#testRamBytesUsed (many entries, 5% margin).
+    final int numPoints = 10000 + random().nextInt(1000);
+    final byte[][] values = new byte[numPoints][];
+    for (int i = 0; i < numPoints; i++) {
+      values[i] = new byte[8];
+      random().nextBytes(values[i]);
+    }
+    PointInSetQuery query = (PointInSetQuery) BinaryPoint.newSetQuery("f", values);
+    final long actualRamBytesUsed = RamUsageTester.ramUsed(query);
+    final long expectedRamBytesUsed = query.ramBytesUsed();
+    // error margin within 5%
+    assertEquals(
+        (double) expectedRamBytesUsed, (double) actualRamBytesUsed, actualRamBytesUsed / 20.d);
   }
 }
