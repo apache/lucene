@@ -21,13 +21,11 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.junit.Test;
 
 /** Tests for {@link org.apache.lucene.classification.KNearestNeighborClassifier} */
 public class TestKNearestNeighborDocumentClassifier
     extends DocumentClassificationTestBase<BytesRef> {
 
-  @Test
   public void testBasicDocumentClassification() throws Exception {
     try {
       Document videoGameDocument = getVideoGameDocument();
@@ -45,7 +43,7 @@ public class TestKNearestNeighborDocumentClassifier
               new String[] {textFieldName, titleFieldName, authorFieldName});
       checkCorrectDocumentClassification(classifier, videoGameDocument, VIDEOGAME_RESULT);
       checkCorrectDocumentClassification(classifier, batmanDocument, BATMAN_RESULT);
-      // considering only the text we have wrong classification because the text was ambiguos on
+      // considering only the text we have wrong classification because the text was ambiguous on
       // purpose
       checkCorrectDocumentClassification(
           new KNearestNeighborDocumentClassifier(
@@ -79,7 +77,6 @@ public class TestKNearestNeighborDocumentClassifier
     }
   }
 
-  @Test
   public void testBasicDocumentClassificationScore() throws Exception {
     try {
       Document videoGameDocument = getVideoGameDocument();
@@ -100,7 +97,7 @@ public class TestKNearestNeighborDocumentClassifier
       assertEquals(1.0, score1, 0);
       double score2 = checkCorrectDocumentClassification(classifier, batmanDocument, BATMAN_RESULT);
       assertEquals(1.0, score2, 0);
-      // considering only the text we have wrong classification because the text was ambiguos on
+      // considering only the text we have wrong classification because the text was ambiguous on
       // purpose
       double score3 =
           checkCorrectDocumentClassification(
@@ -137,7 +134,6 @@ public class TestKNearestNeighborDocumentClassifier
     }
   }
 
-  @Test
   public void testBoostedDocumentClassification() throws Exception {
     try {
       checkCorrectDocumentClassification(
@@ -151,7 +147,7 @@ public class TestKNearestNeighborDocumentClassifier
               categoryFieldName,
               field2analyzer,
               new String[] {textFieldName, titleFieldName + "^100", authorFieldName}),
-          getBatmanAmbiguosDocument(),
+          getBatmanAmbiguousDocument(),
           BATMAN_RESULT);
       // considering without boost wrong classification will appear
       checkCorrectDocumentClassification(
@@ -165,14 +161,13 @@ public class TestKNearestNeighborDocumentClassifier
               categoryFieldName,
               field2analyzer,
               new String[] {textFieldName, titleFieldName, authorFieldName}),
-          getBatmanAmbiguosDocument(),
+          getBatmanAmbiguousDocument(),
           VIDEOGAME_RESULT);
     } finally {
       IOUtils.close(indexReader);
     }
   }
 
-  @Test
   public void testBasicDocumentClassificationWithQuery() throws Exception {
     try {
       TermQuery query = new TermQuery(new Term(authorFieldName, "ign"));

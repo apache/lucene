@@ -30,16 +30,16 @@ import org.apache.lucene.util.Version;
  * only upgrading segments that are created by previous Lucene versions. forceMerge does no longer
  * really merge; it is just used to &quot;forceMerge&quot; older segment versions away.
  *
- * <p>In general one would use {@link IndexUpgrader}, but for a fully customizeable upgrade, you can
+ * <p>In general one would use {@link IndexUpgrader}, but for a fully customizable upgrade, you can
  * use this like any other {@code MergePolicy} and call {@link IndexWriter#forceMerge(int)}:
  *
- * <pre class="prettyprint lang-java">
+ * <pre><code class="language-java">
  *  IndexWriterConfig iwc = new IndexWriterConfig(Version.LUCENE_XX, new KeywordAnalyzer());
  *  iwc.setMergePolicy(new UpgradeIndexMergePolicy(iwc.getMergePolicy()));
  *  IndexWriter w = new IndexWriter(dir, iwc);
  *  w.forceMerge(1);
  *  w.close();
- * </pre>
+ * </code></pre>
  *
  * <p><b>Warning:</b> This merge policy may reorder documents if the index was partially upgraded
  * before calling forceMerge (e.g., documents were added). If your application relies on

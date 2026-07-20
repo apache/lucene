@@ -71,7 +71,7 @@ public class TestFSTsMisc extends LuceneTestCase {
           final String term = FSTTester.getRandomString(random);
           termsSet.add(FSTTester.toIntsRef(term, inputMode));
         }
-        doTest(inputMode, termsSet.toArray(new IntsRef[termsSet.size()]));
+        doTest(inputMode, termsSet.toArray(IntsRef[]::new));
       }
     }
   }

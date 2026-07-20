@@ -17,6 +17,7 @@
 package org.apache.lucene.expressions.js;
 
 import org.apache.lucene.expressions.Expression;
+import org.junit.jupiter.api.Test;
 
 public class TestJavascriptOperations extends CompilerTestCase {
   private void assertEvaluatesTo(String expression, long expected) throws Exception {
@@ -25,6 +26,7 @@ public class TestJavascriptOperations extends CompilerTestCase {
     assertEquals(expected, actual);
   }
 
+  @Test
   public void testNegationOperation() throws Exception {
     assertEvaluatesTo("-1", -1);
     assertEvaluatesTo("--1", 1);
@@ -33,6 +35,7 @@ public class TestJavascriptOperations extends CompilerTestCase {
     assertEvaluatesTo("--0", 0);
   }
 
+  @Test
   public void testAddOperation() throws Exception {
     assertEvaluatesTo("1+1", 2);
     assertEvaluatesTo("1+0.5+0.5", 2);
@@ -45,6 +48,7 @@ public class TestJavascriptOperations extends CompilerTestCase {
     assertEvaluatesTo("0+0", 0);
   }
 
+  @Test
   public void testSubtractOperation() throws Exception {
     assertEvaluatesTo("1-1", 0);
     assertEvaluatesTo("5-10", -5);
@@ -57,6 +61,7 @@ public class TestJavascriptOperations extends CompilerTestCase {
     assertEvaluatesTo("0-0", 0);
   }
 
+  @Test
   public void testMultiplyOperation() throws Exception {
     assertEvaluatesTo("1*1", 1);
     assertEvaluatesTo("5*10", 50);
@@ -68,6 +73,7 @@ public class TestJavascriptOperations extends CompilerTestCase {
     assertEvaluatesTo("0*0", 0);
   }
 
+  @Test
   public void testDivisionOperation() throws Exception {
     assertEvaluatesTo("1*1", 1);
     assertEvaluatesTo("10/5", 2);
@@ -78,6 +84,7 @@ public class TestJavascriptOperations extends CompilerTestCase {
     assertEvaluatesTo("1/0", 9223372036854775807L);
   }
 
+  @Test
   public void testModuloOperation() throws Exception {
     assertEvaluatesTo("1%1", 0);
     assertEvaluatesTo("10%3", 1);
@@ -86,6 +93,7 @@ public class TestJavascriptOperations extends CompilerTestCase {
     assertEvaluatesTo("27%(9%5)", 3);
   }
 
+  @Test
   public void testLessThanOperation() throws Exception {
     assertEvaluatesTo("1 < 1", 0);
     assertEvaluatesTo("2 < 1", 0);
@@ -97,6 +105,7 @@ public class TestJavascriptOperations extends CompilerTestCase {
     assertEvaluatesTo("-1 < 0", 1);
   }
 
+  @Test
   public void testLessThanEqualsOperation() throws Exception {
     assertEvaluatesTo("1 <= 1", 1);
     assertEvaluatesTo("2 <= 1", 0);
@@ -108,6 +117,7 @@ public class TestJavascriptOperations extends CompilerTestCase {
     assertEvaluatesTo("-1 <= 0", 1);
   }
 
+  @Test
   public void testGreaterThanOperation() throws Exception {
     assertEvaluatesTo("1 > 1", 0);
     assertEvaluatesTo("2 > 1", 1);
@@ -119,6 +129,7 @@ public class TestJavascriptOperations extends CompilerTestCase {
     assertEvaluatesTo("-1 > 0", 0);
   }
 
+  @Test
   public void testGreaterThanEqualsOperation() throws Exception {
     assertEvaluatesTo("1 >= 1", 1);
     assertEvaluatesTo("2 >= 1", 1);
@@ -130,6 +141,7 @@ public class TestJavascriptOperations extends CompilerTestCase {
     assertEvaluatesTo("-1 >= 0", 0);
   }
 
+  @Test
   public void testEqualsOperation() throws Exception {
     assertEvaluatesTo("1 == 1", 1);
     assertEvaluatesTo("0 == 0", 1);
@@ -145,6 +157,7 @@ public class TestJavascriptOperations extends CompilerTestCase {
     assertEvaluatesTo("-2 == -1", 0);
   }
 
+  @Test
   public void testNotEqualsOperation() throws Exception {
     assertEvaluatesTo("1 != 1", 0);
     assertEvaluatesTo("0 != 0", 0);
@@ -160,6 +173,7 @@ public class TestJavascriptOperations extends CompilerTestCase {
     assertEvaluatesTo("-2 != -1", 1);
   }
 
+  @Test
   public void testBoolNotOperation() throws Exception {
     assertEvaluatesTo("!1", 0);
     assertEvaluatesTo("!!1", 1);
@@ -170,6 +184,7 @@ public class TestJavascriptOperations extends CompilerTestCase {
     assertEvaluatesTo("!-2", 0);
   }
 
+  @Test
   public void testBoolAndOperation() throws Exception {
     assertEvaluatesTo("1 && 1", 1);
     assertEvaluatesTo("1 && 0", 0);
@@ -181,6 +196,7 @@ public class TestJavascriptOperations extends CompilerTestCase {
     assertEvaluatesTo("-0 && -0", 0);
   }
 
+  @Test
   public void testBoolOrOperation() throws Exception {
     assertEvaluatesTo("1 || 1", 1);
     assertEvaluatesTo("1 || 0", 1);
@@ -192,6 +208,7 @@ public class TestJavascriptOperations extends CompilerTestCase {
     assertEvaluatesTo("-0 || -0", 0);
   }
 
+  @Test
   public void testConditionalOperation() throws Exception {
     assertEvaluatesTo("1 ? 2 : 3", 2);
     assertEvaluatesTo("-1 ? 2 : 3", 2);
@@ -206,6 +223,7 @@ public class TestJavascriptOperations extends CompilerTestCase {
     assertEvaluatesTo("(0 ? 1 : 0) ? 3 : 4", 4);
   }
 
+  @Test
   public void testBitShiftLeft() throws Exception {
     assertEvaluatesTo("1 << 1", 2);
     assertEvaluatesTo("2 << 1", 4);
@@ -220,6 +238,7 @@ public class TestJavascriptOperations extends CompilerTestCase {
     assertEvaluatesTo("-15 << 62", 4611686018427387904L);
   }
 
+  @Test
   public void testBitShiftRight() throws Exception {
     assertEvaluatesTo("1 >> 1", 0);
     assertEvaluatesTo("2 >> 1", 1);
@@ -234,6 +253,7 @@ public class TestJavascriptOperations extends CompilerTestCase {
     assertEvaluatesTo("-2147483646 >> 1", -1073741823);
   }
 
+  @Test
   public void testBitShiftRightUnsigned() throws Exception {
     assertEvaluatesTo("1 >>> 1", 0);
     assertEvaluatesTo("2 >>> 1", 1);
@@ -248,6 +268,7 @@ public class TestJavascriptOperations extends CompilerTestCase {
     assertEvaluatesTo("2147483648 >>> 1", 1073741824);
   }
 
+  @Test
   public void testBitwiseAnd() throws Exception {
     assertEvaluatesTo("4 & 4", 4);
     assertEvaluatesTo("3 & 2", 2);
@@ -259,6 +280,7 @@ public class TestJavascriptOperations extends CompilerTestCase {
     assertEvaluatesTo("1 & 0", 0);
   }
 
+  @Test
   public void testBitwiseOr() throws Exception {
     assertEvaluatesTo("4 | 4", 4);
     assertEvaluatesTo("5 | 2", 7);
@@ -270,6 +292,7 @@ public class TestJavascriptOperations extends CompilerTestCase {
     assertEvaluatesTo("1 | 0", 1);
   }
 
+  @Test
   public void testBitwiseXor() throws Exception {
     assertEvaluatesTo("4 ^ 4", 0);
     assertEvaluatesTo("5 ^ 2", 7);
@@ -282,6 +305,7 @@ public class TestJavascriptOperations extends CompilerTestCase {
     assertEvaluatesTo("0 ^ 0", 0);
   }
 
+  @Test
   public void testBitwiseNot() throws Exception {
     assertEvaluatesTo("~-5", 4);
     assertEvaluatesTo("~25", -26);
@@ -289,6 +313,7 @@ public class TestJavascriptOperations extends CompilerTestCase {
     assertEvaluatesTo("~-1", 0);
   }
 
+  @Test
   public void testDecimalConst() throws Exception {
     assertEvaluatesTo("0", 0);
     assertEvaluatesTo("1", 1);
@@ -298,6 +323,7 @@ public class TestJavascriptOperations extends CompilerTestCase {
     assertEvaluatesTo("500E-2", 5);
   }
 
+  @Test
   public void testHexConst() throws Exception {
     assertEvaluatesTo("0x0", 0);
     assertEvaluatesTo("0x1", 1);
@@ -309,6 +335,7 @@ public class TestJavascriptOperations extends CompilerTestCase {
     assertEvaluatesTo("0xA << 2", 0xA << 2);
   }
 
+  @Test
   public void testHexConst2() throws Exception {
     assertEvaluatesTo("0X0", 0);
     assertEvaluatesTo("0X1", 1);
@@ -316,6 +343,7 @@ public class TestJavascriptOperations extends CompilerTestCase {
     assertEvaluatesTo("0X1234ABCDEF", 78193085935L);
   }
 
+  @Test
   public void testOctalConst() throws Exception {
     assertEvaluatesTo("00", 0);
     assertEvaluatesTo("01", 1);

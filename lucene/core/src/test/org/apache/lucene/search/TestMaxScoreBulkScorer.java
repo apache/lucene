@@ -23,6 +23,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
@@ -35,6 +36,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.search.RandomApproximationQuery;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
 
 // These basic tests are similar to some of the tests in TestWANDScorer, and may not need to be kept
 public class TestMaxScoreBulkScorer extends LuceneTestCase {
@@ -638,6 +640,209 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     dir.close();
   }
 
+  /**
+   * Test that the bitset-based filter path in MaxScoreBulkScorer is exercised when the filter is
+   * dense enough. This creates a filter whose cost exceeds maxDoc/32 (the density threshold) so
+   * that filterMatches is non-null and fillScoreBufferViaBitSet is used.
+   */
+  public void testFilteredDisjunctionWithDenseFilter() throws Exception {
+    try (Directory dir = newDirectory()) {
+      // We need maxDoc >= INNER_WINDOW_SIZE (4096) and filter.cost >= maxDoc/32.
+      // Create INNER_WINDOW_SIZE + 1 docs. Add the filter term "F" to all of them,
+      // and scoring terms "A" and "C" to specific docs.
+      int numDocs = MaxScoreBulkScorer.INNER_WINDOW_SIZE + 1;
+      try (IndexWriter w =
+          new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()))) {
+        for (int i = 0; i < numDocs; i++) {
+          Document doc = new Document();
+          // Dense filter: every doc matches
+          doc.add(new StringField("foo", "F", Field.Store.NO));
+          if (i == 0 || i == 1) {
+            doc.add(new StringField("foo", "A", Field.Store.NO));
+          }
+          if (i == 1 || i == 2) {
+            doc.add(new StringField("foo", "C", Field.Store.NO));
+          }
+          w.addDocument(doc);
+        }
+        w.forceMerge(1);
+      }
+
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = newSearcher(reader);
+
+        Query clause1 =
+            new BoostQuery(new ConstantScoreQuery(new TermQuery(new Term("foo", "A"))), 2);
+        Query clause2 = new ConstantScoreQuery(new TermQuery(new Term("foo", "C")));
+        Query filter = new TermQuery(new Term("foo", "F"));
+        LeafReaderContext context = searcher.getIndexReader().leaves().get(0);
+
+        // Verify the filter is dense enough to trigger the bitset path
+        Scorer filterCheck =
+            searcher
+                .createWeight(searcher.rewrite(filter), ScoreMode.TOP_SCORES, 1f)
+                .scorer(context);
+        assertTrue(
+            "filter should be dense enough for bitset path",
+            filterCheck.iterator().cost()
+                >= context.reader().maxDoc()
+                    / DenseConjunctionBulkScorer.DENSITY_THRESHOLD_INVERSE);
+
+        Scorer scorer1 =
+            searcher
+                .createWeight(searcher.rewrite(clause1), ScoreMode.TOP_SCORES, 1f)
+                .scorer(context);
+        Scorer scorer2 =
+            searcher
+                .createWeight(searcher.rewrite(clause2), ScoreMode.TOP_SCORES, 1f)
+                .scorer(context);
+        Scorer filterScorer =
+            searcher
+                .createWeight(searcher.rewrite(filter), ScoreMode.TOP_SCORES, 1f)
+                .scorer(context);
+
+        BulkScorer scorer =
+            new MaxScoreBulkScorer(
+                context.reader().maxDoc(), Arrays.asList(scorer1, scorer2), filterScorer);
+
+        // Doc 0: has A (score=2), filter matches
+        // Doc 1: has A+C (score=2+1=3), filter matches
+        // Doc 2: has C (score=1), filter matches
+        scorer.score(
+            new LeafCollector() {
+
+              private int i;
+              private Scorable scorer;
+
+              @Override
+              public void setScorer(Scorable scorer) throws IOException {
+                this.scorer = scorer;
+              }
+
+              @Override
+              public void collect(int doc) throws IOException {
+                switch (i++) {
+                  case 0:
+                    assertEquals(0, doc);
+                    assertEquals(2, scorer.score(), 0);
+                    break;
+                  case 1:
+                    assertEquals(1, doc);
+                    assertEquals(2 + 1, scorer.score(), 0);
+                    break;
+                  case 2:
+                    assertEquals(2, doc);
+                    assertEquals(1, scorer.score(), 0);
+                    break;
+                  default:
+                    fail();
+                    break;
+                }
+              }
+            },
+            null,
+            0,
+            DocIdSetIterator.NO_MORE_DOCS);
+      }
+    }
+  }
+
+  /**
+   * Test the bitset-based filter path with acceptDocs (live docs) to verify that deleted docs are
+   * correctly excluded when the filter is loaded into a bitset.
+   */
+  public void testFilteredDisjunctionWithDenseFilterAndAcceptDocs() throws Exception {
+    try (Directory dir = newDirectory()) {
+      int numDocs = MaxScoreBulkScorer.INNER_WINDOW_SIZE + 1;
+      try (IndexWriter w =
+          new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()))) {
+        for (int i = 0; i < numDocs; i++) {
+          Document doc = new Document();
+          doc.add(new StringField("foo", "F", Field.Store.NO));
+          if (i == 0 || i == 1 || i == 2) {
+            doc.add(new StringField("foo", "A", Field.Store.NO));
+          }
+          w.addDocument(doc);
+        }
+        w.forceMerge(1);
+      }
+
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = newSearcher(reader);
+
+        Query clause1 =
+            new BoostQuery(new ConstantScoreQuery(new TermQuery(new Term("foo", "A"))), 2);
+        Query filter = new TermQuery(new Term("foo", "F"));
+        LeafReaderContext context = searcher.getIndexReader().leaves().get(0);
+        Scorer scorer1 =
+            searcher
+                .createWeight(searcher.rewrite(clause1), ScoreMode.TOP_SCORES, 1f)
+                .scorer(context);
+        // Need at least 2 scoring clauses for MaxScoreBulkScorer
+        Query clause2 = new ConstantScoreQuery(new TermQuery(new Term("foo", "A")));
+        Scorer scorer2 =
+            searcher
+                .createWeight(searcher.rewrite(clause2), ScoreMode.TOP_SCORES, 1f)
+                .scorer(context);
+        Scorer filterScorer =
+            searcher
+                .createWeight(searcher.rewrite(filter), ScoreMode.TOP_SCORES, 1f)
+                .scorer(context);
+
+        BulkScorer bulkScorer =
+            new MaxScoreBulkScorer(
+                context.reader().maxDoc(), Arrays.asList(scorer1, scorer2), filterScorer);
+
+        // acceptDocs that excludes doc 1
+        Bits acceptDocs =
+            new Bits() {
+              @Override
+              public boolean get(int index) {
+                return index != 1;
+              }
+
+              @Override
+              public int length() {
+                return numDocs;
+              }
+            };
+
+        bulkScorer.score(
+            new LeafCollector() {
+
+              private int i;
+              private Scorable scorer;
+
+              @Override
+              public void setScorer(Scorable scorer) throws IOException {
+                this.scorer = scorer;
+              }
+
+              @Override
+              public void collect(int doc) throws IOException {
+                switch (i++) {
+                  case 0:
+                    assertEquals(0, doc);
+                    assertEquals(2 + 1, scorer.score(), 0);
+                    break;
+                  case 1:
+                    // doc 1 skipped by acceptDocs
+                    assertEquals(2, doc);
+                    assertEquals(2 + 1, scorer.score(), 0);
+                    break;
+                  default:
+                    fail();
+                    break;
+                }
+              }
+            },
+            acceptDocs,
+            0,
+            DocIdSetIterator.NO_MORE_DOCS);
+      }
+    }
+  }
+
   // This test simulates what happens over time for the query `the quick fox` as collection
   // progresses and the minimum competitive score increases.
   public void testPartition() throws IOException {
@@ -782,5 +987,495 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     Collections.shuffle(Arrays.asList(scorer.allScorers), random());
     scorer.updateMaxWindowScores(4, 100);
     assertFalse(scorer.partitionScorers()); // no possible match in this window
+  }
+
+  /**
+   * Test that fillScoreBufferViaBitSet doesn't produce a negative innerWindowSize when the filter
+   * iterator gets advanced past the outer window max, causing essentials to advance past max on the
+   * next inner window iteration.
+   */
+  public void testFilteredDisjunctionWithFilterGapCausingNegativeWindowSize() throws Exception {
+    try (Directory dir = newDirectory()) {
+      // Need 2 * INNER_WINDOW_SIZE docs so there's room for a second inner window.
+      // Filter only matches first INNER_WINDOW_SIZE docs, creating a gap.
+      int numDocs = 2 * MaxScoreBulkScorer.INNER_WINDOW_SIZE;
+      try (IndexWriter w =
+          new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()))) {
+        for (int i = 0; i < numDocs; i++) {
+          Document doc = new Document();
+          if (i < MaxScoreBulkScorer.INNER_WINDOW_SIZE) {
+            // Dense filter: matches only in the first window
+            doc.add(new StringField("filter", "F", Field.Store.NO));
+          }
+          if (i == 0) {
+            doc.add(new StringField("foo", "A", Field.Store.NO));
+            doc.add(new StringField("foo", "B", Field.Store.NO));
+          }
+          // Place a scoring match beyond the filter range but within outerWindowMax
+          if (i == MaxScoreBulkScorer.INNER_WINDOW_SIZE + 4) {
+            doc.add(new StringField("foo", "A", Field.Store.NO));
+          }
+          w.addDocument(doc);
+        }
+        w.forceMerge(1);
+      }
+
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = newSearcher(reader);
+
+        Query clause1 =
+            new BoostQuery(new ConstantScoreQuery(new TermQuery(new Term("foo", "A"))), 2);
+        Query clause2 = new ConstantScoreQuery(new TermQuery(new Term("foo", "B")));
+        Query filter = new TermQuery(new Term("filter", "F"));
+        LeafReaderContext context = searcher.getIndexReader().leaves().get(0);
+
+        // Verify filter is dense enough for bitset path
+        Scorer filterCheck =
+            searcher
+                .createWeight(searcher.rewrite(filter), ScoreMode.TOP_SCORES, 1f)
+                .scorer(context);
+        assertTrue(
+            "filter should be dense enough for bitset path",
+            filterCheck.iterator().cost()
+                >= context.reader().maxDoc()
+                    / DenseConjunctionBulkScorer.DENSITY_THRESHOLD_INVERSE);
+
+        Scorer scorer1 =
+            searcher
+                .createWeight(searcher.rewrite(clause1), ScoreMode.TOP_SCORES, 1f)
+                .scorer(context);
+        Scorer scorer2 =
+            searcher
+                .createWeight(searcher.rewrite(clause2), ScoreMode.TOP_SCORES, 1f)
+                .scorer(context);
+        Scorer filterScorer =
+            searcher
+                .createWeight(searcher.rewrite(filter), ScoreMode.TOP_SCORES, 1f)
+                .scorer(context);
+
+        BulkScorer bulkScorer =
+            new MaxScoreBulkScorer(
+                context.reader().maxDoc(), Arrays.asList(scorer1, scorer2), filterScorer);
+
+        // Score with a max that allows a second inner window.
+        // After the first window, filter.doc = NO_MORE_DOCS (no filter matches >= 4096).
+        // Essential queue top is at INNER_WINDOW_SIZE + 4 (< max), triggering the bug
+        // in scoreInnerWindowWithFilter where the while loop advances essentials past max.
+        bulkScorer.score(
+            new LeafCollector() {
+
+              @Override
+              public void setScorer(Scorable scorer) throws IOException {}
+
+              @Override
+              public void collect(int doc) throws IOException {
+                // Doc 0 is the only doc matching both filter and scoring clauses
+                assertEquals(0, doc);
+              }
+            },
+            null,
+            0,
+            numDocs);
+      }
+    }
+  }
+
+  /**
+   * When the filter is sparse relative to the scorers, MaxScoreBulkScorer should use the leap-frog
+   * path (calling advance() on the filter) rather than the bitset path (calling intoBitSet()). This
+   * simulates a FilteredOrHighMed scenario: one dense scorer + one scorer sparser than the filter.
+   */
+  public void testSparseFilterUsesLeapFrog() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig());
+    for (int i = 0; i < 10000; i++) {
+      Document doc = new Document();
+      doc.add(new TextField("body", "high", Field.Store.NO));
+      if (i % 50 == 0) {
+        doc.add(new TextField("body", "medium", Field.Store.NO));
+      }
+      if (i % 20 == 0) {
+        doc.add(new TextField("filter", "yes", Field.Store.NO));
+      }
+      w.addDocument(doc);
+    }
+    w.close();
+
+    DirectoryReader reader = DirectoryReader.open(dir);
+    IndexSearcher searcher = new IndexSearcher(reader);
+    searcher.setQueryCache(null);
+
+    // minScorerCost = min(10000, 200) = 200 < filter.cost(500) → leap-frog
+    int[] intoBitSetCalls = {0};
+    int[] advanceCalls = {0};
+
+    Query filterQuery =
+        new CountingFilterQuery(
+            new TermQuery(new Term("filter", "yes")), intoBitSetCalls, advanceCalls);
+
+    BooleanQuery innerOr =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("body", "high")), Occur.SHOULD)
+            .add(new TermQuery(new Term("body", "medium")), Occur.SHOULD)
+            .build();
+
+    BooleanQuery outerQuery =
+        new BooleanQuery.Builder().add(innerOr, Occur.MUST).add(filterQuery, Occur.FILTER).build();
+
+    Query rewritten = searcher.rewrite(outerQuery);
+    Weight weight = searcher.createWeight(rewritten, ScoreMode.TOP_SCORES, 1f);
+    for (LeafReaderContext ctx : reader.leaves()) {
+      ScorerSupplier ss = weight.scorerSupplier(ctx);
+      if (ss != null) {
+        BulkScorer bs = ss.bulkScorer();
+        assertTrue(
+            "Expected MaxScoreBulkScorer but got " + bs.getClass().getSimpleName(),
+            bs instanceof MaxScoreBulkScorer);
+        bs.score(
+            new LeafCollector() {
+              @Override
+              public void setScorer(Scorable scorer) {}
+
+              @Override
+              public void collect(int doc) {}
+            },
+            null,
+            0,
+            DocIdSetIterator.NO_MORE_DOCS);
+      }
+    }
+
+    assertTrue(
+        "Expected advance() calls (leap-frog) but got intoBitSet="
+            + intoBitSetCalls[0]
+            + " advance="
+            + advanceCalls[0],
+        advanceCalls[0] > 0);
+    assertEquals("Expected no intoBitSet() calls for sparse filter", 0, intoBitSetCalls[0]);
+
+    reader.close();
+    dir.close();
+  }
+
+  /**
+   * When all scorers are individually denser than the filter, MaxScoreBulkScorer should use the
+   * bitset path (calling intoBitSet() on the filter). This simulates a FilteredOrHighHigh scenario:
+   * both scorers have higher cost than the filter.
+   */
+  public void testDenseScorersUseBitSet() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig());
+    for (int i = 0; i < 10000; i++) {
+      Document doc = new Document();
+      if (i % 2 == 0) {
+        doc.add(new TextField("body", "dense1", Field.Store.NO));
+      }
+      if (i % 2 == 1) {
+        doc.add(new TextField("body", "dense2", Field.Store.NO));
+      }
+      if (i % 20 == 1) {
+        doc.add(new TextField("filter", "yes", Field.Store.NO));
+      }
+      w.addDocument(doc);
+    }
+    w.close();
+
+    DirectoryReader reader = DirectoryReader.open(dir);
+    IndexSearcher searcher = new IndexSearcher(reader);
+    searcher.setQueryCache(null);
+
+    // minScorerCost = min(5000, 5000) = 5000 >= filter.cost(500) → bitset path
+    int[] intoBitSetCalls = {0};
+    int[] advanceCalls = {0};
+
+    Query filterQuery =
+        new CountingFilterQuery(
+            new TermQuery(new Term("filter", "yes")), intoBitSetCalls, advanceCalls);
+
+    BooleanQuery innerOr =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("body", "dense1")), Occur.SHOULD)
+            .add(new TermQuery(new Term("body", "dense2")), Occur.SHOULD)
+            .build();
+
+    BooleanQuery outerQuery =
+        new BooleanQuery.Builder().add(innerOr, Occur.MUST).add(filterQuery, Occur.FILTER).build();
+
+    Query rewritten = searcher.rewrite(outerQuery);
+    Weight weight = searcher.createWeight(rewritten, ScoreMode.TOP_SCORES, 1f);
+    for (LeafReaderContext ctx : reader.leaves()) {
+      ScorerSupplier ss = weight.scorerSupplier(ctx);
+      if (ss != null) {
+        BulkScorer bs = ss.bulkScorer();
+        assertTrue(
+            "Expected MaxScoreBulkScorer but got " + bs.getClass().getSimpleName(),
+            bs instanceof MaxScoreBulkScorer);
+        bs.score(
+            new LeafCollector() {
+              @Override
+              public void setScorer(Scorable scorer) {}
+
+              @Override
+              public void collect(int doc) {}
+            },
+            null,
+            0,
+            DocIdSetIterator.NO_MORE_DOCS);
+      }
+    }
+
+    assertTrue(
+        "Expected intoBitSet() calls (bitset path) but got intoBitSet="
+            + intoBitSetCalls[0]
+            + " advance="
+            + advanceCalls[0],
+        intoBitSetCalls[0] > 0);
+
+    reader.close();
+    dir.close();
+  }
+
+  /**
+   * A query wrapper that counts intoBitSet() and advance() calls on the filter iterator. This lets
+   * us detect which path MaxScoreBulkScorer takes without exposing internal state.
+   */
+  private static class CountingFilterQuery extends Query {
+    private final Query delegate;
+    private final int[] intoBitSetCalls;
+    private final int[] advanceCalls;
+
+    CountingFilterQuery(Query delegate, int[] intoBitSetCalls, int[] advanceCalls) {
+      this.delegate = delegate;
+      this.intoBitSetCalls = intoBitSetCalls;
+      this.advanceCalls = advanceCalls;
+    }
+
+    @Override
+    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
+        throws IOException {
+      Weight inner = delegate.createWeight(searcher, scoreMode, boost);
+      return new FilterWeight(this, inner) {
+        @Override
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+          ScorerSupplier innerSS = inner.scorerSupplier(context);
+          if (innerSS == null) return null;
+          return new ScorerSupplier() {
+            @Override
+            public Scorer get(long leadCost) throws IOException {
+              Scorer innerScorer = innerSS.get(leadCost);
+              DocIdSetIterator innerIter = innerScorer.iterator();
+              DocIdSetIterator countingIter =
+                  new FilterDocIdSetIterator(innerIter) {
+                    @Override
+                    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset)
+                        throws IOException {
+                      intoBitSetCalls[0]++;
+                      in.intoBitSet(upTo, bitSet, offset);
+                    }
+
+                    @Override
+                    public int advance(int target) throws IOException {
+                      advanceCalls[0]++;
+                      return in.advance(target);
+                    }
+
+                    @Override
+                    public int nextDoc() throws IOException {
+                      return in.nextDoc();
+                    }
+
+                    @Override
+                    public int docID() {
+                      return in.docID();
+                    }
+                  };
+              return new ConstantScoreScorer(0f, scoreMode, countingIter);
+            }
+
+            @Override
+            public long cost() {
+              return innerSS.cost();
+            }
+          };
+        }
+      };
+    }
+
+    @Override
+    public void visit(QueryVisitor visitor) {
+      delegate.visit(visitor);
+    }
+
+    @Override
+    public String toString(String field) {
+      return "CountingFilter(" + delegate.toString(field) + ")";
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      return obj instanceof CountingFilterQuery cfq && delegate.equals(cfq.delegate);
+    }
+
+    @Override
+    public int hashCode() {
+      return 31 * classHash() + delegate.hashCode();
+    }
+  }
+
+  /**
+   * If the filter has no matches for a long prefix of the doc ID space (e.g. because the filtered
+   * field correlates with the index sort), {@link MaxScoreBulkScorer} should consult the filter's
+   * position before computing outer-window score bounds, so that it never spends time computing
+   * bounds over the empty prefix. Concretely: the very first window for which bounds are computed
+   * should already start at or after the filter's first match, rather than at the requested {@code
+   * min}.
+   */
+  public void testFilterGapSkipsBoundsComputationForEmptyPrefix() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig());
+    int numDocs = 1000;
+    int filterStart = numDocs - 100; // filter only matches the last 100 docs
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      doc.add(new TextField("body", "dense1", Field.Store.NO));
+      doc.add(new TextField("body", "dense2", Field.Store.NO));
+      if (i >= filterStart) {
+        doc.add(new StringField("filter", "yes", Field.Store.NO));
+      }
+      w.addDocument(doc);
+    }
+    w.close();
+
+    DirectoryReader reader = DirectoryReader.open(dir);
+    IndexSearcher searcher = new IndexSearcher(reader);
+    searcher.setQueryCache(null);
+
+    // Smallest `target`/`upTo` ever passed to advanceShallow()/getMaxScore() on an essential
+    // scorer. Once the fix is in place this should never be smaller than filterStart, since bounds
+    // should never be computed for the empty prefix before the filter's first match.
+    int[] minAdvanceShallowTarget = {Integer.MAX_VALUE};
+    int[] minGetMaxScoreUpTo = {Integer.MAX_VALUE};
+
+    Query dense1 =
+        new CountingScorerQuery(
+            new TermQuery(new Term("body", "dense1")), minAdvanceShallowTarget, minGetMaxScoreUpTo);
+    Query dense2 = new TermQuery(new Term("body", "dense2"));
+
+    BooleanQuery innerOr =
+        new BooleanQuery.Builder().add(dense1, Occur.SHOULD).add(dense2, Occur.SHOULD).build();
+
+    Query filter = new TermQuery(new Term("filter", "yes"));
+
+    BooleanQuery outerQuery =
+        new BooleanQuery.Builder().add(innerOr, Occur.MUST).add(filter, Occur.FILTER).build();
+
+    Query rewritten = searcher.rewrite(outerQuery);
+    Weight weight = searcher.createWeight(rewritten, ScoreMode.TOP_SCORES, 1f);
+    for (LeafReaderContext ctx : reader.leaves()) {
+      ScorerSupplier ss = weight.scorerSupplier(ctx);
+      if (ss != null) {
+        BulkScorer bs = ss.bulkScorer();
+        assertTrue(
+            "Expected MaxScoreBulkScorer but got " + bs.getClass().getSimpleName(),
+            bs instanceof MaxScoreBulkScorer);
+        bs.score(
+            new LeafCollector() {
+              @Override
+              public void setScorer(Scorable scorer) {}
+
+              @Override
+              public void collect(int doc) {}
+            },
+            null,
+            0,
+            DocIdSetIterator.NO_MORE_DOCS);
+      }
+    }
+
+    int minTarget = Math.min(minAdvanceShallowTarget[0], minGetMaxScoreUpTo[0]);
+    assertTrue(
+        "Expected advanceShallow()/getMaxScore() to never be called with a target before the "
+            + "filter's first match ("
+            + filterStart
+            + "), but saw target "
+            + minTarget,
+        minTarget >= filterStart);
+
+    reader.close();
+    dir.close();
+  }
+
+  /**
+   * A query wrapper that counts the smallest target/upTo ever passed to advanceShallow()/
+   * getMaxScore() on its scorer. This lets us detect whether MaxScoreBulkScorer computed score
+   * bounds for doc IDs before a given point, without exposing internal state.
+   */
+  private static class CountingScorerQuery extends Query {
+    private final Query delegate;
+    private final int[] minAdvanceShallowTarget;
+    private final int[] minGetMaxScoreUpTo;
+
+    CountingScorerQuery(Query delegate, int[] minAdvanceShallowTarget, int[] minGetMaxScoreUpTo) {
+      this.delegate = delegate;
+      this.minAdvanceShallowTarget = minAdvanceShallowTarget;
+      this.minGetMaxScoreUpTo = minGetMaxScoreUpTo;
+    }
+
+    @Override
+    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
+        throws IOException {
+      Weight inner = delegate.createWeight(searcher, scoreMode, boost);
+      return new FilterWeight(this, inner) {
+        @Override
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+          ScorerSupplier innerSS = inner.scorerSupplier(context);
+          if (innerSS == null) return null;
+          return new ScorerSupplier() {
+            @Override
+            public Scorer get(long leadCost) throws IOException {
+              Scorer innerScorer = innerSS.get(leadCost);
+              return new FilterScorer(innerScorer) {
+                @Override
+                public int advanceShallow(int target) throws IOException {
+                  minAdvanceShallowTarget[0] = Math.min(minAdvanceShallowTarget[0], target);
+                  return in.advanceShallow(target);
+                }
+
+                @Override
+                public float getMaxScore(int upTo) throws IOException {
+                  minGetMaxScoreUpTo[0] = Math.min(minGetMaxScoreUpTo[0], upTo);
+                  return in.getMaxScore(upTo);
+                }
+              };
+            }
+
+            @Override
+            public long cost() {
+              return innerSS.cost();
+            }
+          };
+        }
+      };
+    }
+
+    @Override
+    public void visit(QueryVisitor visitor) {
+      delegate.visit(visitor);
+    }
+
+    @Override
+    public String toString(String field) {
+      return "CountingScorer(" + delegate.toString(field) + ")";
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      return obj instanceof CountingScorerQuery csq && delegate.equals(csq.delegate);
+    }
+
+    @Override
+    public int hashCode() {
+      return 31 * classHash() + delegate.hashCode();
+    }
   }
 }

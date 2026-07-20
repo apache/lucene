@@ -99,7 +99,6 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
    * @param ignoreDocsWithoutGroupField if true, ignore documents that don't have the group field
    *     instead of putting them in a null group
    */
-  @SuppressWarnings({"unchecked", "rawtypes"})
   public FirstPassGroupingCollector(
       GroupSelector<T> groupSelector,
       Sort groupSort,
@@ -332,6 +331,10 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
         buildSortedSet();
         // if groups is full, we can propagate the min competitive score to the scorer
         updateMinCompetitiveScore();
+        final int lastComparatorSlot = orderedGroups.last().comparatorSlot;
+        for (LeafFieldComparator fc : leafComparators) {
+          fc.setBottom(lastComparatorSlot);
+        }
       }
 
     } else {
@@ -451,10 +454,6 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
     orderedGroups = new TreeSet<>(comparator);
     orderedGroups.addAll(groupMap.values());
     assert orderedGroups.size() > 0;
-
-    for (LeafFieldComparator fc : leafComparators) {
-      fc.setBottom(orderedGroups.last().comparatorSlot);
-    }
   }
 
   private void updateMinCompetitiveScore() throws IOException {

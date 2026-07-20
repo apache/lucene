@@ -292,7 +292,7 @@ public class WordBreakSpellChecker {
     // if we are about to exceed our maxChanges *OR* we have a full list of
     // suggestions, we can return now.
     //
-    // (because any subsequent suggestions are garunteed to have more changes
+    // (because any subsequent suggestions are guaranteed to have more changes
     // then anything currently in the queue, and not be competitive)
 
     final int newNumberBreaks = numberBreaks + 1;

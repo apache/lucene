@@ -72,7 +72,7 @@ import org.apache.lucene.util.packed.PackedInts;
  *
  * <p>Typical usage would look like this:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * LeafReader reader; // reader to reorder
  * Directory targetDir; // Directory where to write the reordered index
  *
@@ -87,7 +87,7 @@ import org.apache.lucene.util.packed.PackedInts;
  *   w.addIndexes(reorderedReaderView);
  * }
  * DirectoryReader reorderedReader = DirectoryReader.open(targetDir);
- * </pre>
+ * </code></pre>
  *
  * <p>Note: This is a slow operation that consumes O(maxDoc + numTerms * numThreads) memory.
  */
@@ -96,7 +96,7 @@ public final class BPIndexReorderer extends AbstractBPReorderer {
   /** Block size for terms in the forward index */
   private static final int TERM_IDS_BLOCK_SIZE = 17;
 
-  /** Minimum problem size that will result in tasks being splitted. */
+  /** Minimum problem size that will result in tasks being split. */
   private static final int FORK_THRESHOLD = 8192;
 
   /** Minimum required document frequency for terms to be considered: 4,096. */

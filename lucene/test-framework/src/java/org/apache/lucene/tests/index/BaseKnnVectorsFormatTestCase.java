@@ -26,6 +26,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -94,6 +95,7 @@ import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.tests.codecs.asserting.AssertingKnnVectorsFormat;
+import org.apache.lucene.tests.store.BaseDirectoryWrapper;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
@@ -123,6 +125,20 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     similarityFunction = randomSimilarity();
   }
 
+  protected abstract boolean supportsFloatVectorFallback();
+
+  /**
+   * Returns the number of bits used for quantization to compute epsilon tolerance of float
+   * quantization errors in test cases. Default is 8 bits, override in subclasses if needed
+   */
+  protected int getQuantizationBits() {
+    return 8;
+  }
+
+  protected Codec getCodecForFloatVectorFallbackTest() {
+    return getCodec(); // Default implementation
+  }
+
   @Override
   protected void addRandomFields(Document doc) {
     switch (vectorEncoding) {
@@ -130,14 +146,6 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       case FLOAT32 ->
           doc.add(new KnnFloatVectorField("v2", randomNormalizedVector(30), similarityFunction));
     }
-  }
-
-  @Override
-  protected boolean mergeIsStable() {
-    // suppress this test from base class: merges for knn graphs are not stable due to connected
-    // components
-    // logic
-    return false;
   }
 
   private int getVectorsMaxDimensions(String fieldName) {
@@ -424,6 +432,75 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       final long ramBytesUsed2 = writer.ramBytesUsed();
       assertTrue(ramBytesUsed2 > ramBytesUsed);
       assertTrue(ramBytesUsed2 > (long) dim * numDocs * Float.BYTES);
+    }
+    dir.close();
+  }
+
+  @SuppressWarnings("unchecked")
+  public void testWriterByteVectorRamEstimate() throws Exception {
+    final FieldInfos fieldInfos = new FieldInfos(new FieldInfo[0]);
+    final Directory dir = newDirectory();
+    Codec codec = Codec.getDefault();
+    final SegmentInfo si =
+        new SegmentInfo(
+            dir,
+            Version.LATEST,
+            Version.LATEST,
+            "0",
+            10000,
+            false,
+            false,
+            codec,
+            Collections.emptyMap(),
+            StringHelper.randomId(),
+            new HashMap<>(),
+            null);
+    final SegmentWriteState state =
+        new SegmentWriteState(
+            InfoStream.getDefault(), dir, si, fieldInfos, null, newIOContext(random()));
+    final KnnVectorsFormat format = codec.knnVectorsFormat();
+    try (KnnVectorsWriter writer = format.fieldsWriter(state)) {
+      int dim = random().nextInt(64) + 1;
+      if (dim % 2 == 1) {
+        ++dim;
+      }
+      int numDocs = atLeast(100);
+      KnnFieldVectorsWriter<byte[]> fieldWriter =
+          (KnnFieldVectorsWriter<byte[]>)
+              writer.addField(
+                  new FieldInfo(
+                      "fieldA",
+                      0,
+                      false,
+                      false,
+                      false,
+                      IndexOptions.NONE,
+                      DocValuesType.NONE,
+                      DocValuesSkipIndexType.NONE,
+                      -1,
+                      Map.of(),
+                      0,
+                      0,
+                      0,
+                      dim,
+                      VectorEncoding.BYTE,
+                      VectorSimilarityFunction.DOT_PRODUCT,
+                      false,
+                      false));
+      for (int i = 0; i < numDocs; i++) {
+        fieldWriter.addValue(i, randomVector8(dim));
+      }
+      // Validate the field-level RAM accounting uses correct byte sizes.
+      // The reported RAM must be at least the raw byte vector data.
+      final long fieldRamBytesUsed = fieldWriter.ramBytesUsed();
+      final long rawByteVectorData = (long) dim * numDocs * Byte.BYTES;
+      assertTrue(
+          "Expected field ramBytesUsed ("
+              + fieldRamBytesUsed
+              + ") >= raw byte vector data size ("
+              + rawByteVectorData
+              + ")",
+          fieldRamBytesUsed >= rawByteVectorData);
     }
     dir.close();
   }
@@ -1127,7 +1204,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
   }
 
   /**
-   * This method is overrideable since old codec versions only support {@link
+   * This method is overridable since old codec versions only support {@link
    * VectorEncoding#FLOAT32}.
    */
   protected VectorEncoding randomVectorEncoding() {
@@ -1596,7 +1673,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           // assert that searchNearestVectors returns the expected number of documents,
           // in descending score order
           int size = ctx.reader().getFloatVectorValues(fieldName).size();
-          int k = random().nextInt(size / 10 + 1) + 1;
+          int k = random().nextInt(size / 50 + 1) + 1;
           if (k > numLiveDocsWithVectors) {
             k = numLiveDocsWithVectors;
           }
@@ -1911,6 +1988,96 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         assertEquals(fieldSumDocIDs, sumOrdToDocIds);
       }
     }
+  }
+
+  private List<float[]> getRandomFloatVector(int numVectors, int dim, boolean normalize) {
+    List<float[]> vectors = new ArrayList<>(numVectors);
+    for (int i = 0; i < numVectors; i++) {
+      float[] vec = randomVector(dim);
+      if (normalize) {
+        VectorUtil.l2normalize(vec);
+      }
+      vectors.add(vec);
+    }
+    return vectors;
+  }
+
+  /**
+   * Tests reading quantized vectors when raw vector data is empty. Verifies that scalar quantized
+   * formats can properly dequantize vectors and maintain accuracy within expected error bounds even
+   * when the original raw vector file is empty or corrupted.
+   */
+  public void testReadQuantizedVectorWithEmptyRawVectors() throws Exception {
+    assumeTrue("Test only applies to scalar quantized formats", supportsFloatVectorFallback());
+
+    String vectorFieldName = "vec1";
+    int numVectors = 1 + random().nextInt(50);
+    int dim = random().nextInt(64) + 1;
+    if (dim % 2 == 1) {
+      dim++;
+    }
+    float eps = (1f / (float) (1 << getQuantizationBits()));
+    VectorSimilarityFunction similarityFunction = randomSimilarity();
+    List<float[]> vectors =
+        getRandomFloatVector(
+            numVectors, dim, similarityFunction == VectorSimilarityFunction.COSINE);
+
+    try (BaseDirectoryWrapper dir = newDirectory()) {
+      dir.setCheckIndexOnClose(false);
+
+      try (IndexWriter w =
+          new IndexWriter(
+              dir,
+              new IndexWriterConfig()
+                  .setMaxBufferedDocs(numVectors + 1)
+                  .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
+                  .setMergePolicy(NoMergePolicy.INSTANCE)
+                  .setUseCompoundFile(false)
+                  .setCodec(getCodecForFloatVectorFallbackTest()))) {
+        for (int i = 0; i < numVectors; i++) {
+          Document doc = new Document();
+          doc.add(new KnnFloatVectorField(vectorFieldName, vectors.get(i), similarityFunction));
+          w.addDocument(doc);
+        }
+      }
+      simulateEmptyRawVectors(dir);
+
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        LeafReader r = getOnlyLeafReader(reader);
+        if (r instanceof CodecReader codecReader) {
+          KnnVectorsReader knnVectorsReader = codecReader.getVectorReader();
+          knnVectorsReader = knnVectorsReader.unwrapReaderForField(vectorFieldName);
+          FloatVectorValues floatVectorValues =
+              knnVectorsReader.getFloatVectorValues(vectorFieldName);
+          if (floatVectorValues.size() > 0) {
+            KnnVectorValues.DocIndexIterator iter = floatVectorValues.iterator();
+            for (int docId = iter.nextDoc(); docId != NO_MORE_DOCS; docId = iter.nextDoc()) {
+              float[] dequantizedVector = floatVectorValues.vectorValue(iter.index());
+              float mae = 0;
+              for (int i = 0; i < dim; i++) {
+                mae += Math.abs(dequantizedVector[i] - vectors.get(docId)[i]);
+              }
+              mae /= dim;
+              assertTrue(
+                  "bits: " + getQuantizationBits() + " mae: " + mae + " > eps: " + eps, mae <= eps);
+            }
+          } else {
+            fail("floatVectorValues size should be non zero");
+          }
+        } else {
+          fail("reader is not CodecReader");
+        }
+      }
+    }
+  }
+
+  /**
+   * Simulates empty raw vectors by modifying index files. Override in codecs that support
+   * FloatVector fallback.
+   */
+  protected void simulateEmptyRawVectors(Directory dir) throws Exception {
+    throw new Exception(
+        "simulateEmptyRawVectors must be implemented by codecs that support FloatVector fallback");
   }
 
   public void testMismatchedFields() throws Exception {

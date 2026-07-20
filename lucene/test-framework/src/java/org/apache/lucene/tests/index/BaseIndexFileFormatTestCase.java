@@ -270,11 +270,11 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
     // do not use newMergePolicy that might return a MockMergePolicy that ignores the no-CFS ratio
     // do not use RIW which will change things up!
     MergePolicy mp = newTieredMergePolicy();
-    mp.setNoCFSRatio(0);
     IndexWriterConfig cfg =
         new IndexWriterConfig(new MockAnalyzer(random()))
             .setUseCompoundFile(false)
             .setMergePolicy(mp);
+    cfg.getCodec().compoundFormat().setShouldUseCompoundFile(false);
     if (VERBOSE) {
       cfg.setInfoStream(System.out);
     }
@@ -292,11 +292,11 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
 
     Directory dir2 = applyCreatedVersionMajor(newDirectory());
     mp = newTieredMergePolicy();
-    mp.setNoCFSRatio(0);
     cfg =
         new IndexWriterConfig(new MockAnalyzer(random()))
             .setUseCompoundFile(false)
             .setMergePolicy(mp);
+    cfg.getCodec().compoundFormat().setShouldUseCompoundFile(false);
     w = new IndexWriter(dir2, cfg);
     TestUtil.addIndexesSlowly(w, reader);
 
@@ -397,7 +397,7 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
           }
 
           @Override
-          public void checkIntegrity() throws IOException {}
+          public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {}
         };
     try (FieldsConsumer consumer = codec.postingsFormat().fieldsConsumer(writeState)) {
       final Fields fields =
@@ -411,7 +411,7 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
             }
 
             @Override
-            public Terms terms(String field) throws IOException {
+            public Terms terms(String field) {
               return oneDocReader.terms(field);
             }
 
@@ -542,7 +542,7 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
             }
 
             @Override
-            public void checkIntegrity() {}
+            public void checkIntegrity(MergePolicy.OneMerge merge) {}
 
             @Override
             public void close() {}

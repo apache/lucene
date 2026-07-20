@@ -52,21 +52,21 @@ import org.apache.lucene.util.IOSupplier;
  * Also, Leading holes don't have any particular meaning for this query and will be ignored. For
  * instance this query:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * PhraseQuery.Builder builder = new PhraseQuery.Builder();
  * builder.add(new Term("body", "one"), 4);
  * builder.add(new Term("body", "two"), 5);
  * PhraseQuery pq = builder.build();
- * </pre>
+ * </code></pre>
  *
  * is equivalent to the below query:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * PhraseQuery.Builder builder = new PhraseQuery.Builder();
  * builder.add(new Term("body", "one"), 0);
  * builder.add(new Term("body", "two"), 1);
  * PhraseQuery pq = builder.build();
- * </pre>
+ * </code></pre>
  */
 public class PhraseQuery extends Query {
 
@@ -156,7 +156,7 @@ public class PhraseQuery extends Query {
 
     /** Build a phrase query based on the terms that have been added. */
     public PhraseQuery build() {
-      Term[] terms = this.terms.toArray(new Term[0]);
+      Term[] terms = this.terms.toArray(Term[]::new);
       return new PhraseQuery(slop, terms, positions.toArray());
     }
   }
@@ -366,7 +366,7 @@ public class PhraseQuery extends Query {
       this.position = position;
       nTerms = terms == null ? 0 : terms.size();
       if (nTerms > 0) {
-        Term[] terms2 = terms.toArray(new Term[0]);
+        Term[] terms2 = terms.toArray(Term[]::new);
         if (nTerms > 1) {
           Arrays.sort(terms2);
         }
@@ -469,7 +469,7 @@ public class PhraseQuery extends Query {
               "PhraseWeight requires that the first position is 0, call rewrite first");
         }
         states = new TermStates[terms.length];
-        TermStatistics[] termStats = new TermStatistics[terms.length];
+        TermStats[] termStats = new TermStats[terms.length];
         int termUpTo = 0;
         for (int i = 0; i < terms.length; i++) {
           final Term term = terms[i];
@@ -477,16 +477,13 @@ public class PhraseQuery extends Query {
           if (scoreMode.needsScores()) {
             TermStates ts = states[i];
             if (ts.docFreq() > 0) {
-              termStats[termUpTo++] =
-                  searcher.termStatistics(term, ts.docFreq(), ts.totalTermFreq());
+              termStats[termUpTo++] = searcher.termStats(term, ts.docFreq(), ts.totalTermFreq());
             }
           }
         }
         if (termUpTo > 0) {
           return similarity.scorer(
-              boost,
-              searcher.collectionStatistics(field),
-              ArrayUtil.copyOfSubArray(termStats, 0, termUpTo));
+              boost, searcher.fieldStats(field), ArrayUtil.copyOfSubArray(termStats, 0, termUpTo));
         } else {
           return null; // no terms at all, we won't use similarity
         }

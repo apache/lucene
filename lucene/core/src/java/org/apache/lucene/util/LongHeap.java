@@ -132,16 +132,16 @@ public final class LongHeap {
    * Replace the top of the pq with {@code newTop}. Should be called when the top value changes.
    * Still log(n) worst case, but it's at least twice as fast to
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * pq.updateTop(value);
-   * </pre>
+   * </code></pre>
    *
    * instead of
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * pq.pop();
    * pq.push(value);
-   * </pre>
+   * </code></pre>
    *
    * Calling this method on an empty LongHeap has no visible effect.
    *

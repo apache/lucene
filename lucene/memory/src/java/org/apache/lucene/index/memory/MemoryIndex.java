@@ -110,9 +110,9 @@ import org.apache.lucene.util.Version;
  * search), this class targets fulltext search of huge numbers of queries over comparatively small
  * transient realtime data (prospective search). For example as in
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * float score = search(String text, Query query)
- * </pre>
+ * </code></pre>
  *
  * <p>Each instance can hold at most one Lucene "document", with a document containing zero or more
  * "fields", each field having a name and a fulltext value. The fulltext value is tokenized (split
@@ -141,7 +141,7 @@ import org.apache.lucene.util.Version;
  *
  * <p><b>Example Usage</b> <br>
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * Analyzer analyzer = new SimpleAnalyzer(version);
  * MemoryIndex index = new MemoryIndex();
  * index.addField("content", "Readings about Salmons and other select Alaska fishing Manuals", analyzer);
@@ -154,11 +154,11 @@ import org.apache.lucene.util.Version;
  *     System.out.println("no match found");
  * }
  * System.out.println("indexData=" + index.toString());
- * </pre>
+ * </code></pre>
  *
  * <p><b>Example XQuery Usage</b>
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * (: An XQuery that finds all books authored by James that have something to do with "salmon fishing manuals", sorted by relevance :)
  * declare namespace lucene = "java:nux.xom.pool.FullTextUtil";
  * declare variable $query := "+salmon~ +fish* manual~"; (: any arbitrary Lucene query can go here :)
@@ -167,7 +167,7 @@ import org.apache.lucene.util.Version;
  * let $score := lucene:match($book/abstract, $query)
  * order by $score descending
  * return $book
- * </pre>
+ * </code></pre>
  *
  * <p><b>Thread safety guarantees</b>
  *
@@ -633,7 +633,7 @@ public class MemoryIndex {
     }
     if (tokenStream != null) {
       storeTerms(info, tokenStream, positionIncrementGap, offsetGap);
-    } else if (field.fieldType().indexOptions().compareTo(IndexOptions.DOCS) >= 0) {
+    } else if (field.fieldType().indexOptions().subsumes(IndexOptions.DOCS)) {
       BytesRef binaryValue = field.binaryValue();
       if (binaryValue == null) {
         throw new IllegalArgumentException(
@@ -1724,7 +1724,7 @@ public class MemoryIndex {
     }
 
     @Override
-    public DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+    public DocValuesSkipper getDocValuesSkipper(String field) {
       // Skipping isn't needed on a 1-doc index.
       return null;
     }
@@ -1770,7 +1770,7 @@ public class MemoryIndex {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       return memoryFields.terms(field);
     }
 
@@ -2131,27 +2131,27 @@ public class MemoryIndex {
       }
 
       @Override
-      public byte[] getMinPackedValue() throws IOException {
+      public byte[] getMinPackedValue() {
         return info.minPackedValue;
       }
 
       @Override
-      public byte[] getMaxPackedValue() throws IOException {
+      public byte[] getMaxPackedValue() {
         return info.maxPackedValue;
       }
 
       @Override
-      public int getNumDimensions() throws IOException {
+      public int getNumDimensions() {
         return info.fieldInfo.getPointDimensionCount();
       }
 
       @Override
-      public int getNumIndexDimensions() throws IOException {
+      public int getNumIndexDimensions() {
         return info.fieldInfo.getPointDimensionCount();
       }
 
       @Override
-      public int getBytesPerDimension() throws IOException {
+      public int getBytesPerDimension() {
         return info.fieldInfo.getPointNumBytes();
       }
 

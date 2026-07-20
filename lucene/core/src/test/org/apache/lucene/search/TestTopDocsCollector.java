@@ -42,12 +42,12 @@ import org.apache.lucene.util.BytesRef;
 
 public class TestTopDocsCollector extends LuceneTestCase {
 
-  private static final class MyTopDocsCollectorMananger
+  private static final class MyTopDocsCollectorManager
       implements CollectorManager<MyTopDocsCollector, MyTopDocsCollector> {
 
     private final int numHits;
 
-    MyTopDocsCollectorMananger(int numHits) {
+    MyTopDocsCollectorManager(int numHits) {
       this.numHits = numHits;
     }
 
@@ -153,7 +153,7 @@ public class TestTopDocsCollector extends LuceneTestCase {
   private TopDocsCollector<ScoreDoc> doSearch(int numResults) throws IOException {
     Query q = MatchAllDocsQuery.INSTANCE;
     IndexSearcher searcher = newSearcher(reader);
-    return searcher.search(q, new MyTopDocsCollectorMananger(numResults));
+    return searcher.search(q, new MyTopDocsCollectorManager(numResults));
   }
 
   private TopDocs doSearchWithThreshold(
@@ -321,7 +321,7 @@ public class TestTopDocsCollector extends LuceneTestCase {
     IndexWriter w =
         new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE));
     Document doc = new Document();
-    w.addDocuments(Arrays.asList(doc, doc, doc, doc));
+    w.addDocuments(Arrays.asList(doc, doc, doc, doc, doc));
     w.flush();
     w.addDocuments(Arrays.asList(doc, doc));
     w.flush();
@@ -432,7 +432,7 @@ public class TestTopDocsCollector extends LuceneTestCase {
       leafCollector.setScorer(scorer);
 
       scorer.score = 3;
-      leafCollector.collect(1);
+      leafCollector.collect(0);
 
       scorer.score = 4;
       leafCollector.collect(1);

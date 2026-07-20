@@ -45,6 +45,7 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -64,6 +65,10 @@ import org.apache.lucene.index.TermsEnum.SeekStatus;
 import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FilterDirectory;
+import org.apache.lucene.store.FilterIndexInput;
+import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
 import org.apache.lucene.tests.index.BaseCompressingDocValuesFormatTestCase;
@@ -169,6 +174,265 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
     for (int i = 0; i < numIterations; i++) {
       doTestSparseDocValuesVsStoredFields();
     }
+  }
+
+  public void testDenseNumericLongValuesBulkFetch() throws Exception {
+    doTestDenseNumericLongValuesBulkFetch(8);
+    doTestDenseNumericLongValuesBulkFetch(16);
+    doTestDenseNumericLongValuesBulkFetch(24);
+    doTestDenseNumericLongValuesBulkFetch(32);
+    doTestDenseNumericLongValuesBulkFetch(40);
+    doTestDenseNumericLongValuesBulkFetch(48);
+    doTestDenseNumericLongValuesBulkFetch(56);
+    doTestDenseNumericLongValuesBulkFetch(64);
+  }
+
+  private void doTestDenseNumericLongValuesBulkFetch(int bitsPerValue) throws Exception {
+    final int numDocs = 512;
+    final long[] expected = new long[numDocs];
+    final long mask = bitsPerValue == 64 ? -1L : (1L << bitsPerValue) - 1;
+    for (int i = 0; i < numDocs; i++) {
+      expected[i] = bitsPerValue == 64 ? random().nextLong() : random().nextLong() & mask;
+    }
+
+    Directory dir = newDirectory();
+    IndexWriterConfig conf = new IndexWriterConfig(new MockAnalyzer(random()));
+    conf.setMergeScheduler(new SerialMergeScheduler());
+    IndexWriter writer = new IndexWriter(dir, conf);
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      doc.add(new NumericDocValuesField("numeric", expected[i]));
+      writer.addDocument(doc);
+    }
+    writer.forceMerge(1);
+
+    try (DirectoryReader reader = DirectoryReader.open(writer)) {
+      NumericDocValues values = reader.leaves().get(0).reader().getNumericDocValues("numeric");
+      NumericDocValues singleValues =
+          reader.leaves().get(0).reader().getNumericDocValues("numeric");
+      assertBulkLongValues(bitsPerValue, values, singleValues, expected, 0, 128, 1);
+      assertBulkLongValues(bitsPerValue, values, singleValues, expected, 17, 128, 1);
+      assertBulkLongValues(bitsPerValue, values, singleValues, expected, 0, 128, 2);
+    }
+
+    writer.close();
+    dir.close();
+  }
+
+  private static void assertBulkLongValues(
+      int bitsPerValue,
+      NumericDocValues values,
+      NumericDocValues singleValues,
+      long[] expected,
+      int startDoc,
+      int size,
+      int docStep)
+      throws IOException {
+    int[] docs = new int[size];
+    long[] actual = new long[size];
+    for (int i = 0; i < size; i++) {
+      docs[i] = startDoc + i * docStep;
+    }
+
+    values.longValues(size, docs, actual, 0);
+    if (size != 0) {
+      assertEquals(docs[size - 1], values.docID());
+    }
+    for (int i = 0; i < size; i++) {
+      assertTrue(singleValues.advanceExact(docs[i]));
+      long singleValue = singleValues.longValue();
+      assertEquals(
+          "bitsPerValue="
+              + bitsPerValue
+              + " doc="
+              + docs[i]
+              + " startDoc="
+              + startDoc
+              + " docStep="
+              + docStep
+              + " indexedValue="
+              + expected[docs[i]],
+          singleValue,
+          actual[i]);
+      assertEquals(
+          "bitsPerValue=" + bitsPerValue + " doc=" + docs[i], expected[docs[i]], singleValue);
+    }
+
+    // Verify offset-aware variant produces identical results
+    if (size > 2) {
+      int docsOffset = 1;
+      int sliceSize = size - 2;
+      long[] offsetActual = new long[sliceSize + 4];
+      int valuesOffset = 2;
+      Arrays.fill(offsetActual, Long.MIN_VALUE);
+      values.longValues(sliceSize, docs, docsOffset, offsetActual, valuesOffset, 0);
+      for (int i = 0; i < sliceSize; i++) {
+        assertEquals(
+            "offset variant mismatch at i=" + i + " bpv=" + bitsPerValue,
+            actual[docsOffset + i],
+            offsetActual[valuesOffset + i]);
+      }
+      // sentinel positions should be untouched
+      assertEquals(Long.MIN_VALUE, offsetActual[0]);
+      assertEquals(Long.MIN_VALUE, offsetActual[1]);
+      assertEquals(Long.MIN_VALUE, offsetActual[valuesOffset + sliceSize]);
+    }
+  }
+
+  public void testDenseBinaryValuesBulkFetch() throws Exception {
+    doTestDenseBinaryValuesBulkFetch(true);
+    doTestDenseBinaryValuesBulkFetch(false);
+  }
+
+  private void doTestDenseBinaryValuesBulkFetch(boolean fixedLength) throws Exception {
+    final int numDocs = 512;
+    final BytesRef[] expected = new BytesRef[numDocs];
+    for (int i = 0; i < numDocs; i++) {
+      int length = fixedLength ? 8 : 1 + random().nextInt(32);
+      byte[] bytes = new byte[length];
+      random().nextBytes(bytes);
+      expected[i] = new BytesRef(bytes);
+    }
+
+    Directory dir = newDirectory();
+    IndexWriterConfig conf = new IndexWriterConfig(new MockAnalyzer(random()));
+    conf.setMergeScheduler(new SerialMergeScheduler());
+    IndexWriter writer = new IndexWriter(dir, conf);
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      doc.add(new BinaryDocValuesField("binary", expected[i]));
+      writer.addDocument(doc);
+    }
+    writer.forceMerge(1);
+
+    try (DirectoryReader reader = DirectoryReader.open(writer)) {
+      BinaryDocValues values = reader.leaves().get(0).reader().getBinaryDocValues("binary");
+      BinaryDocValues singleValues = reader.leaves().get(0).reader().getBinaryDocValues("binary");
+      assertBulkBinaryValues(values, singleValues, expected, 0, 128, 1, fixedLength);
+      assertBulkBinaryValues(values, singleValues, expected, 17, 128, 1, fixedLength);
+      assertBulkBinaryValues(values, singleValues, expected, 0, 128, 2, fixedLength);
+    }
+
+    writer.close();
+    dir.close();
+  }
+
+  private static void assertBulkBinaryValues(
+      BinaryDocValues values,
+      BinaryDocValues singleValues,
+      BytesRef[] expected,
+      int startDoc,
+      int size,
+      int docStep,
+      boolean fixedLength)
+      throws IOException {
+    int[] docs = new int[size];
+    BytesRef[] actual = new BytesRef[size];
+    for (int i = 0; i < size; i++) {
+      docs[i] = startDoc + i * docStep;
+    }
+
+    values.binaryValues(size, docs, actual);
+    if (size != 0) {
+      assertEquals(docs[size - 1], values.docID());
+    }
+    for (int i = 0; i < size; i++) {
+      assertTrue(singleValues.advanceExact(docs[i]));
+      BytesRef singleValue = BytesRef.deepCopyOf(singleValues.binaryValue());
+      assertEquals(
+          "fixedLength="
+              + fixedLength
+              + " doc="
+              + docs[i]
+              + " startDoc="
+              + startDoc
+              + " docStep="
+              + docStep,
+          singleValue,
+          actual[i]);
+      assertEquals(
+          "fixedLength=" + fixedLength + " doc=" + docs[i], expected[docs[i]], singleValue);
+    }
+
+    // Verify offset-aware variant produces identical results
+    if (size > 2) {
+      int docsOffset = 1;
+      int sliceSize = size - 2;
+      BytesRef sentinel = new BytesRef("SENTINEL");
+      BytesRef[] offsetActual = new BytesRef[sliceSize + 4];
+      int valuesOffset = 2;
+      Arrays.fill(offsetActual, sentinel);
+      values.binaryValues(sliceSize, docs, docsOffset, offsetActual, valuesOffset);
+      for (int i = 0; i < sliceSize; i++) {
+        assertEquals(
+            "offset variant mismatch at i=" + i + " fixedLength=" + fixedLength,
+            actual[docsOffset + i],
+            offsetActual[valuesOffset + i]);
+      }
+      // sentinel positions should be untouched
+      assertSame(sentinel, offsetActual[0]);
+      assertSame(sentinel, offsetActual[1]);
+      assertSame(sentinel, offsetActual[valuesOffset + sliceSize]);
+    }
+  }
+
+  public void testSparseBinaryValuesBulkFetch() throws Exception {
+    final int numDocs = 512;
+    final BytesRef[] expected = new BytesRef[numDocs];
+    // Only even-numbered docs have binary values
+    for (int i = 0; i < numDocs; i++) {
+      if (i % 2 == 0) {
+        byte[] bytes = new byte[8];
+        random().nextBytes(bytes);
+        expected[i] = new BytesRef(bytes);
+      }
+    }
+
+    Directory dir = newDirectory();
+    IndexWriterConfig conf = new IndexWriterConfig(new MockAnalyzer(random()));
+    conf.setMergeScheduler(new SerialMergeScheduler());
+    IndexWriter writer = new IndexWriter(dir, conf);
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      if (expected[i] != null) {
+        doc.add(new BinaryDocValuesField("binary", expected[i]));
+      }
+      writer.addDocument(doc);
+    }
+    writer.forceMerge(1);
+
+    try (DirectoryReader reader = DirectoryReader.open(writer)) {
+      BinaryDocValues values = reader.leaves().get(0).reader().getBinaryDocValues("binary");
+      BinaryDocValues singleValues = reader.leaves().get(0).reader().getBinaryDocValues("binary");
+
+      // Request a mix of docs with and without values
+      int size = 64;
+      int[] docs = new int[size];
+      BytesRef[] actual = new BytesRef[size];
+      for (int i = 0; i < size; i++) {
+        docs[i] = i * 4; // every 4th doc: even (has value) and odd (no value) mix
+      }
+
+      values.binaryValues(size, docs, actual);
+      for (int i = 0; i < size; i++) {
+        if (singleValues.advanceExact(docs[i])) {
+          BytesRef singleValue = BytesRef.deepCopyOf(singleValues.binaryValue());
+          assertNotNull("doc " + docs[i] + " should have a value", actual[i]);
+          assertEquals("doc " + docs[i], singleValue, actual[i]);
+        } else {
+          assertNull("doc " + docs[i] + " should be null", actual[i]);
+        }
+      }
+
+      // Test size == 0 edge case
+      BinaryDocValues zeroValues = reader.leaves().get(0).reader().getBinaryDocValues("binary");
+      int docIdBefore = zeroValues.docID();
+      zeroValues.binaryValues(0, new int[0], new BytesRef[0]);
+      assertEquals(docIdBefore, zeroValues.docID());
+    }
+
+    writer.close();
+    dir.close();
   }
 
   private void doTestSparseDocValuesVsStoredFields() throws Exception {
@@ -611,7 +875,8 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
     IndexWriterConfig conf = newIndexWriterConfig(new MockAnalyzer(random()));
     conf.setMaxBufferedDocs(maxBufferedDocs);
     conf.setRAMBufferSizeMB(-1);
-    conf.setMergePolicy(newLogMergePolicy(random().nextBoolean()));
+    conf.setMergePolicy(newLogMergePolicy());
+    conf.getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
     return new IndexWriter(dir, conf);
   }
 
@@ -643,7 +908,8 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
     IndexWriterConfig conf = newIndexWriterConfig(new MockAnalyzer(random()));
     conf.setMaxBufferedDocs(atLeast(Lucene90DocValuesFormat.NUMERIC_BLOCK_SIZE));
     conf.setRAMBufferSizeMB(-1);
-    conf.setMergePolicy(newLogMergePolicy(random().nextBoolean()));
+    conf.setMergePolicy(newLogMergePolicy());
+    conf.getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
     IndexWriter writer = new IndexWriter(dir, conf);
 
     final int numDocs = atLeast(Lucene90DocValuesFormat.NUMERIC_BLOCK_SIZE * 3);
@@ -713,7 +979,8 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
     IndexWriterConfig conf = newIndexWriterConfig(new MockAnalyzer(random()));
     conf.setMaxBufferedDocs(atLeast(Lucene90DocValuesFormat.NUMERIC_BLOCK_SIZE));
     conf.setRAMBufferSizeMB(-1);
-    conf.setMergePolicy(newLogMergePolicy(random().nextBoolean()));
+    conf.setMergePolicy(newLogMergePolicy());
+    conf.getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
     IndexWriter writer = new IndexWriter(dir, conf);
     Document doc = new Document();
     Field storedField = newStringField("stored", "", Field.Store.YES);
@@ -1016,5 +1283,53 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
     assertNull(termsEnum.next());
     reader.close();
     directory.close();
+  }
+
+  public void testSkipIndexStoredSeparately() throws IOException {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig conf = newIndexWriterConfig();
+      conf.setCodec(getCodec());
+      conf.setUseCompoundFile(false);
+      try (IndexWriter writer = new IndexWriter(dir, conf)) {
+        for (int i = 0; i < 100; i++) {
+          Document doc = new Document();
+          doc.add(NumericDocValuesField.indexedField("dv", i));
+          writer.addDocument(doc);
+        }
+        writer.forceMerge(1);
+      }
+
+      // Wrap the directory so that any attempt to slice() the .dvd file throws.
+      // The producer constructor opens .dvd for header/checksum validation (sequential reads),
+      // but getSkipper() should only slice the .dvs file, never the .dvd file.
+      Directory noDataSliceDir =
+          new FilterDirectory(dir) {
+            @Override
+            public IndexInput openInput(String name, IOContext context) throws IOException {
+              IndexInput in = super.openInput(name, context);
+              if (name.endsWith("." + Lucene90DocValuesFormat.DATA_EXTENSION)) {
+                return new FilterIndexInput("no-slice-" + name, in) {
+                  @Override
+                  public IndexInput slice(String sliceDescription, long offset, long length) {
+                    throw new AssertionError(
+                        "should not slice .dvd file for skip index access: " + sliceDescription);
+                  }
+                };
+              }
+              return in;
+            }
+          };
+
+      try (DirectoryReader reader = DirectoryReader.open(noDataSliceDir)) {
+        LeafReader leaf = getOnlyLeafReader(reader);
+        DocValuesSkipper skipper = leaf.getDocValuesSkipper("dv");
+        assertNotNull(skipper);
+        assertEquals(100, skipper.docCount());
+        skipper.advance(0);
+        assertEquals(0, skipper.minDocID(0));
+        assertTrue(skipper.maxDocID(0) >= 0);
+        assertTrue(skipper.minValue() <= skipper.maxValue());
+      }
+    }
   }
 }

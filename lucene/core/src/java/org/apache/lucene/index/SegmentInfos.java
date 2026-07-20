@@ -279,7 +279,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
    * @throws CorruptIndexException if the index is corrupt
    * @throws IOException if there is a low-level IO error
    */
-  public static final SegmentInfos readCommit(Directory directory, String segmentFileName)
+  public static SegmentInfos readCommit(Directory directory, String segmentFileName)
       throws IOException {
     return readCommit(directory, segmentFileName, Version.MIN_SUPPORTED_MAJOR);
   }
@@ -291,7 +291,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
    * IndexFormatTooOldException} will be thrown. Note that this may throw an IOException if a commit
    * is in process.
    */
-  public static final SegmentInfos readCommit(
+  public static SegmentInfos readCommit(
       Directory directory, String segmentFileName, int minSupportedMajorVersion)
       throws IOException {
 
@@ -308,19 +308,19 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
   }
 
   /** Read the commit from the provided {@link ChecksumIndexInput}. */
-  public static final SegmentInfos readCommit(
+  public static SegmentInfos readCommit(
       Directory directory, ChecksumIndexInput input, long generation) throws IOException {
     return readCommit(directory, input, generation, Version.MIN_SUPPORTED_MAJOR);
   }
 
   /** Read the commit from the provided {@link ChecksumIndexInput}. */
-  public static final SegmentInfos readCommit(
+  public static SegmentInfos readCommit(
       Directory directory, ChecksumIndexInput input, long generation, int minSupportedMajorVersion)
       throws IOException {
     Throwable priorE = null;
     int format = -1;
     try {
-      // NOTE: as long as we want to throw indexformattooold (vs corruptindexexception), we need
+      // NOTE: as we want to throw IndexFormatTooOld (vs CorruptIndexException), we need
       // to read the magic ourselves.
       int magic = CodecUtil.readBEInt(input);
       if (magic != CodecUtil.CODEC_MAGIC) {
@@ -541,7 +541,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
   }
 
   /** Find the latest commit ({@code segments_N file}) and load all {@link SegmentCommitInfo}s. */
-  public static final SegmentInfos readLatestCommit(Directory directory) throws IOException {
+  public static SegmentInfos readLatestCommit(Directory directory) throws IOException {
     return readLatestCommit(directory, Version.MIN_SUPPORTED_MAJOR);
   }
 
@@ -551,8 +551,8 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
    * than the provided minimum supported major version. If the commit's version is older, an {@link
    * IndexFormatTooOldException} will be thrown.
    */
-  public static final SegmentInfos readLatestCommit(
-      Directory directory, int minSupportedMajorVersion) throws IOException {
+  public static SegmentInfos readLatestCommit(Directory directory, int minSupportedMajorVersion)
+      throws IOException {
     return new FindSegmentsFile<SegmentInfos>(directory) {
       @Override
       protected SegmentInfos doBody(String segmentFileName) throws IOException {
@@ -728,7 +728,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
     return generation;
   }
 
-  /** Returns last succesfully read or written generation. */
+  /** Returns the last successfully read or written generation. */
   public long getLastGeneration() {
     return lastGeneration;
   }
@@ -888,7 +888,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
     this.generation = generation;
   }
 
-  final void rollbackCommit(Directory dir) {
+  void rollbackCommit(Directory dir) {
     if (pendingCommit) {
       pendingCommit = false;
 
@@ -912,7 +912,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
    * <p>Note: {@link #changed()} should be called prior to this method if changes have been made to
    * this {@link SegmentInfos} instance
    */
-  final void prepareCommit(Directory dir) throws IOException {
+  void prepareCommit(Directory dir) throws IOException {
     if (pendingCommit) {
       throw new IllegalStateException("prepareCommit was already called");
     }
@@ -942,7 +942,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
   }
 
   /** Returns the committed segments_N filename. */
-  final String finishCommit(Directory dir) throws IOException {
+  String finishCommit(Directory dir) throws IOException {
     if (pendingCommit == false) {
       throw new IllegalStateException("prepareCommit was not called");
     }
@@ -977,7 +977,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
    * <p>Note: {@link #changed()} should be called prior to this method if changes have been made to
    * this {@link SegmentInfos} instance
    */
-  public final void commit(Directory dir) throws IOException {
+  public void commit(Directory dir) throws IOException {
     prepareCommit(dir);
     finishCommit(dir);
   }
@@ -985,6 +985,14 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
   /** Returns readable description of this segment. */
   @Override
   public String toString() {
+    return toString(false);
+  }
+
+  String toStringVerbose() {
+    return toString(true);
+  }
+
+  String toString(boolean verbose) {
     StringBuilder buffer = new StringBuilder();
     buffer.append(getSegmentsFileName()).append(": ");
     final int count = size();
@@ -992,8 +1000,11 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       if (i > 0) {
         buffer.append(' ');
       }
-      final SegmentCommitInfo info = info(i);
-      buffer.append(info.toString(0));
+      if (verbose) {
+        buffer.append(info(i).toStringVerbose());
+      } else {
+        buffer.append(info(i).toString(0));
+      }
     }
     return buffer.toString();
   }

@@ -1596,7 +1596,7 @@ class GeoComplexPolygon extends GeoBasePolygon {
       this.plane = plane;
       this.abovePlane = abovePlane;
       this.belowPlane = belowPlane;
-      // We have to be sure we don't accidently create two bounds that would exclude all points.
+      // We have to be sure we don't accidentally create two bounds that would exclude all points.
       // Not sure this can happen but...
       final SidedPlane bound1Plane =
           new SidedPlane(thePointX, thePointY, thePointZ, plane, testPoint);
@@ -2362,8 +2362,9 @@ class GeoComplexPolygon extends GeoBasePolygon {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof GeoComplexPolygon)) return false;
-    final GeoComplexPolygon other = (GeoComplexPolygon) o;
+    if (!(o instanceof GeoComplexPolygon other)) {
+      return false;
+    }
     return super.equals(other)
         && testPoint1InSet == other.testPoint1InSet
         && testPoint1.equals(other.testPoint1)

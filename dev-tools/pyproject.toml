@@ -1,0 +1,29 @@
+[project]
+name = "dev-tools"
+description = "Developer tool support"
+version = "0.0.0"
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = [
+  # git hooks and repository checks
+  "prek==0.4.5",
+  # validates github actions
+  "zizmor==1.26.1",
+  # validates github actions
+  "actionlint-py==1.7.12.24",
+  # validates bash
+  "shellcheck-py==0.11.0.1",
+  # validates markdown
+  "rumdl==0.2.22",
+  # validates python
+  "ruff==0.15.19",
+  # validates various
+  "ast-grep-cli==0.44.0",
+  # checks spelling
+  "typos==1.47.2",
+]
+
+[tool.uv]
+required-version = ">=0.9.27"

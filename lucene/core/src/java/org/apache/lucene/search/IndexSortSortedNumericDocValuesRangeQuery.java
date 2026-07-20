@@ -56,13 +56,13 @@ import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
  * give constant scores. As an example, an {@link IndexSortSortedNumericDocValuesRangeQuery} might
  * be constructed as follows:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   String field = "field";
  *   long lowerValue = 0, long upperValue = 10;
  *   Query fallbackQuery = LongPoint.newRangeQuery(field, lowerValue, upperValue);
  *   Query rangeQuery = new IndexSortSortedNumericDocValuesRangeQuery(
  *       field, lowerValue, upperValue, fallbackQuery);
- * </pre>
+ * </code></pre>
  *
  * @lucene.experimental
  */
@@ -156,17 +156,8 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
         IteratorAndCount itAndCount = getDocIdSetIteratorOrNull(context);
         if (itAndCount != null) {
           DocIdSetIterator disi = itAndCount.it;
-          return new ScorerSupplier() {
-            @Override
-            public Scorer get(long leadCost) throws IOException {
-              return new ConstantScoreScorer(score(), scoreMode, disi);
-            }
-
-            @Override
-            public long cost() {
-              return disi.cost();
-            }
-          };
+          return ConstantScoreScorerSupplier.fromIterator(
+              disi, score(), scoreMode, context.reader().maxDoc());
         }
         return fallbackWeight.scorerSupplier(context);
       }
@@ -647,8 +638,8 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
 
   private static SortField.Type getSortFieldType(SortField sortField) {
     // We expect the sortField to be SortedNumericSortField
-    if (sortField instanceof SortedNumericSortField) {
-      return ((SortedNumericSortField) sortField).getNumericType();
+    if (sortField instanceof SortedNumericSortField snsf) {
+      return snsf.getNumericType();
     } else {
       return sortField.getType();
     }

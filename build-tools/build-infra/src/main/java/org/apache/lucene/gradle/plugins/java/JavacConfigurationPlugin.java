@@ -75,6 +75,7 @@ public class JavacConfigurationPlugin extends LuceneGradlePlugin {
                       "-Xlint:-exports",
                       "-Xlint:fallthrough",
                       "-Xlint:finally",
+                      "-Xlint:identity",
                       "-Xlint:incubating",
                       // TODO: there are problems
                       "-Xlint:-lossy-conversions",

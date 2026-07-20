@@ -373,9 +373,9 @@ public class UnifiedHighlighter {
     }
 
     /**
-     * Set up a function that given a field retuns a set of masked fields whose matches are combined
-     * to highlight the given field. Masked fields should not include the original field. This is
-     * useful when you want to highlight a field based on matches from several fields.
+     * Set up a function that given a field returns a set of masked fields whose matches are
+     * combined to highlight the given field. Masked fields should not include the original field.
+     * This is useful when you want to highlight a field based on matches from several fields.
      *
      * <p>Note: All masked fields must share the same source as the field being highlighted,
      * otherwise their offsets will not correspond to the highlighted field.
@@ -775,13 +775,13 @@ public class UnifiedHighlighter {
    *
    * <p>Conceptually, this behaves as a more efficient form of:
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * Map m = new HashMap();
    * for (String field : fields) {
    * m.put(field, highlight(field, query, topDocs));
    * }
    * return m;
-   * </pre>
+   * </code></pre>
    *
    * @param fields field names to highlight. Must have a stored string value.
    * @param query query to highlight.
@@ -805,13 +805,13 @@ public class UnifiedHighlighter {
    *
    * <p>Conceptually, this behaves as a more efficient form of:
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * Map m = new HashMap();
    * for (String field : fields) {
    * m.put(field, highlight(field, query, topDocs, maxPassages));
    * }
    * return m;
-   * </pre>
+   * </code></pre>
    *
    * @param fields field names to highlight. Must have a stored string value.
    * @param query query to highlight.
@@ -974,8 +974,8 @@ public class UnifiedHighlighter {
                   ? indexReaderWithTermVecCache
                   : searcher.getIndexReader();
           final LeafReader leafReader;
-          if (indexReader instanceof LeafReader) {
-            leafReader = (LeafReader) indexReader;
+          if (indexReader instanceof LeafReader lr) {
+            leafReader = lr;
           } else {
             List<LeafReaderContext> leaves = indexReader.leaves();
             LeafReaderContext leafReaderContext = leaves.get(ReaderUtil.subIndex(docId, leaves));
@@ -1213,7 +1213,7 @@ public class UnifiedHighlighter {
         filteredTerms.add(term.bytes());
       }
     }
-    return filteredTerms.toArray(new BytesRef[filteredTerms.size()]);
+    return filteredTerms.toArray(BytesRef[]::new);
   }
 
   protected PhraseHelper getPhraseHelper(
@@ -1329,7 +1329,7 @@ public class UnifiedHighlighter {
    * When highlighting phrases accurately, we may need to handle custom queries that aren't
    * supported in the {@link org.apache.lucene.search.highlight.WeightedSpanTermExtractor} as called
    * by the {@code PhraseHelper}. Should custom query types be needed, this method should be
-   * overriden to return a collection of queries if appropriate, or null if nothing to do. If the
+   * overridden to return a collection of queries if appropriate, or null if nothing to do. If the
    * query is not custom, simply returning null will allow the default rules to apply.
    *
    * @param query Query to be highlighted
@@ -1452,8 +1452,8 @@ public class UnifiedHighlighter {
         return;
       }
       StringBuilder curValueBuilder;
-      if (curValue instanceof StringBuilder) {
-        curValueBuilder = (StringBuilder) curValue;
+      if (curValue instanceof StringBuilder sb) {
+        curValueBuilder = sb;
       } else {
         // upgrade String to StringBuilder. Choose a good initial size.
         curValueBuilder =

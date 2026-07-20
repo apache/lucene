@@ -33,14 +33,14 @@ import org.apache.lucene.util.Version;
  *
  * <p>Example usage:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   Reader reader = new StringReader("Some Text to Analyze");
  *   reader = charFilterFactory("htmlstrip").create(reader);
  *   TokenStream stream = tokenizerFactory("standard").create(reader);
  *   stream = tokenFilterFactory("lowercase").create(stream);
  *   stream = tokenFilterFactory("asciifolding").create(stream);
  *   assertTokenStreamContents(stream, new String[] { "some", "text", "to", "analyze" });
- * </pre>
+ * </code></pre>
  */
 public abstract class BaseTokenStreamFactoryTestCase extends BaseTokenStreamTestCase {
 

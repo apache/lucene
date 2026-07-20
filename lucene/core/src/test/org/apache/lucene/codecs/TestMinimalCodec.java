@@ -51,8 +51,8 @@ public class TestMinimalCodec extends LuceneTestCase {
       if (!useCompoundFile) {
         // Avoid using MockMP as it randomly enables compound file creation
         writerConfig.setMergePolicy(newMergePolicy(random(), false));
-        writerConfig.getMergePolicy().setNoCFSRatio(0.0);
-        writerConfig.getMergePolicy().setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
+        writerConfig.getCodec().compoundFormat().setShouldUseCompoundFile(false);
+        writerConfig.getCodec().compoundFormat().setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
       }
 
       try (IndexWriter writer = new IndexWriter(dir, writerConfig)) {
@@ -102,7 +102,7 @@ public class TestMinimalCodec extends LuceneTestCase {
 
     @Override
     public CompoundFormat compoundFormat() {
-      throw new UnsupportedOperationException();
+      return wrappedCodec.compoundFormat();
     }
 
     @Override

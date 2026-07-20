@@ -327,7 +327,7 @@ public class Config {
       String t = st.nextToken();
       a.add(t);
     }
-    return a.toArray(new String[a.size()]);
+    return a.toArray(String[]::new);
   }
 
   // extract properties to array, e.g. for "10:100:5" return int[]{10,100,5}.
@@ -414,7 +414,7 @@ public class Config {
       String template = " " + colName;
       if (roundNum < 0) {
         // just append blanks
-        sb.append(Format.formatPaddLeft("-", template));
+        sb.append(Format.formatPadLeft("-", template));
       } else {
         String valByRoundName = entry.getKey();
 
@@ -432,7 +432,7 @@ public class Config {
         } else {
           boolean[] ab = (boolean[]) a;
           int n = roundNum % ab.length;
-          sb.append(Format.formatPaddLeft("" + ab[n], template));
+          sb.append(Format.formatPadLeft("" + ab[n], template));
         }
       }
     }

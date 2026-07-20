@@ -27,6 +27,7 @@ import org.apache.lucene.codecs.compressing.CompressionMode;
 import org.apache.lucene.codecs.compressing.Compressor;
 import org.apache.lucene.codecs.compressing.Decompressor;
 import org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingStoredFieldsFormat;
+import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
@@ -80,6 +81,12 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
           "TempStoredFields", NO_COMPRESSION, 128 * 1024, 1, 10);
   TrackingTmpOutputDirectoryWrapper tmpDirectory;
 
+  /**
+   * Tracks whether any stored field value was written; used to skip stored field reads at flush
+   * time when segments do not contain any stored fields.
+   */
+  private boolean hasStoredFields;
+
   SortingStoredFieldsConsumer(Codec codec, Directory directory, SegmentInfo info) {
     super(codec, directory, info);
   }
@@ -90,6 +97,12 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
       this.tmpDirectory = new TrackingTmpOutputDirectoryWrapper(directory);
       this.writer = TEMP_STORED_FIELDS_FORMAT.fieldsWriter(tmpDirectory, info, IOContext.DEFAULT);
     }
+  }
+
+  @Override
+  void writeField(FieldInfo info, StoredValue value) throws IOException {
+    super.writeField(info, value);
+    hasStoredFields = true;
   }
 
   @Override
@@ -111,7 +124,11 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
       CopyVisitor visitor = new CopyVisitor(sortWriter);
       for (int docID = 0; docID < state.segmentInfo.maxDoc(); docID++) {
         sortWriter.startDocument();
-        reader.document(sortMap == null ? docID : sortMap.newToOld(docID), visitor);
+        // Skip per-document stored field reads when no stored fields were written,
+        // avoiding unnecessary seeks and reads on the stored fields file.
+        if (hasStoredFields) {
+          reader.document(sortMap == null ? docID : sortMap.newToOld(docID), visitor);
+        }
         sortWriter.finishDocument();
       }
       sortWriter.finish(state.segmentInfo.maxDoc());

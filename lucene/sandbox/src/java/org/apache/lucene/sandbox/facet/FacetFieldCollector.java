@@ -53,7 +53,7 @@ public final class FacetFieldCollector implements Collector {
     // it, we can add boolean needScores method to FacetRecorder interface, return
     // ScoreMode.COMPLETE here when the method returns true. FacetRecorders#needScores should be
     // implemented on case by case basis, e.g. LongAggregationsFacetRecorder can take it as a
-    // constuctor argument, and when it's true call LongValues#getValues with the scores.
+    // constructor argument, and when it's true call LongValues#getValues with the scores.
     return ScoreMode.COMPLETE_NO_SCORES;
   }
 }

@@ -21,8 +21,11 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.function.Function;
 import java.util.function.IntFunction;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 /**
  * A priority queue maintains a partial ordering of its elements such that the least element can
@@ -91,7 +94,7 @@ public class PriorityQueue<T> implements Iterable<T> {
    * <p>If this method is extended to return a non-null value, then the following usage pattern is
    * recommended:
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * PriorityQueue&lt;MyObject&gt; pq = new PriorityQueue&lt;MyObject&gt;(numHits, lessThan);
    * // save the 'top' element, which is guaranteed to not be null.
    * MyObject pqTop = pq.top();
@@ -100,7 +103,7 @@ public class PriorityQueue<T> implements Iterable<T> {
    * // you've verified it is better), it is as simple as:
    * pqTop.change().
    * pqTop = pq.updateTop();
-   * </pre>
+   * </code></pre>
    *
    * <b>NOTE:</b> the given supplier will be called {@code maxSize} times, relying on a new object
    * to be returned and will not check if it's null again. Therefore you should ensure any call to
@@ -150,27 +153,56 @@ public class PriorityQueue<T> implements Iterable<T> {
    * faster.
    *
    * <p>If one tries to add more objects than the maxSize passed in the constructor, an {@link
-   * ArrayIndexOutOfBoundsException} is thrown.
+   * ArrayIndexOutOfBoundsException} is thrown. Which may result in parts of elements added into the
+   * queue, but the heap is still stay in correct state. In this case, if caller wants to readd or
+   * {@link #updateTop(Object)} with remaining elements, it should skip(continue) consumed elements
+   * with the delta size of queue.
    */
   public void addAll(Collection<T> elements) {
-    if (this.size + elements.size() > this.maxSize) {
-      throw new ArrayIndexOutOfBoundsException(
-          "Cannot add "
-              + elements.size()
-              + " elements to a queue with remaining capacity: "
-              + (maxSize - size));
-    }
-
     // Heap with size S always takes first S elements of the array,
     // and thus it's safe to fill array further - no actual non-sentinel value will be overwritten.
-    for (T element : elements) {
-      this.heap[size + 1] = element;
-      this.size++;
+    try {
+      for (T element : elements) {
+        this.heap[size + 1] = element;
+        this.size++;
+      }
+    } finally {
+      // The loop goes down to 1 as heap is 1-based not 0-based.
+      for (int i = (size >>> 1); i >= 1; i--) {
+        downHeap(i);
+      }
     }
+  }
 
-    // The loop goes down to 1 as heap is 1-based not 0-based.
-    for (int i = (size >>> 1); i >= 1; i--) {
-      downHeap(i);
+  /**
+   * Adds all elements of the stream into the queue. This method should be preferred over calling
+   * {@link #add(Object)} in loop if all elements are known in advance as it builds queue faster.
+   *
+   * <p>If one needs to map or filter element in the iteration of elements in this method, call this
+   * method with elements wrapped by {@link Stream#map(Function)} or {@link
+   * Stream#filter(Predicate)}, etc. In these cases, this method should be preferred over calling
+   * {@link #addAll(Collection)}.
+   *
+   * <p>If one tries to add more objects than the maxSize passed in the constructor, an {@link
+   * ArrayIndexOutOfBoundsException} is thrown. Which may result in parts of elements added into the
+   * queue, but the heap is still stay in correct state. In this case, if caller wants to readd or
+   * {@link #updateTop(Object)} with remaining elements, it should use a new stream, and use {@link
+   * Stream#skip(long)} to skip consumed elements with the delta size of queue.
+   */
+  public void addAll(Stream<T> elements) {
+    // Heap with size S always takes first S elements of the array,
+    // and thus it's safe to fill array further - no actual non-sentinel value will be overwritten.
+    try {
+      elements.forEachOrdered(
+          element -> {
+            this.heap[size + 1] = element;
+            this.size++;
+          });
+    } finally {
+      // The loop goes down to 1 as heap is 1-based not 0-based.
+      for (int i = (size >>> 1); i >= 1; i--) {
+        downHeap(i);
+      }
     }
   }
 
@@ -236,18 +268,18 @@ public class PriorityQueue<T> implements Iterable<T> {
    * Should be called when the Object at top changes values. Still log(n) worst case, but it's at
    * least twice as fast to
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * pq.top().change();
    * pq.updateTop();
-   * </pre>
+   * </code></pre>
    *
    * instead of
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * o = pq.pop();
    * o.change();
    * pq.push(o);
-   * </pre>
+   * </code></pre>
    *
    * @return the new 'top' element.
    */

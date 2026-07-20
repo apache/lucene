@@ -114,7 +114,7 @@ public abstract class PostingsEnum extends DocIdSetIterator {
    *
    * <p>The default implementation is provided below:
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * int batchSize = 16; // arbitrary
    * buffer.growNoCopy(batchSize);
    * int size = 0;
@@ -124,7 +124,7 @@ public abstract class PostingsEnum extends DocIdSetIterator {
    *   ++size;
    * }
    * buffer.size = size;
-   * </pre>
+   * </code></pre>
    *
    * <p><b>NOTE</b>: The provided {@link DocAndFloatFeatureBuffer} should not hold references to
    * internal data structures.

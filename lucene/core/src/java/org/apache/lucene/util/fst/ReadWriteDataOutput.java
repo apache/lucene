@@ -67,8 +67,8 @@ final class ReadWriteDataOutput extends DataOutput implements FSTReader {
   public void freeze() {
     frozen = true;
     // this operation is costly, so we want to compute it once and cache
-    this.byteBuffers = dataOutput.toWriteableBufferList();
-    // ensure the ByteBuffer internal array is accessible. The call to toWriteableBufferList() above
+    this.byteBuffers = dataOutput.toWritableBufferList();
+    // ensure the ByteBuffer internal array is accessible. The call to toWritableBufferList() above
     // would ensure that it is accessible.
     assert byteBuffers.stream().allMatch(ByteBuffer::hasArray);
   }

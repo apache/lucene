@@ -23,6 +23,7 @@ import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnByteVectorQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.util.VectorUtil;
 
 /**
  * A field that contains a single byte numeric vector (or none) for each document. Vectors are dense
@@ -48,6 +49,10 @@ public class KnnByteVectorField extends Field {
     }
     if (similarityFunction == null) {
       throw new IllegalArgumentException("similarity function must not be null");
+    }
+    if (similarityFunction == VectorSimilarityFunction.COSINE
+        && VectorUtil.isZeroVector(v) == true) {
+      throw new IllegalArgumentException("zero vector not allowed with cosine similarity function");
     }
     FieldType type = new FieldType();
     type.setVectorAttributes(dimension, VectorEncoding.BYTE, similarityFunction);
@@ -138,6 +143,10 @@ public class KnnByteVectorField extends Field {
       throw new IllegalArgumentException(
           "The number of vector dimensions does not match the field type");
     }
+    if (fieldType.vectorSimilarityFunction() == VectorSimilarityFunction.COSINE
+        && VectorUtil.isZeroVector(vector) == true) {
+      throw new IllegalArgumentException("zero vector not allowed with cosine similarity function");
+    }
     fieldsData = vector;
   }
 
@@ -158,6 +167,10 @@ public class KnnByteVectorField extends Field {
     if (value.length != type.vectorDimension()) {
       throw new IllegalArgumentException(
           "value length " + value.length + " must match field dimension " + type.vectorDimension());
+    }
+    if (type.vectorSimilarityFunction() == VectorSimilarityFunction.COSINE
+        && VectorUtil.isZeroVector(value)) {
+      throw new IllegalArgumentException("zero vector not allowed with cosine similarity function");
     }
     fieldsData = value;
   }

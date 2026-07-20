@@ -95,6 +95,19 @@ public interface VectorUtilSupport {
   long int4BitDotProduct(byte[] int4Quantized, byte[] binaryQuantized);
 
   /**
+   * Compute the dot product between a quantized int4 vector and a dibit (2-bit) quantized vector.
+   * It is assumed that the int4 quantized bits are packed in the byte array in the same way as the
+   * {@link org.apache.lucene.util.quantization.OptimizedScalarQuantizer#transposeHalfByte(byte[],
+   * byte[])} and that the dibit bits are packed the same way as {@link
+   * org.apache.lucene.util.quantization.OptimizedScalarQuantizer#transposeDibit(byte[], byte[])}.
+   *
+   * @param int4Quantized half byte packed int4 quantized vector (4 stripes)
+   * @param dibitQuantized dibit packed quantized vector (2 stripes)
+   * @return the dot product
+   */
+  long int4DibitDotProduct(byte[] int4Quantized, byte[] dibitQuantized);
+
+  /**
    * Quantizes {@code vector}, putting the result into {@code dest}.
    *
    * @param vector the vector to quantize

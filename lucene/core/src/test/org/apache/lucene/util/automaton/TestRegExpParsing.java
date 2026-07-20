@@ -273,7 +273,7 @@ public class TestRegExpParsing extends LuceneTestCase {
     AutomatonTestUtil.assertMinimalDFA(actual);
 
     Automaton expected =
-        Operations.minus(
+        AutomatonTestUtil.minus(
             Automata.makeAnyChar(),
             Automata.makeCharRange('0', '9'),
             Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
@@ -310,16 +310,16 @@ public class TestRegExpParsing extends LuceneTestCase {
 
     Automaton expected = Automata.makeAnyChar();
     expected =
-        Operations.minus(
+        AutomatonTestUtil.minus(
             expected, Automata.makeChar(' '), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
     expected =
-        Operations.minus(
+        AutomatonTestUtil.minus(
             expected, Automata.makeChar('\n'), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
     expected =
-        Operations.minus(
+        AutomatonTestUtil.minus(
             expected, Automata.makeChar('\r'), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
     expected =
-        Operations.minus(
+        AutomatonTestUtil.minus(
             expected, Automata.makeChar('\t'), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
     assertSameLanguage(expected, actual);
   }
@@ -355,16 +355,16 @@ public class TestRegExpParsing extends LuceneTestCase {
 
     Automaton expected = Automata.makeAnyChar();
     expected =
-        Operations.minus(
+        AutomatonTestUtil.minus(
             expected, Automata.makeCharRange('a', 'z'), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
     expected =
-        Operations.minus(
+        AutomatonTestUtil.minus(
             expected, Automata.makeCharRange('A', 'Z'), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
     expected =
-        Operations.minus(
+        AutomatonTestUtil.minus(
             expected, Automata.makeCharRange('0', '9'), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
     expected =
-        Operations.minus(
+        AutomatonTestUtil.minus(
             expected, Automata.makeChar('_'), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
     assertSameLanguage(expected, actual);
   }
@@ -395,7 +395,7 @@ public class TestRegExpParsing extends LuceneTestCase {
         });
   }
 
-  public void testExcapedNotCharClass() {
+  public void testEscapedNotCharClass() {
     RegExp re = new RegExp("[\\?]");
     assertEquals("\\?", re.toString());
     assertEquals("REGEXP_CHAR char=?\n", re.toStringTree());
@@ -407,7 +407,7 @@ public class TestRegExpParsing extends LuceneTestCase {
     assertSameLanguage(expected, actual);
   }
 
-  public void testExcapedSlashNotCharClass() {
+  public void testEscapedSlashNotCharClass() {
     RegExp re = new RegExp("[\\\\]");
     assertEquals("\\\\", re.toString());
     assertEquals("REGEXP_CHAR char=\\\n", re.toStringTree());

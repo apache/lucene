@@ -19,7 +19,6 @@ package org.apache.lucene.util;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -84,7 +83,7 @@ public class TestCollectionUtil extends LuceneTestCase {
     CollectionUtil.timSort(list, Collections.reverseOrder());
 
     // check that empty non-random access lists pass sorting without ex (as sorting is not needed)
-    list = new LinkedList<>();
+    list = new ArrayList<>();
     CollectionUtil.introSort(list);
     CollectionUtil.timSort(list);
     CollectionUtil.introSort(list, Collections.reverseOrder());
@@ -94,7 +93,7 @@ public class TestCollectionUtil extends LuceneTestCase {
   public void testOneElementListSort() {
     // check that one-element non-random access lists pass sorting without ex (as sorting is not
     // needed)
-    List<Integer> list = new LinkedList<>();
+    List<Integer> list = new ArrayList<>();
     list.add(1);
     CollectionUtil.introSort(list);
     CollectionUtil.timSort(list);

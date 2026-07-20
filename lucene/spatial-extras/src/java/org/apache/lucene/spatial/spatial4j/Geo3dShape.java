@@ -53,30 +53,25 @@ public class Geo3dShape<T extends GeoAreaShape> implements Shape {
 
   @Override
   public SpatialRelation relate(Shape other) {
-    int relationship;
-    if (other instanceof Geo3dShape<?>) {
-      relationship = relate((Geo3dShape<?>) other);
-    } else if (other instanceof Rectangle) {
-      relationship = relate((Rectangle) other);
-    } else if (other instanceof Point) {
-      relationship = relate((Point) other);
-    } else {
-      throw new RuntimeException(
-          "Unimplemented shape relationship determination: " + other.getClass());
-    }
+    int relationship =
+        switch (other) {
+          case Geo3dShape<?> geo3dShape -> relate(geo3dShape);
+          case Rectangle rect -> relate(rect);
+          case Point pt -> relate(pt);
+          default ->
+              throw new RuntimeException(
+                  "Unimplemented shape relationship determination: " + other.getClass());
+        };
 
-    switch (relationship) {
-      case GeoArea.DISJOINT:
-        return SpatialRelation.DISJOINT;
-      case GeoArea.OVERLAPS:
-        return (other instanceof Point ? SpatialRelation.CONTAINS : SpatialRelation.INTERSECTS);
-      case GeoArea.CONTAINS:
-        return (other instanceof Point ? SpatialRelation.CONTAINS : SpatialRelation.WITHIN);
-      case GeoArea.WITHIN:
-        return SpatialRelation.CONTAINS;
-    }
-
-    throw new RuntimeException("Undetermined shape relationship: " + relationship);
+    return switch (relationship) {
+      case GeoArea.DISJOINT -> SpatialRelation.DISJOINT;
+      case GeoArea.OVERLAPS ->
+          (other instanceof Point ? SpatialRelation.CONTAINS : SpatialRelation.INTERSECTS);
+      case GeoArea.CONTAINS ->
+          (other instanceof Point ? SpatialRelation.CONTAINS : SpatialRelation.WITHIN);
+      case GeoArea.WITHIN -> SpatialRelation.CONTAINS;
+      default -> throw new RuntimeException("Undetermined shape relationship: " + relationship);
+    };
   }
 
   private int relate(Geo3dShape<?> s) {
@@ -164,8 +159,7 @@ public class Geo3dShape<T extends GeoAreaShape> implements Shape {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof Geo3dShape<?>)) return false;
-    final Geo3dShape<?> other = (Geo3dShape<?>) o;
+    if (!(o instanceof Geo3dShape<?> other)) return false;
     return (other.spatialcontext.equals(spatialcontext) && other.shape.equals(shape));
   }
 

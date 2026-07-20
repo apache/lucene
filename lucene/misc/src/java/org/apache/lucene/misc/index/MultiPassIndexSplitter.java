@@ -110,7 +110,7 @@ public class MultiPassIndexSplitter {
       System.err.println("Writing part " + (i + 1) + " ...");
       // pass the subreaders directly, as our wrapper's numDocs/hasDeletetions are not up-to-date
       final List<? extends FakeDeleteLeafIndexReader> sr = input.getSequentialSubReadersWrapper();
-      w.addIndexes(sr.toArray(new CodecReader[sr.size()])); // TODO: maybe take List<IR> here?
+      w.addIndexes(sr.toArray(CodecReader[]::new)); // TODO: maybe take List<IR> here?
       w.close();
     }
     System.err.println("Done.");
@@ -122,7 +122,7 @@ public class MultiPassIndexSplitter {
       System.err.println(
           "Usage: MultiPassIndexSplitter -out <outputDir> -num <numParts> [-seq] <inputIndex1> [<inputIndex2 ...]");
       System.err.println("\tinputIndex\tpath to input index, multiple values are ok");
-      System.err.println("\t-out ouputDir\tpath to output directory to contain partial indexes");
+      System.err.println("\t-out outputDir\tpath to output directory to contain partial indexes");
       System.err.println("\t-num numParts\tnumber of parts to produce");
       System.err.println("\t-seq\tsequential docid-range split (default is round-robin)");
       System.exit(-1);
@@ -177,7 +177,7 @@ public class MultiPassIndexSplitter {
     if (indexes.size() == 1) {
       input = indexes.get(0);
     } else {
-      input = new MultiReader(indexes.toArray(new IndexReader[indexes.size()]));
+      input = new MultiReader(indexes.toArray(IndexReader[]::new));
     }
     splitter.split(input, dirs, seq);
   }
@@ -220,7 +220,7 @@ public class MultiPassIndexSplitter {
       return null;
     }
 
-    final List<? extends FakeDeleteLeafIndexReader> getSequentialSubReadersWrapper() {
+    List<? extends FakeDeleteLeafIndexReader> getSequentialSubReadersWrapper() {
       return getSequentialSubReaders();
     }
 

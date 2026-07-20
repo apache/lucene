@@ -695,7 +695,7 @@ public class TestDirectoryReader extends LuceneTestCase {
               tp1.docID(),
               tp2.docID());
           assertEquals(
-              "Different term frequence in postinglist of term " + enum1.term() + ".",
+              "Different term frequencies in postinglist of term " + enum1.term() + ".",
               tp1.freq(),
               tp2.freq());
           for (int i = 0; i < tp1.freq(); i++) {
@@ -1423,7 +1423,10 @@ public class TestDirectoryReader extends LuceneTestCase {
   }
 
   private void createMultiSegmentIndex(Directory dir, int numSegments) throws IOException {
-    IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig().setMaxBufferedDocs(2));
+    IndexWriter writer =
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig().setMaxBufferedDocs(2).setMergePolicy(NoMergePolicy.INSTANCE));
     for (int i = 0; i < numSegments; i++) {
       Document doc = new Document();
       doc.add(newStringField("id", String.valueOf(i), Field.Store.YES));

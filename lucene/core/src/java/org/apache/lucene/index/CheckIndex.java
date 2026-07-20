@@ -1558,7 +1558,7 @@ public final class CheckIndex implements Closeable {
 
       // term vectors cannot omit TF:
       final boolean expectedHasFreqs =
-          (isVectors || fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0);
+          (isVectors || fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS));
 
       if (hasFreqs != expectedHasFreqs) {
         throw new CheckIndexException(
@@ -1572,7 +1572,7 @@ public final class CheckIndex implements Closeable {
 
       if (isVectors == false) {
         final boolean expectedHasPositions =
-            fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+            fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
         if (hasPositions != expectedHasPositions) {
           throw new CheckIndexException(
               "field \""
@@ -1596,9 +1596,8 @@ public final class CheckIndex implements Closeable {
 
         final boolean expectedHasOffsets =
             fieldInfo
-                    .getIndexOptions()
-                    .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
-                >= 0;
+                .getIndexOptions()
+                .subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
         if (hasOffsets != expectedHasOffsets) {
           throw new CheckIndexException(
               "field \""
@@ -3625,6 +3624,20 @@ public final class CheckIndex implements Closeable {
               + " > "
               + skipper.maxValue());
     }
+    if (skipper.maxValueCount() < -1) {
+      throw new CheckIndexException(
+          "skipper dv iterator for field: "
+              + fieldName
+              + " reports invalid maxValueCount, got "
+              + skipper.maxValueCount());
+    }
+    if (skipper.docCount() == 0 && skipper.maxValueCount() != 0) {
+      throw new CheckIndexException(
+          "skipper dv iterator for field: "
+              + fieldName
+              + " reports maxValueCount for an empty field, got "
+              + skipper.maxValueCount());
+    }
     int docCount = 0;
     int doc;
     while (true) {
@@ -4100,6 +4113,49 @@ public final class CheckIndex implements Closeable {
     }
   }
 
+  private static void checkBulkFetchBinaryDocValues(
+      String fieldName, BinaryDocValues bdv, BinaryDocValues bdv2, int maxDoc) throws IOException {
+
+    int[] docs = new int[16];
+    BytesRef[] values = new BytesRef[16];
+
+    for (int doc = -1; doc < maxDoc; ) {
+      int size = 0;
+      for (int j = 0; j < docs.length; ++j) {
+        doc += 1 + (j & 0x03);
+        if (doc >= maxDoc) {
+          break;
+        }
+        docs[size++] = doc;
+      }
+
+      bdv.binaryValues(size, docs, values);
+
+      for (int j = 0; j < size; ++j) {
+        if (bdv2.advanceExact(docs[j])) {
+          BytesRef expected = BytesRef.deepCopyOf(bdv2.binaryValue());
+          if (values[j] == null || values[j].equals(expected) == false) {
+            throw new CheckIndexException(
+                "field "
+                    + fieldName
+                    + " #binaryValues reports different value: "
+                    + values[j]
+                    + " != "
+                    + expected);
+          }
+        } else {
+          if (values[j] != null) {
+            throw new CheckIndexException(
+                "field "
+                    + fieldName
+                    + " #binaryValues reports non-null for missing doc: "
+                    + values[j]);
+          }
+        }
+      }
+    }
+  }
+
   private static void checkDocValues(
       FieldInfo fi, int maxDoc, DocValuesProducer dvReader, DocValuesStatus status)
       throws Exception {
@@ -4128,6 +4184,8 @@ public final class CheckIndex implements Closeable {
         status.totalBinaryFields++;
         checkDVIterator(fi, dvReader::getBinary);
         checkBinaryDocValues(fi.name, dvReader.getBinary(fi), dvReader.getBinary(fi));
+        checkBulkFetchBinaryDocValues(
+            fi.name, dvReader.getBinary(fi), dvReader.getBinary(fi), maxDoc);
         break;
       case NUMERIC:
         status.totalNumericFields++;
@@ -4226,7 +4284,7 @@ public final class CheckIndex implements Closeable {
                 Terms terms = tfv.terms(field);
                 TermsEnum termsEnum = terms.iterator();
                 final boolean postingsHasFreq =
-                    fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
+                    fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS);
                 final boolean postingsHasPayload = fieldInfo.hasPayloads();
                 final boolean vectorsHasPayload = terms.hasPayloads();
 

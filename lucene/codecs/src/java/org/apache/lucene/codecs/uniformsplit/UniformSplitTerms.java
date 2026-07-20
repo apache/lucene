@@ -118,26 +118,23 @@ public class UniformSplitTerms extends Terms {
 
   @Override
   public boolean hasFreqs() {
-    return fieldMetadata.getFieldInfo().getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS)
-        >= 0;
+    return fieldMetadata.getFieldInfo().getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS);
   }
 
   @Override
   public boolean hasOffsets() {
     return fieldMetadata
-            .getFieldInfo()
-            .getIndexOptions()
-            .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
-        >= 0;
+        .getFieldInfo()
+        .getIndexOptions()
+        .subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
   }
 
   @Override
   public boolean hasPositions() {
     return fieldMetadata
-            .getFieldInfo()
-            .getIndexOptions()
-            .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS)
-        >= 0;
+        .getFieldInfo()
+        .getIndexOptions()
+        .subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
   }
 
   @Override

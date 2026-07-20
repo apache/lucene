@@ -46,7 +46,7 @@ public final class TurkishLowerCaseFilter extends TokenFilter {
   }
 
   @Override
-  public final boolean incrementToken() throws IOException {
+  public boolean incrementToken() throws IOException {
     boolean iOrAfter = false;
 
     if (input.incrementToken()) {

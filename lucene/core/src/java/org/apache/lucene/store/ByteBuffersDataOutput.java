@@ -247,18 +247,18 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
   }
 
   /**
-   * Returns a list of writeable blocks over the (source) content buffers.
+   * Returns a list of writable blocks over the (source) content buffers.
    *
    * <p>This method returns the raw content of source buffers that may change over the lifetime of
    * this object (blocks can be recycled or discarded, for example). Most applications should favor
    * calling {@link #toBufferList()} which returns a read-only <i>view</i> over the content of the
    * source buffers.
    *
-   * <p>The difference between {@link #toBufferList()} and {@link #toWriteableBufferList()} is that
+   * <p>The difference between {@link #toBufferList()} and {@link #toWritableBufferList()} is that
    * read-only view of source buffers will always return {@code false} from {@link
    * ByteBuffer#hasArray()} (which sometimes may be required to avoid double copying).
    */
-  public ArrayList<ByteBuffer> toWriteableBufferList() {
+  public ArrayList<ByteBuffer> toWritableBufferList() {
     ArrayList<ByteBuffer> result = new ArrayList<>(Math.max(blocks.size(), 1));
     if (blocks.isEmpty()) {
       result.add(EMPTY);
@@ -415,9 +415,28 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
   public void writeString(String v) {
     try {
       final int charCount = v.length();
+      ByteBuffer currentBlock = this.currentBlock;
+
+      // Fast path for short strings (charCount <= 42): the VInt length prefix is guaranteed to be 1
+      // byte,
+      // so we can encode directly and backfill the length without computing the UTF-8 byte count
+      // upfront.
+      if (charCount <= UnicodeUtil.MAX_CHARS_FOR_1_BYTE_VINT
+          && currentBlock.hasArray()
+          && currentBlock.remaining() >= 1 + charCount * UnicodeUtil.MAX_UTF8_BYTES_PER_CHAR) {
+        byte[] array = currentBlock.array();
+        int startingPos = currentBlock.position();
+        int off = currentBlock.arrayOffset() + startingPos;
+        int encodedEnd = UnicodeUtil.UTF16toUTF8(v, 0, charCount, array, off + 1);
+        int byteLen = encodedEnd - (off + 1);
+        array[off] = (byte) byteLen;
+        currentBlock.position(startingPos + 1 + byteLen);
+        return;
+      }
+
       final int byteLen = UnicodeUtil.calcUTF16toUTF8Length(v, 0, charCount);
       writeVInt(byteLen);
-      ByteBuffer currentBlock = this.currentBlock;
+      currentBlock = this.currentBlock;
       if (currentBlock.hasArray() && currentBlock.remaining() >= byteLen) {
         int startingPos = currentBlock.position();
         UnicodeUtil.UTF16toUTF8(

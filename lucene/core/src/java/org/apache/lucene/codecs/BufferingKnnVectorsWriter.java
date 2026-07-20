@@ -31,6 +31,7 @@ import org.apache.lucene.index.SortingCodecReader;
 import org.apache.lucene.index.SortingCodecReader.SortingValuesIterator;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /**
@@ -195,7 +196,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
   }
 
   @Override
-  public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+  public IORunnable mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
     switch (fieldInfo.getVectorEncoding()) {
       case FLOAT32:
         FloatVectorValues floatVectorValues =
@@ -208,6 +209,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
         writeField(fieldInfo, byteVectorValues, mergeState.segmentInfo.maxDoc());
         break;
     }
+    return null;
   }
 
   /** Write the provided float vector field */
@@ -260,7 +262,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
               * (long)
                   (RamUsageEstimator.NUM_BYTES_OBJECT_REF
                       + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER)
-          + vectors.size() * (long) dim * Float.BYTES;
+          + vectors.size() * (long) dim * fieldInfo.getVectorEncoding().byteSize;
     }
   }
 

@@ -486,7 +486,6 @@ godaddy
 gold
 goldpoint
 golf
-goo
 goodyear
 goog
 google
@@ -742,6 +741,7 @@ meme
 memorial
 men
 menu
+merck
 merckmsd
 mg
 mh
@@ -1250,7 +1250,6 @@ windows
 wine
 winners
 wme
-wolterskluwer
 woodside
 work
 works

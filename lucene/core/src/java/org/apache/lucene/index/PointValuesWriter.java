@@ -20,11 +20,14 @@ import java.io.IOException;
 import org.apache.lucene.codecs.MutablePointTree;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.PointsWriter;
+import org.apache.lucene.document.column.BytesRefValuesCursor;
+import org.apache.lucene.document.column.LongValuesCursor;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.PagedBytes;
+import org.apache.lucene.util.bkd.BKDConfig;
 
 /** Buffers up pending byte[][] value(s) per doc, then flushes when segment flushes. */
 class PointValuesWriter {
@@ -32,15 +35,33 @@ class PointValuesWriter {
   private final PagedBytes bytes;
   private final DataOutput bytesOut;
   private final Counter iwBytesUsed;
+  private final SharedIndexingScratch sharedScratch;
   private int[] docIDs;
   private int numPoints;
   private int numDocs;
   private int lastDocID = -1;
   private final int packedBytesLength;
 
-  PointValuesWriter(Counter bytesUsed, FieldInfo fieldInfo) {
+  private static final int POINTS_BUFFER_INT_VALUES =
+      SharedIndexingScratch.BYTES_SCRATCH_SIZE / Integer.BYTES;
+  private static final int POINTS_BUFFER_LONG_VALUES =
+      SharedIndexingScratch.BYTES_SCRATCH_SIZE / Long.BYTES;
+
+  static {
+    // If Lucene ever supports packed points > BYTES_SCRATCH_SIZE either the buffer needs to be
+    // increased or a fallback indexing code-path bypassing the buffer needs to be added.
+    assert SharedIndexingScratch.BYTES_SCRATCH_SIZE
+            >= PointValues.MAX_NUM_BYTES * BKDConfig.MAX_DIMS
+        : "BYTES_SCRATCH_SIZE="
+            + SharedIndexingScratch.BYTES_SCRATCH_SIZE
+            + " must be >= MAX_NUM_BYTES * MAX_DIMS="
+            + (PointValues.MAX_NUM_BYTES * BKDConfig.MAX_DIMS);
+  }
+
+  PointValuesWriter(Counter bytesUsed, FieldInfo fieldInfo, SharedIndexingScratch sharedScratch) {
     this.fieldInfo = fieldInfo;
     this.iwBytesUsed = bytesUsed;
+    this.sharedScratch = sharedScratch;
     this.bytes = new PagedBytes(12);
     bytesOut = bytes.getDataOutput();
     docIDs = new int[16];
@@ -78,6 +99,96 @@ class PointValuesWriter {
     }
 
     numPoints++;
+  }
+
+  void addDense1DIntValues(int firstDocID, LongValuesCursor cursor) throws IOException {
+    validate1DPacked(Integer.BYTES);
+    final int size = cursor.size();
+    if (size == 0) {
+      return;
+    }
+    final long ramBefore = reserveDenseRange(firstDocID, size);
+    final byte[] buffer = sharedScratch.bytesScratch();
+    int remaining = size;
+    while (remaining > 0) {
+      int chunk = Math.min(POINTS_BUFFER_INT_VALUES, remaining);
+      cursor.fillIntPoints(buffer, 0, chunk);
+      bytesOut.writeBytes(buffer, 0, chunk * Integer.BYTES);
+      remaining -= chunk;
+    }
+    commitDenseRange(firstDocID, size, ramBefore);
+  }
+
+  void addDense1DLongValues(int firstDocID, LongValuesCursor cursor) throws IOException {
+    validate1DPacked(Long.BYTES);
+    final int size = cursor.size();
+    if (size == 0) {
+      return;
+    }
+    final long ramBefore = reserveDenseRange(firstDocID, size);
+    final byte[] buffer = sharedScratch.bytesScratch();
+    int remaining = size;
+    while (remaining > 0) {
+      int chunk = Math.min(POINTS_BUFFER_LONG_VALUES, remaining);
+      cursor.fillLongPoints(buffer, 0, chunk);
+      bytesOut.writeBytes(buffer, 0, chunk * Long.BYTES);
+      remaining -= chunk;
+    }
+    commitDenseRange(firstDocID, size, ramBefore);
+  }
+
+  void addDenseNDValues(int firstDocID, BytesRefValuesCursor cursor) throws IOException {
+    final int size = cursor.size();
+    if (size == 0) {
+      return;
+    }
+    final long ramBefore = reserveDenseRange(firstDocID, size);
+    final int width = packedBytesLength;
+    final int perChunk = SharedIndexingScratch.BYTES_SCRATCH_SIZE / width;
+    final byte[] buffer = sharedScratch.bytesScratch();
+    int remaining = size;
+    while (remaining > 0) {
+      int chunk = Math.min(perChunk, remaining);
+      cursor.fillPackedPoints(buffer, 0, chunk, width);
+      bytesOut.writeBytes(buffer, 0, chunk * width);
+      remaining -= chunk;
+    }
+    commitDenseRange(firstDocID, size, ramBefore);
+  }
+
+  private void validate1DPacked(int byteWidth) {
+    if (fieldInfo.getPointDimensionCount() != 1 || fieldInfo.getPointNumBytes() != byteWidth) {
+      throw new IllegalArgumentException(
+          "field="
+              + fieldInfo.name
+              + ": 1D dense path requires pointDimensionCount=1 and pointNumBytes="
+              + byteWidth
+              + ", got pointDimensionCount="
+              + fieldInfo.getPointDimensionCount()
+              + " pointNumBytes="
+              + fieldInfo.getPointNumBytes());
+    }
+  }
+
+  private long reserveDenseRange(int firstDocID, int size) {
+    assert firstDocID > lastDocID
+        : "firstDocID=" + firstDocID + " must be > lastDocID=" + lastDocID;
+    final int oldLength = docIDs.length;
+    if (oldLength < numPoints + size) {
+      docIDs = ArrayUtil.grow(docIDs, numPoints + size);
+      iwBytesUsed.addAndGet((docIDs.length - oldLength) * (long) Integer.BYTES);
+    }
+    for (int i = 0; i < size; i++) {
+      docIDs[numPoints + i] = firstDocID + i;
+    }
+    return bytes.ramBytesUsed();
+  }
+
+  private void commitDenseRange(int firstDocID, int size, long ramBefore) {
+    iwBytesUsed.addAndGet(bytes.ramBytesUsed() - ramBefore);
+    numDocs += size;
+    lastDocID = firstDocID + size - 1;
+    numPoints += size;
   }
 
   /**
@@ -175,32 +286,32 @@ class PointValuesWriter {
             }
             return new PointValues() {
               @Override
-              public PointTree getPointTree() throws IOException {
+              public PointTree getPointTree() {
                 return values;
               }
 
               @Override
-              public byte[] getMinPackedValue() throws IOException {
+              public byte[] getMinPackedValue() {
                 throw new UnsupportedOperationException();
               }
 
               @Override
-              public byte[] getMaxPackedValue() throws IOException {
+              public byte[] getMaxPackedValue() {
                 throw new UnsupportedOperationException();
               }
 
               @Override
-              public int getNumDimensions() throws IOException {
+              public int getNumDimensions() {
                 throw new UnsupportedOperationException();
               }
 
               @Override
-              public int getNumIndexDimensions() throws IOException {
+              public int getNumIndexDimensions() {
                 throw new UnsupportedOperationException();
               }
 
               @Override
-              public int getBytesPerDimension() throws IOException {
+              public int getBytesPerDimension() {
                 throw new UnsupportedOperationException();
               }
 
@@ -217,7 +328,7 @@ class PointValuesWriter {
           }
 
           @Override
-          public void checkIntegrity() {
+          public void checkIntegrity(MergePolicy.OneMerge merge) {
             throw new UnsupportedOperationException();
           }
 

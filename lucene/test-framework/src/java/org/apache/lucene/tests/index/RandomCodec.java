@@ -34,7 +34,6 @@ import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.blocktreeords.BlockTreeOrdsPostingsFormat;
 import org.apache.lucene.codecs.lucene104.Lucene104HnswScalarQuantizedVectorsFormat;
-import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90PointsReader;
 import org.apache.lucene.codecs.lucene90.Lucene90PointsWriter;
@@ -62,13 +61,14 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.bkd.BKDConfig;
 import org.apache.lucene.util.bkd.BKDWriter;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 
 /**
  * Codec that assigns per-field random postings formats.
  *
  * <p>The same field/format assignment will happen regardless of order, a hash is computed up front
  * that determines the mapping. This means fields can be put into things like HashSets and added to
- * documents in different orders and the test will still be deterministic and reproducable.
+ * documents in different orders and the test will still be deterministic and reproducible.
  */
 public class RandomCodec extends AssertingCodec {
   /** Shuffled list of postings formats to use for new mappings */
@@ -222,7 +222,7 @@ public class RandomCodec extends AssertingCodec {
   public RandomCodec(Random random, Set<String> avoidCodecs) {
     this.perFieldSeed = random.nextInt();
     this.avoidCodecs = avoidCodecs;
-    // TODO: make it possible to specify min/max iterms per
+    // TODO: make it possible to specify min/max terms per
     // block via CL:
     int minItemsPerBlock = TestUtil.nextInt(random, 2, 100);
     int maxItemsPerBlock = 2 * (Math.max(2, minItemsPerBlock - 1)) + random.nextInt(100);
@@ -275,21 +275,21 @@ public class RandomCodec extends AssertingCodec {
             concurrentKnnMerging ? ForkJoinPool.commonPool() : null,
             0),
         new Lucene104HnswScalarQuantizedVectorsFormat(
-            Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding.SEVEN_BIT,
+            QuantizedByteVectorValues.ScalarEncoding.SEVEN_BIT,
             TestUtil.nextInt(random, 5, 50),
             TestUtil.nextInt(random, 10, 50),
             concurrentKnnMerging ? TestUtil.nextInt(random, 2, 8) : 1,
             concurrentKnnMerging ? ForkJoinPool.commonPool() : null,
             0),
         new Lucene104HnswScalarQuantizedVectorsFormat(
-            Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding.UNSIGNED_BYTE,
+            QuantizedByteVectorValues.ScalarEncoding.UNSIGNED_BYTE,
             TestUtil.nextInt(random, 5, 50),
             TestUtil.nextInt(random, 10, 50),
             concurrentKnnMerging ? TestUtil.nextInt(random, 2, 8) : 1,
             concurrentKnnMerging ? ForkJoinPool.commonPool() : null,
             0),
         new Lucene104HnswScalarQuantizedVectorsFormat(
-            Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding.PACKED_NIBBLE,
+            QuantizedByteVectorValues.ScalarEncoding.PACKED_NIBBLE,
             TestUtil.nextInt(random, 5, 50),
             TestUtil.nextInt(random, 10, 50),
             concurrentKnnMerging ? TestUtil.nextInt(random, 2, 8) : 1,

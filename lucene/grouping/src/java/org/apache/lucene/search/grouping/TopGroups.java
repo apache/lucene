@@ -16,6 +16,13 @@
  */
 package org.apache.lucene.search.grouping;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.NavigableSet;
+import java.util.TreeSet;
+import org.apache.lucene.search.FieldComparator;
+import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
@@ -95,16 +102,16 @@ public class TopGroups<T> {
    * @param b - another value
    * @return ignoring any NaN return the greater of a and b
    */
-  private static float nonNANmax(float a, float b) {
+  static float nonNANmax(float a, float b) {
     if (Float.isNaN(a)) return b;
     if (Float.isNaN(b)) return a;
     return Math.max(a, b);
   }
 
   /**
-   * Merges an array of TopGroups, for example obtained from the second-pass collector across
-   * multiple shards. Each TopGroups must have been sorted by the same groupSort and docSort, and
-   * the top groups passed to all second-pass collectors must be the same.
+   * Merges a list of TopGroups, for example obtained from the second-pass collector across multiple
+   * shards. Each TopGroups must have been sorted by the same groupSort and docSort, and the top
+   * groups passed to all second-pass collectors must be the same.
    *
    * <p><b>NOTE</b>: We can't always compute an exact totalGroupCount. Documents belonging to a
    * group may occur on more than one shard and thus the merged totalGroupCount can be higher than
@@ -112,9 +119,20 @@ public class TopGroups<T> {
    * documents of one group do only reside in one shard then the totalGroupCount is exact.
    *
    * <p><b>NOTE</b>: the topDocs in each GroupDocs is actually an instance of TopDocsAndShards
+   *
+   * @param shardGroups list of TopGroups to merge, one per shard; must all share the same group
+   *     sort, doc sort, and top groups.
+   * @param groupSort the {@link Sort} used to sort the groups across shards.
+   * @param docSort the {@link Sort} used to sort documents within each group.
+   * @param docOffset which document to start from within each group (for pagination).
+   * @param docTopN how many top documents to keep within each group.
+   * @param scoreMergeMode how to merge scores across shards; see {@link ScoreMergeMode}.
+   * @return merged TopGroups instance, if there are no groups, returns a TopGroups with an empty
+   *     groups array.
    */
+  @SuppressWarnings("unchecked")
   public static <T> TopGroups<T> merge(
-      TopGroups<T>[] shardGroups,
+      List<TopGroups<T>> shardGroups,
       Sort groupSort,
       Sort docSort,
       int docOffset,
@@ -123,8 +141,14 @@ public class TopGroups<T> {
 
     // System.out.println("TopGroups.merge");
 
-    if (shardGroups.length == 0) {
-      return null;
+    if (shardGroups.isEmpty()) {
+      return new TopGroups<>(
+          groupSort.getSort(),
+          docSort.getSort(),
+          0,
+          0,
+          (GroupDocs<T>[]) new GroupDocs<?>[0],
+          Float.NaN);
     }
 
     int totalHitCount = 0;
@@ -132,7 +156,9 @@ public class TopGroups<T> {
     // Optionally merge the totalGroupCount.
     Integer totalGroupCount = null;
 
-    final int numGroups = shardGroups[0].groups.length;
+    TopGroups<T> firstShardGroup = shardGroups.getFirst();
+
+    final int numGroups = firstShardGroup.groups.length;
     for (TopGroups<T> shard : shardGroups) {
       if (numGroups != shard.groups.length) {
         throw new IllegalArgumentException(
@@ -153,23 +179,24 @@ public class TopGroups<T> {
     final GroupDocs<T>[] mergedGroupDocs = new GroupDocs[numGroups];
 
     final TopDocs[] shardTopDocs;
-    if (docSort.equals(Sort.RELEVANCE)) {
-      shardTopDocs = new TopDocs[shardGroups.length];
+    final boolean sortByRelevance = docSort.equals(Sort.RELEVANCE);
+    if (sortByRelevance) {
+      shardTopDocs = new TopDocs[shardGroups.size()];
     } else {
-      shardTopDocs = new TopFieldDocs[shardGroups.length];
+      shardTopDocs = new TopFieldDocs[shardGroups.size()];
     }
     float totalMaxScore = Float.NaN;
 
     for (int groupIDX = 0; groupIDX < numGroups; groupIDX++) {
-      final T groupValue = shardGroups[0].groups[groupIDX].groupValue();
+      final T groupValue = firstShardGroup.groups[groupIDX].groupValue();
       // System.out.println("  merge groupValue=" + groupValue + " sortValues=" +
       // Arrays.toString(shardGroups[0].groups[groupIDX].groupSortValues));
       float maxScore = Float.NaN;
       int totalHits = 0;
       double scoreSum = 0.0;
-      for (int shardIDX = 0; shardIDX < shardGroups.length; shardIDX++) {
+      for (int shardIDX = 0; shardIDX < shardGroups.size(); shardIDX++) {
         // System.out.println("    shard=" + shardIDX);
-        final TopGroups<T> shard = shardGroups[shardIDX];
+        final TopGroups<T> shard = shardGroups.get(shardIDX);
         final GroupDocs<?> shardGroupDocs = shard.groups[groupIDX];
         if (groupValue == null) {
           if (shardGroupDocs.groupValue() != null) {
@@ -187,7 +214,7 @@ public class TopGroups<T> {
         }
         */
 
-        if (docSort.equals(Sort.RELEVANCE)) {
+        if (sortByRelevance) {
           shardTopDocs[shardIDX] =
               new TopDocs(shardGroupDocs.totalHits(), shardGroupDocs.scoreDocs());
         } else {
@@ -200,15 +227,21 @@ public class TopGroups<T> {
           shardTopDocs[shardIDX].scoreDocs[i].shardIndex = shardIDX;
         }
 
-        maxScore = nonNANmax(maxScore, shardGroupDocs.maxScore());
+        if (!sortByRelevance) {
+          maxScore = nonNANmax(maxScore, shardGroupDocs.maxScore());
+        }
         assert shardGroupDocs.totalHits().relation() == Relation.EQUAL_TO;
         totalHits += shardGroupDocs.totalHits().value();
         scoreSum += shardGroupDocs.score();
       }
 
       final TopDocs mergedTopDocs;
-      if (docSort.equals(Sort.RELEVANCE)) {
+      if (sortByRelevance) {
         mergedTopDocs = TopDocs.merge(docOffset + docTopN, shardTopDocs);
+        // When sorting by relevance, the highest-scoring doc is first, so we can
+        // derive maxScore directly instead of accumulating across shards.
+        maxScore =
+            mergedTopDocs.scoreDocs.length == 0 ? Float.NaN : mergedTopDocs.scoreDocs[0].score;
       } else {
         mergedTopDocs = TopDocs.merge(docSort, docOffset + docTopN, (TopFieldDocs[]) shardTopDocs);
       }
@@ -256,7 +289,7 @@ public class TopGroups<T> {
               new TotalHits(totalHits, TotalHits.Relation.EQUAL_TO),
               mergedScoreDocs,
               groupValue,
-              shardGroups[0].groups[groupIDX].groupSortValues());
+              firstShardGroup.groups[groupIDX].groupSortValues());
       totalMaxScore = nonNANmax(totalMaxScore, maxScore);
     }
 
@@ -279,5 +312,153 @@ public class TopGroups<T> {
           mergedGroupDocs,
           totalMaxScore);
     }
+  }
+
+  private record MergedBlockGroup(Object[] topValues, int shardIndex, int groupIndex) {}
+
+  private static class GroupComparator implements Comparator<MergedBlockGroup> {
+    @SuppressWarnings("rawtypes")
+    private final FieldComparator[] comparators;
+
+    private final int[] reversed;
+
+    @SuppressWarnings({"rawtypes"})
+    public GroupComparator(Sort groupSort) {
+      final SortField[] sortFields = groupSort.getSort();
+      comparators = new FieldComparator[sortFields.length];
+      reversed = new int[sortFields.length];
+      for (int compIDX = 0; compIDX < sortFields.length; compIDX++) {
+        final SortField sortField = sortFields[compIDX];
+        comparators[compIDX] = sortField.getComparator(1, Pruning.NONE);
+        reversed[compIDX] = sortField.getReverse() ? -1 : 1;
+      }
+    }
+
+    @Override
+    @SuppressWarnings({"unchecked"})
+    public int compare(MergedBlockGroup group, MergedBlockGroup other) {
+      if (group == other) {
+        return 0;
+      }
+      final Object[] groupValues = group.topValues;
+      final Object[] otherValues = other.topValues;
+      for (int compIDX = 0; compIDX < comparators.length; compIDX++) {
+        final int c =
+            reversed[compIDX]
+                * comparators[compIDX].compareValues(groupValues[compIDX], otherValues[compIDX]);
+        if (c != 0) {
+          return c;
+        }
+      }
+
+      assert group.shardIndex != other.shardIndex;
+      return group.shardIndex - other.shardIndex;
+    }
+  }
+
+  /**
+   * Merge TopGroups that are partitioned into blocks per shard. This method assumes that within
+   * each shard, the groups are sorted according to the groupSort.
+   *
+   * @param shardGroups list of TopGroups, one per shard.
+   * @param groupSort The {@link Sort} used to sort the groups. The top sorted document within each
+   *     group according to groupSort, determines how that group sorts against other groups. This
+   *     must be non-null, ie, if you want to groupSort by relevance use Sort.RELEVANCE.
+   * @param groupOffset Which group to start from.
+   * @param topNGroups How many top groups to keep.
+   * @param docSort The sort to use within each group
+   * @return TopGroups instance; if there are no groups, returns a TopGroups with an empty groups
+   *     array.
+   */
+  @SuppressWarnings("unchecked")
+  public static <T> TopGroups<T> mergeBlockGroups(
+      List<TopGroups<T>> shardGroups,
+      Sort groupSort,
+      int groupOffset,
+      int topNGroups,
+      Sort docSort) {
+    if (shardGroups.isEmpty()) {
+      return new TopGroups<>(
+          groupSort.getSort(),
+          docSort.getSort(),
+          0,
+          0,
+          (GroupDocs<T>[]) new GroupDocs<?>[0],
+          Float.NaN);
+    }
+
+    Integer totalGroupCount = null;
+    int totalHitCount = 0;
+    int totalGroupedHitCount = 0;
+    for (TopGroups<T> sg : shardGroups) {
+      totalHitCount += sg.totalHitCount;
+      if (sg.totalGroupCount != null) {
+        if (totalGroupCount == null) {
+          totalGroupCount = 0;
+        }
+        totalGroupCount += sg.totalGroupCount;
+      }
+    }
+
+    // k-way merge
+    GroupComparator groupComp = new GroupComparator(groupSort);
+    NavigableSet<MergedBlockGroup> queue = new TreeSet<>(groupComp);
+
+    float totalMaxScore = Float.NaN;
+    final boolean groupSortByRelevance = groupSort.equals(Sort.RELEVANCE);
+    // init queue
+    for (int idx = 0; idx < shardGroups.size(); idx++) {
+      TopGroups<T> topGroups = shardGroups.get(idx);
+      if (topGroups.groups.length == 0) {
+        continue;
+      }
+      if (!groupSortByRelevance) {
+        totalMaxScore = nonNANmax(totalMaxScore, topGroups.maxScore);
+      }
+      GroupDocs<T> firstGroupDocs = topGroups.groups[0];
+      queue.add(new MergedBlockGroup(firstGroupDocs.groupSortValues(), idx, 0));
+    }
+
+    if (groupSortByRelevance && !queue.isEmpty()) {
+      totalMaxScore = shardGroups.get(queue.first().shardIndex).maxScore;
+    }
+
+    final List<GroupDocs<T>> groupDocsList = new ArrayList<>();
+    int count = 0;
+    while (!queue.isEmpty()) {
+      final MergedBlockGroup mergedBlockGroup = queue.pollFirst();
+      TopGroups<T> shardGroup = shardGroups.get(mergedBlockGroup.shardIndex);
+
+      int currentGroupIndex = mergedBlockGroup.groupIndex;
+      GroupDocs<T> currentGroupDocs = shardGroup.groups[currentGroupIndex];
+      if (count++ >= groupOffset) {
+        groupDocsList.add(currentGroupDocs);
+        totalGroupedHitCount += (int) currentGroupDocs.totalHits().value();
+        if (groupDocsList.size() == topNGroups) {
+          break;
+        }
+      }
+
+      int nextGroupIndex = currentGroupIndex + 1;
+      if (nextGroupIndex < shardGroup.groups.length) {
+        GroupDocs<T> nextGroupDocs = shardGroup.groups[nextGroupIndex];
+        queue.add(
+            new MergedBlockGroup(
+                nextGroupDocs.groupSortValues(), mergedBlockGroup.shardIndex, nextGroupIndex));
+      }
+    }
+
+    @SuppressWarnings({"unchecked"})
+    GroupDocs<T>[] groupDocs = (GroupDocs<T>[]) groupDocsList.toArray(GroupDocs[]::new);
+
+    return new TopGroups<>(
+        new TopGroups<>(
+            groupSort.getSort(),
+            docSort.getSort(),
+            totalHitCount,
+            totalGroupedHitCount,
+            groupDocs,
+            totalMaxScore),
+        totalGroupCount);
   }
 }

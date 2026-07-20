@@ -42,11 +42,11 @@ import org.apache.lucene.search.TopTermsRewrite;
  *
  * <blockquote>
  *
- * <pre class="prettyprint">{@code
+ * <pre><code class="language-java">
  * WildcardQuery wildcard = new WildcardQuery(new Term("field", "bro?n"));
- * SpanQuery spanWildcard = new SpanMultiTermQueryWrapper<WildcardQuery>(wildcard);
+ * SpanQuery spanWildcard = new SpanMultiTermQueryWrapper&lt;WildcardQuery&gt;(wildcard);
  * // do something with spanWildcard, such as use it in a SpanFirstQuery
- * }</pre>
+ * </code></pre>
  *
  * </blockquote>
  */
@@ -161,7 +161,7 @@ public class SpanMultiTermQueryWrapper<Q extends MultiTermQuery> extends SpanQue
 
               @Override
               protected Query build(List<SpanQuery> builder) {
-                return new SpanOrQuery(builder.toArray(new SpanQuery[builder.size()]));
+                return new SpanOrQuery(builder.toArray(SpanQuery[]::new));
               }
 
               @Override
@@ -216,7 +216,7 @@ public class SpanMultiTermQueryWrapper<Q extends MultiTermQuery> extends SpanQue
 
             @Override
             protected Query build(List<SpanQuery> builder) {
-              return new SpanOrQuery(builder.toArray(new SpanQuery[builder.size()]));
+              return new SpanOrQuery(builder.toArray(SpanQuery[]::new));
             }
 
             @Override

@@ -17,6 +17,7 @@
 package org.apache.lucene.sandbox.codecs.faiss;
 
 import static org.apache.lucene.index.VectorEncoding.FLOAT32;
+import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
 import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
 import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
 
@@ -45,7 +46,9 @@ public class TestFaissKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
   private static final String FAISS_RUN_TESTS = "tests.faiss.run";
 
   private static final VectorEncoding[] SUPPORTED_ENCODINGS = {FLOAT32};
-  private static final VectorSimilarityFunction[] SUPPORTED_FUNCTIONS = {DOT_PRODUCT, EUCLIDEAN};
+  private static final VectorSimilarityFunction[] SUPPORTED_FUNCTIONS = {
+    DOT_PRODUCT, EUCLIDEAN, COSINE
+  };
 
   @BeforeClass
   public static void maybeSuppress() {
@@ -137,5 +140,10 @@ public class TestFaissKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
       writer.addDocuments(
           Collections.nCopies(numDocs, List.of(new KnnFloatVectorField("vector", largeVector))));
     }
+  }
+
+  @Override
+  protected boolean supportsFloatVectorFallback() {
+    return false;
   }
 }

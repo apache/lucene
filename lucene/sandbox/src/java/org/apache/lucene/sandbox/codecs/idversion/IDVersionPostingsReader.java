@@ -22,6 +22,7 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.PostingsReaderBase;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.ImpactsEnum;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.store.DataInput;
@@ -71,8 +72,8 @@ final class IDVersionPostingsReader extends PostingsReaderBase {
     if (PostingsEnum.featureRequested(flags, PostingsEnum.POSITIONS)) {
       SinglePostingsEnum posEnum;
 
-      if (reuse instanceof SinglePostingsEnum) {
-        posEnum = (SinglePostingsEnum) reuse;
+      if (reuse instanceof SinglePostingsEnum spe) {
+        posEnum = spe;
       } else {
         posEnum = new SinglePostingsEnum();
       }
@@ -81,8 +82,8 @@ final class IDVersionPostingsReader extends PostingsReaderBase {
       return posEnum;
     }
 
-    if (reuse instanceof SingleDocsEnum) {
-      docsEnum = (SingleDocsEnum) reuse;
+    if (reuse instanceof SingleDocsEnum sde) {
+      docsEnum = sde;
     } else {
       docsEnum = new SingleDocsEnum();
     }
@@ -99,7 +100,7 @@ final class IDVersionPostingsReader extends PostingsReaderBase {
   }
 
   @Override
-  public void checkIntegrity() throws IOException {}
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {}
 
   @Override
   public String toString() {

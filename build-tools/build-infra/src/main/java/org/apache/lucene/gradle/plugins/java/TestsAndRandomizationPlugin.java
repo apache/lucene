@@ -23,6 +23,7 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
@@ -32,6 +33,8 @@ import org.apache.tools.ant.types.Commandline;
 import org.gradle.api.GradleException;
 import org.gradle.api.JavaVersion;
 import org.gradle.api.Project;
+import org.gradle.api.artifacts.VersionCatalogsExtension;
+import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
@@ -353,7 +356,7 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
 
     // JDK versions where the vector module is still incubating.
     boolean incubatorJavaVersion =
-        Set.of("21", "22", "23", "24", "25").contains(runtimeJava.getMajorVersion());
+        Set.of("21", "22", "23", "24", "25", "26").contains(runtimeJava.getMajorVersion());
 
     TaskContainer tasks = project.getTasks();
 
@@ -424,8 +427,10 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
                 task.setFailFast(true);
               }
 
+              // Use junit platform and junit-vintage to run the tests.
+              configureJUnitPlatform(task);
+
               task.setWorkingDir(testsCwd);
-              task.useJUnit();
 
               task.setMinHeapSize(minHeapSizeOption.get());
               task.setMaxHeapSize(heapSizeOption.get());
@@ -466,8 +471,10 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
                             ":lucene:distribution.tests",
                             ":lucene:test-framework" ->
                             "ALL-UNNAMED";
+                        case ":lucene:sandbox" -> "org.apache.lucene.core,ALL-UNNAMED";
                         default -> "org.apache.lucene.core";
                       });
+              task.jvmArgs("--illegal-native-access=deny");
 
               var loggingFileProvider =
                   project.getObjects().newInstance(LoggingFileArgumentProvider.class);
@@ -506,7 +513,9 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
               }
 
               // Set up cwd and temp locations.
-              task.systemProperty("java.io.tmpdir", testsTmpDir);
+              // java.io.tmpdir is passed via the LoggingFileArgumentProvider (marked @Internal)
+              // instead of systemProperty to avoid absolute paths affecting the build cache key.
+              loggingFileProvider.getJavaTmpDir().set(workDirOption.get());
 
               task.doFirst(
                   _ -> {
@@ -556,6 +565,34 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
             });
   }
 
+  private static void configureJUnitPlatform(Test task) {
+    task.useJUnitPlatform();
+
+    var versionCatalogProvider =
+        task.getProject()
+            .getProviders()
+            .provider(
+                () ->
+                    task.getProject()
+                        .getExtensions()
+                        .findByType(VersionCatalogsExtension.class)
+                        .named("deps"));
+
+    DependencyHandler dependencies = task.getProject().getDependencies();
+    List.of("junitplatform-launcher", "junitplatform-vintage")
+        .forEach(
+            library -> {
+              dependencies.addProvider(
+                  "moduleTestRuntimeOnly",
+                  versionCatalogProvider.flatMap(
+                      versionCatalog -> versionCatalog.findLibrary(library).orElseThrow()),
+                  config -> {
+                    config.exclude(Map.of("group", "org.hamcrest"));
+                    config.exclude(Map.of("group", "junit"));
+                  });
+            });
+  }
+
   public abstract static class TestOutputsExtension {
     abstract DirectoryProperty getTestOutputsDir();
   }
@@ -568,12 +605,19 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
     @Internal
     public abstract DirectoryProperty getTempDir();
 
+    /**
+     * java.io.tmpdir for forked test JVMs. Marked @Internal to avoid absolute paths in cache key.
+     */
+    @Internal
+    public abstract DirectoryProperty getJavaTmpDir();
+
     @Override
     public Iterable<String> asArguments() {
       return List.of(
           "-Djava.util.logging.config.file="
               + getLoggingConfigFile().getAsFile().get().getAbsolutePath(),
-          "-DtempDir=" + getTempDir().get().getAsFile().getAbsolutePath());
+          "-DtempDir=" + getTempDir().get().getAsFile().getAbsolutePath(),
+          "-Djava.io.tmpdir=" + getJavaTmpDir().get().getAsFile().getAbsolutePath());
     }
   }
 

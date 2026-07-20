@@ -19,7 +19,6 @@ package org.apache.lucene.util;
 import java.util.Random;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.SetOnce.AlreadySetException;
-import org.junit.Test;
 
 public class TestSetOnce extends LuceneTestCase {
 
@@ -49,28 +48,24 @@ public class TestSetOnce extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testEmptyCtor() throws Exception {
     SetOnce<Integer> set = new SetOnce<>();
     assertNull(set.get());
   }
 
-  @Test(expected = AlreadySetException.class)
   public void testSettingCtor() throws Exception {
     SetOnce<Integer> set = new SetOnce<>(5);
     assertEquals(5, set.get().intValue());
-    set.set(7);
+    expectThrows(AlreadySetException.class, () -> set.set(7));
   }
 
-  @Test(expected = AlreadySetException.class)
   public void testSetOnce() throws Exception {
     SetOnce<Integer> set = new SetOnce<>();
     set.set(5);
     assertEquals(5, set.get().intValue());
-    set.set(7);
+    expectThrows(AlreadySetException.class, () -> set.set(7));
   }
 
-  @Test
   public void testTrySet() {
     SetOnce<Integer> set = new SetOnce<>();
     assertTrue(set.trySet(5));
@@ -79,7 +74,6 @@ public class TestSetOnce extends LuceneTestCase {
     assertEquals(5, set.get().intValue());
   }
 
-  @Test
   public void testSetMultiThreaded() throws Exception {
     final SetOnce<Integer> set = new SetOnce<>();
     SetOnceThread[] threads = new SetOnceThread[10];

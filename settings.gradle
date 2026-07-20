@@ -16,10 +16,7 @@
  */
 
 pluginManagement {
-    repositories {
-        mavenCentral()
-        gradlePluginPortal()
-    }
+    apply from: file("build-tools/build-infra/declare-repositories.gradle"), to: delegate
 
     // the classpath of the included composite project is resolved independently.
     // so custom ecj versions are not found unless we repeat the same code
@@ -32,7 +29,7 @@ pluginManagement {
 plugins {
     id "org.gradle.toolchains.foojay-resolver-convention" version "1.0.0"
     id 'com.gradle.develocity' version '3.19.2' apply false
-    id 'com.gradle.common-custom-user-data-gradle-plugin' version '2.4.0' apply false
+    id 'com.gradle.common-custom-user-data-gradle-plugin' version '2.7.0' apply false
 }
 
 dependencyResolutionManagement {

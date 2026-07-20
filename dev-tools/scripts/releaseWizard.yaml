@@ -888,7 +888,7 @@ groups:
 
         {% if minus > 0 %}
         However, there were negative votes. A release cannot be vetoed, and as long as
-        there are more positive than negative votes you can techically release
+        there are more positive than negative votes you can technically release
         the software. However, please review the negative votes and consider
         a re-spin.
 

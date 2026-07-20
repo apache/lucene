@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.util;
 
-import com.carrotsearch.randomizedtesting.annotations.Repeat;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -24,7 +23,6 @@ import java.util.Random;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestMergedIterator extends LuceneTestCase {
-  private static final int REPEATS = 2;
   private static final int VALS_TO_MERGE = 15000;
 
   @SuppressWarnings({"rawtypes", "unchecked"})
@@ -43,62 +41,50 @@ public class TestMergedIterator extends LuceneTestCase {
     assertFalse(merged.hasNext());
   }
 
-  @Repeat(iterations = REPEATS)
   public void testNoDupsRemoveDups() {
     testCase(1, 1, true);
   }
 
-  @Repeat(iterations = REPEATS)
   public void testOffItrDupsRemoveDups() {
     testCase(3, 1, true);
   }
 
-  @Repeat(iterations = REPEATS)
   public void testOnItrDupsRemoveDups() {
     testCase(1, 3, true);
   }
 
-  @Repeat(iterations = REPEATS)
   public void testOnItrRandomDupsRemoveDups() {
     testCase(1, -3, true);
   }
 
-  @Repeat(iterations = REPEATS)
   public void testBothDupsRemoveDups() {
     testCase(3, 3, true);
   }
 
-  @Repeat(iterations = REPEATS)
   public void testBothDupsWithRandomDupsRemoveDups() {
     testCase(3, -3, true);
   }
 
-  @Repeat(iterations = REPEATS)
   public void testNoDupsKeepDups() {
     testCase(1, 1, false);
   }
 
-  @Repeat(iterations = REPEATS)
   public void testOffItrDupsKeepDups() {
     testCase(3, 1, false);
   }
 
-  @Repeat(iterations = REPEATS)
   public void testOnItrDupsKeepDups() {
     testCase(1, 3, false);
   }
 
-  @Repeat(iterations = REPEATS)
   public void testOnItrRandomDupsKeepDups() {
     testCase(1, -3, false);
   }
 
-  @Repeat(iterations = REPEATS)
   public void testBothDupsKeepDups() {
     testCase(3, 3, false);
   }
 
-  @Repeat(iterations = REPEATS)
   public void testBothDupsWithRandomDupsKeepDups() {
     testCase(3, -3, false);
   }

@@ -15,7 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from math import gcd
 
 """Code generation for ForDeltaUtil.java"""
 
@@ -174,115 +173,164 @@ public final class ForDeltaUtil {
 
 """
 
+
 def primitive_size_for_bpv(bpv):
-  if bpv <= 3:
-    # If we have 4 bits per value or less then we can compute the prefix sum of 32 ints that store 4 8-bit values each without overflowing.
-    return 8
-  elif bpv <= 10:
-    # If we have 10 bits per value or less then we can compute the prefix sum of 64 ints that store 2 16-bit values each without overflowing.
-    return 16
-  else:
-    # No risk of overflow with 32 bits per value
-    return 32
+    if bpv <= 3:
+        # If we have 4 bits per value or less then we can compute the prefix sum of 32 ints that store 4 8-bit values each without overflowing.
+        return 8
+    elif bpv <= 10:
+        # If we have 10 bits per value or less then we can compute the prefix sum of 64 ints that store 2 16-bit values each without overflowing.
+        return 16
+    else:
+        # No risk of overflow with 32 bits per value
+        return 32
+
 
 def next_primitive(bpv):
-  if bpv <= 8:
-    return 8
-  elif bpv <= 16:
-    return 16
-  else:
-    return 32
+    if bpv <= 8:
+        return 8
+    elif bpv <= 16:
+        return 16
+    else:
+        return 32
+
 
 def writeRemainder(bpv, next_primitive, remaining_bits_per_int, o, num_values, f):
-  iteration = 1
-  num_ints = bpv * num_values / remaining_bits_per_int
-  while num_ints % 2 == 0 and num_values % 2 == 0:
-    num_ints /= 2
-    num_values /= 2
-    iteration *= 2
-  f.write('    for (int iter = 0, tmpIdx = 0, intsIdx = %d; iter < %d; ++iter, tmpIdx += %d, intsIdx += %d) {\n' %(o, iteration, num_ints, num_values))
-  i = 0
-  remaining_bits = 0
-  tmp_idx = 0
-  for i in range(int(num_values)):
-    b = bpv
-    if remaining_bits == 0:
-      b -= remaining_bits_per_int
-      f.write('      int l%d = tmp[tmpIdx + %d] << %d;\n' %(i, tmp_idx, b))
-    else:
-      b -= remaining_bits
-      f.write('      int l%d = (tmp[tmpIdx + %d] & MASK%d_%d) << %d;\n' %(i, tmp_idx, next_primitive, remaining_bits, b))
-    tmp_idx += 1
-    while b >= remaining_bits_per_int:
-      b -= remaining_bits_per_int
-      f.write('      l%d |= tmp[tmpIdx + %d] << %d;\n' %(i, tmp_idx, b))
-      tmp_idx += 1
-    if b > 0:
-      f.write('      l%d |= (tmp[tmpIdx + %d] >>> %d) & MASK%d_%d;\n' %(i, tmp_idx, remaining_bits_per_int-b, next_primitive, b))
-      remaining_bits = remaining_bits_per_int-b
-    f.write('      ints[intsIdx + %d] = l%d;\n' %(i, i))
-  f.write('    }\n')
+    iteration = 1
+    num_ints = bpv * num_values / remaining_bits_per_int
+    while num_ints % 2 == 0 and num_values % 2 == 0:
+        num_ints /= 2
+        num_values /= 2
+        iteration *= 2
+    f.write(
+        "    for (int iter = 0, tmpIdx = 0, intsIdx = %d; iter < %d; ++iter, tmpIdx += %d, intsIdx += %d) {\n"
+        % (o, iteration, num_ints, num_values)
+    )
+    i = 0
+    remaining_bits = 0
+    tmp_idx = 0
+    for i in range(int(num_values)):
+        b = bpv
+        if remaining_bits == 0:
+            b -= remaining_bits_per_int
+            f.write("      int l%d = tmp[tmpIdx + %d] << %d;\n" % (i, tmp_idx, b))
+        else:
+            b -= remaining_bits
+            f.write(
+                "      int l%d = (tmp[tmpIdx + %d] & MASK%d_%d) << %d;\n"
+                % (i, tmp_idx, next_primitive, remaining_bits, b)
+            )
+        tmp_idx += 1
+        while b >= remaining_bits_per_int:
+            b -= remaining_bits_per_int
+            f.write("      l%d |= tmp[tmpIdx + %d] << %d;\n" % (i, tmp_idx, b))
+            tmp_idx += 1
+        if b > 0:
+            f.write(
+                "      l%d |= (tmp[tmpIdx + %d] >>> %d) & MASK%d_%d;\n"
+                % (i, tmp_idx, remaining_bits_per_int - b, next_primitive, b)
+            )
+            remaining_bits = remaining_bits_per_int - b
+        f.write("      ints[intsIdx + %d] = l%d;\n" % (i, i))
+    f.write("    }\n")
+
 
 def writeDecode(bpv, f):
-  next_primitive = primitive_size_for_bpv(bpv)
-  if next_primitive % bpv == 0:
-    f.write('  private static void decode%dTo%d(PostingDecodingUtil pdu, int[] ints) throws IOException {\n' %(bpv, next_primitive))
-  else:
-    f.write('  private static void decode%dTo%d(PostingDecodingUtil pdu, int[] tmp, int[] ints) throws IOException {\n' %(bpv, next_primitive))
-  if bpv == next_primitive:
-    f.write('    pdu.in.readInts(ints, 0, %d);\n' %(bpv*4))
-  else:
-    num_values_per_int = 32 / next_primitive
-    remaining_bits = next_primitive % bpv
-    num_iters = (next_primitive - 1) // bpv
-    o = 4 * bpv * num_iters
-    if remaining_bits == 0:
-      f.write('    pdu.splitInts(%d, ints, %d, %d, MASK%d_%d, ints, %d, MASK%d_%d);\n' %(bpv*4, next_primitive - bpv, bpv, next_primitive, bpv, o, next_primitive, next_primitive - num_iters * bpv))
+    next_primitive = primitive_size_for_bpv(bpv)
+    if next_primitive % bpv == 0:
+        f.write(
+            "  private static void decode%dTo%d(PostingDecodingUtil pdu, int[] ints) throws IOException {\n"
+            % (bpv, next_primitive)
+        )
     else:
-      f.write('    pdu.splitInts(%d, ints, %d, %d, MASK%d_%d, tmp, 0, MASK%d_%d);\n' %(bpv*4, next_primitive - bpv, bpv, next_primitive, bpv, next_primitive, next_primitive - num_iters * bpv))
-      writeRemainder(bpv, next_primitive, remaining_bits, o, 128/num_values_per_int - o, f)
-  f.write('  }\n')
+        f.write(
+            "  private static void decode%dTo%d(PostingDecodingUtil pdu, int[] tmp, int[] ints) throws IOException {\n"
+            % (bpv, next_primitive)
+        )
+    if bpv == next_primitive:
+        f.write("    pdu.in.readInts(ints, 0, %d);\n" % (bpv * 4))
+    else:
+        num_values_per_int = 32 / next_primitive
+        remaining_bits = next_primitive % bpv
+        num_iters = (next_primitive - 1) // bpv
+        o = 4 * bpv * num_iters
+        if remaining_bits == 0:
+            f.write(
+                "    pdu.splitInts(%d, ints, %d, %d, MASK%d_%d, ints, %d, MASK%d_%d);\n"
+                % (
+                    bpv * 4,
+                    next_primitive - bpv,
+                    bpv,
+                    next_primitive,
+                    bpv,
+                    o,
+                    next_primitive,
+                    next_primitive - num_iters * bpv,
+                )
+            )
+        else:
+            f.write(
+                "    pdu.splitInts(%d, ints, %d, %d, MASK%d_%d, tmp, 0, MASK%d_%d);\n"
+                % (
+                    bpv * 4,
+                    next_primitive - bpv,
+                    bpv,
+                    next_primitive,
+                    bpv,
+                    next_primitive,
+                    next_primitive - num_iters * bpv,
+                )
+            )
+            writeRemainder(
+                bpv, next_primitive, remaining_bits, o, 128 / num_values_per_int - o, f
+            )
+    f.write("  }\n")
 
-if __name__ == '__main__':
-  f = open(OUTPUT_FILE, 'w')
-  f.write(HEADER)
-  f.write("""
+
+if __name__ == "__main__":
+    f = open(OUTPUT_FILE, "w")
+    f.write(HEADER)
+    f.write("""
   /**
    * Delta-decode 128 integers into {@code ints}.
    */
   void decodeAndPrefixSum(int bitsPerValue, PostingDecodingUtil pdu, int base, int[] ints) throws IOException {
     switch (bitsPerValue) {
 """)
-  for bpv in range(1, MAX_SPECIALIZED_BITS_PER_VALUE+1):
-    primitive_size = primitive_size_for_bpv(bpv)
-    f.write('    case %d:\n' %bpv)
-    if next_primitive(bpv) == primitive_size:
-      if primitive_size % bpv == 0:
-        f.write('        decode%d(pdu, ints);\n' %bpv)
-      else:
-        f.write('        decode%d(pdu, tmp, ints);\n' %bpv)
-    else:
-      if primitive_size % bpv == 0:
-        f.write('        decode%dTo%d(pdu, ints);\n' %(bpv, primitive_size))
-      else:
-        f.write('        decode%dTo%d(pdu, tmp, ints);\n' %(bpv, primitive_size))
-    f.write('      prefixSum%d(ints, base);\n' %primitive_size)
-    f.write('      break;\n')
-  f.write('    default:\n')
-  f.write('        if (bitsPerValue < 1 || bitsPerValue > Integer.SIZE) {\n')
-  f.write('          throw new IllegalStateException("Illegal number of bits per value: " + bitsPerValue);\n')
-  f.write('        }\n')
-  f.write('      decodeSlow(bitsPerValue, pdu, tmp, ints);\n')
-  f.write('      prefixSum32(ints, base);\n')
-  f.write('      break;\n')
-  f.write('    }\n')
-  f.write('  }\n')
+    for bpv in range(1, MAX_SPECIALIZED_BITS_PER_VALUE + 1):
+        primitive_size = primitive_size_for_bpv(bpv)
+        f.write("    case %d:\n" % bpv)
+        if next_primitive(bpv) == primitive_size:
+            if primitive_size % bpv == 0:
+                f.write("        decode%d(pdu, ints);\n" % bpv)
+            else:
+                f.write("        decode%d(pdu, tmp, ints);\n" % bpv)
+        else:
+            if primitive_size % bpv == 0:
+                f.write("        decode%dTo%d(pdu, ints);\n" % (bpv, primitive_size))
+            else:
+                f.write(
+                    "        decode%dTo%d(pdu, tmp, ints);\n" % (bpv, primitive_size)
+                )
+        f.write("      prefixSum%d(ints, base);\n" % primitive_size)
+        f.write("      break;\n")
+    f.write("    default:\n")
+    f.write("        if (bitsPerValue < 1 || bitsPerValue > Integer.SIZE) {\n")
+    f.write(
+        '          throw new IllegalStateException("Illegal number of bits per value: " + bitsPerValue);\n'
+    )
+    f.write("        }\n")
+    f.write("      decodeSlow(bitsPerValue, pdu, tmp, ints);\n")
+    f.write("      prefixSum32(ints, base);\n")
+    f.write("      break;\n")
+    f.write("    }\n")
+    f.write("  }\n")
 
-  f.write('\n')
-  for bpv in range(1, MAX_SPECIALIZED_BITS_PER_VALUE+1):
-    if next_primitive(bpv) != primitive_size_for_bpv(bpv):
-      writeDecode(bpv, f)
-      if bpv < MAX_SPECIALIZED_BITS_PER_VALUE:
-        f.write('\n')
+    f.write("\n")
+    for bpv in range(1, MAX_SPECIALIZED_BITS_PER_VALUE + 1):
+        if next_primitive(bpv) != primitive_size_for_bpv(bpv):
+            writeDecode(bpv, f)
+            if bpv < MAX_SPECIALIZED_BITS_PER_VALUE:
+                f.write("\n")
 
-  f.write('}\n')
+    f.write("}\n")

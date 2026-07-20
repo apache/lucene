@@ -17,10 +17,10 @@
 package org.apache.lucene.classification;
 
 import java.io.IOException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
@@ -72,7 +72,7 @@ public class BM25NBClassifier implements Classifier<BytesRef> {
    * @param query a {@link Query} to eventually filter the docs used for training the classifier, or
    *     {@code null} if all the indexed docs should be used
    * @param classFieldName the name of the field used as the output for the classifier NOTE: must
-   *     not be heavely analyzed as the returned class will be a token indexed for this field
+   *     not be heavily analyzed as the returned class will be a token indexed for this field
    * @param textFieldNames the name of the fields used as the inputs for the classifier, NO boosting
    *     supported per field
    */
@@ -180,7 +180,7 @@ public class BM25NBClassifier implements Classifier<BytesRef> {
    * @throws IOException if tokenization fails
    */
   private String[] tokenize(String text) throws IOException {
-    Collection<String> result = new LinkedList<>();
+    Collection<String> result = new ArrayDeque<>();
     for (String textFieldName : textFieldNames) {
       try (TokenStream tokenStream = analyzer.tokenStream(textFieldName, text)) {
         CharTermAttribute charTermAttribute = tokenStream.addAttribute(CharTermAttribute.class);
@@ -191,7 +191,7 @@ public class BM25NBClassifier implements Classifier<BytesRef> {
         tokenStream.end();
       }
     }
-    return result.toArray(new String[0]);
+    return result.toArray(String[]::new);
   }
 
   private double calculateLogLikelihood(String[] tokens, Term term) throws IOException {

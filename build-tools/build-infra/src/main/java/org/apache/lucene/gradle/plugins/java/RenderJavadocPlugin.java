@@ -566,12 +566,11 @@ public class RenderJavadocPlugin extends LuceneGradlePlugin {
             getTaskResources(),
             "table_padding.css",
             "custom_styles.css",
-            "prettify/prettify.css");
+            "prettify/prism.css");
 
         // append prettify to scripts
         Provider<RegularFile> customScript = getOutputDir().file("script-files/lucene-script.js");
-        concat(
-            customScript, getTaskResources().dir("prettify"), "prettify.js", "inject-javadocs.js");
+        concat(customScript, getTaskResources().dir("prettify"), "prism.js");
 
         opts.add(List.of("--add-script", customScript.get().getAsFile().toString()));
         opts.add(List.of("--add-stylesheet", customCss.get().getAsFile().toString()));
@@ -689,7 +688,7 @@ public class RenderJavadocPlugin extends LuceneGradlePlugin {
      * <ul>
      *   <li>find all (enabled) tasks from the subgraph of tasks this task depends on (with same
      *       name)
-     *   <li>sort these tasks, ordering the 'core' first, then lexigraphically by path
+     *   <li>sort these tasks, ordering the 'core' first, then lexicographically by path
      *   <li>for each task, get the output dir to create relative or absolute link.
      * </ul>
      */

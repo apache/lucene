@@ -28,7 +28,7 @@ import org.apache.lucene.search.DisjunctionMaxQuery;
 import org.apache.lucene.search.Query;
 
 /**
- * Split a disjunction query into its consituent parts, so that they can be indexed and run
+ * Split a disjunction query into its constituent parts, so that they can be indexed and run
  * separately in the Monitor.
  */
 public class QueryDecomposer {
@@ -41,18 +41,18 @@ public class QueryDecomposer {
    */
   public Set<Query> decompose(Query q) {
 
-    if (q instanceof BooleanQuery) return decomposeBoolean((BooleanQuery) q);
+    if (q instanceof BooleanQuery bq) return decomposeBoolean(bq);
 
-    if (q instanceof DisjunctionMaxQuery) {
+    if (q instanceof DisjunctionMaxQuery dmq) {
       Set<Query> subqueries = new LinkedHashSet<>();
-      for (Query subq : ((DisjunctionMaxQuery) q).getDisjuncts()) {
+      for (Query subq : dmq.getDisjuncts()) {
         subqueries.addAll(decompose(subq));
       }
       return subqueries;
     }
 
-    if (q instanceof BoostQuery) {
-      return decomposeBoostQuery((BoostQuery) q);
+    if (q instanceof BoostQuery bq) {
+      return decomposeBoostQuery(bq);
     }
 
     return Collections.singleton(q);

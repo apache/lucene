@@ -61,6 +61,7 @@ tasks.named("compileJava").configure {
 }
 
 // Process UTF8 property files to unicode escapes.
+
 tasks.withType(ProcessResources).configureEach { task ->
   task.filesMatching("**/messages*.properties", {
     filteringCharset = 'UTF-8'
@@ -109,12 +110,12 @@ def standaloneAssembleTask = tasks.register("standaloneAssemble", Sync, {
   doLast {
 
     logger.lifecycle(
-        """
+    """
 Standalone Luke distribution assembled. You can run it with:
 java -jar "${standaloneDistDir}/${standaloneJarName}"
 java --module-path "${standaloneDistDir}" -m org.apache.lucene.luke
         """
-        )
+    )
   }
 })
 

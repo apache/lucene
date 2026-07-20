@@ -78,7 +78,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     }
 
     @Override
-    public PointValues getPointValues(String field) throws IOException {
+    public PointValues getPointValues(String field) {
       final PointValues pointValues = in.getPointValues(field);
       if (pointValues == null) {
         return null;
@@ -87,7 +87,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       Terms terms = in.terms(field);
       if (terms == null) {
         return null;
@@ -646,31 +646,31 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     }
 
     @Override
-    public byte[] getMinPackedValue() throws IOException {
+    public byte[] getMinPackedValue() {
       checkAndThrow();
       return in.getMinPackedValue();
     }
 
     @Override
-    public byte[] getMaxPackedValue() throws IOException {
+    public byte[] getMaxPackedValue() {
       checkAndThrow();
       return in.getMaxPackedValue();
     }
 
     @Override
-    public int getNumDimensions() throws IOException {
+    public int getNumDimensions() {
       checkAndThrow();
       return in.getNumDimensions();
     }
 
     @Override
-    public int getNumIndexDimensions() throws IOException {
+    public int getNumIndexDimensions() {
       checkAndThrow();
       return in.getNumIndexDimensions();
     }
 
     @Override
-    public int getBytesPerDimension() throws IOException {
+    public int getBytesPerDimension() {
       checkAndThrow();
       return in.getBytesPerDimension();
     }

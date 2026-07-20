@@ -43,10 +43,10 @@ import org.apache.lucene.util.Version;
  * <p>All setter methods return {@link IndexWriterConfig} to allow chaining settings conveniently,
  * for example:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * IndexWriterConfig conf = new IndexWriterConfig(analyzer);
  * conf.setter1().setter2();
- * </pre>
+ * </code></pre>
  *
  * @see IndexWriter#getConfig()
  * @since 3.1
@@ -462,7 +462,7 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
    *
    * <p>Note: Set to 0 to disable merging on full flush.
    *
-   * <p>Note: If {@link SerialMergeScheduler} is used and a non-zero timout is configured,
+   * <p>Note: If {@link SerialMergeScheduler} is used and a non-zero timeout is configured,
    * full-flush merges will always wait for the merge to finish without honoring the configured
    * timeout.
    */

@@ -17,7 +17,6 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -145,10 +144,10 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
       for (StoredFieldsReader reader : readers) {
         if (reader != null) {
-          reader.checkIntegrity();
+          reader.checkIntegrity(merge);
         }
       }
     }
@@ -236,10 +235,10 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
       for (TermVectorsReader reader : readers) {
         if (reader != null) {
-          reader.checkIntegrity();
+          reader.checkIntegrity(merge);
         }
       }
     }
@@ -293,10 +292,10 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
       for (NormsProducer producer : producers) {
         if (producer != null) {
-          producer.checkIntegrity();
+          producer.checkIntegrity(merge);
         }
       }
     }
@@ -400,10 +399,10 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
       for (DocValuesProducer producer : producers) {
         if (producer != null) {
-          producer.checkIntegrity();
+          producer.checkIntegrity(merge);
         }
       }
     }
@@ -427,8 +426,8 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
           // uncached, or not a multi dv
           SortedDocValues dv =
               MultiDocValues.getSortedValues(new MultiReader(codecReaders), field.name);
-          if (dv instanceof MultiSortedDocValues) {
-            map = ((MultiSortedDocValues) dv).mapping;
+          if (dv instanceof MultiSortedDocValues msdv) {
+            map = msdv.mapping;
             cachedOrdMaps.put(field.name, map);
           }
           return dv;
@@ -463,8 +462,8 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
           // uncached, or not a multi dv
           SortedSetDocValues dv =
               MultiDocValues.getSortedSetValues(new MultiReader(codecReaders), field.name);
-          if (dv instanceof MultiSortedSetDocValues) {
-            map = ((MultiSortedSetDocValues) dv).mapping;
+          if (dv instanceof MultiSortedSetDocValues mssdv) {
+            map = mssdv.mapping;
             cachedOrdMaps.put(field.name, map);
           }
           return dv;
@@ -488,7 +487,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
 
     @Override
-    public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
+    public DocValuesSkipper getSkipper(FieldInfo field) {
       throw new UnsupportedOperationException("This method is for searching not for merging");
     }
   }
@@ -528,10 +527,10 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
       for (FieldsProducer producer : producers) {
         if (producer != null) {
-          producer.checkIntegrity();
+          producer.checkIntegrity(merge);
         }
       }
     }
@@ -542,7 +541,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       return fields.terms(field);
     }
 
@@ -585,16 +584,16 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
       for (PointsReader reader : readers) {
         if (reader != null) {
-          reader.checkIntegrity();
+          reader.checkIntegrity(merge);
         }
       }
     }
 
     @Override
-    public PointValues getValues(String field) throws IOException {
+    public PointValues getValues(String field) {
       List<PointValuesSub> values = new ArrayList<>();
       for (int i = 0; i < readers.length; ++i) {
         FieldInfo fi = codecReaders[i].getFieldInfos().fieldInfo(field);
@@ -613,7 +612,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
       return new PointValues() {
 
         @Override
-        public PointTree getPointTree() throws IOException {
+        public PointTree getPointTree() {
           return new PointTree() {
 
             @Override
@@ -681,110 +680,98 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
 
             @Override
             public byte[] getMinPackedValue() {
-              try {
-                byte[] minPackedValue = null;
-                for (PointValuesSub sub : values) {
-                  if (minPackedValue == null) {
-                    minPackedValue = sub.sub.getMinPackedValue().clone();
-                  } else {
-                    byte[] leafMinPackedValue = sub.sub.getMinPackedValue();
-                    int numIndexDimensions = sub.sub.getNumIndexDimensions();
-                    int numBytesPerDimension = sub.sub.getBytesPerDimension();
-                    ArrayUtil.ByteArrayComparator comparator =
-                        ArrayUtil.getUnsignedComparator(numBytesPerDimension);
-                    for (int i = 0; i < numIndexDimensions; ++i) {
-                      if (comparator.compare(
-                              leafMinPackedValue,
-                              i * numBytesPerDimension,
-                              minPackedValue,
-                              i * numBytesPerDimension)
-                          < 0) {
-                        System.arraycopy(
+              byte[] minPackedValue = null;
+              for (PointValuesSub sub : values) {
+                if (minPackedValue == null) {
+                  minPackedValue = sub.sub.getMinPackedValue().clone();
+                } else {
+                  byte[] leafMinPackedValue = sub.sub.getMinPackedValue();
+                  int numIndexDimensions = sub.sub.getNumIndexDimensions();
+                  int numBytesPerDimension = sub.sub.getBytesPerDimension();
+                  ArrayUtil.ByteArrayComparator comparator =
+                      ArrayUtil.getUnsignedComparator(numBytesPerDimension);
+                  for (int i = 0; i < numIndexDimensions; ++i) {
+                    if (comparator.compare(
                             leafMinPackedValue,
                             i * numBytesPerDimension,
                             minPackedValue,
-                            i * numBytesPerDimension,
-                            numBytesPerDimension);
-                      }
+                            i * numBytesPerDimension)
+                        < 0) {
+                      System.arraycopy(
+                          leafMinPackedValue,
+                          i * numBytesPerDimension,
+                          minPackedValue,
+                          i * numBytesPerDimension,
+                          numBytesPerDimension);
                     }
                   }
                 }
-                return minPackedValue;
-              } catch (IOException e) {
-                throw new UncheckedIOException(e);
               }
+              return minPackedValue;
             }
 
             @Override
             public byte[] getMaxPackedValue() {
-              try {
-                byte[] maxPackedValue = null;
-                for (PointValuesSub sub : values) {
-                  if (maxPackedValue == null) {
-                    maxPackedValue = sub.sub.getMaxPackedValue().clone();
-                  } else {
-                    byte[] leafMinPackedValue = sub.sub.getMaxPackedValue();
-                    int numIndexDimensions = sub.sub.getNumIndexDimensions();
-                    int numBytesPerDimension = sub.sub.getBytesPerDimension();
-                    ArrayUtil.ByteArrayComparator comparator =
-                        ArrayUtil.getUnsignedComparator(numBytesPerDimension);
-                    for (int i = 0; i < numIndexDimensions; ++i) {
-                      if (comparator.compare(
-                              leafMinPackedValue,
-                              i * numBytesPerDimension,
-                              maxPackedValue,
-                              i * numBytesPerDimension)
-                          > 0) {
-                        System.arraycopy(
+              byte[] maxPackedValue = null;
+              for (PointValuesSub sub : values) {
+                if (maxPackedValue == null) {
+                  maxPackedValue = sub.sub.getMaxPackedValue().clone();
+                } else {
+                  byte[] leafMinPackedValue = sub.sub.getMaxPackedValue();
+                  int numIndexDimensions = sub.sub.getNumIndexDimensions();
+                  int numBytesPerDimension = sub.sub.getBytesPerDimension();
+                  ArrayUtil.ByteArrayComparator comparator =
+                      ArrayUtil.getUnsignedComparator(numBytesPerDimension);
+                  for (int i = 0; i < numIndexDimensions; ++i) {
+                    if (comparator.compare(
                             leafMinPackedValue,
                             i * numBytesPerDimension,
                             maxPackedValue,
-                            i * numBytesPerDimension,
-                            numBytesPerDimension);
-                      }
+                            i * numBytesPerDimension)
+                        > 0) {
+                      System.arraycopy(
+                          leafMinPackedValue,
+                          i * numBytesPerDimension,
+                          maxPackedValue,
+                          i * numBytesPerDimension,
+                          numBytesPerDimension);
                     }
                   }
                 }
-                return maxPackedValue;
-              } catch (IOException e) {
-                throw new UncheckedIOException(e);
               }
+              return maxPackedValue;
             }
           };
         }
 
         @Override
-        public byte[] getMinPackedValue() throws IOException {
+        public byte[] getMinPackedValue() {
           return getPointTree().getMinPackedValue();
         }
 
         @Override
-        public byte[] getMaxPackedValue() throws IOException {
+        public byte[] getMaxPackedValue() {
           return getPointTree().getMaxPackedValue();
         }
 
         @Override
-        public int getNumDimensions() throws IOException {
+        public int getNumDimensions() {
           return values.get(0).sub.getNumDimensions();
         }
 
         @Override
-        public int getNumIndexDimensions() throws IOException {
+        public int getNumIndexDimensions() {
           return values.get(0).sub.getNumIndexDimensions();
         }
 
         @Override
-        public int getBytesPerDimension() throws IOException {
+        public int getBytesPerDimension() {
           return values.get(0).sub.getBytesPerDimension();
         }
 
         @Override
         public long size() {
-          try {
-            return getPointTree().size();
-          } catch (IOException e) {
-            throw new UncheckedIOException(e);
-          }
+          return getPointTree().size();
         }
 
         @Override
@@ -825,10 +812,10 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
       for (KnnVectorsReader reader : readers) {
         if (reader != null) {
-          reader.checkIntegrity();
+          reader.checkIntegrity(merge);
         }
       }
     }
