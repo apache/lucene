@@ -67,6 +67,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NumericUtils;
+import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.bkd.BKDConfig;
 import org.junit.BeforeClass;
 
@@ -2629,5 +2630,22 @@ public class TestPointQueries extends LuceneTestCase {
               };
             });
     assertEquals("values are out of order: saw [2] before [1]", expected.getMessage());
+  }
+
+  public void testRamBytesUsedIncludesBoundsArrays() {
+    // The constructor allocates lowerPoint/upperPoint and retains them for the whole
+    // lifetime of the query (scorerSupplier uses them for a per-segment pre-check).
+    // Both must contribute to ramBytesUsed().
+    PointInSetQuery q =
+        (PointInSetQuery) BinaryPoint.newSetQuery("f", new byte[] {1, 2, 3, 4, 5, 6, 7, 8});
+    assertNotNull(q.lowerPoint);
+    assertNotNull(q.upperPoint);
+    long expected =
+        RamUsageEstimator.shallowSizeOfInstance(PointInSetQuery.class)
+            + RamUsageEstimator.sizeOfObject(q.field)
+            + RamUsageEstimator.sizeOfObject(q.sortedPackedPoints)
+            + RamUsageEstimator.sizeOfObject(q.lowerPoint)
+            + RamUsageEstimator.sizeOfObject(q.upperPoint);
+    assertEquals(expected, q.ramBytesUsed());
   }
 }
