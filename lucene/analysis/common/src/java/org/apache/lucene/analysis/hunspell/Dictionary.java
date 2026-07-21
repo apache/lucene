@@ -359,19 +359,23 @@ public class Dictionary {
       switch (firstWord) {
         case "AF" -> parseAlias(line);
         case "AM" -> parseMorphAlias(line);
-        case "PFX" -> parseAffix(
-            prefixes, prefixContFlags, line, reader, PREFIX, seenPatterns, seenStrips, flags);
-        case "SFX" -> parseAffix(
-            suffixes, suffixContFlags, line, reader, SUFFIX, seenPatterns, seenStrips, flags);
-        case "COMPLEXPREFIXES" -> complexPrefixes =
-            true; // 2-stage prefix+1-stage suffix instead of 2-stage suffix+1-stage prefix
+        case "PFX" ->
+            parseAffix(
+                prefixes, prefixContFlags, line, reader, PREFIX, seenPatterns, seenStrips, flags);
+        case "SFX" ->
+            parseAffix(
+                suffixes, suffixContFlags, line, reader, SUFFIX, seenPatterns, seenStrips, flags);
+        case "COMPLEXPREFIXES" ->
+            complexPrefixes =
+                true; // 2-stage prefix+1-stage suffix instead of 2-stage suffix+1-stage prefix
         case "CIRCUMFIX" -> circumfix = flagParsingStrategy.parseFlag(singleArgument(reader, line));
         case "KEEPCASE" -> keepcase = flagParsingStrategy.parseFlag(singleArgument(reader, line));
-        case "FORCEUCASE" -> forceUCase = flagParsingStrategy.parseFlag(singleArgument(reader, line));
-        case "NEEDAFFIX", "PSEUDOROOT" -> needaffix =
-            flagParsingStrategy.parseFlag(singleArgument(reader, line));
-        case "ONLYINCOMPOUND" -> onlyincompound =
-            flagParsingStrategy.parseFlag(singleArgument(reader, line));
+        case "FORCEUCASE" ->
+            forceUCase = flagParsingStrategy.parseFlag(singleArgument(reader, line));
+        case "NEEDAFFIX", "PSEUDOROOT" ->
+            needaffix = flagParsingStrategy.parseFlag(singleArgument(reader, line));
+        case "ONLYINCOMPOUND" ->
+            onlyincompound = flagParsingStrategy.parseFlag(singleArgument(reader, line));
         case "CHECKSHARPS" -> checkSharpS = true;
         case "IGNORE" -> {
           ignore = singleArgument(reader, line).toCharArray();
@@ -426,18 +430,26 @@ public class Dictionary {
           maxDiff = i;
         }
         case "ONLYMAXDIFF" -> onlyMaxDiff = true;
-        case "FORBIDDENWORD" -> forbiddenword = flagParsingStrategy.parseFlag(singleArgument(reader, line));
+        case "FORBIDDENWORD" ->
+            forbiddenword = flagParsingStrategy.parseFlag(singleArgument(reader, line));
         case "NOSUGGEST" -> noSuggest = flagParsingStrategy.parseFlag(singleArgument(reader, line));
-        case "SUBSTANDARD" -> subStandard = flagParsingStrategy.parseFlag(singleArgument(reader, line));
+        case "SUBSTANDARD" ->
+            subStandard = flagParsingStrategy.parseFlag(singleArgument(reader, line));
         case "COMPOUNDMIN" -> compoundMin = Math.max(1, parseNum(reader, line));
         case "COMPOUNDWORDMAX" -> compoundMax = Math.max(1, parseNum(reader, line));
         case "COMPOUNDRULE" -> compoundRules = parseCompoundRules(reader, parseNum(reader, line));
-        case "COMPOUNDFLAG" -> compoundFlag = flagParsingStrategy.parseFlag(singleArgument(reader, line));
-        case "COMPOUNDBEGIN" -> compoundBegin = flagParsingStrategy.parseFlag(singleArgument(reader, line));
-        case "COMPOUNDMIDDLE" -> compoundMiddle = flagParsingStrategy.parseFlag(singleArgument(reader, line));
-        case "COMPOUNDEND" -> compoundEnd = flagParsingStrategy.parseFlag(singleArgument(reader, line));
-        case "COMPOUNDPERMITFLAG" -> compoundPermit = flagParsingStrategy.parseFlag(singleArgument(reader, line));
-        case "COMPOUNDFORBIDFLAG" -> compoundForbid = flagParsingStrategy.parseFlag(singleArgument(reader, line));
+        case "COMPOUNDFLAG" ->
+            compoundFlag = flagParsingStrategy.parseFlag(singleArgument(reader, line));
+        case "COMPOUNDBEGIN" ->
+            compoundBegin = flagParsingStrategy.parseFlag(singleArgument(reader, line));
+        case "COMPOUNDMIDDLE" ->
+            compoundMiddle = flagParsingStrategy.parseFlag(singleArgument(reader, line));
+        case "COMPOUNDEND" ->
+            compoundEnd = flagParsingStrategy.parseFlag(singleArgument(reader, line));
+        case "COMPOUNDPERMITFLAG" ->
+            compoundPermit = flagParsingStrategy.parseFlag(singleArgument(reader, line));
+        case "COMPOUNDFORBIDFLAG" ->
+            compoundForbid = flagParsingStrategy.parseFlag(singleArgument(reader, line));
         case "CHECKCOMPOUNDCASE" -> checkCompoundCase = true;
         case "CHECKCOMPOUNDDUP" -> checkCompoundDup = true;
         case "CHECKCOMPOUNDREP" -> checkCompoundRep = true;
@@ -450,8 +462,12 @@ public class Dictionary {
                 new CheckCompoundPattern(reader.readLine(), flagParsingStrategy, this));
           }
         }
-        case "SET" -> checkCriticalDirectiveSame(
-            "SET", reader, decoder.charset(), getDecoder(singleArgument(reader, line)).charset());
+        case "SET" ->
+            checkCriticalDirectiveSame(
+                "SET",
+                reader,
+                decoder.charset(),
+                getDecoder(singleArgument(reader, line)).charset());
         case "FLAG" -> {
           FlagParsingStrategy strategy = getFlagParsingStrategy(line, decoder.charset());
           checkCriticalDirectiveSame(
