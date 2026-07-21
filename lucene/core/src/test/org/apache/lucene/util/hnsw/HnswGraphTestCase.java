@@ -860,6 +860,14 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
         IllegalArgumentException.class, () -> HnswGraphBuilder.create(scorerSupplier, 10, 0, 0));
   }
 
+  public void testAbortCheckSetAtMostOnce() throws IOException {
+    RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectorValues(1, 1));
+    HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 10, 10, 0);
+    expectThrows(NullPointerException.class, () -> builder.setAbortCheck(null));
+    builder.setAbortCheck(() -> {});
+    expectThrows(IllegalStateException.class, () -> builder.setAbortCheck(() -> {}));
+  }
+
   // TODO: incredibly slow
   @Nightly
   public void testRamUsageEstimate() throws IOException {

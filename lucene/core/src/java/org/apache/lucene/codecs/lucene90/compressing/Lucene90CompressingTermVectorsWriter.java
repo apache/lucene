@@ -899,7 +899,7 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
       final TermVectorsReader reader = mergeState.termVectorsReaders[i];
       if (reader != null) {
         mergeState.checkAborted();
-        reader.checkIntegrity();
+        reader.checkIntegrity(mergeState.oneMerge);
       }
       final boolean bulkMerge = canPerformBulkMerge(mergeState, matchingReaders, i);
       subs.add(new CompressingTermVectorsSub(mergeState, bulkMerge, i));

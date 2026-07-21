@@ -98,8 +98,21 @@ API Changes
 * GITHUB#16052: Remove IOException from LeafReader#getPointValues, LeafReader#terms,
   LeafReader#getDocCount signatures. (Ignacio Vera)
 
+* GITHUB#16388: Remove IOException from LeafReader#getDocValuesSkipper signature.
+  (Alan Woodward)
+
+* GITHUB#16387: Don't throw IOException from PointValues metadata methods. (Alan Woodward)
+
+* GITHUB#16281: The checkIntegrity() method of codec Producer APIs gains a OneMerge parameter,
+  which is used to check for aborted merges during checksum validation. (Tanguy Leroux)
+
+* GITHUB#16363: Add API to use a custom `DictionarySuggester` instead of hardcoded `GeneratingSuggester`
+
 New Features
 ---------------------
+* GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
+  modern Hangul conjoining jamo before KoreanTokenizer. (Mingi Jeong)
+
 * GITHUB#15505: Upgrade snowball to 2d2e312df56f2ede014a4ffb3e91e6dea43c24be. New stemmer: PolishStemmer (and
   PolishSnowballAnalyzer in the stempel package) (Justas Sakalauskas, Dawid Weiss)
 
@@ -139,11 +152,21 @@ Improvements
 
 * GITHUB#15558: Refactor QueryCache for performance. (Sagar Upadhyaya)
 
+* GITHUB#16281: File integrity checks periodically check if a merge is aborted. (Tanguy Leroux)
+
 * GITHUB#16313: Refactored the Hunspell dictionary parser to use switch-based dispatch for affix directives,
   improving readability of the parsing logic. (Rajat Jain)
 
 Optimizations
 ---------------------
+* GITHUB#16382: WildcardQuery.toAutomaton now collapses consecutive unescaped '*'
+  wildcards into a single any-string automaton, avoiding a quadratic blow-up in
+  automaton size for patterns with many repeated asterisks. (Vismay Tiwari)
+
+* GITHUB#16307: ReqExclBulkScorer now skips runs of excluded docs via
+  TwoPhaseIterator#docIDRunEnd for two-phase excluded clauses (e.g. a doc-values
+  not-equals filter), instead of advancing one doc at a time. (Jim Ferenczi)
+
 * GITHUB#16254: Enable the vectorized findNextGEQ path on aarch64, where it was disabled on cores
   with fewer than 8 int lanes (Graviton2 and Graviton4). The vector compare beats the scalar
   fallback by +75% on Graviton4 and +35% on Graviton2 (AdvanceBenchmark). (Shitij Bhargava)
@@ -162,6 +185,8 @@ Optimizations
 * GITHUB#15085, GITHUB#15092: Hunspell suggestions: Ensure candidate roots are not worse before updating. (Ilia Permiashkin)
 
 * GITHUB#15597, GITHUB#15777: Reduce memory usage of NeighborArray (Viliam Durina)
+
+* GITHUB#12324: ELiminate redundant work in AbstractKnnVectorQuery.rewrite (Mike Sokolov)
 
 Bug Fixes
 ---------------------
@@ -197,6 +222,12 @@ Bug Fixes
 * GITHUB#15838: Fix luke terms export failure on Windows when field names contain characters forbidden in file name (Binlong Gao)
 
 * GITHUB#15939: Fix thread-safety issues with NFARunAutomaton. (Dimitris Rempapis)
+
+* GITHUB#16278: Refactor NativeFSLockFactory lock acquisition to cleanly separate locking and file system logic. (Bharathi-Kanna)
+
+* GITHUB#16303: Add suppressed exception details when lock acquisition fails in NativeFSLockFactory. (Bharathi-Kanna)
+
+* Make VectorScorer#bulk default method lazily position its iterator on first use. (Michael Marshall)
 
 Changes in Runtime Behavior
 ---------------------
@@ -282,27 +313,99 @@ Other
 
 API Changes
 ---------------------
-(No changes)
+
+* GITHUB#16286: Introduce BinaryDocValues#binaryValues to help speed up the
+  retrieval of many binary doc values at once. (Costin Leau)
+
+* GITHUB#16363: Add API to use a custom `DictionarySuggester` instead of hardcoded `GeneratingSuggester`
 
 New Features
 ---------------------
-(No changes)
+
+* GITHUB#16243: Add StableTflSimilarity, a similarity that estimates term rarity from term length
+  and document length instead of corpus statistics such as document frequency. It also supports k3
+  query-term frequency saturation. (Tianxiao Wei)
 
 Improvements
 ---------------------
-(No changes)
+
+* GITHUB#16247: Introduce CachingCollectorManager to parallelize search when using CachingCollector.
+                Remove experimental GroupingSearch constructor that takes a GroupSelector as argument
+                in favour of providing a GroupSelector supplier. (Binlong Gao)
+
+* GITHUB#16305: Alter TopGroups.merge() to not return null if no groups. (Binlong Gao)
+
+* GITHUB#16271: Add detail to KNN no-match explanations. (Jakub Slowinski)
 
 Optimizations
 ---------------------
-(No changes)
+* GITHUG#16280: Single-pass writeString fast path for short strings in ByteBuffersDataOutput (neoremind)
+
+* GITHUB#16146: Speed up no-score filtered-optional Boolean queries by routing dense conjunctions with cached FixedBitSet filters
+  through ConstantScoreBulkScorer, which batches matches in bulk via DocIdStream. (Costin Leau)
+
+* GITHUB#16316: Lazily allocate buffers in MaxScoreBulkScorer.  These are now only allocated when going
+  via code paths that actually use them. (Alan Woodward)
+
+* GITHUB#16160: Improve numeric doc values range query performance for dense fields that use GCD or delta encoding. (Costin Leau)
+
+* GITHUB#16283: Use Panama Vector API to SIMD-evaluate fixed-cardinality sorted numeric range queries in
+  rangeIntoBitSet. (Costin Leau)
+
+* GITHUB#16352: Better cost() estimation for SkipBlockRangeIterator. (Alan Woodward)
+
+* GITHUB#16285: Apply GCD bound transform to sorted numeric rangeIntoBitSet, comparing raw
+  encoded values directly instead of decoding every packed value. (Costin Leau)
+
+* GITHUB#16307: ReqExclBulkScorer now skips runs of excluded docs via
+  TwoPhaseIterator#docIDRunEnd for two-phase excluded clauses (e.g. a doc-values
+  not-equals filter), instead of advancing one doc at a time. (Jim Ferenczi)
+
+* GITHUB#16362: Add TwoPhaseIterator.applyMask() to support bulk matching for more
+  expensive queries. (Alan Woodward)
+
+* GITHUB#16355: Add ASCII fast-path to CharacterUtils.toLowerCase, avoiding per-char codepoint
+  conversion for ASCII-only tokens. 2.16x throughput on English text. (Costin Leau)
+
+* GITHUB#16370: Sort two-phase iterators by matchCost in DenseConjunctionBulkScorer.
+  (Alan Woodward)
+
+* GITHUB#16380: Speed up filtered disjunction queries when the filter is part of the
+  index sort by advancing the filter before calculating impacts. (Alan Woodward)
 
 Bug Fixes
 ---------------------
-(No changes)
+* GITHUB#16350: Disable bulk-scoring in monitor queries. (Alan Woodward)
+
+* GITHUB#16378: Accumulate join Total/Avg scores in double precision in
+  TermsWithScoreCollector and JoinUtil's numeric point join, fixing
+  intermittent failures caused by non-associative float addition. (Luca Cavanna)
+
+* GITHUB#16296: Fix missing null check in RamUsageEstimator.sizeOf(Accountable)
+  to be consistent with sizeOf(String) and sizeOf(Accountable[]). (Tim Grein)
+
+* GITHUB#16295: SingletonSortedNumericDocValues now delegates rangeIntoBitSet
+  to the wrapped NumericDocValues, enabling optimized range evaluation for
+  single-valued sorted numeric fields. (Costin Leau)
+
+* GITHUB#16389: Fix double-counting of the underlying Automaton in
+  AutomatonQuery#ramBytesUsed. (Sasilekha R)
+
+* GITHUB#16367: HNSW graph construction now periodically checks whether the surrounding merge has
+  been aborted, so IndexWriter#rollback and abortMerges no longer block until the entire graph is
+  built. (Jeho Jeong)
 
 Other
 ---------------------
-(No changes)
+* GITHUB#16266: Remove deprecated search(Query, Collector) calls in QueryUtils by replacing
+  SimpleCollector-based iteration with explicit leaf-level Weight.scorer() calls. (Luca Cavanna)
+
+* GITHUB#16308: upgrade opennlp to 2.5.10 (Dawid Weiss)
+
+* GITHUB#16315: Fix flaky test TestIndexOptions > testMultiValueForcesDeoptimization (neoremind)
+
+* GITHUB#16300: Reduce memory pressure in TestTermInSetQuery.testDuel stress runs.
+  (Sanghun Lee)
 
 ======================= Lucene 10.5.0 =======================
 

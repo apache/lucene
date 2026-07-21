@@ -54,4 +54,10 @@ public class TestSkipBlockRangeIterator extends BaseDocValuesSkipperTests {
 
     assertEquals(expected, bitSet);
   }
+
+  public void testCost() {
+    DocValuesSkipper skipper = docValuesSkipper(1, 30, random().nextBoolean());
+    SkipBlockRangeIterator it = new SkipBlockRangeIterator(skipper, 1, 30);
+    assertEquals(DENSE_END + (MAX_DOC - DENSE_END) / 2, it.cost());
+  }
 }
