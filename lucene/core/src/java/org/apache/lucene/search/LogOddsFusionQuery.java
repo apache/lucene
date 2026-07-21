@@ -28,9 +28,9 @@ import java.util.stream.Collectors;
 import org.apache.lucene.index.LeafReaderContext;
 
 /**
- * A query that combines sub-query probability scores via log-odds fusion. Sub-queries are expected
- * to produce scores in (0, 1) representing probabilities (e.g., from {@link BayesianScoreQuery}
- * wrapping a BM25 query, or KNN cosine similarity).
+ * A query that combines calibrated sub-query probability scores via log-odds fusion. Sub-queries
+ * are expected to produce scores in (0, 1), for example from {@link BayesianScoreQuery} wrapping a
+ * BM25 query.
  *
  * <p>The combination formula resolves the shrinkage problem of naive probabilistic AND by:
  *
@@ -46,13 +46,26 @@ import org.apache.lucene.index.LeafReaderContext;
  *
  * <p>Optional per-signal weights enable weighted Log-OP (Logarithmic Opinion Pooling) where each
  * signal's log-odds contribution is scaled by its reliability weight. Weights must be non-negative
- * and sum to 1. When weights are provided, the scoring formula becomes: {@code sigmoid(n^alpha *
- * sum(w_i * softplus(logit(p_i))))} instead of the uniform mean.
+ * and sum to 1. When weights are provided, the scoring formula becomes {@code sigmoid(n^alpha *
+ * sum(w_i * logit(p_i)))} instead of the uniform mean. Negative evidence logits remain internal;
+ * the final score is always non-negative because it is a sigmoid probability.
+ *
+ * <p>Per-signal base rates can optionally be removed from posterior logits before pooling, and a
+ * target base rate can be added exactly once after pooling. Softplus gating remains available as an
+ * explicit option, but is not used by default because it discards negative evidence.
  *
  * @see LogOddsFusionScorer
  * @lucene.experimental
  */
 public final class LogOddsFusionQuery extends Query implements Iterable<Query> {
+
+  /** Optional transformation of evidence logits before they are pooled. */
+  public enum Gating {
+    /** Preserve positive and negative evidence exactly. */
+    NONE,
+    /** Map all evidence to non-negative values using {@code log(1 + exp(x))}. */
+    SOFTPLUS
+  }
 
   private final Multiset<Query> clauses = new Multiset<>();
   private final List<Query> orderedClauses;
@@ -60,6 +73,9 @@ public final class LogOddsFusionQuery extends Query implements Iterable<Query> {
   private final float[] signalWeights;
   private final float[] logitMin;
   private final float[] logitMax;
+  private final Gating gating;
+  private final float[] signalBaseRates;
+  private final float baseRate;
 
   /**
    * Creates a new LogOddsFusionQuery with per-signal weights and optional logit normalization.
@@ -68,8 +84,10 @@ public final class LogOddsFusionQuery extends Query implements Iterable<Query> {
    * @param alpha confidence scaling exponent (0.5 = sqrt(n) law)
    * @param weights per-signal weights (must be non-negative, finite, and sum to 1.0), or null for
    *     uniform weighting
-   * @param logitMin per-signal logit lower bounds for normalization, or null to use softplus gating
-   * @param logitMax per-signal logit upper bounds for normalization, or null to use softplus gating
+   * @param logitMin per-signal evidence-logit lower bounds for min-max normalization, or null for
+   *     no normalization
+   * @param logitMax per-signal evidence-logit upper bounds for min-max normalization, or null for
+   *     no normalization
    * @throws IllegalArgumentException if alpha is not in [0, 1], or weights/bounds are invalid
    */
   public LogOddsFusionQuery(
@@ -78,16 +96,83 @@ public final class LogOddsFusionQuery extends Query implements Iterable<Query> {
       float[] weights,
       float[] logitMin,
       float[] logitMax) {
+    this(clauses, alpha, weights, logitMin, logitMax, Gating.NONE, null, 0f);
+  }
+
+  /**
+   * Creates a new LogOddsFusionQuery with explicit gating.
+   *
+   * @param clauses the sub-queries to combine
+   * @param alpha confidence scaling exponent
+   * @param weights per-signal weights, or null for uniform weighting
+   * @param gating evidence-logit gating; {@link Gating#NONE} preserves exact log-odds
+   */
+  public LogOddsFusionQuery(
+      Collection<? extends Query> clauses, float alpha, float[] weights, Gating gating) {
+    this(clauses, alpha, weights, null, null, gating, null, 0f);
+  }
+
+  /**
+   * Creates a new LogOddsFusionQuery that removes per-signal base rates and adds a target base rate
+   * exactly once.
+   *
+   * @param clauses the sub-queries to combine
+   * @param alpha confidence scaling exponent
+   * @param weights per-signal weights, or null for uniform weighting
+   * @param signalBaseRates per-signal posterior base rates in (0, 1), with 0 disabling subtraction,
+   *     or null when inputs contain prior-free evidence
+   * @param baseRate target base rate in (0, 1), or 0 for a neutral prior
+   */
+  public LogOddsFusionQuery(
+      Collection<? extends Query> clauses,
+      float alpha,
+      float[] weights,
+      float[] signalBaseRates,
+      float baseRate) {
+    this(clauses, alpha, weights, null, null, Gating.NONE, signalBaseRates, baseRate);
+  }
+
+  /**
+   * Creates a fully configured LogOddsFusionQuery.
+   *
+   * @param clauses the sub-queries to combine
+   * @param alpha confidence scaling exponent in [0, 1]
+   * @param weights per-signal weights, or null for uniform weighting
+   * @param logitMin per-signal evidence-logit lower bounds, or null
+   * @param logitMax per-signal evidence-logit upper bounds, or null
+   * @param gating optional evidence-logit gating; must be {@link Gating#NONE} when normalization
+   *     bounds are supplied
+   * @param signalBaseRates per-signal posterior base rates, or null
+   * @param baseRate target base rate, or 0 for a neutral prior
+   */
+  public LogOddsFusionQuery(
+      Collection<? extends Query> clauses,
+      float alpha,
+      float[] weights,
+      float[] logitMin,
+      float[] logitMax,
+      Gating gating,
+      float[] signalBaseRates,
+      float baseRate) {
     Objects.requireNonNull(clauses, "Collection of Queries must not be null");
-    if (Float.isNaN(alpha) || alpha < 0 || alpha > 1) {
+    this.orderedClauses = new ArrayList<>(clauses.size());
+    for (Query clause : clauses) {
+      this.orderedClauses.add(Objects.requireNonNull(clause, "clauses must not contain null"));
+    }
+    this.clauses.addAll(this.orderedClauses);
+    if (Float.isFinite(alpha) == false || alpha < 0 || alpha > 1) {
       throw new IllegalArgumentException("alpha must be in [0, 1], got " + alpha);
     }
+    this.alpha = alpha;
     if (weights != null) {
-      if (weights.length != clauses.size()) {
+      if (weights.length != orderedClauses.size()) {
         throw new IllegalArgumentException(
-            "weights length " + weights.length + " must equal clauses size " + clauses.size());
+            "weights length "
+                + weights.length
+                + " must equal clauses size "
+                + orderedClauses.size());
       }
-      float sum = 0;
+      double sum = 0;
       for (float w : weights) {
         if (Float.isFinite(w) == false || w < 0) {
           throw new IllegalArgumentException("weights must be non-negative and finite, got " + w);
@@ -101,14 +186,37 @@ public final class LogOddsFusionQuery extends Query implements Iterable<Query> {
     } else {
       this.signalWeights = null;
     }
-    if (logitMin != null && logitMax != null) {
-      if (logitMin.length != clauses.size()) {
+    if ((logitMin == null) != (logitMax == null)) {
+      throw new IllegalArgumentException("logitMin and logitMax must either both be null or set");
+    }
+    if (logitMin != null) {
+      if (logitMin.length != orderedClauses.size()) {
         throw new IllegalArgumentException(
-            "logitMin length " + logitMin.length + " must equal clauses size " + clauses.size());
+            "logitMin length "
+                + logitMin.length
+                + " must equal clauses size "
+                + orderedClauses.size());
       }
-      if (logitMax.length != clauses.size()) {
+      if (logitMax.length != orderedClauses.size()) {
         throw new IllegalArgumentException(
-            "logitMax length " + logitMax.length + " must equal clauses size " + clauses.size());
+            "logitMax length "
+                + logitMax.length
+                + " must equal clauses size "
+                + orderedClauses.size());
+      }
+      for (int i = 0; i < logitMin.length; i++) {
+        if (Float.isFinite(logitMin[i]) == false
+            || Float.isFinite(logitMax[i]) == false
+            || logitMin[i] >= logitMax[i]) {
+          throw new IllegalArgumentException(
+              "logit bounds must be finite and min < max at index "
+                  + i
+                  + ", got ["
+                  + logitMin[i]
+                  + ", "
+                  + logitMax[i]
+                  + "]");
+        }
       }
       this.logitMin = logitMin.clone();
       this.logitMax = logitMax.clone();
@@ -116,13 +224,32 @@ public final class LogOddsFusionQuery extends Query implements Iterable<Query> {
       this.logitMin = null;
       this.logitMax = null;
     }
-    this.alpha = alpha;
-    this.clauses.addAll(clauses);
-    this.orderedClauses = new ArrayList<>(clauses);
+    this.gating = Objects.requireNonNull(gating, "gating must not be null");
+    if (logitMin != null && gating != Gating.NONE) {
+      throw new IllegalArgumentException(
+          "gating must be NONE when logit normalization bounds are supplied");
+    }
+    if (signalBaseRates != null) {
+      if (signalBaseRates.length != orderedClauses.size()) {
+        throw new IllegalArgumentException(
+            "signalBaseRates length "
+                + signalBaseRates.length
+                + " must equal clauses size "
+                + orderedClauses.size());
+      }
+      for (int i = 0; i < signalBaseRates.length; i++) {
+        validateBaseRate("signalBaseRates[" + i + "]", signalBaseRates[i]);
+      }
+      this.signalBaseRates = signalBaseRates.clone();
+    } else {
+      this.signalBaseRates = null;
+    }
+    validateBaseRate("baseRate", baseRate);
+    this.baseRate = baseRate;
   }
 
   /**
-   * Creates a new LogOddsFusionQuery with per-signal weights (softplus gating, no normalization).
+   * Creates a new LogOddsFusionQuery with per-signal weights and exact log-odds aggregation.
    *
    * @param clauses the sub-queries to combine
    * @param alpha confidence scaling exponent (0.5 = sqrt(n) law)
@@ -134,7 +261,7 @@ public final class LogOddsFusionQuery extends Query implements Iterable<Query> {
   }
 
   /**
-   * Creates a new LogOddsFusionQuery with uniform weighting and softplus gating.
+   * Creates a new LogOddsFusionQuery with uniform weighting and exact log-odds aggregation.
    *
    * @param clauses the sub-queries to combine
    * @param alpha confidence scaling exponent (0.5 = sqrt(n) law)
@@ -145,8 +272,8 @@ public final class LogOddsFusionQuery extends Query implements Iterable<Query> {
   }
 
   /**
-   * Creates a new LogOddsFusionQuery with default alpha=0.5, uniform weighting, and softplus
-   * gating.
+   * Creates a new LogOddsFusionQuery with default alpha=0.5, uniform weighting, and exact log-odds
+   * aggregation.
    *
    * @param clauses the sub-queries to combine
    */
@@ -179,19 +306,42 @@ public final class LogOddsFusionQuery extends Query implements Iterable<Query> {
     return signalWeights != null ? signalWeights.clone() : null;
   }
 
+  /** Returns the configured evidence-logit gating. */
+  public Gating getGating() {
+    return gating;
+  }
+
+  /** Returns a copy of the per-signal base rates, or null if no priors are subtracted. */
+  public float[] getSignalBaseRates() {
+    return signalBaseRates != null ? signalBaseRates.clone() : null;
+  }
+
+  /** Returns the target base rate, or 0 when the target prior is neutral. */
+  public float getBaseRate() {
+    return baseRate;
+  }
+
+  private static void validateBaseRate(String name, float value) {
+    if (Float.isFinite(value) == false || value < 0f || value >= 1f) {
+      throw new IllegalArgumentException(name + " must be finite and in [0, 1), got " + value);
+    }
+  }
+
   /** Weight for LogOddsFusionQuery. */
   protected class LogOddsFusionWeight extends Weight {
 
     protected final ArrayList<Weight> weights = new ArrayList<>();
     private final ScoreMode scoreMode;
+    private final float boost;
 
     public LogOddsFusionWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
         throws IOException {
       super(LogOddsFusionQuery.this);
       for (Query clauseQuery : orderedClauses) {
-        weights.add(searcher.createWeight(clauseQuery, scoreMode, boost));
+        weights.add(searcher.createWeight(clauseQuery, scoreMode, 1f));
       }
       this.scoreMode = scoreMode;
+      this.boost = boost;
     }
 
     @Override
@@ -212,6 +362,7 @@ public final class LogOddsFusionQuery extends Query implements Iterable<Query> {
       List<Float> activeWeightsList = signalWeights != null ? new ArrayList<>() : null;
       List<Float> activeLogitMinList = logitMin != null ? new ArrayList<>() : null;
       List<Float> activeLogitMaxList = logitMax != null ? new ArrayList<>() : null;
+      List<Float> activeBaseRatesList = signalBaseRates != null ? new ArrayList<>() : null;
 
       for (int i = 0; i < weights.size(); i++) {
         ScorerSupplier ss = weights.get(i).scorerSupplier(context);
@@ -224,60 +375,66 @@ public final class LogOddsFusionQuery extends Query implements Iterable<Query> {
             activeLogitMinList.add(logitMin[i]);
             activeLogitMaxList.add(logitMax[i]);
           }
+          if (activeBaseRatesList != null) {
+            activeBaseRatesList.add(signalBaseRates[i]);
+          }
         }
       }
 
       if (scorerSuppliers.isEmpty()) {
         return null;
-      } else if (scorerSuppliers.size() == 1) {
-        return scorerSuppliers.get(0);
-      } else {
-        final int totalClauses = clauses.size();
-        final float[] activeWeights = toFloatArray(activeWeightsList);
-        final float[] activeMin = toFloatArray(activeLogitMinList);
-        final float[] activeMax = toFloatArray(activeLogitMaxList);
-
-        return new ScorerSupplier() {
-
-          private long cost = -1;
-
-          @Override
-          public Scorer get(long leadCost) throws IOException {
-            List<Scorer> scorers = new ArrayList<>();
-            for (ScorerSupplier ss : scorerSuppliers) {
-              scorers.add(ss.get(leadCost));
-            }
-            return new LogOddsFusionScorer(
-                scorers,
-                totalClauses,
-                alpha,
-                activeWeights,
-                activeMin,
-                activeMax,
-                scoreMode,
-                leadCost);
-          }
-
-          @Override
-          public long cost() {
-            if (cost == -1) {
-              long cost = 0;
-              for (ScorerSupplier ss : scorerSuppliers) {
-                cost += ss.cost();
-              }
-              this.cost = cost;
-            }
-            return cost;
-          }
-
-          @Override
-          public void setTopLevelScoringClause() {
-            for (ScorerSupplier ss : scorerSuppliers) {
-              ss.setTopLevelScoringClause();
-            }
-          }
-        };
       }
+
+      final int totalClauses = orderedClauses.size();
+      final float[] activeWeights = toFloatArray(activeWeightsList);
+      final float[] activeMin = toFloatArray(activeLogitMinList);
+      final float[] activeMax = toFloatArray(activeLogitMaxList);
+      final float[] activeBaseRates = toFloatArray(activeBaseRatesList);
+
+      return new ScorerSupplier() {
+
+        private long cost = -1;
+
+        @Override
+        public Scorer get(long leadCost) throws IOException {
+          List<Scorer> scorers = new ArrayList<>();
+          for (ScorerSupplier ss : scorerSuppliers) {
+            scorers.add(ss.get(leadCost));
+          }
+          LogOddsFusionScoreFunction scoreFunction =
+              new LogOddsFusionScoreFunction(
+                  totalClauses,
+                  alpha,
+                  activeWeights,
+                  activeMin,
+                  activeMax,
+                  gating,
+                  activeBaseRates,
+                  baseRate,
+                  boost);
+          Scorer fusionScorer;
+          if (scorers.size() == 1) {
+            fusionScorer = new SingletonLogOddsFusionScorer(scorers.get(0), scoreFunction);
+          } else {
+            fusionScorer = new LogOddsFusionScorer(scorers, scoreFunction, scoreMode, leadCost);
+          }
+          return scoreMode == ScoreMode.TOP_SCORES
+              ? new BlockMaxLogOddsFusionScorer(fusionScorer)
+              : fusionScorer;
+        }
+
+        @Override
+        public long cost() {
+          if (cost == -1) {
+            long cost = 0;
+            for (ScorerSupplier ss : scorerSuppliers) {
+              cost += ss.cost();
+            }
+            this.cost = cost;
+          }
+          return cost;
+        }
+      };
     }
 
     @Override
@@ -299,45 +456,50 @@ public final class LogOddsFusionQuery extends Query implements Iterable<Query> {
       List<Explanation> subsOnNoMatch = new ArrayList<>();
       double logitSum = 0;
       int totalClauses = weights.size();
+      LogOddsFusionScoreFunction scoreFunction =
+          new LogOddsFusionScoreFunction(
+              totalClauses,
+              alpha,
+              signalWeights,
+              logitMin,
+              logitMax,
+              gating,
+              signalBaseRates,
+              baseRate,
+              boost);
 
       for (int i = 0; i < weights.size(); i++) {
         Explanation e = weights.get(i).explain(context, doc);
         if (e.isMatch()) {
           match = true;
           subsOnMatch.add(e);
-          float subScore = e.getValue().floatValue();
-          float rawLogit = LogOddsFusionScorer.logit(subScore);
-          float gated;
-          if (logitMin != null) {
-            float range = logitMax[i] - logitMin[i];
-            gated = range > 0 ? Math.clamp((rawLogit - logitMin[i]) / range, 0f, 1f) : 0.5f;
-          } else {
-            gated = LogOddsFusionScorer.softplus(rawLogit);
-          }
-          if (signalWeights != null) {
-            logitSum += signalWeights[i] * gated;
-          } else {
-            logitSum += gated;
-          }
-        } else if (match == false) {
+          logitSum += scoreFunction.contribution(e.getValue().floatValue(), i);
+        } else {
           subsOnNoMatch.add(e);
         }
       }
 
       if (match) {
-        float scalingFactor = (float) Math.pow(totalClauses, alpha);
-        float scaledLogit = 0f;
         String description;
         if (signalWeights != null) {
-          scaledLogit = (float) logitSum * scalingFactor;
           description =
-              "weighted log-odds fusion, computed as sigmoid(weightedLogit * n^alpha) from:";
+              "weighted log-odds fusion, computed as"
+                  + " sigmoid(targetPrior + weightedEvidenceLogit * n^alpha) from:";
         } else {
-          scaledLogit = (float) (logitSum / totalClauses) * scalingFactor;
-          description = "log-odds fusion, computed as sigmoid(meanLogit * n^alpha) from:";
+          description =
+              "log-odds fusion, computed as"
+                  + " sigmoid(targetPrior + meanEvidenceLogit * n^alpha) from:";
         }
-        float score = LogOddsFusionScorer.sigmoid(scaledLogit);
-        return Explanation.match(score, description, subsOnMatch);
+        Explanation probabilityExplanation =
+            Explanation.match(scoreFunction.probability(logitSum), description, subsOnMatch);
+        if (boost == 1f) {
+          return probabilityExplanation;
+        }
+        return Explanation.match(
+            scoreFunction.score(logitSum),
+            "product of:",
+            probabilityExplanation,
+            Explanation.match(boost, "boost"));
       } else {
         return Explanation.noMatch("No matching clause", subsOnNoMatch);
       }
@@ -352,73 +514,67 @@ public final class LogOddsFusionQuery extends Query implements Iterable<Query> {
 
   @Override
   public Query rewrite(IndexSearcher indexSearcher) throws IOException {
-    if (clauses.isEmpty()) {
+    if (orderedClauses.isEmpty()) {
       return new MatchNoDocsQuery("empty LogOddsFusionQuery");
     }
 
-    if (clauses.size() == 1) {
+    if (orderedClauses.size() == 1 && isSingleClauseIdentity()) {
       return orderedClauses.get(0);
     }
 
     boolean actuallyRewritten = false;
+    boolean allMatchNoDocs = true;
     List<Query> rewrittenClauses = new ArrayList<>();
-    List<Float> newWeights = signalWeights != null ? new ArrayList<>() : null;
-    List<Float> newLogitMin = logitMin != null ? new ArrayList<>() : null;
-    List<Float> newLogitMax = logitMax != null ? new ArrayList<>() : null;
 
-    for (int i = 0; i < orderedClauses.size(); i++) {
-      Query sub = orderedClauses.get(i);
+    for (Query sub : orderedClauses) {
       Query rewrittenSub = sub.rewrite(indexSearcher);
-      if (rewrittenSub != sub || sub.getClass() == MatchNoDocsQuery.class) {
+      if (rewrittenSub != sub) {
         actuallyRewritten = true;
       }
       if (rewrittenSub.getClass() != MatchNoDocsQuery.class) {
-        rewrittenClauses.add(rewrittenSub);
-        if (newWeights != null) {
-          newWeights.add(signalWeights[i]);
-        }
-        if (newLogitMin != null) {
-          newLogitMin.add(logitMin[i]);
-          newLogitMax.add(logitMax[i]);
-        }
+        allMatchNoDocs = false;
       }
+      // A non-matching signal contributes neutral evidence, but it still belongs to the declared
+      // signal set and therefore still affects n^alpha and the uniform denominator. Keep it, along
+      // with its parallel metadata, instead of changing the fusion formula during rewrite.
+      rewrittenClauses.add(rewrittenSub);
     }
 
+    if (allMatchNoDocs) {
+      return new MatchNoDocsQuery("empty LogOddsFusionQuery");
+    }
     if (actuallyRewritten == false) {
       return super.rewrite(indexSearcher);
     }
-    if (rewrittenClauses.isEmpty()) {
-      return new MatchNoDocsQuery("empty LogOddsFusionQuery");
-    }
-    if (rewrittenClauses.size() == 1) {
+
+    LogOddsFusionQuery rewritten =
+        new LogOddsFusionQuery(
+            rewrittenClauses,
+            alpha,
+            signalWeights,
+            logitMin,
+            logitMax,
+            gating,
+            signalBaseRates,
+            baseRate);
+    if (rewrittenClauses.size() == 1 && rewritten.isSingleClauseIdentity()) {
       return rewrittenClauses.get(0);
     }
+    return rewritten;
+  }
 
-    float[] filteredWeights = toFloatArray(newWeights);
-    if (filteredWeights != null) {
-      float sum = 0;
-      for (float w : filteredWeights) {
-        sum += w;
-      }
-      if (sum > 0) {
-        for (int i = 0; i < filteredWeights.length; i++) {
-          filteredWeights[i] /= sum;
-        }
-      }
-    }
-
-    return new LogOddsFusionQuery(
-        rewrittenClauses,
-        alpha,
-        filteredWeights,
-        toFloatArray(newLogitMin),
-        toFloatArray(newLogitMax));
+  private boolean isSingleClauseIdentity() {
+    return orderedClauses.size() == 1
+        && gating == Gating.NONE
+        && logitMin == null
+        && signalBaseRates == null
+        && baseRate == 0f;
   }
 
   @Override
   public void visit(QueryVisitor visitor) {
     QueryVisitor v = visitor.getSubVisitor(BooleanClause.Occur.SHOULD, this);
-    for (Query q : clauses) {
+    for (Query q : orderedClauses) {
       q.visit(v);
     }
   }
@@ -435,10 +591,27 @@ public final class LogOddsFusionQuery extends Query implements Iterable<Query> {
                   return subquery.toString(field);
                 })
             .collect(Collectors.joining(" & ", "LogOdds(", ")^" + alpha));
+    StringBuilder result = new StringBuilder(base);
     if (signalWeights != null) {
-      return base + " w=" + Arrays.toString(signalWeights);
+      result.append(" w=").append(Arrays.toString(signalWeights));
     }
-    return base;
+    if (logitMin != null) {
+      result
+          .append(" logitMin=")
+          .append(Arrays.toString(logitMin))
+          .append(" logitMax=")
+          .append(Arrays.toString(logitMax));
+    }
+    if (gating != Gating.NONE) {
+      result.append(" gating=").append(gating);
+    }
+    if (signalBaseRates != null) {
+      result.append(" signalBaseRates=").append(Arrays.toString(signalBaseRates));
+    }
+    if (baseRate > 0f) {
+      result.append(" baseRate=").append(baseRate);
+    }
+    return result.toString();
   }
 
   @Override
@@ -447,22 +620,34 @@ public final class LogOddsFusionQuery extends Query implements Iterable<Query> {
   }
 
   private boolean equalsTo(LogOddsFusionQuery other) {
-    return alpha == other.alpha
-        && Objects.equals(clauses, other.clauses)
+    return Float.floatToIntBits(alpha) == Float.floatToIntBits(other.alpha)
         && Arrays.equals(signalWeights, other.signalWeights)
         && Arrays.equals(logitMin, other.logitMin)
-        && Arrays.equals(logitMax, other.logitMax);
+        && Arrays.equals(logitMax, other.logitMax)
+        && gating == other.gating
+        && Arrays.equals(signalBaseRates, other.signalBaseRates)
+        && Float.floatToIntBits(baseRate) == Float.floatToIntBits(other.baseRate)
+        && (hasPerSignalMetadata()
+            ? Objects.equals(orderedClauses, other.orderedClauses)
+            : Objects.equals(clauses, other.clauses));
   }
 
   @Override
   public int hashCode() {
     int h = classHash();
     h = 31 * h + Float.floatToIntBits(alpha);
-    h = 31 * h + Objects.hashCode(clauses);
+    h = 31 * h + (hasPerSignalMetadata() ? orderedClauses.hashCode() : clauses.hashCode());
     h = 31 * h + Arrays.hashCode(signalWeights);
     h = 31 * h + Arrays.hashCode(logitMin);
     h = 31 * h + Arrays.hashCode(logitMax);
+    h = 31 * h + gating.hashCode();
+    h = 31 * h + Arrays.hashCode(signalBaseRates);
+    h = 31 * h + Float.floatToIntBits(baseRate);
     return h;
+  }
+
+  private boolean hasPerSignalMetadata() {
+    return signalWeights != null || logitMin != null || signalBaseRates != null;
   }
 
   private static float[] toFloatArray(List<Float> list) {

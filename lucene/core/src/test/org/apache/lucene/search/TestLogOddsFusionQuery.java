@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.search;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -28,6 +29,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.similarities.BM25Similarity;
@@ -44,11 +46,25 @@ import org.apache.lucene.tests.util.TestUtil;
 public class TestLogOddsFusionQuery extends LuceneTestCase {
 
   private static final float BSQ_ALPHA = 0.5f;
-  private static final float BSQ_BETA = 3.0f;
+  private static final float BSQ_BETA = 0.0f;
 
   /** Wraps a query with BayesianScoreQuery for sigmoid calibration to (0,1). */
   private static Query bayesian(Query q) {
     return new BayesianScoreQuery(q, BSQ_ALPHA, BSQ_BETA);
+  }
+
+  private static Query constantProbability(float probability) {
+    return new BoostQuery(new MatchAllDocsQuery(), probability);
+  }
+
+  private float score(Query query, int doc) throws Exception {
+    for (ScoreDoc hit : searcher.search(query, reader.maxDoc()).scoreDocs) {
+      if (hit.doc == doc) {
+        return hit.score;
+      }
+    }
+    fail("query did not match doc " + doc + ": " + query);
+    return Float.NaN;
   }
 
   private Directory dir;
@@ -116,6 +132,70 @@ public class TestLogOddsFusionQuery extends LuceneTestCase {
     }
   }
 
+  public void testDefaultFusionPreservesNegativeEvidence() throws Exception {
+    LogOddsFusionQuery query =
+        new LogOddsFusionQuery(
+            Arrays.asList(constantProbability(0.3f), constantProbability(0.3f)), 0.5f);
+
+    assertEquals(0.231785f, score(query, 0), 1e-5f);
+    assertTrue("two irrelevant signals must remain below 0.5", score(query, 0) < 0.5f);
+    assertEquals(LogOddsFusionQuery.Gating.NONE, query.getGating());
+  }
+
+  public void testDefaultFusionCancelsOpposingEvidence() throws Exception {
+    LogOddsFusionQuery query =
+        new LogOddsFusionQuery(
+            Arrays.asList(constantProbability(0.7f), constantProbability(0.3f)), 0.5f);
+
+    assertEquals(0.5f, score(query, 0), 1e-6f);
+  }
+
+  public void testDefaultFusionKeepsNeutralEvidenceNeutral() throws Exception {
+    LogOddsFusionQuery query =
+        new LogOddsFusionQuery(
+            Arrays.asList(constantProbability(0.5f), constantProbability(0.5f)), 0.5f);
+
+    assertEquals(0.5f, score(query, 0), 1e-6f);
+  }
+
+  public void testSoftplusRemainsExplicitlyAvailable() throws Exception {
+    LogOddsFusionQuery query =
+        new LogOddsFusionQuery(
+            Arrays.asList(constantProbability(0.3f), constantProbability(0.3f)),
+            0.5f,
+            null,
+            LogOddsFusionQuery.Gating.SOFTPLUS);
+
+    assertEquals(0.623496f, score(query, 0), 1e-5f);
+    assertEquals(LogOddsFusionQuery.Gating.SOFTPLUS, query.getGating());
+  }
+
+  public void testOuterBoostAppliesAfterFusion() throws Exception {
+    LogOddsFusionQuery query =
+        new LogOddsFusionQuery(
+            Arrays.asList(constantProbability(0.3f), constantProbability(0.3f)), 0.5f);
+    Query boosted = new BoostQuery(query, 2f);
+
+    float boostedScore = score(boosted, 0);
+    assertEquals(2f * score(query, 0), boostedScore, 1e-6f);
+    assertEquals(boostedScore, searcher.explain(boosted, 0).getValue().floatValue(), 1e-6f);
+    CheckHits.checkTopScores(random(), boosted, searcher);
+  }
+
+  public void testSignalPriorsAreRemovedBeforeTargetPriorIsAdded() throws Exception {
+    LogOddsFusionQuery query =
+        new LogOddsFusionQuery(
+            Arrays.asList(constantProbability(0.8f), constantProbability(0.8f)),
+            0f,
+            null,
+            new float[] {0.2f, 0.2f},
+            0.1f);
+
+    assertEquals(0.64f, score(query, 0), 1e-6f);
+    assertArrayEquals(new float[] {0.2f, 0.2f}, query.getSignalBaseRates(), 0f);
+    assertEquals(0.1f, query.getBaseRate(), 0f);
+  }
+
   public void testSingleClauseRewrite() throws Exception {
     Query sub = bayesian(new TermQuery(new Term("body", "alpha")));
     LogOddsFusionQuery loq = new LogOddsFusionQuery(Collections.singletonList(sub));
@@ -124,6 +204,59 @@ public class TestLogOddsFusionQuery extends LuceneTestCase {
     assertTrue(
         "single clause should rewrite to BayesianScoreQuery, got " + rewritten.getClass().getName(),
         rewritten instanceof BayesianScoreQuery);
+  }
+
+  public void testSingleActiveSignalUsesFusionOnEveryLeaf() throws Exception {
+    Directory multiDir = newDirectory();
+    IndexWriterConfig config = new IndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE);
+    IndexWriter writer = new IndexWriter(multiDir, config);
+
+    Document bothSignals = new Document();
+    bothSignals.add(new TextField("body", "alpha beta", Field.Store.NO));
+    writer.addDocument(bothSignals);
+    writer.commit();
+
+    Document oneSignal = new Document();
+    oneSignal.add(new TextField("body", "alpha", Field.Store.NO));
+    writer.addDocument(oneSignal);
+    writer.commit();
+
+    IndexReader multiReader = DirectoryReader.open(writer);
+    writer.close();
+    try {
+      assertEquals("test requires two leaves", 2, multiReader.leaves().size());
+      IndexSearcher multiSearcher = new IndexSearcher(multiReader);
+      multiSearcher.setSimilarity(new BM25Similarity());
+      Query alphaQuery = bayesian(new TermQuery(new Term("body", "alpha")));
+      Query betaQuery = bayesian(new TermQuery(new Term("body", "beta")));
+      Query fusion =
+          new LogOddsFusionQuery(
+              Arrays.asList(betaQuery, alphaQuery), 0.5f, new float[] {0.25f, 0.75f});
+      CheckHits.checkTopScores(random(), fusion, multiSearcher);
+
+      float alphaScore = Float.NaN;
+      for (ScoreDoc hit : multiSearcher.search(alphaQuery, 10).scoreDocs) {
+        if (hit.doc == 1) {
+          alphaScore = hit.score;
+        }
+      }
+      assertTrue(Float.isFinite(alphaScore));
+      float expected =
+          LogOddsFusionScoreFunction.sigmoid(
+              Math.sqrt(2d) * 0.75d * LogOddsFusionScoreFunction.logit(alphaScore));
+
+      float fusionScore = Float.NaN;
+      for (ScoreDoc hit : multiSearcher.search(fusion, 10).scoreDocs) {
+        if (hit.doc == 1) {
+          fusionScore = hit.score;
+        }
+      }
+      assertEquals(expected, fusionScore, 1e-6f);
+      assertEquals(fusionScore, multiSearcher.explain(fusion, 1).getValue().floatValue(), 1e-6f);
+    } finally {
+      multiReader.close();
+      multiDir.close();
+    }
   }
 
   public void testEmptyClauseRewrite() throws Exception {
@@ -145,7 +278,12 @@ public class TestLogOddsFusionQuery extends LuceneTestCase {
     Query q2 = new MatchNoDocsQuery("q2");
     LogOddsFusionQuery loq = new LogOddsFusionQuery(Arrays.asList(q1, q2), 0.5f);
     Query rewritten = searcher.rewrite(loq);
-    assertEquals(q1, rewritten);
+    assertSame("the neutral signal must remain part of the declared signal set", loq, rewritten);
+    float q1Score = score(q1, 0);
+    float expected =
+        LogOddsFusionScoreFunction.sigmoid(
+            Math.sqrt(2d) * LogOddsFusionScoreFunction.logit(q1Score) / 2d);
+    assertEquals(expected, score(rewritten, 0), 1e-6f);
   }
 
   public void testRewriteFilterMatchNoDocs() throws Exception {
@@ -154,8 +292,7 @@ public class TestLogOddsFusionQuery extends LuceneTestCase {
     Query q3 = new MatchNoDocsQuery("q3");
     LogOddsFusionQuery loq = new LogOddsFusionQuery(Arrays.asList(q1, q2, q3), 0.5f);
     Query rewritten = searcher.rewrite(loq);
-    LogOddsFusionQuery expected = new LogOddsFusionQuery(Arrays.asList(q1, q2), 0.5f);
-    assertEquals(expected, rewritten);
+    assertSame(loq, rewritten);
   }
 
   public void testRewriteFilterMatchNoDocsWithAlpha() throws Exception {
@@ -164,8 +301,7 @@ public class TestLogOddsFusionQuery extends LuceneTestCase {
     Query q3 = new MatchNoDocsQuery("q3");
     LogOddsFusionQuery loq = new LogOddsFusionQuery(Arrays.asList(q1, q2, q3), 0.3f);
     Query rewritten = searcher.rewrite(loq);
-    LogOddsFusionQuery expected = new LogOddsFusionQuery(Arrays.asList(q1, q2), 0.3f);
-    assertEquals(expected, rewritten);
+    assertSame(loq, rewritten);
   }
 
   public void testRewriteFilterMatchNoDocsWithWeights() throws Exception {
@@ -177,12 +313,10 @@ public class TestLogOddsFusionQuery extends LuceneTestCase {
     Query rewritten = searcher.rewrite(loq);
     assertTrue("should rewrite to LogOddsFusionQuery", rewritten instanceof LogOddsFusionQuery);
     LogOddsFusionQuery result = (LogOddsFusionQuery) rewritten;
-    assertEquals(2, result.getClauses().size());
+    assertEquals(3, result.getClauses().size());
     float[] resultWeights = result.getWeights();
     assertNotNull(resultWeights);
-    assertEquals(2, resultWeights.length);
-    assertEquals(0.5f, resultWeights[0], 1e-6f);
-    assertEquals(0.5f, resultWeights[1], 1e-6f);
+    assertArrayEquals(weights, resultWeights, 0f);
   }
 
   public void testRewriteFilterMatchNoDocsWithLogitBounds() throws Exception {
@@ -197,7 +331,20 @@ public class TestLogOddsFusionQuery extends LuceneTestCase {
     Query rewritten = searcher.rewrite(loq);
     assertTrue("should rewrite to LogOddsFusionQuery", rewritten instanceof LogOddsFusionQuery);
     LogOddsFusionQuery result = (LogOddsFusionQuery) rewritten;
-    assertEquals(2, result.getClauses().size());
+    assertEquals(3, result.getClauses().size());
+    assertArrayEquals(weights, result.getWeights(), 0f);
+  }
+
+  public void testRewritePreservesZeroWeightSurvivor() throws Exception {
+    Query matching = constantProbability(0.8f);
+    Query noMatch = new MatchNoDocsQuery("positive-weight signal has no matches");
+    float[] weights = {0f, 1f};
+    LogOddsFusionQuery query =
+        new LogOddsFusionQuery(Arrays.asList(matching, noMatch), 0.5f, weights);
+
+    Query rewritten = searcher.rewrite(query);
+    assertSame(query, rewritten);
+    assertEquals(0.5f, score(rewritten, 0), 1e-6f);
   }
 
   public void testAlphaValues() throws Exception {
@@ -262,7 +409,14 @@ public class TestLogOddsFusionQuery extends LuceneTestCase {
     assertEquals(a, b);
     assertEquals(a.hashCode(), b.hashCode());
     assertNotEquals(a, c);
-    assertEquals(a, d);
+    assertEquals("uniform fusion remains order-independent", a, d);
+
+    LogOddsFusionQuery weighted =
+        new LogOddsFusionQuery(Arrays.asList(q1, q2), 0.5f, new float[] {0.8f, 0.2f});
+    LogOddsFusionQuery weightedReordered =
+        new LogOddsFusionQuery(Arrays.asList(q2, q1), 0.5f, new float[] {0.8f, 0.2f});
+    assertNotEquals(
+        "clause order is significant for parallel signal metadata", weighted, weightedReordered);
   }
 
   public void testQueryUtils() throws Exception {
@@ -276,7 +430,73 @@ public class TestLogOddsFusionQuery extends LuceneTestCase {
     Query q1 = bayesian(new TermQuery(new Term("body", "alpha")));
     Query q2 = bayesian(new TermQuery(new Term("body", "beta")));
     LogOddsFusionQuery loq = new LogOddsFusionQuery(Arrays.asList(q1, q2), 0.5f);
+    Weight weight = searcher.createWeight(searcher.rewrite(loq), ScoreMode.TOP_SCORES, 1f);
+    assertTrue(weight.scorer(reader.leaves().get(0)) instanceof BlockMaxLogOddsFusionScorer);
     CheckHits.checkTopScores(random(), loq, searcher);
+  }
+
+  public void testFusedBlockMaxSkipsNonCompetitiveBlocks() throws Exception {
+    int maxDoc = 30;
+    Scorer scorer =
+        new Scorer() {
+          private final DocIdSetIterator approximation = DocIdSetIterator.all(maxDoc);
+          private final TwoPhaseIterator twoPhase =
+              new TwoPhaseIterator(approximation) {
+                @Override
+                public boolean matches() {
+                  return docID() % 2 == 0;
+                }
+
+                @Override
+                public float matchCost() {
+                  return 1f;
+                }
+              };
+          private int shallowTarget;
+
+          @Override
+          public int docID() {
+            return approximation.docID();
+          }
+
+          @Override
+          public DocIdSetIterator iterator() {
+            return TwoPhaseIterator.asDocIdSetIterator(twoPhase);
+          }
+
+          @Override
+          public TwoPhaseIterator twoPhaseIterator() {
+            return twoPhase;
+          }
+
+          @Override
+          public float score() {
+            return shallowTarget / 10 == 1 ? 0.2f : 0.9f;
+          }
+
+          @Override
+          public int advanceShallow(int target) {
+            shallowTarget = target;
+            return Math.min(maxDoc - 1, (target / 10 + 1) * 10 - 1);
+          }
+
+          @Override
+          public float getMaxScore(int upTo) {
+            return shallowTarget / 10 == 1 ? 0.2f : 0.9f;
+          }
+        };
+    Scorer blockMaxScorer = new BlockMaxLogOddsFusionScorer(scorer);
+    blockMaxScorer.setMinCompetitiveScore(0.8f);
+
+    List<Integer> docs = new ArrayList<>();
+    DocIdSetIterator iterator = blockMaxScorer.iterator();
+    for (int doc = iterator.nextDoc();
+        doc != DocIdSetIterator.NO_MORE_DOCS;
+        doc = iterator.nextDoc()) {
+      docs.add(doc);
+    }
+
+    assertEquals(Arrays.asList(0, 2, 4, 6, 8, 20, 22, 24, 26, 28), docs);
   }
 
   public void testToString() {
@@ -379,7 +599,7 @@ public class TestLogOddsFusionQuery extends LuceneTestCase {
     LogOddsFusionQuery threeSignals = new LogOddsFusionQuery(Arrays.asList(q1, q2, q3), 0.5f);
     float score3 = signalSearcher.search(threeSignals, 1).scoreDocs[0].score;
 
-    // With softplus gating, more matching signals always produce >= score.
+    // All calibrated matches are above 0.5, so agreeing evidence increases confidence.
     assertTrue("3 >= 2 signals", score3 >= score2);
     assertTrue("2 >= 1 signal", score2 >= score1);
     assertTrue("all in (0,1)", score1 > 0 && score1 < 1 && score2 > 0 && score3 < 1);
@@ -925,6 +1145,52 @@ public class TestLogOddsFusionQuery extends LuceneTestCase {
     for (ScoreDoc hit : hits) {
       assertTrue("score in (0,1): " + hit.score, hit.score > 0 && hit.score < 1);
     }
+  }
+
+  public void testNormalizedFusionUsesEachSignalsBoundsWithoutWeights() throws Exception {
+    LogOddsFusionQuery query =
+        new LogOddsFusionQuery(
+            Arrays.asList(constantProbability(0.2f), constantProbability(0.8f)),
+            0f,
+            null,
+            new float[] {-2f, 0f},
+            new float[] {0f, 2f});
+
+    float actual = score(query, 0);
+    assertEquals(LogOddsFusionScoreFunction.sigmoid(0.5d), actual, 1e-6f);
+    assertEquals(actual, searcher.explain(query, 0).getValue().floatValue(), 1e-6f);
+  }
+
+  public void testInvalidLogitBounds() {
+    List<Query> clauses = Arrays.asList(new MatchAllDocsQuery(), new MatchAllDocsQuery());
+
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> new LogOddsFusionQuery(clauses, 0.5f, null, new float[] {-1f, -1f}, null));
+    expectThrows(
+        IllegalArgumentException.class,
+        () ->
+            new LogOddsFusionQuery(
+                clauses, 0.5f, null, new float[] {-1f, Float.NaN}, new float[] {1f, 1f}));
+    expectThrows(
+        IllegalArgumentException.class,
+        () ->
+            new LogOddsFusionQuery(
+                clauses, 0.5f, null, new float[] {-1f, 2f}, new float[] {1f, 1f}));
+  }
+
+  public void testInvalidFusionBaseRates() {
+    List<Query> clauses = Arrays.asList(new MatchAllDocsQuery(), new MatchAllDocsQuery());
+
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> new LogOddsFusionQuery(clauses, 0.5f, null, new float[] {0.1f}, 0.1f));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> new LogOddsFusionQuery(clauses, 0.5f, null, new float[] {0.1f, Float.NaN}, 0.1f));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> new LogOddsFusionQuery(clauses, 0.5f, null, new float[] {0.1f, 0.1f}, Float.NaN));
   }
 
   public void testNormalizedMaxScoreCorrectness() throws Exception {
