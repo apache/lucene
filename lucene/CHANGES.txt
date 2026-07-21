@@ -154,6 +154,9 @@ Improvements
 
 * GITHUB#16281: File integrity checks periodically check if a merge is aborted. (Tanguy Leroux)
 
+* GITHUB#16313: Refactored the Hunspell dictionary parser to use switch-based dispatch for affix directives,
+  improving readability of the parsing logic. (Rajat Jain)
+
 Optimizations
 ---------------------
 * GITHUB#16382: WildcardQuery.toAutomaton now collapses consecutive unescaped '*'
