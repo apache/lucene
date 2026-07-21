@@ -412,15 +412,7 @@ public final class LogOddsFusionQuery extends Query implements Iterable<Query> {
                   activeBaseRates,
                   baseRate,
                   boost);
-          Scorer fusionScorer;
-          if (scorers.size() == 1) {
-            fusionScorer = new SingletonLogOddsFusionScorer(scorers.get(0), scoreFunction);
-          } else {
-            fusionScorer = new LogOddsFusionScorer(scorers, scoreFunction, scoreMode, leadCost);
-          }
-          return scoreMode == ScoreMode.TOP_SCORES
-              ? new BlockMaxLogOddsFusionScorer(fusionScorer)
-              : fusionScorer;
+          return LogOddsFusionScorer.create(scorers, scoreFunction, scoreMode, leadCost);
         }
 
         @Override

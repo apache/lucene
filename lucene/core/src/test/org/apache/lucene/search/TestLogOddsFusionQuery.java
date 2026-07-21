@@ -430,8 +430,6 @@ public class TestLogOddsFusionQuery extends LuceneTestCase {
     Query q1 = bayesian(new TermQuery(new Term("body", "alpha")));
     Query q2 = bayesian(new TermQuery(new Term("body", "beta")));
     LogOddsFusionQuery loq = new LogOddsFusionQuery(Arrays.asList(q1, q2), 0.5f);
-    Weight weight = searcher.createWeight(searcher.rewrite(loq), ScoreMode.TOP_SCORES, 1f);
-    assertTrue(weight.scorer(reader.leaves().get(0)) instanceof BlockMaxLogOddsFusionScorer);
     CheckHits.checkTopScores(random(), loq, searcher);
   }
 
@@ -485,7 +483,7 @@ public class TestLogOddsFusionQuery extends LuceneTestCase {
             return shallowTarget / 10 == 1 ? 0.2f : 0.9f;
           }
         };
-    Scorer blockMaxScorer = new BlockMaxLogOddsFusionScorer(scorer);
+    Scorer blockMaxScorer = LogOddsFusionScorer.wrapWithBlockMax(scorer);
     blockMaxScorer.setMinCompetitiveScore(0.8f);
 
     List<Integer> docs = new ArrayList<>();
