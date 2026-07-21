@@ -66,8 +66,8 @@ public final class BayesianScoreQuery extends Query {
     if (Float.isFinite(beta) == false) {
       throw new IllegalArgumentException("beta must be a finite value, got " + beta);
     }
-    if (baseRate < 0 || baseRate >= 1) {
-      throw new IllegalArgumentException("baseRate must be in [0, 1), got " + baseRate);
+    if (Float.isFinite(baseRate) == false || baseRate < 0 || baseRate >= 1) {
+      throw new IllegalArgumentException("baseRate must be finite and in [0, 1), got " + baseRate);
     }
     this.alpha = alpha;
     this.beta = beta;
@@ -122,11 +122,11 @@ public final class BayesianScoreQuery extends Query {
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
-    Weight innerWeight = query.createWeight(searcher, scoreMode, boost);
+    Weight innerWeight = query.createWeight(searcher, scoreMode, 1f);
     if (scoreMode.needsScores() == false) {
       return innerWeight;
     }
-    return new BayesianScoreWeight(this, innerWeight);
+    return new BayesianScoreWeight(this, innerWeight, boost);
   }
 
   @Override
@@ -179,10 +179,12 @@ public final class BayesianScoreQuery extends Query {
 
   private class BayesianScoreWeight extends Weight {
     private final Weight innerWeight;
+    private final float boost;
 
-    BayesianScoreWeight(Query query, Weight innerWeight) {
+    BayesianScoreWeight(Query query, Weight innerWeight, float boost) {
       super(query);
       this.innerWeight = innerWeight;
+      this.boost = boost;
     }
 
     @Override
@@ -199,22 +201,34 @@ public final class BayesianScoreQuery extends Query {
       float innerScore = innerExpl.getValue().floatValue();
       float logOdds = alpha * (innerScore - beta) + logitBaseRate;
       float transformed = sigmoid(logOdds);
+      Explanation probabilityExplanation;
       if (baseRate > 0) {
-        return Explanation.match(
-            transformed,
-            "sigmoid calibration with base rate, computed as"
-                + " sigmoid(alpha * (score - beta) + logit(baseRate)) from:",
-            innerExpl,
-            Explanation.match(alpha, "alpha, sigmoid steepness"),
-            Explanation.match(beta, "beta, sigmoid midpoint"),
-            Explanation.match(baseRate, "baseRate, corpus-level relevance prior"));
+        probabilityExplanation =
+            Explanation.match(
+                transformed,
+                "sigmoid calibration with base rate, computed as"
+                    + " sigmoid(alpha * (score - beta) + logit(baseRate)) from:",
+                innerExpl,
+                Explanation.match(alpha, "alpha, sigmoid steepness"),
+                Explanation.match(beta, "beta, sigmoid midpoint"),
+                Explanation.match(baseRate, "baseRate, corpus-level relevance prior"));
+      } else {
+        probabilityExplanation =
+            Explanation.match(
+                transformed,
+                "sigmoid calibration, computed as sigmoid(alpha * (score - beta)) from:",
+                innerExpl,
+                Explanation.match(alpha, "alpha, sigmoid steepness"),
+                Explanation.match(beta, "beta, sigmoid midpoint"));
+      }
+      if (boost == 1f) {
+        return probabilityExplanation;
       }
       return Explanation.match(
-          transformed,
-          "sigmoid calibration, computed as sigmoid(alpha * (score - beta)) from:",
-          innerExpl,
-          Explanation.match(alpha, "alpha, sigmoid steepness"),
-          Explanation.match(beta, "beta, sigmoid midpoint"));
+          boost * transformed,
+          "product of:",
+          probabilityExplanation,
+          Explanation.match(boost, "boost"));
     }
 
     @Override
@@ -227,7 +241,7 @@ public final class BayesianScoreQuery extends Query {
         @Override
         public Scorer get(long leadCost) throws IOException {
           Scorer innerScorer = innerSupplier.get(leadCost);
-          return new BayesianScoreScorer(innerScorer);
+          return new BayesianScoreScorer(innerScorer, boost);
         }
 
         @Override
@@ -254,15 +268,17 @@ public final class BayesianScoreQuery extends Query {
   }
 
   private class BayesianScoreScorer extends FilterScorer {
+    private final float boost;
 
-    BayesianScoreScorer(Scorer in) {
+    BayesianScoreScorer(Scorer in, float boost) {
       super(in);
+      this.boost = boost;
     }
 
     @Override
     public float score() throws IOException {
       float innerScore = in.score();
-      return sigmoid(alpha * (innerScore - beta) + logitBaseRate);
+      return boost * sigmoid(alpha * (innerScore - beta) + logitBaseRate);
     }
 
     @Override
@@ -274,17 +290,19 @@ public final class BayesianScoreQuery extends Query {
     public float getMaxScore(int upTo) throws IOException {
       float innerMax = in.getMaxScore(upTo);
       // sigmoid is monotone, so max(sigmoid(f(x))) = sigmoid(max(f(x)))
-      return sigmoid(alpha * (innerMax - beta) + logitBaseRate);
+      return boost * sigmoid(alpha * (innerMax - beta) + logitBaseRate);
     }
 
     @Override
     public void setMinCompetitiveScore(float minScore) throws IOException {
       // Invert the sigmoid to get the minimum inner score needed:
-      // minScore = sigmoid(alpha * (innerScore - beta) + logitBaseRate)
-      // => alpha * (innerScore - beta) + logitBaseRate = logit(minScore)
-      // => innerScore = (logit(minScore) - logitBaseRate) / alpha + beta
-      if (minScore > 0f && minScore < 1f) {
-        float clamped = Math.max(1e-7f, Math.min(1f - 1e-7f, minScore));
+      // minProbability = minScore / boost
+      // minProbability = sigmoid(alpha * (innerScore - beta) + logitBaseRate)
+      // => alpha * (innerScore - beta) + logitBaseRate = logit(minProbability)
+      // => innerScore = (logit(minProbability) - logitBaseRate) / alpha + beta
+      float minProbability = boost > 0f ? minScore / boost : 0f;
+      if (minProbability > 0f && minProbability < 1f) {
+        float clamped = Math.max(1e-7f, Math.min(1f - 1e-7f, minProbability));
         float logitMin = (float) Math.log(clamped / (1f - clamped));
         float innerMin = (logitMin - logitBaseRate) / alpha + beta;
         in.setMinCompetitiveScore(Math.max(0f, innerMin));
