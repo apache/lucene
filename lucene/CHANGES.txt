@@ -154,6 +154,9 @@ Improvements
 
 * GITHUB#16281: File integrity checks periodically check if a merge is aborted. (Tanguy Leroux)
 
+* GITHUB#16313: Refactored the Hunspell dictionary parser to use switch-based dispatch for affix directives,
+  improving readability of the parsing logic. (Rajat Jain)
+
 Optimizations
 ---------------------
 * GITHUB#16382: WildcardQuery.toAutomaton now collapses consecutive unescaped '*'
@@ -223,6 +226,8 @@ Bug Fixes
 * GITHUB#16278: Refactor NativeFSLockFactory lock acquisition to cleanly separate locking and file system logic. (Bharathi-Kanna)
 
 * GITHUB#16303: Add suppressed exception details when lock acquisition fails in NativeFSLockFactory. (Bharathi-Kanna)
+
+* Make VectorScorer#bulk default method lazily position its iterator on first use. (Michael Marshall)
 
 Changes in Runtime Behavior
 ---------------------
