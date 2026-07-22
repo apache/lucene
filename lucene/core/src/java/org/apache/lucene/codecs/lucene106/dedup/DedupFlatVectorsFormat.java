@@ -103,12 +103,12 @@ import org.apache.lucene.index.SegmentWriteState;
  * @lucene.experimental
  */
 final class DedupFlatVectorsFormat extends FlatVectorsFormat {
-  static final String NAME = "Lucene106DedupFlatVectorsFormat";
+  static final String NAME = "DedupFlatVectorsFormat";
 
-  static final String META_CODEC_NAME = "Lucene106DedupFlatVectorsFormatMeta";
+  static final String META_CODEC_NAME = "DedupFlatVectorsFormatMeta";
   static final String META_EXTENSION = "vdm";
 
-  static final String VECTOR_DATA_CODEC_NAME = "Lucene106DedupFlatVectorsFormatVectorData";
+  static final String VECTOR_DATA_CODEC_NAME = "DedupFlatVectorsFormatVectorData";
   static final String VECTOR_DATA_EXTENSION = "vdd";
 
   static final int VERSION_START = 0;

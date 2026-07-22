@@ -150,7 +150,7 @@ public final class Lucene106DedupHnswVectorsFormat extends KnnVectorsFormat {
       int numMergeWorkers,
       ExecutorService mergeExec,
       int tinySegmentsThreshold) {
-    super("Lucene106DedupHnswVectorsFormat");
+    super(NAME);
     if (maxConn <= 0 || maxConn > MAXIMUM_MAX_CONN) {
       throw new IllegalArgumentException(
           "maxConn must be positive and less than or equal to "
