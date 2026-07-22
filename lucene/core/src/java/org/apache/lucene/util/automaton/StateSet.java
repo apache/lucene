@@ -154,4 +154,3 @@ final class StateSet extends IntSet {
     return Arrays.equals(getArray(), 0, size(), that.getArray(), 0, that.size());
   }
 }
-
