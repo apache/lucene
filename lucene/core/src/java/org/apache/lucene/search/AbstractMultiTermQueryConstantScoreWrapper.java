@@ -20,6 +20,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import org.apache.lucene.index.AutomatonTermsEnum;
+import org.apache.lucene.index.FilteredTermsEnum;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermState;
@@ -29,6 +31,7 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.automaton.CompiledAutomaton;
 
 /**
  * Contains functionality common to both {@link MultiTermQueryConstantScoreBlendedWrapper} and
@@ -41,6 +44,12 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
     implements Accountable {
   // mtq that matches 16 terms or less will be executed as a regular disjunction
   static final int BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD = 16;
+
+  // Budget for underlying TermsEnum operations when probing an unknown-count query
+  // during scorerSupplier construction. Prefix-like patterns use few operations per
+  // match (the automaton seeks efficiently), while leading wildcards exhaust this
+  // quickly and fall back to deferred collection.
+  static final int AUTOMATON_TERM_COLLECT_VISIT_BUDGET = 256;
 
   protected final Q query;
 
@@ -228,62 +237,66 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
       final long cost;
       final IOLongFunction<WeightOrDocIdSetIterator> weightOrIteratorSupplier;
 
-      // Only collect terms while building the ScorerSupplier when the query exposes a known,
-      // bounded term count (e.g. TermInSetQuery, getTermsCount() >= 0). There, collecting is
-      // cheap and lets us return a null supplier up-front so a parent BooleanQuery can
-      // short-circuit.
-      //
-      // For queries with an unknown term count (e.g. automaton queries: wildcard / regexp /
-      // prefix / range), collecting eagerly can scan the whole term dictionary during
-      // ScorerSupplier construction -- a leading wildcard such as "*foo*" cannot seek and must
-      // visit every term. That is supposed to be the cheap "planning" phase, and doing it there
-      // defeats a parent conjunction's ability to short-circuit (a sibling clause matching no
-      // documents can no longer skip this clause before the scan runs). So for an unknown term
-      // count we estimate the cost and defer term collection to ScorerSupplier#get().
-      if (q.getTermsCount() >= 0) {
-        List<TermAndState> collectedTerms = new ArrayList<>();
-        boolean collectResult = collectTerms(fieldDocCount, termsEnum, collectedTerms);
-        if (collectResult) {
-          // Return a null supplier if no query terms were in the segment:
-          if (collectedTerms.isEmpty()) {
-            return null;
-          }
+      // Try to eagerly collect matching terms. For queries with a known term count
+      // (e.g. TermInSetQuery), we always collect eagerly. For queries with an unknown term
+      // count (e.g. automaton queries: wildcard / regexp / prefix / range), we attempt a
+      // budgeted probe: if the automaton can find all matching terms within a small number of
+      // underlying TermsEnum operations, we use those results. Otherwise (probe exhausts its
+      // budget, or no probe is possible), we estimate the cost and defer term collection to
+      // ScorerSupplier#get() -- eagerly scanning the whole term dictionary during the
+      // "planning" phase would defeat a parent conjunction's ability to short-circuit.
+      List<TermAndState> eagerTerms = new ArrayList<>();
+      TermsEnum deferredTermsEnum = termsEnum;
+      boolean eagerSuccess;
 
-          // TODO: Instead of replicating the cost logic of a BooleanQuery we could consider
-          // rewriting to a BQ eagerly at this point and delegating to its cost method (instead of
-          // lazily rewriting on #get). Not sure what the performance hit would be of doing this
-          // though.
-          long sumTermCost = 0;
-          for (TermAndState collectedTerm : collectedTerms) {
-            sumTermCost += collectedTerm.docFreq;
-          }
-          cost = sumTermCost;
-        } else {
-          cost = estimateCost(terms, q.getTermsCount());
+      if (q.getTermsCount() >= 0) {
+        eagerSuccess = collectTerms(fieldDocCount, termsEnum, eagerTerms);
+      } else {
+        // Unknown term count. Try a cheap budgeted probe: if the automaton can find
+        // all matching terms within a small number of underlying TermsEnum operations,
+        // use those results eagerly. Otherwise, fall back to deferred collection.
+        FilteredTermsEnum probeEnum = null;
+        if (termsEnum instanceof FilteredTermsEnum fte) {
+          probeEnum = fte;
+        } else if (q instanceof AutomatonQuery aq
+            && aq.getCompiled().type == CompiledAutomaton.AUTOMATON_TYPE.NORMAL) {
+          probeEnum = new AutomatonTermsEnum(terms.iterator(), aq.getCompiled());
         }
-        weightOrIteratorSupplier =
-            leadCost -> {
-              if (collectResult) {
-                return rewriteAsBooleanQuery(context, collectedTerms);
-              } else {
-                // Too many terms to rewrite as a simple bq.
-                // Invoke rewriteInner logic to handle rewriting:
-                return rewriteInner(
-                    context, fieldDocCount, terms, termsEnum, collectedTerms, leadCost);
-              }
-            };
+        if (probeEnum != null) {
+          probeEnum.setVisitsBudget(AUTOMATON_TERM_COLLECT_VISIT_BUDGET);
+          boolean probeResult = collectTerms(fieldDocCount, probeEnum, eagerTerms);
+          eagerSuccess = probeResult && !probeEnum.isVisitsBudgetExhausted();
+        } else {
+          eagerSuccess = false;
+        }
+        if (!eagerSuccess) {
+          deferredTermsEnum = (probeEnum == termsEnum) ? q.getTermsEnum(terms) : termsEnum;
+          eagerTerms = new ArrayList<>();
+        }
+      }
+
+      if (eagerSuccess) {
+        if (eagerTerms.isEmpty()) {
+          return null;
+        }
+        long sumTermCost = 0;
+        for (TermAndState collectedTerm : eagerTerms) {
+          sumTermCost += collectedTerm.docFreq;
+        }
+        cost = sumTermCost;
+        final List<TermAndState> finalTerms = eagerTerms;
+        weightOrIteratorSupplier = _ -> rewriteAsBooleanQuery(context, finalTerms);
       } else {
         cost = estimateCost(terms, q.getTermsCount());
+        final TermsEnum finalDeferredEnum = deferredTermsEnum;
+        final List<TermAndState> partialTerms = eagerTerms;
         weightOrIteratorSupplier =
             leadCost -> {
-              List<TermAndState> collectedTerms = new ArrayList<>();
-              if (collectTerms(fieldDocCount, termsEnum, collectedTerms)) {
-                return rewriteAsBooleanQuery(context, collectedTerms);
+              if (collectTerms(fieldDocCount, finalDeferredEnum, partialTerms)) {
+                return rewriteAsBooleanQuery(context, partialTerms);
               } else {
-                // Too many terms to rewrite as a simple bq.
-                // Invoke rewriteInner logic to handle rewriting:
                 return rewriteInner(
-                    context, fieldDocCount, terms, termsEnum, collectedTerms, leadCost);
+                    context, fieldDocCount, terms, finalDeferredEnum, partialTerms, leadCost);
               }
             };
       }
