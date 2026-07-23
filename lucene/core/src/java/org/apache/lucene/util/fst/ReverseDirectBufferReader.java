@@ -14,21 +14,43 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.util.fst;
 
-/** Lucene JMH benchmarks. */
+import java.nio.ByteBuffer;
 
-// jmh.core is not modularized and causes a warning. Suppressing it until it is modularized.
-@SuppressWarnings("requires-automatic")
-module org.apache.lucene.benchmark.jmh {
-  requires jmh.core;
-  requires jdk.unsupported;
-  requires org.apache.lucene.core;
-  requires org.apache.lucene.analysis.nori;
-  requires org.apache.lucene.expressions;
-  requires org.apache.lucene.join;
-  requires org.apache.lucene.sandbox;
-  requires commons.math3;
+/** Reads in reverse from a direct {@link ByteBuffer}. */
+final class ReverseDirectBufferReader extends FST.BytesReader {
+  private final ByteBuffer buffer;
+  private int pos;
 
-  exports org.apache.lucene.benchmark.jmh;
-  exports org.apache.lucene.benchmark.jmh.jmh_generated;
+  ReverseDirectBufferReader(ByteBuffer buffer) {
+    this.buffer = buffer;
+  }
+
+  @Override
+  public byte readByte() {
+    return buffer.get(pos--);
+  }
+
+  @Override
+  public void readBytes(byte[] b, int offset, int len) {
+    for (int i = 0; i < len; i++) {
+      b[offset + i] = buffer.get(pos--);
+    }
+  }
+
+  @Override
+  public void skipBytes(long count) {
+    pos -= count;
+  }
+
+  @Override
+  public long getPosition() {
+    return pos;
+  }
+
+  @Override
+  public void setPosition(long pos) {
+    this.pos = (int) pos;
+  }
 }
