@@ -365,6 +365,7 @@ public abstract class ReplicaNode extends Node {
       dir.sync(indexFiles);
 
       Map<String, String> commitData = new HashMap<>();
+      fillCommitData(commitData);
       commitData.put(PRIMARY_GEN_KEY, Long.toString(lastPrimaryGen));
       commitData.put(VERSION_KEY, Long.toString(getCurrentSearchingVersion()));
       infos.setUserData(commitData, false);
@@ -395,6 +396,8 @@ public abstract class ReplicaNode extends Node {
       message("top: commit version=" + infos.getVersion() + " files now " + lastCommitFiles);
     }
   }
+
+  protected void fillCommitData(Map<String, String> commitData) {}
 
   protected void finishNRTCopy(CopyJob job, long startNS) throws IOException {
     CopyState copyState = job.getCopyState();
