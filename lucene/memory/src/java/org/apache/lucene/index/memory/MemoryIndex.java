@@ -1724,7 +1724,7 @@ public class MemoryIndex {
     }
 
     @Override
-    public DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+    public DocValuesSkipper getDocValuesSkipper(String field) {
       // Skipping isn't needed on a 1-doc index.
       return null;
     }
@@ -2131,27 +2131,27 @@ public class MemoryIndex {
       }
 
       @Override
-      public byte[] getMinPackedValue() throws IOException {
+      public byte[] getMinPackedValue() {
         return info.minPackedValue;
       }
 
       @Override
-      public byte[] getMaxPackedValue() throws IOException {
+      public byte[] getMaxPackedValue() {
         return info.maxPackedValue;
       }
 
       @Override
-      public int getNumDimensions() throws IOException {
+      public int getNumDimensions() {
         return info.fieldInfo.getPointDimensionCount();
       }
 
       @Override
-      public int getNumIndexDimensions() throws IOException {
+      public int getNumIndexDimensions() {
         return info.fieldInfo.getPointDimensionCount();
       }
 
       @Override
-      public int getBytesPerDimension() throws IOException {
+      public int getBytesPerDimension() {
         return info.fieldInfo.getPointNumBytes();
       }
 

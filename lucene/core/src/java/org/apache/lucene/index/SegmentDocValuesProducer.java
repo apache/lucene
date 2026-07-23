@@ -124,16 +124,16 @@ class SegmentDocValuesProducer extends DocValuesProducer {
   }
 
   @Override
-  public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
+  public DocValuesSkipper getSkipper(FieldInfo field) {
     DocValuesProducer dvProducer = dvProducersByField.get(field.number);
     assert dvProducer != null;
     return dvProducer.getSkipper(field);
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
     for (DocValuesProducer producer : dvProducers) {
-      producer.checkIntegrity();
+      producer.checkIntegrity(merge);
     }
   }
 

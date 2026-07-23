@@ -69,4 +69,61 @@ final class PanamaDocValuesRangeSupport implements DocValuesRangeSupport {
       }
     }
   }
+
+  @Override
+  public void sortedNumericRangeIntoBitSet(
+      LongValues values,
+      int fromDoc,
+      int toDoc,
+      int cardinality,
+      long minValue,
+      long maxValue,
+      FixedBitSet bitSet,
+      int offset) {
+    assert cardinality > 0 : "cardinality must be positive: " + cardinality;
+    final int vectorLen = LONG_SPECIES.length();
+    final int docsPerVector = vectorLen / cardinality;
+    if (docsPerVector == 0 || vectorLen % cardinality != 0) {
+      DocValuesRangeSupport.super.sortedNumericRangeIntoBitSet(
+          values, fromDoc, toDoc, cardinality, minValue, maxValue, bitSet, offset);
+      return;
+    }
+
+    final long[] scratch = new long[vectorLen];
+    final int vectorDocEnd = fromDoc + (toDoc - fromDoc) / docsPerVector * docsPerVector;
+    int doc = fromDoc;
+    for (; doc < vectorDocEnd; doc += docsPerVector) {
+      long valueOffset = (long) doc * cardinality;
+      for (int lane = 0; lane < vectorLen; lane++) {
+        scratch[lane] = values.get(valueOffset + lane);
+      }
+      LongVector vector = LongVector.fromArray(LONG_SPECIES, scratch, 0);
+      // Flat range check on all lanes. Equivalent to the scalar early-break on sorted values:
+      // a value outside [min,max] that is >= min must be > max, so its lane stays unset, and
+      // collapseToDocMask OR-reduces lanes per doc to match "any value in range" semantics.
+      VectorMask<Long> inRange =
+          vector
+              .compare(VectorOperators.GE, minValue)
+              .and(vector.compare(VectorOperators.LE, maxValue));
+      long docMask = collapseToDocMask(inRange.toLong(), cardinality, docsPerVector);
+      if (docMask != 0) {
+        bitSet.orMask(doc - offset, docMask, docsPerVector);
+      }
+    }
+
+    DocValuesRangeSupport.super.sortedNumericRangeIntoBitSet(
+        values, doc, toDoc, cardinality, minValue, maxValue, bitSet, offset);
+  }
+
+  private static long collapseToDocMask(long valueMask, int cardinality, int docsPerVector) {
+    final long valueMaskPerDoc = (1L << cardinality) - 1L;
+    long docMask = 0L;
+    for (int d = 0; d < docsPerVector; d++) {
+      long perDoc = (valueMask >>> (d * cardinality)) & valueMaskPerDoc;
+      if (perDoc != 0) {
+        docMask |= 1L << d;
+      }
+    }
+    return docMask;
+  }
 }

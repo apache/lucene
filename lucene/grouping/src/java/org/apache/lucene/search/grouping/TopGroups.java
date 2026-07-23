@@ -119,7 +119,18 @@ public class TopGroups<T> {
    * documents of one group do only reside in one shard then the totalGroupCount is exact.
    *
    * <p><b>NOTE</b>: the topDocs in each GroupDocs is actually an instance of TopDocsAndShards
+   *
+   * @param shardGroups list of TopGroups to merge, one per shard; must all share the same group
+   *     sort, doc sort, and top groups.
+   * @param groupSort the {@link Sort} used to sort the groups across shards.
+   * @param docSort the {@link Sort} used to sort documents within each group.
+   * @param docOffset which document to start from within each group (for pagination).
+   * @param docTopN how many top documents to keep within each group.
+   * @param scoreMergeMode how to merge scores across shards; see {@link ScoreMergeMode}.
+   * @return merged TopGroups instance, if there are no groups, returns a TopGroups with an empty
+   *     groups array.
    */
+  @SuppressWarnings("unchecked")
   public static <T> TopGroups<T> merge(
       List<TopGroups<T>> shardGroups,
       Sort groupSort,
@@ -131,7 +142,13 @@ public class TopGroups<T> {
     // System.out.println("TopGroups.merge");
 
     if (shardGroups.isEmpty()) {
-      return null;
+      return new TopGroups<>(
+          groupSort.getSort(),
+          docSort.getSort(),
+          0,
+          0,
+          (GroupDocs<T>[]) new GroupDocs<?>[0],
+          Float.NaN);
     }
 
     int totalHitCount = 0;
@@ -350,7 +367,8 @@ public class TopGroups<T> {
    * @param groupOffset Which group to start from.
    * @param topNGroups How many top groups to keep.
    * @param docSort The sort to use within each group
-   * @return TopGroups instance or null if there are no groups.
+   * @return TopGroups instance; if there are no groups, returns a TopGroups with an empty groups
+   *     array.
    */
   @SuppressWarnings("unchecked")
   public static <T> TopGroups<T> mergeBlockGroups(
