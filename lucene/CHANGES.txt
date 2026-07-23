@@ -676,6 +676,8 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* Fix IndexOrDocValuesQuery.visit() to only visit indexQuery. (Prithvi S)
+
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
   HTML when an attribute value ends with an equals sign. (Seungmin123)
 
