@@ -451,7 +451,7 @@ public abstract class FilterLeafReader extends LeafReader {
   }
 
   @Override
-  public DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+  public DocValuesSkipper getDocValuesSkipper(String field) {
     ensureOpen();
     return in.getDocValuesSkipper(field);
   }
