@@ -67,6 +67,9 @@ public class FacetsConfig {
   // int/float/bytes in a single indexed field:
   private final Map<String, String> assocDimTypes = new ConcurrentHashMap<>();
 
+  /** All the fields used for faceting. */
+  private final Set<String> fieldNames = new HashSet<>();
+
   /**
    * Drill down terms indexing option to control whether dimension and sub-path terms should be
    * indexed.
@@ -230,6 +233,14 @@ public class FacetsConfig {
     return fieldTypes;
   }
 
+  /**
+   * Return the names of all fields used for faceting. This is only populated for fields that are
+   * encountered by {@link #build(TaxonomyWriter, Document)}}.
+   */
+  public Set<String> getFieldNames() {
+    return fieldNames;
+  }
+
   private static void checkSeen(Set<String> seenDims, String dim) {
     if (seenDims.contains(dim)) {
       throw new IllegalArgumentException(
@@ -272,6 +283,7 @@ public class FacetsConfig {
       if (field.fieldType() == FacetField.TYPE) {
         FacetField facetField = (FacetField) field;
         FacetsConfig.DimConfig dimConfig = getDimConfig(facetField.dim);
+        fieldNames.add(dimConfig.indexFieldName);
         if (dimConfig.multiValued == false) {
           checkSeen(seenDims, facetField.dim);
         }
@@ -283,6 +295,7 @@ public class FacetsConfig {
       if (field.fieldType() == SortedSetDocValuesFacetField.TYPE) {
         SortedSetDocValuesFacetField facetField = (SortedSetDocValuesFacetField) field;
         FacetsConfig.DimConfig dimConfig = getDimConfig(facetField.dim);
+        fieldNames.add(dimConfig.indexFieldName);
         if (dimConfig.multiValued == false) {
           checkSeen(seenDims, facetField.dim);
         }
@@ -295,6 +308,7 @@ public class FacetsConfig {
       if (field.fieldType() == AssociationFacetField.TYPE) {
         AssociationFacetField facetField = (AssociationFacetField) field;
         FacetsConfig.DimConfig dimConfig = getDimConfig(facetField.dim);
+        fieldNames.add(dimConfig.indexFieldName);
         if (dimConfig.multiValued == false) {
           checkSeen(seenDims, facetField.dim);
         }
