@@ -302,7 +302,13 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       }
       List<Scorer> optionalScorers = new ArrayList<>();
       for (ScorerSupplier ss : subs.get(Occur.SHOULD)) {
+        if (ss.cost() == 0) {
+          continue;
+        }
         optionalScorers.add(ss.get(Long.MAX_VALUE));
+      }
+      if (optionalScorers.isEmpty()) {
+        return null;
       }
 
       return new MaxScoreBulkScorer(maxDoc, optionalScorers, null);
@@ -311,7 +317,19 @@ final class BooleanScorerSupplier extends ScorerSupplier {
     long shouldCost = computeShouldCost();
     List<Scorer> optional = new ArrayList<>();
     for (ScorerSupplier ss : subs.get(Occur.SHOULD)) {
+      if (minShouldMatch <= 1 && ss.cost() == 0) {
+        continue;
+      }
       optional.add(ss.get(shouldCost));
+    }
+    if (optional.isEmpty()) {
+      return null;
+    }
+    // BooleanScorer requires at least 2 sub-scorers.
+    // If only 1 remains after filtering zero-cost clauses, use it directly.
+    if (optional.size() == 1) {
+      Scorer scorer = optional.get(0);
+      return new DefaultBulkScorer(scorer);
     }
 
     return new BooleanScorer(optional, Math.max(1, minShouldMatch), scoreMode.needsScores());
@@ -326,8 +344,23 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       return null;
     }
     long cost = cost();
+    // Count non-zero-cost suppliers first to avoid calling get() on scorers we won't use.
+    // Calling get() consumes internal state (e.g. DocIdSetBuilder) that cannot be reused
+    // if we later fall back to the scorer-based path.
+    int nonZeroCostCount = 0;
+    for (ScorerSupplier ss : subs.get(Occur.SHOULD)) {
+      if (ss.cost() > 0) {
+        nonZeroCostCount++;
+      }
+    }
+    if (nonZeroCostCount < 2) {
+      return null;
+    }
     List<Scorer> optionalScorers = new ArrayList<>();
     for (ScorerSupplier ss : subs.get(Occur.SHOULD)) {
+      if (ss.cost() == 0) {
+        continue;
+      }
       optionalScorers.add(ss.get(cost));
     }
     List<Scorer> filters = new ArrayList<>();
@@ -555,7 +588,22 @@ final class BooleanScorerSupplier extends ScorerSupplier {
     } else {
       final List<Scorer> optionalScorers = new ArrayList<>();
       for (ScorerSupplier scorer : optional) {
+        // Skip zero-cost clauses: they match nothing on this segment.
+        // Safe when minShouldMatch <= 1 because any single matching clause suffices.
+        if (minShouldMatch <= 1 && scorer.cost() == 0) {
+          continue;
+        }
         optionalScorers.add(scorer.get(leadCost));
+      }
+
+      // All clauses were zero-cost on this segment
+      if (optionalScorers.isEmpty()) {
+        return new ConstantScoreScorer(0f, scoreMode, DocIdSetIterator.empty());
+      }
+
+      // After filtering, only one clause remains
+      if (optionalScorers.size() == 1) {
+        return optionalScorers.get(0);
       }
 
       // Technically speaking, WANDScorer should be able to handle the following 3 conditions now

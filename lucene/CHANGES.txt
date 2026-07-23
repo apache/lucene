@@ -605,6 +605,8 @@ Optimizations
 * GITHUB#15732: Prevent writing vectors twice during merging HNSW graphs by allowing doing deferred work after calling
   merge for vectors is finished. (Ignacio Vera)
 
+* GITHUB#15998: Skip scorer construction for zero-cost SHOULD clauses in BooleanScorerSupplier. (Sagar Upadhyaya)
+
 * GITHUB#16001: IndexSearcher.count() was calling query.rewrite twice, a regression since v9.10 (David Smiley)
 
 * GITHUB#16050, GITHUB#16177: Doc-values range queries are now always two-phase iterators, with
