@@ -432,7 +432,11 @@ public class TieredMergePolicy extends MergePolicy {
               + "  allowedDocCount="
               + allowedDocCount
               + " vs doc count="
-              + infos.totalMaxDoc(),
+              + infos.totalMaxDoc()
+              + " deletesPctAllowed="
+              + deletesPctAllowed
+              + " forceMergeDeletesPctAllowed="
+              + forceMergeDeletesPctAllowed,
           mergeContext);
     }
     return doFindMerges(
@@ -481,8 +485,7 @@ public class TieredMergePolicy extends MergePolicy {
     // Cycle to possibly select more than one merge:
     // The trigger point for total deleted documents in the index leads to a bunch of large segment
     // merges at the same time. So only put one large merge in the list of merges per cycle. We'll
-    // pick up another
-    // merge next time around.
+    // pick up another merge next time around.
     boolean haveOneLargeMerge = false;
 
     while (true) {
@@ -501,9 +504,19 @@ public class TieredMergePolicy extends MergePolicy {
         }
       }
 
+      final int remainingDelCount = sortedEligible.stream().mapToInt(c -> c.delCount).sum();
+
       if (verbose(mergeContext)) {
         message(
-            "  allowedSegmentCount="
+            "  mergeType="
+                + mergeType
+                + " maxMergeIsRunning="
+                + maxMergeIsRunning
+                + " allowedDelCount="
+                + allowedDelCount
+                + " remainingDelCount="
+                + remainingDelCount
+                + " allowedSegmentCount="
                 + allowedSegCount
                 + " vs count="
                 + originalSortedSize
@@ -517,7 +530,6 @@ public class TieredMergePolicy extends MergePolicy {
         return spec;
       }
 
-      final int remainingDelCount = sortedEligible.stream().mapToInt(c -> c.delCount).sum();
       if (mergeType == MERGE_TYPE.NATURAL
           && sortedEligible.size() <= allowedSegCount
           && remainingDelCount <= allowedDelCount) {
