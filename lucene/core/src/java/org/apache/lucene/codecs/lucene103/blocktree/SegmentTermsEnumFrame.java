@@ -586,17 +586,16 @@ final class SegmentTermsEnumFrame {
   private long subCode;
   CompressionAlgorithm compressionAlg = CompressionAlgorithm.NO_COMPRESSION;
 
-  // Target's prefix matches this block's prefix;
-  // we binary search the entries to check if the suffix matches.
+  // Target's prefix matches this block's prefix. We binary search the entries to check if the
+  // suffix matches.
   public SeekStatus binarySearchTermLeaf(BytesRef target, boolean exactOnly) throws IOException {
     return allEqual
         ? binarySearchTermLeafAllEqual(target, exactOnly)
         : binarySearchTermLeafUnEqual(target, exactOnly);
   }
 
-  // Target's prefix matches this block's prefix;
-  // And all suffixes have the same length in this block,
-  // we binary search the entries to check if the suffix matches.
+  // Target's prefix matches this leaf block's prefix. Since all suffixes have the same
+  // length, we can binary search by computing each suffix's start offset from its ordinal.
   private SeekStatus binarySearchTermLeafAllEqual(BytesRef target, boolean exactOnly)
       throws IOException {
     // if (DEBUG) System.out.println("    binarySearchTermLeaf: block fp=" + fp + " prefix=" +
@@ -686,9 +685,8 @@ final class SegmentTermsEnumFrame {
     return seekStatus;
   }
 
-  // Target's prefix matches this block's prefix;
-  // But suffixes have different lengths in this block,
-  // we binary search the entries to check if the suffix matches.
+  // Target's prefix matches this leaf block's prefix. Even though suffixes have different lengths,
+  // we use suffixOffsets to randomly access suffix bytes during binary search.
   private SeekStatus binarySearchTermLeafUnEqual(BytesRef target, boolean exactOnly)
       throws IOException {
     // if (DEBUG) System.out.println("    binarySearchTermLeafUnEqual: block fp=" + fp + " prefix="
