@@ -108,7 +108,7 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
     if (reader instanceof PerFieldKnnVectorsFormat.FieldsReader candidateReader) {
       currKnnVectorsReader = candidateReader.getFieldReader(fieldInfo.name);
     }
-    if (!(reader instanceof HnswGraphProvider)) {
+    if (!(currKnnVectorsReader instanceof HnswGraphProvider)) {
       return this;
     }
     HnswGraph graph = ((HnswGraphProvider) currKnnVectorsReader).getGraph(fieldInfo.name);
@@ -125,7 +125,7 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
     int candidateVectorCount = countLiveVectors(liveDocs, knnVectorValues);
     int graphSize = graph.size();
 
-    GraphReader graphReader = new GraphReader(reader, docMap, graphSize);
+    GraphReader graphReader = new GraphReader(currKnnVectorsReader, docMap, graphSize);
 
     int deletePct = ((graphSize - candidateVectorCount) * 100) / graphSize;
 
