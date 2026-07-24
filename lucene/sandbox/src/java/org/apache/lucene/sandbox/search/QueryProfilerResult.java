@@ -36,14 +36,14 @@ public class QueryProfilerResult {
   private final long startTime;
   private final long totalTime;
   private final Map<String, Long> queryBreakdowns;
-  private final List<AggregatedQueryLeafProfilerResult> aggregatedQueryLeafBreakdowns;
+  private final List<SliceProfilerResult> sliceProfilerResults;
   private final List<QueryProfilerResult> childrenProfileResults;
 
   public QueryProfilerResult(
       String type,
       String description,
       Map<String, Long> queryBreakdowns,
-      List<AggregatedQueryLeafProfilerResult> aggregatedQueryLeafBreakdowns,
+      List<SliceProfilerResult> sliceProfilerResults,
       List<QueryProfilerResult> childrenProfileResults,
       long startTime,
       long totalTime) {
@@ -51,9 +51,8 @@ public class QueryProfilerResult {
     this.description = description;
     this.queryBreakdowns =
         Objects.requireNonNull(queryBreakdowns, "required breakdown argument missing");
-    this.aggregatedQueryLeafBreakdowns =
-        Objects.requireNonNull(
-            aggregatedQueryLeafBreakdowns, "required slice breakdowns argument missing");
+    this.sliceProfilerResults =
+        Objects.requireNonNull(sliceProfilerResults, "required slice breakdowns argument missing");
     this.childrenProfileResults =
         childrenProfileResults == null ? Collections.emptyList() : childrenProfileResults;
     this.startTime = startTime;
@@ -88,12 +87,84 @@ public class QueryProfilerResult {
     return totalTime;
   }
 
-  public List<AggregatedQueryLeafProfilerResult> getAggregatedQueryLeafBreakdowns() {
-    return Collections.unmodifiableList(aggregatedQueryLeafBreakdowns);
+  /** Returns the per-slice profiling results (each nesting its own partitions). */
+  public List<SliceProfilerResult> getSliceProfilerResults() {
+    return Collections.unmodifiableList(sliceProfilerResults);
   }
 
   /** Returns a list of all profiled children queries */
   public List<QueryProfilerResult> getProfiledChildren() {
     return Collections.unmodifiableList(childrenProfileResults);
+  }
+
+  /** Renders this node (and its slices and children) as a JSON string. */
+  @Override
+  public String toString() {
+    StringBuilder sb = new StringBuilder();
+    sb.append("{\"type\":").append(jsonString(type));
+    sb.append(",\"description\":").append(jsonString(description));
+    sb.append(",\"start_time\":").append(startTime);
+    sb.append(",\"total_time_in_nanos\":").append(totalTime);
+    sb.append(",\"breakdown\":").append(breakdownToJson(queryBreakdowns));
+    sb.append(",\"slices\":").append(listToJson(sliceProfilerResults));
+    sb.append(",\"children\":").append(listToJson(childrenProfileResults));
+    sb.append("}");
+    return sb.toString();
+  }
+
+  /**
+   * Escapes and quotes a string for JSON output. Package-private helper reused by sibling results.
+   */
+  static String jsonString(String value) {
+    if (value == null) {
+      return "null";
+    }
+    StringBuilder sb = new StringBuilder(value.length() + 2);
+    sb.append('"');
+    for (int i = 0; i < value.length(); i++) {
+      char c = value.charAt(i);
+      switch (c) {
+        case '"' -> sb.append("\\\"");
+        case '\\' -> sb.append("\\\\");
+        case '\n' -> sb.append("\\n");
+        case '\r' -> sb.append("\\r");
+        case '\t' -> sb.append("\\t");
+        default -> {
+          if (c < 0x20) {
+            sb.append(String.format("\\u%04x", (int) c));
+          } else {
+            sb.append(c);
+          }
+        }
+      }
+    }
+    sb.append('"');
+    return sb.toString();
+  }
+
+  /** Renders a breakdown map as a JSON object with sorted keys for stable output. */
+  static String breakdownToJson(Map<String, Long> breakdown) {
+    StringBuilder sb = new StringBuilder("{");
+    boolean first = true;
+    for (Map.Entry<String, Long> entry : new java.util.TreeMap<>(breakdown).entrySet()) {
+      if (first == false) {
+        sb.append(",");
+      }
+      first = false;
+      sb.append(jsonString(entry.getKey())).append(":").append(entry.getValue());
+    }
+    return sb.append("}").toString();
+  }
+
+  /** Renders a list of results (whose toString() produces JSON) as a JSON array. */
+  static String listToJson(List<?> results) {
+    StringBuilder sb = new StringBuilder("[");
+    for (int i = 0; i < results.size(); i++) {
+      if (i > 0) {
+        sb.append(",");
+      }
+      sb.append(results.get(i));
+    }
+    return sb.append("]").toString();
   }
 }
