@@ -146,6 +146,32 @@ public abstract class PointRangeQuery extends Query {
         return true;
       }
 
+      private PointValues.MatchState matchWithState(byte[] packedValue, int sortedDim) {
+        int offset = sortedDim * bytesPerDim;
+        if (comparator.compare(packedValue, offset, lowerPoint, offset) < 0) {
+          // Doc's value is too low, in sorted dimension
+          return PointValues.MatchState.LOW;
+        }
+        if (comparator.compare(packedValue, offset, upperPoint, offset) > 0) {
+          // Doc's value is too high, in sorted dimension, early terminate.
+          return PointValues.MatchState.HIGH_IN_SORTED_DIM;
+        }
+
+        for (int dim = 0; dim < numDims; dim++) {
+          if (dim == sortedDim) continue;
+          offset = dim * bytesPerDim;
+          if (comparator.compare(packedValue, offset, lowerPoint, offset) < 0) {
+            // Doc's value is too low, in non-sorted dimension
+            return PointValues.MatchState.LOW;
+          }
+          if (comparator.compare(packedValue, offset, upperPoint, offset) > 0) {
+            // Doc's value is too high, in non-sorted dimension
+            return PointValues.MatchState.HIGH_IN_NON_SORTED_DIM;
+          }
+        }
+        return PointValues.MatchState.MATCH;
+      }
+
       private IntersectVisitor getIntersectVisitor(DocIdSetBuilder result) {
         return new IntersectVisitor() {
 
@@ -179,10 +205,34 @@ public abstract class PointRangeQuery extends Query {
           }
 
           @Override
+          public PointValues.VisitState visitWithSortedDim(
+              int docID, byte[] packedValue, int sortedDim) {
+            PointValues.MatchState matchState = matchWithState(packedValue, sortedDim);
+            if (matchState == PointValues.MatchState.MATCH) {
+              visit(docID);
+            } else if (matchState == PointValues.MatchState.HIGH_IN_SORTED_DIM) {
+              return PointValues.VisitState.TERMINATE;
+            }
+            return PointValues.VisitState.CONTINUE;
+          }
+
+          @Override
           public void visit(DocIdSetIterator iterator, byte[] packedValue) throws IOException {
             if (matches(packedValue)) {
               adder.add(iterator);
             }
+          }
+
+          @Override
+          public PointValues.VisitState visitWithSortedDim(
+              DocIdSetIterator iterator, byte[] packedValue, int sortedDim) throws IOException {
+            PointValues.MatchState matchState = matchWithState(packedValue, sortedDim);
+            if (matchState == PointValues.MatchState.MATCH) {
+              adder.add(iterator);
+            } else if (matchState == PointValues.MatchState.HIGH_IN_SORTED_DIM) {
+              return PointValues.VisitState.TERMINATE;
+            }
+            return PointValues.VisitState.CONTINUE;
           }
 
           @Override
@@ -224,10 +274,36 @@ public abstract class PointRangeQuery extends Query {
           }
 
           @Override
+          public PointValues.VisitState visitWithSortedDim(
+              int docID, byte[] packedValue, int sortedDim) {
+            PointValues.MatchState matchState = matchWithState(packedValue, sortedDim);
+            if (matchState == PointValues.MatchState.HIGH_IN_SORTED_DIM) {
+              // Leave this docID in remaining docs to visit.
+              return PointValues.VisitState.MATCH_REMAINING;
+            } else if (matchState != PointValues.MatchState.MATCH) {
+              visit(docID);
+            }
+            return PointValues.VisitState.CONTINUE;
+          }
+
+          @Override
           public void visit(DocIdSetIterator iterator, byte[] packedValue) throws IOException {
             if (matches(packedValue) == false) {
               visit(iterator);
             }
+          }
+
+          @Override
+          public PointValues.VisitState visitWithSortedDim(
+              DocIdSetIterator iterator, byte[] packedValue, int sortedDim) throws IOException {
+            PointValues.MatchState matchState = matchWithState(packedValue, sortedDim);
+            if (matchState == PointValues.MatchState.HIGH_IN_SORTED_DIM) {
+              // Leave this iterator in remaining docs to visit.
+              return PointValues.VisitState.MATCH_REMAINING;
+            } else if (matchState != PointValues.MatchState.MATCH) {
+              visit(iterator);
+            }
+            return PointValues.VisitState.CONTINUE;
           }
 
           @Override
@@ -399,6 +475,18 @@ public abstract class PointRangeQuery extends Query {
                 if (leafComparator.test(packedValue)) {
                   matchingNodeCount[0]++;
                 }
+              }
+
+              @Override
+              public PointValues.VisitState visitWithSortedDim(
+                  int docID, byte[] packedValue, int sortedDim) throws IOException {
+                PointValues.MatchState matchState = matchWithState(packedValue, sortedDim);
+                if (matchState == PointValues.MatchState.MATCH) {
+                  matchingNodeCount[0]++;
+                } else if (matchState == PointValues.MatchState.HIGH_IN_SORTED_DIM) {
+                  return PointValues.VisitState.TERMINATE;
+                }
+                return PointValues.VisitState.CONTINUE;
               }
 
               @Override

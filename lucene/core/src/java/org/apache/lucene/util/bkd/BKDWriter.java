@@ -1352,6 +1352,7 @@ public class BKDWriter implements Closeable {
       }
       if (lowCardinalityCost <= highCardinalityCost) {
         out.writeByte((byte) -2);
+        out.writeByte((byte) sortedDim);
         writeLowCardinalityLeafBlockPackedValues(out, commonPrefixLengths, count, packedValues);
       } else {
         out.writeByte((byte) sortedDim);
