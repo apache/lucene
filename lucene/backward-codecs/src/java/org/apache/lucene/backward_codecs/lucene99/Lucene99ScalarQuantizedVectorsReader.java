@@ -194,19 +194,6 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
   public FloatVectorValues getFloatVectorValues(String field) throws IOException {
     final FieldEntry fieldEntry = getFieldEntry(field);
     final FloatVectorValues rawVectorValues = rawVectorsReader.getFloatVectorValues(field);
-    if (rawVectorValues.size() == 0) {
-      return OffHeapQuantizedFloatVectorValues.load(
-          fieldEntry.ordToDoc,
-          fieldEntry.dimension,
-          fieldEntry.size,
-          fieldEntry.scalarQuantizer,
-          fieldEntry.similarityFunction,
-          vectorScorer,
-          fieldEntry.compress,
-          fieldEntry.vectorDataOffset,
-          fieldEntry.vectorDataLength,
-          quantizedVectorData);
-    }
 
     OffHeapQuantizedByteVectorValues quantizedByteVectorValues =
         OffHeapQuantizedByteVectorValues.load(
@@ -220,6 +207,27 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
             fieldEntry.vectorDataOffset,
             fieldEntry.vectorDataLength,
             quantizedVectorData);
+
+    if (rawVectorValues.size() == 0) {
+      // Full-precision vectors were dropped. Wrap the dequantizing read view with the quantized
+      // values so scorer() stays quantized (as in the full-precision branch) while
+      // vectorValue()/rescorer() dequantize. Passing the dequantized view straight to a scorer
+      // would misroute to the non-quantized flat scorer over the quantized slice.
+      FloatVectorValues dequantizedRawVectorValues =
+          OffHeapQuantizedFloatVectorValues.load(
+              fieldEntry.ordToDoc,
+              fieldEntry.dimension,
+              fieldEntry.size,
+              fieldEntry.scalarQuantizer,
+              fieldEntry.similarityFunction,
+              vectorScorer,
+              fieldEntry.compress,
+              fieldEntry.vectorDataOffset,
+              fieldEntry.vectorDataLength,
+              quantizedVectorData);
+      return new QuantizedVectorValues(dequantizedRawVectorValues, quantizedByteVectorValues);
+    }
+
     return new QuantizedVectorValues(rawVectorValues, quantizedByteVectorValues);
   }
 

@@ -245,20 +245,6 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
 
     FloatVectorValues rawFloatVectorValues = rawVectorsReader.getFloatVectorValues(field);
 
-    if (rawFloatVectorValues.size() == 0) {
-      return OffHeapScalarQuantizedFloatVectorValues.load(
-          fi.ordToDocDISIReaderConfiguration,
-          fi.dimension,
-          fi.size,
-          fi.scalarEncoding,
-          fi.similarityFunction,
-          vectorScorer,
-          fi.centroid,
-          fi.vectorDataOffset,
-          fi.vectorDataLength,
-          quantizedVectorData);
-    }
-
     OffHeapScalarQuantizedVectorValues sqvv =
         OffHeapScalarQuantizedVectorValues.load(
             fi.ordToDocDISIReaderConfiguration,
@@ -273,6 +259,28 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
             fi.vectorDataOffset,
             fi.vectorDataLength,
             quantizedVectorData);
+
+    if (rawFloatVectorValues.size() == 0) {
+      // Full-precision vectors were dropped. Wrap the dequantizing read view with sqvv so scorer()
+      // stays quantized (as in the full-precision branch) while vectorValue()/rescorer()
+      // dequantize.
+      // Passing the dequantized view straight to a scorer would misroute to the non-quantized flat
+      // scorer over the quantized slice.
+      FloatVectorValues dequantizedRawVectorValues =
+          OffHeapScalarQuantizedFloatVectorValues.load(
+              fi.ordToDocDISIReaderConfiguration,
+              fi.dimension,
+              fi.size,
+              fi.scalarEncoding,
+              fi.similarityFunction,
+              vectorScorer,
+              fi.centroid,
+              fi.vectorDataOffset,
+              fi.vectorDataLength,
+              quantizedVectorData);
+      return new ScalarQuantizedVectorValues(dequantizedRawVectorValues, sqvv);
+    }
+
     return new ScalarQuantizedVectorValues(rawFloatVectorValues, sqvv);
   }
 
