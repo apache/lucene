@@ -337,6 +337,9 @@ Improvements
 
 * GITHUB#16271: Add detail to KNN no-match explanations. (Jakub Slowinski)
 
+* GITHUB#16091: Replace deprecated IndexSearcher#search(Query, Collector) usage with CollectorManager
+  in JoinUtil#createJoinQuery for the GlobalOrdinalsCollector case. (Luca Cavanna)
+
 Optimizations
 ---------------------
 * GITHUG#16280: Single-pass writeString fast path for short strings in ByteBuffersDataOutput (neoremind)
