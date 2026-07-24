@@ -31,6 +31,7 @@ import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
@@ -100,10 +101,11 @@ final class FaissKnnVectorsWriter extends KnnVectorsWriter {
   public IORunnable mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
     rawVectorsWriter.mergeOneFlatVectorField(fieldInfo, mergeState);
     switch (fieldInfo.getVectorEncoding()) {
-      case BYTE ->
-          // TODO: Support using SQ8 quantization, see:
-          //  - https://github.com/opensearch-project/k-NN/pull/2425
-          throw new UnsupportedOperationException("Byte vectors not supported");
+      case BYTE -> {
+        ByteVectorValues merged =
+            KnnVectorsWriter.MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState);
+        writeFloatField(fieldInfo, new ByteToFloatVectorValues(merged), doc -> doc);
+      }
       case FLOAT32 -> {
         FloatVectorValues merged =
             KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
@@ -126,10 +128,20 @@ final class FaissKnnVectorsWriter extends KnnVectorsWriter {
     for (Map.Entry<FieldInfo, FlatFieldVectorsWriter<?>> entry : rawFields.entrySet()) {
       FieldInfo fieldInfo = entry.getKey();
       switch (fieldInfo.getVectorEncoding()) {
-        case BYTE ->
-            // TODO: Support using SQ8 quantization, see:
-            //  - https://github.com/opensearch-project/k-NN/pull/2425
-            throw new UnsupportedOperationException("Byte vectors not supported");
+        case BYTE -> {
+          @SuppressWarnings("unchecked")
+          FlatFieldVectorsWriter<byte[]> rawWriter =
+              (FlatFieldVectorsWriter<byte[]>) entry.getValue();
+
+          List<byte[]> vectors = rawWriter.getVectors();
+          int dimension = fieldInfo.getVectorDimension();
+          DocIdSet docIdSet = rawWriter.getDocsWithFieldSet();
+
+          writeFloatField(
+              fieldInfo,
+              new ByteToFloatVectorValues(ByteVectorValues.fromBytes(vectors, dimension), docIdSet),
+              (sortMap != null) ? sortMap::oldToNew : doc -> doc);
+        }
 
         case FLOAT32 -> {
           @SuppressWarnings("unchecked")
@@ -195,6 +207,54 @@ final class FaissKnnVectorsWriter extends KnnVectorsWriter {
   public long ramBytesUsed() {
     // TODO: How to estimate Faiss usage?
     return rawVectorsWriter.ramBytesUsed();
+  }
+
+  private static class ByteToFloatVectorValues extends FloatVectorValues {
+    private final ByteVectorValues bytes;
+    private final DocIdSet docIdSet;
+    private final float[] scratch;
+
+    public ByteToFloatVectorValues(ByteVectorValues bytes) {
+      this(bytes, null);
+    }
+
+    public ByteToFloatVectorValues(ByteVectorValues bytes, DocIdSet docIdSet) {
+      this.bytes = bytes;
+      this.docIdSet = docIdSet;
+      this.scratch = new float[bytes.dimension()];
+    }
+
+    @Override
+    public float[] vectorValue(int ord) throws IOException {
+      byte[] b = bytes.vectorValue(ord);
+      for (int i = 0; i < b.length; i++) {
+        scratch[i] = b[i];
+      }
+      return scratch;
+    }
+
+    @Override
+    public int dimension() {
+      return bytes.dimension();
+    }
+
+    @Override
+    public int size() {
+      return bytes.size();
+    }
+
+    @Override
+    public FloatVectorValues copy() throws IOException {
+      return new ByteToFloatVectorValues(bytes.copy(), docIdSet);
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      if (docIdSet != null) {
+        return fromDISI(docIdSet.iterator());
+      }
+      return bytes.iterator();
+    }
   }
 
   private static class BufferedFloatVectorValues extends FloatVectorValues {
