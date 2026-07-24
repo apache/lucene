@@ -110,7 +110,7 @@ public class TestCJKBigramFilter extends BaseTokenStreamTestCase {
           "<HIRAGANA>",
           "<SINGLE>"
         },
-        new int[] {1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+        new int[] {1, 1, 1, 1, 2, 1, 2, 1, 1, 1},
         new int[] {1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
     a.close();
   }
@@ -215,6 +215,79 @@ public class TestCJKBigramFilter extends BaseTokenStreamTestCase {
           "多", "多く", "く", "くの", "の", "の学", "学", "学生", "生", "生が", "が", "が試", "試", "試験", "験", "験に",
               "に", "に落", "落", "落ち", "ち", "ちた", "た"
         });
+  }
+
+  /**
+   * Test that positions are consistent between outputUnigrams=true and outputUnigrams=false when a
+   * CJK segment is followed by a word break and then another token. See GITHUB#15812.
+   */
+  public void testBigramPositionsConsistentAcrossWordBreak() throws Exception {
+    // "一二、三": bigram "一二" followed by punctuation break, then lone "三"
+    // With outputUnigrams=true: 一(pos0) 一二(pos0) 二(pos1) 三(pos2)
+    // With outputUnigrams=false: 一二(pos0) 三(pos2) — NOT pos1
+    assertAnalyzesTo(
+        analyzer,
+        "一二、三",
+        new String[] {"一二", "三"},
+        new int[] {0, 3},
+        new int[] {2, 4},
+        new String[] {"<DOUBLE>", "<SINGLE>"},
+        new int[] {1, 2},
+        new int[] {1, 1});
+
+    // Also verify the outputUnigrams=true case for comparison
+    assertAnalyzesTo(
+        unibiAnalyzer,
+        "一二、三",
+        new String[] {"一", "一二", "二", "三"},
+        new int[] {0, 0, 1, 3},
+        new int[] {1, 2, 2, 4},
+        new String[] {"<SINGLE>", "<DOUBLE>", "<SINGLE>", "<SINGLE>"},
+        new int[] {1, 0, 1, 1},
+        new int[] {1, 2, 1, 1});
+  }
+
+  /**
+   * Test positions across multiple CJK segments separated by word breaks. Each segment's bigrams
+   * should account for spanning two positions, so subsequent tokens align correctly.
+   */
+  public void testBigramPositionsMultipleSegments() throws Exception {
+    // "一二、三四、五" → segments [一二], [三四], [五]
+    assertAnalyzesTo(
+        analyzer,
+        "一二、三四、五",
+        new String[] {"一二", "三四", "五"},
+        new int[] {0, 3, 6},
+        new int[] {2, 5, 7},
+        new String[] {"<DOUBLE>", "<DOUBLE>", "<SINGLE>"},
+        new int[] {1, 2, 2},
+        new int[] {1, 1, 1});
+  }
+
+  /**
+   * Test positions when a CJK bigram segment is followed by non-CJK text. The non-CJK token should
+   * account for the bigram spanning two positions.
+   */
+  public void testBigramPositionsBeforeNonCJK() throws Exception {
+    Analyzer a =
+        new Analyzer() {
+          @Override
+          protected TokenStreamComponents createComponents(String fieldName) {
+            Tokenizer t = new StandardTokenizer();
+            return new TokenStreamComponents(t, new CJKBigramFilter(t, CJKBigramFilter.HAN));
+          }
+        };
+    // "学生abc" → HAN bigram "学生" then non-CJK "abc"
+    assertAnalyzesTo(
+        a,
+        "学生abc",
+        new String[] {"学生", "abc"},
+        new int[] {0, 2},
+        new int[] {2, 5},
+        new String[] {"<DOUBLE>", "<ALPHANUM>"},
+        new int[] {1, 2},
+        new int[] {1, 1});
+    a.close();
   }
 
   /** blast some random strings through the analyzer */

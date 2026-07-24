@@ -91,6 +91,12 @@ public final class CJKBigramFilter extends TokenFilter {
   private final boolean outputUnigrams;
   private boolean ngramState; // false = output unigram, true = output bigram
 
+  // When outputUnigrams=false, a bigram spans two character positions but only advances the
+  // position counter by 1. After a CJK segment boundary (word break or non-CJK token), the next
+  // token must account for the "missing" trailing unigram position. These fields track this.
+  private boolean hadBigrams; // true if bigrams were emitted from the current CJK segment
+  private int deferredPosInc; // extra position increment to apply to the next emitted token
+
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
   private final TypeAttribute typeAtt = addAttribute(TypeAttribute.class);
   private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
@@ -191,6 +197,10 @@ public final class CJKBigramFilter extends TokenFilter {
           // otherwise, we clear the buffer and start over.
 
           if (offsetAtt.startOffset() != lastEndOffset) { // unaligned, clear queue
+            if (hadBigrams) {
+              deferredPosInc++;
+              hadBigrams = false;
+            }
             if (hasBufferedUnigram()) {
 
               // we have a buffered unigram, and we peeked ahead to see if we could form
@@ -209,6 +219,11 @@ public final class CJKBigramFilter extends TokenFilter {
 
           // not a CJK type: we just return these as-is.
 
+          if (hadBigrams) {
+            deferredPosInc++;
+            hadBigrams = false;
+          }
+
           if (hasBufferedUnigram()) {
 
             // we have a buffered unigram, and we peeked ahead to see if we could form
@@ -218,6 +233,10 @@ public final class CJKBigramFilter extends TokenFilter {
             loneState = captureState();
             flushUnigram();
             return true;
+          }
+          if (deferredPosInc > 0) {
+            posIncAtt.setPositionIncrement(posIncAtt.getPositionIncrement() + deferredPosInc);
+            deferredPosInc = 0;
           }
           return true;
         }
@@ -317,6 +336,13 @@ public final class CJKBigramFilter extends TokenFilter {
     if (outputUnigrams) {
       posIncAtt.setPositionIncrement(0);
       posLengthAtt.setPositionLength(2);
+    } else {
+      // Apply any deferred position increment from a previous CJK segment boundary.
+      if (deferredPosInc > 0) {
+        posIncAtt.setPositionIncrement(1 + deferredPosInc);
+        deferredPosInc = 0;
+      }
+      hadBigrams = true;
     }
     index++;
   }
@@ -333,6 +359,10 @@ public final class CJKBigramFilter extends TokenFilter {
     termAtt.setLength(len);
     offsetAtt.setOffset(startOffset[index], endOffset[index]);
     typeAtt.setType(SINGLE_TYPE);
+    if (deferredPosInc > 0) {
+      posIncAtt.setPositionIncrement(1 + deferredPosInc);
+      deferredPosInc = 0;
+    }
     index++;
   }
 
@@ -364,5 +394,7 @@ public final class CJKBigramFilter extends TokenFilter {
     loneState = null;
     exhausted = false;
     ngramState = false;
+    hadBigrams = false;
+    deferredPosInc = 0;
   }
 }
