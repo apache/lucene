@@ -107,22 +107,4 @@ public class AggregatedQueryLeafProfilerResult {
   public long getTotalTime() {
     return totalTime;
   }
-
-  /** Renders this partition as a JSON string. */
-  @Override
-  public String toString() {
-    return "{\"segment_ord\":"
-        + segmentOrd
-        + ",\"doc_range\":["
-        + minDocId
-        + ","
-        + maxDocId
-        + "],\"start_time\":"
-        + startTime
-        + ",\"total_time_in_nanos\":"
-        + totalTime
-        + ",\"breakdown\":"
-        + QueryProfilerResult.breakdownToJson(breakdown)
-        + "}";
-  }
 }

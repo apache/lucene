@@ -115,22 +115,4 @@ public class SliceProfilerResult {
   public List<AggregatedQueryLeafProfilerResult> getPartitions() {
     return partitions;
   }
-
-  /** Renders this slice (and its partitions) as a JSON string. */
-  @Override
-  public String toString() {
-    return "{\"slice_id\":"
-        + sliceId
-        + ",\"thread_id\":"
-        + threadId
-        + ",\"thread_name\":"
-        + QueryProfilerResult.jsonString(threadName)
-        + ",\"start_time\":"
-        + startTime
-        + ",\"total_time_in_nanos\":"
-        + totalTime
-        + ",\"partitions\":"
-        + QueryProfilerResult.listToJson(partitions)
-        + "}";
-  }
 }
