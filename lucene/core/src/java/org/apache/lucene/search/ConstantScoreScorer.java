@@ -58,6 +58,13 @@ public final class ConstantScoreScorer extends Scorer {
 
     @Override
     public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      if (doc != delegate.docID()) {
+        // The delegate was swapped for an empty iterator (see setMinCompetitiveScore); the
+        // default implementation terminates via nextDoc() without touching the stale delegate
+        // position.
+        super.intoBitSet(upTo, bitSet, offset);
+        return;
+      }
       delegate.intoBitSet(upTo, bitSet, offset);
       doc = delegate.docID();
     }
@@ -68,6 +75,10 @@ public final class ConstantScoreScorer extends Scorer {
   private final DocIdSetIterator approximation;
   private final TwoPhaseIterator twoPhaseIterator;
   private final DocIdSetIterator disi;
+  // Whether the underlying iterator pays per-nextDoc() overhead that the bulk
+  // #nextDocsAndScores path amortizes. Iterators that are cheap to advance one doc at a time
+  // (single postings list, bit set) are better served by the plain doc-at-a-time loop.
+  private final boolean bulkDrainWorthwhile;
 
   /**
    * Constructor based on a {@link DocIdSetIterator} which will be used to drive iteration. Two
@@ -86,6 +97,7 @@ public final class ConstantScoreScorer extends Scorer {
         scoreMode == ScoreMode.TOP_SCORES ? new DocIdSetIteratorWrapper(disi) : disi;
     this.twoPhaseIterator = null;
     this.disi = this.approximation;
+    this.bulkDrainWorthwhile = disi instanceof DisjunctionDISIApproximation;
   }
 
   /**
@@ -120,6 +132,7 @@ public final class ConstantScoreScorer extends Scorer {
       this.twoPhaseIterator = twoPhaseIterator;
     }
     this.disi = TwoPhaseIterator.asDocIdSetIterator(this.twoPhaseIterator);
+    this.bulkDrainWorthwhile = false; // two-phase matches must be verified one by one
   }
 
   @Override
@@ -154,18 +167,71 @@ public final class ConstantScoreScorer extends Scorer {
     return score;
   }
 
+  // Doc-ID window covered by one bulk #nextDocsAndScores fill. Matches
+  // MaxScoreBulkScorer.INNER_WINDOW_SIZE and DenseConjunctionBulkScorer.WINDOW_SIZE, so a single
+  // fill covers a full inner scoring window with a bit set that stays core-cache resident.
+  private static final int BULK_WINDOW_SIZE = 4096;
+
+  private FixedBitSet bulkWindowMatches; // lazily allocated
+
   @Override
   public void nextDocsAndScores(int upTo, Bits liveDocs, DocAndFloatFeatureBuffer buffer)
       throws IOException {
-    int batchSize = 64;
-    buffer.growNoCopy(batchSize);
-    int size = 0;
-    DocIdSetIterator iterator = iterator();
-    for (int doc = iterator.docID(); doc < upTo && size < batchSize; doc = iterator.nextDoc()) {
-      if (liveDocs == null || liveDocs.get(doc)) {
-        buffer.docs[size] = doc;
-        ++size;
+    if (bulkDrainWorthwhile == false) {
+      // Either matches must be verified one by one (two-phase), or the iterator is cheap to
+      // advance one doc at a time (single postings list, bit set) and the per-window fixed cost
+      // of the bulk path (bit set clear/flatten) would not pay for itself. Only heap-based
+      // composite iterators (disjunctions), which pay a priority-queue update per nextDoc(),
+      // benefit from the bulk drain.
+      int batchSize = 64;
+      buffer.growNoCopy(batchSize);
+      int size = 0;
+      DocIdSetIterator iterator = iterator();
+      for (int doc = iterator.docID(); doc < upTo && size < batchSize; doc = iterator.nextDoc()) {
+        if (liveDocs == null || liveDocs.get(doc)) {
+          buffer.docs[size] = doc;
+          ++size;
+        }
       }
+      Arrays.fill(buffer.features, 0, size, score);
+      buffer.size = size;
+      return;
+    }
+
+    // Drain a window of matches in bulk via DocIdSetIterator#intoBitSet. Disjunctions implement
+    // it with one bulk load per sub-iterator, which is much cheaper than paying a priority-queue
+    // update per nextDoc() call. This matters for constant-score disjunction clauses under top-k
+    // scoring (MaxScoreBulkScorer), which have no impact-based bulk path.
+    buffer.size = 0;
+    DocIdSetIterator iterator = iterator();
+    int doc = iterator.docID();
+    if (doc >= upTo) {
+      return;
+    }
+    if (bulkWindowMatches == null) {
+      bulkWindowMatches = new FixedBitSet(BULK_WINDOW_SIZE);
+    } else {
+      bulkWindowMatches.clear();
+    }
+    int windowMax = (int) Math.min(upTo, (long) doc + BULK_WINDOW_SIZE);
+    iterator.intoBitSet(windowMax, bulkWindowMatches, doc);
+    int cardinality = bulkWindowMatches.cardinality();
+    if (cardinality == 0) {
+      // No match in this window; the iterator already advanced to windowMax or beyond, the
+      // caller re-invokes for the next window.
+      return;
+    }
+    buffer.growNoCopy(cardinality);
+    int size = bulkWindowMatches.intoArray(0, windowMax - doc, doc, buffer.docs);
+    if (liveDocs != null) {
+      int kept = 0;
+      for (int i = 0; i < size; ++i) {
+        int d = buffer.docs[i];
+        if (liveDocs.get(d)) {
+          buffer.docs[kept++] = d;
+        }
+      }
+      size = kept;
     }
     Arrays.fill(buffer.features, 0, size, score);
     buffer.size = size;
