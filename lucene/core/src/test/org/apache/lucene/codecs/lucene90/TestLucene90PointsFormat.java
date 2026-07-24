@@ -18,6 +18,8 @@ package org.apache.lucene.codecs.lucene90;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.BitSet;
+import java.util.List;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.PointsFormat;
@@ -39,7 +41,10 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BasePointsFormatTestCase;
 import org.apache.lucene.tests.index.MockRandomMergePolicy;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.NumericUtils;
 import org.apache.lucene.util.bkd.BKDConfig;
+import org.apache.lucene.util.bkd.BKDReader;
 
 public class TestLucene90PointsFormat extends BasePointsFormatTestCase {
 
@@ -354,5 +359,135 @@ public class TestLucene90PointsFormat extends BasePointsFormatTestCase {
     }
     r.close();
     dir.close();
+  }
+
+  public void testBasicWithPrefetchVisitor() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    // Avoid mockRandomMP since it may cause non-optimal merges that make the
+    // number of points per leaf hard to predict
+    while (iwc.getMergePolicy() instanceof MockRandomMergePolicy) {
+      iwc.setMergePolicy(newMergePolicy());
+    }
+    IndexWriter w = new IndexWriter(dir, iwc);
+    byte[] pointValue = new byte[3];
+    byte[] uniquePointValue = new byte[3];
+    random().nextBytes(uniquePointValue);
+    final int numDocs =
+        TEST_NIGHTLY ? atLeast(10000) : atLeast(500); // at night, make sure we have several leaves
+    final boolean multiValues = random().nextBoolean();
+    int totalValues = 0;
+    for (int i = 0; i < numDocs; ++i) {
+      Document doc = new Document();
+      if (i == numDocs / 2) {
+        totalValues++;
+        doc.add(new BinaryPoint("f", uniquePointValue));
+      } else {
+        final int numValues = (multiValues) ? TestUtil.nextInt(random(), 2, 100) : 1;
+        for (int j = 0; j < numValues; j++) {
+          do {
+            random().nextBytes(pointValue);
+          } while (Arrays.equals(pointValue, uniquePointValue));
+          doc.add(new BinaryPoint("f", pointValue));
+          totalValues++;
+        }
+      }
+      w.addDocument(doc);
+    }
+    w.forceMerge(1);
+    final IndexReader r = DirectoryReader.open(w);
+    w.close();
+
+    final LeafReader lr = getOnlyLeafReader(r);
+    PointValues points = lr.getPointValues("f");
+
+    BKDReader.BaseTwoPhaseIntersectVisitor allPointsVisitor =
+        new BKDReader.BaseTwoPhaseIntersectVisitor() {
+          @Override
+          public void visit(int docID, byte[] packedValue) throws IOException {}
+
+          @Override
+          public void visit(int docID) throws IOException {}
+
+          @Override
+          public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+            return Relation.CELL_INSIDE_QUERY;
+          }
+        };
+
+    List<Long> savedBlocks = allPointsVisitor.deferredBlocks();
+    assertEquals(0, savedBlocks.size()); // Test that all deferred blocks were processed
+    assertEquals(totalValues, points.estimatePointCount(allPointsVisitor));
+    assertEquals(numDocs, points.estimateDocCount(allPointsVisitor));
+
+    r.close();
+    dir.close();
+  }
+
+  public void testBasicWithPrefetchCapableVisitor() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    iwc.setMergePolicy(newLogMergePolicy());
+    IndexWriter w = new IndexWriter(dir, iwc);
+    byte[] point = new byte[4];
+    for (int i = 0; i < 20; i++) {
+      Document doc = new Document();
+      NumericUtils.intToSortableBytes(i, point, 0);
+      doc.add(new BinaryPoint("dim", point));
+      w.addDocument(doc);
+    }
+    w.forceMerge(1);
+    w.close();
+
+    DirectoryReader r = DirectoryReader.open(dir);
+    LeafReader sub = getOnlyLeafReader(r);
+    PointValues values = sub.getPointValues("dim");
+
+    // Simple test: make sure prefetch capable visitor can visit every doc when cell crosses query:
+    BitSet seen = new BitSet();
+    values.intersect(
+        new BKDReader.BaseTwoPhaseIntersectVisitor() {
+          @Override
+          public Relation compare(byte[] minPacked, byte[] maxPacked) {
+            return Relation.CELL_CROSSES_QUERY;
+          }
+
+          @Override
+          public void visit(int docID) {
+            throw new IllegalStateException();
+          }
+
+          @Override
+          public void visit(int docID, byte[] packedValue) {
+            seen.set(docID);
+            assertEquals(docID, NumericUtils.sortableBytesToInt(packedValue, 0));
+          }
+        });
+    assertEquals(20, seen.cardinality());
+    // Make sure prefetch capable visitor can visit all docs when all docs are inside query
+    // Also test we are not visiting documents twice based on whether PointTree has a prefetch
+    // implementation of
+    // prepareOrVisit or uses the default implementation
+    seen.clear();
+    final int[] docCount = {0};
+    values.intersect(
+        new BKDReader.BaseTwoPhaseIntersectVisitor() {
+          @Override
+          public void visit(int docID) throws IOException {
+            seen.set(docID);
+            docCount[0]++;
+          }
+
+          @Override
+          public void visit(int docID, byte[] packedValue) throws IOException {}
+
+          @Override
+          public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+            return Relation.CELL_INSIDE_QUERY;
+          }
+        });
+    assertEquals(20, seen.cardinality());
+    assertEquals(20, docCount[0]);
+    IOUtils.close(r, dir);
   }
 }
