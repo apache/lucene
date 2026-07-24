@@ -239,16 +239,23 @@ public class DocumentationConfigPlugin extends LuceneGradlePlugin {
                       .getProviders()
                       .provider(
                           () -> {
-                            var regex =
+                            var content = Files.readString(defaultCodecFile.toPath());
+                            var legacy =
                                 Pattern.compile(
-                                    "Codec defaultCodec = LOADER\\.lookup\\((?<codec>\"([^\"]+)\")\\);");
-                            var matcher =
-                                regex.matcher(Files.readString(defaultCodecFile.toPath()));
-                            if (!matcher.find()) {
-                              throw new GradleException(
-                                  "Cannot determine default codec from file: " + defaultCodecFile);
+                                    "Codec\\s+defaultCodec\\s*=\\s*LOADER\\.lookup\\((?<codec>\"([^\"]+)\")\\)\\s*;");
+                            var matcher = legacy.matcher(content);
+                            if (matcher.find()) {
+                              return matcher.group("codec").toLowerCase(Locale.ROOT);
                             }
-                            return matcher.group("codec").toLowerCase(Locale.ROOT);
+                            var atomic =
+                                Pattern.compile(
+                                    "(?s)DEFAULT_CODEC\\s*=\\s*new\\s+AtomicReference<[^>]*>\\s*\\(\\s*LOADER\\.lookup\\((?<codec>\"([^\"]+)\")\\)\\s*\\)\\s*;");
+                            matcher = atomic.matcher(content);
+                            if (matcher.find()) {
+                              return matcher.group("codec").toLowerCase(Locale.ROOT);
+                            }
+                            throw new GradleException(
+                                "Cannot determine default codec from file: " + defaultCodecFile);
                           }));
 
           task.withProjectList();
