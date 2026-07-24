@@ -375,6 +375,12 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#16410: Correct BayesianScoreQuery and LogOddsFusionQuery probability semantics and
+  pruning. Preserve negative log-odds internally, apply boosts after calibration and fusion,
+  preserve neutral signals through rewrites and single-active-signal leaves, support signal/target
+  prior correction, and use safe fused block-max bounds. BayesianScoreEstimator now uses all live
+  matching documents. (Jaepil Jeong)
+
 * GITHUB#16350: Disable bulk-scoring in monitor queries. (Alan Woodward)
 
 * GITHUB#16378: Accumulate join Total/Avg scores in double precision in

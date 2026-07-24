@@ -26,6 +26,7 @@ import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -79,8 +80,8 @@ public class BayesianScoreEstimator {
     }
 
     IndexReader reader = searcher.getIndexReader();
-    int maxDoc = reader.maxDoc();
-    if (maxDoc == 0) {
+    int numDocs = reader.numDocs();
+    if (numDocs == 0) {
       return new Parameters(1.0f, 0.0f, 0.01f);
     }
 
@@ -105,7 +106,7 @@ public class BayesianScoreEstimator {
       Query pseudoQuery = builder.build();
 
       // Collect all scores
-      float[] scores = collectScores(searcher, pseudoQuery, maxDoc);
+      float[] scores = collectScores(searcher, pseudoQuery);
       if (scores.length == 0) {
         continue;
       }
@@ -123,7 +124,7 @@ public class BayesianScoreEstimator {
           highCount++;
         }
       }
-      baseRateFractions.add((float) highCount / maxDoc);
+      baseRateFractions.add((float) highCount / numDocs);
     }
 
     if (allScoreArrays.isEmpty()) {
@@ -219,14 +220,35 @@ public class BayesianScoreEstimator {
     return value;
   }
 
-  private static float[] collectScores(IndexSearcher searcher, Query query, int maxDoc)
-      throws IOException {
-    int topN = Math.min(maxDoc, 10000);
-    TopDocs topDocs = searcher.search(query, topN);
-    float[] scores = new float[topDocs.scoreDocs.length];
-    for (int i = 0; i < topDocs.scoreDocs.length; i++) {
-      scores[i] = topDocs.scoreDocs[i].score;
+  static float[] collectScores(IndexSearcher searcher, Query query) throws IOException {
+    class ScoreCollector extends SimpleCollector {
+      private float[] scores = new float[16];
+      private int size;
+      private Scorable scorer;
+
+      @Override
+      public void setScorer(Scorable scorer) {
+        this.scorer = scorer;
+      }
+
+      @Override
+      public void collect(int doc) throws IOException {
+        scores = ArrayUtil.grow(scores, size + 1);
+        scores[size++] = scorer.score();
+      }
+
+      @Override
+      public ScoreMode scoreMode() {
+        return ScoreMode.COMPLETE;
+      }
+
+      float[] scores() {
+        return ArrayUtil.copyOfSubArray(scores, 0, size);
+      }
     }
-    return scores;
+
+    ScoreCollector collector = new ScoreCollector();
+    searcher.search(query, collector);
+    return collector.scores();
   }
 }
