@@ -108,6 +108,9 @@ API Changes
 
 * GITHUB#16363: Add API to use a custom `DictionarySuggester` instead of hardcoded `GeneratingSuggester`
 
+* GITHUB#16417: Query profiler attributes leaf-level timings per slice and partition for intra-segment
+  search; getAggregatedQueryLeafBreakdowns replaced by getSliceProfilerResults. (Prudhvi Godithi)
+
 New Features
 ---------------------
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of

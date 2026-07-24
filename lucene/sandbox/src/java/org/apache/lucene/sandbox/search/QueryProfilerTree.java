@@ -53,12 +53,42 @@ class QueryProfilerTree {
 
   private long rewriteScratch;
 
+  /**
+   * Tracks which leaf partition each thread is currently searching, shared by every breakdown this
+   * tree mints so that leaf-level timings are attributed per partition.
+   */
+  private final PartitionContext partitionContext = new PartitionContext();
+
   public QueryProfilerTree() {
     breakdowns = new ArrayList<>(10);
     stack = new ArrayDeque<>(10);
     tree = new ArrayList<>(10);
     queries = new ArrayList<>(10);
     roots = new IntArrayList(10);
+  }
+
+  /**
+   * Marks the beginning of a slice's search on the current thread, allocating a fresh slice id that
+   * subsequently-recorded partitions are tagged with. Returns the id (unused today, but handy for
+   * callers that want to log it).
+   */
+  public int enterSlice() {
+    return partitionContext.enterSlice();
+  }
+
+  /** Marks the end of a slice's search on the current thread. */
+  public void exitSlice() {
+    partitionContext.exitSlice();
+  }
+
+  /** Records the partition the current thread is about to search, within the current slice. */
+  public void setCurrentPartition(int segmentOrd, int minDocId, int maxDocId) {
+    partitionContext.set(segmentOrd, minDocId, maxDocId);
+  }
+
+  /** Clears the current thread's partition once its {@code searchLeaf} call completes. */
+  public void clearCurrentPartition() {
+    partitionContext.clear();
   }
 
   /**
@@ -126,7 +156,7 @@ class QueryProfilerTree {
   }
 
   private QueryProfilerBreakdown createProfileBreakdown() {
-    return new QueryProfilerBreakdown();
+    return new QueryProfilerBreakdown(partitionContext);
   }
 
   /** Removes the last (e.g. most recent) value on the stack */

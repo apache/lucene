@@ -59,25 +59,31 @@ public class QueryLeafProfilerBreakdown {
     return Collections.unmodifiableMap(map);
   }
 
-  public final AggregatedQueryLeafProfilerResult getLeafProfilerResult(Thread thread) {
+  public final AggregatedQueryLeafProfilerResult getLeafProfilerResult(
+      int segmentOrd, int minDocId, int maxDocId) {
     final Map<String, Long> map = HashMap.newHashMap(LEAF_LEVEL_TIMING_TYPE.size() * 2);
-    long sliceStartTime = Long.MAX_VALUE;
-    long sliceEndTime = Long.MIN_VALUE;
+    long partitionStartTime = Long.MAX_VALUE;
+    long partitionEndTime = Long.MIN_VALUE;
     for (QueryProfilerTimingType type : LEAF_LEVEL_TIMING_TYPE) {
       final QueryProfilerTimer timer = timers[type.ordinal()];
       // Consider timer for updating start/total time only
       // if it was used
       if (timer.getCount() > 0) {
-        sliceStartTime = Math.min(sliceStartTime, timer.getEarliestTimerStartTime());
-        sliceEndTime =
+        partitionStartTime = Math.min(partitionStartTime, timer.getEarliestTimerStartTime());
+        partitionEndTime =
             Math.max(
-                sliceEndTime, timer.getEarliestTimerStartTime() + timer.getApproximateTiming());
+                partitionEndTime, timer.getEarliestTimerStartTime() + timer.getApproximateTiming());
       }
       map.put(type.toString(), timer.getApproximateTiming());
       map.put(type.toString() + "_count", timer.getCount());
     }
     return new AggregatedQueryLeafProfilerResult(
-        thread, map, sliceStartTime, sliceEndTime - sliceStartTime);
+        segmentOrd,
+        minDocId,
+        maxDocId,
+        map,
+        partitionStartTime,
+        partitionEndTime - partitionStartTime);
   }
 
   public final long toTotalTime() {
