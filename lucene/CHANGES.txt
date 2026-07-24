@@ -328,6 +328,7 @@ New Features
 
 Improvements
 ---------------------
+* GITHUB#16358: Make doc values skip index extensible via type-tagged stats. (Sagar Upadhyaya)
 
 * GITHUB#16247: Introduce CachingCollectorManager to parallelize search when using CachingCollector.
                 Remove experimental GroupingSearch constructor that takes a GroupSelector as argument

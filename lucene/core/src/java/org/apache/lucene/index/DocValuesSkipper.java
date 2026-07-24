@@ -112,6 +112,17 @@ public abstract class DocValuesSkipper {
   }
 
   /**
+   * Returns the value of the given optional stat for the current interval at the given level, or
+   * null if the stat is not available. Callers should check {@link
+   * DocValuesField#availableBlockStats()} before using this.
+   *
+   * @lucene.experimental
+   */
+  public <T> T stat(SkipStat<T> type, int level) {
+    return null;
+  }
+
+  /**
    * Advance this skipper so that all levels intersects the range given by {@code minValue} and
    * {@code maxValue}. If there are no intersecting levels, the skipper is exhausted.
    */
