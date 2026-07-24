@@ -26,6 +26,7 @@ package org.apache.lucene.queryparser.surround.query;
  */
 
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.TermStates;
 import org.apache.lucene.queries.spans.SpanTermQuery;
 import org.apache.lucene.search.TermQuery;
 
@@ -70,14 +71,15 @@ public class BasicQueryFactory {
     queriesMade++;
   }
 
-  public TermQuery newTermQuery(Term term) throws TooManyBasicQueries {
+  public TermQuery newTermQuery(Term term, TermStates termStates) throws TooManyBasicQueries {
     checkMax();
-    return new TermQuery(term);
+    return new TermQuery(term, termStates);
   }
 
-  public SpanTermQuery newSpanTermQuery(Term term) throws TooManyBasicQueries {
+  public SpanTermQuery newSpanTermQuery(Term term, TermStates termStates)
+      throws TooManyBasicQueries {
     checkMax();
-    return new SpanTermQuery(term);
+    return new SpanTermQuery(term, termStates);
   }
 
   @Override
