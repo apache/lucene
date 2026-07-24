@@ -171,6 +171,8 @@ Optimizations
   with fewer than 8 int lanes (Graviton2 and Graviton4). The vector compare beats the scalar
   fallback by +75% on Graviton4 and +35% on Graviton2 (AdvanceBenchmark). (Shitij Bhargava)
 
+* GITHUB#16349: Optimize IndexedDISI by implementing binary search for sparseDocs in advance methods (Rajat Jain)
+
 * GITHUB#15681, GITHUB#15833, GITHUB#16056: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
 
 * GITHUB#13782: Replace handwritten loops compare with Arrays.compareUnsigned in TermsEnum and TermsEnumFrame classes. (Zhou Hui)
