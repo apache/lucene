@@ -163,6 +163,10 @@ Optimizations
   wildcards into a single any-string automaton, avoiding a quadratic blow-up in
   automaton size for patterns with many repeated asterisks. (Vismay Tiwari)
 
+* GITHUB#12370: Sorting on a string field that is missing from the whole index no longer scans every
+  document. When the sort has no tie breaker, all documents tie on the missing value, so once the
+  top-N queue is full the remaining documents can be skipped. (Serhiy Bzhezytskyy)
+
 * GITHUB#16307: ReqExclBulkScorer now skips runs of excluded docs via
   TwoPhaseIterator#docIDRunEnd for two-phase excluded clauses (e.g. a doc-values
   not-equals filter), instead of advancing one doc at a time. (Jim Ferenczi)
