@@ -229,6 +229,8 @@ Bug Fixes
 
 * Make VectorScorer#bulk default method lazily position its iterator on first use. (Michael Marshall)
 
+* GITHUB#16409: Fix filtered HNSW search boundary handling to match the general HNSW searcher. (Mingi Jeong)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
