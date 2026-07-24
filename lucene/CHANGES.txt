@@ -188,6 +188,8 @@ Optimizations
 
 * GITHUB#12324: ELiminate redundant work in AbstractKnnVectorQuery.rewrite (Mike Sokolov)
 
+* GITHUB#15683: Reuse reader's fieldinfos. (Vliam Durina)
+
 Bug Fixes
 ---------------------
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
