@@ -54,19 +54,18 @@ import org.junit.BeforeClass;
 /**
  * Characterization test for the query profiler under <b>intra-segment</b> (partitioned) search.
  *
- * <p>Intra-segment search splits a single Lucene segment into multiple {@link
- * IndexSearcher.LeafReaderContextPartition}s (doc-id ranges), each searched independently via
- * {@link IndexSearcher#searchLeaf(LeafReaderContext, int, int, org.apache.lucene.search.Weight,
- * org.apache.lucene.search.Collector)}. This is the seam OpenSearch and (upcoming) Lucene consumers
- * use to parallelize work <i>within</i> one large segment.
+ * <p>Intra-segment search splits a single Lucene segment into multiple {@code
+ * LeafReaderContextPartition}s (doc-id ranges), each searched independently via {@code searchLeaf}.
+ * This is the seam OpenSearch and (upcoming) Lucene consumers use to parallelize work <i>within</i>
+ * one large segment.
  *
  * <p><b>What this test guards (LUCENE concurrent-search profiling, cf. #14375 / #14413):</b> leaf
- * breakdowns are attributed per {@link IndexSearcher.LeafReaderContextPartition partition} — keyed
- * by segment ordinal plus doc-id range — rather than only by executing {@link Thread}. The
- * partition identity is set at the {@code searchLeaf} seam, the one place its {@code
- * minDocId}/{@code maxDocId} bounds are in scope. Consequently, when a single segment is searched
- * as N partitions, the profiler emits N distinct {@link AggregatedQueryLeafProfilerResult}s whose
- * timings and counts are attributable to each partition's doc-id range.
+ * breakdowns are attributed per {@code LeafReaderContextPartition} — keyed by segment ordinal plus
+ * doc-id range — rather than only by executing {@code Thread}. The partition identity is set at the
+ * {@code searchLeaf} seam, the one place its {@code minDocId}/{@code maxDocId} bounds are in scope.
+ * Consequently, when a single segment is searched as N partitions, the profiler emits N distinct
+ * {@link AggregatedQueryLeafProfilerResult}s whose timings and counts are attributable to each
+ * partition's doc-id range.
  *
  * <p>Before per-partition attribution was added, all N partitions collapsed into a single
  * thread-keyed breakdown; this test would then have seen {@code 1} breakdown with summed counts.
