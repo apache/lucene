@@ -373,6 +373,8 @@ Optimizations
 * GITHUB#16380: Speed up filtered disjunction queries when the filter is part of the
   index sort by advancing the filter before calculating impacts. (Alan Woodward)
 
+GITHUB#15494: Set minimum competitive score in FirstPassGroupingCollector (Binlong Gao)
+
 Bug Fixes
 ---------------------
 * GITHUB#16350: Disable bulk-scoring in monitor queries. (Alan Woodward)

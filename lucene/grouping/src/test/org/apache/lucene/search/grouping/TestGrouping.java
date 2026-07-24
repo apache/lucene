@@ -36,7 +36,9 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexReaderContext;
+import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiDocValues;
 import org.apache.lucene.index.NumericDocValues;
@@ -283,6 +285,123 @@ public class TestGrouping extends LuceneTestCase {
 
     assertNotNull(groups);
     assertTrue(groups.isEmpty());
+
+    reader.close();
+    dir.close();
+  }
+
+  public void testTotalHitsThreshold() throws Exception {
+    Directory dir = newDirectory();
+    RandomIndexWriter w =
+        new RandomIndexWriter(random(), dir, newIndexWriterConfig(new MockAnalyzer(random())));
+
+    Document doc = new Document();
+    addGroupField(doc, "group", "group1");
+    doc.add(new TextField("content", "test", Field.Store.YES));
+    w.addDocument(doc);
+
+    doc = new Document();
+    addGroupField(doc, "group", "group2");
+    doc.add(new TextField("content", "test", Field.Store.YES));
+    w.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new TextField("content", "test", Field.Store.YES));
+    w.addDocument(doc);
+
+    IndexSearcher searcher = newSearcher(w.getReader());
+    w.close();
+
+    FirstPassGroupingCollectorManager<BytesRef> manager1 =
+        new FirstPassGroupingCollectorManager<>(
+            () -> new TermGroupSelector("group"), Sort.RELEVANCE, 0, 10, true);
+    Collection<SearchGroup<BytesRef>> groups1 =
+        searcher.search(new TermQuery(new Term("content", "test")), manager1);
+
+    assertNotNull(groups1);
+    assertEquals(2, groups1.size());
+
+    FirstPassGroupingCollectorManager<BytesRef> manager2 =
+        new FirstPassGroupingCollectorManager<>(
+            () -> new TermGroupSelector("group"), Sort.RELEVANCE, 0, 10, false);
+    Collection<SearchGroup<BytesRef>> groups2 =
+        searcher.search(new TermQuery(new Term("content", "test")), manager2);
+
+    assertNotNull(groups2);
+    assertEquals(3, groups2.size());
+
+    FirstPassGroupingCollectorManager<BytesRef> manager3 =
+        new FirstPassGroupingCollectorManager<>(
+            () -> new TermGroupSelector("group"), Sort.RELEVANCE, 0, 10);
+    Collection<SearchGroup<BytesRef>> groups3 =
+        searcher.search(new TermQuery(new Term("content", "test")), manager3);
+
+    assertNotNull(groups3);
+    assertTrue(groups3.size() <= 3);
+
+    searcher.getIndexReader().close();
+    dir.close();
+  }
+
+  public void testSetMinCompetitiveScore() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriter w =
+        new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()));
+
+    Document doc = new Document();
+    addGroupField(doc, "group", "group1");
+    doc.add(new TextField("content", "test", Field.Store.YES));
+    w.addDocument(doc);
+
+    doc = new Document();
+    addGroupField(doc, "group", "group2");
+    doc.add(new TextField("content", "test", Field.Store.YES));
+    w.addDocument(doc);
+
+    doc = new Document();
+    addGroupField(doc, "group", "group3");
+    doc.add(new TextField("content", "test", Field.Store.YES));
+    w.addDocument(doc);
+
+    doc = new Document();
+    addGroupField(doc, "group", "group4");
+    doc.add(new TextField("content", "test", Field.Store.YES));
+    w.addDocument(doc);
+
+    doc = new Document();
+    addGroupField(doc, "group", "group5");
+    doc.add(new TextField("content", "test", Field.Store.YES));
+    w.addDocument(doc);
+
+    w.flush();
+
+    doc = new Document();
+    addGroupField(doc, "group", "group4");
+    doc.add(new TextField("content", "test", Field.Store.YES));
+    w.addDocument(doc);
+
+    IndexReader reader = DirectoryReader.open(w);
+    w.close();
+    IndexSearcher searcher = new IndexSearcher(reader);
+
+    FirstPassGroupingCollectorManager<BytesRef> manager =
+        new FirstPassGroupingCollectorManager<>(
+            () -> new TermGroupSelector("group"), Sort.RELEVANCE, 0, 2);
+    Collection<SearchGroup<BytesRef>> topGroups =
+        searcher.search(new TermQuery(new Term("content", "test")), manager);
+
+    assertNotNull(topGroups);
+    assertEquals(2, topGroups.size());
+
+    for (SearchGroup<BytesRef> group : topGroups) {
+      assertNotNull(group.sortValues);
+      assertEquals(1, group.sortValues.length);
+    }
+
+    assertTrue(reader.leaves().size() >= 1);
+    if (reader.leaves().size() > 1) {
+      assertEquals(2, topGroups.size());
+    }
 
     reader.close();
     dir.close();
