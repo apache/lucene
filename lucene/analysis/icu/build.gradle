@@ -310,4 +310,31 @@ configure(project(":lucene:core")) {
       })
     }
   })
+
+  tasks.register("generateFoldTable", {
+    def icuConfig = configurations.icu_current
+    def groovyConfig = configurations.groovy
+    def outputFile = file("src/java/org/apache/lucene/util/FoldTable.java")
+
+    description = "Regenerate ${outputFile} using ICU"
+
+    dependsOn icuConfig
+
+    inputs.property "icuConfig", icu4jVersion
+    outputs.file outputFile
+
+    doFirst {
+      buildGlobals.execOps.javaexec({
+        mainClass = "groovy.lang.GroovyShell"
+        classpath icuConfig, groovyConfig
+
+        args = [
+          "--encoding",
+          "UTF-8",
+          file("${resources}/GenerateFoldTable.groovy"),
+          outputFile
+        ]
+      })
+    }
+  })
 }
