@@ -66,4 +66,18 @@ public interface OrdinalIterator {
 
   /** Return empty ordinal iterator */
   OrdinalIterator EMPTY = () -> NO_MORE_ORDS;
+
+  /** Return an ordinal iterator that yields exactly one ordinal. */
+  static OrdinalIterator fromSingleOrd(int ord) {
+    return new OrdinalIterator() {
+      boolean done;
+
+      @Override
+      public int nextOrd() {
+        if (done) return NO_MORE_ORDS;
+        done = true;
+        return ord;
+      }
+    };
+  }
 }

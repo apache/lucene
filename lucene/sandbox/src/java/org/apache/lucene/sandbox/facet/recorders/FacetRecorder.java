@@ -47,14 +47,12 @@ public interface FacetRecorder {
   boolean isEmpty();
 
   /**
-   * Reduce leaf recorder results into this recorder. If {@link FacetCutter#getOrdinalsToRollup()}
-   * result is not null, it also rolls up values.
+   * Reduce leaf recorder results into this recorder. If {@link
+   * org.apache.lucene.sandbox.facet.cutters.FacetCutter#needsRemapping} returns true, ordinals are
+   * also remapped to their final values (e.g. taxonomy rollup, range position mapping).
    *
    * <p>After this method is called, it's illegal to add values to recorder, i.e. calling {@link
    * #getLeafRecorder} or {@link LeafFacetRecorder#record} on its leaf recorders.
-   *
-   * @throws UnsupportedOperationException if {@link FacetCutter#getOrdinalsToRollup()} returns not
-   *     null but this recorder doesn't support rollup.
    */
   void reduce(FacetCutter facetCutter) throws IOException;
 
