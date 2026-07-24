@@ -359,6 +359,11 @@ public abstract class FilterLeafReader extends LeafReader {
   }
 
   @Override
+  public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+    return in.getFloat16VectorValues(field);
+  }
+
+  @Override
   public ByteVectorValues getByteVectorValues(String field) throws IOException {
     return in.getByteVectorValues(field);
   }
@@ -366,6 +371,13 @@ public abstract class FilterLeafReader extends LeafReader {
   @Override
   public void searchNearestVectors(
       String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
+    in.searchNearestVectors(field, target, knnCollector, acceptDocs);
+  }
+
+  @Override
+  public void searchNearestVectors(
+      String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     in.searchNearestVectors(field, target, knnCollector, acceptDocs);
   }

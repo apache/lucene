@@ -425,6 +425,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       KnnVectorValues vectorValues =
           switch (fieldInfo.getVectorEncoding()) {
             case BYTE -> flatVectorsReader.getByteVectorValues(fieldInfo.name);
+            case FLOAT16 -> flatVectorsReader.getFloat16VectorValues(fieldInfo.name);
             case FLOAT32 -> flatVectorsReader.getFloatVectorValues(fieldInfo.name);
           };
       int totalVectorCount = vectorValues == null ? 0 : vectorValues.size();
@@ -703,6 +704,15 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
             new FieldWriter<>(
                 scorer,
                 (FlatFieldVectorsWriter<byte[]>) flatFieldVectorsWriter,
+                fieldInfo,
+                M,
+                beamWidth,
+                infoStream,
+                tinySegmentsThreshold);
+        case FLOAT16 ->
+            new FieldWriter<>(
+                scorer,
+                (FlatFieldVectorsWriter<short[]>) flatFieldVectorsWriter,
                 fieldInfo,
                 M,
                 beamWidth,

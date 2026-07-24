@@ -180,6 +180,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     switch (fieldData.fieldInfo.getVectorEncoding()) {
       case BYTE -> writeByteVectors(fieldData);
       case FLOAT32 -> writeFloat32Vectors(fieldData);
+      case FLOAT16 -> throw new UnsupportedOperationException("FLOAT16 is not supported");
     }
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
 
@@ -246,6 +247,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
         switch (fieldData.fieldInfo.getVectorEncoding()) {
           case BYTE -> writeSortedByteVectors(fieldData, ordMap);
           case FLOAT32 -> writeSortedFloat32Vectors(fieldData, ordMap);
+          case FLOAT16 -> throw new UnsupportedOperationException("FLOAT16 is not supported");
         };
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
 
@@ -432,6 +434,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                 writeVectorData(
                     tempVectorData,
                     MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState));
+            case FLOAT16 -> throw new UnsupportedOperationException("FLOAT16 is not supported");
           };
       CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);
@@ -478,6 +481,8 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                         defaultFlatVectorScorer,
                         fieldInfo.getVectorSimilarityFunction()));
             break;
+          case FLOAT16:
+            throw new UnsupportedOperationException("FLOAT16 is not supported");
           default:
             throw new IllegalArgumentException(
                 "Unsupported vector encoding: " + fieldInfo.getVectorEncoding());
@@ -499,6 +504,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
           case FLOAT32 ->
               mergedVectorValues =
                   KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
+          case FLOAT16 -> throw new UnsupportedOperationException("FLOAT16 is not supported");
         }
         graph =
             merger.merge(
@@ -711,6 +717,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                 return ArrayUtil.copyOfSubArray(value, 0, dim);
               }
             };
+        case FLOAT16 -> throw new UnsupportedOperationException("FLOAT16 is not supported");
       };
     }
 
@@ -731,6 +738,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                 defaultFlatVectorScorer.getRandomVectorScorerSupplier(
                     fieldInfo.getVectorSimilarityFunction(),
                     FloatVectorValues.fromFloats((List<float[]>) vectors, dim));
+            case FLOAT16 -> throw new UnsupportedOperationException("FLOAT16 is not supported");
           };
       hnswGraphBuilder =
           HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);

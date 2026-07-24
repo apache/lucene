@@ -128,8 +128,9 @@ public class TestKnnVectorsFormatCustomWriter extends BaseKnnVectorsFormatTestCa
 
     static PagedFieldVectorsWriter<?> create(FieldInfo fi) {
       return switch (fi.getVectorEncoding()) {
-        case FLOAT32 -> new FloatPaged(fi);
         case BYTE -> new BytePaged(fi);
+        case FLOAT16 -> new Float16Paged(fi);
+        case FLOAT32 -> new FloatPaged(fi);
       };
     }
 
@@ -259,6 +260,27 @@ public class TestKnnVectorsFormatCustomWriter extends BaseKnnVectorsFormatTestCa
       byte[] deserialize(ByteBuffer buf) {
         byte[] out = new byte[dim];
         buf.get(out);
+        return out;
+      }
+    }
+
+    private static final class Float16Paged extends PagedFieldVectorsWriter<short[]> {
+      private final int dim;
+
+      Float16Paged(FieldInfo fi) {
+        super(fi, fi.getVectorDimension() * Short.BYTES);
+        this.dim = fi.getVectorDimension();
+      }
+
+      @Override
+      void serialize(ByteBuffer buf, short[] vector) {
+        buf.asShortBuffer().put(vector);
+      }
+
+      @Override
+      short[] deserialize(ByteBuffer buf) {
+        short[] out = new short[dim];
+        buf.asShortBuffer().get(out);
         return out;
       }
     }

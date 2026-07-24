@@ -76,6 +76,22 @@ public final class VectorUtil {
     return r;
   }
 
+  public static float dotProduct(short[] a, short[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    float result = IMPL.dotProduct(a, b);
+    assert Float.isFinite(result)
+        : "not finite: "
+            + result
+            + " from <"
+            + java.util.Arrays.toString(a)
+            + ","
+            + java.util.Arrays.toString(b)
+            + ">";
+    return result;
+  }
+
   /**
    * Returns the cosine similarity between the two vectors.
    *
@@ -98,6 +114,14 @@ public final class VectorUtil {
     return IMPL.cosine(a, b);
   }
 
+  /** Returns the cosine similarity between the two vectors. */
+  public static float cosine(short[] a, short[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    return IMPL.cosine(a, b);
+  }
+
   /**
    * Returns the sum of squared differences of the two vectors.
    *
@@ -110,6 +134,20 @@ public final class VectorUtil {
     float r = IMPL.squareDistance(a, b);
     assert Float.isFinite(r);
     return r;
+  }
+
+  /**
+   * Returns the sum of squared differences of the two vectors.
+   *
+   * @throws IllegalArgumentException if the vectors' dimensions differ.
+   */
+  public static float squareDistance(short[] a, short[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    float result = IMPL.squareDistance(a, b);
+    assert Float.isFinite(result);
+    return result;
   }
 
   /** Returns the sum of squared differences of the two vectors. */
@@ -436,6 +474,27 @@ public final class VectorUtil {
     for (int i = 0; i < v.length; i++) {
       if (!Float.isFinite(v[i])) {
         throw new IllegalArgumentException("non-finite value at vector[" + i + "]=" + v[i]);
+      }
+    }
+    return v;
+  }
+
+  /**
+   * Checks if a float16 vector, encoded as {@code short[]}, only has finite components. A float16
+   * value is non-finite (i.e. an infinity or NaN) when all five exponent bits are set, which is
+   * detected by {@code (v[i] & 0x7C00) == 0x7C00}. This bitmask check is used instead of {@code
+   * Float.isFinite(Float.float16ToFloat(v[i]))} because it avoids a per-element half-to-single
+   * precision conversion and is measurably faster.
+   *
+   * @param v shorts containing a float16 vector
+   * @return the vector for call-chaining
+   * @throws IllegalArgumentException if any component of the vector is not finite
+   */
+  public static short[] checkFiniteFloat16(short[] v) {
+    for (int i = 0; i < v.length; i++) {
+      if ((v[i] & 0x7C00) == 0x7C00) {
+        throw new IllegalArgumentException(
+            "non-finite float16 value at vector[" + i + "]=" + Float.float16ToFloat(v[i]));
       }
     }
     return v;

@@ -581,6 +581,21 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
+  public float dotProduct(short[] a, short[] b) {
+    return delegateVectorUtilSupport.dotProduct(a, b);
+  }
+
+  @Override
+  public float cosine(short[] v1, short[] v2) {
+    return delegateVectorUtilSupport.cosine(v1, v2);
+  }
+
+  @Override
+  public float squareDistance(short[] a, short[] b) {
+    return delegateVectorUtilSupport.squareDistance(a, b);
+  }
+
+  @Override
   public void expand8(int[] arr) {
     invokeOrDelegate(
         expand8$MH,
