@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
@@ -56,6 +57,9 @@ abstract class AbstractVectorSimilarityQuery extends Query {
   protected final float decay;
   protected final Query filter;
   protected final KnnSearchStrategy searchStrategy;
+  // Per-query read hints carried by the query itself (default empty); override the searcher's when
+  // non-empty. See KnnFloatVectorQuery#withReadHints for the rationale.
+  protected final Set<QueryReadHint> readHints;
 
   /**
    * Search for all (approximate) vectors above a similarity threshold using {@link
@@ -92,6 +96,16 @@ abstract class AbstractVectorSimilarityQuery extends Query {
       float decay,
       Query filter,
       KnnSearchStrategy searchStrategy) {
+    this(field, resultSimilarity, decay, filter, searchStrategy, Set.of());
+  }
+
+  AbstractVectorSimilarityQuery(
+      String field,
+      float resultSimilarity,
+      float decay,
+      Query filter,
+      KnnSearchStrategy searchStrategy,
+      Set<QueryReadHint> readHints) {
     if (Float.isNaN(resultSimilarity)) {
       throw new IllegalArgumentException(
           "resultSimilarity must have a valid value; got " + resultSimilarity);
@@ -110,6 +124,7 @@ abstract class AbstractVectorSimilarityQuery extends Query {
     this.decay = decay;
     this.filter = filter;
     this.searchStrategy = searchStrategy == null ? DEFAULT_STRATEGY : searchStrategy;
+    this.readHints = Set.copyOf(Objects.requireNonNull(readHints, "readHints"));
   }
 
   /**
@@ -152,8 +167,16 @@ abstract class AbstractVectorSimilarityQuery extends Query {
               : searcher.createWeight(searcher.rewrite(filter), ScoreMode.COMPLETE_NO_SCORES, 1);
 
       final QueryTimeout queryTimeout = searcher.getTimeout();
+      // Surface the effective read hints (the per-query override when set, otherwise the
+      // searcher's) on the approximate-search collectors so codec readers can consult
+      // KnnCollector#readHints(). The exact-search fallback paths below build their own
+      // VectorScorer via createVectorScorer and ignore hints, so they are unaffected.
       final TimeLimitingKnnCollectorManager timeLimitingKnnCollectorManager =
-          new TimeLimitingKnnCollectorManager(getKnnCollectorManager(), queryTimeout);
+          new TimeLimitingKnnCollectorManager(
+              KnnCollectorManager.withReadHints(
+                  getKnnCollectorManager(),
+                  QueryReadHint.resolve(readHints, searcher.getReadHints())),
+              queryTimeout);
 
       @Override
       public Explanation explain(LeafReaderContext context, int doc) throws IOException {
@@ -271,12 +294,13 @@ abstract class AbstractVectorSimilarityQuery extends Query {
             == 0
         && Float.compare(((AbstractVectorSimilarityQuery) o).decay, decay) == 0
         && Objects.equals(filter, ((AbstractVectorSimilarityQuery) o).filter)
-        && Objects.equals(searchStrategy, ((AbstractVectorSimilarityQuery) o).searchStrategy);
+        && Objects.equals(searchStrategy, ((AbstractVectorSimilarityQuery) o).searchStrategy)
+        && Objects.equals(readHints, ((AbstractVectorSimilarityQuery) o).readHints);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(field, resultSimilarity, decay, filter, searchStrategy);
+    return Objects.hash(field, resultSimilarity, decay, filter, searchStrategy, readHints);
   }
 
   private static class VectorSimilarityScorerSupplier extends ScorerSupplier {

@@ -23,6 +23,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
@@ -60,8 +61,22 @@ abstract class AbstractKnnVectorQuery extends Query {
   protected final int k;
   protected final Query filter;
   protected final KnnSearchStrategy searchStrategy;
+  // Per-query read hints carried by the query itself (default empty). Genuinely per-query: unlike
+  // IndexSearcher#setReadHints these ride on the immutable query, so a shared searcher can run
+  // hinted and un-hinted queries at once. Consulted at rewrite time, where only the query and the
+  // searcher are available (the KNN I/O happens during rewrite, before any Weight/ScorerSupplier).
+  protected final Set<QueryReadHint> readHints;
 
   AbstractKnnVectorQuery(String field, int k, Query filter, KnnSearchStrategy searchStrategy) {
+    this(field, k, filter, searchStrategy, Set.of());
+  }
+
+  AbstractKnnVectorQuery(
+      String field,
+      int k,
+      Query filter,
+      KnnSearchStrategy searchStrategy,
+      Set<QueryReadHint> readHints) {
     this.field = Objects.requireNonNull(field, "field");
     this.k = k;
     if (k < 1) {
@@ -69,6 +84,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
     this.filter = filter;
     this.searchStrategy = searchStrategy;
+    this.readHints = Set.copyOf(Objects.requireNonNull(readHints, "readHints"));
   }
 
   @Override
@@ -303,7 +319,7 @@ abstract class AbstractKnnVectorQuery extends Query {
   }
 
   protected KnnCollectorManager getKnnCollectorManager(int k, IndexSearcher searcher) {
-    return new TopKnnCollectorManager(k, searcher);
+    return new TopKnnCollectorManager(k, searcher, readHints);
   }
 
   static class OptimisticKnnCollectorManager implements KnnCollectorManager {
@@ -490,12 +506,17 @@ abstract class AbstractKnnVectorQuery extends Query {
     return k == that.k
         && Objects.equals(field, that.field)
         && Objects.equals(filter, that.filter)
-        && Objects.equals(searchStrategy, that.searchStrategy);
+        && Objects.equals(searchStrategy, that.searchStrategy)
+        && Objects.equals(readHints, that.readHints);
   }
 
+  // readHints is advisory (I/O strategy only, never affects results) but is intentionally part of
+  // query identity, consistent with searchStrategy here and with IndexOrDocValuesQuery treating its
+  // execution-strategy field as identity: a hinted and an un-hinted query produce different
+  // KnnCollectorManagers, so they are distinct cache keys.
   @Override
   public int hashCode() {
-    return Objects.hash(field, k, filter);
+    return Objects.hash(field, k, filter, searchStrategy, readHints);
   }
 
   /**

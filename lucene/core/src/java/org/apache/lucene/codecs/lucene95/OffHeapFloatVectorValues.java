@@ -87,20 +87,7 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
 
   @Override
   public void prefetch(final int[] ordsToPrefetch, int numOrds) throws IOException {
-    if (ordsToPrefetch == null) {
-      return;
-    }
-
-    int finalNumOrds = Math.min(numOrds, ordsToPrefetch.length);
-    if (finalNumOrds <= 1) {
-      return;
-    }
-
-    // 1. calculate offset and prefetch immediately
-    for (int i = 0; i < finalNumOrds; i++) {
-      long offset = (long) ordsToPrefetch[i] * byteSize;
-      slice.prefetch(offset, byteSize);
-    }
+    HasIndexSlice.prefetchOrdinals(slice, byteSize, ordsToPrefetch, numOrds);
   }
 
   public static OffHeapFloatVectorValues load(
