@@ -34,4 +34,9 @@ public class TestDirectPostingsFormat extends BasePostingsFormatTestCase {
   protected Codec getCodec() {
     return codec;
   }
+
+  @Override
+  protected boolean indexFakeImpacts() {
+    return true;
+  }
 }
