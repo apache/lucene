@@ -710,6 +710,16 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
       this.rateLimiter = new MergeRateLimiter(merge.getMergeProgress());
     }
 
+    /** Returns the rate limiter for this merge thread. */
+    public RateLimiter getRateLimiter() {
+      return rateLimiter;
+    }
+
+    /** Returns the merge being processed by this thread. */
+    public OneMerge getMerge() {
+      return merge;
+    }
+
     @Override
     public int compareTo(MergeThread other) {
       // Larger merges sort first:
