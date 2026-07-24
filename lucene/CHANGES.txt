@@ -748,6 +748,10 @@ Bug Fixes
 
 Other
 ---------------------
+* GITHUB#16114: Clarify Accountable.ramBytesUsed() ownership semantics. The javadoc now
+  recommends reporting only memory the object owns and notes that getChildResources() is
+  a diagnostic accessor, not a deduplicated ownership tree. (Salvatore Campagna)
+
 * GITHUB#15586: Document that scoring and ranking may change across major Lucene versions, and that applications requiring stable ranking should explicitly configure Similarity. (Parveen Saini)
 
 * GITHUB#15764: Added simpler TestTesselator test in support of fix GITHUB#15731. (Craig Taverner)
