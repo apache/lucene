@@ -136,7 +136,9 @@ public abstract class PointInSetQuery extends Query implements Accountable {
     ramBytesUsed =
         BASE_RAM_BYTES
             + RamUsageEstimator.sizeOfObject(field)
-            + RamUsageEstimator.sizeOfObject(sortedPackedPoints);
+            + RamUsageEstimator.sizeOfObject(sortedPackedPoints)
+            + RamUsageEstimator.sizeOfObject(lowerPoint)
+            + RamUsageEstimator.sizeOfObject(upperPoint);
   }
 
   @Override
