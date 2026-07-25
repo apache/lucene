@@ -212,6 +212,10 @@ Optimizations
 
 * GITHUB#12324: ELiminate redundant work in AbstractKnnVectorQuery.rewrite (Mike Sokolov)
 
+* GITHUB#16622: Lucene104ScalarQuantizedVectorsReader, and the backward-codecs Lucene99 and
+  Lucene102 quantized vector readers, now propagate getMergeInstance() and finishMerge() to their
+  raw vectors reader, so merges read raw vectors with sequential read advice. (John Maurice)
+
 Bug Fixes
 ---------------------
 * GITHUB#16553: Fix stored-fields corruption when PerField#finish throws: the stored-fields frame

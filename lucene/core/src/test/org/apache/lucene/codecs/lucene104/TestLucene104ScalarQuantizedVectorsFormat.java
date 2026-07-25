@@ -584,4 +584,44 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
       CodecUtil.writeFooter(out);
     }
   }
+
+  public void testMergeInstanceSharesStateAndScoresIdentically() throws IOException {
+    int dims = random().nextInt(4, 65);
+    int numDocs = random().nextInt(100, 300);
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+      for (int i = 0; i < numDocs; i++) {
+        Document doc = new Document();
+        doc.add(
+            new KnnFloatVectorField("f", randomVector(dims), VectorSimilarityFunction.EUCLIDEAN));
+        w.addDocument(doc);
+      }
+      w.commit();
+      w.forceMerge(1);
+      try (IndexReader reader = DirectoryReader.open(w)) {
+        LeafReader r = getOnlyLeafReader(reader);
+        KnnVectorsReader knnReader = ((CodecReader) r).getVectorReader().unwrapReaderForField("f");
+
+        KnnVectorsReader mergeInstance = knnReader.getMergeInstance();
+
+        // the merge view shares the quantized state: quantized scoring is bit-identical
+        float[] query = randomVector(dims);
+        VectorScorer expectedScorer = knnReader.getFloatVectorValues("f").scorer(query);
+        VectorScorer actualScorer = mergeInstance.getFloatVectorValues("f").scorer(query);
+        DocIdSetIterator expectedDocs = expectedScorer.iterator();
+        DocIdSetIterator actualDocs = actualScorer.iterator();
+        int compared = 0;
+        while (expectedDocs.nextDoc() != NO_MORE_DOCS) {
+          assertEquals(expectedDocs.docID(), actualDocs.nextDoc());
+          assertEquals(expectedScorer.score(), actualScorer.score(), 0f);
+          compared++;
+        }
+        assertEquals(NO_MORE_DOCS, actualDocs.nextDoc());
+        assertEquals(numDocs, compared);
+
+        // the merge view is never closed; abandoning it must not affect the original
+        assertNotNull(knnReader.getFloatVectorValues("f"));
+      }
+    }
+  }
 }

@@ -67,16 +67,17 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
   private static final long SHALLOW_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(Lucene99ScalarQuantizedVectorsReader.class);
 
-  private final IntObjectHashMap<FieldEntry> fields = new IntObjectHashMap<>();
+  private final IntObjectHashMap<FieldEntry> fields;
   private final FlatVectorsScorer vectorScorer;
   private final IndexInput quantizedVectorData;
   private final FlatVectorsReader rawVectorsReader;
   private final FieldInfos fieldInfos;
 
-  /** Sole constructor */
+  /** Creates a reader from segment state. */
   public Lucene99ScalarQuantizedVectorsReader(
       SegmentReadState state, FlatVectorsReader rawVectorsReader, FlatVectorsScorer scorer)
       throws IOException {
+    this.fields = new IntObjectHashMap<>();
     this.vectorScorer = scorer;
     this.rawVectorsReader = rawVectorsReader;
     this.fieldInfos = state.fieldInfos;
@@ -117,6 +118,30 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
       IOUtils.closeWhileSuppressingExceptions(t, this);
       throw t;
     }
+  }
+
+  /**
+   * Copy constructor for {@link #getMergeInstance()}: the copy shares {@code reader}'s open state
+   * and reads raw vectors through {@code rawVectorsReader}, normally the merge instance of the
+   * original's. It is used only by the merging thread and is never closed.
+   */
+  private Lucene99ScalarQuantizedVectorsReader(
+      Lucene99ScalarQuantizedVectorsReader reader, FlatVectorsReader rawVectorsReader) {
+    this.fields = reader.fields;
+    this.vectorScorer = reader.vectorScorer;
+    this.quantizedVectorData = reader.quantizedVectorData;
+    this.rawVectorsReader = rawVectorsReader;
+    this.fieldInfos = reader.fieldInfos;
+  }
+
+  @Override
+  public FlatVectorsReader getMergeInstance() throws IOException {
+    return new Lucene99ScalarQuantizedVectorsReader(this, rawVectorsReader.getMergeInstance());
+  }
+
+  @Override
+  public void finishMerge() throws IOException {
+    rawVectorsReader.finishMerge();
   }
 
   private void readFields(ChecksumIndexInput meta, int versionMeta, FieldInfos infos)
