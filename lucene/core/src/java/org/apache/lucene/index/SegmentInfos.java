@@ -118,7 +118,10 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
   /** The version that recorded SegmentCommitInfo IDs */
   public static final int VERSION_86 = 10;
 
-  static final int VERSION_CURRENT = VERSION_86;
+  /** The version that records per-field incremental doc-values overlay generations. */
+  public static final int VERSION_11_0 = 11;
+
+  static final int VERSION_CURRENT = VERSION_11_0;
 
   /** Name of the generation reference file name */
   static final String OLD_SEGMENTS_GEN = "segments.gen";
@@ -449,6 +452,19 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
         dvUpdateFiles = Collections.unmodifiableMap(map);
       }
       siPerCommit.setDocValuesUpdatesFiles(dvUpdateFiles);
+      if (format >= VERSION_11_0) {
+        final int numOverlayFields = CodecUtil.readBEInt(input);
+        for (int i = 0; i < numOverlayFields; i++) {
+          final int fieldNumber = CodecUtil.readBEInt(input);
+          final long baseGen = CodecUtil.readBELong(input);
+          final int numDeltas = CodecUtil.readBEInt(input);
+          final long[] deltaGens = new long[numDeltas];
+          for (int g = 0; g < numDeltas; g++) {
+            deltaGens[g] = CodecUtil.readBELong(input);
+          }
+          siPerCommit.setDocValuesOverlay(fieldNumber, baseGen, deltaGens);
+        }
+      }
       infos.add(siPerCommit);
 
       Version segmentVersion = info.getVersion();
@@ -594,10 +610,21 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
 
   /** Write ourselves to the provided {@link IndexOutput} */
   public void write(IndexOutput out) throws IOException {
+    // Bump the segments version only when some segment carries a doc-values overlay, so a commit
+    // not using the feature
+    // stays readable by an older Lucene.
+    boolean anyOverlay = false;
+    for (SegmentCommitInfo siPerCommit : this) {
+      if (siPerCommit.hasDocValuesOverlays()) {
+        anyOverlay = true;
+        break;
+      }
+    }
+    final int formatVersion = anyOverlay ? VERSION_11_0 : VERSION_86;
     CodecUtil.writeIndexHeader(
         out,
         "segments",
-        VERSION_CURRENT,
+        formatVersion,
         StringHelper.randomId(),
         Long.toString(generation, Character.MAX_RADIX));
     out.writeVInt(Version.LATEST.major);
@@ -693,6 +720,20 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       for (Entry<Integer, Set<String>> e : dvUpdatesFiles.entrySet()) {
         CodecUtil.writeBEInt(out, e.getKey());
         out.writeSetOfStrings(e.getValue());
+      }
+      if (formatVersion >= VERSION_11_0) {
+        // field -> {baseGen, deltaGenNewestFirst...}
+        final Map<Integer, long[]> overlays = siPerCommit.getDocValuesOverlays();
+        CodecUtil.writeBEInt(out, overlays.size());
+        for (Entry<Integer, long[]> e : overlays.entrySet()) {
+          final long[] packed = e.getValue();
+          CodecUtil.writeBEInt(out, e.getKey());
+          CodecUtil.writeBELong(out, packed[0]); // baseGen
+          CodecUtil.writeBEInt(out, packed.length - 1); // number of delta generations
+          for (int g = 1; g < packed.length; g++) {
+            CodecUtil.writeBELong(out, packed[g]);
+          }
+        }
       }
     }
     out.writeMapOfStrings(userData);
