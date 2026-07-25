@@ -1,0 +1,484 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.lucene.index;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import org.apache.lucene.codecs.CodecUtil;
+import org.apache.lucene.document.BinaryDocValuesField;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.NumericDocValuesField;
+import org.apache.lucene.document.StringField;
+import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.SortField;
+import org.apache.lucene.store.ChecksumIndexInput;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.BytesRef;
+
+/**
+ * Tests the incremental doc-values update path ({@link
+ * IndexWriterConfig#setIncrementalDocValuesUpdates}), where a set-only update is stored as a sparse
+ * delta generation overlaid on the base column at read time and delta generations are compacted
+ * once they exceed {@link IndexWriterConfig#setMaxDocValuesDeltaGenerations}.
+ */
+public class TestIncrementalDocValuesUpdates extends LuceneTestCase {
+
+  private IndexWriterConfig incrementalConfig() {
+    return new IndexWriterConfig(new MockAnalyzer(random()))
+        .setIncrementalDocValuesUpdates(true)
+        .setMaxDocValuesDeltaGenerations(TestUtil.nextInt(random(), 1, 6));
+  }
+
+  private static void assertNumeric(IndexReader reader, String id, long expected)
+      throws IOException {
+    assertNumericField(reader, id, "val", expected);
+  }
+
+  private static void assertNumericField(IndexReader reader, String id, String field, long expected)
+      throws IOException {
+    for (LeafReaderContext ctx : reader.leaves()) {
+      TermsEnum te = ctx.reader().terms("id").iterator();
+      if (te.seekExact(new BytesRef(id))) {
+        PostingsEnum pe = te.postings(null);
+        int doc = pe.nextDoc();
+        NumericDocValues dv = ctx.reader().getNumericDocValues(field);
+        assertTrue(id + "." + field, dv.advanceExact(doc));
+        assertEquals(id + "." + field, expected, dv.longValue());
+        return;
+      }
+    }
+    fail("id not found: " + id);
+  }
+
+  /** Random set-only updates across many docs and fields, interleaved with reopens and merges. */
+  public void testRandomizedSetOnlyUpdates() throws Exception {
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, incrementalConfig())) {
+      int numDocs = atLeast(50);
+      Map<String, Long> expected = new HashMap<>();
+      for (int i = 0; i < numDocs; i++) {
+        Document d = new Document();
+        d.add(new StringField("id", "d" + i, StringField.Store.NO));
+        d.add(new NumericDocValuesField("val", i));
+        expected.put("d" + i, (long) i);
+        w.addDocument(d);
+      }
+      int updates = atLeast(200);
+      for (int i = 0; i < updates; i++) {
+        String id = "d" + random().nextInt(numDocs);
+        long v = random().nextLong();
+        w.updateNumericDocValue(new Term("id", id), "val", v);
+        expected.put(id, v);
+        if (rarely()) {
+          w.commit();
+        }
+        if (rarely()) {
+          w.forceMerge(1 + random().nextInt(3));
+        }
+      }
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        for (Map.Entry<String, Long> e : expected.entrySet()) {
+          assertNumeric(reader, e.getKey(), e.getValue());
+        }
+      }
+    }
+  }
+
+  /**
+   * A merge flattens the overlay back into a single dense column that still reads the latest
+   * values.
+   */
+  public void testMergeFlattensOverlay() throws Exception {
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, incrementalConfig())) {
+      for (int i = 0; i < 20; i++) {
+        Document d = new Document();
+        d.add(new StringField("id", "d" + i, StringField.Store.NO));
+        d.add(new NumericDocValuesField("val", i));
+        w.addDocument(d);
+      }
+      for (int round = 0; round < 10; round++) {
+        for (int i = 0; i < 20; i++) {
+          w.updateNumericDocValue(new Term("id", "d" + i), "val", 1000L + round * 100 + i);
+        }
+      }
+      w.forceMerge(1);
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        assertEquals(1, reader.leaves().size());
+        for (int i = 0; i < 20; i++) {
+          assertNumeric(reader, "d" + i, 1000L + 9 * 100 + i);
+        }
+      }
+    }
+  }
+
+  /**
+   * Removing a value (null update) falls back to the dense rewrite and is observed as "no value".
+   */
+  public void testResetRemovesValue() throws Exception {
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, incrementalConfig())) {
+      Document d = new Document();
+      d.add(new StringField("id", "d0", StringField.Store.NO));
+      d.add(new NumericDocValuesField("val", 5));
+      w.addDocument(d);
+      w.updateNumericDocValue(new Term("id", "d0"), "val", 7);
+      w.updateDocValues(new Term("id", "d0"), new NumericDocValuesField("val", null));
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        LeafReaderContext ctx = reader.leaves().get(0);
+        NumericDocValues dv = ctx.reader().getNumericDocValues("val");
+        assertFalse("value should have been removed", dv.advanceExact(0));
+      }
+    }
+  }
+
+  /**
+   * An index whose updates were written with the feature disabled keeps working when it is enabled.
+   */
+  public void testContinuesIndexWrittenWithFeatureDisabled() throws Exception {
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter w =
+          new IndexWriter(
+              dir,
+              new IndexWriterConfig(new MockAnalyzer(random()))
+                  .setIncrementalDocValuesUpdates(false))) {
+        for (int i = 0; i < 10; i++) {
+          Document d = new Document();
+          d.add(new StringField("id", "d" + i, StringField.Store.NO));
+          d.add(new NumericDocValuesField("val", i));
+          w.addDocument(d);
+        }
+        // dense update generations, written by the classic path
+        for (int i = 0; i < 10; i++) {
+          w.updateNumericDocValue(new Term("id", "d" + i), "val", 100L + i);
+        }
+        w.commit();
+      }
+      // reopen with the feature enabled and stack sparse deltas on top of the dense generations
+      try (IndexWriter w = new IndexWriter(dir, incrementalConfig())) {
+        for (int i = 0; i < 10; i++) {
+          w.updateNumericDocValue(new Term("id", "d" + i), "val", 200L + i);
+        }
+        try (DirectoryReader reader = DirectoryReader.open(w)) {
+          for (int i = 0; i < 10; i++) {
+            assertNumeric(reader, "d" + i, 200L + i);
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Repeatedly updating the whole corpus makes the delta generations cover the entire column; the
+   * writer then folds back to a single dense column (reclaiming the base) instead of overlaying an
+   * ever-denser delta. Checked here only for value correctness across the transition.
+   */
+  public void testFoldsToDenseOnFullCorpusUpdates() throws Exception {
+    try (Directory dir = newDirectory();
+        IndexWriter w =
+            new IndexWriter(
+                dir,
+                new IndexWriterConfig(new MockAnalyzer(random()))
+                    .setIncrementalDocValuesUpdates(true)
+                    .setMaxDocValuesDeltaGenerations(2))) {
+      int numDocs = 40;
+      for (int i = 0; i < numDocs; i++) {
+        Document d = new Document();
+        d.add(new StringField("id", "d" + i, StringField.Store.NO));
+        d.add(new NumericDocValuesField("val", i));
+        w.addDocument(d);
+      }
+      long expected = 0;
+      for (int round = 0; round < 12; round++) {
+        expected = 1000L + round;
+        for (int i = 0; i < numDocs; i++) {
+          w.updateNumericDocValue(new Term("id", "d" + i), "val", expected + i);
+        }
+        w.commit();
+      }
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        for (int i = 0; i < numDocs; i++) {
+          assertNumeric(reader, "d" + i, expected + i);
+        }
+      }
+    }
+  }
+
+  /**
+   * Several updatable fields on the same docs, updated independently. Each field's overlay is
+   * tracked separately.
+   */
+  public void testMultipleUpdatableFields() throws Exception {
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, incrementalConfig())) {
+      int numDocs = atLeast(40);
+      int numFields = 3;
+      long[][] expected = new long[numDocs][numFields];
+      for (int i = 0; i < numDocs; i++) {
+        Document d = new Document();
+        d.add(new StringField("id", "d" + i, StringField.Store.NO));
+        for (int f = 0; f < numFields; f++) {
+          long v = i * 10L + f;
+          d.add(new NumericDocValuesField("f" + f, v));
+          expected[i][f] = v;
+        }
+        w.addDocument(d);
+      }
+      int updates = atLeast(300);
+      for (int u = 0; u < updates; u++) {
+        int i = random().nextInt(numDocs);
+        int f = random().nextInt(numFields);
+        long v = random().nextLong();
+        w.updateNumericDocValue(new Term("id", "d" + i), "f" + f, v);
+        expected[i][f] = v;
+        if (rarely()) {
+          w.commit();
+        }
+        if (rarely()) {
+          w.forceMerge(1);
+        }
+      }
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        for (int i = 0; i < numDocs; i++) {
+          for (int f = 0; f < numFields; f++) {
+            assertNumericField(reader, "d" + i, "f" + f, expected[i][f]);
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Updates interleaved with deletes: deleted docs drop out, surviving docs keep their latest
+   * value.
+   */
+  public void testUpdatesInterleavedWithDeletes() throws Exception {
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, incrementalConfig())) {
+      int numDocs = atLeast(60);
+      Map<String, Long> expected = new HashMap<>();
+      for (int i = 0; i < numDocs; i++) {
+        Document d = new Document();
+        d.add(new StringField("id", "d" + i, StringField.Store.NO));
+        d.add(new NumericDocValuesField("val", i));
+        expected.put("d" + i, (long) i);
+        w.addDocument(d);
+      }
+      int ops = atLeast(300);
+      for (int o = 0; o < ops; o++) {
+        String id = "d" + random().nextInt(numDocs);
+        if (expected.containsKey(id) && random().nextInt(6) == 0) {
+          w.deleteDocuments(new Term("id", id));
+          expected.remove(id);
+        } else if (expected.containsKey(id)) {
+          long v = random().nextLong();
+          w.updateNumericDocValue(new Term("id", id), "val", v);
+          expected.put(id, v);
+        }
+        if (rarely()) {
+          w.commit();
+        }
+      }
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        for (Map.Entry<String, Long> e : expected.entrySet()) {
+          assertNumeric(reader, e.getKey(), e.getValue());
+        }
+      }
+    }
+  }
+
+  /**
+   * Doc-values updates on an index that is sorted on a different field: overlay docs are in the
+   * sorted order.
+   */
+  public void testSortedIndexWithUpdates() throws Exception {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig conf =
+          incrementalConfig().setIndexSort(new Sort(new SortField("sortkey", SortField.Type.LONG)));
+      try (IndexWriter w = new IndexWriter(dir, conf)) {
+        int numDocs = atLeast(40);
+        Map<String, Long> expected = new HashMap<>();
+        for (int i = 0; i < numDocs; i++) {
+          Document d = new Document();
+          d.add(new StringField("id", "d" + i, StringField.Store.NO));
+          d.add(new NumericDocValuesField("sortkey", random().nextInt(1000)));
+          d.add(new NumericDocValuesField("val", i));
+          expected.put("d" + i, (long) i);
+          w.addDocument(d);
+        }
+        for (int u = 0; u < atLeast(200); u++) {
+          String id = "d" + random().nextInt(numDocs);
+          long v = random().nextLong();
+          w.updateNumericDocValue(new Term("id", id), "val", v);
+          expected.put(id, v);
+          if (rarely()) {
+            w.commit();
+          }
+        }
+        try (DirectoryReader reader = DirectoryReader.open(w)) {
+          for (Map.Entry<String, Long> e : expected.entrySet()) {
+            assertNumeric(reader, e.getKey(), e.getValue());
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * addIndexes(CodecReader...) flattens the source overlay into the destination, preserving the
+   * latest values.
+   */
+  public void testAddIndexesFromUpdatedIndex() throws Exception {
+    try (Directory src = newDirectory();
+        Directory dst = newDirectory()) {
+      Map<String, Long> expected = new HashMap<>();
+      try (IndexWriter w = new IndexWriter(src, incrementalConfig())) {
+        int numDocs = atLeast(30);
+        for (int i = 0; i < numDocs; i++) {
+          Document d = new Document();
+          d.add(new StringField("id", "d" + i, StringField.Store.NO));
+          d.add(new NumericDocValuesField("val", i));
+          expected.put("d" + i, (long) i);
+          w.addDocument(d);
+        }
+        for (int u = 0; u < atLeast(150); u++) {
+          String id = "d" + random().nextInt(numDocs);
+          long v = random().nextLong();
+          w.updateNumericDocValue(new Term("id", id), "val", v);
+          expected.put(id, v);
+        }
+        w.commit();
+      }
+      try (IndexWriter w = new IndexWriter(dst, incrementalConfig());
+          DirectoryReader src2 = DirectoryReader.open(src)) {
+        CodecReader[] readers = new CodecReader[src2.leaves().size()];
+        for (int i = 0; i < readers.length; i++) {
+          readers[i] = (CodecReader) src2.leaves().get(i).reader();
+        }
+        w.addIndexes(readers);
+        try (DirectoryReader reader = DirectoryReader.open(w)) {
+          for (Map.Entry<String, Long> e : expected.entrySet()) {
+            assertNumeric(reader, e.getKey(), e.getValue());
+          }
+        }
+      }
+    }
+  }
+
+  public void testBinarySetOnlyUpdates() throws Exception {
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, incrementalConfig())) {
+      int numDocs = atLeast(30);
+      Map<String, String> expected = new HashMap<>();
+      for (int i = 0; i < numDocs; i++) {
+        Document d = new Document();
+        d.add(new StringField("id", "d" + i, StringField.Store.NO));
+        d.add(new BinaryDocValuesField("val", new BytesRef("v" + i)));
+        expected.put("d" + i, "v" + i);
+        w.addDocument(d);
+      }
+      int updates = atLeast(120);
+      for (int i = 0; i < updates; i++) {
+        String id = "d" + random().nextInt(numDocs);
+        String v = "u" + random().nextInt(1_000_000);
+        w.updateBinaryDocValue(new Term("id", id), "val", new BytesRef(v));
+        expected.put(id, v);
+        if (rarely()) {
+          w.forceMerge(1);
+        }
+      }
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        for (Map.Entry<String, String> e : expected.entrySet()) {
+          boolean found = false;
+          for (LeafReaderContext ctx : reader.leaves()) {
+            TermsEnum te = ctx.reader().terms("id").iterator();
+            if (te.seekExact(new BytesRef(e.getKey()))) {
+              int doc = te.postings(null).nextDoc();
+              BinaryDocValues dv = ctx.reader().getBinaryDocValues("val");
+              assertTrue(e.getKey(), dv.advanceExact(doc));
+              assertEquals(e.getKey(), new BytesRef(e.getValue()), dv.binaryValue());
+              found = true;
+              break;
+            }
+          }
+          assertTrue("id not found: " + e.getKey(), found);
+        }
+      }
+    }
+  }
+
+  /**
+   * Doc-values updates on a skip-indexed field are rejected up front by {@link IndexWriter}. That
+   * pre-existing restriction is what lets the overlay assume a field's skipper always has a single
+   * producer (skippers are never overlaid), so the incremental path needs no special handling for
+   * them.
+   */
+  public void testCannotUpdateSkipIndexedField() throws Exception {
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, incrementalConfig())) {
+      Document d = new Document();
+      d.add(new StringField("id", "0", StringField.Store.NO));
+      d.add(NumericDocValuesField.indexedField("val", 1L));
+      w.addDocument(d);
+      w.commit();
+      IllegalArgumentException e =
+          expectThrows(
+              IllegalArgumentException.class,
+              () -> w.updateNumericDocValue(new Term("id", "0"), "val", 2L));
+      assertTrue(e.getMessage(), e.getMessage().contains("doc values skip index"));
+    }
+  }
+
+  /**
+   * A commit carrying an overlay is written at a bumped segments-file version, so a reader that
+   * predates the feature rejects it (at the outermost layer, before any codec) rather than
+   * misreading a single delta as the whole column.
+   */
+  public void testOverlaySegmentRejectedByOlderReaders() throws Exception {
+    Directory dir = newDirectory();
+    try (IndexWriter w = new IndexWriter(dir, incrementalConfig())) {
+      Document d = new Document();
+      d.add(new StringField("id", "0", StringField.Store.NO));
+      d.add(new NumericDocValuesField("val", 1L));
+      w.addDocument(d);
+      w.commit();
+      w.updateNumericDocValue(new Term("id", "0"), "val", 2L); // writes a sparse overlay generation
+      w.commit();
+    }
+    // The commit records overlay generations, so its segments file is written at VERSION_11_0; a
+    // reader that only
+    // understands up to VERSION_86 rejects it with IndexFormatTooNewException.
+    String segmentsFile = SegmentInfos.getLastCommitSegmentsFileName(dir);
+    try (ChecksumIndexInput in = dir.openChecksumInput(segmentsFile)) {
+      assertEquals(CodecUtil.CODEC_MAGIC, CodecUtil.readBEInt(in));
+      expectThrows(
+          IndexFormatTooNewException.class,
+          () ->
+              CodecUtil.checkHeaderNoMagic(
+                  in, "segments", SegmentInfos.VERSION_74, SegmentInfos.VERSION_86));
+    }
+    // And the current reader sees the overlay round-tripped through the segments file.
+    assertTrue(
+        SegmentInfos.readLatestCommit(dir).asList().stream()
+            .anyMatch(SegmentCommitInfo::hasDocValuesOverlays));
+    dir.close();
+  }
+}
