@@ -209,7 +209,7 @@ public abstract non-sealed class LeafReader extends IndexReader {
    * interest, or {@code null} if a skip index was not indexed. The returned instance should be
    * confined to the thread that created it.
    */
-  public abstract DocValuesSkipper getDocValuesSkipper(String field) throws IOException;
+  public abstract DocValuesSkipper getDocValuesSkipper(String field);
 
   /**
    * Returns {@link FloatVectorValues} for this field, or null if no {@link FloatVectorValues} were

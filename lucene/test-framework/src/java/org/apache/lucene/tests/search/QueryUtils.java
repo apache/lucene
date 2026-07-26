@@ -228,7 +228,7 @@ public class QueryUtils {
       }
 
       @Override
-      public DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+      public DocValuesSkipper getDocValuesSkipper(String field) {
         return null;
       }
 

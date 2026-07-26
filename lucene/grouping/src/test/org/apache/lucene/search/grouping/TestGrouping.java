@@ -44,14 +44,14 @@ import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.function.ValueSource;
 import org.apache.lucene.queries.function.valuesource.BytesRefFieldSource;
-import org.apache.lucene.search.CachingCollector;
+import org.apache.lucene.search.CachingCollectorManager;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldDoc;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
-import org.apache.lucene.search.MultiCollector;
+import org.apache.lucene.search.MultiCollectorManager;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.ScoreMode;
@@ -353,20 +353,6 @@ public class TestGrouping extends LuceneTestCase {
     doc.add(new SortedDocValuesField(groupField, new BytesRef(value)));
   }
 
-  private FirstPassGroupingCollector<?> createRandomFirstPassCollector(
-      String groupField, Sort groupSort, int topDocs) throws IOException {
-    if (random().nextBoolean()) {
-      ValueSource vs = new BytesRefFieldSource(groupField);
-      return new FirstPassGroupingCollectorManager<>(
-              () -> new ValueSourceGroupSelector(vs, new HashMap<>()), groupSort, 0, topDocs)
-          .newCollector();
-    } else {
-      return new FirstPassGroupingCollectorManager<>(
-              () -> new TermGroupSelector(groupField), groupSort, 0, topDocs)
-          .newCollector();
-    }
-  }
-
   private FirstPassGroupingCollectorManager<?> createFirstPassCollectorManager(
       boolean isTermGroupSelector,
       String groupField,
@@ -384,26 +370,6 @@ public class TestGrouping extends LuceneTestCase {
           groupOffset,
           topNGroups);
     }
-  }
-
-  @SuppressWarnings({"unchecked", "rawtypes"})
-  private <T> TopGroupsCollector<T> createSecondPassCollector(
-      FirstPassGroupingCollector firstPassGroupingCollector,
-      Sort groupSort,
-      Sort sortWithinGroup,
-      int groupOffset,
-      int maxDocsPerGroup,
-      boolean getMaxScores)
-      throws IOException {
-
-    Collection<SearchGroup<T>> searchGroups = firstPassGroupingCollector.getTopGroups(groupOffset);
-    return new TopGroupsCollector<>(
-        firstPassGroupingCollector.getGroupSelector(),
-        searchGroups,
-        groupSort,
-        sortWithinGroup,
-        maxDocsPerGroup,
-        getMaxScores);
   }
 
   // Basically converts searchGroups from MutableValue to BytesRef if grouping by ValueSource
@@ -452,9 +418,15 @@ public class TestGrouping extends LuceneTestCase {
     }
   }
 
-  private AllGroupsCollector<?> createAllGroupsCollector(
-      FirstPassGroupingCollector<?> firstPassGroupingCollector, String groupField) {
-    return new AllGroupsCollector<>(firstPassGroupingCollector.getGroupSelector());
+  private AllGroupsCollectorManager<?> createAllGroupsCollectorManager(
+      boolean isTermGroupSelector, String groupField) {
+    if (isTermGroupSelector) {
+      return new AllGroupsCollectorManager<>(() -> new TermGroupSelector(groupField));
+    } else {
+      ValueSource vs = new BytesRefFieldSource(groupField);
+      return new AllGroupsCollectorManager<>(
+          () -> new ValueSourceGroupSelector(vs, new HashMap<>()));
+    }
   }
 
   private void compareGroupValue(String expected, GroupDocs<?> group) {
@@ -478,38 +450,6 @@ public class TestGrouping extends LuceneTestCase {
     } else {
       fail();
     }
-  }
-
-  private Collection<SearchGroup<BytesRef>> getSearchGroups(
-      FirstPassGroupingCollector<?> c, int groupOffset) throws IOException {
-    if (TermGroupSelector.class.isAssignableFrom(c.getGroupSelector().getClass())) {
-      @SuppressWarnings("unchecked")
-      FirstPassGroupingCollector<BytesRef> collector = (FirstPassGroupingCollector<BytesRef>) c;
-      return collector.getTopGroups(groupOffset);
-    } else if (ValueSourceGroupSelector.class.isAssignableFrom(c.getGroupSelector().getClass())) {
-      @SuppressWarnings("unchecked")
-      FirstPassGroupingCollector<MutableValue> collector =
-          (FirstPassGroupingCollector<MutableValue>) c;
-      Collection<SearchGroup<MutableValue>> mutableValueGroups =
-          collector.getTopGroups(groupOffset);
-      if (mutableValueGroups == null) {
-        return null;
-      }
-
-      List<SearchGroup<BytesRef>> groups = new ArrayList<>(mutableValueGroups.size());
-      for (SearchGroup<MutableValue> mutableValueGroup : mutableValueGroups) {
-        SearchGroup<BytesRef> sg = new SearchGroup<>();
-        sg.groupValue =
-            mutableValueGroup.groupValue.exists()
-                ? ((MutableValueStr) mutableValueGroup.groupValue).value.get()
-                : null;
-        sg.sortValues = mutableValueGroup.sortValues;
-        groups.add(sg);
-      }
-      return groups;
-    }
-    fail();
-    return null;
   }
 
   @SuppressWarnings("unchecked")
@@ -559,44 +499,6 @@ public class TestGrouping extends LuceneTestCase {
         topGroups.totalGroupedHitCount,
         groups.toArray(GroupDocs[]::new),
         Float.NaN);
-  }
-
-  @SuppressWarnings({"unchecked", "rawtypes"})
-  private TopGroups<BytesRef> getTopGroups(TopGroupsCollector c, int withinGroupOffset) {
-    if (c.getGroupSelector().getClass().isAssignableFrom(TermGroupSelector.class)) {
-      TopGroupsCollector<BytesRef> collector = (TopGroupsCollector<BytesRef>) c;
-      return collector.getTopGroups(withinGroupOffset);
-    } else if (c.getGroupSelector().getClass().isAssignableFrom(ValueSourceGroupSelector.class)) {
-      TopGroupsCollector<MutableValue> collector = (TopGroupsCollector<MutableValue>) c;
-      TopGroups<MutableValue> mvalTopGroups = collector.getTopGroups(withinGroupOffset);
-      List<GroupDocs<BytesRef>> groups = new ArrayList<>(mvalTopGroups.groups.length);
-      for (GroupDocs<MutableValue> mvalGd : mvalTopGroups.groups) {
-        BytesRef groupValue =
-            mvalGd.groupValue().exists()
-                ? ((MutableValueStr) mvalGd.groupValue()).value.get()
-                : null;
-        groups.add(
-            new GroupDocs<>(
-                Float.NaN,
-                mvalGd.maxScore(),
-                mvalGd.totalHits(),
-                mvalGd.scoreDocs(),
-                groupValue,
-                mvalGd.groupSortValues()));
-      }
-      // NOTE: currently using diamond operator on MergedIterator (without explicit Term class)
-      // causes
-      // errors on Eclipse Compiler (ecj) used for javadoc lint
-      return new TopGroups<>(
-          mvalTopGroups.groupSort,
-          mvalTopGroups.withinGroupSort,
-          mvalTopGroups.totalHitCount,
-          mvalTopGroups.totalGroupedHitCount,
-          groups.toArray(GroupDocs[]::new),
-          Float.NaN);
-    }
-    fail();
-    return null;
   }
 
   private static class GroupDoc {
@@ -758,7 +660,16 @@ public class TestGrouping extends LuceneTestCase {
 
     if (groupOffset >= sortedGroups.size()) {
       // slice is out of bounds
-      return null;
+      @SuppressWarnings({"unchecked", "rawtypes"})
+      TopGroups<BytesRef> empty =
+          new TopGroups<>(
+              groupSort.getSort(),
+              docSort.getSort(),
+              totalHitCount,
+              0,
+              new GroupDocs[0],
+              Float.NaN);
+      return empty;
     }
 
     final int limit = Math.min(groupOffset + topNGroups, groups.size());
@@ -1090,7 +1001,12 @@ public class TestGrouping extends LuceneTestCase {
       rBlocks = getDocBlockReader(dirBlocks, groupDocs);
       final Query lastDocInBlock = new TermQuery(new Term("groupend", "x"));
 
-      final IndexSearcher sBlocks = newSearcher(rBlocks);
+      // final IndexSearcher sBlocks = newSearcher(rBlocks);
+      // BlockGroupingCollectorManager does not support INTRA_SEGMENT concurrency (requires more
+      // work).
+      final IndexSearcher sBlocks =
+          newSearcher(
+              rBlocks, random().nextBoolean(), random().nextBoolean(), Concurrency.INTER_SEGMENT);
       // This test relies on the fact that longer fields produce lower scores
       sBlocks.setSimilarity(new BM25Similarity());
 
@@ -1190,88 +1106,56 @@ public class TestGrouping extends LuceneTestCase {
         if (VERBOSE) {
           System.out.println("  groupField=" + groupField);
         }
-        final FirstPassGroupingCollector<?> c1 =
-            createRandomFirstPassCollector(groupField, groupSort, groupOffset + topNGroups);
-        final CachingCollector cCache;
-        final Collector c;
+        final boolean isTermGroupSelector = random().nextBoolean();
+        final FirstPassGroupingCollectorManager<?> firstPassManager =
+            createFirstPassCollectorManager(
+                isTermGroupSelector, groupField, groupSort, groupOffset, topNGroups);
 
-        final AllGroupsCollector<?> allGroupsCollector;
+        List<CollectorManager<? extends Collector, ?>> firstRoundManagers = new ArrayList<>();
+        firstRoundManagers.add(firstPassManager);
         if (doAllGroups) {
-          allGroupsCollector = createAllGroupsCollector(c1, groupField);
-        } else {
-          allGroupsCollector = null;
+          firstRoundManagers.add(createAllGroupsCollectorManager(isTermGroupSelector, groupField));
         }
 
-        final boolean useWrappingCollector = random().nextBoolean();
+        @SuppressWarnings({"rawtypes"})
+        CollectorManager[] firstRoundArray = firstRoundManagers.toArray(new CollectorManager[0]);
+        @SuppressWarnings("unchecked")
+        CollectorManager<?, Object[]> firstRoundManager =
+            new MultiCollectorManager(firstRoundArray);
 
+        // Search top reader:
+        final Query query = new TermQuery(new Term("content", searchTerm));
+
+        final CachingCollectorManager<?, Object[]> cachingManager;
+        final Object[] firstRoundResults;
         if (doCache) {
           final double maxCacheMB = random().nextDouble();
           if (VERBOSE) {
             System.out.println("TEST: maxCacheMB=" + maxCacheMB);
           }
-
-          if (useWrappingCollector) {
-            if (doAllGroups) {
-              cCache = CachingCollector.create(c1, true, maxCacheMB);
-              c = MultiCollector.wrap(cCache, allGroupsCollector);
-            } else {
-              c = cCache = CachingCollector.create(c1, true, maxCacheMB);
-            }
-          } else {
-            // Collect only into cache, then replay multiple times:
-            c = cCache = CachingCollector.create(true, maxCacheMB);
-          }
+          cachingManager = new CachingCollectorManager<>(firstRoundManager, true, maxCacheMB, null);
+          firstRoundResults = s.search(query, cachingManager);
         } else {
-          cCache = null;
-          if (doAllGroups) {
-            c = MultiCollector.wrap(c1, allGroupsCollector);
-          } else {
-            c = c1;
-          }
-        }
-
-        // Search top reader:
-        final Query query = new TermQuery(new Term("content", searchTerm));
-
-        s.search(query, c);
-
-        if (doCache && !useWrappingCollector) {
-          if (cCache.isCached()) {
-            // Replay for first-pass grouping
-            cCache.replay(c1);
-            if (doAllGroups) {
-              // Replay for all groups:
-              cCache.replay(allGroupsCollector);
-            }
-          } else {
-            // Replay by re-running search:
-            s.search(query, c1);
-            if (doAllGroups) {
-              s.search(query, allGroupsCollector);
-            }
-          }
+          cachingManager = null;
+          firstRoundResults = s.search(query, firstRoundManager);
         }
 
         // Get 1st pass top groups
-        final Collection<SearchGroup<BytesRef>> topGroups = getSearchGroups(c1, groupOffset);
+        final Collection<SearchGroup<BytesRef>> topGroups =
+            toByteRefSearchGroups((Collection<?>) firstRoundResults[0]);
         final TopGroups<BytesRef> groupsResult;
         if (VERBOSE) {
           System.out.println("TEST: first pass topGroups");
-          if (topGroups == null) {
-            System.out.println("  null");
-          } else {
-            for (SearchGroup<BytesRef> searchGroup : topGroups) {
-              System.out.println(
-                  "  "
-                      + (searchGroup.groupValue == null ? "null" : searchGroup.groupValue)
-                      + ": "
-                      + Arrays.deepToString(searchGroup.sortValues));
-            }
+          for (SearchGroup<BytesRef> searchGroup : topGroups) {
+            System.out.println(
+                "  "
+                    + (searchGroup.groupValue == null ? "null" : searchGroup.groupValue)
+                    + ": "
+                    + Arrays.deepToString(searchGroup.sortValues));
           }
         }
 
         // Get 1st pass top groups using shards
-
         final TopGroups<BytesRef> topGroupsShards =
             searchShards(
                 shards.subSearchers,
@@ -1285,9 +1169,8 @@ public class TestGrouping extends LuceneTestCase {
                 getMaxScores,
                 true,
                 true);
-        final TopGroupsCollector<?> c2;
-        if (topGroups != null) {
-
+        final TopGroupsCollectorManager<?> secondPassManager;
+        if (topGroups != null && !topGroups.isEmpty()) {
           if (VERBOSE) {
             System.out.println("TEST: topGroups");
             for (SearchGroup<BytesRef> searchGroup : topGroups) {
@@ -1301,34 +1184,42 @@ public class TestGrouping extends LuceneTestCase {
             }
           }
 
-          c2 =
-              createSecondPassCollector(
-                  c1, groupSort, docSort, groupOffset, docOffset + docsPerGroup, getMaxScores);
-          if (doCache) {
-            if (cCache.isCached()) {
-              if (VERBOSE) {
-                System.out.println("TEST: cache is intact");
-              }
-              cCache.replay(c2);
-            } else {
-              if (VERBOSE) {
-                System.out.println("TEST: cache was too large");
-              }
-              s.search(query, c2);
+          secondPassManager =
+              createSecondPassCollectorManager(
+                  isTermGroupSelector,
+                  groupField,
+                  topGroups,
+                  groupSort,
+                  docSort,
+                  docOffset,
+                  docsPerGroup,
+                  getMaxScores);
+
+          TopGroups<BytesRef> secondPassResult;
+          if (cachingManager != null && cachingManager.isCached()) {
+            if (VERBOSE) {
+              System.out.println("TEST: cache is intact");
             }
+            secondPassResult = toByteTopGroups(cachingManager.replay(secondPassManager));
           } else {
-            s.search(query, c2);
+            if (cachingManager != null && VERBOSE) {
+              System.out.println("TEST: cache was too large");
+            }
+            secondPassResult = toByteTopGroups(s.search(query, secondPassManager));
           }
 
           if (doAllGroups) {
-            TopGroups<BytesRef> tempTopGroups = getTopGroups(c2, docOffset);
-            groupsResult = new TopGroups<>(tempTopGroups, allGroupsCollector.getGroupCount());
+            Collection<?> allGroupsResult = (Collection<?>) firstRoundResults[1];
+            groupsResult = new TopGroups<>(secondPassResult, allGroupsResult.size());
           } else {
-            groupsResult = getTopGroups(c2, docOffset);
+            groupsResult = secondPassResult;
           }
         } else {
-          c2 = null;
-          groupsResult = null;
+          @SuppressWarnings({"unchecked", "rawtypes"})
+          TopGroups<BytesRef> empty =
+              new TopGroups<>(
+                  groupSort.getSort(), docSort.getSort(), 0, 0, new GroupDocs[0], Float.NaN);
+          groupsResult = empty;
           if (VERBOSE) {
             System.out.println("TEST:   no results");
           }
@@ -1348,65 +1239,52 @@ public class TestGrouping extends LuceneTestCase {
                 docOffset);
 
         if (VERBOSE) {
-          if (expectedGroups == null) {
-            System.out.println("TEST: no expected groups");
-          } else {
+          System.out.println(
+              "TEST: expected groups totalGroupedHitCount=" + expectedGroups.totalGroupedHitCount);
+          for (GroupDocs<BytesRef> gd : expectedGroups.groups) {
             System.out.println(
-                "TEST: expected groups totalGroupedHitCount="
-                    + expectedGroups.totalGroupedHitCount);
-            for (GroupDocs<BytesRef> gd : expectedGroups.groups) {
-              System.out.println(
-                  "  group="
-                      + (gd.groupValue() == null ? "null" : gd.groupValue())
-                      + " totalHits="
-                      + gd.totalHits().value()
-                      + " scoreDocs.len="
-                      + gd.scoreDocs().length);
-              for (ScoreDoc sd : gd.scoreDocs()) {
-                System.out.println("    id=" + sd.doc + " score=" + sd.score);
-              }
+                "  group="
+                    + (gd.groupValue() == null ? "null" : gd.groupValue())
+                    + " totalHits="
+                    + gd.totalHits().value()
+                    + " scoreDocs.len="
+                    + gd.scoreDocs().length);
+            for (ScoreDoc sd : gd.scoreDocs()) {
+              System.out.println("    id=" + sd.doc + " score=" + sd.score);
             }
           }
 
-          if (groupsResult == null) {
-            System.out.println("TEST: no matched groups");
-          } else {
+          System.out.println(
+              "TEST: matched groups totalGroupedHitCount=" + groupsResult.totalGroupedHitCount);
+          for (GroupDocs<BytesRef> gd : groupsResult.groups) {
             System.out.println(
-                "TEST: matched groups totalGroupedHitCount=" + groupsResult.totalGroupedHitCount);
-            for (GroupDocs<BytesRef> gd : groupsResult.groups) {
-              System.out.println(
-                  "  group="
-                      + (gd.groupValue() == null ? "null" : gd.groupValue())
-                      + " totalHits="
-                      + gd.totalHits().value());
-              for (ScoreDoc sd : gd.scoreDocs()) {
-                System.out.println("    id=" + docIDToID[sd.doc] + " score=" + sd.score);
-              }
-            }
-
-            if (searchIter == 14) {
-              for (int docIDX = 0; docIDX < s.getIndexReader().maxDoc(); docIDX++) {
-                System.out.println(
-                    "ID=" + docIDToID[docIDX] + " explain=" + s.explain(query, docIDX));
-              }
+                "  group="
+                    + (gd.groupValue() == null ? "null" : gd.groupValue())
+                    + " totalHits="
+                    + gd.totalHits().value());
+            for (ScoreDoc sd : gd.scoreDocs()) {
+              System.out.println("    id=" + docIDToID[sd.doc] + " score=" + sd.score);
             }
           }
 
-          if (topGroupsShards == null) {
-            System.out.println("TEST: no matched-merged groups");
-          } else {
-            System.out.println(
-                "TEST: matched-merged groups totalGroupedHitCount="
-                    + topGroupsShards.totalGroupedHitCount);
-            for (GroupDocs<BytesRef> gd : topGroupsShards.groups) {
+          if (searchIter == 14) {
+            for (int docIDX = 0; docIDX < s.getIndexReader().maxDoc(); docIDX++) {
               System.out.println(
-                  "  group="
-                      + (gd.groupValue() == null ? "null" : gd.groupValue())
-                      + " totalHits="
-                      + gd.totalHits().value());
-              for (ScoreDoc sd : gd.scoreDocs()) {
-                System.out.println("    id=" + docIDToID[sd.doc] + " score=" + sd.score);
-              }
+                  "ID=" + docIDToID[docIDX] + " explain=" + s.explain(query, docIDX));
+            }
+          }
+
+          System.out.println(
+              "TEST: matched-merged groups totalGroupedHitCount="
+                  + topGroupsShards.totalGroupedHitCount);
+          for (GroupDocs<BytesRef> gd : topGroupsShards.groups) {
+            System.out.println(
+                "  group="
+                    + (gd.groupValue() == null ? "null" : gd.groupValue())
+                    + " totalHits="
+                    + gd.totalHits().value());
+            for (ScoreDoc sd : gd.scoreDocs()) {
+              System.out.println("    id=" + docIDToID[sd.doc] + " score=" + sd.score);
             }
           }
         }
@@ -1415,65 +1293,59 @@ public class TestGrouping extends LuceneTestCase {
 
         // Confirm merged shards match:
         assertEquals(docIDToID, expectedGroups, topGroupsShards, true, false, true);
-        if (topGroupsShards != null) {
-          verifyShards(shards.docStarts, topGroupsShards);
-        }
+        verifyShards(shards.docStarts, topGroupsShards);
 
-        final BlockGroupingCollector c3 =
-            new BlockGroupingCollector(
+        final Weight lastDocInBlockWeight =
+            sBlocks.createWeight(sBlocks.rewrite(lastDocInBlock), ScoreMode.COMPLETE_NO_SCORES, 1);
+        final BlockGroupingCollectorManager<BytesRef> blockManager =
+            new BlockGroupingCollectorManager<>(
                 groupSort,
-                groupOffset + topNGroups,
+                groupOffset,
+                topNGroups,
                 groupSort.needsScores() || docSort.needsScores(),
-                sBlocks.createWeight(
-                    sBlocks.rewrite(lastDocInBlock), ScoreMode.COMPLETE_NO_SCORES, 1));
-        final AllGroupsCollector<BytesRef> allGroupsCollector2;
-        final Collector c4;
-        if (doAllGroups) {
-          // NOTE: must be "group" and not "group_dv"
-          // (groupField) because we didn't index doc
-          // values in the block index:
-          allGroupsCollector2 = new AllGroupsCollector<>(new TermGroupSelector("group"));
-          c4 = MultiCollector.wrap(c3, allGroupsCollector2);
-        } else {
-          allGroupsCollector2 = null;
-          c4 = c3;
-        }
+                lastDocInBlockWeight,
+                docSort,
+                docOffset,
+                docOffset + docsPerGroup);
+
         // Get block grouping result:
-        sBlocks.search(query, c4);
-        @SuppressWarnings({"unchecked", "rawtypes"})
-        final TopGroups<BytesRef> tempTopGroupsBlocks =
-            (TopGroups<BytesRef>)
-                c3.getTopGroups(docSort, groupOffset, docOffset, docOffset + docsPerGroup);
+        final TopGroups<BytesRef> tempTopGroupsBlocks;
+        final int allGroupsCount2;
+        if (doAllGroups) {
+          AllGroupsCollectorManager<BytesRef> allGroupsManager2 =
+              new AllGroupsCollectorManager<>(() -> new TermGroupSelector(groupField));
+          CollectorManager<?, Object[]> blockRoundManager =
+              new MultiCollectorManager(blockManager, allGroupsManager2);
+          Object[] blockResults = sBlocks.search(query, blockRoundManager);
+          tempTopGroupsBlocks = toByteTopGroups((TopGroups<?>) blockResults[0]);
+          allGroupsCount2 = ((Collection<?>) blockResults[1]).size();
+        } else {
+          tempTopGroupsBlocks = sBlocks.search(query, blockManager);
+          allGroupsCount2 = 0;
+        }
         final TopGroups<BytesRef> groupsResultBlocks;
-        if (doAllGroups && tempTopGroupsBlocks != null) {
-          assertEquals(
-              (int) tempTopGroupsBlocks.totalGroupCount, allGroupsCollector2.getGroupCount());
-          groupsResultBlocks =
-              new TopGroups<>(tempTopGroupsBlocks, allGroupsCollector2.getGroupCount());
+        if (doAllGroups && tempTopGroupsBlocks.totalGroupCount != null) {
+          assertEquals((int) tempTopGroupsBlocks.totalGroupCount, allGroupsCount2);
+          groupsResultBlocks = new TopGroups<>(tempTopGroupsBlocks, allGroupsCount2);
         } else {
           groupsResultBlocks = tempTopGroupsBlocks;
         }
 
         if (VERBOSE) {
-          if (groupsResultBlocks == null) {
-            System.out.println("TEST: no block groups");
-          } else {
+          System.out.println(
+              "TEST: block groups totalGroupedHitCount=" + groupsResultBlocks.totalGroupedHitCount);
+          boolean first = true;
+          for (GroupDocs<BytesRef> gd : groupsResultBlocks.groups) {
             System.out.println(
-                "TEST: block groups totalGroupedHitCount="
-                    + groupsResultBlocks.totalGroupedHitCount);
-            boolean first = true;
-            for (GroupDocs<BytesRef> gd : groupsResultBlocks.groups) {
-              System.out.println(
-                  "  group="
-                      + (gd.groupValue() == null ? "null" : gd.groupValue().utf8ToString())
-                      + " totalHits="
-                      + gd.totalHits().value());
-              for (ScoreDoc sd : gd.scoreDocs()) {
-                System.out.println("    id=" + docIDToIDBlocks[sd.doc] + " score=" + sd.score);
-                if (first) {
-                  System.out.println("explain: " + sBlocks.explain(query, sd.doc));
-                  first = false;
-                }
+                "  group="
+                    + (gd.groupValue() == null ? "null" : gd.groupValue().utf8ToString())
+                    + " totalHits="
+                    + gd.totalHits().value());
+            for (ScoreDoc sd : gd.scoreDocs()) {
+              System.out.println("    id=" + docIDToIDBlocks[sd.doc] + " score=" + sd.score);
+              if (first) {
+                System.out.println("explain: " + sBlocks.explain(query, sd.doc));
+                first = false;
               }
             }
           }
@@ -1494,44 +1366,42 @@ public class TestGrouping extends LuceneTestCase {
                 false,
                 false);
 
-        if (expectedGroups != null) {
-          // Fixup scores for reader2
-          for (GroupDocs<?> groupDocsHits : expectedGroups.groups) {
-            for (ScoreDoc hit : groupDocsHits.scoreDocs()) {
-              final GroupDoc gd = groupDocsByID[hit.doc];
-              assertEquals(gd.id, hit.doc);
-              // System.out.println("fixup score " + hit.score + " to " + gd.score2 + " vs " +
-              // gd.score);
-              hit.score = gd.score2;
-            }
+        // Fixup scores for reader2
+        for (GroupDocs<?> groupDocsHits : expectedGroups.groups) {
+          for (ScoreDoc hit : groupDocsHits.scoreDocs()) {
+            final GroupDoc gd = groupDocsByID[hit.doc];
+            assertEquals(gd.id, hit.doc);
+            // System.out.println("fixup score " + hit.score + " to " + gd.score2 + " vs " +
+            // gd.score);
+            hit.score = gd.score2;
           }
+        }
 
-          final SortField[] sortFields = groupSort.getSort();
-          final Map<Float, Float> termScoreMap = scoreMap.get(searchTerm);
-          for (int groupSortIDX = 0; groupSortIDX < sortFields.length; groupSortIDX++) {
-            if (sortFields[groupSortIDX].getType() == SortField.Type.SCORE) {
-              for (GroupDocs<?> groupDocsHits : expectedGroups.groups) {
-                if (groupDocsHits.groupSortValues() != null) {
-                  // System.out.println("remap " + groupDocsHits.groupSortValues[groupSortIDX] + "
-                  // to " + termScoreMap.get(groupDocsHits.groupSortValues[groupSortIDX]));
-                  groupDocsHits.groupSortValues()[groupSortIDX] =
-                      termScoreMap.get(groupDocsHits.groupSortValues()[groupSortIDX]);
-                  assertNotNull(groupDocsHits.groupSortValues()[groupSortIDX]);
-                }
+        final SortField[] sortFields = groupSort.getSort();
+        final Map<Float, Float> termScoreMap = scoreMap.get(searchTerm);
+        for (int groupSortIDX = 0; groupSortIDX < sortFields.length; groupSortIDX++) {
+          if (sortFields[groupSortIDX].getType() == SortField.Type.SCORE) {
+            for (GroupDocs<?> groupDocsHits : expectedGroups.groups) {
+              if (groupDocsHits.groupSortValues() != null) {
+                // System.out.println("remap " + groupDocsHits.groupSortValues[groupSortIDX] + "
+                // to " + termScoreMap.get(groupDocsHits.groupSortValues[groupSortIDX]));
+                groupDocsHits.groupSortValues()[groupSortIDX] =
+                    termScoreMap.get(groupDocsHits.groupSortValues()[groupSortIDX]);
+                assertNotNull(groupDocsHits.groupSortValues()[groupSortIDX]);
               }
             }
           }
+        }
 
-          final SortField[] docSortFields = docSort.getSort();
-          for (int docSortIDX = 0; docSortIDX < docSortFields.length; docSortIDX++) {
-            if (docSortFields[docSortIDX].getType() == SortField.Type.SCORE) {
-              for (GroupDocs<?> groupDocsHits : expectedGroups.groups) {
-                for (ScoreDoc _hit : groupDocsHits.scoreDocs()) {
-                  FieldDoc hit = (FieldDoc) _hit;
-                  if (hit.fields != null) {
-                    hit.fields[docSortIDX] = termScoreMap.get(hit.fields[docSortIDX]);
-                    assertNotNull(hit.fields[docSortIDX]);
-                  }
+        final SortField[] docSortFields = docSort.getSort();
+        for (int docSortIDX = 0; docSortIDX < docSortFields.length; docSortIDX++) {
+          if (docSortFields[docSortIDX].getType() == SortField.Type.SCORE) {
+            for (GroupDocs<?> groupDocsHits : expectedGroups.groups) {
+              for (ScoreDoc _hit : groupDocsHits.scoreDocs()) {
+                FieldDoc hit = (FieldDoc) _hit;
+                if (hit.fields != null) {
+                  hit.fields[docSortIDX] = termScoreMap.get(hit.fields[docSortIDX]);
+                  assertNotNull(hit.fields[docSortIDX]);
                 }
               }
             }
@@ -1700,7 +1570,11 @@ public class TestGrouping extends LuceneTestCase {
       }
       return mergedGroups;
     } else {
-      return null;
+      @SuppressWarnings({"unchecked", "rawtypes"})
+      TopGroups<BytesRef> empty =
+          new TopGroups<>(
+              groupSort.getSort(), docSort.getSort(), 0, 0, new GroupDocs[0], Float.NaN);
+      return empty;
     }
   }
 
@@ -1711,8 +1585,8 @@ public class TestGrouping extends LuceneTestCase {
       boolean verifyGroupValues,
       boolean verifyTotalGroupCount,
       boolean idvBasedImplsUsed) {
-    if (expected == null) {
-      assertNull(actual);
+    if (expected.groups.length == 0) {
+      assertEquals(0, actual.groups.length);
       return;
     }
     assertNotNull(actual);

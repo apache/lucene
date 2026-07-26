@@ -32,6 +32,8 @@ import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.BitSetIterator;
+import org.apache.lucene.util.FixedBitSet;
 
 public class TestVectorScorer extends LuceneTestCase {
 
@@ -62,6 +64,36 @@ public class TestVectorScorer extends LuceneTestCase {
       }
       assertEquals(3, numDocs);
     }
+  }
+
+  public void testBulkDoesNotEagerlyAdvanceIterator() throws IOException {
+    FixedBitSet bits = new FixedBitSet(10);
+    bits.set(2);
+    bits.set(5);
+    bits.set(7);
+    BitSetIterator sharedIterator = new BitSetIterator(bits, bits.cardinality());
+    VectorScorer scorer =
+        new VectorScorer() {
+          @Override
+          public float score() {
+            return 1f;
+          }
+
+          @Override
+          public DocIdSetIterator iterator() {
+            return sharedIterator;
+          }
+        };
+
+    assertEquals(-1, scorer.iterator().docID());
+    scorer.bulk(null); // constructing a Bulk must not have any observable side effect
+    assertEquals(-1, scorer.iterator().docID());
+
+    FixedBitSet matchBits = new FixedBitSet(10);
+    matchBits.set(2);
+    matchBits.set(7);
+    scorer.bulk(new BitSetIterator(matchBits, matchBits.cardinality()));
+    assertEquals(-1, scorer.iterator().docID());
   }
 
   /** Creates a new directory and adds documents with the given vectors as kNN vector fields */

@@ -264,7 +264,7 @@ public final class SlowCodecReaderWrapper {
       }
 
       @Override
-      public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
+      public DocValuesSkipper getSkipper(FieldInfo field) {
         return reader.getDocValuesSkipper(field.name);
       }
 

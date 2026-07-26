@@ -197,7 +197,7 @@ public abstract class CodecReader extends LeafReader {
   }
 
   @Override
-  public final DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+  public final DocValuesSkipper getDocValuesSkipper(String field) {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (fi == null || fi.docValuesSkipIndexType() == DocValuesSkipIndexType.NONE) {

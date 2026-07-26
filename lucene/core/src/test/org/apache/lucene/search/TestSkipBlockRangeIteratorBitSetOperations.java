@@ -1355,6 +1355,250 @@ public class TestSkipBlockRangeIteratorBitSetOperations extends BaseDocValuesSki
     assertTrue("Expected some bits set", bitSet.cardinality() > 0);
   }
 
+  /** Tests rangeIntoBitSet on GCD-encoded sorted numeric doc values with fixed cardinality. */
+  public void testSortedNumericGcdEncodedRangeIntoBitSet() throws Exception {
+    doTestSortedNumericGcdRangeIntoBitSet(true, 3, 7, 1_000_000L);
+  }
+
+  /** Tests rangeIntoBitSet on delta-only encoded sorted numeric doc values. */
+  public void testSortedNumericDeltaOnlyRangeIntoBitSet() throws Exception {
+    doTestSortedNumericGcdRangeIntoBitSet(true, 2, 1, 1_700_000_000_000L);
+  }
+
+  /** Tests rangeIntoBitSet on GCD-encoded sparse sorted numeric doc values. */
+  public void testSortedNumericGcdEncodedSparseRangeIntoBitSet() throws Exception {
+    doTestSortedNumericGcdRangeIntoBitSet(false, 4, 100, 500_000L);
+  }
+
+  /** Tests rangeIntoBitSet with negative values to exercise saturating shift overflow paths. */
+  public void testSortedNumericGcdNegativeValuesRangeIntoBitSet() throws Exception {
+    doTestSortedNumericGcdRangeIntoBitSet(true, 3, 7, -1_000_000_000L);
+  }
+
+  /**
+   * Tests rangeIntoBitSet on GCD-encoded sorted numeric with variable cardinality. Exercises the
+   * per-doc fallback loop (rawValues != null, denseFixedCardinality == -1) rather than the
+   * fixed-cardinality scalar fast path.
+   */
+  public void testSortedNumericGcdVariableCardinalityRangeIntoBitSet() throws Exception {
+    int numDocs = 4096 * 2;
+    long gcd = 100;
+    long offset = 500_000L;
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig().setCodec(new Lucene104Codec());
+      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+        for (int docID = 0; docID < numDocs; docID++) {
+          Document doc = new Document();
+          long base = ((docID * 13L) % 100) * gcd + offset;
+          int cardinality = (docID % 3) + 1;
+          for (int i = 0; i < cardinality; i++) {
+            doc.add(SortedNumericDocValuesField.indexedField("sn", base + i * gcd));
+          }
+          w.addDocument(doc);
+        }
+        w.forceMerge(1);
+      }
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        LeafReaderContext ctx = reader.leaves().get(0);
+        long queryMin = 20 * gcd + offset;
+        long queryMax = 40 * gcd + offset;
+
+        FixedBitSet expected = new FixedBitSet(numDocs);
+        var expectedValues = ctx.reader().getSortedNumericDocValues("sn");
+        for (int docID = 0; docID < numDocs; docID++) {
+          if (expectedValues.advanceExact(docID)) {
+            for (int i = 0, count = expectedValues.docValueCount(); i < count; i++) {
+              long value = expectedValues.nextValue();
+              if (value >= queryMin) {
+                if (value <= queryMax) {
+                  expected.set(docID);
+                }
+                break;
+              }
+            }
+          }
+        }
+
+        FixedBitSet actual = new FixedBitSet(numDocs);
+        ctx.reader()
+            .getSortedNumericDocValues("sn")
+            .rangeIntoBitSet(0, numDocs, queryMin, queryMax, actual, 0);
+        assertEquals("GCD sorted numeric variable cardinality", expected, actual);
+      }
+    }
+  }
+
+  /**
+   * Tests that rangeIntoBitSet correctly handles query bounds that fall between GCD multiples,
+   * exercising the {@code transformGcdBounds} null early-exit (no raw value can match).
+   */
+  public void testSortedNumericGcdBoundsBetweenMultiplesRangeIntoBitSet() throws Exception {
+    int numDocs = 4096 * 2;
+    long gcd = 1000;
+    long offset = 500_000L;
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig().setCodec(new Lucene104Codec());
+      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+        for (int docID = 0; docID < numDocs; docID++) {
+          Document doc = new Document();
+          long base = ((docID * 13L) % 100) * gcd + offset;
+          for (int i = 0; i < 3; i++) {
+            doc.add(SortedNumericDocValuesField.indexedField("sn", base + i * gcd));
+          }
+          w.addDocument(doc);
+        }
+        w.forceMerge(1);
+      }
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        LeafReaderContext ctx = reader.leaves().get(0);
+        long queryMin = 20 * gcd + offset + 1;
+        long queryMax = 21 * gcd + offset - 1;
+
+        FixedBitSet actual = new FixedBitSet(numDocs);
+        ctx.reader()
+            .getSortedNumericDocValues("sn")
+            .rangeIntoBitSet(0, numDocs, queryMin, queryMax, actual, 0);
+        assertEquals(
+            "GCD bounds between multiples should match zero docs", 0, actual.cardinality());
+      }
+    }
+  }
+
+  private void doTestSortedNumericGcdRangeIntoBitSet(
+      boolean dense, int cardinality, long gcd, long offset) throws Exception {
+    int numDocs = 4096 * 2;
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig().setCodec(new Lucene104Codec());
+      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+        for (int docID = 0; docID < numDocs; docID++) {
+          Document doc = new Document();
+          if (dense || docID % 3 != 0) {
+            long base = ((docID * 13L) % 100) * gcd + offset;
+            for (int i = 0; i < cardinality; i++) {
+              doc.add(SortedNumericDocValuesField.indexedField("sn", base + i * gcd));
+            }
+          }
+          w.addDocument(doc);
+        }
+        w.forceMerge(1);
+      }
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        LeafReaderContext ctx = reader.leaves().get(0);
+        long queryMin = 20 * gcd + offset;
+        long queryMax = 40 * gcd + offset;
+
+        FixedBitSet expected = new FixedBitSet(numDocs);
+        var expectedValues = ctx.reader().getSortedNumericDocValues("sn");
+        for (int docID = 0; docID < numDocs; docID++) {
+          if (expectedValues.advanceExact(docID)) {
+            for (int i = 0, count = expectedValues.docValueCount(); i < count; i++) {
+              long value = expectedValues.nextValue();
+              if (value >= queryMin) {
+                if (value <= queryMax) {
+                  expected.set(docID);
+                }
+                break;
+              }
+            }
+          }
+        }
+
+        FixedBitSet actual = new FixedBitSet(numDocs);
+        ctx.reader()
+            .getSortedNumericDocValues("sn")
+            .rangeIntoBitSet(0, numDocs, queryMin, queryMax, actual, 0);
+        assertEquals(
+            "GCD sorted numeric (dense="
+                + dense
+                + ", card="
+                + cardinality
+                + ", gcd="
+                + gcd
+                + ", offset="
+                + offset
+                + ")",
+            expected,
+            actual);
+      }
+    }
+  }
+
+  public void testSortedNumericGcdRangeIntoBitSetRandomized() throws Exception {
+    Random rng = random();
+    for (int iter = 0; iter < 10; iter++) {
+      boolean dense = rng.nextBoolean();
+      boolean variableCardinality = rng.nextBoolean();
+      int cardinality = rng.nextInt(1, 6);
+      long gcd = rng.nextLong(2, 1000);
+      long offset = rng.nextLong(0, 1_000_000_000L);
+      int numDocs = rng.nextInt(4096, 4096 * 3);
+
+      try (Directory dir = newDirectory()) {
+        IndexWriterConfig iwc = new IndexWriterConfig().setCodec(new Lucene104Codec());
+        try (IndexWriter w = new IndexWriter(dir, iwc)) {
+          for (int docID = 0; docID < numDocs; docID++) {
+            Document doc = new Document();
+            if (dense || docID % 3 != 0) {
+              long base = rng.nextLong(0, 100) * gcd + offset;
+              int docCardinality = variableCardinality ? rng.nextInt(1, 6) : cardinality;
+              for (int i = 0; i < docCardinality; i++) {
+                doc.add(SortedNumericDocValuesField.indexedField("sn", base + i * gcd));
+              }
+            }
+            w.addDocument(doc);
+          }
+          w.forceMerge(1);
+        }
+
+        try (DirectoryReader reader = DirectoryReader.open(dir)) {
+          LeafReaderContext ctx = reader.leaves().get(0);
+          long queryMin = rng.nextLong(0, 50) * gcd + offset;
+          long queryMax = rng.nextLong(50, 100) * gcd + offset;
+          if (rng.nextBoolean()) {
+            queryMin += rng.nextLong(1, gcd);
+            queryMax -= rng.nextLong(1, gcd);
+          }
+
+          FixedBitSet expected = new FixedBitSet(numDocs);
+          var expectedValues = ctx.reader().getSortedNumericDocValues("sn");
+          for (int docID = 0; docID < numDocs; docID++) {
+            if (expectedValues.advanceExact(docID)) {
+              for (int i = 0, count = expectedValues.docValueCount(); i < count; i++) {
+                long value = expectedValues.nextValue();
+                if (value >= queryMin) {
+                  if (value <= queryMax) {
+                    expected.set(docID);
+                  }
+                  break;
+                }
+              }
+            }
+          }
+
+          FixedBitSet actual = new FixedBitSet(numDocs);
+          ctx.reader()
+              .getSortedNumericDocValues("sn")
+              .rangeIntoBitSet(0, numDocs, queryMin, queryMax, actual, 0);
+          assertEquals(
+              "GCD sorted numeric randomized (dense="
+                  + dense
+                  + ", card="
+                  + cardinality
+                  + ", gcd="
+                  + gcd
+                  + ", offset="
+                  + offset
+                  + ")",
+              expected,
+              actual);
+        }
+      }
+    }
+  }
+
   private static long[] rangeValues(int numDocs, LongUnaryOperator valueFunction) {
     long[] values = new long[numDocs];
     for (int i = 0; i < numDocs; i++) {

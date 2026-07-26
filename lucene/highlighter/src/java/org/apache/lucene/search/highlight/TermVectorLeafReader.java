@@ -146,7 +146,7 @@ public class TermVectorLeafReader extends LeafReader {
   }
 
   @Override
-  public DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+  public DocValuesSkipper getDocValuesSkipper(String field) {
     return null;
   }
 
