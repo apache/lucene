@@ -79,10 +79,18 @@ public final class CharacterUtils {
   public static void simpleCaseFold(final char[] buffer, final int offset, final int limit) {
     assert buffer.length >= limit;
     assert 0 <= offset && offset <= buffer.length;
-    for (int i = offset; i < limit; ) {
-      i +=
-          Character.toChars(
-              UnicodeUtil.foldCase(Character.codePointAt(buffer, i, limit)), buffer, i);
+    for (int i = offset; i < limit; i++) {
+      char c = buffer[i];
+      if (c > 127) {
+        while (i < limit) {
+          i +=
+              Character.toChars(
+                  UnicodeUtil.foldCase(Character.codePointAt(buffer, i, limit)), buffer, i);
+        }
+        return;
+      } else if (c >= 'A' && c <= 'Z') {
+        buffer[i] = (char) (c | 32);
+      }
     }
   }
 

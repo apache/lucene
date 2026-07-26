@@ -314,7 +314,7 @@ configure(project(":lucene:core")) {
   tasks.register("generateFoldTable", {
     def icuConfig = configurations.icu_current
     def groovyConfig = configurations.groovy
-    def outputFile = file("src/java/org/apache/lucene/util/FoldTable.java")
+    def outputFile = file("src/java/org/apache/lucene/util/SimpleCaseFolding.java")
 
     description = "Regenerate ${outputFile} using ICU"
 

@@ -689,9 +689,6 @@ public final class UnicodeUtil {
 
   /** Returns the Unicode simple case folding of {@code codepoint}. */
   public static int foldCase(int codepoint) {
-    if (codepoint < 0x10000) {
-      return FoldTable.TABLE[codepoint];
-    }
-    return Character.toLowerCase(codepoint);
+    return SimpleCaseFolding.fold(codepoint);
   }
 }
