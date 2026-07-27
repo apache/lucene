@@ -280,6 +280,13 @@ public class TestJavascriptCompiler extends CompilerTestCase {
   }
 
   @Test
+  public void testRecursionDepth1a() throws Exception {
+    int depth = JavascriptCompiler.DEFAULT_MAX_NESTING_DEPTH;
+    String src = "(".repeat(depth) + "1" + ")".repeat(depth);
+    assertEquals(JavascriptCompiler.DEFAULT_MAX_NESTING_DEPTH, assertRecursionLimit(src));
+  }
+
+  @Test
   public void testRecursionDepth2() throws Exception {
     String src = "-".repeat(20000) + "1";
     assertEquals(JavascriptCompiler.DEFAULT_MAX_NESTING_DEPTH, assertRecursionLimit(src));
@@ -298,7 +305,7 @@ public class TestJavascriptCompiler extends CompilerTestCase {
   }
 
   @Test
-  public void testRecursionDepth4() throws Exception {
+  public void testRecursionDepth3a() throws Exception {
     String src =
         IntStream.range(0, 20000).mapToObj(Integer::toString).collect(Collectors.joining("+"));
     assertEquals(
