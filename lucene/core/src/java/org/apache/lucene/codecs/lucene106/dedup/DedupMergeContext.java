@@ -99,20 +99,21 @@ final class DedupMergeContext implements Accountable {
     int groupOrd = 0;
     for (Map.Entry<GroupKey, List<FieldData>> entry : fieldGroups.entrySet()) {
       GroupKey groupKey = entry.getKey();
-      long vectorDataOffset = alignBytes(vectorData, groupKey.encoding());
+      int dimension = groupKey.dimension();
+      VectorEncoding encoding = groupKey.encoding();
+
+      long vectorDataOffset = alignBytes(vectorData, encoding);
 
       DedupMergeGroup<?, ?> mergeGroup =
-          switch (groupKey.encoding()) {
+          switch (encoding) {
             case BYTE -> new ByteGroup();
-            case FLOAT32 -> new FloatGroup(groupKey.dimension());
+            case FLOAT32 -> new FloatGroup(dimension);
           };
 
       for (FieldData fieldData : entry.getValue()) {
         mergeGroup.processField(fieldData, vectorData);
       }
 
-      int dimension = groupKey.dimension();
-      VectorEncoding encoding = groupKey.encoding();
       int groupSize = mergeGroup.size();
       long vectorDataSize = vectorData.getFilePointer() - vectorDataOffset;
 
@@ -157,7 +158,7 @@ final class DedupMergeContext implements Accountable {
         int groupSize = size();
 
         // add vector to group
-        ObjectCursor<T> cursor = super.addUnique(vector);
+        ObjectCursor<T> cursor = addUnique(vector);
         if (cursor.index == groupSize) { // new addition
           // already on-heap, write immediately to avoid another IO read
           byte[] bytes = serialize(groupSize);

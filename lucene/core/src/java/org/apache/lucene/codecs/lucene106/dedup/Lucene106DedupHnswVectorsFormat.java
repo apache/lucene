@@ -182,6 +182,8 @@ public final class Lucene106DedupHnswVectorsFormat extends KnnVectorsFormat {
 
   @Override
   public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
+    // TODO: Can we have an HNSW writer that uses de-duplication information to speed up graph
+    //  construction?
     return new Lucene99HnswVectorsWriter(
         state,
         maxConn,

@@ -74,24 +74,21 @@ final class DedupFlatVectorsWriter extends FlatVectorsWriter {
             state.segmentInfo.name, state.segmentSuffix, VECTOR_DATA_EXTENSION);
 
     boolean success = false;
-    IndexOutput m = null, v = null;
     try {
-      m = state.directory.createOutput(metaFileName, state.context);
-      v = state.directory.createOutput(vectorDataFileName, state.context);
+      this.meta = state.directory.createOutput(metaFileName, state.context);
+      this.vectorData = state.directory.createOutput(vectorDataFileName, state.context);
       CodecUtil.writeIndexHeader(
-          m, META_CODEC_NAME, VERSION_CURRENT, state.segmentInfo.getId(), state.segmentSuffix);
+          meta, META_CODEC_NAME, VERSION_CURRENT, state.segmentInfo.getId(), state.segmentSuffix);
       CodecUtil.writeIndexHeader(
-          v,
+          vectorData,
           VECTOR_DATA_CODEC_NAME,
           VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
-      this.meta = m;
-      this.vectorData = v;
       success = true;
     } finally {
       if (success == false) {
-        IOUtils.closeWhileHandlingException(m, v);
+        IOUtils.closeWhileHandlingException(this);
       }
     }
   }
@@ -127,13 +124,8 @@ final class DedupFlatVectorsWriter extends FlatVectorsWriter {
       finishMerge();
     }
 
-    if (meta != null) {
-      CodecUtil.writeFooter(meta);
-    }
-
-    if (vectorData != null) {
-      CodecUtil.writeFooter(vectorData);
-    }
+    CodecUtil.writeFooter(meta);
+    CodecUtil.writeFooter(vectorData);
   }
 
   @Override

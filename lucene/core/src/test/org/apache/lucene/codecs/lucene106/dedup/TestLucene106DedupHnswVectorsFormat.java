@@ -16,15 +16,38 @@
  */
 package org.apache.lucene.codecs.lucene106.dedup;
 
+import static org.hamcrest.Matchers.greaterThan;
+
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.simpletext.SimpleTextKnnVectorsReader;
 import org.apache.lucene.index.CodecReader;
+import org.apache.lucene.index.DocValuesSkipIndexType;
+import org.apache.lucene.index.DocValuesType;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.SegmentInfo;
+import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.InfoStream;
+import org.apache.lucene.util.StringHelper;
+import org.apache.lucene.util.Version;
 import org.junit.Ignore;
 
 /**
@@ -76,13 +99,84 @@ public class TestLucene106DedupHnswVectorsFormat extends BaseKnnVectorsFormatTes
     }
   }
 
-  /**
-   * This test indexes random vectors of small dimensions with high duplicates, checking that RAM
-   * usage is above a threshold. The RAM usage assumption breaks with the de-duplicating format.
-   */
+  /** Near copy of the original test, this one checks for size of <b>unique</b> vector count. */
   @Override
-  @Ignore
-  public void testWriterRamEstimate() {}
+  @SuppressWarnings("unchecked")
+  public void testWriterRamEstimate() throws IOException {
+    final FieldInfos fieldInfos = new FieldInfos(new FieldInfo[0]);
+    final Directory dir = newDirectory();
+    Codec codec = Codec.getDefault();
+    final SegmentInfo si =
+        new SegmentInfo(
+            dir,
+            Version.LATEST,
+            Version.LATEST,
+            "0",
+            10000,
+            false,
+            false,
+            codec,
+            Collections.emptyMap(),
+            StringHelper.randomId(),
+            new HashMap<>(),
+            null);
+    final SegmentWriteState state =
+        new SegmentWriteState(
+            InfoStream.getDefault(), dir, si, fieldInfos, null, newIOContext(random()));
+    final KnnVectorsFormat format = codec.knnVectorsFormat();
+    try (KnnVectorsWriter writer = format.fieldsWriter(state)) {
+      final long ramBytesUsed = writer.ramBytesUsed();
+      int dim = random().nextInt(64) + 1;
+      if (dim % 2 == 1) {
+        ++dim;
+      }
+      int numDocs = atLeast(100);
+      Set<FloatVector> unique = new HashSet<>();
+      KnnFieldVectorsWriter<float[]> fieldWriter =
+          (KnnFieldVectorsWriter<float[]>)
+              writer.addField(
+                  new FieldInfo(
+                      "fieldA",
+                      0,
+                      false,
+                      false,
+                      false,
+                      IndexOptions.NONE,
+                      DocValuesType.NONE,
+                      DocValuesSkipIndexType.NONE,
+                      -1,
+                      Map.of(),
+                      0,
+                      0,
+                      0,
+                      dim,
+                      VectorEncoding.FLOAT32,
+                      VectorSimilarityFunction.DOT_PRODUCT,
+                      false,
+                      false));
+      for (int i = 0; i < numDocs; i++) {
+        float[] vector = randomVector(dim);
+        unique.add(new FloatVector(vector));
+        fieldWriter.addValue(i, vector);
+      }
+      final long ramBytesUsed2 = writer.ramBytesUsed();
+      assertThat(ramBytesUsed2, greaterThan(ramBytesUsed));
+      assertThat(ramBytesUsed2, greaterThan((long) dim * unique.size() * Float.BYTES));
+    }
+    dir.close();
+  }
+
+  private record FloatVector(float[] vector) {
+    @Override
+    public boolean equals(Object obj) {
+      return obj instanceof FloatVector(float[] other) && Arrays.equals(vector, other);
+    }
+
+    @Override
+    public int hashCode() {
+      return Arrays.hashCode(vector);
+    }
+  }
 
   /** The de-duplicating vector format does not attribute vectors to per-field writers. */
   @Override

@@ -47,11 +47,11 @@ final class DedupFlatVectorsScorer implements FlatVectorsScorer {
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues)
       throws IOException {
     if (vectorValues instanceof DedupVectorValues dedupValues) {
-      RandomVectorScorerSupplier delegate =
+      RandomVectorScorerSupplier fieldView =
           SCORER.getRandomVectorScorerSupplier(similarityFunction, vectorValues);
       RandomVectorScorerSupplier groupView =
           SCORER.getRandomVectorScorerSupplier(similarityFunction, dedupValues.getGroupView());
-      return new RandomVectorScorerSupplierImpl(delegate, groupView, dedupValues.getOrdToVecOrd());
+      return new RandomVectorScorerSupplierImpl(fieldView, groupView, dedupValues.getOrdToVecOrd());
     }
     return SCORER.getRandomVectorScorerSupplier(similarityFunction, vectorValues);
   }
@@ -61,11 +61,11 @@ final class DedupFlatVectorsScorer implements FlatVectorsScorer {
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, float[] target)
       throws IOException {
     if (vectorValues instanceof DedupVectorValues dedupValues) {
-      RandomVectorScorer delegate =
+      RandomVectorScorer fieldView =
           SCORER.getRandomVectorScorer(similarityFunction, vectorValues, target);
       RandomVectorScorer groupView =
           SCORER.getRandomVectorScorer(similarityFunction, dedupValues.getGroupView(), target);
-      return new RandomVectorScorerImpl(delegate, groupView, dedupValues.getOrdToVecOrd());
+      return new RandomVectorScorerImpl(fieldView, groupView, dedupValues.getOrdToVecOrd());
     }
     return SCORER.getRandomVectorScorer(similarityFunction, vectorValues, target);
   }
@@ -75,17 +75,17 @@ final class DedupFlatVectorsScorer implements FlatVectorsScorer {
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, byte[] target)
       throws IOException {
     if (vectorValues instanceof DedupVectorValues dedupValues) {
-      RandomVectorScorer delegate =
+      RandomVectorScorer fieldView =
           SCORER.getRandomVectorScorer(similarityFunction, vectorValues, target);
       RandomVectorScorer groupView =
           SCORER.getRandomVectorScorer(similarityFunction, dedupValues.getGroupView(), target);
-      return new RandomVectorScorerImpl(delegate, groupView, dedupValues.getOrdToVecOrd());
+      return new RandomVectorScorerImpl(fieldView, groupView, dedupValues.getOrdToVecOrd());
     }
     return SCORER.getRandomVectorScorer(similarityFunction, vectorValues, target);
   }
 
   private record RandomVectorScorerSupplierImpl(
-      RandomVectorScorerSupplier delegate,
+      RandomVectorScorerSupplier fieldView,
       RandomVectorScorerSupplier groupView,
       OrdToVecOrd ordToVecOrd)
       implements RandomVectorScorerSupplier {
@@ -93,24 +93,24 @@ final class DedupFlatVectorsScorer implements FlatVectorsScorer {
     @Override
     public UpdateableRandomVectorScorer scorer() throws IOException {
       return new UpdateableRandomVectorScorerImpl(
-          delegate.scorer(), groupView.scorer(), ordToVecOrd);
+          fieldView.scorer(), groupView.scorer(), ordToVecOrd);
     }
 
     @Override
     public RandomVectorScorerSupplier copy() throws IOException {
-      return new RandomVectorScorerSupplierImpl(delegate.copy(), groupView.copy(), ordToVecOrd);
+      return new RandomVectorScorerSupplierImpl(fieldView.copy(), groupView.copy(), ordToVecOrd);
     }
   }
 
   private static class RandomVectorScorerImpl implements RandomVectorScorer {
-    private final RandomVectorScorer delegate;
+    private final RandomVectorScorer fieldView;
     private final RandomVectorScorer groupView;
     private final OrdToVecOrd ordToVecOrd;
     private int[] scratch;
 
     RandomVectorScorerImpl(
-        RandomVectorScorer delegate, RandomVectorScorer groupView, OrdToVecOrd ordToVecOrd) {
-      this.delegate = delegate;
+        RandomVectorScorer fieldView, RandomVectorScorer groupView, OrdToVecOrd ordToVecOrd) {
+      this.fieldView = fieldView;
       this.groupView = groupView;
       this.ordToVecOrd = ordToVecOrd;
       this.scratch = new int[SCRATCH_SIZE];
@@ -118,12 +118,12 @@ final class DedupFlatVectorsScorer implements FlatVectorsScorer {
 
     @Override
     public int ordToDoc(int ord) {
-      return delegate.ordToDoc(ord);
+      return fieldView.ordToDoc(ord);
     }
 
     @Override
     public Bits getAcceptOrds(Bits acceptDocs) {
-      return delegate.getAcceptOrds(acceptDocs);
+      return fieldView.getAcceptOrds(acceptDocs);
     }
 
     @Override
@@ -144,7 +144,7 @@ final class DedupFlatVectorsScorer implements FlatVectorsScorer {
 
     @Override
     public int maxOrd() {
-      return delegate.maxOrd();
+      return fieldView.maxOrd();
     }
   }
 
@@ -154,10 +154,10 @@ final class DedupFlatVectorsScorer implements FlatVectorsScorer {
     private final OrdToVecOrd ordToVecOrd;
 
     UpdateableRandomVectorScorerImpl(
-        UpdateableRandomVectorScorer delegate,
+        UpdateableRandomVectorScorer fieldView,
         UpdateableRandomVectorScorer groupView,
         OrdToVecOrd ordToVecOrd) {
-      super(delegate, groupView, ordToVecOrd);
+      super(fieldView, groupView, ordToVecOrd);
       this.groupView = groupView;
       this.ordToVecOrd = ordToVecOrd;
     }

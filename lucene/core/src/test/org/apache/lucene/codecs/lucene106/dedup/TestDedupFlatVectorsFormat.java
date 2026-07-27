@@ -17,13 +17,17 @@
 package org.apache.lucene.codecs.lucene106.dedup;
 
 import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
+import static org.hamcrest.Matchers.instanceOf;
 
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.lucene106.dedup.DedupUtil.DedupVectorValues;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -95,7 +99,31 @@ public class TestDedupFlatVectorsFormat extends LuceneTestCase {
 
   /** Distinct vectors are all kept, i.e. nothing is collapsed by mistake. */
   public void testDistinctVectorsAllStored() throws Exception {
-    float[][] docVectors = {{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}};
+    // Vectors that are close to each other in bit representations.
+    float[][] distinctDocVectors = {
+      {+0f}, {-0f}, {Math.nextUp(0f)}, {Math.nextDown(0f)}, {1f}, {Math.nextUp(1f)}
+    };
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, config())) {
+      for (float[] vector : distinctDocVectors) {
+        Document doc = new Document();
+        doc.add(new KnnFloatVectorField("f", vector, EUCLIDEAN));
+        w.addDocument(doc);
+      }
+      w.forceMerge(1);
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        FloatVectorValues values = getOnlyLeafReader(reader).getFloatVectorValues("f");
+        assertEquals(distinctDocVectors.length, values.size());
+        assertEquals(distinctDocVectors.length, groupSize(values));
+      }
+    }
+  }
+
+  /** Check off-heap size of de-duplicated vectors. */
+  public void testOffHeapSize() throws Exception {
+    float[] a = {1, 2, 3, 4};
+    float[] b = {5, 6, 7, 8};
+    float[][] docVectors = {a, b, a, b, a, b}; // 3 copies each of 2 vectors
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, config())) {
       for (float[] vector : docVectors) {
@@ -105,9 +133,23 @@ public class TestDedupFlatVectorsFormat extends LuceneTestCase {
       }
       w.forceMerge(1);
       try (DirectoryReader reader = DirectoryReader.open(w)) {
-        FloatVectorValues values = getOnlyLeafReader(reader).getFloatVectorValues("f");
-        assertEquals(3, values.size());
-        assertEquals(3, groupSize(values));
+        LeafReader leafReader = getOnlyLeafReader(reader);
+        assertThat(leafReader, instanceOf(CodecReader.class));
+
+        FieldInfo fieldInfo = leafReader.getFieldInfos().fieldInfo("f");
+        KnnVectorsReader knnVectorsReader = ((CodecReader) leafReader).getVectorReader();
+        knnVectorsReader = knnVectorsReader.unwrapReaderForField("f");
+
+        long expectedOffHeapSize =
+            (docVectors.length * Integer.BYTES) // ordToVec mapping
+                + (a.length + b.length) * Float.BYTES; // raw vector size
+
+        assertEquals(
+            expectedOffHeapSize,
+            knnVectorsReader
+                .getOffHeapByteSize(fieldInfo)
+                .get("vdd") // vector data extension
+                .longValue());
       }
     }
   }
@@ -136,20 +178,21 @@ public class TestDedupFlatVectorsFormat extends LuceneTestCase {
 
   /** Fields differing in dimension use separate groups, even for otherwise similar vectors. */
   public void testDifferentDimensionsUseSeparateGroups() throws Exception {
+    float[] vector1 = {1, 1};
+    float[] vector2 = {1, 1, 0};
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, config())) {
       Document doc = new Document();
-      doc.add(new KnnFloatVectorField("f2d", new float[] {1, 1}, EUCLIDEAN));
-      doc.add(new KnnFloatVectorField("f3d", new float[] {1, 1, 1}, EUCLIDEAN));
+      doc.add(new KnnFloatVectorField("f2d", vector1, EUCLIDEAN));
+      doc.add(new KnnFloatVectorField("f3d", vector2, EUCLIDEAN));
       w.addDocument(doc);
       w.forceMerge(1);
       try (DirectoryReader reader = DirectoryReader.open(w)) {
         LeafReader leaf = getOnlyLeafReader(reader);
         assertEquals(1, groupSize(leaf.getFloatVectorValues("f2d")));
         assertEquals(1, groupSize(leaf.getFloatVectorValues("f3d")));
-        assertArrayEquals(new float[] {1, 1}, leaf.getFloatVectorValues("f2d").vectorValue(0), 0f);
-        assertArrayEquals(
-            new float[] {1, 1, 1}, leaf.getFloatVectorValues("f3d").vectorValue(0), 0f);
+        assertArrayEquals(vector1, leaf.getFloatVectorValues("f2d").vectorValue(0), 0f);
+        assertArrayEquals(vector2, leaf.getFloatVectorValues("f3d").vectorValue(0), 0f);
       }
     }
   }

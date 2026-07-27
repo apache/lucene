@@ -59,7 +59,9 @@ final class DedupUtil {
 
   private static final int ORD_TO_VEC_ALIGN_BYTES = 4;
 
-  // TODO: Evaluate using fewer bits.
+  // TODO: This is the number of bits used to write each group ordinal in the index-backed per-field
+  //  OrdToVecOrd mapping. Evaluate using fewer bits to reduce index size, at the expense of
+  //  costlier lookups.
   private static final int ORD_TO_VEC_BITS_PER_VALUE = 32;
 
   static final int ORD_UNKNOWN = -1;
@@ -77,10 +79,10 @@ final class DedupUtil {
    * Vector values that share a single copy of each distinct vector across the documents and fields
    * that reference it.
    *
-   * <p>Every instance is backed by two views: the {@code delegate} maps ordinals to docs and drives
-   * iteration (one entry per document), while the {@code groupView} holds the de-duplicated vectors
-   * (one entry per distinct vector). {@code ordToVecOrd} translates a document ordinal into its
-   * group ordinal.
+   * <p>Every instance is backed by two views: the {@code fieldView} maps ordinals to docs and
+   * drives iteration (one entry per document), while the {@code groupView} holds the de-duplicated
+   * vectors (one entry per distinct vector). {@code ordToVecOrd} translates a document ordinal into
+   * its group ordinal.
    */
   sealed interface DedupVectorValues {
     /** The dense view over distinct vectors, indexed by group ordinal. */
@@ -305,7 +307,7 @@ final class DedupUtil {
       long ordToVecSize)
       throws IOException {
 
-    final OffHeapByteVectorValues delegate =
+    final OffHeapByteVectorValues fieldView =
         OffHeapByteVectorValues.load(
             function, vectorsScorer, configuration, BYTE, dimension, 0, 0, vectorData);
 
@@ -314,21 +316,21 @@ final class DedupUtil {
             dimension,
             groupSize,
             vectorData.slice("group-slice", vectorDataOffset, vectorDataSize),
-            delegate.getVectorByteLength(),
+            fieldView.getVectorByteLength(),
             vectorsScorer,
             function);
 
     final OrdToVecOrd ordToVecOrd =
         new OrdToVecOrdOffHeap(vectorData, ordToVecOffset, ordToVecSize);
 
-    return new ByteImpl(vectorsScorer, function, delegate, groupView, ordToVecOrd);
+    return new ByteImpl(vectorsScorer, function, fieldView, groupView, ordToVecOrd);
   }
 
   /** {@link DedupVectorValues} over byte vectors. */
   private static final class ByteImpl extends ByteVectorValues implements DedupVectorValues {
     private final FlatVectorsScorer vectorsScorer;
     private final VectorSimilarityFunction function;
-    private final ByteVectorValues delegate;
+    private final ByteVectorValues fieldView;
     private final ByteVectorValues groupView;
     private final OrdToVecOrd ordToVecOrd;
     private int[] scratch;
@@ -336,12 +338,12 @@ final class DedupUtil {
     ByteImpl(
         FlatVectorsScorer vectorsScorer,
         VectorSimilarityFunction function,
-        ByteVectorValues delegate,
+        ByteVectorValues fieldView,
         ByteVectorValues groupView,
         OrdToVecOrd ordToVecOrd) {
       this.vectorsScorer = vectorsScorer;
       this.function = function;
-      this.delegate = delegate;
+      this.fieldView = fieldView;
       this.groupView = groupView;
       this.ordToVecOrd = ordToVecOrd;
       this.scratch = new int[SCRATCH_SIZE];
@@ -359,7 +361,7 @@ final class DedupUtil {
 
     @Override
     public int ordToDoc(int ord) {
-      return delegate.ordToDoc(ord);
+      return fieldView.ordToDoc(ord);
     }
 
     @Override
@@ -380,23 +382,23 @@ final class DedupUtil {
 
     @Override
     public int dimension() {
-      return delegate.dimension();
+      return fieldView.dimension();
     }
 
     @Override
     public int size() {
-      return delegate.size();
+      return fieldView.size();
     }
 
     @Override
     public ByteImpl copy() throws IOException {
       return new ByteImpl(
-          vectorsScorer, function, delegate.copy(), groupView.copy(), ordToVecOrd.copy());
+          vectorsScorer, function, fieldView.copy(), groupView.copy(), ordToVecOrd.copy());
     }
 
     @Override
     public DocIndexIterator iterator() {
-      return delegate.iterator();
+      return fieldView.iterator();
     }
 
     @Override
@@ -439,7 +441,7 @@ final class DedupUtil {
       long ordToVecSize)
       throws IOException {
 
-    final OffHeapFloatVectorValues delegate =
+    final OffHeapFloatVectorValues fieldView =
         OffHeapFloatVectorValues.load(
             function, vectorsScorer, configuration, FLOAT32, dimension, 0, 0, vectorData);
 
@@ -448,21 +450,21 @@ final class DedupUtil {
             dimension,
             groupSize,
             vectorData.slice("group-slice", vectorDataOffset, vectorDataSize),
-            delegate.getVectorByteLength(),
+            fieldView.getVectorByteLength(),
             vectorsScorer,
             function);
 
     final OrdToVecOrd ordToVecOrd =
         new OrdToVecOrdOffHeap(vectorData, ordToVecOffset, ordToVecSize);
 
-    return new FloatImpl(vectorsScorer, function, delegate, groupView, ordToVecOrd);
+    return new FloatImpl(vectorsScorer, function, fieldView, groupView, ordToVecOrd);
   }
 
   /** {@link DedupVectorValues} over float vectors. */
   private static final class FloatImpl extends FloatVectorValues implements DedupVectorValues {
     private final FlatVectorsScorer vectorsScorer;
     private final VectorSimilarityFunction function;
-    private final FloatVectorValues delegate;
+    private final FloatVectorValues fieldView;
     private final FloatVectorValues groupView;
     private final OrdToVecOrd ordToVecOrd;
     private int[] scratch;
@@ -470,12 +472,12 @@ final class DedupUtil {
     FloatImpl(
         FlatVectorsScorer vectorsScorer,
         VectorSimilarityFunction function,
-        FloatVectorValues delegate,
+        FloatVectorValues fieldView,
         FloatVectorValues groupView,
         OrdToVecOrd ordToVecOrd) {
       this.vectorsScorer = vectorsScorer;
       this.function = function;
-      this.delegate = delegate;
+      this.fieldView = fieldView;
       this.groupView = groupView;
       this.ordToVecOrd = ordToVecOrd;
       this.scratch = new int[SCRATCH_SIZE];
@@ -493,7 +495,7 @@ final class DedupUtil {
 
     @Override
     public int ordToDoc(int ord) {
-      return delegate.ordToDoc(ord);
+      return fieldView.ordToDoc(ord);
     }
 
     @Override
@@ -514,23 +516,23 @@ final class DedupUtil {
 
     @Override
     public int dimension() {
-      return delegate.dimension();
+      return fieldView.dimension();
     }
 
     @Override
     public int size() {
-      return delegate.size();
+      return fieldView.size();
     }
 
     @Override
     public FloatImpl copy() throws IOException {
       return new FloatImpl(
-          vectorsScorer, function, delegate.copy(), groupView.copy(), ordToVecOrd.copy());
+          vectorsScorer, function, fieldView.copy(), groupView.copy(), ordToVecOrd.copy());
     }
 
     @Override
     public DocIndexIterator iterator() {
-      return delegate.iterator();
+      return fieldView.iterator();
     }
 
     @Override

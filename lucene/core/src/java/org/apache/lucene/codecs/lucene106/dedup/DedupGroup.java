@@ -38,9 +38,12 @@ abstract sealed class DedupGroup<T> implements Accountable
         DedupFlushContext.FloatGroup,
         DedupMergeContext.DedupMergeGroup {
 
-  private static final int ORD_NOT_FOUND = -1;
-
+  /**
+   * Map for vector hash -> group ord. Only a hint and not the ground truth due to possibility of
+   * hash collisions, where a full equality check must be performed.
+   */
   private final LongIntHashMap hashToOrdHint;
+
   private final List<T> vectors;
 
   private final ObjectCursor<T> current; // reuse from addUnique
@@ -71,17 +74,18 @@ abstract sealed class DedupGroup<T> implements Accountable
     final int groupOrd;
     final T ownedVector;
     for (long hash = hash(vectorValue); ; hash++) { // linear probing
-      int ordHint = hashToOrdHint.getOrDefault(hash, ORD_NOT_FOUND);
-      if (ordHint == ORD_NOT_FOUND) {
+      int ordIndex = hashToOrdHint.indexOf(hash);
+      if (ordIndex < 0) { // not found
         groupOrd = vectors.size();
         ownedVector = copy(vectorValue); // only for unique vectors
         hashToOrdHint.put(hash, groupOrd);
         vectors.add(ownedVector);
         break;
       } else {
-        T other = vectors.get(ordHint);
+        int ord = hashToOrdHint.indexGet(ordIndex);
+        T other = vectors.get(ord);
         if (equals(vectorValue, other)) {
-          groupOrd = ordHint;
+          groupOrd = ord;
           ownedVector = other;
           break;
         }
