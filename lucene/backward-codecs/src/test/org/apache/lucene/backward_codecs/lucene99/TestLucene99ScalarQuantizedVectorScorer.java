@@ -26,6 +26,7 @@ import java.nio.ByteOrder;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
+import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorScorer;
@@ -48,6 +49,8 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
+import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
+import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 import org.apache.lucene.util.quantization.LegacyQuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
@@ -166,6 +169,373 @@ public class TestLucene99ScalarQuantizedVectorScorer extends LuceneTestCase {
     vectorScoringTest(7, false);
   }
 
+  public void testBulkScoringInt7() throws Exception {
+    // Use dimension 64 to ensure SIMD loop is exercised on all platforms
+    bulkScoringTest(7, false, 64);
+  }
+
+  public void testBulkScoringLargeDimensionsUint8() throws Exception {
+    bulkScoringTest(7, false, 128);
+  }
+
+  public void testBulkScoringOddDimensionsUint8() throws Exception {
+    bulkScoringTest(7, false, 97);
+  }
+
+  public void testBulkScoringTailPathsUint8() throws Exception {
+    bulkScoringTailTest(7, false, 128);
+  }
+
+  public void testBulkScoringSimdBoundaryUint8() throws Exception {
+    // Test dimensions at 128-bit SIMD width boundary (15, 16, 17)
+    bulkScoringTest(7, false, 15);
+    bulkScoringTest(7, false, 16);
+    bulkScoringTest(7, false, 17);
+  }
+
+  public void testBulkScoringUpdateableUint8() throws Exception {
+    bulkScoringUpdateableTest(7, false, 128);
+  }
+
+  /**
+   * Verifies that int4 vectors fall back to single-vector scoring via super.bulkScore() instead of
+   * hitting the uint8 bulk path. This guards against accidental removal of the !isUint8() guard in
+   * bulkScoreBody.
+   */
+  public void testBulkScoringInt4Fallback() throws Exception {
+    bulkScoringInt4FallbackTest(4, true, 128);
+    bulkScoringInt4FallbackTest(4, false, 128);
+  }
+
+  public void testBulkScoringShuffledOrdinalsUint8() throws Exception {
+    bulkScoringShuffledTest(7, false, 128);
+  }
+
+  private void bulkScoringInt4FallbackTest(int bits, boolean compress, int dimensionOverride)
+      throws IOException {
+    float[][] storedVectors = new float[10][];
+    int numVectors = 10;
+    int vectorDimensions = dimensionOverride;
+    if (bits == 4 && vectorDimensions % 2 == 1) {
+      vectorDimensions++;
+    }
+    for (int i = 0; i < numVectors; i++) {
+      float[] vector = new float[vectorDimensions];
+      for (int j = 0; j < vectorDimensions; j++) {
+        vector[j] = i + j;
+      }
+      VectorUtil.l2normalize(vector);
+      storedVectors[i] = vector;
+    }
+
+    for (VectorSimilarityFunction similarityFunction :
+        new VectorSimilarityFunction[] {
+          VectorSimilarityFunction.DOT_PRODUCT,
+          VectorSimilarityFunction.COSINE,
+          VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT,
+          VectorSimilarityFunction.EUCLIDEAN
+        }) {
+      try (Directory dir = newDirectory()) {
+        indexVectors(dir, storedVectors, similarityFunction, bits, compress);
+        try (DirectoryReader reader = DirectoryReader.open(dir)) {
+          LeafReader leafReader = reader.leaves().get(0).reader();
+          float[] vector = new float[vectorDimensions];
+          for (int i = 0; i < vectorDimensions; i++) {
+            vector[i] = i + 1;
+          }
+          VectorUtil.l2normalize(vector);
+          RandomVectorScorer randomScorer =
+              getBulkRandomVectorScorer(similarityFunction, leafReader, vector);
+
+          // Score individually
+          float[] singleScores = new float[numVectors];
+          for (int i = 0; i < numVectors; i++) {
+            singleScores[i] = randomScorer.score(i);
+          }
+
+          // Score in bulk — should fall back to single-vector loop for int4
+          float[] bulkScores = new float[numVectors];
+          int[] nodes = new int[numVectors];
+          for (int i = 0; i < numVectors; i++) {
+            nodes[i] = i;
+          }
+          randomScorer.bulkScore(nodes, bulkScores, numVectors);
+
+          // Verify fallback produces identical results to single-vector scoring
+          for (int i = 0; i < numVectors; i++) {
+            assertEquals(
+                similarityFunction.toString() + " ord=" + i, singleScores[i], bulkScores[i], 0f);
+          }
+        }
+      }
+    }
+  }
+
+  private void bulkScoringShuffledTest(int bits, boolean compress, int dimensionOverride)
+      throws IOException {
+    float[][] storedVectors = new float[10][];
+    int numVectors = 10;
+    int vectorDimensions = dimensionOverride;
+    if (bits == 4 && vectorDimensions % 2 == 1) {
+      vectorDimensions++;
+    }
+    for (int i = 0; i < numVectors; i++) {
+      float[] vector = new float[vectorDimensions];
+      for (int j = 0; j < vectorDimensions; j++) {
+        vector[j] = i + j;
+      }
+      VectorUtil.l2normalize(vector);
+      storedVectors[i] = vector;
+    }
+
+    for (VectorSimilarityFunction similarityFunction :
+        new VectorSimilarityFunction[] {
+          VectorSimilarityFunction.DOT_PRODUCT,
+          VectorSimilarityFunction.COSINE,
+          VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT,
+          VectorSimilarityFunction.EUCLIDEAN
+        }) {
+      try (Directory dir = newDirectory()) {
+        indexVectors(dir, storedVectors, similarityFunction, bits, compress);
+        try (DirectoryReader reader = DirectoryReader.open(dir)) {
+          LeafReader leafReader = reader.leaves().get(0).reader();
+          float[] vector = new float[vectorDimensions];
+          for (int i = 0; i < vectorDimensions; i++) {
+            vector[i] = i + 1;
+          }
+          VectorUtil.l2normalize(vector);
+          RandomVectorScorer randomScorer =
+              getBulkRandomVectorScorer(similarityFunction, leafReader, vector);
+
+          // Score individually
+          float[] singleScores = new float[numVectors];
+          for (int i = 0; i < numVectors; i++) {
+            singleScores[i] = randomScorer.score(i);
+          }
+
+          // Score in bulk with shuffled non-contiguous ordinals
+          float[] bulkScores = new float[numVectors];
+          int[] nodes = new int[numVectors];
+          for (int i = 0; i < numVectors; i++) {
+            nodes[i] = i;
+          }
+          // Shuffle ordinals to test non-contiguous access
+          for (int i = numVectors - 1; i > 0; i--) {
+            int j = random().nextInt(i + 1);
+            int tmp = nodes[i];
+            nodes[i] = nodes[j];
+            nodes[j] = tmp;
+          }
+          randomScorer.bulkScore(nodes, bulkScores, numVectors);
+
+          // Verify bulk matches single-vector exactly
+          for (int i = 0; i < numVectors; i++) {
+            assertEquals(
+                similarityFunction.toString() + " ord=" + nodes[i],
+                singleScores[nodes[i]],
+                bulkScores[i],
+                0f);
+          }
+        }
+      }
+    }
+  }
+
+  private void bulkScoringTest(int bits, boolean compress, int dimensionOverride)
+      throws IOException {
+    float[][] storedVectors = new float[10][];
+    int numVectors = 10;
+    int vectorDimensions = dimensionOverride > 0 ? dimensionOverride : random().nextInt(10) + 4;
+    if (bits == 4 && vectorDimensions % 2 == 1) {
+      vectorDimensions++;
+    }
+    for (int i = 0; i < numVectors; i++) {
+      float[] vector = new float[vectorDimensions];
+      for (int j = 0; j < vectorDimensions; j++) {
+        vector[j] = i + j;
+      }
+      VectorUtil.l2normalize(vector);
+      storedVectors[i] = vector;
+    }
+
+    for (VectorSimilarityFunction similarityFunction :
+        new VectorSimilarityFunction[] {
+          VectorSimilarityFunction.DOT_PRODUCT,
+          VectorSimilarityFunction.COSINE,
+          VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT,
+          VectorSimilarityFunction.EUCLIDEAN
+        }) {
+      try (Directory dir = newDirectory()) {
+        indexVectors(dir, storedVectors, similarityFunction, bits, compress);
+        try (DirectoryReader reader = DirectoryReader.open(dir)) {
+          LeafReader leafReader = reader.leaves().get(0).reader();
+          float[] vector = new float[vectorDimensions];
+          for (int i = 0; i < vectorDimensions; i++) {
+            vector[i] = i + 1;
+          }
+          VectorUtil.l2normalize(vector);
+          RandomVectorScorer randomScorer =
+              getBulkRandomVectorScorer(similarityFunction, leafReader, vector);
+
+          // Score individually
+          float[] singleScores = new float[numVectors];
+          for (int i = 0; i < numVectors; i++) {
+            singleScores[i] = randomScorer.score(i);
+          }
+
+          // Score in bulk
+          float[] bulkScores = new float[numVectors];
+          int[] nodes = new int[numVectors];
+          for (int i = 0; i < numVectors; i++) {
+            nodes[i] = i;
+          }
+          randomScorer.bulkScore(nodes, bulkScores, numVectors);
+
+          // Verify bulk matches single-vector exactly (integer ops should be identical)
+          for (int i = 0; i < numVectors; i++) {
+            assertEquals(
+                similarityFunction.toString() + " ord=" + i, singleScores[i], bulkScores[i], 0f);
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Tests tail handling in bulkScore by scoring subsets of vectors that exercise 0, 1, 2, and 3
+   * remaining nodes after the 4-wide main loop.
+   */
+  private void bulkScoringTailTest(int bits, boolean compress, int dimensionOverride)
+      throws IOException {
+    int numVectors = 10;
+    int vectorDimensions = dimensionOverride;
+    if (bits == 4 && vectorDimensions % 2 == 1) {
+      vectorDimensions++;
+    }
+    float[][] storedVectors = new float[numVectors][];
+    for (int i = 0; i < numVectors; i++) {
+      float[] vector = new float[vectorDimensions];
+      for (int j = 0; j < vectorDimensions; j++) {
+        vector[j] = i + j;
+      }
+      VectorUtil.l2normalize(vector);
+      storedVectors[i] = vector;
+    }
+
+    for (VectorSimilarityFunction similarityFunction :
+        new VectorSimilarityFunction[] {
+          VectorSimilarityFunction.DOT_PRODUCT,
+          VectorSimilarityFunction.COSINE,
+          VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT,
+          VectorSimilarityFunction.EUCLIDEAN
+        }) {
+      try (Directory dir = newDirectory()) {
+        indexVectors(dir, storedVectors, similarityFunction, bits, compress);
+        try (DirectoryReader reader = DirectoryReader.open(dir)) {
+          LeafReader leafReader = reader.leaves().get(0).reader();
+          float[] vector = new float[vectorDimensions];
+          for (int i = 0; i < vectorDimensions; i++) {
+            vector[i] = i + 1;
+          }
+          VectorUtil.l2normalize(vector);
+          RandomVectorScorer randomScorer =
+              getBulkRandomVectorScorer(similarityFunction, leafReader, vector);
+
+          // Test numNodes = 0 (edge case)
+          float[] bulkScores0 = new float[0];
+          int[] nodes0 = new int[0];
+          float max0 = randomScorer.bulkScore(nodes0, bulkScores0, 0);
+          assertEquals("numNodes=0 maxScore", Float.NEGATIVE_INFINITY, max0, 0f);
+
+          // Test numNodes = 1, 2, 3 (tail paths)
+          for (int tailCount = 1; tailCount <= 3; tailCount++) {
+            float[] singleScores = new float[tailCount];
+            for (int i = 0; i < tailCount; i++) {
+              singleScores[i] = randomScorer.score(i);
+            }
+
+            float[] bulkScores = new float[tailCount];
+            int[] nodes = new int[tailCount];
+            for (int i = 0; i < tailCount; i++) {
+              nodes[i] = i;
+            }
+            randomScorer.bulkScore(nodes, bulkScores, tailCount);
+
+            for (int i = 0; i < tailCount; i++) {
+              assertEquals(
+                  similarityFunction.toString() + " tailCount=" + tailCount + " ord=" + i,
+                  singleScores[i],
+                  bulkScores[i],
+                  0f);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  private void bulkScoringUpdateableTest(int bits, boolean compress, int dimensionOverride)
+      throws IOException {
+    float[][] storedVectors = new float[10][];
+    int numVectors = 10;
+    int vectorDimensions = dimensionOverride > 0 ? dimensionOverride : random().nextInt(10) + 4;
+    if (bits == 4 && vectorDimensions % 2 == 1) {
+      vectorDimensions++;
+    }
+    for (int i = 0; i < numVectors; i++) {
+      float[] vector = new float[vectorDimensions];
+      for (int j = 0; j < vectorDimensions; j++) {
+        vector[j] = i + j;
+      }
+      VectorUtil.l2normalize(vector);
+      storedVectors[i] = vector;
+    }
+
+    for (VectorSimilarityFunction similarityFunction :
+        new VectorSimilarityFunction[] {
+          VectorSimilarityFunction.DOT_PRODUCT,
+          VectorSimilarityFunction.COSINE,
+          VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT,
+          VectorSimilarityFunction.EUCLIDEAN
+        }) {
+      try (Directory dir = newDirectory()) {
+        indexVectors(dir, storedVectors, similarityFunction, bits, compress);
+        try (DirectoryReader reader = DirectoryReader.open(dir)) {
+          LeafReader leafReader = reader.leaves().get(0).reader();
+
+          for (int scoringOrd = 0; scoringOrd < numVectors; scoringOrd++) {
+            UpdateableRandomVectorScorer singleScorer =
+                getBulkUpdateableRandomVectorScorer(similarityFunction, leafReader, scoringOrd);
+
+            // Score individually
+            float[] singleScores = new float[numVectors];
+            for (int i = 0; i < numVectors; i++) {
+              singleScores[i] = singleScorer.score(i);
+            }
+
+            // Score in bulk using a fresh scorer with same scoring ordinal
+            UpdateableRandomVectorScorer bulkScorer =
+                getBulkUpdateableRandomVectorScorer(similarityFunction, leafReader, scoringOrd);
+            float[] bulkScores = new float[numVectors];
+            int[] nodes = new int[numVectors];
+            for (int i = 0; i < numVectors; i++) {
+              nodes[i] = i;
+            }
+            bulkScorer.bulkScore(nodes, bulkScores, numVectors);
+
+            for (int i = 0; i < numVectors; i++) {
+              assertEquals(
+                  similarityFunction.toString() + " scoringOrd=" + scoringOrd + " ord=" + i,
+                  singleScores[i],
+                  bulkScores[i],
+                  0f);
+            }
+          }
+        }
+      }
+    }
+  }
+
   private void vectorScoringTest(int bits, boolean compress) throws IOException {
     float[][] storedVectors = new float[10][];
     int numVectors = 10;
@@ -222,6 +592,40 @@ public class TestLucene99ScalarQuantizedVectorScorer extends LuceneTestCase {
             (OffHeapQuantizedByteVectorValues) hnswFormat.getQuantizedVectorValues("field");
         return new Lucene99ScalarQuantizedVectorScorer(new DefaultFlatVectorScorer())
             .getRandomVectorScorer(function, quantizedByteVectorReader, vector);
+      }
+    }
+    throw new IllegalArgumentException("Unsupported reader");
+  }
+
+  private RandomVectorScorer getBulkRandomVectorScorer(
+      VectorSimilarityFunction function, LeafReader leafReader, float[] vector) throws IOException {
+    if (leafReader instanceof CodecReader codecReader) {
+      KnnVectorsReader format = codecReader.getVectorReader();
+      format = format.unwrapReaderForField("field");
+      if (format instanceof Lucene99HnswVectorsReader hnswFormat) {
+        OffHeapQuantizedByteVectorValues quantizedByteVectorReader =
+            (OffHeapQuantizedByteVectorValues) hnswFormat.getQuantizedVectorValues("field");
+        return FlatVectorScorerUtil.getLucene99ScalarQuantizedVectorsScorer()
+            .getRandomVectorScorer(function, quantizedByteVectorReader, vector);
+      }
+    }
+    throw new IllegalArgumentException("Unsupported reader");
+  }
+
+  private UpdateableRandomVectorScorer getBulkUpdateableRandomVectorScorer(
+      VectorSimilarityFunction function, LeafReader leafReader, int scoringOrd) throws IOException {
+    if (leafReader instanceof CodecReader codecReader) {
+      KnnVectorsReader format = codecReader.getVectorReader();
+      format = format.unwrapReaderForField("field");
+      if (format instanceof Lucene99HnswVectorsReader hnswFormat) {
+        OffHeapQuantizedByteVectorValues quantizedByteVectorReader =
+            (OffHeapQuantizedByteVectorValues) hnswFormat.getQuantizedVectorValues("field");
+        RandomVectorScorerSupplier supplier =
+            FlatVectorScorerUtil.getLucene99ScalarQuantizedVectorsScorer()
+                .getRandomVectorScorerSupplier(function, quantizedByteVectorReader);
+        UpdateableRandomVectorScorer scorer = supplier.scorer();
+        scorer.setScoringOrdinal(scoringOrd);
+        return scorer;
       }
     }
     throw new IllegalArgumentException("Unsupported reader");

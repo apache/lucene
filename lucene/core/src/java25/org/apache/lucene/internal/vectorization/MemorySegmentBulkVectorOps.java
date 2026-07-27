@@ -27,25 +27,25 @@ import jdk.incubator.vector.VectorOperators;
 import jdk.incubator.vector.VectorShape;
 import jdk.incubator.vector.VectorSpecies;
 
-/** Implementations of bulk vector comparison operations. Currently only supports float32. */
-public final class MemorySegmentBulkVectorOps {
+/** Implementations of bulk float32 vector comparison operations. */
+final class MemorySegmentBulkVectorOps {
 
   static final VectorSpecies<Float> FLOAT_SPECIES =
       VectorSpecies.of(float.class, VectorShape.forBitSize(PREFERRED_VECTOR_BITSIZE));
   static final ByteOrder LE = ByteOrder.LITTLE_ENDIAN;
   static final ValueLayout.OfFloat LAYOUT_LE_FLOAT = ValueLayout.JAVA_FLOAT_UNALIGNED.withOrder(LE);
 
-  public static final DotProduct DOT_INSTANCE = new DotProduct();
-  public static final Cosine COS_INSTANCE = new Cosine();
-  public static final SqrDistance SQR_INSTANCE = new SqrDistance();
+  static final DotProduct DOT_INSTANCE = new DotProduct();
+  static final Cosine COS_INSTANCE = new Cosine();
+  static final SqrDistance SQR_INSTANCE = new SqrDistance();
 
   private MemorySegmentBulkVectorOps() {}
 
-  public static final class DotProduct {
+  static final class DotProduct {
 
     private DotProduct() {}
 
-    public void dotProductBulk(
+    void dotProductBulk(
         MemorySegment dataSeg,
         float[] scores,
         float[] q,
@@ -57,7 +57,7 @@ public final class MemorySegmentBulkVectorOps {
       dotProductBulkImpl(dataSeg, scores, q, -1L, d1, d2, d3, d4, elementCount);
     }
 
-    public void dotProductBulk(
+    void dotProductBulk(
         MemorySegment seg,
         float[] scores,
         long q,
@@ -149,11 +149,11 @@ public final class MemorySegmentBulkVectorOps {
 
   // -- cosine
 
-  public static final class Cosine {
+  static final class Cosine {
 
     private Cosine() {}
 
-    public void cosineBulk(
+    void cosineBulk(
         MemorySegment dataSeg,
         float[] scores,
         float[] q,
@@ -165,7 +165,7 @@ public final class MemorySegmentBulkVectorOps {
       cosineBulkImpl(dataSeg, scores, q, -1L, d1, d2, d3, d4, elementCount);
     }
 
-    public void cosineBulk(
+    void cosineBulk(
         MemorySegment seg,
         float[] scores,
         long q,
@@ -292,11 +292,11 @@ public final class MemorySegmentBulkVectorOps {
 
   // -- square distance
 
-  public static final class SqrDistance {
+  static final class SqrDistance {
 
     private SqrDistance() {}
 
-    public void sqrDistanceBulk(
+    void sqrDistanceBulk(
         MemorySegment dataSeg,
         float[] scores,
         float[] q,
@@ -308,7 +308,7 @@ public final class MemorySegmentBulkVectorOps {
       sqrDistanceBulkImpl(dataSeg, scores, q, -1L, d1, d2, d3, d4, elementCount);
     }
 
-    public void sqrDistanceBulk(
+    void sqrDistanceBulk(
         MemorySegment seg,
         float[] scores,
         long q,
