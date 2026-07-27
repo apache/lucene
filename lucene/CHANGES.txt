@@ -341,6 +341,12 @@ Improvements
 
 * GITHUB#16271: Add detail to KNN no-match explanations. (Jakub Slowinski)
 
+* GITHUB#16423: Add (configurable) guards for complexity of expressions. Previously
+  the expressions parser could throw StackOverflowError on deeply nested expressions
+  or also cause VerifyError and other LinkageErrors when the expression was to complex.
+  The new code allows to add a hard limit for nesting (default is 1024) and no longer
+  throws virtual machine errors.  (Uwe Schindler, Seth Kraft)
+
 Optimizations
 ---------------------
 * GITHUG#16280: Single-pass writeString fast path for short strings in ByteBuffersDataOutput (neoremind)
