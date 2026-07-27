@@ -577,8 +577,7 @@ final class WANDScorer extends Scorer {
         newUpTo = Math.min(newUpTo, scorer.docID() - 1);
       }
     }
-    // If within the current block, prefer the tighter freshly-computed boundary.
-    return target <= upTo ? Math.min(upTo, newUpTo) : newUpTo;
+    return newUpTo;
   }
 
   @Override
