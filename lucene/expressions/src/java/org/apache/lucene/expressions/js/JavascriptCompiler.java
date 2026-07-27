@@ -101,6 +101,13 @@ import org.apache.lucene.util.SuppressForbidden;
  * be resolved correctly using a private {@link Lookup} instance. Ideally the methods should be
  * {@code static}, but you can use {@link MethodHandle#bindTo(Object)} to bind it to a receiver.
  *
+ * <p>The parser has a default maximum nesting limit of 1024 (see {@link
+ * #DEFAULT_MAX_NESTING_DEPTH}) which is enforced during parsing. Violating it will cause a {@link
+ * ParseException}. Please keep in mind that also code like <code class="language-java">
+ * a + b + c + d + ... + z</code> is treated as if it would look like this:
+ * <code class="language-java">(((((a + b) + c) + d) + ...) + z)</code> (because of the nature of
+ * the JVM as a stack-based machine).
+ *
  * @lucene.experimental
  */
 public final class JavascriptCompiler {
@@ -130,8 +137,8 @@ public final class JavascriptCompiler {
   private static final ExceptionsAttribute ATTR_THROWS_IOEXCEPTION =
       ExceptionsAttribute.ofSymbols(IOException.class.describeConstable().orElseThrow());
 
-  /** The default maximum depth of nesting (function calls, precedence) */
-  public static final int DEFAULT_MAX_NESTING_DEPTH = 250;
+  /** The default maximum depth of nesting (function calls, precedence - also implicit) */
+  public static final int DEFAULT_MAX_NESTING_DEPTH = 1024;
 
   final String sourceText;
   final Map<String, MethodHandle> functions;
@@ -180,7 +187,8 @@ public final class JavascriptCompiler {
    *
    * @param sourceText The expression to compile
    * @param functions map of String names to {@link MethodHandle}s
-   * @param maxNestingDepth the maximum depth of nesting (function calls, precedence)
+   * @param maxNestingDepth the maximum depth of nesting (function calls, precedence - also
+   *     implicit)
    * @return A new compiled expression
    * @throws ParseException on failure to compile
    * @throws IllegalArgumentException if any of the functions does not have correct signature
@@ -201,7 +209,8 @@ public final class JavascriptCompiler {
    *
    * @param sourceText The expression to compile
    * @param functions map of String names to {@link MethodHandle}s
-   * @param maxNestingDepth the maximum depth of nesting (function calls, precedence)
+   * @param maxNestingDepth the maximum depth of nesting (function calls, precedence - also
+   *     implicit)
    * @param picky whether to throw exception on ambiguity or other internal parsing issues (this
    *     option makes things slower too, it is only for debugging).
    * @return A new compiled expression
