@@ -17,7 +17,6 @@
 package org.apache.lucene.codecs.lucene106.dedup;
 
 import static java.nio.ByteOrder.LITTLE_ENDIAN;
-import static org.apache.lucene.codecs.lucene106.dedup.DedupUtil.ORD_UNKNOWN;
 import static org.apache.lucene.codecs.lucene106.dedup.DedupUtil.alignBytes;
 import static org.apache.lucene.codecs.lucene106.dedup.DedupUtil.hashBytes;
 import static org.apache.lucene.codecs.lucene106.dedup.DedupUtil.writeEndOfFields;
@@ -28,6 +27,7 @@ import static org.apache.lucene.codecs.lucene106.dedup.DedupUtil.writeGroupInfo;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
+import java.nio.ShortBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -71,6 +71,7 @@ final class DedupFlushContext implements Accountable {
     return switch (groupKey.encoding()) {
       case BYTE -> new ByteGroup(groupKey.dimension());
       case FLOAT32 -> new FloatGroup(groupKey.dimension());
+      case FLOAT16 -> new Float16Group(groupKey.dimension());
     };
   }
 
@@ -209,7 +210,6 @@ final class DedupFlushContext implements Accountable {
     private final long ramBytesPerVector;
     private final byte[] bytes;
     private final FloatBuffer buffer;
-    private int lastOrd;
 
     FloatGroup(int dimension) {
       int length = dimension * Float.BYTES;
@@ -219,15 +219,11 @@ final class DedupFlushContext implements Accountable {
               + length;
       this.bytes = new byte[length];
       this.buffer = ByteBuffer.wrap(bytes).order(LITTLE_ENDIAN).asFloatBuffer();
-      this.lastOrd = ORD_UNKNOWN;
     }
 
     @Override
     public long hash(float[] vector) {
-      // the vector needs to be converted to bytes to use a utility hash function.
-      // the existing buffer is used for this conversion, so lastOrd is reset too.
       buffer.put(0, vector);
-      lastOrd = ORD_UNKNOWN;
       return hashBytes(bytes);
     }
 
@@ -243,10 +239,53 @@ final class DedupFlushContext implements Accountable {
 
     @Override
     byte[] serialize(int ord) {
-      if (ord != lastOrd) {
-        buffer.put(0, get(ord));
-        lastOrd = ord;
-      }
+      buffer.put(0, get(ord));
+      return bytes;
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      return SHALLOW_SIZE + super.ramBytesUsed() + size() * ramBytesPerVector;
+    }
+  }
+
+  static final class Float16Group extends DedupGroup<short[]> {
+    private static final long SHALLOW_SIZE =
+        RamUsageEstimator.shallowSizeOfInstance(Float16Group.class);
+
+    private final long ramBytesPerVector;
+    private final byte[] bytes;
+    private final ShortBuffer buffer;
+
+    Float16Group(int dimension) {
+      int length = dimension * Short.BYTES;
+      this.ramBytesPerVector =
+          RamUsageEstimator.NUM_BYTES_OBJECT_REF
+              + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
+              + length;
+      this.bytes = new byte[length];
+      this.buffer = ByteBuffer.wrap(bytes).order(LITTLE_ENDIAN).asShortBuffer();
+    }
+
+    @Override
+    public long hash(short[] vector) {
+      buffer.put(0, vector);
+      return hashBytes(bytes);
+    }
+
+    @Override
+    public boolean equals(short[] vector, short[] other) {
+      return Arrays.equals(vector, other);
+    }
+
+    @Override
+    public short[] copy(short[] vectorValue) {
+      return vectorValue.clone();
+    }
+
+    @Override
+    byte[] serialize(int ord) {
+      buffer.put(0, get(ord));
       return bytes;
     }
 

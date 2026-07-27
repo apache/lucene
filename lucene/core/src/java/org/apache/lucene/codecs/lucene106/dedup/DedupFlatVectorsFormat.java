@@ -36,7 +36,8 @@ import org.apache.lucene.index.SegmentWriteState;
  * <h2>.vdd (vector de-dup data) file</h2>
  *
  * <ul>
- *   <li>For each group, its distinct vectors, aligned to 4 bytes (BYTE) or 64 bytes (FLOAT32).
+ *   <li>For each group, its distinct vectors, aligned to 4 bytes (BYTE) or 64 bytes (FLOAT32 and
+ *       FLOAT16).
  *   <li>For each field:
  *       <ul>
  *         <li>The sparse-encoding data (only when some documents lack the field): DocIds encoded by

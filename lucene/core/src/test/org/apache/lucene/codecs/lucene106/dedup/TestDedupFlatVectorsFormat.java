@@ -23,11 +23,13 @@ import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.lucene106.dedup.DedupUtil.DedupVectorValues;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnByteVectorField;
+import org.apache.lucene.document.KnnFloat16VectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -68,6 +70,30 @@ public class TestDedupFlatVectorsFormat extends LuceneTestCase {
         assertEquals(2, groupSize(values)); // only two distinct vectors stored
         for (int ord = 0; ord < values.size(); ord++) {
           assertArrayEquals(docVectors[ord], values.vectorValue(ord), 0f);
+        }
+      }
+    }
+  }
+
+  /** Repeated float16 vectors within a field are stored once but still read back per document. */
+  public void testFloat16DuplicatesWithinField() throws Exception {
+    short[] a = {Float.floatToFloat16(1f), Float.floatToFloat16(2f), Float.floatToFloat16(3f)};
+    short[] b = {Float.floatToFloat16(4f), Float.floatToFloat16(5f), Float.floatToFloat16(6f)};
+    short[][] docVectors = {a, b, a, b, a, b}; // 3 copies each of 2 vectors
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, config())) {
+      for (short[] vector : docVectors) {
+        Document doc = new Document();
+        doc.add(new KnnFloat16VectorField("f", vector, EUCLIDEAN));
+        w.addDocument(doc);
+      }
+      w.forceMerge(1);
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        Float16VectorValues values = getOnlyLeafReader(reader).getFloat16VectorValues("f");
+        assertEquals(docVectors.length, values.size()); // one entry per document
+        assertEquals(2, groupSize(values)); // only two distinct vectors stored
+        for (int ord = 0; ord < values.size(); ord++) {
+          assertArrayEquals(docVectors[ord], values.vectorValue(ord));
         }
       }
     }

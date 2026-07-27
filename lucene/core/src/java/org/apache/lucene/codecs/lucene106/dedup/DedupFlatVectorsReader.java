@@ -23,10 +23,12 @@ import static org.apache.lucene.codecs.lucene106.dedup.DedupFlatVectorsFormat.VE
 import static org.apache.lucene.codecs.lucene106.dedup.DedupFlatVectorsFormat.VERSION_CURRENT;
 import static org.apache.lucene.codecs.lucene106.dedup.DedupFlatVectorsFormat.VERSION_START;
 import static org.apache.lucene.codecs.lucene106.dedup.DedupUtil.loadDedupBytes;
+import static org.apache.lucene.codecs.lucene106.dedup.DedupUtil.loadDedupFloat16s;
 import static org.apache.lucene.codecs.lucene106.dedup.DedupUtil.loadDedupFloats;
 import static org.apache.lucene.codecs.lucene106.dedup.DedupUtil.readFieldInfo;
 import static org.apache.lucene.codecs.lucene106.dedup.DedupUtil.readGroupInfo;
 import static org.apache.lucene.index.VectorEncoding.BYTE;
+import static org.apache.lucene.index.VectorEncoding.FLOAT16;
 import static org.apache.lucene.index.VectorEncoding.FLOAT32;
 
 import java.io.IOException;
@@ -43,6 +45,7 @@ import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.MergePolicy;
@@ -247,6 +250,13 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
   }
 
   @Override
+  public RandomVectorScorer getRandomVectorScorer(String field, short[] target) throws IOException {
+    FieldEntry entry = getEntry(field, FLOAT16);
+    Float16VectorValues vectorValues = getFloat16VectorValues(entry);
+    return vectorsScorer.getRandomVectorScorer(entry.fieldInfo.function(), vectorValues, target);
+  }
+
+  @Override
   public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
     CodecUtil.checksumEntireFile(vectorData, merge);
   }
@@ -287,6 +297,25 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
   @Override
   public ByteVectorValues getByteVectorValues(String field) throws IOException {
     return getByteVectorValues(getEntry(field, BYTE));
+  }
+
+  private Float16VectorValues getFloat16VectorValues(FieldEntry entry) throws IOException {
+    return loadDedupFloat16s(
+        vectorsScorer,
+        entry.fieldInfo.function(),
+        entry.fieldInfo.ordToDoc(),
+        entry.fieldInfo.dimension(),
+        entry.groupInfo.groupSize(),
+        vectorData,
+        entry.groupInfo.vectorDataOffset(),
+        entry.groupInfo.vectorDataSize(),
+        entry.fieldInfo.ordToVecOffset(),
+        entry.fieldInfo.ordToVecSize());
+  }
+
+  @Override
+  public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+    return getFloat16VectorValues(getEntry(field, FLOAT16));
   }
 
   @Override

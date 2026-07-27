@@ -17,6 +17,7 @@
 package org.apache.lucene.codecs.lucene106.dedup;
 
 import static org.apache.lucene.index.VectorEncoding.BYTE;
+import static org.apache.lucene.index.VectorEncoding.FLOAT16;
 import static org.apache.lucene.index.VectorEncoding.FLOAT32;
 import static org.apache.lucene.util.StringHelper.GOOD_FAST_HASH_SEED;
 import static org.apache.lucene.util.StringHelper.murmurhash3_x64_128;
@@ -24,11 +25,13 @@ import static org.apache.lucene.util.StringHelper.murmurhash3_x64_128;
 import java.io.IOException;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
+import org.apache.lucene.codecs.lucene95.OffHeapFloat16VectorValues;
 import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorEncoding;
@@ -63,8 +66,6 @@ final class DedupUtil {
   //  OrdToVecOrd mapping. Evaluate using fewer bits to reduce index size, at the expense of
   //  costlier lookups.
   private static final int ORD_TO_VEC_BITS_PER_VALUE = 32;
-
-  static final int ORD_UNKNOWN = -1;
 
   static final int SCRATCH_SIZE = 16;
 
@@ -235,7 +236,7 @@ final class DedupUtil {
     int alignBytes =
         switch (encoding) {
           case BYTE -> 4;
-          case FLOAT32 -> 64;
+          case FLOAT32, FLOAT16 -> 64;
         };
     return output.alignFilePointer(alignBytes);
   }
@@ -541,6 +542,140 @@ final class DedupUtil {
         return null;
       }
       FloatImpl copy = copy();
+      DocIndexIterator iterator = copy.iterator();
+      RandomVectorScorer vectorScorer = vectorsScorer.getRandomVectorScorer(function, copy, target);
+      return new VectorScorer() {
+        @Override
+        public float score() throws IOException {
+          return vectorScorer.score(iterator.index());
+        }
+
+        @Override
+        public DocIdSetIterator iterator() {
+          return iterator;
+        }
+
+        @Override
+        public Bulk bulk(DocIdSetIterator matchingDocs) {
+          return Bulk.fromRandomScorerDense(vectorScorer, iterator, matchingDocs);
+        }
+      };
+    }
+  }
+
+  static Float16VectorValues loadDedupFloat16s(
+      FlatVectorsScorer vectorsScorer,
+      VectorSimilarityFunction function,
+      OrdToDocDISIReaderConfiguration configuration,
+      int dimension,
+      int groupSize,
+      IndexInput vectorData,
+      long vectorDataOffset,
+      long vectorDataSize,
+      long ordToVecOffset,
+      long ordToVecSize)
+      throws IOException {
+
+    final OffHeapFloat16VectorValues fieldView =
+        OffHeapFloat16VectorValues.load(
+            function, vectorsScorer, configuration, FLOAT16, dimension, 0, 0, vectorData);
+
+    final OffHeapFloat16VectorValues groupView =
+        new OffHeapFloat16VectorValues.DenseOffHeapVectorValues(
+            dimension,
+            groupSize,
+            vectorData.slice("group-slice", vectorDataOffset, vectorDataSize),
+            fieldView.getVectorByteLength(),
+            vectorsScorer,
+            function);
+
+    final OrdToVecOrd ordToVecOrd =
+        new OrdToVecOrdOffHeap(vectorData, ordToVecOffset, ordToVecSize);
+
+    return new Float16Impl(vectorsScorer, function, fieldView, groupView, ordToVecOrd);
+  }
+
+  /** {@link DedupVectorValues} over float16 vectors. */
+  private static final class Float16Impl extends Float16VectorValues implements DedupVectorValues {
+    private final FlatVectorsScorer vectorsScorer;
+    private final VectorSimilarityFunction function;
+    private final Float16VectorValues fieldView;
+    private final Float16VectorValues groupView;
+    private final OrdToVecOrd ordToVecOrd;
+    private int[] scratch;
+
+    Float16Impl(
+        FlatVectorsScorer vectorsScorer,
+        VectorSimilarityFunction function,
+        Float16VectorValues fieldView,
+        Float16VectorValues groupView,
+        OrdToVecOrd ordToVecOrd) {
+      this.vectorsScorer = vectorsScorer;
+      this.function = function;
+      this.fieldView = fieldView;
+      this.groupView = groupView;
+      this.ordToVecOrd = ordToVecOrd;
+      this.scratch = new int[SCRATCH_SIZE];
+    }
+
+    @Override
+    public Float16VectorValues getGroupView() {
+      return groupView;
+    }
+
+    @Override
+    public OrdToVecOrd getOrdToVecOrd() {
+      return ordToVecOrd;
+    }
+
+    @Override
+    public int ordToDoc(int ord) {
+      return fieldView.ordToDoc(ord);
+    }
+
+    @Override
+    public void prefetch(int[] ordsToPrefetch, int numOrds) throws IOException {
+      if (scratch.length < ordsToPrefetch.length) { // grow if needed
+        scratch = ArrayUtil.grow(scratch, ordsToPrefetch.length);
+      }
+      for (int i = 0; i < numOrds; i++) {
+        scratch[i] = ordToVecOrd.get(ordsToPrefetch[i]);
+      }
+      groupView.prefetch(scratch, numOrds);
+    }
+
+    @Override
+    public short[] vectorValue(int ord) throws IOException {
+      return groupView.vectorValue(ordToVecOrd.get(ord));
+    }
+
+    @Override
+    public int dimension() {
+      return fieldView.dimension();
+    }
+
+    @Override
+    public int size() {
+      return fieldView.size();
+    }
+
+    @Override
+    public Float16Impl copy() throws IOException {
+      return new Float16Impl(
+          vectorsScorer, function, fieldView.copy(), groupView.copy(), ordToVecOrd.copy());
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      return fieldView.iterator();
+    }
+
+    @Override
+    public VectorScorer scorer(short[] target) throws IOException {
+      if (size() == 0) {
+        return null;
+      }
+      Float16Impl copy = copy();
       DocIndexIterator iterator = copy.iterator();
       RandomVectorScorer vectorScorer = vectorsScorer.getRandomVectorScorer(function, copy, target);
       return new VectorScorer() {
