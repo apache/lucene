@@ -377,6 +377,9 @@ Optimizations
 * GITHUB#16380: Speed up filtered disjunction queries when the filter is part of the
   index sort by advancing the filter before calculating impacts. (Alan Woodward)
 
+* GITHUB#16424: Use secondary or lower sorts to accelerate XXDocValuesRangeQueries if the primary
+  sort field is empty or only contains a single value. (Alan Woodward)
+
 Bug Fixes
 ---------------------
 * GITHUB#16350: Disable bulk-scoring in monitor queries. (Alan Woodward)
