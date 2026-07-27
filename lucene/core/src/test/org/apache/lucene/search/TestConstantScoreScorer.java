@@ -20,6 +20,7 @@ import static org.apache.lucene.search.BooleanClause.Occur;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
@@ -33,6 +34,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.Bits;
 
 public class TestConstantScoreScorer extends LuceneTestCase {
   private static final String FIELD = "f";
@@ -218,6 +220,71 @@ public class TestConstantScoreScorer extends LuceneTestCase {
     public void close() throws IOException {
       reader.close();
       directory.close();
+    }
+  }
+
+  /**
+   * An empty {@link DocAndFloatFeatureBuffer} tells callers that the iterator has no doc left
+   * before {@code upTo}, so batches whose docs are all deleted must not be reported as such.
+   */
+  public void testNextDocsAndScoresSkipsFullyDeletedBatches() throws IOException {
+    int maxDoc = 10_000;
+    int firstLiveDoc = 9_000;
+    Bits liveDocs =
+        new Bits() {
+          @Override
+          public boolean get(int index) {
+            return index >= firstLiveDoc;
+          }
+
+          @Override
+          public int length() {
+            return maxDoc;
+          }
+        };
+
+    for (ScoreMode scoreMode : new ScoreMode[] {ScoreMode.COMPLETE, ScoreMode.TOP_SCORES}) {
+      for (boolean disjunction : new boolean[] {false, true}) {
+        DocIdSetIterator disi;
+        if (disjunction) {
+          disi =
+              DisjunctionDISIApproximation.of(
+                  List.of(
+                      new DisiWrapper(
+                          new ConstantScoreScorer(
+                              1f, ScoreMode.COMPLETE_NO_SCORES, DocIdSetIterator.range(0, 5_000)),
+                          false),
+                      new DisiWrapper(
+                          new ConstantScoreScorer(
+                              1f,
+                              ScoreMode.COMPLETE_NO_SCORES,
+                              DocIdSetIterator.range(5_000, maxDoc)),
+                          false)),
+                  maxDoc);
+        } else {
+          disi = DocIdSetIterator.all(maxDoc);
+        }
+
+        ConstantScoreScorer scorer = new ConstantScoreScorer(2f, scoreMode, disi);
+        assertEquals(0, scorer.iterator().nextDoc());
+
+        DocAndFloatFeatureBuffer buffer = new DocAndFloatFeatureBuffer();
+        List<Integer> collected = new ArrayList<>();
+        for (scorer.nextDocsAndScores(maxDoc, liveDocs, buffer);
+            buffer.size > 0;
+            scorer.nextDocsAndScores(maxDoc, liveDocs, buffer)) {
+          for (int i = 0; i < buffer.size; ++i) {
+            collected.add(buffer.docs[i]);
+            assertEquals(2f, buffer.features[i], 0f);
+          }
+        }
+
+        List<Integer> expected = new ArrayList<>();
+        for (int doc = firstLiveDoc; doc < maxDoc; ++doc) {
+          expected.add(doc);
+        }
+        assertEquals(expected, collected);
+      }
     }
   }
 
