@@ -33,8 +33,12 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.AssertingScorer;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
 
 public class TestConstantScoreScorer extends LuceneTestCase {
   private static final String FIELD = "f";
@@ -285,6 +289,93 @@ public class TestConstantScoreScorer extends LuceneTestCase {
         }
         assertEquals(expected, collected);
       }
+    }
+  }
+
+  /**
+   * Randomized companion to the test above. Reaching a fully deleted batch takes a doc ID range
+   * that spans more than one batch together with deletions that cluster, so uniformly random
+   * deletions over the small indexes that most randomized tests build never get there. Scorers are
+   * wrapped in {@link AssertingScorer} so that the buffer contract is checked as well.
+   */
+  public void testNextDocsAndScoresRandomClusteredDeletions() throws IOException {
+    int iters = atLeast(10);
+    for (int iter = 0; iter < iters; ++iter) {
+      int maxDoc = TestUtil.nextInt(random(), 12_000, 30_000);
+      float density = 1f / (1 << random().nextInt(3));
+
+      FixedBitSet matches = new FixedBitSet(maxDoc);
+      for (int doc = 0; doc < maxDoc; ++doc) {
+        if (random().nextFloat() < density) {
+          matches.set(doc);
+        }
+      }
+      if (matches.cardinality() == 0) {
+        continue;
+      }
+
+      // A run of deleted docs wide enough to swallow a whole batch whatever its alignment, plus
+      // scattered deletions.
+      FixedBitSet liveDocs = new FixedBitSet(maxDoc);
+      liveDocs.set(0, maxDoc);
+      int runLength = TestUtil.nextInt(random(), 2 * 4096, 3 * 4096);
+      int runStart = TestUtil.nextInt(random(), 0, maxDoc - runLength);
+      liveDocs.clear(runStart, runStart + runLength);
+      for (int i = 0, scattered = random().nextInt(100); i < scattered; ++i) {
+        liveDocs.clear(random().nextInt(maxDoc));
+      }
+
+      List<Integer> expected = new ArrayList<>();
+      for (int doc = 0; doc < maxDoc; ++doc) {
+        if (matches.get(doc) && liveDocs.get(doc)) {
+          expected.add(doc);
+        }
+      }
+
+      DocIdSetIterator disi;
+      if (random().nextBoolean()) {
+        int numSubs = TestUtil.nextInt(random(), 2, 4);
+        FixedBitSet[] subSets = new FixedBitSet[numSubs];
+        for (int i = 0; i < numSubs; ++i) {
+          subSets[i] = new FixedBitSet(maxDoc);
+        }
+        for (int doc = 0; doc < maxDoc; ++doc) {
+          if (matches.get(doc)) {
+            subSets[random().nextInt(numSubs)].set(doc);
+          }
+        }
+        List<DisiWrapper> subs = new ArrayList<>();
+        for (FixedBitSet subSet : subSets) {
+          subs.add(
+              new DisiWrapper(
+                  new ConstantScoreScorer(
+                      1f,
+                      ScoreMode.COMPLETE_NO_SCORES,
+                      new BitSetIterator(subSet, subSet.cardinality())),
+                  false));
+        }
+        disi = DisjunctionDISIApproximation.of(subs, maxDoc);
+      } else {
+        disi = new BitSetIterator(matches, matches.cardinality());
+      }
+
+      ScoreMode scoreMode = random().nextBoolean() ? ScoreMode.COMPLETE : ScoreMode.TOP_SCORES;
+      Scorer scorer =
+          AssertingScorer.wrap(new ConstantScoreScorer(2f, scoreMode, disi), true, false);
+      scorer.iterator().nextDoc();
+
+      DocAndFloatFeatureBuffer buffer = new DocAndFloatFeatureBuffer();
+      List<Integer> collected = new ArrayList<>();
+      for (scorer.nextDocsAndScores(maxDoc, liveDocs, buffer);
+          buffer.size > 0;
+          scorer.nextDocsAndScores(maxDoc, liveDocs, buffer)) {
+        for (int i = 0; i < buffer.size; ++i) {
+          collected.add(buffer.docs[i]);
+          assertEquals(2f, buffer.features[i], 0f);
+        }
+      }
+
+      assertEquals(expected, collected);
     }
   }
 
