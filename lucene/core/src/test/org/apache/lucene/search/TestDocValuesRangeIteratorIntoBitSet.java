@@ -45,7 +45,7 @@ import org.apache.lucene.util.FixedBitSet;
  * Tests the {@code intoBitSet()} bulk path of {@link DocValuesRangeIterator} over single-valued
  * numeric doc values, including YES, YES_IF_PRESENT, and MAYBE block states.
  */
-public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTests {
+public class TestDocValuesRangeIteratorIntoBitSet extends BaseDocValuesSkipperTests {
 
   // Use enough docs to span at least 4 skip blocks (default skip block size = 4096 docs).
   private static final int DOC_COUNT = 4096 * 4;
