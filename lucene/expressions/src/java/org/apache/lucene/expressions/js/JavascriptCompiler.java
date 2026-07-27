@@ -43,6 +43,7 @@ import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.DiagnosticErrorListener;
+import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.Recognizer;
 import org.antlr.v4.runtime.atn.PredictionMode;
@@ -91,6 +92,13 @@ import org.objectweb.asm.commons.Method;
  * parameters and returns a {@code double}. The method does not need to be public, it just needs to
  * be resolved correctly using a private {@link Lookup} instance. Ideally the methods should be
  * {@code static}, but you can use {@link MethodHandle#bindTo(Object)} to bind it to a receiver.
+ *
+ * <p>The parser has a default maximum nesting limit of 1024 (see {@link
+ * #DEFAULT_MAX_NESTING_DEPTH}) which is enforced during parsing. Violating it will cause a {@link
+ * ParseException}. Please keep in mind that also code like <code class="language-java">
+ * a + b + c + d + ... + z</code> is treated as if it would look like this:
+ * <code class="language-java">(((((a + b) + c) + d) + ...) + z)</code> (because of the nature of
+ * the JVM as a stack-based machine).
  *
  * @lucene.experimental
  */
@@ -141,8 +149,12 @@ public final class JavascriptCompiler {
         dm.isOwnerInterface());
   }
 
+  /** The default maximum depth of nesting (function calls, precedence - also implicit) */
+  public static final int DEFAULT_MAX_NESTING_DEPTH = 1024;
+
   final String sourceText;
   final Map<String, MethodHandle> functions;
+  final int maxNestingDepth;
   final boolean picky;
 
   /**
@@ -151,6 +163,8 @@ public final class JavascriptCompiler {
    * @param sourceText The expression to compile
    * @return A new compiled expression
    * @throws ParseException on failure to compile
+   * @throws IllegalStateException if the resulting expression class fails to link (e.g.,
+   *     complexity)
    */
   public static Expression compile(String sourceText) throws ParseException {
     return compile(sourceText, DEFAULT_FUNCTIONS);
@@ -167,10 +181,36 @@ public final class JavascriptCompiler {
    * @param functions map of String names to {@link MethodHandle}s
    * @return A new compiled expression
    * @throws ParseException on failure to compile
+   * @throws IllegalArgumentException if any of the functions does not have correct signature
+   * @throws IllegalStateException if the resulting expression class fails to link (e.g.,
+   *     complexity)
    */
   public static Expression compile(String sourceText, Map<String, MethodHandle> functions)
       throws ParseException {
-    return compile(sourceText, functions, false);
+    return compile(sourceText, functions, DEFAULT_MAX_NESTING_DEPTH);
+  }
+
+  /**
+   * Compiles the given expression with the supplied custom functions using a custom maximum nesting
+   * depth.
+   *
+   * <p>Functions must be {@code public static}, return {@code double} and can take from zero to 256
+   * {@code double} parameters.
+   *
+   * @param sourceText The expression to compile
+   * @param functions map of String names to {@link MethodHandle}s
+   * @param maxNestingDepth the maximum depth of nesting (function calls, precedence - also
+   *     implicit)
+   * @return A new compiled expression
+   * @throws ParseException on failure to compile
+   * @throws IllegalArgumentException if any of the functions does not have correct signature
+   * @throws IllegalStateException if the resulting expression class fails to link (e.g.,
+   *     complexity)
+   */
+  public static Expression compile(
+      String sourceText, Map<String, MethodHandle> functions, int maxNestingDepth)
+      throws ParseException {
+    return compile(sourceText, functions, maxNestingDepth, false);
   }
 
   /**
@@ -204,17 +244,24 @@ public final class JavascriptCompiler {
    *
    * @param sourceText The expression to compile
    * @param functions map of String names to {@link MethodHandle}s
+   * @param maxNestingDepth the maximum depth of nesting (function calls, precedence - also
+   *     implicit)
    * @param picky whether to throw exception on ambiguity or other internal parsing issues (this
    *     option makes things slower too, it is only for debugging).
    * @return A new compiled expression
    * @throws ParseException on failure to compile
+   * @throws IllegalArgumentException if any of the functions does not have correct signature
+   * @throws IllegalStateException if the resulting expression class fails to link (e.g.,
+   *     complexity)
    */
-  static Expression compile(String sourceText, Map<String, MethodHandle> functions, boolean picky)
+  static Expression compile(
+      String sourceText, Map<String, MethodHandle> functions, int maxNestingDepth, boolean picky)
       throws ParseException {
     for (MethodHandle m : functions.values()) {
       checkFunction(m);
     }
-    return new JavascriptCompiler(sourceText, functions, picky).compileExpression();
+    return new JavascriptCompiler(sourceText, functions, maxNestingDepth, picky)
+        .compileExpression();
   }
 
   /**
@@ -223,9 +270,10 @@ public final class JavascriptCompiler {
    * @param sourceText The expression to compile
    */
   private JavascriptCompiler(
-      String sourceText, Map<String, MethodHandle> functions, boolean picky) {
+      String sourceText, Map<String, MethodHandle> functions, int maxNestingDepth, boolean picky) {
     this.sourceText = Objects.requireNonNull(sourceText, "sourceText");
     this.functions = Map.copyOf(functions);
+    this.maxNestingDepth = maxNestingDepth;
     this.picky = picky;
   }
 
@@ -248,6 +296,12 @@ public final class JavascriptCompiler {
         throw (ParseException) re.getCause();
       }
       throw re;
+    } catch (StackOverflowError soe) {
+      // we should catch this before in the visitor, but too high limits may cause this.
+      final var e =
+          new ParseException("Invalid expression '" + sourceText + "': Nesting level too deep", -1);
+      e.initCause(soe);
+      throw e;
     }
 
     try {
@@ -257,10 +311,12 @@ public final class JavascriptCompiler {
               constantsMap.keySet().stream().map(functions::get).toList(),
               true);
       return invokeConstructor(lookup, lookup.lookupClass(), externalsMap);
-    } catch (ReflectiveOperationException exception) {
+    } catch (ReflectiveOperationException | LinkageError e) {
       throw new IllegalStateException(
-          "An internal error occurred attempting to compile the expression (" + sourceText + ").",
-          exception);
+          "An internal error occurred attempting to compile the expression ('"
+              + sourceText
+              + "'). This may be caused by too complex code triggering limits inside the Java VM.",
+          e);
     }
   }
 
@@ -294,6 +350,10 @@ public final class JavascriptCompiler {
       setupPicky(javascriptParser);
     }
     javascriptParser.setErrorHandler(new JavascriptParserErrorStrategy());
+    // add listener to detect too deep nesting early, this may not catch all occurrences... (this
+    // will count root node, so add one recursion extra).
+    javascriptParser.addParseListener(
+        new JavascriptNestingDepthListener(sourceText, maxNestingDepth + 1));
     return javascriptParser.compile();
   }
 
@@ -363,9 +423,17 @@ public final class JavascriptCompiler {
     gen.visitTryCatchBlock(beginTry, endTry, catchHandler, THROWABLE_TYPE.getInternalName());
     gen.mark(beginTry);
 
+    // we do an extra check on the tree to make sure the final structure is not too deeply nested:
+    final var nestingChecker = new JavascriptNestingDepthListener(sourceText, maxNestingDepth);
     // to completely hide the ANTLR visitor we use an anonymous impl:
     new JavascriptBaseVisitor<Void>() {
       private final Deque<Type> typeStack = new ArrayDeque<>();
+
+      private void visit(ParserRuleContext ctx) {
+        nestingChecker.enterEveryRule(ctx);
+        ctx.accept(this);
+        nestingChecker.exitEveryRule(ctx);
+      }
 
       @Override
       public Void visitCompile(JavascriptParser.CompileContext ctx) {
