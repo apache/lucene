@@ -284,6 +284,9 @@ public class TestQueryProfilerIntraSegment extends LuceneTestCase {
       for (AggregatedQueryLeafProfilerResult p : partitions) {
         segmentOrds.add(p.getSegmentOrd());
         assertEquals("entire-segment partition starts at doc 0", 0, p.getMinDocId());
+        // A whole-segment partition reports the segment's real maxDoc.
+        assertEquals(
+            "entire-segment partition ends at the segment maxDoc", docsPerSegment, p.getMaxDocId());
         // Each segment scored exactly its own docs.
         assertEquals(
             docsPerSegment,

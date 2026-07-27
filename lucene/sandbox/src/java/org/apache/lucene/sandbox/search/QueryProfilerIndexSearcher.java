@@ -23,6 +23,7 @@ import java.util.concurrent.Executor;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.Collector;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreMode;
@@ -101,7 +102,11 @@ public class QueryProfilerIndexSearcher extends IndexSearcher {
     // bounds are in scope. Record the partition identity for the duration of the call so that any
     // leaf-level timings (build scorer, next doc, score, ...) recorded by the wrapped weight/scorer
     // are attributed to this specific partition rather than only to the executing thread.
-    profiler.setCurrentPartition(ctx.ord, minDocId, maxDocId);
+    // A whole-segment partition is passed maxDocId == NO_MORE_DOCS (Integer.MAX_VALUE); resolve it
+    // to the segment's actual maxDoc so the recorded doc-id range reflects the real segment size.
+    int resolvedMaxDocId =
+        (maxDocId == DocIdSetIterator.NO_MORE_DOCS) ? ctx.reader().maxDoc() : maxDocId;
+    profiler.setCurrentPartition(ctx.ord, minDocId, resolvedMaxDocId);
     try {
       super.searchLeaf(ctx, minDocId, maxDocId, weight, collector);
     } finally {
