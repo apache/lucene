@@ -368,6 +368,8 @@ Optimizations
 * GITHUB#16380: Speed up filtered disjunction queries when the filter is part of the
   index sort by advancing the filter before calculating impacts. (Alan Woodward)
 
+* GITHUB#16399: Reuse the previous end offset to skip a redundant addresses.get() in sorted numeric rangeIntoBitSet. (Sagar Upadhyaya)
+
 Bug Fixes
 ---------------------
 * GITHUB#16350: Disable bulk-scoring in monitor queries. (Alan Woodward)
