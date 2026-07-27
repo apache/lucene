@@ -181,8 +181,8 @@ public class TestGetPrimarySortField extends LuceneTestCase {
 
   /**
    * With NoMergePolicy ensuring a fixed three-segment layout, each leaf independently returns its
-   * own effective primary sort field: segment 0 has a real primary, segment 1 has an absent
-   * primary (no FieldInfo), and segment 2 has a constant primary (single distinct value).
+   * own effective primary sort field: segment 0 has a real primary, segment 1 has an absent primary
+   * (no FieldInfo), and segment 2 has a constant primary (single distinct value).
    */
   public void testPerSegmentEffectivePrimaryWithNoMergePolicy() throws IOException {
     Directory dir = newDirectory();
