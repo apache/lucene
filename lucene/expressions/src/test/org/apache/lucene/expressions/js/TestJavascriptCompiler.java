@@ -288,8 +288,23 @@ public class TestJavascriptCompiler extends CompilerTestCase {
   @Test
   public void testRecursionDepth3() throws Exception {
     String src =
+        IntStream.range(0, JavascriptCompiler.DEFAULT_MAX_NESTING_DEPTH + 1)
+            .mapToObj(Integer::toString)
+            .collect(Collectors.joining("+"));
+    assertEquals(
+        "error offset needs to be 0 due to recursion with depth first",
+        0,
+        assertRecursionLimit(src));
+  }
+
+  @Test
+  public void testRecursionDepth4() throws Exception {
+    String src =
         IntStream.range(0, 20000).mapToObj(Integer::toString).collect(Collectors.joining("+"));
-    assertRecursionLimit(src);
+    assertEquals(
+        "error offset needs to be 0 due to recursion with depth first",
+        0,
+        assertRecursionLimit(src));
   }
 
   /** returns the error offset for further checks */

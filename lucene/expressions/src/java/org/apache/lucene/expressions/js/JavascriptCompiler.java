@@ -58,11 +58,11 @@ import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.DiagnosticErrorListener;
+import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.Recognizer;
 import org.antlr.v4.runtime.atn.PredictionMode;
 import org.antlr.v4.runtime.tree.ParseTree;
-import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.apache.lucene.expressions.Expression;
 import org.apache.lucene.expressions.js.JavascriptParser.ExpressionContext;
 import org.apache.lucene.search.DoubleValues;
@@ -269,7 +269,7 @@ public final class JavascriptCompiler {
     } catch (StackOverflowError soe) {
       // we should catch this before in the visitor, but too high limits may cause this.
       final var e =
-          new ParseException("Invalid expression '" + sourceText + "': Nesting level too deep", 0);
+          new ParseException("Invalid expression '" + sourceText + "': Nesting level too deep", -1);
       e.initCause(soe);
       throw e;
     }
@@ -321,12 +321,7 @@ public final class JavascriptCompiler {
     // will count root node, so add one recursion extra).
     javascriptParser.addParseListener(
         new JavascriptNestingDepthListener(sourceText, maxNestingDepth + 1));
-    final ParseTree tree = javascriptParser.compile();
-    // we do an extra check on the built parse tree to make sure the final structure is not too
-    // deeply nested.
-    ParseTreeWalker.DEFAULT.walk(
-        new JavascriptNestingDepthListener(sourceText, maxNestingDepth), tree);
-    return tree;
+    return javascriptParser.compile();
   }
 
   private void setupPicky(JavascriptParser parser) {
@@ -408,9 +403,17 @@ public final class JavascriptCompiler {
       CodeBuilder gen,
       final Map<String, Integer> externalsMap,
       final Map<String, Integer> constantsMap) {
+    // we do an extra check on the tree to make sure the final structure is not too deeply nested:
+    final var nestingChecker = new JavascriptNestingDepthListener(sourceText, maxNestingDepth);
     // to completely hide the ANTLR visitor we use an anonymous impl:
     return new JavascriptBaseVisitor<>() {
       private final Deque<TypeKind> typeStack = new ArrayDeque<>();
+
+      private void visit(ParserRuleContext ctx) {
+        nestingChecker.enterEveryRule(ctx);
+        ctx.accept(this);
+        nestingChecker.exitEveryRule(ctx);
+      }
 
       @Override
       public Void visitCompile(JavascriptParser.CompileContext ctx) {
