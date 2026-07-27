@@ -114,6 +114,7 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
     KnnVectorValues knnVectorValues =
         switch (fieldInfo.getVectorEncoding()) {
           case BYTE -> reader.getByteVectorValues(fieldInfo.name);
+          case FLOAT16 -> reader.getFloat16VectorValues(fieldInfo.name);
           case FLOAT32 -> reader.getFloatVectorValues(fieldInfo.name);
         };
 
@@ -189,6 +190,9 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
       switch (fieldInfo.getVectorEncoding()) {
         case BYTE ->
             vectorsIter = graphReaders.get(i).reader.getByteVectorValues(fieldInfo.name).iterator();
+        case FLOAT16 ->
+            vectorsIter =
+                graphReaders.get(i).reader.getFloat16VectorValues(fieldInfo.name).iterator();
         case FLOAT32 ->
             vectorsIter =
                 graphReaders.get(i).reader.getFloatVectorValues(fieldInfo.name).iterator();
