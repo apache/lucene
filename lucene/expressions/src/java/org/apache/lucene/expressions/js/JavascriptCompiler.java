@@ -106,7 +106,7 @@ public final class JavascriptCompiler {
 
   private static final Lookup LOOKUP = MethodHandles.lookup();
 
-  private static final MethodType MT_EXPRESSION_CTOR_LOOKUP =
+  private static final MethodType MT_EXPRESSION_CTOR =
       MethodType.methodType(void.class, String.class, String[].class);
 
   // We use the same class name for all generated classes (they are hidden anyways).
@@ -118,14 +118,11 @@ public final class JavascriptCompiler {
       CD_DoubleValues = DoubleValues.class.describeConstable().orElseThrow(),
       CD_JavascriptCompiler = JavascriptCompiler.class.describeConstable().orElseThrow();
   private static final MethodTypeDesc
-      MTD_EXPRESSION_CTOR =
-          MethodTypeDesc.of(
-              ConstantDescs.CD_void, ConstantDescs.CD_String, ConstantDescs.CD_String.arrayType()),
+      MTD_EXPRESSION_CTOR = MT_EXPRESSION_CTOR.describeConstable().orElseThrow(),
       MTD_EVALUATE = MethodTypeDesc.of(ConstantDescs.CD_double, CD_DoubleValues.arrayType()),
       MTD_DOUBLE_VAL = MethodTypeDesc.of(ConstantDescs.CD_double),
       MTD_PATCH_STACK =
           MethodTypeDesc.of(ConstantDescs.CD_Throwable, ConstantDescs.CD_Throwable, CD_Expression);
-
   private static final ExceptionsAttribute ATTR_THROWS_IOEXCEPTION =
       ExceptionsAttribute.ofSymbols(IOException.class.describeConstable().orElseThrow());
 
@@ -235,7 +232,7 @@ public final class JavascriptCompiler {
   private Expression invokeConstructor(
       Lookup lookup, Class<?> expressionClass, Map<String, Integer> externalsMap)
       throws ReflectiveOperationException {
-    final MethodHandle ctor = lookup.findConstructor(expressionClass, MT_EXPRESSION_CTOR_LOOKUP);
+    final MethodHandle ctor = lookup.findConstructor(expressionClass, MT_EXPRESSION_CTOR);
     try {
       return (Expression) ctor.invoke(sourceText, externalsMap.keySet().toArray(String[]::new));
     } catch (RuntimeException | Error e) {
