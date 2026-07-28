@@ -284,7 +284,7 @@ configure(project(":lucene:analysis:common")) {
 configure(project(":lucene:core")) {
   setupIcuDependencies(project)
 
-  tasks.register("generateCaseFolding", {
+  tasks.register("regenerateCaseFolding", {
     def icuConfig = configurations.icu_current
     def groovyConfig = configurations.groovy
     def outputFile = file("src/java/org/apache/lucene/util/automaton/CaseFolding.java")
@@ -311,7 +311,7 @@ configure(project(":lucene:core")) {
     }
   })
 
-  tasks.register("generateSimpleCaseFolding", {
+  tasks.register("regenerateSimpleCaseFolding", {
     def icuConfig = configurations.icu_current
     def groovyConfig = configurations.groovy
     def outputFile = file("src/java/org/apache/lucene/util/SimpleCaseFolding.java")
