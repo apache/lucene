@@ -124,7 +124,7 @@ class SegmentDocValuesProducer extends DocValuesProducer {
   }
 
   @Override
-  public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
+  public DocValuesSkipper getSkipper(FieldInfo field) {
     DocValuesProducer dvProducer = dvProducersByField.get(field.number);
     assert dvProducer != null;
     return dvProducer.getSkipper(field);
