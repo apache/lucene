@@ -122,6 +122,37 @@ public class TestVectorUtil extends LuceneTestCase {
     expectThrows(IllegalArgumentException.class, () -> VectorUtil.l2normalize(v));
   }
 
+  public void testCheckFiniteFloat16() {
+    // finite vector passes and returns the same array
+    short[] finite = {
+      Float.floatToFloat16(-1.5f),
+      Float.floatToFloat16(0f),
+      Float.floatToFloat16(3.25f),
+      (short) 0x7BFF, // largest finite float16 (65504)
+      (short) 0xFBFF // most negative finite float16 (-65504)
+    };
+    assertSame(finite, VectorUtil.checkFiniteFloat16(finite));
+
+    // +Infinity
+    IllegalArgumentException e =
+        expectThrows(
+            IllegalArgumentException.class,
+            () ->
+                VectorUtil.checkFiniteFloat16(
+                    new short[] {Float.floatToFloat16(1f), (short) 0x7C00}));
+    assertTrue(e.getMessage(), e.getMessage().contains("non-finite float16 value at vector[1]"));
+
+    // -Infinity
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> VectorUtil.checkFiniteFloat16(new short[] {(short) 0xFC00}));
+
+    // NaN (any non-zero mantissa with all exponent bits set)
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> VectorUtil.checkFiniteFloat16(new short[] {(short) 0x7E00}));
+  }
+
   public void testNormalizeToUnitInterval() {
     for (int i = 0; i < 100; i++) {
       // Generates a float in the range [-1.0, 1.0)
