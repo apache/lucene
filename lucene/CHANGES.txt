@@ -330,7 +330,7 @@ New Features
 
 * GITHUB#16383: Add fp16 vector encoding support. (Pulkit Gupta)
 
-* GITHUB#15979: Add a de-duplicating HNSW vector format (Lucene106DedupHnswVectorsFormat) that stores
+* GITHUB#15979: Add a sandboxed de-duplicating HNSW vector format (DedupHnswVectorsFormat) that stores
   each distinct full-precision vector once, shared across all documents and fields that reference it.
   (Kaival Parikh)
 

@@ -14,15 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene106.dedup;
+package org.apache.lucene.sandbox.codecs.dedup;
 
 import static java.nio.ByteOrder.LITTLE_ENDIAN;
-import static org.apache.lucene.codecs.lucene106.dedup.DedupUtil.alignBytes;
-import static org.apache.lucene.codecs.lucene106.dedup.DedupUtil.hashBytes;
-import static org.apache.lucene.codecs.lucene106.dedup.DedupUtil.writeEndOfFields;
-import static org.apache.lucene.codecs.lucene106.dedup.DedupUtil.writeEndOfGroups;
-import static org.apache.lucene.codecs.lucene106.dedup.DedupUtil.writeFieldInfo;
-import static org.apache.lucene.codecs.lucene106.dedup.DedupUtil.writeGroupInfo;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.alignBytes;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.hashBytes;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.writeEndOfFields;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.writeEndOfGroups;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.writeFieldInfo;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.writeGroupInfo;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -35,17 +35,17 @@ import java.util.List;
 import java.util.Map;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
-import org.apache.lucene.codecs.lucene106.dedup.DedupUtil.FieldOrdToGroupOrd;
-import org.apache.lucene.codecs.lucene106.dedup.DedupUtil.FieldOrdToGroupOrdArrayList;
-import org.apache.lucene.codecs.lucene106.dedup.DedupUtil.FieldOrdToGroupOrdMappedArrayList;
-import org.apache.lucene.codecs.lucene106.dedup.DedupUtil.GroupInfo;
-import org.apache.lucene.codecs.lucene106.dedup.DedupUtil.GroupKey;
-import org.apache.lucene.codecs.lucene106.dedup.DedupUtil.WriteFieldInfo;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.internal.hppc.IntArrayList;
+import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.FieldOrdToGroupOrd;
+import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.FieldOrdToGroupOrdArrayList;
+import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.FieldOrdToGroupOrdMappedArrayList;
+import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.GroupInfo;
+import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.GroupKey;
+import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.WriteFieldInfo;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.RamUsageEstimator;

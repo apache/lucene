@@ -14,13 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene106.dedup;
+package org.apache.lucene.sandbox.codecs.dedup;
 
-import static org.apache.lucene.codecs.lucene106.dedup.DedupFlatVectorsFormat.META_CODEC_NAME;
-import static org.apache.lucene.codecs.lucene106.dedup.DedupFlatVectorsFormat.META_EXTENSION;
-import static org.apache.lucene.codecs.lucene106.dedup.DedupFlatVectorsFormat.VECTOR_DATA_CODEC_NAME;
-import static org.apache.lucene.codecs.lucene106.dedup.DedupFlatVectorsFormat.VECTOR_DATA_EXTENSION;
-import static org.apache.lucene.codecs.lucene106.dedup.DedupFlatVectorsFormat.VERSION_CURRENT;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupFlatVectorsFormat.META_CODEC_NAME;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupFlatVectorsFormat.META_EXTENSION;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupFlatVectorsFormat.VECTOR_DATA_CODEC_NAME;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupFlatVectorsFormat.VECTOR_DATA_EXTENSION;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupFlatVectorsFormat.VERSION_CURRENT;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.CodecUtil;

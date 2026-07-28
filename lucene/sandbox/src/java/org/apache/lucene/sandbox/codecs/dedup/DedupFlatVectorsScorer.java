@@ -14,17 +14,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene106.dedup;
+package org.apache.lucene.sandbox.codecs.dedup;
 
-import static org.apache.lucene.codecs.lucene106.dedup.DedupUtil.SCRATCH_INITIAL_SIZE;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.SCRATCH_INITIAL_SIZE;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
-import org.apache.lucene.codecs.lucene106.dedup.DedupUtil.DedupVectorValues;
-import org.apache.lucene.codecs.lucene106.dedup.DedupUtil.FieldOrdToGroupOrd;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.DedupVectorValues;
+import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.FieldOrdToGroupOrd;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;

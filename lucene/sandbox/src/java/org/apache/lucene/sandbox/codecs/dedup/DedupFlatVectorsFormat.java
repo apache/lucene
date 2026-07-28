@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene106.dedup;
+package org.apache.lucene.sandbox.codecs.dedup;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;

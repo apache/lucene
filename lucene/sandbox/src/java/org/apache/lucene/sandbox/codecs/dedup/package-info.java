@@ -20,7 +20,7 @@
  *
  * <p>Stores each distinct vector once and shares it across the documents and fields that reference
  * it, while reusing the Lucene 9.9 HNSW graph. See {@link
- * org.apache.lucene.codecs.lucene106.dedup.Lucene106DedupHnswVectorsFormat} for the entry point and
- * {@link org.apache.lucene.codecs.lucene106.dedup.DedupFlatVectorsFormat} for the on-disk layout.
+ * org.apache.lucene.sandbox.codecs.dedup.DedupHnswVectorsFormat} for the entry point and {@link
+ * org.apache.lucene.sandbox.codecs.dedup.DedupFlatVectorsFormat} for the on-disk layout.
  */
-package org.apache.lucene.codecs.lucene106.dedup;
+package org.apache.lucene.sandbox.codecs.dedup;

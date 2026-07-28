@@ -14,14 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene106.dedup;
+package org.apache.lucene.sandbox.codecs.dedup;
 
 import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
 import static org.hamcrest.Matchers.arrayContainingInAnyOrder;
 import static org.hamcrest.Matchers.instanceOf;
 
 import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.codecs.lucene106.dedup.DedupUtil.DedupVectorValues;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.document.KnnFloat16VectorField;
@@ -38,20 +37,21 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.DedupVectorValues;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
 /**
- * Tests that {@link Lucene106DedupHnswVectorsFormat} stores each distinct vector once.
- * De-duplication is observed through the group view size: the number of distinct vectors physically
- * stored, regardless of how many documents reference them.
+ * Tests that {@link DedupHnswVectorsFormat} stores each distinct vector once. De-duplication is
+ * observed through the group view size: the number of distinct vectors physically stored,
+ * regardless of how many documents reference them.
  */
 public class TestDedupFlatVectorsFormat extends LuceneTestCase {
 
   private IndexWriterConfig config() {
     return newIndexWriterConfig()
-        .setCodec(TestUtil.alwaysKnnVectorsFormat(new Lucene106DedupHnswVectorsFormat()));
+        .setCodec(TestUtil.alwaysKnnVectorsFormat(new DedupHnswVectorsFormat()));
   }
 
   /** Repeated float vectors within a field are stored once but still read back per document. */

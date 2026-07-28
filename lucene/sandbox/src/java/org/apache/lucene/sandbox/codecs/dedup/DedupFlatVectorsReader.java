@@ -14,22 +14,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene106.dedup;
+package org.apache.lucene.sandbox.codecs.dedup;
 
-import static org.apache.lucene.codecs.lucene106.dedup.DedupFlatVectorsFormat.META_CODEC_NAME;
-import static org.apache.lucene.codecs.lucene106.dedup.DedupFlatVectorsFormat.META_EXTENSION;
-import static org.apache.lucene.codecs.lucene106.dedup.DedupFlatVectorsFormat.VECTOR_DATA_CODEC_NAME;
-import static org.apache.lucene.codecs.lucene106.dedup.DedupFlatVectorsFormat.VECTOR_DATA_EXTENSION;
-import static org.apache.lucene.codecs.lucene106.dedup.DedupFlatVectorsFormat.VERSION_CURRENT;
-import static org.apache.lucene.codecs.lucene106.dedup.DedupFlatVectorsFormat.VERSION_START;
-import static org.apache.lucene.codecs.lucene106.dedup.DedupUtil.loadDedupBytes;
-import static org.apache.lucene.codecs.lucene106.dedup.DedupUtil.loadDedupFloat16s;
-import static org.apache.lucene.codecs.lucene106.dedup.DedupUtil.loadDedupFloats;
-import static org.apache.lucene.codecs.lucene106.dedup.DedupUtil.readFieldInfo;
-import static org.apache.lucene.codecs.lucene106.dedup.DedupUtil.readGroupInfo;
 import static org.apache.lucene.index.VectorEncoding.BYTE;
 import static org.apache.lucene.index.VectorEncoding.FLOAT16;
 import static org.apache.lucene.index.VectorEncoding.FLOAT32;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupFlatVectorsFormat.META_CODEC_NAME;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupFlatVectorsFormat.META_EXTENSION;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupFlatVectorsFormat.VECTOR_DATA_CODEC_NAME;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupFlatVectorsFormat.VECTOR_DATA_EXTENSION;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupFlatVectorsFormat.VERSION_CURRENT;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupFlatVectorsFormat.VERSION_START;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.loadDedupBytes;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.loadDedupFloat16s;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.loadDedupFloats;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.readFieldInfo;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.readGroupInfo;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -39,8 +39,6 @@ import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
-import org.apache.lucene.codecs.lucene106.dedup.DedupUtil.GroupInfo;
-import org.apache.lucene.codecs.lucene106.dedup.DedupUtil.ReadFieldInfo;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
@@ -51,6 +49,8 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.GroupInfo;
+import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.ReadFieldInfo;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.FileDataHint;

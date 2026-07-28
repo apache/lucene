@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene106.dedup;
+package org.apache.lucene.sandbox.codecs.dedup;
 
 import static org.hamcrest.Matchers.greaterThan;
 
@@ -30,7 +30,6 @@ import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
-import org.apache.lucene.codecs.simpletext.SimpleTextKnnVectorsReader;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesType;
@@ -53,9 +52,9 @@ import org.apache.lucene.util.Version;
  * Runs the standard KNN vectors format suite against the de-duplicating HNSW format. De-duplication
  * behavior itself is covered by {@link TestDedupFlatVectorsFormat}.
  */
-public class TestLucene106DedupHnswVectorsFormat extends BaseKnnVectorsFormatTestCase {
+public class TestDedupHnswVectorsFormat extends BaseKnnVectorsFormatTestCase {
 
-  private final KnnVectorsFormat format = new Lucene106DedupHnswVectorsFormat();
+  private final KnnVectorsFormat format = new DedupHnswVectorsFormat();
 
   @Override
   protected Codec getCodec() {
@@ -76,10 +75,7 @@ public class TestLucene106DedupHnswVectorsFormat extends BaseKnnVectorsFormatTes
       knnVectorsReader = knnVectorsReader.unwrapReaderForField(fieldName);
       var offHeap = knnVectorsReader.getOffHeapByteSize(fieldInfo);
       long totalByteSize = offHeap.values().stream().mapToLong(Long::longValue).sum();
-      if (knnVectorsReader instanceof SimpleTextKnnVectorsReader) {
-        assertEquals(0L, offHeap.size()); // all vectors are in memory
-        assertEquals(0L, totalByteSize);
-      } else {
+      if (knnVectorsReader instanceof DedupFlatVectorsReader) {
         if (getNumVectors(knnVectorsReader, fieldInfo) == 0) {
           assertEquals(0L, totalByteSize);
         } else {
