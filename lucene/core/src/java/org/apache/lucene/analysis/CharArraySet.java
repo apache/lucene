@@ -61,8 +61,21 @@ public class CharArraySet extends AbstractSet<Object> {
    *     <code>true</code>.
    */
   public CharArraySet(Collection<?> c, boolean ignoreCase) {
-    this(c.size(), ignoreCase);
+    this(c, ignoreCase, CharArrayMap.DEFAULT_MAX_CACHED_LENGTH);
+  }
+
+  /**
+   * Creates a set from a Collection of objects.
+   *
+   * @param c a collection whose elements to be placed into the set
+   * @param ignoreCase <code>false</code> if and only if the set should be case sensitive otherwise
+   *     <code>true</code>.
+   * @param maxCachedLength maximum ASCII length to cache for faster lookup (0 to disable)
+   */
+  public CharArraySet(Collection<?> c, boolean ignoreCase, int maxCachedLength) {
+    this(new CharArrayMap<>(c.size(), ignoreCase, maxCachedLength));
     addAll(c);
+    map.tryBuildPackedKeys();
   }
 
   /**
