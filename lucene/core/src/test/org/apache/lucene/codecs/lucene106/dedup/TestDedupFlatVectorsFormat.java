@@ -17,6 +17,7 @@
 package org.apache.lucene.codecs.lucene106.dedup;
 
 import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
+import static org.hamcrest.Matchers.arrayContainingInAnyOrder;
 import static org.hamcrest.Matchers.instanceOf;
 
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -25,6 +26,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.document.KnnFloat16VectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
+import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
@@ -35,6 +37,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
@@ -58,19 +61,30 @@ public class TestDedupFlatVectorsFormat extends LuceneTestCase {
     float[][] docVectors = {a, b, a, b, a, b}; // 3 copies each of 2 vectors
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, config())) {
-      for (float[] vector : docVectors) {
+      for (int ord = 0; ord < docVectors.length; ord++) {
         Document doc = new Document();
-        doc.add(new KnnFloatVectorField("f", vector, EUCLIDEAN));
+        doc.add(new NumericDocValuesField("id", ord));
+        doc.add(new KnnFloatVectorField("f", docVectors[ord], EUCLIDEAN));
         w.addDocument(doc);
       }
       w.forceMerge(1);
       try (DirectoryReader reader = DirectoryReader.open(w)) {
-        FloatVectorValues values = getOnlyLeafReader(reader).getFloatVectorValues("f");
+        LeafReader leafReader = getOnlyLeafReader(reader);
+        FloatVectorValues values = leafReader.getFloatVectorValues("f");
         assertEquals(docVectors.length, values.size()); // one entry per document
         assertEquals(2, groupSize(values)); // only two distinct vectors stored
-        for (int ord = 0; ord < values.size(); ord++) {
-          assertArrayEquals(docVectors[ord], values.vectorValue(ord), 0f);
+        NumericDocValues docValues = leafReader.getNumericDocValues("id");
+        Integer[] expectedOrds = new Integer[docVectors.length];
+        Integer[] ordsSeen = new Integer[docVectors.length];
+        for (int ord = 0; ord < docVectors.length; ord++) {
+          int docId = values.ordToDoc(ord);
+          assertTrue("id does not exist for docId=" + docId, docValues.advanceExact(docId));
+          int originalOrd = (int) docValues.longValue();
+          assertArrayEquals(docVectors[originalOrd], values.vectorValue(ord), 0f);
+          expectedOrds[ord] = ord;
+          ordsSeen[ord] = originalOrd;
         }
+        assertThat("all vectors not seen", ordsSeen, arrayContainingInAnyOrder(expectedOrds));
       }
     }
   }
@@ -82,19 +96,30 @@ public class TestDedupFlatVectorsFormat extends LuceneTestCase {
     short[][] docVectors = {a, b, a, b, a, b}; // 3 copies each of 2 vectors
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, config())) {
-      for (short[] vector : docVectors) {
+      for (int ord = 0; ord < docVectors.length; ord++) {
         Document doc = new Document();
-        doc.add(new KnnFloat16VectorField("f", vector, EUCLIDEAN));
+        doc.add(new NumericDocValuesField("id", ord));
+        doc.add(new KnnFloat16VectorField("f", docVectors[ord], EUCLIDEAN));
         w.addDocument(doc);
       }
       w.forceMerge(1);
       try (DirectoryReader reader = DirectoryReader.open(w)) {
-        Float16VectorValues values = getOnlyLeafReader(reader).getFloat16VectorValues("f");
+        LeafReader leafReader = getOnlyLeafReader(reader);
+        Float16VectorValues values = leafReader.getFloat16VectorValues("f");
         assertEquals(docVectors.length, values.size()); // one entry per document
         assertEquals(2, groupSize(values)); // only two distinct vectors stored
-        for (int ord = 0; ord < values.size(); ord++) {
-          assertArrayEquals(docVectors[ord], values.vectorValue(ord));
+        NumericDocValues docValues = leafReader.getNumericDocValues("id");
+        Integer[] expectedOrds = new Integer[docVectors.length];
+        Integer[] ordsSeen = new Integer[docVectors.length];
+        for (int ord = 0; ord < docVectors.length; ord++) {
+          int docId = values.ordToDoc(ord);
+          assertTrue("id does not exist for docId=" + docId, docValues.advanceExact(docId));
+          int originalOrd = (int) docValues.longValue();
+          assertArrayEquals(docVectors[originalOrd], values.vectorValue(ord));
+          expectedOrds[ord] = ord;
+          ordsSeen[ord] = originalOrd;
         }
+        assertThat("all vectors not seen", ordsSeen, arrayContainingInAnyOrder(expectedOrds));
       }
     }
   }
@@ -106,19 +131,30 @@ public class TestDedupFlatVectorsFormat extends LuceneTestCase {
     byte[][] docVectors = {a, a, b, a, b};
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, config())) {
-      for (byte[] vector : docVectors) {
+      for (int ord = 0; ord < docVectors.length; ord++) {
         Document doc = new Document();
-        doc.add(new KnnByteVectorField("f", vector, EUCLIDEAN));
+        doc.add(new NumericDocValuesField("id", ord));
+        doc.add(new KnnByteVectorField("f", docVectors[ord], EUCLIDEAN));
         w.addDocument(doc);
       }
       w.forceMerge(1);
       try (DirectoryReader reader = DirectoryReader.open(w)) {
-        ByteVectorValues values = getOnlyLeafReader(reader).getByteVectorValues("f");
+        LeafReader leafReader = getOnlyLeafReader(reader);
+        ByteVectorValues values = leafReader.getByteVectorValues("f");
         assertEquals(docVectors.length, values.size());
         assertEquals(2, groupSize(values));
-        for (int ord = 0; ord < values.size(); ord++) {
-          assertArrayEquals(docVectors[ord], values.vectorValue(ord));
+        NumericDocValues docValues = leafReader.getNumericDocValues("id");
+        Integer[] expectedOrds = new Integer[docVectors.length];
+        Integer[] ordsSeen = new Integer[docVectors.length];
+        for (int ord = 0; ord < docVectors.length; ord++) {
+          int docId = values.ordToDoc(ord);
+          assertTrue("id does not exist for docId=" + docId, docValues.advanceExact(docId));
+          int originalOrd = (int) docValues.longValue();
+          assertArrayEquals(docVectors[originalOrd], values.vectorValue(ord));
+          expectedOrds[ord] = ord;
+          ordsSeen[ord] = originalOrd;
         }
+        assertThat("all vectors not seen", ordsSeen, arrayContainingInAnyOrder(expectedOrds));
       }
     }
   }
@@ -230,20 +266,31 @@ public class TestDedupFlatVectorsFormat extends LuceneTestCase {
     float[][] docVectors = {a, b, a}; // 3 docs across 3 segments, 2 distinct
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, config())) {
-      for (float[] vector : docVectors) {
+      for (int ord = 0; ord < docVectors.length; ord++) {
         Document doc = new Document();
-        doc.add(new KnnFloatVectorField("f", vector, EUCLIDEAN));
+        doc.add(new NumericDocValuesField("id", ord));
+        doc.add(new KnnFloatVectorField("f", docVectors[ord], EUCLIDEAN));
         w.addDocument(doc);
         w.commit(); // one segment per document
       }
       w.forceMerge(1);
       try (DirectoryReader reader = DirectoryReader.open(w)) {
-        FloatVectorValues values = getOnlyLeafReader(reader).getFloatVectorValues("f");
-        assertEquals(3, values.size());
+        LeafReader leafReader = getOnlyLeafReader(reader);
+        FloatVectorValues values = leafReader.getFloatVectorValues("f");
+        assertEquals(docVectors.length, values.size());
         assertEquals(2, groupSize(values)); // a's duplicate collapsed across segments
-        for (int ord = 0; ord < values.size(); ord++) {
-          assertArrayEquals(docVectors[ord], values.vectorValue(ord), 0f);
+        NumericDocValues docValues = leafReader.getNumericDocValues("id");
+        Integer[] expectedOrds = new Integer[docVectors.length];
+        Integer[] ordsSeen = new Integer[docVectors.length];
+        for (int ord = 0; ord < docVectors.length; ord++) {
+          int docId = values.ordToDoc(ord);
+          assertTrue("id does not exist for docId=" + docId, docValues.advanceExact(docId));
+          int originalOrd = (int) docValues.longValue();
+          assertArrayEquals(docVectors[originalOrd], values.vectorValue(ord), 0f);
+          expectedOrds[ord] = ord;
+          ordsSeen[ord] = originalOrd;
         }
+        assertThat("all vectors not seen", ordsSeen, arrayContainingInAnyOrder(expectedOrds));
       }
     }
   }
