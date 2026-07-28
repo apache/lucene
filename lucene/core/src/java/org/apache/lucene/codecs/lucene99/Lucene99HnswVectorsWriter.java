@@ -425,6 +425,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       KnnVectorValues vectorValues =
           switch (fieldInfo.getVectorEncoding()) {
             case BYTE -> flatVectorsReader.getByteVectorValues(fieldInfo.name);
+            case FLOAT16 -> flatVectorsReader.getFloat16VectorValues(fieldInfo.name);
             case FLOAT32 -> flatVectorsReader.getFloatVectorValues(fieldInfo.name);
           };
       int totalVectorCount = vectorValues == null ? 0 : vectorValues.size();
@@ -473,7 +474,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
             mergeState.intraMergeTaskExecutor == null
                 ? null
                 : new TaskExecutor(mergeState.intraMergeTaskExecutor),
-            numMergeWorkers);
+            numMergeWorkers,
+            mergeState::checkAborted);
     for (int i = 0; i < mergeState.liveDocs.length; i++) {
       if (hasVectorValues(mergeState.fieldInfos[i], fieldInfo.name)) {
         merger.addReader(
@@ -626,10 +628,11 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       FieldInfo fieldInfo,
       RandomVectorScorerSupplier scorerSupplier,
       TaskExecutor parallelMergeTaskExecutor,
-      int numParallelMergeWorkers) {
+      int numParallelMergeWorkers,
+      IORunnable abortCheck) {
     if (mergeExec != null) {
       return new ConcurrentHnswMerger(
-          fieldInfo, scorerSupplier, M, beamWidth, mergeExec, numMergeWorkers);
+          fieldInfo, scorerSupplier, M, beamWidth, mergeExec, numMergeWorkers, abortCheck);
     }
     if (parallelMergeTaskExecutor != null && numParallelMergeWorkers > 1) {
       return new ConcurrentHnswMerger(
@@ -638,9 +641,10 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
           M,
           beamWidth,
           parallelMergeTaskExecutor,
-          numParallelMergeWorkers);
+          numParallelMergeWorkers,
+          abortCheck);
     }
-    return new IncrementalHnswGraphMerger(fieldInfo, scorerSupplier, M, beamWidth);
+    return new IncrementalHnswGraphMerger(fieldInfo, scorerSupplier, M, beamWidth, abortCheck);
   }
 
   @Override
@@ -700,6 +704,15 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
             new FieldWriter<>(
                 scorer,
                 (FlatFieldVectorsWriter<byte[]>) flatFieldVectorsWriter,
+                fieldInfo,
+                M,
+                beamWidth,
+                infoStream,
+                tinySegmentsThreshold);
+        case FLOAT16 ->
+            new FieldWriter<>(
+                scorer,
+                (FlatFieldVectorsWriter<short[]>) flatFieldVectorsWriter,
                 fieldInfo,
                 M,
                 beamWidth,
