@@ -48,7 +48,7 @@ import org.tartarus.snowball.SnowballStemmer;
  */
 public final class SnowballFilter extends TokenFilter {
 
-  private static final int DEFAULT_MAX_CACHE_SIZE = 1024;
+  private static final int DEFAULT_MAX_CACHE_SIZE = 128;
   private static final int MAX_CACHEABLE_LENGTH = 10;
 
   private final SnowballStemmer stemmer;
