@@ -21,9 +21,13 @@ import java.io.StringReader;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.analysis.core.StopFilter;
 import org.apache.lucene.analysis.core.WhitespaceTokenizer;
+import org.apache.lucene.analysis.de.GermanAnalyzer;
+import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.analysis.snowball.SnowballFilter;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -58,19 +62,33 @@ public class SnowballStemBenchmark {
   @Param({"500", "5000", "50000"})
   int vocabSize;
 
+  @Param({"true", "false"})
+  String stopFilter;
+
   private String corpus;
   private Analyzer analyzer;
 
   @Setup(Level.Trial)
   public void setup() {
-    corpus = buildZipfianCorpus(vocabSize, 10_000, 42);
+    boolean useStopFilter = Boolean.parseBoolean(stopFilter);
+    CharArraySet stopWords =
+        switch (language) {
+          case "English" -> EnglishAnalyzer.getDefaultStopSet();
+          case "German" -> GermanAnalyzer.getDefaultStopSet();
+          default -> CharArraySet.EMPTY_SET;
+        };
+    corpus = buildZipfianCorpus(vocabSize, 10_000, 42, useStopFilter ? stopWords : null);
     analyzer =
         new Analyzer() {
           @Override
           protected TokenStreamComponents createComponents(String fieldName) {
             Tokenizer tokenizer = new WhitespaceTokenizer();
-            return new TokenStreamComponents(
-                tokenizer, new SnowballFilter(tokenizer, language, cacheSize));
+            TokenStream stream = tokenizer;
+            if (useStopFilter) {
+              stream = new StopFilter(stream, stopWords);
+            }
+            stream = new SnowballFilter(stream, language, cacheSize);
+            return new TokenStreamComponents(tokenizer, stream);
           }
         };
   }
@@ -96,7 +114,14 @@ public class SnowballStemBenchmark {
     return count;
   }
 
-  private static String buildZipfianCorpus(int uniqueWords, int totalTokens, long seed) {
+  private static final String[] COMMON_STOP_WORDS = {
+    "the", "a", "an", "and", "are", "as", "at", "be", "but", "by", "for", "if", "in", "into",
+    "is", "it", "no", "not", "of", "on", "or", "such", "that", "the", "their", "then", "there",
+    "these", "they", "this", "to", "was", "will", "with"
+  };
+
+  private static String buildZipfianCorpus(
+      int uniqueWords, int totalTokens, long seed, CharArraySet stopWords) {
     Random rng = new Random(seed);
     String[] vocabulary = generateVocabulary(uniqueWords, rng);
 
@@ -118,9 +143,13 @@ public class SnowballStemBenchmark {
       if (t > 0) {
         sb.append(' ');
       }
-      double r = rng.nextDouble();
-      int idx = findBucket(cumulative, r);
-      sb.append(vocabulary[idx]);
+      if (stopWords != null && rng.nextDouble() < 0.45) {
+        sb.append(COMMON_STOP_WORDS[rng.nextInt(COMMON_STOP_WORDS.length)]);
+      } else {
+        double r = rng.nextDouble();
+        int idx = findBucket(cumulative, r);
+        sb.append(vocabulary[idx]);
+      }
     }
     return sb.toString();
   }
