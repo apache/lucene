@@ -18,6 +18,8 @@ package org.apache.lucene.benchmark.jmh;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.analysis.Analyzer;
@@ -26,10 +28,10 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.StopFilter;
 import org.apache.lucene.analysis.core.WhitespaceTokenizer;
-import org.apache.lucene.analysis.de.GermanAnalyzer;
-import org.apache.lucene.analysis.en.EnglishAnalyzer;
+import org.apache.lucene.analysis.ro.RomanianAnalyzer;
 import org.apache.lucene.analysis.snowball.SnowballFilter;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.analysis.tr.TurkishAnalyzer;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -53,75 +55,96 @@ import org.openjdk.jmh.annotations.Warmup;
 @Fork(3)
 public class SnowballStemBenchmark {
 
-  @Param({"0", "1024", "4096", "8192"})
+  @Param({"0", "64", "128", "256", "512"})
   int cacheSize;
 
-  @Param({"English", "German"})
+  @Param({"Romanian", "Turkish"})
   String language;
 
-  @Param({"500", "5000", "50000"})
+  @Param({"5000", "50000"})
   int vocabSize;
 
   @Param({"true", "false"})
   String stopFilter;
 
+  @Param({"1", "4"})
+  int numAnalyzers;
+
   private String corpus;
-  private Analyzer analyzer;
+  private Analyzer[] analyzers;
 
   @Setup(Level.Trial)
   public void setup() {
     boolean useStopFilter = Boolean.parseBoolean(stopFilter);
     CharArraySet stopWords =
         switch (language) {
-          case "English" -> EnglishAnalyzer.getDefaultStopSet();
-          case "German" -> GermanAnalyzer.getDefaultStopSet();
+          case "Romanian" -> RomanianAnalyzer.getDefaultStopSet();
+          case "Turkish" -> TurkishAnalyzer.getDefaultStopSet();
           default -> CharArraySet.EMPTY_SET;
         };
-    corpus = buildZipfianCorpus(vocabSize, 10_000, 42, useStopFilter ? stopWords : null);
-    analyzer =
-        new Analyzer() {
-          @Override
-          protected TokenStreamComponents createComponents(String fieldName) {
-            Tokenizer tokenizer = new WhitespaceTokenizer();
-            TokenStream stream = tokenizer;
-            if (useStopFilter) {
-              stream = new StopFilter(stream, stopWords);
-            }
-            stream = new SnowballFilter(stream, language, cacheSize);
-            return new TokenStreamComponents(tokenizer, stream);
-          }
-        };
+
+    List<String> stopWordList = extractStopWords(stopWords);
+    corpus = buildZipfianCorpus(vocabSize, 10_000, 42, useStopFilter ? stopWordList : null);
+
+    analyzers = new Analyzer[numAnalyzers];
+    for (int i = 0; i < numAnalyzers; i++) {
+      analyzers[i] = createAnalyzer(language, cacheSize, useStopFilter, stopWords);
+    }
+  }
+
+  private static Analyzer createAnalyzer(
+      String language, int cacheSize, boolean useStopFilter, CharArraySet stopWords) {
+    return new Analyzer() {
+      @Override
+      protected TokenStreamComponents createComponents(String fieldName) {
+        Tokenizer tokenizer = new WhitespaceTokenizer();
+        TokenStream stream = tokenizer;
+        if (useStopFilter) {
+          stream = new StopFilter(stream, stopWords);
+        }
+        stream = new SnowballFilter(stream, language, cacheSize);
+        return new TokenStreamComponents(tokenizer, stream);
+      }
+    };
   }
 
   @TearDown(Level.Trial)
   public void tearDown() {
-    if (analyzer != null) {
-      analyzer.close();
+    for (Analyzer a : analyzers) {
+      if (a != null) {
+        a.close();
+      }
     }
   }
 
   @Benchmark
   public int stem() throws IOException {
     int count = 0;
-    try (TokenStream ts = analyzer.tokenStream("field", new StringReader(corpus))) {
-      CharTermAttribute termAtt = ts.addAttribute(CharTermAttribute.class);
-      ts.reset();
-      while (ts.incrementToken()) {
-        count += termAtt.length();
+    for (Analyzer analyzer : analyzers) {
+      try (TokenStream ts = analyzer.tokenStream("field", new StringReader(corpus))) {
+        CharTermAttribute termAtt = ts.addAttribute(CharTermAttribute.class);
+        ts.reset();
+        while (ts.incrementToken()) {
+          count += termAtt.length();
+        }
+        ts.end();
       }
-      ts.end();
     }
     return count;
   }
 
-  private static final String[] COMMON_STOP_WORDS = {
-    "the", "a", "an", "and", "are", "as", "at", "be", "but", "by", "for", "if", "in", "into",
-    "is", "it", "no", "not", "of", "on", "or", "such", "that", "the", "their", "then", "there",
-    "these", "they", "this", "to", "was", "will", "with"
-  };
+  private static List<String> extractStopWords(CharArraySet stopWords) {
+    List<String> words = new ArrayList<>();
+    for (Object obj : stopWords) {
+      if (obj instanceof char[] chars) {
+        words.add(new String(chars));
+      }
+    }
+    return words;
+  }
 
   private static String buildZipfianCorpus(
-      int uniqueWords, int totalTokens, long seed, CharArraySet stopWords) {
+      int uniqueWords, int totalTokens, long seed, List<String> stopWords) {
     Random rng = new Random(seed);
     String[] vocabulary = generateVocabulary(uniqueWords, rng);
 
@@ -143,8 +166,8 @@ public class SnowballStemBenchmark {
       if (t > 0) {
         sb.append(' ');
       }
-      if (stopWords != null && rng.nextDouble() < 0.45) {
-        sb.append(COMMON_STOP_WORDS[rng.nextInt(COMMON_STOP_WORDS.length)]);
+      if (stopWords != null && !stopWords.isEmpty() && rng.nextDouble() < 0.45) {
+        sb.append(stopWords.get(rng.nextInt(stopWords.size())));
       } else {
         double r = rng.nextDouble();
         int idx = findBucket(cumulative, r);
