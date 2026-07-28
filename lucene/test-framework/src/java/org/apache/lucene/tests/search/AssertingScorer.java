@@ -298,5 +298,12 @@ public class AssertingScorer extends Scorer {
         state = IteratorState.ITERATING;
       }
     }
+    assert buffer.size != 0 || doc >= upTo
+        : "An empty buffer means that no doc is left before upTo="
+            + upTo
+            + ", but the iterator is on doc="
+            + doc
+            + ". Implementations that filter the buffer, e.g. on liveDocs, must keep loading"
+            + " batches until one is non-empty.";
   }
 }
