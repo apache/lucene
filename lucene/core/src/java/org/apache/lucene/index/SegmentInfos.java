@@ -62,7 +62,8 @@ import org.apache.lucene.util.Version;
  * <ul>
  *   <li><code>segments_N</code>: Header, LuceneVersion, Version, NameCounter, SegCount,
  *       MinSegmentLuceneVersion, &lt;SegName, SegID, SegCodec, DelGen, DeletionCount,
- *       FieldInfosGen, DocValuesGen, UpdatesFiles&gt;<sup>SegCount</sup>, CommitUserData, Footer
+ *       FieldInfosGen, DocValuesGen, UpdatesFiles, DocValuesOverlays&gt;<sup>SegCount</sup>,
+ *       CommitUserData, Footer
  * </ul>
  *
  * Data types:
@@ -82,6 +83,10 @@ import org.apache.lucene.util.Version;
  *   <li>CommitUserData --&gt; {@link DataOutput#writeMapOfStrings Map&lt;String,String&gt;}
  *   <li>UpdatesFiles --&gt; Map&lt;{@link DataOutput#writeInt Int32}, {@link
  *       DataOutput#writeSetOfStrings(Set) Set&lt;String&gt;}&gt;
+ *   <li>DocValuesOverlays --&gt; OverlayCount, &lt;FieldNumber, BaseGen, DeltaCount,
+ *       DeltaGen<sup>DeltaCount</sup>&gt;<sup>OverlayCount</sup>; OverlayCount, FieldNumber and
+ *       DeltaCount are {@link DataOutput#writeInt Int32}, BaseGen and DeltaGen are {@link
+ *       DataOutput#writeLong Int64}
  *   <li>Footer --&gt; {@link CodecUtil#writeFooter CodecFooter}
  * </ul>
  *
@@ -106,6 +111,9 @@ import org.apache.lucene.util.Version;
  *       no updates to DocValues in that segment. Anything above zero means there are updates to
  *       DocValues stored by {@link DocValuesFormat}.
  *   <li>UpdatesFiles stores the set of files that were updated in that segment per field.
+ *   <li>DocValuesOverlays records, per field that has incremental (sparse) doc-values updates, the
+ *       base generation and the delta generations (newest first) overlaid on it at read time; empty
+ *       for segments without overlays.
  * </ul>
  *
  * @lucene.experimental
@@ -610,21 +618,10 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
 
   /** Write ourselves to the provided {@link IndexOutput} */
   public void write(IndexOutput out) throws IOException {
-    // Bump the segments version only when some segment carries a doc-values overlay, so a commit
-    // not using the feature
-    // stays readable by an older Lucene.
-    boolean anyOverlay = false;
-    for (SegmentCommitInfo siPerCommit : this) {
-      if (siPerCommit.hasDocValuesOverlays()) {
-        anyOverlay = true;
-        break;
-      }
-    }
-    final int formatVersion = anyOverlay ? VERSION_11_0 : VERSION_86;
     CodecUtil.writeIndexHeader(
         out,
         "segments",
-        formatVersion,
+        VERSION_CURRENT,
         StringHelper.randomId(),
         Long.toString(generation, Character.MAX_RADIX));
     out.writeVInt(Version.LATEST.major);
@@ -721,18 +718,18 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
         CodecUtil.writeBEInt(out, e.getKey());
         out.writeSetOfStrings(e.getValue());
       }
-      if (formatVersion >= VERSION_11_0) {
-        // field -> {baseGen, deltaGenNewestFirst...}
-        final Map<Integer, long[]> overlays = siPerCommit.getDocValuesOverlays();
-        CodecUtil.writeBEInt(out, overlays.size());
-        for (Entry<Integer, long[]> e : overlays.entrySet()) {
-          final long[] packed = e.getValue();
-          CodecUtil.writeBEInt(out, e.getKey());
-          CodecUtil.writeBELong(out, packed[0]); // baseGen
-          CodecUtil.writeBEInt(out, packed.length - 1); // number of delta generations
-          for (int g = 1; g < packed.length; g++) {
-            CodecUtil.writeBELong(out, packed[g]);
-          }
+      // Doc-values overlays, part of the format since VERSION_11_0 (which VERSION_CURRENT always
+      // is).
+      // field -> {baseGen, deltaGenNewestFirst...}; empty for segments without overlays.
+      final Map<Integer, long[]> overlays = siPerCommit.getDocValuesOverlays();
+      CodecUtil.writeBEInt(out, overlays.size());
+      for (Entry<Integer, long[]> e : overlays.entrySet()) {
+        final long[] packed = e.getValue();
+        CodecUtil.writeBEInt(out, e.getKey());
+        CodecUtil.writeBELong(out, packed[0]); // baseGen
+        CodecUtil.writeBEInt(out, packed.length - 1); // number of delta generations
+        for (int g = 1; g < packed.length; g++) {
+          CodecUtil.writeBELong(out, packed[g]);
         }
       }
     }

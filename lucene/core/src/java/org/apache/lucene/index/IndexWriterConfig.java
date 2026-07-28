@@ -108,18 +108,11 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
   public static final long DEFAULT_MAX_FULL_FLUSH_MERGE_WAIT_MILLIS = 500;
 
   /**
-   * Default value for whether incremental doc-values updates are enabled: {@code true}. Enabled by
-   * default on this major version (an old reader refuses a segment carrying the overlay); minor
-   * backports ship it opt-in (disabled).
+   * Default maximum number of sparse doc-values overlays a field keeps before they are folded into
+   * one: {@code 16}. {@code 0} disables the feature (classic full-column rewrite); higher values
+   * lower write amplification but keep more overlays (hence more files) live to merge at read time.
    */
-  public static final boolean DEFAULT_INCREMENTAL_DOC_VALUES_UPDATES = true;
-
-  /**
-   * Default number of doc-values delta generations kept before they are compacted: {@code 16}.
-   * Higher values lower write amplification but keep more generations (hence more files) live to
-   * overlay at read time.
-   */
-  public static final int DEFAULT_MAX_DOC_VALUES_DELTA_GENERATIONS = 16;
+  public static final int DEFAULT_MAX_DOC_VALUES_OVERLAYS = 16;
 
   // indicates whether this config instance is already attached to a writer.
   // not final so that it can be cloned properly.
@@ -339,39 +332,25 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
   }
 
   /**
-   * When enabled, a doc-values update that only sets values (no removals) is written as a sparse
-   * "delta" generation holding just the updated documents and overlaid on the existing column at
-   * read time, rather than rewriting the whole column. This trades some read cost for much lower
-   * write amplification on frequently updated fields. Enabled by default; pass {@code false} to
-   * keep the classic full-column rewrite.
+   * Sets the maximum number of sparse doc-values overlays a field may accumulate before they are
+   * folded into a single overlay, which also enables or disables the feature. When enabled, a
+   * doc-values update that only sets values (no removals) is written as a sparse "delta" holding
+   * just the updated documents and overlaid on the existing column at read time, rather than
+   * rewriting the whole column. This trades some read cost for much lower write amplification on
+   * frequently updated fields. Pass {@code 0} to disable the feature and keep the classic
+   * full-column rewrite; any value {@code > 0} enables it, keeping up to that many overlays before
+   * a fold. Enabled by default (see {@link #DEFAULT_MAX_DOC_VALUES_OVERLAYS}).
    *
-   * <p>A commit whose segments carry sparse delta generations is written at a bumped segments-file
-   * version, so a Lucene version that predates this feature refuses to open it rather than
-   * misreading a delta as the whole column. A segment merge (including a force-merge) flattens the
-   * overlay back to a plain column, so once all overlays are merged away older versions can read
-   * the index again. Only takes effect when IndexWriter is first created.
-   *
-   * @lucene.experimental
-   */
-  public IndexWriterConfig setIncrementalDocValuesUpdates(boolean incrementalDocValuesUpdates) {
-    this.incrementalDocValuesUpdates = incrementalDocValuesUpdates;
-    return this;
-  }
-
-  /**
-   * Number of sparse doc-values delta generations a field may accumulate before they are folded
-   * into a single sparse generation. Higher values reduce write amplification further but keep more
-   * generations (hence more live files, and a deeper read-time overlay) between folds. Only
-   * relevant when {@link #setIncrementalDocValuesUpdates(boolean)} is enabled.
+   * <p>Only takes effect when IndexWriter is first created.
    *
    * @lucene.experimental
    */
-  public IndexWriterConfig setMaxDocValuesDeltaGenerations(int maxDocValuesDeltaGenerations) {
-    if (maxDocValuesDeltaGenerations < 1) {
+  public IndexWriterConfig setMaxDocValuesOverlays(int maxDocValuesOverlays) {
+    if (maxDocValuesOverlays < 0) {
       throw new IllegalArgumentException(
-          "maxDocValuesDeltaGenerations must be >= 1; got " + maxDocValuesDeltaGenerations);
+          "maxDocValuesOverlays must be >= 0; got " + maxDocValuesOverlays);
     }
-    this.maxDocValuesDeltaGenerations = maxDocValuesDeltaGenerations;
+    this.maxDocValuesOverlays = maxDocValuesOverlays;
     return this;
   }
 

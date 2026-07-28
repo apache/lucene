@@ -90,11 +90,11 @@ public class LiveIndexWriterConfig {
   /** True if calls to {@link IndexWriter#close()} should first do a commit. */
   protected boolean commitOnClose = IndexWriterConfig.DEFAULT_COMMIT_ON_CLOSE;
 
-  /** True if set-only doc-values updates are written as sparse delta generations. */
-  protected volatile boolean incrementalDocValuesUpdates;
-
-  /** Number of doc-values delta generations kept before they are compacted. */
-  protected volatile int maxDocValuesDeltaGenerations;
+  /**
+   * Maximum number of sparse doc-values overlays a field keeps before they are folded into one;
+   * {@code 0} disables the feature. See {@link IndexWriterConfig#setMaxDocValuesOverlays}.
+   */
+  protected int maxDocValuesOverlays;
 
   /** The sort order to use to write merged segments. */
   protected Sort indexSort = null;
@@ -143,8 +143,7 @@ public class LiveIndexWriterConfig {
     mergePolicy = new TieredMergePolicy();
     flushPolicy = new FlushByRamOrCountsPolicy();
     readerPooling = IndexWriterConfig.DEFAULT_READER_POOLING;
-    incrementalDocValuesUpdates = IndexWriterConfig.DEFAULT_INCREMENTAL_DOC_VALUES_UPDATES;
-    maxDocValuesDeltaGenerations = IndexWriterConfig.DEFAULT_MAX_DOC_VALUES_DELTA_GENERATIONS;
+    maxDocValuesOverlays = IndexWriterConfig.DEFAULT_MAX_DOC_VALUES_OVERLAYS;
     perThreadHardLimitMB = IndexWriterConfig.DEFAULT_RAM_PER_THREAD_HARD_LIMIT_MB;
     maxFullFlushMergeWaitMillis = IndexWriterConfig.DEFAULT_MAX_FULL_FLUSH_MERGE_WAIT_MILLIS;
     eventListener = IndexWriterEventListener.NO_OP_LISTENER;
@@ -394,21 +393,13 @@ public class LiveIndexWriterConfig {
   }
 
   /**
-   * Returns {@code true} if set-only doc-values updates are written as sparse delta generations.
+   * Returns the maximum number of sparse doc-values overlays a field keeps before they are folded
+   * into one, or {@code 0} if the feature is disabled.
    *
    * @lucene.experimental
    */
-  public boolean getIncrementalDocValuesUpdates() {
-    return incrementalDocValuesUpdates;
-  }
-
-  /**
-   * Returns the number of doc-values delta generations kept before they are compacted.
-   *
-   * @lucene.experimental
-   */
-  public int getMaxDocValuesDeltaGenerations() {
-    return maxDocValuesDeltaGenerations;
+  public int getMaxDocValuesOverlays() {
+    return maxDocValuesOverlays;
   }
 
   /**
@@ -513,10 +504,7 @@ public class LiveIndexWriterConfig {
     sb.append("readerPooling=").append(getReaderPooling()).append("\n");
     sb.append("perThreadHardLimitMB=").append(getRAMPerThreadHardLimitMB()).append("\n");
     sb.append("useCompoundFile=").append(getUseCompoundFile()).append("\n");
-    sb.append("incrementalDocValuesUpdates=").append(getIncrementalDocValuesUpdates()).append("\n");
-    sb.append("maxDocValuesDeltaGenerations=")
-        .append(getMaxDocValuesDeltaGenerations())
-        .append("\n");
+    sb.append("maxDocValuesOverlays=").append(getMaxDocValuesOverlays()).append("\n");
     sb.append("commitOnClose=").append(getCommitOnClose()).append("\n");
     sb.append("indexSort=").append(getIndexSort()).append("\n");
     sb.append("checkPendingFlushOnUpdate=").append(isCheckPendingFlushOnUpdate()).append("\n");

@@ -34,17 +34,15 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 
 /**
- * Tests the incremental doc-values update path ({@link
- * IndexWriterConfig#setIncrementalDocValuesUpdates}), where a set-only update is stored as a sparse
- * delta generation overlaid on the base column at read time and delta generations are compacted
- * once they exceed {@link IndexWriterConfig#setMaxDocValuesDeltaGenerations}.
+ * Tests the incremental doc-values update path ({@link IndexWriterConfig#setMaxDocValuesOverlays}),
+ * where a set-only update is stored as a sparse delta overlaid on the base column at read time and
+ * the overlays are folded once they exceed the configured maximum.
  */
 public class TestIncrementalDocValuesUpdates extends LuceneTestCase {
 
   private IndexWriterConfig incrementalConfig() {
     return new IndexWriterConfig(new MockAnalyzer(random()))
-        .setIncrementalDocValuesUpdates(true)
-        .setMaxDocValuesDeltaGenerations(TestUtil.nextInt(random(), 1, 6));
+        .setMaxDocValuesOverlays(TestUtil.nextInt(random(), 1, 6));
   }
 
   private static void assertNumeric(IndexReader reader, String id, long expected)
@@ -157,9 +155,7 @@ public class TestIncrementalDocValuesUpdates extends LuceneTestCase {
     try (Directory dir = newDirectory()) {
       try (IndexWriter w =
           new IndexWriter(
-              dir,
-              new IndexWriterConfig(new MockAnalyzer(random()))
-                  .setIncrementalDocValuesUpdates(false))) {
+              dir, new IndexWriterConfig(new MockAnalyzer(random())).setMaxDocValuesOverlays(0))) {
         for (int i = 0; i < 10; i++) {
           Document d = new Document();
           d.add(new StringField("id", "d" + i, StringField.Store.NO));
@@ -196,9 +192,7 @@ public class TestIncrementalDocValuesUpdates extends LuceneTestCase {
         IndexWriter w =
             new IndexWriter(
                 dir,
-                new IndexWriterConfig(new MockAnalyzer(random()))
-                    .setIncrementalDocValuesUpdates(true)
-                    .setMaxDocValuesDeltaGenerations(2))) {
+                new IndexWriterConfig(new MockAnalyzer(random())).setMaxDocValuesOverlays(2))) {
       int numDocs = 40;
       for (int i = 0; i < numDocs; i++) {
         Document d = new Document();
@@ -448,9 +442,8 @@ public class TestIncrementalDocValuesUpdates extends LuceneTestCase {
   }
 
   /**
-   * A commit carrying an overlay is written at a bumped segments-file version, so a reader that
-   * predates the feature rejects it (at the outermost layer, before any codec) rather than
-   * misreading a single delta as the whole column.
+   * A reader that predates the feature rejects the index (before any codec) rather than misreading
+   * a delta as the whole column, and the overlay round-trips through the segments file.
    */
   public void testOverlaySegmentRejectedByOlderReaders() throws Exception {
     Directory dir = newDirectory();
@@ -464,8 +457,16 @@ public class TestIncrementalDocValuesUpdates extends LuceneTestCase {
       w.commit();
     }
     // The commit records overlay generations, so its segments file is written at VERSION_11_0; a
-    // reader that only
-    // understands up to VERSION_86 rejects it with IndexFormatTooNewException.
+    // reader that only understands up to VERSION_86 rejects it with IndexFormatTooNewException.
+    assertOldReaderRejects(dir);
+    // And the current reader sees the overlay round-tripped through the segments file.
+    assertTrue(
+        SegmentInfos.readLatestCommit(dir).asList().stream()
+            .anyMatch(SegmentCommitInfo::hasDocValuesOverlays));
+    dir.close();
+  }
+
+  private static void assertOldReaderRejects(Directory dir) throws IOException {
     String segmentsFile = SegmentInfos.getLastCommitSegmentsFileName(dir);
     try (ChecksumIndexInput in = dir.openChecksumInput(segmentsFile)) {
       assertEquals(CodecUtil.CODEC_MAGIC, CodecUtil.readBEInt(in));
@@ -475,10 +476,5 @@ public class TestIncrementalDocValuesUpdates extends LuceneTestCase {
               CodecUtil.checkHeaderNoMagic(
                   in, "segments", SegmentInfos.VERSION_74, SegmentInfos.VERSION_86));
     }
-    // And the current reader sees the overlay round-tripped through the segments file.
-    assertTrue(
-        SegmentInfos.readLatestCommit(dir).asList().stream()
-            .anyMatch(SegmentCommitInfo::hasDocValuesOverlays));
-    dir.close();
   }
 }

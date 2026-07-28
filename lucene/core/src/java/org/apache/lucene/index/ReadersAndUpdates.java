@@ -363,14 +363,12 @@ final class ReadersAndUpdates {
       // back to the dense
       // rewrite. (Skip-indexed fields can't reach here: IndexWriter rejects doc-values updates on
       // them.)
-      final boolean sparseDelta = config.getIncrementalDocValuesUpdates() && anyRemoval == false;
-      // Past maxDocValuesDeltaGenerations, fold the prior deltas into this write as one sparse
-      // generation (base
-      // untouched) instead of appending another.
+      final boolean sparseDelta = config.getMaxDocValuesOverlays() > 0 && anyRemoval == false;
+      // Past maxDocValuesOverlays, fold the prior deltas into this write as one sparse generation
+      // (base untouched) instead of appending another.
       // TODO: folding all deltas each cycle rewrites the folded generation repeatedly; a
       // size-tiered policy would help.
-      final boolean compact =
-          sparseDelta && priorGens.length >= config.getMaxDocValuesDeltaGenerations();
+      final boolean compact = sparseDelta && priorGens.length >= config.getMaxDocValuesOverlays();
       final List<DocValuesProducer> deltaProducers = new ArrayList<>();
       long deltaCoverage = 0; // sum of the delta generations' docs-with-value counts (>= distinct)
       // A sparse fold (keeping the base separate) is only worthwhile over the dense core column:

@@ -56,14 +56,14 @@ import org.apache.lucene.util.ThreadInterruptedException;
  * <p>It compares the three ways to change one field on a document that also carries a vector: a
  * full reindex of the document ({@code updateDocument}), the classic dense doc-values update
  * (rewrite the whole column), and the incremental sparse update ({@link
- * IndexWriterConfig#setIncrementalDocValuesUpdates}). The index is built and then updated by {@code
+ * IndexWriterConfig#setMaxDocValuesOverlays}). The index is built and then updated by {@code
  * dvbench.threads} threads, with a background near-real-time refresh every {@code
  * dvbench.refreshMs} (like a search application), rather than periodic commits. The same updates
  * are applied each way and measured identically (update throughput, bytes written per update
  * against the raw value size, the live file/generation count, and an aggregation scan), and all
  * three assert the same final aggregate. With {@code dvbench.queryThreads > 0} background threads
  * run aggregation queries against the refreshing reader; with {@code dvbench.sweep=true} it also
- * runs the sparse arm across a range of {@code maxDocValuesDeltaGenerations}.
+ * runs the sparse arm across a range of {@code maxDocValuesOverlays}.
  *
  * <p>Example (production-like: assertions off, real JIT, mmap directory):
  *
@@ -436,8 +436,7 @@ public class IncrementalDocValuesUpdatesBenchmark {
     CountingDirectory dir = new CountingDirectory(FSDirectory.open(tmp));
     IndexWriterConfig conf =
         new IndexWriterConfig(noopAnalyzer())
-            .setIncrementalDocValuesUpdates(mode == Mode.SPARSE_DV)
-            .setMaxDocValuesDeltaGenerations(maxGens);
+            .setMaxDocValuesOverlays(mode == Mode.SPARSE_DV ? maxGens : 0);
     if (FLAT_VECTORS && DIMS > 0) {
       conf.setCodec(flatVectorCodec());
     }
