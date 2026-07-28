@@ -284,10 +284,10 @@ configure(project(":lucene:analysis:common")) {
 configure(project(":lucene:core")) {
   setupIcuDependencies(project)
 
-  tasks.register("regenerateCaseFolding", {
+  tasks.register("regenerateCaseExpansion", {
     def icuConfig = configurations.icu_current
     def groovyConfig = configurations.groovy
-    def outputFile = file("src/java/org/apache/lucene/util/automaton/CaseFolding.java")
+    def outputFile = file("src/java/org/apache/lucene/util/automaton/CaseExpansion.java")
 
     description = "Regenerate ${outputFile} using ICU"
 
@@ -304,7 +304,7 @@ configure(project(":lucene:core")) {
         args = [
           "--encoding",
           "UTF-8",
-          file("${resources}/GenerateCaseFolding.groovy"),
+          file("${resources}/GenerateCaseExpansion.groovy"),
           outputFile
         ]
       })
