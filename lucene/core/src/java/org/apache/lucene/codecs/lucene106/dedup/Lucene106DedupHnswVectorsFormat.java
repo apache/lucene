@@ -44,9 +44,20 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  * <p>Graph construction and search are identical to {@link
  * org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat}. A {@link DedupFlatVectorsFormat} is
  * used for the flat vector storage, which stores each distinct vector exactly once, shared across
- * all documents that reference it. This trades a small amount of indexing work for reduced storage
- * when vectors repeat, e.g. multiple fields derived from the same embedding or heavily duplicated
- * content.
+ * all documents that reference it.
+ *
+ * <p>This format is suitable for high-performance filtered vector search when filter information is
+ * available at indexing time. In addition to the primary vector field, the user creates separate
+ * fields for each filter value (e.g. product categories in an e-commerce search engine) to build
+ * dedicated HNSW graphs that share the same raw vector storage. <b>The responsibility of searching
+ * the right field at query-time lies on the user</b>.
+ *
+ * <p>This scheme allows for more efficient search than query-time pre-filtering (i.e. {@link
+ * org.apache.lucene.search.AcceptDocs} derived from a {@link org.apache.lucene.search.Query} {@code
+ * filter}) at the expense of slower indexing and larger indexes due to additional HNSW graphs.
+ *
+ * <p>If you customize this format, be sure to <b>share the same instance</b> of the underlying
+ * {@link DedupFlatVectorsFormat} to de-duplicate raw vectors correctly.
  *
  * @lucene.experimental
  */

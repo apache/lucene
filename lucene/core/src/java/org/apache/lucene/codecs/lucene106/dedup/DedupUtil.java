@@ -56,18 +56,19 @@ import org.apache.lucene.util.packed.DirectWriter;
  */
 final class DedupUtil {
 
-  private static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
+  private static final int ORD_TO_DOC_DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
 
   private static final int END_MARKER = -1;
 
-  private static final int ORD_TO_VEC_ALIGN_BYTES = 4;
+  private static final int FIELD_ORD_TO_GROUP_ORD_ALIGN_BYTES = 4;
 
   // TODO: This is the number of bits used to write each group ordinal in the index-backed per-field
-  //  OrdToVecOrd mapping. Evaluate using fewer bits to reduce index size, at the expense of
+  //  FieldOrdToGroupOrd mapping. Evaluate using fewer bits to reduce index size, at the expense of
   //  costlier lookups.
-  private static final int ORD_TO_VEC_BITS_PER_VALUE = 32;
+  private static final int FIELD_ORD_TO_GROUP_ORD_BITS_PER_VALUE = 32;
 
-  static final int SCRATCH_SIZE = 16;
+  /** Initial allocation size for internal re-used int[] scratch buffers. */
+  static final int SCRATCH_INITIAL_SIZE = 16;
 
   /** Key used to group vectors (dimension + encoding). */
   record GroupKey(int dimension, VectorEncoding encoding) {
@@ -82,25 +83,25 @@ final class DedupUtil {
    *
    * <p>Every instance is backed by two views: the {@code fieldView} maps ordinals to docs and
    * drives iteration (one entry per document), while the {@code groupView} holds the de-duplicated
-   * vectors (one entry per distinct vector). {@code ordToVecOrd} translates a document ordinal into
-   * its group ordinal.
+   * vectors (one entry per distinct vector). {@code fieldOrdToGroupOrd} translates a document
+   * ordinal in the field into its group ordinal.
    */
   sealed interface DedupVectorValues {
     /** The dense view over distinct vectors, indexed by group ordinal. */
     KnnVectorValues getGroupView();
 
     /** Maps a per-document ordinal to its group ordinal in {@link #getGroupView()}. */
-    OrdToVecOrd getOrdToVecOrd();
+    FieldOrdToGroupOrd getFieldOrdToGroupOrd();
   }
 
   /**
    * Maps a field's per-document ordinal to the ordinal of its (shared) vector within the group.
    * Backed on-heap while writing and off-heap while reading.
    */
-  sealed interface OrdToVecOrd {
+  sealed interface FieldOrdToGroupOrd {
     int get(int ord);
 
-    OrdToVecOrd copy() throws IOException;
+    FieldOrdToGroupOrd copy() throws IOException;
   }
 
   record GroupInfo(
@@ -149,7 +150,7 @@ final class DedupUtil {
       int vectorCount,
       int maxDoc,
       DocsWithFieldSet docs,
-      OrdToVecOrd ordToVecOrd) {}
+      FieldOrdToGroupOrd fieldOrdToGroupOrd) {}
 
   static void writeFieldInfo(IndexOutput meta, IndexOutput vectorData, WriteFieldInfo fieldInfo)
       throws IOException {
@@ -163,25 +164,26 @@ final class DedupUtil {
 
     // write ordToDoc
     OrdToDocDISIReaderConfiguration.writeStoredMeta(
-        DIRECT_MONOTONIC_BLOCK_SHIFT,
+        ORD_TO_DOC_DIRECT_MONOTONIC_BLOCK_SHIFT,
         meta,
         vectorData,
         fieldInfo.vectorCount,
         fieldInfo.maxDoc,
         fieldInfo.docs);
 
-    // write ordToVec
-    long ordToVecOffset = vectorData.alignFilePointer(ORD_TO_VEC_ALIGN_BYTES);
+    // write fieldOrdToGroupOrd
+    long fieldOrdToGroupOrdOffset = vectorData.alignFilePointer(FIELD_ORD_TO_GROUP_ORD_ALIGN_BYTES);
     DirectWriter writer =
-        DirectWriter.getInstance(vectorData, fieldInfo.vectorCount, ORD_TO_VEC_BITS_PER_VALUE);
+        DirectWriter.getInstance(
+            vectorData, fieldInfo.vectorCount, FIELD_ORD_TO_GROUP_ORD_BITS_PER_VALUE);
     for (int i = 0; i < fieldInfo.vectorCount; i++) {
-      writer.add(fieldInfo.ordToVecOrd.get(i));
+      writer.add(fieldInfo.fieldOrdToGroupOrd.get(i));
     }
     writer.finish();
-    long ordToVecSize = vectorData.getFilePointer() - ordToVecOffset;
+    long fieldOrdToGroupOrdSize = vectorData.getFilePointer() - fieldOrdToGroupOrdOffset;
 
-    meta.writeLong(ordToVecOffset);
-    meta.writeLong(ordToVecSize);
+    meta.writeLong(fieldOrdToGroupOrdOffset);
+    meta.writeLong(fieldOrdToGroupOrdSize);
   }
 
   static void writeEndOfFields(IndexOutput meta) throws IOException {
@@ -196,8 +198,8 @@ final class DedupUtil {
       int groupOrd,
       int vectorCount,
       OrdToDocDISIReaderConfiguration ordToDoc,
-      long ordToVecOffset,
-      long ordToVecSize) {}
+      long fieldOrdToGroupOrdOffset,
+      long fieldOrdToGroupOrdSize) {}
 
   static ReadFieldInfo readFieldInfo(IndexInput meta) throws IOException {
 
@@ -213,8 +215,8 @@ final class DedupUtil {
     int vectorCount = meta.readInt();
     OrdToDocDISIReaderConfiguration ordToDoc =
         OrdToDocDISIReaderConfiguration.fromStoredMeta(meta, vectorCount);
-    long ordToVecOffset = meta.readLong();
-    long ordToVecSize = meta.readLong();
+    long fieldOrdToGroupOrdOffset = meta.readLong();
+    long fieldOrdToGroupOrdSize = meta.readLong();
 
     return new ReadFieldInfo(
         fieldNumber,
@@ -224,8 +226,8 @@ final class DedupUtil {
         groupOrd,
         vectorCount,
         ordToDoc,
-        ordToVecOffset,
-        ordToVecSize);
+        fieldOrdToGroupOrdOffset,
+        fieldOrdToGroupOrdSize);
   }
 
   static long hashBytes(byte[] bytes) {
@@ -242,46 +244,52 @@ final class DedupUtil {
   }
 
   /** On-heap map used during a flush, backed directly by the buffered ordinals. */
-  record OrdToVecOrdArrayList(IntArrayList ordToVecOrd) implements OrdToVecOrd {
+  record FieldOrdToGroupOrdArrayList(IntArrayList fieldOrdToGroupOrd)
+      implements FieldOrdToGroupOrd {
+
     @Override
     public int get(int ord) {
-      return ordToVecOrd.get(ord);
+      return fieldOrdToGroupOrd.get(ord);
     }
 
     @Override
-    public OrdToVecOrd copy() {
-      return new OrdToVecOrdArrayList(ordToVecOrd);
+    public FieldOrdToGroupOrd copy() {
+      return new FieldOrdToGroupOrdArrayList(fieldOrdToGroupOrd);
     }
   }
 
   /** On-heap map used during a sorted flush, indirecting through a new-to-old ordinal map. */
-  record OrdToVecOrdMappedArrayList(int[] map, IntArrayList ordToVecOrd) implements OrdToVecOrd {
+  record FieldOrdToGroupOrdMappedArrayList(int[] map, IntArrayList fieldOrdToGroupOrd)
+      implements FieldOrdToGroupOrd {
+
     @Override
     public int get(int ord) {
-      return ordToVecOrd.get(map[ord]);
+      return fieldOrdToGroupOrd.get(map[ord]);
     }
 
     @Override
-    public OrdToVecOrd copy() {
-      return new OrdToVecOrdMappedArrayList(map, ordToVecOrd);
+    public FieldOrdToGroupOrd copy() {
+      return new FieldOrdToGroupOrdMappedArrayList(map, fieldOrdToGroupOrd);
     }
   }
 
   /** Off-heap map used while reading, backed by a {@link DirectReader}. */
-  static final class OrdToVecOrdOffHeap implements OrdToVecOrd {
+  static final class FieldOrdToGroupOrdOffHeap implements FieldOrdToGroupOrd {
     private final IndexInput vectorData;
-    private final long ordToVecOffset;
-    private final long ordToVecSize;
+    private final long fieldOrdToGroupOrdOffset;
+    private final long fieldOrdToGroupOrdSize;
     private final LongValues values;
 
-    OrdToVecOrdOffHeap(IndexInput vectorData, long ordToVecOffset, long ordToVecSize)
+    FieldOrdToGroupOrdOffHeap(
+        IndexInput vectorData, long fieldOrdToGroupOrdOffset, long fieldOrdToGroupOrdSize)
         throws IOException {
       this.vectorData = vectorData;
-      this.ordToVecOffset = ordToVecOffset;
-      this.ordToVecSize = ordToVecSize;
+      this.fieldOrdToGroupOrdOffset = fieldOrdToGroupOrdOffset;
+      this.fieldOrdToGroupOrdSize = fieldOrdToGroupOrdSize;
 
-      RandomAccessInput slice = vectorData.randomAccessSlice(ordToVecOffset, ordToVecSize);
-      this.values = DirectReader.getInstance(slice, ORD_TO_VEC_BITS_PER_VALUE);
+      RandomAccessInput slice =
+          vectorData.randomAccessSlice(fieldOrdToGroupOrdOffset, fieldOrdToGroupOrdSize);
+      this.values = DirectReader.getInstance(slice, FIELD_ORD_TO_GROUP_ORD_BITS_PER_VALUE);
     }
 
     @Override
@@ -290,8 +298,9 @@ final class DedupUtil {
     }
 
     @Override
-    public OrdToVecOrd copy() throws IOException {
-      return new OrdToVecOrdOffHeap(vectorData, ordToVecOffset, ordToVecSize);
+    public FieldOrdToGroupOrd copy() throws IOException {
+      return new FieldOrdToGroupOrdOffHeap(
+          vectorData, fieldOrdToGroupOrdOffset, fieldOrdToGroupOrdSize);
     }
   }
 
@@ -304,8 +313,8 @@ final class DedupUtil {
       IndexInput vectorData,
       long vectorDataOffset,
       long vectorDataSize,
-      long ordToVecOffset,
-      long ordToVecSize)
+      long fieldOrdToGroupOrdOffset,
+      long fieldOrdToGroupOrdSize)
       throws IOException {
 
     final OffHeapByteVectorValues fieldView =
@@ -321,10 +330,10 @@ final class DedupUtil {
             vectorsScorer,
             function);
 
-    final OrdToVecOrd ordToVecOrd =
-        new OrdToVecOrdOffHeap(vectorData, ordToVecOffset, ordToVecSize);
+    final FieldOrdToGroupOrd fieldOrdToGroupOrd =
+        new FieldOrdToGroupOrdOffHeap(vectorData, fieldOrdToGroupOrdOffset, fieldOrdToGroupOrdSize);
 
-    return new ByteImpl(vectorsScorer, function, fieldView, groupView, ordToVecOrd);
+    return new ByteImpl(vectorsScorer, function, fieldView, groupView, fieldOrdToGroupOrd);
   }
 
   /** {@link DedupVectorValues} over byte vectors. */
@@ -333,7 +342,7 @@ final class DedupUtil {
     private final VectorSimilarityFunction function;
     private final ByteVectorValues fieldView;
     private final ByteVectorValues groupView;
-    private final OrdToVecOrd ordToVecOrd;
+    private final FieldOrdToGroupOrd fieldOrdToGroupOrd;
     private int[] scratch;
 
     ByteImpl(
@@ -341,13 +350,13 @@ final class DedupUtil {
         VectorSimilarityFunction function,
         ByteVectorValues fieldView,
         ByteVectorValues groupView,
-        OrdToVecOrd ordToVecOrd) {
+        FieldOrdToGroupOrd fieldOrdToGroupOrd) {
       this.vectorsScorer = vectorsScorer;
       this.function = function;
       this.fieldView = fieldView;
       this.groupView = groupView;
-      this.ordToVecOrd = ordToVecOrd;
-      this.scratch = new int[SCRATCH_SIZE];
+      this.fieldOrdToGroupOrd = fieldOrdToGroupOrd;
+      this.scratch = new int[SCRATCH_INITIAL_SIZE];
     }
 
     @Override
@@ -356,8 +365,8 @@ final class DedupUtil {
     }
 
     @Override
-    public OrdToVecOrd getOrdToVecOrd() {
-      return ordToVecOrd;
+    public FieldOrdToGroupOrd getFieldOrdToGroupOrd() {
+      return fieldOrdToGroupOrd;
     }
 
     @Override
@@ -371,14 +380,14 @@ final class DedupUtil {
         scratch = ArrayUtil.grow(scratch, ordsToPrefetch.length);
       }
       for (int i = 0; i < numOrds; i++) {
-        scratch[i] = ordToVecOrd.get(ordsToPrefetch[i]);
+        scratch[i] = fieldOrdToGroupOrd.get(ordsToPrefetch[i]);
       }
       groupView.prefetch(scratch, numOrds);
     }
 
     @Override
     public byte[] vectorValue(int ord) throws IOException {
-      return groupView.vectorValue(ordToVecOrd.get(ord));
+      return groupView.vectorValue(fieldOrdToGroupOrd.get(ord));
     }
 
     @Override
@@ -394,7 +403,7 @@ final class DedupUtil {
     @Override
     public ByteImpl copy() throws IOException {
       return new ByteImpl(
-          vectorsScorer, function, fieldView.copy(), groupView.copy(), ordToVecOrd.copy());
+          vectorsScorer, function, fieldView.copy(), groupView.copy(), fieldOrdToGroupOrd.copy());
     }
 
     @Override
@@ -438,8 +447,8 @@ final class DedupUtil {
       IndexInput vectorData,
       long vectorDataOffset,
       long vectorDataSize,
-      long ordToVecOffset,
-      long ordToVecSize)
+      long fieldOrdToGroupOrdOffset,
+      long fieldOrdToGroupOrdSize)
       throws IOException {
 
     final OffHeapFloatVectorValues fieldView =
@@ -455,10 +464,10 @@ final class DedupUtil {
             vectorsScorer,
             function);
 
-    final OrdToVecOrd ordToVecOrd =
-        new OrdToVecOrdOffHeap(vectorData, ordToVecOffset, ordToVecSize);
+    final FieldOrdToGroupOrd fieldOrdToGroupOrd =
+        new FieldOrdToGroupOrdOffHeap(vectorData, fieldOrdToGroupOrdOffset, fieldOrdToGroupOrdSize);
 
-    return new FloatImpl(vectorsScorer, function, fieldView, groupView, ordToVecOrd);
+    return new FloatImpl(vectorsScorer, function, fieldView, groupView, fieldOrdToGroupOrd);
   }
 
   /** {@link DedupVectorValues} over float vectors. */
@@ -467,7 +476,7 @@ final class DedupUtil {
     private final VectorSimilarityFunction function;
     private final FloatVectorValues fieldView;
     private final FloatVectorValues groupView;
-    private final OrdToVecOrd ordToVecOrd;
+    private final FieldOrdToGroupOrd fieldOrdToGroupOrd;
     private int[] scratch;
 
     FloatImpl(
@@ -475,13 +484,13 @@ final class DedupUtil {
         VectorSimilarityFunction function,
         FloatVectorValues fieldView,
         FloatVectorValues groupView,
-        OrdToVecOrd ordToVecOrd) {
+        FieldOrdToGroupOrd fieldOrdToGroupOrd) {
       this.vectorsScorer = vectorsScorer;
       this.function = function;
       this.fieldView = fieldView;
       this.groupView = groupView;
-      this.ordToVecOrd = ordToVecOrd;
-      this.scratch = new int[SCRATCH_SIZE];
+      this.fieldOrdToGroupOrd = fieldOrdToGroupOrd;
+      this.scratch = new int[SCRATCH_INITIAL_SIZE];
     }
 
     @Override
@@ -490,8 +499,8 @@ final class DedupUtil {
     }
 
     @Override
-    public OrdToVecOrd getOrdToVecOrd() {
-      return ordToVecOrd;
+    public FieldOrdToGroupOrd getFieldOrdToGroupOrd() {
+      return fieldOrdToGroupOrd;
     }
 
     @Override
@@ -505,14 +514,14 @@ final class DedupUtil {
         scratch = ArrayUtil.grow(scratch, ordsToPrefetch.length);
       }
       for (int i = 0; i < numOrds; i++) {
-        scratch[i] = ordToVecOrd.get(ordsToPrefetch[i]);
+        scratch[i] = fieldOrdToGroupOrd.get(ordsToPrefetch[i]);
       }
       groupView.prefetch(scratch, numOrds);
     }
 
     @Override
     public float[] vectorValue(int ord) throws IOException {
-      return groupView.vectorValue(ordToVecOrd.get(ord));
+      return groupView.vectorValue(fieldOrdToGroupOrd.get(ord));
     }
 
     @Override
@@ -528,7 +537,7 @@ final class DedupUtil {
     @Override
     public FloatImpl copy() throws IOException {
       return new FloatImpl(
-          vectorsScorer, function, fieldView.copy(), groupView.copy(), ordToVecOrd.copy());
+          vectorsScorer, function, fieldView.copy(), groupView.copy(), fieldOrdToGroupOrd.copy());
     }
 
     @Override
@@ -572,8 +581,8 @@ final class DedupUtil {
       IndexInput vectorData,
       long vectorDataOffset,
       long vectorDataSize,
-      long ordToVecOffset,
-      long ordToVecSize)
+      long fieldOrdToGroupOrdOffset,
+      long fieldOrdToGroupOrdSize)
       throws IOException {
 
     final OffHeapFloat16VectorValues fieldView =
@@ -589,10 +598,10 @@ final class DedupUtil {
             vectorsScorer,
             function);
 
-    final OrdToVecOrd ordToVecOrd =
-        new OrdToVecOrdOffHeap(vectorData, ordToVecOffset, ordToVecSize);
+    final FieldOrdToGroupOrd fieldOrdToGroupOrd =
+        new FieldOrdToGroupOrdOffHeap(vectorData, fieldOrdToGroupOrdOffset, fieldOrdToGroupOrdSize);
 
-    return new Float16Impl(vectorsScorer, function, fieldView, groupView, ordToVecOrd);
+    return new Float16Impl(vectorsScorer, function, fieldView, groupView, fieldOrdToGroupOrd);
   }
 
   /** {@link DedupVectorValues} over float16 vectors. */
@@ -601,7 +610,7 @@ final class DedupUtil {
     private final VectorSimilarityFunction function;
     private final Float16VectorValues fieldView;
     private final Float16VectorValues groupView;
-    private final OrdToVecOrd ordToVecOrd;
+    private final FieldOrdToGroupOrd fieldOrdToGroupOrd;
     private int[] scratch;
 
     Float16Impl(
@@ -609,13 +618,13 @@ final class DedupUtil {
         VectorSimilarityFunction function,
         Float16VectorValues fieldView,
         Float16VectorValues groupView,
-        OrdToVecOrd ordToVecOrd) {
+        FieldOrdToGroupOrd fieldOrdToGroupOrd) {
       this.vectorsScorer = vectorsScorer;
       this.function = function;
       this.fieldView = fieldView;
       this.groupView = groupView;
-      this.ordToVecOrd = ordToVecOrd;
-      this.scratch = new int[SCRATCH_SIZE];
+      this.fieldOrdToGroupOrd = fieldOrdToGroupOrd;
+      this.scratch = new int[SCRATCH_INITIAL_SIZE];
     }
 
     @Override
@@ -624,8 +633,8 @@ final class DedupUtil {
     }
 
     @Override
-    public OrdToVecOrd getOrdToVecOrd() {
-      return ordToVecOrd;
+    public FieldOrdToGroupOrd getFieldOrdToGroupOrd() {
+      return fieldOrdToGroupOrd;
     }
 
     @Override
@@ -639,14 +648,14 @@ final class DedupUtil {
         scratch = ArrayUtil.grow(scratch, ordsToPrefetch.length);
       }
       for (int i = 0; i < numOrds; i++) {
-        scratch[i] = ordToVecOrd.get(ordsToPrefetch[i]);
+        scratch[i] = fieldOrdToGroupOrd.get(ordsToPrefetch[i]);
       }
       groupView.prefetch(scratch, numOrds);
     }
 
     @Override
     public short[] vectorValue(int ord) throws IOException {
-      return groupView.vectorValue(ordToVecOrd.get(ord));
+      return groupView.vectorValue(fieldOrdToGroupOrd.get(ord));
     }
 
     @Override
@@ -662,7 +671,7 @@ final class DedupUtil {
     @Override
     public Float16Impl copy() throws IOException {
       return new Float16Impl(
-          vectorsScorer, function, fieldView.copy(), groupView.copy(), ordToVecOrd.copy());
+          vectorsScorer, function, fieldView.copy(), groupView.copy(), fieldOrdToGroupOrd.copy());
     }
 
     @Override

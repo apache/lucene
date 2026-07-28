@@ -63,7 +63,7 @@ import org.apache.lucene.util.hnsw.RandomVectorScorer;
 
 /**
  * Reads de-duplicated flat vectors written by {@link DedupFlatVectorsWriter}. Each field exposes a
- * view backed by its group's shared vectors and an {@code ordToVecOrd} translation map.
+ * view backed by its group's shared vectors and a {@code fieldOrdToGroupOrd} translation map.
  *
  * @lucene.experimental
  */
@@ -129,21 +129,21 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
         throw new CorruptIndexException("Invalid field number: " + fieldInfo.fieldNumber(), meta);
       } else if (fieldInfo.function() != info.getVectorSimilarityFunction()) {
         throw new CorruptIndexException(
-            "Invalid vector function: indexed="
+            "Inconsistent vector function: indexed="
                 + fieldInfo.function()
                 + ", actual="
                 + info.getVectorSimilarityFunction(),
             meta);
       } else if (fieldInfo.dimension() != info.getVectorDimension()) {
         throw new CorruptIndexException(
-            "Invalid vector dimension: indexed="
+            "Inconsistent vector dimension: indexed="
                 + fieldInfo.dimension()
                 + ", actual="
                 + info.getVectorDimension(),
             meta);
       } else if (fieldInfo.encoding() != info.getVectorEncoding()) {
         throw new CorruptIndexException(
-            "Invalid vector encoding: indexed="
+            "Inconsistent vector encoding: indexed="
                 + fieldInfo.encoding()
                 + ", actual="
                 + info.getVectorEncoding(),
@@ -271,8 +271,8 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
         vectorData,
         entry.groupInfo.vectorDataOffset(),
         entry.groupInfo.vectorDataSize(),
-        entry.fieldInfo.ordToVecOffset(),
-        entry.fieldInfo.ordToVecSize());
+        entry.fieldInfo.fieldOrdToGroupOrdOffset(),
+        entry.fieldInfo.fieldOrdToGroupOrdSize());
   }
 
   @Override
@@ -290,8 +290,8 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
         vectorData,
         entry.groupInfo.vectorDataOffset(),
         entry.groupInfo.vectorDataSize(),
-        entry.fieldInfo.ordToVecOffset(),
-        entry.fieldInfo.ordToVecSize());
+        entry.fieldInfo.fieldOrdToGroupOrdOffset(),
+        entry.fieldInfo.fieldOrdToGroupOrdSize());
   }
 
   @Override
@@ -309,8 +309,8 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
         vectorData,
         entry.groupInfo.vectorDataOffset(),
         entry.groupInfo.vectorDataSize(),
-        entry.fieldInfo.ordToVecOffset(),
-        entry.fieldInfo.ordToVecSize());
+        entry.fieldInfo.fieldOrdToGroupOrdOffset(),
+        entry.fieldInfo.fieldOrdToGroupOrdSize());
   }
 
   @Override
@@ -347,7 +347,8 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
     }
     // TODO: This is an over-estimation.
     return Map.of(
-        VECTOR_DATA_EXTENSION, entry.fieldInfo.ordToVecSize() + entry.groupInfo.vectorDataSize());
+        VECTOR_DATA_EXTENSION,
+        entry.fieldInfo.fieldOrdToGroupOrdSize() + entry.groupInfo.vectorDataSize());
   }
 
   private record FieldEntry(ReadFieldInfo fieldInfo, GroupInfo groupInfo) {

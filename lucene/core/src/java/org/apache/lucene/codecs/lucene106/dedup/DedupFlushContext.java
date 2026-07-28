@@ -35,11 +35,11 @@ import java.util.List;
 import java.util.Map;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
+import org.apache.lucene.codecs.lucene106.dedup.DedupUtil.FieldOrdToGroupOrd;
+import org.apache.lucene.codecs.lucene106.dedup.DedupUtil.FieldOrdToGroupOrdArrayList;
+import org.apache.lucene.codecs.lucene106.dedup.DedupUtil.FieldOrdToGroupOrdMappedArrayList;
 import org.apache.lucene.codecs.lucene106.dedup.DedupUtil.GroupInfo;
 import org.apache.lucene.codecs.lucene106.dedup.DedupUtil.GroupKey;
-import org.apache.lucene.codecs.lucene106.dedup.DedupUtil.OrdToVecOrd;
-import org.apache.lucene.codecs.lucene106.dedup.DedupUtil.OrdToVecOrdArrayList;
-import org.apache.lucene.codecs.lucene106.dedup.DedupUtil.OrdToVecOrdMappedArrayList;
 import org.apache.lucene.codecs.lucene106.dedup.DedupUtil.WriteFieldInfo;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
@@ -132,20 +132,21 @@ final class DedupFlushContext implements Accountable {
     for (FieldData fieldData : fieldDataList) {
       fieldData.fieldWriter.finish();
 
-      IntArrayList ordToVecOrd = fieldData.fieldWriter.getOrdToVecOrd();
-      int vectorCount = ordToVecOrd.elementsCount;
+      IntArrayList fieldOrdToGroupOrd = fieldData.fieldWriter.getFieldOrdToGroupOrd();
+      int vectorCount = fieldOrdToGroupOrd.elementsCount;
 
       DocsWithFieldSet docs;
-      OrdToVecOrd ordToVecFinal;
+      FieldOrdToGroupOrd fieldOrdToGroupOrdFinal;
       if (sortMap == null) {
         docs = fieldData.fieldWriter.getDocsWithFieldSet();
-        ordToVecFinal = new OrdToVecOrdArrayList(ordToVecOrd);
+        fieldOrdToGroupOrdFinal = new FieldOrdToGroupOrdArrayList(fieldOrdToGroupOrd);
       } else {
         DocsWithFieldSet oldDocs = fieldData.fieldWriter.getDocsWithFieldSet();
         docs = new DocsWithFieldSet();
         int[] new2OldOrd = new int[vectorCount];
         KnnVectorsWriter.mapOldOrdToNewOrd(oldDocs, sortMap, null, new2OldOrd, docs);
-        ordToVecFinal = new OrdToVecOrdMappedArrayList(new2OldOrd, ordToVecOrd);
+        fieldOrdToGroupOrdFinal =
+            new FieldOrdToGroupOrdMappedArrayList(new2OldOrd, fieldOrdToGroupOrd);
       }
 
       WriteFieldInfo fieldInfo =
@@ -158,7 +159,7 @@ final class DedupFlushContext implements Accountable {
               vectorCount,
               maxDoc,
               docs,
-              ordToVecFinal);
+              fieldOrdToGroupOrdFinal);
       writeFieldInfo(meta, vectorData, fieldInfo);
     }
 

@@ -35,10 +35,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.lucene.codecs.lucene106.dedup.DedupUtil.DedupVectorValues;
+import org.apache.lucene.codecs.lucene106.dedup.DedupUtil.FieldOrdToGroupOrd;
+import org.apache.lucene.codecs.lucene106.dedup.DedupUtil.FieldOrdToGroupOrdArrayList;
 import org.apache.lucene.codecs.lucene106.dedup.DedupUtil.GroupInfo;
 import org.apache.lucene.codecs.lucene106.dedup.DedupUtil.GroupKey;
-import org.apache.lucene.codecs.lucene106.dedup.DedupUtil.OrdToVecOrd;
-import org.apache.lucene.codecs.lucene106.dedup.DedupUtil.OrdToVecOrdArrayList;
 import org.apache.lucene.codecs.lucene106.dedup.DedupUtil.WriteFieldInfo;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocIDMerger;
@@ -137,10 +137,10 @@ final class DedupMergeContext implements Accountable {
               fieldData.fieldInfo.getVectorDimension(),
               fieldData.fieldInfo.getVectorEncoding(),
               groupOrds.get(fieldData.groupKey),
-              fieldData.ordToVecOrd.elementsCount,
+              fieldData.fieldOrdToGroupOrd.elementsCount,
               fieldData.maxDoc,
               fieldData.docsWithFieldSet,
-              new OrdToVecOrdArrayList(fieldData.ordToVecOrd));
+              new FieldOrdToGroupOrdArrayList(fieldData.fieldOrdToGroupOrd));
       writeFieldInfo(meta, vectorData, fieldInfo);
     }
 
@@ -169,7 +169,7 @@ final class DedupMergeContext implements Accountable {
 
         // record hit and ord in group
         fieldData.docsWithFieldSet.add(next.mappedDocID);
-        fieldData.ordToVecOrd.add(cursor.index);
+        fieldData.fieldOrdToGroupOrd.add(cursor.index);
       }
     }
   }
@@ -203,8 +203,8 @@ final class DedupMergeContext implements Accountable {
       // Fast path: two docs from the same dedup source share a vector iff they map to the same
       // group ordinal, so we can compare ordinals without reading the vectors back.
       if (vector.values == other.values && vector.values instanceof DedupVectorValues dedup) {
-        OrdToVecOrd ordToVecOrd = dedup.getOrdToVecOrd();
-        return ordToVecOrd.get(vector.ord) == ordToVecOrd.get(other.ord);
+        FieldOrdToGroupOrd fieldOrdToGroupOrd = dedup.getFieldOrdToGroupOrd();
+        return fieldOrdToGroupOrd.get(vector.ord) == fieldOrdToGroupOrd.get(other.ord);
       }
       byte[] a = vector.get();
       if (vector.values == other.values) {
@@ -268,8 +268,8 @@ final class DedupMergeContext implements Accountable {
       // Fast path: two docs from the same dedup source share a vector iff they map to the same
       // group ordinal, so we can compare ordinals without reading the vectors back.
       if (vector.values == other.values && vector.values instanceof DedupVectorValues dedup) {
-        OrdToVecOrd ordToVecOrd = dedup.getOrdToVecOrd();
-        return ordToVecOrd.get(vector.ord) == ordToVecOrd.get(other.ord);
+        FieldOrdToGroupOrd fieldOrdToGroupOrd = dedup.getFieldOrdToGroupOrd();
+        return fieldOrdToGroupOrd.get(vector.ord) == fieldOrdToGroupOrd.get(other.ord);
       }
       float[] a = vector.get();
       if (vector.values == other.values) {
@@ -335,8 +335,8 @@ final class DedupMergeContext implements Accountable {
       // Fast path: two docs from the same dedup source share a vector iff they map to the same
       // group ordinal, so we can compare ordinals without reading the vectors back.
       if (vector.values == other.values && vector.values instanceof DedupVectorValues dedup) {
-        OrdToVecOrd ordToVecOrd = dedup.getOrdToVecOrd();
-        return ordToVecOrd.get(vector.ord) == ordToVecOrd.get(other.ord);
+        FieldOrdToGroupOrd fieldOrdToGroupOrd = dedup.getFieldOrdToGroupOrd();
+        return fieldOrdToGroupOrd.get(vector.ord) == fieldOrdToGroupOrd.get(other.ord);
       }
       short[] a = vector.get();
       if (vector.values == other.values) {
@@ -366,7 +366,7 @@ final class DedupMergeContext implements Accountable {
       FieldInfo fieldInfo,
       GroupKey groupKey,
       DocsWithFieldSet docsWithFieldSet,
-      IntArrayList ordToVecOrd,
+      IntArrayList fieldOrdToGroupOrd,
       DocIDMerger<?> merger,
       int maxDoc) {
 

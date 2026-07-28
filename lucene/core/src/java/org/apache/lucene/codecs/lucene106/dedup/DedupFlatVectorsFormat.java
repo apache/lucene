@@ -28,16 +28,19 @@ import org.apache.lucene.index.SegmentWriteState;
  *
  * <p>Vectors that share the same dimension and encoding form a <i>group</i>. Within a group, an
  * identical vector is stored a single time regardless of how many documents (across all fields that
- * map to that group) reference it; each field then keeps a per-document {@code ordToVecOrd} map
- * from its document ordinal to the group ordinal of the shared vector. This is well suited to
- * indexes with repeated vectors, e.g. several fields derived from the same embedding, or heavily
- * duplicated content.
+ * map to that group) reference it; each field then keeps an {@code fieldOrdToGroupOrd} map from its
+ * document ordinal to the group ordinal of the shared vector. This is well suited to indexes with
+ * repeated vectors, e.g. several fields derived from the same embedding, or heavily duplicated
+ * content.
  *
  * <h2>.vdd (vector de-dup data) file</h2>
  *
  * <ul>
  *   <li>For each group, its distinct vectors, aligned to 4 bytes (BYTE) or 64 bytes (FLOAT32 and
- *       FLOAT16).
+ *       FLOAT16). This a best-effort alignment, because Arm Neoverse machines incur a performance
+ *       penalty in reading data not aligned to 64 bytes. This penalty may be incurred for float
+ *       vectors that do not have a dimension of a multiple of 16 (equivalent to 64 bytes), because
+ *       the alignment will not hold for all vectors in the file.
  *   <li>For each field:
  *       <ul>
  *         <li>The sparse-encoding data (only when some documents lack the field): DocIds encoded by
@@ -45,8 +48,8 @@ import org.apache.lucene.index.SegmentWriteState;
  *             org.apache.lucene.codecs.lucene90.IndexedDISI#writeBitSet(org.apache.lucene.search.DocIdSetIterator,
  *             org.apache.lucene.store.IndexOutput, byte)}, followed by the ordinal-to-doc mapping
  *             encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter}.
- *         <li>The {@code ordToVecOrd} map (aligned to 4 bytes): one entry per document ordinal
- *             giving the group ordinal of the shared vector, packed by {@link
+ *         <li>The {@code fieldOrdToGroupOrd} map (aligned to 4 bytes): one entry per document
+ *             ordinal giving the group ordinal of the shared vector, packed by {@link
  *             org.apache.lucene.util.packed.DirectWriter}.
  *       </ul>
  * </ul>
@@ -76,8 +79,8 @@ import org.apache.lucene.index.SegmentWriteState;
  *   <li>the sparse-encoding metadata (docs-with-field offset/length and ordToDoc configuration), as
  *       written by {@link
  *       org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration#writeStoredMeta}
- *   <li><b>[int64]</b> offset to this field's {@code ordToVecOrd} map in the .vdd file
- *   <li><b>[int64]</b> length of this field's {@code ordToVecOrd} map, in bytes
+ *   <li><b>[int64]</b> offset to this field's {@code fieldOrdToGroupOrd} map in the .vdd file
+ *   <li><b>[int64]</b> length of this field's {@code fieldOrdToGroupOrd} map, in bytes
  * </ul>
  *
  * <p>also terminated by <b>[int32]</b> {@code -1}.
@@ -91,14 +94,15 @@ import org.apache.lucene.index.SegmentWriteState;
  * <ul>
  *   <li><b>Indexing (flush):</b> expected {@code O(N * d)} time (a hash plus occasional equality
  *       check per vector). Heap is {@code O(U * d)} for the distinct vectors held in the group,
- *       plus {@code O(N)} for the per-document references and {@code ordToVecOrd} entries.
+ *       plus {@code O(N)} for the per-document references and {@code fieldOrdToGroupOrd} entries.
  *   <li><b>Merge:</b> expected {@code O(N * d)} time; distinct vectors are written to disk as soon
  *       as they are first seen rather than buffered, so heap stays {@code O(N)} (the per-field
- *       {@code ordToVecOrd} maps and light per-vector handles) with no {@code O(U * d)} term. When
- *       a source segment is itself in this format, equality is decided by comparing group ordinals
- *       in {@code O(1)} without reading the vectors back.
- *   <li><b>Reading:</b> both the vectors and the {@code ordToVecOrd} map stay off-heap; a read
- *       resolves a document ordinal to its vector via one extra {@code ordToVecOrd} lookup.
+ *       {@code fieldOrdToGroupOrd} maps and light per-vector handles) with no {@code O(U * d)}
+ *       term. When a source segment is itself in this format, equality is decided by comparing
+ *       group ordinals in {@code O(1)} without reading the vectors back.
+ *   <li><b>Reading:</b> both the vectors and the {@code fieldOrdToGroupOrd} map stay off-heap; a
+ *       read resolves a document ordinal to its vector via one extra {@code fieldOrdToGroupOrd}
+ *       lookup.
  * </ul>
  *
  * @lucene.experimental

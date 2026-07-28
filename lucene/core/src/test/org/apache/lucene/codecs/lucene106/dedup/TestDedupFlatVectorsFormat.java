@@ -167,7 +167,7 @@ public class TestDedupFlatVectorsFormat extends LuceneTestCase {
         knnVectorsReader = knnVectorsReader.unwrapReaderForField("f");
 
         long expectedOffHeapSize =
-            (docVectors.length * Integer.BYTES) // ordToVec mapping
+            (docVectors.length * Integer.BYTES) // fieldOrdToGroupOrd mapping
                 + (a.length + b.length) * Float.BYTES; // raw vector size
 
         assertEquals(

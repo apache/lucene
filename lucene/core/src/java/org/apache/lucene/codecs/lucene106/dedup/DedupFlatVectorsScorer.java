@@ -16,13 +16,13 @@
  */
 package org.apache.lucene.codecs.lucene106.dedup;
 
-import static org.apache.lucene.codecs.lucene106.dedup.DedupUtil.SCRATCH_SIZE;
+import static org.apache.lucene.codecs.lucene106.dedup.DedupUtil.SCRATCH_INITIAL_SIZE;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene106.dedup.DedupUtil.DedupVectorValues;
-import org.apache.lucene.codecs.lucene106.dedup.DedupUtil.OrdToVecOrd;
+import org.apache.lucene.codecs.lucene106.dedup.DedupUtil.FieldOrdToGroupOrd;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.ArrayUtil;
@@ -33,8 +33,8 @@ import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 
 /**
  * Scorer for de-duplicated vectors. Performs doc operations on the original vector values, but
- * delegates vector operations to the underlying {@link DedupVectorValues#getGroupView()}, mapped to
- * group ordinals via {@link DedupVectorValues#getOrdToVecOrd()}.
+ * delegates vector operations to the underlying {@link DedupVectorValues#getGroupView()}, mapping
+ * document ordinals to group ordinals via {@link DedupVectorValues#getFieldOrdToGroupOrd()}.
  *
  * @lucene.experimental
  */
@@ -51,7 +51,8 @@ final class DedupFlatVectorsScorer implements FlatVectorsScorer {
           SCORER.getRandomVectorScorerSupplier(similarityFunction, vectorValues);
       RandomVectorScorerSupplier groupView =
           SCORER.getRandomVectorScorerSupplier(similarityFunction, dedupValues.getGroupView());
-      return new RandomVectorScorerSupplierImpl(fieldView, groupView, dedupValues.getOrdToVecOrd());
+      return new RandomVectorScorerSupplierImpl(
+          fieldView, groupView, dedupValues.getFieldOrdToGroupOrd());
     }
     return SCORER.getRandomVectorScorerSupplier(similarityFunction, vectorValues);
   }
@@ -65,7 +66,7 @@ final class DedupFlatVectorsScorer implements FlatVectorsScorer {
           SCORER.getRandomVectorScorer(similarityFunction, vectorValues, target);
       RandomVectorScorer groupView =
           SCORER.getRandomVectorScorer(similarityFunction, dedupValues.getGroupView(), target);
-      return new RandomVectorScorerImpl(fieldView, groupView, dedupValues.getOrdToVecOrd());
+      return new RandomVectorScorerImpl(fieldView, groupView, dedupValues.getFieldOrdToGroupOrd());
     }
     return SCORER.getRandomVectorScorer(similarityFunction, vectorValues, target);
   }
@@ -79,7 +80,7 @@ final class DedupFlatVectorsScorer implements FlatVectorsScorer {
           SCORER.getRandomVectorScorer(similarityFunction, vectorValues, target);
       RandomVectorScorer groupView =
           SCORER.getRandomVectorScorer(similarityFunction, dedupValues.getGroupView(), target);
-      return new RandomVectorScorerImpl(fieldView, groupView, dedupValues.getOrdToVecOrd());
+      return new RandomVectorScorerImpl(fieldView, groupView, dedupValues.getFieldOrdToGroupOrd());
     }
     return SCORER.getRandomVectorScorer(similarityFunction, vectorValues, target);
   }
@@ -93,7 +94,7 @@ final class DedupFlatVectorsScorer implements FlatVectorsScorer {
           SCORER.getRandomVectorScorer(similarityFunction, vectorValues, target);
       RandomVectorScorer groupView =
           SCORER.getRandomVectorScorer(similarityFunction, dedupValues.getGroupView(), target);
-      return new RandomVectorScorerImpl(fieldView, groupView, dedupValues.getOrdToVecOrd());
+      return new RandomVectorScorerImpl(fieldView, groupView, dedupValues.getFieldOrdToGroupOrd());
     }
     return SCORER.getRandomVectorScorer(similarityFunction, vectorValues, target);
   }
@@ -101,33 +102,36 @@ final class DedupFlatVectorsScorer implements FlatVectorsScorer {
   private record RandomVectorScorerSupplierImpl(
       RandomVectorScorerSupplier fieldView,
       RandomVectorScorerSupplier groupView,
-      OrdToVecOrd ordToVecOrd)
+      FieldOrdToGroupOrd fieldOrdToGroupOrd)
       implements RandomVectorScorerSupplier {
 
     @Override
     public UpdateableRandomVectorScorer scorer() throws IOException {
       return new UpdateableRandomVectorScorerImpl(
-          fieldView.scorer(), groupView.scorer(), ordToVecOrd);
+          fieldView.scorer(), groupView.scorer(), fieldOrdToGroupOrd);
     }
 
     @Override
     public RandomVectorScorerSupplier copy() throws IOException {
-      return new RandomVectorScorerSupplierImpl(fieldView.copy(), groupView.copy(), ordToVecOrd);
+      return new RandomVectorScorerSupplierImpl(
+          fieldView.copy(), groupView.copy(), fieldOrdToGroupOrd);
     }
   }
 
   private static class RandomVectorScorerImpl implements RandomVectorScorer {
     private final RandomVectorScorer fieldView;
     private final RandomVectorScorer groupView;
-    private final OrdToVecOrd ordToVecOrd;
+    private final FieldOrdToGroupOrd fieldOrdToGroupOrd;
     private int[] scratch;
 
     RandomVectorScorerImpl(
-        RandomVectorScorer fieldView, RandomVectorScorer groupView, OrdToVecOrd ordToVecOrd) {
+        RandomVectorScorer fieldView,
+        RandomVectorScorer groupView,
+        FieldOrdToGroupOrd fieldOrdToGroupOrd) {
       this.fieldView = fieldView;
       this.groupView = groupView;
-      this.ordToVecOrd = ordToVecOrd;
-      this.scratch = new int[SCRATCH_SIZE];
+      this.fieldOrdToGroupOrd = fieldOrdToGroupOrd;
+      this.scratch = new int[SCRATCH_INITIAL_SIZE];
     }
 
     @Override
@@ -142,7 +146,7 @@ final class DedupFlatVectorsScorer implements FlatVectorsScorer {
 
     @Override
     public float score(int node) throws IOException {
-      return groupView.score(ordToVecOrd.get(node));
+      return groupView.score(fieldOrdToGroupOrd.get(node));
     }
 
     @Override
@@ -151,7 +155,7 @@ final class DedupFlatVectorsScorer implements FlatVectorsScorer {
         scratch = ArrayUtil.grow(scratch, nodes.length);
       }
       for (int i = 0; i < numNodes; i++) {
-        scratch[i] = ordToVecOrd.get(nodes[i]);
+        scratch[i] = fieldOrdToGroupOrd.get(nodes[i]);
       }
       return groupView.bulkScore(scratch, scores, numNodes);
     }
@@ -165,20 +169,20 @@ final class DedupFlatVectorsScorer implements FlatVectorsScorer {
   private static final class UpdateableRandomVectorScorerImpl extends RandomVectorScorerImpl
       implements UpdateableRandomVectorScorer {
     private final UpdateableRandomVectorScorer groupView;
-    private final OrdToVecOrd ordToVecOrd;
+    private final FieldOrdToGroupOrd fieldOrdToGroupOrd;
 
     UpdateableRandomVectorScorerImpl(
         UpdateableRandomVectorScorer fieldView,
         UpdateableRandomVectorScorer groupView,
-        OrdToVecOrd ordToVecOrd) {
-      super(fieldView, groupView, ordToVecOrd);
+        FieldOrdToGroupOrd fieldOrdToGroupOrd) {
+      super(fieldView, groupView, fieldOrdToGroupOrd);
       this.groupView = groupView;
-      this.ordToVecOrd = ordToVecOrd;
+      this.fieldOrdToGroupOrd = fieldOrdToGroupOrd;
     }
 
     @Override
     public void setScoringOrdinal(int node) throws IOException {
-      groupView.setScoringOrdinal(ordToVecOrd.get(node));
+      groupView.setScoringOrdinal(fieldOrdToGroupOrd.get(node));
     }
   }
 }

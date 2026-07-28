@@ -38,7 +38,7 @@ final class DedupFlatFieldVectorsWriter<T> extends FlatFieldVectorsWriter<T> {
   private final DedupGroup<T> group;
   private final DocsWithFieldSet docsWithFieldSet;
   private final List<T> vectors;
-  private final IntArrayList ordToVecOrd;
+  private final IntArrayList fieldOrdToGroupOrd;
   private int lastDocID;
   private boolean finished;
 
@@ -46,7 +46,7 @@ final class DedupFlatFieldVectorsWriter<T> extends FlatFieldVectorsWriter<T> {
     this.group = group;
     this.docsWithFieldSet = new DocsWithFieldSet();
     this.vectors = new ArrayList<>();
-    this.ordToVecOrd = new IntArrayList();
+    this.fieldOrdToGroupOrd = new IntArrayList();
     this.lastDocID = -1;
     this.finished = false;
   }
@@ -61,8 +61,8 @@ final class DedupFlatFieldVectorsWriter<T> extends FlatFieldVectorsWriter<T> {
     return docsWithFieldSet;
   }
 
-  IntArrayList getOrdToVecOrd() {
-    return ordToVecOrd;
+  IntArrayList getFieldOrdToGroupOrd() {
+    return fieldOrdToGroupOrd;
   }
 
   @Override
@@ -97,7 +97,7 @@ final class DedupFlatFieldVectorsWriter<T> extends FlatFieldVectorsWriter<T> {
 
     ObjectCursor<T> cursor = group.addUnique(vectorValue);
     vectors.add(cursor.value); // owned vector value
-    ordToVecOrd.add(cursor.index); // index in group
+    fieldOrdToGroupOrd.add(cursor.index); // index in group
   }
 
   @Override
@@ -105,6 +105,6 @@ final class DedupFlatFieldVectorsWriter<T> extends FlatFieldVectorsWriter<T> {
     return SHALLOW_SIZE
         + docsWithFieldSet.ramBytesUsed()
         + (long) vectors.size() * RamUsageEstimator.NUM_BYTES_OBJECT_REF
-        + ordToVecOrd.ramBytesUsed();
+        + fieldOrdToGroupOrd.ramBytesUsed();
   }
 }
