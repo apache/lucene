@@ -114,9 +114,7 @@ public abstract class SortedDocValues extends DocValuesIterator {
   public void ordinalRangeIntoBitSet(
       int fromDoc, int toDoc, long minOrd, long maxOrd, FixedBitSet bitSet, int offset)
       throws IOException {
-    for (int doc = docID() >= fromDoc ? docID() : advance(fromDoc);
-        doc < toDoc;
-        doc = nextDoc()) {
+    for (int doc = docID() >= fromDoc ? docID() : advance(fromDoc); doc < toDoc; doc = nextDoc()) {
       long ord = ordValue();
       if (ord >= minOrd && ord <= maxOrd) {
         bitSet.set(doc - offset);
