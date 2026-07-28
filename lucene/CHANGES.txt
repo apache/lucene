@@ -349,6 +349,11 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#16394: Add DocIdSetIterator#intoArray, which DisjunctionDISIApproximation implements by
+  loading a window of doc IDs through #intoBitSet rather than one nextDoc() call per match.
+  ConstantScoreScorer#nextDocsAndScores now builds on it, which avoids a priority-queue update per
+  matching doc under MaxScoreBulkScorer's term-at-a-time scoring. (Chengxi Shi)
+
 * GITHUG#16280: Single-pass writeString fast path for short strings in ByteBuffersDataOutput (neoremind)
 
 * GITHUB#16146: Speed up no-score filtered-optional Boolean queries by routing dense conjunctions with cached FixedBitSet filters
