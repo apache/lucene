@@ -341,9 +341,22 @@ Improvements
 
 * GITHUB#16271: Add detail to KNN no-match explanations. (Jakub Slowinski)
 
+* GITHUB#16423: Add (configurable) guards for complexity of expressions. Previously
+  the expressions parser could throw StackOverflowError on deeply nested expressions
+  or also cause VerifyError and other LinkageErrors when the expression was to complex.
+  The new code allows to add a hard limit for nesting (default is 1024) and no longer
+  throws virtual machine errors.  (Uwe Schindler, Seth Kraft)
+
 Optimizations
 ---------------------
+* GITHUB#16394: Add DocIdSetIterator#intoArray, which DisjunctionDISIApproximation implements by
+  loading a window of doc IDs through #intoBitSet rather than one nextDoc() call per match.
+  ConstantScoreScorer#nextDocsAndScores now builds on it, which avoids a priority-queue update per
+  matching doc under MaxScoreBulkScorer's term-at-a-time scoring. (Chengxi Shi)
+
 * GITHUG#16280: Single-pass writeString fast path for short strings in ByteBuffersDataOutput (neoremind)
+
+* GITHUB#16220: Implement WANDScorer.advanceShallow() to enable block-max optimizations when nested in conjunctions. (Prithvi S)
 
 * GITHUB#16146: Speed up no-score filtered-optional Boolean queries by routing dense conjunctions with cached FixedBitSet filters
   through ConstantScoreBulkScorer, which batches matches in bulk via DocIdStream. (Costin Leau)
@@ -379,6 +392,8 @@ Optimizations
 
 * GITHUB#16424: Use secondary or lower sorts to accelerate XXDocValuesRangeQueries if the primary
   sort field is empty or only contains a single value. (Alan Woodward)
+
+* GITHUB#16180: Add bulk intoBitSet for SortedDocValues ordinal ranges. (Prithvi S)
 
 Bug Fixes
 ---------------------
