@@ -114,7 +114,7 @@ final class DedupFlatVectorsScorer implements FlatVectorsScorer {
     @Override
     public RandomVectorScorerSupplier copy() throws IOException {
       return new RandomVectorScorerSupplierImpl(
-          fieldView.copy(), groupView.copy(), fieldOrdToGroupOrd);
+          fieldView.copy(), groupView.copy(), fieldOrdToGroupOrd.copy());
     }
   }
 

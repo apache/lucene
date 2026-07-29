@@ -19,6 +19,8 @@ package org.apache.lucene.sandbox.codecs.dedup;
 import static org.apache.lucene.index.VectorEncoding.BYTE;
 import static org.apache.lucene.index.VectorEncoding.FLOAT16;
 import static org.apache.lucene.index.VectorEncoding.FLOAT32;
+import static org.apache.lucene.search.VectorScorer.Bulk.fromRandomScorerDense;
+import static org.apache.lucene.search.VectorScorer.Bulk.fromRandomScorerSparse;
 import static org.apache.lucene.util.StringHelper.GOOD_FAST_HASH_SEED;
 import static org.apache.lucene.util.StringHelper.murmurhash3_x64_128;
 
@@ -417,24 +419,10 @@ final class DedupUtil {
         return null;
       }
       ByteImpl copy = copy();
-      DocIndexIterator iterator = copy.iterator();
+      DocIndexIterator indexIterator = copy.iterator();
       RandomVectorScorer vectorScorer = vectorsScorer.getRandomVectorScorer(function, copy, target);
-      return new VectorScorer() {
-        @Override
-        public float score() throws IOException {
-          return vectorScorer.score(iterator.index());
-        }
-
-        @Override
-        public DocIdSetIterator iterator() {
-          return iterator;
-        }
-
-        @Override
-        public Bulk bulk(DocIdSetIterator matchingDocs) {
-          return Bulk.fromRandomScorerDense(vectorScorer, iterator, matchingDocs);
-        }
-      };
+      boolean isDense = copy.fieldView instanceof OffHeapByteVectorValues.DenseOffHeapVectorValues;
+      return new DedupVectorScorer(indexIterator, vectorScorer, isDense);
     }
   }
 
@@ -551,24 +539,10 @@ final class DedupUtil {
         return null;
       }
       FloatImpl copy = copy();
-      DocIndexIterator iterator = copy.iterator();
+      DocIndexIterator indexIterator = copy.iterator();
       RandomVectorScorer vectorScorer = vectorsScorer.getRandomVectorScorer(function, copy, target);
-      return new VectorScorer() {
-        @Override
-        public float score() throws IOException {
-          return vectorScorer.score(iterator.index());
-        }
-
-        @Override
-        public DocIdSetIterator iterator() {
-          return iterator;
-        }
-
-        @Override
-        public Bulk bulk(DocIdSetIterator matchingDocs) {
-          return Bulk.fromRandomScorerDense(vectorScorer, iterator, matchingDocs);
-        }
-      };
+      boolean isDense = copy.fieldView instanceof OffHeapFloatVectorValues.DenseOffHeapVectorValues;
+      return new DedupVectorScorer(indexIterator, vectorScorer, isDense);
     }
   }
 
@@ -685,24 +659,37 @@ final class DedupUtil {
         return null;
       }
       Float16Impl copy = copy();
-      DocIndexIterator iterator = copy.iterator();
+      DocIndexIterator indexIterator = copy.iterator();
       RandomVectorScorer vectorScorer = vectorsScorer.getRandomVectorScorer(function, copy, target);
-      return new VectorScorer() {
-        @Override
-        public float score() throws IOException {
-          return vectorScorer.score(iterator.index());
-        }
+      boolean isDense =
+          copy.fieldView instanceof OffHeapFloat16VectorValues.DenseOffHeapVectorValues;
+      return new DedupVectorScorer(indexIterator, vectorScorer, isDense);
+    }
+  }
 
-        @Override
-        public DocIdSetIterator iterator() {
-          return iterator;
-        }
+  private record DedupVectorScorer(
+      KnnVectorValues.DocIndexIterator indexIterator,
+      RandomVectorScorer vectorScorer,
+      boolean isDense)
+      implements VectorScorer {
 
-        @Override
-        public Bulk bulk(DocIdSetIterator matchingDocs) {
-          return Bulk.fromRandomScorerDense(vectorScorer, iterator, matchingDocs);
-        }
-      };
+    @Override
+    public float score() throws IOException {
+      return vectorScorer.score(indexIterator.index());
+    }
+
+    @Override
+    public DocIdSetIterator iterator() {
+      return indexIterator;
+    }
+
+    @Override
+    public Bulk bulk(DocIdSetIterator matchingDocs) {
+      if (isDense) {
+        return fromRandomScorerDense(vectorScorer, indexIterator, matchingDocs);
+      } else {
+        return fromRandomScorerSparse(vectorScorer, indexIterator, matchingDocs);
+      }
     }
   }
 }

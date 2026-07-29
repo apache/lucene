@@ -30,6 +30,7 @@ import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesType;
@@ -75,7 +76,7 @@ public class TestDedupHnswVectorsFormat extends BaseKnnVectorsFormatTestCase {
       knnVectorsReader = knnVectorsReader.unwrapReaderForField(fieldName);
       var offHeap = knnVectorsReader.getOffHeapByteSize(fieldInfo);
       long totalByteSize = offHeap.values().stream().mapToLong(Long::longValue).sum();
-      if (knnVectorsReader instanceof DedupFlatVectorsReader) {
+      if (knnVectorsReader instanceof Lucene99HnswVectorsReader) {
         if (getNumVectors(knnVectorsReader, fieldInfo) == 0) {
           assertEquals(0L, totalByteSize);
         } else {
