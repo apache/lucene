@@ -35,6 +35,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BoostQuery;
+import org.apache.lucene.search.DoubleValues;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
@@ -486,4 +487,83 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
       }
     }
   }
+
+  public void testCustomHomemadeIncreasingAndDecreasingFunction() throws Exception {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig conf = newIndexWriterConfig();
+      try (IndexWriter indexWriter = new IndexWriter(dir, conf)) {
+        for (int i = 1; i <= 100; i++) {
+          Document doc = new Document();
+          doc.add(new TextField(TEXT_FIELD, "custom test", Field.Store.NO));
+          doc.add(new NumericDocValuesField("val", i * 5)); // 5..500
+          indexWriter.addDocument(doc);
+        }
+        indexWriter.commit();
+      }
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        Query baseQuery = new TermQuery(new Term(TEXT_FIELD, "custom"));
+
+        // Homemade custom DoubleValuesSource class: f(x) = sqrt(x) [Increasing]
+        DoubleValuesSource customIncreasing = new DoubleValuesSource() {
+          @Override
+          public DoubleValues getValues(LeafReaderContext ctx, DoubleValues scores) throws IOException {
+            DoubleValues in = DoubleValuesSource.fromLongField("val").getValues(ctx, scores);
+            return new DoubleValues() {
+              @Override
+              public double doubleValue() throws IOException {
+                return Math.sqrt(in.doubleValue());
+              }
+
+              @Override
+              public boolean advanceExact(int doc) throws IOException {
+                return in.advanceExact(doc);
+              }
+
+              @Override
+              public int advanceShallow(int target) throws IOException {
+                return in.advanceShallow(target);
+              }
+
+              @Override
+              public float getMaxScore(int upTo) throws IOException {
+                float innerMax = in.getMaxScore(upTo);
+                return Float.isInfinite(innerMax) ? Float.POSITIVE_INFINITY : (float) Math.sqrt(innerMax);
+              }
+            };
+          }
+
+          @Override
+          public boolean needsScores() { return false; }
+          @Override
+          public boolean isCacheable(LeafReaderContext ctx) { return true; }
+          @Override
+          public DoubleValuesSource rewrite(IndexSearcher searcher) { return this; }
+          @Override
+          public boolean equals(Object o) { return o == this; }
+          @Override
+          public int hashCode() { return System.identityHashCode(this); }
+          @Override
+          public String toString() { return "customSqrt(val)"; }
+        };
+
+        Query q = new FunctionScoreQuery(baseQuery, customIncreasing);
+        LeafReaderContext ctx = reader.leaves().get(0);
+        Weight weight = q.createWeight(searcher, ScoreMode.TOP_SCORES, 1f);
+        ScorerSupplier supplier = weight.scorerSupplier(ctx);
+        assertNotNull(supplier);
+        Scorer scorer = supplier.get(Long.MAX_VALUE);
+        scorer.advanceShallow(0);
+        float maxScore = scorer.getMaxScore(ctx.reader().maxDoc());
+
+        if (ctx.reader().getDocValuesSkipper("val") != null) {
+          // Raw max is 500, sqrt(500) ~ 22.36
+          assertFalse(Float.isInfinite(maxScore));
+          assertTrue(maxScore >= 22.3f);
+        }
+      }
+    }
+  }
 }
+
