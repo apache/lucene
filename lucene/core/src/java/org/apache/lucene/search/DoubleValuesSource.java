@@ -22,6 +22,7 @@ import java.util.Objects;
 import java.util.function.DoubleToLongFunction;
 import java.util.function.LongToDoubleFunction;
 import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.search.comparators.DoubleComparator;
@@ -482,6 +483,7 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
     @Override
     public DoubleValues getValues(LeafReaderContext ctx, DoubleValues scores) throws IOException {
       final NumericDocValues values = DocValues.getNumeric(ctx.reader(), field);
+      final DocValuesSkipper skipper = ctx.reader().getDocValuesSkipper(field);
       return new DoubleValues() {
         @Override
         public double doubleValue() throws IOException {
@@ -491,6 +493,25 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
         @Override
         public boolean advanceExact(int target) throws IOException {
           return values.advanceExact(target);
+        }
+
+        @Override
+        public int advanceShallow(int target) throws IOException {
+          if (skipper != null) {
+            skipper.advance(target);
+            return skipper.maxDocID(0);
+          }
+          return DocIdSetIterator.NO_MORE_DOCS;
+        }
+
+        @Override
+        public float getMaxScore(int upTo) throws IOException {
+          if (skipper != null) {
+            if (skipper.minDocID(0) <= upTo) {
+              return (float) decoder.applyAsDouble(skipper.maxValue(0));
+            }
+          }
+          return Float.POSITIVE_INFINITY;
         }
       };
     }

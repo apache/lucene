@@ -18,6 +18,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import org.apache.lucene.search.DocIdSetIterator;
 
 /** Per-segment, per-document double values, which can be calculated at search-time */
 public abstract class DoubleValues {
@@ -31,6 +32,22 @@ public abstract class DoubleValues {
    * @return true if there is a value for this document
    */
   public abstract boolean advanceExact(int doc) throws IOException;
+
+  /**
+   * Advance this instance to the given target document id to compute block-level upper bounds.
+   * Default implementation returns {@link DocIdSetIterator#NO_MORE_DOCS}.
+   */
+  public int advanceShallow(int target) throws IOException {
+    return DocIdSetIterator.NO_MORE_DOCS;
+  }
+
+  /**
+   * Return the maximum score that documents between the current position and {@code upTo} can produce.
+   * Default implementation returns {@link Float#POSITIVE_INFINITY}.
+   */
+  public float getMaxScore(int upTo) throws IOException {
+    return Float.POSITIVE_INFINITY;
+  }
 
   /** Wrap a DoubleValues instance, returning a default if the wrapped instance has no value */
   public static DoubleValues withDefault(DoubleValues in, double missingValue) {
@@ -47,6 +64,16 @@ public abstract class DoubleValues {
       public boolean advanceExact(int doc) throws IOException {
         hasValue = in.advanceExact(doc);
         return true;
+      }
+
+      @Override
+      public int advanceShallow(int target) throws IOException {
+        return in.advanceShallow(target);
+      }
+
+      @Override
+      public float getMaxScore(int upTo) throws IOException {
+        return in.getMaxScore(upTo);
       }
     };
   }
@@ -68,3 +95,4 @@ public abstract class DoubleValues {
         }
       };
 }
+

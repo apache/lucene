@@ -378,4 +378,72 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
     }
     assertEquals(searchCount, weightCount);
   }
+
+  public void testMaxScoreDelegationWithDocValuesSkipper() throws Exception {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig conf = newIndexWriterConfig();
+      try (IndexWriter indexWriter = new IndexWriter(dir, conf)) {
+        for (int i = 1; i <= 500; i++) {
+          Document doc = new Document();
+          doc.add(new TextField(TEXT_FIELD, "test doc", Field.Store.NO));
+          doc.add(new NumericDocValuesField("val", i * 10));
+          indexWriter.addDocument(doc);
+        }
+        indexWriter.commit();
+      }
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        DoubleValuesSource valueSource = DoubleValuesSource.fromLongField("val");
+        Query q = new FunctionScoreQuery(new TermQuery(new Term(TEXT_FIELD, "test")), valueSource);
+
+        Weight weight = searcher.createWeight(q, ScoreMode.TOP_SCORES, 1f);
+        LeafReaderContext ctx = reader.leaves().get(0);
+        var scorerSupplier = weight.scorerSupplier(ctx);
+        assertNotNull(scorerSupplier);
+        var scorer = scorerSupplier.get(Long.MAX_VALUE);
+        assertNotNull(scorer);
+
+        int maxDoc = ctx.reader().maxDoc();
+        int shallowEnd = scorer.advanceShallow(0);
+        assertTrue(shallowEnd >= 0);
+
+        float maxScore = scorer.getMaxScore(maxDoc);
+        if (ctx.reader().getDocValuesSkipper("val") != null) {
+          assertFalse(Float.isInfinite(maxScore));
+          assertTrue(maxScore >= 5000f);
+        } else {
+          assertTrue(Float.isInfinite(maxScore));
+        }
+      }
+    }
+  }
+
+  public void testMaxScorePruningTopDocs() throws Exception {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig conf = newIndexWriterConfig();
+      try (IndexWriter indexWriter = new IndexWriter(dir, conf)) {
+        for (int i = 1; i <= 200; i++) {
+          Document doc = new Document();
+          doc.add(new TextField(TEXT_FIELD, "prune search", Field.Store.NO));
+          doc.add(new NumericDocValuesField("score_val", i));
+          indexWriter.addDocument(doc);
+        }
+        indexWriter.commit();
+      }
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        Query baseQuery = new TermQuery(new Term(TEXT_FIELD, "prune"));
+        DoubleValuesSource valSource = DoubleValuesSource.fromLongField("score_val");
+        Query scriptQuery = new FunctionScoreQuery(baseQuery, valSource);
+
+        TopDocs topDocs = searcher.search(scriptQuery, 5);
+        assertEquals(5, topDocs.scoreDocs.length);
+        // Highest numeric values (200, 199, 198, 197, 196) must be returned
+        assertTrue(topDocs.scoreDocs[0].score >= 196f);
+      }
+    }
+  }
 }
+
