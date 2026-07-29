@@ -30,6 +30,8 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.function.FunctionScoreQuery;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
@@ -94,14 +96,11 @@ public class FunctionScoreWANDMainVsFeatureBenchmark {
 
       try (IndexWriter writer = new IndexWriter(dir, iwc)) {
         Random random = new Random(42);
+        String[] terms = {"term_a", "term_b", "term_c", "term_d", "term_e"};
         for (int i = 0; i < numDocs; i++) {
           Document doc = new Document();
-          // 10% of documents match "match_term"
-          if (i % 10 == 0) {
-            doc.add(new TextField("body", "match_term token", Field.Store.NO));
-          } else {
-            doc.add(new TextField("body", "other_term token", Field.Store.NO));
-          }
+          String chosenTerm = terms[random.nextInt(terms.length)];
+          doc.add(new TextField("body", chosenTerm, Field.Store.NO));
           long scoreVal = random.nextInt(100000);
           doc.add(new NumericDocValuesField("score_field", scoreVal));
           writer.addDocument(doc);
@@ -112,7 +111,13 @@ public class FunctionScoreWANDMainVsFeatureBenchmark {
       reader = DirectoryReader.open(dir);
       searcher = new IndexSearcher(reader);
 
-      Query baseQuery = new TermQuery(new Term("body", "match_term"));
+      BooleanQuery.Builder bq = new BooleanQuery.Builder();
+      bq.add(new TermQuery(new Term("body", "term_a")), org.apache.lucene.search.BooleanClause.Occur.SHOULD);
+      bq.add(new TermQuery(new Term("body", "term_b")), org.apache.lucene.search.BooleanClause.Occur.SHOULD);
+      bq.add(new TermQuery(new Term("body", "term_c")), org.apache.lucene.search.BooleanClause.Occur.SHOULD);
+      bq.add(new TermQuery(new Term("body", "term_d")), org.apache.lucene.search.BooleanClause.Occur.SHOULD);
+      bq.add(new TermQuery(new Term("body", "term_e")), org.apache.lucene.search.BooleanClause.Occur.SHOULD);
+      Query baseQuery = bq.build();
       DoubleValuesSource valueSource = DoubleValuesSource.fromLongField("score_field");
       functionScoreQuery = new FunctionScoreQuery(baseQuery, valueSource);
     }
