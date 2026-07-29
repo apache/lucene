@@ -2087,9 +2087,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       dim++;
     }
     VectorSimilarityFunction similarityFunction = randomSimilarity();
-    boolean normalize = similarityFunction == VectorSimilarityFunction.COSINE;
-    List<float[]> vectors = getRandomFloatVector(numVectors, dim, normalize);
-    float[] query = getRandomFloatVector(1, dim, normalize).get(0);
+    List<float[]> vectors = getRandomFloatVector(numVectors, dim, false);
+    float[] query = getRandomFloatVector(1, dim, false).get(0);
 
     try (BaseDirectoryWrapper dir = newDirectory()) {
       // The raw vector file is emptied below, which CheckIndex rightly rejects.
