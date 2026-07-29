@@ -49,6 +49,14 @@ public abstract class DoubleValues {
     return Float.POSITIVE_INFINITY;
   }
 
+  /**
+   * Return the minimum score that documents between the current position and {@code upTo} can produce.
+   * Default implementation returns {@link Float#NEGATIVE_INFINITY}.
+   */
+  public float getMinScore(int upTo) throws IOException {
+    return Float.NEGATIVE_INFINITY;
+  }
+
   /** Wrap a DoubleValues instance, returning a default if the wrapped instance has no value */
   public static DoubleValues withDefault(DoubleValues in, double missingValue) {
     return new DoubleValues() {

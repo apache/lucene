@@ -465,8 +465,8 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
       try (DirectoryReader reader = DirectoryReader.open(dir)) {
         IndexSearcher searcher = new IndexSearcher(reader);
         Query baseQuery = new TermQuery(new Term(TEXT_FIELD, "decreasing"));
-        // Monotonically decreasing function: f(x) = 10000.0 / x (increasing = false)
-        DoubleValuesSource valSource = DoubleValuesSource.fromField("val", (v) -> 10000.0 / v, false);
+        // Monotonically decreasing function: f(x) = 10000.0 / x (Monotonicity.DECREASING)
+        DoubleValuesSource valSource = DoubleValuesSource.fromField("val", (v) -> 10000.0 / v, DoubleValuesSource.Monotonicity.DECREASING);
         Query scriptQuery = new FunctionScoreQuery(baseQuery, valSource);
 
         LeafReaderContext ctx = reader.leaves().get(0);
