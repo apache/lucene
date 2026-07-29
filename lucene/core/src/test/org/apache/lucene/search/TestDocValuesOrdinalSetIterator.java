@@ -209,7 +209,12 @@ public class TestDocValuesOrdinalSetIterator extends BaseDocValuesSkipperTests {
 
       @Override
       public boolean advanceExact(int target) {
-        throw new UnsupportedOperationException();
+        if (docHasValue(target)) {
+          doc = target;
+          return true;
+        }
+        doc = target;
+        return false;
       }
 
       @Override
@@ -500,7 +505,12 @@ public class TestDocValuesOrdinalSetIterator extends BaseDocValuesSkipperTests {
 
       @Override
       public boolean advanceExact(int target) {
-        throw new UnsupportedOperationException();
+        if (docHasValue(target)) {
+          doc = target;
+          return true;
+        }
+        doc = target;
+        return false;
       }
 
       @Override

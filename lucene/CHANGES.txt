@@ -99,6 +99,11 @@ API Changes
   LeafReader#getDocCount, LeafReader#getSumDocFreq and LeafReader#getSumTotalTermFreq
   signatures. (Ignacio Vera)
 
+* GITHUB#16388: Remove IOException from LeafReader#getDocValuesSkipper signature.
+  (Alan Woodward)
+
+* GITHUB#16387: Don't throw IOException from PointValues metadata methods. (Alan Woodward)
+
 * GITHUB#16281: The checkIntegrity() method of codec Producer APIs gains a OneMerge parameter,
   which is used to check for aborted merges during checksum validation. (Tanguy Leroux)
 
@@ -150,6 +155,9 @@ Improvements
 
 * GITHUB#16281: File integrity checks periodically check if a merge is aborted. (Tanguy Leroux)
 
+* GITHUB#16313: Refactored the Hunspell dictionary parser to use switch-based dispatch for affix directives,
+  improving readability of the parsing logic. (Rajat Jain)
+
 Optimizations
 ---------------------
 * GITHUB#16382: WildcardQuery.toAutomaton now collapses consecutive unescaped '*'
@@ -183,10 +191,6 @@ Optimizations
 
 Bug Fixes
 ---------------------
-* GITHUB#16367: HNSW graph construction now periodically checks whether the surrounding merge has
-  been aborted, so IndexWriter#rollback and abortMerges no longer block until the entire graph is
-  built. (Jeho Jeong)
-
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
 
@@ -223,6 +227,10 @@ Bug Fixes
 * GITHUB#16278: Refactor NativeFSLockFactory lock acquisition to cleanly separate locking and file system logic. (Bharathi-Kanna)
 
 * GITHUB#16303: Add suppressed exception details when lock acquisition fails in NativeFSLockFactory. (Bharathi-Kanna)
+
+* Make VectorScorer#bulk default method lazily position its iterator on first use. (Michael Marshall)
+
+* GITHUB#16409: Fix filtered HNSW search boundary handling to match the general HNSW searcher. (Mingi Jeong)
 
 Changes in Runtime Behavior
 ---------------------
@@ -314,14 +322,14 @@ API Changes
 
 * GITHUB#16363: Add API to use a custom `DictionarySuggester` instead of hardcoded `GeneratingSuggester`
 
-* GITHUB#16387: Don't throw IOException from PointValues metadata methods. (Alan Woodward)
-
 New Features
 ---------------------
 
 * GITHUB#16243: Add StableTflSimilarity, a similarity that estimates term rarity from term length
   and document length instead of corpus statistics such as document frequency. It also supports k3
   query-term frequency saturation. (Tianxiao Wei)
+
+* GITHUB#16383: Add fp16 vector encoding support. (Pulkit Gupta)
 
 Improvements
 ---------------------
@@ -334,9 +342,22 @@ Improvements
 
 * GITHUB#16271: Add detail to KNN no-match explanations. (Jakub Slowinski)
 
+* GITHUB#16423: Add (configurable) guards for complexity of expressions. Previously
+  the expressions parser could throw StackOverflowError on deeply nested expressions
+  or also cause VerifyError and other LinkageErrors when the expression was to complex.
+  The new code allows to add a hard limit for nesting (default is 1024) and no longer
+  throws virtual machine errors.  (Uwe Schindler, Seth Kraft)
+
 Optimizations
 ---------------------
+* GITHUB#16394: Add DocIdSetIterator#intoArray, which DisjunctionDISIApproximation implements by
+  loading a window of doc IDs through #intoBitSet rather than one nextDoc() call per match.
+  ConstantScoreScorer#nextDocsAndScores now builds on it, which avoids a priority-queue update per
+  matching doc under MaxScoreBulkScorer's term-at-a-time scoring. (Chengxi Shi)
+
 * GITHUG#16280: Single-pass writeString fast path for short strings in ByteBuffersDataOutput (neoremind)
+
+* GITHUB#16220: Implement WANDScorer.advanceShallow() to enable block-max optimizations when nested in conjunctions. (Prithvi S)
 
 * GITHUB#16146: Speed up no-score filtered-optional Boolean queries by routing dense conjunctions with cached FixedBitSet filters
   through ConstantScoreBulkScorer, which batches matches in bulk via DocIdStream. (Costin Leau)
@@ -370,6 +391,8 @@ Optimizations
 * GITHUB#16380: Speed up filtered disjunction queries when the filter is part of the
   index sort by advancing the filter before calculating impacts. (Alan Woodward)
 
+* GITHUB#16180: Add bulk intoBitSet for SortedDocValues ordinal ranges. (Prithvi S)
+
 Bug Fixes
 ---------------------
 * GITHUB#16350: Disable bulk-scoring in monitor queries. (Alan Woodward)
@@ -384,6 +407,13 @@ Bug Fixes
 * GITHUB#16295: SingletonSortedNumericDocValues now delegates rangeIntoBitSet
   to the wrapped NumericDocValues, enabling optimized range evaluation for
   single-valued sorted numeric fields. (Costin Leau)
+
+* GITHUB#16389: Fix double-counting of the underlying Automaton in
+  AutomatonQuery#ramBytesUsed. (Sasilekha R)
+
+* GITHUB#16367: HNSW graph construction now periodically checks whether the surrounding merge has
+  been aborted, so IndexWriter#rollback and abortMerges no longer block until the entire graph is
+  built. (Jeho Jeong)
 
 Other
 ---------------------

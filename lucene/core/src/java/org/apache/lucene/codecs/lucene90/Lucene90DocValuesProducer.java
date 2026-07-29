@@ -1485,6 +1485,15 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
               advance(upTo);
             }
           }
+
+          @Override
+          public void ordinalRangeIntoBitSet(
+              int fromDoc, int toDoc, long minOrd, long maxOrd, FixedBitSet bitSet, int offset)
+              throws IOException {
+            // Dense packed ordinals: bulk evaluate via the same SIMD path as NumericDocValues
+            Lucene90DocValuesProducer.rangeIntoBitSet(
+                values, fromDoc, toDoc, minOrd, maxOrd, bitSet, offset);
+          }
         };
       } else if (ordsEntry.docsWithFieldOffset >= 0) { // sparse but non-empty
         final IndexedDISI disi =
@@ -1582,6 +1591,15 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       @Override
       public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
         ords.intoBitSet(upTo, bitSet, offset);
+      }
+
+      @Override
+      public void ordinalRangeIntoBitSet(
+          int fromDoc, int toDoc, long minOrd, long maxOrd, FixedBitSet bitSet, int offset)
+          throws IOException {
+        // Delegate to the underlying NumericDocValues which already has a (possibly SIMD)
+        // rangeIntoBitSet override.
+        ords.rangeIntoBitSet(fromDoc, toDoc, minOrd, maxOrd, bitSet, offset);
       }
     };
   }
@@ -2516,13 +2534,16 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
   }
 
   @Override
-  public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
+  public DocValuesSkipper getSkipper(FieldInfo field) {
     final DocValuesSkipperEntry entry = skippers.get(field.number);
 
     final IndexInput skipperSource = skipIndexData != null ? skipIndexData : data;
-    final IndexInput input = skipperSource.slice("doc value skipper", entry.offset, entry.length);
+
     // TODO: should we write to disk the actual max level for this segment?
     return new DocValuesSkipper() {
+
+      IndexInput input;
+
       final int[] minDocID = new int[SKIP_INDEX_MAX_LEVEL];
       final int[] maxDocID = new int[SKIP_INDEX_MAX_LEVEL];
 
@@ -2539,6 +2560,9 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
       @Override
       public void advance(int target) throws IOException {
+        if (input == null) {
+          input = skipperSource.slice("doc value skipper", entry.offset, entry.length);
+        }
         if (target > entry.maxDocId) {
           // skipper is exhausted
           for (int i = 0; i < SKIP_INDEX_MAX_LEVEL; i++) {
