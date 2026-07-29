@@ -42,6 +42,8 @@ import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.Weight;
@@ -442,6 +444,45 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
         assertEquals(5, topDocs.scoreDocs.length);
         // Highest numeric values (200, 199, 198, 197, 196) must be returned
         assertTrue(topDocs.scoreDocs[0].score >= 196f);
+      }
+    }
+  }
+
+  public void testMaxScoreMonotonicDecreasingFunction() throws Exception {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig conf = newIndexWriterConfig();
+      try (IndexWriter indexWriter = new IndexWriter(dir, conf)) {
+        for (int i = 1; i <= 100; i++) {
+          Document doc = new Document();
+          doc.add(new TextField(TEXT_FIELD, "decreasing", Field.Store.NO));
+          doc.add(new NumericDocValuesField("val", i * 10)); // 10..1000
+          indexWriter.addDocument(doc);
+        }
+        indexWriter.commit();
+      }
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        Query baseQuery = new TermQuery(new Term(TEXT_FIELD, "decreasing"));
+        // Monotonically decreasing function: f(x) = 10000.0 / x (increasing = false)
+        DoubleValuesSource valSource = DoubleValuesSource.fromField("val", (v) -> 10000.0 / v, false);
+        Query scriptQuery = new FunctionScoreQuery(baseQuery, valSource);
+
+        LeafReaderContext ctx = reader.leaves().get(0);
+        Weight weight = scriptQuery.createWeight(searcher, ScoreMode.TOP_SCORES, 1f);
+        ScorerSupplier supplier = weight.scorerSupplier(ctx);
+        assertNotNull(supplier);
+        Scorer scorer = supplier.get(Long.MAX_VALUE);
+
+        int maxDoc = ctx.reader().maxDoc();
+        scorer.advanceShallow(0);
+        float maxScore = scorer.getMaxScore(maxDoc);
+
+        if (ctx.reader().getDocValuesSkipper("val") != null) {
+          // Minimum raw value (10) produces max score: 10000 / 10 = 1000.0
+          assertFalse(Float.isInfinite(maxScore));
+          assertTrue("Expected maxScore >= 1000f but got " + maxScore, maxScore >= 1000f);
+        }
       }
     }
   }

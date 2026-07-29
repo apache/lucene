@@ -285,7 +285,18 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
    * @param decoder a function to convert the long-valued doc values to doubles
    */
   public static DoubleValuesSource fromField(String field, LongToDoubleFunction decoder) {
-    return new FieldValuesSource(field, decoder);
+    return fromField(field, decoder, true);
+  }
+
+  /**
+   * Creates a DoubleValuesSource that wraps a generic NumericDocValues field
+   *
+   * @param field the field to wrap, must have NumericDocValues
+   * @param decoder a function to convert the long-valued doc values to doubles
+   * @param increasing true if the decoder function is monotonically increasing; false if monotonically decreasing
+   */
+  public static DoubleValuesSource fromField(String field, LongToDoubleFunction decoder, boolean increasing) {
+    return new FieldValuesSource(field, decoder, increasing);
   }
 
   /** Creates a DoubleValuesSource that wraps a double-valued field */
@@ -456,10 +467,12 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
 
     final String field;
     final LongToDoubleFunction decoder;
+    final boolean increasing;
 
-    private FieldValuesSource(String field, LongToDoubleFunction decoder) {
+    private FieldValuesSource(String field, LongToDoubleFunction decoder, boolean increasing) {
       this.field = field;
       this.decoder = decoder;
+      this.increasing = increasing;
     }
 
     @Override
@@ -467,7 +480,7 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
       if (this == o) return true;
       if (o == null || getClass() != o.getClass()) return false;
       FieldValuesSource that = (FieldValuesSource) o;
-      return Objects.equals(field, that.field) && Objects.equals(decoder, that.decoder);
+      return Objects.equals(field, that.field) && Objects.equals(decoder, that.decoder) && increasing == that.increasing;
     }
 
     @Override
@@ -477,7 +490,7 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
 
     @Override
     public int hashCode() {
-      return Objects.hash(field, decoder);
+      return Objects.hash(field, decoder, increasing);
     }
 
     @Override
@@ -508,7 +521,8 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
         public float getMaxScore(int upTo) throws IOException {
           if (skipper != null) {
             if (skipper.minDocID(0) <= upTo) {
-              return (float) decoder.applyAsDouble(skipper.maxValue(0));
+              long rawBound = increasing ? skipper.maxValue(0) : skipper.minValue(0);
+              return (float) decoder.applyAsDouble(rawBound);
             }
           }
           return Float.POSITIVE_INFINITY;
