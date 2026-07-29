@@ -279,11 +279,13 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
   }
 
   /**
-   * Creates a DoubleValuesSource that wraps a generic NumericDocValues field
+   * Creates a DoubleValuesSource that wraps a generic NumericDocValues field. Assumes the decoder is monotonically increasing.
    *
    * @param field the field to wrap, must have NumericDocValues
-   * @param decoder a function to convert the long-valued doc values to doubles
+   * @param decoder a function to convert the long-valued doc values to doubles; must be monotonically increasing.
+   * @deprecated Use {@link #fromField(String, LongToDoubleFunction, boolean)} to specify whether the decoder is monotonically increasing.
    */
+  @Deprecated
   public static DoubleValuesSource fromField(String field, LongToDoubleFunction decoder) {
     return fromField(field, decoder, true);
   }
@@ -301,17 +303,17 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
 
   /** Creates a DoubleValuesSource that wraps a double-valued field */
   public static DoubleValuesSource fromDoubleField(String field) {
-    return fromField(field, Double::longBitsToDouble);
+    return fromField(field, Double::longBitsToDouble, true);
   }
 
   /** Creates a DoubleValuesSource that wraps a float-valued field */
   public static DoubleValuesSource fromFloatField(String field) {
-    return fromField(field, (v) -> (double) Float.intBitsToFloat((int) v));
+    return fromField(field, (v) -> (double) Float.intBitsToFloat((int) v), true);
   }
 
   /** Creates a DoubleValuesSource that wraps a long-valued field */
   public static DoubleValuesSource fromLongField(String field) {
-    return fromField(field, (v) -> (double) v);
+    return fromField(field, (v) -> (double) v, true);
   }
 
   /** Creates a DoubleValuesSource that wraps an int-valued field */
