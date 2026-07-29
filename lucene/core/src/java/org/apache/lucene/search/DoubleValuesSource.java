@@ -31,29 +31,18 @@ import org.apache.lucene.util.NumericUtils;
 /**
  * Base class for producing {@link DoubleValues}
  *
- * <p>
- * To obtain a {@link DoubleValues} object for a leaf reader, clients should
- * call {@link
+ * <p>To obtain a {@link DoubleValues} object for a leaf reader, clients should call {@link
  * #rewrite(IndexSearcher)} against the top-level searcher, and then call {@link
- * #getValues(LeafReaderContext, DoubleValues)} on the resulting
- * DoubleValuesSource.
+ * #getValues(LeafReaderContext, DoubleValues)} on the resulting DoubleValuesSource.
  *
- * <p>
- * DoubleValuesSource objects for NumericDocValues fields can be obtained by
- * calling {@link
- * #fromDoubleField(String)}, {@link #fromFloatField(String)},
- * {@link #fromIntField(String)} or
- * {@link #fromLongField(String)}, or from
- * {@link #fromField(String, LongToDoubleFunction)} if
+ * <p>DoubleValuesSource objects for NumericDocValues fields can be obtained by calling {@link
+ * #fromDoubleField(String)}, {@link #fromFloatField(String)}, {@link #fromIntField(String)} or
+ * {@link #fromLongField(String)}, or from {@link #fromField(String, LongToDoubleFunction)} if
  * special long-to-double encoding is required.
  *
- * <p>
- * Scores may be used as a source for value calculations by wrapping a
- * {@link Scorer} using
- * {@link #fromScorer(Scorable)} and passing the resulting DoubleValues to
- * {@link
- * #getValues(LeafReaderContext, DoubleValues)}. The scores can then be accessed
- * using the {@link
+ * <p>Scores may be used as a source for value calculations by wrapping a {@link Scorer} using
+ * {@link #fromScorer(Scorable)} and passing the resulting DoubleValues to {@link
+ * #getValues(LeafReaderContext, DoubleValues)}. The scores can then be accessed using the {@link
  * #SCORES} DoubleValuesSource.
  */
 public abstract class DoubleValuesSource implements SegmentCacheable {
@@ -69,12 +58,9 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
   }
 
   /**
-   * Returns a {@link DoubleValues} instance for the passed-in LeafReaderContext
-   * and scores
+   * Returns a {@link DoubleValues} instance for the passed-in LeafReaderContext and scores
    *
-   * <p>
-   * If scores are not needed to calculate the values (ie {@link #needsScores()
-   * returns false},
+   * <p>If scores are not needed to calculate the values (ie {@link #needsScores() returns false},
    * callers may safely pass {@code null} for the {@code scores} parameter.
    */
   public abstract DoubleValues getValues(LeafReaderContext ctx, DoubleValues scores)
@@ -86,40 +72,33 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
   /**
    * An explanation of the value for the named document.
    *
-   * @param ctx   the readers context to create the {@link Explanation} for.
+   * @param ctx the readers context to create the {@link Explanation} for.
    * @param docId the document's id relative to the given context's reader
    * @return an Explanation for the value
    * @throws IOException if an {@link IOException} occurs
    */
   public Explanation explain(LeafReaderContext ctx, int docId, Explanation scoreExplanation)
       throws IOException {
-    DoubleValues dv = getValues(
-        ctx,
-        DoubleValuesSource.constant(scoreExplanation.getValue().doubleValue())
-            .getValues(ctx, null));
-    if (dv.advanceExact(docId))
-      return Explanation.match(dv.doubleValue(), this.toString());
+    DoubleValues dv =
+        getValues(
+            ctx,
+            DoubleValuesSource.constant(scoreExplanation.getValue().doubleValue())
+                .getValues(ctx, null));
+    if (dv.advanceExact(docId)) return Explanation.match(dv.doubleValue(), this.toString());
     return Explanation.noMatch(this.toString());
   }
 
   /**
    * Return a DoubleValuesSource specialised for the given IndexSearcher
    *
-   * <p>
-   * Implementations should assume that this will only be called once.
-   * IndexReader-independent
+   * <p>Implementations should assume that this will only be called once. IndexReader-independent
    * implementations can just return {@code this}
    *
-   * <p>
-   * Queries that use DoubleValuesSource objects should call rewrite() during
-   * {@link
-   * Query#createWeight(IndexSearcher, ScoreMode, float)} rather than during
-   * {@link
+   * <p>Queries that use DoubleValuesSource objects should call rewrite() during {@link
+   * Query#createWeight(IndexSearcher, ScoreMode, float)} rather than during {@link
    * Query#rewrite(IndexSearcher)} to avoid IndexReader reference leakage.
    *
-   * <p>
-   * For the same reason, implementations that cache references to the
-   * IndexSearcher should
+   * <p>For the same reason, implementations that cache references to the IndexSearcher should
    * return a new object from this method.
    */
   public abstract DoubleValuesSource rewrite(IndexSearcher reader) throws IOException;
@@ -136,7 +115,7 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
   /**
    * Create a sort field based on the value of this producer
    *
-   * @param reverse      true if the sort should be decreasing
+   * @param reverse true if the sort should be decreasing
    * @param missingValue a placeholder to use for documents with no value
    */
   public SortField getSortField(boolean reverse, double missingValue) {
@@ -157,10 +136,7 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
     return new LongDoubleValuesSource(this);
   }
 
-  /**
-   * Convert to {@link LongValuesSource} by calling
-   * {@link NumericUtils#doubleToSortableLong}
-   */
+  /** Convert to {@link LongValuesSource} by calling {@link NumericUtils#doubleToSortableLong} */
   public final LongValuesSource toSortableLongDoubleValuesSource() {
     return new SortableLongDoubleValuesSource(this);
   }
@@ -202,10 +178,8 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o)
-        return true;
-      if (o == null || getClass() != o.getClass())
-        return false;
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
       SortableLongDoubleValuesSource that = (SortableLongDoubleValuesSource) o;
       return Objects.equals(inner, that.inner);
     }
@@ -262,10 +236,8 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o)
-        return true;
-      if (o == null || getClass() != o.getClass())
-        return false;
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
       LongDoubleValuesSource that = (LongDoubleValuesSource) o;
       return Objects.equals(inner, that.inner);
     }
@@ -287,11 +259,10 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
   }
 
   /**
-   * Returns a DoubleValues instance for computing the vector similarity score per
-   * document against
+   * Returns a DoubleValues instance for computing the vector similarity score per document against
    * the byte query vector
    *
-   * @param ctx         the context for which to return the DoubleValues
+   * @param ctx the context for which to return the DoubleValues
    * @param queryVector byte query vector
    * @param vectorField knn byte field name
    * @return DoubleValues instance
@@ -303,11 +274,10 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
   }
 
   /**
-   * Returns a DoubleValues instance for computing the vector similarity score per
-   * document against
+   * Returns a DoubleValues instance for computing the vector similarity score per document against
    * the float query vector
    *
-   * @param ctx         the context for which to return the DoubleValues
+   * @param ctx the context for which to return the DoubleValues
    * @param queryVector float query vector
    * @param vectorField knn float field name
    * @return DoubleValues instance
@@ -319,10 +289,10 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
   }
 
   /**
-   * Creates a DoubleValuesSource that wraps a generic NumericDocValues field.
-   * Assumes no monotonic direction by default (Monotonicity.NONE).
+   * Creates a DoubleValuesSource that wraps a generic NumericDocValues field. Assumes no monotonic
+   * direction by default (Monotonicity.NONE).
    *
-   * @param field   the field to wrap, must have NumericDocValues
+   * @param field the field to wrap, must have NumericDocValues
    * @param decoder a function to convert the long-valued doc values to doubles
    */
   public static DoubleValuesSource fromField(String field, LongToDoubleFunction decoder) {
@@ -332,12 +302,12 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
   /**
    * Creates a DoubleValuesSource that wraps a generic NumericDocValues field
    *
-   * @param field        the field to wrap, must have NumericDocValues
-   * @param decoder      a function to convert the long-valued doc values to
-   *                     doubles
+   * @param field the field to wrap, must have NumericDocValues
+   * @param decoder a function to convert the long-valued doc values to doubles
    * @param monotonicity the monotonicity direction of the decoder function
    */
-  public static DoubleValuesSource fromField(String field, LongToDoubleFunction decoder, Monotonicity monotonicity) {
+  public static DoubleValuesSource fromField(
+      String field, LongToDoubleFunction decoder, Monotonicity monotonicity) {
     return new FieldValuesSource(field, decoder, monotonicity);
   }
 
@@ -364,56 +334,54 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
   /**
    * A DoubleValuesSource that exposes a document's score
    *
-   * <p>
-   * If this source is used as part of a values calculation, then callers must not
-   * pass {@code
-   * null} as the {@link DoubleValues} parameter on
-   * {@link #getValues(LeafReaderContext,
+   * <p>If this source is used as part of a values calculation, then callers must not pass {@code
+   * null} as the {@link DoubleValues} parameter on {@link #getValues(LeafReaderContext,
    * DoubleValues)}
    */
-  public static final DoubleValuesSource SCORES = new DoubleValuesSource() {
-    @Override
-    public DoubleValues getValues(LeafReaderContext ctx, DoubleValues scores)
-        throws IOException {
-      assert scores != null;
-      return scores;
-    }
+  public static final DoubleValuesSource SCORES =
+      new DoubleValuesSource() {
+        @Override
+        public DoubleValues getValues(LeafReaderContext ctx, DoubleValues scores)
+            throws IOException {
+          assert scores != null;
+          return scores;
+        }
 
-    @Override
-    public boolean needsScores() {
-      return true;
-    }
+        @Override
+        public boolean needsScores() {
+          return true;
+        }
 
-    @Override
-    public boolean isCacheable(LeafReaderContext ctx) {
-      return false;
-    }
+        @Override
+        public boolean isCacheable(LeafReaderContext ctx) {
+          return false;
+        }
 
-    @Override
-    public Explanation explain(LeafReaderContext ctx, int docId, Explanation scoreExplanation) {
-      return scoreExplanation;
-    }
+        @Override
+        public Explanation explain(LeafReaderContext ctx, int docId, Explanation scoreExplanation) {
+          return scoreExplanation;
+        }
 
-    @Override
-    public int hashCode() {
-      return 0;
-    }
+        @Override
+        public int hashCode() {
+          return 0;
+        }
 
-    @Override
-    public boolean equals(Object obj) {
-      return obj == this;
-    }
+        @Override
+        public boolean equals(Object obj) {
+          return obj == this;
+        }
 
-    @Override
-    public String toString() {
-      return "scores";
-    }
+        @Override
+        public String toString() {
+          return "scores";
+        }
 
-    @Override
-    public DoubleValuesSource rewrite(IndexSearcher searcher) {
-      return this;
-    }
-  };
+        @Override
+        public DoubleValuesSource rewrite(IndexSearcher searcher) {
+          return this;
+        }
+      };
 
   /** Creates a DoubleValuesSource that always returns a constant value */
   public static DoubleValuesSource constant(double value) {
@@ -427,17 +395,18 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
 
     private ConstantValuesSource(double value) {
       this.value = value;
-      this.doubleValues = new DoubleValues() {
-        @Override
-        public double doubleValue() {
-          return value;
-        }
+      this.doubleValues =
+          new DoubleValues() {
+            @Override
+            public double doubleValue() {
+              return value;
+            }
 
-        @Override
-        public boolean advanceExact(int doc) {
-          return true;
-        }
-      };
+            @Override
+            public boolean advanceExact(int doc) {
+              return true;
+            }
+          };
     }
 
     @Override
@@ -472,10 +441,8 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o)
-        return true;
-      if (o == null || getClass() != o.getClass())
-        return false;
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
       ConstantValuesSource that = (ConstantValuesSource) o;
       return Double.compare(that.value, value) == 0;
     }
@@ -489,12 +456,9 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
   /**
    * Returns a DoubleValues instance that wraps scores returned by a Scorer.
    *
-   * <p>
-   * Note: If you intend to call {@link Scorable#score()} on the provided
-   * {@code scorer}
+   * <p>Note: If you intend to call {@link Scorable#score()} on the provided {@code scorer}
    * separately, you may want to consider wrapping the collector with {@link
-   * ScoreCachingWrappingScorer#wrap(LeafCollector)} to avoid computing the actual
-   * score multiple
+   * ScoreCachingWrappingScorer#wrap(LeafCollector)} to avoid computing the actual score multiple
    * times.
    */
   public static DoubleValues fromScorer(Scorable scorer) {
@@ -517,7 +481,8 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
     final LongToDoubleFunction decoder;
     final Monotonicity monotonicity;
 
-    private FieldValuesSource(String field, LongToDoubleFunction decoder, Monotonicity monotonicity) {
+    private FieldValuesSource(
+        String field, LongToDoubleFunction decoder, Monotonicity monotonicity) {
       this.field = field;
       this.decoder = decoder;
       this.monotonicity = Objects.requireNonNull(monotonicity);
@@ -525,12 +490,11 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o)
-        return true;
-      if (o == null || getClass() != o.getClass())
-        return false;
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
       FieldValuesSource that = (FieldValuesSource) o;
-      return Objects.equals(field, that.field) && Objects.equals(decoder, that.decoder)
+      return Objects.equals(field, that.field)
+          && Objects.equals(decoder, that.decoder)
           && monotonicity == that.monotonicity;
     }
 
@@ -572,7 +536,10 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
         public float getMaxScore(int upTo) throws IOException {
           if (skipper != null && monotonicity != Monotonicity.NONE) {
             if (skipper.minDocID(0) <= upTo) {
-              long rawBound = (monotonicity == Monotonicity.INCREASING) ? skipper.maxValue(0) : skipper.minValue(0);
+              long rawBound =
+                  (monotonicity == Monotonicity.INCREASING)
+                      ? skipper.maxValue(0)
+                      : skipper.minValue(0);
               return (float) decoder.applyAsDouble(rawBound);
             }
           }
@@ -583,7 +550,10 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
         public float getMinScore(int upTo) throws IOException {
           if (skipper != null && monotonicity != Monotonicity.NONE) {
             if (skipper.minDocID(0) <= upTo) {
-              long rawBound = (monotonicity == Monotonicity.INCREASING) ? skipper.minValue(0) : skipper.maxValue(0);
+              long rawBound =
+                  (monotonicity == Monotonicity.INCREASING)
+                      ? skipper.minValue(0)
+                      : skipper.maxValue(0);
               return (float) decoder.applyAsDouble(rawBound);
             }
           }
@@ -608,8 +578,7 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
       DoubleValues values = getValues(ctx, null);
       if (values.advanceExact(docId))
         return Explanation.match(values.doubleValue(), this.toString());
-      else
-        return Explanation.noMatch(this.toString());
+      else return Explanation.noMatch(this.toString());
     }
 
     @Override
@@ -636,8 +605,7 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
     public String toString() {
       StringBuilder buffer = new StringBuilder("<");
       buffer.append(getField()).append(">");
-      if (reverse)
-        buffer.append("!");
+      if (reverse) buffer.append("!");
       return buffer.toString();
     }
 
@@ -746,10 +714,8 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o)
-        return true;
-      if (o == null || getClass() != o.getClass())
-        return false;
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
       QueryDoubleValuesSource that = (QueryDoubleValuesSource) o;
       return Objects.equals(query, that.query);
     }
@@ -797,12 +763,12 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
     @Override
     public DoubleValues getValues(LeafReaderContext ctx, DoubleValues scores) throws IOException {
       Scorer scorer = weight.scorer(ctx);
-      if (scorer == null)
-        return DoubleValues.EMPTY;
+      if (scorer == null) return DoubleValues.EMPTY;
 
       return new DoubleValues() {
         private final TwoPhaseIterator tpi = scorer.twoPhaseIterator();
-        private final DocIdSetIterator disi = (tpi == null) ? scorer.iterator() : tpi.approximation();
+        private final DocIdSetIterator disi =
+            (tpi == null) ? scorer.iterator() : tpi.approximation();
         private Boolean tpiMatch = null; // cache tpi.matches()
 
         @Override
@@ -847,10 +813,8 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o)
-        return true;
-      if (o == null || getClass() != o.getClass())
-        return false;
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
       WeightDoubleValuesSource that = (WeightDoubleValuesSource) o;
       return Objects.equals(weight, that.weight);
     }

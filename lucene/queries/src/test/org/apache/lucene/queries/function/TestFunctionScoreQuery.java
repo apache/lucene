@@ -466,7 +466,9 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
         IndexSearcher searcher = new IndexSearcher(reader);
         Query baseQuery = new TermQuery(new Term(TEXT_FIELD, "decreasing"));
         // Monotonically decreasing function: f(x) = 10000.0 / x (Monotonicity.DECREASING)
-        DoubleValuesSource valSource = DoubleValuesSource.fromField("val", (v) -> 10000.0 / v, DoubleValuesSource.Monotonicity.DECREASING);
+        DoubleValuesSource valSource =
+            DoubleValuesSource.fromField(
+                "val", (v) -> 10000.0 / v, DoubleValuesSource.Monotonicity.DECREASING);
         Query scriptQuery = new FunctionScoreQuery(baseQuery, valSource);
 
         LeafReaderContext ctx = reader.leaves().get(0);
@@ -506,47 +508,68 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
         Query baseQuery = new TermQuery(new Term(TEXT_FIELD, "custom"));
 
         // Homemade custom DoubleValuesSource class: f(x) = sqrt(x) [Increasing]
-        DoubleValuesSource customIncreasing = new DoubleValuesSource() {
-          @Override
-          public DoubleValues getValues(LeafReaderContext ctx, DoubleValues scores) throws IOException {
-            DoubleValues in = DoubleValuesSource.fromLongField("val").getValues(ctx, scores);
-            return new DoubleValues() {
+        DoubleValuesSource customIncreasing =
+            new DoubleValuesSource() {
               @Override
-              public double doubleValue() throws IOException {
-                return Math.sqrt(in.doubleValue());
+              public DoubleValues getValues(LeafReaderContext ctx, DoubleValues scores)
+                  throws IOException {
+                DoubleValues in = DoubleValuesSource.fromLongField("val").getValues(ctx, scores);
+                return new DoubleValues() {
+                  @Override
+                  public double doubleValue() throws IOException {
+                    return Math.sqrt(in.doubleValue());
+                  }
+
+                  @Override
+                  public boolean advanceExact(int doc) throws IOException {
+                    return in.advanceExact(doc);
+                  }
+
+                  @Override
+                  public int advanceShallow(int target) throws IOException {
+                    return in.advanceShallow(target);
+                  }
+
+                  @Override
+                  public float getMaxScore(int upTo) throws IOException {
+                    float innerMax = in.getMaxScore(upTo);
+                    return Float.isInfinite(innerMax)
+                        ? Float.POSITIVE_INFINITY
+                        : (float) Math.sqrt(innerMax);
+                  }
+                };
               }
 
               @Override
-              public boolean advanceExact(int doc) throws IOException {
-                return in.advanceExact(doc);
+              public boolean needsScores() {
+                return false;
               }
 
               @Override
-              public int advanceShallow(int target) throws IOException {
-                return in.advanceShallow(target);
+              public boolean isCacheable(LeafReaderContext ctx) {
+                return true;
               }
 
               @Override
-              public float getMaxScore(int upTo) throws IOException {
-                float innerMax = in.getMaxScore(upTo);
-                return Float.isInfinite(innerMax) ? Float.POSITIVE_INFINITY : (float) Math.sqrt(innerMax);
+              public DoubleValuesSource rewrite(IndexSearcher searcher) {
+                return this;
+              }
+
+              @Override
+              public boolean equals(Object o) {
+                return o == this;
+              }
+
+              @Override
+              public int hashCode() {
+                return System.identityHashCode(this);
+              }
+
+              @Override
+              public String toString() {
+                return "customSqrt(val)";
               }
             };
-          }
-
-          @Override
-          public boolean needsScores() { return false; }
-          @Override
-          public boolean isCacheable(LeafReaderContext ctx) { return true; }
-          @Override
-          public DoubleValuesSource rewrite(IndexSearcher searcher) { return this; }
-          @Override
-          public boolean equals(Object o) { return o == this; }
-          @Override
-          public int hashCode() { return System.identityHashCode(this); }
-          @Override
-          public String toString() { return "customSqrt(val)"; }
-        };
 
         Query q = new FunctionScoreQuery(baseQuery, customIncreasing);
         LeafReaderContext ctx = reader.leaves().get(0);

@@ -30,7 +30,6 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.function.FunctionScoreQuery;
-import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.IndexSearcher;
@@ -54,8 +53,8 @@ import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 
 /**
- * JMH Micro-benchmark comparing actual FunctionScoreQuery search throughput
- * on main branch vs feature/function-score-wand-skip-index branch over 1 Million Lucene index documents.
+ * JMH Micro-benchmark comparing actual FunctionScoreQuery search throughput on main branch vs
+ * feature/function-score-wand-skip-index branch over 1 Million Lucene index documents.
  */
 @State(Scope.Benchmark)
 @BenchmarkMode(Mode.Throughput)
@@ -91,7 +90,10 @@ public class FunctionScoreWANDMainVsFeatureBenchmark {
       IndexWriterConfig iwc = new IndexWriterConfig();
       iwc.setRAMBufferSizeMB(256);
       if (indexSort) {
-        iwc.setIndexSort(new org.apache.lucene.search.Sort(new org.apache.lucene.search.SortField("score_field", org.apache.lucene.search.SortField.Type.LONG, true)));
+        iwc.setIndexSort(
+            new org.apache.lucene.search.Sort(
+                new org.apache.lucene.search.SortField(
+                    "score_field", org.apache.lucene.search.SortField.Type.LONG, true)));
       }
 
       try (IndexWriter writer = new IndexWriter(dir, iwc)) {
@@ -102,7 +104,8 @@ public class FunctionScoreWANDMainVsFeatureBenchmark {
           String chosenTerm = terms[random.nextInt(terms.length)];
           doc.add(new TextField("body", chosenTerm, Field.Store.NO));
           // Real-world Power-law / Zipfian score distribution (98% low scores, 2% high scores)
-          long scoreVal = (random.nextFloat() < 0.02f) ? (50000 + random.nextInt(50000)) : random.nextInt(100);
+          long scoreVal =
+              (random.nextFloat() < 0.02f) ? (50000 + random.nextInt(50000)) : random.nextInt(100);
           doc.add(new NumericDocValuesField("score_field", scoreVal));
           writer.addDocument(doc);
         }
@@ -113,11 +116,21 @@ public class FunctionScoreWANDMainVsFeatureBenchmark {
       searcher = new IndexSearcher(reader);
 
       BooleanQuery.Builder bq = new BooleanQuery.Builder();
-      bq.add(new TermQuery(new Term("body", "term_a")), org.apache.lucene.search.BooleanClause.Occur.SHOULD);
-      bq.add(new TermQuery(new Term("body", "term_b")), org.apache.lucene.search.BooleanClause.Occur.SHOULD);
-      bq.add(new TermQuery(new Term("body", "term_c")), org.apache.lucene.search.BooleanClause.Occur.SHOULD);
-      bq.add(new TermQuery(new Term("body", "term_d")), org.apache.lucene.search.BooleanClause.Occur.SHOULD);
-      bq.add(new TermQuery(new Term("body", "term_e")), org.apache.lucene.search.BooleanClause.Occur.SHOULD);
+      bq.add(
+          new TermQuery(new Term("body", "term_a")),
+          org.apache.lucene.search.BooleanClause.Occur.SHOULD);
+      bq.add(
+          new TermQuery(new Term("body", "term_b")),
+          org.apache.lucene.search.BooleanClause.Occur.SHOULD);
+      bq.add(
+          new TermQuery(new Term("body", "term_c")),
+          org.apache.lucene.search.BooleanClause.Occur.SHOULD);
+      bq.add(
+          new TermQuery(new Term("body", "term_d")),
+          org.apache.lucene.search.BooleanClause.Occur.SHOULD);
+      bq.add(
+          new TermQuery(new Term("body", "term_e")),
+          org.apache.lucene.search.BooleanClause.Occur.SHOULD);
       Query baseQuery = bq.build();
       DoubleValuesSource valueSource = DoubleValuesSource.fromLongField("score_field");
       functionScoreQuery = new FunctionScoreQuery(baseQuery, valueSource);

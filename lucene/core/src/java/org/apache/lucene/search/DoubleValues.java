@@ -18,7 +18,6 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import org.apache.lucene.search.DocIdSetIterator;
 
 /** Per-segment, per-document double values, which can be calculated at search-time */
 public abstract class DoubleValues {
@@ -42,16 +41,16 @@ public abstract class DoubleValues {
   }
 
   /**
-   * Return the maximum score that documents between the current position and {@code upTo} can produce.
-   * Default implementation returns {@link Float#POSITIVE_INFINITY}.
+   * Return the maximum score that documents between the current position and {@code upTo} can
+   * produce. Default implementation returns {@link Float#POSITIVE_INFINITY}.
    */
   public float getMaxScore(int upTo) throws IOException {
     return Float.POSITIVE_INFINITY;
   }
 
   /**
-   * Return the minimum score that documents between the current position and {@code upTo} can produce.
-   * Default implementation returns {@link Float#NEGATIVE_INFINITY}.
+   * Return the minimum score that documents between the current position and {@code upTo} can
+   * produce. Default implementation returns {@link Float#NEGATIVE_INFINITY}.
    */
   public float getMinScore(int upTo) throws IOException {
     return Float.NEGATIVE_INFINITY;
