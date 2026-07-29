@@ -126,6 +126,8 @@ New Features
 
 * GITHUB#15818: Add BM25 k3 query-term frequency saturation to BM25Similarity. (Sagar Upadhyaya)
 
+* GITHUB#16383: Add fp16 vector encoding support. (Pulkit Gupta)
+
 Improvements
 ---------------------
 * GITHUB#15704: Replace LinkedList with more efficient data structure. (Renato Haeberli)
@@ -328,8 +330,6 @@ New Features
   and document length instead of corpus statistics such as document frequency. It also supports k3
   query-term frequency saturation. (Tianxiao Wei)
 
-* GITHUB#16383: Add fp16 vector encoding support. (Pulkit Gupta)
-
 * GITHUB#15979: Add a sandboxed de-duplicating HNSW vector format (DedupHnswVectorsFormat) that stores
   each distinct full-precision vector once, shared across all documents and fields that reference it.
   (Kaival Parikh)
@@ -353,7 +353,14 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#16394: Add DocIdSetIterator#intoArray, which DisjunctionDISIApproximation implements by
+  loading a window of doc IDs through #intoBitSet rather than one nextDoc() call per match.
+  ConstantScoreScorer#nextDocsAndScores now builds on it, which avoids a priority-queue update per
+  matching doc under MaxScoreBulkScorer's term-at-a-time scoring. (Chengxi Shi)
+
 * GITHUG#16280: Single-pass writeString fast path for short strings in ByteBuffersDataOutput (neoremind)
+
+* GITHUB#16220: Implement WANDScorer.advanceShallow() to enable block-max optimizations when nested in conjunctions. (Prithvi S)
 
 * GITHUB#16146: Speed up no-score filtered-optional Boolean queries by routing dense conjunctions with cached FixedBitSet filters
   through ConstantScoreBulkScorer, which batches matches in bulk via DocIdStream. (Costin Leau)
@@ -386,6 +393,8 @@ Optimizations
 
 * GITHUB#16380: Speed up filtered disjunction queries when the filter is part of the
   index sort by advancing the filter before calculating impacts. (Alan Woodward)
+
+* GITHUB#16180: Add bulk intoBitSet for SortedDocValues ordinal ranges. (Prithvi S)
 
 Bug Fixes
 ---------------------
