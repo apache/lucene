@@ -73,11 +73,20 @@ public class PriorityQueue<T> implements Iterable<T> {
   protected int size = 0;
   private final int maxSize;
   private final T[] heap;
+  private final int arity;
   private final LessThan<? super T> lessThan;
 
   /** Create an empty priority queue of the configured size using the specified {@link LessThan}. */
   public PriorityQueue(int maxSize, LessThan<? super T> lessThan) {
-    this(maxSize, lessThan, () -> null);
+    this(maxSize, 2, lessThan, () -> null);
+  }
+
+  /**
+   * Create an empty priority queue of the configured size and heap arity using the specified {@link
+   * LessThan}.
+   */
+  protected PriorityQueue(int maxSize, int arity, LessThan<? super T> lessThan) {
+    this(maxSize, arity, lessThan, () -> null);
   }
 
   /**
@@ -112,7 +121,19 @@ public class PriorityQueue<T> implements Iterable<T> {
    */
   public PriorityQueue(
       int maxSize, LessThan<? super T> lessThan, Supplier<T> sentinelObjectSupplier) {
+    this(maxSize, 2, lessThan, sentinelObjectSupplier);
+  }
+
+  /**
+   * Create a priority queue with a configurable heap arity that is pre-filled with sentinel objects
+   */
+  protected PriorityQueue(
+      int maxSize, int arity, LessThan<? super T> lessThan, Supplier<T> sentinelObjectSupplier) {
     final int heapSize;
+
+    if (arity < 2) {
+      throw new IllegalArgumentException("arity mist be >= 2; got: " + arity);
+    }
 
     if (0 == maxSize) {
       // We allocate 1 extra to avoid if statement in top()
@@ -134,6 +155,7 @@ public class PriorityQueue<T> implements Iterable<T> {
     final T[] h = (T[]) new Object[heapSize];
     this.heap = h;
     this.maxSize = maxSize;
+    this.arity = arity;
     this.lessThan = lessThan;
 
     // If sentinel objects are supported, populate the queue with them
@@ -168,7 +190,7 @@ public class PriorityQueue<T> implements Iterable<T> {
       }
     } finally {
       // The loop goes down to 1 as heap is 1-based not 0-based.
-      for (int i = (size >>> 1); i >= 1; i--) {
+      for (int i = (size <= 1 ? 0 : parent(size)); i >= 1; i--) {
         downHeap(i);
       }
     }
@@ -200,7 +222,7 @@ public class PriorityQueue<T> implements Iterable<T> {
           });
     } finally {
       // The loop goes down to 1 as heap is 1-based not 0-based.
-      for (int i = (size >>> 1); i >= 1; i--) {
+      for (int i = (size <= 1 ? 0 : parent(size)); i >= 1; i--) {
         downHeap(i);
       }
     }
@@ -332,11 +354,11 @@ public class PriorityQueue<T> implements Iterable<T> {
   protected boolean upHeap(int origPos) {
     int i = origPos;
     T node = heap[i]; // save bottom node
-    int j = i >>> 1;
+    int j = i > 1 ? parent(i) : 0;
     while (j > 0 && lessThan.lessThan(node, heap[j])) {
       heap[i] = heap[j]; // shift parents down
       i = j;
-      j = j >>> 1;
+      j = i > 1 ? parent(i) : 0;
     }
     heap[i] = node; // install saved node
     return i != origPos;
@@ -344,21 +366,32 @@ public class PriorityQueue<T> implements Iterable<T> {
 
   protected void downHeap(int i) {
     T node = heap[i]; // save top node
-    int j = i << 1; // find smaller child
-    int k = j + 1;
-    if (k <= size && lessThan.lessThan(heap[k], heap[j])) {
-      j = k;
-    }
-    while (j <= size && lessThan.lessThan(heap[j], node)) {
-      heap[i] = heap[j]; // shift up child
-      i = j;
-      j = i << 1;
-      k = j + 1;
-      if (k <= size && lessThan.lessThan(heap[k], heap[j])) {
-        j = k;
+    int j = firstChild(i);
+    while (j <= size) {
+      final int lastChild = Math.min(j + arity - 1, size);
+      int bestChild = j;
+      for (int c = j + 1; c <= lastChild; ++c) {
+        if (lessThan.lessThan(heap[c], heap[bestChild])) {
+          bestChild = c;
+        }
+      }
+      if (lessThan.lessThan(heap[bestChild], node)) {
+        heap[i] = heap[bestChild]; // shift up child
+        i = bestChild;
+        j = firstChild(i);
+      } else {
+        break;
       }
     }
     heap[i] = node; // install saved node
+  }
+
+  private int parent(int i) {
+    return ((i - 2) / arity) + 1;
+  }
+
+  private int firstChild(int i) {
+    return arity * (i - 1) + 2;
   }
 
   /**
