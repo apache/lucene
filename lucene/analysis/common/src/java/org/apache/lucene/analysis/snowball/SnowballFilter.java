@@ -53,7 +53,7 @@ public final class SnowballFilter extends TokenFilter {
 
   private final SnowballStemmer stemmer;
   private final int maxCacheSize;
-  private final CharArrayMap<char[]> cache;
+  private CharArrayMap<char[]> cache;
 
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
   private final KeywordAttribute keywordAttr = addAttribute(KeywordAttribute.class);
@@ -65,7 +65,8 @@ public final class SnowballFilter extends TokenFilter {
   /**
    * Creates a SnowballFilter with the specified cache size. The cache stores stem results keyed by
    * the original token text. Only tokens with length &le; {@value #MAX_CACHEABLE_LENGTH} are
-   * cached. Set {@code maxCacheSize} to 0 to disable caching.
+   * cached. When the cache fills up, it is cleared and repopulated from subsequent tokens, adapting
+   * to the current token distribution. Set {@code maxCacheSize} to 0 to disable caching.
    */
   public SnowballFilter(TokenStream input, SnowballStemmer stemmer, int maxCacheSize) {
     super(input);
@@ -74,7 +75,6 @@ public final class SnowballFilter extends TokenFilter {
       throw new IllegalArgumentException("maxCacheSize must be >= 0, got: " + maxCacheSize);
     }
     this.maxCacheSize = maxCacheSize;
-    this.cache = maxCacheSize > 0 ? new CharArrayMap<>(Math.min(maxCacheSize, 256), false) : null;
   }
 
   /**
@@ -114,7 +114,6 @@ public final class SnowballFilter extends TokenFilter {
       throw new IllegalArgumentException("Invalid stemmer class specified: " + name, e);
     }
     this.maxCacheSize = maxCacheSize;
-    this.cache = maxCacheSize > 0 ? new CharArrayMap<>(Math.min(maxCacheSize, 256), false) : null;
   }
 
   /** Returns the next input Token, after being stemmed */
@@ -124,20 +123,14 @@ public final class SnowballFilter extends TokenFilter {
       if (!keywordAttr.isKeyword()) {
         char[] termBuffer = termAtt.buffer();
         final int length = termAtt.length();
-        final boolean lookupCache = cache != null && length <= MAX_CACHEABLE_LENGTH;
+        final boolean cacheable = maxCacheSize > 0 && length <= MAX_CACHEABLE_LENGTH;
 
-        if (lookupCache) {
+        if (cacheable && cache != null) {
           char[] cached = cache.get(termBuffer, 0, length);
           if (cached != null) {
             termAtt.copyBuffer(cached, 0, cached.length);
             return true;
           }
-        }
-
-        char[] key = null;
-        if (lookupCache && cache.size() < maxCacheSize) {
-          key = new char[length];
-          System.arraycopy(termBuffer, 0, key, 0, length);
         }
 
         stemmer.setCurrent(termBuffer, length);
@@ -147,7 +140,15 @@ public final class SnowballFilter extends TokenFilter {
         if (finalTerm != termBuffer) termAtt.copyBuffer(finalTerm, 0, newLength);
         else termAtt.setLength(newLength);
 
-        if (key != null) {
+        if (cacheable) {
+          if (cache == null) {
+            cache = new CharArrayMap<>(Math.min(maxCacheSize, 128), false);
+          }
+          if (cache.size() >= maxCacheSize) {
+            cache.clear();
+          }
+          char[] key = new char[length];
+          System.arraycopy(termBuffer, 0, key, 0, length);
           char[] value = new char[newLength];
           System.arraycopy(finalTerm, 0, value, 0, newLength);
           cache.put(key, value);

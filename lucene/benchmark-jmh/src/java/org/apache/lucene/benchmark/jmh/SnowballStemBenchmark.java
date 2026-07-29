@@ -70,7 +70,7 @@ public class SnowballStemBenchmark {
   @Param({"1", "4"})
   int numAnalyzers;
 
-  private String corpus;
+  private String[] documents;
   private Analyzer[] analyzers;
 
   @Setup(Level.Trial)
@@ -84,7 +84,8 @@ public class SnowballStemBenchmark {
         };
 
     List<String> stopWordList = extractStopWords(stopWords);
-    corpus = buildZipfianCorpus(vocabSize, 10_000, 42, useStopFilter ? stopWordList : null);
+    String corpus = buildZipfianCorpus(vocabSize, 10_000, 42, useStopFilter ? stopWordList : null);
+    documents = splitIntoDocuments(corpus, 500);
 
     analyzers = new Analyzer[numAnalyzers];
     for (int i = 0; i < numAnalyzers; i++) {
@@ -121,16 +122,30 @@ public class SnowballStemBenchmark {
   public int stem() throws IOException {
     int count = 0;
     for (Analyzer analyzer : analyzers) {
-      try (TokenStream ts = analyzer.tokenStream("field", new StringReader(corpus))) {
-        CharTermAttribute termAtt = ts.addAttribute(CharTermAttribute.class);
-        ts.reset();
-        while (ts.incrementToken()) {
-          count += termAtt.length();
+      for (String doc : documents) {
+        try (TokenStream ts = analyzer.tokenStream("field", new StringReader(doc))) {
+          CharTermAttribute termAtt = ts.addAttribute(CharTermAttribute.class);
+          ts.reset();
+          while (ts.incrementToken()) {
+            count += termAtt.length();
+          }
+          ts.end();
         }
-        ts.end();
       }
     }
     return count;
+  }
+
+  private static String[] splitIntoDocuments(String corpus, int tokensPerDoc) {
+    String[] allTokens = corpus.split(" ");
+    int numDocs = (allTokens.length + tokensPerDoc - 1) / tokensPerDoc;
+    String[] docs = new String[numDocs];
+    for (int i = 0; i < numDocs; i++) {
+      int start = i * tokensPerDoc;
+      int end = Math.min(start + tokensPerDoc, allTokens.length);
+      docs[i] = String.join(" ", java.util.Arrays.copyOfRange(allTokens, start, end));
+    }
+    return docs;
   }
 
   private static List<String> extractStopWords(CharArraySet stopWords) {
