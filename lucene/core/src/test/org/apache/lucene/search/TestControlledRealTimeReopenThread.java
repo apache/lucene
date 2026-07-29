@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -593,5 +594,78 @@ public class TestControlledRealTimeReopenThread extends ThreadedIndexingAndSearc
     long gen2 = w.deleteAll();
     nrtDeletesThread.waitForGeneration(gen2);
     IOUtils.close(nrtDeletesThread, nrtDeletes, w, dir);
+  }
+
+  /**
+   * Tests that close() releases waitForGeneration() waiters even if the thread calling close() is
+   * interrupted during join(). The reopen thread's run() finally block must still wake waiters.
+   */
+  public void testCloseInterruptWakesWaiters() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriterConfig conf = newIndexWriterConfig(new MockAnalyzer(random()));
+    conf.setMergePolicy(NoMergePolicy.INSTANCE);
+    IndexWriter w = new IndexWriter(dir, conf);
+    SearcherManager mgr = new SearcherManager(w, false, false, null);
+
+    ControlledRealTimeReopenThread<IndexSearcher> thread =
+        new ControlledRealTimeReopenThread<>(
+            w, mgr, Duration.ofSeconds(60), Duration.ofSeconds(60));
+    thread.setDaemon(true);
+    thread.start();
+
+    long targetGen = w.addDocument(new Document());
+
+    CountDownLatch waiterReady = new CountDownLatch(1);
+    final AtomicBoolean waiterFinished = new AtomicBoolean(false);
+    Thread waiter =
+        new Thread() {
+          @Override
+          public void run() {
+            try {
+              waiterReady.countDown();
+              thread.waitForGeneration(targetGen); // will block forever
+              waiterFinished.set(true);
+            } catch (InterruptedException ie) {
+              Thread.currentThread().interrupt();
+              throw new RuntimeException(ie);
+            }
+          }
+        };
+    waiter.start();
+
+    waiterReady.await();
+    for (int i = 0; i < 20000; i++) { // best effort wait for WAITING state
+      if (waiter.getState() == Thread.State.WAITING) break;
+      Thread.yield();
+    }
+
+    Thread closer =
+        new Thread(
+            () -> {
+              Thread.currentThread().interrupt();
+              try {
+                thread.close();
+              } catch (ThreadInterruptedException _) {
+                // optional: hit the interrupted-join path
+              }
+            });
+    closer.start();
+    closer.join();
+
+    thread.join(30_000);
+    assertFalse(thread.isAlive());
+    assertEquals(Long.MAX_VALUE, thread.getSearchingGen());
+
+    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(60);
+    while (!waiterFinished.get() && System.nanoTime() < deadline) {
+      Thread.yield();
+    }
+    waiter.join(30_000);
+    assertFalse(waiter.isAlive());
+    assertTrue(waiterFinished.get());
+
+    mgr.close();
+    w.close();
+    dir.close();
   }
 }
