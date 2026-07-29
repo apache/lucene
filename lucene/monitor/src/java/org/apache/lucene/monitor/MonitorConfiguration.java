@@ -19,6 +19,7 @@ package org.apache.lucene.monitor;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.analysis.core.KeywordAnalyzer;
 import org.apache.lucene.index.IndexWriter;
@@ -39,6 +40,7 @@ public class MonitorConfiguration {
   private MonitorQuerySerializer serializer;
   private boolean readOnly = false;
   private IOSupplier<Directory> directoryProvider = () -> new ByteBuffersDirectory();
+  private Executor executor = null;
 
   private static IndexWriterConfig defaultIndexWriterConfig() {
     IndexWriterConfig iwc = new IndexWriterConfig(new KeywordAnalyzer());
@@ -164,5 +166,26 @@ public class MonitorConfiguration {
    */
   public int getQueryUpdateBufferSize() {
     return queryUpdateBufferSize;
+  }
+
+  /**
+   * Set the Executor to use for concurrent search.
+   *
+   * <p>If set, the Monitor will pass this Executor to the IndexSearcher it creates internally,
+   * allowing for inter-segment concurrency in search operations.
+   *
+   * @param executor the Executor to use for concurrent search
+   * @return the current configuration
+   */
+  public MonitorConfiguration setExecutor(Executor executor) {
+    this.executor = executor;
+    return this;
+  }
+
+  /**
+   * @return the Executor used for concurrent search, or null if not set
+   */
+  public Executor getExecutor() {
+    return executor;
   }
 }
