@@ -165,7 +165,7 @@ final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery 
       }
 
       @Override
-      public int count(LeafReaderContext context) throws IOException {
+      public int count(LeafReaderContext context) {
         int maxDoc = context.reader().maxDoc();
         int cnt = docCountIgnoringDeletes(context);
         if (cnt == maxDoc) {
@@ -179,7 +179,7 @@ final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery 
        * # docs within the query range ignoring any deleted documents
        * -1 if # docs cannot be determined efficiently
        */
-      private int docCountIgnoringDeletes(LeafReaderContext context) throws IOException {
+      private int docCountIgnoringDeletes(LeafReaderContext context) {
         final DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
         if (skipper != null) {
           if (skipper.minValue() > upperValue || skipper.maxValue() < lowerValue) {
@@ -235,7 +235,7 @@ final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery 
    * that the field is dense (every doc has a value, {@code docCount == reader.maxDoc()}).
    */
   private static SortField canUsePrimarySortShortcut(
-      LeafReader reader, String field, DocValuesSkipper skipper) throws IOException {
+      LeafReader reader, String field, DocValuesSkipper skipper) {
     SortField sf = Sort.getPrimarySortField(reader);
     if (sf == null || sf.getField().equals(field) == false) {
       return null;

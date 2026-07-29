@@ -158,9 +158,13 @@ public final class Sort {
         continue;
       }
       // If the field has a skip index, check whether all values are identical,
-      // in which case sorting by this field is a no-op for this segment.
+      // in which case sorting by this field is a no-op for this segment.  Note
+      // that we also need to check for denseness, as missing values add an
+      // implicit second sort group.
       DocValuesSkipper skipper = reader.getDocValuesSkipper(field);
-      if (skipper != null && skipper.minValue() == skipper.maxValue()) {
+      if (skipper != null
+          && skipper.docCount() == reader.maxDoc()
+          && skipper.minValue() == skipper.maxValue()) {
         continue;
       }
       return sf;

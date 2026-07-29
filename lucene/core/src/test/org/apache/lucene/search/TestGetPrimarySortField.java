@@ -101,6 +101,36 @@ public class TestGetPrimarySortField extends LuceneTestCase {
   }
 
   /**
+   * A sort field with a skip index and one distinct value but with documents with no value is
+   * returned as-is: it is not a no-op because documents with no value will group together and form
+   * an implicitly-valued second group.
+   */
+  public void testSparseSortFieldValuesIsReturned() throws IOException {
+    Directory dir = newDirectory();
+    SortField primary = new SortField("field1", SortField.Type.LONG);
+    SortField secondary = new SortField("field2", SortField.Type.LONG);
+    IndexWriter iw =
+        new IndexWriter(dir, new IndexWriterConfig().setIndexSort(new Sort(primary, secondary)));
+    for (int i = 0; i < 10; i++) {
+      Document doc = new Document();
+      if (i != 7) {
+        doc.add(NumericDocValuesField.indexedField("field1", 42)); // constant → no-op
+      }
+      doc.add(NumericDocValuesField.indexedField("field2", i));
+      iw.addDocument(doc);
+    }
+    iw.forceMerge(1);
+    iw.close();
+    DirectoryReader reader = DirectoryReader.open(dir);
+    LeafReader leafReader = reader.leaves().get(0).reader();
+    SortField result = Sort.getPrimarySortField(leafReader);
+    assertNotNull(result);
+    assertEquals("field1", result.getField());
+    reader.close();
+    dir.close();
+  }
+
+  /**
    * When the primary sort field has no values at all in a segment, its FieldInfo is absent and it
    * is treated as a no-op. The next sort field becomes the effective primary.
    */
