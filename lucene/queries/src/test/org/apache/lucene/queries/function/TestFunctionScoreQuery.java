@@ -566,4 +566,3 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
     }
   }
 }
-
