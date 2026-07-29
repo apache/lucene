@@ -213,7 +213,7 @@ public final class Lucene90DocValuesFormat extends DocValuesFormat {
   static final int TERMS_DICT_REVERSE_INDEX_MASK = TERMS_DICT_REVERSE_INDEX_SIZE - 1;
 
   // number of documents in an interval
-  private static final int DEFAULT_SKIP_INDEX_INTERVAL_SIZE = 4096;
+  public static final int DEFAULT_SKIP_INDEX_INTERVAL_SIZE = 128;
   // bytes on an interval:
   //   * 1 byte : number of levels
   //   * 16 bytes: min / max value,
