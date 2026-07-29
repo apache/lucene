@@ -101,7 +101,8 @@ public class FunctionScoreWANDMainVsFeatureBenchmark {
           Document doc = new Document();
           String chosenTerm = terms[random.nextInt(terms.length)];
           doc.add(new TextField("body", chosenTerm, Field.Store.NO));
-          long scoreVal = random.nextInt(100000);
+          // Real-world Power-law / Zipfian score distribution (98% low scores, 2% high scores)
+          long scoreVal = (random.nextFloat() < 0.02f) ? (50000 + random.nextInt(50000)) : random.nextInt(100);
           doc.add(new NumericDocValuesField("score_field", scoreVal));
           writer.addDocument(doc);
         }
