@@ -72,6 +72,9 @@ public class FunctionScoreWANDMainVsFeatureBenchmark {
     @Param({"1000000"})
     public int numDocs;
 
+    @Param({"true", "false"})
+    public boolean indexSort;
+
     @Param({"100"})
     public int topK;
 
@@ -85,6 +88,9 @@ public class FunctionScoreWANDMainVsFeatureBenchmark {
       dir = new ByteBuffersDirectory();
       IndexWriterConfig iwc = new IndexWriterConfig();
       iwc.setRAMBufferSizeMB(256);
+      if (indexSort) {
+        iwc.setIndexSort(new org.apache.lucene.search.Sort(new org.apache.lucene.search.SortField("score_field", org.apache.lucene.search.SortField.Type.LONG, true)));
+      }
 
       try (IndexWriter writer = new IndexWriter(dir, iwc)) {
         Random random = new Random(42);
