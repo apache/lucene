@@ -20,7 +20,7 @@
 package org.apache.lucene.util;
 
 /**
- * Switch-based Unicode simple case folding for the 201 codepoints where folding differs from {@link
+ * Switch-based Unicode simple case folding for the 226 codepoints where folding differs from {@link
  * Character#toLowerCase(int)}. Generated using ICU4J v78.3.0.0, unicode version: 17.0.0.0.
  */
 final class SimpleCaseFolding {
@@ -455,6 +455,58 @@ final class SimpleCaseFolding {
       // Latin
       case 0xFB05:
         return 0xFB06; // ﬅ → ﬆ
+
+      // Beria_Erfe
+      case 0x16EA0:
+        return 0x16EBB; // 𖺠 → 𖺻
+      case 0x16EA1:
+        return 0x16EBC; // 𖺡 → 𖺼
+      case 0x16EA2:
+        return 0x16EBD; // 𖺢 → 𖺽
+      case 0x16EA3:
+        return 0x16EBE; // 𖺣 → 𖺾
+      case 0x16EA4:
+        return 0x16EBF; // 𖺤 → 𖺿
+      case 0x16EA5:
+        return 0x16EC0; // 𖺥 → 𖻀
+      case 0x16EA6:
+        return 0x16EC1; // 𖺦 → 𖻁
+      case 0x16EA7:
+        return 0x16EC2; // 𖺧 → 𖻂
+      case 0x16EA8:
+        return 0x16EC3; // 𖺨 → 𖻃
+      case 0x16EA9:
+        return 0x16EC4; // 𖺩 → 𖻄
+      case 0x16EAA:
+        return 0x16EC5; // 𖺪 → 𖻅
+      case 0x16EAB:
+        return 0x16EC6; // 𖺫 → 𖻆
+      case 0x16EAC:
+        return 0x16EC7; // 𖺬 → 𖻇
+      case 0x16EAD:
+        return 0x16EC8; // 𖺭 → 𖻈
+      case 0x16EAE:
+        return 0x16EC9; // 𖺮 → 𖻉
+      case 0x16EAF:
+        return 0x16ECA; // 𖺯 → 𖻊
+      case 0x16EB0:
+        return 0x16ECB; // 𖺰 → 𖻋
+      case 0x16EB1:
+        return 0x16ECC; // 𖺱 → 𖻌
+      case 0x16EB2:
+        return 0x16ECD; // 𖺲 → 𖻍
+      case 0x16EB3:
+        return 0x16ECE; // 𖺳 → 𖻎
+      case 0x16EB4:
+        return 0x16ECF; // 𖺴 → 𖻏
+      case 0x16EB5:
+        return 0x16ED0; // 𖺵 → 𖻐
+      case 0x16EB6:
+        return 0x16ED1; // 𖺶 → 𖻑
+      case 0x16EB7:
+        return 0x16ED2; // 𖺷 → 𖻒
+      case 0x16EB8:
+        return 0x16ED3; // 𖺸 → 𖻓
       default:
         return Character.toLowerCase(c);
     }

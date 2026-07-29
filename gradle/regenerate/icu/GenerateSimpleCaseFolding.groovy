@@ -14,7 +14,7 @@ def generateSwitchCases() {
   int lastScript = -1
   int count = 0
 
-  for (int c = 0; c < 0x10000; c++) {
+  for (int c = 0; c <= Character.MAX_CODE_POINT; c++) {
     int icuFolded = UCharacter.foldCase(c, true)
     int jdkLower = Character.toLowerCase(c)
 

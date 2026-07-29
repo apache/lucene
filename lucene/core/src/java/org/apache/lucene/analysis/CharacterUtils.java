@@ -81,7 +81,7 @@ public final class CharacterUtils {
     assert 0 <= offset && offset <= buffer.length;
     for (int i = offset; i < limit; i++) {
       char c = buffer[i];
-      if (c > 127) {
+      if (c > 127) { // non-ASCII: switch to full Unicode path from here onward
         while (i < limit) {
           i +=
               Character.toChars(
@@ -89,7 +89,7 @@ public final class CharacterUtils {
         }
         return;
       } else if (c >= 'A' && c <= 'Z') {
-        buffer[i] = (char) (c | 32);
+        buffer[i] = (char) (c | 32); // set bit 5 to lowercase ASCII
       }
     }
   }
