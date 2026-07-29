@@ -126,6 +126,8 @@ New Features
 
 * GITHUB#15818: Add BM25 k3 query-term frequency saturation to BM25Similarity. (Sagar Upadhyaya)
 
+* GITHUB#16383: Add fp16 vector encoding support. (Pulkit Gupta)
+
 Improvements
 ---------------------
 * GITHUB#15704: Replace LinkedList with more efficient data structure. (Renato Haeberli)
@@ -153,6 +155,9 @@ Improvements
 * GITHUB#15558: Refactor QueryCache for performance. (Sagar Upadhyaya)
 
 * GITHUB#16281: File integrity checks periodically check if a merge is aborted. (Tanguy Leroux)
+
+* GITHUB#16313: Refactored the Hunspell dictionary parser to use switch-based dispatch for affix directives,
+  improving readability of the parsing logic. (Rajat Jain)
 
 Optimizations
 ---------------------
@@ -223,6 +228,10 @@ Bug Fixes
 * GITHUB#16278: Refactor NativeFSLockFactory lock acquisition to cleanly separate locking and file system logic. (Bharathi-Kanna)
 
 * GITHUB#16303: Add suppressed exception details when lock acquisition fails in NativeFSLockFactory. (Bharathi-Kanna)
+
+* Make VectorScorer#bulk default method lazily position its iterator on first use. (Michael Marshall)
+
+* GITHUB#16409: Fix filtered HNSW search boundary handling to match the general HNSW searcher. (Mingi Jeong)
 
 Changes in Runtime Behavior
 ---------------------
@@ -332,9 +341,22 @@ Improvements
 
 * GITHUB#16271: Add detail to KNN no-match explanations. (Jakub Slowinski)
 
+* GITHUB#16423: Add (configurable) guards for complexity of expressions. Previously
+  the expressions parser could throw StackOverflowError on deeply nested expressions
+  or also cause VerifyError and other LinkageErrors when the expression was to complex.
+  The new code allows to add a hard limit for nesting (default is 1024) and no longer
+  throws virtual machine errors.  (Uwe Schindler, Seth Kraft)
+
 Optimizations
 ---------------------
+* GITHUB#16394: Add DocIdSetIterator#intoArray, which DisjunctionDISIApproximation implements by
+  loading a window of doc IDs through #intoBitSet rather than one nextDoc() call per match.
+  ConstantScoreScorer#nextDocsAndScores now builds on it, which avoids a priority-queue update per
+  matching doc under MaxScoreBulkScorer's term-at-a-time scoring. (Chengxi Shi)
+
 * GITHUG#16280: Single-pass writeString fast path for short strings in ByteBuffersDataOutput (neoremind)
+
+* GITHUB#16220: Implement WANDScorer.advanceShallow() to enable block-max optimizations when nested in conjunctions. (Prithvi S)
 
 * GITHUB#16146: Speed up no-score filtered-optional Boolean queries by routing dense conjunctions with cached FixedBitSet filters
   through ConstantScoreBulkScorer, which batches matches in bulk via DocIdStream. (Costin Leau)
@@ -369,6 +391,8 @@ Optimizations
   index sort by advancing the filter before calculating impacts. (Alan Woodward)
 
 * GITHUB#16399: Reuse the previous end offset to skip a redundant addresses.get() in sorted numeric rangeIntoBitSet. (Sagar Upadhyaya)
+
+* GITHUB#16180: Add bulk intoBitSet for SortedDocValues ordinal ranges. (Prithvi S)
 
 Bug Fixes
 ---------------------
