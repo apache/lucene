@@ -17,6 +17,7 @@
 package org.apache.lucene.sandbox.codecs.dedup;
 
 import static org.apache.lucene.index.VectorEncoding.FLOAT32;
+import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
 import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
 import static org.hamcrest.Matchers.arrayContainingInAnyOrder;
 import static org.hamcrest.Matchers.instanceOf;
@@ -223,7 +224,7 @@ public class TestDedupFlatVectorsFormat extends LuceneTestCase {
         IndexWriter w = new IndexWriter(dir, config())) {
       Document doc = new Document();
       doc.add(new KnnFloatVectorField("f1", shared, EUCLIDEAN));
-      doc.add(new KnnFloatVectorField("f2", shared, EUCLIDEAN));
+      doc.add(new KnnFloatVectorField("f2", shared, DOT_PRODUCT)); // different function
       w.addDocument(doc);
       w.forceMerge(1);
       try (DirectoryReader reader = DirectoryReader.open(w)) {
