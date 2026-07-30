@@ -193,11 +193,6 @@ Optimizations
 
 Bug Fixes
 ---------------------
-* GITHUB#16251: Fix UpdateGraphsUtils#computeJoinSet to not request more coverage for a node than
-  the node's degree. Previously nodes with a degree of 1 were always forced into the join set,
-  which made the join set degenerate to the whole graph on hub-and-spoke shaped HNSW graphs.
-  (Mayya Sharipova)
-
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
 
@@ -403,6 +398,11 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#16251: Fix UpdateGraphsUtils#computeJoinSet to not request more coverage for a node than
+  the node's degree. Previously nodes with a degree of 1 were always forced into the join set,
+  which made the join set degenerate to the whole graph on hub-and-spoke shaped HNSW graphs.
+  (Mayya Sharipova)
+
 * GITHUB#16350: Disable bulk-scoring in monitor queries. (Alan Woodward)
 
 * GITHUB#16378: Accumulate join Total/Avg scores in double precision in
