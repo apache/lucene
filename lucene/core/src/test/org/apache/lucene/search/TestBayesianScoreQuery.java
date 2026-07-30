@@ -20,12 +20,14 @@ import java.util.List;
 import java.util.Random;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.store.Directory;
@@ -112,6 +114,25 @@ public class TestBayesianScoreQuery extends LuceneTestCase {
     assertTrue(
         "doc0 (" + bsqHits[0].score + ") > doc1 (" + bsqHits[1].score + ")",
         bsqHits[0].score > bsqHits[1].score);
+  }
+
+  public void testOuterBoostAppliesAfterCalibration() throws Exception {
+    Query inner = new TermQuery(new Term("body", "alpha"));
+    BayesianScoreQuery calibrated = new BayesianScoreQuery(inner, 0.5f, 5.0f);
+    Query boosted = new BoostQuery(calibrated, 2f);
+
+    ScoreDoc[] calibratedHits = searcher.search(calibrated, 10).scoreDocs;
+    ScoreDoc[] boostedHits = searcher.search(boosted, 10).scoreDocs;
+    assertEquals(calibratedHits.length, boostedHits.length);
+    for (int i = 0; i < calibratedHits.length; i++) {
+      assertEquals(calibratedHits[i].doc, boostedHits[i].doc);
+      assertEquals(2f * calibratedHits[i].score, boostedHits[i].score, 1e-6f);
+      assertEquals(
+          boostedHits[i].score,
+          searcher.explain(boosted, boostedHits[i].doc).getValue().floatValue(),
+          1e-6f);
+    }
+    CheckHits.checkTopScores(random(), boosted, searcher);
   }
 
   public void testMultiTermQueryRankingPreserved() throws Exception {
@@ -369,6 +390,8 @@ public class TestBayesianScoreQuery extends LuceneTestCase {
         IllegalArgumentException.class, () -> new BayesianScoreQuery(inner, 0.5f, 3.0f, -0.1f));
     expectThrows(
         IllegalArgumentException.class, () -> new BayesianScoreQuery(inner, 0.5f, 3.0f, 1.0f));
+    expectThrows(
+        IllegalArgumentException.class, () -> new BayesianScoreQuery(inner, 0.5f, 3.0f, Float.NaN));
   }
 
   // ---- Auto-estimation tests ----
@@ -450,6 +473,62 @@ public class TestBayesianScoreQuery extends LuceneTestCase {
     assertEquals("same seed should produce same alpha", p1.alpha(), p2.alpha(), 0f);
     assertEquals("same seed should produce same beta", p1.beta(), p2.beta(), 0f);
     assertEquals("same seed should produce same baseRate", p1.baseRate(), p2.baseRate(), 0f);
+  }
+
+  public void testEstimatorCollectsMoreThanTenThousandMatchingScores() throws Exception {
+    Directory largeDir = newDirectory();
+    IndexWriter writer = new IndexWriter(largeDir, new IndexWriterConfig());
+    int numDocuments = 10_001;
+    for (int i = 0; i < numDocuments; i++) {
+      Document doc = new Document();
+      doc.add(new TextField("body", "common", Field.Store.NO));
+      writer.addDocument(doc);
+    }
+    IndexReader largeReader = DirectoryReader.open(writer);
+    writer.close();
+    try {
+      IndexSearcher largeSearcher = new IndexSearcher(largeReader);
+      float[] scores =
+          BayesianScoreEstimator.collectScores(
+              largeSearcher, new TermQuery(new Term("body", "common")));
+      assertEquals(numDocuments, scores.length);
+    } finally {
+      largeReader.close();
+      largeDir.close();
+    }
+  }
+
+  public void testEstimatorBaseRateUsesLiveDocuments() throws Exception {
+    Directory deletedDir = newDirectory();
+    IndexWriterConfig config = new IndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE);
+    IndexWriter writer = new IndexWriter(deletedDir, config);
+    int numDocuments = 100;
+    for (int i = 0; i < numDocuments; i++) {
+      Document doc = new Document();
+      doc.add(new StringField("id", Integer.toString(i), Field.Store.NO));
+      doc.add(new TextField("body", "common", Field.Store.NO));
+      writer.addDocument(doc);
+    }
+    writer.commit();
+    Term[] deleted = new Term[90];
+    for (int i = 0; i < deleted.length; i++) {
+      deleted[i] = new Term("id", Integer.toString(i));
+    }
+    writer.deleteDocuments(deleted);
+    IndexReader deletedReader = DirectoryReader.open(writer);
+    writer.close();
+    try {
+      assertEquals(10, deletedReader.numDocs());
+      assertEquals(numDocuments, deletedReader.maxDoc());
+      IndexSearcher deletedSearcher = new IndexSearcher(deletedReader);
+      deletedSearcher.setSimilarity(new BM25Similarity());
+      BayesianScoreEstimator.Parameters params =
+          BayesianScoreEstimator.estimate(deletedSearcher, "body", 1, 1, 7);
+      assertEquals(0.5f, params.baseRate(), 0f);
+    } finally {
+      deletedReader.close();
+      deletedDir.close();
+    }
   }
 
   private static boolean containsTerm(List<BytesRef> terms, String expected) {
