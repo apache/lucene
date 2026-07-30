@@ -19,10 +19,8 @@ package org.apache.lucene.sandbox.codecs.dedup;
 import static java.nio.ByteOrder.LITTLE_ENDIAN;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.alignBytes;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.hashBytes;
-import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.writeEndOfFields;
-import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.writeEndOfGroups;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.writeEndMarker;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.writeFieldInfo;
-import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.writeGroupInfo;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -50,7 +48,6 @@ import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.FieldOrdToGroupOrd;
 import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.FieldOrdToGroupOrdArrayList;
 import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.GroupInfo;
 import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.GroupKey;
-import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.WriteFieldInfo;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.IOSupplier;
@@ -116,35 +113,36 @@ final class DedupMergeContext implements Accountable {
         mergeGroup.processField(fieldData, vectorData);
       }
 
-      int groupSize = mergeGroup.size();
+      int groupNumVectors = mergeGroup.numVectors();
       long vectorDataSize = vectorData.getFilePointer() - vectorDataOffset;
 
       GroupInfo groupInfo =
-          new GroupInfo(groupOrd, dimension, encoding, groupSize, vectorDataOffset, vectorDataSize);
-      writeGroupInfo(meta, groupInfo);
+          new GroupInfo(
+              groupOrd, dimension, encoding, groupNumVectors, vectorDataOffset, vectorDataSize);
+      groupInfo.write(meta);
 
       groupOrds.put(groupKey, groupOrd);
       groupOrd++;
     }
 
-    writeEndOfGroups(meta);
+    writeEndMarker(meta);
 
     for (FieldData fieldData : fieldDataList) {
-      WriteFieldInfo fieldInfo =
-          new WriteFieldInfo(
-              fieldData.fieldInfo.number,
-              fieldData.fieldInfo.getVectorSimilarityFunction(),
-              fieldData.fieldInfo.getVectorDimension(),
-              fieldData.fieldInfo.getVectorEncoding(),
-              groupOrds.get(fieldData.groupKey),
-              fieldData.fieldOrdToGroupOrd.elementsCount,
-              fieldData.maxDoc,
-              fieldData.docsWithFieldSet,
-              new FieldOrdToGroupOrdArrayList(fieldData.fieldOrdToGroupOrd));
-      writeFieldInfo(meta, vectorData, fieldInfo);
+      writeFieldInfo(
+          meta,
+          vectorData,
+          fieldData.fieldInfo.number,
+          fieldData.fieldInfo.getVectorSimilarityFunction(),
+          fieldData.fieldInfo.getVectorDimension(),
+          fieldData.fieldInfo.getVectorEncoding(),
+          groupOrds.get(fieldData.groupKey),
+          fieldData.fieldOrdToGroupOrd.elementsCount,
+          fieldData.maxDoc,
+          fieldData.docsWithFieldSet,
+          new FieldOrdToGroupOrdArrayList(fieldData.fieldOrdToGroupOrd));
     }
 
-    writeEndOfFields(meta);
+    writeEndMarker(meta);
   }
 
   abstract static sealed class DedupMergeGroup<T, U extends KnnVectorValues> extends DedupGroup<T> {
@@ -157,13 +155,13 @@ final class DedupMergeContext implements Accountable {
       // iterate merged docs one-by-one
       for (Sub<U> next = merger.next(); next != null; next = merger.next()) {
         T vector = vectorFrom(next);
-        int groupSize = size();
+        int groupNumVectors = numVectors();
 
         // add vector to group
         ObjectCursor<T> cursor = addUnique(vector);
-        if (cursor.index == groupSize) { // new addition
+        if (cursor.index == groupNumVectors) { // new addition
           // already on-heap, write immediately to avoid another IO read
-          byte[] bytes = serialize(groupSize);
+          byte[] bytes = serialize(groupNumVectors);
           vectorData.writeBytes(bytes, bytes.length);
         }
 
@@ -225,7 +223,7 @@ final class DedupMergeContext implements Accountable {
 
     @Override
     public long ramBytesUsed() {
-      return SHALLOW_SIZE + super.ramBytesUsed() + size() * ByteVector.SHALLOW_SIZE;
+      return SHALLOW_SIZE + super.ramBytesUsed() + numVectors() * ByteVector.SHALLOW_SIZE;
     }
   }
 
@@ -291,7 +289,7 @@ final class DedupMergeContext implements Accountable {
 
     @Override
     public long ramBytesUsed() {
-      return SHALLOW_SIZE + super.ramBytesUsed() + size() * FloatVector.SHALLOW_SIZE;
+      return SHALLOW_SIZE + super.ramBytesUsed() + numVectors() * FloatVector.SHALLOW_SIZE;
     }
   }
 
@@ -358,7 +356,7 @@ final class DedupMergeContext implements Accountable {
 
     @Override
     public long ramBytesUsed() {
-      return SHALLOW_SIZE + super.ramBytesUsed() + size() * Float16Vector.SHALLOW_SIZE;
+      return SHALLOW_SIZE + super.ramBytesUsed() + numVectors() * Float16Vector.SHALLOW_SIZE;
     }
   }
 

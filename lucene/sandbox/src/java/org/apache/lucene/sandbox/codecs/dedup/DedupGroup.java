@@ -63,7 +63,7 @@ abstract sealed class DedupGroup<T> implements Accountable
 
   abstract byte[] serialize(int ord) throws IOException;
 
-  int size() {
+  int numVectors() {
     return vectors.size();
   }
 

@@ -28,8 +28,6 @@ import static org.apache.lucene.sandbox.codecs.dedup.DedupFlatVectorsFormat.VERS
 import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.loadDedupBytes;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.loadDedupFloat16s;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.loadDedupFloats;
-import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.readFieldInfo;
-import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.readGroupInfo;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -111,7 +109,7 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
   private void readMetaBody(ChecksumIndexInput meta, FieldInfos fieldInfos) throws IOException {
     List<GroupInfo> groupInfos = new ArrayList<>();
     while (true) {
-      GroupInfo groupInfo = readGroupInfo(meta);
+      GroupInfo groupInfo = GroupInfo.readFromMeta(meta);
       if (groupInfo == null) {
         break;
       }
@@ -119,7 +117,7 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
     }
 
     while (true) {
-      ReadFieldInfo fieldInfo = readFieldInfo(meta);
+      ReadFieldInfo fieldInfo = ReadFieldInfo.read(meta);
       if (fieldInfo == null) {
         break;
       }
@@ -225,7 +223,8 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
     return vectorsScorer;
   }
 
-  private FieldEntry getEntry(String field, VectorEncoding expected) {
+  // package-private for testing
+  FieldEntry getEntry(String field, VectorEncoding expected) {
     FieldEntry entry = fields.get(field);
     if (entry == null) {
       throw new IllegalArgumentException("field=" + field + " not found");
@@ -267,7 +266,7 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
         entry.fieldInfo.function(),
         entry.fieldInfo.ordToDoc(),
         entry.fieldInfo.dimension(),
-        entry.groupInfo.groupSize(),
+        entry.groupInfo.groupNumVectors(),
         vectorData,
         entry.groupInfo.vectorDataOffset(),
         entry.groupInfo.vectorDataSize(),
@@ -286,7 +285,7 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
         entry.fieldInfo.function(),
         entry.fieldInfo.ordToDoc(),
         entry.fieldInfo.dimension(),
-        entry.groupInfo.groupSize(),
+        entry.groupInfo.groupNumVectors(),
         vectorData,
         entry.groupInfo.vectorDataOffset(),
         entry.groupInfo.vectorDataSize(),
@@ -305,7 +304,7 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
         entry.fieldInfo.function(),
         entry.fieldInfo.ordToDoc(),
         entry.fieldInfo.dimension(),
-        entry.groupInfo.groupSize(),
+        entry.groupInfo.groupNumVectors(),
         vectorData,
         entry.groupInfo.vectorDataOffset(),
         entry.groupInfo.vectorDataSize(),
@@ -351,7 +350,7 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
         entry.fieldInfo.fieldOrdToGroupOrdSize() + entry.groupInfo.vectorDataSize());
   }
 
-  private record FieldEntry(ReadFieldInfo fieldInfo, GroupInfo groupInfo) {
+  record FieldEntry(ReadFieldInfo fieldInfo, GroupInfo groupInfo) {
     private static final long SHALLOW_SIZE =
         RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class)
             + RamUsageEstimator.shallowSizeOfInstance(ReadFieldInfo.class)

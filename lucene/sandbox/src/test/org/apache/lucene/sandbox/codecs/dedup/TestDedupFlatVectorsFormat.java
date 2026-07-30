@@ -16,11 +16,14 @@
  */
 package org.apache.lucene.sandbox.codecs.dedup;
 
+import static org.apache.lucene.index.VectorEncoding.FLOAT32;
 import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
 import static org.hamcrest.Matchers.arrayContainingInAnyOrder;
 import static org.hamcrest.Matchers.instanceOf;
 
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.document.KnnFloat16VectorField;
@@ -49,7 +52,7 @@ import org.apache.lucene.tests.util.TestUtil;
  */
 public class TestDedupFlatVectorsFormat extends LuceneTestCase {
 
-  private IndexWriterConfig config() {
+  private static IndexWriterConfig config() {
     return newIndexWriterConfig()
         .setCodec(TestUtil.alwaysKnnVectorsFormat(new DedupHnswVectorsFormat()));
   }
@@ -72,7 +75,7 @@ public class TestDedupFlatVectorsFormat extends LuceneTestCase {
         LeafReader leafReader = getOnlyLeafReader(reader);
         FloatVectorValues values = leafReader.getFloatVectorValues("f");
         assertEquals(docVectors.length, values.size()); // one entry per document
-        assertEquals(2, groupSize(values)); // only two distinct vectors stored
+        assertEquals(2, groupNumVectors(values)); // only two distinct vectors stored
         NumericDocValues docValues = leafReader.getNumericDocValues("id");
         Integer[] expectedOrds = new Integer[docVectors.length];
         Integer[] ordsSeen = new Integer[docVectors.length];
@@ -107,7 +110,7 @@ public class TestDedupFlatVectorsFormat extends LuceneTestCase {
         LeafReader leafReader = getOnlyLeafReader(reader);
         Float16VectorValues values = leafReader.getFloat16VectorValues("f");
         assertEquals(docVectors.length, values.size()); // one entry per document
-        assertEquals(2, groupSize(values)); // only two distinct vectors stored
+        assertEquals(2, groupNumVectors(values)); // only two distinct vectors stored
         NumericDocValues docValues = leafReader.getNumericDocValues("id");
         Integer[] expectedOrds = new Integer[docVectors.length];
         Integer[] ordsSeen = new Integer[docVectors.length];
@@ -128,7 +131,7 @@ public class TestDedupFlatVectorsFormat extends LuceneTestCase {
   public void testByteDuplicatesWithinField() throws Exception {
     byte[] a = {1, 2, 3, 4};
     byte[] b = {5, 6, 7, 8};
-    byte[][] docVectors = {a, a, b, a, b};
+    byte[][] docVectors = {a, b, a, b, a, b}; // 3 copies each of 2 vectors
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, config())) {
       for (int ord = 0; ord < docVectors.length; ord++) {
@@ -142,7 +145,7 @@ public class TestDedupFlatVectorsFormat extends LuceneTestCase {
         LeafReader leafReader = getOnlyLeafReader(reader);
         ByteVectorValues values = leafReader.getByteVectorValues("f");
         assertEquals(docVectors.length, values.size());
-        assertEquals(2, groupSize(values));
+        assertEquals(2, groupNumVectors(values));
         NumericDocValues docValues = leafReader.getNumericDocValues("id");
         Integer[] expectedOrds = new Integer[docVectors.length];
         Integer[] ordsSeen = new Integer[docVectors.length];
@@ -176,7 +179,7 @@ public class TestDedupFlatVectorsFormat extends LuceneTestCase {
       try (DirectoryReader reader = DirectoryReader.open(w)) {
         FloatVectorValues values = getOnlyLeafReader(reader).getFloatVectorValues("f");
         assertEquals(distinctDocVectors.length, values.size());
-        assertEquals(distinctDocVectors.length, groupSize(values));
+        assertEquals(distinctDocVectors.length, groupNumVectors(values));
       }
     }
   }
@@ -196,11 +199,8 @@ public class TestDedupFlatVectorsFormat extends LuceneTestCase {
       w.forceMerge(1);
       try (DirectoryReader reader = DirectoryReader.open(w)) {
         LeafReader leafReader = getOnlyLeafReader(reader);
-        assertThat(leafReader, instanceOf(CodecReader.class));
-
+        DedupFlatVectorsReader dedupReader = getDedupReader(leafReader, "f");
         FieldInfo fieldInfo = leafReader.getFieldInfos().fieldInfo("f");
-        KnnVectorsReader knnVectorsReader = ((CodecReader) leafReader).getVectorReader();
-        knnVectorsReader = knnVectorsReader.unwrapReaderForField("f");
 
         long expectedOffHeapSize =
             (docVectors.length * Integer.BYTES) // fieldOrdToGroupOrd mapping
@@ -208,7 +208,7 @@ public class TestDedupFlatVectorsFormat extends LuceneTestCase {
 
         assertEquals(
             expectedOffHeapSize,
-            knnVectorsReader
+            dedupReader
                 .getOffHeapByteSize(fieldInfo)
                 .get("vdd") // vector data extension
                 .longValue());
@@ -228,11 +228,21 @@ public class TestDedupFlatVectorsFormat extends LuceneTestCase {
       w.forceMerge(1);
       try (DirectoryReader reader = DirectoryReader.open(w)) {
         LeafReader leaf = getOnlyLeafReader(reader);
+
+        DedupFlatVectorsReader dedupReader1 = getDedupReader(leaf, "f1");
+        DedupFlatVectorsReader dedupReader2 = getDedupReader(leaf, "f2");
+        assertEquals(dedupReader1, dedupReader2); // de-duplication happened correctly
+
+        assertEquals( // both fields DO resolve to the same group
+            dedupReader1.getEntry("f1", FLOAT32).groupInfo(),
+            dedupReader2.getEntry("f2", FLOAT32).groupInfo());
+
         FloatVectorValues v1 = leaf.getFloatVectorValues("f1");
-        FloatVectorValues v2 = leaf.getFloatVectorValues("f2");
-        assertEquals(1, groupSize(v1)); // both fields resolve to the same one-vector group
-        assertEquals(1, groupSize(v2));
+        assertEquals(1, groupNumVectors(v1)); // the group has one vector
         assertArrayEquals(shared, v1.vectorValue(0), 0f);
+
+        FloatVectorValues v2 = leaf.getFloatVectorValues("f2");
+        assertEquals(1, groupNumVectors(v2)); // the group has one vector
         assertArrayEquals(shared, v2.vectorValue(0), 0f);
       }
     }
@@ -251,10 +261,22 @@ public class TestDedupFlatVectorsFormat extends LuceneTestCase {
       w.forceMerge(1);
       try (DirectoryReader reader = DirectoryReader.open(w)) {
         LeafReader leaf = getOnlyLeafReader(reader);
-        assertEquals(1, groupSize(leaf.getFloatVectorValues("f2d")));
-        assertEquals(1, groupSize(leaf.getFloatVectorValues("f3d")));
-        assertArrayEquals(vector1, leaf.getFloatVectorValues("f2d").vectorValue(0), 0f);
-        assertArrayEquals(vector2, leaf.getFloatVectorValues("f3d").vectorValue(0), 0f);
+
+        DedupFlatVectorsReader dedupReader1 = getDedupReader(leaf, "f2d");
+        DedupFlatVectorsReader dedupReader2 = getDedupReader(leaf, "f3d");
+        assertEquals(dedupReader1, dedupReader2); // de-duplication happened correctly
+
+        assertNotEquals( // both fields DO NOT resolve to the same group
+            dedupReader1.getEntry("f2d", FLOAT32).groupInfo(),
+            dedupReader2.getEntry("f3d", FLOAT32).groupInfo());
+
+        FloatVectorValues v1 = leaf.getFloatVectorValues("f2d");
+        assertEquals(1, groupNumVectors(v1)); // the group has one vector
+        assertArrayEquals(vector1, v1.vectorValue(0), 0f);
+
+        FloatVectorValues v2 = leaf.getFloatVectorValues("f3d");
+        assertEquals(1, groupNumVectors(v2)); // the group has one vector
+        assertArrayEquals(vector2, v2.vectorValue(0), 0f);
       }
     }
   }
@@ -278,7 +300,7 @@ public class TestDedupFlatVectorsFormat extends LuceneTestCase {
         LeafReader leafReader = getOnlyLeafReader(reader);
         FloatVectorValues values = leafReader.getFloatVectorValues("f");
         assertEquals(docVectors.length, values.size());
-        assertEquals(2, groupSize(values)); // a's duplicate collapsed across segments
+        assertEquals(2, groupNumVectors(values)); // a's duplicate collapsed across segments
         NumericDocValues docValues = leafReader.getNumericDocValues("id");
         Integer[] expectedOrds = new Integer[docVectors.length];
         Integer[] ordsSeen = new Integer[docVectors.length];
@@ -296,7 +318,22 @@ public class TestDedupFlatVectorsFormat extends LuceneTestCase {
   }
 
   /** Number of distinct vectors physically stored for a field's group. */
-  private static int groupSize(KnnVectorValues values) {
+  private static int groupNumVectors(KnnVectorValues values) {
+    assertThat(values, instanceOf(DedupVectorValues.class));
     return ((DedupVectorValues) values).getGroupView().size();
+  }
+
+  /** Get underlying dedup vector reader instance. */
+  private static DedupFlatVectorsReader getDedupReader(LeafReader leafReader, String fieldName) {
+    assertThat(leafReader, instanceOf(CodecReader.class));
+    KnnVectorsReader knnVectorsReader = ((CodecReader) leafReader).getVectorReader();
+    knnVectorsReader = knnVectorsReader.unwrapReaderForField(fieldName);
+
+    assertThat(knnVectorsReader, instanceOf(Lucene99HnswVectorsReader.class));
+    FlatVectorsReader flatReader =
+        ((Lucene99HnswVectorsReader) knnVectorsReader).getFlatVectorsReader();
+
+    assertThat(flatReader, instanceOf(DedupFlatVectorsReader.class));
+    return (DedupFlatVectorsReader) flatReader;
   }
 }

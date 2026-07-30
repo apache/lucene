@@ -19,10 +19,8 @@ package org.apache.lucene.sandbox.codecs.dedup;
 import static java.nio.ByteOrder.LITTLE_ENDIAN;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.alignBytes;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.hashBytes;
-import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.writeEndOfFields;
-import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.writeEndOfGroups;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.writeEndMarker;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.writeFieldInfo;
-import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.writeGroupInfo;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -45,7 +43,6 @@ import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.FieldOrdToGroupOrdArrayL
 import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.FieldOrdToGroupOrdMappedArrayList;
 import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.GroupInfo;
 import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.GroupKey;
-import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.WriteFieldInfo;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -68,10 +65,11 @@ final class DedupFlushContext implements Accountable {
   }
 
   private static DedupGroup<?> getGroup(GroupKey groupKey) {
+    int dimension = groupKey.dimension();
     return switch (groupKey.encoding()) {
-      case BYTE -> new ByteGroup(groupKey.dimension());
-      case FLOAT32 -> new FloatGroup(groupKey.dimension());
-      case FLOAT16 -> new Float16Group(groupKey.dimension());
+      case BYTE -> new ByteGroup(dimension);
+      case FLOAT32 -> new FloatGroup(dimension);
+      case FLOAT16 -> new Float16Group(dimension);
     };
   }
 
@@ -104,30 +102,30 @@ final class DedupFlushContext implements Accountable {
     int groupOrd = 0;
     for (Map.Entry<GroupKey, DedupGroup<?>> entry : groups.entrySet()) {
       GroupKey groupKey = entry.getKey();
-      DedupGroup<?> group = entry.getValue();
+      int dimension = groupKey.dimension();
+      VectorEncoding encoding = groupKey.encoding();
 
-      int groupSize = group.size();
-      long vectorDataOffset = alignBytes(vectorData, groupKey.encoding());
+      DedupGroup<?> group = entry.getValue();
+      int groupNumVectors = group.numVectors();
+      long vectorDataOffset = alignBytes(vectorData, encoding);
 
       // TODO: Write in sorted order for faster merge? (with sequential IO)
-      for (int ord = 0; ord < groupSize; ord++) {
+      for (int ord = 0; ord < groupNumVectors; ord++) {
         byte[] bytes = group.serialize(ord);
         vectorData.writeBytes(bytes, bytes.length);
       }
       long vectorDataSize = vectorData.getFilePointer() - vectorDataOffset;
 
-      int dimension = groupKey.dimension();
-      VectorEncoding encoding = groupKey.encoding();
-
       GroupInfo groupInfo =
-          new GroupInfo(groupOrd, dimension, encoding, groupSize, vectorDataOffset, vectorDataSize);
-      writeGroupInfo(meta, groupInfo);
+          new GroupInfo(
+              groupOrd, dimension, encoding, groupNumVectors, vectorDataOffset, vectorDataSize);
+      groupInfo.write(meta);
 
       groupOrds.put(groupKey, groupOrd);
       groupOrd++;
     }
 
-    writeEndOfGroups(meta);
+    writeEndMarker(meta);
 
     for (FieldData fieldData : fieldDataList) {
       fieldData.fieldWriter.finish();
@@ -149,21 +147,21 @@ final class DedupFlushContext implements Accountable {
             new FieldOrdToGroupOrdMappedArrayList(new2OldOrd, fieldOrdToGroupOrd);
       }
 
-      WriteFieldInfo fieldInfo =
-          new WriteFieldInfo(
-              fieldData.fieldInfo.number,
-              fieldData.fieldInfo.getVectorSimilarityFunction(),
-              fieldData.fieldInfo.getVectorDimension(),
-              fieldData.fieldInfo.getVectorEncoding(),
-              groupOrds.get(fieldData.groupKey),
-              vectorCount,
-              maxDoc,
-              docs,
-              fieldOrdToGroupOrdFinal);
-      writeFieldInfo(meta, vectorData, fieldInfo);
+      writeFieldInfo(
+          meta,
+          vectorData,
+          fieldData.fieldInfo.number,
+          fieldData.fieldInfo.getVectorSimilarityFunction(),
+          fieldData.fieldInfo.getVectorDimension(),
+          fieldData.fieldInfo.getVectorEncoding(),
+          groupOrds.get(fieldData.groupKey),
+          vectorCount,
+          maxDoc,
+          docs,
+          fieldOrdToGroupOrdFinal);
     }
 
-    writeEndOfFields(meta);
+    writeEndMarker(meta);
   }
 
   static final class ByteGroup extends DedupGroup<byte[]> {
@@ -200,7 +198,7 @@ final class DedupFlushContext implements Accountable {
 
     @Override
     public long ramBytesUsed() {
-      return SHALLOW_SIZE + super.ramBytesUsed() + size() * ramBytesPerVector;
+      return SHALLOW_SIZE + super.ramBytesUsed() + numVectors() * ramBytesPerVector;
     }
   }
 
@@ -246,7 +244,7 @@ final class DedupFlushContext implements Accountable {
 
     @Override
     public long ramBytesUsed() {
-      return SHALLOW_SIZE + super.ramBytesUsed() + size() * ramBytesPerVector;
+      return SHALLOW_SIZE + super.ramBytesUsed() + numVectors() * ramBytesPerVector;
     }
   }
 
@@ -292,7 +290,7 @@ final class DedupFlushContext implements Accountable {
 
     @Override
     public long ramBytesUsed() {
-      return SHALLOW_SIZE + super.ramBytesUsed() + size() * ramBytesPerVector;
+      return SHALLOW_SIZE + super.ramBytesUsed() + numVectors() * ramBytesPerVector;
     }
   }
 

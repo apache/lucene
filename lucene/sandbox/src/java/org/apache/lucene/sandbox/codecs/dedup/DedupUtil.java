@@ -110,40 +110,39 @@ final class DedupUtil {
       int groupOrd,
       int dimension,
       VectorEncoding encoding,
-      int groupSize,
+      int groupNumVectors,
       long vectorDataOffset,
-      long vectorDataSize) {}
+      long vectorDataSize) {
 
-  static void writeGroupInfo(IndexOutput meta, GroupInfo groupInfo) throws IOException {
-    meta.writeInt(groupInfo.groupOrd);
-    meta.writeInt(groupInfo.dimension);
-    meta.writeInt(groupInfo.encoding.ordinal());
-    meta.writeInt(groupInfo.groupSize);
-    meta.writeLong(groupInfo.vectorDataOffset);
-    meta.writeLong(groupInfo.vectorDataSize);
-  }
-
-  static void writeEndOfGroups(IndexOutput meta) throws IOException {
-    meta.writeInt(END_MARKER);
-  }
-
-  static GroupInfo readGroupInfo(IndexInput meta) throws IOException {
-    int groupOrd = meta.readInt();
-    if (groupOrd == END_MARKER) {
-      return null;
+    void write(IndexOutput meta) throws IOException {
+      meta.writeInt(groupOrd);
+      meta.writeInt(dimension);
+      meta.writeInt(encoding.ordinal());
+      meta.writeInt(groupNumVectors);
+      meta.writeLong(vectorDataOffset);
+      meta.writeLong(vectorDataSize);
     }
 
-    int dimension = meta.readInt();
-    VectorEncoding encoding = VectorEncoding.values()[meta.readInt()];
-    int groupSize = meta.readInt();
-    long vectorDataOffset = meta.readLong();
-    long vectorDataSize = meta.readLong();
+    static GroupInfo readFromMeta(IndexInput meta) throws IOException {
+      int groupOrd = meta.readInt();
+      if (groupOrd == END_MARKER) {
+        return null;
+      }
 
-    return new GroupInfo(
-        groupOrd, dimension, encoding, groupSize, vectorDataOffset, vectorDataSize);
+      int dimension = meta.readInt();
+      VectorEncoding encoding = VectorEncoding.values()[meta.readInt()];
+      int groupNumVectors = meta.readInt();
+      long vectorDataOffset = meta.readLong();
+      long vectorDataSize = meta.readLong();
+
+      return new GroupInfo(
+          groupOrd, dimension, encoding, groupNumVectors, vectorDataOffset, vectorDataSize);
+    }
   }
 
-  record WriteFieldInfo(
+  static void writeFieldInfo(
+      IndexOutput meta,
+      IndexOutput vectorData,
       int fieldNumber,
       VectorSimilarityFunction function,
       int dimension,
@@ -152,34 +151,26 @@ final class DedupUtil {
       int vectorCount,
       int maxDoc,
       DocsWithFieldSet docs,
-      FieldOrdToGroupOrd fieldOrdToGroupOrd) {}
-
-  static void writeFieldInfo(IndexOutput meta, IndexOutput vectorData, WriteFieldInfo fieldInfo)
+      FieldOrdToGroupOrd fieldOrdToGroupOrd)
       throws IOException {
 
-    meta.writeInt(fieldInfo.fieldNumber);
-    meta.writeInt(fieldInfo.function.ordinal());
-    meta.writeInt(fieldInfo.dimension);
-    meta.writeInt(fieldInfo.encoding.ordinal());
-    meta.writeInt(fieldInfo.groupOrd);
-    meta.writeInt(fieldInfo.vectorCount);
+    meta.writeInt(fieldNumber);
+    meta.writeInt(function.ordinal());
+    meta.writeInt(dimension);
+    meta.writeInt(encoding.ordinal());
+    meta.writeInt(groupOrd);
+    meta.writeInt(vectorCount);
 
     // write ordToDoc
     OrdToDocDISIReaderConfiguration.writeStoredMeta(
-        ORD_TO_DOC_DIRECT_MONOTONIC_BLOCK_SHIFT,
-        meta,
-        vectorData,
-        fieldInfo.vectorCount,
-        fieldInfo.maxDoc,
-        fieldInfo.docs);
+        ORD_TO_DOC_DIRECT_MONOTONIC_BLOCK_SHIFT, meta, vectorData, vectorCount, maxDoc, docs);
 
     // write fieldOrdToGroupOrd
     long fieldOrdToGroupOrdOffset = vectorData.alignFilePointer(FIELD_ORD_TO_GROUP_ORD_ALIGN_BYTES);
     DirectWriter writer =
-        DirectWriter.getInstance(
-            vectorData, fieldInfo.vectorCount, FIELD_ORD_TO_GROUP_ORD_BITS_PER_VALUE);
-    for (int i = 0; i < fieldInfo.vectorCount; i++) {
-      writer.add(fieldInfo.fieldOrdToGroupOrd.get(i));
+        DirectWriter.getInstance(vectorData, vectorCount, FIELD_ORD_TO_GROUP_ORD_BITS_PER_VALUE);
+    for (int i = 0; i < vectorCount; i++) {
+      writer.add(fieldOrdToGroupOrd.get(i));
     }
     writer.finish();
     long fieldOrdToGroupOrdSize = vectorData.getFilePointer() - fieldOrdToGroupOrdOffset;
@@ -188,7 +179,7 @@ final class DedupUtil {
     meta.writeLong(fieldOrdToGroupOrdSize);
   }
 
-  static void writeEndOfFields(IndexOutput meta) throws IOException {
+  static void writeEndMarker(IndexOutput meta) throws IOException {
     meta.writeInt(END_MARKER);
   }
 
@@ -201,35 +192,36 @@ final class DedupUtil {
       int vectorCount,
       OrdToDocDISIReaderConfiguration ordToDoc,
       long fieldOrdToGroupOrdOffset,
-      long fieldOrdToGroupOrdSize) {}
+      long fieldOrdToGroupOrdSize) {
 
-  static ReadFieldInfo readFieldInfo(IndexInput meta) throws IOException {
+    static ReadFieldInfo read(IndexInput meta) throws IOException {
 
-    int fieldNumber = meta.readInt();
-    if (fieldNumber == END_MARKER) {
-      return null;
+      int fieldNumber = meta.readInt();
+      if (fieldNumber == END_MARKER) {
+        return null;
+      }
+
+      VectorSimilarityFunction function = VectorSimilarityFunction.values()[meta.readInt()];
+      int dimension = meta.readInt();
+      VectorEncoding encoding = VectorEncoding.values()[meta.readInt()];
+      int groupOrd = meta.readInt();
+      int vectorCount = meta.readInt();
+      OrdToDocDISIReaderConfiguration ordToDoc =
+          OrdToDocDISIReaderConfiguration.fromStoredMeta(meta, vectorCount);
+      long fieldOrdToGroupOrdOffset = meta.readLong();
+      long fieldOrdToGroupOrdSize = meta.readLong();
+
+      return new ReadFieldInfo(
+          fieldNumber,
+          function,
+          dimension,
+          encoding,
+          groupOrd,
+          vectorCount,
+          ordToDoc,
+          fieldOrdToGroupOrdOffset,
+          fieldOrdToGroupOrdSize);
     }
-
-    VectorSimilarityFunction function = VectorSimilarityFunction.values()[meta.readInt()];
-    int dimension = meta.readInt();
-    VectorEncoding encoding = VectorEncoding.values()[meta.readInt()];
-    int groupOrd = meta.readInt();
-    int vectorCount = meta.readInt();
-    OrdToDocDISIReaderConfiguration ordToDoc =
-        OrdToDocDISIReaderConfiguration.fromStoredMeta(meta, vectorCount);
-    long fieldOrdToGroupOrdOffset = meta.readLong();
-    long fieldOrdToGroupOrdSize = meta.readLong();
-
-    return new ReadFieldInfo(
-        fieldNumber,
-        function,
-        dimension,
-        encoding,
-        groupOrd,
-        vectorCount,
-        ordToDoc,
-        fieldOrdToGroupOrdOffset,
-        fieldOrdToGroupOrdSize);
   }
 
   static long hashBytes(byte[] bytes) {
@@ -311,7 +303,7 @@ final class DedupUtil {
       VectorSimilarityFunction function,
       OrdToDocDISIReaderConfiguration configuration,
       int dimension,
-      int groupSize,
+      int groupNumVectors,
       IndexInput vectorData,
       long vectorDataOffset,
       long vectorDataSize,
@@ -326,7 +318,7 @@ final class DedupUtil {
     final OffHeapByteVectorValues groupView =
         new OffHeapByteVectorValues.DenseOffHeapVectorValues(
             dimension,
-            groupSize,
+            groupNumVectors,
             vectorData.slice("group-slice", vectorDataOffset, vectorDataSize),
             fieldView.getVectorByteLength(),
             vectorsScorer,
@@ -431,7 +423,7 @@ final class DedupUtil {
       VectorSimilarityFunction function,
       OrdToDocDISIReaderConfiguration configuration,
       int dimension,
-      int groupSize,
+      int groupNumVectors,
       IndexInput vectorData,
       long vectorDataOffset,
       long vectorDataSize,
@@ -446,7 +438,7 @@ final class DedupUtil {
     final OffHeapFloatVectorValues groupView =
         new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
             dimension,
-            groupSize,
+            groupNumVectors,
             vectorData.slice("group-slice", vectorDataOffset, vectorDataSize),
             fieldView.getVectorByteLength(),
             vectorsScorer,
@@ -551,7 +543,7 @@ final class DedupUtil {
       VectorSimilarityFunction function,
       OrdToDocDISIReaderConfiguration configuration,
       int dimension,
-      int groupSize,
+      int groupNumVectors,
       IndexInput vectorData,
       long vectorDataOffset,
       long vectorDataSize,
@@ -566,7 +558,7 @@ final class DedupUtil {
     final OffHeapFloat16VectorValues groupView =
         new OffHeapFloat16VectorValues.DenseOffHeapVectorValues(
             dimension,
-            groupSize,
+            groupNumVectors,
             vectorData.slice("group-slice", vectorDataOffset, vectorDataSize),
             fieldView.getVectorByteLength(),
             vectorsScorer,
