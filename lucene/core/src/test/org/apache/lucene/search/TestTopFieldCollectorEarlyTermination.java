@@ -285,7 +285,6 @@ public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
     // calls disableSkipping().
     Directory dirA = newDirectory();
     IndexWriterConfig iwcA = newIndexWriterConfig().setIndexSort(ascSort);
-    iwcA.setMergeScheduler(new SerialMergeScheduler());
     try (RandomIndexWriter w = new RandomIndexWriter(random(), dirA, iwcA)) {
       for (int i = 0; i < 20; i++) {
         Document doc = new Document();
@@ -305,7 +304,6 @@ public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
     IndexWriterConfig iwcB =
         newIndexWriterConfig()
             .setIndexSort(new Sort(new SortField("ndv", SortField.Type.LONG, true)));
-    iwcB.setMergeScheduler(new SerialMergeScheduler());
     try (RandomIndexWriter w = new RandomIndexWriter(random(), dirB, iwcB)) {
       for (int i = 0; i < 20; i++) {
         Document doc = new Document();
