@@ -22,6 +22,9 @@ import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
 import static org.hamcrest.Matchers.arrayContainingInAnyOrder;
 import static org.hamcrest.Matchers.instanceOf;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
@@ -41,7 +44,8 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NumericDocValues;
-import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.DedupVectorValues;
+import org.apache.lucene.internal.hppc.LongArrayList;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
@@ -314,6 +318,102 @@ public class TestDedupFlatVectorsFormat extends LuceneTestCase {
           ordsSeen[ord] = originalOrd;
         }
         assertThat("all vectors not seen", ordsSeen, arrayContainingInAnyOrder(expectedOrds));
+      }
+    }
+  }
+
+  /** Test that vectors not referenced are deleted from the group. */
+  public void testDeletes() throws Exception {
+    float[] a = {1, 1, 1, 1};
+    float[] b = {2, 2, 2, 2};
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, config())) {
+
+      LongArrayList docsWithArrayB = new LongArrayList();
+      boolean aIndexed = false, bIndexed = false;
+      for (int i = 0; i < 50; i++) { // many documents
+        Document doc = new Document();
+        doc.add(new NumericDocValuesField("id", i));
+        if (random().nextBoolean()) { // index either a or b
+          doc.add(new KnnFloatVectorField("f", a));
+          aIndexed = true;
+        } else {
+          doc.add(new KnnFloatVectorField("f", b));
+          docsWithArrayB.add(i);
+          bIndexed = true;
+        }
+        w.addDocument(doc);
+      }
+
+      assumeTrue("Both vectors a and b indexed", aIndexed && bIndexed);
+
+      w.forceMerge(1); // de-duplicate everything
+
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        LeafReader leafReader = getOnlyLeafReader(reader);
+        FloatVectorValues values = leafReader.getFloatVectorValues("f");
+        assertEquals(2, groupNumVectors(values)); // the group has both vectors
+      }
+
+      Query matchDocsWithArrayB =
+          NumericDocValuesField.newSlowSetQuery("id", docsWithArrayB.toArray());
+      w.deleteDocuments(matchDocsWithArrayB); // delete all docs with vector b
+
+      w.forceMerge(1); // de-duplicate everything
+
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        LeafReader leafReader = getOnlyLeafReader(reader);
+        FloatVectorValues values = leafReader.getFloatVectorValues("f");
+        assertEquals(1, groupNumVectors(values)); // the group now has one vector
+      }
+    }
+  }
+
+  /** Test many duplicates spread across fields, documents, segments. */
+  public void testManyDuplicate() throws Exception {
+    float[] shared = {1, 2, 3, 4};
+    List<String> fields = new ArrayList<>(List.of("a", "b", "c", "d", "e"));
+    boolean atLeastOne = false;
+
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, config())) {
+      for (int i = 0; i < 50; i++) { // many documents
+        Document doc = new Document();
+
+        // randomly pick [0, N) fields to index the same vector
+        int numFields = random().nextInt(fields.size());
+        Collections.shuffle(fields, random());
+        for (int j = 0; j < numFields; j++) {
+          doc.add(new KnnFloatVectorField(fields.get(j), shared));
+          atLeastOne = true;
+        }
+
+        w.addDocument(doc);
+
+        if (random().nextFloat() < 0.2f) { // randomly create segments
+          w.commit();
+        }
+      }
+
+      w.forceMerge(1); // de-duplicate everything
+
+      assumeTrue("At least one vector indexed", atLeastOne);
+
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        LeafReader leaf = getOnlyLeafReader(reader);
+
+        DedupFlatVectorsReader dedupReader = getDedupReader(leaf, "a");
+        for (String field : fields) { // all fields DO resolve to the same group
+          DedupFlatVectorsReader other = getDedupReader(leaf, field);
+          assertEquals(dedupReader, other); // de-duplication happened correctly
+          assertEquals( // both fields DO resolve to the same group
+              dedupReader.getEntry("a", FLOAT32).groupInfo(),
+              other.getEntry(field, FLOAT32).groupInfo());
+        }
+
+        FloatVectorValues values = leaf.getFloatVectorValues("a");
+        assertEquals(1, groupNumVectors(values)); // the group has one vector
+        assertArrayEquals(shared, values.vectorValue(0), 0f);
       }
     }
   }

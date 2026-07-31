@@ -25,9 +25,9 @@ import static org.apache.lucene.sandbox.codecs.dedup.DedupFlatVectorsFormat.VECT
 import static org.apache.lucene.sandbox.codecs.dedup.DedupFlatVectorsFormat.VECTOR_DATA_EXTENSION;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupFlatVectorsFormat.VERSION_CURRENT;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupFlatVectorsFormat.VERSION_START;
-import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.loadDedupBytes;
-import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.loadDedupFloat16s;
-import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.loadDedupFloats;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.loadDedupBytes;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.loadDedupFloat16s;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.loadDedupFloats;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -319,7 +319,9 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
 
   @Override
   public FlatVectorsReader getMergeInstance() {
-    // TODO: Can we improve performance using strictly sequential IO?
+    // TODO: Can we improve performance using sequential IO + avoiding read-backs? One way is to
+    //  de-duplicate only within a document, allowing for cleaner sort of vectors during flush +
+    //  avoid read-backs for full equality checks during merge.
     return this;
   }
 
