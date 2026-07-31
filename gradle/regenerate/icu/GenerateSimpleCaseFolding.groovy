@@ -65,6 +65,9 @@ package org.apache.lucene.util;
 /**
  * Switch-based Unicode simple case folding for the ${caseCount} codepoints where folding differs from {@link
  * Character#toLowerCase(int)}. Generated using ICU4J v${icuVersion}, unicode version: ${unicodeVersion}.
+ *
+ * @see <a href="https://www.unicode.org/Public/latest/ucd/CaseFolding.txt">Unicode Case Folding
+ *     mappings</a>
  */
 final class SimpleCaseFolding {
   private SimpleCaseFolding() {}

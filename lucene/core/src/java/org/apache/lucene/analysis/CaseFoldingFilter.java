@@ -20,9 +20,10 @@ import java.io.IOException;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
 /**
- * Normalizes token text by applying Unicode simple case folding, which erases case distinctions
- * more thoroughly than {@link LowerCaseFilter} for non-ASCII scripts.
+ * Normalizes token text by applying Unicode simple case folding.
  *
+ * @see <a href="https://www.unicode.org/Public/latest/ucd/CaseFolding.txt">Unicode Case Folding
+ *     mappings</a>
  * @since 10.6.0
  */
 public class CaseFoldingFilter extends TokenFilter {
