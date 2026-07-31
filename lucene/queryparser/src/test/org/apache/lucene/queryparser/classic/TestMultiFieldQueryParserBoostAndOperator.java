@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.queryparser.classic;
 
-import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.queryparser.classic.QueryParser.Operator;
@@ -24,10 +23,10 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 /**
- * Reproduces and guards against a bug GITHUB#16441 in {@link QueryParserBase#addMultiTermClauses}: when a
- * MultiFieldQueryParser query is analyzed to a single term via the whitespace "MultiTerm" grammar
- * path (see QueryParser.jj), and a field leaf other than a bare TermQuery (a boosted term, a
- * PrefixQuery, etc.) is produced for one of the fields, the resulting query incorrectly forces
+ * Reproduces and guards against a bug GITHUB#16441 in {@link QueryParserBase#addMultiTermClauses}:
+ * when a MultiFieldQueryParser query is analyzed to a single term via the whitespace "MultiTerm"
+ * grammar path (see QueryParser.jj), and a field leaf other than a bare TermQuery (a boosted term,
+ * a PrefixQuery, etc.) is produced for one of the fields, the resulting query incorrectly forces
  * every field clause to Occur.MUST under the AND default operator instead of preserving the
  * intended Occur.SHOULD disjunction across fields.
  *
@@ -39,16 +38,17 @@ import org.apache.lucene.tests.util.LuceneTestCase;
  * clauses), or field alternatives for a single term position (any other leaf type), which must be
  * passed through unchanged regardless of the default operator.
  *
- * <p>This test class also guards against two regressions introduced by intermediate, incorrect
- * fix attempts: one that only special-cased BoostQuery (missed PrefixQuery and similar leaves),
- * and one that stopped flattening nested BooleanQuery clauses altogether (broke the genuine
- * multi-term AND case, since QueryParser.jj's Query() production bypasses addMultiTermClauses'
- * output entirely whenever it ends up adding a single clause).
+ * <p>This test class also guards against two regressions introduced by intermediate, incorrect fix
+ * attempts: one that only special-cased BoostQuery (missed PrefixQuery and similar leaves), and one
+ * that stopped flattening nested BooleanQuery clauses altogether (broke the genuine multi-term AND
+ * case, since QueryParser.jj's Query() production bypasses addMultiTermClauses' output entirely
+ * whenever it ends up adding a single clause).
  */
 public class TestMultiFieldQueryParserBoostAndOperator extends LuceneTestCase {
 
   private MultiFieldQueryParser boostedParser() {
-    return new MultiFieldQueryParser(new String[] {"field1", "field2"}, new StandardAnalyzer(), Map.of("field1", 2.0f));
+    return new MultiFieldQueryParser(
+        new String[] {"field1", "field2"}, new StandardAnalyzer(), Map.of("field1", 2.0f));
   }
 
   private MultiFieldQueryParser plainParser() {
