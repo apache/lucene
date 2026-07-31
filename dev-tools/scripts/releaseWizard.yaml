@@ -1004,6 +1004,13 @@ groups:
         cmd: svn -m "Add docs, changes and javadocs for Lucene {{ release_version }}"  import {{ git_checkout_folder }}/lucene/documentation/build/site  https://svn.apache.org/repos/infra/sites/lucene/core/{{ version }}
         logfile: add-docs-lucene.log
         comment: Add docs for Lucene
+      - !Command
+        cmd: echo >> {{ git_checkout_folder }}/lucene/documentation/build/site/changes/Changes.html
+        comment: Add trailing newline to Changes.html to prepare svnpubsub nudge
+      - !Command
+        cmd: svnmucc put {{ git_checkout_folder }}/lucene/documentation/build/site/changes/Changes.html -m "Touch Changes.html to ensure svnpubsub publishes the new docs for Lucene {{ release_version }}"  https://svn.apache.org/repos/infra/sites/lucene/core/{{ version }}/changes/Changes.html
+        logfile: svnmucc-touch-changes.log
+        comment: Re-upload Changes.html to trigger svnpubsub after bulk import
   - !Todo
     id: website_git_clone
     title: Do a clean git clone of the website repo
