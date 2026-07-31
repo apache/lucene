@@ -21,7 +21,6 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 
-
 /**
  * This implementation assumes the requested ranges <i>do not</i> overlap. With this assumption,
  * we're able to take a simpler approach to accumulating range counts by just binary searching for
@@ -39,6 +38,7 @@ class ExclusiveLongRangeCounter extends LongRangeCounter {
 
   /** Option B: Fast O(1) precomputed lookup table fields */
   private final boolean useFastTable;
+
   private final int[] fastRangeMap;
   private final long fastMinVal;
   private final long fastMaxVal;
@@ -48,7 +48,6 @@ class ExclusiveLongRangeCounter extends LongRangeCounter {
 
   /** whether-or-not the multi-valued doc currently being counted has matched any ranges */
   private boolean multiValuedDocMatchedRange;
-
 
   ExclusiveLongRangeCounter(LongRange[] ranges, int[] countBuffer) {
     super(countBuffer);
@@ -163,7 +162,6 @@ class ExclusiveLongRangeCounter extends LongRangeCounter {
       addSingleValued(values[i]);
     }
   }
-
 
   @Override
   int finish() {
