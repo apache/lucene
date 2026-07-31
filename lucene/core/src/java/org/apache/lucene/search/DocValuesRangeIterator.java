@@ -266,6 +266,7 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
     final DocIdSetIterator disi;
     final IOBooleanSupplier predicate;
     private final float matchCost;
+    private int lastMatchingDoc = -1;
 
     private DocValuesBlockRangeIterator(
         DocIdSetIterator disi,
@@ -286,14 +287,26 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
       return disi.advance(target) == target;
     }
 
+    final boolean recordMatch(boolean matches) {
+      lastMatchingDoc = matches ? blockIterator.docID() : -1;
+      return matches;
+    }
+
+    final int confirmedDocRunEnd() {
+      int doc = blockIterator.docID();
+      return lastMatchingDoc == doc ? doc + 1 : doc;
+    }
+
     @Override
     public boolean matches() throws IOException {
-      return advanceDisi(blockIterator.docID()) && predicate.get();
+      return recordMatch(advanceDisi(blockIterator.docID()) && predicate.get());
     }
 
     @Override
     public int docIDRunEnd() throws IOException {
-      return blockIterator.docID() + 1;
+      // Even a YES block only proves membership in the ordinal set's bounding range, not in the
+      // potentially non-contiguous set itself.
+      return confirmedDocRunEnd();
     }
 
     @Override
@@ -320,16 +333,22 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
 
     @Override
     public final boolean matches() throws IOException {
-      return switch (blockIterator.getMatch()) {
-        case YES -> true;
-        case YES_IF_PRESENT -> advanceDisi(blockIterator.docID());
-        case MAYBE -> advanceDisi(blockIterator.docID()) && predicate.get();
-      };
+      return recordMatch(
+          switch (blockIterator.getMatch()) {
+            case YES -> true;
+            case YES_IF_PRESENT -> advanceDisi(blockIterator.docID());
+            case MAYBE -> advanceDisi(blockIterator.docID()) && predicate.get();
+          });
     }
 
     @Override
     public final int docIDRunEnd() throws IOException {
-      return blockIterator.docIDRunEnd();
+      // docIDRunEnd() may be called on non-matches, so only YES proves that the current doc and the
+      // rest of the run are actual matches.
+      return switch (blockIterator.getMatch()) {
+        case YES -> blockIterator.docIDRunEnd();
+        case YES_IF_PRESENT, MAYBE -> confirmedDocRunEnd();
+      };
     }
 
     @Override
@@ -360,8 +379,8 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
     abstract void intoMaybeBlock(int blockStart, int blockEnd, FixedBitSet bitSet, int offset)
         throws IOException;
 
-    // For MAYBE blocks docIDRunEnd() is conservative (doc+1), so use the full block boundary to
-    // evaluate/classify the whole block at once.
+    // For MAYBE blocks docIDRunEnd() only describes a previously confirmed current doc, so use the
+    // full block boundary to evaluate/classify the whole block at once.
     private int blockEnd(int upTo, SkipBlockRangeIterator.Match match) throws IOException {
       return match == SkipBlockRangeIterator.Match.MAYBE
           ? Math.min(upTo, blockIterator.blockEnd())

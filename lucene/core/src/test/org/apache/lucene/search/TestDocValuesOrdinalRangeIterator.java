@@ -267,9 +267,16 @@ public class TestDocValuesOrdinalRangeIterator extends BaseDocValuesSkipperTests
     assertEquals(SkipBlockRangeIterator.Match.YES, approx.getMatch());
     assertEquals(1088, iter.docIDRunEnd());
 
-    // YES_IF_PRESENT block
+    // YES_IF_PRESENT block, match: docIDRunEnd returns docID + 1 for a single-doc run.
     approx.advance(1088);
     assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, approx.getMatch());
+    assertTrue(iter.matches());
+    assertEquals(1089, iter.docIDRunEnd());
+
+    // YES_IF_PRESENT block, no match: docIDRunEnd returns docID to signal an empty run.
+    approx.advance(1089);
+    assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, approx.getMatch());
+    assertFalse(iter.matches());
     assertEquals(1089, iter.docIDRunEnd());
   }
 
@@ -555,9 +562,16 @@ public class TestDocValuesOrdinalRangeIterator extends BaseDocValuesSkipperTests
     assertEquals(SkipBlockRangeIterator.Match.YES, approx.getMatch());
     assertEquals(1088, iter.docIDRunEnd());
 
-    // YES_IF_PRESENT block
+    // YES_IF_PRESENT block, match: docIDRunEnd returns docID + 1 for a single-doc run.
     approx.advance(1088);
     assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, approx.getMatch());
+    assertTrue(iter.matches());
+    assertEquals(1089, iter.docIDRunEnd());
+
+    // YES_IF_PRESENT block, no match: docIDRunEnd returns docID to signal an empty run.
+    approx.advance(1089);
+    assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, approx.getMatch());
+    assertFalse(iter.matches());
     assertEquals(1089, iter.docIDRunEnd());
   }
 
