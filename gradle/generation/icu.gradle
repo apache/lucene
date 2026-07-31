@@ -283,11 +283,11 @@ configure(project(":lucene:analysis:common")) {
   ])
 }
 
-// Regenerates CaseFolding.java
+// Regenerates CaseExpansion.java
 configure(project(":lucene:core")) {
-  task generateUnicodePropsInternal() {
+  task generateCaseExpansionInternal() {
     def icuConfig = rootProject.configurations.icu_current
-    def outputFile = file("src/java/org/apache/lucene/util/automaton/CaseFolding.java")
+    def outputFile = file("src/java/org/apache/lucene/util/automaton/CaseExpansion.java")
 
     description "Regenerate ${outputFile} (with ${icuConfig.name})"
     group "generation"
@@ -304,14 +304,45 @@ configure(project(":lucene:core")) {
 
         args = [
             "--encoding", "UTF-8",
-            file("${resources}/GenerateCaseFolding.groovy"),
+            file("${resources}/GenerateCaseExpansion.groovy"),
             outputFile
         ]
       }
     }
   }
 
-  regenerate.dependsOn wrapWithPersistentChecksums(generateUnicodePropsInternal, [
+  regenerate.dependsOn wrapWithPersistentChecksums(generateCaseExpansionInternal, [
+          andThenTasks: ["spotlessJava", "spotlessJavaApply"],
+          mustRunBefore: [ "compileJava" ]
+  ])
+
+  task generateSimpleCaseFoldingInternal() {
+    def icuConfig = rootProject.configurations.icu_current
+    def outputFile = file("src/java/org/apache/lucene/util/SimpleCaseFolding.java")
+
+    description "Regenerate ${outputFile} (with ${icuConfig.name})"
+    group "generation"
+
+    dependsOn icuConfig
+
+    inputs.property "icuConfig", provider { icuVersionFromConfiguration(icuConfig) }
+    outputs.file outputFile
+
+    doFirst {
+      project.javaexec {
+        main "groovy.lang.GroovyShell"
+        classpath icuConfig, rootProject.configurations.groovy
+
+        args = [
+            "--encoding", "UTF-8",
+            file("${resources}/GenerateSimpleCaseFolding.groovy"),
+            outputFile
+        ]
+      }
+    }
+  }
+
+  regenerate.dependsOn wrapWithPersistentChecksums(generateSimpleCaseFoldingInternal, [
           andThenTasks: ["spotlessJava", "spotlessJavaApply"],
           mustRunBefore: [ "compileJava" ]
   ])
