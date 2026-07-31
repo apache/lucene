@@ -168,7 +168,8 @@ public class TestDocValuesOrdinalSetIterator extends BaseDocValuesSkipperTests {
       return (int) (QUERY_MIN - 1);
     } else {
       return switch ((d / 2) % 3) {
-        // Include values in the ord set, values outside the range, and values in the range but not in the ord set.
+        // Include values in the ord set, values outside the range, and values in the range but not
+        // in the ord set.
         case 0 -> (int) QUERY_MAX;
         case 1 -> (int) (QUERY_MAX + 1);
         case 2 -> (int) GAP_ORD;
