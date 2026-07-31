@@ -405,17 +405,24 @@ public abstract class QueryParserBase extends QueryBuilder
     if (q == null) {
       return;
     }
-    boolean allNestedTermQueries = false;
+    boolean allSingleTermPositionClauses = false;
     if (q instanceof BooleanQuery bq) {
-      allNestedTermQueries = true;
+      allSingleTermPositionClauses = true;
       for (BooleanClause clause : bq.clauses()) {
-        if (!(clause.query() instanceof TermQuery)) {
-          allNestedTermQueries = false;
+        // A nested BooleanQuery clause means q represents several distinct term
+        // positions that must be joined by the default operator below. Any
+        // other clause type (TermQuery, BoostQuery, PrefixQuery, PhraseQuery,
+        // WildcardQuery, ...) is a field alternative for a single term position
+        // and must be passed through unchanged, since it was already built with
+        // the correct Occur (MultiFieldQueryParser always uses SHOULD for
+        // per-field alternatives, regardless of the default operator).
+        if (clause.query() instanceof BooleanQuery) {
+          allSingleTermPositionClauses = false;
           break;
         }
       }
     }
-    if (allNestedTermQueries) {
+    if (allSingleTermPositionClauses) {
       clauses.addAll(((BooleanQuery) q).clauses());
     } else {
       BooleanClause.Occur occur =
