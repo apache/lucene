@@ -141,7 +141,7 @@ Improvements
 
 Optimizations
 ---------------------
-* GITHUB#: Add support for Block-Max WAND dynamic score skipping in FunctionScoreQuery
+* GITHUB#16431: Add support for Block-Max WAND dynamic score skipping in FunctionScoreQuery
   and DoubleValuesSource using DocValuesSkipper. (Rajat Jain)
 
 * GITHUB#16254: Enable the vectorized findNextGEQ path on aarch64, where it was disabled on cores
