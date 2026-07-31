@@ -160,6 +160,7 @@ public class TestDocValuesOrdinalSetIterator extends BaseDocValuesSkipperTests {
   private static int singleOrdinal(int doc) {
     int d = doc % 1024;
     if (d < 128) {
+      // 14 and 15 (GAP_ORD) are in range, but 15 is not in the matching ordinal set
       return (doc & 1) == 0 ? 14 : (int) GAP_ORD;
     } else if (d < 256) {
       return (int) (QUERY_MAX + 1);
@@ -167,6 +168,7 @@ public class TestDocValuesOrdinalSetIterator extends BaseDocValuesSkipperTests {
       return (int) (QUERY_MIN - 1);
     } else {
       return switch ((d / 2) % 3) {
+        // Include values in the ord set, values outside the range, and values in the range but not in the ord set.
         case 0 -> (int) QUERY_MAX;
         case 1 -> (int) (QUERY_MAX + 1);
         case 2 -> (int) GAP_ORD;
@@ -450,6 +452,7 @@ public class TestDocValuesOrdinalSetIterator extends BaseDocValuesSkipperTests {
   private static long[] ordinalPair(int doc) {
     int d = doc % 1024;
     if (d < 128) {
+      // All values are in range, but GAP_ORD is not in the ord set
       return (doc & 1) == 0 ? new long[] {QUERY_MIN, QUERY_MAX} : new long[] {GAP_ORD, GAP_ORD};
     } else if (d < 256) {
       return new long[] {QUERY_MAX + 1, QUERY_MAX + 1};
