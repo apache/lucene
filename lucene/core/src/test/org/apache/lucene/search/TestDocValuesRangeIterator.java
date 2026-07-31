@@ -272,23 +272,33 @@ public class TestDocValuesRangeIterator extends BaseDocValuesSkipperTests {
     DocValuesRangeIterator iter = createIterator(true);
     SkipBlockRangeIterator approx = (SkipBlockRangeIterator) iter.approximation();
 
-    // MAYBE blocks cannot guarantee all docs match, so docIdRunEnd = doc + 1
+    // MAYBE block, no match: docIDRunEnd returns docID to signal an empty run.
     approx.advance(512);
     assertEquals(SkipBlockRangeIterator.Match.MAYBE, approx.getMatch());
-    assertEquals(513, iter.docIDRunEnd());
+    assertFalse(iter.matches());
+    assertEquals(512, iter.docIDRunEnd());
 
-    approx.advance(800);
+    // MAYBE block, match: docIDRunEnd returns docID + 1 for a single-doc run.
+    approx.advance(514);
     assertEquals(SkipBlockRangeIterator.Match.MAYBE, approx.getMatch());
-    assertEquals(801, iter.docIDRunEnd());
+    assertTrue(iter.matches());
+    assertEquals(515, iter.docIDRunEnd());
   }
 
   public void testDocIdRunEndYesIfPresentBlock() throws IOException {
     DocValuesRangeIterator iter = createIterator(true);
     SkipBlockRangeIterator approx = (SkipBlockRangeIterator) iter.approximation();
 
-    // YES_IF_PRESENT blocks have gaps, so docIdRunEnd = doc + 1
+    // YES_IF_PRESENT block, match: docIDRunEnd returns docID + 1 for a single-doc run.
     approx.advance(1088);
     assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, approx.getMatch());
+    assertTrue(iter.matches());
+    assertEquals(1089, iter.docIDRunEnd());
+
+    // YES_IF_PRESENT block, no match: docIDRunEnd returns docID to signal an empty run.
+    approx.advance(1089);
+    assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, approx.getMatch());
+    assertFalse(iter.matches());
     assertEquals(1089, iter.docIDRunEnd());
   }
 

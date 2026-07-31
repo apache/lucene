@@ -252,8 +252,15 @@ public class TestDocValuesOrdinalRangeIterator extends BaseDocValuesSkipperTests
     approx.advance(64);
     assertEquals(128, iter.docIDRunEnd());
 
+    // MAYBE block, no match: docIDRunEnd returns docID to signal an empty run.
     approx.advance(512);
-    assertEquals(513, iter.docIDRunEnd());
+    assertFalse(iter.matches());
+    assertEquals(512, iter.docIDRunEnd());
+
+    // MAYBE block, match: docIDRunEnd returns docID + 1 for a single-doc run.
+    approx.advance(514);
+    assertTrue(iter.matches());
+    assertEquals(515, iter.docIDRunEnd());
 
     // YES block in second repetition (dense up to DENSE_END=1088)
     approx.advance(1024);
@@ -531,9 +538,17 @@ public class TestDocValuesOrdinalRangeIterator extends BaseDocValuesSkipperTests
     approx.advance(64);
     assertEquals(128, iter.docIDRunEnd());
 
+    // MAYBE block, match: docIDRunEnd returns docID + 1 for a single-doc run.
     approx.advance(512);
     assertEquals(SkipBlockRangeIterator.Match.MAYBE, approx.getMatch());
+    assertTrue(iter.matches());
     assertEquals(513, iter.docIDRunEnd());
+
+    // MAYBE block, no match: docIDRunEnd returns docID to signal an empty run.
+    approx.advance(516);
+    assertEquals(SkipBlockRangeIterator.Match.MAYBE, approx.getMatch());
+    assertFalse(iter.matches());
+    assertEquals(516, iter.docIDRunEnd());
 
     // YES block in second repetition (dense up to DENSE_END=1088)
     approx.advance(1024);
