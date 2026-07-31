@@ -1,0 +1,4 @@
+{
+    "lucene/core/src/java/org/apache/lucene/util/automaton/CaseExpansion.java": "af6a5991326ea81a164df6b180270173d378c4c6",
+    "property:icuConfig": "com.ibm.icu:icu4j:77.1"
+}
