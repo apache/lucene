@@ -239,7 +239,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
-    public long getSumDocFreq() throws IOException {
+    public long getSumDocFreq() {
       assertThread("Terms", creationThread);
       final long sumDf = in.getSumDocFreq();
       assert sumDf >= getDocCount();
@@ -247,7 +247,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
-    public long getSumTotalTermFreq() throws IOException {
+    public long getSumTotalTermFreq() {
       assertThread("Terms", creationThread);
       final long sumTtf = in.getSumTotalTermFreq();
       if (hasFreqs() == false) {
