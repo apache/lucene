@@ -59,6 +59,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.TermStates;
 import org.apache.lucene.queries.spans.SpanOrQuery;
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.queries.spans.SpanTermQuery;
@@ -106,8 +107,8 @@ public class SpanNearClauseFactory { // FIXME: rename to SpanClauseFactory
     weightBySpanQuery.put(sq, w);
   }
 
-  public void addTermWeighted(Term t, float weight) throws IOException {
-    SpanTermQuery stq = qf.newSpanTermQuery(t);
+  public void addTermWeighted(Term t, float weight, TermStates termStates) throws IOException {
+    SpanTermQuery stq = qf.newSpanTermQuery(t, termStates);
     /* CHECKME: wrap in Hashable...? */
     addSpanQueryWeighted(stq, weight);
   }
