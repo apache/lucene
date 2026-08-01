@@ -631,4 +631,86 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
       }
     }
   }
+
+  public void testConstantLambdaMonotonicity() throws Exception {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig conf = newIndexWriterConfig();
+      try (IndexWriter indexWriter = new IndexWriter(dir, conf)) {
+        for (int i = 1; i <= 100; i++) {
+          Document doc = new Document();
+          doc.add(new TextField(TEXT_FIELD, "constant test", Field.Store.NO));
+          doc.add(new NumericDocValuesField("val", i * 10));
+          indexWriter.addDocument(doc);
+        }
+        indexWriter.commit();
+      }
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        Query baseQuery = new TermQuery(new Term(TEXT_FIELD, "constant"));
+
+        // Create the three value sources with different monotonicity settings,
+        // all using the same constant lambda function: f(v) = 5.0
+        DoubleValuesSource sourceIncreasing =
+            DoubleValuesSource.fromField(
+                "val", (v) -> 5.0, DoubleValuesSource.Monotonicity.INCREASING);
+        DoubleValuesSource sourceDecreasing =
+            DoubleValuesSource.fromField(
+                "val", (v) -> 5.0, DoubleValuesSource.Monotonicity.DECREASING);
+        DoubleValuesSource sourceNone =
+            DoubleValuesSource.fromField(
+                "val", (v) -> 5.0, DoubleValuesSource.Monotonicity.NONE);
+
+        Query qIncreasing = new FunctionScoreQuery(baseQuery, sourceIncreasing);
+        Query qDecreasing = new FunctionScoreQuery(baseQuery, sourceDecreasing);
+        Query qNone = new FunctionScoreQuery(baseQuery, sourceNone);
+
+        // 1. Verify that all three queries produce the exact same top docs and scores
+        TopDocs tdIncreasing = searcher.search(qIncreasing, 10);
+        TopDocs tdDecreasing = searcher.search(qDecreasing, 10);
+        TopDocs tdNone = searcher.search(qNone, 10);
+
+        assertEquals(tdIncreasing.totalHits.value(), tdDecreasing.totalHits.value());
+        assertEquals(tdIncreasing.totalHits.value(), tdNone.totalHits.value());
+
+        for (int i = 0; i < tdIncreasing.scoreDocs.length; i++) {
+          assertEquals(tdIncreasing.scoreDocs[i].doc, tdDecreasing.scoreDocs[i].doc);
+          assertEquals(tdIncreasing.scoreDocs[i].doc, tdNone.scoreDocs[i].doc);
+          assertEquals(tdIncreasing.scoreDocs[i].score, tdDecreasing.scoreDocs[i].score, 1e-5f);
+          assertEquals(tdIncreasing.scoreDocs[i].score, tdNone.scoreDocs[i].score, 1e-5f);
+        }
+
+        // 2. Verify that they calculate appropriate maxScore bounds
+        LeafReaderContext ctx = reader.leaves().get(0);
+        
+        // INCREASING
+        Weight wInc = qIncreasing.createWeight(searcher, ScoreMode.TOP_SCORES, 1f);
+        Scorer scorerInc = wInc.scorerSupplier(ctx).get(Long.MAX_VALUE);
+        scorerInc.advanceShallow(0);
+        float maxScoreInc = scorerInc.getMaxScore(ctx.reader().maxDoc());
+
+        // DECREASING
+        Weight wDec = qDecreasing.createWeight(searcher, ScoreMode.TOP_SCORES, 1f);
+        Scorer scorerDec = wDec.scorerSupplier(ctx).get(Long.MAX_VALUE);
+        scorerDec.advanceShallow(0);
+        float maxScoreDec = scorerDec.getMaxScore(ctx.reader().maxDoc());
+
+        // NONE
+        Weight wNone = qNone.createWeight(searcher, ScoreMode.TOP_SCORES, 1f);
+        Scorer scorerNone = wNone.scorerSupplier(ctx).get(Long.MAX_VALUE);
+        scorerNone.advanceShallow(0);
+        float maxScoreNone = scorerNone.getMaxScore(ctx.reader().maxDoc());
+
+        if (ctx.reader().getDocValuesSkipper("val") != null) {
+          // If skipper exists, INCREASING and DECREASING should compute a tight finite max score (5.0 * innerMaxScore)
+          assertFalse(Float.isInfinite(maxScoreInc));
+          assertFalse(Float.isInfinite(maxScoreDec));
+          assertEquals(maxScoreInc, maxScoreDec, 1e-5f);
+        }
+
+        // NONE must always return Float.POSITIVE_INFINITY
+        assertEquals(Float.POSITIVE_INFINITY, maxScoreNone, 0f);
+      }
+    }
+  }
 }
