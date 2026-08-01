@@ -672,6 +672,8 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
 
         assertEquals(tdIncreasing.totalHits.value(), tdDecreasing.totalHits.value());
         assertEquals(tdIncreasing.totalHits.value(), tdNone.totalHits.value());
+        assertEquals(tdIncreasing.scoreDocs.length, tdDecreasing.scoreDocs.length);
+        assertEquals(tdIncreasing.scoreDocs.length, tdNone.scoreDocs.length);
 
         for (int i = 0; i < tdIncreasing.scoreDocs.length; i++) {
           assertEquals(tdIncreasing.scoreDocs[i].doc, tdDecreasing.scoreDocs[i].doc);
