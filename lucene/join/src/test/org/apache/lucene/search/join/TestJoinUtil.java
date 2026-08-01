@@ -283,7 +283,7 @@ public class TestJoinUtil extends LuceneTestCase {
     doc.add(new SortedDocValuesField(joinField, new BytesRef("2")));
     w.addDocument(doc);
 
-    IndexSearcher indexSearcher = new IndexSearcher(w.getReader());
+    IndexSearcher indexSearcher = newSearcher(w.getReader());
     w.close();
 
     IndexReader r = indexSearcher.getIndexReader();
@@ -398,7 +398,7 @@ public class TestJoinUtil extends LuceneTestCase {
     w.addDocument(doc);
 
     IndexReader r = DirectoryReader.open(w);
-    IndexSearcher indexSearcher = new IndexSearcher(r);
+    IndexSearcher indexSearcher = newSearcher(r);
     SortedDocValues[] values = new SortedDocValues[r.leaves().size()];
     for (int i = 0; i < values.length; i++) {
       LeafReader leafReader = r.leaves().get(i).reader();
