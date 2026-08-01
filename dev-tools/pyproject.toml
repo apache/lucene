@@ -10,7 +10,7 @@ dev = [
   # git hooks and repository checks
   "prek==0.4.5",
   # validates github actions
-  "zizmor==1.26.1",
+  "zizmor==1.28.0",
   # validates github actions
   "actionlint-py==1.7.12.24",
   # validates bash
