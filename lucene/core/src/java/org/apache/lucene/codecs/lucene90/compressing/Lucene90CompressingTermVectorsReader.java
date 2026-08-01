@@ -368,6 +368,7 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
       startPointer = blockState.startPointer; // avoid searching the start pointer
     } else {
       startPointer = indexReader.getStartPointer(doc);
+      decompressor.reset();
     }
     vectorsStream.seek(startPointer);
 
