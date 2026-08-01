@@ -588,4 +588,47 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
       }
     }
   }
+
+  public void testMaxScoreNonMonotonicFunction() throws Exception {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig conf = newIndexWriterConfig();
+      try (IndexWriter indexWriter = new IndexWriter(dir, conf)) {
+        for (int i = 1; i <= 100; i++) {
+          Document doc = new Document();
+          doc.add(new TextField(TEXT_FIELD, "nonmonotonic", Field.Store.NO));
+          doc.add(new NumericDocValuesField("val", i * 10));
+          indexWriter.addDocument(doc);
+        }
+        indexWriter.commit();
+      }
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        Query baseQuery = new TermQuery(new Term(TEXT_FIELD, "nonmonotonic"));
+        
+        // A non-monotonic function (neither increasing nor decreasing)
+        // specifying Monotonicity.NONE
+        DoubleValuesSource valSource =
+            DoubleValuesSource.fromField(
+                "val", (v) -> Math.sin(v), DoubleValuesSource.Monotonicity.NONE);
+        Query scriptQuery = new FunctionScoreQuery(baseQuery, valSource);
+
+        LeafReaderContext ctx = reader.leaves().get(0);
+        Weight weight = scriptQuery.createWeight(searcher, ScoreMode.TOP_SCORES, 1f);
+        ScorerSupplier supplier = weight.scorerSupplier(ctx);
+        assertNotNull(supplier);
+        Scorer scorer = supplier.get(Long.MAX_VALUE);
+
+        int maxDoc = ctx.reader().maxDoc();
+        scorer.advanceShallow(0);
+        float maxScore = scorer.getMaxScore(maxDoc);
+
+        // Since the function is neither increasing nor decreasing (Monotonicity.NONE),
+        // we cannot compute a tight block-level max score bound using the skipper.
+        // Therefore, it must return Float.POSITIVE_INFINITY, meaning the doc block
+        // cannot be pruned or skipped.
+        assertEquals(Float.POSITIVE_INFINITY, maxScore, 0f);
+      }
+    }
+  }
 }
