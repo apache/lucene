@@ -118,7 +118,7 @@ public class TestWithCJKBigramFilter extends BaseTokenStreamTestCase {
           "<DOUBLE>",
           "<SINGLE>"
         },
-        new int[] {1, 1, 1, 1, 1, 1, 1, 1});
+        new int[] {1, 1, 1, 2, 1, 1, 1, 2});
   }
 
   public void testC() throws IOException {
@@ -179,7 +179,7 @@ public class TestWithCJKBigramFilter extends BaseTokenStreamTestCase {
         new int[] {0, 2},
         new int[] {2, 6},
         new String[] {"<DOUBLE>", "<ALPHANUM>"},
-        new int[] {1, 1});
+        new int[] {1, 2});
 
     assertAnalyzesTo(
         analyzer,
@@ -209,7 +209,7 @@ public class TestWithCJKBigramFilter extends BaseTokenStreamTestCase {
           "<DOUBLE>",
           "<DOUBLE>"
         },
-        new int[] {1, 1, 1, 1, 1, 1, 1, 1, 1});
+        new int[] {1, 1, 1, 1, 2, 1, 1, 1, 1});
   }
 
   public void testMix2() throws IOException {
@@ -232,7 +232,7 @@ public class TestWithCJKBigramFilter extends BaseTokenStreamTestCase {
           "<DOUBLE>",
           "<SINGLE>"
         },
-        new int[] {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
+        new int[] {1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 2});
   }
 
   /** Non-english text (outside of CJK) is treated normally, according to unicode rules */
@@ -288,7 +288,7 @@ public class TestWithCJKBigramFilter extends BaseTokenStreamTestCase {
           "<DOUBLE>",
           "<DOUBLE>"
         },
-        new int[] {1, 1, 1, 1, 1, 1, 1, 1, 1});
+        new int[] {1, 1, 1, 1, 2, 1, 1, 1, 1});
 
     assertAnalyzesTo(
         analyzer,
@@ -309,7 +309,7 @@ public class TestWithCJKBigramFilter extends BaseTokenStreamTestCase {
           "<DOUBLE>",
           "<SINGLE>"
         },
-        new int[] {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
+        new int[] {1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 2});
   }
 
   public void testSingleChar() throws IOException {
