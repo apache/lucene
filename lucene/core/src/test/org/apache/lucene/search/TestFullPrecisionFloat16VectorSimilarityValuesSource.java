@@ -149,7 +149,7 @@ public class TestFullPrecisionFloat16VectorSimilarityValuesSource extends Lucene
       }
       short[] queryVector = randomFloat16Vector(VECTOR_DIMENSION);
       try (IndexReader reader = DirectoryReader.open(dir)) {
-        IndexSearcher searcher = newSearcher(reader);
+        IndexSearcher searcher = new IndexSearcher(reader);
         int n = 10;
         Query inner = new KnnFloat16VectorQuery(KNN_FIELD, queryVector, n);
         Query rescored =
