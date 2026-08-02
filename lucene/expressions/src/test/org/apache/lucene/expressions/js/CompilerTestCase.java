@@ -34,6 +34,7 @@ public abstract class CompilerTestCase extends LuceneTestCaseJupiter {
   /** compiles expression for sourceText with custom functions list */
   protected Expression compile(String sourceText, Map<String, MethodHandle> functions)
       throws ParseException {
-    return JavascriptCompiler.compile(sourceText, functions, true);
+    return JavascriptCompiler.compile(
+        sourceText, functions, JavascriptCompiler.DEFAULT_MAX_NESTING_DEPTH, true);
   }
 }
