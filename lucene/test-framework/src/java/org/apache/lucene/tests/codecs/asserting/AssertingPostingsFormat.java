@@ -67,10 +67,10 @@ public final class AssertingPostingsFormat extends PostingsFormat {
    * super.docID() == nextDoc}). {@link AssertingReadFields} adds that wrapping for the read side
    * only.
    */
-  static class AssertingFields extends Fields {
+  static class OrderCheckingFields extends Fields {
     protected final Fields in;
 
-    AssertingFields(Fields in) {
+    OrderCheckingFields(Fields in) {
       this.in = in;
     }
 
@@ -78,45 +78,7 @@ public final class AssertingPostingsFormat extends PostingsFormat {
     public Iterator<String> iterator() {
       Iterator<String> iterator = in.iterator();
       assert iterator != null;
-      return assertSorted(iterator);
-    }
-
-    /**
-     * Wraps {@code in} so that it fails if field names do not arrive in ascending natural order
-     * with no duplicates, as {@link Fields#iterator()} requires.
-     *
-     * <p>Nothing in production code detects a violation: {@link
-     * org.apache.lucene.util.MergedIterator}, which is what relies on the order, is documented as
-     * undefined for unsorted input rather than checking it, so an offending implementation silently
-     * returns wrong results — the merge stops deduplicating and a name present in two sub-iterators
-     * can be returned twice. Only {@code CheckIndex} catches it, and only after the fact.
-     *
-     * <p>The comparison is strict, matching both the check in {@code CheckIndex#checkFields} and
-     * the one that {@link AssertingFieldsConsumer#write} has applied to the write side since 2013.
-     */
-    private static Iterator<String> assertSorted(Iterator<String> in) {
-      return new Iterator<>() {
-        String last;
-
-        @Override
-        public boolean hasNext() {
-          return in.hasNext();
-        }
-
-        @Override
-        public String next() {
-          String field = in.next();
-          assert last == null || last.compareTo(field) < 0
-              : "Fields.iterator() must return field names in ascending order with no duplicates,"
-                  + " but saw \""
-                  + last
-                  + "\" followed by \""
-                  + field
-                  + "\"";
-          last = field;
-          return field;
-        }
-      };
+      return AssertingLeafReader.AssertingFields.assertFieldOrder(iterator);
     }
 
     @Override
@@ -136,7 +98,7 @@ public final class AssertingPostingsFormat extends PostingsFormat {
   }
 
   /** Adds the read-side {@link Terms} assertions on top of the {@link Fields} contract. */
-  static class AssertingReadFields extends AssertingFields {
+  static class AssertingReadFields extends OrderCheckingFields {
     AssertingReadFields(Fields in) {
       super(in);
     }
@@ -150,7 +112,7 @@ public final class AssertingPostingsFormat extends PostingsFormat {
 
   static class AssertingFieldsProducer extends FieldsProducer {
     private final FieldsProducer in;
-    private final AssertingFields asserting;
+    private final OrderCheckingFields asserting;
 
     AssertingFieldsProducer(FieldsProducer in) {
       this.in = in;
@@ -210,7 +172,7 @@ public final class AssertingPostingsFormat extends PostingsFormat {
       // Wrap the incoming Fields, so the contract is checked on the way in and not only when a
       // FieldsProducer reads the result back. The delegate sees the wrapper, so a violation fails
       // during the write that caused it rather than in a later reader or in CheckIndex.
-      Fields asserting = new AssertingFields(fields);
+      Fields asserting = new OrderCheckingFields(fields);
       in.write(asserting, norms);
 
       // TODO: more asserts?  can we somehow run a
