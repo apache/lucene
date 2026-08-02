@@ -407,6 +407,10 @@ Bug Fixes
   which made the join set degenerate to the whole graph on hub-and-spoke shaped HNSW graphs.
   (Mayya Sharipova)
 
+* GITHUB#PENDING: Reject LZ4 match offsets that point before the start of the output in
+  LZ4#decompress. Corrupt input previously threw ArrayIndexOutOfBoundsException instead of
+  a checked IOException. (Serhiy Bzhezytskyy)
+
 * GITHUB#16350: Disable bulk-scoring in monitor queries. (Alan Woodward)
 
 * GITHUB#16378: Accumulate join Total/Avg scores in double precision in
