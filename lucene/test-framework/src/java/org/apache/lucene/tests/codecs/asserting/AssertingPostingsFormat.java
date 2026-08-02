@@ -74,7 +74,39 @@ public final class AssertingPostingsFormat extends PostingsFormat {
     public Iterator<String> iterator() {
       Iterator<String> iterator = in.iterator();
       assert iterator != null;
-      return iterator;
+      return assertSorted(iterator);
+    }
+
+    /**
+     * Wraps {@code in} so that it fails if field names do not arrive in ascending natural order, as
+     * {@link Fields#iterator()} requires. Nothing else detects a violation: {@link
+     * org.apache.lucene.util.MergedIterator}, which is what relies on the order, is documented as
+     * undefined rather than checked, so an unsorted producer silently returns wrong results.
+     */
+    private static Iterator<String> assertSorted(Iterator<String> in) {
+      return new Iterator<>() {
+        String last;
+
+        @Override
+        public boolean hasNext() {
+          return in.hasNext();
+        }
+
+        @Override
+        public String next() {
+          String field = in.next();
+          assert field != null : "Fields.iterator() must not return null field names";
+          assert last == null || last.compareTo(field) < 0
+              : "Fields.iterator() must return field names in ascending order with no duplicates,"
+                  + " but saw \""
+                  + last
+                  + "\" followed by \""
+                  + field
+                  + "\"";
+          last = field;
+          return field;
+        }
+      };
     }
 
     @Override
