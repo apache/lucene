@@ -155,6 +155,12 @@ public final class LowercaseAsciiCompression {
     int i = 0;
     for (int exception = 0; exception < numExceptions; ++exception) {
       i += in.readByte() & 0xFF;
+      if (i >= len) {
+        // The offsets are read from the data, so corrupt input can push this past the end of the
+        // output. Report it rather than letting the array access do so.
+        throw new IOException(
+            "exception offset " + i + " is invalid, only " + len + " bytes decoded");
+      }
       out[i] = in.readByte();
     }
   }
