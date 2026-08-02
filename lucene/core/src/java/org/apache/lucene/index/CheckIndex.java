@@ -133,6 +133,13 @@ public final class CheckIndex implements Closeable {
     /** True if we were unable to locate and load the segments_N file. */
     public boolean missingSegments;
 
+    /**
+     * Name of the segment whose {@code .si} file could not be read, when that is why {@link
+     * #missingSegments} is set; null when the commit point itself could not be parsed far enough to
+     * name a segment.
+     */
+    public String brokenSegmentName;
+
     /** Name of latest segments_N file in the index. */
     public String segmentsFileName;
 
@@ -676,16 +683,27 @@ public final class CheckIndex implements Closeable {
           throw IOUtils.rethrowAlways(t);
         }
 
+        String which = isLastCommit ? "latest" : "old (not latest)";
         String message;
 
-        if (isLastCommit) {
+        if (t instanceof CorruptSegmentInfoException corrupt) {
+          // The commit point itself parsed far enough to name the segment, so say which one.
+          result.brokenSegmentName = corrupt.getSegmentName();
           message =
-              "ERROR: could not read latest commit point from segments file \""
+              "ERROR: could not read segment \""
+                  + corrupt.getSegmentName()
+                  + "\" referenced by the "
+                  + which
+                  + " commit point in segments file \""
                   + fileName
-                  + "\" in directory";
+                  + "\": its "
+                  + corrupt.getSegmentName()
+                  + ".si is missing or corrupt";
         } else {
           message =
-              "ERROR: could not read old (not latest) commit point segments file \""
+              "ERROR: could not read "
+                  + which
+                  + " commit point from segments file \""
                   + fileName
                   + "\" in directory";
         }
