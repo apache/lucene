@@ -131,6 +131,12 @@ New Features
 
 Improvements
 ---------------------
+* GITHUB#16479: Stored fields now record a CRC32C of each chunk's compressed bytes and verify it before
+  decompressing, so a corrupt chunk is reported as a CorruptIndexException naming the affected
+  documents rather than surfacing from inside the decompressor or returning a wrong document. Stored
+  fields format version 2; version 1 is read unchanged, and a segment acquires checksums when it is
+  next merged. (Serhiy Bzhezytskyy)
+
 * GITHUB#15704: Replace LinkedList with more efficient data structure. (Renato Haeberli)
 
 * GITHUB#15682: Use ArrayDeque instead of LinkedList in CompoundWordTokenFilterBase.java. (Renato Haeberli)

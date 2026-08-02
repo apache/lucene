@@ -421,6 +421,9 @@
  *   <li>In version 10.3, the index of block tree changed to be specialized trie instead of FST.
  *   <li>In version 10.4, the block size was increased from 128 to 256. There are now 256 and 8,192
  *       postings between skip pointers instead of 128 and 4,096.
+ *   <li>In version 11.0, each chunk of stored fields is followed by a CRC32C of its compressed
+ *       bytes, which is verified before the chunk is decompressed. Chunks written by an earlier
+ *       version have no checksum and are read as before.
  * </ul>
  *
  * <a id="Limitations"></a>

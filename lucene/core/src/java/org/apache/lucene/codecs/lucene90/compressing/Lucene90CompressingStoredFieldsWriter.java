@@ -21,6 +21,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.zip.CRC32C;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.StoredFieldsWriter;
@@ -78,7 +79,14 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
   static final int TYPE_MASK = (int) PackedInts.maxValue(TYPE_BITS);
 
   static final int VERSION_START = 1;
-  static final int VERSION_CURRENT = VERSION_START;
+
+  /**
+   * Each chunk is followed by a CRC32C of its compressed bytes, so that a corrupt chunk is rejected
+   * before it reaches the decompressor.
+   */
+  static final int VERSION_CHUNK_CHECKSUM = 2;
+
+  static final int VERSION_CURRENT = VERSION_CHUNK_CHECKSUM;
   static final int META_VERSION_START = 0;
 
   private final String segment;
@@ -171,6 +179,36 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     }
   }
 
+  /**
+   * Passes bytes through to a delegate while computing a CRC32C of them, so that the compressed
+   * bytes of a chunk can be checksummed as they are written rather than buffered and hashed
+   * afterwards.
+   */
+  private static final class ChecksummingDataOutput extends DataOutput {
+    private final DataOutput in;
+    private final CRC32C crc = new CRC32C();
+
+    ChecksummingDataOutput(DataOutput in) {
+      this.in = in;
+    }
+
+    @Override
+    public void writeByte(byte b) throws IOException {
+      crc.update(b);
+      in.writeByte(b);
+    }
+
+    @Override
+    public void writeBytes(byte[] b, int offset, int length) throws IOException {
+      crc.update(b, offset, length);
+      in.writeBytes(b, offset, length);
+    }
+
+    long getChecksum() {
+      return crc.getValue();
+    }
+  }
+
   private int numStoredFieldsInDoc;
 
   @Override
@@ -246,18 +284,30 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     final boolean dirtyChunk = force;
     writeHeader(docBase, numBufferedDocs, numStoredFields, lengths, sliced, dirtyChunk);
     ByteBuffersDataInput bytebuffers = bufferedDocs.toDataInput();
-    // compress stored fields to fieldsStream.
+
+    // A CRC32C of the compressed bytes, so that a corrupt chunk is rejected before it reaches the
+    // decompressor rather than surfacing as an exception from inside it, or as a wrong document.
+    // This is where the LZ4 frame format puts its optional per-block checksum, "calculated by using
+    // the xxHash-32 algorithm on the raw (compressed) data block [...] The intention is to detect
+    // data corruption immediately, before decoding". CRC32C is used rather than xxHash-32 because
+    // it
+    // is in the JDK and hardware-accelerated on the platforms Lucene targets.
+    //
+    // The checksum is written after the compressed bytes, since its value is not known until they
+    // have been produced, and read from the end of the chunk, whose length the fields index knows.
+    final ChecksummingDataOutput checksummed = new ChecksummingDataOutput(fieldsStream);
     if (sliced) {
       // big chunk, slice it, using ByteBuffersDataInput ignore memory copy
       final int capacity = (int) bytebuffers.length();
       for (int compressed = 0; compressed < capacity; compressed += chunkSize) {
         int l = Math.min(chunkSize, capacity - compressed);
         ByteBuffersDataInput bbdi = bytebuffers.slice(compressed, l);
-        compressor.compress(bbdi, fieldsStream);
+        compressor.compress(bbdi, checksummed);
       }
     } else {
-      compressor.compress(bytebuffers, fieldsStream);
+      compressor.compress(bytebuffers, checksummed);
     }
+    fieldsStream.writeInt((int) checksummed.getChecksum());
 
     // reset
     docBase += numBufferedDocs;
