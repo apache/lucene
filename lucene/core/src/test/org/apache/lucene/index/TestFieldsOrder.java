@@ -25,12 +25,18 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
+import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.FieldsConsumer;
 import org.apache.lucene.codecs.FieldsProducer;
+import org.apache.lucene.codecs.FilterCodec;
+import org.apache.lucene.codecs.NormsProducer;
+import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.MergedIterator;
 
 /**
@@ -244,5 +250,125 @@ public class TestFieldsOrder extends LuceneTestCase {
     List<String> sorted = new ArrayList<>(fields);
     sorted.sort(null);
     assertEquals(sorted, fields);
+  }
+
+  /**
+   * C4/C5 from the {@link Fields#iterator()} javadoc: when a sub-iterator is unsorted, {@link
+   * MergedIterator} stops deduplicating, and a name present in two sub-iterators comes back twice.
+   * This is the concrete harm the contract exists to prevent, so it is pinned rather than asserted
+   * in prose only.
+   */
+  public void testUnsortedInputBreaksDeduplication() throws Exception {
+    // sorted inputs: the shared name "a" is deduplicated
+    assertEquals(List.of("a", "b", "c"), merge(List.of("a", "b"), List.of("a", "c")));
+
+    // one unsorted input: "a" is returned twice, from two different sub-iterators
+    assertEquals(
+        List.of("a", "b", "a", "c", "z"), merge(List.of("b", "a", "c"), List.of("a", "z")));
+
+    // and a duplicate inside a single sub-iterator is not removed either
+    assertEquals(List.of("a", "a", "b"), merge(List.of("a", "a", "b")));
+  }
+
+  @SafeVarargs
+  @SuppressWarnings({"unchecked", "rawtypes", "varargs"})
+  private static List<String> merge(List<String>... subs) {
+    Iterator[] iterators = new Iterator[subs.length];
+    for (int i = 0; i < subs.length; i++) {
+      iterators[i] = subs[i].iterator();
+    }
+    List<String> out = new ArrayList<>();
+    // MultiFields uses the single-argument constructor, which is removeDuplicates=true
+    new MergedIterator<String>(iterators).forEachRemaining(out::add);
+    return out;
+  }
+
+  /**
+   * C3: {@link org.apache.lucene.codecs.perfield.PerFieldPostingsFormat} is the second consumer of
+   * the order. Merging two segments through it must produce every field exactly once, which is only
+   * true while the sub-iterators are sorted.
+   */
+  public void testPerFieldMergePreservesFieldsExactlyOnce() throws Exception {
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter w =
+          new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE))) {
+        for (List<String> fields : List.of(List.of("zebra", "mid"), List.of("aaa", "mid"))) {
+          Document doc = new Document();
+          for (String field : fields) {
+            doc.add(new TextField(field, "value", Field.Store.NO));
+          }
+          w.addDocument(doc);
+          w.commit();
+        }
+      }
+
+      try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+        w.forceMerge(1);
+      }
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        CodecReader leaf = (CodecReader) getOnlyLeafReader(reader);
+        List<String> merged = fieldNames(leaf.getPostingsReader());
+        // "mid" was in both segments and must appear once
+        assertEquals(List.of("aaa", "mid", "zebra"), merged);
+        assertNull(checkPostings(leaf).error);
+      }
+    }
+  }
+
+  /**
+   * C7: {@link org.apache.lucene.codecs.FieldsConsumer#write} now documents that field names arrive
+   * sorted. Pin it where the write actually happens, by observing what a real flush hands over.
+   */
+  public void testWriteSideReceivesSortedFields() throws Exception {
+    List<List<String>> observed = new ArrayList<>();
+    Codec base = TestUtil.getDefaultCodec();
+    final PostingsFormat delegateFormat = TestUtil.getDefaultPostingsFormat();
+    Codec recording =
+        new FilterCodec(base.getName(), base) {
+          @Override
+          public PostingsFormat postingsFormat() {
+            return new PostingsFormat(delegateFormat.getName()) {
+              @Override
+              public FieldsConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
+                FieldsConsumer in = delegateFormat.fieldsConsumer(state);
+                return new FieldsConsumer() {
+                  @Override
+                  public void write(Fields fields, NormsProducer norms) throws IOException {
+                    observed.add(fieldNames(fields));
+                    in.write(fields, norms);
+                  }
+
+                  @Override
+                  public void close() throws IOException {
+                    in.close();
+                  }
+                };
+              }
+
+              @Override
+              public FieldsProducer fieldsProducer(SegmentReadState state) throws IOException {
+                return delegateFormat.fieldsProducer(state);
+              }
+            };
+          }
+        };
+
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc =
+          new IndexWriterConfig().setCodec(recording).setMergePolicy(NoMergePolicy.INSTANCE);
+      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+        Document doc = new Document();
+        for (String field : FIELDS) {
+          doc.add(new TextField(field, "value", Field.Store.NO));
+        }
+        w.addDocument(doc);
+      }
+    }
+
+    assertFalse("write() was never called", observed.isEmpty());
+    for (List<String> names : observed) {
+      assertAscending(names);
+    }
   }
 }
