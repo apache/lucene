@@ -701,10 +701,12 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     }
 
     private static class Float16FieldWriter extends FieldWriter<short[]> {
+      private final float[] inflated;
 
       Float16FieldWriter(
           FieldInfo fieldInfo, FlatFieldVectorsWriter<short[]> flatFieldVectorsWriter) {
         super(fieldInfo, flatFieldVectorsWriter);
+        this.inflated = new float[dim];
       }
 
       @Override
@@ -715,34 +717,46 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       @Override
       public void addValue(int docID, short[] vectorValue) throws IOException {
         flatFieldVectorsWriter.addValue(docID, vectorValue);
+        inflate(vectorValue);
         if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
-          float dp = VectorUtil.dotProduct(vectorValue, vectorValue);
+          float dp = VectorUtil.dotProduct(inflated, inflated);
           float divisor = (float) Math.sqrt(dp);
-          // No magnitudes cache for fp16: normalization happens in fp32 (floatVectorValue).
-          for (int i = 0; i < vectorValue.length; i++) {
-            dimensionSums[i] += (Float.float16ToFloat(vectorValue[i]) / divisor);
+          magnitudes.add(divisor);
+          for (int i = 0; i < inflated.length; i++) {
+            dimensionSums[i] += (inflated[i] / divisor);
           }
         } else {
-          for (int i = 0; i < vectorValue.length; i++) {
-            dimensionSums[i] += Float.float16ToFloat(vectorValue[i]);
+          for (int i = 0; i < inflated.length; i++) {
+            dimensionSums[i] += inflated[i];
           }
         }
       }
 
       @Override
       float[] floatVectorValue(int ord) {
-        // Inflate the stored fp16 vector into a fresh fp32 copy, leaving the stored vector
-        // untouched. For COSINE the copy is normalized here so quantization sees a unit vector;
-        // normalizeVectors() is therefore a no-op for fp16.
-        short[] v = flatFieldVectorsWriter.getVectors().get(ord);
-        float[] f = new float[v.length];
-        for (int i = 0; i < v.length; i++) {
-          f[i] = Float.float16ToFloat(v[i]);
-        }
+        // Inflate the stored fp16 vector into the reusable buffer, leaving the stored vector
+        // untouched. For COSINE the buffer is scaled to unit length by the ordinal's cached
+        // magnitude, so normalizeVectors() is a no-op for fp16.
+        inflate(flatFieldVectorsWriter.getVectors().get(ord));
         if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
-          VectorUtil.l2normalize(f);
+          float magnitude = magnitudes.get(ord);
+          for (int i = 0; i < inflated.length; i++) {
+            inflated[i] /= magnitude;
+          }
         }
-        return f;
+        return inflated;
+      }
+
+      /** Inflates an fp16 vector into {@link #inflated}. */
+      private void inflate(short[] vectorValue) {
+        for (int i = 0; i < vectorValue.length; i++) {
+          inflated[i] = Float.float16ToFloat(vectorValue[i]);
+        }
+      }
+
+      @Override
+      long quantizationOverheadBytesUsed() {
+        return super.quantizationOverheadBytesUsed() + RamUsageEstimator.sizeOf(inflated);
       }
     }
   }

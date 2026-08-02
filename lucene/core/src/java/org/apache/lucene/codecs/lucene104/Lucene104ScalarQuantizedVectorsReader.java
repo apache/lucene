@@ -322,7 +322,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
               + VectorEncoding.FLOAT16);
     }
 
-    Float16VectorValues rawFloatVectorValues = rawVectorsReader.getFloat16VectorValues(field);
+    Float16VectorValues rawFloat16VectorValues = rawVectorsReader.getFloat16VectorValues(field);
 
     OffHeapScalarQuantizedVectorValues sqvv =
         OffHeapScalarQuantizedVectorValues.load(
@@ -339,11 +339,10 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
             fi.vectorDataLength,
             quantizedVectorData);
 
-    if (rawFloatVectorValues.size() == 0) {
+    if (rawFloat16VectorValues.size() == 0) {
       // The raw float16 vectors were dropped, so reads reconstruct values by dequantizing. Pair
       // that view with sqvv so scorer() scores in quantized space while vectorValue() and
-      // rescorer()
-      // dequantize.
+      // rescorer() dequantize.
       Float16VectorValues dequantizedRawVectorValues =
           OffHeapScalarQuantizedFloat16VectorValues.load(
               fi.ordToDocDISIReaderConfiguration,
@@ -359,7 +358,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
       return new ScalarQuantizedFloat16VectorValues(dequantizedRawVectorValues, sqvv);
     }
 
-    return new ScalarQuantizedFloat16VectorValues(rawFloatVectorValues, sqvv);
+    return new ScalarQuantizedFloat16VectorValues(rawFloat16VectorValues, sqvv);
   }
 
   @Override
@@ -372,27 +371,25 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
   public void search(String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     if (knnCollector.k() == 0) return;
-    exhaustivelyScore(getRandomVectorScorer(field, target), knnCollector, acceptDocs);
+    exhaustiveBulkScore(getRandomVectorScorer(field, target), knnCollector, acceptDocs);
   }
 
   @Override
   public void search(String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     if (knnCollector.k() == 0) return;
-    exhaustivelyScore(getRandomVectorScorer(field, target), knnCollector, acceptDocs);
+    exhaustiveBulkScore(getRandomVectorScorer(field, target), knnCollector, acceptDocs);
   }
 
   /**
    * Scores every accepted vector with the given scorer, collecting into {@code knnCollector}.
    * Scoring happens in batches of {@link #EXHAUSTIVE_BULK_SCORE_ORDS} ordinals.
    */
-  private static void exhaustivelyScore(
+  private static void exhaustiveBulkScore(
       RandomVectorScorer scorer, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     if (scorer == null) return;
     Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs.bits());
-    // if k is larger than the number of vectors we expect to visit in an HNSW search,
-    // we can just iterate over all vectors and collect them.
     int[] ords = new int[EXHAUSTIVE_BULK_SCORE_ORDS];
     float[] scores = new float[EXHAUSTIVE_BULK_SCORE_ORDS];
     int numOrds = 0;

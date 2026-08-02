@@ -24,8 +24,10 @@ import static org.hamcrest.Matchers.oneOf;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FilterCodec;
@@ -46,12 +48,14 @@ import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnFloat16VectorQuery;
 import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
+import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -423,6 +427,91 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
         }
       }
     }
+  }
+
+  /**
+   * Tests that dropping the raw float16 vectors does not change scoring. {@link
+   * Float16VectorValues#scorer(short[])} is documented to score against the quantized vectors when
+   * the underlying format quantizes, so a quantized index must produce identical scores before and
+   * after its raw vector file is emptied.
+   */
+  public void testFloat16ScoresUnchangedWithEmptyRawVectors() throws Exception {
+    String vectorFieldName = "vec1";
+    int numVectors = 1 + random().nextInt(50);
+    int dim = random().nextInt(64) + 1;
+    if (dim % 2 == 1) {
+      dim++;
+    }
+    VectorSimilarityFunction similarityFunction = randomSimilarity();
+    short[] query = randomNormalizedFloat16Vector(dim);
+
+    try (BaseDirectoryWrapper dir = newDirectory()) {
+      dir.setCheckIndexOnClose(false); // raw .vec is deliberately emptied below
+
+      try (IndexWriter w =
+          new IndexWriter(
+              dir,
+              new IndexWriterConfig()
+                  .setMaxBufferedDocs(numVectors + 1)
+                  .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
+                  .setMergePolicy(NoMergePolicy.INSTANCE)
+                  .setUseCompoundFile(false)
+                  .setCodec(getCodecForFloatVectorFallbackTest()))) {
+        for (int i = 0; i < numVectors; i++) {
+          Document doc = new Document();
+          doc.add(
+              new KnnFloat16VectorField(
+                  vectorFieldName, randomNormalizedFloat16Vector(dim), similarityFunction));
+          w.addDocument(doc);
+        }
+      }
+
+      // Scores while the raw float16 vectors are still present.
+      Map<Integer, Float> expectedScores = scoreAllFloat16Docs(dir, vectorFieldName, query);
+      assertEquals("expected every document to be scored", numVectors, expectedScores.size());
+
+      simulateEmptyRawVectors(dir);
+
+      // Both reads are expected to score against the same quantized vectors, so the scores must
+      // match exactly rather than merely within a quantization-error tolerance.
+      Map<Integer, Float> actualScores = scoreAllFloat16Docs(dir, vectorFieldName, query);
+      assertEquals(expectedScores.keySet(), actualScores.keySet());
+      for (Map.Entry<Integer, Float> entry : expectedScores.entrySet()) {
+        assertEquals(
+            "score changed for doc " + entry.getKey() + " after dropping raw vectors",
+            entry.getValue(),
+            actualScores.get(entry.getKey()),
+            0f);
+      }
+    }
+  }
+
+  /**
+   * Scores every document holding a float16 vector for {@code field} against {@code query}, keyed
+   * by doc id. Keying by doc id rather than ordinal keeps the comparison meaningful even when a
+   * different {@link Float16VectorValues} implementation backs the iterator.
+   */
+  private Map<Integer, Float> scoreAllFloat16Docs(Directory dir, String field, short[] query)
+      throws IOException {
+    Map<Integer, Float> scores = new HashMap<>();
+    try (IndexReader reader = DirectoryReader.open(dir)) {
+      LeafReader leafReader = getOnlyLeafReader(reader);
+      if (leafReader instanceof CodecReader codecReader) {
+        KnnVectorsReader knnVectorsReader =
+            codecReader.getVectorReader().unwrapReaderForField(field);
+        Float16VectorValues float16VectorValues = knnVectorsReader.getFloat16VectorValues(field);
+        assertNotNull(float16VectorValues);
+        VectorScorer scorer = float16VectorValues.scorer(query);
+        assertNotNull(scorer);
+        DocIdSetIterator iterator = scorer.iterator();
+        for (int doc = iterator.nextDoc(); doc != NO_MORE_DOCS; doc = iterator.nextDoc()) {
+          scores.put(doc, scorer.score());
+        }
+      } else {
+        fail("reader is not CodecReader");
+      }
+    }
+    return scores;
   }
 
   @Override
