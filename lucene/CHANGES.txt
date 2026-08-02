@@ -131,6 +131,10 @@ New Features
 
 Improvements
 ---------------------
+* GITHUB#9967: Document that Fields#iterator() must return field names in ascending order, and assert
+  it in the asserting codec so a violating PostingsFormat fails in tests rather than only in
+  CheckIndex. (Serhiy Bzhezytskyy)
+
 * GITHUB#15704: Replace LinkedList with more efficient data structure. (Renato Haeberli)
 
 * GITHUB#15682: Use ArrayDeque instead of LinkedList in CompoundWordTokenFilterBase.java. (Renato Haeberli)
