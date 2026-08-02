@@ -20,7 +20,7 @@ dev = [
   # validates python
   "ruff==0.16.0",
   # validates various
-  "ast-grep-cli==0.44.0",
+  "ast-grep-cli==0.45.0",
   # checks spelling
   "typos==1.48.0",
 ]
