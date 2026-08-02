@@ -297,8 +297,10 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
       if (dense || topValue != null) {
         return true;
       } else if (reverse == sortMissingLast) {
-        // Missing values are always competitive, we can never skip
-        return false;
+        // Missing values sort best here, so they stay competitive for as long as the queue is not
+        // full of them. With no tie breaker they stop competing once it is, so skipping is still
+        // worth enabling; updateCompetitiveIterator decides when it can actually start.
+        return singleSort;
       } else {
         return true;
       }
