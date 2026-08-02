@@ -168,8 +168,7 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
   @Override
   public int getVectorByteLength() {
     // Length of the packed quantized vector payload, excluding the corrective terms stored after
-    // it.
-    // This differs from the logical dimension for packed encodings such as PACKED_NIBBLE.
+    // it. This differs from the logical dimension for packed encodings such as PACKED_NIBBLE.
     return byteValue.length;
   }
 
