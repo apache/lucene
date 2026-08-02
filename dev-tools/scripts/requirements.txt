@@ -17,4 +17,4 @@ jira==3.10.5
 # type-checking in "make lint"
 ty==0.0.63
 # linting in "make lint"
-ruff==0.15.19
+ruff==0.16.0
