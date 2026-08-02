@@ -388,7 +388,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
         }
       }
 
-      // Drop the full-precision (raw) vectors, leaving only the quantized data.
+      // Drop the raw float16 vectors, leaving only the quantized data.
       simulateEmptyRawVectors(dir);
 
       try (IndexReader reader = DirectoryReader.open(dir)) {

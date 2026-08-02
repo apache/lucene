@@ -340,8 +340,9 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
             quantizedVectorData);
 
     if (rawFloatVectorValues.size() == 0) {
-      // Full-precision vectors were dropped, so reads reconstruct values by dequantizing. Pair that
-      // view with sqvv so scorer() scores in quantized space while vectorValue() and rescorer()
+      // The raw float16 vectors were dropped, so reads reconstruct values by dequantizing. Pair
+      // that view with sqvv so scorer() scores in quantized space while vectorValue() and
+      // rescorer()
       // dequantize.
       Float16VectorValues dequantizedRawVectorValues =
           OffHeapScalarQuantizedFloat16VectorValues.load(

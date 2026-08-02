@@ -40,9 +40,9 @@ import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncod
  * Reads quantized vector values from the index input and returns float16 vector values after
  * dequantizing them.
  *
- * <p>Used for read-only indexes whose full-precision vectors have been dropped to save storage:
- * only the scalar-quantized bytes remain, so {@link #vectorValue(int)} reconstructs float16 values
- * by dequantizing them, with some precision loss.
+ * <p>Used for read-only indexes whose raw float16 vectors have been dropped to save storage: only
+ * the scalar-quantized bytes remain, so {@link #vectorValue(int)} reconstructs float16 values by
+ * dequantizing them, with some precision loss.
  *
  * @lucene.internal
  */

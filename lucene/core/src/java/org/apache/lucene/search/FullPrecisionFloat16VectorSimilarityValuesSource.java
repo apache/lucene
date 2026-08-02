@@ -27,9 +27,9 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorSimilarityFunction;
 
 /**
- * A {@link DoubleValuesSource} that computes vector similarity between a query vector and raw full
- * precision vectors indexed in provided {@link org.apache.lucene.document.KnnFloat16VectorField} in
- * documents.
+ * A {@link DoubleValuesSource} that computes vector similarity between a query vector and the raw,
+ * unquantized float16 vectors indexed in provided {@link
+ * org.apache.lucene.document.KnnFloat16VectorField} in documents.
  */
 public class FullPrecisionFloat16VectorSimilarityValuesSource extends DoubleValuesSource {
 
@@ -64,7 +64,7 @@ public class FullPrecisionFloat16VectorSimilarityValuesSource extends DoubleValu
     this(vector, fieldName, null);
   }
 
-  /** Sugar to fetch full precision similarity score values */
+  /** Sugar to fetch similarity score values against the raw float16 vectors */
   public DoubleValues getSimilarityScores(LeafReaderContext ctx) throws IOException {
     return getValues(ctx, null);
   }
