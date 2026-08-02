@@ -55,19 +55,23 @@ public final class AssertingPostingsFormat extends PostingsFormat {
     return new AssertingFieldsProducer(in.fieldsProducer(state));
   }
 
-  static class AssertingFieldsProducer extends FieldsProducer {
-    private final FieldsProducer in;
+  /**
+   * Checks the {@link Fields#iterator()} contract, and nothing else, so it is safe on both sides of
+   * the codec: a {@link FieldsProducer} being read, and the {@link Fields} handed to {@link
+   * FieldsConsumer#write}.
+   *
+   * <p>It deliberately does not wrap {@link Terms}. On the write side the consumer pulls a {@link
+   * PostingsEnum} straight from the incoming {@link Fields} and drives it with different
+   * expectations from a reader, so wrapping terms there trips the read-side assertions in {@link
+   * AssertingLeafReader} (three tests in {@code BasePostingsFormatTestCase} fail on {@code assert
+   * super.docID() == nextDoc}). {@link AssertingReadFields} adds that wrapping for the read side
+   * only.
+   */
+  static class AssertingFields extends Fields {
+    protected final Fields in;
 
-    AssertingFieldsProducer(FieldsProducer in) {
+    AssertingFields(Fields in) {
       this.in = in;
-      // do a few simple checks on init
-      assert toString() != null;
-    }
-
-    @Override
-    public void close() throws IOException {
-      in.close();
-      in.close(); // close again
     }
 
     @Override
@@ -78,10 +82,17 @@ public final class AssertingPostingsFormat extends PostingsFormat {
     }
 
     /**
-     * Wraps {@code in} so that it fails if field names do not arrive in ascending natural order, as
-     * {@link Fields#iterator()} requires. Nothing else detects a violation: {@link
+     * Wraps {@code in} so that it fails if field names do not arrive in ascending natural order
+     * with no duplicates, as {@link Fields#iterator()} requires.
+     *
+     * <p>Nothing in production code detects a violation: {@link
      * org.apache.lucene.util.MergedIterator}, which is what relies on the order, is documented as
-     * undefined rather than checked, so an unsorted producer silently returns wrong results.
+     * undefined for unsorted input rather than checking it, so an offending implementation silently
+     * returns wrong results — the merge stops deduplicating and a name present in two sub-iterators
+     * can be returned twice. Only {@code CheckIndex} catches it, and only after the fact.
+     *
+     * <p>The comparison is strict, matching both the check in {@code CheckIndex#checkFields} and
+     * the one that {@link AssertingFieldsConsumer#write} has applied to the write side since 2013.
      */
     private static Iterator<String> assertSorted(Iterator<String> in) {
       return new Iterator<>() {
@@ -95,7 +106,6 @@ public final class AssertingPostingsFormat extends PostingsFormat {
         @Override
         public String next() {
           String field = in.next();
-          assert field != null : "Fields.iterator() must not return null field names";
           assert last == null || last.compareTo(field) < 0
               : "Fields.iterator() must return field names in ascending order with no duplicates,"
                   + " but saw \""
@@ -111,13 +121,63 @@ public final class AssertingPostingsFormat extends PostingsFormat {
 
     @Override
     public Terms terms(String field) {
-      Terms terms = in.terms(field);
-      return terms == null ? null : new AssertingLeafReader.AssertingTerms(terms);
+      return in.terms(field);
     }
 
     @Override
     public int size() {
       return in.size();
+    }
+
+    @Override
+    public String toString() {
+      return getClass().getSimpleName() + "(" + in.toString() + ")";
+    }
+  }
+
+  /** Adds the read-side {@link Terms} assertions on top of the {@link Fields} contract. */
+  static class AssertingReadFields extends AssertingFields {
+    AssertingReadFields(Fields in) {
+      super(in);
+    }
+
+    @Override
+    public Terms terms(String field) {
+      Terms terms = in.terms(field);
+      return terms == null ? null : new AssertingLeafReader.AssertingTerms(terms);
+    }
+  }
+
+  static class AssertingFieldsProducer extends FieldsProducer {
+    private final FieldsProducer in;
+    private final AssertingFields asserting;
+
+    AssertingFieldsProducer(FieldsProducer in) {
+      this.in = in;
+      this.asserting = new AssertingReadFields(in);
+      // do a few simple checks on init
+      assert toString() != null;
+    }
+
+    @Override
+    public void close() throws IOException {
+      in.close();
+      in.close(); // close again
+    }
+
+    @Override
+    public Iterator<String> iterator() {
+      return asserting.iterator();
+    }
+
+    @Override
+    public Terms terms(String field) {
+      return asserting.terms(field);
+    }
+
+    @Override
+    public int size() {
+      return asserting.size();
     }
 
     @Override
@@ -147,23 +207,25 @@ public final class AssertingPostingsFormat extends PostingsFormat {
 
     @Override
     public void write(Fields fields, NormsProducer norms) throws IOException {
-      in.write(fields, norms);
+      // Wrap the incoming Fields, so the contract is checked on the way in and not only when a
+      // FieldsProducer reads the result back. The delegate sees the wrapper, so a violation fails
+      // during the write that caused it rather than in a later reader or in CheckIndex.
+      Fields asserting = new AssertingFields(fields);
+      in.write(asserting, norms);
 
       // TODO: more asserts?  can we somehow run a
-      // "limited" CheckIndex here???  Or ... can we improve
-      // AssertingFieldsProducer and us it also to wrap the
-      // incoming Fields here?
+      // "limited" CheckIndex here???
 
       String lastField = null;
 
-      for (String field : fields) {
+      for (String field : asserting) {
 
         FieldInfo fieldInfo = writeState.fieldInfos.fieldInfo(field);
         assert fieldInfo != null;
         assert lastField == null || lastField.compareTo(field) < 0;
         lastField = field;
 
-        Terms terms = fields.terms(field);
+        Terms terms = asserting.terms(field);
         if (terms == null) {
           continue;
         }

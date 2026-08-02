@@ -82,6 +82,7 @@ public class TestAssertingPostingsFormat extends BasePostingsFormatTestCase {
    * results. The asserting codec is where the whole test suite gets to catch that.
    */
   public void testRejectsUnsortedFields() throws IOException {
+    assumeTrue("Test designed to work only with assertions enabled.", TEST_ASSERTS_ENABLED);
     try (FieldsProducer producer =
         new AssertingFieldsProducer(producing(List.of("zebra", "mid", "alpha")))) {
       AssertionError e = expectThrows(AssertionError.class, () -> drain(producer));
@@ -90,9 +91,17 @@ public class TestAssertingPostingsFormat extends BasePostingsFormatTestCase {
     }
   }
 
+  /**
+   * Duplicates are rejected, matching the check that {@code CheckIndex#checkFields} has applied to
+   * the read side since 2012 and the one {@link AssertingPostingsFormat.AssertingFieldsConsumer}
+   * has applied to the write side since 2013. {@link org.apache.lucene.util.MergedIterator} would
+   * merely fail to deduplicate them, but every implementation in the repository builds its iterator
+   * from a map's key set, so a duplicate means something is already wrong.
+   */
   public void testRejectsDuplicateFields() throws IOException {
+    assumeTrue("Test designed to work only with assertions enabled.", TEST_ASSERTS_ENABLED);
     try (FieldsProducer producer =
-        new AssertingFieldsProducer(producing(List.of("alpha", "alpha")))) {
+        new AssertingFieldsProducer(producing(List.of("alpha", "alpha", "beta")))) {
       AssertionError e = expectThrows(AssertionError.class, () -> drain(producer));
       assertTrue(e.getMessage(), e.getMessage().contains("no duplicates"));
     }
