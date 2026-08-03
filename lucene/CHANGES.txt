@@ -427,7 +427,7 @@ Bug Fixes
   been aborted, so IndexWriter#rollback and abortMerges no longer block until the entire graph is
   built. (Jeho Jeong)
 
-* GITHUB#16408: Accumulate join Total/Avg scores in double precision in
+* GITHUB#16428: Accumulate join Total/Avg scores in double precision in
   GlobalOrdinalsWithScoreCollector, fixing an intermittent failure caused by
   non-associative float addition that #16378 missed. (Luca Cavanna)
 
