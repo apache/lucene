@@ -382,7 +382,7 @@ public class TestSortedNumericDocValuesRangeIterator extends BaseDocValuesSkippe
     DocValuesRangeIterator iter = createIterator(true);
     SkipBlockRangeIterator approx = (SkipBlockRangeIterator) iter.approximation();
 
-    // MAYBE block, match: docIDRunEnd returns docID (empty run).
+    // MAYBE block, match: docIDRunEnd returns docID to signal an empty run.
     approx.advance(512);
     assertEquals(SkipBlockRangeIterator.Match.MAYBE, approx.getMatch());
     assertTrue(iter.matches());
@@ -405,7 +405,7 @@ public class TestSortedNumericDocValuesRangeIterator extends BaseDocValuesSkippe
     assertTrue(iter.matches());
     assertEquals(1088, iter.docIDRunEnd());
 
-    // YES_IF_PRESENT block, match: docIDRunEnd returns docID (empty run).
+    // YES_IF_PRESENT block, match: docIDRunEnd returns docID to signal an empty run.
     approx.advance(1088);
     assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, approx.getMatch());
     assertTrue(iter.matches());
