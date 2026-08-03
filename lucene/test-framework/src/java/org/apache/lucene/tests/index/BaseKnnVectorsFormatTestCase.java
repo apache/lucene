@@ -2071,6 +2071,93 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
   }
 
   /**
+   * Tests that dropping the raw full-precision vectors does not change scoring. {@link
+   * FloatVectorValues#scorer(float[])} is documented to score against the quantized vectors when
+   * the underlying format quantizes, so a quantized index must produce identical scores before and
+   * after its raw vector file is emptied.
+   */
+  public void testScoresUnchangedWithEmptyRawVectors() throws Exception {
+    assumeTrue("Test only applies to scalar quantized formats", supportsFloatVectorFallback());
+
+    String vectorFieldName = "vec1";
+    int numVectors = 1 + random().nextInt(50);
+    int dim = random().nextInt(64) + 1;
+    if (dim % 2 == 1) {
+      dim++;
+    }
+    VectorSimilarityFunction similarityFunction = randomSimilarity();
+    List<float[]> vectors = getRandomFloatVector(numVectors, dim, false);
+    float[] query = getRandomFloatVector(1, dim, false).get(0);
+
+    try (BaseDirectoryWrapper dir = newDirectory()) {
+      // The raw vector file is emptied below, which CheckIndex rightly rejects.
+      dir.setCheckIndexOnClose(false);
+
+      try (IndexWriter w =
+          new IndexWriter(
+              dir,
+              new IndexWriterConfig()
+                  .setMaxBufferedDocs(numVectors + 1)
+                  .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
+                  .setMergePolicy(NoMergePolicy.INSTANCE)
+                  .setUseCompoundFile(false)
+                  .setCodec(getCodecForFloatVectorFallbackTest()))) {
+        for (int i = 0; i < numVectors; i++) {
+          Document doc = new Document();
+          doc.add(new KnnFloatVectorField(vectorFieldName, vectors.get(i), similarityFunction));
+          w.addDocument(doc);
+        }
+      }
+
+      // Scores while the raw full-precision vectors are still present.
+      Map<Integer, Float> expectedScores = scoreAllDocs(dir, vectorFieldName, query);
+      assertEquals("expected every document to be scored", numVectors, expectedScores.size());
+
+      simulateEmptyRawVectors(dir);
+
+      // Both reads are expected to score against the same quantized vectors, so the scores must
+      // match exactly rather than merely within a quantization-error tolerance.
+      Map<Integer, Float> actualScores = scoreAllDocs(dir, vectorFieldName, query);
+      assertEquals(expectedScores.keySet(), actualScores.keySet());
+      for (Map.Entry<Integer, Float> entry : expectedScores.entrySet()) {
+        assertEquals(
+            "score changed for doc " + entry.getKey() + " after dropping raw vectors",
+            entry.getValue(),
+            actualScores.get(entry.getKey()),
+            0f);
+      }
+    }
+  }
+
+  /**
+   * Scores every document holding a vector for {@code field} against {@code query}, keyed by doc
+   * id. Keying by doc id rather than ordinal keeps the comparison meaningful even when a different
+   * {@link FloatVectorValues} implementation backs the iterator.
+   */
+  private Map<Integer, Float> scoreAllDocs(Directory dir, String field, float[] query)
+      throws IOException {
+    Map<Integer, Float> scores = new HashMap<>();
+    try (IndexReader reader = DirectoryReader.open(dir)) {
+      LeafReader leafReader = getOnlyLeafReader(reader);
+      if (leafReader instanceof CodecReader codecReader) {
+        KnnVectorsReader knnVectorsReader =
+            codecReader.getVectorReader().unwrapReaderForField(field);
+        FloatVectorValues floatVectorValues = knnVectorsReader.getFloatVectorValues(field);
+        assertNotNull(floatVectorValues);
+        VectorScorer scorer = floatVectorValues.scorer(query);
+        assertNotNull(scorer);
+        DocIdSetIterator iterator = scorer.iterator();
+        for (int doc = iterator.nextDoc(); doc != NO_MORE_DOCS; doc = iterator.nextDoc()) {
+          scores.put(doc, scorer.score());
+        }
+      } else {
+        fail("reader is not CodecReader");
+      }
+    }
+    return scores;
+  }
+
+  /**
    * Simulates empty raw vectors by modifying index files. Override in codecs that support
    * FloatVector fallback.
    */
