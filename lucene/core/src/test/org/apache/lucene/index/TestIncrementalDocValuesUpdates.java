@@ -466,6 +466,57 @@ public class TestIncrementalDocValuesUpdates extends LuceneTestCase {
     dir.close();
   }
 
+  /**
+   * After the deltas first fold back to a dense column, further updates must keep writing sparse
+   * deltas over that dense base rather than degrading to a full-column rewrite on every fold.
+   */
+  public void testSparseFoldOverDenseBase() throws Exception {
+    int numDocs = 10;
+    try (Directory dir = newDirectory();
+        IndexWriter w =
+            new IndexWriter(
+                dir,
+                new IndexWriterConfig(new MockAnalyzer(random()))
+                    .setMaxDocValuesOverlays(1)
+                    .setMergePolicy(NoMergePolicy.INSTANCE))) {
+      for (int i = 0; i < numDocs; i++) {
+        Document d = new Document();
+        d.add(new StringField("id", "d" + i, StringField.Store.NO));
+        d.add(new NumericDocValuesField("val", i));
+        w.addDocument(d);
+      }
+      w.commit();
+      // Update every doc twice: the second round's coverage reaches maxDoc and folds to a dense
+      // column, so the field's base becomes a dense generation rather than the core column.
+      for (int round = 1; round <= 2; round++) {
+        for (int i = 0; i < numDocs; i++) {
+          w.updateNumericDocValue(new Term("id", "d" + i), "val", 100L * round + i);
+        }
+        w.commit();
+      }
+      // Now keep updating a single doc across two more folds over the dense base.
+      for (int round = 0; round < 2; round++) {
+        w.updateNumericDocValue(new Term("id", "d0"), "val", 999L + round);
+        w.commit();
+      }
+      // The last fold over the dense base must stay sparse: an overlay whose base is a dense
+      // generation (!= -1) with a folded delta, not a full-column rewrite that clears the overlay.
+      SegmentInfos sis = SegmentInfos.readLatestCommit(dir);
+      assertEquals(1, sis.size());
+      Map<Integer, long[]> overlays = sis.info(0).getDocValuesOverlays();
+      assertFalse("expected a sparse overlay over the dense base", overlays.isEmpty());
+      long[] packed = overlays.values().iterator().next();
+      assertTrue("base should be a dense generation, not the core column", packed[0] != -1);
+      assertTrue("expected at least one delta over the dense base", packed.length >= 2);
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        assertNumeric(reader, "d0", 1000L);
+        for (int i = 1; i < numDocs; i++) {
+          assertNumeric(reader, "d" + i, 200L + i);
+        }
+      }
+    }
+  }
+
   private static void assertOldReaderRejects(Directory dir) throws IOException {
     String segmentsFile = SegmentInfos.getLastCommitSegmentsFileName(dir);
     try (ChecksumIndexInput in = dir.openChecksumInput(segmentsFile)) {
