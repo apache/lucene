@@ -123,7 +123,7 @@ Bug Fixes
   including the default codec. Since 10.4.0 the merger tested the per-field wrapper instead
   of the unwrapped reader, so every merge rebuilt the graph from scratch. (Jeho Jeong)
 
-* GITHUB#16408: Accumulate join Total/Avg scores in double precision in
+* GITHUB#16428: Accumulate join Total/Avg scores in double precision in
   GlobalOrdinalsWithScoreCollector, fixing an intermittent failure caused by
   non-associative float addition that #16378 missed. (Luca Cavanna)
 
