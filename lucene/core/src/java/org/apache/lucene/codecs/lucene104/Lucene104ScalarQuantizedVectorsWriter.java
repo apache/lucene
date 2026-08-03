@@ -131,11 +131,6 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   public void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException {
     rawVectorDelegate.flush(maxDoc, sortMap);
     for (FieldWriter<?> field : fields) {
-      // Raw vectors are already written; normalize the stored fp32 vectors in place so quantization
-      // operates on unit vectors. No-op for fp16, which normalizes when inflating to fp32.
-      if (VectorSimilarityFunction.COSINE == field.fieldInfo.getVectorSimilarityFunction()) {
-        field.normalizeVectors();
-      }
       final float[] clusterCenter;
       int vectorCount = field.flatFieldVectorsWriter.getVectors().size();
       clusterCenter = new float[field.dimensionSums.length];
@@ -591,9 +586,6 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       return flatFieldVectorsWriter.getVectors();
     }
 
-    /** Normalizes stored vectors in place for COSINE clustering/quantization; no-op by default. */
-    public void normalizeVectors() {}
-
     @Override
     public DocsWithFieldSet getDocsWithFieldSet() {
       return flatFieldVectorsWriter.getDocsWithFieldSet();
@@ -617,6 +609,33 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     abstract float[] floatVectorValue(int ord);
 
     /**
+     * Adds {@code vector} to the centroid sums, unit-scaled when COSINE, and caches its magnitude
+     * for {@link #scaleToUnitLength}.
+     */
+    protected final void accumulate(float[] vector) {
+      if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
+        float dp = VectorUtil.dotProduct(vector, vector);
+        float divisor = (float) Math.sqrt(dp);
+        magnitudes.add(divisor);
+        for (int i = 0; i < vector.length; i++) {
+          dimensionSums[i] += (vector[i] / divisor);
+        }
+      } else {
+        for (int i = 0; i < vector.length; i++) {
+          dimensionSums[i] += vector[i];
+        }
+      }
+    }
+
+    /** Scales {@code dst} to unit length using the magnitude cached for {@code ord}. */
+    protected final void scaleToUnitLength(float[] dst, int ord) {
+      float magnitude = magnitudes.get(ord);
+      for (int i = 0; i < dst.length; i++) {
+        dst[i] /= magnitude;
+      }
+    }
+
+    /**
      * Returns the RAM usage of quantization-specific state only (magnitudes, dimensionSums, shallow
      * object overhead). The underlying flat vector data is tracked separately by the
      * rawVectorDelegate at the writer level to avoid double-counting.
@@ -637,27 +656,18 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   }
 
   private static class Float32FieldWriter extends FieldWriter<float[]> {
+    private final float[] normalized;
 
     Float32FieldWriter(
         FieldInfo fieldInfo, FlatFieldVectorsWriter<float[]> flatFieldVectorsWriter) {
       super(fieldInfo, flatFieldVectorsWriter);
+      this.normalized = fieldInfo.getVectorSimilarityFunction() == COSINE ? new float[dim] : null;
     }
 
     @Override
     public void addValue(int docID, float[] vectorValue) throws IOException {
       flatFieldVectorsWriter.addValue(docID, vectorValue);
-      if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
-        float dp = VectorUtil.dotProduct(vectorValue, vectorValue);
-        float divisor = (float) Math.sqrt(dp);
-        magnitudes.add(divisor);
-        for (int i = 0; i < vectorValue.length; i++) {
-          dimensionSums[i] += (vectorValue[i] / divisor);
-        }
-      } else {
-        for (int i = 0; i < vectorValue.length; i++) {
-          dimensionSums[i] += vectorValue[i];
-        }
-      }
+      accumulate(vectorValue);
     }
 
     @Override
@@ -666,19 +676,23 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     }
 
     @Override
-    public void normalizeVectors() {
-      for (int i = 0; i < flatFieldVectorsWriter.getVectors().size(); i++) {
-        float[] vector = flatFieldVectorsWriter.getVectors().get(i);
-        float magnitude = magnitudes.get(i);
-        for (int j = 0; j < vector.length; j++) {
-          vector[j] /= magnitude;
-        }
+    float[] floatVectorValue(int ord) {
+      float[] vector = flatFieldVectorsWriter.getVectors().get(ord);
+      if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
+        System.arraycopy(vector, 0, normalized, 0, dim);
+        scaleToUnitLength(normalized, ord);
+        return normalized;
       }
+      return vector;
     }
 
     @Override
-    float[] floatVectorValue(int ord) {
-      return flatFieldVectorsWriter.getVectors().get(ord);
+    long quantizationOverheadBytesUsed() {
+      long size = super.quantizationOverheadBytesUsed();
+      if (normalized != null) {
+        size += RamUsageEstimator.sizeOf(normalized);
+      }
+      return size;
     }
   }
 
@@ -695,18 +709,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     public void addValue(int docID, short[] vectorValue) throws IOException {
       flatFieldVectorsWriter.addValue(docID, vectorValue);
       inflate(vectorValue);
-      if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
-        float dp = VectorUtil.dotProduct(inflated, inflated);
-        float divisor = (float) Math.sqrt(dp);
-        magnitudes.add(divisor);
-        for (int i = 0; i < inflated.length; i++) {
-          dimensionSums[i] += (inflated[i] / divisor);
-        }
-      } else {
-        for (int i = 0; i < inflated.length; i++) {
-          dimensionSums[i] += inflated[i];
-        }
-      }
+      accumulate(inflated);
     }
 
     @Override
@@ -716,15 +719,9 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
 
     @Override
     float[] floatVectorValue(int ord) {
-      // Inflate the stored fp16 vector into the reusable buffer, leaving the stored vector
-      // untouched. For COSINE the buffer is scaled to unit length by the ordinal's cached
-      // magnitude, so normalizeVectors() is a no-op for fp16.
       inflate(flatFieldVectorsWriter.getVectors().get(ord));
       if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
-        float magnitude = magnitudes.get(ord);
-        for (int i = 0; i < inflated.length; i++) {
-          inflated[i] /= magnitude;
-        }
+        scaleToUnitLength(inflated, ord);
       }
       return inflated;
     }
@@ -864,7 +861,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
 
   /**
    * Exposes a {@link Float16VectorValues} as {@link FloatVectorValues}, inflating fp16 to fp32 on
-   * read. Lets the fp16 merge path reuse the fp32 quantization classes instead of duplicating them.
+   * read, so the merge path can reuse the fp32 quantization classes.
    */
   static final class Float16AsFloatVectorValues extends FloatVectorValues {
     private final Float16VectorValues values;
