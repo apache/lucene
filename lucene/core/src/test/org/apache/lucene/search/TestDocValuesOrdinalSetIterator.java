@@ -19,13 +19,20 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.lucene.codecs.lucene104.Lucene104Codec;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.SortedDocValuesField;
+import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.DocValuesSkipper;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOBooleanSupplier;
@@ -754,5 +761,50 @@ public class TestDocValuesOrdinalSetIterator extends BaseDocValuesSkipperTests {
     approx.advance(1089);
     // Odd doc has no value → no match
     assertFalse(iter.matches());
+  }
+
+  /**
+   * Regression test: {@code DocValuesBlockRangeIterator.docIDRunEnd()} previously returned {@code
+   * doc+1} unconditionally, causing {@code DenseConjunctionBulkScorer} to collect false positives
+   * in the trailing single-doc window of a {@code WINDOW_SIZE+1}-doc segment.
+   */
+  public void testOrdinalSetDocIDRunEndFalsePositive() throws IOException {
+    int maxDoc = DenseConjunctionBulkScorer.WINDOW_SIZE + 1;
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig().setCodec(new Lucene104Codec());
+      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+        for (int i = 0; i < maxDoc; i++) {
+          Document doc = new Document();
+          // Last doc gets "bbb" (ord 1): inside the bounding range [0,2] but not in the set {0,2}.
+          String val = (i == maxDoc - 1) ? "bbb" : (i % 100 == 0 ? "ccc" : "aaa");
+          doc.add(SortedDocValuesField.indexedField("field", new BytesRef(val)));
+          w.addDocument(doc);
+        }
+        w.forceMerge(1);
+      }
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        // Non-contiguous ordinal set {aaa=0, ccc=2}: gap at bbb=1 forces DocValuesBlockRangeIterator.
+        Query setQuery =
+            SortedDocValuesField.newSlowSetQuery(
+                "field", List.of(new BytesRef("aaa"), new BytesRef("ccc")));
+        // Range [aaa,ccc] matches all docs. A two-clause FILTER conjunction causes
+        // BooleanScorerSupplier to use DenseConjunctionBulkScorer.of(), which extracts the set
+        // query's DocValuesBlockRangeIterator as a TwoPhaseIterator — the production code path.
+        Query rangeQuery =
+            SortedDocValuesField.newSlowRangeQuery(
+                "field", new BytesRef("aaa"), new BytesRef("ccc"), true, true);
+        Query q =
+            new BooleanQuery.Builder()
+                .add(setQuery, BooleanClause.Occur.FILTER)
+                .add(rangeQuery, BooleanClause.Occur.FILTER)
+                .build();
+
+        IndexSearcher searcher = new IndexSearcher(reader);
+        // Disable cache: the test framework's LRUQueryCache may cache a clause as a plain
+        // DocIdSetIterator, bypassing the TwoPhaseIterator and preventing the bug from triggering.
+        searcher.setQueryCache(null);
+        assertEquals(maxDoc - 1, searcher.count(q));
+      }
+    }
   }
 }
