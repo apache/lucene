@@ -24,9 +24,9 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.DocValuesSkipper;
+import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
@@ -783,7 +783,8 @@ public class TestDocValuesOrdinalSetIterator extends BaseDocValuesSkipperTests {
         w.forceMerge(1);
       }
       try (DirectoryReader reader = DirectoryReader.open(dir)) {
-        // Non-contiguous ordinal set {aaa=0, ccc=2}: gap at bbb=1 forces DocValuesBlockRangeIterator.
+        // Non-contiguous ordinal set {aaa=0, ccc=2}: gap at bbb=1 forces
+        // DocValuesBlockRangeIterator.
         Query setQuery =
             SortedDocValuesField.newSlowSetQuery(
                 "field", List.of(new BytesRef("aaa"), new BytesRef("ccc")));
