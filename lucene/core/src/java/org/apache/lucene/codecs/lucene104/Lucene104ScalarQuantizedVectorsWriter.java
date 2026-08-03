@@ -48,7 +48,6 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.hppc.FloatArrayList;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.VectorUtil;
@@ -321,13 +320,12 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       FieldInfo fieldInfo, MergeState mergeState, float[] centroid) throws IOException {
     OptimizedScalarQuantizer quantizer =
         new OptimizedScalarQuantizer(fieldInfo.getVectorSimilarityFunction());
-    boolean cosine = fieldInfo.getVectorSimilarityFunction() == COSINE;
     FloatVectorValues vectorValues =
         fieldInfo.getVectorEncoding() == VectorEncoding.FLOAT16
             ? new Float16AsFloatVectorValues(
                 MergedVectorValues.mergeFloat16VectorValues(fieldInfo, mergeState))
             : MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
-    if (cosine) {
+    if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
       vectorValues = new NormalizedFloatVectorValues(vectorValues);
     }
     return new QuantizedFloatVectorValues(vectorValues, quantizer, encoding, centroid);
@@ -587,6 +585,11 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     }
 
     @Override
+    public T copyValue(T vectorValue) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
     public DocsWithFieldSet getDocsWithFieldSet() {
       return flatFieldVectorsWriter.getDocsWithFieldSet();
     }
@@ -627,11 +630,14 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       }
     }
 
-    /** Scales {@code dst} to unit length using the magnitude cached for {@code ord}. */
-    protected final void scaleToUnitLength(float[] dst, int ord) {
+    /**
+     * Writes {@code src} into {@code dst} scaled to unit length, using the magnitude cached for
+     * {@code ord}. The two arrays may be the same.
+     */
+    protected final void scaleToUnitLength(float[] src, float[] dst, int ord) {
       float magnitude = magnitudes.get(ord);
-      for (int i = 0; i < dst.length; i++) {
-        dst[i] /= magnitude;
+      for (int i = 0; i < src.length; i++) {
+        dst[i] = src[i] / magnitude;
       }
     }
 
@@ -671,16 +677,10 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     }
 
     @Override
-    public float[] copyValue(float[] value) {
-      return ArrayUtil.copyOfSubArray(value, 0, dim);
-    }
-
-    @Override
     float[] floatVectorValue(int ord) {
       float[] vector = flatFieldVectorsWriter.getVectors().get(ord);
       if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
-        System.arraycopy(vector, 0, normalized, 0, dim);
-        scaleToUnitLength(normalized, ord);
+        scaleToUnitLength(vector, normalized, ord);
         return normalized;
       }
       return vector;
@@ -713,15 +713,10 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     }
 
     @Override
-    public short[] copyValue(short[] value) {
-      return ArrayUtil.copyOfSubArray(value, 0, dim);
-    }
-
-    @Override
     float[] floatVectorValue(int ord) {
       inflate(flatFieldVectorsWriter.getVectors().get(ord));
       if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
-        scaleToUnitLength(inflated, ord);
+        scaleToUnitLength(inflated, inflated, ord);
       }
       return inflated;
     }
