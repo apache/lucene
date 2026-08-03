@@ -360,6 +360,8 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
     abstract void intoMaybeBlock(int blockStart, int blockEnd, FixedBitSet bitSet, int offset)
         throws IOException;
 
+    // For MAYBE/YES_IF_PRESENT blocks this is the block boundary; for YES blocks it may extend
+    // further via multi-level run expansion.
     private int blockEnd(int upTo) throws IOException {
       return Math.min(upTo, blockIterator.docIDRunEnd());
     }
