@@ -266,7 +266,6 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
     final DocIdSetIterator disi;
     final IOBooleanSupplier predicate;
     private final float matchCost;
-    private int lastMatchingDoc = -1;
 
     private DocValuesBlockRangeIterator(
         DocIdSetIterator disi,
@@ -287,26 +286,9 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
       return disi.advance(target) == target;
     }
 
-    final boolean recordMatch(boolean matches) {
-      lastMatchingDoc = matches ? blockIterator.docID() : -1;
-      return matches;
-    }
-
-    final int confirmedDocRunEnd() {
-      int doc = blockIterator.docID();
-      return lastMatchingDoc == doc ? doc + 1 : doc;
-    }
-
     @Override
     public boolean matches() throws IOException {
-      return recordMatch(advanceDisi(blockIterator.docID()) && predicate.get());
-    }
-
-    @Override
-    public int docIDRunEnd() throws IOException {
-      // Even a YES block only proves membership in the ordinal set's bounding range, not in the
-      // potentially non-contiguous set itself.
-      return confirmedDocRunEnd();
+      return advanceDisi(blockIterator.docID()) && predicate.get();
     }
 
     @Override
@@ -333,12 +315,11 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
 
     @Override
     public final boolean matches() throws IOException {
-      return recordMatch(
-          switch (blockIterator.getMatch()) {
-            case YES -> true;
-            case YES_IF_PRESENT -> advanceDisi(blockIterator.docID());
-            case MAYBE -> advanceDisi(blockIterator.docID()) && predicate.get();
-          });
+      return switch (blockIterator.getMatch()) {
+        case YES -> true;
+        case YES_IF_PRESENT -> advanceDisi(blockIterator.docID());
+        case MAYBE -> advanceDisi(blockIterator.docID()) && predicate.get();
+      };
     }
 
     @Override
@@ -347,7 +328,7 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
       // rest of the run are actual matches.
       return switch (blockIterator.getMatch()) {
         case YES -> blockIterator.docIDRunEnd();
-        case YES_IF_PRESENT, MAYBE -> confirmedDocRunEnd();
+        case YES_IF_PRESENT, MAYBE -> blockIterator.docID();
       };
     }
 
@@ -356,7 +337,7 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
       while (blockIterator.docID() < upTo) {
         int blockStart = blockIterator.docID();
         SkipBlockRangeIterator.Match match = blockIterator.getMatch();
-        int blockEnd = blockEnd(upTo, match);
+        int blockEnd = blockEnd(upTo);
         switch (match) {
           case YES -> bitSet.set(blockStart - offset, blockEnd - offset);
           case YES_IF_PRESENT -> {
@@ -379,12 +360,8 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
     abstract void intoMaybeBlock(int blockStart, int blockEnd, FixedBitSet bitSet, int offset)
         throws IOException;
 
-    // For MAYBE blocks docIDRunEnd() only describes a previously confirmed current doc, so use the
-    // full block boundary to evaluate/classify the whole block at once.
-    private int blockEnd(int upTo, SkipBlockRangeIterator.Match match) throws IOException {
-      return match == SkipBlockRangeIterator.Match.MAYBE
-          ? Math.min(upTo, blockIterator.blockEnd())
-          : Math.min(upTo, blockIterator.docIDRunEnd());
+    private int blockEnd(int upTo) throws IOException {
+      return Math.min(upTo, blockIterator.docIDRunEnd());
     }
 
     @Override
@@ -399,7 +376,7 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
           bitSet.clear(cursor - offset, blockStart - offset);
         }
         SkipBlockRangeIterator.Match match = blockIterator.getMatch();
-        int blockEnd = blockEnd(upTo, match);
+        int blockEnd = blockEnd(upTo);
 
         if (match != SkipBlockRangeIterator.Match.YES
             && bitSet.nextSetBit(blockStart - offset, blockEnd - offset)
