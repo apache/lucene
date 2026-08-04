@@ -44,7 +44,6 @@ import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.hppc.FloatArrayList;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexOutput;
@@ -130,20 +129,10 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   public void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException {
     rawVectorDelegate.flush(maxDoc, sortMap);
     for (FieldWriter<?> field : fields) {
-      final float[] clusterCenter;
-      int vectorCount = field.flatFieldVectorsWriter.getVectors().size();
-      clusterCenter = new float[field.dimensionSums.length];
-      if (vectorCount > 0) {
-        for (int i = 0; i < field.dimensionSums.length; i++) {
-          clusterCenter[i] = field.dimensionSums[i] / vectorCount;
-        }
-        if (VectorSimilarityFunction.COSINE == field.fieldInfo.getVectorSimilarityFunction()) {
-          VectorUtil.l2normalize(clusterCenter);
-        }
-      }
+      final float[] clusterCenter = field.centroid();
       if (segmentWriteState.infoStream.isEnabled(QUANTIZED_VECTOR_COMPONENT)) {
         segmentWriteState.infoStream.message(
-            QUANTIZED_VECTOR_COMPONENT, "Vectors' count:" + vectorCount);
+            QUANTIZED_VECTOR_COMPONENT, "Vectors' count:" + field.getVectors().size());
       }
       OptimizedScalarQuantizer quantizer =
           new OptimizedScalarQuantizer(field.fieldInfo.getVectorSimilarityFunction());
@@ -461,10 +450,10 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
         continue;
       }
       int vectorCount = values.size();
-      float[] centroid = getCentroid(knnVectorsReader, fieldInfo.name);
       if (vectorCount == 0) {
         continue;
       }
+      float[] centroid = getCentroid(knnVectorsReader, fieldInfo.name);
       totalVectorCount += vectorCount;
       // If there aren't centroids, or previously clustered with more than one cluster
       // or if there are deleted docs, we must recalculate the centroid
@@ -554,8 +543,8 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     protected final FieldInfo fieldInfo;
     private boolean finished;
     protected final FlatFieldVectorsWriter<T> flatFieldVectorsWriter;
-    protected final float[] dimensionSums;
-    protected final FloatArrayList magnitudes = new FloatArrayList();
+    private final float[] dimensionSums;
+    private final FloatArrayList magnitudes = new FloatArrayList();
     protected final int dim;
 
     FieldWriter(FieldInfo fieldInfo, FlatFieldVectorsWriter<T> flatFieldVectorsWriter) {
@@ -631,6 +620,24 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     }
 
     /**
+     * The mean of the accumulated vectors, unit-length for COSINE, used as the quantization
+     * centroid. All zeroes when no vectors were added.
+     */
+    protected final float[] centroid() {
+      float[] centroid = new float[dim];
+      int vectorCount = getVectors().size();
+      if (vectorCount > 0) {
+        for (int i = 0; i < dim; i++) {
+          centroid[i] = dimensionSums[i] / vectorCount;
+        }
+        if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
+          VectorUtil.l2normalize(centroid);
+        }
+      }
+      return centroid;
+    }
+
+    /**
      * Writes {@code src} into {@code dst} scaled to unit length, using the magnitude cached for
      * {@code ord}. The two arrays may be the same.
      */
@@ -667,7 +674,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     Float32FieldWriter(
         FieldInfo fieldInfo, FlatFieldVectorsWriter<float[]> flatFieldVectorsWriter) {
       super(fieldInfo, flatFieldVectorsWriter);
-      this.normalized = fieldInfo.getVectorSimilarityFunction() == COSINE ? new float[dim] : null;
+      this.normalized = new float[dim];
     }
 
     @Override
@@ -688,11 +695,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
 
     @Override
     long quantizationOverheadBytesUsed() {
-      long size = super.quantizationOverheadBytesUsed();
-      if (normalized != null) {
-        size += RamUsageEstimator.sizeOf(normalized);
-      }
-      return size;
+      return super.quantizationOverheadBytesUsed() + RamUsageEstimator.sizeOf(normalized);
     }
   }
 
