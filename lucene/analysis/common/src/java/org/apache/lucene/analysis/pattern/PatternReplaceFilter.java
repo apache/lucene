@@ -50,21 +50,6 @@ public final class PatternReplaceFilter extends TokenFilter {
    *     Note that this is not the literal string that will be used, '$' and '\' have special
    *     meaning.
    * @param all if true, all matches will be replaced otherwise just the first match.
-   * @see Matcher#quoteReplacement
-   */
-  public PatternReplaceFilter(TokenStream in, Pattern p, String replacement, boolean all) {
-    this(in, p, replacement, all, false);
-  }
-
-  /**
-   * Constructs an instance to replace either the first, or all occurrences
-   *
-   * @param in the TokenStream to process
-   * @param p the patterm to apply to each Token
-   * @param replacement the "replacement string" to substitute, if null a blank string will be used.
-   *     Note that this is not the literal string that will be used, '$' and '\' have special
-   *     meaning.
-   * @param all if true, all matches will be replaced otherwise just the first match.
    * @param ignoreKeywords if true, tokens with KeywordAttribute set to true will not be processed
    * @see Matcher#quoteReplacement
    */
