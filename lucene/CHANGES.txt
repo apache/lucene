@@ -166,12 +166,6 @@ Optimizations
   wildcards into a single any-string automaton, avoiding a quadratic blow-up in
   automaton size for patterns with many repeated asterisks. (Vismay Tiwari)
 
-* GITHUB#12370: Sorting on a string field no longer scans every document when the top-N queue fills
-  with missing values -- whether because the field is missing from the whole index, or because
-  sort-missing-first put missing values at the top. When the sort has no tie breaker, a further
-  missing value cannot displace one already in the queue, so the rest can be skipped.
-  (Serhiy Bzhezytskyy)
-
 * GITHUB#16307: ReqExclBulkScorer now skips runs of excluded docs via
   TwoPhaseIterator#docIDRunEnd for two-phase excluded clauses (e.g. a doc-values
   not-equals filter), instead of advancing one doc at a time. (Jim Ferenczi)
@@ -409,6 +403,12 @@ Optimizations
   sort field is empty or only contains a single value. (Alan Woodward)
 
 * GITHUB#16180: Add bulk intoBitSet for SortedDocValues ordinal ranges. (Prithvi S)
+
+* GITHUB#12370: Sorting on a string field no longer scans every document when the top-N queue fills
+  with missing values -- whether because the field is missing from the whole index, or because
+  sort-missing-first put missing values at the top. When the sort has no tie breaker, a further
+  missing value cannot displace one already in the queue, so the rest can be skipped.
+  (Serhiy Bzhezytskyy)
 
 Bug Fixes
 ---------------------
