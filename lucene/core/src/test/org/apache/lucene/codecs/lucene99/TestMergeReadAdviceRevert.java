@@ -18,14 +18,9 @@ package org.apache.lucene.codecs.lucene99;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.codecs.FilterCodec;
-import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.DirectoryReader;
@@ -33,13 +28,14 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.TieredMergePolicy;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.MMapDirectory;
+import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
@@ -49,11 +45,11 @@ public class TestMergeReadAdviceRevert extends LuceneTestCase {
 
   public void testSequentialAdviceIsRevertedAfterMerge() throws Exception {
     Recorder recorder = new Recorder();
-    try (Directory raw = new ByteBuffersDirectory();
+    try (Directory raw = new MMapDirectory(createTempDir());
         Directory dir = new RecordingDirectory(raw, recorder)) {
 
       IndexWriterConfig iwc = new IndexWriterConfig();
-      iwc.setCodec(hnswFloatCodec());
+      iwc.setCodec(TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat()));
       // Expose .vec files to RecordingDirectory.
       iwc.setUseCompoundFile(false);
       iwc.setMergePolicy(new TieredMergePolicy());
@@ -62,11 +58,11 @@ public class TestMergeReadAdviceRevert extends LuceneTestCase {
         for (int seg = 0; seg < 2; seg++) {
           for (int i = 0; i < 64; i++) {
             Document doc = new Document();
-            float[] v = new float[DIM];
-            for (int d = 0; d < DIM; d++) {
-              v[d] = random().nextFloat();
-            }
-            doc.add(new KnnFloatVectorField("field", v, VectorSimilarityFunction.DOT_PRODUCT));
+            doc.add(
+                new KnnFloatVectorField(
+                    "field",
+                    BaseKnnVectorsFormatTestCase.randomNormalizedVector(DIM),
+                    VectorSimilarityFunction.DOT_PRODUCT));
             w.addDocument(doc);
           }
           w.commit();
@@ -82,9 +78,9 @@ public class TestMergeReadAdviceRevert extends LuceneTestCase {
           // Check before the source SegmentReaders are closed.
           List<String> offenders = new ArrayList<>();
           List<String> sawSequential = new ArrayList<>();
-          for (Map.Entry<String, List<String>> e : recorder.snapshot().entrySet()) {
+          for (Map.Entry<String, List<String>> e : recorder.events().entrySet()) {
             String file = e.getKey();
-            if (file.endsWith(".vec") == false) {
+            if (file.endsWith("." + Lucene99FlatVectorsFormat.VECTOR_DATA_EXTENSION) == false) {
               continue;
             }
             List<String> events = e.getValue();
@@ -117,23 +113,6 @@ public class TestMergeReadAdviceRevert extends LuceneTestCase {
     }
   }
 
-  private static Codec hnswFloatCodec() {
-    Codec def = TestUtil.getDefaultCodec();
-    final KnnVectorsFormat perField =
-        new PerFieldKnnVectorsFormat() {
-          @Override
-          public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-            return new Lucene99HnswVectorsFormat();
-          }
-        };
-    return new FilterCodec(def.getName(), def) {
-      @Override
-      public KnnVectorsFormat knnVectorsFormat() {
-        return perField;
-      }
-    };
-  }
-
   static final class Recorder {
     private final Map<String, List<String>> events = new LinkedHashMap<>();
     private final List<String> timeline = new ArrayList<>();
@@ -147,12 +126,8 @@ public class TestMergeReadAdviceRevert extends LuceneTestCase {
       timeline.add(note);
     }
 
-    synchronized Map<String, List<String>> snapshot() {
-      Map<String, List<String>> copy = new LinkedHashMap<>();
-      for (Map.Entry<String, List<String>> e : events.entrySet()) {
-        copy.put(e.getKey(), List.copyOf(e.getValue()));
-      }
-      return Collections.unmodifiableMap(copy);
+    synchronized Map<String, List<String>> events() {
+      return events;
     }
 
     synchronized String dump() {
