@@ -352,7 +352,7 @@ Improvements
   The new code allows to add a hard limit for nesting (default is 1024) and no longer
   throws virtual machine errors.  (Uwe Schindler, Seth Kraft)
 
-* GITHUB#xx: Modernize SnapshotDeletionPolicy and PersistentSnapshotDelectionPolicy through minor
+* GITHUB#16482: Modernize SnapshotDeletionPolicy and PersistentSnapshotDelectionPolicy through minor
   improvements to data structure choice and persistence logic. (Greg Miller)
 
 Optimizations
