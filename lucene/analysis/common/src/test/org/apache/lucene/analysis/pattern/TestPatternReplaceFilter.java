@@ -111,32 +111,9 @@ public class TestPatternReplaceFilter extends BaseTokenStreamTestCase {
     a.close();
   }
 
-  public void testIgnoreKeywords() throws Exception {
-    Analyzer a =
-        new Analyzer() {
-          @Override
-          protected TokenStreamComponents createComponents(String fieldName) {
-            Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
-            KeywordMarkerFilter keywordFilter =
-                new KeywordMarkerFilter(tokenizer) {
-                  private final CharTermAttribute term = addAttribute(CharTermAttribute.class);
-
-                  @Override
-                  public boolean isKeyword() {
-                    // Mark terms starting with 'k' as keywords
-                    return term.toString().startsWith("k");
-                  }
-                };
-            return new TokenStreamComponents(
-                tokenizer,
-                new PatternReplaceFilter(keywordFilter, Pattern.compile("a"), "X", true, true));
-          }
-        };
-
-    // Without ignoreKeywords=true, both terms would have 'a' replaced with 'X'
-    // With ignoreKeywords=true, only non-keyword terms should be modified
+  public void testKeywordFilter() throws Exception {
     assertAnalyzesTo(
-        a,
+        keywordTestAnalyzer(true),
         "banana kappa alpha",
         new String[] {"bXnXnX", "kappa", "XlphX"}, // kappa unchanged, others modified
         new int[] {0, 7, 13},
@@ -146,32 +123,8 @@ public class TestPatternReplaceFilter extends BaseTokenStreamTestCase {
         null,
         false);
 
-    a.close();
-
-    // Test with ignoreKeywords=false for comparison
-    Analyzer b =
-        new Analyzer() {
-          @Override
-          protected TokenStreamComponents createComponents(String fieldName) {
-            Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
-            KeywordMarkerFilter keywordFilter =
-                new KeywordMarkerFilter(tokenizer) {
-                  private final CharTermAttribute term = addAttribute(CharTermAttribute.class);
-
-                  @Override
-                  public boolean isKeyword() {
-                    return term.toString().startsWith("k");
-                  }
-                };
-            return new TokenStreamComponents(
-                tokenizer,
-                new PatternReplaceFilter(keywordFilter, Pattern.compile("a"), "X", true, false));
-          }
-        };
-
-    // With ignoreKeywords=false, all terms should be modified regardless of keyword status
     assertAnalyzesTo(
-        b,
+        keywordTestAnalyzer(false),
         "banana kappa alpha",
         new String[] {"bXnXnX", "kXppX", "XlphX"}, // all terms modified
         new int[] {0, 7, 13},
@@ -180,7 +133,28 @@ public class TestPatternReplaceFilter extends BaseTokenStreamTestCase {
         new int[] {1, 1, 1},
         null,
         false);
+  }
 
-    b.close();
+  private Analyzer keywordTestAnalyzer(boolean ignoreKeywords) throws Exception {
+    return new Analyzer() {
+      @Override
+      protected TokenStreamComponents createComponents(String fieldName) {
+        Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
+        KeywordMarkerFilter keywordFilter =
+            new KeywordMarkerFilter(tokenizer) {
+              private final CharTermAttribute term = addAttribute(CharTermAttribute.class);
+
+              @Override
+              public boolean isKeyword() {
+                // Mark terms starting with 'k' as keywords
+                return term.toString().startsWith("k");
+              }
+            };
+        return new TokenStreamComponents(
+            tokenizer,
+            new PatternReplaceFilter(
+                keywordFilter, Pattern.compile("a"), "X", true, ignoreKeywords));
+      }
+    };
   }
 }
