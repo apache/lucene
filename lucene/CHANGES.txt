@@ -113,6 +113,9 @@ Bug Fixes
 * GITHUB#16389: Fix double-counting of the underlying Automaton in
   AutomatonQuery#ramBytesUsed. (Sasilekha R)
 
+* GITHUB#16405: PointInSetQuery#ramBytesUsed now accounts for the retained
+  lowerPoint and upperPoint bounds arrays. (Sasilekha R)
+
 * GITHUB#16367: HNSW graph construction now periodically checks whether the surrounding merge has
   been aborted, so IndexWriter#rollback and abortMerges no longer block until the entire graph is
   built. (Jeho Jeong)
@@ -122,6 +125,10 @@ Bug Fixes
 * GITHUB#16400: Restore HNSW graph reuse during merges under per-field vectors formats,
   including the default codec. Since 10.4.0 the merger tested the per-field wrapper instead
   of the unwrapped reader, so every merge rebuilt the graph from scratch. (Jeho Jeong)
+
+* GITHUB#16428: Accumulate join Total/Avg scores in double precision in
+  GlobalOrdinalsWithScoreCollector, fixing an intermittent failure caused by
+  non-associative float addition that #16378 missed. (Luca Cavanna)
 
 * GITHUB#16419: Restore KnnVectorsReader#finishMerge() calls after merges, including
   exceptional exits, so vector inputs switch back from sequential read advice.
