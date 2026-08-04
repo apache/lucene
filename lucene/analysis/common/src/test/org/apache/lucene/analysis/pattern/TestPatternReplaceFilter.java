@@ -30,7 +30,7 @@ public class TestPatternReplaceFilter extends BaseTokenStreamTestCase {
   public void testReplaceAll() throws Exception {
     String input = "aabfooaabfooabfoob ab caaaaaaaaab";
     TokenStream ts =
-        new PatternReplaceFilter(whitespaceMockTokenizer(input), Pattern.compile("a*b"), "-", true);
+        new PatternReplaceFilter(whitespaceMockTokenizer(input), Pattern.compile("a*b"), "-", true, false);
     assertTokenStreamContents(ts, new String[] {"-foo-foo-foo-", "-", "c-"});
   }
 
@@ -38,7 +38,7 @@ public class TestPatternReplaceFilter extends BaseTokenStreamTestCase {
     String input = "aabfooaabfooabfoob ab caaaaaaaaab";
     TokenStream ts =
         new PatternReplaceFilter(
-            whitespaceMockTokenizer(input), Pattern.compile("a*b"), "-", false);
+            whitespaceMockTokenizer(input), Pattern.compile("a*b"), "-", false, false);
     assertTokenStreamContents(ts, new String[] {"-fooaabfooabfoob", "-", "c-"});
   }
 
@@ -46,7 +46,7 @@ public class TestPatternReplaceFilter extends BaseTokenStreamTestCase {
     String input = "aabfooaabfooabfoob ab caaaaaaaaab";
     TokenStream ts =
         new PatternReplaceFilter(
-            whitespaceMockTokenizer(input), Pattern.compile("a*b"), null, false);
+            whitespaceMockTokenizer(input), Pattern.compile("a*b"), null, false, false);
     assertTokenStreamContents(ts, new String[] {"fooaabfooabfoob", "", "c"});
   }
 
@@ -54,7 +54,7 @@ public class TestPatternReplaceFilter extends BaseTokenStreamTestCase {
     String input = "aabfooaabfooabfoob ab caaaaaaaaab";
     TokenStream ts =
         new PatternReplaceFilter(
-            whitespaceMockTokenizer(input), Pattern.compile("a*b"), null, true);
+            whitespaceMockTokenizer(input), Pattern.compile("a*b"), null, true, false);
     assertTokenStreamContents(ts, new String[] {"foofoofoo", "", "c"});
   }
 
@@ -62,7 +62,7 @@ public class TestPatternReplaceFilter extends BaseTokenStreamTestCase {
     String input = "aabfooaabfooabfoob ab caaaaaaaaab";
     TokenStream ts =
         new PatternReplaceFilter(
-            whitespaceMockTokenizer(input), Pattern.compile("(a*)b"), "$1\\$", true);
+            whitespaceMockTokenizer(input), Pattern.compile("(a*)b"), "$1\\$", true, false);
     assertTokenStreamContents(ts, new String[] {"aa$fooaa$fooa$foo$", "a$", "caaaaaaaaa$"});
   }
 
@@ -74,7 +74,7 @@ public class TestPatternReplaceFilter extends BaseTokenStreamTestCase {
           protected TokenStreamComponents createComponents(String fieldName) {
             Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
             TokenStream filter =
-                new PatternReplaceFilter(tokenizer, Pattern.compile("a"), "b", false);
+                new PatternReplaceFilter(tokenizer, Pattern.compile("a"), "b", false, false);
             return new TokenStreamComponents(tokenizer, filter);
           }
         };
@@ -87,7 +87,7 @@ public class TestPatternReplaceFilter extends BaseTokenStreamTestCase {
           protected TokenStreamComponents createComponents(String fieldName) {
             Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
             TokenStream filter =
-                new PatternReplaceFilter(tokenizer, Pattern.compile("a"), "b", true);
+                new PatternReplaceFilter(tokenizer, Pattern.compile("a"), "b", true, false);
             return new TokenStreamComponents(tokenizer, filter);
           }
         };
@@ -102,7 +102,7 @@ public class TestPatternReplaceFilter extends BaseTokenStreamTestCase {
           protected TokenStreamComponents createComponents(String fieldName) {
             Tokenizer tokenizer = new KeywordTokenizer();
             return new TokenStreamComponents(
-                tokenizer, new PatternReplaceFilter(tokenizer, Pattern.compile("a"), "b", true));
+                tokenizer, new PatternReplaceFilter(tokenizer, Pattern.compile("a"), "b", true, false));
           }
         };
     checkOneTerm(a, "", "");
