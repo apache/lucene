@@ -389,12 +389,13 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
     }
 
     long totalDocs = 0;
-    SegmentInfo info;
+
     for (int seg = 0; seg < numSegments; seg++) {
       String segName = input.readString();
       byte[] segmentID = new byte[StringHelper.ID_LENGTH];
       input.readBytes(segmentID, 0, segmentID.length);
       Codec codec = readCodec(input);
+      final SegmentInfo info;
       try {
         info = codec.segmentInfoFormat().read(directory, segName, segmentID, IOContext.READONCE);
       } catch (ThreadInterruptedException e) {
