@@ -270,19 +270,19 @@ public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
   }
 
   /**
-   * GITHUB#14399: TopFieldCollector caches whether the search sort is a prefix of the index sort
-   * after inspecting only the first leaf. That is safe for a single index (IndexWriter enforces one
-   * index sort), but a MultiReader can span indexes with different index sorts. Here the first
-   * index is sorted so the search sort IS a prefix (early termination is eligible) while the second
-   * index is sorted the opposite way (it is NOT). The cached "yes" wrongly early-terminates the
-   * second leaf and drops results that should rank first.
+   * GITHUB#14399: whether the search sort is a prefix of the index sort must be decided per
+   * segment. A single index has one index sort (IndexWriter enforces it), but a MultiReader can
+   * span indexes sorted differently: here the first index is sorted so the search sort IS a prefix
+   * (early termination is eligible) while the second is sorted the opposite way (it is NOT).
+   * Deciding once from the first leaf answers "yes" for both, which early-terminates the second
+   * leaf and drops the result that should rank first.
    */
   public void testMultiReaderWithDifferentIndexSorts() throws IOException {
     final Sort ascSort = new Sort(new SortField("ndv", SortField.Type.LONG));
 
     // Index A: sorted ndv ASC, many docs with a moderate value (50). Under an ASC search sort this
-    // leaf is prefix-sorted, so the collector caches "search sort is part of index sort" = true and
-    // calls disableSkipping().
+    // leaf is prefix-sorted, so the collector decides "search sort is part of index sort" = true
+    // for it and calls disableSkipping().
     Directory dirA = newDirectory();
     IndexWriterConfig iwcA = newIndexWriterConfig().setIndexSort(ascSort);
     try (RandomIndexWriter w = new RandomIndexWriter(random(), dirA, iwcA)) {
@@ -296,10 +296,8 @@ public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
 
     // Index B: sorted ndv DESC (a DIFFERENT index sort). Its most competitive doc for an ASC search
     // (value 1) is written LAST, so in docid order the leaf is [90, 90, ..., 1]. If leaf B is
-    // wrongly
-    // treated as prefix-sorted (leaf A's cached decision), collection terminates in docid order
-    // after
-    // the threshold and never reaches the trailing value 1 -- the true top result is dropped.
+    // wrongly treated as prefix-sorted, collection terminates in docid order after the threshold
+    // and never reaches the trailing value 1 -- the true top result is dropped.
     Directory dirB = newDirectory();
     IndexWriterConfig iwcB =
         newIndexWriterConfig()
@@ -322,8 +320,8 @@ public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
     // eligible for early termination); the B leaf is DESC-sorted (not a prefix).
     MultiReader multiReader = new MultiReader(readerA, readerB);
     try {
-      // Force both leaves into a single slice so one collector (with one shared
-      // searchSortPartOfIndexSort cache) sees both the ASC-sorted and DESC-sorted leaves.
+      // Force both leaves into a single slice so one collector sees both the ASC-sorted and the
+      // DESC-sorted leaf.
       IndexSearcher searcher =
           new IndexSearcher(multiReader) {
             @Override
