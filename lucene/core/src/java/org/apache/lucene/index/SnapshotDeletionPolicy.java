@@ -19,9 +19,12 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.lucene.internal.hppc.IntCursor;
+import org.apache.lucene.internal.hppc.LongIntHashMap;
+import org.apache.lucene.internal.hppc.LongObjectHashMap;
+import org.apache.lucene.internal.hppc.ObjectCursor;
 import org.apache.lucene.store.Directory;
 
 /**
@@ -41,10 +44,10 @@ import org.apache.lucene.store.Directory;
 public class SnapshotDeletionPolicy extends IndexDeletionPolicy {
 
   /** Records how many snapshots are held against each commit generation */
-  protected final Map<Long, Integer> refCounts = new HashMap<>();
+  protected final LongIntHashMap refCounts = new LongIntHashMap();
 
   /** Used to map gen to IndexCommit. */
-  protected final Map<Long, IndexCommit> indexCommits = new HashMap<>();
+  protected final LongObjectHashMap<IndexCommit> indexCommits = new LongObjectHashMap<>();
 
   /** Wrapped {@link IndexDeletionPolicy} */
   private final IndexDeletionPolicy primary;
@@ -63,20 +66,21 @@ public class SnapshotDeletionPolicy extends IndexDeletionPolicy {
   @Override
   public synchronized void onCommit(List<? extends IndexCommit> commits) throws IOException {
     primary.onCommit(wrapCommits(commits));
-    lastCommit = commits.get(commits.size() - 1);
+    lastCommit = commits.getLast();
   }
 
   @Override
   public synchronized void onInit(List<? extends IndexCommit> commits) throws IOException {
     initCalled = true;
     primary.onInit(wrapCommits(commits));
-    for (IndexCommit commit : commits) {
-      if (refCounts.containsKey(commit.getGeneration())) {
-        indexCommits.put(commit.getGeneration(), commit);
+    if (commits.isEmpty() == false) {
+      for (IndexCommit commit : commits) {
+        long gen = commit.getGeneration();
+        if (refCounts.containsKey(gen)) {
+          indexCommits.put(gen, commit);
+        }
       }
-    }
-    if (!commits.isEmpty()) {
-      lastCommit = commits.get(commits.size() - 1);
+      lastCommit = commits.getLast();
     }
   }
 
@@ -91,38 +95,31 @@ public class SnapshotDeletionPolicy extends IndexDeletionPolicy {
   }
 
   /** Release a snapshot by generation. */
-  protected void releaseGen(long gen) throws IOException {
-    if (!initCalled) {
+  protected synchronized void releaseGen(long gen) {
+    if (initCalled == false) {
       throw new IllegalStateException(
           "this instance is not being used by IndexWriter; be sure to use the instance returned from writer.getConfig().getIndexDeletionPolicy()");
     }
-    Integer refCount = refCounts.get(gen);
-    if (refCount == null) {
+    int refCount = refCounts.getOrDefault(gen, 0);
+    if (refCount == 0) {
       throw new IllegalArgumentException("commit gen=" + gen + " is not currently snapshotted");
     }
-    int refCountInt = refCount.intValue();
-    assert refCountInt > 0;
-    refCountInt--;
-    if (refCountInt == 0) {
+    assert refCount > 0;
+    if (refCount == 1) {
       refCounts.remove(gen);
       indexCommits.remove(gen);
     } else {
-      refCounts.put(gen, refCountInt);
+      refCounts.put(gen, refCount - 1);
     }
   }
 
   /** Increments the refCount for this {@link IndexCommit}. */
   protected synchronized void incRef(IndexCommit ic) {
     long gen = ic.getGeneration();
-    Integer refCount = refCounts.get(gen);
-    int refCountInt;
-    if (refCount == null) {
-      indexCommits.put(gen, lastCommit);
-      refCountInt = 0;
-    } else {
-      refCountInt = refCount.intValue();
+    int refCount = refCounts.putOrAdd(gen, 1, 1);
+    if (refCount == 1) {
+      indexCommits.put(gen, ic);
     }
-    refCounts.put(gen, refCountInt + 1);
   }
 
   /**
@@ -140,7 +137,7 @@ public class SnapshotDeletionPolicy extends IndexDeletionPolicy {
    * @return the {@link IndexCommit} that was snapshotted.
    */
   public synchronized IndexCommit snapshot() throws IOException {
-    if (!initCalled) {
+    if (initCalled == false) {
       throw new IllegalStateException(
           "this instance is not being used by IndexWriter; be sure to use the instance returned from writer.getConfig().getIndexDeletionPolicy()");
     }
@@ -156,14 +153,19 @@ public class SnapshotDeletionPolicy extends IndexDeletionPolicy {
 
   /** Returns all IndexCommits held by at least one snapshot. */
   public synchronized List<IndexCommit> getSnapshots() {
-    return new ArrayList<>(indexCommits.values());
+    ArrayList<IndexCommit> result = new ArrayList<>(indexCommits.size());
+    for (ObjectCursor<IndexCommit> cursor : indexCommits.values()) {
+      result.add(cursor.value);
+    }
+
+    return result;
   }
 
   /** Returns the total number of snapshots currently held. */
   public synchronized int getSnapshotCount() {
     int total = 0;
-    for (Integer refCount : refCounts.values()) {
-      total += refCount.intValue();
+    for (IntCursor cursor : refCounts.values()) {
+      total += cursor.value;
     }
 
     return total;
@@ -190,10 +192,10 @@ public class SnapshotDeletionPolicy extends IndexDeletionPolicy {
   private class SnapshotCommitPoint extends IndexCommit {
 
     /** The {@link IndexCommit} we are preventing from deletion. */
-    protected IndexCommit cp;
+    private final IndexCommit cp;
 
     /** Creates a {@code SnapshotCommitPoint} wrapping the provided {@link IndexCommit}. */
-    protected SnapshotCommitPoint(IndexCommit cp) {
+    SnapshotCommitPoint(IndexCommit cp) {
       this.cp = cp;
     }
 
@@ -207,7 +209,7 @@ public class SnapshotDeletionPolicy extends IndexDeletionPolicy {
       synchronized (SnapshotDeletionPolicy.this) {
         // Suppress the delete request if this commit point is
         // currently snapshotted.
-        if (!refCounts.containsKey(cp.getGeneration())) {
+        if (refCounts.containsKey(cp.getGeneration()) == false) {
           cp.delete();
         }
       }
