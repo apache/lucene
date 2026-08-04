@@ -22,6 +22,8 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
+import org.apache.lucene.analysis.miscellaneous.KeywordMarkerFilter;
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 
@@ -107,5 +109,78 @@ public class TestPatternReplaceFilter extends BaseTokenStreamTestCase {
         };
     checkOneTerm(a, "", "");
     a.close();
+  }
+
+  public void testIgnoreKeywords() throws Exception {
+    Analyzer a =
+        new Analyzer() {
+          @Override
+          protected TokenStreamComponents createComponents(String fieldName) {
+            Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
+            KeywordMarkerFilter keywordFilter =
+                new KeywordMarkerFilter(tokenizer) {
+                  private final CharTermAttribute term = addAttribute(CharTermAttribute.class);
+
+                  @Override
+                  public boolean isKeyword() {
+                    // Mark terms starting with 'k' as keywords
+                    return term.toString().startsWith("k");
+                  }
+                };
+            return new TokenStreamComponents(
+                tokenizer,
+                new PatternReplaceFilter(keywordFilter, Pattern.compile("a"), "X", true, true));
+          }
+        };
+
+    // Without ignoreKeywords=true, both terms would have 'a' replaced with 'X'
+    // With ignoreKeywords=true, only non-keyword terms should be modified
+    assertAnalyzesTo(
+        a,
+        "banana kappa alpha",
+        new String[] {"bXnXnX", "kappa", "XlphX"}, // kappa unchanged, others modified
+        new int[] {0, 7, 13},
+        new int[] {6, 12, 18},
+        null,
+        new int[] {1, 1, 1},
+        null,
+        false);
+
+    a.close();
+
+    // Test with ignoreKeywords=false for comparison
+    Analyzer b =
+        new Analyzer() {
+          @Override
+          protected TokenStreamComponents createComponents(String fieldName) {
+            Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
+            KeywordMarkerFilter keywordFilter =
+                new KeywordMarkerFilter(tokenizer) {
+                  private final CharTermAttribute term = addAttribute(CharTermAttribute.class);
+
+                  @Override
+                  public boolean isKeyword() {
+                    return term.toString().startsWith("k");
+                  }
+                };
+            return new TokenStreamComponents(
+                tokenizer,
+                new PatternReplaceFilter(keywordFilter, Pattern.compile("a"), "X", true, false));
+          }
+        };
+
+    // With ignoreKeywords=false, all terms should be modified regardless of keyword status
+    assertAnalyzesTo(
+        b,
+        "banana kappa alpha",
+        new String[] {"bXnXnX", "kXppX", "XlphX"}, // all terms modified
+        new int[] {0, 7, 13},
+        new int[] {6, 12, 18},
+        null,
+        new int[] {1, 1, 1},
+        null,
+        false);
+
+    b.close();
   }
 }
