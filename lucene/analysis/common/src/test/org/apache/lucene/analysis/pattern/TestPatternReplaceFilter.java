@@ -30,7 +30,8 @@ public class TestPatternReplaceFilter extends BaseTokenStreamTestCase {
   public void testReplaceAll() throws Exception {
     String input = "aabfooaabfooabfoob ab caaaaaaaaab";
     TokenStream ts =
-        new PatternReplaceFilter(whitespaceMockTokenizer(input), Pattern.compile("a*b"), "-", true, false);
+        new PatternReplaceFilter(
+            whitespaceMockTokenizer(input), Pattern.compile("a*b"), "-", true, false);
     assertTokenStreamContents(ts, new String[] {"-foo-foo-foo-", "-", "c-"});
   }
 
@@ -102,7 +103,8 @@ public class TestPatternReplaceFilter extends BaseTokenStreamTestCase {
           protected TokenStreamComponents createComponents(String fieldName) {
             Tokenizer tokenizer = new KeywordTokenizer();
             return new TokenStreamComponents(
-                tokenizer, new PatternReplaceFilter(tokenizer, Pattern.compile("a"), "b", true, false));
+                tokenizer,
+                new PatternReplaceFilter(tokenizer, Pattern.compile("a"), "b", true, false));
           }
         };
     checkOneTerm(a, "", "");
