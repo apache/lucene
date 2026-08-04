@@ -211,28 +211,6 @@ if [ "$cygwin" = "true" -o "$msys" = "true" ] ; then
 fi
 DEFAULT_JVM_OPTS="$DEFAULT_JVM_OPTS \"-Djava.io.tmpdir=$GRADLE_TEMPDIR\""
 
-# LUCENE-9266: verify and download the gradle wrapper jar if we don't have one.
-if [ "$cygwin" = "true" -o "$msys" = "true" ] ; then
-    APP_HOME=`cygpath --path --mixed "$APP_HOME"`
-fi
-
-GRADLE_WRAPPER_JAR="$APP_HOME/gradle/wrapper/gradle-wrapper.jar"
-if "$darwin"; then
-    shasumcmd=shasum
-else
-    shasumcmd=sha256sum
-fi
-if [ ! -e "$GRADLE_WRAPPER_JAR" ] || ! ( cd "$APP_HOME/gradle/wrapper" && "$shasumcmd" --status -c "${GRADLE_WRAPPER_JAR}.sha256" ); then
-    "$JAVACMD" $JAVA_OPTS "$APP_HOME/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/WrapperDownloader.java" "$GRADLE_WRAPPER_JAR"
-    WRAPPER_STATUS=$?
-    if [ "$WRAPPER_STATUS" -eq 1 ]; then
-        echo "ERROR: Something went wrong. Make sure you're using Java version of exactly 25."
-        exit $WRAPPER_STATUS
-    elif [ "$WRAPPER_STATUS" -ne 0 ]; then
-        exit $WRAPPER_STATUS
-    fi
-fi
-
 # Generate gradle.properties if they don't exist
 if [ ! -e "$APP_HOME/gradle.properties" ]; then
     "$JAVACMD" $JAVA_OPTS "$APP_HOME/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/GradlePropertiesGenerator.java" "$APP_HOME/gradle/template.gradle.properties" "$APP_HOME/gradle.properties"
@@ -251,7 +229,7 @@ fi
 
 set -- \
         "-Dorg.gradle.appname=$APP_BASE_NAME" \
-        -jar "$APP_HOME/gradle/wrapper/gradle-wrapper.jar" \
+        "$APP_HOME/gradle/wrapper/GradleWrapper.java" \
         "$@"
 
 # Stop when "xargs" is not available.
