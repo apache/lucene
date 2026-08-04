@@ -2141,7 +2141,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       LeafReader leafReader = getOnlyLeafReader(reader);
       if (leafReader instanceof CodecReader codecReader) {
         KnnVectorsReader knnVectorsReader =
-            codecReader.getVectorReader().unwrapReaderForField(field);
+            ((PerFieldKnnVectorsFormat.FieldsReader) codecReader.getVectorReader())
+                .getFieldReader(field);
         FloatVectorValues floatVectorValues = knnVectorsReader.getFloatVectorValues(field);
         assertNotNull(floatVectorValues);
         VectorScorer scorer = floatVectorValues.scorer(query);
