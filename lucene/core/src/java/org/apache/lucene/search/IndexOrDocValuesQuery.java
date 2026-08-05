@@ -129,9 +129,8 @@ public final class IndexOrDocValuesQuery extends Query {
 
   @Override
   public void visit(QueryVisitor visitor) {
-    QueryVisitor v = visitor.getSubVisitor(BooleanClause.Occur.MUST, this);
-    indexQuery.visit(v);
-    dvQuery.visit(v);
+    // Both queries match the same docs; only visit one to avoid double-counting.
+    indexQuery.visit(visitor.getSubVisitor(BooleanClause.Occur.MUST, this));
   }
 
   @Override
