@@ -924,7 +924,7 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
           }
           // now look for unreferenced files: discount ones that we tried to delete but could not
           Set<String> allFiles = new HashSet<>(Arrays.asList(listAll()));
-          String[] startFiles = allFiles.toArray(new String[0]);
+          String[] startFiles = allFiles.toArray(String[]::new);
           IndexWriterConfig iwc = new IndexWriterConfig(null);
           iwc.setIndexDeletionPolicy(NoDeletionPolicy.INSTANCE);
 
@@ -938,8 +938,8 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
           Set<String> startSet = new TreeSet<>(Arrays.asList(startFiles));
           Set<String> endSet = new TreeSet<>(Arrays.asList(endFiles));
 
-          startFiles = startSet.toArray(new String[0]);
-          endFiles = endSet.toArray(new String[0]);
+          startFiles = startSet.toArray(String[]::new);
+          endFiles = endSet.toArray(String[]::new);
 
           if (!Arrays.equals(startFiles, endFiles)) {
             List<String> removed = new ArrayList<>();

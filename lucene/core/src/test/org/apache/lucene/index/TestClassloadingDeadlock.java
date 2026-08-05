@@ -49,7 +49,7 @@ import org.junit.Assert;
 import org.junit.runner.RunWith;
 
 /* WARNING: This test does *not* extend LuceneTestCase to prevent static class
- * initialization when spawned as subprocess (and please let default codecs alive)! */
+ * initialization when spawned as a subprocess (and please let default codecs alive)! */
 
 @RunWith(RandomizedRunner.class)
 public class TestClassloadingDeadlock extends Assert {

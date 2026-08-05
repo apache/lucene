@@ -17,7 +17,10 @@
 
 package org.apache.lucene.sandbox.search;
 
+import static org.apache.lucene.search.TopDocsCollector.EMPTY_TOPDOCS;
+
 import java.io.IOException;
+import java.util.List;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexReader;
@@ -80,95 +83,131 @@ public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
     runNumHits(25);
   }
 
-  public void testIllegalArguments() throws IOException {
+  public void testInvalidRequestedHitCount() {
+    for (int n : new int[] {0, -1}) {
+      IllegalArgumentException e =
+          expectThrows(IllegalArgumentException.class, () -> new LargeNumHitsTopDocsCollector(n));
+      assertTrue(e.getMessage().contains("requestedHitCount must be > 0"));
+    }
+  }
+
+  public void testHowMany() throws IOException {
     IndexSearcher searcher = newSearcher(reader);
-    LargeNumHitsTopDocsCollector largeCollector = new LargeNumHitsTopDocsCollector(15);
-    TopScoreDocCollectorManager regularCollectorManager =
-        new TopScoreDocCollectorManager(15, Integer.MAX_VALUE);
+    LargeNumHitsTopDocsCollectorManager largeCollectorManager =
+        new LargeNumHitsTopDocsCollectorManager(15);
 
-    searcher.search(testQuery, largeCollector);
-    TopDocs topDocs = searcher.search(testQuery, regularCollectorManager);
-
-    assertEquals(largeCollector.totalHits, topDocs.totalHits.value());
+    searcher.search(testQuery, largeCollectorManager);
+    List<LargeNumHitsTopDocsCollector> collectorList = largeCollectorManager.getCollectors();
+    LargeNumHitsTopDocsCollector largeCollector =
+        collectorList.get(random().nextInt(0, collectorList.size()));
 
     IllegalArgumentException expected =
-        expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              largeCollector.topDocs(350_000);
-            });
+        expectThrows(IllegalArgumentException.class, () -> largeCollector.topDocs(-1));
+    assertTrue(expected.getMessage().contains("Number of hits requested must not be negative"));
 
-    assertTrue(expected.getMessage().contains("Incorrect number of hits requested"));
+    assertEquals(EMPTY_TOPDOCS, largeCollector.topDocs(0));
+    assertEquals(largeCollector.totalHits, largeCollector.topDocs(35_000).totalHits.value());
   }
 
   public void testNoPQBuild() throws IOException {
     IndexSearcher searcher = newSearcher(reader);
-    LargeNumHitsTopDocsCollector largeCollector = new LargeNumHitsTopDocsCollector(250_000);
+    LargeNumHitsTopDocsCollectorManager largeCollectorManager =
+        new LargeNumHitsTopDocsCollectorManager(250_000);
     TopScoreDocCollectorManager regularCollectorManager =
         new TopScoreDocCollectorManager(reader.numDocs(), Integer.MAX_VALUE);
 
-    searcher.search(testQuery, largeCollector);
-    TopDocs topDocs = searcher.search(testQuery, regularCollectorManager);
+    TopDocs largeTopDocs = searcher.search(testQuery, largeCollectorManager);
+    TopDocs regularTopDocs = searcher.search(testQuery, regularCollectorManager);
+    assertEquals(largeTopDocs.totalHits.value(), regularTopDocs.totalHits.value());
 
-    assertEquals(largeCollector.totalHits, topDocs.totalHits.value());
-
-    assertNull(largeCollector.pq);
-    assertNull(largeCollector.pqTop);
+    for (LargeNumHitsTopDocsCollector largeCollector : largeCollectorManager.getCollectors()) {
+      assertNull(largeCollector.pq);
+      assertNull(largeCollector.pqTop);
+    }
   }
 
   public void testPQBuild() throws IOException {
     IndexSearcher searcher = newSearcher(reader);
-    LargeNumHitsTopDocsCollector largeCollector = new LargeNumHitsTopDocsCollector(50);
+    int requestedHitCount = random().nextInt(1, 1000);
+    LargeNumHitsTopDocsCollectorManager largeCollectorManager =
+        new LargeNumHitsTopDocsCollectorManager(requestedHitCount);
     TopScoreDocCollectorManager regularCollectorManager =
-        new TopScoreDocCollectorManager(50, Integer.MAX_VALUE);
+        new TopScoreDocCollectorManager(requestedHitCount, Integer.MAX_VALUE);
 
-    searcher.search(testQuery, largeCollector);
-    TopDocs topDocs = searcher.search(testQuery, regularCollectorManager);
+    TopDocs largeTopDocs = searcher.search(testQuery, largeCollectorManager);
+    TopDocs regularTopDocs = searcher.search(testQuery, regularCollectorManager);
+    assertEquals(largeTopDocs.totalHits.value(), regularTopDocs.totalHits.value());
 
-    assertEquals(largeCollector.totalHits, topDocs.totalHits.value());
-
-    assertNotNull(largeCollector.pq);
-    assertNotNull(largeCollector.pqTop);
+    for (LargeNumHitsTopDocsCollector largeCollector : largeCollectorManager.getCollectors()) {
+      if (largeCollector.totalHits > requestedHitCount) {
+        assertNotNull(largeCollector.pq);
+        assertNotNull(largeCollector.pqTop);
+      }
+    }
   }
 
   public void testNoPQHitsOrder() throws IOException {
     IndexSearcher searcher = newSearcher(reader);
-    LargeNumHitsTopDocsCollector largeCollector = new LargeNumHitsTopDocsCollector(250_000);
+    LargeNumHitsTopDocsCollectorManager largeCollectorManager =
+        new LargeNumHitsTopDocsCollectorManager(250_000);
     TopScoreDocCollectorManager regularCollectorManager =
         new TopScoreDocCollectorManager(reader.numDocs(), Integer.MAX_VALUE);
 
-    searcher.search(testQuery, largeCollector);
-    TopDocs topDocs = searcher.search(testQuery, regularCollectorManager);
+    TopDocs largeTopDocs = searcher.search(testQuery, largeCollectorManager);
+    TopDocs regularTopDocs = searcher.search(testQuery, regularCollectorManager);
+    assertEquals(largeTopDocs.totalHits.value(), regularTopDocs.totalHits.value());
 
-    assertEquals(largeCollector.totalHits, topDocs.totalHits.value());
+    for (LargeNumHitsTopDocsCollector largeCollector : largeCollectorManager.getCollectors()) {
+      assertNull(largeCollector.pq);
+      assertNull(largeCollector.pqTop);
+    }
 
-    assertNull(largeCollector.pq);
-    assertNull(largeCollector.pqTop);
-
-    topDocs = largeCollector.topDocs();
-
-    if (topDocs.scoreDocs.length > 0) {
-      float preScore = topDocs.scoreDocs[0].score;
-      for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
+    if (largeTopDocs.scoreDocs.length > 0) {
+      float preScore = largeTopDocs.scoreDocs[0].score;
+      for (ScoreDoc scoreDoc : largeTopDocs.scoreDocs) {
         assert scoreDoc.score <= preScore;
         preScore = scoreDoc.score;
       }
     }
   }
 
+  public void testInvalidNumHitsInManagerConstructor() {
+    for (int n : new int[] {0, -1}) {
+      IllegalArgumentException e =
+          expectThrows(
+              IllegalArgumentException.class, () -> new LargeNumHitsTopDocsCollectorManager(n));
+      assertTrue(e.getMessage().contains("numHits must be > 0"));
+    }
+  }
+
+  public void testReduceWithZeroHitCollector() throws IOException {
+    Query termQuery = new TermQuery(new Term("field", "no-hit"));
+
+    IndexSearcher searcher = newSearcher(reader);
+    LargeNumHitsTopDocsCollectorManager largeCollectorManager =
+        new LargeNumHitsTopDocsCollectorManager(50);
+    TopScoreDocCollectorManager regularCollectorManager =
+        new TopScoreDocCollectorManager(50, Integer.MAX_VALUE);
+
+    TopDocs largeTopDocs = searcher.search(termQuery, largeCollectorManager);
+    TopDocs regularTopDocs = searcher.search(termQuery, regularCollectorManager);
+
+    assertEquals(largeTopDocs.totalHits.value(), regularTopDocs.totalHits.value());
+    assertEquals(0, largeTopDocs.totalHits.value());
+  }
+
   private void runNumHits(int numHits) throws IOException {
     IndexSearcher searcher = newSearcher(reader);
-    LargeNumHitsTopDocsCollector largeCollector = new LargeNumHitsTopDocsCollector(numHits);
+    LargeNumHitsTopDocsCollectorManager largeCollectorManager =
+        new LargeNumHitsTopDocsCollectorManager(numHits);
     TopScoreDocCollectorManager regularCollectorManager =
         new TopScoreDocCollectorManager(numHits, Integer.MAX_VALUE);
 
-    searcher.search(testQuery, largeCollector);
+    TopDocs largeTopDocs = searcher.search(testQuery, largeCollectorManager);
+    TopDocs regularTopDocs = searcher.search(testQuery, regularCollectorManager);
 
-    TopDocs firstTopDocs = largeCollector.topDocs();
-    TopDocs secondTopDocs = searcher.search(testQuery, regularCollectorManager);
-
-    assertEquals(largeCollector.totalHits, secondTopDocs.totalHits.value());
-    assertEquals(firstTopDocs.scoreDocs.length, secondTopDocs.scoreDocs.length);
-    CheckHits.checkEqual(testQuery, firstTopDocs.scoreDocs, secondTopDocs.scoreDocs);
+    assertEquals(largeTopDocs.totalHits.value(), regularTopDocs.totalHits.value());
+    assertEquals(largeTopDocs.scoreDocs.length, regularTopDocs.scoreDocs.length);
+    CheckHits.checkEqual(testQuery, largeTopDocs.scoreDocs, regularTopDocs.scoreDocs);
   }
 }

@@ -176,7 +176,7 @@ public class TestControlledRealTimeReopenThread extends ThreadedIndexingAndSearc
   @Override
   protected void updateDocument(Term id, Iterable<? extends IndexableField> doc) throws Exception {
     final long gen = genWriter.updateDocument(id, doc);
-    // Randomly verify the udpate "took":
+    // Randomly verify the update "took":
     if (random().nextInt(20) == 2) {
       if (VERBOSE) {
         System.out.println(

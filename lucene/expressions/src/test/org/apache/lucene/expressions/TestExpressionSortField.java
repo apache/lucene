@@ -19,10 +19,12 @@ package org.apache.lucene.expressions;
 import org.apache.lucene.expressions.js.JavascriptCompiler;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.SortField;
-import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCaseJupiter;
+import org.junit.jupiter.api.Test;
 
-public class TestExpressionSortField extends LuceneTestCase {
+public class TestExpressionSortField extends LuceneTestCaseJupiter {
 
+  @Test
   public void testToString() throws Exception {
     Expression expr = JavascriptCompiler.compile("sqrt(_score) + ln(popularity)");
 
@@ -35,6 +37,7 @@ public class TestExpressionSortField extends LuceneTestCase {
   }
 
   @SuppressWarnings("SelfAssertion")
+  @Test
   public void testEquals() throws Exception {
     Expression expr = JavascriptCompiler.compile("sqrt(_score) + ln(popularity)");
 
@@ -68,6 +71,7 @@ public class TestExpressionSortField extends LuceneTestCase {
     assertEquals(sf1, sf1);
   }
 
+  @Test
   public void testNeedsScores() throws Exception {
     SimpleBindings bindings = new SimpleBindings();
     // refers to score directly

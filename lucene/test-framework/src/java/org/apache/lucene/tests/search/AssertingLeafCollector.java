@@ -23,8 +23,10 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.DocIdStream;
 import org.apache.lucene.search.FilterDocIdSetIterator;
 import org.apache.lucene.search.FilterLeafCollector;
+import org.apache.lucene.search.FilterScorer;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorable;
+import org.apache.lucene.search.Scorer;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOIntConsumer;
 
@@ -38,6 +40,7 @@ class AssertingLeafCollector extends FilterLeafCollector {
   private boolean finishCalled;
 
   private int[] docBuffer;
+  private int batchCollectionDepth;
 
   AssertingLeafCollector(LeafCollector collector, int min, int max) {
     super(collector);
@@ -47,7 +50,39 @@ class AssertingLeafCollector extends FilterLeafCollector {
 
   @Override
   public void setScorer(Scorable scorer) throws IOException {
-    super.setScorer(AssertingScorable.wrap(scorer));
+    Scorable wrappedScorer = AssertingScorable.wrap(scorer);
+    if (wrappedScorer instanceof Scorer wrappedScorerAsScorer) {
+      super.setScorer(
+          new FilterScorer(wrappedScorerAsScorer) {
+            @Override
+            public float score() throws IOException {
+              assert batchCollectionDepth == 0
+                  : "Scorable.score() must not be called inside collect(DocIdStream) or "
+                      + "collectRange() since the scorer is not positioned on individual "
+                      + "documents during batch collection";
+              return super.score();
+            }
+
+            @Override
+            public void setMinCompetitiveScore(float minScore) throws IOException {
+              in.setMinCompetitiveScore(minScore);
+            }
+
+            @Override
+            public float getMaxScore(int upTo) throws IOException {
+              return in.getMaxScore(upTo);
+            }
+
+            @Override
+            public int advanceShallow(int target) throws IOException {
+              return in.advanceShallow(target);
+            }
+          });
+    } else {
+      // Some bulk scorers install synthetic Scorables that are deliberately safe to score during
+      // batching, so only iterator-backed Scorers get the batch-position assertion above.
+      super.setScorer(wrappedScorer);
+    }
   }
 
   @Override
@@ -64,7 +99,12 @@ class AssertingLeafCollector extends FilterLeafCollector {
         }
       }
     } else {
-      in.collect(new AssertingDocIdStream(stream));
+      batchCollectionDepth++;
+      try {
+        in.collect(new AssertingDocIdStream(stream));
+      } finally {
+        batchCollectionDepth--;
+      }
     }
   }
 
@@ -74,7 +114,12 @@ class AssertingLeafCollector extends FilterLeafCollector {
     assert max > min;
     assert min >= this.min : "Out of range: " + min + " < " + this.min;
     assert max <= this.max : "Out of range: " + (max - 1) + " >= " + this.max;
-    in.collectRange(min, max);
+    batchCollectionDepth++;
+    try {
+      in.collectRange(min, max);
+    } finally {
+      batchCollectionDepth--;
+    }
     lastCollected = max - 1;
   }
 

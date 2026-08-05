@@ -366,7 +366,7 @@ public class PhraseQuery extends Query {
       this.position = position;
       nTerms = terms == null ? 0 : terms.size();
       if (nTerms > 0) {
-        Term[] terms2 = terms.toArray(new Term[0]);
+        Term[] terms2 = terms.toArray(Term[]::new);
         if (nTerms > 1) {
           Arrays.sort(terms2);
         }

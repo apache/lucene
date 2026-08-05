@@ -170,7 +170,7 @@ class BigramDictionary extends AbstractDictionary {
             }
             char[] carray = tmpword.toCharArray();
             long hashId = hash1(carray);
-            int index = getAvaliableIndex(hashId, carray);
+            int index = getAvailableIndex(hashId, carray);
             if (index != -1) {
               if (bigramHashTable[index] == 0) {
                 bigramHashTable[index] = hashId;
@@ -186,7 +186,7 @@ class BigramDictionary extends AbstractDictionary {
     // log.info("load dictionary done! " + dctFilePath + " total:" + total);
   }
 
-  private int getAvaliableIndex(long hashId, char[] carray) {
+  private int getAvailableIndex(long hashId, char[] carray) {
     int hash1 = (int) (hashId % PRIME_BIGRAM_LENGTH);
     int hash2 = hash2(carray) % PRIME_BIGRAM_LENGTH;
     if (hash1 < 0) hash1 = PRIME_BIGRAM_LENGTH + hash1;

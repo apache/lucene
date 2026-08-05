@@ -30,15 +30,18 @@ import java.util.stream.Stream;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
+import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.KnnVectorValues;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorEncoding;
@@ -98,7 +101,6 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
       Lucene104ScalarQuantizedVectorScorer vectorsScorer,
       DataAccessHint accessHint)
       throws IOException {
-    super(vectorsScorer);
     this.vectorScorer = vectorsScorer;
     this.rawVectorsReader = rawVectorsReader;
     int versionMeta = -1;
@@ -187,6 +189,11 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
   }
 
   @Override
+  public FlatVectorsScorer getFlatVectorScorer(String field) throws IOException {
+    return vectorScorer;
+  }
+
+  @Override
   public RandomVectorScorer getRandomVectorScorer(String field, float[] target) throws IOException {
     FieldEntry fi = fields.get(field);
     if (fi == null) {
@@ -216,9 +223,14 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    rawVectorsReader.checkIntegrity();
-    CodecUtil.checksumEntireFile(quantizedVectorData);
+  public RandomVectorScorer getRandomVectorScorer(String field, short[] target) throws IOException {
+    return rawVectorsReader.getRandomVectorScorer(field, target);
+  }
+
+  @Override
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+    rawVectorsReader.checkIntegrity(merge);
+    CodecUtil.checksumEntireFile(quantizedVectorData, merge);
   }
 
   @Override
@@ -239,20 +251,6 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
 
     FloatVectorValues rawFloatVectorValues = rawVectorsReader.getFloatVectorValues(field);
 
-    if (rawFloatVectorValues.size() == 0) {
-      return OffHeapScalarQuantizedFloatVectorValues.load(
-          fi.ordToDocDISIReaderConfiguration,
-          fi.dimension,
-          fi.size,
-          fi.scalarEncoding,
-          fi.similarityFunction,
-          vectorScorer,
-          fi.centroid,
-          fi.vectorDataOffset,
-          fi.vectorDataLength,
-          quantizedVectorData);
-    }
-
     OffHeapScalarQuantizedVectorValues sqvv =
         OffHeapScalarQuantizedVectorValues.load(
             fi.ordToDocDISIReaderConfiguration,
@@ -267,12 +265,39 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
             fi.vectorDataOffset,
             fi.vectorDataLength,
             quantizedVectorData);
+
+    if (rawFloatVectorValues.size() == 0) {
+      // Full-precision vectors were dropped. Wrap the dequantizing read view with sqvv so scorer()
+      // stays quantized (as in the full-precision branch) while vectorValue()/rescorer()
+      // dequantize.
+      // Passing the dequantized view straight to a scorer would misroute to the non-quantized flat
+      // scorer over the quantized slice.
+      FloatVectorValues dequantizedRawVectorValues =
+          OffHeapScalarQuantizedFloatVectorValues.load(
+              fi.ordToDocDISIReaderConfiguration,
+              fi.dimension,
+              fi.size,
+              fi.scalarEncoding,
+              fi.similarityFunction,
+              vectorScorer,
+              fi.centroid,
+              fi.vectorDataOffset,
+              fi.vectorDataLength,
+              quantizedVectorData);
+      return new ScalarQuantizedVectorValues(dequantizedRawVectorValues, sqvv);
+    }
+
     return new ScalarQuantizedVectorValues(rawFloatVectorValues, sqvv);
   }
 
   @Override
   public ByteVectorValues getByteVectorValues(String field) throws IOException {
     return rawVectorsReader.getByteVectorValues(field);
+  }
+
+  @Override
+  public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+    return rawVectorsReader.getFloat16VectorValues(field);
   }
 
   @Override
@@ -323,6 +348,12 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
   }
 
   @Override
+  public void search(String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
+    rawVectorsReader.search(field, target, knnCollector, acceptDocs);
+  }
+
+  @Override
   public void close() throws IOException {
     IOUtils.close(quantizedVectorData, rawVectorsReader);
   }
@@ -343,7 +374,10 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     var raw = rawVectorsReader.getOffHeapByteSize(fieldInfo);
     var fieldEntry = fields.get(fieldInfo.name);
     if (fieldEntry == null) {
-      assert fieldInfo.getVectorEncoding() == VectorEncoding.BYTE;
+      // Only FLOAT32 fields are scalar-quantized by this format; BYTE and FLOAT16 fields are
+      // stored raw by the delegate and therefore have no quantized field entry here.
+      assert fieldInfo.getVectorEncoding() == VectorEncoding.BYTE
+          || fieldInfo.getVectorEncoding() == VectorEncoding.FLOAT16;
       return raw;
     }
     var quant = Map.of(VECTOR_DATA_EXTENSION, fieldEntry.vectorDataLength());

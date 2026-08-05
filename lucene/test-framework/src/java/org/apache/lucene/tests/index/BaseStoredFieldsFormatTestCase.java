@@ -161,7 +161,7 @@ public abstract class BaseStoredFieldsFormatTestCase extends BaseIndexFileFormat
       System.out.println("TEST: " + docs.size() + " docs in index; now load fields");
     }
     if (docs.size() > 0) {
-      String[] idsList = docs.keySet().toArray(new String[0]);
+      String[] idsList = docs.keySet().toArray(String[]::new);
 
       for (int x = 0; x < 2; x++) {
         DirectoryReader r = maybeWrapWithMergingReader(w.getReader());

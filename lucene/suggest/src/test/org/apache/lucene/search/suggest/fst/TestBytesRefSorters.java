@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.search.suggest.fst;
 
-import com.carrotsearch.randomizedtesting.RandomizedContext;
 import com.carrotsearch.randomizedtesting.generators.RandomBytes;
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
@@ -82,7 +81,7 @@ public class TestBytesRefSorters extends LuceneTestCase {
   }
 
   private void appendRandomSequences(BytesRefSorter sorter) throws IOException {
-    Random rnd = new Random(RandomizedContext.current().getRandom().nextLong());
+    Random rnd = LuceneTestCase.nonAssertingRandom(LuceneTestCase.random());
     for (int i = 0; i < RandomNumbers.randomIntBetween(rnd, 10, 100); i++) {
       sorter.add(new BytesRef(RandomBytes.randomBytesOfLengthBetween(rnd, 1, 256)));
     }

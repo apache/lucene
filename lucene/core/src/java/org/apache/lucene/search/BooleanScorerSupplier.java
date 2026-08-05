@@ -292,7 +292,14 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       return subs.get(Occur.SHOULD).iterator().next().bulkScorer();
     }
 
-    if (scoreMode == ScoreMode.TOP_SCORES && minShouldMatch <= 1) {
+    if (scoreMode == ScoreMode.TOP_SCORES) {
+      if (minShouldMatch > 1) {
+        // Fall back to BS2/WANDScorer: it supports both block-max impact
+        // pruning and minShouldMatch > 1. BooleanScorer (the fall-through
+        // below) does not consult score upper bounds and would score every
+        // doc in the 2048-doc window, defeating top-K pruning.
+        return null;
+      }
       List<Scorer> optionalScorers = new ArrayList<>();
       for (ScorerSupplier ss : subs.get(Occur.SHOULD)) {
         optionalScorers.add(ss.get(Long.MAX_VALUE));
@@ -346,7 +353,15 @@ final class BooleanScorerSupplier extends ScorerSupplier {
         return DenseConjunctionBulkScorer.of(filters, maxDoc, 0f);
       }
 
-      return new DefaultBulkScorer(new ConjunctionScorer(filters, Collections.emptyList()));
+      Scorer scorer = new ConjunctionScorer(filters, Collections.emptyList());
+      DocIdSetIterator iterator = scorer.iterator();
+      if ((cost >> 1) >= DenseConjunctionBulkScorer.WINDOW_SIZE) {
+        TwoPhaseIterator twoPhase = TwoPhaseIterator.unwrap(iterator);
+        return twoPhase == null
+            ? new ConstantScoreBulkScorer(0f, scoreMode, iterator)
+            : new ConstantScoreBulkScorer(0f, scoreMode, twoPhase);
+      }
+      return new DefaultBulkScorer(scorer);
     }
   }
 

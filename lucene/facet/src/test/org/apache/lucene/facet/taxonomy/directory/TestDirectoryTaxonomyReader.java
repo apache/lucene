@@ -327,7 +327,7 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     // merge all the segments so that NRT reader thinks there's a change
     iw.forceMerge(1);
 
-    // now calling openIfChanged should trip on the wrong assert in ParetArray's ctor
+    // now calling openIfChanged should trip on the wrong assert in ParentArray's ctor
     TaxonomyReader newtr = TaxonomyReader.openIfChanged(reader);
     assertNotNull(newtr);
     reader.close();

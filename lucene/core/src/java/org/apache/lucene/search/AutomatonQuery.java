@@ -98,8 +98,10 @@ public class AutomatonQuery extends MultiTermQuery implements Accountable {
     this.automatonIsBinary = isBinary;
     this.compiled = new CompiledAutomaton(automaton, false, true, isBinary);
 
+    // compiled may already reference the same Automaton instance; only count its bytes once.
+    long automatonBytes = compiled.sharesAutomaton(automaton) ? 0L : automaton.ramBytesUsed();
     this.ramBytesUsed =
-        BASE_RAM_BYTES + term.ramBytesUsed() + automaton.ramBytesUsed() + compiled.ramBytesUsed();
+        BASE_RAM_BYTES + term.ramBytesUsed() + automatonBytes + compiled.ramBytesUsed();
   }
 
   @Override

@@ -61,6 +61,38 @@ public final class DocsWithFieldSet extends DocIdSet {
     cardinality++;
   }
 
+  /**
+   * Add a contiguous range of document IDs to the set.
+   *
+   * @param from first document ID (inclusive)
+   * @param toExclusive one past the last document ID (exclusive)
+   */
+  public void addRange(int from, int toExclusive) {
+    if (from >= toExclusive) {
+      if (from > toExclusive) {
+        throw new IllegalArgumentException(
+            "from=" + from + " must be <= toExclusive=" + toExclusive);
+      }
+      return;
+    }
+    if (from <= lastDocId) {
+      throw new IllegalArgumentException(
+          "Out of order doc ids: last=" + lastDocId + ", next=" + from);
+    }
+    int count = toExclusive - from;
+    if (set != null) {
+      set = FixedBitSet.ensureCapacity(set, toExclusive - 1);
+      set.set(from, toExclusive);
+    } else if (from != cardinality) {
+      // migrate to a sparse encoding using a bit set
+      set = new FixedBitSet(toExclusive);
+      set.set(0, cardinality);
+      set.set(from, toExclusive);
+    }
+    lastDocId = toExclusive - 1;
+    cardinality += count;
+  }
+
   @Override
   public long ramBytesUsed() {
     return BASE_RAM_BYTES_USED + (set == null ? 0 : set.ramBytesUsed());

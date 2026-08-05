@@ -116,7 +116,7 @@ public abstract class GeoBaseCompositeShape<T extends GeoShape> extends BasePlan
     for (GeoShape shape : shapes) {
       edgePoints.addAll(Arrays.asList(shape.getEdgePoints()));
     }
-    return edgePoints.toArray(new GeoPoint[edgePoints.size()]);
+    return edgePoints.toArray(GeoPoint[]::new);
   }
 
   @Override

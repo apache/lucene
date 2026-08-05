@@ -32,8 +32,10 @@ import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorEncoding;
@@ -262,9 +264,9 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    flatVectorsReader.checkIntegrity();
-    CodecUtil.checksumEntireFile(vectorIndex);
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+    flatVectorsReader.checkIntegrity(merge);
+    CodecUtil.checksumEntireFile(vectorIndex, merge);
   }
 
   @Override
@@ -275,6 +277,11 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   @Override
   public ByteVectorValues getByteVectorValues(String field) throws IOException {
     return flatVectorsReader.getByteVectorValues(field);
+  }
+
+  @Override
+  public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+    return flatVectorsReader.getFloat16VectorValues(field);
   }
 
   private FieldEntry getFieldEntryOrThrow(String field) {
@@ -315,6 +322,17 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   public void search(String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.BYTE);
+    search(
+        fieldEntry,
+        knnCollector,
+        acceptDocs,
+        () -> flatVectorsReader.getRandomVectorScorer(field, target));
+  }
+
+  @Override
+  public void search(String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
+    final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.FLOAT16);
     search(
         fieldEntry,
         knnCollector,

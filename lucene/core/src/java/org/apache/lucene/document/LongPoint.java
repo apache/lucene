@@ -292,7 +292,7 @@ public final class LongPoint extends Field {
    * @param values all values to match
    */
   public static Query newSetQuery(String field, Collection<Long> values) {
-    Long[] boxed = values.toArray(new Long[0]);
+    Long[] boxed = values.toArray(Long[]::new);
     long[] unboxed = new long[boxed.length];
     for (int i = 0; i < boxed.length; i++) {
       unboxed[i] = boxed[i];

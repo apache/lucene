@@ -47,7 +47,7 @@ class FreqProxFields extends Fields {
   }
 
   @Override
-  public Terms terms(String field) throws IOException {
+  public Terms terms(String field) {
     FreqProxTermsWriterPerField perField = fields.get(field);
     return perField == null ? null : new FreqProxTerms(perField);
   }

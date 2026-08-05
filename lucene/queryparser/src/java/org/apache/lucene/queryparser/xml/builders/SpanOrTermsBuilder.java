@@ -54,7 +54,7 @@ public class SpanOrTermsBuilder extends SpanBuilderBase {
         clausesList.add(stq);
       }
       ts.end();
-      return new SpanOrQuery(clausesList.toArray(new SpanQuery[clausesList.size()]));
+      return new SpanOrQuery(clausesList.toArray(SpanQuery[]::new));
     } catch (IOException ioe) {
       throw new ParserException("IOException parsing value:" + value, ioe);
     }

@@ -22,9 +22,11 @@ import static org.apache.lucene.expressions.js.VariableContext.Type.METHOD;
 import static org.apache.lucene.expressions.js.VariableContext.Type.STR_INDEX;
 
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.junit.jupiter.api.Test;
 
 public class TestVariableContext extends LuceneTestCase {
 
+  @Test
   public void testSimpleVar() {
     VariableContext[] x = VariableContext.parse("foo");
     assertEquals(1, x.length);
@@ -32,6 +34,7 @@ public class TestVariableContext extends LuceneTestCase {
     assertEquals(x[0].text, "foo");
   }
 
+  @Test
   public void testEmptyString() {
     VariableContext[] x = VariableContext.parse("foo['']");
     assertEquals(2, x.length);
@@ -39,6 +42,7 @@ public class TestVariableContext extends LuceneTestCase {
     assertEquals(x[1].text, "");
   }
 
+  @Test
   public void testUnescapeString() {
     VariableContext[] x = VariableContext.parse("foo['\\'\\\\']");
     assertEquals(2, x.length);
@@ -46,6 +50,7 @@ public class TestVariableContext extends LuceneTestCase {
     assertEquals(x[1].text, "'\\");
   }
 
+  @Test
   public void testMember() {
     VariableContext[] x = VariableContext.parse("foo.bar");
     assertEquals(2, x.length);
@@ -53,6 +58,7 @@ public class TestVariableContext extends LuceneTestCase {
     assertEquals(x[1].text, "bar");
   }
 
+  @Test
   public void testMemberFollowedByMember() {
     VariableContext[] x = VariableContext.parse("foo.bar.baz");
     assertEquals(3, x.length);
@@ -60,6 +66,7 @@ public class TestVariableContext extends LuceneTestCase {
     assertEquals(x[2].text, "baz");
   }
 
+  @Test
   public void testMemberFollowedByIntArray() {
     VariableContext[] x = VariableContext.parse("foo.bar[1]");
     assertEquals(3, x.length);
@@ -67,6 +74,7 @@ public class TestVariableContext extends LuceneTestCase {
     assertEquals(x[2].integer, 1);
   }
 
+  @Test
   public void testMethodWithMember() {
     VariableContext[] x = VariableContext.parse("m.m()");
     assertEquals(2, x.length);
@@ -74,6 +82,7 @@ public class TestVariableContext extends LuceneTestCase {
     assertEquals(x[1].text, "m");
   }
 
+  @Test
   public void testMethodWithStrIndex() {
     VariableContext[] x = VariableContext.parse("member['blah'].getMethod()");
     assertEquals(3, x.length);
@@ -81,6 +90,7 @@ public class TestVariableContext extends LuceneTestCase {
     assertEquals(x[2].text, "getMethod");
   }
 
+  @Test
   public void testMethodWithNumericalIndex() {
     VariableContext[] x = VariableContext.parse("member[0].getMethod()");
     assertEquals(3, x.length);

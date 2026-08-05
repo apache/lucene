@@ -8,19 +8,21 @@ dependencies = []
 [dependency-groups]
 dev = [
   # git hooks and repository checks
-  "prek==0.3.10",
+  "prek==0.4.11",
   # validates github actions
-  "zizmor==1.24.1",
+  "zizmor==1.28.0",
   # validates github actions
   "actionlint-py==1.7.12.24",
   # validates bash
   "shellcheck-py==0.11.0.1",
   # validates markdown
-  "rumdl==0.1.81",
+  "rumdl==0.2.43",
   # validates python
-  "ruff==0.15.12",
+  "ruff==0.16.0",
   # validates various
-  "ast-grep-cli==0.42.1",
+  "ast-grep-cli==0.44.0",
+  # checks spelling
+  "typos==1.48.0",
 ]
 
 [tool.uv]

@@ -372,7 +372,7 @@ public final class SynonymQuery extends Query {
             for (int i = 0; i < boosts.length; i++) {
               boosts[i] = termBoosts.get(i);
             }
-            ImpactsSource impactsSource = mergeImpacts(impacts.toArray(new ImpactsEnum[0]), boosts);
+            ImpactsSource impactsSource = mergeImpacts(impacts.toArray(ImpactsEnum[]::new), boosts);
             MaxScoreCache maxScoreCache = new MaxScoreCache(impactsSource, simWeight);
             ImpactsDISI impactsDisi = new ImpactsDISI(iterator, maxScoreCache);
 

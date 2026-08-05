@@ -126,7 +126,7 @@ public final class IndexUtils {
     if (readers.size() == 1) {
       return readers.get(0);
     } else {
-      return new MultiReader(readers.toArray(new IndexReader[0]));
+      return new MultiReader(readers.toArray(IndexReader[]::new));
     }
   }
 

@@ -22,6 +22,7 @@ import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.SegmentReadState;
@@ -104,18 +105,18 @@ class CrankyPointsFormat extends PointsFormat {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
       if (random.nextInt(100) == 0) {
         throw new IOException("Fake IOException");
       }
-      delegate.checkIntegrity();
+      delegate.checkIntegrity(merge);
       if (random.nextInt(100) == 0) {
         throw new IOException("Fake IOException");
       }
     }
 
     @Override
-    public PointValues getValues(String fieldName) throws IOException {
+    public PointValues getValues(String fieldName) {
       final PointValues delegate = this.delegate.getValues(fieldName);
       if (delegate == null) {
         return null;
@@ -186,42 +187,27 @@ class CrankyPointsFormat extends PointsFormat {
         }
 
         @Override
-        public byte[] getMinPackedValue() throws IOException {
-          if (random.nextInt(100) == 0) {
-            throw new IOException("Fake IOException");
-          }
+        public byte[] getMinPackedValue() {
           return delegate.getMinPackedValue();
         }
 
         @Override
-        public byte[] getMaxPackedValue() throws IOException {
-          if (random.nextInt(100) == 0) {
-            throw new IOException("Fake IOException");
-          }
+        public byte[] getMaxPackedValue() {
           return delegate.getMaxPackedValue();
         }
 
         @Override
-        public int getNumDimensions() throws IOException {
-          if (random.nextInt(100) == 0) {
-            throw new IOException("Fake IOException");
-          }
+        public int getNumDimensions() {
           return delegate.getNumDimensions();
         }
 
         @Override
-        public int getNumIndexDimensions() throws IOException {
-          if (random.nextInt(100) == 0) {
-            throw new IOException("Fake IOException");
-          }
+        public int getNumIndexDimensions() {
           return delegate.getNumIndexDimensions();
         }
 
         @Override
-        public int getBytesPerDimension() throws IOException {
-          if (random.nextInt(100) == 0) {
-            throw new IOException("Fake IOException");
-          }
+        public int getBytesPerDimension() {
           return delegate.getBytesPerDimension();
         }
 

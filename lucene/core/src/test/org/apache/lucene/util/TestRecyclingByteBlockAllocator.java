@@ -75,7 +75,7 @@ public class TestRecyclingByteBlockAllocator extends LuceneTestCase {
         assertEquals(
             size * (allocated.size() + allocator.numBufferedBlocks()), allocator.bytesUsed());
       }
-      byte[][] array = allocated.toArray(new byte[0][]);
+      byte[][] array = allocated.toArray(byte[][]::new);
       int begin = random().nextInt(array.length);
       int end = begin + random().nextInt(array.length - begin);
       List<byte[]> selected = new ArrayList<>();
@@ -113,7 +113,7 @@ public class TestRecyclingByteBlockAllocator extends LuceneTestCase {
             size * (allocated.size() + allocator.numBufferedBlocks()), allocator.bytesUsed());
       }
 
-      byte[][] array = allocated.toArray(new byte[0][]);
+      byte[][] array = allocated.toArray(byte[][]::new);
       int begin = random().nextInt(array.length);
       int end = begin + random().nextInt(array.length - begin);
       for (int j = begin; j < end; j++) {

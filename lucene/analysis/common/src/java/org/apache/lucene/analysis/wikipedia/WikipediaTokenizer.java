@@ -178,7 +178,7 @@ public final class WikipediaTokenizer extends Tokenizer {
    * @see org.apache.lucene.analysis.TokenStream#next()
    */
   @Override
-  public final boolean incrementToken() throws IOException {
+  public boolean incrementToken() throws IOException {
     if (tokens != null && tokens.hasNext()) {
       AttributeSource.State state = tokens.next();
       restoreState(state);
