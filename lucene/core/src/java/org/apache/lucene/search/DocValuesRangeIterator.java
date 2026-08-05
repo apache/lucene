@@ -292,11 +292,6 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
     }
 
     @Override
-    public int docIDRunEnd() throws IOException {
-      return blockIterator.docID() + 1;
-    }
-
-    @Override
     public final float matchCost() {
       return matchCost;
     }
@@ -329,7 +324,12 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
 
     @Override
     public final int docIDRunEnd() throws IOException {
-      return blockIterator.docIDRunEnd();
+      // docIDRunEnd() may be called on non-matches, so only YES proves that the current doc and the
+      // rest of the run are actual matches.
+      return switch (blockIterator.getMatch()) {
+        case YES -> blockIterator.docIDRunEnd();
+        case YES_IF_PRESENT, MAYBE -> blockIterator.docID();
+      };
     }
 
     @Override
@@ -337,12 +337,7 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
       while (blockIterator.docID() < upTo) {
         int blockStart = blockIterator.docID();
         SkipBlockRangeIterator.Match match = blockIterator.getMatch();
-        // For MAYBE blocks docIDRunEnd() is conservative (doc+1), so use the full block boundary to
-        // evaluate the whole block at once.
-        int blockEnd =
-            match == SkipBlockRangeIterator.Match.MAYBE
-                ? Math.min(upTo, blockIterator.blockEnd())
-                : Math.min(upTo, blockIterator.docIDRunEnd());
+        int blockEnd = blockEnd(upTo);
         switch (match) {
           case YES -> bitSet.set(blockStart - offset, blockEnd - offset);
           case YES_IF_PRESENT -> {
@@ -364,6 +359,12 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
     /** Confirms the docs of a single MAYBE block in {@code [blockStart, blockEnd)}. */
     abstract void intoMaybeBlock(int blockStart, int blockEnd, FixedBitSet bitSet, int offset)
         throws IOException;
+
+    // For MAYBE/YES_IF_PRESENT blocks this is the block boundary; for YES blocks it may extend
+    // further via multi-level run expansion.
+    private int blockEnd(int upTo) throws IOException {
+      return Math.min(upTo, blockIterator.docIDRunEnd());
+    }
   }
 
   /** Bulk range iterator over single-valued numeric doc values. */
