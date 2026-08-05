@@ -104,7 +104,7 @@ public abstract non-sealed class LeafReader extends IndexReader {
   }
 
   @Override
-  public final long getSumDocFreq(String field) throws IOException {
+  public final long getSumDocFreq(String field) {
     final Terms terms = terms(field);
     if (terms == null) {
       return 0;
@@ -122,7 +122,7 @@ public abstract non-sealed class LeafReader extends IndexReader {
   }
 
   @Override
-  public final long getSumTotalTermFreq(String field) throws IOException {
+  public final long getSumTotalTermFreq(String field) {
     final Terms terms = terms(field);
     if (terms == null) {
       return 0;
