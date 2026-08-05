@@ -439,6 +439,8 @@ Bug Fixes
   GlobalOrdinalsWithScoreCollector, fixing an intermittent failure caused by
   non-associative float addition that #16378 missed. (Luca Cavanna)
 
+* GITHUB#16173: FilterDirectory now delegates copyFrom() to the wrapped directory. (Prithvi S)
+
 Other
 ---------------------
 * GITHUB#16266: Remove deprecated search(Query, Collector) calls in QueryUtils by replacing
