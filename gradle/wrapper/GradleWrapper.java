@@ -17,32 +17,28 @@
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.URI;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.PosixFilePermissions;
 import java.security.MessageDigest;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Locale;
 import java.util.Properties;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 /**
- * Proof-of-concept, dependency-free replacement for {@code gradle-wrapper.jar}: a single Java
- * 17+ source file that reads {@code gradle-wrapper.properties}, downloads/verifies/extracts the
- * distribution if it isn't already cached, and execs the extracted distribution's own {@code
- * bin/gradle} launcher. Unlike Gradle's real wrapper (see
- * https://github.com/gradle/gradle/blob/master/platforms/core-runtime/wrapper-main/src/main/java/org/gradle/wrapper/GradleWrapperMain.java),
- * this does not reflectively invoke {@code org.gradle.launcher.GradleMain} in-process, so it
- * never needs {@code org.gradle.cli} or any other Gradle-internal class.
+ * A simpler version of <a
+ * href="https://github.com/gradle/gradle/blob/master/platforms/core-runtime/wrapper-shared/src/main/java/org/gradle/wrapper/">Gradle's
+ * real wrapper</a>. This one doesn't use {@code org.gradle.cli} or other Gradle-internal class,
+ * skipping property-merging/CLI-flag handling (no {@code -g}/{@code -q} support here).
  */
 public class GradleWrapper {
 
@@ -59,12 +55,14 @@ public class GradleWrapper {
 
   private static Path findWrapperProperties(Path start) {
     for (Path dir = start; dir != null; dir = dir.getParent()) {
-      Path candidate = dir.resolve("gradle").resolve("wrapper").resolve("gradle-wrapper.properties");
+      Path candidate =
+          dir.resolve("gradle").resolve("wrapper").resolve("gradle-wrapper.properties");
       if (Files.isRegularFile(candidate)) {
         return candidate;
       }
     }
-    throw new IllegalStateException("Could not locate gradle/wrapper/gradle-wrapper.properties above " + start);
+    throw new IllegalStateException(
+        "Could not locate gradle/wrapper/gradle-wrapper.properties above " + start);
   }
 
   private static Path resolveGradleUserHome() {
@@ -83,12 +81,14 @@ public class GradleWrapper {
     String urlStr = require(props, "distributionUrl");
     URI uri = URI.create(urlStr);
     String zipName = Path.of(uri.getPath()).getFileName().toString();
-    String baseName = zipName.endsWith(".zip") ? zipName.substring(0, zipName.length() - 4) : zipName;
+    String baseName =
+        zipName.endsWith(".zip") ? zipName.substring(0, zipName.length() - 4) : zipName;
 
     // Doesn't need to match Gradle's own MD5-based cache hash scheme (PathAssembler) -- this is
     // an independent cache, keyed only well enough to dedupe by exact distributionUrl.
     String hash = sha256Hex(urlStr).substring(0, 16);
-    Path installRoot = gradleUserHome.resolve("wrapper").resolve("dists").resolve(baseName).resolve(hash);
+    Path installRoot =
+        gradleUserHome.resolve("wrapper").resolve("dists").resolve(baseName).resolve(hash);
     Path marker = installRoot.resolve(".installed");
     if (Files.exists(marker)) {
       return findExtractedHome(installRoot);
@@ -104,12 +104,16 @@ public class GradleWrapper {
         String actual = sha256HexOfFile(zipFile);
         if (!actual.equalsIgnoreCase(expectedSha256)) {
           throw new IOException(
-              "Checksum mismatch for " + zipName + ": expected " + expectedSha256 + ", got " + actual);
+              "Checksum mismatch for "
+                  + zipName
+                  + ": expected "
+                  + expectedSha256
+                  + ", got "
+                  + actual);
         }
       }
 
       extractZip(zipFile, installRoot);
-      makeScriptsExecutable(installRoot);
       Files.writeString(marker, "ok");
     } finally {
       Files.deleteIfExists(zipFile);
@@ -122,11 +126,13 @@ public class GradleWrapper {
       return stream
           .filter(Files::isDirectory)
           .findFirst()
-          .orElseThrow(() -> new IOException("No extracted distribution found under " + installRoot));
+          .orElseThrow(
+              () -> new IOException("No extracted distribution found under " + installRoot));
     }
   }
 
-  private static void download(URI uri, Path dest, int timeoutMs) throws IOException, InterruptedException {
+  private static void download(URI uri, Path dest, int timeoutMs)
+      throws IOException, InterruptedException {
     HttpClient client =
         HttpClient.newBuilder()
             .followRedirects(HttpClient.Redirect.NORMAL)
@@ -157,33 +163,34 @@ public class GradleWrapper {
     }
   }
 
-  private static void makeScriptsExecutable(Path installRoot) throws IOException {
-    try (var stream = Files.walk(installRoot)) {
-      stream
-          .filter(p -> "bin".equals(String.valueOf(p.getParent().getFileName())) && Files.isRegularFile(p))
-          .forEach(
-              p -> {
-                if (p.getFileSystem().supportedFileAttributeViews().contains("posix")) {
-                  try {
-                    Files.setPosixFilePermissions(p, PosixFilePermissions.fromString("rwxr-xr-x"));
-                  } catch (IOException ignored) {
-                    // best-effort; Windows scripts don't need the executable bit anyway.
-                  }
-                }
-              });
+  private static int launchGradle(Path gradleHome, String[] args) throws Exception {
+    Path launcherJar = findLauncherJar(gradleHome);
+    URL[] classpath = {launcherJar.toUri().toURL()};
+    try (URLClassLoader loader =
+        new URLClassLoader(classpath, ClassLoader.getSystemClassLoader())) {
+      Thread.currentThread().setContextClassLoader(loader);
+      Class<?> gradleMain = Class.forName("org.gradle.launcher.GradleMain", true, loader);
+      Method main = gradleMain.getMethod("main", String[].class);
+      try {
+        main.invoke(null, (Object) args);
+        // GradleMain calls System.exit() itself on failure; a normal return means success.
+        return 0;
+      } catch (InvocationTargetException e) {
+        Throwable cause = e.getCause() != null ? e.getCause() : e;
+        cause.printStackTrace();
+        return 1;
+      }
     }
   }
 
-  private static int launchGradle(Path gradleHome, String[] args) throws IOException, InterruptedException {
-    boolean windows = System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win");
-    Path launcher = gradleHome.resolve("bin").resolve(windows ? "gradle.bat" : "gradle");
-
-    List<String> command = new ArrayList<>();
-    command.add(launcher.toString());
-    command.addAll(Arrays.asList(args));
-
-    Process process = new ProcessBuilder(command).inheritIO().start();
-    return process.waitFor();
+  private static Path findLauncherJar(Path gradleHome) throws IOException {
+    Path lib = gradleHome.resolve("lib");
+    try (var stream = Files.list(lib)) {
+      return stream
+          .filter(p -> p.getFileName().toString().matches("gradle-launcher-.*\\.jar"))
+          .findFirst()
+          .orElseThrow(() -> new IOException("Could not find gradle-launcher-*.jar under " + lib));
+    }
   }
 
   private static String require(Properties props, String key) {

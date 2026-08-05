@@ -86,12 +86,34 @@ IF NOT EXIST "%APP_HOME%\gradle.properties" (
   endlocal
 )
 
+@rem A manually-installed gradle-wrapper.jar takes priority over our source-based bootstrap.
+SET GRADLE_WRAPPER_JAR=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar
+SET GRADLE_WRAPPER_SRC=%APP_HOME%\gradle\wrapper\GradleWrapper.java
+SET GRADLE_WRAPPER_CACHE=%APP_HOME%\.gradle\tmp\gradle-wrapper-classes
+SET "JAVAC_EXE=%JAVA_EXE:java.exe=javac.exe%"
+
+@rem Compile GradleWrapper.java once and reuse the compiled classes, instead of paying the
+@rem single-file-source-launch recompile cost on every invocation. Falls back to source-launch
+@rem (slower, but self-healing) if compilation isn't available or fails for any reason.
+@rem No staleness check: if you edit GradleWrapper.java, delete %GRADLE_WRAPPER_CACHE% to force
+@rem a recompile (this file changes rarely, so keeping this simple is worth that manual step).
+IF NOT EXIST "%GRADLE_WRAPPER_JAR%" IF NOT EXIST "%GRADLE_WRAPPER_CACHE%\GradleWrapper.class" (
+  mkdir "%GRADLE_WRAPPER_CACHE%" 2>nul
+  "%JAVAC_EXE%" -d "%GRADLE_WRAPPER_CACHE%" "%GRADLE_WRAPPER_SRC%" >nul 2>nul
+)
+
 @rem END OF LUCENE CUSTOMIZATION
 
 @rem Execute Gradle
 @rem endlocal doesn't take effect until after the line is parsed and variables are expanded
 @rem which allows us to clear the local environment before executing the java command
-endlocal & "%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" "%APP_HOME%\gradle\wrapper\GradleWrapper.java" %* & call :exitWithErrorLevel
+IF EXIST "%GRADLE_WRAPPER_JAR%" (
+  endlocal & "%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -jar "%GRADLE_WRAPPER_JAR%" %* & call :exitWithErrorLevel
+) ELSE IF EXIST "%GRADLE_WRAPPER_CACHE%\GradleWrapper.class" (
+  endlocal & "%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -cp "%GRADLE_WRAPPER_CACHE%" GradleWrapper %* & call :exitWithErrorLevel
+) ELSE (
+  endlocal & "%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" "%GRADLE_WRAPPER_SRC%" %* & call :exitWithErrorLevel
+)
 
 :exitWithErrorLevel
 @rem Use "%COMSPEC%" /c exit to allow operators to work properly in scripts

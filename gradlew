@@ -219,6 +219,31 @@ if [ ! -e "$APP_HOME/gradle.properties" ]; then
         exit $GENERATOR_STATUS
     fi
 fi
+
+# A gradle-wrapper.jar takes priority over our source-based bootstrap.
+GRADLE_WRAPPER_JAR="$APP_HOME/gradle/wrapper/gradle-wrapper.jar"
+if [ -f "$GRADLE_WRAPPER_JAR" ]; then
+    GRADLE_WRAPPER_LAUNCH_ARGS="-jar $GRADLE_WRAPPER_JAR"
+else
+    # Compile GradleWrapper.java once and reuse the compiled classes, instead of paying the
+    # single-file-source-launch recompile cost on every invocation. Falls back to source-launch
+    # (slower, but self-healing) if compilation isn't available or fails for any reason.
+    GRADLE_WRAPPER_SRC="$APP_HOME/gradle/wrapper/GradleWrapper.java"
+    GRADLE_WRAPPER_CACHE="$APP_HOME/.gradle/tmp/gradle-wrapper-classes"
+    GRADLE_WRAPPER_CLASS="$GRADLE_WRAPPER_CACHE/GradleWrapper.class"
+    if [ ! -f "$GRADLE_WRAPPER_CLASS" ] || [ -n "$( find "$GRADLE_WRAPPER_SRC" -newer "$GRADLE_WRAPPER_CLASS" )" ]; then
+        rm -rf "$GRADLE_WRAPPER_CACHE"
+        mkdir -p "$GRADLE_WRAPPER_CACHE"
+        JAVACCMD=$( echo "$JAVACMD" | sed 's#java$#javac#' )
+        "$JAVACCMD" -d "$GRADLE_WRAPPER_CACHE" "$GRADLE_WRAPPER_SRC" 2>/dev/null || rm -rf "$GRADLE_WRAPPER_CACHE"
+    fi
+
+    if [ -f "$GRADLE_WRAPPER_CACHE/GradleWrapper.class" ]; then
+        GRADLE_WRAPPER_LAUNCH_ARGS="-cp $GRADLE_WRAPPER_CACHE GradleWrapper"
+    else
+        GRADLE_WRAPPER_LAUNCH_ARGS="$GRADLE_WRAPPER_SRC"
+    fi
+fi
 # END OF LUCENE CUSTOMIZATION
 
 # Collect all arguments for the java command:
@@ -229,7 +254,7 @@ fi
 
 set -- \
         "-Dorg.gradle.appname=$APP_BASE_NAME" \
-        "$APP_HOME/gradle/wrapper/GradleWrapper.java" \
+        $GRADLE_WRAPPER_LAUNCH_ARGS \
         "$@"
 
 # Stop when "xargs" is not available.
