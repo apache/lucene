@@ -19,7 +19,12 @@ package org.apache.lucene.analysis.shingle;
 
 import java.io.IOException;
 import java.util.Iterator;
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.analysis.core.FlattenGraphFilter;
+import org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter;
+import org.apache.lucene.analysis.standard.StandardTokenizer;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.tests.analysis.CannedTokenStream;
 import org.apache.lucene.tests.analysis.Token;
@@ -291,5 +296,32 @@ public class TestFixedShingleFilter extends BaseTokenStreamTestCase {
     assertTokenStreamContents(new FixedShingleFilter(it.next(), 2), new String[] {"fuz foo"});
     assertTokenStreamContents(
         new FixedShingleFilter(it.next(), 2), new String[] {"fuz bar", "bar baz"});
+  }
+
+  public void testGraphInputDoesNotEmitLeadingZeroPositionIncrement() throws IOException {
+    // GITHUB#14137: when the first graph route(s) at a base position are too short
+    // to form a shingle, the shingle that is eventually emitted for that base must
+    // keep the base's position increment. Emitting the stream's first token with a
+    // 0 position increment is illegal and used to throw during indexing.
+    Analyzer analyzer =
+        new Analyzer() {
+          @Override
+          protected TokenStreamComponents createComponents(String fieldName) {
+            Tokenizer tokenizer = new StandardTokenizer();
+            TokenStream sink =
+                new WordDelimiterGraphFilter(
+                    tokenizer,
+                    WordDelimiterGraphFilter.GENERATE_WORD_PARTS
+                        | WordDelimiterGraphFilter.GENERATE_NUMBER_PARTS
+                        | WordDelimiterGraphFilter.CATENATE_NUMBERS,
+                    null);
+            sink = new FlattenGraphFilter(sink);
+            sink = new FixedShingleFilter(sink, 2);
+            return new TokenStreamComponents(tokenizer, sink);
+          }
+        };
+    assertAnalyzesTo(
+        analyzer, "555,0", new String[] {"555 0"}, new int[] {0}, new int[] {5}, new int[] {1});
+    analyzer.close();
   }
 }
