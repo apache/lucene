@@ -216,18 +216,9 @@ final class SegmentTermsEnumFrame {
         suffixOffsets = new int[ArrayUtil.oversize(entCount + 1, Integer.BYTES)];
       }
       suffixOffsets[0] = 0;
-//      long filePointer = ste.in.getFilePointer();
       for (int i = 0; i < entCount; i++) {
         suffixOffsets[i + 1] = suffixOffsets[i] + ste.in.readVInt();
       }
-//      assert ste.in.getFilePointer() - filePointer == numSuffixLengthBytes
-//          : "fp="
-//              + ste.in.getFilePointer()
-//              + " filePointer="
-//              + filePointer
-//              + " numSuffixLengthBytes="
-//              + numSuffixLengthBytes;
-      //      suffixLengthsReader.setPosition(0);
     } else {
       if (suffixLengthBytes == null || suffixLengthBytes.length < numSuffixLengthBytes) {
         suffixLengthBytes = new byte[ArrayUtil.oversize(numSuffixLengthBytes, 1)];
