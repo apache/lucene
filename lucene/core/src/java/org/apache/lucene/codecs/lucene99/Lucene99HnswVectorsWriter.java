@@ -240,10 +240,10 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
 
   @Override
   public long ramBytesUsed() {
-    long total = SHALLOW_RAM_BYTES_USED;
+    long total = SHALLOW_RAM_BYTES_USED + flatVectorWriter.ramBytesUsed();
     for (FieldWriter<?> field : fields) {
       // the field tracks the delegate field usage
-      total += field.ramBytesUsed();
+      total += field.ownRamBytesUsed();
     }
     return total;
   }
@@ -806,13 +806,17 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       }
     }
 
-    @Override
-    public long ramBytesUsed() {
-      long total = SHALLOW_SIZE + flatFieldVectorsWriter.ramBytesUsed();
+    private long ownRamBytesUsed() {
+      long total = SHALLOW_SIZE;
       if (hnswGraphBuilder != null) {
         total += hnswGraphBuilder.getGraph().ramBytesUsed();
       }
       return total;
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      return ownRamBytesUsed() + flatFieldVectorsWriter.ramBytesUsed();
     }
   }
 }
