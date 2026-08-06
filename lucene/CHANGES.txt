@@ -331,8 +331,6 @@ New Features
   and document length instead of corpus statistics such as document frequency. It also supports k3
   query-term frequency saturation. (Tianxiao Wei)
 
-* GITHUB#16383: Add fp16 vector encoding support. (Pulkit Gupta)
-
 * GITHUB#16371, GITHUB#14389: Add CaseFoldingFilter for Unicode simple case folding without
   requiring the ICU analysis plugin. Uses a generated switch for fold exceptions with
   Character.toLowerCase() as the default fallback. (Robert Muir, Costin Leau)
@@ -408,6 +406,11 @@ Optimizations
 
 Bug Fixes
 ---------------------
+
+* GITHUB#16450: Fix DocValuesRangeIterator.docIDRunEnd() returning incorrect run boundaries,
+  causing bulk-scoring to skip or mis-score documents in range and ordinal set queries.
+  (Parker Timmins)
+
 * GITHUB#16251: Fix UpdateGraphsUtils#computeJoinSet to not request more coverage for a node than
   the node's degree. Previously nodes with a degree of 1 were always forced into the join set,
   which made the join set degenerate to the whole graph on hub-and-spoke shaped HNSW graphs.
@@ -429,9 +432,16 @@ Bug Fixes
 * GITHUB#16389: Fix double-counting of the underlying Automaton in
   AutomatonQuery#ramBytesUsed. (Sasilekha R)
 
+* GITHUB#16405: PointInSetQuery#ramBytesUsed now accounts for the retained
+  lowerPoint and upperPoint bounds arrays. (Sasilekha R)
+
 * GITHUB#16367: HNSW graph construction now periodically checks whether the surrounding merge has
   been aborted, so IndexWriter#rollback and abortMerges no longer block until the entire graph is
   built. (Jeho Jeong)
+
+* GITHUB#16428: Accumulate join Total/Avg scores in double precision in
+  GlobalOrdinalsWithScoreCollector, fixing an intermittent failure caused by
+  non-associative float addition that #16378 missed. (Luca Cavanna)
 
 Other
 ---------------------
