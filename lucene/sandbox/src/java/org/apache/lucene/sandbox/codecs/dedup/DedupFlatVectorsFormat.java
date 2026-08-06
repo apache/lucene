@@ -28,7 +28,7 @@ import org.apache.lucene.index.SegmentWriteState;
  *
  * <p>Vectors that share the same dimension and encoding form a <i>group</i>. Within a group, an
  * identical vector is stored a single time regardless of how many documents (across all fields that
- * map to that group) reference it; each field then keeps an {@code fieldOrdToGroupOrd} map from its
+ * map to that group) reference it; each field then keeps a {@code fieldOrdToGroupOrd} map from its
  * document ordinal to the group ordinal of the shared vector. This is well suited to indexes with
  * repeated vectors, e.g. several fields derived from the same embedding, or heavily duplicated
  * content.
