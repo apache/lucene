@@ -210,25 +210,36 @@ final class SegmentTermsEnumFrame {
     int numSuffixLengthBytes = ste.in.readVInt();
     allEqual = (numSuffixLengthBytes & 0x01) != 0;
     numSuffixLengthBytes >>>= 1;
-    if (suffixLengthBytes == null || suffixLengthBytes.length < numSuffixLengthBytes) {
-      suffixLengthBytes = new byte[ArrayUtil.oversize(numSuffixLengthBytes, 1)];
-    }
-    if (allEqual) {
-      Arrays.fill(suffixLengthBytes, 0, numSuffixLengthBytes, ste.in.readByte());
-    } else {
-      ste.in.readBytes(suffixLengthBytes, 0, numSuffixLengthBytes);
-    }
-    suffixLengthsReader.reset(suffixLengthBytes, 0, numSuffixLengthBytes);
+
     if (isLeafBlock && allEqual == false) {
       if (suffixOffsets == null || suffixOffsets.length < entCount + 1) {
         suffixOffsets = new int[ArrayUtil.oversize(entCount + 1, Integer.BYTES)];
       }
       suffixOffsets[0] = 0;
+//      long filePointer = ste.in.getFilePointer();
       for (int i = 0; i < entCount; i++) {
-        suffixOffsets[i + 1] = suffixOffsets[i] + suffixLengthsReader.readVInt();
+        suffixOffsets[i + 1] = suffixOffsets[i] + ste.in.readVInt();
       }
-      suffixLengthsReader.setPosition(0);
+//      assert ste.in.getFilePointer() - filePointer == numSuffixLengthBytes
+//          : "fp="
+//              + ste.in.getFilePointer()
+//              + " filePointer="
+//              + filePointer
+//              + " numSuffixLengthBytes="
+//              + numSuffixLengthBytes;
+      //      suffixLengthsReader.setPosition(0);
+    } else {
+      if (suffixLengthBytes == null || suffixLengthBytes.length < numSuffixLengthBytes) {
+        suffixLengthBytes = new byte[ArrayUtil.oversize(numSuffixLengthBytes, 1)];
+      }
+      if (allEqual) {
+        Arrays.fill(suffixLengthBytes, 0, numSuffixLengthBytes, ste.in.readByte());
+      } else {
+        ste.in.readBytes(suffixLengthBytes, 0, numSuffixLengthBytes);
+      }
+      suffixLengthsReader.reset(suffixLengthBytes, 0, numSuffixLengthBytes);
     }
+
     totalSuffixBytes = ste.in.getFilePointer() - startSuffixFP;
 
     /*if (DEBUG) {
