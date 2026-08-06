@@ -25,7 +25,6 @@ import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.writeFieldInfo;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
-import java.nio.ShortBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -69,7 +68,6 @@ final class DedupFlushContext implements Accountable {
     return switch (groupKey.encoding()) {
       case BYTE -> new ByteGroup(dimension);
       case FLOAT32 -> new FloatGroup(dimension);
-      case FLOAT16 -> new Float16Group(dimension);
     };
   }
 
@@ -233,52 +231,6 @@ final class DedupFlushContext implements Accountable {
 
     @Override
     public float[] copy(float[] vectorValue) {
-      return vectorValue.clone();
-    }
-
-    @Override
-    byte[] serialize(int ord) {
-      buffer.put(0, get(ord));
-      return bytes;
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      return SHALLOW_SIZE + super.ramBytesUsed() + numVectors() * ramBytesPerVector;
-    }
-  }
-
-  static final class Float16Group extends DedupGroup<short[]> {
-    private static final long SHALLOW_SIZE =
-        RamUsageEstimator.shallowSizeOfInstance(Float16Group.class);
-
-    private final long ramBytesPerVector;
-    private final byte[] bytes;
-    private final ShortBuffer buffer;
-
-    Float16Group(int dimension) {
-      int length = dimension * Short.BYTES;
-      this.ramBytesPerVector =
-          RamUsageEstimator.NUM_BYTES_OBJECT_REF
-              + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
-              + length;
-      this.bytes = new byte[length];
-      this.buffer = ByteBuffer.wrap(bytes).order(LITTLE_ENDIAN).asShortBuffer();
-    }
-
-    @Override
-    public long hash(short[] vector) {
-      buffer.put(0, vector);
-      return hashBytes(bytes);
-    }
-
-    @Override
-    public boolean equals(short[] vector, short[] other) {
-      return Arrays.equals(vector, other);
-    }
-
-    @Override
-    public short[] copy(short[] vectorValue) {
       return vectorValue.clone();
     }
 

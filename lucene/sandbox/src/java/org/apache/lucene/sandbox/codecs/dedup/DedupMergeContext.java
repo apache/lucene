@@ -25,7 +25,6 @@ import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.writeFieldInfo;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
-import java.nio.ShortBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -36,7 +35,6 @@ import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocIDMerger;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.MergeState;
@@ -105,7 +103,6 @@ final class DedupMergeContext implements Accountable {
           switch (encoding) {
             case BYTE -> new ByteGroup();
             case FLOAT32 -> new FloatGroup(dimension);
-            case FLOAT16 -> new Float16Group(dimension);
           };
 
       for (FieldData fieldData : entry.getValue()) {
@@ -292,73 +289,6 @@ final class DedupMergeContext implements Accountable {
     }
   }
 
-  private record Float16Vector(Float16VectorValues values, int ord) implements IOSupplier<short[]> {
-    private static final long SHALLOW_SIZE =
-        RamUsageEstimator.shallowSizeOfInstance(Float16Vector.class);
-
-    @Override
-    public short[] get() throws IOException {
-      return values.vectorValue(ord);
-    }
-  }
-
-  private static final class Float16Group
-      extends DedupMergeGroup<Float16Vector, Float16VectorValues> {
-    private static final long SHALLOW_SIZE =
-        RamUsageEstimator.shallowSizeOfInstance(Float16Group.class);
-
-    private final byte[] bytes;
-    private final ShortBuffer buffer;
-
-    Float16Group(int dimension) {
-      int length = dimension * Short.BYTES;
-      this.bytes = new byte[length];
-      this.buffer = ByteBuffer.wrap(bytes).order(LITTLE_ENDIAN).asShortBuffer();
-    }
-
-    @Override
-    Float16Vector vectorFrom(Sub<Float16VectorValues> sub) {
-      return new Float16Vector(sub.values, sub.iterator.index());
-    }
-
-    @Override
-    public long hash(Float16Vector vector) throws IOException {
-      buffer.put(0, vector.get());
-      return hashBytes(bytes);
-    }
-
-    @Override
-    public boolean equals(Float16Vector vector, Float16Vector other) throws IOException {
-      // Fast path: two docs from the same dedup source share a vector iff they map to the same
-      // group ordinal, so we can compare ordinals without reading the vectors back.
-      if (vector.values == other.values && vector.values instanceof DedupVectorValues dedup) {
-        FieldOrdToGroupOrd fieldOrdToGroupOrd = dedup.getFieldOrdToGroupOrd();
-        return fieldOrdToGroupOrd.get(vector.ord) == fieldOrdToGroupOrd.get(other.ord);
-      }
-      short[] a = vector.get();
-      if (vector.values == other.values) {
-        a = a.clone(); // same reader reuses one buffer; copy before reading the other vector
-      }
-      return Arrays.equals(a, other.get());
-    }
-
-    @Override
-    public Float16Vector copy(Float16Vector vectorValue) {
-      return vectorValue;
-    }
-
-    @Override
-    byte[] serialize(int ord) throws IOException {
-      buffer.put(0, get(ord).get());
-      return bytes;
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      return SHALLOW_SIZE + super.ramBytesUsed() + numVectors() * Float16Vector.SHALLOW_SIZE;
-    }
-  }
-
   private record FieldData(
       FieldInfo fieldInfo,
       GroupKey groupKey,
@@ -402,7 +332,6 @@ final class DedupMergeContext implements Accountable {
           switch (fieldInfo.getVectorEncoding()) {
             case BYTE -> mergeState.knnVectorsReaders[i].getByteVectorValues(fieldInfo.name);
             case FLOAT32 -> mergeState.knnVectorsReaders[i].getFloatVectorValues(fieldInfo.name);
-            case FLOAT16 -> mergeState.knnVectorsReaders[i].getFloat16VectorValues(fieldInfo.name);
           };
 
       if (vectorValues == null) {

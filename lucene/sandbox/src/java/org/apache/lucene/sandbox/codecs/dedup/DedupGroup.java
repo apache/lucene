@@ -36,7 +36,6 @@ import org.apache.lucene.util.Accountable;
 abstract sealed class DedupGroup<T> implements Accountable
     permits DedupFlushContext.ByteGroup,
         DedupFlushContext.FloatGroup,
-        DedupFlushContext.Float16Group,
         DedupMergeContext.DedupMergeGroup {
 
   /**

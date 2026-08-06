@@ -28,16 +28,15 @@ import java.util.List;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
+import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnByteVectorField;
-import org.apache.lucene.document.KnnFloat16VectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -89,41 +88,6 @@ public class TestDedupFlatVectorsFormat extends LuceneTestCase {
           assertTrue("id does not exist for docId=" + docId, docValues.advanceExact(docId));
           int originalOrd = (int) docValues.longValue();
           assertArrayEquals(docVectors[originalOrd], values.vectorValue(ord), 0f);
-          expectedOrds[ord] = ord;
-          ordsSeen[ord] = originalOrd;
-        }
-        assertThat("all vectors not seen", ordsSeen, arrayContainingInAnyOrder(expectedOrds));
-      }
-    }
-  }
-
-  /** Repeated float16 vectors within a field are stored once but still read back per document. */
-  public void testFloat16DuplicatesWithinField() throws Exception {
-    short[] a = {Float.floatToFloat16(1f), Float.floatToFloat16(2f), Float.floatToFloat16(3f)};
-    short[] b = {Float.floatToFloat16(4f), Float.floatToFloat16(5f), Float.floatToFloat16(6f)};
-    short[][] docVectors = {a, b, a, b, a, b}; // 3 copies each of 2 vectors
-    try (Directory dir = newDirectory();
-        IndexWriter w = new IndexWriter(dir, config())) {
-      for (int ord = 0; ord < docVectors.length; ord++) {
-        Document doc = new Document();
-        doc.add(new NumericDocValuesField("id", ord));
-        doc.add(new KnnFloat16VectorField("f", docVectors[ord], EUCLIDEAN));
-        w.addDocument(doc);
-      }
-      w.forceMerge(1);
-      try (DirectoryReader reader = DirectoryReader.open(w)) {
-        LeafReader leafReader = getOnlyLeafReader(reader);
-        Float16VectorValues values = leafReader.getFloat16VectorValues("f");
-        assertEquals(docVectors.length, values.size()); // one entry per document
-        assertEquals(2, groupNumVectors(values)); // only two distinct vectors stored
-        NumericDocValues docValues = leafReader.getNumericDocValues("id");
-        Integer[] expectedOrds = new Integer[docVectors.length];
-        Integer[] ordsSeen = new Integer[docVectors.length];
-        for (int ord = 0; ord < docVectors.length; ord++) {
-          int docId = values.ordToDoc(ord);
-          assertTrue("id does not exist for docId=" + docId, docValues.advanceExact(docId));
-          int originalOrd = (int) docValues.longValue();
-          assertArrayEquals(docVectors[originalOrd], values.vectorValue(ord));
           expectedOrds[ord] = ord;
           ordsSeen[ord] = originalOrd;
         }
@@ -428,7 +392,9 @@ public class TestDedupFlatVectorsFormat extends LuceneTestCase {
   private static DedupFlatVectorsReader getDedupReader(LeafReader leafReader, String fieldName) {
     assertThat(leafReader, instanceOf(CodecReader.class));
     KnnVectorsReader knnVectorsReader = ((CodecReader) leafReader).getVectorReader();
-    knnVectorsReader = knnVectorsReader.unwrapReaderForField(fieldName);
+    if (knnVectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader fieldsReader) {
+      knnVectorsReader = fieldsReader.getFieldReader(fieldName);
+    }
 
     assertThat(knnVectorsReader, instanceOf(Lucene99HnswVectorsReader.class));
     FlatVectorsReader flatReader =

@@ -31,6 +31,7 @@ import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
+import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesType;
@@ -73,7 +74,9 @@ public class TestDedupHnswVectorsFormat extends BaseKnnVectorsFormatTestCase {
 
     if (r instanceof CodecReader codecReader) {
       KnnVectorsReader knnVectorsReader = codecReader.getVectorReader();
-      knnVectorsReader = knnVectorsReader.unwrapReaderForField(fieldName);
+      if (knnVectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader fieldsReader) {
+        knnVectorsReader = fieldsReader.getFieldReader(fieldName);
+      }
       var offHeap = knnVectorsReader.getOffHeapByteSize(fieldInfo);
       long totalByteSize = offHeap.values().stream().mapToLong(Long::longValue).sum();
       if (knnVectorsReader instanceof Lucene99HnswVectorsReader) {
@@ -165,7 +168,7 @@ public class TestDedupHnswVectorsFormat extends BaseKnnVectorsFormatTestCase {
   private record FloatVector(float[] vector) {
     @Override
     public boolean equals(Object obj) {
-      return obj instanceof FloatVector(float[] other) && Arrays.equals(vector, other);
+      return obj instanceof FloatVector other && Arrays.equals(vector, other.vector);
     }
 
     @Override
@@ -244,7 +247,7 @@ public class TestDedupHnswVectorsFormat extends BaseKnnVectorsFormatTestCase {
   private record ByteVector(byte[] vector) {
     @Override
     public boolean equals(Object obj) {
-      return obj instanceof ByteVector(byte[] other) && Arrays.equals(vector, other);
+      return obj instanceof ByteVector other && Arrays.equals(vector, other.vector);
     }
 
     @Override

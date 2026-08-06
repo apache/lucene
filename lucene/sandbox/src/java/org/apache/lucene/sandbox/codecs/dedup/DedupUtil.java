@@ -186,7 +186,7 @@ final class DedupUtil {
     int alignBytes =
         switch (encoding) {
           case BYTE -> 4;
-          case FLOAT32, FLOAT16 -> 64;
+          case FLOAT32 -> 64;
         };
     return output.alignFilePointer(alignBytes);
   }

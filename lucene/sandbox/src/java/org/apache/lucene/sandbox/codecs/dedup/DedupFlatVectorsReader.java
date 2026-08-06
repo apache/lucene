@@ -17,7 +17,6 @@
 package org.apache.lucene.sandbox.codecs.dedup;
 
 import static org.apache.lucene.index.VectorEncoding.BYTE;
-import static org.apache.lucene.index.VectorEncoding.FLOAT16;
 import static org.apache.lucene.index.VectorEncoding.FLOAT32;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupFlatVectorsFormat.META_CODEC_NAME;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupFlatVectorsFormat.META_EXTENSION;
@@ -26,7 +25,6 @@ import static org.apache.lucene.sandbox.codecs.dedup.DedupFlatVectorsFormat.VECT
 import static org.apache.lucene.sandbox.codecs.dedup.DedupFlatVectorsFormat.VERSION_CURRENT;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupFlatVectorsFormat.VERSION_START;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.loadDedupBytes;
-import static org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.loadDedupFloat16s;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.loadDedupFloats;
 
 import java.io.IOException;
@@ -41,10 +39,8 @@ import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
-import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.GroupInfo;
@@ -249,15 +245,8 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
   }
 
   @Override
-  public RandomVectorScorer getRandomVectorScorer(String field, short[] target) throws IOException {
-    FieldEntry entry = getEntry(field, FLOAT16);
-    Float16VectorValues vectorValues = getFloat16VectorValues(entry);
-    return vectorsScorer.getRandomVectorScorer(entry.fieldInfo.function(), vectorValues, target);
-  }
-
-  @Override
-  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
-    CodecUtil.checksumEntireFile(vectorData, merge);
+  public void checkIntegrity() throws IOException {
+    CodecUtil.checksumEntireFile(vectorData);
   }
 
   private FloatVectorValues getFloatVectorValues(FieldEntry entry) throws IOException {
@@ -296,25 +285,6 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
   @Override
   public ByteVectorValues getByteVectorValues(String field) throws IOException {
     return getByteVectorValues(getEntry(field, BYTE));
-  }
-
-  private Float16VectorValues getFloat16VectorValues(FieldEntry entry) throws IOException {
-    return loadDedupFloat16s(
-        vectorsScorer,
-        entry.fieldInfo.function(),
-        entry.fieldInfo.ordToDoc(),
-        entry.fieldInfo.dimension(),
-        entry.groupInfo.groupNumVectors(),
-        vectorData,
-        entry.groupInfo.vectorDataOffset(),
-        entry.groupInfo.vectorDataSize(),
-        entry.fieldInfo.fieldOrdToGroupOrdOffset(),
-        entry.fieldInfo.fieldOrdToGroupOrdSize());
-  }
-
-  @Override
-  public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
-    return getFloat16VectorValues(getEntry(field, FLOAT16));
   }
 
   @Override

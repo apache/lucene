@@ -17,7 +17,6 @@
 package org.apache.lucene.sandbox.codecs.dedup;
 
 import static org.apache.lucene.index.VectorEncoding.BYTE;
-import static org.apache.lucene.index.VectorEncoding.FLOAT16;
 import static org.apache.lucene.index.VectorEncoding.FLOAT32;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.FIELD_ORD_TO_GROUP_ORD_BITS_PER_VALUE;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.SCRATCH_INITIAL_SIZE;
@@ -27,11 +26,9 @@ import static org.apache.lucene.search.VectorScorer.Bulk.fromRandomScorerSparse;
 import java.io.IOException;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
-import org.apache.lucene.codecs.lucene95.OffHeapFloat16VectorValues;
 import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.index.ByteVectorValues;
-import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -311,127 +308,6 @@ sealed interface DedupVectorValues {
     }
   }
 
-  static Float16VectorValues loadDedupFloat16s(
-      FlatVectorsScorer vectorsScorer,
-      VectorSimilarityFunction function,
-      OrdToDocDISIReaderConfiguration configuration,
-      int dimension,
-      int groupNumVectors,
-      IndexInput vectorData,
-      long vectorDataOffset,
-      long vectorDataSize,
-      long fieldOrdToGroupOrdOffset,
-      long fieldOrdToGroupOrdSize)
-      throws IOException {
-
-    final OffHeapFloat16VectorValues fieldView =
-        OffHeapFloat16VectorValues.load(
-            function, vectorsScorer, configuration, FLOAT16, dimension, 0, 0, vectorData);
-
-    final OffHeapFloat16VectorValues groupView =
-        new OffHeapFloat16VectorValues.DenseOffHeapVectorValues(
-            dimension,
-            groupNumVectors,
-            vectorData.slice("group-slice", vectorDataOffset, vectorDataSize),
-            fieldView.getVectorByteLength(),
-            vectorsScorer,
-            function);
-
-    final FieldOrdToGroupOrd fieldOrdToGroupOrd =
-        new FieldOrdToGroupOrdOffHeap(vectorData, fieldOrdToGroupOrdOffset, fieldOrdToGroupOrdSize);
-
-    return new Float16Impl(vectorsScorer, function, fieldView, groupView, fieldOrdToGroupOrd);
-  }
-
-  /** {@link DedupVectorValues} over float16 vectors. */
-  final class Float16Impl extends Float16VectorValues implements DedupVectorValues {
-    private final FlatVectorsScorer vectorsScorer;
-    private final VectorSimilarityFunction function;
-    private final Float16VectorValues fieldView;
-    private final Float16VectorValues groupView;
-    private final FieldOrdToGroupOrd fieldOrdToGroupOrd;
-    private int[] scratch;
-
-    Float16Impl(
-        FlatVectorsScorer vectorsScorer,
-        VectorSimilarityFunction function,
-        Float16VectorValues fieldView,
-        Float16VectorValues groupView,
-        FieldOrdToGroupOrd fieldOrdToGroupOrd) {
-      this.vectorsScorer = vectorsScorer;
-      this.function = function;
-      this.fieldView = fieldView;
-      this.groupView = groupView;
-      this.fieldOrdToGroupOrd = fieldOrdToGroupOrd;
-      this.scratch = new int[SCRATCH_INITIAL_SIZE];
-    }
-
-    @Override
-    public Float16VectorValues getGroupView() {
-      return groupView;
-    }
-
-    @Override
-    public FieldOrdToGroupOrd getFieldOrdToGroupOrd() {
-      return fieldOrdToGroupOrd;
-    }
-
-    @Override
-    public int ordToDoc(int ord) {
-      return fieldView.ordToDoc(ord);
-    }
-
-    @Override
-    public void prefetch(int[] ordsToPrefetch, int numOrds) throws IOException {
-      if (scratch.length < ordsToPrefetch.length) { // grow if needed
-        scratch = ArrayUtil.grow(scratch, ordsToPrefetch.length);
-      }
-      for (int i = 0; i < numOrds; i++) {
-        scratch[i] = fieldOrdToGroupOrd.get(ordsToPrefetch[i]);
-      }
-      groupView.prefetch(scratch, numOrds);
-    }
-
-    @Override
-    public short[] vectorValue(int ord) throws IOException {
-      return groupView.vectorValue(fieldOrdToGroupOrd.get(ord));
-    }
-
-    @Override
-    public int dimension() {
-      return fieldView.dimension();
-    }
-
-    @Override
-    public int size() {
-      return fieldView.size();
-    }
-
-    @Override
-    public Float16Impl copy() throws IOException {
-      return new Float16Impl(
-          vectorsScorer, function, fieldView.copy(), groupView.copy(), fieldOrdToGroupOrd.copy());
-    }
-
-    @Override
-    public DocIndexIterator iterator() {
-      return fieldView.iterator();
-    }
-
-    @Override
-    public VectorScorer scorer(short[] target) throws IOException {
-      if (size() == 0) {
-        return null;
-      }
-      Float16Impl copy = copy();
-      DocIndexIterator indexIterator = copy.iterator();
-      RandomVectorScorer vectorScorer = vectorsScorer.getRandomVectorScorer(function, copy, target);
-      boolean isDense =
-          copy.fieldView instanceof OffHeapFloat16VectorValues.DenseOffHeapVectorValues;
-      return new DedupVectorScorer(indexIterator, vectorScorer, isDense);
-    }
-  }
-
   record DedupVectorScorer(
       KnnVectorValues.DocIndexIterator indexIterator,
       RandomVectorScorer vectorScorer,
@@ -499,10 +375,19 @@ sealed interface DedupVectorValues {
     FieldOrdToGroupOrdOffHeap(
         IndexInput vectorData, long fieldOrdToGroupOrdOffset, long fieldOrdToGroupOrdSize)
         throws IOException {
+      this(
+          vectorData,
+          fieldOrdToGroupOrdOffset,
+          fieldOrdToGroupOrdSize,
+          getLongValues(vectorData, fieldOrdToGroupOrdOffset, fieldOrdToGroupOrdSize));
+    }
+
+    private static LongValues getLongValues(
+        IndexInput vectorData, long fieldOrdToGroupOrdOffset, long fieldOrdToGroupOrdSize)
+        throws IOException {
       RandomAccessInput slice =
           vectorData.randomAccessSlice(fieldOrdToGroupOrdOffset, fieldOrdToGroupOrdSize);
-      LongValues values = DirectReader.getInstance(slice, FIELD_ORD_TO_GROUP_ORD_BITS_PER_VALUE);
-      this(vectorData, fieldOrdToGroupOrdOffset, fieldOrdToGroupOrdSize, values);
+      return DirectReader.getInstance(slice, FIELD_ORD_TO_GROUP_ORD_BITS_PER_VALUE);
     }
 
     @Override

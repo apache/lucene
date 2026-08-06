@@ -84,20 +84,6 @@ final class DedupFlatVectorsScorer implements FlatVectorsScorer {
     return SCORER.getRandomVectorScorer(similarityFunction, vectorValues, target);
   }
 
-  @Override
-  public RandomVectorScorer getRandomVectorScorer(
-      VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, short[] target)
-      throws IOException {
-    if (vectorValues instanceof DedupVectorValues dedupValues) {
-      RandomVectorScorer fieldView =
-          SCORER.getRandomVectorScorer(similarityFunction, vectorValues, target);
-      RandomVectorScorer groupView =
-          SCORER.getRandomVectorScorer(similarityFunction, dedupValues.getGroupView(), target);
-      return new RandomVectorScorerImpl(fieldView, groupView, dedupValues.getFieldOrdToGroupOrd());
-    }
-    return SCORER.getRandomVectorScorer(similarityFunction, vectorValues, target);
-  }
-
   private record RandomVectorScorerSupplierImpl(
       RandomVectorScorerSupplier fieldView,
       RandomVectorScorerSupplier groupView,
