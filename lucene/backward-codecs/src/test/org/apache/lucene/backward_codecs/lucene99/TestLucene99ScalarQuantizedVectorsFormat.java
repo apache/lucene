@@ -271,4 +271,10 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
     //  Old codecs may only be used for reading, hence we are disabling this test because it writes
     // the indexes
   }
+
+  @Override
+  public void testScoresUnchangedWithEmptyRawVectors() {
+    //  Old codecs may only be used for reading, hence we are disabling this test because it writes
+    // the indexes
+  }
 }
