@@ -19,9 +19,7 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
@@ -154,8 +152,23 @@ public class PersistentSnapshotDeletionPolicy extends SnapshotDeletionPolicy {
    * @see SnapshotDeletionPolicy#release
    */
   public synchronized void release(long gen) throws IOException {
+    IndexCommit ic = super.getIndexCommit(gen);
     super.releaseGen(gen);
-    persist();
+    try {
+      persist();
+    } catch (Throwable t) {
+      try {
+        // If we get in a state where ic is null it indicates we had ref-counts for a gen on disk
+        // that we didn't see corresponding commits for in onInit. In that situation, we don't
+        // re-increment ref-counts on error.
+        if (ic != null) {
+          incRef(ic);
+        }
+      } catch (Exception e) {
+        t.addSuppressed(e);
+      }
+      throw t;
+    }
   }
 
   private synchronized void persist() throws IOException {
@@ -195,7 +208,7 @@ public class PersistentSnapshotDeletionPolicy extends SnapshotDeletionPolicy {
    * Returns the file name the snapshots are currently saved to, or null if no snapshots have been
    * saved.
    */
-  public String getLastSaveFile() {
+  public synchronized String getLastSaveFile() {
     if (nextWriteGen == 0) {
       return null;
     } else {
@@ -203,63 +216,43 @@ public class PersistentSnapshotDeletionPolicy extends SnapshotDeletionPolicy {
     }
   }
 
-  /**
-   * Reads the snapshots information from the given {@link Directory}. This method can be used if
-   * the snapshots information is needed, however you cannot instantiate the deletion policy
-   * (because e.g., some other process keeps a lock on the snapshots directory).
-   */
   private synchronized void loadPriorSnapshots() throws IOException {
     long genLoaded = -1;
-    IOException ioe = null;
     List<String> snapshotFiles = new ArrayList<>();
     for (String file : dir.listAll()) {
       if (file.startsWith(SNAPSHOTS_PREFIX)) {
+        snapshotFiles.add(file);
         long gen = Long.parseLong(file.substring(SNAPSHOTS_PREFIX.length()));
-        if (genLoaded == -1 || gen > genLoaded) {
-          snapshotFiles.add(file);
-          Map<Long, Integer> m = new HashMap<>();
-          IndexInput in = dir.openInput(file, IOContext.DEFAULT);
-          try {
-            CodecUtil.checkHeader(in, CODEC_NAME, VERSION_START, VERSION_START);
-            int count = in.readVInt();
-            for (int i = 0; i < count; i++) {
-              long commitGen = in.readVLong();
-              int refCount = in.readVInt();
-              m.put(commitGen, refCount);
-            }
-          } catch (IOException ioe2) {
-            // Save first exception & throw in the end
-            if (ioe == null) {
-              ioe = ioe2;
-            }
-          } finally {
-            in.close();
-          }
-
+        if (gen > genLoaded) {
           genLoaded = gen;
-          refCounts.clear();
-          refCounts.putAll(m);
         }
       }
     }
 
     if (genLoaded == -1) {
-      // Nothing was loaded...
-      if (ioe != null) {
-        // ... not for lack of trying:
-        throw ioe;
-      }
-    } else {
-      if (snapshotFiles.size() > 1) {
-        // Remove any broken / old snapshot files:
-        String curFileName = SNAPSHOTS_PREFIX + genLoaded;
-        for (String file : snapshotFiles) {
-          if (!curFileName.equals(file)) {
-            IOUtils.deleteFilesIgnoringExceptions(dir, file);
-          }
-        }
-      }
-      nextWriteGen = 1 + genLoaded;
+      return;
     }
+
+    // Load only the latest snapshot file
+    String latestFile = SNAPSHOTS_PREFIX + genLoaded;
+    refCounts.clear();
+    try (IndexInput in = dir.openInput(latestFile, IOContext.DEFAULT)) {
+      CodecUtil.checkHeader(in, CODEC_NAME, VERSION_START, VERSION_START);
+      int count = in.readVInt();
+      for (int i = 0; i < count; i++) {
+        long commitGen = in.readVLong();
+        int refCount = in.readVInt();
+        refCounts.put(commitGen, refCount);
+      }
+    }
+
+    // Clean up old snapshot files
+    for (String file : snapshotFiles) {
+      if (latestFile.equals(file) == false) {
+        IOUtils.deleteFilesIgnoringExceptions(dir, file);
+      }
+    }
+
+    nextWriteGen = 1 + genLoaded;
   }
 }

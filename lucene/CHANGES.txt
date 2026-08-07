@@ -356,6 +356,9 @@ Improvements
   The new code allows to add a hard limit for nesting (default is 1024) and no longer
   throws virtual machine errors.  (Uwe Schindler, Seth Kraft)
 
+* GITHUB#16482: Modernize SnapshotDeletionPolicy and PersistentSnapshotDeletionPolicy through minor
+  improvements and clean up persistence logic. (Greg Miller)
+
 Optimizations
 ---------------------
 * GITHUB#16394: Add DocIdSetIterator#intoArray, which DisjunctionDISIApproximation implements by
