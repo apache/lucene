@@ -30,13 +30,6 @@ runs:
         java-version: ${{ inputs.java-version }}
         java-package: jdk
 
-    - name: Cache gradle-wrapper.jar
-      if: ${{ fromJSON(inputs.use-cache) }}
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-      with:
-        path: gradle/wrapper/gradle-wrapper.jar
-        key: gradle-wrapper-${{ hashFiles('gradle/wrapper/gradle-wrapper.jar.sha256') }}
-
     # This includes "smart" caching of gradle dependencies.
     - name: Set up Gradle
       if: ${{ fromJSON(inputs.use-cache) }}

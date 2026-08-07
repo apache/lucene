@@ -5,9 +5,6 @@
 .gradle/
 build/
 
-# Ignore gradle wrapper jar.
-gradle/wrapper/gradle-wrapper.jar
-
 # IntelliJ IDEA
 **/.idea/*
 # Do add the icon to git
