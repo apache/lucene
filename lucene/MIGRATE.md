@@ -219,13 +219,6 @@ Query query = new AutomatonQuery(new Term("myfield", pattern), dfa);
 
 Corresponding methods and parameters have been renamed accordingly.
 
-## Migration from Lucene 10.5 to Lucene 10.6
-
-### `SnapshotDeletionPolicy#[refCounts|indexCommits]` type change
-
-These two protected fields changed from java.util collections to hppc collections. Subclasses will
-need to adapt if they access these fields directly.
-
 ## Migration from Lucene 10.4 to Lucene 10.5
 
 ### `[Byte|Float]VectorSimilarityQuery` now performs adaptive HNSW graph traversal

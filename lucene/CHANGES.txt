@@ -353,7 +353,7 @@ Improvements
   throws virtual machine errors.  (Uwe Schindler, Seth Kraft)
 
 * GITHUB#16482: Modernize SnapshotDeletionPolicy and PersistentSnapshotDeletionPolicy through minor
-  improvements to data structure choice and persistence logic. (Greg Miller)
+  improvements and clean up persistence logic. (Greg Miller)
 
 Optimizations
 ---------------------
