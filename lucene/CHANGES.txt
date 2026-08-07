@@ -135,6 +135,10 @@ Bug Fixes
   GlobalOrdinalsWithScoreCollector, fixing an intermittent failure caused by
   non-associative float addition that #16378 missed. (Luca Cavanna)
 
+* GITHUB#16419: Restore KnnVectorsReader#finishMerge() calls after merges, including
+  exceptional exits, so vector inputs switch back from sequential read advice.
+  (Simon Cooper, John Maurice)
+
 Other
 ---------------------
 * GITHUB#16266: Remove deprecated search(Query, Collector) calls in QueryUtils by replacing
