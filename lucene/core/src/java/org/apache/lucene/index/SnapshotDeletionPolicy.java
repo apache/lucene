@@ -19,12 +19,9 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.lucene.internal.hppc.IntCursor;
-import org.apache.lucene.internal.hppc.LongIntHashMap;
-import org.apache.lucene.internal.hppc.LongObjectHashMap;
-import org.apache.lucene.internal.hppc.ObjectCursor;
 import org.apache.lucene.store.Directory;
 
 /**
@@ -44,10 +41,10 @@ import org.apache.lucene.store.Directory;
 public class SnapshotDeletionPolicy extends IndexDeletionPolicy {
 
   /** Records how many snapshots are held against each commit generation */
-  protected final LongIntHashMap refCounts = new LongIntHashMap();
+  protected final Map<Long, Integer> refCounts = new HashMap<>();
 
   /** Used to map gen to IndexCommit. */
-  protected final LongObjectHashMap<IndexCommit> indexCommits = new LongObjectHashMap<>();
+  protected final Map<Long, IndexCommit> indexCommits = new HashMap<>();
 
   /** Wrapped {@link IndexDeletionPolicy} */
   private final IndexDeletionPolicy primary;
@@ -100,8 +97,8 @@ public class SnapshotDeletionPolicy extends IndexDeletionPolicy {
       throw new IllegalStateException(
           "this instance is not being used by IndexWriter; be sure to use the instance returned from writer.getConfig().getIndexDeletionPolicy()");
     }
-    int refCount = refCounts.getOrDefault(gen, 0);
-    if (refCount == 0) {
+    Integer refCount = refCounts.get(gen);
+    if (refCount == null) {
       throw new IllegalArgumentException("commit gen=" + gen + " is not currently snapshotted");
     }
     assert refCount > 0;
@@ -116,7 +113,7 @@ public class SnapshotDeletionPolicy extends IndexDeletionPolicy {
   /** Increments the refCount for this {@link IndexCommit}. */
   protected synchronized void incRef(IndexCommit ic) {
     long gen = ic.getGeneration();
-    int refCount = refCounts.putOrAdd(gen, 1, 1);
+    int refCount = refCounts.merge(gen, 1, Integer::sum);
     if (refCount == 1) {
       indexCommits.put(gen, ic);
     }
@@ -153,19 +150,14 @@ public class SnapshotDeletionPolicy extends IndexDeletionPolicy {
 
   /** Returns all IndexCommits held by at least one snapshot. */
   public synchronized List<IndexCommit> getSnapshots() {
-    ArrayList<IndexCommit> result = new ArrayList<>(indexCommits.size());
-    for (ObjectCursor<IndexCommit> cursor : indexCommits.values()) {
-      result.add(cursor.value);
-    }
-
-    return result;
+    return new ArrayList<>(indexCommits.values());
   }
 
   /** Returns the total number of snapshots currently held. */
   public synchronized int getSnapshotCount() {
     int total = 0;
-    for (IntCursor cursor : refCounts.values()) {
-      total += cursor.value;
+    for (int refCount : refCounts.values()) {
+      total += refCount;
     }
 
     return total;

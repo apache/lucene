@@ -20,9 +20,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map.Entry;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
-import org.apache.lucene.internal.hppc.LongIntHashMap;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -176,9 +176,9 @@ public class PersistentSnapshotDeletionPolicy extends SnapshotDeletionPolicy {
     try (IndexOutput out = dir.createOutput(fileName, IOContext.DEFAULT)) {
       CodecUtil.writeHeader(out, CODEC_NAME, VERSION_CURRENT);
       out.writeVInt(refCounts.size());
-      for (LongIntHashMap.LongIntCursor ent : refCounts) {
-        out.writeVLong(ent.key);
-        out.writeVInt(ent.value);
+      for (Entry<Long, Integer> ent : refCounts.entrySet()) {
+        out.writeVLong(ent.getKey());
+        out.writeVInt(ent.getValue());
       }
     } catch (Throwable t) {
       IOUtils.deleteFilesSuppressingExceptions(t, dir, fileName);
