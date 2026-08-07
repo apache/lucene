@@ -211,37 +211,27 @@ public final class ReaderUtil {
     int numLeaves = leaves.size();
     int[][] result = new int[numLeaves][];
 
-    int leafStart = 0;
+    int from = 0;
     int leafIdx = 0;
-    LeafReaderContext leaf = leaves.getFirst();
-    int leafEnd = leaf.docBase + leaf.reader().maxDoc();
-
-    for (int i = 0; i < sortedDocIds.length; i++) {
-      int docId = sortedDocIds[i];
-      while (docId >= leafEnd) {
-        int count = i - leafStart;
-        if (count == 0) {
-          result[leafIdx] = EMPTY_INT_ARRAY;
-        } else {
-          result[leafIdx] = new int[count];
-          System.arraycopy(sortedDocIds, leafStart, result[leafIdx], 0, count);
-        }
-        leafStart = i;
-        leafIdx++;
-        leaf = leaves.get(leafIdx);
-        leafEnd = leaf.docBase + leaf.reader().maxDoc();
+    for (; leafIdx < numLeaves && from < sortedDocIds.length; leafIdx++) {
+      LeafReaderContext leaf = leaves.get(leafIdx);
+      int leafEnd = leaf.docBase + leaf.reader().maxDoc();
+      if (sortedDocIds[from] >= leafEnd) {
+        result[leafIdx] = EMPTY_INT_ARRAY;
+        continue;
       }
+      int to = Arrays.binarySearch(sortedDocIds, from, sortedDocIds.length, leafEnd);
+      if (to < 0) {
+        to = -to - 1;
+      }
+      int count = to - from;
+      assert count > 0;
+      result[leafIdx] = new int[count];
+      System.arraycopy(sortedDocIds, from, result[leafIdx], 0, count);
+      from = to;
     }
 
-    // Handle remaining docIds (must be at least one, since we early-returned on empty input).
-    int count = sortedDocIds.length - leafStart;
-    assert count > 0;
-    result[leafIdx] = new int[count];
-    System.arraycopy(sortedDocIds, leafStart, result[leafIdx], 0, count);
-
-    // Fill remaining empty leaves
-    Arrays.fill(result, leafIdx + 1, numLeaves, EMPTY_INT_ARRAY);
-
+    Arrays.fill(result, leafIdx, numLeaves, EMPTY_INT_ARRAY);
     return result;
   }
 
@@ -256,43 +246,31 @@ public final class ReaderUtil {
     int[][] docIdsByLeaf = new int[numLeaves][];
     int[][] ordinalsByLeaf = new int[numLeaves][];
 
-    int leafStart = 0;
+    int from = 0;
     int leafIdx = 0;
-    LeafReaderContext leaf = leaves.getFirst();
-    int leafEnd = leaf.docBase + leaf.reader().maxDoc();
-
-    for (int i = 0; i < sortedDocIds.length; i++) {
-      int docId = sortedDocIds[i];
-      while (docId >= leafEnd) {
-        int count = i - leafStart;
-        if (count == 0) {
-          docIdsByLeaf[leafIdx] = EMPTY_INT_ARRAY;
-          ordinalsByLeaf[leafIdx] = EMPTY_INT_ARRAY;
-        } else {
-          docIdsByLeaf[leafIdx] = new int[count];
-          ordinalsByLeaf[leafIdx] = new int[count];
-          System.arraycopy(sortedDocIds, leafStart, docIdsByLeaf[leafIdx], 0, count);
-          System.arraycopy(sortedOrdinals, leafStart, ordinalsByLeaf[leafIdx], 0, count);
-        }
-        leafStart = i;
-        leafIdx++;
-        leaf = leaves.get(leafIdx);
-        leafEnd = leaf.docBase + leaf.reader().maxDoc();
+    for (; leafIdx < numLeaves && from < sortedDocIds.length; leafIdx++) {
+      LeafReaderContext leaf = leaves.get(leafIdx);
+      int leafEnd = leaf.docBase + leaf.reader().maxDoc();
+      if (sortedDocIds[from] >= leafEnd) {
+        docIdsByLeaf[leafIdx] = EMPTY_INT_ARRAY;
+        ordinalsByLeaf[leafIdx] = EMPTY_INT_ARRAY;
+        continue;
       }
+      int to = Arrays.binarySearch(sortedDocIds, from, sortedDocIds.length, leafEnd);
+      if (to < 0) {
+        to = -to - 1;
+      }
+      int count = to - from;
+      assert count > 0;
+      docIdsByLeaf[leafIdx] = new int[count];
+      ordinalsByLeaf[leafIdx] = new int[count];
+      System.arraycopy(sortedDocIds, from, docIdsByLeaf[leafIdx], 0, count);
+      System.arraycopy(sortedOrdinals, from, ordinalsByLeaf[leafIdx], 0, count);
+      from = to;
     }
 
-    // Handle remaining docIds (must be at least one, since we early-returned on empty input).
-    int count = sortedDocIds.length - leafStart;
-    assert count > 0;
-    docIdsByLeaf[leafIdx] = new int[count];
-    ordinalsByLeaf[leafIdx] = new int[count];
-    System.arraycopy(sortedDocIds, leafStart, docIdsByLeaf[leafIdx], 0, count);
-    System.arraycopy(sortedOrdinals, leafStart, ordinalsByLeaf[leafIdx], 0, count);
-
-    // Fill remaining empty leaves
-    Arrays.fill(docIdsByLeaf, leafIdx + 1, numLeaves, EMPTY_INT_ARRAY);
-    Arrays.fill(ordinalsByLeaf, leafIdx + 1, numLeaves, EMPTY_INT_ARRAY);
-
+    Arrays.fill(docIdsByLeaf, leafIdx, numLeaves, EMPTY_INT_ARRAY);
+    Arrays.fill(ordinalsByLeaf, leafIdx, numLeaves, EMPTY_INT_ARRAY);
     return new PartitionedHits(docIdsByLeaf, ordinalsByLeaf);
   }
 }
