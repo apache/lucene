@@ -124,6 +124,7 @@ public class IndexSearcher {
 
   private QueryCache queryCache = DEFAULT_QUERY_CACHE;
   private QueryCachingPolicy queryCachingPolicy = DEFAULT_CACHING_POLICY;
+  private volatile Set<QueryReadHint> readHints = Set.of();
 
   /**
    * Expert: returns a default Similarity instance. In general, this method is only called to
@@ -307,6 +308,37 @@ public class IndexSearcher {
    */
   public QueryCachingPolicy getQueryCachingPolicy() {
     return queryCachingPolicy;
+  }
+
+  /**
+   * Set advisory read hints that this searcher attaches to the KNN collectors it creates, so codec
+   * readers can consult them when wiring up per-query iteration. This is the query-time companion
+   * to {@link org.apache.lucene.store.IOContext.FileOpenHint open-time file hints}. The hints reach
+   * KNN readers via {@link org.apache.lucene.search.knn.TopKnnCollectorManager} -&gt; {@link
+   * KnnCollector#readHints()}, which the HNSW vectors reader consults to decide whether to
+   * prefetch. Hints never affect correctness.
+   *
+   * <p><b>Scope:</b> hints are stored on this {@code IndexSearcher} and apply to <em>every</em>
+   * search through it until changed -- they are searcher-scoped, not per-{@link #search} call, and
+   * are visible to concurrent searches on a shared instance. For single-query hints use {@link
+   * KnnFloatVectorQuery#withReadHints} or a dedicated searcher. Changes take effect for collectors
+   * created after the call; in-flight scorers are unaffected. An empty set restores the default of
+   * no hints.
+   *
+   * @lucene.experimental
+   */
+  public void setReadHints(Set<QueryReadHint> hints) {
+    this.readHints = Set.copyOf(Objects.requireNonNull(hints));
+  }
+
+  /**
+   * Return the read hints attached to this searcher, or an empty set if none have been set via
+   * {@link #setReadHints(Set)}.
+   *
+   * @lucene.experimental
+   */
+  public Set<QueryReadHint> getReadHints() {
+    return readHints;
   }
 
   /**

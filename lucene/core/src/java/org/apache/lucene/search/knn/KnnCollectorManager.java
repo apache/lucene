@@ -18,8 +18,10 @@
 package org.apache.lucene.search.knn;
 
 import java.io.IOException;
+import java.util.Set;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.search.QueryReadHint;
 
 /**
  * KnnCollectorManager responsible for creating {@link KnnCollector} instances. Useful to create
@@ -58,5 +60,43 @@ public interface KnnCollectorManager {
 
   default boolean isOptimistic() {
     return false;
+  }
+
+  /**
+   * Wrap {@code delegate} so the collectors it produces advertise {@code readHints} via {@link
+   * KnnCollector#readHints()}, delegating everything else. Returns {@code delegate} unchanged when
+   * {@code readHints} is {@code null} or empty, so the no-hint path allocates nothing extra. This
+   * is the single delegate-wrapping implementation shared by the KNN queries that surface
+   * per-query/searcher read hints to codec readers.
+   *
+   * @lucene.experimental
+   */
+  static KnnCollectorManager withReadHints(
+      KnnCollectorManager delegate, Set<QueryReadHint> readHints) {
+    if (readHints == null || readHints.isEmpty()) {
+      return delegate;
+    }
+    return new KnnCollectorManager() {
+      @Override
+      public KnnCollector newCollector(
+          int visitedLimit, KnnSearchStrategy searchStrategy, LeafReaderContext context)
+          throws IOException {
+        return KnnCollector.withReadHints(
+            delegate.newCollector(visitedLimit, searchStrategy, context), readHints);
+      }
+
+      @Override
+      public KnnCollector newOptimisticCollector(
+          int visitedLimit, KnnSearchStrategy searchStrategy, LeafReaderContext context, int k)
+          throws IOException {
+        return KnnCollector.withReadHints(
+            delegate.newOptimisticCollector(visitedLimit, searchStrategy, context, k), readHints);
+      }
+
+      @Override
+      public boolean isOptimistic() {
+        return delegate.isOptimistic();
+      }
+    };
   }
 }

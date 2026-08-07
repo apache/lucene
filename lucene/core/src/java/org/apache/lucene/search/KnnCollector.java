@@ -17,6 +17,7 @@
 
 package org.apache.lucene.search;
 
+import java.util.Set;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
 
 /**
@@ -94,6 +95,38 @@ public interface KnnCollector {
   KnnSearchStrategy getSearchStrategy();
 
   /**
+   * Per-query read hints attached to this collector. Default is an empty set. Vector readers may
+   * consult these hints to choose an I/O strategy (e.g. whether to issue extra prefetch calls).
+   * Hints never affect correctness.
+   *
+   * @lucene.experimental
+   */
+  default Set<QueryReadHint> readHints() {
+    return Set.of();
+  }
+
+  /**
+   * Wrap {@code collector} so {@link #readHints()} returns a defensive, immutable copy of {@code
+   * readHints}, delegating everything else. Returns {@code collector} unchanged (allocating
+   * nothing) when it is {@code null}, or when {@code readHints} is {@code null} or empty, so the
+   * no-hint path is free.
+   *
+   * @lucene.experimental
+   */
+  static KnnCollector withReadHints(KnnCollector collector, Set<QueryReadHint> readHints) {
+    if (collector == null || readHints == null || readHints.isEmpty()) {
+      return collector;
+    }
+    final Set<QueryReadHint> copy = Set.copyOf(readHints);
+    return new Decorator(collector) {
+      @Override
+      public Set<QueryReadHint> readHints() {
+        return copy;
+      }
+    };
+  }
+
+  /**
    * KnnCollector.Decorator is the base class for decorators of KnnCollector objects, which extend
    * the object with new behaviors.
    *
@@ -149,6 +182,11 @@ public interface KnnCollector {
     @Override
     public KnnSearchStrategy getSearchStrategy() {
       return collector.getSearchStrategy();
+    }
+
+    @Override
+    public Set<QueryReadHint> readHints() {
+      return collector.readHints();
     }
   }
 }
