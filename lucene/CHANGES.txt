@@ -324,6 +324,10 @@ API Changes
 
 * GITHUB#16363: Add API to use a custom `DictionarySuggester` instead of hardcoded `GeneratingSuggester`
 
+* GITHUB#XXXX: Redesign ReaderUtil.partitionByLeaf to take an int[] of global doc IDs instead of a
+  ScoreDoc[], and add ReaderUtil.partitionByLeafWithOrdinals which additionally returns, per leaf, the
+  original input positions of each doc ID (scatter/gather). (Zihan Xu)
+
 New Features
 ---------------------
 
