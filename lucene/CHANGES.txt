@@ -22,6 +22,10 @@ Bug Fixes
   been aborted, so IndexWriter#rollback and abortMerges no longer block until the entire graph is
   built. (Jeho Jeong)
 
+* GITHUB#16415: Fix scoring on scalar-quantized indexes whose raw float vectors have been dropped.
+  FloatVectorValues#scorer now scores against the quantized vectors, matching the behaviour when
+  raw vectors are present. (Pulkit Gupta)
+
 ======================= Lucene 10.5.0 =======================
 
 API Changes
