@@ -324,6 +324,9 @@ API Changes
 
 * GITHUB#16363: Add API to use a custom `DictionarySuggester` instead of hardcoded `GeneratingSuggester`
 
+* GITHUB#16385: Remove unused public methods in AllGroupHeadsCollector.
+                Update grouping package info to use CollectorManager instead of Collector. (Binlong Gao)
+
 New Features
 ---------------------
 
