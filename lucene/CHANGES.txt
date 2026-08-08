@@ -129,6 +129,8 @@ New Features
 
 * GITHUB#16383: Add fp16 vector encoding support. (Pulkit Gupta)
 
+* GITHUB#16473: Add scalar quantization support in Fp16 vector encoding. (Pulkit Gupta)
+
 Improvements
 ---------------------
 * GITHUB#15704: Replace LinkedList with more efficient data structure. (Renato Haeberli)
