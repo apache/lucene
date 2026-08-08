@@ -161,26 +161,30 @@ public abstract class ReferenceManager<G> implements Closeable {
     refreshLock.lock();
     boolean refreshed = false;
     try {
-      final G reference = acquire();
-      try {
-        notifyRefreshListenersBefore();
-        G newReference = refreshIfNeeded(reference);
-        if (newReference != null) {
-          assert newReference != reference
-              : "refreshIfNeeded should return null if refresh wasn't needed";
-          try {
-            swapReference(newReference);
-            refreshed = true;
-          } finally {
-            if (!refreshed) {
-              release(newReference);
+      notifyRefreshListenersBefore();
+      while (true) {
+        final G reference = acquire();
+        try {
+          G newReference = refreshIfNeeded(reference);
+          if (newReference != null) {
+            assert newReference != reference
+                : "refreshIfNeeded should return null if refresh wasn't needed";
+            try {
+              swapReference(newReference);
+              refreshed = true;
+            } finally {
+              if (!refreshed) {
+                release(newReference);
+              }
             }
+          } else {
+            break;
           }
+        } finally {
+          release(reference);
         }
-      } finally {
-        release(reference);
-        notifyRefreshListenersRefreshed(refreshed);
       }
+      notifyRefreshListenersRefreshed(refreshed);
       afterMaybeRefresh();
     } finally {
       refreshLock.unlock();

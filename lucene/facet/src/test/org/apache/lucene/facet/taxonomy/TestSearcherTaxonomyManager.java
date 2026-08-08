@@ -422,18 +422,14 @@ public class TestSearcherTaxonomyManager extends FacetTestCase {
       tw.commit();
     }
 
-    // maybeRefresh only refreshes on the next incremental commit
-    // so it takes us numCommits to get to latest
-    int stepsToCurrent = 0;
-    while (sat.isSearcherCurrent() == false) {
-      long oldGen = sat.getSearcherCommitGeneration();
-      sat.maybeRefreshBlocking();
-      long newGen = sat.getSearcherCommitGeneration();
-      assertEquals(newGen, oldGen + 1);
-      stepsToCurrent++;
-      assertTrue(sat.isTaxonomyCurrent());
-    }
-    assertEquals(numCommits, stepsToCurrent);
+    long initialGen = sat.getSearcherCommitGeneration();
+    sat.maybeRefreshBlocking();
+    assertTrue(sat.isSearcherCurrent());
+    assertEquals(initialGen + numCommits, sat.getSearcherCommitGeneration());
+    assertTrue(sat.isTaxonomyCurrent());
+    int stepsToCurrent = 1;
+    assertEquals(1, stepsToCurrent);
+
     sat.close();
     w.close();
     tw.close();
