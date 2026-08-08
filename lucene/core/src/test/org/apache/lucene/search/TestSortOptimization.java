@@ -331,33 +331,11 @@ public class TestSortOptimization extends LuceneTestCase {
     final DirectoryReader reader = DirectoryReader.open(writer);
     writer.close();
     final int numHits = 3;
-    TopDocs topDocs1;
-    TopDocs topDocs2;
-
     { // Test that optimization is run with NumericDocValues when missing value is NOT competitive
       final SortField sortField = new SortField("my_field", SortField.Type.LONG, true, 0L);
       final Sort sort = new Sort(sortField);
-      topDocs1 = assertSearchHits(reader, sort, numHits, null);
-      assertNonCompetitiveHitsAreSkipped(topDocs1.totalHits.value(), numDocs);
-    }
-    { // Test that sort on sorted numeric field without sort optimization and with sort optimization
-      // produce the same results
-      final SortField sortField = new SortField("my_field", SortField.Type.LONG, true, 0L);
-      final Sort sort = new Sort(sortField);
-      sortField.setOptimizeSortWithPoints(false);
-      topDocs2 = assertSearchHits(reader, sort, numHits, null);
-      // assert that the resulting hits are the same
-      assertEquals(topDocs1.scoreDocs.length, topDocs2.scoreDocs.length);
-      assertEquals(topDocs1.scoreDocs.length, numHits);
-      ScoreDoc[] scoreDocs1 = topDocs1.scoreDocs;
-      ScoreDoc[] scoreDocs2 = topDocs2.scoreDocs;
-      for (int i = 0; i < numHits; i++) {
-        FieldDoc fieldDoc = (FieldDoc) scoreDocs1[i];
-        FieldDoc fieldDoc2 = (FieldDoc) scoreDocs2[i];
-        assertEquals(fieldDoc.fields[0], fieldDoc2.fields[0]);
-        assertEquals(fieldDoc.doc, fieldDoc2.doc);
-      }
-      assertTrue(topDocs1.totalHits.value() < topDocs2.totalHits.value());
+      TopDocs topDocs = assertSearchHits(reader, sort, numHits, null);
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), numDocs);
     }
 
     { // Test that we can't do optimization via NumericDocValues when there are multiple comparators
@@ -795,25 +773,15 @@ public class TestSortOptimization extends LuceneTestCase {
     assertThrows(
         IllegalArgumentException.class,
         () -> searcher.search(MatchAllDocsQuery.INSTANCE, 1, new Sort(longSortOnIntField)));
-    // assert that when sort optimization is disabled we can use LONG sort on int field
-    longSortOnIntField.setOptimizeSortWithIndexedData(false);
-    searcher.search(MatchAllDocsQuery.INSTANCE, 1, new Sort(longSortOnIntField));
-
     SortField intSortOnLongField = new SortField("longField", SortField.Type.INT);
     assertThrows(
         IllegalArgumentException.class,
         () -> searcher.search(MatchAllDocsQuery.INSTANCE, 1, new Sort(intSortOnLongField)));
-    // assert that when sort optimization is disabled we can use INT sort on long field
-    intSortOnLongField.setOptimizeSortWithIndexedData(false);
-    searcher.search(MatchAllDocsQuery.INSTANCE, 1, new Sort(intSortOnLongField));
 
     SortField intSortOnIntRangeField = new SortField("intRange", SortField.Type.INT);
     assertThrows(
         IllegalArgumentException.class,
         () -> searcher.search(MatchAllDocsQuery.INSTANCE, 1, new Sort(intSortOnIntRangeField)));
-    // assert that when sort optimization is disabled we can use INT sort on intRange field
-    intSortOnIntRangeField.setOptimizeSortWithIndexedData(false);
-    searcher.search(MatchAllDocsQuery.INSTANCE, 1, new Sort(intSortOnIntRangeField));
 
     reader.close();
     dir.close();
@@ -948,14 +916,8 @@ public class TestSortOptimization extends LuceneTestCase {
         RandomPicks.randomFrom(random(), SortedNumericSelector.Type.values());
     boolean reverse = random().nextBoolean();
     final SortField sortField = LongField.newSortField("my_field", reverse, type);
-    sortField.setOptimizeSortWithIndexedData(false);
-    final Sort sort = new Sort(sortField); // sort without sort optimization
-    final SortField sortField2 = LongField.newSortField("my_field", reverse, type);
-    final Sort sort2 = new Sort(sortField2); // sort with sort optimization
+    final Sort sort = new Sort(sortField); // sort with sort optimization
 
-    long expectedCollectedHits = 0;
-    long collectedHits = 0;
-    long collectedHits2 = 0;
     int visitedHits = 0;
     FieldDoc after = null;
     while (visitedHits < numDocs) {
@@ -965,30 +927,14 @@ public class TestSortOptimization extends LuceneTestCase {
       TopDocs topDocs = assertSearchHits(reader, sort, batch, after);
       ScoreDoc[] scoreDocs = topDocs.scoreDocs;
 
-      TopDocs topDocs2 = assertSearchHits(reader, sort2, batch, after);
-      ScoreDoc[] scoreDocs2 = topDocs2.scoreDocs;
-
-      // assert that the resulting hits are the same
       assertEquals(expectedHits, topDocs.scoreDocs.length);
-      assertEquals(topDocs.scoreDocs.length, topDocs2.scoreDocs.length);
       for (int i = 0; i < scoreDocs.length; i++) {
-        FieldDoc fieldDoc = (FieldDoc) scoreDocs[i];
-        FieldDoc fieldDoc2 = (FieldDoc) scoreDocs2[i];
-        assertEquals(fieldDoc.fields[0], fieldDoc2.fields[0]);
-        assertEquals(fieldDoc.doc, fieldDoc2.doc);
         visitedHits++;
       }
 
-      expectedCollectedHits += numDocs;
-      collectedHits += topDocs.totalHits.value();
-      collectedHits2 += topDocs2.totalHits.value();
       after = (FieldDoc) scoreDocs[expectedHits - 1];
     }
     assertEquals(visitedHits, numDocs);
-    assertEquals(expectedCollectedHits, collectedHits);
-    // assert that the second sort with optimization collected less or equal hits
-    assertTrue(collectedHits >= collectedHits2);
-    // System.out.println(expectedCollectedHits + "\t" + collectedHits + "\t" + collectedHits2);
 
     reader.close();
     dir.close();
@@ -1099,7 +1045,7 @@ public class TestSortOptimization extends LuceneTestCase {
     final DirectoryReader reader = DirectoryReader.open(writer);
     writer.close();
     doTestStringSortOptimization(reader);
-    doTestStringSortOptimizationDisabled(reader);
+
     reader.close();
     dir.close();
   }
@@ -1202,13 +1148,7 @@ public class TestSortOptimization extends LuceneTestCase {
           KeywordField.newSortField(
               "my_field", true, SortedSetSelector.Type.MIN, SortField.STRING_LAST);
       Sort sort = new Sort(sortField);
-      TopDocs topDocs = assertSearchHits(reader, sort, numHits, null);
-
-      sortField.setOptimizeSortWithIndexedData(false);
-      sort = new Sort(sortField);
-      TopDocs unpruned = assertSearchHits(reader, sort, numHits, null);
-
-      CheckHits.checkEqual(MatchAllDocsQuery.INSTANCE, topDocs.scoreDocs, unpruned.scoreDocs);
+      assertSearchHits(reader, sort, numHits, null);
     }
 
     { // descending sort with missing-first: once the queue fills from the first segment,
@@ -1226,13 +1166,7 @@ public class TestSortOptimization extends LuceneTestCase {
           KeywordField.newSortField(
               "my_field", false, SortedSetSelector.Type.MIN, SortField.STRING_FIRST);
       Sort sort = new Sort(sortField);
-      TopDocs topDocs = assertSearchHits(reader, sort, numHits, null);
-
-      sortField.setOptimizeSortWithIndexedData(false);
-      sort = new Sort(sortField);
-      TopDocs unpruned = assertSearchHits(reader, sort, numHits, null);
-
-      CheckHits.checkEqual(MatchAllDocsQuery.INSTANCE, topDocs.scoreDocs, unpruned.scoreDocs);
+      assertSearchHits(reader, sort, numHits, null);
     }
 
     reader.close();
@@ -1340,20 +1274,6 @@ public class TestSortOptimization extends LuceneTestCase {
           topDocs.totalHits.value(),
           numDocs); // assert that all documents were collected => optimization was not run
     }
-  }
-
-  public void doTestStringSortOptimizationDisabled(DirectoryReader reader) throws IOException {
-    SortField sortField =
-        KeywordField.newSortField(
-            "my_field", false, SortedSetSelector.Type.MIN, SortField.STRING_LAST);
-    sortField.setOptimizeSortWithIndexedData(false);
-
-    Sort sort = new Sort(sortField);
-    final int numDocs = reader.numDocs();
-    final int numHits = 5;
-
-    TopDocs topDocs = assertSearchHits(reader, sort, numHits, null);
-    assertEquals(numDocs, topDocs.totalHits.value());
   }
 
   private TopDocs assertSort(DirectoryReader reader, Sort sort, int n, FieldDoc after)
