@@ -199,7 +199,7 @@ public class RoaringDocIdSet extends DocIdSet {
       assert (toDocExclusive >>> 16) == block || toDocExclusive == (block + 1) << 16;
       assert fromDoc < toDocExclusive;
       final int span = toDocExclusive - fromDoc;
-      if (currentBlockCardinality + span < MAX_ARRAY_LENGTH) {
+      if (currentBlockCardinality + span <= MAX_ARRAY_LENGTH) {
         for (int d = fromDoc; d < toDocExclusive; d++) {
           buffer[currentBlockCardinality++] = (short) d;
         }
@@ -454,6 +454,9 @@ public class RoaringDocIdSet extends DocIdSet {
     @Override
     public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
       for (; ; ) {
+        if (doc == NO_MORE_DOCS) {
+          break;
+        }
         int subUpto = upTo - (block << 16);
         if (subUpto < 0) {
           break;

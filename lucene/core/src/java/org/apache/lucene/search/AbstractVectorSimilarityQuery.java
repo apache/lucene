@@ -32,10 +32,19 @@ import org.apache.lucene.util.Bits;
  * Search for all (approximate) vectors above a similarity threshold using {@link
  * VectorSimilarityCollector}.
  *
+ * <p>This class is package-private by design; callers construct one of the concrete public
+ * subclasses ({@link FloatVectorSimilarityQuery} or {@link ByteVectorSimilarityQuery}), which
+ * inherit shared public API such as {@link #getSearchStrategy()}. This mirrors the visibility
+ * pattern of {@link AbstractKnnVectorQuery}.
+ *
  * @lucene.experimental
  */
 abstract class AbstractVectorSimilarityQuery extends Query {
-  // TODO enable supplying KnnSearchStrategy
+  /**
+   * Default search strategy used by similarity-threshold vector queries. Uses {@code
+   * filteredSearchThreshold == 0}, which preserves this query's own filter-handling logic by never
+   * delegating to HNSW's built-in filtered-search short-circuit.
+   */
   static final KnnSearchStrategy.Hnsw DEFAULT_STRATEGY = new KnnSearchStrategy.Hnsw(0);
 
   static final float DECAY_MAX_APPROXIMATION = 0f;
@@ -46,11 +55,13 @@ abstract class AbstractVectorSimilarityQuery extends Query {
   protected final float resultSimilarity;
   protected final float decay;
   protected final Query filter;
+  protected final KnnSearchStrategy searchStrategy;
 
   /**
    * Search for all (approximate) vectors above a similarity threshold using {@link
-   * VectorSimilarityCollector}. If a filter is applied, it traverses as many nodes as the cost of
-   * the filter, and then falls back to exact search if results are incomplete.
+   * VectorSimilarityCollector}, with the {@linkplain #DEFAULT_STRATEGY default search strategy}. If
+   * a filter is applied, it traverses as many nodes as the cost of the filter, and then falls back
+   * to exact search if results are incomplete.
    *
    * @param field a field that has been indexed as a vector field.
    * @param resultSimilarity similarity score for result collection.
@@ -58,6 +69,29 @@ abstract class AbstractVectorSimilarityQuery extends Query {
    * @param filter a filter applied before the vector search.
    */
   AbstractVectorSimilarityQuery(String field, float resultSimilarity, float decay, Query filter) {
+    this(field, resultSimilarity, decay, filter, DEFAULT_STRATEGY);
+  }
+
+  /**
+   * Search for all (approximate) vectors above a similarity threshold using {@link
+   * VectorSimilarityCollector}, with a caller-supplied {@link KnnSearchStrategy}. If a filter is
+   * applied, it traverses as many nodes as the cost of the filter, and then falls back to exact
+   * search if results are incomplete.
+   *
+   * @param field a field that has been indexed as a vector field.
+   * @param resultSimilarity similarity score for result collection.
+   * @param decay decay factor for graph traversal buffer.
+   * @param filter a filter applied before the vector search.
+   * @param searchStrategy the {@link KnnSearchStrategy} to use during graph search. If {@code
+   *     null}, the {@linkplain #DEFAULT_STRATEGY default strategy} is used. The underlying format
+   *     may not support all strategies and is free to ignore the requested strategy.
+   */
+  AbstractVectorSimilarityQuery(
+      String field,
+      float resultSimilarity,
+      float decay,
+      Query filter,
+      KnnSearchStrategy searchStrategy) {
     if (Float.isNaN(resultSimilarity)) {
       throw new IllegalArgumentException(
           "resultSimilarity must have a valid value; got " + resultSimilarity);
@@ -75,10 +109,28 @@ abstract class AbstractVectorSimilarityQuery extends Query {
     this.resultSimilarity = resultSimilarity;
     this.decay = decay;
     this.filter = filter;
+    this.searchStrategy = searchStrategy == null ? DEFAULT_STRATEGY : searchStrategy;
   }
 
+  /**
+   * Returns a {@link KnnCollectorManager} that always builds a {@link VectorSimilarityCollector}
+   * configured with this query's {@link #searchStrategy}.
+   *
+   * <p>The manager's {@code strategy} and {@code LeafReaderContext} parameters are intentionally
+   * ignored: top-k queries may override the strategy on a per-search basis, but similarity-
+   * threshold queries pin the strategy to the query's own value at construction time so that {@link
+   * #equals} / {@link #getSearchStrategy()} remain a faithful description of search behavior.
+   */
   protected KnnCollectorManager getKnnCollectorManager() {
-    return (visitLimit, _, _) -> new VectorSimilarityCollector(resultSimilarity, decay, visitLimit);
+    return (visitLimit, _, _) ->
+        new VectorSimilarityCollector(resultSimilarity, decay, visitLimit, searchStrategy);
+  }
+
+  /**
+   * @return the {@link KnnSearchStrategy} used during graph search.
+   */
+  public KnnSearchStrategy getSearchStrategy() {
+    return searchStrategy;
   }
 
   abstract VectorScorer createVectorScorer(LeafReaderContext context) throws IOException;
@@ -218,12 +270,13 @@ abstract class AbstractVectorSimilarityQuery extends Query {
         && Float.compare(((AbstractVectorSimilarityQuery) o).resultSimilarity, resultSimilarity)
             == 0
         && Float.compare(((AbstractVectorSimilarityQuery) o).decay, decay) == 0
-        && Objects.equals(filter, ((AbstractVectorSimilarityQuery) o).filter);
+        && Objects.equals(filter, ((AbstractVectorSimilarityQuery) o).filter)
+        && Objects.equals(searchStrategy, ((AbstractVectorSimilarityQuery) o).searchStrategy);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(field, resultSimilarity, decay, filter);
+    return Objects.hash(field, resultSimilarity, decay, filter, searchStrategy);
   }
 
   private static class VectorSimilarityScorerSupplier extends ScorerSupplier {

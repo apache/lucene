@@ -254,7 +254,7 @@ public abstract class DocumentClassificationTestBase<T> extends ClassificationTe
     return doc;
   }
 
-  protected Document getBatmanAmbiguosDocument() {
+  protected Document getBatmanAmbiguousDocument() {
     Document doc = new Document();
     String title =
         "Batman: Arkham Knight new adventures for the super hero across Gotham, the Dark Knight has returned! Batman will win !";

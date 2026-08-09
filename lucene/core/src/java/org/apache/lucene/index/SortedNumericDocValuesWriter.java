@@ -27,6 +27,7 @@ import org.apache.lucene.index.NumericDocValuesWriter.BufferedNumericDocValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Counter;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.packed.PackedInts;
 import org.apache.lucene.util.packed.PackedLongValues;
@@ -170,21 +171,21 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
         float acceptableOverheadRatio)
         throws IOException {
       offsets = new long[maxDoc];
-      PackedLongValues.Builder valuesBuiler =
+      PackedLongValues.Builder valuesBuilder =
           PackedLongValues.packedBuilder(acceptableOverheadRatio);
       int docID;
       long offsetIndex = 1; // 0 means the doc has no values
       while ((docID = oldValues.nextDoc()) != NO_MORE_DOCS) {
         int newDocID = sortMap.oldToNew(docID);
         int numValues = oldValues.docValueCount();
-        valuesBuiler.add(numValues);
+        valuesBuilder.add(numValues);
         offsets[newDocID] = offsetIndex++;
         for (int i = 0; i < numValues; i++) {
-          valuesBuiler.add(oldValues.nextValue());
+          valuesBuilder.add(oldValues.nextValue());
           offsetIndex++;
         }
       }
-      values = valuesBuiler.build();
+      values = valuesBuilder.build();
     }
   }
 
@@ -312,6 +313,16 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
     @Override
     public long cost() {
       return docsWithField.cost();
+    }
+
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      docsWithField.intoBitSet(upTo, bitSet, offset);
+    }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      return docsWithField.docIDRunEnd();
     }
   }
 

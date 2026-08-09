@@ -24,13 +24,16 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.util.FixedBitSet;
 
-/** Bitset collector which supports memory tracking */
+/** Bitset collector which supports memory tracking. */
 public class MemoryAccountingBitsetCollector extends SimpleCollector {
 
   final CollectorMemoryTracker tracker;
   FixedBitSet bitSet = new FixedBitSet(0);
   int length = 0;
   int docBase = 0;
+
+  int minDocBase = Integer.MAX_VALUE;
+  int maxDocEnd = 0;
 
   public MemoryAccountingBitsetCollector(CollectorMemoryTracker tracker) {
     this.tracker = tracker;
@@ -40,7 +43,11 @@ public class MemoryAccountingBitsetCollector extends SimpleCollector {
   @Override
   protected void doSetNextReader(LeafReaderContext context) throws IOException {
     docBase = context.docBase;
-    length += context.reader().maxDoc();
+    int docEnd = docBase + context.reader().maxDoc();
+    minDocBase = Math.min(minDocBase, docBase);
+    maxDocEnd = Math.max(maxDocEnd, docEnd);
+    length = maxDocEnd - minDocBase;
+
     FixedBitSet newBitSet = FixedBitSet.ensureCapacity(bitSet, length);
     if (newBitSet != bitSet) {
       tracker.updateBytes(newBitSet.ramBytesUsed() - bitSet.ramBytesUsed());
@@ -50,11 +57,19 @@ public class MemoryAccountingBitsetCollector extends SimpleCollector {
 
   @Override
   public void collect(int doc) {
-    bitSet.set(docBase + doc);
+    bitSet.set(docBase - minDocBase + doc);
   }
 
   @Override
   public ScoreMode scoreMode() {
     return ScoreMode.COMPLETE_NO_SCORES;
+  }
+
+  int getMinDocBase() {
+    return minDocBase;
+  }
+
+  int getMaxDocEnd() {
+    return maxDocEnd;
   }
 }

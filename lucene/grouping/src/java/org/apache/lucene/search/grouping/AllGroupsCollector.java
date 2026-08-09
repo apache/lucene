@@ -70,7 +70,9 @@ public class AllGroupsCollector<T> extends SimpleCollector {
   }
 
   @Override
-  public void setScorer(Scorable scorer) throws IOException {}
+  public void setScorer(Scorable scorer) throws IOException {
+    groupSelector.setScorer(scorer);
+  }
 
   @Override
   protected void doSetNextReader(LeafReaderContext context) throws IOException {

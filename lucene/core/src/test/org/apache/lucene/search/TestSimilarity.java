@@ -18,6 +18,7 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Function;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -268,7 +269,7 @@ public class TestSimilarity extends LuceneTestCase {
       throws IOException {
     CollectorManager<SimpleCollector, Integer> collector =
         new CollectorManager<>() {
-          int count = 0;
+          final LongAdder count = new LongAdder();
 
           @Override
           public SimpleCollector newCollector() {
@@ -279,8 +280,7 @@ public class TestSimilarity extends LuceneTestCase {
               public void collect(int doc) throws IOException {
                 // System.out.println("Doc=" + doc + " score=" + scorer.score());
                 assertEquals(scores[doc + base], scorer.score(), 0);
-                // not thread-safe, but I think it's OK?
-                ++count;
+                count.increment();
               }
 
               @Override
@@ -292,7 +292,7 @@ public class TestSimilarity extends LuceneTestCase {
 
           @Override
           public Integer reduce(Collection<SimpleCollector> collectors) {
-            return count;
+            return count.intValue();
           }
         };
 

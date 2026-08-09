@@ -18,7 +18,6 @@ package org.apache.lucene.search.grouping;
 
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.Map;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -133,8 +132,8 @@ public class TestAllGroupsCollector extends LuceneTestCase {
       return new AllGroupsCollectorManager<>(() -> new TermGroupSelector(groupField));
     } else {
       ValueSource vs = new BytesRefFieldSource(groupField);
-      Map<Object, Object> context = new HashMap<>();
-      return new AllGroupsCollectorManager<>(() -> new ValueSourceGroupSelector(vs, context));
+      return new AllGroupsCollectorManager<>(
+          () -> new ValueSourceGroupSelector(vs, new HashMap<>()));
     }
   }
 }

@@ -30,7 +30,13 @@ import org.apache.lucene.index.LeafReaderContext;
  * {@link LogOddsFusionQuery}.
  *
  * <p>The alpha parameter controls the sigmoid steepness (score sensitivity), and beta controls the
- * midpoint (decision boundary). These can be set manually or estimated from the score distribution.
+ * midpoint (decision boundary). These can be set manually or estimated from the score distribution
+ * via {@link BayesianScoreEstimator}.
+ *
+ * <p>An optional base rate encodes the corpus-level prior probability that a random document is
+ * relevant to a random query. When set, the posterior is computed in log-odds space: {@code
+ * sigmoid(alpha * (score - beta) + logit(baseRate))}. This shifts scores down for rare-relevance
+ * corpora, improving calibration.
  *
  * @lucene.experimental
  */
@@ -39,15 +45,20 @@ public final class BayesianScoreQuery extends Query {
   private final Query query;
   private final float alpha;
   private final float beta;
+  private final float baseRate;
+  private final float logitBaseRate;
 
   /**
-   * Creates a BayesianScoreQuery.
+   * Creates a BayesianScoreQuery with base rate.
    *
    * @param query the inner query whose scores will be transformed
    * @param alpha sigmoid steepness (must be positive and finite)
    * @param beta sigmoid midpoint (must be finite)
+   * @param baseRate corpus-level relevance prior in (0, 1), or 0 to disable. When positive, adds
+   *     logit(baseRate) to the log-odds before sigmoid, shifting scores to account for the rarity
+   *     of relevant documents.
    */
-  public BayesianScoreQuery(Query query, float alpha, float beta) {
+  public BayesianScoreQuery(Query query, float alpha, float beta, float baseRate) {
     this.query = Objects.requireNonNull(query);
     if (Float.isFinite(alpha) == false || alpha <= 0) {
       throw new IllegalArgumentException("alpha must be a positive finite value, got " + alpha);
@@ -55,8 +66,28 @@ public final class BayesianScoreQuery extends Query {
     if (Float.isFinite(beta) == false) {
       throw new IllegalArgumentException("beta must be a finite value, got " + beta);
     }
+    if (baseRate < 0 || baseRate >= 1) {
+      throw new IllegalArgumentException("baseRate must be in [0, 1), got " + baseRate);
+    }
     this.alpha = alpha;
     this.beta = beta;
+    this.baseRate = baseRate;
+    if (baseRate > 0) {
+      this.logitBaseRate = (float) Math.log(baseRate / (1.0 - baseRate));
+    } else {
+      this.logitBaseRate = 0f;
+    }
+  }
+
+  /**
+   * Creates a BayesianScoreQuery without base rate.
+   *
+   * @param query the inner query whose scores will be transformed
+   * @param alpha sigmoid steepness (must be positive and finite)
+   * @param beta sigmoid midpoint (must be finite)
+   */
+  public BayesianScoreQuery(Query query, float alpha, float beta) {
+    this(query, alpha, beta, 0f);
   }
 
   /** Returns the wrapped query. */
@@ -72,6 +103,11 @@ public final class BayesianScoreQuery extends Query {
   /** Returns the sigmoid midpoint parameter. */
   public float getBeta() {
     return beta;
+  }
+
+  /** Returns the base rate, or 0 if not set. */
+  public float getBaseRate() {
+    return baseRate;
   }
 
   static float sigmoid(float x) {
@@ -100,7 +136,7 @@ public final class BayesianScoreQuery extends Query {
       return rewritten;
     }
     if (rewritten != query) {
-      return new BayesianScoreQuery(rewritten, alpha, beta);
+      return new BayesianScoreQuery(rewritten, alpha, beta, baseRate);
     }
     return super.rewrite(indexSearcher);
   }
@@ -112,7 +148,11 @@ public final class BayesianScoreQuery extends Query {
 
   @Override
   public String toString(String field) {
-    return "BayesianScore(" + query.toString(field) + ", alpha=" + alpha + ", beta=" + beta + ")";
+    String base = "BayesianScore(" + query.toString(field) + ", alpha=" + alpha + ", beta=" + beta;
+    if (baseRate > 0) {
+      base += ", baseRate=" + baseRate;
+    }
+    return base + ")";
   }
 
   @Override
@@ -123,7 +163,8 @@ public final class BayesianScoreQuery extends Query {
   private boolean equalsTo(BayesianScoreQuery other) {
     return query.equals(other.query)
         && Float.floatToIntBits(alpha) == Float.floatToIntBits(other.alpha)
-        && Float.floatToIntBits(beta) == Float.floatToIntBits(other.beta);
+        && Float.floatToIntBits(beta) == Float.floatToIntBits(other.beta)
+        && Float.floatToIntBits(baseRate) == Float.floatToIntBits(other.baseRate);
   }
 
   @Override
@@ -132,6 +173,7 @@ public final class BayesianScoreQuery extends Query {
     h = 31 * h + query.hashCode();
     h = 31 * h + Float.floatToIntBits(alpha);
     h = 31 * h + Float.floatToIntBits(beta);
+    h = 31 * h + Float.floatToIntBits(baseRate);
     return h;
   }
 
@@ -155,7 +197,18 @@ public final class BayesianScoreQuery extends Query {
         return innerExpl;
       }
       float innerScore = innerExpl.getValue().floatValue();
-      float transformed = sigmoid(alpha * (innerScore - beta));
+      float logOdds = alpha * (innerScore - beta) + logitBaseRate;
+      float transformed = sigmoid(logOdds);
+      if (baseRate > 0) {
+        return Explanation.match(
+            transformed,
+            "sigmoid calibration with base rate, computed as"
+                + " sigmoid(alpha * (score - beta) + logit(baseRate)) from:",
+            innerExpl,
+            Explanation.match(alpha, "alpha, sigmoid steepness"),
+            Explanation.match(beta, "beta, sigmoid midpoint"),
+            Explanation.match(baseRate, "baseRate, corpus-level relevance prior"));
+      }
       return Explanation.match(
           transformed,
           "sigmoid calibration, computed as sigmoid(alpha * (score - beta)) from:",
@@ -190,6 +243,11 @@ public final class BayesianScoreQuery extends Query {
     }
 
     @Override
+    public int count(LeafReaderContext context) throws IOException {
+      return innerWeight.count(context);
+    }
+
+    @Override
     public boolean isCacheable(LeafReaderContext ctx) {
       return innerWeight.isCacheable(ctx);
     }
@@ -204,7 +262,7 @@ public final class BayesianScoreQuery extends Query {
     @Override
     public float score() throws IOException {
       float innerScore = in.score();
-      return sigmoid(alpha * (innerScore - beta));
+      return sigmoid(alpha * (innerScore - beta) + logitBaseRate);
     }
 
     @Override
@@ -216,19 +274,19 @@ public final class BayesianScoreQuery extends Query {
     public float getMaxScore(int upTo) throws IOException {
       float innerMax = in.getMaxScore(upTo);
       // sigmoid is monotone, so max(sigmoid(f(x))) = sigmoid(max(f(x)))
-      return sigmoid(alpha * (innerMax - beta));
+      return sigmoid(alpha * (innerMax - beta) + logitBaseRate);
     }
 
     @Override
     public void setMinCompetitiveScore(float minScore) throws IOException {
       // Invert the sigmoid to get the minimum inner score needed:
-      // minScore = sigmoid(alpha * (innerScore - beta))
-      // => alpha * (innerScore - beta) = logit(minScore)
-      // => innerScore = logit(minScore) / alpha + beta
+      // minScore = sigmoid(alpha * (innerScore - beta) + logitBaseRate)
+      // => alpha * (innerScore - beta) + logitBaseRate = logit(minScore)
+      // => innerScore = (logit(minScore) - logitBaseRate) / alpha + beta
       if (minScore > 0f && minScore < 1f) {
         float clamped = Math.max(1e-7f, Math.min(1f - 1e-7f, minScore));
         float logitMin = (float) Math.log(clamped / (1f - clamped));
-        float innerMin = logitMin / alpha + beta;
+        float innerMin = (logitMin - logitBaseRate) / alpha + beta;
         in.setMinCompetitiveScore(Math.max(0f, innerMin));
       }
     }

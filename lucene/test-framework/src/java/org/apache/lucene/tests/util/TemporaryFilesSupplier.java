@@ -56,7 +56,7 @@ final class TemporaryFilesSupplier implements BeforeAfterCallback {
   /** Retry to create temporary file name this many times. */
   private static final int TEMP_NAME_RETRY_THRESHOLD = 9999;
 
-  /** Writeable temporary base folder. */
+  /** Writable temporary base folder. */
   private Path javaTempDir;
 
   /** Per-test class temporary folder. */

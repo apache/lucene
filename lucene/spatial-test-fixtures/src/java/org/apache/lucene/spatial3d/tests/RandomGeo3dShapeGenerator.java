@@ -73,7 +73,7 @@ public final class RandomGeo3dShapeGenerator {
   public static final int LINE = 10;
   public static final int EXACT_CIRCLE = 11;
 
-  /* Helper shapes for generating constraints whch are just three sided polygons */
+  /* Helper shapes for generating constraints which are just three sided polygons */
   public static final int CONVEX_SIMPLE_POLYGON = 500;
   public static final int CONCAVE_SIMPLE_POLYGON = 501;
 

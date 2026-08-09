@@ -17,6 +17,8 @@
 package org.apache.lucene.expressions.js;
 
 import java.text.ParseException;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.apache.lucene.expressions.Expression;
 import org.junit.jupiter.api.Test;
 
@@ -268,5 +270,54 @@ public class TestJavascriptCompiler extends CompilerTestCase {
     // backslash escapes are kept the same
     x = compile("foo['\\\\'][\"\\\\\"]");
     assertEquals("foo['\\\\']['\\\\']", x.variables[0]);
+  }
+
+  @Test
+  public void testRecursionDepth1() throws Exception {
+    int depth = 20000;
+    String src = "(".repeat(depth) + "1" + ")".repeat(depth);
+    assertEquals(JavascriptCompiler.DEFAULT_MAX_NESTING_DEPTH, assertRecursionLimit(src));
+  }
+
+  @Test
+  public void testRecursionDepth1a() throws Exception {
+    int depth = JavascriptCompiler.DEFAULT_MAX_NESTING_DEPTH;
+    String src = "(".repeat(depth) + "1" + ")".repeat(depth);
+    assertEquals(JavascriptCompiler.DEFAULT_MAX_NESTING_DEPTH, assertRecursionLimit(src));
+  }
+
+  @Test
+  public void testRecursionDepth2() throws Exception {
+    String src = "-".repeat(20000) + "1";
+    assertEquals(JavascriptCompiler.DEFAULT_MAX_NESTING_DEPTH, assertRecursionLimit(src));
+  }
+
+  @Test
+  public void testRecursionDepth3() throws Exception {
+    String src =
+        IntStream.range(0, JavascriptCompiler.DEFAULT_MAX_NESTING_DEPTH + 1)
+            .mapToObj(Integer::toString)
+            .collect(Collectors.joining("+"));
+    assertEquals(
+        "error offset needs to be 0 due to recursion with depth first",
+        0,
+        assertRecursionLimit(src));
+  }
+
+  @Test
+  public void testRecursionDepth3a() throws Exception {
+    String src =
+        IntStream.range(0, 20000).mapToObj(Integer::toString).collect(Collectors.joining("+"));
+    assertEquals(
+        "error offset needs to be 0 due to recursion with depth first",
+        0,
+        assertRecursionLimit(src));
+  }
+
+  /** returns the error offset for further checks */
+  private int assertRecursionLimit(String src) {
+    ParseException expected = expectThrows(ParseException.class, () -> compile(src));
+    assertTrue(expected.getMessage(), expected.getMessage().contains("Nesting level too deep"));
+    return expected.getErrorOffset();
   }
 }

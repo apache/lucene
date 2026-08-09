@@ -84,27 +84,27 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
 
     @Override
-    public byte[] getMinPackedValue() throws IOException {
+    public byte[] getMinPackedValue() {
       return in.getMinPackedValue();
     }
 
     @Override
-    public byte[] getMaxPackedValue() throws IOException {
+    public byte[] getMaxPackedValue() {
       return in.getMaxPackedValue();
     }
 
     @Override
-    public int getNumDimensions() throws IOException {
+    public int getNumDimensions() {
       return in.getNumDimensions();
     }
 
     @Override
-    public int getNumIndexDimensions() throws IOException {
+    public int getNumIndexDimensions() {
       return in.getNumIndexDimensions();
     }
 
     @Override
-    public int getBytesPerDimension() throws IOException {
+    public int getBytesPerDimension() {
       return in.getBytesPerDimension();
     }
 
@@ -383,6 +383,43 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
   }
 
+  private static class SortingFloat16VectorValues extends Float16VectorValues {
+    final Float16VectorValues delegate;
+    final SortingIteratorSupplier iteratorSupplier;
+
+    SortingFloat16VectorValues(Float16VectorValues delegate, Sorter.DocMap sortMap)
+        throws IOException {
+      this.delegate = delegate;
+      // SortingValuesIterator consumes the iterator and records the docs and ord mapping
+      iteratorSupplier = iteratorSupplier(delegate, sortMap);
+    }
+
+    @Override
+    public short[] vectorValue(int ord) throws IOException {
+      return delegate.vectorValue(ord);
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      return iteratorSupplier.get();
+    }
+
+    @Override
+    public int dimension() {
+      return delegate.dimension();
+    }
+
+    @Override
+    public int size() {
+      return iteratorSupplier.size();
+    }
+
+    @Override
+    public Float16VectorValues copy() {
+      throw new UnsupportedOperationException();
+    }
+  }
+
   /**
    * Return a sorted view of <code>reader</code> according to the order defined by <code>sort</code>
    * . If the reader is already sorted, this method might return the reader as-is.
@@ -458,8 +495,8 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public void checkIntegrity() throws IOException {
-        postingsReader.checkIntegrity();
+      public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+        postingsReader.checkIntegrity(merge);
       }
 
       @Override
@@ -510,8 +547,8 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public void checkIntegrity() throws IOException {
-        delegate.checkIntegrity();
+      public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+        delegate.checkIntegrity(merge);
       }
 
       @Override
@@ -539,8 +576,8 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
     return new PointsReader() {
       @Override
-      public void checkIntegrity() throws IOException {
-        delegate.checkIntegrity();
+      public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+        delegate.checkIntegrity(merge);
       }
 
       @Override
@@ -567,8 +604,8 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
     return new KnnVectorsReader() {
       @Override
-      public void checkIntegrity() throws IOException {
-        delegate.checkIntegrity();
+      public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+        delegate.checkIntegrity(merge);
       }
 
       @Override
@@ -582,6 +619,11 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
+      public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+        return new SortingFloat16VectorValues(delegate.getFloat16VectorValues(field), docMap);
+      }
+
+      @Override
       public void search(
           String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {
         throw new UnsupportedOperationException();
@@ -590,6 +632,13 @@ public final class SortingCodecReader extends FilterCodecReader {
       @Override
       public void search(
           String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public void search(
+          String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+          throws IOException {
         throw new UnsupportedOperationException();
       }
 
@@ -619,8 +668,8 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public void checkIntegrity() throws IOException {
-        delegate.checkIntegrity();
+      public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+        delegate.checkIntegrity(merge);
       }
 
       @Override
@@ -701,8 +750,8 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public void checkIntegrity() throws IOException {
-        delegate.checkIntegrity();
+      public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+        delegate.checkIntegrity(merge);
       }
 
       @Override
@@ -711,7 +760,7 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
+      public DocValuesSkipper getSkipper(FieldInfo field) {
         // We can hardly return information about min/max values if doc IDs have been reordered.
         return null;
       }
@@ -752,8 +801,8 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public void checkIntegrity() throws IOException {
-        delegate.checkIntegrity();
+      public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+        delegate.checkIntegrity(merge);
       }
 
       @Override

@@ -356,7 +356,7 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
 
     // JDK versions where the vector module is still incubating.
     boolean incubatorJavaVersion =
-        Set.of("21", "22", "23", "24", "25").contains(runtimeJava.getMajorVersion());
+        Set.of("21", "22", "23", "24", "25", "26").contains(runtimeJava.getMajorVersion());
 
     TaskContainer tasks = project.getTasks();
 

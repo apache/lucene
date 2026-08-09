@@ -112,6 +112,16 @@ public final class ConstantScoreQuery extends Query {
                 }
               });
         }
+
+        @Override
+        public void collect(DocIdStream stream) throws IOException {
+          in.collect(stream);
+        }
+
+        @Override
+        public void collectRange(int min, int max) throws IOException {
+          in.collectRange(min, max);
+        }
       };
     }
 

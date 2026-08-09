@@ -73,7 +73,7 @@ class FSTTermOutputs extends Outputs<FSTTermOutputs.TermData> {
 
     // NOTE: actually, FST nodes are seldom
     // identical when outputs on their arcs
-    // aren't NO_OUTPUTs.
+    // aren't NO_OUTPUT.
     @Override
     public int hashCode() {
       int hash = 0;

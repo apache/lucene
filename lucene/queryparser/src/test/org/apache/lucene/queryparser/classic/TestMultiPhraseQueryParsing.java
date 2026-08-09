@@ -90,7 +90,7 @@ public class TestMultiPhraseQueryParsing extends LuceneTestCase {
         };
 
     QueryParser qp = new QueryParser("field", new CannedAnalyzer(INCR_0_QUERY_TOKENS_AND));
-    Query q = qp.parse("\"this text is acually ignored\"");
+    Query q = qp.parse("\"this text is actually ignored\"");
     assertTrue("wrong query type!", q instanceof MultiPhraseQuery);
 
     MultiPhraseQuery.Builder multiPhraseQueryBuilder = new MultiPhraseQuery.Builder();

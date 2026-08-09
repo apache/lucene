@@ -35,7 +35,7 @@ import org.apache.lucene.search.similarities.Similarity;
 
 /**
  * A Query that matches documents matching boolean combinations of other queries, e.g. {@link
- * TermQuery}s, {@link PhraseQuery}s or other BooleanQuerys.
+ * TermQuery}s, {@link PhraseQuery}s or other BooleanQuery instances.
  */
 public class BooleanQuery extends Query implements Iterable<BooleanClause> {
 
@@ -78,7 +78,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       // circuit in case a single query holds more than numClauses
       //
       // NOTE: this is not just an early check for optimization -- it's
-      // neccessary to prevent run-away 'rewriting' of bad queries from
+      // necessary to prevent run-away 'rewriting' of bad queries from
       // creating BQ objects that might eat up all the Heap.
       if (clauses.size() >= IndexSearcher.maxClauseCount) {
         throw new IndexSearcher.TooManyClauses();

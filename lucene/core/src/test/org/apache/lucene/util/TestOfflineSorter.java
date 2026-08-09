@@ -601,7 +601,7 @@ public class TestOfflineSorter extends LuceneTestCase {
 
   // OfflineSorter should not call my BytesSequencesReader.next() again after it already returned
   // null:
-  public void testOverNexting() throws Exception {
+  public void testOverNext() throws Exception {
     Directory dir = newDirectory();
     IndexOutput out = dir.createTempOutput("unsorted", "tmp", IOContext.DEFAULT);
     try (ByteSequencesWriter w = new OfflineSorter.ByteSequencesWriter(out)) {

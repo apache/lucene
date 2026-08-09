@@ -17,11 +17,14 @@
 package org.apache.lucene.document.column;
 
 import static org.apache.lucene.document.column.ColumnBatchTestUtil.ArrayBinaryColumn;
+import static org.apache.lucene.document.column.ColumnBatchTestUtil.ArrayDenseBinaryColumn;
 import static org.apache.lucene.document.column.ColumnBatchTestUtil.ArrayLongColumn;
+import static org.apache.lucene.document.column.ColumnBatchTestUtil.ContiguousDenseBinaryColumn;
 import static org.apache.lucene.document.column.ColumnBatchTestUtil.simpleBatch;
 
 import java.io.IOException;
 import org.apache.lucene.document.BinaryDocValuesField;
+import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.IntPoint;
@@ -50,6 +53,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.NumericUtils;
 
 /** Tests for {@link BinaryColumn} batch indexing. */
 public class TestColumnBatchBinaryColumn extends LuceneTestCase {
@@ -692,5 +696,209 @@ public class TestColumnBatchBinaryColumn extends LuceneTestCase {
     r.close();
     w.close();
     dir.close();
+  }
+
+  public void testDenseBinaryPoints() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    // 1-D, 4-byte binary points (sort-encoded ints).
+    FieldType type = new FieldType();
+    type.setDimensions(1, Integer.BYTES);
+    type.freeze();
+
+    int[] rawValues = {-100, 0, 1, 42, 999};
+    BytesRef[] encoded = new BytesRef[rawValues.length];
+    for (int i = 0; i < rawValues.length; i++) {
+      byte[] b = new byte[Integer.BYTES];
+      NumericUtils.intToSortableBytes(rawValues[i], b, 0);
+      encoded[i] = new BytesRef(b);
+    }
+
+    w.addBatch(simpleBatch(rawValues.length, new ArrayDenseBinaryColumn("p", type, encoded)));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    IndexSearcher searcher = new IndexSearcher(r);
+
+    // All docs match a full-range query.
+    byte[] minB = new byte[Integer.BYTES];
+    byte[] maxB = new byte[Integer.BYTES];
+    NumericUtils.intToSortableBytes(Integer.MIN_VALUE, minB, 0);
+    NumericUtils.intToSortableBytes(Integer.MAX_VALUE, maxB, 0);
+    assertEquals(rawValues.length, searcher.count(BinaryPoint.newRangeQuery("p", minB, maxB)));
+
+    // Exact queries for first, last, and a middle value.
+    for (int raw : new int[] {rawValues[0], rawValues[rawValues.length - 1], rawValues[2]}) {
+      byte[] exact = new byte[Integer.BYTES];
+      NumericUtils.intToSortableBytes(raw, exact, 0);
+      assertEquals(1, searcher.count(BinaryPoint.newExactQuery("p", exact)));
+    }
+
+    // A value that was not indexed should match nothing.
+    byte[] absent = new byte[Integer.BYTES];
+    NumericUtils.intToSortableBytes(-1, absent, 0);
+    assertEquals(0, searcher.count(BinaryPoint.newExactQuery("p", absent)));
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  public void testDenseBinaryPointsWithSortedDocValues() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    // SORTED DV + 1-D 4-byte points. Same BytesRef serves both.
+    FieldType type = new FieldType();
+    type.setDocValuesType(org.apache.lucene.index.DocValuesType.SORTED);
+    type.setDimensions(1, Integer.BYTES);
+    type.freeze();
+
+    // 4 docs; sort-encoded ints are used for both DV and points.
+    final int n = 4;
+    BytesRef[] encoded = new BytesRef[n];
+    for (int i = 0; i < n; i++) {
+      byte[] b = new byte[Integer.BYTES];
+      NumericUtils.intToSortableBytes(i * 10, b, 0);
+      encoded[i] = new BytesRef(b);
+    }
+
+    w.addBatch(simpleBatch(n, new ArrayDenseBinaryColumn("sdv", type, encoded)));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+    IndexSearcher searcher = new IndexSearcher(leaf);
+
+    // Verify sorted DV: all 4 docs should have DV (4 distinct values).
+    SortedDocValues dv = leaf.getSortedDocValues("sdv");
+    assertNotNull(dv);
+    assertEquals(n, dv.getValueCount());
+    for (int i = 0; i < n; i++) {
+      assertEquals(i, dv.nextDoc());
+      assertEquals(encoded[i], dv.lookupOrd(dv.ordValue()));
+    }
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, dv.nextDoc());
+
+    // Verify points: exact query for each encoded value returns exactly 1 doc.
+    for (int i = 0; i < n; i++) {
+      assertEquals(1, searcher.count(BinaryPoint.newExactQuery("sdv", encoded[i].bytes.clone())));
+    }
+    // Range query spanning all values.
+    byte[] minB = new byte[Integer.BYTES];
+    byte[] maxB = new byte[Integer.BYTES];
+    NumericUtils.intToSortableBytes(Integer.MIN_VALUE, minB, 0);
+    NumericUtils.intToSortableBytes(Integer.MAX_VALUE, maxB, 0);
+    assertEquals(n, searcher.count(BinaryPoint.newRangeQuery("sdv", minB, maxB)));
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  public void testDenseBinaryPointsLargeBatch() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    // 1-D, 8-bytes-per-dim binary points: packedLen = 8, chunk = 4096/8 = 512.
+    final int bytesPerDim = Long.BYTES;
+    FieldType type = new FieldType();
+    type.setDimensions(1, bytesPerDim);
+    type.freeze();
+
+    // n = 1100 > 2 * 512 → loop runs at least 3 times.
+    final int n = 1100;
+    BytesRef[] encoded = new BytesRef[n];
+    for (int i = 0; i < n; i++) {
+      byte[] b = new byte[bytesPerDim];
+      NumericUtils.longToSortableBytes(i * 1_000_000L - 100L, b, 0);
+      encoded[i] = new BytesRef(b);
+    }
+
+    w.addBatch(simpleBatch(n, new ArrayDenseBinaryColumn("p1d8", type, encoded)));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    IndexSearcher searcher = new IndexSearcher(r);
+
+    // All docs indexed.
+    byte[] minB = new byte[bytesPerDim];
+    byte[] maxB = new byte[bytesPerDim];
+    NumericUtils.longToSortableBytes(Long.MIN_VALUE, minB, 0);
+    NumericUtils.longToSortableBytes(Long.MAX_VALUE, maxB, 0);
+    assertEquals(n, searcher.count(BinaryPoint.newRangeQuery("p1d8", minB, maxB)));
+
+    // Values at and around the chunk boundary (index 511 / 512) round-trip correctly.
+    assertEquals(1, searcher.count(BinaryPoint.newExactQuery("p1d8", encoded[511].bytes.clone())));
+    assertEquals(1, searcher.count(BinaryPoint.newExactQuery("p1d8", encoded[512].bytes.clone())));
+
+    // A value that was not indexed.
+    byte[] absent = new byte[bytesPerDim];
+    absent[0] = (byte) 0xFF; // sorts above everything we indexed
+    assertEquals(0, searcher.count(BinaryPoint.newExactQuery("p1d8", absent)));
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  public void testDenseBinaryPointsContiguousFill() throws IOException {
+    final int bytesPerDim = Long.BYTES; // packedLen = 8, perChunk = 512
+    final int n = 600; // spans two chunk iterations (512 + 88)
+
+    FieldType type = new FieldType();
+    type.setDimensions(1, bytesPerDim);
+    type.freeze();
+
+    // Build both representations from the same encoded values.
+    BytesRef[] perValueArray = new BytesRef[n];
+    byte[] packedFlat = new byte[n * bytesPerDim];
+    for (int i = 0; i < n; i++) {
+      byte[] b = new byte[bytesPerDim];
+      NumericUtils.longToSortableBytes(i * 500L, b, 0);
+      perValueArray[i] = new BytesRef(b);
+      System.arraycopy(b, 0, packedFlat, i * bytesPerDim, bytesPerDim);
+    }
+
+    // Index via the default per-value path (ArrayDenseBinaryColumn).
+    Directory dirDefault = newDirectory();
+    IndexWriter wDefault = new IndexWriter(dirDefault, newIndexWriterConfig());
+    wDefault.addBatch(simpleBatch(n, new ArrayDenseBinaryColumn("p", type, perValueArray)));
+    DirectoryReader rDefault = DirectoryReader.open(wDefault);
+    IndexSearcher searcherDefault = new IndexSearcher(rDefault);
+
+    // Index via the contiguous bulk-copy override path (ContiguousDenseBinaryColumn).
+    Directory dirBulk = newDirectory();
+    IndexWriter wBulk = new IndexWriter(dirBulk, newIndexWriterConfig());
+    wBulk.addBatch(
+        simpleBatch(n, new ContiguousDenseBinaryColumn("p", type, packedFlat, bytesPerDim)));
+    DirectoryReader rBulk = DirectoryReader.open(wBulk);
+    IndexSearcher searcherBulk = new IndexSearcher(rBulk);
+
+    // Both indexes must return the same results for a full range query.
+    byte[] minB = new byte[bytesPerDim];
+    byte[] maxB = new byte[bytesPerDim];
+    NumericUtils.longToSortableBytes(Long.MIN_VALUE, minB, 0);
+    NumericUtils.longToSortableBytes(Long.MAX_VALUE, maxB, 0);
+    assertEquals(n, searcherDefault.count(BinaryPoint.newRangeQuery("p", minB, maxB)));
+    assertEquals(n, searcherBulk.count(BinaryPoint.newRangeQuery("p", minB, maxB)));
+
+    // Exact queries for a sample of values, including the chunk boundary (index 511/512).
+    for (int idx : new int[] {0, 1, 255, 511, 512, 513, n - 1}) {
+      byte[] exact = perValueArray[idx].bytes.clone();
+      assertEquals(
+          "default path mismatch at idx=" + idx,
+          1,
+          searcherDefault.count(BinaryPoint.newExactQuery("p", exact)));
+      assertEquals(
+          "bulk override path mismatch at idx=" + idx,
+          1,
+          searcherBulk.count(BinaryPoint.newExactQuery("p", exact)));
+    }
+
+    rDefault.close();
+    wDefault.close();
+    dirDefault.close();
+    rBulk.close();
+    wBulk.close();
+    dirBulk.close();
   }
 }

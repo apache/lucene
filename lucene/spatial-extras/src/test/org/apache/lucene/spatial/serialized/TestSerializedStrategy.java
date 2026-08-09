@@ -32,7 +32,7 @@ public class TestSerializedStrategy extends StrategyTestCase {
     this.strategy = new SerializedDVStrategy(ctx, "serialized");
   }
 
-  public void testBasicOperaions() throws IOException {
+  public void testBasicOperations() throws IOException {
     getAddAndVerifyIndexedDocuments(DATA_SIMPLE_BBOX);
 
     executeQueries(SpatialMatchConcern.EXACT, QTEST_Simple_Queries_BBox);

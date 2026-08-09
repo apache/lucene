@@ -25,7 +25,11 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SuppressForbidden;
 
-/** Native provider returning native implementations which delegates to Panama implementation. */
+/**
+ * Native provider returning native implementations which delegates to Panama implementation.
+ *
+ * @lucene.experimental
+ */
 final class NativeVectorizationProvider extends VectorizationProvider {
 
   private final VectorizationProvider delegateVectorUtilProvider =
@@ -75,5 +79,15 @@ final class NativeVectorizationProvider extends VectorizationProvider {
   @Override
   public PostingDecodingUtil newPostingDecodingUtil(IndexInput input) throws IOException {
     return delegateVectorUtilProvider.newPostingDecodingUtil(input);
+  }
+
+  @Override
+  public DocValuesRangeSupport getDocValuesRangeSupport() {
+    return delegateVectorUtilProvider.getDocValuesRangeSupport();
+  }
+
+  @Override
+  public DocValuesBulkDecodeSupport getDocValuesBulkDecodeSupport() {
+    return delegateVectorUtilProvider.getDocValuesBulkDecodeSupport();
   }
 }

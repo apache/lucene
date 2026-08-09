@@ -169,6 +169,10 @@ public class KnnFloatVectorField extends Field {
       throw new IllegalArgumentException(
           "value length " + value.length + " must match field dimension " + type.vectorDimension());
     }
-    fieldsData = value;
+    if (type.vectorSimilarityFunction() == VectorSimilarityFunction.COSINE
+        && VectorUtil.isZeroVector(value)) {
+      throw new IllegalArgumentException("zero vector not allowed with cosine similarity function");
+    }
+    fieldsData = VectorUtil.checkFinite(value);
   }
 }

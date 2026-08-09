@@ -889,4 +889,76 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     final Weight weight = searcher.createWeight(testQuery, ScoreMode.COMPLETE, 1);
     assertEquals(weight.count(reader.leaves().get(0)), numMatchingDocs);
   }
+
+  /**
+   * When every document in a segment has a doc values field and some documents are deleted, count()
+   * should still return the number of live docs in O(1) instead of falling back to iteration.
+   */
+  public void testDocValuesCountWithDeletionsAllDocsHaveField() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    int numDocs = atLeast(20);
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      // Use indexedField to ensure a DocValuesSkipper is available, which provides
+      // an exact doc count for doc values that we can use even with deletions.
+      doc.add(NumericDocValuesField.indexedField("dv", i));
+      doc.add(new StringField("id", Integer.toString(i), Store.NO));
+      w.addDocument(doc);
+    }
+    w.forceMerge(1);
+    // Delete some documents, but every remaining doc still has the field
+    w.w.getConfig().setMergePolicy(NoMergePolicy.INSTANCE);
+    w.deleteDocuments(new Term("id", "0"));
+    w.deleteDocuments(new Term("id", "1"));
+
+    DirectoryReader reader = w.getReader();
+    IndexSearcher searcher = new IndexSearcher(reader);
+    assertTrue("Expected deletions in the segment", reader.hasDeletions());
+    assertEquals(1, reader.leaves().size());
+
+    Query query = new FieldExistsQuery("dv");
+    Weight weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1);
+    // All docs had the field, so even with deletions we can count in O(1)
+    int count = weight.count(reader.leaves().get(0));
+    assertEquals(reader.numDocs(), count);
+    assertEquals(numDocs - 2, count);
+
+    IOUtils.close(reader, w, dir);
+  }
+
+  /**
+   * When every document in a segment has a vector field and some documents are deleted, count()
+   * should still return the number of live docs in O(1) instead of falling back to iteration.
+   */
+  public void testVectorCountWithDeletionsAllDocsHaveField() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    int numDocs = atLeast(20);
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      float[] vector = new float[] {i + 1, i + 2, i + 3, i + 4};
+      VectorUtil.l2normalize(vector);
+      doc.add(new KnnFloatVectorField("vector", vector));
+      doc.add(new StringField("id", Integer.toString(i), Store.NO));
+      w.addDocument(doc);
+    }
+    w.forceMerge(1);
+    w.w.getConfig().setMergePolicy(NoMergePolicy.INSTANCE);
+    w.deleteDocuments(new Term("id", "0"));
+
+    DirectoryReader reader = w.getReader();
+    IndexSearcher searcher = new IndexSearcher(reader);
+    assertTrue("Expected deletions in the segment", reader.hasDeletions());
+    assertEquals(1, reader.leaves().size());
+
+    Query query = new FieldExistsQuery("vector");
+    Weight weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1);
+    // All docs had the vector field, so even with deletions we can count in O(1)
+    int count = weight.count(reader.leaves().get(0));
+    assertEquals(reader.numDocs(), count);
+    assertEquals(numDocs - 1, count);
+
+    IOUtils.close(reader, w, dir);
+  }
 }

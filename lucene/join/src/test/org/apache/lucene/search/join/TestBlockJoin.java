@@ -115,10 +115,10 @@ public class TestBlockJoin extends LuceneTestCase {
     return job;
   }
 
-  private Document makeVector(String vectorField, String childsParent, float[] value) {
+  private Document makeVector(String vectorField, String parentOfChild, float[] value) {
     Document vectorDoc = new Document();
     vectorDoc.add(new KnnFloatVectorField(vectorField, value));
-    vectorDoc.add(newStringField("my_parent_id", childsParent, Store.YES));
+    vectorDoc.add(newStringField("my_parent_id", parentOfChild, Store.YES));
     return vectorDoc;
   }
 
