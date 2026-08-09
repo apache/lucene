@@ -39,6 +39,8 @@ Improvements
   The new code allows to add a hard limit for nesting (default is 1024) and no longer
   throws virtual machine errors.  (Uwe Schindler, Seth Kraft)
 
+* GITHUB#16497: Allow Java Panama vector API on GraalVM for JDK 25+. (Abhinav Chinnala)
+
 Optimizations
 ---------------------
 * GITHUB#16394: Add DocIdSetIterator#intoArray, which DisjunctionDISIApproximation implements by
