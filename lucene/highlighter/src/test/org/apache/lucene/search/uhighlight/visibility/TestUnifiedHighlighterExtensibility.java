@@ -239,7 +239,7 @@ public class TestUnifiedHighlighterExtensibility extends LuceneTestCase {
     assertEquals(formattedResponse, formatter.format(new Passage[0], ""));
   }
 
-  public void testFieldHiglighterExtensibility() {
+  public void testFieldHighlighterExtensibility() {
     final String fieldName = "fieldName";
     FieldHighlighter fieldHighlighter =
         new FieldHighlighter(fieldName, null, null, null, 1, 1, null, null) {

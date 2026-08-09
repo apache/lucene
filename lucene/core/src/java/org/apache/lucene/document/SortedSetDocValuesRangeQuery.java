@@ -121,12 +121,13 @@ final class SortedSetDocValuesRangeQuery extends Query {
         DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
         SortedSetDocValues values = DocValues.getSortedSet(context.reader(), field);
         final SortedDocValues singleton = DocValues.unwrapSingleton(values);
-        final SortField primarySortField;
-        if (singleton != null
-            && skipper != null
-            && (primarySortField = densePrimarySort(context.reader(), skipper)) != null) {
-          return getScorerSupplierFromDensePrimarySort(
-              singleton, values, skipper, primarySortField);
+        if (singleton != null && skipper != null) {
+          SortField primarySortField =
+              canUsePrimarySortShortcut(context.reader(), field, skipper.docCount());
+          if (primarySortField != null) {
+            return getScorerSupplierFromDensePrimarySort(
+                singleton, values, skipper, primarySortField);
+          }
         }
         // implement ScorerSupplier, since we do some expensive stuff to make a scorer
         return new ConstantScoreScorerSupplier(score(), scoreMode, context.reader().maxDoc()) {
@@ -151,6 +152,10 @@ final class SortedSetDocValuesRangeQuery extends Query {
               return DocIdSetIterator.all(skipper.docCount());
             }
 
+            // A single two-phase iterator covers every density: its approximation rides the
+            // skipper (no over-scan) and its intoBitSet bulk-evaluates blocks (YES runs set at
+            // once, YES_IF_PRESENT runs marked by presence, MAYBE runs confirmed per doc). The bulk
+            // scorer unwraps it and picks the right strategy from there.
             if (singleton != null) {
               return TwoPhaseIterator.asDocIdSetIterator(
                   DocValuesRangeIterator.forOrdinalRange(singleton, skipper, minOrd, maxOrd));
@@ -164,6 +169,31 @@ final class SortedSetDocValuesRangeQuery extends Query {
             return values.cost();
           }
         };
+      }
+
+      @Override
+      public int count(LeafReaderContext context) throws IOException {
+        if (context.reader().getFieldInfos().fieldInfo(field) == null) {
+          return 0;
+        }
+        SortedSetDocValues values = DocValues.getSortedSet(context.reader(), field);
+        final long minOrd = minOrd(values);
+        final long maxOrd = maxOrd(values);
+        if (minOrd > maxOrd) {
+          return 0;
+        }
+        final DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
+        if (skipper != null) {
+          if (minOrd > skipper.maxValue() || maxOrd < skipper.minValue()) {
+            return 0;
+          }
+          if (skipper.docCount() == context.reader().maxDoc()
+              && skipper.minValue() >= minOrd
+              && skipper.maxValue() <= maxOrd) {
+            return context.reader().numDocs();
+          }
+        }
+        return -1;
       }
 
       private ScorerSupplier getScorerSupplierFromDensePrimarySort(
@@ -247,16 +277,23 @@ final class SortedSetDocValuesRangeQuery extends Query {
     return maxOrd;
   }
 
-  private SortField densePrimarySort(LeafReader reader, DocValuesSkipper skipper) {
-    if (skipper.docCount() != reader.maxDoc()) {
+  /**
+   * Returns the primary sort field if it is safe to use the {@link SortedSkipperScorerSupplier}
+   * range shortcuts for this query, or {@code null} if the shortcut cannot be applied.
+   *
+   * <p>The shortcuts assume that docs without a value do not appear before or within the matching
+   * doc-ID range. This requires that the field is dense (every doc has a value, {@code docCount ==
+   * reader.maxDoc()}).
+   */
+  private static SortField canUsePrimarySortShortcut(LeafReader reader, String field, int docCount)
+      throws IOException {
+    SortField sf = Sort.getPrimarySortField(reader);
+    if (sf == null || sf.getField().equals(field) == false) {
       return null;
     }
-    final Sort indexSort = reader.getMetaData().sort();
-    if (indexSort == null
-        || indexSort.getSort().length == 0
-        || indexSort.getSort()[0].getField().equals(field) == false) {
+    if (docCount != reader.maxDoc()) {
       return null;
     }
-    return indexSort.getSort()[0];
+    return sf;
   }
 }

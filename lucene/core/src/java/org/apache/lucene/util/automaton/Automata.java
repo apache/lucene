@@ -699,7 +699,7 @@ public final class Automata {
    */
   private static int[] toCaseInsensitiveChar(int codepoint) {
     IntArrayList list = new IntArrayList();
-    CaseFolding.expand(
+    CaseExpansion.expand(
         codepoint,
         (int variant) -> {
           list.add(variant);

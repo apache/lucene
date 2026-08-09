@@ -55,15 +55,18 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
   private int[] currentValues = new int[8];
   private int currentUpto;
   private int maxCount;
+  private final SharedIndexingScratch scratch;
 
   private PackedLongValues finalOrds;
   private PackedLongValues finalOrdCounts;
   private int[] finalSortedValues;
   private int[] finalOrdMap;
 
-  SortedSetDocValuesWriter(FieldInfo fieldInfo, Counter iwBytesUsed, ByteBlockPool pool) {
+  SortedSetDocValuesWriter(
+      FieldInfo fieldInfo, Counter iwBytesUsed, ByteBlockPool pool, SharedIndexingScratch scratch) {
     this.fieldInfo = fieldInfo;
     this.iwBytesUsed = iwBytesUsed;
+    this.scratch = scratch;
     hash =
         new BytesRefHash(
             pool,
@@ -110,8 +113,12 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
    * batch-local and are offset by {@code baseDocID} to produce segment-level ids.
    */
   void addOrdinalTuples(int baseDocID, List<BytesRef> dictionary, OrdinalsTupleCursor cursor) {
-    int[] ordToHash = new int[dictionary.size()];
-    Arrays.fill(ordToHash, -1);
+    int dictSize = dictionary.size();
+    int[] ordToHash =
+        dictSize <= SharedIndexingScratch.INTS_SCRATCH_SIZE
+            ? scratch.intsScratch()
+            : new int[dictSize];
+    Arrays.fill(ordToHash, 0, dictSize, -1);
     int batchDocID;
     while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
       int docID = baseDocID + batchDocID;

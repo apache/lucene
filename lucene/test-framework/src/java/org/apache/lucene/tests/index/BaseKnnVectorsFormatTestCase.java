@@ -2508,7 +2508,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     }
   }
 
-  static int getNumVectors(KnnVectorsReader reader, FieldInfo fieldInfo) throws IOException {
+  protected static int getNumVectors(KnnVectorsReader reader, FieldInfo fieldInfo)
+      throws IOException {
     return switch (fieldInfo.getVectorEncoding()) {
       case BYTE -> reader.getByteVectorValues(fieldInfo.getName()).size();
       case FLOAT32 -> reader.getFloatVectorValues(fieldInfo.getName()).size();
@@ -2534,7 +2535,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     return name.contains("quantized");
   }
 
-  static boolean hasHNSW(KnnVectorsReader knnVectorsReader, FieldInfo fieldInfo)
+  protected static boolean hasHNSW(KnnVectorsReader knnVectorsReader, FieldInfo fieldInfo)
       throws IOException {
     if (knnVectorsReader
         instanceof AssertingKnnVectorsFormat.AssertingKnnVectorsReader assertingReader) {

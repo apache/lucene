@@ -274,7 +274,7 @@ public interface SerializableObject {
   }
 
   /**
-   * Write a polgon array.
+   * Write a polygon array.
    *
    * @param outputStream is the output stream.
    * @param values is the array of points to write.

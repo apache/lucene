@@ -462,7 +462,7 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
    *
    * <p>Note: Set to 0 to disable merging on full flush.
    *
-   * <p>Note: If {@link SerialMergeScheduler} is used and a non-zero timout is configured,
+   * <p>Note: If {@link SerialMergeScheduler} is used and a non-zero timeout is configured,
    * full-flush merges will always wait for the merge to finish without honoring the configured
    * timeout.
    */

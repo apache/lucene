@@ -28,17 +28,38 @@ import org.apache.lucene.util.MathUtil;
 final class ConstantScoreBulkScorer extends BulkScorer {
   private final Scorer scorer;
   private final DocIdSetIterator iterator;
+  // When non-null, matches of the approximation must be confirmed via twoPhase#matches() /
+  // twoPhase#intoBitSet rather than taken as-is.
+  private final TwoPhaseIterator twoPhase;
   private final FixedBitSet windowMatches = new FixedBitSet(DenseConjunctionBulkScorer.WINDOW_SIZE);
 
   ConstantScoreBulkScorer(float score, ScoreMode scoreMode, DocIdSetIterator iterator) {
+    this(score, scoreMode, iterator, null);
+  }
+
+  /**
+   * Variant that confirms the matches of a {@link TwoPhaseIterator}. It is worthwhile when the
+   * two-phase iterator overrides {@link TwoPhaseIterator#intoBitSet} with a bulk implementation, so
+   * a single clause can be collected window-by-window instead of confirmed one doc at a time.
+   */
+  ConstantScoreBulkScorer(float score, ScoreMode scoreMode, TwoPhaseIterator twoPhase) {
+    this(score, scoreMode, twoPhase.approximation(), twoPhase);
+  }
+
+  private ConstantScoreBulkScorer(
+      float score, ScoreMode scoreMode, DocIdSetIterator iterator, TwoPhaseIterator twoPhase) {
     if (scoreMode.needsScores()) {
       throw new IllegalArgumentException("ScoreMode must not need scores: " + scoreMode);
     }
-    if (TwoPhaseIterator.unwrap(iterator) != null) {
+    if (twoPhase == null && TwoPhaseIterator.unwrap(iterator) != null) {
       throw new IllegalArgumentException("Iterator must not wrap a TwoPhaseIterator");
     }
-    this.scorer = new ConstantScoreScorer(score, scoreMode, iterator);
+    this.scorer =
+        twoPhase == null
+            ? new ConstantScoreScorer(score, scoreMode, iterator)
+            : new ConstantScoreScorer(score, scoreMode, twoPhase);
     this.iterator = iterator;
+    this.twoPhase = twoPhase;
   }
 
   @Override
@@ -46,7 +67,7 @@ final class ConstantScoreBulkScorer extends BulkScorer {
     collector.setScorer(scorer);
     DocIdSetIterator competitiveIterator = collector.competitiveIterator();
     if (competitiveIterator != null) {
-      scoreIterator(collector, acceptDocs, iterator, competitiveIterator, min, max);
+      scoreIterator(collector, acceptDocs, iterator, twoPhase, competitiveIterator, min, max);
     } else {
       scoreIteratorIntoBitSet(collector, acceptDocs, iterator, min, max);
     }
@@ -62,6 +83,7 @@ final class ConstantScoreBulkScorer extends BulkScorer {
       LeafCollector collector,
       Bits acceptDocs,
       DocIdSetIterator iterator,
+      TwoPhaseIterator twoPhase,
       DocIdSetIterator competitiveIterator,
       int min,
       int max)
@@ -86,7 +108,7 @@ final class ConstantScoreBulkScorer extends BulkScorer {
         }
       }
 
-      if (acceptDocs == null || acceptDocs.get(doc)) {
+      if ((acceptDocs == null || acceptDocs.get(doc)) && (twoPhase == null || twoPhase.matches())) {
         collector.collect(doc);
       }
 
@@ -110,7 +132,11 @@ final class ConstantScoreBulkScorer extends BulkScorer {
           MathUtil.unsignedMin(max, windowBase + DenseConjunctionBulkScorer.WINDOW_SIZE);
 
       assert windowMatches.scanIsEmpty();
-      iterator.intoBitSet(windowMax, windowMatches, windowBase);
+      if (twoPhase == null) {
+        iterator.intoBitSet(windowMax, windowMatches, windowBase);
+      } else {
+        twoPhase.intoBitSet(windowMax, windowMatches, windowBase);
+      }
 
       if (acceptDocs != null) {
         acceptDocs.applyMask(windowMatches, windowBase);

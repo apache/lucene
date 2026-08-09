@@ -18,10 +18,12 @@
 package org.apache.lucene.monitor;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreMode;
@@ -79,7 +81,21 @@ class ReadonlyQueryIndex extends QueryIndex {
           queryBuilder.buildQuery(
               termFilters.get(searcher.getIndexReader().getReaderCacheHelper().getKey()));
       buildTime = System.nanoTime() - buildTime;
-      searcher.search(query, collector);
+      searcher.search(
+          query,
+          new CollectorManager<LazyMonitorQueryCollector, Void>() {
+            @Override
+            public LazyMonitorQueryCollector newCollector() {
+              return collector;
+            }
+
+            @Override
+            public Void reduce(Collection<LazyMonitorQueryCollector> collectors) {
+              assert collectors.size() == 1
+                  : "QueryCollector needs to be made thread-safe before an executor can be provided to the index searcher used by monitor";
+              return null;
+            }
+          });
       return buildTime;
     } finally {
       if (searcher != null) {

@@ -1037,7 +1037,7 @@ classes were `@Deprecated` starting with 9.0. Users are encouraged to rely on th
 taxonomy facet encodings where possible. If custom formats are needed, users will need
 to manage the indexed data on their own and create new `Facet` implementations to use it.
 
-### `Weight#scorerSupplier` is declared abstract, and `Weight#scorer` methd is marked final
+### `Weight#scorerSupplier` is declared abstract, and `Weight#scorer` method is marked final
 
 The `Weight#scorerSupplier` method is now declared abstract, compelling child classes to implement the ScorerSupplier
 interface. Additionally, `Weight#scorer` is now declared final, with its implementation being delegated to

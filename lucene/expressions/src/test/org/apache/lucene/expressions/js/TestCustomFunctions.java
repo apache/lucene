@@ -29,7 +29,7 @@ import org.apache.lucene.expressions.Expression;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.jupiter.api.Test;
 
-/** Tests customing the function map */
+/** Tests customizing the function map */
 public class TestCustomFunctions extends CompilerTestCase {
   private static final double DELTA = 0.0000001;
   private static final Lookup LOOKUP = MethodHandles.lookup();

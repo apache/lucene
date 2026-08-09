@@ -111,11 +111,7 @@ API Changes
 
 New Features
 ---------------------
-* GITHUB#16092: Add RotatingKnnVectorsFormat, a KnnVectorsFormat wrapper that applies a
-  randomized Hadamard rotation (FWHT with random sign flips and permutation) to float32
-  vectors at index time and to queries at search time. The rotation is orthogonal, so all
-  similarities are preserved, while per-dimension distributions become more Gaussian, which
-  improves scalar quantization recall on skewed or non-isotropic corpora. (Shubham Chaudhary)
+* GITHUB#16092: Add hadamard rotation to vector fields. (Shubham Chaudhary)
 
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
   modern Hangul conjoining jamo before KoreanTokenizer. (Mingi Jeong)
@@ -340,6 +336,10 @@ New Features
 * GITHUB#16371, GITHUB#14389: Add CaseFoldingFilter for Unicode simple case folding without
   requiring the ICU analysis plugin. Uses a generated switch for fold exceptions with
   Character.toLowerCase() as the default fallback. (Robert Muir, Costin Leau)
+
+* GITHUB#15979: Add a sandboxed de-duplicating HNSW vector format (DedupHnswVectorsFormat) that stores
+  each distinct full-precision vector once, shared across all documents and fields that reference it.
+  (Kaival Parikh)
 
 Improvements
 ---------------------

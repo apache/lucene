@@ -738,7 +738,7 @@ public class TestSimpleGeoPolygonRelationships extends LuceneTestCase {
     assertEquals(GeoArea.OVERLAPS, rel);
 
     // POLYGON((-146 -5.18, -145.854 -5.18, -145.854 -5.11, -146 -5.11, -146 -5.18))
-    // Case overlaping on of the shapes
+    // Case overlapping on of the shapes
     polConvex = buildConvexGeoPolygon(-146, -5.18, -145.854, -5.18, -145.854, -5.11, -146, -5.11);
 
     polConcave = buildConcaveGeoPolygon(-146, -5.18, -145.854, -5.18, -145.854, -5.11, -146, -5.11);

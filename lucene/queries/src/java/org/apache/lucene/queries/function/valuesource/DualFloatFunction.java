@@ -26,7 +26,7 @@ import org.apache.lucene.search.IndexSearcher;
 
 /**
  * Abstract {@link ValueSource} implementation which wraps two ValueSources and applies an
- * extendible float function to their values.
+ * extendable float function to their values.
  */
 public abstract class DualFloatFunction extends ValueSource {
   protected final ValueSource a;

@@ -31,11 +31,11 @@ public class TestExpressionValidation extends LuceneTestCaseJupiter {
     bindings.add("valid1", DoubleValuesSource.fromIntField("valid1"));
     bindings.add("valid2", DoubleValuesSource.fromIntField("valid2"));
     bindings.add("_score", DoubleValuesSource.SCORES);
-    bindings.add("valide0", JavascriptCompiler.compile("valid0 - valid1 + valid2 + _score"));
+    bindings.add("valid_e0", JavascriptCompiler.compile("valid0 - valid1 + valid2 + _score"));
     bindings.validate();
-    bindings.add("valide1", JavascriptCompiler.compile("valide0 + valid0"));
+    bindings.add("valid_e1", JavascriptCompiler.compile("valid_e0 + valid0"));
     bindings.validate();
-    bindings.add("valide2", JavascriptCompiler.compile("valide0 * valide1"));
+    bindings.add("valid_e2", JavascriptCompiler.compile("valid_e0 * valid_e1"));
     bindings.validate();
   }
 

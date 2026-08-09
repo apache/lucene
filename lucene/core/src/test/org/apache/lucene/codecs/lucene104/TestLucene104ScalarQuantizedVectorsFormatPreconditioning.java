@@ -21,7 +21,7 @@ import java.util.Set;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.RotationAwareKnnVectorsFormat;
+import org.apache.lucene.codecs.RotatingKnnVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
@@ -39,7 +39,7 @@ import org.apache.lucene.util.quantization.HadamardRotation;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
 
 /**
- * Tests for rotation preconditioning via {@link RotationAwareKnnVectorsFormat} wrapping {@link
+ * Tests for rotation preconditioning via {@link RotatingKnnVectorsFormat} wrapping {@link
  * Lucene104HnswScalarQuantizedVectorsFormat}.
  */
 public class TestLucene104ScalarQuantizedVectorsFormatPreconditioning extends LuceneTestCase {
@@ -132,7 +132,7 @@ public class TestLucene104ScalarQuantizedVectorsFormatPreconditioning extends Lu
   private static Codec codecWithRotation(ScalarEncoding encoding) {
     KnnVectorsFormat base =
         new Lucene104HnswScalarQuantizedVectorsFormat(encoding, 16, 100, 1, null);
-    KnnVectorsFormat rotated = new RotationAwareKnnVectorsFormat(base);
+    KnnVectorsFormat rotated = RotatingKnnVectorsFormat.rotating(base);
     return new FilterCodec(Codec.getDefault().getName(), Codec.getDefault()) {
       @Override
       public KnnVectorsFormat knnVectorsFormat() {

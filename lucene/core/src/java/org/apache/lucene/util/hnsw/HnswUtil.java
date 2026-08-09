@@ -110,14 +110,14 @@ public class HnswUtil {
       components.add(new Component(entryPoint, total));
     }
     if (level == 0) {
-      int nextClear = nextClearBit(connectedNodes, 0);
+      int nextClear = connectedNodes.nextClearBit(0);
       while (nextClear != NO_MORE_DOCS) {
         Component component =
             markRooted(hnsw, level, connectedNodes, notFullyConnected, maxConn, nextClear);
         assert component.size() > 0;
         components.add(component);
         total += component.size();
-        nextClear = nextClearBit(connectedNodes, component.start());
+        nextClear = connectedNodes.nextClearBit(component.start());
       }
     } else {
       HnswGraph.NodesIterator nodes = hnsw.getNodesOnLevel(level);
@@ -196,32 +196,6 @@ public class HnswUtil {
       }
     }
     return new Component(entryPoint, count);
-  }
-
-  private static int nextClearBit(FixedBitSet bits, int index) {
-    // Does not depend on the ghost bits being clear!
-    long[] barray = bits.getBits();
-    assert index >= 0 && index < bits.length() : "index=" + index + ", numBits=" + bits.length();
-    int i = index >> 6;
-    long word = ~(barray[i] >> index); // skip all the bits to the right of index
-
-    int next = NO_MORE_DOCS;
-    if (word != 0) {
-      next = index + Long.numberOfTrailingZeros(word);
-    } else {
-      while (++i < barray.length) {
-        word = ~barray[i];
-        if (word != 0) {
-          next = (i << 6) + Long.numberOfTrailingZeros(word);
-          break;
-        }
-      }
-    }
-    if (next >= bits.length()) {
-      return NO_MORE_DOCS;
-    } else {
-      return next;
-    }
   }
 
   /**

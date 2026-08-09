@@ -138,9 +138,9 @@ public class TestDirectoryReaderReopen extends LuceneTestCase {
             int n = j + k * M;
             final DocumentStoredFieldVisitor visitor = new DocumentStoredFieldVisitor();
             reader.storedFields().document(n, visitor);
-            Document prevItereationDoc = visitor.getDocument();
-            assertNotNull(prevItereationDoc);
-            String id = prevItereationDoc.get("id");
+            Document prevIterationDoc = visitor.getDocument();
+            assertNotNull(prevIterationDoc);
+            String id = prevIterationDoc.get("id");
             assertEquals(k + "_" + j, id);
           }
         }
@@ -1234,9 +1234,9 @@ public class TestDirectoryReaderReopen extends LuceneTestCase {
           if (i > 0) {
             int k = i - 1;
             int n = j + k * M;
-            Document prevItereationDoc = reader.storedFields().document(n);
-            assertNotNull(prevItereationDoc);
-            String id = prevItereationDoc.get("id");
+            Document prevIterationDoc = reader.storedFields().document(n);
+            assertNotNull(prevIterationDoc);
+            String id = prevIterationDoc.get("id");
             assertEquals(k + "_" + j, id);
           }
 
