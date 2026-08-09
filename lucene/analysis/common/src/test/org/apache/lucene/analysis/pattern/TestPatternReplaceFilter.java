@@ -113,9 +113,7 @@ public class TestPatternReplaceFilter extends BaseTokenStreamTestCase {
 
   public void testKeywordFilter() throws Exception {
     assertAnalyzesTo(
-        keywordTestAnalyzer(true),
-        "banana kappa alpha",
-        new String[] {"bXnXnX", "kappa", "XlphX"});
+        keywordTestAnalyzer(true), "banana kappa alpha", new String[] {"bXnXnX", "kappa", "XlphX"});
 
     assertAnalyzesTo(
         keywordTestAnalyzer(false),

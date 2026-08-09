@@ -68,7 +68,8 @@ public final class PatternReplaceFilter extends TokenFilter {
    * @param ignoreKeywords if true, tokens with KeywordAttribute set to true will not be processed
    * @see Matcher#quoteReplacement
    */
-  public PatternReplaceFilter(TokenStream in, Pattern p, String replacement, boolean all, boolean ignoreKeywords) {
+  public PatternReplaceFilter(
+      TokenStream in, Pattern p, String replacement, boolean all, boolean ignoreKeywords) {
     super(in);
     this.replacement = (null == replacement) ? "" : replacement;
     this.all = all;
