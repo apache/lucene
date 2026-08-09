@@ -145,7 +145,7 @@ public abstract class VectorizationProvider {
         return new DefaultVectorizationProvider();
       }
       // don't use vector module with JVMCI (it does not work)
-      if (Constants.IS_JVMCI_VM) {
+      if (Constants.IS_JVMCI_VM && Runtime.version().feature() < 25) {
         LOG.warning(
             "Java runtime is using JVMCI Compiler; Java vector incubator API can't be enabled.");
         return new DefaultVectorizationProvider();
