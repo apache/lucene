@@ -772,6 +772,24 @@ public class FieldInfos implements Iterable<FieldInfo> {
       final FieldInfo curFi = fieldInfo(fi.getName());
       if (curFi != null) {
         curFi.verifySameSchema(fi);
+        // Check rotation consistency: both FieldInfos have full attributes at this point
+        // (loaded from committed segments), so we can reliably compare rotation state.
+        if (fi.getVectorDimension() > 0) {
+          boolean curRotated =
+              curFi.getAttribute("RotatingKnnVectorsFormat_DelegateFormat") != null;
+          boolean incomingRotated =
+              fi.getAttribute("RotatingKnnVectorsFormat_DelegateFormat") != null;
+          if (curRotated != incomingRotated) {
+            throw new IllegalArgumentException(
+                "cannot change field \""
+                    + fi.getName()
+                    + "\" rotation state: the field is "
+                    + (curRotated ? "rotated" : "not rotated")
+                    + " in the existing index but "
+                    + (incomingRotated ? "rotated" : "not rotated")
+                    + " in the incoming segment. Reindex the field to change its rotation state.");
+          }
+        }
         if (fi.attributes() != null) {
           curFi.putAttributes(fi.attributes());
         }

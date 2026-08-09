@@ -32,7 +32,9 @@ import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
@@ -263,13 +265,21 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public KnnVectorsReader unwrapReaderForField(String field) {
       FieldInfo fi = fieldInfos.fieldInfo(field);
-      return fi != null ? fields.get(fi.number) : this;
+      if (fi == null) {
+        return this;
+      }
+      KnnVectorsReader reader = fields.get(fi.number);
+      // The per-field reader may itself be a wrapper (e.g. a rotating/preconditioning format), so
+      // keep unwrapping: callers such as CheckIndex's HNSW graph validation need the concrete
+      // format's reader, not an intermediate delegating one. Non-wrapping readers return
+      // themselves, so this is a no-op for them.
+      return reader == null ? this : reader.unwrapReaderForField(field);
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
       for (ObjectCursor<KnnVectorsReader> cursor : fields.values()) {
-        cursor.value.checkIntegrity();
+        cursor.value.checkIntegrity(merge);
       }
     }
 
@@ -294,6 +304,16 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
+    public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+      final FieldInfo info = fieldInfos.fieldInfo(field);
+      final KnnVectorsReader reader;
+      if (info == null || (reader = fields.get(info.number)) == null) {
+        return null;
+      }
+      return reader.getFloat16VectorValues(field);
+    }
+
+    @Override
     public void search(
         String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
         throws IOException {
@@ -308,6 +328,18 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public void search(
         String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+        throws IOException {
+      final FieldInfo info = fieldInfos.fieldInfo(field);
+      final KnnVectorsReader reader;
+      if (info == null || (reader = fields.get(info.number)) == null) {
+        return;
+      }
+      reader.search(field, target, knnCollector, acceptDocs);
+    }
+
+    @Override
+    public void search(
+        String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
         throws IOException {
       final FieldInfo info = fieldInfos.fieldInfo(field);
       final KnnVectorsReader reader;

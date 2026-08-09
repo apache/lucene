@@ -18,6 +18,7 @@ package org.apache.lucene.util.quantization;
 
 import java.util.Arrays;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 /** Correctness tests for {@link HadamardRotation}. */
 public class TestHadamardRotation extends LuceneTestCase {
@@ -191,5 +192,108 @@ public class TestHadamardRotation extends LuceneTestCase {
       s += d * d;
     }
     return Math.sqrt(s);
+  }
+
+  /**
+   * rotate -> inverseRotate must return the original vector, for random dimensions including ones
+   * that force the block-diagonal FWHT decomposition. The FWHT sums float32 values, so this is
+   * exact only up to accumulated rounding error, which grows with log2(dim).
+   */
+  public void testRotateThenInverseRotateRoundTrips() {
+    for (int iter = 0; iter < 50; iter++) {
+      int dim = TestUtil.nextInt(random(), 1, 1030);
+      HadamardRotation rotation = HadamardRotation.forDimension(dim);
+      float[] original = new float[dim];
+      for (int i = 0; i < dim; i++) {
+        original[i] = random().nextFloat() * 2 - 1;
+      }
+      float[] rotated = new float[dim];
+      float[] restored = new float[dim];
+      rotation.rotate(original, rotated);
+      rotation.inverseRotate(rotated, restored);
+      assertArrayEquals("dim=" + dim, original, restored, tolerance(dim));
+    }
+  }
+
+  /** The other direction: inverseRotate -> rotate must also be the identity. */
+  public void testInverseRotateThenRotateRoundTrips() {
+    for (int iter = 0; iter < 50; iter++) {
+      int dim = TestUtil.nextInt(random(), 1, 1030);
+      HadamardRotation rotation = HadamardRotation.forDimension(dim);
+      float[] original = new float[dim];
+      for (int i = 0; i < dim; i++) {
+        original[i] = random().nextFloat() * 2 - 1;
+      }
+      float[] inverted = new float[dim];
+      float[] restored = new float[dim];
+      rotation.inverseRotate(original, inverted);
+      rotation.rotate(inverted, restored);
+      assertArrayEquals("dim=" + dim, original, restored, tolerance(dim));
+    }
+  }
+
+  /** Rotations compose: applying R twice and then its inverse twice is still the identity. */
+  public void testStackedRotationsRoundTrip() {
+    int dim = TestUtil.nextInt(random(), 2, 512);
+    HadamardRotation rotation = HadamardRotation.forDimension(dim);
+    float[] original = new float[dim];
+    for (int i = 0; i < dim; i++) {
+      original[i] = random().nextFloat() * 2 - 1;
+    }
+    float[] a = new float[dim];
+    float[] b = new float[dim];
+    rotation.rotate(original, a);
+    rotation.rotate(a, b);
+    rotation.inverseRotate(b, a);
+    rotation.inverseRotate(a, b);
+    assertArrayEquals("dim=" + dim, original, b, 2 * tolerance(dim));
+  }
+
+  /** Rotating in place (in == out) must give the same result as rotating into a separate array. */
+  public void testInPlaceRotationMatchesOutOfPlace() {
+    int dim = TestUtil.nextInt(random(), 1, 300);
+    HadamardRotation rotation = HadamardRotation.forDimension(dim);
+    float[] original = new float[dim];
+    for (int i = 0; i < dim; i++) {
+      original[i] = random().nextFloat() * 2 - 1;
+    }
+    float[] outOfPlace = new float[dim];
+    rotation.rotate(original, outOfPlace);
+    float[] inPlace = original.clone();
+    rotation.rotate(inPlace, inPlace);
+    assertArrayEquals(outOfPlace, inPlace, 0f);
+  }
+
+  /** Every dimension gets the same shared instance, so wrapping many fields costs no extra heap. */
+  public void testForDimensionIsCachedPerDimension() {
+    assertSame(HadamardRotation.forDimension(137), HadamardRotation.forDimension(137));
+    assertNotSame(HadamardRotation.forDimension(137), HadamardRotation.forDimension(138));
+  }
+
+  /**
+   * Round-trip error budget: float32 FWHT error accumulates with the number of butterfly stages.
+   */
+  private static float tolerance(int dim) {
+    return 1e-5f * (float) Math.sqrt(dim);
+  }
+
+  /**
+   * {@code seedForDimension} is part of the on-disk format: {@link
+   * org.apache.lucene.codecs.RotatingKnnVectorsFormat} re-derives each field's rotation from its
+   * dimension instead of persisting a seed, so changing this function would silently invalidate
+   * every existing rotated index -- queries would be rotated by a different matrix than the stored
+   * vectors. These values are pinned so that can never happen by accident.
+   */
+  public void testSeedForDimensionIsFrozen() {
+    assertEquals(-2152535657050944081L, HadamardRotation.seedForDimension(1));
+    assertEquals(7960286522194355700L, HadamardRotation.seedForDimension(2));
+    assertEquals(487617019471545679L, HadamardRotation.seedForDimension(3));
+    assertEquals(-537132696929009172L, HadamardRotation.seedForDimension(4));
+    assertEquals(-4214222208109204676L, HadamardRotation.seedForDimension(8));
+    assertEquals(1366353662778461286L, HadamardRotation.seedForDimension(96));
+    assertEquals(1355684918954531865L, HadamardRotation.seedForDimension(128));
+    assertEquals(-8778448601239381479L, HadamardRotation.seedForDimension(768));
+    assertEquals(3233339365705528689L, HadamardRotation.seedForDimension(1024));
+    assertEquals(-5304553985096900272L, HadamardRotation.seedForDimension(4096));
   }
 }

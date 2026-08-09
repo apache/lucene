@@ -97,22 +97,32 @@ public final class HadamardRotation {
       new ConcurrentHashMap<>();
 
   /**
+   * Returns the deterministic seed used by {@link #forDimension(int)} for the given dimension.
+   * Exposed so callers (e.g. {@link org.apache.lucene.codecs.RotatingKnnVectorsFormat}) can persist
+   * the seed alongside the rotated vectors, decoupling on-disk indices from any future change to
+   * the seed-mix function: future readers reconstruct the rotation from the persisted seed via
+   * {@link #create(int, long)} rather than re-deriving from the dimension.
+   */
+  public static long seedForDimension(int dim) {
+    long seed = (long) dim * 0x9E3779B97F4A7C15L;
+    seed ^= (seed >>> 30);
+    seed *= 0xBF58476D1CE4E5B9L;
+    seed ^= (seed >>> 27);
+    seed *= 0x94D049BB133111EBL;
+    seed ^= (seed >>> 31);
+    return seed;
+  }
+
+  /**
    * Returns a shared rotation instance for the given dimension. All fields with the same dimension
    * share a single rotation, avoiding redundant heap usage across fields and segments. The seed is
-   * derived deterministically from the dimension.
+   * derived deterministically from the dimension via {@link #seedForDimension(int)}.
    */
   public static HadamardRotation forDimension(int dimension) {
-    return BY_DIMENSION.computeIfAbsent(
-        dimension,
-        dim -> {
-          long seed = (long) dim * 0x9E3779B97F4A7C15L;
-          seed ^= (seed >>> 30);
-          seed *= 0xBF58476D1CE4E5B9L;
-          seed ^= (seed >>> 27);
-          seed *= 0x94D049BB133111EBL;
-          seed ^= (seed >>> 31);
-          return create(dim, seed);
-        });
+    if (dimension < 1) {
+      throw new IllegalArgumentException("dim must be >= 1, got " + dimension);
+    }
+    return BY_DIMENSION.computeIfAbsent(dimension, d -> create(d, seedForDimension(d)));
   }
 
   /**
