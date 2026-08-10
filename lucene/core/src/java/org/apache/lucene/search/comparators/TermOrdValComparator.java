@@ -287,8 +287,10 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
       if (dense || topValue != null) {
         return true;
       } else if (reverse == sortMissingLast) {
-        // Missing values are always competitive, we can never skip
-        return false;
+        // Missing values sort best here, so they stay competitive for as long as the queue is not
+        // full of them. With no tie breaker they stop competing once it is, so skipping is still
+        // worth enabling; updateCompetitiveIterator decides when it can actually start.
+        return singleSort;
       } else {
         return true;
       }
@@ -423,6 +425,13 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
             minOrd = topOrd + 1;
           }
         } else if (sortMissingLast || dense) {
+          minOrd = 0;
+        } else if (bottomValue == null && singleSort) {
+          // The worst entry in the queue is itself a missing value and there is no tie breaker, so
+          // another missing value can no longer compete: missing values are no longer competitive.
+          // (bottomValue==null is stronger than bottomOrd==missingOrd, which can also be produced
+          // by
+          // a real value that maps before ord 0 in this segment.)
           minOrd = 0;
         } else {
           // Missing values are still competitive.

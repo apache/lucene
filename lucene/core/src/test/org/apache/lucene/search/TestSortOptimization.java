@@ -1239,6 +1239,124 @@ public class TestSortOptimization extends LuceneTestCase {
     dir.close();
   }
 
+  /**
+   * GITHUB#12370: when the sort field is missing from the whole index (not just one segment) and
+   * the sort has no tie breaker, all documents tie on the missing value, so once the top-N queue is
+   * full the remaining documents are non-competitive and must be skipped rather than fully
+   * collected.
+   */
+  public void testStringSortOptimizationFieldMissingInWholeIndex() throws IOException {
+    final Directory dir = newDirectory();
+    final IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
+
+    // None of the documents index the sort field, so it is absent from every segment's FieldInfos.
+    final int numDocs = atLeast(10000);
+    for (int i = 0; i < numDocs; i++) {
+      final Document doc = new Document();
+      doc.add(new StringField("other", Integer.toString(i), Field.Store.NO));
+      writer.addDocument(doc);
+    }
+
+    final DirectoryReader reader = DirectoryReader.open(writer);
+    writer.close();
+
+    final int numHits = 5;
+
+    { // ascending, sort-missing-first (the default for SortedSetSortField): missing is the best
+      // value, but with no tie breaker a second missing value can never displace one already in the
+      // queue, so the tail should be skipped.
+      SortField sortField = new SortedSetSortField("field_does_not_exist", false);
+      TopDocs topDocs = assertSearchHits(reader, new Sort(sortField), numHits, null);
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), numDocs);
+    }
+
+    { // descending, sort-missing-first
+      SortField sortField = new SortedSetSortField("field_does_not_exist", true);
+      TopDocs topDocs = assertSearchHits(reader, new Sort(sortField), numHits, null);
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), numDocs);
+    }
+
+    reader.close();
+    dir.close();
+  }
+
+  /**
+   * GITHUB#12370: every document carries the SAME single value for the sort field, so with no tie
+   * breaker they all compare equal and the tail is non-competitive once the queue is full, exactly
+   * as when the field is missing from every segment.
+   */
+  public void testStringSortOptimizationSingleValueInWholeIndex() throws IOException {
+    final Directory dir = newDirectory();
+    final IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
+
+    final int numDocs = atLeast(10000);
+    for (int i = 0; i < numDocs; i++) {
+      final Document doc = new Document();
+      doc.add(new SortedDocValuesField("field", new BytesRef("the only value")));
+      doc.add(new StringField("field", "the only value", Field.Store.NO));
+      doc.add(new StringField("other", Integer.toString(i), Field.Store.NO));
+      writer.addDocument(doc);
+    }
+
+    final DirectoryReader reader = DirectoryReader.open(writer);
+    writer.close();
+
+    final int numHits = 5;
+
+    { // ascending
+      SortField sortField = new SortField("field", SortField.Type.STRING, false);
+      TopDocs topDocs = assertSearchHits(reader, new Sort(sortField), numHits, null);
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), numDocs);
+    }
+
+    { // descending
+      SortField sortField = new SortField("field", SortField.Type.STRING, true);
+      TopDocs topDocs = assertSearchHits(reader, new Sort(sortField), numHits, null);
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), numDocs);
+    }
+
+    reader.close();
+    dir.close();
+  }
+
+  /**
+   * GITHUB#12370, the remaining case: the sort field DOES exist and some documents have a value,
+   * but with sort-missing-first the top-N queue fills entirely with missing values. With no tie
+   * breaker a further missing value cannot displace one already in the queue, so the tail must be
+   * skipped.
+   */
+  public void testStringSortOptimizationQueueAllMissingSortMissingFirst() throws IOException {
+    final Directory dir = newDirectory();
+    final IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
+
+    // Most documents lack the sort field, a few carry a value, so the field is present in
+    // FieldInfos but not dense -- unlike the missing-from-the-whole-index case above.
+    final int numDocs = atLeast(10000);
+    for (int i = 0; i < numDocs; i++) {
+      final Document doc = new Document();
+      if (i % 1000 == 0) {
+        doc.add(new SortedDocValuesField("field", new BytesRef("value" + i)));
+        doc.add(new StringField("field", "value" + i, Field.Store.NO));
+      }
+      doc.add(new StringField("other", Integer.toString(i), Field.Store.NO));
+      writer.addDocument(doc);
+    }
+
+    final DirectoryReader reader = DirectoryReader.open(writer);
+    writer.close();
+
+    final int numHits = 5;
+
+    // sortMissingFirst ascending: missing sorts best, so the queue is all-missing once full.
+    SortField sortField =
+        new SortField("field", SortField.Type.STRING, false, SortField.STRING_FIRST);
+    TopDocs topDocs = assertSearchHits(reader, new Sort(sortField), numHits, null);
+    assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), numDocs);
+
+    reader.close();
+    dir.close();
+  }
+
   private void doTestStringSortOptimization(DirectoryReader reader) throws IOException {
     final int numDocs = reader.numDocs();
     final int numHits = 5;
