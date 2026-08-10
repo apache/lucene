@@ -204,7 +204,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
     /** Which ordinal to use for a missing value. */
     final int missingOrd;
 
-    private final CompetitiveState competitiveState;
+    private CompetitiveState competitiveState;
 
     private final boolean dense;
 
@@ -488,6 +488,13 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
       assert minOrd >= 0;
       assert maxOrd < termsIndex.getValueCount();
       competitiveState.update(minOrd, maxOrd);
+    }
+
+    @Override
+    public void disableSkipping() {
+      // Drop the competitive iterator so this segment is scanned without skipping; the collector
+      // will terminate early on its own because the search sort is a prefix of this segment's sort.
+      competitiveState = null;
     }
 
     @Override
