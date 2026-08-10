@@ -319,6 +319,9 @@ Other
 API Changes
 ---------------------
 
+* GITHUB#14399: Add a default LeafFieldComparator#disableSkipping method so document skipping can be
+  disabled per segment. (Serhiy Bzhezytskyy)
+
 * GITHUB#16286: Introduce BinaryDocValues#binaryValues to help speed up the
   retrieval of many binary doc values at once. (Costin Leau)
 
@@ -418,6 +421,10 @@ Bug Fixes
 * GITHUB#16450: Fix DocValuesRangeIterator.docIDRunEnd() returning incorrect run boundaries,
   causing bulk-scoring to skip or mis-score documents in range and ordinal set queries.
   (Parker Timmins)
+
+* GITHUB#14399: TopFieldCollector now decides per segment whether the search sort is a prefix of the
+  index sort, instead of caching the decision from the first segment. This fixes incorrect results
+  when searching a MultiReader that combines indexes with different index sorts. (Serhiy Bzhezytskyy)
 
 * GITHUB#16251: Fix UpdateGraphsUtils#computeJoinSet to not request more coverage for a node than
   the node's degree. Previously nodes with a degree of 1 were always forced into the join set,
