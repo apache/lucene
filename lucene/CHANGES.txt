@@ -406,6 +406,12 @@ Optimizations
 
 * GITHUB#16180: Add bulk intoBitSet for SortedDocValues ordinal ranges. (Prithvi S)
 
+* GITHUB#12370: Sorting on a string field no longer scans every document when the top-N queue fills
+  with missing values -- whether because the field is missing from the whole index, or because
+  sort-missing-first put missing values at the top. When the sort has no tie breaker, a further
+  missing value cannot displace one already in the queue, so the rest can be skipped.
+  (Serhiy Bzhezytskyy)
+
 Bug Fixes
 ---------------------
 
