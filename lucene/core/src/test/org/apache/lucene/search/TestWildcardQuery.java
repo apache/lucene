@@ -492,10 +492,7 @@ public class TestWildcardQuery extends LuceneTestCase {
     Query rewritten = searcher.rewrite(query);
     Weight weight = rewritten.createWeight(searcher, ScoreMode.COMPLETE_NO_SCORES, 1.0f);
     ScorerSupplier supplier = weight.scorerSupplier(lrc);
-    // Automaton queries have an unknown term count, so term collection is deferred to get() and the
-    // cost is the worst-case estimate (sum of doc freqs across all terms) rather than the sum over
-    // the matching terms only.
-    assertEquals(3000, supplier.cost());
+    assertEquals(2000, supplier.cost());
 
     query = new WildcardQuery(new Term("body", "bar*"));
     rewritten = searcher.rewrite(query);
