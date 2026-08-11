@@ -164,6 +164,27 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
     return termData.size();
   }
 
+  @Override
+  public long innerEstimateCost(Terms terms) throws IOException {
+    // Estimate the cost. If the MTQ can provide its term count, we can do a better job
+    // estimating.
+    // Cost estimation reasoning is:
+    // Since we know how many query terms there are...
+    //   a. Assume every query term matches at least one document (queryTermsCount).
+    //   b. Determine the total number of docs beyond the first one for each term.
+    //      That count provides a ceiling on the number of extra docs that could match beyond
+    //      that first one. (We omit the first since it's already been counted in 2a).
+    // For id fields (i.e. docFreq = 1 for every term), the estimated cost will be equal
+    // to the number of query terms.
+    // See: LUCENE-10207
+    long potentialExtraCost = terms.getSumDocFreq();
+    final long indexedTermCount = terms.size();
+    if (indexedTermCount != -1) {
+      potentialExtraCost -= indexedTermCount;
+    }
+    return termData.size() + potentialExtraCost;
+  }
+
   /**
    * Get an iterator over the encoded terms for query inspection.
    *

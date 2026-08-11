@@ -219,74 +219,45 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
         return null;
       }
 
-      assert terms != null;
-
       final int fieldDocCount = terms.getDocCount();
       final TermsEnum termsEnum = q.getTermsEnum(terms);
       assert termsEnum != null;
-
-      final long cost;
-      final IOLongFunction<WeightOrDocIdSetIterator> weightOrIteratorSupplier;
-
-      // Only collect terms while building the ScorerSupplier when the query exposes a known,
-      // bounded term count (e.g. TermInSetQuery, getTermsCount() >= 0). There, collecting is
-      // cheap and lets us return a null supplier up-front so a parent BooleanQuery can
-      // short-circuit.
-      //
-      // For queries with an unknown term count (e.g. automaton queries: wildcard / regexp /
-      // prefix / range), collecting eagerly can scan the whole term dictionary during
-      // ScorerSupplier construction -- a leading wildcard such as "*foo*" cannot seek and must
-      // visit every term. That is supposed to be the cheap "planning" phase, and doing it there
-      // defeats a parent conjunction's ability to short-circuit (a sibling clause matching no
-      // documents can no longer skip this clause before the scan runs). So for an unknown term
-      // count we estimate the cost and defer term collection to ScorerSupplier#get().
-      if (q.getTermsCount() >= 0) {
-        List<TermAndState> collectedTerms = new ArrayList<>();
-        boolean collectResult = collectTerms(fieldDocCount, termsEnum, collectedTerms);
-        if (collectResult) {
-          // Return a null supplier if no query terms were in the segment:
-          if (collectedTerms.isEmpty()) {
-            return null;
-          }
-
-          // TODO: Instead of replicating the cost logic of a BooleanQuery we could consider
-          // rewriting to a BQ eagerly at this point and delegating to its cost method (instead of
-          // lazily rewriting on #get). Not sure what the performance hit would be of doing this
-          // though.
-          long sumTermCost = 0;
-          for (TermAndState collectedTerm : collectedTerms) {
-            sumTermCost += collectedTerm.docFreq;
-          }
-          cost = sumTermCost;
-        } else {
-          cost = estimateCost(terms, q.getTermsCount());
+      List<TermAndState> collectedTerms = new ArrayList<>();
+      boolean collectedEarly;
+      boolean earlyCollectResult;
+      long termsCount = q.getTermsCount();
+      if (termsCount >= 0 && termsCount <= BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD) {
+        earlyCollectResult = collectTerms(fieldDocCount, termsEnum, collectedTerms);
+        if (collectedTerms.isEmpty()) {
+          return null;
         }
-        weightOrIteratorSupplier =
-            leadCost -> {
-              if (collectResult) {
-                return rewriteAsBooleanQuery(context, collectedTerms);
-              } else {
-                // Too many terms to rewrite as a simple bq.
-                // Invoke rewriteInner logic to handle rewriting:
-                return rewriteInner(
-                    context, fieldDocCount, terms, termsEnum, collectedTerms, leadCost);
-              }
-            };
+        collectedEarly = true;
       } else {
-        cost = estimateCost(terms, q.getTermsCount());
-        weightOrIteratorSupplier =
-            leadCost -> {
-              List<TermAndState> collectedTerms = new ArrayList<>();
-              if (collectTerms(fieldDocCount, termsEnum, collectedTerms)) {
-                return rewriteAsBooleanQuery(context, collectedTerms);
-              } else {
-                // Too many terms to rewrite as a simple bq.
-                // Invoke rewriteInner logic to handle rewriting:
-                return rewriteInner(
-                    context, fieldDocCount, terms, termsEnum, collectedTerms, leadCost);
-              }
-            };
+        collectedEarly = false;
+        earlyCollectResult = false;
       }
+
+      final IOLongFunction<WeightOrDocIdSetIterator> weightOrIteratorSupplier =
+          leadCost -> {
+            boolean lateCollectResult;
+            if (collectedEarly) {
+              lateCollectResult = earlyCollectResult;
+            } else {
+              // We didn't collect terms before creating the ScorerSupplier, so do it now.
+              lateCollectResult = collectTerms(fieldDocCount, termsEnum, collectedTerms);
+              if (collectedTerms.isEmpty()) {
+                return null;
+              }
+            }
+            if (lateCollectResult) {
+              return rewriteAsBooleanQuery(context, collectedTerms);
+            } else {
+              // Too many terms to rewrite as a simple bq.
+              // Invoke rewriteInner logic to handle rewriting:
+              return rewriteInner(
+                  context, fieldDocCount, terms, termsEnum, collectedTerms, leadCost);
+            }
+          };
 
       return new ScorerSupplier() {
         @Override
@@ -338,40 +309,21 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
 
         @Override
         public long cost() {
-          return cost;
+          if (earlyCollectResult) {
+            // We're rewriting as a Boolean disjunction over a small number of terms
+            long cost = 0;
+            for (TermAndState termAndState : collectedTerms) {
+              cost += termAndState.docFreq;
+            }
+            return cost;
+          }
+          return q.estimateCost(terms);
         }
       };
     }
 
-    private static interface IOLongFunction<T> {
+    private interface IOLongFunction<T> {
       T apply(long arg) throws IOException;
-    }
-
-    private static long estimateCost(Terms terms, long queryTermsCount) throws IOException {
-      // Estimate the cost. If the MTQ can provide its term count, we can do a better job
-      // estimating.
-      // Cost estimation reasoning is:
-      // 1. If we don't know how many query terms there are, we assume that every term could be
-      //    in the MTQ and estimate the work as the total docs across all terms.
-      // 2. If we know how many query terms there are...
-      //    2a. Assume every query term matches at least one document (queryTermsCount).
-      //    2b. Determine the total number of docs beyond the first one for each term.
-      //        That count provides a ceiling on the number of extra docs that could match beyond
-      //        that first one. (We omit the first since it's already been counted in 2a).
-      // See: LUCENE-10207
-      long cost;
-      if (queryTermsCount == -1) {
-        cost = terms.getSumDocFreq();
-      } else {
-        long potentialExtraCost = terms.getSumDocFreq();
-        final long indexedTermCount = terms.size();
-        if (indexedTermCount != -1) {
-          potentialExtraCost -= indexedTermCount;
-        }
-        cost = queryTermsCount + potentialExtraCost;
-      }
-
-      return cost;
     }
 
     @Override

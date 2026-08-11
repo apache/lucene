@@ -17,14 +17,22 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.function.BinaryOperator;
+import java.util.function.ToIntFunction;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.AttributeSource;
+import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.StringHelper;
+import org.apache.lucene.util.UnicodeUtil;
 import org.apache.lucene.util.automaton.Automaton;
+import org.apache.lucene.util.automaton.ByteRunnable;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
+import org.apache.lucene.util.automaton.Transition;
 
 /**
  * A {@link Query} that will match terms against a finite-state machine.
@@ -170,5 +178,137 @@ public class AutomatonQuery extends MultiTermQuery implements Accountable {
   @Override
   public long ramBytesUsed() {
     return ramBytesUsed;
+  }
+
+  private static final int TERM_LIMIT_FOR_COST = 16;
+
+  @Override
+  protected long innerEstimateCost(Terms terms) throws IOException {
+    // Special cases of automata
+    if (compiled.type == CompiledAutomaton.AUTOMATON_TYPE.NONE) {
+      return 0;
+    } else if (compiled.type == CompiledAutomaton.AUTOMATON_TYPE.ALL) {
+      return terms.getSumDocFreq();
+    } else if (compiled.type == CompiledAutomaton.AUTOMATON_TYPE.SINGLE) {
+      TermsEnum t = terms.iterator();
+      return t.seekExact(compiled.term) ? t.docFreq() : 0;
+    }
+    assert compiled.type == CompiledAutomaton.AUTOMATON_TYPE.NORMAL;
+    // Special case: Few terms overall
+    if (terms.size() < TERM_LIMIT_FOR_COST) {
+      // Exhaustively sum cost of matching terms
+      long cost = 0;
+      ByteRunnable byteRunnable = compiled.getByteRunnable();
+      TermsEnum t = terms.iterator();
+      BytesRef term;
+      while ((term = t.next()) != null) {
+        if (byteRunnable.run(term.bytes, term.offset, term.length)) {
+          cost += t.docFreq();
+        }
+      }
+      return cost;
+    }
+    // General case. Find a covering range
+    BytesRef lowerBound = getBound(5, false);
+    BytesRef upperBound = getBound(5, true);
+    incrementBytesRef(upperBound);
+    TermsEnum t = terms.iterator();
+    TermsEnum.SeekStatus seekStatus = t.seekCeil(lowerBound);
+    if (seekStatus == TermsEnum.SeekStatus.END) {
+      // Automaton range is lexicographically greater than all terms
+      return 0;
+    } else if (upperBound.length == 0) {
+      // The upper bound is unbounded (usually a leading wildcard). Assume match-all.
+      return terms.getSumDocFreq();
+    } else if (t.term().compareTo(upperBound) >= 0) {
+      // Automaton range is lexicographically lower than all terms
+      return 0;
+    }
+    long cost = 0;
+    for (int i = 0; i < TERM_LIMIT_FOR_COST; i++) {
+      cost += t.docFreq();
+      BytesRef currentTerm = t.next();
+      if (currentTerm == null || currentTerm.compareTo(upperBound) >= 0) {
+        // Ran out of matching terms. Return the current estimate.
+        return cost;
+      }
+    }
+    // Ran out of budget. Assume match all.
+    return terms.getSumDocFreq();
+  }
+
+  private static void incrementBytesRef(BytesRef out) {
+    int pos = out.offset + out.length - 1;
+    boolean carry = true;
+    while (carry && pos >= out.offset) {
+      if (out.bytes[pos] != -1) {
+        carry = false;
+      }
+      out.bytes[pos--]++;
+    }
+    if (carry) {
+      out.length = 0; // Prefix was all 0xFF
+    }
+  }
+
+  private void getAcceptedTermPrefix(
+      int state,
+      BinaryOperator<Transition> selector,
+      ToIntFunction<Transition> transitionExtractor,
+      IntsRef term,
+      int pos,
+      int length,
+      Transition reusableTransition) {
+    if (automaton.isAccept(state) || length == 0) {
+      return;
+    }
+    int numTransitions = automaton.getNumTransitions(state);
+    Transition selected = null;
+    for (int i = 0; i < numTransitions; i++) {
+      automaton.getTransition(state, i, reusableTransition);
+      selected = selector.apply(selected, reusableTransition);
+    }
+    if (selected == null) {
+      return;
+    }
+    term.ints[pos] = transitionExtractor.applyAsInt(selected);
+    term.length++;
+    getAcceptedTermPrefix(
+        selected.dest,
+        selector,
+        transitionExtractor,
+        term,
+        pos + 1,
+        length - 1,
+        reusableTransition);
+  }
+
+  protected BytesRef getBound(int maxLength, boolean upper) {
+    Transition transition = new Transition();
+    IntsRef bound = new IntsRef(maxLength);
+    if (upper) {
+      getAcceptedTermPrefix(
+          0,
+          (a, b) -> a == null ? b : a.max > b.max ? a : b,
+          a -> a.max,
+          bound,
+          0,
+          maxLength,
+          transition);
+    } else {
+      // lower
+      getAcceptedTermPrefix(
+          0,
+          (a, b) -> a == null ? b : a.min < b.min ? a : b,
+          a -> a.min,
+          bound,
+          0,
+          maxLength,
+          transition);
+    }
+    if (automatonIsBinary) {
+      return StringHelper.intsRefToBytesRef(bound);
+    }
+    return new BytesRef(UnicodeUtil.newString(bound.ints, bound.offset, bound.length));
   }
 }

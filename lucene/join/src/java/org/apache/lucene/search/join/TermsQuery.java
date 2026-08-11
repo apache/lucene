@@ -100,6 +100,17 @@ class TermsQuery extends MultiTermQuery implements Accountable {
   }
 
   @Override
+  public long innerEstimateCost(Terms terms) throws IOException {
+    // Copied from org.apache.lucene.search.TermInSetQuery.estimateCost
+    long potentialExtraCost = terms.getSumDocFreq();
+    final long indexedTermCount = terms.size();
+    if (indexedTermCount != -1) {
+      potentialExtraCost -= indexedTermCount;
+    }
+    return terms.size() + potentialExtraCost;
+  }
+
+  @Override
   public String toString(String string) {
     return "TermsQuery{" + "field=" + field + "fromQuery=" + fromQuery.toString(field) + '}';
   }
