@@ -154,6 +154,8 @@ Bug Fixes
   exceptional exits, so vector inputs switch back from sequential read advice.
   (Simon Cooper, John Maurice)
 
+* GITHUB#16173: FilterDirectory now delegates copyFrom() to the wrapped directory. (Prithvi S)
+
 Other
 ---------------------
 * GITHUB#16266: Remove deprecated search(Query, Collector) calls in QueryUtils by replacing
