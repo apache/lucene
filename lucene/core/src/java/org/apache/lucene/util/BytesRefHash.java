@@ -417,9 +417,7 @@ public final class BytesRefHash implements Accountable {
     return -(e + 1);
   }
 
-  /**
-   * Called when hash reaches {@code 50%} occupancy.
-   */
+  /** Called when hash reaches {@code 50%} occupancy. */
   private void rehash(final int newSize, boolean hashOnData) {
     final int newMask = newSize - 1;
     final int newHighMask = ~newMask;
