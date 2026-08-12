@@ -83,7 +83,6 @@
  * <pre><code class="language-java">
  *   GroupingSearch groupingSearch = new GroupingSearch("author");
  *   groupingSearch.setGroupSort(groupSort);
- *   groupingSearch.setFillSortFields(fillFields);
  *
  *   if (useCache) {
  *     // Sets cache in MB
@@ -111,9 +110,7 @@
  *   // Create Documents from your source:
  *   List&lt;Document&gt; oneGroup = ...;
  *
- *   Field groupEndField = new Field("groupEnd", "x", Field.Store.NO, Field.Index.NOT_ANALYZED);
- *   groupEndField.setIndexOptions(IndexOptions.DOCS_ONLY);
- *   groupEndField.setOmitNorms(true);
+ *   Field groupEndField = new StringField("groupEnd", "x", Field.Store.NO);
  *   oneGroup.get(oneGroup.size()-1).add(groupEndField);
  *
  *   // You can also use writer.updateDocuments(); just be sure you
@@ -149,7 +146,7 @@
  *   // Per search:
  *   GroupingSearch groupingSearch = new GroupingSearch(groupEndDocs);
  *   groupingSearch.setGroupSort(groupSort);
- *   groupingSearch.setIncludeScores(needsScores);
+ *   groupingSearch.setIncludeMaxScore(needsScores);
  *   TermQuery query = new TermQuery(new Term("content", searchTerm));
  *   TopGroups groupsResult = groupingSearch.search(indexSearcher, query, groupOffset, groupLimit);
  *
