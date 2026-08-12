@@ -20,6 +20,7 @@ import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.IntroSorter;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -56,8 +57,13 @@ import org.openjdk.jmh.infra.Blackhole;
  *             sort + binary-search partition, producing both per-leaf doc IDs and per-leaf
  *             ordinals. This mimics a caller that is "forced" through the ordinal-tracking API: it
  *             pays to build the ordinals array too, then uses only the per-leaf doc IDs. The delta
- *             between these two measures the overhead of standardizing on the single
+ *             against {@code partitionByLeaf} measures the overhead of standardizing on a single
  *             ordinal-tracking API.
+ *         <li>partitionByLeafWithOrdinalsIntroSort: the same ordinal-tracking task, but sorting the
+ *             doc IDs and ordinals as parallel {@code int[]}s with an {@link IntroSorter} instead
+ *             of packing into a {@code long[]}. The delta against {@code
+ *             partitionByLeafWithOrdinals} isolates the packed-long sort's win over the
+ *             parallel-array sort.
  *       </ul>
  * </ul>
  */
@@ -148,12 +154,12 @@ public class PartitionByLeafBenchmark {
   }
 
   /**
-   * Full task through the ordinal-tracking strategy for a caller that ultimately ignores the
-   * ordinals: pack {@code (docId, ordinal)} into a {@code long[]}, sort, then binary-search
-   * partition, producing both per-leaf doc IDs and per-leaf ordinals. This models a caller that
-   * doesn't need ordinals but is forced through a single ordinal-tracking API: the ordinals are
-   * built regardless of what the caller looks at. We consume the whole result (doc IDs and
-   * ordinals) so that ordinal work can't be eliminated as dead code and the measurement stays
+   * Full task through the packed-long ordinal-tracking strategy for a caller that ultimately
+   * ignores the ordinals: pack {@code (docId, ordinal)} into a {@code long[]}, sort, then
+   * binary-search partition, producing both per-leaf doc IDs and per-leaf ordinals. This models a
+   * caller that doesn't need ordinals but is forced through a single ordinal-tracking API: the
+   * ordinals are built regardless of what the caller looks at. We consume the whole result (doc IDs
+   * and ordinals) so that ordinal work can't be eliminated as dead code and the measurement stays
    * faithful to the work the ordinal-tracking strategy performs.
    */
   @Benchmark
@@ -164,6 +170,51 @@ public class PartitionByLeafBenchmark {
     }
     Arrays.sort(packed);
     bh.consume(partitionSortedPackedWithOrdinals(packed));
+  }
+
+  /**
+   * The same ordinal-tracking full task as {@link #partitionByLeafWithOrdinals}, but sorting the
+   * doc IDs and their ordinals as two parallel {@code int[]}s with an {@link IntroSorter} rather
+   * than packing into a {@code long[]}. Kept alongside the packed-long variant so the two can be
+   * compared directly. As with the packed variant, we consume both output arrays so the ordinal
+   * work can't be eliminated as dead code.
+   */
+  @Benchmark
+  public void partitionByLeafWithOrdinalsIntroSort(Blackhole bh) {
+    final int[] sortedDocIds = unsortedDocIds.clone();
+    final int[] sortedOrdinals = new int[unsortedDocIds.length];
+    for (int i = 0; i < sortedOrdinals.length; i++) {
+      sortedOrdinals[i] = i;
+    }
+    new IntroSorter() {
+      int pivot;
+
+      @Override
+      protected int compare(int i, int j) {
+        return Integer.compare(sortedDocIds[i], sortedDocIds[j]);
+      }
+
+      @Override
+      protected void swap(int i, int j) {
+        int tmp = sortedDocIds[i];
+        sortedDocIds[i] = sortedDocIds[j];
+        sortedDocIds[j] = tmp;
+        tmp = sortedOrdinals[i];
+        sortedOrdinals[i] = sortedOrdinals[j];
+        sortedOrdinals[j] = tmp;
+      }
+
+      @Override
+      protected void setPivot(int i) {
+        pivot = sortedDocIds[i];
+      }
+
+      @Override
+      protected int comparePivot(int j) {
+        return Integer.compare(pivot, sortedDocIds[j]);
+      }
+    }.sort(0, sortedDocIds.length);
+    bh.consume(partitionSortedParallelWithOrdinals(sortedDocIds, sortedOrdinals));
   }
 
   /** Partition sorted doc IDs across leaves using a linear scan. */
@@ -234,6 +285,47 @@ public class PartitionByLeafBenchmark {
         leafDocs[i] = (int) (packed >>> 32);
         leafOrds[i] = (int) packed;
       }
+      docIdsByLeaf[leafIdx] = leafDocs;
+      ordinalsByLeaf[leafIdx] = leafOrds;
+      from = to;
+    }
+    Arrays.fill(docIdsByLeaf, leafIdx, numLeaves, EMPTY_INT_ARRAY);
+    Arrays.fill(ordinalsByLeaf, leafIdx, numLeaves, EMPTY_INT_ARRAY);
+    return new int[][][] {docIdsByLeaf, ordinalsByLeaf};
+  }
+
+  /**
+   * Binary-search partition over parallel sorted doc IDs and their ordinals, slicing each per-leaf
+   * run out with {@link System#arraycopy}. Returns both arrays as {@code {docIds, ordinals}} so
+   * neither the ordinal allocation nor its copy can be eliminated as dead code — that
+   * produced-but-unused work is precisely the overhead this benchmark measures.
+   */
+  private int[][][] partitionSortedParallelWithOrdinals(int[] sortedDocIds, int[] sortedOrdinals) {
+    int[][] docIdsByLeaf = new int[numLeaves][];
+    int[][] ordinalsByLeaf = new int[numLeaves][];
+    if (sortedDocIds.length == 0) {
+      Arrays.fill(docIdsByLeaf, EMPTY_INT_ARRAY);
+      Arrays.fill(ordinalsByLeaf, EMPTY_INT_ARRAY);
+      return new int[][][] {docIdsByLeaf, ordinalsByLeaf};
+    }
+    int from = 0;
+    int leafIdx = 0;
+    for (; leafIdx < numLeaves && from < sortedDocIds.length; leafIdx++) {
+      int leafEnd = leafDocBase[leafIdx] + docsPerLeaf;
+      if (sortedDocIds[from] >= leafEnd) {
+        docIdsByLeaf[leafIdx] = EMPTY_INT_ARRAY;
+        ordinalsByLeaf[leafIdx] = EMPTY_INT_ARRAY;
+        continue;
+      }
+      int to = Arrays.binarySearch(sortedDocIds, from, sortedDocIds.length, leafEnd);
+      if (to < 0) {
+        to = -to - 1;
+      }
+      int count = to - from;
+      int[] leafDocs = new int[count];
+      int[] leafOrds = new int[count];
+      System.arraycopy(sortedDocIds, from, leafDocs, 0, count);
+      System.arraycopy(sortedOrdinals, from, leafOrds, 0, count);
       docIdsByLeaf[leafIdx] = leafDocs;
       ordinalsByLeaf[leafIdx] = leafOrds;
       from = to;
