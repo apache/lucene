@@ -18,7 +18,6 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collections;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -32,36 +31,36 @@ import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BitSetIterator;
-import org.apache.lucene.util.DocIdSetBuilder;
 import org.apache.lucene.util.FixedBitSet;
 
 public class TestNegationIterator extends LuceneTestCase {
 
-  // Verify that NegationIterator via DenseConjunctionBulkScorer produces the same results
+  // Verify that NegationTwoPhaseIterator via DenseConjunctionBulkScorer produces the same results
   // as a brute-force complement over a random excluded set.
   public void testRandomDirectIterator() throws IOException {
     final int iters = atLeast(20);
     for (int iter = 0; iter < iters; iter++) {
-      final int maxDoc = TestUtil.nextInt(random(), DenseConjunctionBulkScorer.WINDOW_SIZE, 200_000);
-      // Build a dense "lead" clause that matches all docs.
+      final int maxDoc =
+          TestUtil.nextInt(random(), DenseConjunctionBulkScorer.WINDOW_SIZE, 200_000);
+      // Dense "lead" clause that matches all docs.
       FixedBitSet allDocs = new FixedBitSet(maxDoc);
       allDocs.set(0, maxDoc);
-      // Build a random excluded set.
+      // Random excluded set.
       FixedBitSet excluded = new FixedBitSet(maxDoc);
       int numExcluded = random().nextInt(maxDoc / 2 + 1);
       for (int i = 0; i < numExcluded; i++) {
         excluded.set(random().nextInt(maxDoc));
       }
 
-      // Expected result: allDocs AND NOT excluded.
+      // Expected: allDocs AND NOT excluded.
       FixedBitSet expected = allDocs.clone();
       expected.andNot(excluded);
 
-      // Build NegationIterator wrapping the excluded set.
-      NegationIterator negIter =
-          new NegationIterator(new BitSetIterator(excluded, excluded.approximateCardinality()), maxDoc);
+      NegationTwoPhaseIterator negation =
+          new NegationTwoPhaseIterator(
+              new BitSetIterator(excluded, excluded.approximateCardinality()), maxDoc);
       ConstantScoreScorer negScorer =
-          new ConstantScoreScorer(0f, ScoreMode.COMPLETE_NO_SCORES, negIter);
+          new ConstantScoreScorer(0f, ScoreMode.COMPLETE_NO_SCORES, negation);
 
       BulkScorer scorer =
           DenseConjunctionBulkScorer.of(
@@ -93,11 +92,9 @@ public class TestNegationIterator extends LuceneTestCase {
     }
   }
 
-  // Verify correctness end-to-end: FILTER + MUST_NOT query on a real index, comparing against
-  // the same query expressed as two FILTER clauses (equivalent when the lead is all-matching).
+  // Verify correctness end-to-end: FILTER + MUST_NOT query on a real index.
   public void testEndToEndSearchCorrectness() throws Exception {
     int numDocs = atLeast(5000);
-    // Ensure DenseConjunctionBulkScorer is chosen (needs dense lead).
     numDocs = Math.max(numDocs, DenseConjunctionBulkScorer.WINDOW_SIZE);
     int excludedEvery = TestUtil.nextInt(random(), 2, 10);
 
@@ -121,15 +118,12 @@ public class TestNegationIterator extends LuceneTestCase {
         Query lead = new TermQuery(new Term("present", "yes"));
         Query excl = new TermQuery(new Term("exclude", "yes"));
 
-        // Query using MUST_NOT (our NegationIterator path).
         Query mustNotQuery =
             new BooleanQuery.Builder()
                 .add(lead, Occur.FILTER)
                 .add(excl, Occur.MUST_NOT)
                 .build();
 
-        // Reference: a query that explicitly matches docs where "exclude" is absent.
-        // We verify the count matches.
         int mustNotCount = searcher.count(mustNotQuery);
         int expectedCount = 0;
         for (int i = 0; i < numDocs; i++) {
@@ -140,24 +134,29 @@ public class TestNegationIterator extends LuceneTestCase {
     }
   }
 
-  /** Verify docIDRunEnd() returns the next excluded doc position (NO block optimization). */
+  /** docIDRunEnd() should return the next excluded doc when the excl approximation is ahead. */
   public void testDocIDRunEndNOBlock() throws IOException {
     int maxDoc = 10_000;
-    // Excluded set: only doc 5000.
     FixedBitSet excluded = new FixedBitSet(maxDoc);
     excluded.set(5000);
 
-    NegationIterator negIter =
-        new NegationIterator(new BitSetIterator(excluded, 1), maxDoc);
+    NegationTwoPhaseIterator negation =
+        new NegationTwoPhaseIterator(
+            new BitSetIterator(excluded, 1), maxDoc);
 
-    // Advance to doc 0 (not excluded).
-    assertEquals(0, negIter.advance(0));
-    // docIDRunEnd should return 5000 (start of excluded run).
-    assertEquals(5000, negIter.docIDRunEnd());
+    // Advance the approximation (all) to doc 0.
+    negation.approximation().advance(0);
+    // exclApprox starts at -1, so docIDRunEnd falls back to doc+1 conservatively.
+    // After the first applyMask call the excl is positioned and NO-block detection works.
+    // Here we manually advance exclApprox to verify the NO-block logic.
+    // Use matches() to position exclApprox at doc 0 (not excluded, returns true).
+    assertTrue(negation.matches()); // doc 0 is not excluded
+    // exclApprox is now at 5000 (first excluded), approximation at 0.
+    assertEquals(5000, negation.docIDRunEnd());
   }
 
-  /** Verify intoBitSet correctly sets non-excluded docs in the window. */
-  public void testIntoBitSet() throws IOException {
+  /** applyMask() should remove excluded docs from the bitset. */
+  public void testApplyMask() throws IOException {
     int maxDoc = DenseConjunctionBulkScorer.WINDOW_SIZE * 2;
     int windowSize = DenseConjunctionBulkScorer.WINDOW_SIZE;
     // Exclude even-numbered docs.
@@ -166,22 +165,26 @@ public class TestNegationIterator extends LuceneTestCase {
       excluded.set(i);
     }
 
-    NegationIterator negIter =
-        new NegationIterator(new BitSetIterator(excluded, excluded.approximateCardinality()), maxDoc);
-    assertEquals(1, negIter.advance(0)); // advance to first non-excluded (doc 1)
+    NegationTwoPhaseIterator negation =
+        new NegationTwoPhaseIterator(
+            new BitSetIterator(excluded, excluded.approximateCardinality()), maxDoc);
+    negation.approximation().advance(0);
 
-    FixedBitSet result = new FixedBitSet(windowSize);
-    negIter.intoBitSet(windowSize, result, 0);
+    // Candidate set: all docs in [0, windowSize).
+    FixedBitSet candidates = new FixedBitSet(windowSize);
+    candidates.set(0, windowSize);
 
-    // Only odd docs [1, 3, 5, ...] should be set.
+    negation.applyMask(windowSize, candidates, 0);
+
+    // Only odd docs should remain.
     FixedBitSet expected = new FixedBitSet(windowSize);
     for (int i = 1; i < windowSize; i += 2) {
       expected.set(i);
     }
-    assertEquals(expected, result);
+    assertEquals(expected, candidates);
   }
 
-  /** Verify that a MUST_NOT + FILTER query on a dense numeric range produces correct results. */
+  /** FILTER + MUST_NOT on a numeric range should produce correct results. */
   public void testNumericRangeMustNot() throws Exception {
     int numDocs = atLeast(DenseConjunctionBulkScorer.WINDOW_SIZE);
     long domain = 1000L;
@@ -206,25 +209,27 @@ public class TestNegationIterator extends LuceneTestCase {
         Query rangeQuery = SortedNumericDocValuesField.newSlowRangeQuery("val", min, max);
         Query lead = new TermQuery(new Term("present", "yes"));
 
-        // MUST_NOT: exclude docs where val is in [min, max].
         Query mustNotQuery =
             new BooleanQuery.Builder()
                 .add(lead, Occur.FILTER)
                 .add(rangeQuery, Occur.MUST_NOT)
                 .build();
 
-        // Reference: docs where val is NOT in [min, max].
         Query filterQuery =
             new BooleanQuery.Builder()
                 .add(lead, Occur.FILTER)
-                .add(SortedNumericDocValuesField.newSlowRangeQuery("val", Long.MIN_VALUE, min - 1), Occur.SHOULD)
-                .add(SortedNumericDocValuesField.newSlowRangeQuery("val", max + 1, Long.MAX_VALUE), Occur.SHOULD)
+                .add(
+                    SortedNumericDocValuesField.newSlowRangeQuery(
+                        "val", Long.MIN_VALUE, min - 1),
+                    Occur.SHOULD)
+                .add(
+                    SortedNumericDocValuesField.newSlowRangeQuery(
+                        "val", max + 1, Long.MAX_VALUE),
+                    Occur.SHOULD)
                 .setMinimumNumberShouldMatch(1)
                 .build();
 
-        int mustNotCount = searcher.count(mustNotQuery);
-        int filterCount = searcher.count(filterQuery);
-        assertEquals(filterCount, mustNotCount);
+        assertEquals(searcher.count(filterQuery), searcher.count(mustNotQuery));
       }
     }
   }

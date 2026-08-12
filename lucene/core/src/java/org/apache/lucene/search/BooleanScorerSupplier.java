@@ -371,9 +371,9 @@ final class BooleanScorerSupplier extends ScorerSupplier {
     }
   }
 
-  // Use DenseConjunctionBulkScorer with NegationIterator(s) instead of ReqExclBulkScorer when the
-  // required side is dense FILTER-only and no scores are needed. Returns null if the conditions
-  // for this optimization are not met, in which case the caller falls back to the standard path.
+  // Use DenseConjunctionBulkScorer with NegationTwoPhaseIterator(s) instead of ReqExclBulkScorer
+  // when the required side is dense FILTER-only and no scores are needed. Returns null if the
+  // conditions for this optimization are not met, falling back to the standard path.
   private BulkScorer negatedRequiredBulkScorer() throws IOException {
     if (scoreMode.needsScores()) {
       return null;
@@ -395,11 +395,11 @@ final class BooleanScorerSupplier extends ScorerSupplier {
     for (ScorerSupplier ss : subs.get(Occur.MUST_NOT)) {
       Scorer prohib = ss.get(leadCost);
       TwoPhaseIterator twoPhase = prohib.twoPhaseIterator();
-      NegationIterator negIter =
+      NegationTwoPhaseIterator negation =
           twoPhase != null
-              ? new NegationIterator(twoPhase, maxDoc)
-              : new NegationIterator(prohib.iterator(), maxDoc);
-      allScorers.add(new ConstantScoreScorer(0f, ScoreMode.COMPLETE_NO_SCORES, negIter));
+              ? new NegationTwoPhaseIterator(twoPhase, maxDoc)
+              : new NegationTwoPhaseIterator(prohib.iterator(), maxDoc);
+      allScorers.add(new ConstantScoreScorer(0f, ScoreMode.COMPLETE_NO_SCORES, negation));
     }
     return DenseConjunctionBulkScorer.of(allScorers, maxDoc, 0f);
   }
