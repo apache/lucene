@@ -18,7 +18,6 @@ package org.apache.lucene.index;
 
 import java.util.Arrays;
 import java.util.List;
-import org.apache.lucene.util.IntroSorter;
 
 /**
  * Common util methods for dealing with {@link IndexReader}s and {@link IndexReaderContext}s.
@@ -95,35 +94,6 @@ public final class ReaderUtil {
   }
 
   /**
-   * Partitions global doc IDs by leaf. Doc IDs may be supplied in any order; the returned per-leaf
-   * arrays are sorted in ascending docId order.
-   *
-   * <p>This is an optimized subset of {@link #partitionByLeafWithOrdinals(int[], List)} for callers
-   * that only need the per-leaf grouping and do not need to map results back to the original input
-   * order. It sorts with {@link Arrays#sort(int[])} and skips the extra bookkeeping required to
-   * track input ordinals. Callers that need to reassemble per-leaf results into input order
-   * (scatter/gather) should use {@link #partitionByLeafWithOrdinals(int[], List)} instead.
-   *
-   * <p>The input array is not mutated.
-   *
-   * @param globalDocIds global doc IDs in any order
-   * @param leaves the index reader's leaves
-   * @return array indexed by leaf ord, containing the (sorted) global doc IDs for that leaf (empty
-   *     if no hits land in that leaf)
-   */
-  public static int[][] partitionByLeaf(int[] globalDocIds, List<LeafReaderContext> leaves) {
-    int numLeaves = leaves.size();
-    if (globalDocIds.length == 0) {
-      int[][] result = new int[numLeaves][];
-      Arrays.fill(result, EMPTY_INT_ARRAY);
-      return result;
-    }
-    int[] sortedDocIds = globalDocIds.clone();
-    Arrays.sort(sortedDocIds);
-    return partitionSortedDocIds(sortedDocIds, leaves);
-  }
-
-  /**
    * Result of partitioning doc IDs by leaf, including the original input ordinals for
    * scatter/gather. {@code docIdsByLeaf[k]} holds the sorted global doc IDs that fall in leaf
    * {@code k}, and {@code ordinalsByLeaf[k][i]} is the index in the original {@code globalDocIds}
@@ -143,11 +113,13 @@ public final class ReaderUtil {
    * Partitions global doc IDs by leaf, tracking each doc ID's original position in the input array
    * so callers can reassemble per-leaf results back to input order (scatter/gather).
    *
-   * <p>This is the fuller-featured counterpart to {@link #partitionByLeaf(int[], List)}: it returns
-   * the same per-leaf grouping and additionally records, for every partitioned doc ID, its index in
-   * the original {@code globalDocIds} array. Tracking these ordinals carries a small amount of
-   * extra work relative to {@link #partitionByLeaf(int[], List)}, so callers that do not need to
-   * map results back to input order should prefer that method.
+   * <p>Doc IDs may be supplied in any order (e.g., ranking order); within each leaf the returned
+   * doc IDs are sorted in ascending order. For every partitioned doc ID the result also records its
+   * index in the original {@code globalDocIds} array, so callers can map per-leaf results back to
+   * input order. Callers that do not need the ordinals can simply ignore {@link
+   * PartitionedHits#ordinalsByLeaf()} and use {@link PartitionedHits#docIdsByLeaf()} — tracking the
+   * ordinals is cheap enough (see the {@code PartitionByLeafBenchmark}) that a separate no-ordinals
+   * method is not worth maintaining.
    *
    * <p>The input array is not mutated.
    *
@@ -155,7 +127,7 @@ public final class ReaderUtil {
    * @param leaves the index reader's leaves
    * @return per-leaf sorted doc IDs alongside per-leaf ordinals into the input array
    */
-  public static PartitionedHits partitionByLeafWithOrdinals(
+  public static PartitionedHits partitionByLeaf(
       int[] globalDocIds, List<LeafReaderContext> leaves) {
     int numLeaves = leaves.size();
     if (globalDocIds.length == 0) {
@@ -166,86 +138,29 @@ public final class ReaderUtil {
       return new PartitionedHits(docIdsByLeaf, ordinalsByLeaf);
     }
 
-    // Sort doc IDs and ordinals as parallel arrays, so we keep the original positions while
-    // moving doc IDs into ascending order. IntroSorter avoids the boxing/lambda overhead a
-    // comparator-based Arrays.sort would incur on parallel int[]s.
-    final int[] sortedDocIds = globalDocIds.clone();
-    final int[] sortedOrdinals = new int[globalDocIds.length];
-    for (int i = 0; i < sortedOrdinals.length; i++) {
-      sortedOrdinals[i] = i;
+    // Pack (docId, ordinal) into a single long -- docId in the high 32 bits, the original input
+    // position in the low 32 bits -- then sort as primitives. Sorting ascending orders by docId,
+    // with the ordinal as a tiebreak (docIds are unique here, so the tiebreak never applies). This
+    // relies on both values being non-negative (Lucene doc IDs and array indices), so the sign bit
+    // is always clear and signed long order matches ascending docId order. Packing lets us use the
+    // tuned primitive Arrays.sort(long[]) with no per-comparison callbacks and a single contiguous
+    // array, which is faster than a comparator/IntroSorter over parallel int[]s.
+    final long[] packed = new long[globalDocIds.length];
+    for (int i = 0; i < packed.length; i++) {
+      packed[i] = ((long) globalDocIds[i] << 32) | (i & 0xFFFFFFFFL);
     }
-    new IntroSorter() {
-      int pivot;
-
-      @Override
-      protected int compare(int i, int j) {
-        return Integer.compare(sortedDocIds[i], sortedDocIds[j]);
-      }
-
-      @Override
-      protected void swap(int i, int j) {
-        int tmp = sortedDocIds[i];
-        sortedDocIds[i] = sortedDocIds[j];
-        sortedDocIds[j] = tmp;
-        tmp = sortedOrdinals[i];
-        sortedOrdinals[i] = sortedOrdinals[j];
-        sortedOrdinals[j] = tmp;
-      }
-
-      @Override
-      protected void setPivot(int i) {
-        pivot = sortedDocIds[i];
-      }
-
-      @Override
-      protected int comparePivot(int j) {
-        return Integer.compare(pivot, sortedDocIds[j]);
-      }
-    }.sort(0, sortedDocIds.length);
-
-    return partitionSortedDocIdsWithOrdinals(sortedDocIds, sortedOrdinals, leaves);
-  }
-
-  /** Partitions an already-sorted array of doc IDs into per-leaf slices. */
-  private static int[][] partitionSortedDocIds(int[] sortedDocIds, List<LeafReaderContext> leaves) {
-    int numLeaves = leaves.size();
-    int[][] result = new int[numLeaves][];
-
-    int from = 0;
-    int leafIdx = 0;
-    for (; leafIdx < numLeaves && from < sortedDocIds.length; leafIdx++) {
-      LeafReaderContext leaf = leaves.get(leafIdx);
-      int leafEnd = leaf.docBase + leaf.reader().maxDoc();
-      if (sortedDocIds[from] >= leafEnd) {
-        result[leafIdx] = EMPTY_INT_ARRAY;
-        continue;
-      }
-      int to = Arrays.binarySearch(sortedDocIds, from, sortedDocIds.length, leafEnd);
-      if (to < 0) {
-        to = -to - 1;
-      }
-      int count = to - from;
-      assert count > 0;
-      result[leafIdx] = new int[count];
-      System.arraycopy(sortedDocIds, from, result[leafIdx], 0, count);
-      from = to;
+    Arrays.sort(packed);
+    final int[] sortedDocIds = new int[packed.length];
+    final int[] sortedOrdinals = new int[packed.length];
+    for (int i = 0; i < packed.length; i++) {
+      sortedDocIds[i] = (int) (packed[i] >>> 32);
+      sortedOrdinals[i] = (int) packed[i];
     }
 
-    Arrays.fill(result, leafIdx, numLeaves, EMPTY_INT_ARRAY);
-    return result;
-  }
-
-  /**
-   * Partitions sorted doc IDs and their parallel ordinals into per-leaf slices. {@code
-   * sortedDocIds} and {@code sortedOrdinals} must have the same length and be in lockstep: {@code
-   * sortedOrdinals[i]} is the original input index of {@code sortedDocIds[i]}.
-   */
-  private static PartitionedHits partitionSortedDocIdsWithOrdinals(
-      int[] sortedDocIds, int[] sortedOrdinals, List<LeafReaderContext> leaves) {
-    int numLeaves = leaves.size();
+    // Partition the sorted doc IDs (and their parallel ordinals) into per-leaf slices, using a
+    // binary search on each leaf's end boundary.
     int[][] docIdsByLeaf = new int[numLeaves][];
     int[][] ordinalsByLeaf = new int[numLeaves][];
-
     int from = 0;
     int leafIdx = 0;
     for (; leafIdx < numLeaves && from < sortedDocIds.length; leafIdx++) {

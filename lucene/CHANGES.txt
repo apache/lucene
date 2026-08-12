@@ -330,8 +330,8 @@ API Changes
 * GITHUB#16363: Add API to use a custom `DictionarySuggester` instead of hardcoded `GeneratingSuggester`
 
 * GITHUB#16496: Redesign ReaderUtil.partitionByLeaf to take an int[] of global doc IDs instead of a
-  ScoreDoc[], and add ReaderUtil.partitionByLeafWithOrdinals which additionally returns, per leaf, the
-  original input positions of each doc ID (scatter/gather). (Zihan Xu)
+  ScoreDoc[] and return a PartitionedHits record of per-leaf doc IDs plus per-leaf original input
+  positions (ordinals) for scatter/gather. (Zihan Xu)
 
 * GITHUB#16385: Remove unused public methods in AllGroupHeadsCollector.
                 Update grouping package info to use CollectorManager instead of Collector. (Binlong Gao)
