@@ -73,7 +73,7 @@
         <created>2026-08-12</created>
         <revision>10.5.1</revision>
       </Version>
-    </release>   
+    </release>
     <release>
       <Version>
         <name>lucene-10.5.0</name>
