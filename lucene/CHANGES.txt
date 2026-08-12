@@ -160,6 +160,8 @@ Improvements
 * GITHUB#16313: Refactored the Hunspell dictionary parser to use switch-based dispatch for affix directives,
   improving readability of the parsing logic. (Rajat Jain)
 
+* GITHUB#16499: Clean up BytesRefHash. Remove dead lastCount and unused close(), fix stale comments (neoremind)
+
 Optimizations
 ---------------------
 * GITHUB#16382: WildcardQuery.toAutomaton now collapses consecutive unescaped '*'
