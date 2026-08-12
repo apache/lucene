@@ -241,11 +241,16 @@ public final class Version {
   @Deprecated public static final Version LUCENE_10_5_0 = new Version(10, 5, 0);
 
   /**
-   * Match settings and bugs in Lucene's 10.5.1 release.
+   * @deprecated (10.5.2) Use latest
+   */
+  @Deprecated public static final Version LUCENE_10_5_1 = new Version(10, 5, 1);
+
+  /**
+   * Match settings and bugs in Lucene's 10.5.2 release.
    *
    * <p>Use this to get the latest &amp; greatest settings, bug fixes, etc, for Lucene.
    */
-  public static final Version LUCENE_10_5_1 = new Version(10, 5, 1);
+  public static final Version LUCENE_10_5_2 = new Version(10, 5, 2);
 
   // To add a new version:
   //  * Only add above this comment
@@ -261,7 +266,7 @@ public final class Version {
    * <b>re-test your entire application</b> to ensure it behaves as expected, as some defaults may
    * have changed and may break functionality in your application.
    */
-  public static final Version LATEST = LUCENE_10_5_1;
+  public static final Version LATEST = LUCENE_10_5_2;
 
   /**
    * Constant for backwards compatibility.
