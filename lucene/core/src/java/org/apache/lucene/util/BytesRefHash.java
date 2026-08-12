@@ -418,7 +418,7 @@ public final class BytesRefHash implements Accountable {
   }
 
   /**
-   * Called when hash is too small ({@code > 50%} occupied) or too large ({@code < 25%} occupied).
+   * Called when hash reaches {@code 50%} occupancy.
    */
   private void rehash(final int newSize, boolean hashOnData) {
     final int newMask = newSize - 1;
