@@ -82,11 +82,56 @@ final class NegationTwoPhaseIterator extends TwoPhaseIterator {
   public int docIDRunEnd() throws IOException {
     int doc = approximation().docID();
     int exclDoc = exclApprox.docID();
+    if (exclDoc < doc) {
+      // exclApprox is behind (e.g. left there by a prior matches() call): advance it so we can
+      // check whether the excluded clause has any docs at or after the current position.
+      exclDoc = exclApprox.advance(doc);
+    }
     if (exclDoc > doc) {
       // NO block: all documents in [doc, exclDoc) are guaranteed non-excluded.
       return exclDoc;
     }
     return doc + 1;
+  }
+
+  /**
+   * Bulk-fills {@code bitSet} with the doc IDs that match this iterator (all docs in the window
+   * minus those excluded), using SIMD acceleration when the excluded clause supports it (e.g.
+   * numeric range queries via the Panama vector API on MAYBE blocks).
+   *
+   * <p>This override is critical for correctness and performance when this iterator is the lead
+   * clause in {@link DenseConjunctionBulkScorer}: without it the default {@link
+   * TwoPhaseIterator#intoBitSet} falls back to a per-doc {@link #matches()} loop that bypasses the
+   * SIMD path entirely.
+   */
+  @Override
+  public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+    // Mark all docs in [approximation().docID(), upTo) as candidates (negation matches
+    // everything).
+    bitSet.set(Math.max(0, approximation().docID() - offset), upTo - offset);
+
+    // Fill scratch with the excluded documents. For numeric range queries this calls
+    // rangeIntoBitSet which uses SIMD via the Panama vector API.
+    assert scratch.scanIsEmpty() : "scratch must be clean before use";
+    if (exclApprox.docID() < offset) {
+      exclApprox.advance(offset);
+    }
+    if (exclApprox.docID() < upTo) {
+      if (exclTwoPhase != null) {
+        exclTwoPhase.intoBitSet(upTo, scratch, offset);
+      } else {
+        exclApprox.intoBitSet(upTo, scratch, offset);
+      }
+    }
+
+    // Remove excluded documents from the candidate set.
+    bitSet.andNot(scratch);
+    scratch.clear(0, upTo - offset);
+
+    // Advance the approximation to upTo per the intoBitSet contract.
+    if (approximation().docID() < upTo) {
+      approximation().advance(upTo);
+    }
   }
 
   /**
