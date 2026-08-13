@@ -41,91 +41,59 @@ import org.apache.lucene.util.quantization.HadamardRotation;
 
 /**
  * A {@link KnnVectorsFormat} wrapper that applies a deterministic Hadamard rotation to float32
- * vectors before passing them to a delegate format. The rotation redistributes variance across
- * dimensions so per-component distributions move toward Gaussian, which improves scalar
- * quantization recall on datasets with skewed or non-isotropic component distributions.
+ * vectors before passing them to a delegate format, improving scalar quantization recall on
+ * datasets with skewed component distributions. The rotation is orthogonal, so norms, dot products
+ * and distances are preserved exactly and the delegate is unaware of it.
  *
- * <p>The rotation is orthogonal so it preserves L2 norms, dot products, cosine similarity, and
- * Euclidean distances exactly. Any {@link KnnVectorsFormat} can be wrapped and the delegate remains
- * unaware of the rotation.
- *
- * <p>Use {@link #rotating(KnnVectorsFormat)} to wrap a format, then return it from your codec's
- * {@code getKnnVectorsFormatForField} for the fields you want rotated.
+ * <p>Wrap a format with {@link #rotating(KnnVectorsFormat)} and return it from your codec's {@code
+ * getKnnVectorsFormatForField}.
  *
  * @lucene.experimental
  */
-public class RotatingKnnVectorsFormat extends KnnVectorsFormat {
+public class PreconditioningKnnVectorsFormat extends KnnVectorsFormat {
 
   /** Format name, as returned by {@link #getName()} and registered for SPI lookup. */
-  public static final String NAME = "RotatingKnnVectorsFormat";
+  public static final String NAME = "PreconditioningKnnVectorsFormat";
 
   /**
-   * {@link FieldInfo} attribute recording the delegate's {@link KnnVectorsFormat#getName()} for
-   * every field written through this wrapper (rotated or not). Its presence marks the field as
-   * "owned by this wrapper"; its value lets the reader re-create the delegate via {@link
-   * KnnVectorsFormat#forName(String)} when this format was instantiated through the no-arg SPI
-   * constructor.
-   *
-   * <p>Two attributes are persisted per field: this one ({@link #DELEGATE_FORMAT_KEY}) and the
-   * rotation seed ({@link #ROTATION_SEED_KEY}). Together they make every rotated index fully
-   * self-describing: a reader can reconstruct both the delegate format and the exact rotation
-   * matrix from what is on disk, regardless of any future change to defaults.
-   *
-   * <p>The delegate's name cannot be re-derived because {@link
-   * org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat} resolves child formats by name via
-   * {@link KnnVectorsFormat#forName(String)}, which yields the no-arg instance. Its presence also
-   * doubles as the marker that a field is rotated, which is what the merge gate checks.
+   * {@link FieldInfo} attribute naming the delegate format, so a reader created through the no-arg
+   * SPI constructor can re-open it via {@link KnnVectorsFormat#forName(String)}. Its presence also
+   * marks the field as rotated.
    */
   public static final String DELEGATE_FORMAT_KEY = NAME + "_DelegateFormat";
 
   /**
-   * {@link FieldInfo} attribute recording the rotation seed (a {@code long} as a decimal string).
-   * Persisted so the index is fully self-describing: the rotation is reconstructible from the index
-   * alone, even if {@link HadamardRotation#seedForDimension(int)} were ever changed in a future
-   * release. Also enables a future escape hatch for per-field custom seeds without a format change.
-   *
-   * <p>At read time, if the persisted seed matches {@code seedForDimension(dimension)} (the
-   * overwhelmingly common case), the shared globally-cached instance is used and no allocation
-   * occurs.
+   * {@link FieldInfo} attribute recording the rotation seed as a decimal {@code long}, so the exact
+   * rotation is reconstructible from the index alone.
    */
   public static final String ROTATION_SEED_KEY = NAME + "_Seed";
 
   /**
-   * The wrapped format. {@code null} when this instance came from the no-arg SPI constructor, in
-   * which case the instance is read-only and resolves the delegate from {@link
-   * #DELEGATE_FORMAT_KEY}.
+   * The wrapped format, or {@code null} for a read-only instance from the no-arg SPI constructor.
    */
   private final KnnVectorsFormat delegate;
 
   /**
-   * Constructor for SPI registration only, producing a <b>read-only</b> instance. Do not use this
-   * for indexing — use {@link #rotating(KnnVectorsFormat)} instead. Reads work because every field
-   * records its delegate in {@link #DELEGATE_FORMAT_KEY} at write time.
+   * For SPI registration only; the resulting instance is read-only. Use {@link
+   * #rotating(KnnVectorsFormat)} for indexing.
    */
-  public RotatingKnnVectorsFormat() {
+  public PreconditioningKnnVectorsFormat() {
     super(NAME);
     this.delegate = null;
   }
 
   /**
-   * Creates a rotating wrapper around {@code format}. This is the sole entry point for enabling
-   * rotation. The caller decides which fields to rotate by returning this format from their codec's
-   * {@code getKnnVectorsFormatForField}:
+   * Wraps {@code format} so its float32 vectors and queries are rotated. Sole entry point for
+   * enabling rotation.
    *
-   * <pre class="prettyprint">
-   * RotatingKnnVectorsFormat.rotating(new Lucene104HnswScalarQuantizedVectorsFormat())
-   * </pre>
-   *
-   * @param format any concrete {@link KnnVectorsFormat} to wrap with rotation
-   * @return a format that rotates float32 vectors on write and rotates queries on search
+   * @param format any concrete {@link KnnVectorsFormat} to wrap
    * @throws NullPointerException if {@code format} is null
-   * @throws IllegalArgumentException if {@code format} is a {@code RotatingKnnVectorsFormat} or a
-   *     {@code PerFieldKnnVectorsFormat} (nesting either would produce corrupt or double-rotated
-   *     indices)
+   * @throws IllegalArgumentException if {@code format} is already rotating, or is a {@code
+   *     PerFieldKnnVectorsFormat} (nesting either yields a double-rotated or corrupt index)
    */
-  public static RotatingKnnVectorsFormat rotating(KnnVectorsFormat format) {
+  public static PreconditioningKnnVectorsFormat rotating(KnnVectorsFormat format) {
     Objects.requireNonNull(format, "format must not be null");
-    if (format instanceof RotatingKnnVectorsFormat) {
+    if (format instanceof PreconditioningKnnVectorsFormat) {
       throw new IllegalArgumentException(
           "Already rotating; cannot double-wrap. A field is either rotated or not.");
     }
@@ -133,30 +101,29 @@ public class RotatingKnnVectorsFormat extends KnnVectorsFormat {
       throw new IllegalArgumentException(
           "Cannot wrap "
               + PerFieldKnnVectorsFormat.class.getSimpleName()
-              + " with rotation. Instead, return RotatingKnnVectorsFormat.rotating(yourFormat) "
+              + " with rotation. Instead, return PreconditioningKnnVectorsFormat.rotating(yourFormat) "
               + "from getKnnVectorsFormatForField for the fields you want rotated.");
     }
-    return new RotatingKnnVectorsFormat(format);
+    return new PreconditioningKnnVectorsFormat(format);
   }
 
   /**
-   * Internal constructor. Use {@link #rotating(KnnVectorsFormat)} to create instances.
-   *
-   * @param delegate already validated by the factory
+   * @param delegate already validated by {@link #rotating(KnnVectorsFormat)}
    */
-  RotatingKnnVectorsFormat(KnnVectorsFormat delegate) {
+  PreconditioningKnnVectorsFormat(KnnVectorsFormat delegate) {
     super(NAME);
     this.delegate = delegate;
   }
 
   @Override
   public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new RotatingWriter(requireDelegateForWrite().fieldsWriter(state), delegate.getName());
+    return new PreconditioningWriter(
+        requireDelegateForWrite().fieldsWriter(state), delegate.getName());
   }
 
   @Override
   public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new RotatingReader(state, delegate);
+    return new PreconditioningReader(state, delegate);
   }
 
   @Override
@@ -169,7 +136,7 @@ public class RotatingKnnVectorsFormat extends KnnVectorsFormat {
       throw new IllegalStateException(
           NAME
               + " was created by the no-arg SPI constructor and is read-only; use "
-              + "RotatingKnnVectorsFormat.rotating(KnnVectorsFormat) for indexing");
+              + "PreconditioningKnnVectorsFormat.rotating(KnnVectorsFormat) for indexing");
     }
     return delegate;
   }
@@ -179,16 +146,12 @@ public class RotatingKnnVectorsFormat extends KnnVectorsFormat {
     return NAME + "(delegate=" + delegate + ")";
   }
 
-  // ------------------------------------------------------------------------------------------
-  // Writing
-  // ------------------------------------------------------------------------------------------
-
-  private static final class RotatingWriter extends KnnVectorsWriter {
+  private static final class PreconditioningWriter extends KnnVectorsWriter {
 
     private final KnnVectorsWriter delegateWriter;
     private final String delegateName;
 
-    RotatingWriter(KnnVectorsWriter delegateWriter, String delegateName) {
+    PreconditioningWriter(KnnVectorsWriter delegateWriter, String delegateName) {
       this.delegateWriter = delegateWriter;
       this.delegateName = delegateName;
     }
@@ -214,15 +177,13 @@ public class RotatingKnnVectorsFormat extends KnnVectorsFormat {
       @SuppressWarnings("unchecked")
       KnnFieldVectorsWriter<float[]> floatWriter =
           (KnnFieldVectorsWriter<float[]>) delegateWriter.addField(fieldInfo);
-      return new RotatingFieldWriter(
+      return new PreconditioningFieldWriter(
           floatWriter, HadamardRotation.forDimension(fieldInfo.getVectorDimension()));
     }
 
     /**
-     * Merges one field. All sources are in the same rotated basis (enforced by {@link
-     * FieldInfos.Builder#add} at IndexWriter open time), so this is a straight pass-through: the
-     * source readers hand out rotated vectors (see {@link RotatingReader#getMergeInstance()}) and
-     * the delegate writes rotated vectors.
+     * Straight pass-through: every source is already in the same rotated basis, enforced by {@link
+     * FieldInfos.Builder#add} when the IndexWriter opens.
      */
     @Override
     public IORunnable mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
@@ -254,13 +215,13 @@ public class RotatingKnnVectorsFormat extends KnnVectorsFormat {
   }
 
   /** Rotates each incoming float vector, then hands it to the delegate's field writer. */
-  private static final class RotatingFieldWriter extends KnnFieldVectorsWriter<float[]> {
+  private static final class PreconditioningFieldWriter extends KnnFieldVectorsWriter<float[]> {
 
     private final KnnFieldVectorsWriter<float[]> delegate;
     private final HadamardRotation rotation;
     private final float[] scratch;
 
-    RotatingFieldWriter(KnnFieldVectorsWriter<float[]> delegate, HadamardRotation rotation) {
+    PreconditioningFieldWriter(KnnFieldVectorsWriter<float[]> delegate, HadamardRotation rotation) {
       this.delegate = delegate;
       this.rotation = rotation;
       this.scratch = new float[rotation.dimension()];
@@ -287,16 +248,11 @@ public class RotatingKnnVectorsFormat extends KnnVectorsFormat {
     }
   }
 
-  // ------------------------------------------------------------------------------------------
-  // Reading
-  // ------------------------------------------------------------------------------------------
-
   /**
-   * Rotates query vectors before scoring and inverse-rotates stored vectors for callers that
-   * iterate them. The delegate reader is opened eagerly and stored in a final field for lock-free
-   * concurrent reads.
+   * Rotates queries before scoring and inverse-rotates stored vectors for callers that iterate
+   * them. The delegate is opened eagerly into a final field, so reads are lock-free.
    */
-  private static final class RotatingReader extends KnnVectorsReader {
+  private static final class PreconditioningReader extends KnnVectorsReader {
 
     private final SegmentReadState state;
     private final FieldInfos fieldInfos;
@@ -304,7 +260,8 @@ public class RotatingKnnVectorsFormat extends KnnVectorsFormat {
     // Opened eagerly in the constructor; final for lock-free reads on the search path.
     private final KnnVectorsReader delegateReader;
 
-    RotatingReader(SegmentReadState state, KnnVectorsFormat configuredDelegate) throws IOException {
+    PreconditioningReader(SegmentReadState state, KnnVectorsFormat configuredDelegate)
+        throws IOException {
       this.state = state;
       this.fieldInfos = state.fieldInfos;
       // Resolve delegate eagerly (matches PerFieldKnnVectorsFormat's lock-free pattern).
@@ -359,9 +316,8 @@ public class RotatingKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     /**
-     * Returns the rotation applied to {@code field}, or {@code null} if the field is not rotated (a
-     * byte or float16 field). The seed is read back from the field rather than re-derived, so the
-     * rotation reconstructed here is exactly the one applied at index time.
+     * Returns the rotation applied to {@code field}, rebuilt from the persisted seed so it matches
+     * index time exactly.
      */
     private HadamardRotation rotationFor(String field) {
       FieldInfo fieldInfo = fieldInfos.fieldInfo(field);
@@ -432,9 +388,8 @@ public class RotatingKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     /**
-     * Unreachable in practice: the writer refuses non-float32 fields, so no field this reader owns
-     * can carry one of these encodings. Thrown rather than forwarded so that a violated assumption
-     * is loud instead of quietly serving vectors in the wrong basis.
+     * Unreachable: the writer refuses non-float32 fields. Thrown rather than forwarded so a
+     * violated assumption is loud instead of serving vectors in the wrong basis.
      */
     private UnsupportedOperationException unsupportedEncoding(
         String field, VectorEncoding encoding) {
@@ -448,14 +403,9 @@ public class RotatingKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     /**
-     * Returns the delegate's merge instance, which reports vectors in <em>rotated</em> space.
-     *
-     * <p>This is intentional and is the counterpart to {@link RotatingWriter#mergeOneField}: a
-     * merge reads rotated vectors from every source and writes rotated vectors to the target, so
-     * the delegate's own machinery (quantized byte copying, centroid computation, graph
-     * construction) keeps working unchanged and nothing is rotated twice. It is safe only because a
-     * field is guaranteed to be rotated identically in every segment, which {@code mergeOneField}
-     * enforces before any of this runs.
+     * Returns the delegate's merge instance, deliberately in <em>rotated</em> space: a merge reads
+     * and writes rotated vectors, so the delegate's byte copying and centroid logic keeps working
+     * and nothing is rotated twice.
      */
     @Override
     public KnnVectorsReader getMergeInstance() throws IOException {
@@ -468,9 +418,8 @@ public class RotatingKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     /**
-     * Unwraps to the delegate, exposing rotated vectors. Callers of this method — {@code
-     * CheckIndex} graph inspection, {@code HnswUtil}, and quantized writers during merge — want the
-     * format's internal, rotated view rather than the application's original vectors.
+     * Unwraps to the delegate, exposing rotated vectors: callers such as {@code CheckIndex} want
+     * the format's internal view, not the application's original vectors.
      */
     @Override
     public KnnVectorsReader unwrapReaderForField(String field) {
@@ -490,13 +439,9 @@ public class RotatingKnnVectorsFormat extends KnnVectorsFormat {
     }
   }
 
-  // ------------------------------------------------------------------------------------------
-  // Inverse-rotated view
-  // ------------------------------------------------------------------------------------------
-
   /**
-   * Presents rotated stored vectors in their original space. Only the {@code float[]} payload is
-   * transformed; document and ordinal numbering are untouched.
+   * Presents rotated stored vectors in their original space; doc and ordinal numbering are
+   * untouched.
    *
    * @lucene.experimental
    */
@@ -567,10 +512,9 @@ public class RotatingKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     /**
-     * Rotates a query that arrived in original space so it can be scored against the rotated stored
-     * vectors. This is exact, not an approximation: the rotation is orthogonal, and every
-     * similarity Lucene supports is a function of dot products and norms, both of which orthogonal
-     * transforms preserve.
+     * Rotates an original-space query so it can be scored against the rotated stored vectors.
+     * Exact, since orthogonal transforms preserve the dot products and norms every similarity is
+     * built on.
      */
     private float[] rotate(float[] target) {
       // Fresh array; delegate may retain.

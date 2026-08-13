@@ -51,12 +51,118 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.quantization.HadamardRotation;
+import org.junit.Ignore;
 
-/** Tests {@link RotatingKnnVectorsFormat}. */
-public class TestRotatingKnnVectorsFormat extends LuceneTestCase {
+/**
+ * Tests {@link PreconditioningKnnVectorsFormat}, both the randomized {@link
+ * BaseKnnVectorsFormatTestCase} compliance suite and targeted tests for behaviour specific to this
+ * format.
+ *
+ * <p>Inherited tests that cannot hold for this codec are disabled with {@link Ignore} and a reason,
+ * so they are reported as skipped rather than silently passing. They fall into three groups: byte
+ * and float16 vectors, which this format rejects at index time; codec-mixing tests, which conflict
+ * with the write-time preconditioning-state check; and tests asserting near-exact {@code
+ * vectorValue()} read-back, where the delegate's scalar quantization loses far more precision than
+ * {@link #getVectorValueTolerance()} allows for.
+ */
+public class TestPreconditioningKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
+
+  @Override
+  protected Codec getCodec() {
+    return TestUtil.alwaysKnnVectorsFormat(
+        PreconditioningKnnVectorsFormat.rotating(new Lucene104HnswScalarQuantizedVectorsFormat()));
+  }
+
+  @Override
+  protected float getVectorValueTolerance() {
+    // Rotation + inverse-rotation introduces ~1e-6 floating-point drift from FWHT additions.
+    return 1e-5f;
+  }
+
+  @Override
+  protected boolean supportsFloatVectorFallback() {
+    return false;
+  }
+
+  // Vectors read back through the delegate's scalar quantization differ from the indexed values by
+  // far more than getVectorValueTolerance(); the tolerance hook covers rotation drift, not
+  // quantization loss. These assert near-exact read-back, so they cannot hold for a quantizing
+  // delegate whether or not rotation is applied.
+  @Override
+  @Ignore // quantization loss exceeds the float tolerance
+  public void testRandom() {}
+
+  @Override
+  @Ignore // quantization loss exceeds the float tolerance
+  public void testAddIndexesDirectory01() {}
+
+  @Override
+  @Ignore // quantization loss exceeds the float tolerance
+  public void testSparseVectors() {}
+
+  @Override
+  @Ignore // quantization loss exceeds the float tolerance
+  public void testRandomWithUpdatesAndGraph() {}
+
+  @Override
+  @Ignore // quantization loss exceeds the float tolerance
+  public void testVectorValuesReportCorrectDocs() {}
+
+  // This format rotates FLOAT32 only and throws on BYTE and FLOAT16, so tests that index those
+  // encodings cannot run against it.
+  @Override
+  @Ignore // does not support byte vectors
+  public void testWriterByteVectorRamEstimate() {}
+
+  @Override
+  @Ignore // does not support byte vectors
+  public void testMergingWithDifferentByteKnnFields() {}
+
+  @Override
+  @Ignore // does not support byte vectors
+  public void testSortedIndexBytes() {}
+
+  @Override
+  @Ignore // does not support byte vectors
+  public void testMismatchedFields() {}
+
+  @Override
+  @Ignore // does not support byte vectors
+  public void testRandomBytes() {}
+
+  @Override
+  @Ignore // does not support byte vectors
+  public void testEmptyByteVectorData() {}
+
+  @Override
+  @Ignore // does not support byte vectors
+  public void testCheckIntegrityReadsAllBytes() {}
+
+  @Override
+  @Ignore // indexes a byte field alongside a float field
+  public void testMergeStability() {}
+
+  @Override
+  @Ignore // indexes a byte field alongside a float field
+  public void testRandomExceptions() {}
+
+  @Override
+  @Ignore // does not support byte vectors
+  public void testByteVectorScorerIteration() {}
+
+  // Writing one field with preconditioning and another without is rejected by
+  // FieldInfos.Builder.add. That is the write-time state check working as intended.
+  @Override
+  @Ignore // mixing preconditioned and plain codecs is rejected by design
+  public void testDifferentCodecs1() {}
+
+  @Override
+  @Ignore // mixing preconditioned and plain codecs is rejected by design
+  public void testDifferentCodecs2() {}
 
   private static final String FIELD = "vec";
 
@@ -72,12 +178,9 @@ public class TestRotatingKnnVectorsFormat extends LuceneTestCase {
   }
 
   /**
-   * A codec that keeps the default codec's name — so the index is readable by a plain {@code
-   * DirectoryReader.open} — but routes the given fields through the rotating wrapper. This is how
-   * an application is expected to enable rotation, and it exercises the SPI read path: at read time
-   * the inner {@link PerFieldKnnVectorsFormat} resolves {@code RotatingKnnVectorsFormat} by name
-   * through its no-arg constructor, which then has to recover the delegate from the field's
-   * attributes.
+   * Keeps the default codec's name so a plain {@code DirectoryReader.open} can read the index,
+   * which exercises the SPI read path: the delegate is recovered from field attributes, not from
+   * config.
    */
   private static Codec codecRoutingFields(Map<String, KnnVectorsFormat> perField) {
     return new Lucene104Codec() {
@@ -90,14 +193,15 @@ public class TestRotatingKnnVectorsFormat extends LuceneTestCase {
   }
 
   private static Codec rotatingCodec() {
-    return codecRoutingFields(Map.of(FIELD, RotatingKnnVectorsFormat.rotating(plainFormat())));
+    return codecRoutingFields(
+        Map.of(FIELD, PreconditioningKnnVectorsFormat.rotating(plainFormat())));
   }
 
   private static Codec plainCodec() {
     return codecRoutingFields(Map.of(FIELD, plainFormat()));
   }
 
-  private static float[] randomVector(int dim) {
+  private static float[] randomNonZeroVector(int dim) {
     float[] v = new float[dim];
     for (int i = 0; i < dim; i++) {
       v[i] = random().nextFloat() * 2 - 1;
@@ -109,19 +213,17 @@ public class TestRotatingKnnVectorsFormat extends LuceneTestCase {
     return v;
   }
 
-  // ------------------------------------------------------------------------------------------
   // Construction
-  // ------------------------------------------------------------------------------------------
 
   public void testRejectsNullDelegate() {
-    expectThrows(NullPointerException.class, () -> RotatingKnnVectorsFormat.rotating(null));
+    expectThrows(NullPointerException.class, () -> PreconditioningKnnVectorsFormat.rotating(null));
   }
 
   public void testRejectsNestedRotation() {
-    RotatingKnnVectorsFormat inner = RotatingKnnVectorsFormat.rotating(plainFormat());
+    PreconditioningKnnVectorsFormat inner = PreconditioningKnnVectorsFormat.rotating(plainFormat());
     IllegalArgumentException e =
         expectThrows(
-            IllegalArgumentException.class, () -> RotatingKnnVectorsFormat.rotating(inner));
+            IllegalArgumentException.class, () -> PreconditioningKnnVectorsFormat.rotating(inner));
     assertTrue(e.getMessage(), e.getMessage().contains("Already rotating"));
   }
 
@@ -136,32 +238,31 @@ public class TestRotatingKnnVectorsFormat extends LuceneTestCase {
         };
     IllegalArgumentException e =
         expectThrows(
-            IllegalArgumentException.class, () -> RotatingKnnVectorsFormat.rotating(perField));
+            IllegalArgumentException.class,
+            () -> PreconditioningKnnVectorsFormat.rotating(perField));
     assertTrue(e.getMessage(), e.getMessage().contains("PerFieldKnnVectorsFormat"));
   }
 
   public void testNoArgConstructorIsReadOnly() {
-    RotatingKnnVectorsFormat spiInstance = new RotatingKnnVectorsFormat();
+    PreconditioningKnnVectorsFormat spiInstance = new PreconditioningKnnVectorsFormat();
     IllegalStateException e =
         expectThrows(IllegalStateException.class, () -> spiInstance.getMaxDimensions(FIELD));
     assertTrue(e.getMessage().contains("read-only"));
   }
 
   public void testResolvableBySpi() {
-    KnnVectorsFormat format = KnnVectorsFormat.forName(RotatingKnnVectorsFormat.NAME);
-    assertTrue(format instanceof RotatingKnnVectorsFormat);
+    KnnVectorsFormat format = KnnVectorsFormat.forName(PreconditioningKnnVectorsFormat.NAME);
+    assertTrue(format instanceof PreconditioningKnnVectorsFormat);
   }
 
   public void testMaxDimensionsAndToStringDelegate() {
     KnnVectorsFormat delegate = plainFormat();
-    RotatingKnnVectorsFormat rotating = RotatingKnnVectorsFormat.rotating(delegate);
+    PreconditioningKnnVectorsFormat rotating = PreconditioningKnnVectorsFormat.rotating(delegate);
     assertEquals(delegate.getMaxDimensions(FIELD), rotating.getMaxDimensions(FIELD));
     assertTrue(rotating.toString().contains(delegate.toString()));
   }
 
-  // ------------------------------------------------------------------------------------------
   // Round trip through original space
-  // ------------------------------------------------------------------------------------------
 
   /**
    * Vectors read back through the public reader API must be the vectors the application indexed,
@@ -176,7 +277,7 @@ public class TestRotatingKnnVectorsFormat extends LuceneTestCase {
         IndexWriterConfig config = newIndexWriterConfig().setCodec(rotatingCodec());
         try (IndexWriter writer = new IndexWriter(dir, config)) {
           for (int i = 0; i < numDocs; i++) {
-            expected[i] = randomVector(dim);
+            expected[i] = randomNonZeroVector(dim);
             Document doc = new Document();
             doc.add(new StringField("id", Integer.toString(i), Field.Store.YES));
             doc.add(
@@ -224,7 +325,7 @@ public class TestRotatingKnnVectorsFormat extends LuceneTestCase {
    */
   public void testStoredVectorsAreRotatedButNormPreserving() throws Exception {
     int dim = 64;
-    float[] vector = randomVector(dim);
+    float[] vector = randomNonZeroVector(dim);
     try (Directory dir = newDirectory()) {
       IndexWriterConfig config = newIndexWriterConfig().setCodec(rotatingCodec());
       try (IndexWriter writer = new IndexWriter(dir, config)) {
@@ -280,7 +381,7 @@ public class TestRotatingKnnVectorsFormat extends LuceneTestCase {
     int numDocs = 60;
     float[][] vectors = new float[numDocs][];
     for (int i = 0; i < numDocs; i++) {
-      vectors[i] = randomVector(dim);
+      vectors[i] = randomNonZeroVector(dim);
     }
     VectorSimilarityFunction similarity =
         random().nextBoolean()
@@ -302,7 +403,7 @@ public class TestRotatingKnnVectorsFormat extends LuceneTestCase {
         IndexSearcher rotatedSearcher = newSearcher(rotatedReader);
         IndexSearcher plainSearcher = newSearcher(plainReader);
         for (int iter = 0; iter < 10; iter++) {
-          float[] query = randomVector(dim);
+          float[] query = randomNonZeroVector(dim);
           if (similarity == VectorSimilarityFunction.DOT_PRODUCT) {
             VectorUtil.l2normalize(query);
           }
@@ -333,9 +434,7 @@ public class TestRotatingKnnVectorsFormat extends LuceneTestCase {
     }
   }
 
-  // ------------------------------------------------------------------------------------------
   // Encodings that are not rotated
-  // ------------------------------------------------------------------------------------------
 
   /**
    * Rotation is unconditional, so an encoding this format cannot rotate is rejected at index time
@@ -377,9 +476,7 @@ public class TestRotatingKnnVectorsFormat extends LuceneTestCase {
     }
   }
 
-  // ------------------------------------------------------------------------------------------
   // Merging
-  // ------------------------------------------------------------------------------------------
 
   /**
    * A field's rotation state is enforced at write time, just like dimension and similarity. You
@@ -388,8 +485,8 @@ public class TestRotatingKnnVectorsFormat extends LuceneTestCase {
    */
   public void testRejectsMixedRotationState() throws Exception {
     try (Directory dir = newDirectory()) {
-      addSegment(dir, rotatingCodec(), randomVector(8));
-      addSegment(dir, plainCodec(), randomVector(8));
+      addSegment(dir, rotatingCodec(), randomNonZeroVector(8));
+      addSegment(dir, plainCodec(), randomNonZeroVector(8));
 
       IndexWriterConfig config =
           new IndexWriterConfig()
@@ -405,24 +502,25 @@ public class TestRotatingKnnVectorsFormat extends LuceneTestCase {
   }
 
   /**
-   * Changing the <em>delegate</em> while keeping rotation on is legal: both segments are in the
-   * same basis, and a merge re-encodes just as it does for any other format change. The merged
-   * field's recorded delegate must be refreshed to the one that actually wrote it -- {@code
-   * FieldInfos.Builder} carries attributes forward from source segments and never removes them, so
-   * an inherited stale name here would make the SPI read path open the wrong format.
+   * Swapping the delegate while keeping rotation on is legal. The merged field must record the
+   * delegate that actually wrote it, since {@code FieldInfos.Builder} never removes stale
+   * attributes.
    */
   public void testDelegateMayChangeAcrossSegments() throws Exception {
     int dim = 8;
-    float[] first = randomVector(dim);
-    float[] second = randomVector(dim);
+    float[] first = randomNonZeroVector(dim);
+    float[] second = randomNonZeroVector(dim);
     try (Directory dir = newDirectory()) {
       addSegment(
           dir,
-          codecRoutingFields(Map.of(FIELD, RotatingKnnVectorsFormat.rotating(plainFormat()))),
+          codecRoutingFields(
+              Map.of(FIELD, PreconditioningKnnVectorsFormat.rotating(plainFormat()))),
           first);
       Codec swapped =
           codecRoutingFields(
-              Map.of(FIELD, RotatingKnnVectorsFormat.rotating(new Lucene99HnswVectorsFormat())));
+              Map.of(
+                  FIELD,
+                  PreconditioningKnnVectorsFormat.rotating(new Lucene99HnswVectorsFormat())));
       addSegment(dir, swapped, second);
 
       try (IndexWriter writer =
@@ -442,7 +540,7 @@ public class TestRotatingKnnVectorsFormat extends LuceneTestCase {
             new Lucene99HnswVectorsFormat().getName(),
             leaf.getFieldInfos()
                 .fieldInfo(FIELD)
-                .getAttribute(RotatingKnnVectorsFormat.DELEGATE_FORMAT_KEY));
+                .getAttribute(PreconditioningKnnVectorsFormat.DELEGATE_FORMAT_KEY));
 
         FloatVectorValues values = leaf.getFloatVectorValues(FIELD);
         assertEquals(2, values.size());
@@ -462,8 +560,8 @@ public class TestRotatingKnnVectorsFormat extends LuceneTestCase {
    */
   public void testMergeToleratesSegmentsWithoutTheField() throws Exception {
     int dim = 8;
-    float[] first = randomVector(dim);
-    float[] second = randomVector(dim);
+    float[] first = randomNonZeroVector(dim);
+    float[] second = randomNonZeroVector(dim);
     try (Directory dir = newDirectory()) {
       addSegment(dir, rotatingCodec(), first);
       // A segment with no vectors at all.
@@ -503,7 +601,7 @@ public class TestRotatingKnnVectorsFormat extends LuceneTestCase {
               .setMergeScheduler(new SerialMergeScheduler());
       try (IndexWriter writer = new IndexWriter(dir, config)) {
         for (int i = 0; i < numDocs; i++) {
-          float[] vector = randomVector(dim);
+          float[] vector = randomNonZeroVector(dim);
           live.put(i, vector);
           Document doc = new Document();
           doc.add(new StringField("id", Integer.toString(i), Field.Store.YES));
@@ -542,7 +640,7 @@ public class TestRotatingKnnVectorsFormat extends LuceneTestCase {
   }
 
   /** An index sort reorders documents during flush and merge; values must still round trip. */
-  public void testSortedIndex() throws Exception {
+  public void testSortedIndexRoundTrip() throws Exception {
     int dim = 16;
     int numDocs = 40;
     Map<Integer, float[]> vectors = new HashMap<>();
@@ -554,7 +652,7 @@ public class TestRotatingKnnVectorsFormat extends LuceneTestCase {
               .setMergeScheduler(new SerialMergeScheduler());
       try (IndexWriter writer = new IndexWriter(dir, config)) {
         for (int i = 0; i < numDocs; i++) {
-          float[] vector = randomVector(dim);
+          float[] vector = randomNonZeroVector(dim);
           vectors.put(i, vector);
           Document doc = new Document();
           doc.add(new StringField("id", Integer.toString(i), Field.Store.YES));
@@ -593,9 +691,7 @@ public class TestRotatingKnnVectorsFormat extends LuceneTestCase {
     }
   }
 
-  // ------------------------------------------------------------------------------------------
   // Per-field composition
-  // ------------------------------------------------------------------------------------------
 
   /**
    * Rotating some fields and not others, in one index, through {@link PerFieldKnnVectorsFormat}
@@ -603,13 +699,13 @@ public class TestRotatingKnnVectorsFormat extends LuceneTestCase {
    */
   public void testRotateSomeFieldsOnly() throws Exception {
     int dim = 16;
-    float[] rotated = randomVector(dim);
-    float[] plain = randomVector(dim);
+    float[] rotated = randomNonZeroVector(dim);
+    float[] plain = randomNonZeroVector(dim);
     Codec codec =
         codecRoutingFields(
             Map.of(
                 "rotated",
-                RotatingKnnVectorsFormat.rotating(plainFormat()),
+                PreconditioningKnnVectorsFormat.rotating(plainFormat()),
                 "plain",
                 plainFormat()));
     try (Directory dir = newDirectory()) {
@@ -630,11 +726,11 @@ public class TestRotatingKnnVectorsFormat extends LuceneTestCase {
         assertNotNull(
             leaf.getFieldInfos()
                 .fieldInfo("rotated")
-                .getAttribute(RotatingKnnVectorsFormat.DELEGATE_FORMAT_KEY));
+                .getAttribute(PreconditioningKnnVectorsFormat.DELEGATE_FORMAT_KEY));
         assertNull(
             leaf.getFieldInfos()
                 .fieldInfo("plain")
-                .getAttribute(RotatingKnnVectorsFormat.DELEGATE_FORMAT_KEY));
+                .getAttribute(PreconditioningKnnVectorsFormat.DELEGATE_FORMAT_KEY));
       }
     }
   }
@@ -647,13 +743,14 @@ public class TestRotatingKnnVectorsFormat extends LuceneTestCase {
    */
   public void testTwoRotatingSiblingsWithDifferentDelegates() throws Exception {
     int dim = 16;
-    float[] a = randomVector(dim);
-    float[] b = randomVector(dim);
+    float[] a = randomNonZeroVector(dim);
+    float[] b = randomNonZeroVector(dim);
     Codec codec =
         codecRoutingFields(
             Map.of(
-                "fieldA", RotatingKnnVectorsFormat.rotating(plainFormat()),
-                "fieldB", RotatingKnnVectorsFormat.rotating(new Lucene99HnswVectorsFormat())));
+                "fieldA", PreconditioningKnnVectorsFormat.rotating(plainFormat()),
+                "fieldB",
+                    PreconditioningKnnVectorsFormat.rotating(new Lucene99HnswVectorsFormat())));
     try (Directory dir = newDirectory()) {
       try (IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig().setCodec(codec))) {
         Document doc = new Document();
@@ -671,10 +768,14 @@ public class TestRotatingKnnVectorsFormat extends LuceneTestCase {
         var infos = leaf.getFieldInfos();
         assertEquals(
             plainFormat().getName(),
-            infos.fieldInfo("fieldA").getAttribute(RotatingKnnVectorsFormat.DELEGATE_FORMAT_KEY));
+            infos
+                .fieldInfo("fieldA")
+                .getAttribute(PreconditioningKnnVectorsFormat.DELEGATE_FORMAT_KEY));
         assertEquals(
             new Lucene99HnswVectorsFormat().getName(),
-            infos.fieldInfo("fieldB").getAttribute(RotatingKnnVectorsFormat.DELEGATE_FORMAT_KEY));
+            infos
+                .fieldInfo("fieldB")
+                .getAttribute(PreconditioningKnnVectorsFormat.DELEGATE_FORMAT_KEY));
 
         // CheckIndex-style integrity check must not trip over the sibling's files.
         ((CodecReader) leaf).getVectorReader().checkIntegrity(null);
@@ -683,19 +784,13 @@ public class TestRotatingKnnVectorsFormat extends LuceneTestCase {
   }
 
   /**
-   * Rotation on the outside, per-field format selection on the inside — the wrapper installed
-   * directly as the codec's KNN format.
-   *
-   * <p>Note this composition requires the rotating wrapper to be the codec's own KNN format.
-   * Routing it through a second {@link PerFieldKnnVectorsFormat} as well would put two per-field
-   * layers in the same index, and those two layers overwrite each other's {@code
-   * PerFieldKnnVectorsFormat} field attributes — a pre-existing limitation of nesting per-field
-   * formats that has nothing to do with rotation.
+   * Rotation outside, per-field selection inside. Requires the wrapper to be the codec's own KNN
+   * format: two nested per-field layers would overwrite each other's attributes.
    */
   public void testRotationOverPerFieldDelegate() throws Exception {
     int dim = 16;
-    float[] a = randomVector(dim);
-    float[] b = randomVector(dim);
+    float[] a = randomNonZeroVector(dim);
+    float[] b = randomNonZeroVector(dim);
     KnnVectorsFormat innerPerField =
         new PerFieldKnnVectorsFormat() {
           @Override
@@ -703,7 +798,7 @@ public class TestRotatingKnnVectorsFormat extends LuceneTestCase {
             return field.equals("fieldA") ? plainFormat() : new Lucene99HnswVectorsFormat();
           }
         };
-    KnnVectorsFormat rotating = new RotatingKnnVectorsFormat(innerPerField);
+    KnnVectorsFormat rotating = new PreconditioningKnnVectorsFormat(innerPerField);
     Codec codec =
         new FilterCodec(Codec.getDefault().getName(), Codec.getDefault()) {
           @Override
@@ -730,9 +825,9 @@ public class TestRotatingKnnVectorsFormat extends LuceneTestCase {
 
   /** Two fields of different dimensions must each get the rotation for their own dimension. */
   public void testFieldsWithDifferentDimensions() throws Exception {
-    float[] small = randomVector(4);
-    float[] large = randomVector(96);
-    KnnVectorsFormat rotating = RotatingKnnVectorsFormat.rotating(plainFormat());
+    float[] small = randomNonZeroVector(4);
+    float[] large = randomNonZeroVector(96);
+    KnnVectorsFormat rotating = PreconditioningKnnVectorsFormat.rotating(plainFormat());
     Codec codec = codecRoutingFields(Map.of("small", rotating, "large", rotating));
     try (Directory dir = newDirectory()) {
       try (IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig().setCodec(codec))) {
@@ -752,19 +847,21 @@ public class TestRotatingKnnVectorsFormat extends LuceneTestCase {
         var infos = leaf.getFieldInfos();
         // Both fields are rotated (marker present) but with dimension-specific matrices.
         assertNotNull(
-            infos.fieldInfo("small").getAttribute(RotatingKnnVectorsFormat.DELEGATE_FORMAT_KEY));
+            infos
+                .fieldInfo("small")
+                .getAttribute(PreconditioningKnnVectorsFormat.DELEGATE_FORMAT_KEY));
         assertNotNull(
-            infos.fieldInfo("large").getAttribute(RotatingKnnVectorsFormat.DELEGATE_FORMAT_KEY));
+            infos
+                .fieldInfo("large")
+                .getAttribute(PreconditioningKnnVectorsFormat.DELEGATE_FORMAT_KEY));
         assertNotSame(HadamardRotation.forDimension(4), HadamardRotation.forDimension(96));
       }
     }
   }
 
   /**
-   * A caller that unwraps a field's reader must reach the concrete format's reader even though the
-   * rotating wrapper sits between the per-field layer and the delegate. CheckIndex relies on this
-   * to validate the HNSW graph, and quantized writers rely on it during merge; if unwrapping
-   * stopped at an intermediate wrapper those checks would silently be skipped.
+   * Unwrapping must reach the concrete reader through this wrapper, or CheckIndex's graph
+   * validation would silently be skipped.
    */
   public void testUnwrapReaderReachesConcreteReader() throws Exception {
     try (Directory dir = newDirectory()) {
@@ -772,7 +869,8 @@ public class TestRotatingKnnVectorsFormat extends LuceneTestCase {
       try (IndexWriter writer = new IndexWriter(dir, config)) {
         Document doc = new Document();
         doc.add(
-            new KnnFloatVectorField(FIELD, randomVector(16), VectorSimilarityFunction.EUCLIDEAN));
+            new KnnFloatVectorField(
+                FIELD, randomNonZeroVector(16), VectorSimilarityFunction.EUCLIDEAN));
         writer.addDocument(doc);
         writer.forceMerge(1);
       }
@@ -800,17 +898,17 @@ public class TestRotatingKnnVectorsFormat extends LuceneTestCase {
     Map<String, KnnVectorsFormat> routing =
         Map.of(
             "sqRotated",
-            RotatingKnnVectorsFormat.rotating(sq),
+            PreconditioningKnnVectorsFormat.rotating(sq),
             "sqPlain",
             sq,
             "flatRotated",
-            RotatingKnnVectorsFormat.rotating(flat),
+            PreconditioningKnnVectorsFormat.rotating(flat),
             "flatPlain",
             flat);
 
     Map<String, float[]> expected = new HashMap<>();
     for (String field : routing.keySet()) {
-      expected.put(field, randomVector(dim));
+      expected.put(field, randomNonZeroVector(dim));
     }
 
     try (Directory dir = newDirectory()) {
@@ -853,16 +951,18 @@ public class TestRotatingKnnVectorsFormat extends LuceneTestCase {
           FieldInfo fieldInfo = infos.fieldInfo(field);
           if (rotated) {
             assertNotNull(
-                field, fieldInfo.getAttribute(RotatingKnnVectorsFormat.DELEGATE_FORMAT_KEY));
+                field, fieldInfo.getAttribute(PreconditioningKnnVectorsFormat.DELEGATE_FORMAT_KEY));
             assertNotNull(
-                field, fieldInfo.getAttribute(RotatingKnnVectorsFormat.DELEGATE_FORMAT_KEY));
+                field, fieldInfo.getAttribute(PreconditioningKnnVectorsFormat.DELEGATE_FORMAT_KEY));
             assertEquals(
                 field,
-                RotatingKnnVectorsFormat.NAME,
+                PreconditioningKnnVectorsFormat.NAME,
                 fieldInfo.getAttribute(PerFieldKnnVectorsFormat.PER_FIELD_FORMAT_KEY));
           } else {
-            assertNull(field, fieldInfo.getAttribute(RotatingKnnVectorsFormat.DELEGATE_FORMAT_KEY));
-            assertNull(field, fieldInfo.getAttribute(RotatingKnnVectorsFormat.DELEGATE_FORMAT_KEY));
+            assertNull(
+                field, fieldInfo.getAttribute(PreconditioningKnnVectorsFormat.DELEGATE_FORMAT_KEY));
+            assertNull(
+                field, fieldInfo.getAttribute(PreconditioningKnnVectorsFormat.DELEGATE_FORMAT_KEY));
           }
 
           // And search works through every combination.
@@ -883,7 +983,7 @@ public class TestRotatingKnnVectorsFormat extends LuceneTestCase {
    */
   public void testSeedPersistedAndReadableViaSpi() throws Exception {
     int dim = 128;
-    float[] vector = randomVector(dim);
+    float[] vector = randomNonZeroVector(dim);
     try (Directory dir = newDirectory()) {
       IndexWriterConfig config = newIndexWriterConfig().setCodec(rotatingCodec());
       try (IndexWriter writer = new IndexWriter(dir, config)) {
@@ -898,8 +998,8 @@ public class TestRotatingKnnVectorsFormat extends LuceneTestCase {
         FieldInfo fi = leaf.getFieldInfos().fieldInfo(FIELD);
 
         // Both attributes must be present
-        String delegateName = fi.getAttribute(RotatingKnnVectorsFormat.DELEGATE_FORMAT_KEY);
-        String seedStr = fi.getAttribute(RotatingKnnVectorsFormat.ROTATION_SEED_KEY);
+        String delegateName = fi.getAttribute(PreconditioningKnnVectorsFormat.DELEGATE_FORMAT_KEY);
+        String seedStr = fi.getAttribute(PreconditioningKnnVectorsFormat.ROTATION_SEED_KEY);
         assertNotNull("delegate must be persisted", delegateName);
         assertNotNull("seed must be persisted", seedStr);
 

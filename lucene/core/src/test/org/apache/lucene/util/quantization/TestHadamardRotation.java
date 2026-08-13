@@ -279,8 +279,8 @@ public class TestHadamardRotation extends LuceneTestCase {
 
   /**
    * {@code seedForDimension} is part of the on-disk format: {@link
-   * org.apache.lucene.codecs.RotatingKnnVectorsFormat} re-derives each field's rotation from its
-   * dimension instead of persisting a seed, so changing this function would silently invalidate
+   * org.apache.lucene.codecs.PreconditioningKnnVectorsFormat} re-derives each field's rotation from
+   * its dimension instead of persisting a seed, so changing this function would silently invalidate
    * every existing rotated index -- queries would be rotated by a different matrix than the stored
    * vectors. These values are pinned so that can never happen by accident.
    */

@@ -776,9 +776,9 @@ public class FieldInfos implements Iterable<FieldInfo> {
         // (loaded from committed segments), so we can reliably compare rotation state.
         if (fi.getVectorDimension() > 0) {
           boolean curRotated =
-              curFi.getAttribute("RotatingKnnVectorsFormat_DelegateFormat") != null;
+              curFi.getAttribute("PreconditioningKnnVectorsFormat_DelegateFormat") != null;
           boolean incomingRotated =
-              fi.getAttribute("RotatingKnnVectorsFormat_DelegateFormat") != null;
+              fi.getAttribute("PreconditioningKnnVectorsFormat_DelegateFormat") != null;
           if (curRotated != incomingRotated) {
             throw new IllegalArgumentException(
                 "cannot change field \""

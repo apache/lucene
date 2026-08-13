@@ -20,31 +20,17 @@ import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * A randomized orthogonal rotation based on the Fast Walsh-Hadamard Transform (FWHT) combined with
- * random sign flips and a random permutation. The composed transform is orthogonal, so it preserves
- * L2 norms and inner products between any two vectors:
+ * A randomized orthogonal rotation: random sign flips, a random permutation, then a Fast
+ * Walsh-Hadamard Transform. Being orthogonal it preserves L2 norms and inner products, so it is
+ * safe to apply to index and query vectors alike. Rotated components tend toward a normal
+ * distribution, which is what scalar quantizers assume, so it helps most on skewed or sparse
+ * inputs.
  *
- * <pre>
- *   (Rx)^T (Ry) = x^T R^T R y = x^T I y = x^T y
- * </pre>
+ * <p>Costs {@code O(d log d)} per vector. Non-power-of-2 dimensions use a block-diagonal FWHT over
+ * the binary decomposition of {@code d}.
  *
- * This makes it safe to apply to both index and query vectors before quantization. The key property
- * exploited by downstream scalar quantizers (like OSQ) is that the rotated vector components tend
- * toward a normal distribution by the central limit theorem, regardless of the input distribution.
- * This is particularly helpful for vectors with skewed/sparse/uniform component distributions
- * (MNIST pixel values, GIST histograms, SIFT descriptors, etc.) where OSQ's initialization
- * assumption of Gaussian components breaks down.
- *
- * <p>The cost is {@code O(d log d)} per vector for the FWHT step, plus {@code O(d)} for the sign
- * flip and permutation. For non-power-of-2 dimensions, a block-diagonal FWHT is used with blocks
- * whose sizes are powers of two derived from the binary decomposition of {@code d}.
- *
- * <p>A global seed is used so that the rotation is deterministic for a given {@code (dim, seed)}
- * pair. All segments in an index using the same seed see the same rotation, which means quantized
- * bytes can be copied directly during merge (no re-quantization needed).
- *
- * <p>Instances are immutable and thread-safe. Callers pass their own scratch buffer of length
- * {@code dim} to {@link #rotate(float[], float[], float[])} to avoid per-call allocation.
+ * <p>Deterministic for a given {@code (dim, seed)}, so all segments share one rotation and
+ * quantized bytes can be copied during merge. Instances are immutable and thread-safe.
  *
  * @lucene.experimental
  */
@@ -98,10 +84,10 @@ public final class HadamardRotation {
 
   /**
    * Returns the deterministic seed used by {@link #forDimension(int)} for the given dimension.
-   * Exposed so callers (e.g. {@link org.apache.lucene.codecs.RotatingKnnVectorsFormat}) can persist
-   * the seed alongside the rotated vectors, decoupling on-disk indices from any future change to
-   * the seed-mix function: future readers reconstruct the rotation from the persisted seed via
-   * {@link #create(int, long)} rather than re-deriving from the dimension.
+   * Exposed so callers (e.g. {@link org.apache.lucene.codecs.PreconditioningKnnVectorsFormat}) can
+   * persist the seed alongside the rotated vectors, decoupling on-disk indices from any future
+   * change to the seed-mix function: future readers reconstruct the rotation from the persisted
+   * seed via {@link #create(int, long)} rather than re-deriving from the dimension.
    */
   public static long seedForDimension(int dim) {
     long seed = (long) dim * 0x9E3779B97F4A7C15L;
