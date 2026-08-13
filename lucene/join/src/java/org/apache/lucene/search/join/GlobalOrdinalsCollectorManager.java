@@ -93,7 +93,7 @@ final class GlobalOrdinalsCollectorManager implements CollectorManager<Collector
 
   private void setGlobalOrdBit(long globalOrd) {
     int wordIndex = (int) (globalOrd >> 6);
-    long bit = 1L << (globalOrd & 63);
+    long bit = 1L << globalOrd;
     long prev = sharedBits.get(wordIndex);
     while ((prev & bit) == 0) {
       if (sharedBits.compareAndSet(wordIndex, prev, prev | bit)) {
