@@ -61,6 +61,7 @@ final class GlobalOrdinalsCollectorManager
 
   @Override
   public LongBitSet reduce(Collection<SegmentLocalCollector> collectors) {
+    // All ordinals are written directly to sharedBits during collection; collectors hold no per-slice state.
     int numWords = sharedBits.length();
     long[] words = new long[numWords];
     for (int i = 0; i < numWords; i++) {
@@ -69,32 +70,51 @@ final class GlobalOrdinalsCollectorManager
     return new LongBitSet(words, valueCount);
   }
 
+  // Skip CAS if the bit is already set; retry on word-level contention.
+  private void setGlobalOrdBit(long globalOrd) {
+    int wordIndex = (int) (globalOrd >> 6);
+    long bit = 1L << (globalOrd & 63);
+    long prev = sharedBits.get(wordIndex);
+    while ((prev & bit) == 0) {
+      if (sharedBits.compareAndSet(wordIndex, prev, prev | bit)) {
+        break;
+      }
+      prev = sharedBits.get(wordIndex);
+    }
+  }
+
+  // Stateless per-slice handle; all collected ordinals are written to the outer sharedBits array.
   final class SegmentLocalCollector implements Collector {
 
     @Override
     public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
       SortedDocValues docTermOrds = DocValues.getSorted(context.reader(), field);
-      LongValues segToGlobal = ordinalMap != null ? ordinalMap.getGlobalOrds(context.ord) : null;
-      return new LeafCollector() {
-        @Override
-        public void setScorer(Scorable scorer) {}
+      if (ordinalMap != null) {
+        LongValues segToGlobal = ordinalMap.getGlobalOrds(context.ord);
+        return new LeafCollector() {
+          @Override
+          public void setScorer(Scorable scorer) {}
 
-        @Override
-        public void collect(int doc) throws IOException {
-          if (docTermOrds.advanceExact(doc)) {
-            long segOrd = docTermOrds.ordValue();
-            long globalOrd = segToGlobal != null ? segToGlobal.get(segOrd) : segOrd;
-            int wordIndex = (int) (globalOrd >> 6);
-            long bit = 1L << (globalOrd & 63);
-            // Skip CAS if the bit is already set; retry on word-level contention.
-            long prev = sharedBits.get(wordIndex);
-            while ((prev & bit) == 0) {
-              if (sharedBits.compareAndSet(wordIndex, prev, prev | bit)) break;
-              prev = sharedBits.get(wordIndex);
+          @Override
+          public void collect(int doc) throws IOException {
+            if (docTermOrds.advanceExact(doc)) {
+              setGlobalOrdBit(segToGlobal.get(docTermOrds.ordValue()));
             }
           }
-        }
-      };
+        };
+      } else {
+        return new LeafCollector() {
+          @Override
+          public void setScorer(Scorable scorer) {}
+
+          @Override
+          public void collect(int doc) throws IOException {
+            if (docTermOrds.advanceExact(doc)) {
+              setGlobalOrdBit(docTermOrds.ordValue());
+            }
+          }
+        };
+      }
     }
 
     @Override
