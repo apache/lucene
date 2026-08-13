@@ -26,6 +26,11 @@ API Changes
 New Features
 ---------------------
 
+* GITHUB#16418: Incremental doc-values updates. A set-only doc-values update (NUMERIC or BINARY) is written as a sparse
+  "delta" overlay holding just the updated documents and layered over the base column at read time, instead of
+  rewriting the whole column, turning per-update write amplification from O(column) into O(updated docs). Opt-in;
+  enable with IndexWriterConfig#setMaxDocValuesOverlays(n). (Jim Ferenczi)
+
 * GITHUB#16243: Add StableTflSimilarity, a similarity that estimates term rarity from term length
   and document length instead of corpus statistics such as document frequency. It also supports k3
   query-term frequency saturation. (Tianxiao Wei)

@@ -1159,7 +1159,8 @@ public class IndexWriter
               bufferedUpdatesStream::getCompletedDelGen,
               infoStream,
               conf.getSoftDeletesField(),
-              reader);
+              reader,
+              config);
       if (config.getReaderPooling()) {
         readerPool.enableReaderPooling();
       }
@@ -3660,6 +3661,13 @@ public class IndexWriter
     newInfo.setFiles(info.info.files());
     newInfoPerCommit.setFieldInfosFiles(info.getFieldInfosFiles());
     newInfoPerCommit.setDocValuesUpdatesFiles(info.getDocValuesUpdatesFiles());
+    // Carry over the incremental doc-values overlay generations (the copied update files keep their
+    // gen numbers).
+    for (Map.Entry<Integer, long[]> e : info.getDocValuesOverlays().entrySet()) {
+      final long[] packed = e.getValue();
+      newInfoPerCommit.setDocValuesOverlay(
+          e.getKey(), packed[0], ArrayUtil.copyOfSubArray(packed, 1, packed.length));
+    }
 
     boolean success = false;
 
