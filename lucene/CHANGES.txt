@@ -111,6 +111,8 @@ API Changes
 
 New Features
 ---------------------
+* GITHUB#16092: Add hadamard rotation to vector fields. (Shubham Chaudhary)
+
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
   modern Hangul conjoining jamo before KoreanTokenizer. (Mingi Jeong)
 
