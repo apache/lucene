@@ -602,7 +602,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     for (int i = 0; i < mergeState.storedFieldsReaders.length; i++) {
       final StoredFieldsReader reader = mergeState.storedFieldsReaders[i];
       mergeState.checkAborted();
-      reader.checkIntegrity();
+      reader.checkIntegrity(mergeState.oneMerge);
       MergeStrategy mergeStrategy = getMergeStrategy(mergeState, matchingReaders, i);
       if (mergeStrategy == MergeStrategy.VISITOR) {
         visitors[i] = new MergeVisitor(mergeState, i);

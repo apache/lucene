@@ -18,6 +18,8 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Arrays;
+import org.apache.lucene.index.DocValuesSkipper;
+import org.apache.lucene.index.LeafReader;
 
 /**
  * Encapsulates sort criteria for returned hits.
@@ -131,5 +133,42 @@ public final class Sort {
       }
     }
     return false;
+  }
+
+  /**
+   * Returns the primary index sort field for the given LeafReader, or null if none is configured.
+   *
+   * <p>If sorting against a field would have no effect then that SortField is skipped over and the
+   * next SortField in the list is returned. This can happen for fields with no values in the
+   * segment, or fields that have only a single distinct value.
+   */
+  public static SortField getPrimarySortField(LeafReader reader) {
+    Sort sort = reader.getMetaData().sort();
+    if (sort == null) {
+      return null;
+    }
+    for (SortField sf : sort.fields) {
+      String field = sf.getField();
+      if (field == null) {
+        // Custom field that we don't know anything about, so return it as primary
+        return sf;
+      }
+      if (reader.getFieldInfos().fieldInfo(field) == null) {
+        // Field has no values in this segment, so sorting by it has no effect.
+        continue;
+      }
+      // If the field has a skip index, check whether all values are identical,
+      // in which case sorting by this field is a no-op for this segment.  Note
+      // that we also need to check for denseness, as missing values add an
+      // implicit second sort group.
+      DocValuesSkipper skipper = reader.getDocValuesSkipper(field);
+      if (skipper != null
+          && skipper.docCount() == reader.maxDoc()
+          && skipper.minValue() == skipper.maxValue()) {
+        continue;
+      }
+      return sf;
+    }
+    return null;
   }
 }

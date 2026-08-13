@@ -18,8 +18,12 @@
 package org.apache.lucene.codecs;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.lucene.index.CorruptIndexException;
+import org.apache.lucene.index.MergePolicy;
+import org.apache.lucene.index.SegmentCommitInfo;
+import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.store.BufferedChecksumIndexInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.ByteBuffersIndexInput;
@@ -31,6 +35,7 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.StringHelper;
+import org.apache.lucene.util.Version;
 
 /** tests for codecutil methods */
 public class TestCodecUtil extends LuceneTestCase {
@@ -412,5 +417,90 @@ public class TestCodecUtil extends LuceneTestCase {
     }
 
     dir.close();
+  }
+
+  public void testChecksumEntireFileWithMergeAbort() throws Exception {
+    Directory dir = newDirectory();
+    try (IndexOutput output = dir.createOutput("large", IOContext.DEFAULT)) {
+      CodecUtil.writeHeader(output, "FooBar", 5);
+      byte[] data = new byte[128];
+      for (int i = 0; i < 16; i++) {
+        output.writeBytes(data, data.length);
+      }
+      CodecUtil.writeFooter(output);
+    }
+
+    SegmentInfo si =
+        new SegmentInfo(
+            dir,
+            Version.LATEST,
+            Version.LATEST,
+            "test",
+            0,
+            false,
+            false,
+            null,
+            java.util.Map.of(),
+            new byte[StringHelper.ID_LENGTH],
+            java.util.Map.of(),
+            null);
+    SegmentCommitInfo sci = new SegmentCommitInfo(si, 0, 0, -1, -1, -1, StringHelper.randomId());
+    MergePolicy.OneMerge merge = new MergePolicy.OneMerge(List.of(sci));
+    merge.setAborted();
+
+    try (IndexInput input = dir.openInput("large", IOContext.DEFAULT)) {
+      // Use a small abort check interval so the test triggers on a small file
+      expectThrows(
+          MergePolicy.MergeAbortedException.class,
+          () -> CodecUtil.checksumEntireFile(input, merge, 100));
+    }
+    dir.close();
+  }
+
+  public void testChecksumEntireFileWithNonAbortedMerge() throws Exception {
+    Directory dir = newDirectory();
+    try (IndexOutput output = dir.createOutput("large", IOContext.DEFAULT)) {
+      CodecUtil.writeHeader(output, "FooBar", 5);
+      byte[] data = new byte[128];
+      for (int i = 0; i < 16; i++) {
+        output.writeBytes(data, data.length);
+      }
+      CodecUtil.writeFooter(output);
+    }
+
+    SegmentInfo si =
+        new SegmentInfo(
+            dir,
+            Version.LATEST,
+            Version.LATEST,
+            "test",
+            0,
+            false,
+            false,
+            null,
+            java.util.Map.of(),
+            new byte[StringHelper.ID_LENGTH],
+            java.util.Map.of(),
+            null);
+    SegmentCommitInfo sci = new SegmentCommitInfo(si, 0, 0, -1, -1, -1, StringHelper.randomId());
+    MergePolicy.OneMerge merge = new MergePolicy.OneMerge(List.of(sci));
+
+    try (IndexInput input = dir.openInput("large", IOContext.DEFAULT)) {
+      CodecUtil.checksumEntireFile(input, merge, 100);
+    }
+    dir.close();
+  }
+
+  public void testChecksumEntireFileWithNullMerge() throws Exception {
+    ByteBuffersDataOutput out = new ByteBuffersDataOutput();
+    IndexOutput output = new ByteBuffersIndexOutput(out, "temp", "temp");
+    CodecUtil.writeHeader(output, "FooBar", 5);
+    output.writeString("this is the data");
+    CodecUtil.writeFooter(output);
+    output.close();
+
+    IndexInput input = new ByteBuffersIndexInput(out.toDataInput(), "temp");
+    CodecUtil.checksumEntireFile(input, null);
+    input.close();
   }
 }

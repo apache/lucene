@@ -133,7 +133,7 @@ public abstract class DocValuesConsumer implements Closeable {
     for (DocValuesProducer docValuesProducer : mergeState.docValuesProducers) {
       if (docValuesProducer != null) {
         mergeState.checkAborted();
-        docValuesProducer.checkIntegrity();
+        docValuesProducer.checkIntegrity(mergeState.oneMerge);
       }
     }
 

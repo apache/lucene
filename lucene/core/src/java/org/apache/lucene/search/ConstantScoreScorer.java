@@ -58,8 +58,26 @@ public final class ConstantScoreScorer extends Scorer {
 
     @Override
     public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      if (doc != delegate.docID()) {
+        // The delegate was swapped for an empty iterator (see setMinCompetitiveScore); the
+        // default implementation terminates via nextDoc() without touching the stale delegate
+        // position.
+        super.intoBitSet(upTo, bitSet, offset);
+        return;
+      }
       delegate.intoBitSet(upTo, bitSet, offset);
       doc = delegate.docID();
+    }
+
+    @Override
+    public int intoArray(int upTo, int[] docs) throws IOException {
+      if (doc != delegate.docID()) {
+        // See #intoBitSet.
+        return super.intoArray(upTo, docs);
+      }
+      int size = delegate.intoArray(upTo, docs);
+      doc = delegate.docID();
+      return size;
     }
   }
 
@@ -154,20 +172,29 @@ public final class ConstantScoreScorer extends Scorer {
     return score;
   }
 
+  // Number of doc IDs that a single #nextDocsAndScores call loads at a time. It matches
+  // MaxScoreBulkScorer#INNER_WINDOW_SIZE, so that iterators which load doc IDs in bulk, such as
+  // disjunctions, can cover a full inner scoring window in a single call.
+  private static final int BATCH_SIZE = 4096;
+
   @Override
   public void nextDocsAndScores(int upTo, Bits liveDocs, DocAndFloatFeatureBuffer buffer)
       throws IOException {
-    int batchSize = 64;
-    buffer.growNoCopy(batchSize);
-    int size = 0;
     DocIdSetIterator iterator = iterator();
-    for (int doc = iterator.docID(); doc < upTo && size < batchSize; doc = iterator.nextDoc()) {
-      if (liveDocs == null || liveDocs.get(doc)) {
-        buffer.docs[size] = doc;
-        ++size;
+    buffer.growNoCopy(BATCH_SIZE);
+    for (; ; ) {
+      buffer.size = iterator.intoArray(upTo, buffer.docs);
+      Arrays.fill(buffer.features, 0, buffer.size, score);
+      if (liveDocs == null || buffer.size == 0) {
+        break;
+      }
+      buffer.apply(liveDocs);
+      // An empty buffer indicates that there are no docs left before upTo. We may be unlucky, and
+      // there are docs left, but all docs from the current batch happen to be marked as deleted.
+      // So we need to iterate until we find a batch that has at least one non-deleted doc.
+      if (buffer.size != 0) {
+        break;
       }
     }
-    Arrays.fill(buffer.features, 0, size, score);
-    buffer.size = size;
   }
 }

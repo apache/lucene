@@ -24,7 +24,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.ScoreDoc;
@@ -43,11 +45,12 @@ public abstract class KnnVectorsReader implements Closeable {
    * Checks consistency of this reader.
    *
    * <p>Note that this may be costly in terms of I/O, e.g. may involve computing a checksum value
-   * against large data files.
+   * against large data files. A {@code OneMerge} can be provided so that expensive checksum
+   * computations can be periodically interrupted when the merge is aborted.
    *
-   * @lucene.internal
+   * @param merge the merge to check for abort, or {@code null} for non-interruptible behavior
    */
-  public abstract void checkIntegrity() throws IOException;
+  public abstract void checkIntegrity(MergePolicy.OneMerge merge) throws IOException;
 
   /**
    * If this reader wraps another for {@code field}, return the underlying reader, else return
@@ -70,6 +73,13 @@ public abstract class KnnVectorsReader implements Closeable {
    * never {@code null}.
    */
   public abstract ByteVectorValues getByteVectorValues(String field) throws IOException;
+
+  /**
+   * Returns the {@link Float16VectorValues} for the given {@code field}. The behavior is undefined
+   * if the given field doesn't have KNN vectors enabled on its {@link FieldInfo}. The return value
+   * is never {@code null}.
+   */
+  public abstract Float16VectorValues getFloat16VectorValues(String field) throws IOException;
 
   /**
    * Return the k nearest neighbor documents as determined by comparison of their vector values for
@@ -127,6 +137,35 @@ public abstract class KnnVectorsReader implements Closeable {
    */
   public abstract void search(
       String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException;
+
+  /**
+   * Return the k nearest neighbor documents as determined by comparison of their vector values for
+   * this field, to the given vector, by the field's similarity function. The score of each document
+   * is derived from the vector similarity in a way that ensures scores are positive and that a
+   * larger score corresponds to a higher ranking.
+   *
+   * <p>The search is allowed to be approximate, meaning the results are not guaranteed to be the
+   * true k closest neighbors. For large values of k (for example when k is close to the total
+   * number of documents), the search may also retrieve fewer than k documents.
+   *
+   * <p>The returned {@link TopDocs} will contain a {@link ScoreDoc} for each nearest neighbor, in
+   * order of their similarity to the query vector (decreasing scores). The {@link TotalHits}
+   * contains the number of documents visited during the search. If the search stopped early because
+   * it hit {@code visitedLimit}, it is indicated through the relation {@code
+   * TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO}.
+   *
+   * <p>The behavior is undefined if the given field doesn't have KNN vectors enabled on its {@link
+   * FieldInfo}.
+   *
+   * @param field the vector field to search
+   * @param target the vector-valued query
+   * @param knnCollector a KnnResults collector and relevant settings for gathering vector results
+   * @param acceptDocs {@link Bits} that represents the allowed documents to match, or {@code null}
+   *     if they are all allowed to match.
+   */
+  public abstract void search(
+      String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException;
 
   /**

@@ -19,6 +19,7 @@ package org.apache.lucene.codecs;
 import java.io.Closeable;
 import java.io.IOException;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.PointValues;
 
@@ -208,7 +209,7 @@ public abstract class PointsWriter implements Closeable {
           }
 
           @Override
-          public void checkIntegrity() throws IOException {
+          public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
             throw new UnsupportedOperationException();
           }
         });
@@ -223,7 +224,7 @@ public abstract class PointsWriter implements Closeable {
     for (PointsReader reader : mergeState.pointsReaders) {
       if (reader != null) {
         mergeState.checkAborted();
-        reader.checkIntegrity();
+        reader.checkIntegrity(mergeState.oneMerge);
       }
     }
     // merge field at a time
