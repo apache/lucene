@@ -117,9 +117,7 @@ public final class ReaderUtil {
    * doc IDs are sorted in ascending order. For every partitioned doc ID the result also records its
    * index in the original {@code globalDocIds} array, so callers can map per-leaf results back to
    * input order. Callers that do not need the ordinals can simply ignore {@link
-   * PartitionedHits#ordinalsByLeaf()} and use {@link PartitionedHits#docIdsByLeaf()} — tracking the
-   * ordinals is cheap enough (see the {@code PartitionByLeafBenchmark}) that a separate no-ordinals
-   * method is not worth maintaining.
+   * PartitionedHits#ordinalsByLeaf()} and use {@link PartitionedHits#docIdsByLeaf()}.
    *
    * <p>The input array is not mutated.
    *
@@ -138,49 +136,43 @@ public final class ReaderUtil {
       return new PartitionedHits(docIdsByLeaf, ordinalsByLeaf);
     }
 
-    // Pack (docId, ordinal) into a single long -- docId in the high 32 bits, the original input
-    // position in the low 32 bits -- then sort as primitives. Sorting ascending orders by docId,
-    // with the ordinal as a tiebreak (docIds are unique here, so the tiebreak never applies). This
-    // relies on both values being non-negative (Lucene doc IDs and array indices), so the sign bit
-    // is always clear and signed long order matches ascending docId order. Packing lets us use the
-    // tuned primitive Arrays.sort(long[]) with no per-comparison callbacks and a single contiguous
-    // array, which is faster than a comparator/IntroSorter over parallel int[]s.
+    // Pack each (docId, ordinal) into a long: docId in the high 32 bits, ordinal in the low 32,
+    // then sort with the primitive Arrays.sort(long[]). Both values are non-negative, so ascending
+    // long order matches ascending docId order and the ordinal rides along.
     final long[] packed = new long[globalDocIds.length];
     for (int i = 0; i < packed.length; i++) {
       packed[i] = ((long) globalDocIds[i] << 32) | (i & 0xFFFFFFFFL);
     }
     Arrays.sort(packed);
-    final int[] sortedDocIds = new int[packed.length];
-    final int[] sortedOrdinals = new int[packed.length];
-    for (int i = 0; i < packed.length; i++) {
-      sortedDocIds[i] = (int) (packed[i] >>> 32);
-      sortedOrdinals[i] = (int) packed[i];
-    }
 
-    // Partition the sorted doc IDs (and their parallel ordinals) into per-leaf slices, using a
-    // binary search on each leaf's end boundary.
+    // Partition into per-leaf slices via binary search on each leaf's end boundary
     int[][] docIdsByLeaf = new int[numLeaves][];
     int[][] ordinalsByLeaf = new int[numLeaves][];
     int from = 0;
     int leafIdx = 0;
-    for (; leafIdx < numLeaves && from < sortedDocIds.length; leafIdx++) {
+    for (; leafIdx < numLeaves && from < packed.length; leafIdx++) {
       LeafReaderContext leaf = leaves.get(leafIdx);
-      int leafEnd = leaf.docBase + leaf.reader().maxDoc();
-      if (sortedDocIds[from] >= leafEnd) {
+      long leafEndPacked = ((long) (leaf.docBase + leaf.reader().maxDoc())) << 32;
+      if (packed[from] >= leafEndPacked) {
         docIdsByLeaf[leafIdx] = EMPTY_INT_ARRAY;
         ordinalsByLeaf[leafIdx] = EMPTY_INT_ARRAY;
         continue;
       }
-      int to = Arrays.binarySearch(sortedDocIds, from, sortedDocIds.length, leafEnd);
+      int to = Arrays.binarySearch(packed, from, packed.length, leafEndPacked);
       if (to < 0) {
         to = -to - 1;
       }
       int count = to - from;
       assert count > 0;
-      docIdsByLeaf[leafIdx] = new int[count];
-      ordinalsByLeaf[leafIdx] = new int[count];
-      System.arraycopy(sortedDocIds, from, docIdsByLeaf[leafIdx], 0, count);
-      System.arraycopy(sortedOrdinals, from, ordinalsByLeaf[leafIdx], 0, count);
+      int[] leafDocs = new int[count];
+      int[] leafOrds = new int[count];
+      for (int i = 0; i < count; i++) {
+        long p = packed[from + i];
+        leafDocs[i] = (int) (p >>> 32);
+        leafOrds[i] = (int) p;
+      }
+      docIdsByLeaf[leafIdx] = leafDocs;
+      ordinalsByLeaf[leafIdx] = leafOrds;
       from = to;
     }
 
