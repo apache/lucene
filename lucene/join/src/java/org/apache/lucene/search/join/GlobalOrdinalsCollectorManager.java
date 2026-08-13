@@ -61,7 +61,8 @@ final class GlobalOrdinalsCollectorManager
 
   @Override
   public LongBitSet reduce(Collection<SegmentLocalCollector> collectors) {
-    // All ordinals are written directly to sharedBits during collection; collectors hold no per-slice state.
+    // All ordinals are written directly to sharedBits during collection; collectors hold no
+    // per-slice state.
     int numWords = sharedBits.length();
     long[] words = new long[numWords];
     for (int i = 0; i < numWords; i++) {
@@ -89,32 +90,19 @@ final class GlobalOrdinalsCollectorManager
     @Override
     public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
       SortedDocValues docTermOrds = DocValues.getSorted(context.reader(), field);
-      if (ordinalMap != null) {
-        LongValues segToGlobal = ordinalMap.getGlobalOrds(context.ord);
-        return new LeafCollector() {
-          @Override
-          public void setScorer(Scorable scorer) {}
+      LongValues globalOrds = ordinalMap == null ? null : ordinalMap.getGlobalOrds(context.ord);
+      return new LeafCollector() {
+        @Override
+        public void setScorer(Scorable scorer) {}
 
-          @Override
-          public void collect(int doc) throws IOException {
-            if (docTermOrds.advanceExact(doc)) {
-              setGlobalOrdBit(segToGlobal.get(docTermOrds.ordValue()));
-            }
+        @Override
+        public void collect(int doc) throws IOException {
+          if (docTermOrds.advanceExact(doc)) {
+            long segOrd = docTermOrds.ordValue();
+            setGlobalOrdBit(globalOrds == null ? segOrd : globalOrds.get(segOrd));
           }
-        };
-      } else {
-        return new LeafCollector() {
-          @Override
-          public void setScorer(Scorable scorer) {}
-
-          @Override
-          public void collect(int doc) throws IOException {
-            if (docTermOrds.advanceExact(doc)) {
-              setGlobalOrdBit(docTermOrds.ordValue());
-            }
-          }
-        };
-      }
+        }
+      };
     }
 
     @Override
