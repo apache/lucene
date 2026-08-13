@@ -38,8 +38,7 @@ import org.apache.lucene.util.LongValues;
  * Global ordinal remapping happens during collection, and {@link #reduce} assembles the final
  * {@link LongBitSet} from the shared array.
  */
-final class GlobalOrdinalsCollectorManager
-    implements CollectorManager<Collector, LongBitSet> {
+final class GlobalOrdinalsCollectorManager implements CollectorManager<Collector, LongBitSet> {
 
   private final String field;
   private final OrdinalMap ordinalMap;
