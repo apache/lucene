@@ -160,6 +160,8 @@ Improvements
 * GITHUB#16313: Refactored the Hunspell dictionary parser to use switch-based dispatch for affix directives,
   improving readability of the parsing logic. (Rajat Jain)
 
+* GITHUB#16499: Clean up BytesRefHash. Remove dead lastCount and unused close(), fix stale comments (neoremind)
+
 * GITHUB#16089: Upgrade DocIdSetBuilder to use FixedBitSet eagerly once exceeding the threshold (Ke Wei)
 
 Optimizations
@@ -321,10 +323,16 @@ Other
 API Changes
 ---------------------
 
+* GITHUB#14399: Add a default LeafFieldComparator#disableSkipping method so document skipping can be
+  disabled per segment. (Serhiy Bzhezytskyy)
+
 * GITHUB#16286: Introduce BinaryDocValues#binaryValues to help speed up the
   retrieval of many binary doc values at once. (Costin Leau)
 
 * GITHUB#16363: Add API to use a custom `DictionarySuggester` instead of hardcoded `GeneratingSuggester`
+
+* GITHUB#16385: Remove unused public methods in AllGroupHeadsCollector.
+                Update grouping package info to use CollectorManager instead of Collector. (Binlong Gao)
 
 New Features
 ---------------------
@@ -357,6 +365,8 @@ Improvements
   or also cause VerifyError and other LinkageErrors when the expression was to complex.
   The new code allows to add a hard limit for nesting (default is 1024) and no longer
   throws virtual machine errors.  (Uwe Schindler, Seth Kraft)
+
+* GITHUB#16497: Allow Java Panama vector API on GraalVM for JDK 25+. (Abhinav Chinnala)
 
 Optimizations
 ---------------------
@@ -406,12 +416,22 @@ Optimizations
 
 * GITHUB#16180: Add bulk intoBitSet for SortedDocValues ordinal ranges. (Prithvi S)
 
+* GITHUB#12370: Sorting on a string field no longer scans every document when the top-N queue fills
+  with missing values -- whether because the field is missing from the whole index, or because
+  sort-missing-first put missing values at the top. When the sort has no tie breaker, a further
+  missing value cannot displace one already in the queue, so the rest can be skipped.
+  (Serhiy Bzhezytskyy)
+
 Bug Fixes
 ---------------------
 
 * GITHUB#16450: Fix DocValuesRangeIterator.docIDRunEnd() returning incorrect run boundaries,
   causing bulk-scoring to skip or mis-score documents in range and ordinal set queries.
   (Parker Timmins)
+
+* GITHUB#14399: TopFieldCollector now decides per segment whether the search sort is a prefix of the
+  index sort, instead of caching the decision from the first segment. This fixes incorrect results
+  when searching a MultiReader that combines indexes with different index sorts. (Serhiy Bzhezytskyy)
 
 * GITHUB#16251: Fix UpdateGraphsUtils#computeJoinSet to not request more coverage for a node than
   the node's degree. Previously nodes with a degree of 1 were always forced into the join set,
@@ -445,6 +465,8 @@ Bug Fixes
   GlobalOrdinalsWithScoreCollector, fixing an intermittent failure caused by
   non-associative float addition that #16378 missed. (Luca Cavanna)
 
+* GITHUB#16173: FilterDirectory now delegates copyFrom() to the wrapped directory. (Prithvi S)
+
 Other
 ---------------------
 * GITHUB#16266: Remove deprecated search(Query, Collector) calls in QueryUtils by replacing
@@ -456,6 +478,29 @@ Other
 
 * GITHUB#16300: Reduce memory pressure in TestTermInSetQuery.testDuel stress runs.
   (Sanghun Lee)
+
+======================= Lucene 10.5.1 =======================
+
+Bug Fixes
+---------------------
+
+* GITHUB#16450: Fix DocValuesRangeIterator.docIDRunEnd() returning incorrect run boundaries,
+  causing bulk-scoring to skip or mis-score documents in range and ordinal set queries.
+  (Parker Timmins)
+
+* GITHUB#15125: Handle inconsistent schema on flush with index sorts (Nhat Nguyen)
+
+* GITHUB#16400: Restore HNSW graph reuse during merges under per-field vectors formats,
+  including the default codec. Since 10.4.0 the merger tested the per-field wrapper instead
+  of the unwrapped reader, so every merge rebuilt the graph from scratch. (Jeho Jeong)
+
+* GITHUB#16367: HNSW graph construction now periodically checks whether the surrounding merge has
+  been aborted, so IndexWriter#rollback and abortMerges no longer block until the entire graph is
+  built. (Jeho Jeong)
+
+* GITHUB#16415: Fix scoring on scalar-quantized indexes whose raw float vectors have been dropped.
+  FloatVectorValues#scorer now scores against the quantized vectors, matching the behaviour when
+  raw vectors are present. (Pulkit Gupta)
 
 ======================= Lucene 10.5.0 =======================
 
