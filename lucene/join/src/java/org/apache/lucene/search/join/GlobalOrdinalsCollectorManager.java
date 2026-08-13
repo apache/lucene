@@ -17,8 +17,8 @@
 package org.apache.lucene.search.join;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collection;
+import java.util.concurrent.atomic.AtomicLongArray;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.OrdinalMap;
@@ -33,8 +33,10 @@ import org.apache.lucene.util.LongValues;
 
 /**
  * A {@link CollectorManager} that collects all ordinals from a specified field matching the query.
- * Each per-slice collector tracks only segment-local ordinals (sized to the segment's value count),
- * and {@link #reduce} remaps them to global ordinals via the {@link OrdinalMap}.
+ * All per-slice collectors share a single {@link AtomicLongArray} sized to the global value count,
+ * so memory is O(globalValueCount) regardless of the number of slices or segment cardinality.
+ * Global ordinal remapping happens during collection, and {@link #reduce} assembles the final
+ * {@link LongBitSet} from the shared array.
  */
 final class GlobalOrdinalsCollectorManager
     implements CollectorManager<GlobalOrdinalsCollectorManager.SegmentLocalCollector, LongBitSet> {
@@ -42,11 +44,14 @@ final class GlobalOrdinalsCollectorManager
   private final String field;
   private final OrdinalMap ordinalMap;
   private final long valueCount;
+  // Single shared bitset written atomically by all collector slices.
+  private final AtomicLongArray sharedBits;
 
   GlobalOrdinalsCollectorManager(String field, OrdinalMap ordinalMap, long valueCount) {
     this.field = field;
     this.ordinalMap = ordinalMap;
     this.valueCount = valueCount;
+    this.sharedBits = new AtomicLongArray(LongBitSet.bits2words(valueCount));
   }
 
   @Override
@@ -55,72 +60,21 @@ final class GlobalOrdinalsCollectorManager
   }
 
   @Override
-  public LongBitSet reduce(Collection<SegmentLocalCollector> collectors) throws IOException {
-    LongBitSet result = new LongBitSet(valueCount);
-    // Group bitsets by segment ord. When allowSegmentPartitions=true splits a segment across
-    // multiple slices, each slice produces a separate collector for the same segment. Merging
-    // them here ensures we call getGlobalOrds() exactly once per segment.
-    int maxSegOrd = -1;
-    for (SegmentLocalCollector collector : collectors) {
-      for (int segOrd : collector.segmentOrds) {
-        if (segOrd > maxSegOrd) maxSegOrd = segOrd;
-      }
+  public LongBitSet reduce(Collection<SegmentLocalCollector> collectors) {
+    int numWords = sharedBits.length();
+    long[] words = new long[numWords];
+    for (int i = 0; i < numWords; i++) {
+      words[i] = sharedBits.get(i);
     }
-    if (maxSegOrd < 0) {
-      return result;
-    }
-    LongBitSet[] bySegment = new LongBitSet[maxSegOrd + 1];
-    for (SegmentLocalCollector collector : collectors) {
-      for (int i = 0; i < collector.segmentBits.size(); i++) {
-        int segOrd = collector.segmentOrds.get(i);
-        LongBitSet bits = collector.segmentBits.get(i);
-        if (bySegment[segOrd] == null) {
-          bySegment[segOrd] = bits;
-        } else {
-          bySegment[segOrd].or(bits);
-        }
-      }
-    }
-    for (int segOrd = 0; segOrd <= maxSegOrd; segOrd++) {
-      LongBitSet segmentBits = bySegment[segOrd];
-      if (segmentBits == null) {
-        continue;
-      }
-      if (ordinalMap != null) {
-        LongValues segToGlobal = ordinalMap.getGlobalOrds(segOrd);
-        for (long ord = segmentBits.nextSetBit(0);
-            ord != -1;
-            ord = (ord + 1 < segmentBits.length()) ? segmentBits.nextSetBit(ord + 1) : -1) {
-          result.set(segToGlobal.get(ord));
-        }
-      } else {
-        result.or(segmentBits);
-      }
-    }
-    return result;
+    return new LongBitSet(words, valueCount);
   }
 
   final class SegmentLocalCollector implements Collector {
 
-    final ArrayList<Integer> segmentOrds = new ArrayList<>();
-    final ArrayList<LongBitSet> segmentBits = new ArrayList<>();
-
     @Override
     public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
       SortedDocValues docTermOrds = DocValues.getSorted(context.reader(), field);
-      long segmentValueCount = docTermOrds.getValueCount();
-      if (segmentValueCount == 0) {
-        return new LeafCollector() {
-          @Override
-          public void setScorer(Scorable scorer) {}
-
-          @Override
-          public void collect(int doc) {}
-        };
-      }
-      LongBitSet bits = new LongBitSet(segmentValueCount);
-      segmentOrds.add(context.ord);
-      segmentBits.add(bits);
+      LongValues segToGlobal = ordinalMap != null ? ordinalMap.getGlobalOrds(context.ord) : null;
       return new LeafCollector() {
         @Override
         public void setScorer(Scorable scorer) {}
@@ -128,7 +82,16 @@ final class GlobalOrdinalsCollectorManager
         @Override
         public void collect(int doc) throws IOException {
           if (docTermOrds.advanceExact(doc)) {
-            bits.set(docTermOrds.ordValue());
+            long segOrd = docTermOrds.ordValue();
+            long globalOrd = segToGlobal != null ? segToGlobal.get(segOrd) : segOrd;
+            int wordIndex = (int) (globalOrd >> 6);
+            long bit = 1L << (globalOrd & 63);
+            // Skip CAS if the bit is already set; retry on word-level contention.
+            long prev = sharedBits.get(wordIndex);
+            while ((prev & bit) == 0) {
+              if (sharedBits.compareAndSet(wordIndex, prev, prev | bit)) break;
+              prev = sharedBits.get(wordIndex);
+            }
           }
         }
       };
