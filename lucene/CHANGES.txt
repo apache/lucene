@@ -281,6 +281,8 @@ Build
 Other
 ---------------------
 
+* GITHUB#16511: Add bulk-scorer vs doc-by-doc differential oracle test. (Tim Allison)
+
 * GITHUB#16074: Ban presized collection#toArray. (Zhou Hui)
 
 * GITHUB#16063: Remove redundant final modifiers. (Zhou Hui)
