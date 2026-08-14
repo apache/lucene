@@ -111,6 +111,11 @@ API Changes
 
 New Features
 ---------------------
+* GITHUB#16418: Incremental doc-values updates. A set-only doc-values update (NUMERIC or BINARY) is written as a sparse
+  "delta" overlay holding just the updated documents and layered over the base column at read time, instead of
+  rewriting the whole column, turning per-update write amplification from O(column) into O(updated docs). Enabled by
+  default; disable with IndexWriterConfig#setMaxDocValuesOverlays(0). (Jim Ferenczi)
+
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
   modern Hangul conjoining jamo before KoreanTokenizer. (Mingi Jeong)
 
@@ -159,6 +164,8 @@ Improvements
 
 * GITHUB#16313: Refactored the Hunspell dictionary parser to use switch-based dispatch for affix directives,
   improving readability of the parsing logic. (Rajat Jain)
+
+* GITHUB#16499: Clean up BytesRefHash. Remove dead lastCount and unused close(), fix stale comments (neoremind)
 
 Optimizations
 ---------------------
@@ -327,6 +334,13 @@ API Changes
 
 * GITHUB#16363: Add API to use a custom `DictionarySuggester` instead of hardcoded `GeneratingSuggester`
 
+* GITHUB#16496: Redesign ReaderUtil.partitionByLeaf to take an int[] of global doc IDs instead of a
+  ScoreDoc[] and return a PartitionedHits record of per-leaf doc IDs plus per-leaf original input
+  positions (ordinals) for scatter/gather. (Zihan Xu)
+
+* GITHUB#16385: Remove unused public methods in AllGroupHeadsCollector.
+                Update grouping package info to use CollectorManager instead of Collector. (Binlong Gao)
+
 New Features
 ---------------------
 
@@ -458,6 +472,8 @@ Bug Fixes
   GlobalOrdinalsWithScoreCollector, fixing an intermittent failure caused by
   non-associative float addition that #16378 missed. (Luca Cavanna)
 
+* GITHUB#16173: FilterDirectory now delegates copyFrom() to the wrapped directory. (Prithvi S)
+
 Other
 ---------------------
 * GITHUB#16266: Remove deprecated search(Query, Collector) calls in QueryUtils by replacing
@@ -469,6 +485,29 @@ Other
 
 * GITHUB#16300: Reduce memory pressure in TestTermInSetQuery.testDuel stress runs.
   (Sanghun Lee)
+
+======================= Lucene 10.5.1 =======================
+
+Bug Fixes
+---------------------
+
+* GITHUB#16450: Fix DocValuesRangeIterator.docIDRunEnd() returning incorrect run boundaries,
+  causing bulk-scoring to skip or mis-score documents in range and ordinal set queries.
+  (Parker Timmins)
+
+* GITHUB#15125: Handle inconsistent schema on flush with index sorts (Nhat Nguyen)
+
+* GITHUB#16400: Restore HNSW graph reuse during merges under per-field vectors formats,
+  including the default codec. Since 10.4.0 the merger tested the per-field wrapper instead
+  of the unwrapped reader, so every merge rebuilt the graph from scratch. (Jeho Jeong)
+
+* GITHUB#16367: HNSW graph construction now periodically checks whether the surrounding merge has
+  been aborted, so IndexWriter#rollback and abortMerges no longer block until the entire graph is
+  built. (Jeho Jeong)
+
+* GITHUB#16415: Fix scoring on scalar-quantized indexes whose raw float vectors have been dropped.
+  FloatVectorValues#scorer now scores against the quantized vectors, matching the behaviour when
+  raw vectors are present. (Pulkit Gupta)
 
 ======================= Lucene 10.5.0 =======================
 
