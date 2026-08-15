@@ -46,6 +46,7 @@ import org.apache.lucene.tests.search.CheckHits;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
 
 public class TestTermScorer extends LuceneTestCase {
   protected Directory directory;
@@ -316,5 +317,71 @@ public class TestTermScorer extends LuceneTestCase {
     scorer3.nextDocsAndScores(
         DocIdSetIterator.NO_MORE_DOCS, new Bits.MatchNoBits(context.reader().maxDoc()), buffer);
     assertEquals(0, buffer.size);
+  }
+
+  public void testFixedBitSet() throws IOException {
+    int offset = 100;
+    DocIdSetIterator iterator = DocIdSetIterator.all(200);
+    iterator.advance(offset);
+    int[] scoreCalls = new int[1];
+    Scorer scorer =
+        new Scorer() {
+          @Override
+          public int docID() {
+            return iterator.docID();
+          }
+
+          @Override
+          public DocIdSetIterator iterator() {
+            return iterator;
+          }
+
+          @Override
+          public float score() {
+            scoreCalls[0]++;
+            return docID();
+          }
+
+          @Override
+          public float getMaxScore(int upTo) {
+            return 1;
+          }
+        };
+
+    FixedBitSet acceptDocs = new FixedBitSet(10);
+    acceptDocs.set(1);
+    acceptDocs.set(3);
+    DocAndFloatFeatureBuffer buffer = new DocAndFloatFeatureBuffer();
+    scorer.nextDocsAndScores(offset + 10, acceptDocs, offset, buffer);
+
+    assertEquals(2, scoreCalls[0]);
+    assertEquals(2, buffer.size);
+  }
+
+  public void testNextDocsAndScoresWithFixedBitSet() throws IOException {
+    TermQuery query = new TermQuery(new Term(FIELD, "all"));
+    Weight weight = indexSearcher.createWeight(query, ScoreMode.TOP_SCORES, 1f);
+    LeafReaderContext context = indexSearcher.getIndexReader().leaves().getFirst();
+
+    Scorer expectedScorer = weight.scorer(context);
+    assertEquals(5, expectedScorer.iterator().advance(4));
+    float expectedScore = expectedScorer.score();
+
+    Scorer scorer = weight.scorer(context);
+    assertEquals(5, scorer.iterator().advance(4));
+    FixedBitSet acceptDocs = new FixedBitSet(2);
+    acceptDocs.set(1);
+    DocAndFloatFeatureBuffer buffer = new DocAndFloatFeatureBuffer();
+    scorer.nextDocsAndScores(DocIdSetIterator.NO_MORE_DOCS, acceptDocs, 4, buffer);
+    assertEquals(1, buffer.size);
+    assertEquals(5, buffer.docs[0]);
+    assertEquals(expectedScore, buffer.features[0], 0f);
+
+    scorer = weight.scorer(context);
+    scorer.iterator().nextDoc();
+    acceptDocs = new FixedBitSet(context.reader().maxDoc());
+    scorer.nextDocsAndScores(DocIdSetIterator.NO_MORE_DOCS, acceptDocs, 0, buffer);
+    assertEquals(0, buffer.size);
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.docID());
   }
 }

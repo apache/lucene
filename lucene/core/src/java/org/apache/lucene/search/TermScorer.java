@@ -26,6 +26,7 @@ import org.apache.lucene.search.similarities.Similarity.BulkSimScorer;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.LongsRef;
 
 /**
@@ -152,6 +153,32 @@ public final class TermScorer extends Scorer {
       break;
     }
 
+    score(buffer);
+  }
+
+  @Override
+  public void nextDocsAndScores(
+      int upTo, FixedBitSet acceptDocs, int offset, DocAndFloatFeatureBuffer buffer)
+      throws IOException {
+    for (; ; ) {
+      if (impactsDisi != null) {
+        impactsDisi.ensureCompetitive();
+      }
+
+      postingsEnum.nextPostings(upTo, buffer);
+      if (buffer.size != 0) {
+        buffer.apply(acceptDocs, offset);
+      }
+      if (buffer.size == 0 && postingsEnum.docID() < upTo) {
+        continue;
+      }
+      break;
+    }
+
+    score(buffer);
+  }
+
+  private void score(DocAndFloatFeatureBuffer buffer) throws IOException {
     int size = buffer.size;
     if (normValues.length < size) {
       normValues = new long[ArrayUtil.oversize(size, Long.BYTES)];

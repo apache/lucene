@@ -429,6 +429,8 @@ Optimizations
   missing value cannot displace one already in the queue, so the rest can be skipped.
   (Serhiy Bzhezytskyy)
 
+* GITHUB#16515: Apple filter before scoring in MaxScoreBulkScorer. (Ke Wei)
+
 Bug Fixes
 ---------------------
 
