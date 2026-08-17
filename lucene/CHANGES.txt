@@ -283,6 +283,9 @@ Other
 
 * GITHUB#16513: Add docIDRunEnd contract tests for DV formats to BaseDocValuesFormatTestCase. (Tim Allison)
 
+* GITHUB#16512: AssertingScorer's two-phase iterator now delegates docIDRunEnd(),
+  so it exercises that contract in randomized tests. (Tim Allison)
+
 * GITHUB#16074: Ban presized collection#toArray. (Zhou Hui)
 
 * GITHUB#16063: Remove redundant final modifiers. (Zhou Hui)
