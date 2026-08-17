@@ -85,6 +85,27 @@ public final class NotDocIdSet extends DocIdSet {
       }
 
       @Override
+      public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+        assert offset <= doc;
+        int boundedUpTo = Math.min(upTo, maxDoc);
+        while (doc < boundedUpTo) {
+          if (doc < nextSkippedDoc) {
+            // [doc, nextSkippedDoc) is a run of matches.
+            int runEnd = Math.min(nextSkippedDoc, boundedUpTo);
+            bitSet.set(doc - offset, runEnd - offset);
+            doc = runEnd;
+          }
+          while (doc == nextSkippedDoc) {
+            doc += 1;
+            nextSkippedDoc = inIterator.nextDoc();
+          }
+        }
+        if (doc >= maxDoc) {
+          doc = NO_MORE_DOCS;
+        }
+      }
+
+      @Override
       public long cost() {
         // even if there are few docs in this set, iterating over all documents
         // costs O(maxDoc) in all cases

@@ -436,6 +436,8 @@ Optimizations
   missing value cannot displace one already in the queue, so the rest can be skipped.
   (Serhiy Bzhezytskyy)
 
+* GITHUB#16510: Implement intoBitSet for NotDocIdSet and IndexSortSortedNumericDocValuesRangeQuery. (Ke Wei)
+
 Bug Fixes
 ---------------------
 

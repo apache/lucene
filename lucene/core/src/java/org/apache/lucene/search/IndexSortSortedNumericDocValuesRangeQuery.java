@@ -34,6 +34,7 @@ import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.search.SortField.Type;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
+import org.apache.lucene.util.FixedBitSet;
 
 /**
  * A range query that can take advantage of the fact that the index is sorted to speed up execution.
@@ -699,6 +700,27 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
     @Override
     public long cost() {
       return Math.min(delegate.cost(), lastDoc - firstDoc);
+    }
+
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      assert offset <= doc;
+      int boundedUpTo = Math.min(upTo, lastDoc);
+      if (boundedUpTo > doc) {
+        delegate.intoBitSet(boundedUpTo, bitSet, offset);
+      }
+      int delegateDoc = delegate.docID();
+      if (delegateDoc < lastDoc) {
+        doc = delegateDoc;
+      } else {
+        doc = NO_MORE_DOCS;
+      }
+    }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      assert doc != NO_MORE_DOCS;
+      return Math.min(lastDoc, delegate.docIDRunEnd());
     }
   }
 }
