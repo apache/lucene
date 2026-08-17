@@ -279,6 +279,17 @@ public class AssertingScorer extends Scorer {
       }
 
       @Override
+      public int docIDRunEnd() throws IOException {
+        assert state == IteratorState.APPROXIMATING || state == IteratorState.ITERATING : state;
+        int runEnd = in.docIDRunEnd();
+        // >= not >: a two-phase iterator's current doc is not necessarily a match, so
+        // runEnd == docID() ("no known run") is legal, unlike the DocIdSetIterator variant.
+        assert runEnd >= inApproximation.docID()
+            : "docIDRunEnd() " + runEnd + " < approximation docID " + inApproximation.docID();
+        return runEnd;
+      }
+
+      @Override
       public String toString() {
         return "AssertingScorer@asTwoPhaseIterator(" + in + ")";
       }
