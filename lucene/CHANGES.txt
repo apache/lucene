@@ -34,6 +34,10 @@ New Features
   requiring the ICU analysis plugin. Uses a generated switch for fold exceptions with
   Character.toLowerCase() as the default fallback. (Robert Muir, Costin Leau)
 
+* GITHUB#15979: Add a sandboxed de-duplicating HNSW vector format (DedupHnswVectorsFormat) that stores
+  each distinct full-precision vector once, shared across all documents and fields that reference it.
+  (Kaival Parikh)
+
 Improvements
 ---------------------
 
