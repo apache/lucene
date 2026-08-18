@@ -446,7 +446,7 @@ Optimizations
   LatLonDocValuesQuery, XYDocValuesPointInGeometryQuery, and
   SortedNumericDocValuesSetQuery. (Costin Leau)
 
-* GITHUB#16515: Apple filter before scoring in MaxScoreBulkScorer. (Ke Wei)
+* GITHUB#16515: Apply filter before scoring in MaxScoreBulkScorer. (Ke Wei)
 
 Bug Fixes
 ---------------------
