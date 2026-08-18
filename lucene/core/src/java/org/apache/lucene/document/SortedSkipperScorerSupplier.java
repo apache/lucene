@@ -102,9 +102,9 @@ abstract class SortedSkipperScorerSupplier extends ScorerSupplier {
   @Override
   public long cost() throws IOException {
     if (skipperMinDocId == -1) {
-        // Similar to PointValues, IOExceptions needs to be caught and rethrown as
-        // UncheckedIOException
-        computeSkipperDocIds();
+      // Similar to PointValues, IOExceptions needs to be caught and rethrown as
+      // UncheckedIOException
+      computeSkipperDocIds();
     }
     if (skipperMaxDocIdExact) {
       return skipperMaxDocId - skipperMinDocId;

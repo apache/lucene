@@ -17,7 +17,6 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.AbstractCollection;
 import java.util.Arrays;
 import java.util.Collection;
