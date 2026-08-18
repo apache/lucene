@@ -102,8 +102,8 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
         };
     return skipper == null
         ? new DocValuesValueRangeIterator(values, check, 2)
-        : new BulkOrdinalRangeIterator(
-            values, new SkipBlockRangeIterator(skipper, min, max), check, 2);
+        : new BulkSortedRangeIterator(
+            values, new SkipBlockRangeIterator(skipper, min, max), check, 2, min, max);
   }
 
   /**
@@ -305,11 +305,6 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
     }
 
     @Override
-    public int docIDRunEnd() throws IOException {
-      return blockIterator.docID() + 1;
-    }
-
-    @Override
     public final float matchCost() {
       return matchCost;
     }
@@ -342,7 +337,12 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
 
     @Override
     public final int docIDRunEnd() throws IOException {
-      return blockIterator.docIDRunEnd();
+      // docIDRunEnd() may be called on non-matches, so only YES proves that the current doc and the
+      // rest of the run are actual matches.
+      return switch (blockIterator.getMatch()) {
+        case YES -> blockIterator.docIDRunEnd();
+        case YES_IF_PRESENT, MAYBE -> blockIterator.docID();
+      };
     }
 
     @Override
@@ -350,7 +350,7 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
       while (blockIterator.docID() < upTo) {
         int blockStart = blockIterator.docID();
         SkipBlockRangeIterator.Match match = blockIterator.getMatch();
-        int blockEnd = blockEnd(upTo, match);
+        int blockEnd = blockEnd(upTo);
         switch (match) {
           case YES -> bitSet.set(blockStart - offset, blockEnd - offset);
           case YES_IF_PRESENT -> {
@@ -373,12 +373,10 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
     abstract void intoMaybeBlock(int blockStart, int blockEnd, FixedBitSet bitSet, int offset)
         throws IOException;
 
-    // For MAYBE blocks docIDRunEnd() is conservative (doc+1), so use the full block boundary to
-    // evaluate/classify the whole block at once.
-    private int blockEnd(int upTo, SkipBlockRangeIterator.Match match) throws IOException {
-      return match == SkipBlockRangeIterator.Match.MAYBE
-          ? Math.min(upTo, blockIterator.blockEnd())
-          : Math.min(upTo, blockIterator.docIDRunEnd());
+    // For MAYBE/YES_IF_PRESENT blocks this is the block boundary; for YES blocks it may extend
+    // further via multi-level run expansion.
+    private int blockEnd(int upTo) throws IOException {
+      return Math.min(upTo, blockIterator.docIDRunEnd());
     }
 
     @Override
@@ -393,7 +391,7 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
           bitSet.clear(cursor - offset, blockStart - offset);
         }
         SkipBlockRangeIterator.Match match = blockIterator.getMatch();
-        int blockEnd = blockEnd(upTo, match);
+        int blockEnd = blockEnd(upTo);
 
         if (match != SkipBlockRangeIterator.Match.YES
             && bitSet.nextSetBit(blockStart - offset, blockEnd - offset)
@@ -487,9 +485,43 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
   }
 
   /**
-   * Bulk range iterator over ordinal (sorted / sorted-set) doc values. There is no columnar
-   * range-decode like the numeric path, so MAYBE blocks confirm the ordinal predicate one doc at a
-   * time, visiting only docs that have a value.
+   * Bulk range iterator over single-valued sorted (ordinal) doc values. Delegates MAYBE blocks to
+   * {@link SortedDocValues#ordinalRangeIntoBitSet} so that dense packed implementations can use
+   * direct (SIMD) range evaluation over the ordinal array.
+   */
+  private static final class BulkSortedRangeIterator extends BulkBlockRangeIterator {
+
+    private final SortedDocValues sortedValues;
+    private final long minOrd;
+    private final long maxOrd;
+
+    private BulkSortedRangeIterator(
+        SortedDocValues values,
+        SkipBlockRangeIterator blockIterator,
+        IOBooleanSupplier predicate,
+        float matchCost,
+        long minOrd,
+        long maxOrd) {
+      super(values, blockIterator, predicate, matchCost);
+      this.sortedValues = values;
+      this.minOrd = minOrd;
+      this.maxOrd = maxOrd;
+    }
+
+    @Override
+    void intoMaybeBlock(int blockStart, int blockEnd, FixedBitSet bitSet, int offset)
+        throws IOException {
+      // sortedValues is the same instance as disi, so a preceding matches() call may have
+      // moved it beyond blockStart. Adjust the starting point.
+      int from = Math.max(blockStart, sortedValues.docID());
+      sortedValues.ordinalRangeIntoBitSet(from, blockEnd, minOrd, maxOrd, bitSet, offset);
+    }
+  }
+
+  /**
+   * Bulk range iterator over ordinal (sorted-set) doc values. There is no columnar range-decode
+   * like the numeric path, and for multi-valued we must check the predicate (which walks the
+   * per-doc ords), so MAYBE blocks confirm by visiting only docs that have a value.
    */
   private static final class BulkOrdinalRangeIterator extends BulkBlockRangeIterator {
 

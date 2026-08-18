@@ -318,7 +318,7 @@ public class TestConstantScoreScorer extends LuceneTestCase {
       // scattered deletions.
       FixedBitSet liveDocs = new FixedBitSet(maxDoc);
       liveDocs.set(0, maxDoc);
-      int runLength = TestUtil.nextInt(random(), 2 * 4096, 3 * 4096);
+      int runLength = TestUtil.nextInt(random(), 2 * 4096, Math.min(3 * 4096, maxDoc));
       int runStart = TestUtil.nextInt(random(), 0, maxDoc - runLength);
       liveDocs.clear(runStart, runStart + runLength);
       for (int i = 0, scattered = random().nextInt(100); i < scattered; ++i) {

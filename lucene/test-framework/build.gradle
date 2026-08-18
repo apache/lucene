@@ -22,10 +22,10 @@ description = 'Framework for testing Lucene-based applications'
 dependencies {
   moduleApi project(':lucene:core')
 
-  moduleApi (deps.randomizedtesting.runner, {
+  moduleApi(deps.randomizedtesting.runner, {
     exclude group: "junit"
   })
-  moduleApi (deps.junit, {
+  moduleApi(deps.junit, {
     exclude group: "org.hamcrest"
   })
   moduleApi deps.hamcrest

@@ -40,12 +40,12 @@ def snowballStemmerCommit = "2d2e312df56f2ede014a4ffb3e91e6dea43c24be"
 // git commit hash of stopwords https://github.com/snowballstem/snowball-website
 def snowballWebsiteCommit = "424fd1f75044160bb4a92f1daf08cce618459374"
 
-def snowballWorkDir    = file("${buildDir}/snowball")
+def snowballWorkDir = file("${buildDir}/snowball")
 
 def snowballStemmerDir = file("${snowballWorkDir}/stemmers-${snowballStemmerCommit}")
 def snowballWebsiteDir = file("${snowballWorkDir}/website-${snowballWebsiteCommit}")
 
-def snowballScript     = file("${resources}/snowball.sh")
+def snowballScript = file("${resources}/snowball.sh")
 
 def unpackFromZip = { zipFile, targetDir ->
   buildGlobals.fileOps.sync({SyncSpec spec ->
@@ -98,17 +98,17 @@ tasks.register("regenerateSnowball", QuietExec, {
   }
 
   inputs.files fileTree(
-      dir: "src/java/org/tartarus/snowball",
-      include: [
-        "Among.java",
-        "SnowballStemmer.java",
-        "SnowballProgram.java",
-        "ext/*Stemmer.java"
-      ])
+          dir: "src/java/org/tartarus/snowball",
+          include: [
+            "Among.java",
+            "SnowballStemmer.java",
+            "SnowballProgram.java",
+            "ext/*Stemmer.java"
+          ])
 
   inputs.files fileTree(
-      dir: "src/resources/org/apache/lucene/analysis/snowball",
-      include: "*_stop.txt")
+          dir: "src/resources/org/apache/lucene/analysis/snowball",
+          include: "*_stop.txt")
 
   // Don't bother on Windows, won't work.
   if (Os.isFamily(Os.FAMILY_WINDOWS)) {
@@ -232,7 +232,9 @@ if (testRegressionsOption.get()) {
   tasks.withType(Test).configureEach {
     dependsOn cloningTasks
     inputs.dir cloneDirProperty
-    systemProperty "hunspell.dictionaries", cloneDirProperty.map { dir -> dir.asFile.absolutePath }.get()
+    systemProperty "hunspell.dictionaries", cloneDirProperty.map { dir ->
+      dir.asFile.absolutePath
+    }.get()
   }
 }
 
