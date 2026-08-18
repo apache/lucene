@@ -109,6 +109,8 @@ API Changes
 
 * GITHUB#16363: Add API to use a custom `DictionarySuggester` instead of hardcoded `GeneratingSuggester`
 
+* GITHUB#16518: Changes the signature of ScorerSupplier#cost to throw an IOException. (Ignacio Vera)
+
 New Features
 ---------------------
 * GITHUB#16418: Incremental doc-values updates. A set-only doc-values update (NUMERIC or BINARY) is written as a sparse
