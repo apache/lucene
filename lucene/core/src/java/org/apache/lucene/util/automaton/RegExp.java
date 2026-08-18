@@ -742,7 +742,7 @@ public class RegExp {
    */
   private int[] toCaseInsensitiveChar(int codepoint) {
     IntArrayList list = new IntArrayList();
-    CaseFolding.expand(
+    CaseExpansion.expand(
         codepoint,
         (int variant) -> {
           list.add(variant);
@@ -770,7 +770,7 @@ public class RegExp {
 
     // iterate over range, adding codepoint and any alternatives as transitions
     for (int i = start; i <= end; i++) {
-      CaseFolding.expand(
+      CaseExpansion.expand(
           i,
           (int ch) -> {
             scratch.addTransition(state, state, ch);

@@ -34,13 +34,36 @@ public class TestFilterDirectory extends BaseDirectoryTestCase {
     // verify that all methods of Directory are overridden by FilterDirectory,
     // except those under the 'exclude' list
     Set<Method> exclude = new HashSet<>();
-    exclude.add(
-        Directory.class.getMethod(
-            "copyFrom", Directory.class, String.class, String.class, IOContext.class));
     exclude.add(Directory.class.getMethod("openChecksumInput", String.class));
     for (Method m : FilterDirectory.class.getMethods()) {
       if (m.getDeclaringClass() == Directory.class) {
         assertTrue("method " + m.getName() + " not overridden!", exclude.contains(m));
+      }
+    }
+  }
+
+  public void testCopyFromDelegates() throws IOException {
+    try (Directory srcDir = new ByteBuffersDirectory();
+        Directory destDir = new ByteBuffersDirectory()) {
+      try (IndexOutput out = srcDir.createOutput("test.txt", IOContext.DEFAULT)) {
+        out.writeString("hello");
+      }
+      boolean[] delegated = {false};
+      FilterDirectory wrappedDestDir =
+          new FilterDirectory(destDir) {
+            @Override
+            public void copyFrom(Directory from, String src, String dest, IOContext context)
+                throws IOException {
+              delegated[0] = true;
+              in.copyFrom(from, src, dest, context);
+            }
+          };
+      FilterDirectory filterDestDir = new FilterDirectory(wrappedDestDir) {};
+      filterDestDir.copyFrom(srcDir, "test.txt", "copied.txt", IOContext.DEFAULT);
+      assertTrue("copyFrom should delegate to wrapped directory", delegated[0]);
+      assertTrue(slowFileExists(destDir, "copied.txt"));
+      try (IndexInput in = destDir.openInput("copied.txt", IOContext.DEFAULT)) {
+        assertEquals("hello", in.readString());
       }
     }
   }
