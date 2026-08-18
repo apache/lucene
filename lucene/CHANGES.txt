@@ -281,6 +281,13 @@ Build
 Other
 ---------------------
 
+* GITHUB#16513: Add docIDRunEnd contract tests for DV formats to BaseDocValuesFormatTestCase. (Tim Allison)
+
+* GITHUB#16512: AssertingScorer's two-phase iterator now delegates docIDRunEnd(),
+  so it exercises that contract in randomized tests. (Tim Allison)
+
+* GITHUB#16511: Add bulk-scorer vs doc-by-doc differential oracle test. (Tim Allison)
+
 * GITHUB#16074: Ban presized collection#toArray. (Zhou Hui)
 
 * GITHUB#16063: Remove redundant final modifiers. (Zhou Hui)
@@ -356,6 +363,10 @@ New Features
   each distinct full-precision vector once, shared across all documents and fields that reference it.
   (Kaival Parikh)
 
+* GITHUB#16484: Add SpanMultiTermQueryWrapper.FrequentTermsSpanBooleanQueryRewrite.  It's a rewrite method that
+  translates each term into a SpanTermQuery within a {@link SpanOrQuery}, but retains only the most frequent terms so it
+  will not overflow the boolean max clause count. (Alan Woodward, Nishant Mehta, David Smiley)
+
 Improvements
 ---------------------
 
@@ -428,6 +439,12 @@ Optimizations
   sort-missing-first put missing values at the top. When the sort has no tie breaker, a further
   missing value cannot displace one already in the queue, so the rest can be skipped.
   (Serhiy Bzhezytskyy)
+
+* GITHUB#16294: Route constant-score doc-values queries through
+  ConstantScoreScorerSupplier so they can benefit from batch scoring.
+  Affects BinaryRangeFieldRangeQuery, LatLonDocValuesBoxQuery,
+  LatLonDocValuesQuery, XYDocValuesPointInGeometryQuery, and
+  SortedNumericDocValuesSetQuery. (Costin Leau)
 
 * GITHUB#16515: Apple filter before scoring in MaxScoreBulkScorer. (Ke Wei)
 
