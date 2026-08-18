@@ -363,6 +363,10 @@ New Features
   each distinct full-precision vector once, shared across all documents and fields that reference it.
   (Kaival Parikh)
 
+* GITHUB#16484: Add SpanMultiTermQueryWrapper.FrequentTermsSpanBooleanQueryRewrite.  It's a rewrite method that
+  translates each term into a SpanTermQuery within a {@link SpanOrQuery}, but retains only the most frequent terms so it
+  will not overflow the boolean max clause count. (Alan Woodward, Nishant Mehta, David Smiley)
+
 Improvements
 ---------------------
 
