@@ -36,14 +36,14 @@ public class QueryProfilerResult {
   private final long startTime;
   private final long totalTime;
   private final Map<String, Long> queryBreakdowns;
-  private final List<AggregatedQueryLeafProfilerResult> aggregatedQueryLeafBreakdowns;
+  private final List<SliceProfilerResult> sliceProfilerResults;
   private final List<QueryProfilerResult> childrenProfileResults;
 
   public QueryProfilerResult(
       String type,
       String description,
       Map<String, Long> queryBreakdowns,
-      List<AggregatedQueryLeafProfilerResult> aggregatedQueryLeafBreakdowns,
+      List<SliceProfilerResult> sliceProfilerResults,
       List<QueryProfilerResult> childrenProfileResults,
       long startTime,
       long totalTime) {
@@ -51,9 +51,8 @@ public class QueryProfilerResult {
     this.description = description;
     this.queryBreakdowns =
         Objects.requireNonNull(queryBreakdowns, "required breakdown argument missing");
-    this.aggregatedQueryLeafBreakdowns =
-        Objects.requireNonNull(
-            aggregatedQueryLeafBreakdowns, "required slice breakdowns argument missing");
+    this.sliceProfilerResults =
+        Objects.requireNonNull(sliceProfilerResults, "required slice breakdowns argument missing");
     this.childrenProfileResults =
         childrenProfileResults == null ? Collections.emptyList() : childrenProfileResults;
     this.startTime = startTime;
@@ -88,8 +87,9 @@ public class QueryProfilerResult {
     return totalTime;
   }
 
-  public List<AggregatedQueryLeafProfilerResult> getAggregatedQueryLeafBreakdowns() {
-    return Collections.unmodifiableList(aggregatedQueryLeafBreakdowns);
+  /** Returns the per-slice profiling results (each nesting its own partitions). */
+  public List<SliceProfilerResult> getSliceProfilerResults() {
+    return Collections.unmodifiableList(sliceProfilerResults);
   }
 
   /** Returns a list of all profiled children queries */

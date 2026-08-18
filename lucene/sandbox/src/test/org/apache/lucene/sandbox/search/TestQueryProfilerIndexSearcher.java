@@ -62,6 +62,10 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
       doc.add(new StringField("foo", "bar", Store.NO));
       w.addDocument(doc);
     }
+    // Force a single segment so leaf breakdowns aggregate into exactly one partition. Leaf timings
+    // are now keyed per partition (segment/doc-range), so a random multi-segment topology would
+    // otherwise yield one breakdown per segment and make the single-breakdown assertions flaky.
+    w.forceMerge(1);
     reader = w.getReader();
     w.close();
   }
@@ -89,10 +93,12 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
         greaterThan(0L));
 
     // Validate thread level breakdowns now
-    List<AggregatedQueryLeafProfilerResult> queryThreadProfilerResults =
-        results.get(0).getAggregatedQueryLeafBreakdowns();
-    assertEquals(1, queryThreadProfilerResults.size());
-    breakdown = queryThreadProfilerResults.get(0).getTimeBreakdown();
+    List<SliceProfilerResult> sliceProfilerResults = results.get(0).getSliceProfilerResults();
+    assertEquals(1, sliceProfilerResults.size());
+    List<AggregatedQueryLeafProfilerResult> partitionResults =
+        sliceProfilerResults.get(0).getPartitions();
+    assertEquals(1, partitionResults.size());
+    breakdown = partitionResults.get(0).getTimeBreakdown();
     MatcherAssert.assertThat(breakdown.get(QueryProfilerTimingType.COUNT.toString()), equalTo(0L));
     MatcherAssert.assertThat(
         breakdown.get(QueryProfilerTimingType.BUILD_SCORER.toString()), greaterThan(0L));
@@ -173,10 +179,12 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
         greaterThan(0L));
 
     // Validate thread level breakdowns now
-    List<AggregatedQueryLeafProfilerResult> queryThreadProfilerResults =
-        results.get(0).getAggregatedQueryLeafBreakdowns();
-    assertEquals(1, queryThreadProfilerResults.size());
-    breakdown = queryThreadProfilerResults.get(0).getTimeBreakdown();
+    List<SliceProfilerResult> sliceProfilerResults = results.get(0).getSliceProfilerResults();
+    assertEquals(1, sliceProfilerResults.size());
+    List<AggregatedQueryLeafProfilerResult> partitionResults =
+        sliceProfilerResults.get(0).getPartitions();
+    assertEquals(1, partitionResults.size());
+    breakdown = partitionResults.get(0).getTimeBreakdown();
 
     MatcherAssert.assertThat(breakdown.get(QueryProfilerTimingType.COUNT.toString()), equalTo(0L));
     MatcherAssert.assertThat(
@@ -222,10 +230,12 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
         greaterThan(0L));
 
     // Validate thread level breakdowns now
-    List<AggregatedQueryLeafProfilerResult> queryThreadProfilerResults =
-        results.get(0).getAggregatedQueryLeafBreakdowns();
-    assertEquals(1, queryThreadProfilerResults.size());
-    breakdown = queryThreadProfilerResults.get(0).getTimeBreakdown();
+    List<SliceProfilerResult> sliceProfilerResults = results.get(0).getSliceProfilerResults();
+    assertEquals(1, sliceProfilerResults.size());
+    List<AggregatedQueryLeafProfilerResult> partitionResults =
+        sliceProfilerResults.get(0).getPartitions();
+    assertEquals(1, partitionResults.size());
+    breakdown = partitionResults.get(0).getTimeBreakdown();
 
     MatcherAssert.assertThat(
         breakdown.get(QueryProfilerTimingType.COUNT.toString()), greaterThan(0L));
@@ -271,10 +281,12 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
         greaterThan(0L));
 
     // Validate thread level breakdowns now
-    List<AggregatedQueryLeafProfilerResult> queryThreadProfilerResults =
-        results.get(0).getAggregatedQueryLeafBreakdowns();
-    assertEquals(1, queryThreadProfilerResults.size());
-    breakdown = queryThreadProfilerResults.get(0).getTimeBreakdown();
+    List<SliceProfilerResult> sliceProfilerResults = results.get(0).getSliceProfilerResults();
+    assertEquals(1, sliceProfilerResults.size());
+    List<AggregatedQueryLeafProfilerResult> partitionResults =
+        sliceProfilerResults.get(0).getPartitions();
+    assertEquals(1, partitionResults.size());
+    breakdown = partitionResults.get(0).getTimeBreakdown();
 
     MatcherAssert.assertThat(
         breakdown.get(QueryProfilerTimingType.COUNT.toString()), greaterThan(0L));

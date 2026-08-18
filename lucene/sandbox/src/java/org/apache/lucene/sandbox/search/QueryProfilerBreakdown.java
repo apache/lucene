@@ -36,10 +36,18 @@ class QueryProfilerBreakdown {
 
   private final QueryLeafProfilerThreadAggregator queryLeafProfilerAggregator;
 
-  /** Sole constructor. */
+  /**
+   * Creates a breakdown with its own private {@link PartitionContext}. Used when a breakdown is
+   * exercised in isolation (e.g. tests) and no partition identity is threaded in from a searcher.
+   */
   public QueryProfilerBreakdown() {
+    this(new PartitionContext());
+  }
+
+  /** Sole constructor. */
+  public QueryProfilerBreakdown(PartitionContext partitionContext) {
     queryProfilerTimers = new HashMap<>();
-    this.queryLeafProfilerAggregator = new QueryLeafProfilerThreadAggregator();
+    this.queryLeafProfilerAggregator = new QueryLeafProfilerThreadAggregator(partitionContext);
 
     for (QueryProfilerTimingType timingType : QUERY_LEVEL_TIMING_TYPE) {
       queryProfilerTimers.put(timingType, new QueryProfilerTimer());
@@ -73,8 +81,8 @@ class QueryProfilerBreakdown {
       breakdownMap.put(type.toString() + "_count", queryProfilerTimers.get(type).getCount());
     }
 
-    final List<AggregatedQueryLeafProfilerResult> threadProfilerResults =
-        queryLeafProfilerAggregator.getAggregatedQueryLeafProfilerResults();
+    final List<SliceProfilerResult> sliceProfilerResults =
+        queryLeafProfilerAggregator.getSliceProfilerResults();
     queryStartTime = Math.min(queryStartTime, queryLeafProfilerAggregator.getQueryStartTime());
     queryTotalTime += queryLeafProfilerAggregator.getQueryTotalTime();
 
@@ -82,7 +90,7 @@ class QueryProfilerBreakdown {
         getTypeFromQuery(query),
         getDescriptionFromQuery(query),
         Collections.unmodifiableMap(breakdownMap),
-        threadProfilerResults,
+        sliceProfilerResults,
         childrenProfileResults,
         queryStartTime,
         queryTotalTime);
