@@ -96,7 +96,7 @@ public class MaxScoreBulkScorerFilterBenchmark {
         // so multiple clauses often match the same doc, forcing PQ activity.
         for (int t = 0; t < numClauses; t++) {
           int period = 7 + t * 11; // 7, 18, 29, 40, ... ~14% avg density
-          int offset = (t * 7919) % period;
+          int offset = (int) ((t * 7919L) % period);
           if ((i + offset) % period == 0) {
             doc.add(new TextField("text", "word" + t, Field.Store.NO));
           }
