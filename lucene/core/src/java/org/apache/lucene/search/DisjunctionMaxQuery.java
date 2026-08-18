@@ -171,7 +171,7 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
           }
 
           @Override
-          public long cost() {
+          public long cost() throws IOException {
             if (cost == -1) {
               long cost = 0;
               for (ScorerSupplier ss : scorerSuppliers) {
