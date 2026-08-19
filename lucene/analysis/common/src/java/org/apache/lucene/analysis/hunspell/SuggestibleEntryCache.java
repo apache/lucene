@@ -43,6 +43,10 @@ public class SuggestibleEntryCache {
   }
 
   static SuggestibleEntryCache buildCache(WordStorage storage) {
+    return buildCache(storage, () -> {});
+  }
+
+  static SuggestibleEntryCache buildCache(WordStorage storage, Runnable checkCanceled) {
     var consumer =
         new Consumer<FlyweightEntry>() {
           final IntObjectHashMap<SectionBuilder> builders = new IntObjectHashMap<>();
@@ -50,6 +54,7 @@ public class SuggestibleEntryCache {
 
           @Override
           public void accept(FlyweightEntry entry) {
+            checkCanceled.run();
             CharsRef root = entry.root();
             if (root.length > Short.MAX_VALUE) {
               throw new UnsupportedOperationException(
