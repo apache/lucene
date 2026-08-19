@@ -392,7 +392,7 @@ Optimizations
 ---------------------
 * GITHUB#16416: Use ArrayDeque instead of ArrayList for FIFO output buffering in
   JapaneseCompletionFilter, avoiding repeated element shifting on removal. (Luiz Lima)
-  
+
 * GITHUB#16394: Add DocIdSetIterator#intoArray, which DisjunctionDISIApproximation implements by
   loading a window of doc IDs through #intoBitSet rather than one nextDoc() call per match.
   ConstantScoreScorer#nextDocsAndScores now builds on it, which avoids a priority-queue update per
