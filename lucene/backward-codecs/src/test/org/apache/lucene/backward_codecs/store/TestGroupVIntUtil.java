@@ -80,7 +80,8 @@ public class TestGroupVIntUtil extends LuceneTestCase {
 
       values[0] = 0xFFFFFFFFL + 1;
       try (IndexOutput out = dir.createOutput("overflow", IOContext.DEFAULT)) {
-        assertThrows(ArithmeticException.class, () -> GroupVIntUtil.writeGroupVInts(out, values, 4));
+        assertThrows(
+            ArithmeticException.class, () -> GroupVIntUtil.writeGroupVInts(out, values, 4));
       }
     }
   }

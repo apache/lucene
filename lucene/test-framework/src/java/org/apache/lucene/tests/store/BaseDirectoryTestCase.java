@@ -1483,7 +1483,6 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
     }
   }
 
-
   public void testGroupVInt() throws IOException {
     try (Directory dir = getDirectory(createTempDir("testGroupVInt"))) {
       // test fallback to default implementation of readGroupVInt
