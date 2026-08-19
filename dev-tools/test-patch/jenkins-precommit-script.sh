@@ -39,7 +39,7 @@ mkdir -p "${ARTIFACTS}"
 
 PIDMAX=10000 # Arbitrary limit; may need to revisit
 
-YETUS_RELEASE=0.7.0
+YETUS_RELEASE=0.15.0
 YETUS_TARBALL="yetus-${YETUS_RELEASE}.tar.gz"
 echo "Downloading Yetus ${YETUS_RELEASE}"
 curl -L "https://api.github.com/repos/apache/yetus/tarball/rel/${YETUS_RELEASE}" -o "${YETUS_TARBALL}"
