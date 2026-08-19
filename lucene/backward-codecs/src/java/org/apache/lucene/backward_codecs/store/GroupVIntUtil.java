@@ -132,8 +132,11 @@ public final class GroupVIntUtil {
   }
 
   /**
-   * Encode integers using group-varint. It uses {@link DataOutput#writeVInt VInt} to encode tail
-   * values that are not enough for a group.
+   * Encode legacy postings values using group-varint. Tail values that do not fill a full group are
+   * encoded with {@link DataOutput#writeVInt(int)}.
+   *
+   * <p>This variant exists for backward codecs that still use {@code long[]} buffers even though
+   * all values must fit into an unsigned 32-bit integer.
    */
   public static void writeGroupVInts(DataOutput out, long[] values, int limit) throws IOException {
     writeGroupVInts(out, new byte[MAX_LENGTH_PER_GROUP], values, limit);
