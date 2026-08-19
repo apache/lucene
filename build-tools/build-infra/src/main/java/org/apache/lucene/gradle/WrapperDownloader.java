@@ -21,6 +21,7 @@ import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.Reader;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -28,6 +29,7 @@ import java.lang.annotation.Target;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -86,7 +88,7 @@ public class WrapperDownloader {
     }
 
     Properties properties = new Properties();
-    try (InputStream in = Files.newInputStream(wrapperProperties)) {
+    try (Reader in = Files.newBufferedReader(wrapperProperties, StandardCharsets.UTF_8)) {
       properties.load(in);
     }
     String wrapperUrl = requireProperty(properties, wrapperProperties, "wrapperUrl");
