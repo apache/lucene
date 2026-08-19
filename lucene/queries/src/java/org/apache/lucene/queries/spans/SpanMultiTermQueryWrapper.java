@@ -310,7 +310,12 @@ public class SpanMultiTermQueryWrapper<Q extends MultiTermQuery> extends SpanQue
           new ScoringRewrite<>() {
             @Override
             protected PriorityQueue<ScoreTerm> getTopLevelBuilder() {
-              return PriorityQueue.usingComparator(maxSize, order);
+              return new PriorityQueue<>(maxSize) {
+                @Override
+                protected boolean lessThan(ScoreTerm a, ScoreTerm b) {
+                  return order.compare(a, b) < 0;
+                }
+              };
             }
 
             @Override
