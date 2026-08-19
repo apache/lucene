@@ -117,13 +117,18 @@ configure(project(":lucene:core")) {
   })
 }
 
+// Resolve the version catalog entry in this script's scope; looking it up
+// from within the configured project would trigger an implicit (deprecated)
+// property lookup in parent projects.
+def jflexDependency = deps.jflex
+
 configure(project(":lucene:analysis:common")) {
   configurations {
     jflex
   }
 
   dependencies {
-    jflex deps.jflex
+    jflex jflexDependency
   }
 
   def regenerateTlds = tasks.register("regenerateTlds", {
