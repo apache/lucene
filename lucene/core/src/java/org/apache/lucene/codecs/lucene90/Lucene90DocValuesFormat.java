@@ -190,7 +190,8 @@ public final class Lucene90DocValuesFormat extends DocValuesFormat {
   static final int VERSION_START = 0;
   static final int VERSION_SKIPPER_SEPARATE_FILE = 1;
   static final int VERSION_SKIPPER_MAX_VALUE_COUNT = 2;
-  static final int VERSION_CURRENT = VERSION_SKIPPER_MAX_VALUE_COUNT;
+  static final int VERSION_SKIPPER_STATS_FORMAT = 3;
+  static final int VERSION_CURRENT = VERSION_SKIPPER_STATS_FORMAT;
 
   // indicates docvalues type
   static final byte NUMERIC = 0;
@@ -219,7 +220,7 @@ public final class Lucene90DocValuesFormat extends DocValuesFormat {
   //   * 16 bytes: min / max value,
   //   * 8 bytes:  min / max docID
   //   * 4 bytes: number of documents
-  private static final long SKIP_INDEX_INTERVAL_BYTES = 29L;
+  private static final long SKIP_INDEX_INTERVAL_BYTES_LEGACY = 29L;
   // number of intervals represented as a shift to create a new level, this is 1 << 3 == 8
   // intervals.
   static final int SKIP_INDEX_LEVEL_SHIFT = 3;
@@ -227,21 +228,30 @@ public final class Lucene90DocValuesFormat extends DocValuesFormat {
   // Increasing this number, it increases how much heap we need at index time.
   // we currently need (1 * 8 * 8 * 8)  = 512 accumulators on heap
   static final int SKIP_INDEX_MAX_LEVEL = 4;
-  // number of bytes to skip when skipping a level. It does not take into account the
-  // current interval that is being read.
-  static final long[] SKIP_INDEX_JUMP_LENGTH_PER_LEVEL = new long[SKIP_INDEX_MAX_LEVEL];
+  // Legacy precomputed jump table for reading segments written before VERSION_SKIPPER_STATS_FORMAT.
+  // Each entry gives the number of bytes to skip past the remaining levels when a level rejects.
+  static final long[] SKIP_INDEX_JUMP_LENGTH_PER_LEVEL_LEGACY = new long[SKIP_INDEX_MAX_LEVEL];
+
+  // Stat type tags for the stats-based .dvs format (VERSION_SKIPPER_STATS_FORMAT and above).
+  // Each level entry is length-prefixed and contains a sequence of type-tagged stats.
+  // New stats can be appended without a version bump: readers that encounter an unknown
+  // type tag skip to the entry end via the length prefix.
+  // This must be a compile-time constant for use in switch statements.
+  static final byte SKIP_STAT_RANGE = 0x01; // == SkipStat.RANGE.id()
 
   static {
     // Size of the interval minus read bytes (1 byte for level and 4 bytes for maxDocID)
-    SKIP_INDEX_JUMP_LENGTH_PER_LEVEL[0] = SKIP_INDEX_INTERVAL_BYTES - 5L;
+    SKIP_INDEX_JUMP_LENGTH_PER_LEVEL_LEGACY[0] = SKIP_INDEX_INTERVAL_BYTES_LEGACY - 5L;
     for (int level = 1; level < SKIP_INDEX_MAX_LEVEL; level++) {
       // jump from previous level
-      SKIP_INDEX_JUMP_LENGTH_PER_LEVEL[level] = SKIP_INDEX_JUMP_LENGTH_PER_LEVEL[level - 1];
+      SKIP_INDEX_JUMP_LENGTH_PER_LEVEL_LEGACY[level] =
+          SKIP_INDEX_JUMP_LENGTH_PER_LEVEL_LEGACY[level - 1];
       // nodes added by new level
-      SKIP_INDEX_JUMP_LENGTH_PER_LEVEL[level] +=
-          (1 << (level * SKIP_INDEX_LEVEL_SHIFT)) * SKIP_INDEX_INTERVAL_BYTES;
+      SKIP_INDEX_JUMP_LENGTH_PER_LEVEL_LEGACY[level] +=
+          (1 << (level * SKIP_INDEX_LEVEL_SHIFT)) * SKIP_INDEX_INTERVAL_BYTES_LEGACY;
       // remove the byte levels added in the previous level
-      SKIP_INDEX_JUMP_LENGTH_PER_LEVEL[level] -= (1 << ((level - 1) * SKIP_INDEX_LEVEL_SHIFT));
+      SKIP_INDEX_JUMP_LENGTH_PER_LEVEL_LEGACY[level] -=
+          (1 << ((level - 1) * SKIP_INDEX_LEVEL_SHIFT));
     }
   }
 }
