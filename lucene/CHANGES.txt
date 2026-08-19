@@ -96,7 +96,8 @@ API Changes
 * GITHUB#: Add junit5/jupiter support to the test-framework module. (Dawid Weiss)
 
 * GITHUB#16052: Remove IOException from LeafReader#getPointValues, LeafReader#terms,
-  LeafReader#getDocCount signatures. (Ignacio Vera)
+  LeafReader#getDocCount, LeafReader#getSumDocFreq and LeafReader#getSumTotalTermFreq
+  signatures. (Ignacio Vera)
 
 * GITHUB#16388: Remove IOException from LeafReader#getDocValuesSkipper signature.
   (Alan Woodward)
@@ -108,8 +109,15 @@ API Changes
 
 * GITHUB#16363: Add API to use a custom `DictionarySuggester` instead of hardcoded `GeneratingSuggester`
 
+* GITHUB#16518: Changes the signature of ScorerSupplier#cost to throw an IOException. (Ignacio Vera)
+
 New Features
 ---------------------
+* GITHUB#16418: Incremental doc-values updates. A set-only doc-values update (NUMERIC or BINARY) is written as a sparse
+  "delta" overlay holding just the updated documents and layered over the base column at read time, instead of
+  rewriting the whole column, turning per-update write amplification from O(column) into O(updated docs). Enabled by
+  default; disable with IndexWriterConfig#setMaxDocValuesOverlays(0). (Jim Ferenczi)
+
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
   modern Hangul conjoining jamo before KoreanTokenizer. (Mingi Jeong)
 
@@ -125,6 +133,8 @@ New Features
 * GITHUB#15508: Use native vectorization in Lucene. (Ankur Goel, Shubham Chaudhary, Dawid Weiss)
 
 * GITHUB#15818: Add BM25 k3 query-term frequency saturation to BM25Similarity. (Sagar Upadhyaya)
+
+* GITHUB#16383: Add fp16 vector encoding support. (Pulkit Gupta)
 
 Improvements
 ---------------------
@@ -156,6 +166,8 @@ Improvements
 
 * GITHUB#16313: Refactored the Hunspell dictionary parser to use switch-based dispatch for affix directives,
   improving readability of the parsing logic. (Rajat Jain)
+
+* GITHUB#16499: Clean up BytesRefHash. Remove dead lastCount and unused close(), fix stale comments (neoremind)
 
 Optimizations
 ---------------------
@@ -229,6 +241,8 @@ Bug Fixes
 
 * Make VectorScorer#bulk default method lazily position its iterator on first use. (Michael Marshall)
 
+* GITHUB#16409: Fix filtered HNSW search boundary handling to match the general HNSW searcher. (Mingi Jeong)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
@@ -268,6 +282,13 @@ Build
 
 Other
 ---------------------
+
+* GITHUB#16513: Add docIDRunEnd contract tests for DV formats to BaseDocValuesFormatTestCase. (Tim Allison)
+
+* GITHUB#16512: AssertingScorer's two-phase iterator now delegates docIDRunEnd(),
+  so it exercises that contract in randomized tests. (Tim Allison)
+
+* GITHUB#16511: Add bulk-scorer vs doc-by-doc differential oracle test. (Tim Allison)
 
 * GITHUB#16074: Ban presized collection#toArray. (Zhou Hui)
 
@@ -314,10 +335,20 @@ Other
 API Changes
 ---------------------
 
+* GITHUB#14399: Add a default LeafFieldComparator#disableSkipping method so document skipping can be
+  disabled per segment. (Serhiy Bzhezytskyy)
+
 * GITHUB#16286: Introduce BinaryDocValues#binaryValues to help speed up the
   retrieval of many binary doc values at once. (Costin Leau)
 
 * GITHUB#16363: Add API to use a custom `DictionarySuggester` instead of hardcoded `GeneratingSuggester`
+
+* GITHUB#16496: Redesign ReaderUtil.partitionByLeaf to take an int[] of global doc IDs instead of a
+  ScoreDoc[] and return a PartitionedHits record of per-leaf doc IDs plus per-leaf original input
+  positions (ordinals) for scatter/gather. (Zihan Xu)
+
+* GITHUB#16385: Remove unused public methods in AllGroupHeadsCollector.
+                Update grouping package info to use CollectorManager instead of Collector. (Binlong Gao)
 
 New Features
 ---------------------
@@ -325,6 +356,18 @@ New Features
 * GITHUB#16243: Add StableTflSimilarity, a similarity that estimates term rarity from term length
   and document length instead of corpus statistics such as document frequency. It also supports k3
   query-term frequency saturation. (Tianxiao Wei)
+
+* GITHUB#16371, GITHUB#14389: Add CaseFoldingFilter for Unicode simple case folding without
+  requiring the ICU analysis plugin. Uses a generated switch for fold exceptions with
+  Character.toLowerCase() as the default fallback. (Robert Muir, Costin Leau)
+
+* GITHUB#15979: Add a sandboxed de-duplicating HNSW vector format (DedupHnswVectorsFormat) that stores
+  each distinct full-precision vector once, shared across all documents and fields that reference it.
+  (Kaival Parikh)
+
+* GITHUB#16484: Add SpanMultiTermQueryWrapper.FrequentTermsSpanBooleanQueryRewrite.  It's a rewrite method that
+  translates each term into a SpanTermQuery within a {@link SpanOrQuery}, but retains only the most frequent terms so it
+  will not overflow the boolean max clause count. (Alan Woodward, Nishant Mehta, David Smiley)
 
 Improvements
 ---------------------
@@ -337,12 +380,27 @@ Improvements
 
 * GITHUB#16271: Add detail to KNN no-match explanations. (Jakub Slowinski)
 
+* GITHUB#16423: Add (configurable) guards for complexity of expressions. Previously
+  the expressions parser could throw StackOverflowError on deeply nested expressions
+  or also cause VerifyError and other LinkageErrors when the expression was to complex.
+  The new code allows to add a hard limit for nesting (default is 1024) and no longer
+  throws virtual machine errors.  (Uwe Schindler, Seth Kraft)
+
+* GITHUB#16497: Allow Java Panama vector API on GraalVM for JDK 25+. (Abhinav Chinnala)
+
 Optimizations
 ---------------------
 * GITHUB#16416: Use ArrayDeque instead of ArrayList for FIFO output buffering in
   JapaneseCompletionFilter, avoiding repeated element shifting on removal. (Luiz Lima)
+  
+* GITHUB#16394: Add DocIdSetIterator#intoArray, which DisjunctionDISIApproximation implements by
+  loading a window of doc IDs through #intoBitSet rather than one nextDoc() call per match.
+  ConstantScoreScorer#nextDocsAndScores now builds on it, which avoids a priority-queue update per
+  matching doc under MaxScoreBulkScorer's term-at-a-time scoring. (Chengxi Shi)
 
 * GITHUG#16280: Single-pass writeString fast path for short strings in ByteBuffersDataOutput (neoremind)
+
+* GITHUB#16220: Implement WANDScorer.advanceShallow() to enable block-max optimizations when nested in conjunctions. (Prithvi S)
 
 * GITHUB#16146: Speed up no-score filtered-optional Boolean queries by routing dense conjunctions with cached FixedBitSet filters
   through ConstantScoreBulkScorer, which batches matches in bulk via DocIdStream. (Costin Leau)
@@ -376,8 +434,39 @@ Optimizations
 * GITHUB#16380: Speed up filtered disjunction queries when the filter is part of the
   index sort by advancing the filter before calculating impacts. (Alan Woodward)
 
+* GITHUB#16424: Use secondary or lower sorts to accelerate XXDocValuesRangeQueries if the primary
+  sort field is empty or only contains a single value. (Alan Woodward)
+
+* GITHUB#16180: Add bulk intoBitSet for SortedDocValues ordinal ranges. (Prithvi S)
+
+* GITHUB#12370: Sorting on a string field no longer scans every document when the top-N queue fills
+  with missing values -- whether because the field is missing from the whole index, or because
+  sort-missing-first put missing values at the top. When the sort has no tie breaker, a further
+  missing value cannot displace one already in the queue, so the rest can be skipped.
+  (Serhiy Bzhezytskyy)
+
+* GITHUB#16294: Route constant-score doc-values queries through
+  ConstantScoreScorerSupplier so they can benefit from batch scoring.
+  Affects BinaryRangeFieldRangeQuery, LatLonDocValuesBoxQuery,
+  LatLonDocValuesQuery, XYDocValuesPointInGeometryQuery, and
+  SortedNumericDocValuesSetQuery. (Costin Leau)
+
 Bug Fixes
 ---------------------
+
+* GITHUB#16450: Fix DocValuesRangeIterator.docIDRunEnd() returning incorrect run boundaries,
+  causing bulk-scoring to skip or mis-score documents in range and ordinal set queries.
+  (Parker Timmins)
+
+* GITHUB#14399: TopFieldCollector now decides per segment whether the search sort is a prefix of the
+  index sort, instead of caching the decision from the first segment. This fixes incorrect results
+  when searching a MultiReader that combines indexes with different index sorts. (Serhiy Bzhezytskyy)
+
+* GITHUB#16251: Fix UpdateGraphsUtils#computeJoinSet to not request more coverage for a node than
+  the node's degree. Previously nodes with a degree of 1 were always forced into the join set,
+  which made the join set degenerate to the whole graph on hub-and-spoke shaped HNSW graphs.
+  (Mayya Sharipova)
+
 * GITHUB#16350: Disable bulk-scoring in monitor queries. (Alan Woodward)
 
 * GITHUB#16378: Accumulate join Total/Avg scores in double precision in
@@ -394,9 +483,21 @@ Bug Fixes
 * GITHUB#16389: Fix double-counting of the underlying Automaton in
   AutomatonQuery#ramBytesUsed. (Sasilekha R)
 
+* GITHUB#16405: PointInSetQuery#ramBytesUsed now accounts for the retained
+  lowerPoint and upperPoint bounds arrays. (Sasilekha R)
+
 * GITHUB#16367: HNSW graph construction now periodically checks whether the surrounding merge has
   been aborted, so IndexWriter#rollback and abortMerges no longer block until the entire graph is
   built. (Jeho Jeong)
+
+* GITHUB#16428: Accumulate join Total/Avg scores in double precision in
+  GlobalOrdinalsWithScoreCollector, fixing an intermittent failure caused by
+  non-associative float addition that #16378 missed. (Luca Cavanna)
+
+* GITHUB#16173: FilterDirectory now delegates copyFrom() to the wrapped directory. (Prithvi S)
+
+* GITHUB#16452: Fix over-allocation in MemoryAccountingBitsetCollectorManager.Result#bitSet, which
+  is now sized to highestMatchedDoc + 1 instead of the full searched range. (Sasilekha R)
 
 Other
 ---------------------
@@ -409,6 +510,29 @@ Other
 
 * GITHUB#16300: Reduce memory pressure in TestTermInSetQuery.testDuel stress runs.
   (Sanghun Lee)
+
+======================= Lucene 10.5.1 =======================
+
+Bug Fixes
+---------------------
+
+* GITHUB#16450: Fix DocValuesRangeIterator.docIDRunEnd() returning incorrect run boundaries,
+  causing bulk-scoring to skip or mis-score documents in range and ordinal set queries.
+  (Parker Timmins)
+
+* GITHUB#15125: Handle inconsistent schema on flush with index sorts (Nhat Nguyen)
+
+* GITHUB#16400: Restore HNSW graph reuse during merges under per-field vectors formats,
+  including the default codec. Since 10.4.0 the merger tested the per-field wrapper instead
+  of the unwrapped reader, so every merge rebuilt the graph from scratch. (Jeho Jeong)
+
+* GITHUB#16367: HNSW graph construction now periodically checks whether the surrounding merge has
+  been aborted, so IndexWriter#rollback and abortMerges no longer block until the entire graph is
+  built. (Jeho Jeong)
+
+* GITHUB#16415: Fix scoring on scalar-quantized indexes whose raw float vectors have been dropped.
+  FloatVectorValues#scorer now scores against the quantized vectors, matching the behaviour when
+  raw vectors are present. (Pulkit Gupta)
 
 ======================= Lucene 10.5.0 =======================
 
