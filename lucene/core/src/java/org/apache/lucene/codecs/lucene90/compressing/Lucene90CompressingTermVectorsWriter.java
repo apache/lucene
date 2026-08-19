@@ -26,6 +26,7 @@ import java.util.Collection;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
+import java.util.zip.CRC32C;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.codecs.TermVectorsWriter;
@@ -43,6 +44,7 @@ import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataInput;
+import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -69,7 +71,14 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
   static final String VECTORS_INDEX_CODEC_NAME = "Lucene90TermVectorsIndex";
 
   static final int VERSION_START = 0;
-  static final int VERSION_CURRENT = VERSION_START;
+
+  /**
+   * Each chunk is followed by a CRC32C of its compressed bytes, so that a corrupt chunk is rejected
+   * before it reaches the decompressor.
+   */
+  static final int VERSION_CHUNK_CHECKSUM = 1;
+
+  static final int VERSION_CURRENT = VERSION_CHUNK_CHECKSUM;
   static final int META_VERSION_START = 0;
 
   static final int PACKED_BLOCK_SIZE = 64;
@@ -378,6 +387,36 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
     return termSuffixes.size() >= chunkSize || pendingDocs.size() >= maxDocsPerChunk;
   }
 
+  /**
+   * Passes bytes through to a delegate while computing a CRC32C of them, so that the compressed
+   * bytes of a chunk can be checksummed as they are written rather than buffered and hashed
+   * afterwards.
+   */
+  private static final class ChecksummingDataOutput extends DataOutput {
+    private final DataOutput in;
+    private final CRC32C crc = new CRC32C();
+
+    ChecksummingDataOutput(DataOutput in) {
+      this.in = in;
+    }
+
+    @Override
+    public void writeByte(byte b) throws IOException {
+      crc.update(b);
+      in.writeByte(b);
+    }
+
+    @Override
+    public void writeBytes(byte[] b, int offset, int length) throws IOException {
+      crc.update(b, offset, length);
+      in.writeBytes(b, offset, length);
+    }
+
+    long getChecksum() {
+      return crc.getValue();
+    }
+  }
+
   private void flush(boolean force) throws IOException {
     assert force != triggerFlush();
     final int chunkDocs = pendingDocs.size();
@@ -421,7 +460,13 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
       // compress terms and payloads and write them to the output
       // using ByteBuffersDataInput reduce memory copy
       ByteBuffersDataInput content = termSuffixes.toDataInput();
-      compressor.compress(content, vectorsStream);
+      // A CRC32C of the compressed bytes, so that a corrupt chunk is rejected before it reaches the
+      // decompressor rather than surfacing from inside it. See the same check in
+      // Lucene90CompressingStoredFieldsWriter, and the optional per-block checksum of the LZ4 frame
+      // format, whose "intention is to detect data corruption [...] immediately, before decoding".
+      ChecksummingDataOutput checksummed = new ChecksummingDataOutput(vectorsStream);
+      compressor.compress(content, checksummed);
+      vectorsStream.writeInt((int) checksummed.getChecksum());
     }
 
     // reset
