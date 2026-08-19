@@ -111,41 +111,31 @@ public final class LongAggregationsFacetRecorder implements FacetRecorder {
       values = new IntObjectHashMap<>();
     }
 
-    OrdinalIterator dimOrds = facetCutter.getOrdinalsToRollup();
-    if (dimOrds != null) {
-      for (int dimOrd = dimOrds.nextOrd(); dimOrd != NO_MORE_ORDS; dimOrd = dimOrds.nextOrd()) {
-        rollup(values.get(dimOrd), dimOrd, facetCutter);
+    if (facetCutter.needsRemapping()) {
+      IntObjectHashMap<long[]> remapped = new IntObjectHashMap<>();
+      for (IntObjectHashMap.IntObjectCursor<long[]> e : values) {
+        OrdinalIterator finals = facetCutter.remapOrd(e.key);
+        for (int g = finals.nextOrd(); g != NO_MORE_ORDS; g = finals.nextOrd()) {
+          long[] dst = remapped.get(g);
+          if (dst == null) {
+            // Reuse the source array when target ord equals source ord (e.g. multi-valued taxonomy
+            // or the leaf ordinal in a single-valued rollup) to avoid an unnecessary clone.
+            dst = (g == e.key) ? e.value : e.value.clone();
+            remapped.put(g, dst);
+          } else {
+            for (int i = 0; i < reducers.length; i++) {
+              dst[i] = reducers[i].reduce(dst[i], e.value[i]);
+            }
+          }
+        }
       }
+      values = remapped;
     }
   }
 
   @Override
   public boolean contains(int ordinal) {
     return values.containsKey(ordinal);
-  }
-
-  /**
-   * Rollup all child values of ord to accum, and return accum. Accum param can be null. In this
-   * case, if recursive rollup for every child returns null, this method returns null. Otherwise,
-   * accum is initialized.
-   */
-  private long[] rollup(long[] accum, int ord, FacetCutter facetCutter) throws IOException {
-    OrdinalIterator childOrds = facetCutter.getChildrenOrds(ord);
-    for (int nextChild = childOrds.nextOrd();
-        nextChild != NO_MORE_ORDS;
-        nextChild = childOrds.nextOrd()) {
-      long[] current = rollup(values.get(nextChild), nextChild, facetCutter);
-      if (current != null) {
-        if (accum == null) {
-          accum = new long[longValuesSources.length];
-          values.put(ord, accum);
-        }
-        for (int i = 0; i < longValuesSources.length; i++) {
-          accum[i] = reducers[i].reduce(accum[i], current[i]);
-        }
-      }
-    }
-    return accum;
   }
 
   /** Return aggregated value for facet ordinal and aggregation ID, or zero as default. */
