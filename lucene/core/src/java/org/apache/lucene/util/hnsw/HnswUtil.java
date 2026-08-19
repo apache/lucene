@@ -202,8 +202,8 @@ public class HnswUtil {
    * In graph theory, "connected components" are really defined only for undirected (ie
    * bidirectional) graphs. Our graphs are directed, because of pruning, but they are *mostly*
    * undirected. In this case we compute components starting from a single node so what we are
-   * really measuring is whether the graph is a "rooted graph". TODO: measure whether the graph is
-   * "strongly connected" ie there is a path from every node to every other node.
+   * really measuring is whether the graph is a "rooted graph", not whether it is "strongly
+   * connected".
    */
   public static boolean graphIsRooted(IndexReader reader, String vectorField) throws IOException {
     for (LeafReaderContext ctx : reader.leaves()) {
