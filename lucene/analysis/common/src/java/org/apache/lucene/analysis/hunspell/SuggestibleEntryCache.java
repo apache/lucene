@@ -42,10 +42,6 @@ public class SuggestibleEntryCache {
     }
   }
 
-  static SuggestibleEntryCache buildCache(WordStorage storage) {
-    return buildCache(storage, () -> {});
-  }
-
   static SuggestibleEntryCache buildCache(WordStorage storage, Runnable checkCanceled) {
     var consumer =
         new Consumer<FlyweightEntry>() {
