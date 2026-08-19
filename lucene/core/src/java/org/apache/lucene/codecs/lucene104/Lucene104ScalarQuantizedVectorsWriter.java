@@ -129,7 +129,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   public void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException {
     rawVectorDelegate.flush(maxDoc, sortMap);
     for (FieldWriter<?> field : fields) {
-      final float[] clusterCenter = field.centroid();
+      final float[] clusterCenter = field.computeCentroid();
       if (segmentWriteState.infoStream.isEnabled(QUANTIZED_VECTOR_COMPONENT)) {
         segmentWriteState.infoStream.message(
             QUANTIZED_VECTOR_COMPONENT, "Vectors' count:" + field.getVectors().size());
@@ -597,7 +597,10 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       return finished && flatFieldVectorsWriter.isFinished();
     }
 
-    /** The ordinal's stored vector as fp32, ready for quantization (unit-length for COSINE). */
+    /**
+     * The ordinal's stored vector as fp32, ready for quantization. Scaled to unit length for
+     * COSINE. DOT_PRODUCT vectors are expected to already be unit length.
+     */
     abstract float[] floatVectorValue(int ord);
 
     /**
@@ -620,10 +623,10 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     }
 
     /**
-     * The mean of the accumulated vectors, unit-length for COSINE, used as the quantization
+     * Returns the mean of the accumulated vectors, unit-length for COSINE, used as the quantization
      * centroid. All zeroes when no vectors were added.
      */
-    protected final float[] centroid() {
+    protected final float[] computeCentroid() {
       float[] centroid = new float[dim];
       int vectorCount = getVectors().size();
       if (vectorCount > 0) {

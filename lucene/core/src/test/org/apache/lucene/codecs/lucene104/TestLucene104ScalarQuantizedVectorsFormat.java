@@ -122,10 +122,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
   public void testFloat16Search() throws Exception {
     String fieldName = "field";
     int numVectors = random().nextInt(99, 500);
-    int dims = random().nextInt(4, 65);
-    if (dims % 2 == 1) {
-      dims++;
-    }
+    int dims = 2 * random().nextInt(2, 33);
     VectorSimilarityFunction similarityFunction = randomSimilarity();
     KnnFloat16VectorField knnField =
         new KnnFloat16VectorField(
@@ -266,17 +263,14 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
 
   /**
    * fp16 counterpart of {@link #testQuantizedVectorsWriteAndRead()}: indexes float16 vectors and
-   * verifies the persisted quantized bytes + corrective terms match a reference re-quantization.
-   * The reference mirrors the writer's fp16 path exactly &mdash; inflate fp16-&gt;fp32 (normalizing
-   * for COSINE) before quantizing &mdash; so the comparison is byte-exact, not MAE-based.
+   * verifies the persisted quantized bytes and corrective terms match a reference re-quantization.
+   * The reference mirrors the writer's fp16 path exactly, inflating fp16 to fp32 and normalizing
+   * for COSINE before quantizing, so the comparison is byte-exact rather than MAE-based.
    */
   public void testFloat16QuantizedVectorsWriteAndRead() throws IOException {
     String fieldName = "field";
     int numVectors = random().nextInt(99, 500);
-    int dims = random().nextInt(4, 65);
-    if (dims % 2 == 1) {
-      dims++;
-    }
+    int dims = 2 * random().nextInt(2, 33);
 
     VectorSimilarityFunction similarityFunction = randomSimilarity();
     KnnFloat16VectorField knnField =
@@ -358,10 +352,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
   public void testReadQuantizedFloat16VectorWithEmptyRawVectors() throws Exception {
     String vectorFieldName = "vec1";
     int numVectors = 1 + random().nextInt(50);
-    int dim = random().nextInt(64) + 1;
-    if (dim % 2 == 1) {
-      dim++;
-    }
+    int dim = 2 * random().nextInt(1, 33);
     // Quantization error bound, plus a small slack for the extra fp16 rounding applied on top of
     // quantization (both the stored input and the dequantized output are fp16-rounded).
     float eps = (1f / (float) (1 << getQuantizationBits())) + 1e-3f;
@@ -438,10 +429,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
   public void testFloat16ScoresUnchangedWithEmptyRawVectors() throws Exception {
     String vectorFieldName = "vec1";
     int numVectors = 1 + random().nextInt(50);
-    int dim = random().nextInt(64) + 1;
-    if (dim % 2 == 1) {
-      dim++;
-    }
+    int dim = 2 * random().nextInt(1, 33);
     VectorSimilarityFunction similarityFunction = randomSimilarity();
     short[] query = randomNormalizedFloat16Vector(dim);
 

@@ -200,21 +200,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
       return null;
     }
     return vectorScorer.getRandomVectorScorer(
-        fi.similarityFunction,
-        OffHeapScalarQuantizedVectorValues.load(
-            fi.ordToDocDISIReaderConfiguration,
-            fi.dimension,
-            fi.size,
-            new OptimizedScalarQuantizer(fi.similarityFunction),
-            fi.scalarEncoding,
-            fi.similarityFunction,
-            vectorScorer,
-            fi.centroid,
-            fi.centroidDP,
-            fi.vectorDataOffset,
-            fi.vectorDataLength,
-            quantizedVectorData),
-        target);
+        fi.similarityFunction, loadQuantizedVectorValues(fi), target);
   }
 
   @Override
@@ -229,21 +215,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
       return null;
     }
     return vectorScorer.getRandomVectorScorer(
-        fi.similarityFunction,
-        OffHeapScalarQuantizedVectorValues.load(
-            fi.ordToDocDISIReaderConfiguration,
-            fi.dimension,
-            fi.size,
-            new OptimizedScalarQuantizer(fi.similarityFunction),
-            fi.scalarEncoding,
-            fi.similarityFunction,
-            vectorScorer,
-            fi.centroid,
-            fi.centroidDP,
-            fi.vectorDataOffset,
-            fi.vectorDataLength,
-            quantizedVectorData),
-        target);
+        fi.similarityFunction, loadQuantizedVectorValues(fi), target);
   }
 
   @Override
@@ -270,20 +242,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
 
     FloatVectorValues rawFloatVectorValues = rawVectorsReader.getFloatVectorValues(field);
 
-    OffHeapScalarQuantizedVectorValues sqvv =
-        OffHeapScalarQuantizedVectorValues.load(
-            fi.ordToDocDISIReaderConfiguration,
-            fi.dimension,
-            fi.size,
-            new OptimizedScalarQuantizer(fi.similarityFunction),
-            fi.scalarEncoding,
-            fi.similarityFunction,
-            vectorScorer,
-            fi.centroid,
-            fi.centroidDP,
-            fi.vectorDataOffset,
-            fi.vectorDataLength,
-            quantizedVectorData);
+    OffHeapScalarQuantizedVectorValues sqvv = loadQuantizedVectorValues(fi);
 
     if (rawFloatVectorValues.size() == 0) {
       // Full-precision vectors were dropped. Wrap the dequantizing read view with sqvv so scorer()
@@ -332,20 +291,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
 
     Float16VectorValues rawFloat16VectorValues = rawVectorsReader.getFloat16VectorValues(field);
 
-    OffHeapScalarQuantizedVectorValues sqvv =
-        OffHeapScalarQuantizedVectorValues.load(
-            fi.ordToDocDISIReaderConfiguration,
-            fi.dimension,
-            fi.size,
-            new OptimizedScalarQuantizer(fi.similarityFunction),
-            fi.scalarEncoding,
-            fi.similarityFunction,
-            vectorScorer,
-            fi.centroid,
-            fi.centroidDP,
-            fi.vectorDataOffset,
-            fi.vectorDataLength,
-            quantizedVectorData);
+    OffHeapScalarQuantizedVectorValues sqvv = loadQuantizedVectorValues(fi);
 
     if (rawFloat16VectorValues.size() == 0) {
       // The raw float16 vectors were dropped, so reads reconstruct values by dequantizing. Pair
@@ -535,6 +481,11 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
               + " or "
               + VectorEncoding.FLOAT16);
     }
+    return loadQuantizedVectorValues(fi);
+  }
+
+  private OffHeapScalarQuantizedVectorValues loadQuantizedVectorValues(FieldEntry fi)
+      throws IOException {
     return OffHeapScalarQuantizedVectorValues.load(
         fi.ordToDocDISIReaderConfiguration,
         fi.dimension,

@@ -42,7 +42,7 @@ import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncod
  *
  * <p>Used for read-only indexes whose raw float16 vectors have been dropped to save storage: only
  * the scalar-quantized bytes remain, so {@link #vectorValue(int)} reconstructs float16 values by
- * dequantizing them, with some precision loss.
+ * dequantizing them, with some precision loss relative to the original float16 vectors.
  *
  * @lucene.internal
  */
@@ -83,6 +83,8 @@ abstract class OffHeapScalarQuantizedFloat16VectorValues extends Float16VectorVa
     this.correctiveValues = new float[3];
     this.encoding = encoding;
     int docPackedLength = encoding.getDocPackedLength(dimension);
+    // Each vector is stored as its packed quantized bytes, then three corrective floats (lower
+    // interval, upper interval, additional correction) and the quantized component sum.
     this.byteSize = docPackedLength + (Float.BYTES * 3) + Integer.BYTES;
     this.byteBuffer = ByteBuffer.allocate(docPackedLength);
     this.vectorValue = new short[dimension];
@@ -112,30 +114,8 @@ abstract class OffHeapScalarQuantizedFloat16VectorValues extends Float16VectorVa
     slice.readFloats(correctiveValues, 0, 3);
     quantizedComponentSum = slice.readInt();
 
-    // unpack bytes
-    switch (encoding) {
-      case PACKED_NIBBLE ->
-          OffHeapScalarQuantizedVectorValues.unpackNibbles(byteValue, unpackedByteVectorValue);
-      case SINGLE_BIT_QUERY_NIBBLE ->
-          OptimizedScalarQuantizer.unpackBinary(byteValue, unpackedByteVectorValue);
-      case DIBIT_QUERY_NIBBLE ->
-          OptimizedScalarQuantizer.untransposeDibit(byteValue, unpackedByteVectorValue);
-      case UNSIGNED_BYTE, SEVEN_BIT -> {
-        deQuantize(
-            byteValue,
-            vectorValue,
-            encoding.getBits(),
-            correctiveValues[0],
-            correctiveValues[1],
-            centroid);
-        lastOrd = targetOrd;
-        return vectorValue;
-      }
-    }
-
-    // dequantize
     deQuantize(
-        unpackedByteVectorValue,
+        unpackStoredBytes(),
         vectorValue,
         encoding.getBits(),
         correctiveValues[0],
@@ -144,6 +124,26 @@ abstract class OffHeapScalarQuantizedFloat16VectorValues extends Float16VectorVa
 
     lastOrd = targetOrd;
     return vectorValue;
+  }
+
+  /**
+   * Expands the quantized bytes in {@link #byteValue} to one byte per dimension. Encodings that
+   * already store one byte per dimension return {@link #byteValue} itself.
+   */
+  private byte[] unpackStoredBytes() {
+    switch (encoding) {
+      case PACKED_NIBBLE ->
+          OffHeapScalarQuantizedVectorValues.unpackNibbles(byteValue, unpackedByteVectorValue);
+      case SINGLE_BIT_QUERY_NIBBLE ->
+          OptimizedScalarQuantizer.unpackBinary(byteValue, unpackedByteVectorValue);
+      case DIBIT_QUERY_NIBBLE ->
+          OptimizedScalarQuantizer.untransposeDibit(byteValue, unpackedByteVectorValue);
+      // one byte per dimension, so the stored bytes are already unpacked
+      case UNSIGNED_BYTE, SEVEN_BIT -> {
+        return byteValue;
+      }
+    }
+    return unpackedByteVectorValue;
   }
 
   public OptimizedScalarQuantizer.QuantizationResult getCorrectiveTerms(int targetOrd)
