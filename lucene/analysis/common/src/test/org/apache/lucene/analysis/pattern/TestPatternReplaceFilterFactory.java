@@ -18,6 +18,7 @@ package org.apache.lucene.analysis.pattern;
 
 import java.io.Reader;
 import java.io.StringReader;
+import org.apache.lucene.analysis.TokenFilterFactory;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
 
@@ -43,5 +44,15 @@ public class TestPatternReplaceFilterFactory extends BaseTokenStreamFactoryTestC
                   "PatternReplace", "pattern", "something", "bogusArg", "bogusValue");
             });
     assertTrue(expected.getMessage().contains("Unknown parameters"));
+  }
+
+  /** Test that normalizer is working */
+  public void testNormalize() throws Exception {
+    Reader reader = new StringReader("123");
+    TokenStream stream = whitespaceMockTokenizer(reader);
+    TokenFilterFactory factory =
+        tokenFilterFactory("PatternReplace", "pattern", "(-?\\d+)", "replacement", "000$1");
+    stream = factory.normalize(stream);
+    assertTokenStreamContents(stream, new String[] {"000123"});
   }
 }
