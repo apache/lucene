@@ -493,6 +493,9 @@ Bug Fixes
 
 * GITHUB#16173: FilterDirectory now delegates copyFrom() to the wrapped directory. (Prithvi S)
 
+* GITHUB#16452: Fix over-allocation in MemoryAccountingBitsetCollectorManager.Result#bitSet, which
+  is now sized to highestMatchedDoc + 1 instead of the full searched range. (Sasilekha R)
+
 Other
 ---------------------
 * GITHUB#16266: Remove deprecated search(Query, Collector) calls in QueryUtils by replacing
