@@ -107,39 +107,58 @@ import org.apache.lucene.util.fst.Util;
  * @lucene.experimental
  */
 public class FSTTermsWriter extends FieldsConsumer {
-  static final String TERMS_EXTENSION = "tfp";
+  static final String TERMS_META_EXTENSION = "tfp.meta";
+  static final String TERMS_DATA_EXTENSION = "tfp.data";
   static final String TERMS_CODEC_NAME = "FSTTerms";
   public static final int TERMS_VERSION_START = 2;
   public static final int TERMS_VERSION_CURRENT = TERMS_VERSION_START;
 
   final PostingsWriterBase postingsWriter;
   final FieldInfos fieldInfos;
-  IndexOutput out;
+  // IndexOutput for FST metadata
+  IndexOutput metaOut;
+  // IndexOutput for FST data
+  IndexOutput dataOut;
   final int maxDoc;
   final List<FieldMetaData> fields = new ArrayList<>();
 
   public FSTTermsWriter(SegmentWriteState state, PostingsWriterBase postingsWriter)
       throws IOException {
-    final String termsFileName =
+    final String termsMetaFileName =
         IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, TERMS_EXTENSION);
+            state.segmentInfo.name, state.segmentSuffix, TERMS_META_EXTENSION);
+    final String termsDataFileName =
+        IndexFileNames.segmentFileName(
+            state.segmentInfo.name, state.segmentSuffix, TERMS_DATA_EXTENSION);
 
     this.postingsWriter = postingsWriter;
     this.fieldInfos = state.fieldInfos;
-    this.out = state.directory.createOutput(termsFileName, state.context);
     this.maxDoc = state.segmentInfo.maxDoc();
 
+    IndexOutput metaOut = null, dataOut = null;
     try {
+      metaOut = state.directory.createOutput(termsMetaFileName, state.context);
+      dataOut = state.directory.createOutput(termsDataFileName, state.context);
+
       CodecUtil.writeIndexHeader(
-          out,
+          metaOut,
           TERMS_CODEC_NAME,
           TERMS_VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
 
-      this.postingsWriter.init(out, state);
+      CodecUtil.writeIndexHeader(
+          dataOut,
+          TERMS_CODEC_NAME,
+          TERMS_VERSION_CURRENT,
+          state.segmentInfo.getId(),
+          state.segmentSuffix);
+
+      this.postingsWriter.init(metaOut, state);
+      this.metaOut = metaOut;
+      this.dataOut = dataOut;
     } catch (Throwable t) {
-      IOUtils.closeWhileSuppressingExceptions(t, out);
+      IOUtils.closeWhileSuppressingExceptions(t, metaOut, dataOut);
       throw t;
     }
   }
@@ -184,27 +203,30 @@ public class FSTTermsWriter extends FieldsConsumer {
 
   @Override
   public void close() throws IOException {
-    if (out != null) {
-      try (IndexOutput _ = out;
-          postingsWriter) {
-        // write field summary
-        final long dirStart = out.getFilePointer();
+    if (metaOut != null) {
+      assert dataOut != null;
+      try (IndexOutput _ = metaOut;
+          IndexOutput _ = dataOut;
+          postingsWriter) { // write field summary
+        final long dirStart = metaOut.getFilePointer();
 
-        out.writeVInt(fields.size());
+        metaOut.writeVInt(fields.size());
         for (FieldMetaData field : fields) {
-          out.writeVInt(field.fieldInfo.number);
-          out.writeVLong(field.numTerms);
+          metaOut.writeVInt(field.fieldInfo.number);
+          metaOut.writeVLong(field.numTerms);
           if (field.fieldInfo.getIndexOptions() != IndexOptions.DOCS) {
-            out.writeVLong(field.sumTotalTermFreq);
+            metaOut.writeVLong(field.sumTotalTermFreq);
           }
-          out.writeVLong(field.sumDocFreq);
-          out.writeVInt(field.docCount);
-          field.dict.save(out, out);
+          metaOut.writeVLong(field.sumDocFreq);
+          metaOut.writeVInt(field.docCount);
+          field.fstMetadata.save(metaOut);
         }
-        writeTrailer(out, dirStart);
-        CodecUtil.writeFooter(out);
+        writeTrailer(metaOut, dirStart);
+        CodecUtil.writeFooter(metaOut);
+        CodecUtil.writeFooter(dataOut);
       } finally {
-        out = null;
+        metaOut = null;
+        dataOut = null;
       }
     }
   }
@@ -215,7 +237,7 @@ public class FSTTermsWriter extends FieldsConsumer {
     public final long sumTotalTermFreq;
     public final long sumDocFreq;
     public final int docCount;
-    public final FST<FSTTermOutputs.TermData> dict;
+    public final FST.FSTMetadata<FSTTermOutputs.TermData> fstMetadata;
 
     public FieldMetaData(
         FieldInfo fieldInfo,
@@ -223,13 +245,13 @@ public class FSTTermsWriter extends FieldsConsumer {
         long sumTotalTermFreq,
         long sumDocFreq,
         int docCount,
-        FST<FSTTermOutputs.TermData> fst) {
+        FST.FSTMetadata<FSTTermOutputs.TermData> fstMetadata) {
       this.fieldInfo = fieldInfo;
       this.numTerms = numTerms;
       this.sumTotalTermFreq = sumTotalTermFreq;
       this.sumDocFreq = sumDocFreq;
       this.docCount = docCount;
-      this.dict = fst;
+      this.fstMetadata = fstMetadata;
     }
   }
 
@@ -247,7 +269,8 @@ public class FSTTermsWriter extends FieldsConsumer {
       this.fieldInfo = fieldInfo;
       postingsWriter.setField(fieldInfo);
       this.outputs = new FSTTermOutputs(fieldInfo);
-      this.fstCompiler = new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
+      this.fstCompiler =
+          new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).dataOutput(dataOut).build();
     }
 
     public void finishTerm(BytesRef text, BlockTermState state) throws IOException {
@@ -268,10 +291,14 @@ public class FSTTermsWriter extends FieldsConsumer {
     public void finish(long sumTotalTermFreq, long sumDocFreq, int docCount) throws IOException {
       // save FST dict
       if (numTerms > 0) {
-        final FST<FSTTermOutputs.TermData> fst =
-            FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
         fields.add(
-            new FieldMetaData(fieldInfo, numTerms, sumTotalTermFreq, sumDocFreq, docCount, fst));
+            new FieldMetaData(
+                fieldInfo,
+                numTerms,
+                sumTotalTermFreq,
+                sumDocFreq,
+                docCount,
+                fstCompiler.compile()));
       }
     }
   }
