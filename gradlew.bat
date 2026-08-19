@@ -77,25 +77,6 @@ SET GRADLE_TEMPDIR=%DIRNAME%\.gradle\tmp
 IF NOT EXIST "%GRADLE_TEMPDIR%" MKDIR "%GRADLE_TEMPDIR%"
 SET DEFAULT_JVM_OPTS=%DEFAULT_JVM_OPTS% "-Djava.io.tmpdir=%GRADLE_TEMPDIR%"
 
-@rem LUCENE-9266: verify and download the gradle wrapper jar if we don't have one.
-set GRADLE_WRAPPER_JAR=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar
-set GRADLE_WRAPPER_CHECKSUM=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar.sha256
-
-@rem Read the expected hash from .sha256 file
-for /f "tokens=1 usebackq" %%A in ("%GRADLE_WRAPPER_CHECKSUM%") do (
-    set "EXPECTED=%%A"
-)
-@rem Get actual SHA-256 hash using certutil
-for /f "tokens=* delims=" %%H in ('certutil -hashfile "%GRADLE_WRAPPER_JAR%" SHA256 ^| findstr /R /B /I /X "[0-9a-f]*"') do (
-    set "ACTUAL=%%H"
-)
-
-if /i "%ACTUAL%" NEQ "%EXPECTED%" (
-  "%JAVA_EXE%" -XX:TieredStopAtLevel=1 %JAVA_OPTS% "%APP_HOME%/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/WrapperDownloader.java" "%GRADLE_WRAPPER_JAR%"
-  IF %ERRORLEVEL% EQU 1 goto failWithJvmMessage
-  IF %ERRORLEVEL% NEQ 0 goto exitWithErrorLevel
-)
-
 @rem Generate gradle.properties if it does not exist
 IF NOT EXIST "%APP_HOME%\gradle.properties" (
   @rem local expansion is needed to check ERRORLEVEL inside control blocks.
@@ -105,21 +86,34 @@ IF NOT EXIST "%APP_HOME%\gradle.properties" (
   endlocal
 )
 
-goto launchGradle
+@rem A manually-installed gradle-wrapper.jar takes priority over our source-based bootstrap.
+SET GRADLE_WRAPPER_JAR=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar
+SET GRADLE_WRAPPER_SRC=%APP_HOME%\gradle\wrapper\GradleWrapper.java
+SET GRADLE_WRAPPER_CACHE=%APP_HOME%\.gradle\tmp\gradle-wrapper-classes
+SET "JAVAC_EXE=%JAVA_EXE:java.exe=javac.exe%"
 
-:failWithJvmMessage
-@rem https://github.com/apache/lucene/pull/819
-echo Error: Something went wrong. Make sure you're using the minimum required Java version to compile Lucene.
-goto exitWithErrorLevel
-
-:launchGradle
+@rem Compile GradleWrapper.java once and reuse the compiled classes, instead of paying the
+@rem single-file-source-launch recompile cost on every invocation. Falls back to source-launch
+@rem (slower, but self-healing) if compilation isn't available or fails for any reason.
+@rem No staleness check: if you edit GradleWrapper.java, delete %GRADLE_WRAPPER_CACHE% to force
+@rem a recompile (this file changes rarely, so keeping this simple is worth that manual step).
+IF NOT EXIST "%GRADLE_WRAPPER_JAR%" IF NOT EXIST "%GRADLE_WRAPPER_CACHE%\GradleWrapper.class" (
+  mkdir "%GRADLE_WRAPPER_CACHE%" 2>nul
+  "%JAVAC_EXE%" -d "%GRADLE_WRAPPER_CACHE%" "%GRADLE_WRAPPER_SRC%" >nul 2>nul
+)
 
 @rem END OF LUCENE CUSTOMIZATION
 
 @rem Execute Gradle
 @rem endlocal doesn't take effect until after the line is parsed and variables are expanded
 @rem which allows us to clear the local environment before executing the java command
-endlocal & "%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -jar "%APP_HOME%\gradle\wrapper\gradle-wrapper.jar" %* & call :exitWithErrorLevel
+IF EXIST "%GRADLE_WRAPPER_JAR%" (
+  endlocal & "%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -jar "%GRADLE_WRAPPER_JAR%" %* & call :exitWithErrorLevel
+) ELSE IF EXIST "%GRADLE_WRAPPER_CACHE%\GradleWrapper.class" (
+  endlocal & "%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -cp "%GRADLE_WRAPPER_CACHE%" GradleWrapper %* & call :exitWithErrorLevel
+) ELSE (
+  endlocal & "%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" "%GRADLE_WRAPPER_SRC%" %* & call :exitWithErrorLevel
+)
 
 :exitWithErrorLevel
 @rem Use "%COMSPEC%" /c exit to allow operators to work properly in scripts
