@@ -50,7 +50,7 @@ public class NLPNERTaggerOp {
     return names;
   }
 
-  public synchronized void reset() {
+  public void reset() {
     nameFinder.clearAdaptiveData();
   }
 }
