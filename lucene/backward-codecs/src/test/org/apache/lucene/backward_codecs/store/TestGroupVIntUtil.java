@@ -59,7 +59,7 @@ public class TestGroupVIntUtil extends LuceneTestCase {
       final int size = 32;
       final long[] values = new long[size];
       final long[] restore = new long[size];
-      values[0] = 1L << 31; // Valid unsigned 32-bit value; would be negative if interpreted as int.
+      values[0] = 1L << 31; // values[0] = 2147483648 as long, but -2147483648 if interpreted as int.
 
       for (int i = 0; i < size; i++) {
         if (random().nextBoolean()) {
