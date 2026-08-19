@@ -7,6 +7,10 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
+* GITHUB#15113: Move long[] group varint support from core to backward-codecs. The legacy long[]
+  GroupVIntUtil and DataOutput APIs were removed from core and are now only available for backward
+  codecs. (Subhramit Basu)
+
 * GITHUB#15929: Rename CollectionStatistics to FieldStats and TermStatistics to TermStats. (Zhou Hui)
 
 * GITHUB#15763: Deprecate Operations.complement() method. This operation can be slow and is not
