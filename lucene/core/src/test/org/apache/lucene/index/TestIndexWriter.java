@@ -62,6 +62,7 @@ import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.KeywordField;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
@@ -204,6 +205,56 @@ public class TestIndexWriter extends LuceneTestCase {
     Document doc = new Document();
     doc.add(newTextField("content", "aaa", Field.Store.NO));
     writer.addDocument(doc);
+  }
+
+  public void testLiveDocs() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter writer =
+        new IndexWriter(
+            dir,
+            new IndexWriterConfig(new MockAnalyzer(random()))
+                .setMergePolicy(NoMergePolicy.INSTANCE));
+
+    Document doc;
+    doc = new Document();
+    doc.add(new KeywordField("_id", "1", Field.Store.NO));
+    doc.add(new KeywordField("version", "1", Field.Store.NO));
+    writer.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new KeywordField("_id", "1", Field.Store.NO));
+    doc.add(new KeywordField("version", "2", Field.Store.NO));
+    writer.updateDocument(new Term("_id", "1"), doc);
+
+    doc = new Document();
+    doc.add(new KeywordField("foo", "1", Field.Store.NO));
+    doc.add(new KeywordField("version", "1", Field.Store.NO));
+    writer.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new KeywordField("foo", "1", Field.Store.NO));
+    doc.add(new KeywordField("version", "2", Field.Store.NO));
+    writer.updateDocument(new Term("foo", "1"), doc);
+    writer.flush(); // delCountOnFlush > 0, liveDocs != null.
+
+    doc = new Document();
+    doc.add(new KeywordField("_id", "2", Field.Store.NO));
+    doc.add(new KeywordField("version", "1", Field.Store.NO));
+    writer.updateDocument(new Term("_id", "3"), doc);
+
+    doc = new Document();
+    doc.add(new KeywordField("foo", "2", Field.Store.NO));
+    doc.add(new KeywordField("version", "1", Field.Store.NO));
+    writer.updateDocument(new Term("foo", "3"), doc);
+    writer.flush(); // delCountOnFlush is 0, liveDocs is null.
+
+    DirectoryReader reader = writer.getReader(true, false);
+
+    assertEquals(2, ((StandardDirectoryReader) reader).getSegmentInfos().info(0).getDelCount());
+    assertEquals(0, ((StandardDirectoryReader) reader).getSegmentInfos().info(1).getDelCount());
+    reader.close();
+    writer.close();
+    dir.close();
   }
 
   static void addDocWithIndex(IndexWriter writer, int index) throws IOException {
