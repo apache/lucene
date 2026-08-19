@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
@@ -61,6 +62,30 @@ public class ByteVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
       KnnSearchStrategy searchStrategy) {
     super(field, resultSimilarity, decay, filter, searchStrategy);
     this.target = Objects.requireNonNull(target, "target");
+  }
+
+  private ByteVectorSimilarityQuery(
+      String field,
+      byte[] target,
+      float resultSimilarity,
+      float decay,
+      Query filter,
+      KnnSearchStrategy searchStrategy,
+      Set<QueryReadHint> readHints) {
+    super(field, resultSimilarity, decay, filter, searchStrategy, readHints);
+    this.target = Objects.requireNonNull(target, "target");
+  }
+
+  /**
+   * Return a copy of this query that advertises the given {@link QueryReadHint}s. Unlike {@link
+   * IndexSearcher#setReadHints} (searcher-wide), these ride on the query itself and override the
+   * searcher's, so one shared {@link IndexSearcher} can run hinted and un-hinted queries at once.
+   *
+   * @lucene.experimental
+   */
+  public ByteVectorSimilarityQuery withReadHints(Set<QueryReadHint> readHints) {
+    return new ByteVectorSimilarityQuery(
+        field, target, resultSimilarity, decay, filter, searchStrategy, readHints);
   }
 
   /**
