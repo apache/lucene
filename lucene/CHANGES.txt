@@ -159,9 +159,6 @@ Improvements
 
 Optimizations
 ---------------------
-* GITHUB#16416: Use ArrayDeque instead of ArrayList for FIFO output buffering in
-  JapaneseCompletionFilter, avoiding repeated element shifting on removal. (Luiz Lima)
-
 * GITHUB#16382: WildcardQuery.toAutomaton now collapses consecutive unescaped '*'
   wildcards into a single any-string automaton, avoiding a quadratic blow-up in
   automaton size for patterns with many repeated asterisks. (Vismay Tiwari)
@@ -342,6 +339,9 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#16416: Use ArrayDeque instead of ArrayList for FIFO output buffering in
+  JapaneseCompletionFilter, avoiding repeated element shifting on removal. (Luiz Lima)
+
 * GITHUG#16280: Single-pass writeString fast path for short strings in ByteBuffersDataOutput (neoremind)
 
 * GITHUB#16146: Speed up no-score filtered-optional Boolean queries by routing dense conjunctions with cached FixedBitSet filters
