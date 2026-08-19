@@ -91,6 +91,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.FixedBitSetCollector;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
@@ -493,7 +494,7 @@ public class TestJoinUtil extends LuceneTestCase {
           indexSearcher.search(
               joinQuery,
               new MultiCollectorManager(
-                  new BitSetCollectorManager(indexSearcher.getIndexReader().maxDoc()),
+                  FixedBitSetCollector.createManager(indexSearcher.getIndexReader().maxDoc()),
                   new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE)));
       final BitSet actualResult = (BitSet) searchResults[0];
       assertBitSet(expectedResult, actualResult, indexSearcher);
@@ -1583,7 +1584,7 @@ public class TestJoinUtil extends LuceneTestCase {
             indexSearcher.search(
                 joinQuery,
                 new MultiCollectorManager(
-                    new BitSetCollectorManager(indexSearcher.getIndexReader().maxDoc()),
+                    FixedBitSetCollector.createManager(indexSearcher.getIndexReader().maxDoc()),
                     new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE)));
         // Asserting bit set...
         assertBitSet(expectedResult, (BitSet) searchResults[0], indexSearcher);
@@ -2080,31 +2081,6 @@ public class TestJoinUtil extends LuceneTestCase {
     }
   }
 
-  private static class BitSetCollector extends SimpleCollector {
-
-    private final BitSet bitSet;
-    private int docBase;
-
-    private BitSetCollector(BitSet bitSet) {
-      this.bitSet = bitSet;
-    }
-
-    @Override
-    public void collect(int doc) throws IOException {
-      bitSet.set(docBase + doc);
-    }
-
-    @Override
-    protected void doSetNextReader(LeafReaderContext context) throws IOException {
-      docBase = context.docBase;
-    }
-
-    @Override
-    public org.apache.lucene.search.ScoreMode scoreMode() {
-      return org.apache.lucene.search.ScoreMode.COMPLETE_NO_SCORES;
-    }
-  }
-
   private abstract static class JoinValueCollector extends SimpleCollector {
     final Map<BytesRef, JoinScore> localMap = new HashMap<>();
     final String fromField;
@@ -2133,8 +2109,12 @@ public class TestJoinUtil extends LuceneTestCase {
               entry.getKey(),
               entry.getValue(),
               (existing, src) -> {
-                if (src.minScore < existing.minScore) existing.minScore = src.minScore;
-                if (src.maxScore > existing.maxScore) existing.maxScore = src.maxScore;
+                if (src.minScore < existing.minScore) {
+                  existing.minScore = src.minScore;
+                }
+                if (src.maxScore > existing.maxScore) {
+                  existing.maxScore = src.maxScore;
+                }
                 existing.total += src.total;
                 existing.count += src.count;
                 return existing;
@@ -2248,30 +2228,6 @@ public class TestJoinUtil extends LuceneTestCase {
     @Override
     public org.apache.lucene.search.ScoreMode scoreMode() {
       return org.apache.lucene.search.ScoreMode.COMPLETE_NO_SCORES;
-    }
-  }
-
-  private static class BitSetCollectorManager
-      implements CollectorManager<BitSetCollector, FixedBitSet> {
-
-    private final int maxDoc;
-
-    BitSetCollectorManager(int maxDoc) {
-      this.maxDoc = maxDoc;
-    }
-
-    @Override
-    public BitSetCollector newCollector() {
-      return new BitSetCollector(new FixedBitSet(maxDoc));
-    }
-
-    @Override
-    public FixedBitSet reduce(Collection<BitSetCollector> collectors) {
-      FixedBitSet result = new FixedBitSet(maxDoc);
-      for (BitSetCollector c : collectors) {
-        result.or((FixedBitSet) c.bitSet);
-      }
-      return result;
     }
   }
 }
