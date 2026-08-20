@@ -111,6 +111,12 @@ API Changes
 
 * GITHUB#16518: Changes the signature of ScorerSupplier#cost to throw an IOException. (Ignacio Vera)
 
+* GITHUB#16530: Directory#copyFrom is now abstract so that implementations choose copy behavior
+  explicitly. BaseDirectory provides the standard routing implementation via the new protected
+  final copyThroughCreateOutput helper. FilterDirectory#copyFrom now routes through createOutput
+  so that per-file bookkeeping in subclasses applies to copied files; subclasses that want an
+  optimized copy (e.g. HardlinkCopyDirectoryWrapper) may override to delegate. (Tim Allison)
+
 New Features
 ---------------------
 * GITHUB#16418: Incremental doc-values updates. A set-only doc-values update (NUMERIC or BINARY) is written as a sparse
