@@ -5,7 +5,7 @@ antlr = "4.13.2"
 # test assertions
 assertj = "3.27.7"
 # analysis/phonetic/ algorithms, gradle build checksums
-commons-codec = "1.22.0"
+commons-codec = "1.22.1"
 # benchmark/ bzip2 compression
 commons-compress = "1.28.0"
 # See ecj-lint.gradle (used for more linting).
@@ -17,7 +17,7 @@ flexmark = "0.64.8"
 # @keep This is GJF version for java source code formatting
 googleJavaFormat = "1.33.0-markdown"
 # gradle build support
-groovy = "5.0.7"
+groovy = "5.0.8"
 # test assertions
 hamcrest = "3.0"
 # analysis/icu/, gradle regeneration unicode support
@@ -34,9 +34,9 @@ jmh = "1.37"
 jts = "1.20.0"
 # unit tests
 junit = "4.13.2"
-junit5 = "6.1.2"
+junit5 = "6.1.3"
 # @keep Minimum gradle version to run the build
-minGradle = "9.6.1"
+minGradle = "9.7.0"
 # @keep This is the minimum required Java version.
 minJava = "25"
 # analysis/morfologik polish support
@@ -59,7 +59,7 @@ spatial4j = "0.8"
 # benchmark/ XML parsing
 xerces = "2.12.2"
 # external datasets decompression
-zstd = "1.5.7-12"
+zstd = "1.5.7-13"
 
 [libraries]
 antlr-core = { module = "org.antlr:antlr4", version.ref = "antlr" }
@@ -103,7 +103,7 @@ xerces = { module = "xerces:xercesImpl", version.ref = "xerces" }
 zstd = { module = "com.github.luben:zstd-jni", version.ref = "zstd" }
 
 [plugins]
-benmanes-versions = "com.github.ben-manes.versions:0.58.0"
+benmanes-versions = "com.github.ben-manes.versions:0.61.0"
 carrotsearch-buildopts = "com.carrotsearch.gradle.opts:0.2.2"
 carrotsearch-dependencychecks = "com.carrotsearch.gradle.dependencychecks:0.2.3"
 errorprone = "net.ltgt.errorprone:5.1.0"
@@ -112,4 +112,4 @@ jacocolog = "org.barfuin.gradle.jacocolog:4.0.2"
 randomizedtesting = "com.carrotsearch.gradle.randomizedtesting:0.0.6"
 spotless = "com.diffplug.spotless:8.9.0"
 undercouch-download = "de.undercouch.download:5.7.0"
-versionCatalogUpdate = "nl.littlerobots.version-catalog-update:1.1.0"
+versionCatalogUpdate = "nl.littlerobots.version-catalog-update:1.1.1"

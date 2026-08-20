@@ -7,6 +7,10 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
+* GITHUB#15113: Move long[] group varint support from core to backward-codecs. The legacy long[]
+  GroupVIntUtil and DataOutput APIs were removed from core and are now only available for backward
+  codecs. (Subhramit Basu)
+
 * GITHUB#15929: Rename CollectionStatistics to FieldStats and TermStatistics to TermStats. (Zhou Hui)
 
 * GITHUB#15763: Deprecate Operations.complement() method. This operation can be slow and is not
@@ -109,6 +113,14 @@ API Changes
 
 * GITHUB#16363: Add API to use a custom `DictionarySuggester` instead of hardcoded `GeneratingSuggester`
 
+* GITHUB#16518: Changes the signature of ScorerSupplier#cost to throw an IOException. (Ignacio Vera)
+
+* GITHUB#16530: Directory#copyFrom is now abstract so that implementations choose copy behavior
+  explicitly. BaseDirectory provides the standard routing implementation via the new protected
+  final copyThroughCreateOutput helper. FilterDirectory#copyFrom now routes through createOutput
+  so that per-file bookkeeping in subclasses applies to copied files; subclasses that want an
+  optimized copy (e.g. HardlinkCopyDirectoryWrapper) may override to delegate. (Tim Allison)
+
 New Features
 ---------------------
 * GITHUB#16418: Incremental doc-values updates. A set-only doc-values update (NUMERIC or BINARY) is written as a sparse
@@ -193,6 +205,8 @@ Optimizations
 * GITHUB#15043: Vectorize L2 normalize function. (Ramakrishna Chilaka)
 
 * GITHUB#15085, GITHUB#15092: Hunspell suggestions: Ensure candidate roots are not worse before updating. (Ilia Permiashkin)
+
+* GITHUB#16527: Hunspell: check for cancellation while building the suggestible entry cache. (Ilia Permiashkin)
 
 * GITHUB#15597, GITHUB#15777: Reduce memory usage of NeighborArray (Viliam Durina)
 
@@ -363,6 +377,10 @@ New Features
   each distinct full-precision vector once, shared across all documents and fields that reference it.
   (Kaival Parikh)
 
+* GITHUB#16484: Add SpanMultiTermQueryWrapper.FrequentTermsSpanBooleanQueryRewrite.  It's a rewrite method that
+  translates each term into a SpanTermQuery within a {@link SpanOrQuery}, but retains only the most frequent terms so it
+  will not overflow the boolean max clause count. (Alan Woodward, Nishant Mehta, David Smiley)
+
 Improvements
 ---------------------
 
@@ -382,8 +400,14 @@ Improvements
 
 * GITHUB#16497: Allow Java Panama vector API on GraalVM for JDK 25+. (Abhinav Chinnala)
 
+* GITHUB#16091: Replace deprecated IndexSearcher#search(Query, Collector) usage with CollectorManager
+  in JoinUtil#createJoinQuery for the GlobalOrdinalsCollector case. (Luca Cavanna)
+
 Optimizations
 ---------------------
+* GITHUB#16416: Use ArrayDeque instead of ArrayList for FIFO output buffering in
+  JapaneseCompletionFilter, avoiding repeated element shifting on removal. (Luiz Lima)
+
 * GITHUB#16394: Add DocIdSetIterator#intoArray, which DisjunctionDISIApproximation implements by
   loading a window of doc IDs through #intoBitSet rather than one nextDoc() call per match.
   ConstantScoreScorer#nextDocsAndScores now builds on it, which avoids a priority-queue update per
@@ -425,6 +449,8 @@ Optimizations
 * GITHUB#16380: Speed up filtered disjunction queries when the filter is part of the
   index sort by advancing the filter before calculating impacts. (Alan Woodward)
 
+* GITHUB#16399: Reuse the previous end offset to skip a redundant addresses.get() in sorted numeric rangeIntoBitSet. (Sagar Upadhyaya)
+
 * GITHUB#16424: Use secondary or lower sorts to accelerate XXDocValuesRangeQueries if the primary
   sort field is empty or only contains a single value. (Alan Woodward)
 
@@ -435,6 +461,12 @@ Optimizations
   sort-missing-first put missing values at the top. When the sort has no tie breaker, a further
   missing value cannot displace one already in the queue, so the rest can be skipped.
   (Serhiy Bzhezytskyy)
+
+* GITHUB#16294: Route constant-score doc-values queries through
+  ConstantScoreScorerSupplier so they can benefit from batch scoring.
+  Affects BinaryRangeFieldRangeQuery, LatLonDocValuesBoxQuery,
+  LatLonDocValuesQuery, XYDocValuesPointInGeometryQuery, and
+  SortedNumericDocValuesSetQuery. (Costin Leau)
 
 * GITHUB#16297: Use LongHashSet for sparse ordinal sets in DocValuesRangeIterator so memory
   scales with matching terms instead of segment cardinality. (Costin Leau)
@@ -484,6 +516,9 @@ Bug Fixes
 
 * GITHUB#16173: FilterDirectory now delegates copyFrom() to the wrapped directory. (Prithvi S)
 
+* GITHUB#16452: Fix over-allocation in MemoryAccountingBitsetCollectorManager.Result#bitSet, which
+  is now sized to highestMatchedDoc + 1 instead of the full searched range. (Sasilekha R)
+
 Other
 ---------------------
 * GITHUB#16266: Remove deprecated search(Query, Collector) calls in QueryUtils by replacing
@@ -495,6 +530,8 @@ Other
 
 * GITHUB#16300: Reduce memory pressure in TestTermInSetQuery.testDuel stress runs.
   (Sanghun Lee)
+
+* GITHUB#16516: Simplify array copy by ArrayUtil.copyOfSubArray() in grouping package (Binlong Gao)
 
 ======================= Lucene 10.5.1 =======================
 
