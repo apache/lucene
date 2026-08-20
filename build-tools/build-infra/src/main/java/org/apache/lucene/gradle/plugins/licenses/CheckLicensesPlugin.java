@@ -96,6 +96,7 @@ public class CheckLicensesPlugin extends LuceneGradlePlugin {
                 ".gitignore",
                 ".lift.toml",
                 ".pre-commit-config.yml",
+                ".ruff.toml",
                 ".rumdl.toml",
                 ".typos.toml",
                 ".vscode/**",
