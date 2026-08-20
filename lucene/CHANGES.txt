@@ -332,6 +332,8 @@ Other
 
 * GITHUB#16170: Add JMH benchmarks for int4BitDotProduct and int4DibitDotProduct. (Vignesh)
 
+* GITHUB#16534: Correct termBytePool reference in FreqProxTermsEnum and clarify pool sharing. (neoremind)
+
 ======================= Lucene 10.6.0 =======================
 
 API Changes
