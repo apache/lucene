@@ -333,6 +333,8 @@ New Features
 Improvements
 ---------------------
 
+* GITHUB#16298: Store doc values DISI data into a separate file. (Sagar Upadhyaya)
+
 * GITHUB#16247: Introduce CachingCollectorManager to parallelize search when using CachingCollector.
                 Remove experimental GroupingSearch constructor that takes a GroupSelector as argument
                 in favour of providing a GroupSelector supplier. (Binlong Gao)
@@ -349,8 +351,6 @@ Improvements
 
 Optimizations
 ---------------------
-* GITHUB#16298: Store doc values DISI data into a separate file. (Sagar Upadhyaya)
-
 * GITHUB#16394: Add DocIdSetIterator#intoArray, which DisjunctionDISIApproximation implements by
   loading a window of doc IDs through #intoBitSet rather than one nextDoc() call per match.
   ConstantScoreScorer#nextDocsAndScores now builds on it, which avoids a priority-queue update per
