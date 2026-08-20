@@ -30,6 +30,7 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopFieldDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.TotalHits.Relation;
+import org.apache.lucene.util.ArrayUtil;
 
 /**
  * Represents result returned by a grouping search.
@@ -251,13 +252,9 @@ public class TopGroups<T> {
       } else if (docOffset >= mergedTopDocs.scoreDocs.length) {
         mergedScoreDocs = new ScoreDoc[0];
       } else {
-        mergedScoreDocs = new ScoreDoc[mergedTopDocs.scoreDocs.length - docOffset];
-        System.arraycopy(
-            mergedTopDocs.scoreDocs,
-            docOffset,
-            mergedScoreDocs,
-            0,
-            mergedTopDocs.scoreDocs.length - docOffset);
+        mergedScoreDocs =
+            ArrayUtil.copyOfSubArray(
+                mergedTopDocs.scoreDocs, docOffset, mergedTopDocs.scoreDocs.length);
       }
 
       final float groupScore;
