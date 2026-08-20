@@ -515,6 +515,8 @@ Other
 * GITHUB#16300: Reduce memory pressure in TestTermInSetQuery.testDuel stress runs.
   (Sanghun Lee)
 
+* GITHUB#16516: Simplify array copy by ArrayUtil.copyOfSubArray() in grouping package (Binlong Gao)
+
 ======================= Lucene 10.5.1 =======================
 
 Bug Fixes
