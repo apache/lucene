@@ -390,6 +390,9 @@ Improvements
 
 * GITHUB#16497: Allow Java Panama vector API on GraalVM for JDK 25+. (Abhinav Chinnala)
 
+* GITHUB#16091: Replace deprecated IndexSearcher#search(Query, Collector) usage with CollectorManager
+  in JoinUtil#createJoinQuery for the GlobalOrdinalsCollector case. (Luca Cavanna)
+
 Optimizations
 ---------------------
 * GITHUB#16416: Use ArrayDeque instead of ArrayList for FIFO output buffering in
