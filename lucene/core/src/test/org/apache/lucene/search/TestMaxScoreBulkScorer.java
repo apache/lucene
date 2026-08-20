@@ -22,6 +22,7 @@ import java.util.Collections;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
+import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
@@ -1405,6 +1406,74 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     dir.close();
   }
 
+  public void testTwoPhaseFilterUsesBitSet() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig());
+    for (int i = 0; i < 10000; i++) {
+      Document doc = new Document();
+      doc.add(new TextField("body", "dense1", Field.Store.NO));
+      doc.add(new TextField("body", "dense2", Field.Store.NO));
+      doc.add(SortedNumericDocValuesField.indexedField("filter", i % 20));
+      w.addDocument(doc);
+    }
+    w.close();
+
+    DirectoryReader reader = DirectoryReader.open(dir);
+    IndexSearcher searcher = new IndexSearcher(reader);
+    searcher.setQueryCache(null);
+
+    BooleanQuery innerOr =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("body", "dense1")), Occur.SHOULD)
+            .add(new TermQuery(new Term("body", "dense2")), Occur.SHOULD)
+            .build();
+    Query filterQuery = SortedNumericDocValuesField.newSlowRangeQuery("filter", 1, 1);
+
+    LeafReaderContext context = reader.leaves().get(0);
+    Weight filterWeight = searcher.createWeight(searcher.rewrite(filterQuery), ScoreMode.COMPLETE, 1f);
+    Scorer filterScorer = filterWeight.scorer(context);
+    assertNotNull(filterScorer);
+    assertTrue(TwoPhaseIterator.unwrap(filterScorer.iterator()) instanceof DocValuesRangeIterator);
+
+    BooleanQuery outerQuery =
+        new BooleanQuery.Builder()
+            .add(innerOr, Occur.MUST)
+            .add(filterQuery, Occur.FILTER)
+            .build();
+
+    Query rewritten = searcher.rewrite(outerQuery);
+    Weight weight = searcher.createWeight(rewritten, ScoreMode.TOP_SCORES, 1f);
+    int[] collectedDocs = {0};
+    for (LeafReaderContext ctx : reader.leaves()) {
+      ScorerSupplier ss = weight.scorerSupplier(ctx);
+      if (ss != null) {
+        BulkScorer bs = ss.bulkScorer();
+        assertTrue(
+            "Expected MaxScoreBulkScorer but got " + bs.getClass().getSimpleName(),
+            bs instanceof MaxScoreBulkScorer);
+        bs.score(
+            new LeafCollector() {
+              @Override
+              public void setScorer(Scorable scorer) {}
+
+              @Override
+              public void collect(int doc) {
+                assertEquals(1, doc % 20);
+                collectedDocs[0]++;
+              }
+            },
+            null,
+            0,
+            DocIdSetIterator.NO_MORE_DOCS);
+      }
+    }
+
+    assertEquals(500, collectedDocs[0]);
+
+    reader.close();
+    dir.close();
+  }
+
   /**
    * A query wrapper that counts the smallest target/upTo ever passed to advanceShallow()/
    * getMaxScore() on its scorer. This lets us detect whether MaxScoreBulkScorer computed score
@@ -1478,4 +1547,5 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
       return 31 * classHash() + delegate.hashCode();
     }
   }
+
 }

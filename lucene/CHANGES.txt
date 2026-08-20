@@ -453,6 +453,8 @@ Optimizations
   LatLonDocValuesQuery, XYDocValuesPointInGeometryQuery, and
   SortedNumericDocValuesSetQuery. (Costin Leau)
 
+* GITHUB#16520: Support two-phase filters in MaxScoreBulkScorer bitset path. (Ke Wei)
+
 Bug Fixes
 ---------------------
 
