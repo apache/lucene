@@ -69,6 +69,9 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
   private final IntObjectHashMap<DocValuesSkipperEntry> skippers;
   private final IndexInput data;
   private final IndexInput skipIndexData;
+  // Sparse-field presence (IndexedDISI) file. Null for pre-VERSION_DISI_EXTENSIBLE_FILE segments,
+  // which still keep the IndexedDISI in .dvd.
+  private final IndexInput disiData;
   private final int maxDoc;
   private int version = -1;
   private final boolean merging;
@@ -81,7 +84,9 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       String metaCodec,
       String metaExtension,
       String skipIndexCodec,
-      String skipIndexExtension)
+      String skipIndexExtension,
+      String disiCodec,
+      String disiExtension)
       throws IOException {
     String metaName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, metaExtension);
@@ -178,6 +183,35 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     } else {
       this.skipIndexData = null;
     }
+
+    if (version >= Lucene90DocValuesFormat.VERSION_DISI_EXTENSIBLE_FILE) {
+      IndexInput disiIn = null;
+      try {
+        String disiName =
+            IndexFileNames.segmentFileName(
+                state.segmentInfo.name, state.segmentSuffix, disiExtension);
+        disiIn = state.directory.openInput(disiName, state.context.withHints(FileTypeHint.DATA));
+        final int disiVersion =
+            CodecUtil.checkIndexHeader(
+                disiIn,
+                disiCodec,
+                Lucene90DocValuesFormat.VERSION_DISI_EXTENSIBLE_FILE,
+                Lucene90DocValuesFormat.VERSION_CURRENT,
+                state.segmentInfo.getId(),
+                state.segmentSuffix);
+        if (version != disiVersion) {
+          throw new CorruptIndexException(
+              "Format versions mismatch: meta=" + version + ", disi=" + disiVersion, disiIn);
+        }
+        CodecUtil.retrieveChecksum(disiIn);
+      } catch (Throwable t) {
+        IOUtils.closeWhileSuppressingExceptions(t, data, skipIndexData, disiIn);
+        throw t;
+      }
+      this.disiData = disiIn;
+    } else {
+      this.disiData = null;
+    }
   }
 
   // Used for cloning
@@ -190,6 +224,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       IntObjectHashMap<DocValuesSkipperEntry> skippers,
       IndexInput data,
       IndexInput skipIndexData,
+      IndexInput disiData,
       int maxDoc,
       int version,
       boolean merging) {
@@ -201,6 +236,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     this.skippers = skippers;
     this.data = data.clone();
     this.skipIndexData = skipIndexData != null ? skipIndexData.clone() : null;
+    this.disiData = disiData != null ? disiData.clone() : null;
     this.maxDoc = maxDoc;
     this.version = version;
     this.merging = merging;
@@ -217,9 +253,59 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         skippers,
         data,
         skipIndexData,
+        disiData,
         maxDoc,
         version,
         true);
+  }
+
+  /**
+   * Builds a sparse field's {@link IndexedDISI}.
+   *
+   * <p>Since {@link Lucene90DocValuesFormat#VERSION_DISI_EXTENSIBLE_FILE} the bytes live in {@code
+   * .dvp} as {@code [1B type tag][vlong length][payload]} entries. This scans that region, skips
+   * unknown tags by their length, and decodes the {@link Lucene90DocValuesFormat#DISI_TYPE_INDEXED}
+   * payload {@code [short jumpTableEntryCount][byte denseRankPower][IndexedDISI bytes]}.
+   *
+   * <p>For older segments the bytes are inline in {@code .dvd} and {@code jumpTableEntryCount} /
+   * {@code denseRankPower} were read from the metadata.
+   */
+  private IndexedDISI newIndexedDISI(
+      long docsWithFieldOffset,
+      long docsWithFieldLength,
+      short jumpTableEntryCount,
+      byte denseRankPower,
+      long numValues)
+      throws IOException {
+    if (disiData == null) {
+      return new IndexedDISI(
+          data,
+          docsWithFieldOffset,
+          docsWithFieldLength,
+          jumpTableEntryCount,
+          denseRankPower,
+          numValues);
+    }
+    final long regionEnd = docsWithFieldOffset + docsWithFieldLength;
+    final IndexInput entries = disiData.clone();
+    entries.seek(docsWithFieldOffset);
+    while (entries.getFilePointer() < regionEnd) {
+      final byte type = entries.readByte();
+      final long entryLength = entries.readVLong();
+      final long payloadStart = entries.getFilePointer();
+      if (type == Lucene90DocValuesFormat.DISI_TYPE_INDEXED) {
+        final short jump = entries.readShort();
+        final byte rank = entries.readByte();
+        final long blobOffset = entries.getFilePointer();
+        final long blobLength = payloadStart + entryLength - blobOffset;
+        return new IndexedDISI(disiData, blobOffset, blobLength, jump, rank, numValues);
+      }
+      // Unknown tag: skip by stored length.
+      entries.seek(payloadStart + entryLength);
+    }
+    throw new CorruptIndexException(
+        "Missing " + Lucene90DocValuesFormat.DISI_TYPE_INDEXED + " entry in presence file",
+        disiData);
   }
 
   private void inferMaxValueCounts(FieldInfos fieldInfos) {
@@ -324,8 +410,12 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
   private void readNumeric(IndexInput meta, NumericEntry entry) throws IOException {
     entry.docsWithFieldOffset = meta.readLong();
     entry.docsWithFieldLength = meta.readLong();
-    entry.jumpTableEntryCount = meta.readShort();
-    entry.denseRankPower = meta.readByte();
+    if (version < Lucene90DocValuesFormat.VERSION_DISI_EXTENSIBLE_FILE) {
+      // Pre-.dvp: IndexedDISI shape and bytes live inline in .dvd.
+      entry.jumpTableEntryCount = meta.readShort();
+      entry.denseRankPower = meta.readByte();
+    }
+    // Otherwise these are read lazily from the .dvp entry.
     entry.numValues = meta.readLong();
     int tableSize = meta.readInt();
     if (tableSize > 256) {
@@ -356,8 +446,12 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     entry.dataLength = meta.readLong();
     entry.docsWithFieldOffset = meta.readLong();
     entry.docsWithFieldLength = meta.readLong();
-    entry.jumpTableEntryCount = meta.readShort();
-    entry.denseRankPower = meta.readByte();
+    if (version < Lucene90DocValuesFormat.VERSION_DISI_EXTENSIBLE_FILE) {
+      // Pre-.dvp: IndexedDISI shape and bytes live inline in .dvd.
+      entry.jumpTableEntryCount = meta.readShort();
+      entry.denseRankPower = meta.readByte();
+    }
+    // Otherwise these are read lazily from the .dvp entry.
     entry.numDocsWithField = meta.readInt();
     entry.minLength = meta.readInt();
     entry.maxLength = meta.readInt();
@@ -447,7 +541,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
   @Override
   public void close() throws IOException {
-    IOUtils.close(data, skipIndexData);
+    IOUtils.close(data, skipIndexData, disiData);
   }
 
   private record DocValuesSkipperEntry(
@@ -1020,8 +1114,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     } else {
       // sparse
       final IndexedDISI disi =
-          new IndexedDISI(
-              data,
+          newIndexedDISI(
               entry.docsWithFieldOffset,
               entry.docsWithFieldLength,
               entry.jumpTableEntryCount,
@@ -1359,8 +1452,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     } else {
       // sparse
       final IndexedDISI disi =
-          new IndexedDISI(
-              data,
+          newIndexedDISI(
               entry.docsWithFieldOffset,
               entry.docsWithFieldLength,
               entry.jumpTableEntryCount,
@@ -1497,8 +1589,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         };
       } else if (ordsEntry.docsWithFieldOffset >= 0) { // sparse but non-empty
         final IndexedDISI disi =
-            new IndexedDISI(
-                data,
+            newIndexedDISI(
                 ordsEntry.docsWithFieldOffset,
                 ordsEntry.docsWithFieldLength,
                 ordsEntry.jumpTableEntryCount,
@@ -2087,8 +2178,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     } else {
       // sparse
       final IndexedDISI disi =
-          new IndexedDISI(
-              data,
+          newIndexedDISI(
               entry.docsWithFieldOffset,
               entry.docsWithFieldLength,
               entry.jumpTableEntryCount,
@@ -2324,8 +2414,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         };
       } else if (ordsEntry.docsWithFieldOffset >= 0) { // sparse but non-empty
         final IndexedDISI disi =
-            new IndexedDISI(
-                data,
+            newIndexedDISI(
                 ordsEntry.docsWithFieldOffset,
                 ordsEntry.docsWithFieldLength,
                 ordsEntry.jumpTableEntryCount,
