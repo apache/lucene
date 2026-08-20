@@ -138,6 +138,10 @@ New Features
 
 Improvements
 ---------------------
+* GITHUB#7820: CheckIndex now reports which segment's .si file could not be read, rather than only that
+  a commit point was unreadable. SegmentInfos throws CorruptSegmentInfoException, carrying the segment
+  name and the underlying failure. (Gokul Manoj, Serhiy Bzhezytskyy)
+
 * GITHUB#15704: Replace LinkedList with more efficient data structure. (Renato Haeberli)
 
 * GITHUB#15682: Use ArrayDeque instead of LinkedList in CompoundWordTokenFilterBase.java. (Renato Haeberli)
