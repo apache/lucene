@@ -202,6 +202,8 @@ Optimizations
 
 * GITHUB#15085, GITHUB#15092: Hunspell suggestions: Ensure candidate roots are not worse before updating. (Ilia Permiashkin)
 
+* GITHUB#16527: Hunspell: check for cancellation while building the suggestible entry cache. (Ilia Permiashkin)
+
 * GITHUB#15597, GITHUB#15777: Reduce memory usage of NeighborArray (Viliam Durina)
 
 * GITHUB#12324: ELiminate redundant work in AbstractKnnVectorQuery.rewrite (Mike Sokolov)
@@ -394,8 +396,14 @@ Improvements
 
 * GITHUB#16497: Allow Java Panama vector API on GraalVM for JDK 25+. (Abhinav Chinnala)
 
+* GITHUB#16091: Replace deprecated IndexSearcher#search(Query, Collector) usage with CollectorManager
+  in JoinUtil#createJoinQuery for the GlobalOrdinalsCollector case. (Luca Cavanna)
+
 Optimizations
 ---------------------
+* GITHUB#16416: Use ArrayDeque instead of ArrayList for FIFO output buffering in
+  JapaneseCompletionFilter, avoiding repeated element shifting on removal. (Luiz Lima)
+
 * GITHUB#16394: Add DocIdSetIterator#intoArray, which DisjunctionDISIApproximation implements by
   loading a window of doc IDs through #intoBitSet rather than one nextDoc() call per match.
   ConstantScoreScorer#nextDocsAndScores now builds on it, which avoids a priority-queue update per
@@ -436,6 +444,8 @@ Optimizations
 
 * GITHUB#16380: Speed up filtered disjunction queries when the filter is part of the
   index sort by advancing the filter before calculating impacts. (Alan Woodward)
+
+* GITHUB#16399: Reuse the previous end offset to skip a redundant addresses.get() in sorted numeric rangeIntoBitSet. (Sagar Upadhyaya)
 
 * GITHUB#16424: Use secondary or lower sorts to accelerate XXDocValuesRangeQueries if the primary
   sort field is empty or only contains a single value. (Alan Woodward)
@@ -513,6 +523,8 @@ Other
 
 * GITHUB#16300: Reduce memory pressure in TestTermInSetQuery.testDuel stress runs.
   (Sanghun Lee)
+
+* GITHUB#16516: Simplify array copy by ArrayUtil.copyOfSubArray() in grouping package (Binlong Gao)
 
 ======================= Lucene 10.5.1 =======================
 
