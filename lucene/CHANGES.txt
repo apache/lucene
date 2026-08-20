@@ -204,6 +204,8 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#16443: MultiFieldQueryParser: default operator is not honored between term positions (Olivier Jaquemet)
+
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
 

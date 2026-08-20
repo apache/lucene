@@ -391,4 +391,47 @@ public class TestMultiFieldQueryParser extends LuceneTestCase {
     q = parser.parse("guinea pig");
     assertEquals("(b:guinea t:guinea) (b:pig t:pig)", q.toString());
   }
+
+  /**
+   * When several terms reach a single getFieldQuery(null, text, quoted) call because the *analyzer*
+   * alone splits the text into more than one token (no real whitespace at the grammar level), the
+   * default operator must still be honored between those term positions, per this class's own
+   * javadoc ("all the query's terms must appear" under AND_OPERATOR). Uses MockAnalyzer with
+   * MockTokenizer.SIMPLE (splits on any non-letter character, including '-').
+   */
+  public void testDefaultOperatorAppliesAcrossAnalyzerSplitTermPositions() throws Exception {
+    MultiFieldQueryParser parser =
+        new MultiFieldQueryParser(
+            new String[] {"field1", "field2"},
+            new MockAnalyzer(random(), MockTokenizer.SIMPLE, true));
+
+    // No real whitespace at the grammar level: the escaped colon keeps this as one grammar
+    // TERM token; ClassicAnalyzer splits it into two analyzed terms.
+    String queryText = QueryParser.escape("foo-bar");
+
+    parser.setDefaultOperator(QueryParserBase.OR_OPERATOR);
+    assertEquals(
+        "(field1:foo field2:foo) (field1:bar field2:bar)", parser.parse(queryText).toString());
+
+    parser.setDefaultOperator(QueryParserBase.AND_OPERATOR);
+    assertEquals(
+        "+(field1:foo field2:foo) +(field1:bar field2:bar)", parser.parse(queryText).toString());
+  }
+
+  /** Same scenario with a per-field boost, to confirm the boost survives inside each group. */
+  public void testDefaultOperatorAppliesAcrossAnalyzerSplitTermPositionsWithBoost()
+      throws Exception {
+    MultiFieldQueryParser parser =
+        new MultiFieldQueryParser(
+            new String[] {"field1", "field2"},
+            new MockAnalyzer(random(), MockTokenizer.SIMPLE, true),
+            Map.of("field1", 2.0f));
+
+    String queryText = QueryParser.escape("foo-bar");
+
+    parser.setDefaultOperator(QueryParserBase.AND_OPERATOR);
+    assertEquals(
+        "+((field1:foo)^2.0 field2:foo) +((field1:bar)^2.0 field2:bar)",
+        parser.parse(queryText).toString());
+  }
 }
