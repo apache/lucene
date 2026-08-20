@@ -9,6 +9,10 @@ Bug Fixes
 ---------------------
 (No changes)
 
+Optimizations
+---------------------
+* GITHUB#16527: Hunspell: check for cancellation while building the suggestible entry cache. (Ilia Permiashkin)
+
 ======================= Lucene 10.5.1 =======================
 
 Bug Fixes
