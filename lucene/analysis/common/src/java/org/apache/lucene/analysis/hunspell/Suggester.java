@@ -51,21 +51,24 @@ import org.apache.lucene.util.CharsRef;
  */
 public class Suggester {
   private final Dictionary dictionary;
-  private final SuggestibleEntryCache suggestibleCache;
+  private volatile SuggestibleEntryCache suggestibleCache;
+  private final boolean useSuggestibleEntryCache;
   private final FragmentChecker fragmentChecker;
   private final boolean proceedPastRep;
 
   public Suggester(Dictionary dictionary) {
-    this(dictionary, null, FragmentChecker.EVERYTHING_POSSIBLE, false);
+    this(dictionary, null, false, FragmentChecker.EVERYTHING_POSSIBLE, false);
   }
 
   private Suggester(
       Dictionary dictionary,
       SuggestibleEntryCache suggestibleCache,
+      boolean useSuggestibleEntryCache,
       FragmentChecker checker,
       boolean proceedPastRep) {
     this.dictionary = dictionary;
     this.suggestibleCache = suggestibleCache;
+    this.useSuggestibleEntryCache = useSuggestibleEntryCache;
     this.fragmentChecker = checker;
     this.proceedPastRep = proceedPastRep;
   }
@@ -76,8 +79,7 @@ public class Suggester {
    * entries are stored as fast-to-iterate plain words instead of highly compressed prefix trees.
    */
   public Suggester withSuggestibleEntryCache() {
-    SuggestibleEntryCache cache = SuggestibleEntryCache.buildCache(dictionary.words);
-    return new Suggester(dictionary, cache, fragmentChecker, proceedPastRep);
+    return new Suggester(dictionary, null, true, fragmentChecker, proceedPastRep);
   }
 
   /**
@@ -85,7 +87,8 @@ public class Suggester {
    * the performance of the "Modification" phase performance.
    */
   public Suggester withFragmentChecker(FragmentChecker checker) {
-    return new Suggester(dictionary, suggestibleCache, checker, proceedPastRep);
+    return new Suggester(
+        dictionary, suggestibleCache, useSuggestibleEntryCache, checker, proceedPastRep);
   }
 
   /**
@@ -95,7 +98,8 @@ public class Suggester {
    * not "times", which could also be meant.
    */
   public Suggester proceedPastRep() {
-    return new Suggester(dictionary, suggestibleCache, fragmentChecker, true);
+    return new Suggester(
+        dictionary, suggestibleCache, useSuggestibleEntryCache, fragmentChecker, true);
   }
 
   /**
@@ -194,6 +198,7 @@ public class Suggester {
             .suggest();
 
     if (!hasGoodSuggestions && dictionary.maxNGramSuggestions > 0) {
+      SuggestibleEntryCache suggestibleCache = getSuggestibleEntryCache(checkCanceled);
       List<String> generated =
           new GeneratingSuggester(suggestionSpeller, suggestibleCache)
               .suggest(dictionary.toLowerCase(word), wordCase, suggestions);
@@ -208,6 +213,17 @@ public class Suggester {
       }
     }
     return postprocess(suggestions);
+  }
+
+  private SuggestibleEntryCache getSuggestibleEntryCache(Runnable checkCanceled) {
+    if (useSuggestibleEntryCache && suggestibleCache == null) {
+      synchronized (this) {
+        if (suggestibleCache == null) {
+          suggestibleCache = SuggestibleEntryCache.buildCache(dictionary.words, checkCanceled);
+        }
+      }
+    }
+    return suggestibleCache;
   }
 
   private Runnable checkTimeLimit(
