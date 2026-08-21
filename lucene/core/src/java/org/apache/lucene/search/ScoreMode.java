@@ -19,7 +19,12 @@ package org.apache.lucene.search;
 /** Different modes of search. */
 public enum ScoreMode {
 
-  /** Produced scorers will allow visiting all matches and get their score. */
+  /**
+   * Produced scorers will allow visiting all matches and get their score. Callers must not use
+   * {@link Scorer#setMinCompetitiveScore(float)} to skip hits; that API is only honored for {@link
+   * #TOP_SCORES}. Nested collectors that still call it should not cause matches to be skipped
+   * (GITHUB#15239).
+   */
   COMPLETE(true, true),
 
   /** Produced scorers will allow visiting all matches but scores won't be available. */
