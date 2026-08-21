@@ -8,33 +8,6 @@ with some default gradle JVM settings, which you can modify to your needs.
 See your 'gradle.properties' file for more details of those settings.
 
 
-Gradle distribution (mirrors, offline environments)
-===================================================
-
-The gradlew scripts do not use gradle-wrapper.jar. Instead, a standalone
-class (build-tools/build-infra/src/main/java/org/apache/lucene/gradle/WrapperDownloader.java)
-is launched directly from source; it reads gradle/wrapper/gradle-wrapper.properties,
-downloads and unpacks the gradle distribution into the gradle user home
-(GRADLE_USER_HOME or ~/.gradle, same layout as gradle's own wrapper) and then
-hands over control to gradle.
-
-If the distribution can't be downloaded from services.gradle.org (intranet
-environments), point gradlew at a mirror with the 'gradle.wrapper.distributionUrl'
-system property. The value may use the ${gradleVersion} and ${distributionType}
-placeholders, which are expanded from the versioned distributionUrl, for example:
-
-GRADLE_OPTS='-Dgradle.wrapper.distributionUrl=https://mirror.myorg.org/gradle/gradle-${gradleVersion}-bin.zip' ./gradlew help
-
-The same property can be passed on the command line (./gradlew -Dgradle.wrapper.distributionUrl=...)
-or set permanently in ~/.gradle/gradle.properties:
-
-systemProp.gradle.wrapper.distributionUrl=https://mirror.myorg.org/gradle/gradle-${gradleVersion}-bin.zip
-
-Note that the checksum of the downloaded distribution is still verified against
-'distributionSha256Sum' from gradle-wrapper.properties, so the mirror has to serve
-the official, unmodified distribution archive.
-
-
 Build options
 =============
 

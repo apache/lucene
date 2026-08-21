@@ -16,11 +16,6 @@
  */
 package org.apache.lucene.gradle.plugins.misc;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.UncheckedIOException;
-import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -59,19 +54,6 @@ public class CheckEnvironmentPlugin extends LuceneGradlePlugin {
             task -> {
               task.setDistributionType(Wrapper.DistributionType.BIN);
               task.setGradleVersion(expectedGradleVersion);
-              // Download retries (gradlew bootstraps gradle itself, see WrapperDownloader).
-              task.getRetries().set(3);
-              task.getRetryBackOffMs().set(2000);
-              // Make gradlew verify the checksum of the distribution it downloads. Unless
-              // provided explicitly (--gradle-distribution-sha256-sum), fetch the checksum
-              // published next to the distribution.
-              task.doFirst(
-                  _ -> {
-                    if (task.getDistributionSha256Sum() == null) {
-                      task.setDistributionSha256Sum(
-                          fetchDistributionSha256Sum(task.getDistributionUrl()));
-                    }
-                  });
             });
 
     JavaVersion currentJavaVersion = JavaVersion.current();
@@ -180,20 +162,5 @@ public class CheckEnvironmentPlugin extends LuceneGradlePlugin {
                             .collect(Collectors.joining("\n")));
                   });
             });
-  }
-
-  private static String fetchDistributionSha256Sum(String distributionUrl) {
-    URI checksumUri = URI.create(distributionUrl + ".sha256");
-    try (InputStream is = checksumUri.toURL().openStream()) {
-      String checksum = new String(is.readAllBytes(), StandardCharsets.UTF_8).trim();
-      if (!checksum.matches("[0-9a-fA-F]{64}")) {
-        throw new GradleException(
-            "Unexpected content of the distribution checksum at " + checksumUri + ": " + checksum);
-      }
-      return checksum;
-    } catch (IOException e) {
-      throw new UncheckedIOException(
-          "Could not fetch the distribution checksum from " + checksumUri, e);
-    }
   }
 }

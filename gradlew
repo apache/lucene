@@ -211,11 +211,26 @@ if [ "$cygwin" = "true" -o "$msys" = "true" ] ; then
 fi
 DEFAULT_JVM_OPTS="$DEFAULT_JVM_OPTS \"-Djava.io.tmpdir=$GRADLE_TEMPDIR\""
 
-# Gradle's client loads native libraries: enable native access for unnamed modules (the manifest
-# of the gradle wrapper jar used to do this). Older JVMs don't know this option; skip it there so
-# that WrapperDownloader can still print a proper error message about the required Java version.
-if "$JAVACMD" --enable-native-access=ALL-UNNAMED -version >/dev/null 2>&1 ; then
-    DEFAULT_JVM_OPTS="$DEFAULT_JVM_OPTS \"--enable-native-access=ALL-UNNAMED\""
+# LUCENE-9266: verify and download the gradle wrapper jar if we don't have one.
+if [ "$cygwin" = "true" -o "$msys" = "true" ] ; then
+    APP_HOME=`cygpath --path --mixed "$APP_HOME"`
+fi
+
+GRADLE_WRAPPER_JAR="$APP_HOME/gradle/wrapper/gradle-wrapper.jar"
+if "$darwin"; then
+    shasumcmd=shasum
+else
+    shasumcmd=sha256sum
+fi
+if [ ! -e "$GRADLE_WRAPPER_JAR" ] || ! ( cd "$APP_HOME/gradle/wrapper" && "$shasumcmd" --status -c "${GRADLE_WRAPPER_JAR}.sha256" ); then
+    "$JAVACMD" $JAVA_OPTS "$APP_HOME/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/WrapperDownloader.java" "$GRADLE_WRAPPER_JAR"
+    WRAPPER_STATUS=$?
+    if [ "$WRAPPER_STATUS" -eq 1 ]; then
+        echo "ERROR: Something went wrong. Make sure you're using Java version of exactly 25."
+        exit $WRAPPER_STATUS
+    elif [ "$WRAPPER_STATUS" -ne 0 ]; then
+        exit $WRAPPER_STATUS
+    fi
 fi
 
 # Generate gradle.properties if they don't exist
@@ -234,13 +249,9 @@ fi
 #   * For example: A user cannot expect ${Hostname} to be expanded, as it is an environment variable and will be
 #     treated as '${Hostname}' itself on the command line.
 
-# LUCENE CUSTOMIZATION: gradle is bootstrapped by a standalone class launched from source
-# (it downloads and installs the distribution, then hands over to gradle); the gradle wrapper jar
-# is not used at all. See WrapperDownloader.java for details.
 set -- \
         "-Dorg.gradle.appname=$APP_BASE_NAME" \
-        "-Dlucene.wrapper.projectDir=$APP_HOME" \
-        "$APP_HOME/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/WrapperDownloader.java" \
+        -jar "$APP_HOME/gradle/wrapper/gradle-wrapper.jar" \
         "$@"
 
 # Stop when "xargs" is not available.

@@ -26,9 +26,9 @@ import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 
 /**
- * Check that gradlew scripts contain custom Lucene tweaks (memory settings, bootstrapping gradle
- * from {@code WrapperDownloader.java} instead of {@code gradle-wrapper.jar}, etc.). These can be
- * accidentally overwritten if somebody updates the wrapper automatically.
+ * Check that gradlew scripts contain custom Lucene tweaks (memory settings, wrapper jar download
+ * and verification, etc.). These can be accidentally overwritten if somebody updates the wrapper
+ * automatically.
  */
 public class CheckGradlewScriptsTweakedPlugin extends LuceneGradlePlugin {
   public static final String TASK_NAME = "gradlewScriptsTweaked";
@@ -60,9 +60,7 @@ public class CheckGradlewScriptsTweakedPlugin extends LuceneGradlePlugin {
                         try {
                           for (var script : scripts) {
                             var content = Files.readString(script.toPath(), StandardCharsets.UTF_8);
-                            if (!content.contains("START OF LUCENE CUSTOMIZATION")
-                                || !content.contains("WrapperDownloader.java")
-                                || content.contains("gradle-wrapper.jar")) {
+                            if (!content.contains("START OF LUCENE CUSTOMIZATION")) {
                               throw new GradleException(
                                   "Launch script "
                                       + script
