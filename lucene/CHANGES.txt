@@ -214,6 +214,11 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#15239: BatchScoreBulkScorer no longer skips hits from setMinCompetitiveScore when the
+  search ScoreMode is exhaustive (COMPLETE). Nested TopScoreDocCollectors can still track a
+  competitive threshold without dropping matches from an outer COMPLETE collector.
+  (Shrey Narayan, NextBrick)
+
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
 
