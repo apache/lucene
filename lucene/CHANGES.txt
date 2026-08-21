@@ -214,6 +214,8 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#16441: MultiFieldQueryParser + per-field boosts produce wrong Occur under AND default operator. (Olivier Jaquemet)
+
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
 
