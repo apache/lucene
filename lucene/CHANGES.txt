@@ -261,6 +261,12 @@ Changes in Runtime Behavior
 
 Build
 ---------------------
+* GITHUB#TBD: gradlew scripts no longer use (or download) gradle-wrapper.jar. The gradle
+  distribution is downloaded, verified (sha256), installed and started by a standalone class
+  launched from source (WrapperDownloader.java). The distribution URL can be overridden
+  for intranet mirrors with the gradle.wrapper.distributionUrl system property, see
+  './gradlew helpLocalSettings'. (Dawid Weiss)
+
 * GITHUB#15327: New low-level build options to detect abuse of LuceneTestCase.random():
   tests.random.maxacquires and tests.random.maxcalls (Robert Muir, Dawid Weiss)
 
