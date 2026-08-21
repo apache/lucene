@@ -219,7 +219,7 @@ public class ParentsChildrenBlockJoinQuery extends Query {
         }
 
         @Override
-        public long cost() {
+        public long cost() throws IOException {
           if (cost == -1) {
             // Calculate cost based on parent and child costs
             // The cost should reflect the number of documents that will be visited

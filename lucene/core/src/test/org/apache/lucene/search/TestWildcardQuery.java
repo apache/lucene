@@ -38,8 +38,11 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
+import org.apache.lucene.util.automaton.Operations;
 
 /** TestWildcardQuery tests the '*' and '?' wildcard characters. */
 public class TestWildcardQuery extends LuceneTestCase {
@@ -233,6 +236,50 @@ public class TestWildcardQuery extends LuceneTestCase {
 
     reader.close();
     indexStore.close();
+  }
+
+  private static Automaton det(Automaton a) {
+    return Operations.determinize(a, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+  }
+
+  public void testRepeatedAsterisksCollapse() {
+    // Consecutive '*' must collapse to a single any-string automaton: same
+    // language as a single '*', and the same (tiny) shape, not a huge one.
+    Automaton single = det(WildcardQuery.toAutomaton(new Term("field", "*")));
+    Automaton repeated = det(WildcardQuery.toAutomaton(new Term("field", "*".repeat(1000))));
+
+    assertTrue(AutomatonTestUtil.sameLanguage(single, repeated));
+    assertEquals(single.getNumStates(), repeated.getNumStates());
+    assertEquals(single.getNumTransitions(), repeated.getNumTransitions());
+  }
+
+  public void testRepeatedAsterisksCollapseWithEscapesAndLiterals() {
+    // Collapsing applies only to unescaped, consecutive '*'. An escaped '\*'
+    // stays a literal and the surrounding literals / '?' are untouched, so
+    // "a\*b***c?" matches the same language as its single-'*' form "a\*b*c?".
+    Automaton collapsed = det(WildcardQuery.toAutomaton(new Term("field", "a\\*b***c?")));
+    Automaton reference = det(WildcardQuery.toAutomaton(new Term("field", "a\\*b*c?")));
+
+    assertTrue(AutomatonTestUtil.sameLanguage(reference, collapsed));
+    assertEquals(reference.getNumStates(), collapsed.getNumStates());
+    assertEquals(reference.getNumTransitions(), collapsed.getNumTransitions());
+
+    // Escaped '\*' is a literal, so "\*\*\*" matches the string "***", not the
+    // any-string '*' — it must NOT be collapsed.
+    Automaton single = det(WildcardQuery.toAutomaton(new Term("field", "*")));
+    Automaton literalStars = det(WildcardQuery.toAutomaton(new Term("field", "\\*\\*\\*")));
+    assertFalse(AutomatonTestUtil.sameLanguage(single, literalStars));
+  }
+
+  public void testInterleavedStarQuestionDoesNotBlowUp() {
+    // '*?' repeated does not collapse (the '*' are not consecutive), but it
+    // must still build a linearly-sized automaton rather than exploding the way
+    // repeated '*' used to before this fix (GITHUB#16134).
+    int n = 5000;
+    Automaton a = WildcardQuery.toAutomaton(new Term("field", "*?".repeat(n)));
+    assertTrue(
+        "expected roughly linear size, got " + a.getNumTransitions() + " transitions for " + n,
+        a.getNumTransitions() < 100L * n);
   }
 
   private Directory getIndexStore(String field, String[] contents) throws IOException {

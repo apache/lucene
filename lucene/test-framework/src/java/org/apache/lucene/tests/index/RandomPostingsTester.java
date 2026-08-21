@@ -55,6 +55,7 @@ import org.apache.lucene.index.FreqAndNormBuffer;
 import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentInfo;
@@ -825,7 +826,7 @@ public class RandomPostingsTester {
           }
 
           @Override
-          public void checkIntegrity() throws IOException {}
+          public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {}
         };
     FieldsConsumer consumer = codec.postingsFormat().fieldsConsumer(writeState);
     boolean success = false;
@@ -1267,7 +1268,7 @@ public class RandomPostingsTester {
         long norm = docToNorm.applyAsLong(doc);
         int idx =
             Collections.binarySearch(
-                impactsCopy, new Impact(freq, norm), Comparator.comparing(i -> i.freq));
+                impactsCopy, new Impact(freq, norm), Comparator.comparingInt(i -> i.freq));
         if (idx < 0) {
           idx = -1 - idx;
         }
@@ -1355,7 +1356,7 @@ public class RandomPostingsTester {
         long norm = docToNorm.applyAsLong(doc);
         int idx =
             Collections.binarySearch(
-                impactsCopy, new Impact(freq, norm), Comparator.comparing(i -> i.freq));
+                impactsCopy, new Impact(freq, norm), Comparator.comparingInt(i -> i.freq));
         if (idx < 0) {
           idx = -1 - idx;
         }

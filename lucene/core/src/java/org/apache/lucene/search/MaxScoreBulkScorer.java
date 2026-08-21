@@ -52,7 +52,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
   private FixedBitSet filterMatches = null;
 
   private final DocAndFloatFeatureBuffer docAndScoreBuffer = new DocAndFloatFeatureBuffer();
-  private final DocAndScoreAccBuffer docAndScoreAccBuffer;
+  private final DocAndScoreAccBuffer docAndScoreAccBuffer = new DocAndScoreAccBuffer();
 
   MaxScoreBulkScorer(int maxDoc, List<Scorer> scorers, Scorer filter) throws IOException {
     this.maxDoc = maxDoc;
@@ -69,8 +69,6 @@ final class MaxScoreBulkScorer extends BulkScorer {
     this.cost = cost;
     essentialQueue = DisiPriorityQueue.ofMaxSize(allScorers.length);
     maxScoreSums = new double[allScorers.length];
-    docAndScoreAccBuffer = new DocAndScoreAccBuffer();
-    docAndScoreAccBuffer.growNoCopy(INNER_WINDOW_SIZE);
 
     if (this.filter != null && this.filter.twoPhaseView == null && maxDoc >= INNER_WINDOW_SIZE) {
       long minScorerCost = allScorers[0].cost;
@@ -111,6 +109,23 @@ final class MaxScoreBulkScorer extends BulkScorer {
     int outerWindowMin = min;
     outer:
     while (outerWindowMin < max) {
+      if (filter != null) {
+        // The filter is a required clause, so there cannot be any match before its next doc ID.
+        // Advance it first so that we don't waste time computing score bounds, which requires
+        // decoding impacts, for a range of doc IDs that the filter cannot possibly match. This
+        // matters most when the filter is much sparser than the disjunction's clauses, e.g. when
+        // it correlates with the index sort.
+        if (filter.doc < outerWindowMin) {
+          filter.doc = filter.approximation.advance(outerWindowMin);
+        }
+        if (filter.doc > outerWindowMin) {
+          outerWindowMin = filter.doc;
+          if (outerWindowMin >= max) {
+            break;
+          }
+        }
+      }
+
       int outerWindowMax = computeOuterWindowMax(outerWindowMin);
       outerWindowMax = Math.min(outerWindowMax, max);
 
@@ -309,6 +324,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
   /** Flush {@link #windowMatches} and {@link #windowScores} into {@link #docAndScoreAccBuffer}. */
   private void flushWindowToDocAndScoreAccBuffer(int innerWindowMin, int innerWindowSize)
       throws IOException {
+    docAndScoreAccBuffer.growNoCopy(innerWindowSize);
     docAndScoreAccBuffer.size = 0;
     windowMatches.forEach(
         0,

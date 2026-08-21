@@ -397,7 +397,7 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
           }
 
           @Override
-          public void checkIntegrity() throws IOException {}
+          public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {}
         };
     try (FieldsConsumer consumer = codec.postingsFormat().fieldsConsumer(writeState)) {
       final Fields fields =
@@ -542,7 +542,7 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
             }
 
             @Override
-            public void checkIntegrity() {}
+            public void checkIntegrity(MergePolicy.OneMerge merge) {}
 
             @Override
             public void close() {}

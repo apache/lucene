@@ -20,6 +20,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.ImpactsEnum;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.store.DataInput;
@@ -78,11 +79,12 @@ public abstract class PostingsReaderBase implements Closeable {
    * Checks consistency of this reader.
    *
    * <p>Note that this may be costly in terms of I/O, e.g. may involve computing a checksum value
-   * against large data files.
+   * against large data files. A {@code OneMerge} can be provided so that expensive checksum
+   * computations can be periodically interrupted when the merge is aborted.
    *
-   * @lucene.internal
+   * @param merge the merge to check for abort, or {@code null} for non-interruptible behavior
    */
-  public abstract void checkIntegrity() throws IOException;
+  public abstract void checkIntegrity(MergePolicy.OneMerge merge) throws IOException;
 
   @Override
   public abstract void close() throws IOException;

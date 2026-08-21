@@ -118,7 +118,7 @@ public abstract class PointValues {
    *
    * @see PointValues#size()
    */
-  public static long size(IndexReader reader, String field) throws IOException {
+  public static long size(IndexReader reader, String field) {
     long size = 0;
     for (LeafReaderContext ctx : reader.leaves()) {
       PointValues values = ctx.reader().getPointValues(field);
@@ -135,7 +135,7 @@ public abstract class PointValues {
    *
    * @see PointValues#getDocCount()
    */
-  public static int getDocCount(IndexReader reader, String field) throws IOException {
+  public static int getDocCount(IndexReader reader, String field) {
     int count = 0;
     for (LeafReaderContext ctx : reader.leaves()) {
       PointValues values = ctx.reader().getPointValues(field);
@@ -152,7 +152,7 @@ public abstract class PointValues {
    *
    * @see PointValues#getMinPackedValue()
    */
-  public static byte[] getMinPackedValue(IndexReader reader, String field) throws IOException {
+  public static byte[] getMinPackedValue(IndexReader reader, String field) {
     byte[] minValue = null;
     for (LeafReaderContext ctx : reader.leaves()) {
       PointValues values = ctx.reader().getPointValues(field);
@@ -187,7 +187,7 @@ public abstract class PointValues {
    *
    * @see PointValues#getMaxPackedValue()
    */
-  public static byte[] getMaxPackedValue(IndexReader reader, String field) throws IOException {
+  public static byte[] getMaxPackedValue(IndexReader reader, String field) {
     byte[] maxValue = null;
     for (LeafReaderContext ctx : reader.leaves()) {
       PointValues values = ctx.reader().getPointValues(field);
@@ -473,21 +473,21 @@ public abstract class PointValues {
   /**
    * Returns minimum value for each dimension, packed, or null if {@link #size} is <code>0</code>
    */
-  public abstract byte[] getMinPackedValue() throws IOException;
+  public abstract byte[] getMinPackedValue();
 
   /**
    * Returns maximum value for each dimension, packed, or null if {@link #size} is <code>0</code>
    */
-  public abstract byte[] getMaxPackedValue() throws IOException;
+  public abstract byte[] getMaxPackedValue();
 
   /** Returns how many dimensions are represented in the values */
-  public abstract int getNumDimensions() throws IOException;
+  public abstract int getNumDimensions();
 
   /** Returns how many dimensions are used for the index */
-  public abstract int getNumIndexDimensions() throws IOException;
+  public abstract int getNumIndexDimensions();
 
   /** Returns the number of bytes per dimension */
-  public abstract int getBytesPerDimension() throws IOException;
+  public abstract int getBytesPerDimension();
 
   /** Returns the total number of indexed points across all documents. */
   public abstract long size();
