@@ -158,6 +158,7 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
     int count = 1;
     long prev = min;
     long distinctCount = 1;
+    // Track distinct ords because a TermsEnum may yield duplicate ords.
     while (termsEnum.next() != null) {
       long ord = termsEnum.ord();
       if (ord != prev) {
