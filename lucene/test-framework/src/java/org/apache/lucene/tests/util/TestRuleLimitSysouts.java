@@ -282,7 +282,9 @@ public class TestRuleLimitSysouts extends TestRuleAdapter {
 
       // Check for offenders, but only if everything was successful so far.
       Limit ann = RandomizedTest.getContext().getTargetClass().getAnnotation(Limit.class);
-      long limit = ann.bytes();
+      // tests.iters re-runs each method in the same suite, so output accumulates.
+      // Scale the per-suite budget accordingly (GITHUB#13829).
+      long limit = ann.bytes() * iterationCount();
       long hardLimit = ann.hardLimit();
       long written = bytesWritten.get();
       if (written >= limit && failureMarker.wasSuccessful()) {
@@ -311,5 +313,10 @@ public class TestRuleLimitSysouts extends TestRuleAdapter {
     capturedSystemErr.flush();
     bytesWritten.set(0);
     hardLimit.set(Integer.MAX_VALUE);
+  }
+
+  /** {@code tests.iters} from the Gradle/JUnit properties, or 1 if unset. */
+  static long iterationCount() {
+    return Math.max(1, Integer.getInteger(SysGlobals.SYSPROP_ITERATIONS(), 1));
   }
 }

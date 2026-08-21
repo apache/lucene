@@ -214,6 +214,9 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#13829: Scale TestRuleLimitSysouts byte limits by tests.iters so suites that print a modest
+  amount per iteration no longer fail when rerun. (Shrey Narayan, NextBrick)
+
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
 

@@ -115,6 +115,33 @@ public class TestSysoutsLimits extends WithNestedTests {
     Assert.assertTrue(msg, msg.isEmpty());
   }
 
+  @Test
+  public void testUnderLimitWithIterations() {
+    String iterationsProperty = SysGlobals.SYSPROP_ITERATIONS();
+    String previousIterations = System.getProperty(iterationsProperty);
+    try {
+      // Two iterations of UnderLimit write 18 bytes. That exceeds the raw 10-byte
+      // annotation but stays under the scaled budget (10 * 2).
+      System.setProperty(iterationsProperty, "2");
+
+      JUnitCore core = new JUnitCore();
+      Result result = core.run(UnderLimit.class);
+
+      String msg =
+          result.getFailures().stream()
+              .map(failure -> failure.getMessage())
+              .collect(Collectors.joining("\n"));
+
+      Assert.assertTrue(msg, msg.isEmpty());
+    } finally {
+      if (previousIterations == null) {
+        System.clearProperty(iterationsProperty);
+      } else {
+        System.setProperty(iterationsProperty, previousIterations);
+      }
+    }
+  }
+
   @TestRuleLimitSysouts.Limit(bytes = 10, hardLimit = 20)
   public static class OverHardLimit extends ParentNestedTest {
     @Test
