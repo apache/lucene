@@ -18,12 +18,15 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.tests.mockfile.ExtrasFS;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestTrackingTmpOutputDirectoryWrapper extends LuceneTestCase {
@@ -78,8 +81,8 @@ public class TestTrackingTmpOutputDirectoryWrapper extends LuceneTestCase {
           wrapper.getTemporaryFiles().containsKey("dest"));
       assertEquals(
           "temp file must be deleted from backing dir after failed copyFrom",
-          0,
-          backing.listAll().length);
+          List.of(),
+          Arrays.stream(backing.listAll()).filter(f -> ExtrasFS.isExtra(f) == false).toList());
     }
   }
 }
