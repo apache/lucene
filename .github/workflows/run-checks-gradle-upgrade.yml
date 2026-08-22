@@ -10,6 +10,9 @@ on:
     paths:
       - '.github/workflows/run-checks-gradle-upgrade.yml'
       - 'gradle/wrapper/**'
+      - 'gradlew'
+      - 'gradlew.bat'
+      - 'build-tools/build-infra/src/main/java/org/apache/lucene/gradle/*.java'
 
   push:
     branches:
@@ -18,6 +21,9 @@ on:
     paths:
       - '.github/workflows/run-checks-gradle-upgrade.yml'
       - 'gradle/wrapper/**'
+      - 'gradlew'
+      - 'gradlew.bat'
+      - 'build-tools/build-infra/src/main/java/org/apache/lucene/gradle/*.java'
 
 permissions: {}
 

@@ -77,6 +77,17 @@ SET GRADLE_TEMPDIR=%DIRNAME%\.gradle\tmp
 IF NOT EXIST "%GRADLE_TEMPDIR%" MKDIR "%GRADLE_TEMPDIR%"
 SET DEFAULT_JVM_OPTS=%DEFAULT_JVM_OPTS% "-Djava.io.tmpdir=%GRADLE_TEMPDIR%"
 
+@rem Intranet mirrors for gradle-wrapper.jar and the gradle distribution, see IntranetGradleSetup.java
+@rem and 'gradlew helpLocalSettings'.
+IF DEFINED LUCENE_GRADLE_DISTRIBUTION_URL goto intranetSetup
+IF DEFINED LUCENE_GRADLE_WRAPPER_URL goto intranetSetup
+goto wrapperJar
+
+:intranetSetup
+"%JAVA_EXE%" %JAVA_OPTS% "%APP_HOME%/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/IntranetGradleSetup.java" "%APP_HOME%" %*
+IF %ERRORLEVEL% NEQ 0 goto exitWithErrorLevel
+
+:wrapperJar
 @rem LUCENE-9266: verify and download the gradle wrapper jar if we don't have one.
 set GRADLE_WRAPPER_JAR=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar
 set GRADLE_WRAPPER_CHECKSUM=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar.sha256

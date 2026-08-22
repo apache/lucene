@@ -16,6 +16,16 @@
  */
 package org.apache.lucene.gradle.plugins.misc;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.math.BigInteger;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -54,6 +64,37 @@ public class CheckEnvironmentPlugin extends LuceneGradlePlugin {
             task -> {
               task.setDistributionType(Wrapper.DistributionType.BIN);
               task.setGradleVersion(expectedGradleVersion);
+              // gradle-wrapper.properties carries the distribution's checksum (verified by the
+              // wrapper and by IntranetGradleSetup). Unless provided explicitly
+              // (--gradle-distribution-sha256-sum), fetch the checksum published next to the
+              // distribution so that it stays in sync on upgrades.
+              task.doFirst(
+                  _ -> {
+                    if (task.getDistributionSha256Sum() == null) {
+                      task.setDistributionSha256Sum(
+                          fetchDistributionSha256Sum(task.getDistributionUrl()));
+                    }
+                  });
+              // Keep gradle-wrapper.jar.sha256 (used by gradlew scripts to verify/download the
+              // wrapper jar) in sync with the jar written by this task.
+              Path jar = task.getJarFile().toPath();
+              Path checksumFile = jar.resolveSibling(jar.getFileName() + ".sha256");
+              task.getOutputs().file(checksumFile);
+              task.doLast(
+                  _ -> {
+                    try {
+                      String expected = sha256(jar) + " *" + jar.getFileName() + "\n";
+                      if (!Files.exists(checksumFile)
+                          || !Files.readString(checksumFile, StandardCharsets.UTF_8)
+                              .equals(expected)) {
+                        Files.writeString(checksumFile, expected, StandardCharsets.UTF_8);
+                        task.getLogger()
+                            .lifecycle("Updated wrapper jar checksum: {}", checksumFile);
+                      }
+                    } catch (IOException e) {
+                      throw new UncheckedIOException(e);
+                    }
+                  });
             });
 
     JavaVersion currentJavaVersion = JavaVersion.current();
@@ -162,5 +203,30 @@ public class CheckEnvironmentPlugin extends LuceneGradlePlugin {
                             .collect(Collectors.joining("\n")));
                   });
             });
+  }
+
+  private static String sha256(Path file) throws IOException {
+    try {
+      MessageDigest digest = MessageDigest.getInstance("SHA-256");
+      digest.update(Files.readAllBytes(file));
+      return String.format(Locale.ROOT, "%064x", new BigInteger(1, digest.digest()));
+    } catch (NoSuchAlgorithmException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private static String fetchDistributionSha256Sum(String distributionUrl) {
+    URI checksumUri = URI.create(distributionUrl + ".sha256");
+    try (InputStream is = checksumUri.toURL().openStream()) {
+      String checksum = new String(is.readAllBytes(), StandardCharsets.UTF_8).trim();
+      if (!checksum.matches("[0-9a-fA-F]{64}")) {
+        throw new GradleException(
+            "Unexpected content of the distribution checksum at " + checksumUri + ": " + checksum);
+      }
+      return checksum;
+    } catch (IOException e) {
+      throw new UncheckedIOException(
+          "Could not fetch the distribution checksum from " + checksumUri, e);
+    }
   }
 }
