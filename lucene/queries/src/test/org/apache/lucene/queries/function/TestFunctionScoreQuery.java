@@ -610,7 +610,7 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
         // specifying Monotonicity.NONE
         DoubleValuesSource valSource =
             DoubleValuesSource.fromField(
-                "val", (v) -> Math.sin(v), DoubleValuesSource.Monotonicity.NONE);
+                "val", (v) -> Math.sin((double) v), DoubleValuesSource.Monotonicity.NONE);
         Query scriptQuery = new FunctionScoreQuery(baseQuery, valSource);
 
         LeafReaderContext ctx = reader.leaves().get(0);
