@@ -102,21 +102,19 @@ public final class BlockingFloatHeap {
    * @throws IllegalStateException if the heap is empty
    */
   public float poll() {
-    if (size > 0) {
-      float result;
-
-      lock.lock();
-      try {
-        result = heap[1]; // save first value
+    lock.lock();
+    try {
+      if (size > 0) {
+        float result = heap[1]; // save first value
         heap[1] = heap[size]; // move last to first
         size--;
         downHeap(1); // adjust heap
-      } finally {
-        lock.unlock();
+        return result;
+      } else {
+        throw new IllegalStateException("The heap is empty");
       }
-      return result;
-    } else {
-      throw new IllegalStateException("The heap is empty");
+    } finally {
+      lock.unlock();
     }
   }
 
