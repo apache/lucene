@@ -50,7 +50,14 @@ abstract class TermsHash {
     bytePool = new ByteBlockPool(byteBlockAllocator);
 
     if (nextTermsHash != null) {
-      // We are primary
+      // Two concrete writers are chained together: the primary (FreqProxTermsWriter) accumulates
+      // postings data (doc IDs, freq, pos, offsets), and the secondary
+      // (TermVectorsConsumer) accumulates per-document term vectors.
+      //
+      // Pool sharing: the primary reuses a single bytePool to store both term bytes
+      // (stored by BytesRefHash) and postings streams (doc IDs, freq, pos, offsets,
+      // payloads). The secondary also reuses this pool as its termBytePool, so term
+      // bytes are stored exactly once without duplication.
       termBytePool = bytePool;
       nextTermsHash.termBytePool = bytePool;
     }

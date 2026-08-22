@@ -38,6 +38,7 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
   private final TermsHashPerField nextPerField;
   private final IntBlockPool intPool;
   final ByteBlockPool bytePool;
+  final ByteBlockPool termBytePool;
   private final ByteSlicePool slicePool;
   // for each term we store an integer per stream that points into the bytePool above
   // the address is updated once data is written to the stream to point to the next free offset
@@ -73,6 +74,7 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
       IndexOptions indexOptions) {
     this.intPool = intPool;
     this.bytePool = bytePool;
+    this.termBytePool = termBytePool;
     this.slicePool = new ByteSlicePool(bytePool);
     this.streamCount = streamCount;
     this.fieldName = fieldName;
