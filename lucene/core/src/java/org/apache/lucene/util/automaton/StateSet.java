@@ -121,4 +121,36 @@ final class StateSet extends IntSet {
     hashUpdated = true;
     return hashCode;
   }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (!(o instanceof IntSet that)) {
+      return false;
+    }
+    if (size() != that.size()) {
+      return false;
+    }
+    if (longHashCode() != that.longHashCode()) {
+      return false;
+    }
+    if (that instanceof FrozenIntSet frozen) {
+      int[] vals = frozen.values;
+      for (int val : vals) {
+        if (!inner.containsKey(val)) {
+          return false;
+        }
+      }
+      return true;
+    }
+    if (that instanceof StateSet otherStateSet) {
+      for (IntCursor key : otherStateSet.inner.keys()) {
+        if (!inner.containsKey(key.value)) {
+          return false;
+        }
+      }
+      return true;
+    }
+    return Arrays.equals(getArray(), 0, size(), that.getArray(), 0, that.size());
+  }
 }
