@@ -605,7 +605,7 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
       try (DirectoryReader reader = DirectoryReader.open(dir)) {
         IndexSearcher searcher = new IndexSearcher(reader);
         Query baseQuery = new TermQuery(new Term(TEXT_FIELD, "nonmonotonic"));
-        
+
         // A non-monotonic function (neither increasing nor decreasing)
         // specifying Monotonicity.NONE
         DoubleValuesSource valSource =
@@ -684,7 +684,7 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
 
         // 2. Verify that they calculate appropriate maxScore bounds
         LeafReaderContext ctx = reader.leaves().get(0);
-        
+
         // INCREASING
         Weight wInc = qIncreasing.createWeight(searcher, ScoreMode.TOP_SCORES, 1f);
         Scorer scorerInc = wInc.scorerSupplier(ctx).get(Long.MAX_VALUE);
