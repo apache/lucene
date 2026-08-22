@@ -653,12 +653,12 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
         // all using the same constant lambda function: f(v) = 5.0
         DoubleValuesSource sourceIncreasing =
             DoubleValuesSource.fromField(
-                "val", (v) -> 5.0, DoubleValuesSource.Monotonicity.INCREASING);
+                "val", (_) -> 5.0, DoubleValuesSource.Monotonicity.INCREASING);
         DoubleValuesSource sourceDecreasing =
             DoubleValuesSource.fromField(
-                "val", (v) -> 5.0, DoubleValuesSource.Monotonicity.DECREASING);
+                "val", (_) -> 5.0, DoubleValuesSource.Monotonicity.DECREASING);
         DoubleValuesSource sourceNone =
-            DoubleValuesSource.fromField("val", (v) -> 5.0, DoubleValuesSource.Monotonicity.NONE);
+            DoubleValuesSource.fromField("val", (_) -> 5.0, DoubleValuesSource.Monotonicity.NONE);
 
         Query qIncreasing = new FunctionScoreQuery(baseQuery, sourceIncreasing);
         Query qDecreasing = new FunctionScoreQuery(baseQuery, sourceDecreasing);
