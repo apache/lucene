@@ -26,6 +26,7 @@ import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.Simple64;
 
 final class SegmentTermsEnumFrame {
   // Our index in stack[]:
@@ -49,6 +50,8 @@ final class SegmentTermsEnumFrame {
   ByteArrayDataInput suffixesReader;
 
   byte[] suffixLengthBytes;
+  // Only used in non-leaf blocks, because for leaf blocks we fully decode all terms' suffix lengths
+  // up front.
   final ByteArrayDataInput suffixLengthsReader;
 
   byte[] statBytes;
@@ -79,6 +82,11 @@ final class SegmentTermsEnumFrame {
 
   // True if all entries have the same length.
   boolean allEqual;
+  // only used when the block is a leaf and allEqual == false.
+  long[] suffixLengthLongs;
+  int suffixLengthLongIndex;
+  int currentSuffixLengthLongStartOrd;
+  int currentSuffixLengthLongValueCount;
 
   long lastSubFP;
 
@@ -209,15 +217,46 @@ final class SegmentTermsEnumFrame {
     int numSuffixLengthBytes = ste.in.readVInt();
     allEqual = (numSuffixLengthBytes & 0x01) != 0;
     numSuffixLengthBytes >>>= 1;
-    if (suffixLengthBytes == null || suffixLengthBytes.length < numSuffixLengthBytes) {
-      suffixLengthBytes = new byte[ArrayUtil.oversize(numSuffixLengthBytes, 1)];
-    }
-    if (allEqual) {
-      Arrays.fill(suffixLengthBytes, 0, numSuffixLengthBytes, ste.in.readByte());
+
+    if (isLeafBlock) {
+      // TODO: If this frame reused from a stale non leaf frame, we could reset/clean
+      // suffixLengthBytes and suffixLengthsReader. That would help gc, but suffixLengthBytes would
+      // need new allocate if this frame load non leaf block again.
+      if (allEqual) {
+        // Leaf blocks store term suffix lengths only. Here allEqual means every term has this same
+        // decoded suffix length(Instead of numSuffixLengthBytes, we save suffixLength directly for
+        // allEqual leaf block).
+        suffixLength = numSuffixLengthBytes;
+        // This frame maybe reused from a stale frame, so reset stale frame's state.
+        suffixLengthLongs = null;
+      } else {
+        // This frame maybe reused from a stale frame, so reset stale frame's state.
+        suffixLength = -1;
+        int numLongs = numSuffixLengthBytes;
+        suffixLengthLongs = new long[numLongs];
+        ste.in.readLongs(suffixLengthLongs, 0, numLongs);
+        suffixLengthLongIndex = 0;
+        currentSuffixLengthLongStartOrd = 0;
+        currentSuffixLengthLongValueCount = 0;
+      }
     } else {
-      ste.in.readBytes(suffixLengthBytes, 0, numSuffixLengthBytes);
+      // Non-leaf blocks store encoded VInt/VLong bytes containing both suffix lengths and sub-block
+      // FPs. Here allEqual means every encoded byte is identical, not that suffix lengths are
+      // equal.
+      // This frame maybe reused from a stale frame, so reset stale frame's state.
+      suffixLength = -1;
+      suffixLengthLongs = null;
+      if (suffixLengthBytes == null || suffixLengthBytes.length < numSuffixLengthBytes) {
+        suffixLengthBytes = new byte[ArrayUtil.oversize(numSuffixLengthBytes, 1)];
+      }
+      if (allEqual) {
+        Arrays.fill(suffixLengthBytes, 0, numSuffixLengthBytes, ste.in.readByte());
+      } else {
+        ste.in.readBytes(suffixLengthBytes, 0, numSuffixLengthBytes);
+      }
+      suffixLengthsReader.reset(suffixLengthBytes, 0, numSuffixLengthBytes);
     }
-    suffixLengthsReader.reset(suffixLengthBytes, 0, numSuffixLengthBytes);
+
     totalSuffixBytes = ste.in.getFilePointer() - startSuffixFP;
 
     /*if (DEBUG) {
@@ -332,13 +371,54 @@ final class SegmentTermsEnumFrame {
     // " entCount=" + entCount);
     assert nextEnt != -1 && nextEnt < entCount
         : "nextEnt=" + nextEnt + " entCount=" + entCount + " fp=" + fp;
+    if (allEqual == false) {
+      suffixLength = suffixLength(nextEnt);
+    }
     nextEnt++;
-    suffixLength = suffixLengthsReader.readVInt();
     startBytePos = suffixesReader.getPosition();
     ste.term.setLength(prefixLength + suffixLength);
     ste.term.grow(ste.term.length());
     suffixesReader.readBytes(ste.term.bytes(), prefixLength, suffixLength);
     ste.termExists = true;
+  }
+
+  private int suffixLength(int ord) {
+    assert allEqual == false;
+    // Normally it would not happen. Except if a seek moves backward within the same loaded block,
+    // and we don't want reload this block. See: https://github.com/apache/lucene/pull/13253.
+    if (ord < currentSuffixLengthLongStartOrd) {
+      suffixLengthLongIndex = 0;
+      currentSuffixLengthLongStartOrd = 0;
+      currentSuffixLengthLongValueCount = 0;
+    }
+    if (ord >= currentSuffixLengthLongStartOrd + currentSuffixLengthLongValueCount) {
+      skipSuffixLengthLongs(ord);
+    }
+
+    // TODO: Maybe cache the selector.
+    return Simple64.decodeOneInt(
+        suffixLengthLongs[suffixLengthLongIndex], ord - currentSuffixLengthLongStartOrd);
+  }
+
+  private void skipSuffixLengthLongs(int ord) {
+    int start = currentSuffixLengthLongStartOrd + currentSuffixLengthLongValueCount;
+    if (currentSuffixLengthLongValueCount > 0) {
+      suffixLengthLongIndex++;
+    }
+    while (true) {
+      assert suffixLengthLongIndex < suffixLengthLongs.length;
+      long word = suffixLengthLongs[suffixLengthLongIndex];
+      int packedCount = Simple64.count(word);
+      int decodedCount = Math.min(packedCount, entCount - start);
+      assert decodedCount > 0;
+      if (ord < start + decodedCount) {
+        currentSuffixLengthLongStartOrd = start;
+        currentSuffixLengthLongValueCount = decodedCount;
+        return;
+      }
+      suffixLengthLongIndex++;
+      start += decodedCount;
+    }
   }
 
   public boolean nextNonLeaf() throws IOException {
@@ -598,9 +678,8 @@ final class SegmentTermsEnumFrame {
 
     // Loop over each entry (term or sub-block) in this block:
     do {
+      suffixLength = suffixLength(nextEnt);
       nextEnt++;
-
-      suffixLength = suffixLengthsReader.readVInt();
 
       // if (DEBUG) {
       //   BytesRef suffixBytesRef = new BytesRef();
@@ -690,7 +769,9 @@ final class SegmentTermsEnumFrame {
 
     assert prefixMatches(target);
 
-    suffixLength = suffixLengthsReader.readVInt();
+    // suffixLength assigned in loadBlock, and all suffixes have the same length in this block.
+    assert suffixLength >= 0;
+
     // TODO early terminate when target length unequals suffix + prefix.
     // But we need to keep the same status with scanToTermLeaf.
     int start = nextEnt;
