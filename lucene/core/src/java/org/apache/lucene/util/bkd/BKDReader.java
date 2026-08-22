@@ -17,7 +17,9 @@
 package org.apache.lucene.util.bkd;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.PointValues;
@@ -589,6 +591,65 @@ public class BKDReader extends PointValues {
       addAll(visitor, false);
     }
 
+    /** prefetch DocIds below current node */
+    public void prefetchDocIDs(TwoPhaseIntersectVisitor visitor) throws IOException {
+      resetNodeDataPosition();
+      prefetchAll(visitor, false);
+    }
+
+    /** visit Doc Ids for a leafNode at provided input position */
+    public void visitDocIDs(long position, IntersectVisitor visitor) throws IOException {
+      visitDocIDs(position, visitor, false);
+    }
+
+    private void visitDocIDs(long position, IntersectVisitor visitor, boolean grown)
+        throws IOException {
+      leafNodes.seek(position);
+      int count = leafNodes.readVInt();
+      if (!grown) {
+        visitor.grow(count);
+      }
+      docIdsWriter.readInts(leafNodes, count, visitor, scratchIterator.docIDs);
+    }
+
+    private int getLeafNodeOrdinal() {
+      assert isLeafNode() : "nodeID=" + nodeID + " is not a leaf";
+      return nodeID - leafNodeOffset;
+    }
+
+    public void prefetchAll(TwoPhaseIntersectVisitor visitor, boolean grown) throws IOException {
+      if (grown == false) {
+        final long size = size();
+        if (size <= Integer.MAX_VALUE) {
+          visitor.grow((int) size);
+          grown = true;
+        }
+      }
+      if (isLeafNode()) {
+        // int count = isLastLeaf() ? config.maxPointsInLeafNode() : lastLeafNodePointCount;
+        long leafFp = getLeafBlockFP();
+        int leafNodeOrdinal = getLeafNodeOrdinal();
+        // Only call prefetch is this is the first leaf node ordinal or the first match in
+        // contigiuous sequence of matches for leaf nodes
+        // boolean prefetched = false;
+        if (visitor.lastDeferredBlockOrdinal() == -1
+            || visitor.lastDeferredBlockOrdinal() + 1 < leafNodeOrdinal) {
+          // System.out.println("Prefetched called on " + leafNodeOrdinal);
+          leafNodes.prefetch(leafFp, 1);
+          // prefetched = true;
+        }
+        visitor.setLastDeferredBlockOrdinal(leafNodeOrdinal);
+        visitor.deferBlock(leafFp);
+      } else {
+        pushLeft();
+        prefetchAll(visitor, grown);
+        pop();
+        pushRight();
+        prefetchAll(visitor, grown);
+        pop();
+      }
+    }
+
     public void addAll(PointValues.IntersectVisitor visitor, boolean grown) throws IOException {
       if (grown == false) {
         final long size = size();
@@ -1074,6 +1135,125 @@ public class BKDReader extends PointValues {
     @Override
     public long cost() {
       return length;
+    }
+  }
+
+  /**
+   * We can recurse the {@link BKDPointTree} using {@link TwoPhaseIntersectVisitor}. This visitor
+   * travere {@link BKDPointTree} in two phases. In the first phase, it recurses over the {@link
+   * BKDPointTree} optionally triggering IO for some of the blocks and caching them. In the second
+   * phase, once the recursion is over it visits the cached blocks one by one.
+   *
+   * @lucene.experimental
+   */
+  public interface TwoPhaseIntersectVisitor extends IntersectVisitor {
+    /** return the last deferred block ordinal during recursion. */
+    public int lastDeferredBlockOrdinal();
+
+    /** set last deferred block ordinal */
+    public void setLastDeferredBlockOrdinal(int leafNodeOrdinal);
+
+    /** Defer this block for processing in the second phase. */
+    public void deferBlock(long leafFp);
+
+    /** Returns a snapshot of the currently deferred blocks. */
+    public List<Long> deferredBlocks();
+
+    /** Mark the given block as processed and remove it from the deferred set. */
+    public void onProcessingDeferredBlock(long leafFp);
+  }
+
+  /**
+   * Base implementation of {@link TwoPhaseIntersectVisitor} that maintains a list of deferred
+   * blocks from first phase of traversal and visits them in the second phase.
+   *
+   * @lucene.experimental
+   */
+  public abstract static class BaseTwoPhaseIntersectVisitor implements TwoPhaseIntersectVisitor {
+
+    int lastDeferredBlockOrdinal = -1;
+    List<Long> deferredBlocks = new ArrayList<>();
+
+    /**
+     * return the last deferred block ordinal - this is used to avoid prefetching call for
+     * contiguous ordinals assuming contiguous ordinals prefetching can be taken care by readaheads.
+     */
+    @Override
+    public int lastDeferredBlockOrdinal() {
+      return lastDeferredBlockOrdinal;
+    }
+
+    /** set last deferred block ordinal * */
+    @Override
+    public void setLastDeferredBlockOrdinal(int leafNodeOrdinal) {
+      lastDeferredBlockOrdinal = leafNodeOrdinal;
+    }
+
+    /** Defer this block for processing in the second phase. */
+    @Override
+    public void deferBlock(long leafFp) {
+      deferredBlocks.add(leafFp);
+    }
+
+    /** Returns a snapshot of the currently deferred blocks. */
+    @Override
+    public List<Long> deferredBlocks() {
+      return new ArrayList<>(deferredBlocks);
+    }
+
+    /** Mark the given block as processed and remove it from the deferred set. */
+    @Override
+    public void onProcessingDeferredBlock(long leafFp) {
+      deferredBlocks.remove(leafFp);
+    }
+  }
+
+  /**
+   * Finds all documents and points matching the provided visitor. This method does not enforce live
+   * documents, so it's up to the caller to test whether each document is deleted, if necessary.
+   */
+  @Override
+  public final void intersect(IntersectVisitor visitor) throws IOException {
+    final BKDPointTree pointTree = (BKDPointTree) getPointTree();
+    if (visitor instanceof TwoPhaseIntersectVisitor twoPhaseIntersectVisitor) {
+      intersect(twoPhaseIntersectVisitor, pointTree);
+      List<Long> fps = twoPhaseIntersectVisitor.deferredBlocks();
+      for (int i = 0; i < fps.size(); ++i) {
+        long fp = fps.get(i);
+        pointTree.visitDocIDs(fp, visitor);
+        twoPhaseIntersectVisitor.onProcessingDeferredBlock(fp);
+      }
+    } else {
+      intersect(visitor, pointTree);
+    }
+    assert pointTree.moveToParent() == false;
+  }
+
+  private static void intersect(TwoPhaseIntersectVisitor visitor, BKDPointTree pointTree)
+      throws IOException {
+    while (true) {
+      Relation compare =
+          visitor.compare(pointTree.getMinPackedValue(), pointTree.getMaxPackedValue());
+      if (compare == Relation.CELL_INSIDE_QUERY) {
+        // This cell is fully inside the query shape: recursively prefetch all points in this cell
+        // without filtering
+        pointTree.prefetchDocIDs(visitor);
+      } else if (compare == Relation.CELL_CROSSES_QUERY) {
+        // The cell crosses the shape boundary, or the cell fully contains the query, so we fall
+        // through and do full filtering:
+        if (pointTree.moveToChild()) {
+          continue;
+        }
+        // TODO: we can assert that the first value here in fact matches what the pointTree
+        // claimed?
+        // Leaf node; scan and filter all points in this block:
+        pointTree.visitDocValues(visitor);
+      }
+      while (pointTree.moveToSibling() == false) {
+        if (pointTree.moveToParent() == false) {
+          return;
+        }
+      }
     }
   }
 }
