@@ -26,6 +26,7 @@ import org.apache.lucene.search.similarities.Similarity.BulkSimScorer;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.LongsRef;
 
 /**
@@ -133,25 +134,43 @@ public final class TermScorer extends Scorer {
   @Override
   public void nextDocsAndScores(int upTo, Bits liveDocs, DocAndFloatFeatureBuffer buffer)
       throws IOException {
-    for (; ; ) {
+    do {
       if (impactsDisi != null) {
         impactsDisi.ensureCompetitive();
       }
 
       postingsEnum.nextPostings(upTo, buffer);
       if (liveDocs != null && buffer.size != 0) {
-        // An empty return value indicates that there are no more docs before upTo. We may be
-        // unlucky, and there are docs left, but all docs from the current batch happen to be marked
-        // as deleted. So we need to iterate until we find a batch that has at least one non-deleted
-        // doc.
         buffer.apply(liveDocs);
-        if (buffer.size == 0) {
-          continue;
-        }
       }
-      break;
-    }
+      // An empty return value indicates that there are no more docs before upTo. We may be
+      // unlucky, and there are docs left, but all docs from the current batch happen to be marked
+      // as deleted. So we need to iterate until we find a batch that has at least one non-deleted
+      // doc.
+    } while (buffer.size == 0 && postingsEnum.docID() < upTo);
 
+    score(buffer);
+  }
+
+  @Override
+  public void nextDocsAndScores(
+      int upTo, FixedBitSet acceptDocs, int offset, DocAndFloatFeatureBuffer buffer)
+      throws IOException {
+    do {
+      if (impactsDisi != null) {
+        impactsDisi.ensureCompetitive();
+      }
+
+      postingsEnum.nextPostings(upTo, buffer);
+      if (buffer.size != 0) {
+        buffer.apply(acceptDocs, offset);
+      }
+    } while (buffer.size == 0 && postingsEnum.docID() < upTo);
+
+    score(buffer);
+  }
+
+  private void score(DocAndFloatFeatureBuffer buffer) throws IOException {
     int size = buffer.size;
     if (normValues.length < size) {
       normValues = new long[ArrayUtil.oversize(size, Long.BYTES)];

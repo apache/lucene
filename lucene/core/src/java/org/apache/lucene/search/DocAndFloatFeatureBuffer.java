@@ -18,6 +18,7 @@ package org.apache.lucene.search;
 
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IntsRef;
 
 /**
@@ -55,6 +56,19 @@ public final class DocAndFloatFeatureBuffer {
     int newSize = 0;
     for (int i = 0; i < size; ++i) {
       if (liveDocs.get(docs[i])) {
+        docs[newSize] = docs[i];
+        features[newSize] = features[i];
+        newSize++;
+      }
+    }
+    this.size = newSize;
+  }
+
+  /** Remove entries whose bit at {@code doc - offset} is unset in the given bit set. */
+  public void apply(FixedBitSet acceptDocs, int offset) {
+    int newSize = 0;
+    for (int i = 0; i < size; ++i) {
+      if (acceptDocs.get(docs[i] - offset)) {
         docs[newSize] = docs[i];
         features[newSize] = features[i];
         newSize++;

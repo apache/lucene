@@ -301,14 +301,23 @@ final class MaxScoreBulkScorer extends BulkScorer {
       FixedBitSet filterMatches)
       throws IOException {
     do {
-      for (top.scorer.nextDocsAndScores(innerWindowMax, acceptDocs, docAndScoreBuffer);
+      for (nextDocsAndScores(
+              top.scorer,
+              innerWindowMax,
+              innerWindowMin,
+              acceptDocs,
+              filterMatches,
+              docAndScoreBuffer);
           docAndScoreBuffer.size > 0;
-          top.scorer.nextDocsAndScores(innerWindowMax, acceptDocs, docAndScoreBuffer)) {
+          nextDocsAndScores(
+              top.scorer,
+              innerWindowMax,
+              innerWindowMin,
+              acceptDocs,
+              filterMatches,
+              docAndScoreBuffer)) {
         for (int index = 0; index < docAndScoreBuffer.size; ++index) {
           final int doc = docAndScoreBuffer.docs[index];
-          if (filterMatches != null && filterMatches.get(doc - innerWindowMin) == false) {
-            continue;
-          }
           final float score = docAndScoreBuffer.features[index];
           final int i = doc - innerWindowMin;
           windowMatches.set(i);
@@ -319,6 +328,21 @@ final class MaxScoreBulkScorer extends BulkScorer {
       top.doc = top.iterator.docID();
       top = essentialQueue.updateTop();
     } while (top.doc < innerWindowMax);
+  }
+
+  private static void nextDocsAndScores(
+      Scorer scorer,
+      int upTo,
+      int offset,
+      Bits acceptDocs,
+      FixedBitSet filterMatches,
+      DocAndFloatFeatureBuffer buffer)
+      throws IOException {
+    if (filterMatches == null) {
+      scorer.nextDocsAndScores(upTo, acceptDocs, buffer);
+    } else {
+      scorer.nextDocsAndScores(upTo, filterMatches, offset, buffer);
+    }
   }
 
   /** Flush {@link #windowMatches} and {@link #windowScores} into {@link #docAndScoreAccBuffer}. */
