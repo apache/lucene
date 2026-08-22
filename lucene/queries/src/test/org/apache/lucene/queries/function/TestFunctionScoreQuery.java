@@ -658,8 +658,7 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
             DoubleValuesSource.fromField(
                 "val", (v) -> 5.0, DoubleValuesSource.Monotonicity.DECREASING);
         DoubleValuesSource sourceNone =
-            DoubleValuesSource.fromField(
-                "val", (v) -> 5.0, DoubleValuesSource.Monotonicity.NONE);
+            DoubleValuesSource.fromField("val", (v) -> 5.0, DoubleValuesSource.Monotonicity.NONE);
 
         Query qIncreasing = new FunctionScoreQuery(baseQuery, sourceIncreasing);
         Query qDecreasing = new FunctionScoreQuery(baseQuery, sourceDecreasing);
@@ -704,7 +703,8 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
         float maxScoreNone = scorerNone.getMaxScore(ctx.reader().maxDoc());
 
         if (ctx.reader().getDocValuesSkipper("val") != null) {
-          // If skipper exists, INCREASING and DECREASING should compute a tight finite max score (5.0 * innerMaxScore)
+          // If skipper exists, INCREASING and DECREASING should compute a tight finite max score
+          // (5.0 * innerMaxScore)
           assertFalse(Float.isInfinite(maxScoreInc));
           assertFalse(Float.isInfinite(maxScoreDec));
           assertEquals(maxScoreInc, maxScoreDec, 1e-5f);
