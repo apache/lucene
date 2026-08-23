@@ -69,6 +69,9 @@ import java.util.stream.Stream;
  * <p>Both URLs may contain a {@code ${gradleVersion}} placeholder, replaced with the version parsed
  * from {@code distributionUrl} in {@code gradle-wrapper.properties}.
  *
+ * <p>Setting {@value #VERIFY_CHECKSUMS_ENV} to {@code false} disables all checksum verification: an
+ * existing {@code gradle-wrapper.jar} is used as-is and downloads are installed unverified.
+ *
  * <p>Ensure this class has no dependencies outside of standard java libraries as it's run directly
  * from source. It only uses JDK 11 language features and APIs so that it runs on any reasonably
  * recent JDK (17+ is required by {@link #checkVersion()}; the actual build requires a newer one).
@@ -88,6 +91,11 @@ public class IntranetGradleSetup {
 
   public static final String DISTRIBUTION_URL_ENV = "LUCENE_GRADLE_DISTRIBUTION_URL";
   public static final String WRAPPER_URL_ENV = "LUCENE_GRADLE_WRAPPER_URL";
+  public static final String VERIFY_CHECKSUMS_ENV = "LUCENE_GRADLE_VERIFY_CHECKSUMS";
+
+  /** Checksum verification is on unless {@value #VERIFY_CHECKSUMS_ENV} is set to "false". */
+  private static final boolean VERIFY_CHECKSUMS =
+      !"false".equalsIgnoreCase(System.getenv(VERIFY_CHECKSUMS_ENV));
 
   private static final Pattern DISTRIBUTION_NAME =
       Pattern.compile("gradle-(?<version>.+?)-(bin|all)\\.zip");
@@ -171,6 +179,10 @@ public class IntranetGradleSetup {
     String wrapperUrl = expand(System.getenv(WRAPPER_URL_ENV), gradleVersion);
     String mirrorDistributionUrl = expand(System.getenv(DISTRIBUTION_URL_ENV), gradleVersion);
 
+    if (!VERIFY_CHECKSUMS) {
+      log("NOTE: checksum verification disabled (" + VERIFY_CHECKSUMS_ENV + "=false).");
+    }
+
     setupWrapperJar(wrapperDir, wrapperUrl, timeout);
     if (mirrorDistributionUrl != null) {
       setupDistribution(props, distributionUrl, mirrorDistributionUrl, gradleVersion, timeout);
@@ -199,32 +211,34 @@ public class IntranetGradleSetup {
 
   /**
    * Makes sure gradle/wrapper/gradle-wrapper.jar is present and matches gradle-wrapper.jar.sha256,
-   * downloading it from the mirror if needed (otherwise WrapperDownloader would try GitHub).
+   * downloading it from the mirror if needed (otherwise WrapperDownloader would try GitHub). With
+   * checksum verification disabled, any existing jar is used as-is and downloads are not verified.
    */
   private void setupWrapperJar(Path wrapperDir, String wrapperUrl, int timeout) throws Exception {
     Path jar = wrapperDir.resolve("gradle-wrapper.jar");
     Path checksumFile = wrapperDir.resolve("gradle-wrapper.jar.sha256");
     String expected = null;
-    for (String line : Files.readAllLines(checksumFile, StandardCharsets.UTF_8)) {
-      // sha256sum format: "<checksum> *gradle-wrapper.jar" ('*' marks binary mode).
-      String[] parts = line.trim().split("\\s+");
-      if (parts.length == 2 && parts[1].replaceFirst("^\\*", "").equals("gradle-wrapper.jar")) {
-        expected = parts[0];
+    if (VERIFY_CHECKSUMS) {
+      for (String line : Files.readAllLines(checksumFile, StandardCharsets.UTF_8)) {
+        // sha256sum format: "<checksum> *gradle-wrapper.jar" ('*' marks binary mode).
+        String[] parts = line.trim().split("\\s+");
+        if (parts.length == 2 && parts[1].replaceFirst("^\\*", "").equals("gradle-wrapper.jar")) {
+          expected = parts[0];
+        }
+      }
+      if (expected == null) {
+        throw new IOException("No checksum for gradle-wrapper.jar in " + checksumFile);
       }
     }
-    if (expected == null) {
-      throw new IOException("No checksum for gradle-wrapper.jar in " + checksumFile);
-    }
 
-    if (Files.exists(jar) && sha256(jar).equalsIgnoreCase(expected)) {
+    if (Files.exists(jar) && (!VERIFY_CHECKSUMS || sha256(jar).equalsIgnoreCase(expected))) {
       return;
     }
     if (wrapperUrl == null) {
       log(
           "WARNING: "
               + jar
-              + " is missing or does not match "
-              + checksumFile
+              + (VERIFY_CHECKSUMS ? " is missing or does not match " + checksumFile : " is missing")
               + " and "
               + WRAPPER_URL_ENV
               + " is not set; WrapperDownloader will try to fetch it from GitHub.");
@@ -235,18 +249,20 @@ public class IntranetGradleSetup {
     Path temp = Files.createTempFile(wrapperDir, ".gradle-wrapper", ".tmp");
     try {
       download(new URI(wrapperUrl), temp, timeout);
-      String actual = sha256(temp);
-      if (!actual.equalsIgnoreCase(expected)) {
-        throw new IOException(
-            "The gradle-wrapper.jar downloaded from "
-                + wrapperUrl
-                + " does not match "
-                + checksumFile
-                + " (expected: "
-                + expected
-                + ", actual: "
-                + actual
-                + ").");
+      if (VERIFY_CHECKSUMS) {
+        String actual = sha256(temp);
+        if (!actual.equalsIgnoreCase(expected)) {
+          throw new IOException(
+              "The gradle-wrapper.jar downloaded from "
+                  + wrapperUrl
+                  + " does not match "
+                  + checksumFile
+                  + " (expected: "
+                  + expected
+                  + ", actual: "
+                  + actual
+                  + ").");
+        }
       }
       Files.move(temp, jar, StandardCopyOption.REPLACE_EXISTING);
     } finally {
@@ -263,11 +279,15 @@ public class IntranetGradleSetup {
       throws Exception {
     String expectedSha256 = props.getProperty("distributionSha256Sum");
     if (expectedSha256 == null || expectedSha256.trim().isEmpty()) {
-      throw new IOException(
-          "No 'distributionSha256Sum' in gradle-wrapper.properties; refusing to install a gradle"
-              + " distribution without checksum verification.");
+      if (VERIFY_CHECKSUMS) {
+        throw new IOException(
+            "No 'distributionSha256Sum' in gradle-wrapper.properties; refusing to install a gradle"
+                + " distribution without checksum verification.");
+      }
+      expectedSha256 = null;
+    } else {
+      expectedSha256 = expectedSha256.trim();
     }
-    expectedSha256 = expectedSha256.trim();
 
     URI official = new URI(distributionUrl);
     String zipName = official.getPath().replaceAll(".*/", "");
@@ -307,18 +327,20 @@ public class IntranetGradleSetup {
 
             log("Downloading gradle distribution from " + mirrorUrl);
             download(new URI(mirrorUrl), zip, timeout);
-            String actual = sha256(zip);
-            if (!actual.equalsIgnoreCase(expectedSha256)) {
-              Files.delete(zip);
-              throw new IOException(
-                  "The distribution downloaded from "
-                      + mirrorUrl
-                      + " does not match distributionSha256Sum in gradle-wrapper.properties"
-                      + " (expected: "
-                      + expectedSha256
-                      + ", actual: "
-                      + actual
-                      + ").");
+            if (VERIFY_CHECKSUMS) {
+              String actual = sha256(zip);
+              if (!actual.equalsIgnoreCase(expectedSha256)) {
+                Files.delete(zip);
+                throw new IOException(
+                    "The distribution downloaded from "
+                        + mirrorUrl
+                        + " does not match distributionSha256Sum in gradle-wrapper.properties"
+                        + " (expected: "
+                        + expectedSha256
+                        + ", actual: "
+                        + actual
+                        + ").");
+              }
             }
 
             // Remove leftovers of previous installations, then unpack.

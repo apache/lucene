@@ -28,6 +28,14 @@ home (GRADLE_USER_HOME or ~/.gradle) at the location the gradle wrapper expects
 for the official distribution URL, so nothing else needs to be downloaded.
 Local files work too, e.g. LUCENE_GRADLE_DISTRIBUTION_URL=file:///path/to/gradle-9.7.0-bin.zip
 
+Setting LUCENE_GRADLE_VERIFY_CHECKSUMS=false disables checksum verification
+in these bootstrap steps: gradlew skips the gradle-wrapper.jar checksum
+check (and the automatic download of the jar if it is missing or does not
+match gradle-wrapper.jar.sha256), and IntranetGradleSetup uses an existing
+gradle-wrapper.jar as-is and installs what it downloads without verifying
+it against gradle-wrapper.jar.sha256/distributionSha256Sum. Use this only
+if you trust the origin of the jar and the mirror URLs.
+
 
 Build options
 =============

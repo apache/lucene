@@ -89,6 +89,8 @@ IF %ERRORLEVEL% NEQ 0 goto exitWithErrorLevel
 
 :wrapperJar
 @rem LUCENE-9266: verify and download the gradle wrapper jar if we don't have one.
+@rem Skipped entirely if LUCENE_GRADLE_VERIFY_CHECKSUMS=false, see 'gradlew helpLocalSettings'.
+IF /I "%LUCENE_GRADLE_VERIFY_CHECKSUMS%"=="false" goto gradleProperties
 set GRADLE_WRAPPER_JAR=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar
 set GRADLE_WRAPPER_CHECKSUM=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar.sha256
 
@@ -107,6 +109,7 @@ if /i "%ACTUAL%" NEQ "%EXPECTED%" (
   IF %ERRORLEVEL% NEQ 0 goto exitWithErrorLevel
 )
 
+:gradleProperties
 @rem Generate gradle.properties if it does not exist
 IF NOT EXIST "%APP_HOME%\gradle.properties" (
   @rem local expansion is needed to check ERRORLEVEL inside control blocks.
