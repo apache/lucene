@@ -22,12 +22,23 @@ import static org.apache.lucene.analysis.path.PathHierarchyTokenizer.DEFAULT_SKI
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
+import java.util.Arrays;
 import java.util.Random;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.charfilter.MappingCharFilter;
 import org.apache.lucene.analysis.charfilter.NormalizeCharMap;
+import org.apache.lucene.analysis.core.KeywordAnalyzer;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.TextField;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.util.QueryBuilder;
 
 public class TestPathHierarchyTokenizer extends BaseTokenStreamTestCase {
 
@@ -42,7 +53,7 @@ public class TestPathHierarchyTokenizer extends BaseTokenStreamTestCase {
         new String[] {"/a", "/a/b", "/a/b/c"},
         new int[] {0, 0, 0},
         new int[] {2, 4, 6},
-        new int[] {1, 1, 1},
+        new int[] {1, 0, 0},
         path.length());
   }
 
@@ -57,7 +68,7 @@ public class TestPathHierarchyTokenizer extends BaseTokenStreamTestCase {
         new String[] {"/a", "/a/b", "/a/b/c", "/a/b/c/"},
         new int[] {0, 0, 0, 0},
         new int[] {2, 4, 6, 7},
-        new int[] {1, 1, 1, 1},
+        new int[] {1, 0, 0, 0},
         path.length());
   }
 
@@ -72,7 +83,7 @@ public class TestPathHierarchyTokenizer extends BaseTokenStreamTestCase {
         new String[] {"a", "a/b", "a/b/c"},
         new int[] {0, 0, 0},
         new int[] {1, 3, 5},
-        new int[] {1, 1, 1},
+        new int[] {1, 0, 0},
         path.length());
   }
 
@@ -87,7 +98,7 @@ public class TestPathHierarchyTokenizer extends BaseTokenStreamTestCase {
         new String[] {"a", "a/b", "a/b/c", "a/b/c/"},
         new int[] {0, 0, 0, 0},
         new int[] {1, 3, 5, 6},
-        new int[] {1, 1, 1, 1},
+        new int[] {1, 0, 0, 0},
         path.length());
   }
 
@@ -112,7 +123,7 @@ public class TestPathHierarchyTokenizer extends BaseTokenStreamTestCase {
         new String[] {"/", "//"},
         new int[] {0, 0},
         new int[] {1, 2},
-        new int[] {1, 1},
+        new int[] {1, 0},
         path.length());
   }
 
@@ -126,7 +137,7 @@ public class TestPathHierarchyTokenizer extends BaseTokenStreamTestCase {
         new String[] {"\\a", "\\a\\b", "\\a\\b\\c"},
         new int[] {0, 0, 0},
         new int[] {2, 4, 6},
-        new int[] {1, 1, 1},
+        new int[] {1, 0, 0},
         path.length());
   }
 
@@ -140,7 +151,7 @@ public class TestPathHierarchyTokenizer extends BaseTokenStreamTestCase {
         new String[] {"c:", "c:\\a", "c:\\a\\b", "c:\\a\\b\\c"},
         new int[] {0, 0, 0, 0},
         new int[] {2, 4, 6, 8},
-        new int[] {1, 1, 1, 1},
+        new int[] {1, 0, 0, 0},
         path.length());
   }
 
@@ -159,7 +170,7 @@ public class TestPathHierarchyTokenizer extends BaseTokenStreamTestCase {
         new String[] {"c:", "c:/a", "c:/a/b", "c:/a/b/c"},
         new int[] {0, 0, 0, 0},
         new int[] {2, 4, 6, 8},
-        new int[] {1, 1, 1, 1},
+        new int[] {1, 0, 0, 0},
         path.length());
   }
 
@@ -173,7 +184,7 @@ public class TestPathHierarchyTokenizer extends BaseTokenStreamTestCase {
         new String[] {"/b", "/b/c"},
         new int[] {2, 2},
         new int[] {4, 6},
-        new int[] {1, 1},
+        new int[] {1, 0},
         path.length());
   }
 
@@ -187,7 +198,7 @@ public class TestPathHierarchyTokenizer extends BaseTokenStreamTestCase {
         new String[] {"/b", "/b/c", "/b/c/"},
         new int[] {2, 2, 2},
         new int[] {4, 6, 7},
-        new int[] {1, 1, 1},
+        new int[] {1, 0, 0},
         path.length());
   }
 
@@ -201,7 +212,7 @@ public class TestPathHierarchyTokenizer extends BaseTokenStreamTestCase {
         new String[] {"/b", "/b/c"},
         new int[] {1, 1},
         new int[] {3, 5},
-        new int[] {1, 1},
+        new int[] {1, 0},
         path.length());
   }
 
@@ -215,7 +226,7 @@ public class TestPathHierarchyTokenizer extends BaseTokenStreamTestCase {
         new String[] {"/b", "/b/c", "/b/c/"},
         new int[] {1, 1, 1},
         new int[] {3, 5, 6},
-        new int[] {1, 1, 1},
+        new int[] {1, 0, 0},
         path.length());
   }
 
@@ -282,9 +293,137 @@ public class TestPathHierarchyTokenizer extends BaseTokenStreamTestCase {
       };
 
   public void testTokenizerViaAnalyzerOutput() throws IOException {
-    assertAnalyzesTo(analyzer, "a/b/c", new String[] {"a", "a/b", "a/b/c"});
-    assertAnalyzesTo(analyzer, "a/b/c/", new String[] {"a", "a/b", "a/b/c", "a/b/c/"});
-    assertAnalyzesTo(analyzer, "/a/b/c", new String[] {"/a", "/a/b", "/a/b/c"});
-    assertAnalyzesTo(analyzer, "/a/b/c/", new String[] {"/a", "/a/b", "/a/b/c", "/a/b/c/"});
+    // The path tokens share a position (posInc 0 after the first), so their offsets overlap;
+    // pass graphOffsetsAreCorrect=false so the strict graph-offset check does not reject the
+    // legitimate overlapping-prefix output (see #15769).
+    assertAnalyzesTo(
+        analyzer,
+        "a/b/c",
+        new String[] {"a", "a/b", "a/b/c"},
+        null,
+        null,
+        null,
+        new int[] {1, 0, 0},
+        null,
+        false);
+    assertAnalyzesTo(
+        analyzer,
+        "a/b/c/",
+        new String[] {"a", "a/b", "a/b/c", "a/b/c/"},
+        null,
+        null,
+        null,
+        new int[] {1, 0, 0, 0},
+        null,
+        false);
+    assertAnalyzesTo(
+        analyzer,
+        "/a/b/c",
+        new String[] {"/a", "/a/b", "/a/b/c"},
+        null,
+        null,
+        null,
+        new int[] {1, 0, 0},
+        null,
+        false);
+    assertAnalyzesTo(
+        analyzer,
+        "/a/b/c/",
+        new String[] {"/a", "/a/b", "/a/b/c", "/a/b/c/"},
+        null,
+        null,
+        null,
+        new int[] {1, 0, 0, 0},
+        null,
+        false);
+  }
+
+  private static final Iterable<String> PATH_DOCS =
+      Arrays.asList(
+          "Books",
+          "Books/Fic",
+          "Books/Fic/Mystery",
+          "Books/NonFic",
+          "Books/NonFic/Law",
+          "Books/NonFic/Science/Physics");
+
+  /**
+   * "Descendant path" search: index with {@link PathHierarchyTokenizer}, query with a keyword
+   * analyzer. A query for {@code Books/NonFic} matches every document at or below that path.
+   */
+  public void testDescendantQuery() throws Exception {
+    final String field = "descendant";
+    try (Directory dir = newDirectory()) {
+      final Analyzer a =
+          new Analyzer() {
+            @Override
+            protected TokenStreamComponents createComponents(String fieldName) {
+              return new TokenStreamComponents(new PathHierarchyTokenizer());
+            }
+          };
+      try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig(a))) {
+        for (String val : PATH_DOCS) {
+          Document doc = new Document();
+          doc.add(new TextField(field, val, Field.Store.YES));
+          w.addDocument(doc);
+        }
+      }
+      try (IndexReader r = DirectoryReader.open(dir)) {
+        final QueryBuilder parser = new QueryBuilder(new KeywordAnalyzer());
+        final IndexSearcher s = newSearcher(r);
+        assertEquals(
+            3, s.search(parser.createPhraseQuery(field, "Books/NonFic"), 100).totalHits.value());
+        assertEquals(
+            2, s.search(parser.createPhraseQuery(field, "Books/Fic"), 100).totalHits.value());
+        assertEquals(6, s.search(parser.createPhraseQuery(field, "Books"), 100).totalHits.value());
+      }
+      a.close();
+    }
+  }
+
+  /**
+   * "Ancestor path" search: index with a keyword analyzer, query with {@link
+   * PathHierarchyTokenizer}. A query for {@code Books/NonFic/Science/Physics} matches documents
+   * holding any ancestor path. Relies on the query tokens sharing a position so the parser builds a
+   * synonym (OR) query rather than a phrase (regression test for #15769).
+   */
+  public void testAncestorQuery() throws Exception {
+    final String field = "ancestor";
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig(new KeywordAnalyzer()))) {
+        for (String val : PATH_DOCS) {
+          Document doc = new Document();
+          doc.add(new TextField(field, val, Field.Store.YES));
+          w.addDocument(doc);
+        }
+      }
+      try (IndexReader r = DirectoryReader.open(dir)) {
+        final QueryBuilder parser =
+            new QueryBuilder(
+                new Analyzer() {
+                  @Override
+                  protected TokenStreamComponents createComponents(String fieldName) {
+                    return new TokenStreamComponents(new PathHierarchyTokenizer());
+                  }
+                });
+        final IndexSearcher s = newSearcher(r);
+        assertEquals(
+            3,
+            s.search(parser.createPhraseQuery(field, "Books/NonFic/Science/Physics"), 100)
+                .totalHits
+                .value());
+        assertEquals(
+            2,
+            s.search(parser.createPhraseQuery(field, "Books/NonFic/Science"), 100)
+                .totalHits
+                .value());
+        assertEquals(
+            3,
+            s.search(parser.createPhraseQuery(field, "Books/Fic/Mystery/Noir"), 100)
+                .totalHits
+                .value());
+        assertEquals(1, s.search(parser.createPhraseQuery(field, "Books"), 100).totalHits.value());
+      }
+    }
   }
 }

@@ -113,7 +113,16 @@ public class PathHierarchyTokenizer extends Tokenizer {
   public final boolean incrementToken() throws IOException {
     clearAttributes();
     termAtt.append(resultToken);
-    posIncAtt.setPositionIncrement(1);
+    // Emit every path token at the same position -- the first token advances the position and
+    // the rest keep it -- so query parsers treat them as synonyms: a query for "a/b/c" becomes
+    // (a OR a/b OR a/b/c), which is what the documented "ancestor path" use case relies on.
+    // #12875 had made every token increment the position, turning such a query into a phrase
+    // and breaking that use case (see #15769).
+    if (resultToken.length() == 0) {
+      posIncAtt.setPositionIncrement(1);
+    } else {
+      posIncAtt.setPositionIncrement(0);
+    }
     int length = 0;
     boolean added = false;
     if (endDelimiter) {
