@@ -217,7 +217,7 @@ Optimizations
 
 Bug Fixes
 ---------------------
-* GITHUB#XXXXX: Fix stored-fields corruption when PerField#finish throws: the stored-fields frame
+* GITHUB#16553: Fix stored-fields corruption when PerField#finish throws: the stored-fields frame
   was left open, causing "Wrote N docs, finish called with numDocs=M" at flush. (Michael Marshall)
 
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
