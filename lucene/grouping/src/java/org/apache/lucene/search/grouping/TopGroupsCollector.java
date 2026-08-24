@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.function.Supplier;
+import org.apache.lucene.search.FieldDoc;
 import org.apache.lucene.search.FilterCollector;
 import org.apache.lucene.search.MultiCollector;
 import org.apache.lucene.search.Scorable;
@@ -30,6 +31,7 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopDocsCollector;
 import org.apache.lucene.search.TopFieldCollector;
@@ -135,14 +137,19 @@ public class TopGroupsCollector<T> extends SecondPassGroupingCollector<T> {
                         .newCollector(),
                     null);
       } else {
+        SortField primarySort = withinGroupSort.getSort()[0];
+        boolean primarySortByScoreDesc =
+            primarySort.getType() == SortField.Type.SCORE && !primarySort.getReverse();
         supplier =
             () -> {
               TopFieldCollector topDocsCollector =
                   new TopFieldCollectorManager(
                           withinGroupSort, maxDocsPerGroup, null, Integer.MAX_VALUE)
                       .newCollector(); // TODO: disable exact counts?
-              MaxScoreCollector maxScoreCollector = getMaxScores ? new MaxScoreCollector() : null;
-              return new TopDocsAndMaxScoreCollector(false, topDocsCollector, maxScoreCollector);
+              MaxScoreCollector maxScoreCollector =
+                  (getMaxScores && !primarySortByScoreDesc) ? new MaxScoreCollector() : null;
+              return new TopDocsAndMaxScoreCollector(
+                  primarySortByScoreDesc && getMaxScores, topDocsCollector, maxScoreCollector);
             };
       }
     }
@@ -176,8 +183,16 @@ public class TopGroupsCollector<T> extends SecondPassGroupingCollector<T> {
       final float groupMaxScore;
       if (collector.sortedByScore) {
         TopDocs allTopDocs = collector.topDocsCollector.topDocs();
-        groupMaxScore =
-            allTopDocs.scoreDocs.length == 0 ? Float.NaN : allTopDocs.scoreDocs[0].score;
+        if (allTopDocs.scoreDocs.length == 0) {
+          groupMaxScore = Float.NaN;
+        } else if (allTopDocs.scoreDocs[0] instanceof FieldDoc fieldDoc) {
+          // TopFieldCollector with score-primary sort: score is in FieldDoc.fields[0]
+          // (set by RelevanceComparator), not in FieldDoc.score (which is always NaN).
+          groupMaxScore = (float) fieldDoc.fields[0];
+        } else {
+          // TopScoreDocCollector: score is in ScoreDoc.score directly.
+          groupMaxScore = allTopDocs.scoreDocs[0].score;
+        }
         if (allTopDocs.scoreDocs.length <= withinGroupOffset) {
           topDocs = new TopDocs(allTopDocs.totalHits, new ScoreDoc[0]);
         } else {

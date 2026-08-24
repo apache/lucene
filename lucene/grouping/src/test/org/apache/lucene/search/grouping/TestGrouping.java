@@ -350,6 +350,97 @@ public class TestGrouping extends LuceneTestCase {
     assertTrue(result.isEmpty());
   }
 
+  /**
+   * When withinGroupSort has score as the primary field (but is not Sort.RELEVANCE),
+   * MaxScoreCollector is omitted — the group max score is derived from FieldDoc.fields[0] (stored
+   * by RelevanceComparator) of the top-ranked doc, avoiding the overhead of a parallel
+   * score-tracking collector.
+   */
+  public void testScorePrimaryWithinGroupSortOmitsMaxScoreCollector() throws Exception {
+    Directory dir = newDirectory();
+    RandomIndexWriter w =
+        new RandomIndexWriter(random(), dir, newIndexWriterConfig(new MockAnalyzer(random())));
+
+    String groupField = "author";
+    for (int i = 0; i < 3; i++) {
+      Document doc = new Document();
+      addGroupField(doc, groupField, "author1");
+      doc.add(new TextField("content", "word", Field.Store.NO));
+      doc.add(new NumericDocValuesField("id", i));
+      w.addDocument(doc);
+    }
+    for (int i = 0; i < 2; i++) {
+      Document doc = new Document();
+      addGroupField(doc, groupField, "author2");
+      doc.add(new TextField("content", "word", Field.Store.NO));
+      doc.add(new NumericDocValuesField("id", 10 + i));
+      w.addDocument(doc);
+    }
+
+    DirectoryReader reader = w.getReader();
+    w.close();
+    IndexSearcher searcher = newSearcher(reader);
+
+    Query query = new TermQuery(new Term("content", "word"));
+
+    Collection<SearchGroup<BytesRef>> topGroups =
+        toByteRefSearchGroups(
+            searcher.search(
+                query, createFirstPassCollectorManager(true, groupField, Sort.RELEVANCE, 0, 10)));
+    assertEquals(2, topGroups.size());
+
+    // withinGroupSort: score desc primary + id tiebreak — NOT Sort.RELEVANCE.
+    // MaxScoreCollector is omitted; max score is read from FieldDoc.fields[0].
+    Sort withinGroupSort = new Sort(SortField.FIELD_SCORE, new SortField("id", SortField.Type.INT));
+
+    // getMaxScores=false: MaxScoreCollector omitted, groupMaxScore=NaN
+    TopGroups<BytesRef> resultNoMaxScores =
+        toByteTopGroups(
+            searcher.search(
+                query,
+                new TopGroupsCollectorManager<>(
+                    () -> new TermGroupSelector(groupField),
+                    topGroups,
+                    Sort.RELEVANCE,
+                    withinGroupSort,
+                    0,
+                    10,
+                    false)));
+    assertEquals(2, resultNoMaxScores.groups.length);
+    assertEquals(5, resultNoMaxScores.totalHitCount);
+    for (GroupDocs<BytesRef> g : resultNoMaxScores.groups) {
+      assertTrue("group must have hits", g.scoreDocs().length > 0);
+      assertTrue("groupMaxScore should be NaN when getMaxScores=false", Float.isNaN(g.maxScore()));
+    }
+
+    // getMaxScores=true: MaxScoreCollector still omitted, but max score is derived from
+    // FieldDoc.fields[0] of the top doc — should be a valid positive score.
+    TopGroups<BytesRef> resultWithMaxScores =
+        toByteTopGroups(
+            searcher.search(
+                query,
+                new TopGroupsCollectorManager<>(
+                    () -> new TermGroupSelector(groupField),
+                    topGroups,
+                    Sort.RELEVANCE,
+                    withinGroupSort,
+                    0,
+                    10,
+                    true)));
+    assertEquals(2, resultWithMaxScores.groups.length);
+    assertEquals(5, resultWithMaxScores.totalHitCount);
+    for (GroupDocs<BytesRef> g : resultWithMaxScores.groups) {
+      assertTrue("group must have hits", g.scoreDocs().length > 0);
+      assertFalse(
+          "groupMaxScore should not be NaN when getMaxScores=true (derived from FieldDoc.fields[0])",
+          Float.isNaN(g.maxScore()));
+      assertTrue("groupMaxScore must be positive", g.maxScore() > 0f);
+    }
+
+    reader.close();
+    dir.close();
+  }
+
   private void addGroupField(Document doc, String groupField, String value) {
     doc.add(new SortedDocValuesField(groupField, new BytesRef(value)));
   }
