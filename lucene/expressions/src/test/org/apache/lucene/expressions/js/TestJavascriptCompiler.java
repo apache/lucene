@@ -17,6 +17,7 @@
 package org.apache.lucene.expressions.js;
 
 import java.text.ParseException;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.lucene.expressions.Expression;
@@ -316,8 +317,36 @@ public class TestJavascriptCompiler extends CompilerTestCase {
 
   /** returns the error offset for further checks */
   private int assertRecursionLimit(String src) {
-    ParseException expected = expectThrows(ParseException.class, () -> compile(src));
+    ParseException expected = expectThrows(ParseException.class, () -> compileWithLargeStack(src));
     assertTrue(expected.getMessage(), expected.getMessage().contains("Nesting level too deep"));
     return expected.getErrorOffset();
+  }
+
+  /**
+   * Compiles on a thread with a larger stack and rethrows whatever the compiler threw. The
+   * nesting-depth listener needs {@link JavascriptCompiler.DEFAULT_MAX_NESTING_DEPTH} levels of
+   * recursion before it can fire; on a default-sized stack the StackOverflowError fallback (error
+   * offset -1) can win that race depending on JIT state and instrumentation, making exact-offset
+   * assertions flaky.
+   */
+  private void compileWithLargeStack(String src) throws Throwable {
+    AtomicReference<Throwable> thrown = new AtomicReference<>();
+    Thread t =
+        new Thread(
+            null,
+            () -> {
+              try {
+                compile(src);
+              } catch (Throwable e) {
+                thrown.set(e);
+              }
+            },
+            "js-compiler-large-stack",
+            16 * 1024 * 1024);
+    t.start();
+    t.join();
+    if (thrown.get() != null) {
+      throw thrown.get();
+    }
   }
 }
