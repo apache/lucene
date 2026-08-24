@@ -56,6 +56,7 @@ import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -2300,6 +2301,27 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       assertTrue(DirectoryReader.indexExists(dir));
       DirectoryReader.open(dir).close();
     }
+  }
+
+  public void testPerFieldFinishExceptionDoesNotCorruptStoredFields() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    iwc.setSimilarity(
+        new BM25Similarity() {
+          @Override
+          public long computeNorm(FieldInvertState state) {
+            return 0; // invalid return that triggers an exception
+          }
+        });
+    IndexWriter w = new IndexWriter(dir, iwc);
+
+    Document bad = new Document();
+    bad.add(new TextField("text", "hello world", Field.Store.NO));
+    expectThrows(IllegalStateException.class, () -> w.addDocument(bad));
+
+    w.commit();
+    w.close();
+    dir.close();
   }
 
   public void testExceptionJustBeforeFlushWithPointValues() throws Exception {
