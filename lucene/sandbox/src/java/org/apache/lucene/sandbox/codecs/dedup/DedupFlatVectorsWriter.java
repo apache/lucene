@@ -36,7 +36,7 @@ import org.apache.lucene.util.RamUsageEstimator;
  * DedupMergeContext} accordingly.
  *
  * <p>Also used by {@link DedupScalarQuantizedVectorsFormat} (with a non-null {@link
- * DedupQuantizer}) to additionally write a quantized copy of each FLOAT32 group, into a separate
+ * DedupQuantizer}) to additionally write a quantized copy of each applicable group, into a separate
  * quantized vector data file.
  *
  * @lucene.experimental

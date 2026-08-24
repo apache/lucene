@@ -42,18 +42,18 @@ sealed class DedupFlatVectorsScorer implements FlatVectorsScorer
   private static final FlatVectorsScorer FLAT_SCORER =
       FlatVectorScorerUtil.getLucene99FlatVectorsScorer();
 
-  private final FlatVectorsScorer scorer;
+  private final FlatVectorsScorer delegate;
 
   DedupFlatVectorsScorer() {
     this(FLAT_SCORER);
   }
 
-  protected DedupFlatVectorsScorer(FlatVectorsScorer scorer) {
-    this.scorer = scorer;
+  protected DedupFlatVectorsScorer(FlatVectorsScorer delegate) {
+    this.delegate = delegate;
   }
 
   /** Resolves the values to score; subclasses may unwrap composite values. */
-  protected KnnVectorValues resolve(KnnVectorValues vectorValues) {
+  protected KnnVectorValues unwrap(KnnVectorValues vectorValues) {
     return vectorValues;
   }
 
@@ -61,56 +61,56 @@ sealed class DedupFlatVectorsScorer implements FlatVectorsScorer
   public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues)
       throws IOException {
-    vectorValues = resolve(vectorValues);
+    vectorValues = unwrap(vectorValues);
     if (vectorValues instanceof DedupVectorValues dedupValues) {
       RandomVectorScorerSupplier groupView =
-          scorer.getRandomVectorScorerSupplier(similarityFunction, dedupValues.getGroupView());
+          delegate.getRandomVectorScorerSupplier(similarityFunction, dedupValues.getGroupView());
       return new RandomVectorScorerSupplierImpl(
           vectorValues, groupView, dedupValues.getFieldOrdToGroupOrd());
     }
-    return scorer.getRandomVectorScorerSupplier(similarityFunction, vectorValues);
+    return delegate.getRandomVectorScorerSupplier(similarityFunction, vectorValues);
   }
 
   @Override
   public RandomVectorScorer getRandomVectorScorer(
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, float[] target)
       throws IOException {
-    vectorValues = resolve(vectorValues);
+    vectorValues = unwrap(vectorValues);
     if (vectorValues instanceof DedupVectorValues dedupValues) {
       RandomVectorScorer groupView =
-          scorer.getRandomVectorScorer(similarityFunction, dedupValues.getGroupView(), target);
+          delegate.getRandomVectorScorer(similarityFunction, dedupValues.getGroupView(), target);
       return new RandomVectorScorerImpl(
           vectorValues, groupView, dedupValues.getFieldOrdToGroupOrd());
     }
-    return scorer.getRandomVectorScorer(similarityFunction, vectorValues, target);
+    return delegate.getRandomVectorScorer(similarityFunction, vectorValues, target);
   }
 
   @Override
   public RandomVectorScorer getRandomVectorScorer(
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, byte[] target)
       throws IOException {
-    vectorValues = resolve(vectorValues);
+    vectorValues = unwrap(vectorValues);
     if (vectorValues instanceof DedupVectorValues dedupValues) {
       RandomVectorScorer groupView =
-          scorer.getRandomVectorScorer(similarityFunction, dedupValues.getGroupView(), target);
+          delegate.getRandomVectorScorer(similarityFunction, dedupValues.getGroupView(), target);
       return new RandomVectorScorerImpl(
           vectorValues, groupView, dedupValues.getFieldOrdToGroupOrd());
     }
-    return scorer.getRandomVectorScorer(similarityFunction, vectorValues, target);
+    return delegate.getRandomVectorScorer(similarityFunction, vectorValues, target);
   }
 
   @Override
   public RandomVectorScorer getRandomVectorScorer(
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, short[] target)
       throws IOException {
-    vectorValues = resolve(vectorValues);
+    vectorValues = unwrap(vectorValues);
     if (vectorValues instanceof DedupVectorValues dedupValues) {
       RandomVectorScorer groupView =
-          scorer.getRandomVectorScorer(similarityFunction, dedupValues.getGroupView(), target);
+          delegate.getRandomVectorScorer(similarityFunction, dedupValues.getGroupView(), target);
       return new RandomVectorScorerImpl(
           vectorValues, groupView, dedupValues.getFieldOrdToGroupOrd());
     }
-    return scorer.getRandomVectorScorer(similarityFunction, vectorValues, target);
+    return delegate.getRandomVectorScorer(similarityFunction, vectorValues, target);
   }
 
   /**

@@ -70,7 +70,7 @@ import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncod
  *
  * <ul>
  *   <li><b>[vint]</b> the number of flavor blocks ({@code 0} for non-FLOAT32 groups)
- *   <li>per flavor block: <b>[vint]</b> the flavor ordinal, <b>[vint]</b> the {@link
+ *   <li>per flavor block: <b>[vint]</b> the flavor wire number, <b>[vint]</b> the {@link
  *       ScalarEncoding} wire number of its records, <b>[int64]</b> offset and <b>[int64]</b> length
  *       of its quantized records in the .vdqd file
  * </ul>

@@ -98,7 +98,7 @@ final class DedupFlushContext implements Accountable {
 
   /**
    * Writes each group's distinct vectors once, followed by per-field metadata. When {@code
-   * quantizer} is non-null, a quantized copy of each FLOAT32 group is also written and its block
+   * quantizer} is non-null, a quantized copy of each applicable group is also written and its block
    * location appended to the group metadata.
    */
   void flush(

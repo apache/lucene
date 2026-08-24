@@ -90,7 +90,7 @@ final class DedupMergeContext implements Accountable {
 
   /**
    * Merges each group's distinct vectors, followed by per-field metadata. When {@code quantizer} is
-   * non-null, a quantized copy of each FLOAT32 group is also written and its block location
+   * non-null, a quantized copy of each applicable group is also written and its block location
    * appended to the group metadata — copying records from source segments in this format, and
    * re-reading a distinct vector through its handle to quantize it otherwise.
    */

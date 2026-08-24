@@ -19,6 +19,7 @@ package org.apache.lucene.sandbox.codecs.dedup;
 import java.io.IOException;
 import java.util.EnumMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.lucene.codecs.lucene104.OffHeapScalarQuantizedVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
@@ -63,24 +64,28 @@ record DedupQuantizer(ScalarEncoding encoding) {
   enum Flavor {
 
     /** Vectors quantized as-is; the additional correction holds the squared norm. */
-    EUCLIDEAN(VectorSimilarityFunction.EUCLIDEAN, false),
+    EUCLIDEAN(0, VectorSimilarityFunction.EUCLIDEAN, false),
 
     /**
      * Vectors quantized as-is; the additional correction holds the dot product with the (zero)
      * centroid, i.e. zero.
      */
-    DOT_PRODUCT(VectorSimilarityFunction.DOT_PRODUCT, false),
+    DOT_PRODUCT(1, VectorSimilarityFunction.DOT_PRODUCT, false),
 
     /**
      * Vectors are l2-normalized before quantization (for cosine similarity, scored as a dot
      * product); the additional correction is zero as for {@link #DOT_PRODUCT}.
      */
-    NORMALIZED(VectorSimilarityFunction.DOT_PRODUCT, true);
+    NORMALIZED(2, VectorSimilarityFunction.DOT_PRODUCT, true);
+
+    /** The number used to identify this flavor on the wire, rather than relying on ordinal. */
+    private final int wireNumber;
 
     private final VectorSimilarityFunction quantizerFunction;
     private final boolean normalized;
 
-    Flavor(VectorSimilarityFunction quantizerFunction, boolean normalized) {
+    Flavor(int wireNumber, VectorSimilarityFunction quantizerFunction, boolean normalized) {
+      this.wireNumber = wireNumber;
       this.quantizerFunction = quantizerFunction;
       this.normalized = normalized;
     }
@@ -91,6 +96,20 @@ record DedupQuantizer(ScalarEncoding encoding) {
         case DOT_PRODUCT, MAXIMUM_INNER_PRODUCT -> DOT_PRODUCT;
         case COSINE -> NORMALIZED;
       };
+    }
+
+    int getWireNumber() {
+      return wireNumber;
+    }
+
+    /** Returns the flavor for the given wire number, or empty if unknown. */
+    static Optional<Flavor> fromWireNumber(int wireNumber) {
+      for (Flavor flavor : values()) {
+        if (flavor.wireNumber == wireNumber) {
+          return Optional.of(flavor);
+        }
+      }
+      return Optional.empty();
     }
 
     /**
@@ -140,11 +159,13 @@ record DedupQuantizer(ScalarEncoding encoding) {
     int numFlavors = meta.readVInt();
     Map<Flavor, QuantizedBlock> blocks = new EnumMap<>(Flavor.class);
     for (int i = 0; i < numFlavors; i++) {
-      int flavorOrd = meta.readVInt();
-      if (flavorOrd < 0 || flavorOrd >= Flavor.values().length) {
-        throw new CorruptIndexException("Invalid flavor ordinal: " + flavorOrd, meta);
-      }
-      Flavor flavor = Flavor.values()[flavorOrd];
+      int flavorWireNumber = meta.readVInt();
+      Flavor flavor =
+          Flavor.fromWireNumber(flavorWireNumber)
+              .orElseThrow(
+                  () ->
+                      new CorruptIndexException(
+                          "Invalid flavor wire number: " + flavorWireNumber, meta));
       int wireNumber = meta.readVInt();
       ScalarEncoding encoding =
           ScalarEncoding.fromWireNumber(wireNumber)
@@ -192,7 +213,7 @@ record DedupQuantizer(ScalarEncoding encoding) {
       QuantizedBlock block =
           writeFlavorBlock(
               quantizedVectorData, flavor, dimension, numVectors, vectors, preQuantized);
-      meta.writeVInt(flavor.ordinal());
+      meta.writeVInt(flavor.getWireNumber());
       meta.writeVInt(block.encoding().getWireNumber());
       meta.writeLong(block.quantizedDataOffset());
       meta.writeLong(block.quantizedDataSize());
@@ -223,15 +244,17 @@ record DedupQuantizer(ScalarEncoding encoding) {
     for (int ord = 0; ord < numVectors; ord++) {
       // The quantized record is a pure function of the raw vector and the flavor: a record
       // already computed by a source segment can be copied instead of re-quantizing.
-      PreQuantized pre = preQuantized == null ? null : preQuantized.get(ord);
-      if (pre != null && pre.flavor() == flavor && pre.values().getScalarEncoding() == encoding) {
-        // NOTE: read the packed bytes before the corrective terms, which are then served from the
-        // record cached by the read of the packed bytes
-        writeRecord(
-            quantizedVectorData,
-            pre.values().vectorValue(pre.ord()),
-            pre.values().getCorrectiveTerms(pre.ord()));
-        continue;
+      if (preQuantized != null) {
+        PreQuantized pre = preQuantized.get(ord);
+        if (pre != null && pre.flavor() == flavor && pre.values().getScalarEncoding() == encoding) {
+          // NOTE: read the packed bytes before the corrective terms, which are then served from the
+          // record cached by the read of the packed bytes
+          writeRecord(
+              quantizedVectorData,
+              pre.values().vectorValue(pre.ord()),
+              pre.values().getCorrectiveTerms(pre.ord()));
+          continue;
+        }
       }
 
       float[] vector = vectors.get(ord);
