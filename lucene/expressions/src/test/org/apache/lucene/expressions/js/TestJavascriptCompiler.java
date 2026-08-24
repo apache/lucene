@@ -324,7 +324,7 @@ public class TestJavascriptCompiler extends CompilerTestCase {
 
   /**
    * Compiles on a thread with a larger stack and rethrows whatever the compiler threw. The
-   * nesting-depth listener needs {@link JavascriptCompiler.DEFAULT_MAX_NESTING_DEPTH} levels of
+   * nesting-depth listener needs {@link JavascriptCompiler#DEFAULT_MAX_NESTING_DEPTH} levels of
    * recursion before it can fire; on a default-sized stack the StackOverflowError fallback (error
    * offset -1) can win that race depending on JIT state and instrumentation, making exact-offset
    * assertions flaky.
