@@ -471,6 +471,11 @@ Optimizations
   LatLonDocValuesQuery, XYDocValuesPointInGeometryQuery, and
   SortedNumericDocValuesSetQuery. (Costin Leau)
 
+* GITHUB#XXXX: Add `exactTotalHitsPerGroup` parameter to `TopGroupsCollector` and
+  `TopGroupsCollectorManager`. When set to `false`, per-group hit counts may be reported as
+  `TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO` once `maxDocsPerGroup` hits have been collected,
+  saving the cost of exact counting. Defaults to `true` (exact counts). (Binlong Gao)
+
 Bug Fixes
 ---------------------
 

@@ -34,6 +34,7 @@ public class TopGroupsCollectorManager<T>
   private final int withinGroupOffset;
   private final int maxDocsPerGroup;
   private final boolean getMaxScores;
+  private final boolean exactTotalHitsPerGroup;
   private final TopGroups.ScoreMergeMode scoreMergeMode;
 
   /**
@@ -63,6 +64,7 @@ public class TopGroupsCollectorManager<T>
         withinGroupOffset,
         maxDocsPerGroup,
         getMaxScores,
+        true,
         TopGroups.ScoreMergeMode.None);
   }
 
@@ -87,6 +89,43 @@ public class TopGroupsCollectorManager<T>
       int maxDocsPerGroup,
       boolean getMaxScores,
       TopGroups.ScoreMergeMode scoreMergeMode) {
+    this(
+        groupSelectorFactory,
+        searchGroups,
+        groupSort,
+        sortWithinGroup,
+        withinGroupOffset,
+        maxDocsPerGroup,
+        getMaxScores,
+        true,
+        scoreMergeMode);
+  }
+
+  /**
+   * Creates a new TopGroupsCollectorManager.
+   *
+   * @param groupSelectorFactory factory to create group selectors for each collector
+   * @param searchGroups the search groups from the first pass
+   * @param groupSort the sort to use for groups
+   * @param sortWithinGroup the sort to use within each group
+   * @param withinGroupOffset the offset within each group to start collecting documents
+   * @param maxDocsPerGroup the maximum number of documents per group
+   * @param getMaxScores whether to compute max scores
+   * @param exactTotalHitsPerGroup if true (default), per-group hit counts are always exact; if
+   *     false, counts may be approximate once {@code maxDocsPerGroup} hits have been collected,
+   *     saving exact-counting overhead
+   * @param scoreMergeMode the mode for merging scores across shards
+   */
+  public TopGroupsCollectorManager(
+      Supplier<GroupSelector<T>> groupSelectorFactory,
+      Collection<SearchGroup<T>> searchGroups,
+      Sort groupSort,
+      Sort sortWithinGroup,
+      int withinGroupOffset,
+      int maxDocsPerGroup,
+      boolean getMaxScores,
+      boolean exactTotalHitsPerGroup,
+      TopGroups.ScoreMergeMode scoreMergeMode) {
     this.groupSelectorFactory = groupSelectorFactory;
     this.searchGroups = searchGroups;
     this.groupSort = groupSort;
@@ -94,6 +133,7 @@ public class TopGroupsCollectorManager<T>
     this.withinGroupOffset = withinGroupOffset;
     this.maxDocsPerGroup = maxDocsPerGroup;
     this.getMaxScores = getMaxScores;
+    this.exactTotalHitsPerGroup = exactTotalHitsPerGroup;
     this.scoreMergeMode = scoreMergeMode;
   }
 
@@ -105,7 +145,8 @@ public class TopGroupsCollectorManager<T>
         groupSort,
         sortWithinGroup,
         withinGroupOffset + maxDocsPerGroup,
-        getMaxScores);
+        getMaxScores,
+        exactTotalHitsPerGroup);
   }
 
   @Override

@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.CollectionTerminatedException;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorable;
@@ -70,13 +71,26 @@ public abstract class GroupReducer<T, C extends Collector> {
    */
   public final void collect(T value, int doc) throws IOException {
     GroupCollector<C> collector = groups.get(value);
-    collector.leafCollector.collect(doc);
+    if (collector.leafCollector == null) {
+      return;
+    }
+    try {
+      collector.leafCollector.collect(doc);
+    } catch (CollectionTerminatedException _) {
+      // The per-group collector decided it has seen enough docs for this group in this segment
+      // (e.g. index-sort early termination). Mark as done for this segment so subsequent docs
+      // are skipped, but do NOT re-throw — the outer SecondPassGroupingCollector must keep
+      // receiving all docs to maintain a correct totalHitCount.
+      collector.leafCollector = null;
+    }
   }
 
   /** Set the Scorer on all group collectors */
   public final void setScorer(Scorable scorer) throws IOException {
     for (GroupCollector<C> collector : groups.values()) {
-      collector.leafCollector.setScorer(scorer);
+      if (collector.leafCollector != null) {
+        collector.leafCollector.setScorer(scorer);
+      }
     }
   }
 
