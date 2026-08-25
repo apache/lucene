@@ -106,29 +106,8 @@ final class NegationTwoPhaseIterator extends TwoPhaseIterator {
    */
   @Override
   public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
-    // Mark all docs in [approximation().docID(), upTo) as candidates (negation matches
-    // everything).
     bitSet.set(Math.max(0, approximation().docID() - offset), upTo - offset);
-
-    // Fill scratch with the excluded documents. For numeric range queries this calls
-    // rangeIntoBitSet which uses SIMD via the Panama vector API.
-    assert scratch.scanIsEmpty() : "scratch must be clean before use";
-    if (exclApprox.docID() < offset) {
-      exclApprox.advance(offset);
-    }
-    if (exclApprox.docID() < upTo) {
-      if (exclTwoPhase != null) {
-        exclTwoPhase.intoBitSet(upTo, scratch, offset);
-      } else {
-        exclApprox.intoBitSet(upTo, scratch, offset);
-      }
-    }
-
-    // Remove excluded documents from the candidate set.
-    bitSet.andNot(scratch);
-    scratch.clear(0, upTo - offset);
-
-    // Advance the approximation to upTo per the intoBitSet contract.
+    subtractExcluded(upTo, bitSet, offset);
     if (approximation().docID() < upTo) {
       approximation().advance(upTo);
     }
@@ -141,12 +120,17 @@ final class NegationTwoPhaseIterator extends TwoPhaseIterator {
    */
   @Override
   public void applyMask(int upTo, FixedBitSet bitSet, int offset) throws IOException {
-    // Ensure the excluded approximation is positioned at or past the window start.
+    subtractExcluded(upTo, bitSet, offset);
+    if (approximation().docID() < upTo) {
+      approximation().advance(upTo);
+    }
+  }
+
+  // Fills scratch with the excluded documents in [offset, upTo) and AND-NOTs them out of bitSet.
+  private void subtractExcluded(int upTo, FixedBitSet bitSet, int offset) throws IOException {
     if (exclApprox.docID() < offset) {
       exclApprox.advance(offset);
     }
-
-    // Fill scratch with the excluded documents using the excluded clause's bulk intoBitSet.
     assert scratch.scanIsEmpty() : "scratch must be clean before use";
     if (exclApprox.docID() < upTo) {
       if (exclTwoPhase != null) {
@@ -155,14 +139,7 @@ final class NegationTwoPhaseIterator extends TwoPhaseIterator {
         exclApprox.intoBitSet(upTo, scratch, offset);
       }
     }
-
-    // Remove excluded documents from the candidate set.
     bitSet.andNot(scratch);
     scratch.clear(0, upTo - offset);
-
-    // Advance the approximation to upTo per the applyMask contract.
-    if (approximation().docID() < upTo) {
-      approximation().advance(upTo);
-    }
   }
 }
