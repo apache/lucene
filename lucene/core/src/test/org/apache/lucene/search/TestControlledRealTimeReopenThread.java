@@ -400,11 +400,8 @@ public class TestControlledRealTimeReopenThread extends ThreadedIndexingAndSearc
         };
     waiter.start();
     manager.maybeRefresh();
-    waiter.join(1000);
-    if (!finished.get()) {
-      waiter.interrupt();
-      fail("thread deadlocked on waitForGeneration");
-    }
+    waiter.join();
+    assertTrue("waiter thread terminated abnormally", finished.get());
     thread.close();
     thread.join();
     writer.close();
