@@ -439,8 +439,7 @@ final class ReadersAndUpdates {
                     return DocValuesFieldUpdates.Iterator.asBinaryDocValues(iterator);
                   }
                   // sparse fold merges the prior deltas (stays sparse); a dense rewrite (removal or
-                  // fold-to-dense)
-                  // merges the base column
+                  // fold-to-dense) merges the base column
                   final BinaryDocValues onDisk =
                       compact && foldToDense == false
                           ? overlayBinary(deltaProducers, fieldInfo)
@@ -503,8 +502,7 @@ final class ReadersAndUpdates {
                     return DocValuesFieldUpdates.Iterator.asNumericDocValues(iterator);
                   }
                   // sparse fold merges the prior deltas (stays sparse); a dense rewrite (removal or
-                  // fold-to-dense)
-                  // merges the base column
+                  // fold-to-dense) merges the base column
                   final NumericDocValues onDisk =
                       compact && foldToDense == false
                           ? overlayNumeric(deltaProducers, fieldInfo)

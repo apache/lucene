@@ -146,6 +146,8 @@ New Features
 
 * GITHUB#16383: Add fp16 vector encoding support. (Pulkit Gupta)
 
+* GITHUB#16473: Add scalar quantization support in Fp16 vector encoding. (Pulkit Gupta)
+
 Improvements
 ---------------------
 * GITHUB#15704: Replace LinkedList with more efficient data structure. (Renato Haeberli)
@@ -181,6 +183,9 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#16431: Add support for Block-Max WAND dynamic score skipping in FunctionScoreQuery
+  and DoubleValuesSource using DocValuesSkipper. (Rajat Jain)
+
 * GITHUB#16382: WildcardQuery.toAutomaton now collapses consecutive unescaped '*'
   wildcards into a single any-string automaton, avoiding a quadratic blow-up in
   automaton size for patterns with many repeated asterisks. (Vismay Tiwari)
@@ -214,6 +219,10 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#16552: Reconnect HNSW nodes whose out-degree decays across successive
+  merge-reuse generations, preventing progressive recall loss under low delete
+  rates. (Ethan Baker)
+
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
 
@@ -475,6 +484,8 @@ Optimizations
 
 Bug Fixes
 ---------------------
+
+* GITHUB#16546: Prevent RangeBulkScorer from passing empty ranges to LeafCollector. (jxy)
 
 * GITHUB#16450: Fix DocValuesRangeIterator.docIDRunEnd() returning incorrect run boundaries,
   causing bulk-scoring to skip or mis-score documents in range and ordinal set queries.
