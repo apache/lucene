@@ -217,8 +217,6 @@ Optimizations
 
 Bug Fixes
 ---------------------
-* GITHUB#16546: Prevent RangeBulkScorer from passing empty ranges to LeafCollector. (jxy)
-
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
 
@@ -475,6 +473,8 @@ Optimizations
 
 Bug Fixes
 ---------------------
+
+* GITHUB#16546: Prevent RangeBulkScorer from passing empty ranges to LeafCollector. (jxy)
 
 * GITHUB#16450: Fix DocValuesRangeIterator.docIDRunEnd() returning incorrect run boundaries,
   causing bulk-scoring to skip or mis-score documents in range and ordinal set queries.
