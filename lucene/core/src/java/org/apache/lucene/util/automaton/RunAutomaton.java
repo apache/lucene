@@ -184,7 +184,8 @@ public abstract class RunAutomaton implements Accountable {
    * @return whether this state can accept all remaining suffixes.
    */
   public final boolean isMatchAllSuffix(int state) {
-    return matchAllSuffix != null && matchAllSuffix.get(state);
+    assert matchAllSuffix != null;
+    return matchAllSuffix.get(state);
   }
 
   public final boolean hasMatchAllSuffixStates() {

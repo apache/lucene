@@ -366,7 +366,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
   @Override
   public BytesRef next() throws IOException {
     try {
-      return _next();
+      return hasMatchAllSuffixStates ? _nextWithMatchAllSuffix() : _next();
     } catch (NoMoreTermsException _) {
       // Provoke NPE if we are (illegally!) called again:
       currentFrame = null;
@@ -380,8 +380,173 @@ final class IntersectTermsEnum extends BaseTermsEnum {
 
     nextTerm:
     while (true) {
+      assert currentFrame.transition == currentTransition;
+
+      int state;
+      int lastState;
+
+      // NOTE: suffix == 0 can only happen on the first term in a block, when
+      // there is a term exactly matching a prefix in the index.  If we
+      // could somehow re-org the code so we only checked this case immediately
+      // after pushing a frame...
+      if (currentFrame.suffixLength != 0) {
+
+        final byte[] suffixBytes = currentFrame.suffixBytes;
+
+        // This is the first byte of the suffix of the term we are now on:
+        final int label = suffixBytes[currentFrame.startBytePos] & 0xff;
+
+        if (label < currentTransition.min) {
+          // Common case: we are scanning terms in this block to "catch up" to
+          // current transition in the automaton:
+          int minTrans = currentTransition.min;
+          while (currentFrame.nextEnt < currentFrame.entCount) {
+            isSubBlock = currentFrame.next();
+            if ((suffixBytes[currentFrame.startBytePos] & 0xff) >= minTrans) {
+              continue nextTerm;
+            }
+          }
+
+          // End of frame:
+          isSubBlock = popPushNext();
+          continue nextTerm;
+        }
+
+        // Advance where we are in the automaton to match this label:
+
+        while (label > currentTransition.max) {
+          if (currentFrame.transitionIndex >= currentFrame.transitionCount - 1) {
+            // Pop this frame: no further matches are possible because
+            // we've moved beyond what the max transition will allow
+            if (currentFrame.ord == 0) {
+              // Provoke NPE if we are (illegally!) called again:
+              currentFrame = null;
+              return null;
+            }
+            currentFrame = stack[currentFrame.ord - 1];
+            currentTransition = currentFrame.transition;
+            isSubBlock = popPushNext();
+            continue nextTerm;
+          }
+          currentFrame.transitionIndex++;
+          automaton.getNextTransition(currentTransition);
+
+          if (label < currentTransition.min) {
+            int minTrans = currentTransition.min;
+            while (currentFrame.nextEnt < currentFrame.entCount) {
+              isSubBlock = currentFrame.next();
+              if ((suffixBytes[currentFrame.startBytePos] & 0xff) >= minTrans) {
+                continue nextTerm;
+              }
+            }
+
+            // End of frame:
+            isSubBlock = popPushNext();
+            continue nextTerm;
+          }
+        }
+
+        if (commonSuffix != null && !isSubBlock) {
+          final int termLen = currentFrame.prefixLength + currentFrame.suffixLength;
+          if (termLen < commonSuffix.length) {
+            // No match
+            isSubBlock = popPushNext();
+            continue nextTerm;
+          }
+
+          final byte[] commonSuffixBytes = commonSuffix.bytes;
+
+          final int lenInPrefix = commonSuffix.length - currentFrame.suffixLength;
+          assert commonSuffix.offset == 0;
+          int suffixBytesPos;
+          int commonSuffixBytesPos = 0;
+
+          if (lenInPrefix > 0) {
+            // A prefix of the common suffix overlaps with
+            // the suffix of the block prefix so we first
+            // test whether the prefix part matches:
+            final byte[] termBytes = term.bytes;
+            int termBytesPos = currentFrame.prefixLength - lenInPrefix;
+            assert termBytesPos >= 0;
+            final int termBytesPosEnd = currentFrame.prefixLength;
+            while (termBytesPos < termBytesPosEnd) {
+              if (termBytes[termBytesPos++] != commonSuffixBytes[commonSuffixBytesPos++]) {
+                isSubBlock = popPushNext();
+                continue nextTerm;
+              }
+            }
+            suffixBytesPos = currentFrame.startBytePos;
+          } else {
+            suffixBytesPos =
+                currentFrame.startBytePos + currentFrame.suffixLength - commonSuffix.length;
+          }
+
+          // Test overlapping suffix part:
+          final int commonSuffixBytesPosEnd = commonSuffix.length;
+          while (commonSuffixBytesPos < commonSuffixBytesPosEnd) {
+            if (suffixBytes[suffixBytesPos++] != commonSuffixBytes[commonSuffixBytesPos++]) {
+              isSubBlock = popPushNext();
+              continue nextTerm;
+            }
+          }
+        }
+
+        // TODO: maybe we should do the same linear test
+        // that AutomatonTermsEnum does, so that if we
+        // reach a part of the automaton where .* is
+        // "temporarily" accepted, we just blindly .next()
+        // until the limit
+
+        // See if the term suffix matches the automaton:
+
+        // We know from above that the first byte in our suffix (label) matches
+        // the current transition, so we step from the 2nd byte
+        // in the suffix:
+        lastState = currentFrame.state;
+        state = currentTransition.dest;
+
+        int end = currentFrame.startBytePos + currentFrame.suffixLength;
+        for (int idx = currentFrame.startBytePos + 1; idx < end; idx++) {
+          lastState = state;
+          state = runAutomaton.step(state, suffixBytes[idx] & 0xff);
+          if (state == -1) {
+            // No match
+            isSubBlock = popPushNext();
+            continue nextTerm;
+          }
+        }
+      } else {
+        state = currentFrame.state;
+        lastState = currentFrame.lastState;
+      }
+
+      if (isSubBlock) {
+        // Match!  Recurse:
+        copyTerm();
+        currentFrame = pushFrame(state);
+        currentTransition = currentFrame.transition;
+        currentFrame.lastState = lastState;
+      } else if (runAutomaton.isAccept(state)) {
+        copyTerm();
+        assert savedStartTerm == null || term.compareTo(savedStartTerm) > 0
+            : "saveStartTerm=" + savedStartTerm.utf8ToString() + " term=" + term.utf8ToString();
+        return term;
+      } else {
+        // This term is a prefix of a term accepted by the automaton, but is not itself accepted
+      }
+
+      isSubBlock = popPushNext();
+    }
+  }
+
+  private BytesRef _nextWithMatchAllSuffix() throws IOException {
+
+    boolean isSubBlock = popPushNext();
+
+    nextTerm:
+    while (true) {
       // Match sub block's entry directly.
-      if (hasMatchAllSuffixStates && currentFrame.matchAllSuffix) {
+      if (currentFrame.matchAllSuffix) {
         while (true) {
           // There is no need to set currentTransition, state, etc.
           // It will be reset properly on the next recursion.
@@ -531,9 +696,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
             // No match
             isSubBlock = popPushNext();
             continue nextTerm;
-          } else if (hasMatchAllSuffixStates
-              && runAutomaton.isAccept(state)
-              && runAutomaton.isMatchAllSuffix(state)) {
+          } else if (runAutomaton.isAccept(state) && runAutomaton.isMatchAllSuffix(state)) {
             matchAllSuffix = true;
             break;
           }
