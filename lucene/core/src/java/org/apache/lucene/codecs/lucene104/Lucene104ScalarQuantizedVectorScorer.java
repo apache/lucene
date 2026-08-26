@@ -63,8 +63,7 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
     if (vectorValues instanceof QuantizedByteVectorValues qv) {
       FlatVectorsScorer.checkDimensions(target.length, qv.dimension());
       // We make a copy as the quantization process mutates the input
-      return getRandomQuantizedVectorScorer(
-          similarityFunction, qv, ArrayUtil.copyOfSubArray(target, 0, target.length));
+      return getRandomQuantizedVectorScorer(similarityFunction, qv, ArrayUtil.copyArray(target));
     }
     // It is possible to get to this branch during initial indexing and flush
     return nonQuantizedDelegate.getRandomVectorScorer(similarityFunction, vectorValues, target);
