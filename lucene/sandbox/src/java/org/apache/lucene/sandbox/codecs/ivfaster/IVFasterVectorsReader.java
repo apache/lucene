@@ -128,6 +128,30 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
   private static final int SIMD_ADMIT_BLOCK = Integer.getInteger("ivfaster.simdAdmitBlock", 256);
 
   /**
+   * Hint the page cache for every probed cell's byte range before scanning any of them ({@code
+   * -Divfaster.noPrefetch=true} runs the control arm).
+   *
+   * <p>WHY THIS CODEC CAN DO IT AT ALL. Slots are grouped by cell, so as soon as the posting
+   * directory is read the scan knows the exact contiguous byte range of every cell it is about to
+   * touch, before touching the first one. Issuing all {@code nprobe} hints up front lets the kernel
+   * fault those runs concurrently, so a cold scan pays one round of I/O latency in place of one per
+   * cell. A graph descent has no equivalent: the next hop's address is unknown until the current
+   * node is scored, so its misses are serial by construction. This is the property that makes the
+   * layout suited to a disk-resident index.
+   *
+   * <p>NEARLY FREE WHEN WARM, which is what makes it safe to leave on by default. {@link
+   * IndexInput#prefetch} is adaptive: it counts calls and skips the {@code madvise} syscall unless
+   * the counter is zero or a power of two, and even then advises only when a page is genuinely
+   * missing, resetting the counter on a miss. A warm index therefore pays an atomic increment and a
+   * bit test per probed cell, and a cold one gets the hints it needs.
+   *
+   * <p>Both sections the scan reads are hinted: the coarse planes it Hammings, and the code table
+   * that holds the fine codes the rerank reads. Nothing else on the query path is hinted, since the
+   * centroid graph is sized to stay cache-resident.
+   */
+  private static final boolean PREFETCH = Boolean.getBoolean("ivfaster.noPrefetch") == false;
+
+  /**
    * Per-query nprobe override; 0 uses the value persisted at write time.
    *
    * <p>SEARCH-TIME BY DESIGN: it lets one cached index serve an entire nprobe sweep, so a
@@ -938,6 +962,19 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
     if (totalCandidates == 0) {
       return;
     }
+
+    // Hint every probed run before scanning any of it, so cold faults overlap; see PREFETCH. Placed
+    // at the first point the ranges are known, which is what buys the overlap.
+    if (PREFETCH) {
+      final int recordLen = e.recordLen;
+      for (int ci = 0; ci < nCells; ci++) {
+        final long slotBase = cellBase[ci];
+        final int rows = cellRows[ci];
+        v.coarse.prefetch(slotBase * coarseBytes, (long) rows * coarseBytes);
+        v.codeTable.prefetch(slotBase * recordLen, (long) rows * recordLen);
+      }
+    }
+
     // Opt-in instrumentation; see COUNT_SCAN.
     if (COUNT_SCAN) {
       scannedDocs.addAndGet(totalCandidates);
