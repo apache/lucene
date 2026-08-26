@@ -30,6 +30,7 @@
 package org.apache.lucene.util.automaton;
 
 import java.util.Arrays;
+import java.util.Objects;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -79,14 +80,14 @@ public abstract class RunAutomaton implements Accountable {
     points = a.getStartPoints();
     size = Math.max(1, a.getNumStates());
     accept = new FixedBitSet(size);
-    matchAllSuffix = new FixedBitSet(size);
+    matchAllSuffix = computeMatchAllSuffix ? new FixedBitSet(size) : null;
     transitions = new int[size * points.length];
     Arrays.fill(transitions, -1);
     Transition transition = new Transition();
     for (int n = 0; n < size; n++) {
       if (a.isAccept(n)) {
         accept.set(n);
-        if (computeMatchAllSuffix && computeMatchAllSuffix(n)) {
+        if (matchAllSuffix != null && computeMatchAllSuffix(n)) {
           matchAllSuffix.set(n);
         }
       }
@@ -140,8 +141,7 @@ public abstract class RunAutomaton implements Accountable {
       b.append("state ").append(i);
       if (accept.get(i)) b.append(" [accept]:\n");
       else b.append(" [reject]:\n");
-      if (matchAllSuffix.get(i)) b.append(" [matchAllSuffix]:\n");
-      else b.append(" [can not matchAllSuffix]:\n");
+      if (matchAllSuffix != null && matchAllSuffix.get(i)) b.append(" [matchAllSuffix]:\n");
       for (int j = 0; j < points.length; j++) {
         int k = transitions[i * points.length + j];
         if (k != -1) {
@@ -184,7 +184,7 @@ public abstract class RunAutomaton implements Accountable {
    * @return whether this state can accept all remaining suffixes.
    */
   public final boolean isMatchAllSuffix(int state) {
-    return matchAllSuffix.get(state);
+    return matchAllSuffix != null && matchAllSuffix.get(state);
   }
 
   /**
@@ -245,7 +245,7 @@ public abstract class RunAutomaton implements Accountable {
     if (size != other.size) return false;
     if (!Arrays.equals(points, other.points)) return false;
     if (!accept.equals(other.accept)) return false;
-    if (!matchAllSuffix.equals(other.matchAllSuffix)) return false;
+    if (!Objects.equals(matchAllSuffix, other.matchAllSuffix)) return false;
     if (!Arrays.equals(transitions, other.transitions)) return false;
     return true;
   }
@@ -254,7 +254,7 @@ public abstract class RunAutomaton implements Accountable {
   public long ramBytesUsed() {
     return BASE_RAM_BYTES
         + accept.ramBytesUsed()
-        + matchAllSuffix.ramBytesUsed()
+        + (matchAllSuffix == null ? 0 : matchAllSuffix.ramBytesUsed())
         + RamUsageEstimator.sizeOfObject(automaton)
         + RamUsageEstimator.sizeOfObject(classmap)
         + RamUsageEstimator.sizeOfObject(points)
