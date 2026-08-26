@@ -60,6 +60,17 @@ public abstract class RunAutomaton implements Accountable {
    * @throws IllegalArgumentException if the automaton is not deterministic
    */
   protected RunAutomaton(Automaton a, int alphabetSize) {
+    this(a, alphabetSize, false);
+  }
+
+  /**
+   * Constructs a new <code>RunAutomaton</code> from a deterministic <code>Automaton</code>.
+   *
+   * @param a an automaton
+   * @param computeMatchAllSuffix whether to compute states that can accept all remaining suffixes
+   * @throws IllegalArgumentException if the automaton is not deterministic
+   */
+  protected RunAutomaton(Automaton a, int alphabetSize, boolean computeMatchAllSuffix) {
     this.alphabetSize = alphabetSize;
     if (!a.isDeterministic()) {
       throw new IllegalArgumentException("Automaton must be deterministic");
@@ -75,7 +86,7 @@ public abstract class RunAutomaton implements Accountable {
     for (int n = 0; n < size; n++) {
       if (a.isAccept(n)) {
         accept.set(n);
-        if (computeMatchAllSuffix(n)) {
+        if (computeMatchAllSuffix && computeMatchAllSuffix(n)) {
           matchAllSuffix.set(n);
         }
       }
