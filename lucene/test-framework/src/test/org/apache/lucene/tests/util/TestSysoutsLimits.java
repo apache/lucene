@@ -80,15 +80,15 @@ public class TestSysoutsLimits extends WithNestedTests {
   }
 
   @Test
-  public void testNotEnforcedWhenRepeatingTestCases() {
+  public void testScaledLimitWhenRepeatingTestCases() {
     String iters = SysGlobals.SYSPROP_ITERATIONS();
     try {
-      // Still apply limit for single iter.
+      // The same per-iteration limit applies for one or several iterations.
       System.setProperty(iters, "1");
       Assert.assertEquals(1, new JUnitCore().run(OverSoftLimit.class).getFailureCount());
 
       System.setProperty(iters, "3");
-      Assert.assertEquals(0, new JUnitCore().run(OverSoftLimit.class).getFailureCount());
+      Assert.assertEquals(1, new JUnitCore().run(OverSoftLimit.class).getFailureCount());
     } finally {
       System.clearProperty(iters);
     }
