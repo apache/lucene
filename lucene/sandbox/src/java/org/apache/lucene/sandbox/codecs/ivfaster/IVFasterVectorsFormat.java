@@ -55,10 +55,17 @@ import org.apache.lucene.index.SegmentWriteState;
  *
  * <h2>Scope limits</h2>
  *
- * <p>IN-RAM only. The scan reads the coarse and fine sections through random-access slices of the
- * data file and assumes they are page-cache resident. There is no async or batched I/O path, and no
- * prefetch, so a cold page costs a synchronous fault inside the scan. Sizing an index beyond the
- * page cache is out of scope.
+ * <p>PAGE-CACHE RESIDENT IS THE TUNED CASE, and the layout admits a colder one. The scan reads the
+ * coarse and fine sections through random-access slices of the data file. Slots are grouped by
+ * cell, so the byte range of every probed cell is known before the scan begins, and the reader
+ * hints all {@code nprobe} of them through {@code IndexInput#prefetch} up front, letting cold
+ * faults overlap in place of one synchronous fault per cell.
+ *
+ * <p>AN ASYNC OR BATCHED I/O PATH IS DELIBERATELY ABSENT. It pays when nearly every page is cold,
+ * and costs more than it saves in the page-cache-resident case this codec tunes for. The prefetch
+ * hint has the opposite profile, since it collapses to a counter increment once pages are resident
+ * (see the reader's {@code PREFETCH}), which is what makes it the one safe to leave on. Behaviour
+ * on an index larger than the page cache is untested.
  *
  * <p>Indexing buffers the field's float vectors in heap, because the Lloyd mean needs them. The
  * coarse scan that opens every routing pass reads the packed planes alone, {@code 1/16} of that;
