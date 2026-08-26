@@ -114,19 +114,8 @@ public abstract class RunAutomaton implements Accountable {
       }
     }
 
-    // Apply to RegexpQuery, WildcardQuery.
-    // TODO: Is it enough just check last transition is [0, 127]?.
-    for (int i = 0; i < numTransitions; i++) {
-      automaton.getTransition(state, i, transition);
-      if (transition.min == 0 && transition.max == 127) {
-        if (transition.dest == state) {
-          return true;
-        } else if (automaton.isAccept(transition.dest)) {
-          // recurse
-          return detectMatchAllSuffix(transition.dest);
-        }
-      }
-    }
+    // TODO: Detect match-all-suffix states for more complex UTF-8 automata produced by
+    // UTF32ToUTF8 conversion, such as those used by RegexpQuery and WildcardQuery.
     return false;
   }
 
