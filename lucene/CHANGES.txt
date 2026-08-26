@@ -133,6 +133,10 @@ Optimizations
 Bug Fixes
 ---------------------
 
+* GITHUB#16552: Reconnect HNSW nodes whose out-degree decays across successive
+  merge-reuse generations, preventing progressive recall loss under low delete
+  rates. (Ethan Baker)
+
 * GITHUB#16546: Prevent RangeBulkScorer from passing empty ranges to LeafCollector. (jxy)
 
 * GITHUB#16450: Fix DocValuesRangeIterator.docIDRunEnd() returning incorrect run boundaries,
