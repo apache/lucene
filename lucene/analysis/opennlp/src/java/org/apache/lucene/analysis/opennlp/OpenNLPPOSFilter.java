@@ -66,7 +66,7 @@ public final class OpenNLPPOSFilter extends TokenFilter {
     for (AttributeSource attributeSource : sentenceAttributeExtractor.extractSentenceAttributes()) {
       termList.add(attributeSource.getAttribute(CharTermAttribute.class).toString());
     }
-    String[] sentenceTerms = termList.toArray(new String[0]);
+    String[] sentenceTerms = termList.toArray(String[]::new);
     assignTokenTypes(posTaggerOp.getPOSTags(sentenceTerms));
     return sentenceAttributeExtractor.getSentenceAttributes();
   }

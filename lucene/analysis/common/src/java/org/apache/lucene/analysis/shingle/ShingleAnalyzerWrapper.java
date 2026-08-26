@@ -146,7 +146,7 @@ public final class ShingleAnalyzerWrapper extends AnalyzerWrapper {
   }
 
   @Override
-  public final Analyzer getWrappedAnalyzer(String fieldName) {
+  public Analyzer getWrappedAnalyzer(String fieldName) {
     return delegate;
   }
 

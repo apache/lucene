@@ -79,8 +79,8 @@ public class TestPhrasePrefixQuery extends LuceneTestCase {
       }
     } while (te.next() != null);
 
-    query1builder.add(termsWithPrefix.toArray(new Term[0]));
-    query2builder.add(termsWithPrefix.toArray(new Term[0]));
+    query1builder.add(termsWithPrefix.toArray(Term[]::new));
+    query2builder.add(termsWithPrefix.toArray(Term[]::new));
 
     ScoreDoc[] result;
     result = searcher.search(query1builder.build(), 1000).scoreDocs;

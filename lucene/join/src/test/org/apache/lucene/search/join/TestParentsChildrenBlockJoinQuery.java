@@ -44,7 +44,6 @@ import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 public class TestParentsChildrenBlockJoinQuery extends LuceneTestCase {
 
@@ -57,13 +56,11 @@ public class TestParentsChildrenBlockJoinQuery extends LuceneTestCase {
         random(), dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()));
   }
 
-  @Test
   public void testEmptyIndex() throws Exception {
     // No documents to index, just test the query execution
     test(new TestDoc[0][0], new int[0], 10);
   }
 
-  @Test
   public void testOnlyParentDocs() throws Exception {
     // Only parent documents, no children
     TestDoc[][] blocks = {
@@ -75,7 +72,6 @@ public class TestParentsChildrenBlockJoinQuery extends LuceneTestCase {
     test(blocks, expectedDocIds, 10);
   }
 
-  @Test
   public void testFirstParentWithoutChild() throws Exception {
     // First parent has no children, but the second parent has two children
     TestDoc[][] blocks = {
@@ -86,7 +82,6 @@ public class TestParentsChildrenBlockJoinQuery extends LuceneTestCase {
     test(blocks, expectedDocIds, 10);
   }
 
-  @Test
   public void testWithRandomizedIndex() throws Exception {
     for (int i = 0; i < 10; i++) {
       // Run multiple iterations to ensure randomness
@@ -146,7 +141,6 @@ public class TestParentsChildrenBlockJoinQuery extends LuceneTestCase {
     test(testDocs, expectedMatchArray, childLimitPerParent);
   }
 
-  @Test
   public void testAdvance() throws Exception {
     // Create test blocks with specific structure to test advance()
     TestDoc[][] blocks = new TestDoc[3][];
@@ -325,7 +319,6 @@ public class TestParentsChildrenBlockJoinQuery extends LuceneTestCase {
     dir.close();
   }
 
-  @Test
   public void testInvalidChildLimit() {
     BitSetProducer parentFilter =
         new QueryBitSetProducer(new TermQuery(new Term("type", "parent")));
@@ -339,7 +332,6 @@ public class TestParentsChildrenBlockJoinQuery extends LuceneTestCase {
     assertTrue(e.getMessage().contains("childLimitPerParent must be > 0"));
   }
 
-  @Test
   public void testExplain() throws Exception {
     // Create test blocks with specific structure to test explain()
     TestDoc[][] blocks = new TestDoc[2][];
@@ -411,7 +403,6 @@ public class TestParentsChildrenBlockJoinQuery extends LuceneTestCase {
     dir.close();
   }
 
-  @Test
   public void testIntraSegmentConcurrencyNotSupported() throws Exception {
     // Create test blocks with specific structure - using a larger number of documents
     final int numParents = atLeast(1000); // Create at least 1000 parents to ensure large segment

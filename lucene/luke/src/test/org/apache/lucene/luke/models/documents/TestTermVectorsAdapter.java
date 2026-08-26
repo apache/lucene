@@ -25,7 +25,6 @@ import org.apache.lucene.document.FieldType;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
-import org.junit.Test;
 
 public class TestTermVectorsAdapter extends DocumentsTestBase {
 
@@ -67,7 +66,6 @@ public class TestTermVectorsAdapter extends DocumentsTestBase {
     dir.close();
   }
 
-  @Test
   public void testGetTermVector() throws Exception {
     TermVectorsAdapter adapterImpl = new TermVectorsAdapter(reader);
     List<TermVectorEntry> tvEntries = adapterImpl.getTermVector(0, "text1");
@@ -129,7 +127,6 @@ public class TestTermVectorsAdapter extends DocumentsTestBase {
     assertEquals(1, tvEntries.get(17).getFreq());
   }
 
-  @Test
   public void testGetTermVector_with_positions() throws Exception {
     TermVectorsAdapter adapterImpl = new TermVectorsAdapter(reader);
     List<TermVectorEntry> tvEntries = adapterImpl.getTermVector(0, "text2");
@@ -143,7 +140,6 @@ public class TestTermVectorsAdapter extends DocumentsTestBase {
     assertFalse(tvEntries.get(1).getPositions().get(0).getEndOffset().isPresent());
   }
 
-  @Test
   public void testGetTermVector_with_positions_offsets() throws Exception {
     TermVectorsAdapter adapterImpl = new TermVectorsAdapter(reader);
     List<TermVectorEntry> tvEntries = adapterImpl.getTermVector(0, "text3");
@@ -157,7 +153,6 @@ public class TestTermVectorsAdapter extends DocumentsTestBase {
     assertEquals(38, tvEntries.get(1).getPositions().get(0).getEndOffset().orElse(-1));
   }
 
-  @Test
   public void testGetTermVectors_notAvailable() throws Exception {
     TermVectorsAdapter adapterImpl = new TermVectorsAdapter(reader);
     assertEquals(0, adapterImpl.getTermVector(0, "title").size());

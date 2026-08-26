@@ -41,6 +41,7 @@ import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 
@@ -136,61 +137,35 @@ final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery 
         SortedNumericDocValues values = DocValues.getSortedNumeric(context.reader(), field);
         final NumericDocValues singleton = DocValues.unwrapSingleton(values);
         final DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
-        TwoPhaseIterator iterator;
+
         if (singleton != null) {
           if (skipper != null) {
-            final DocIdSetIterator psIterator =
-                getDocIdSetIteratorOrNullForPrimarySort(context.reader(), singleton, skipper);
-            if (psIterator != null) {
-              return ConstantScoreScorerSupplier.fromIterator(
-                  psIterator, score(), scoreMode, maxDoc);
+            SortField primarySortField =
+                canUsePrimarySortShortcut(context.reader(), field, skipper);
+            if (primarySortField != null) {
+              return getScorerSupplierFromDensePrimarySort(singleton, skipper, primarySortField);
             }
           }
-          iterator =
-              new TwoPhaseIterator(singleton) {
-                @Override
-                public boolean matches() throws IOException {
-                  final long value = singleton.longValue();
-                  return value >= lowerValue && value <= upperValue;
-                }
-
-                @Override
-                public float matchCost() {
-                  return 2; // 2 comparisons
-                }
-              };
-        } else {
-          iterator =
-              new TwoPhaseIterator(values) {
-                @Override
-                public boolean matches() throws IOException {
-                  for (int i = 0, count = values.docValueCount(); i < count; ++i) {
-                    final long value = values.nextValue();
-                    if (value < lowerValue) {
-                      continue;
-                    }
-                    // Values are sorted, so the first value that is >= lowerValue is our best
-                    // candidate
-                    return value <= upperValue;
-                  }
-                  return false; // all values were < lowerValue
-                }
-
-                @Override
-                public float matchCost() {
-                  return 2; // 2 comparisons
-                }
-              };
-        }
-        if (skipper != null) {
-          iterator = new DocValuesRangeIterator(iterator, skipper, lowerValue, upperValue, false);
+          // A single two-phase iterator covers every density: its approximation rides the skipper
+          // (no over-scan), its intoBitSet bulk-evaluates dense blocks, and YES runs collect as
+          // ranges. The bulk scorer unwraps it and picks the right strategy from there.
+          return ConstantScoreScorerSupplier.fromIterator(
+              TwoPhaseIterator.asDocIdSetIterator(
+                  DocValuesRangeIterator.forRange(singleton, skipper, lowerValue, upperValue)),
+              score(),
+              scoreMode,
+              maxDoc);
         }
         return ConstantScoreScorerSupplier.fromIterator(
-            TwoPhaseIterator.asDocIdSetIterator(iterator), score(), scoreMode, maxDoc);
+            TwoPhaseIterator.asDocIdSetIterator(
+                DocValuesRangeIterator.forRange(values, skipper, lowerValue, upperValue)),
+            score(),
+            scoreMode,
+            maxDoc);
       }
 
       @Override
-      public int count(LeafReaderContext context) throws IOException {
+      public int count(LeafReaderContext context) {
         int maxDoc = context.reader().maxDoc();
         int cnt = docCountIgnoringDeletes(context);
         if (cnt == maxDoc) {
@@ -204,7 +179,7 @@ final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery 
        * # docs within the query range ignoring any deleted documents
        * -1 if # docs cannot be determined efficiently
        */
-      private int docCountIgnoringDeletes(LeafReaderContext context) throws IOException {
+      private int docCountIgnoringDeletes(LeafReaderContext context) {
         final DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
         if (skipper != null) {
           if (skipper.minValue() > upperValue || skipper.maxValue() < lowerValue) {
@@ -218,67 +193,56 @@ final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery 
         }
         return -1;
       }
+
+      private ScorerSupplier getScorerSupplierFromDensePrimarySort(
+          NumericDocValues singleton, DocValuesSkipper skipper, SortField sortField) {
+        return new SortedSkipperScorerSupplier(skipper, sortField, score(), scoreMode) {
+
+          @Override
+          protected long getLowerValue() {
+            return lowerValue;
+          }
+
+          @Override
+          protected long getUpperValue() {
+            return upperValue;
+          }
+
+          @Override
+          protected int nextDoc(int startDocId, LongPredicate predicate) throws IOException {
+            int doc = singleton.docID();
+            if (startDocId > doc) {
+              doc = singleton.advance(startDocId);
+            }
+            for (; doc < DocIdSetIterator.NO_MORE_DOCS; doc = singleton.nextDoc()) {
+              if (predicate.test(singleton.longValue())) {
+                break;
+              }
+            }
+            return doc;
+          }
+        };
+      }
     };
   }
 
-  private DocIdSetIterator getDocIdSetIteratorOrNullForPrimarySort(
-      LeafReader reader, NumericDocValues numericDocValues, DocValuesSkipper skipper)
-      throws IOException {
+  /**
+   * Returns the primary sort field if it is safe to use the {@link SortedSkipperScorerSupplier}
+   * range shortcuts for this query, or {@code null} if the shortcut cannot be applied.
+   *
+   * <p>The shortcuts ({@code skipperMinDocId=0} and {@code skipperMaxDocId=docCount}) assume that
+   * docs without a value do not appear within or before the matching doc-ID range. This requires
+   * that the field is dense (every doc has a value, {@code docCount == reader.maxDoc()}).
+   */
+  private static SortField canUsePrimarySortShortcut(
+      LeafReader reader, String field, DocValuesSkipper skipper) {
+    SortField sf = Sort.getPrimarySortField(reader);
+    if (sf == null || sf.getField().equals(field) == false) {
+      return null;
+    }
     if (skipper.docCount() != reader.maxDoc()) {
       return null;
     }
-    final Sort indexSort = reader.getMetaData().sort();
-    if (indexSort == null
-        || indexSort.getSort().length == 0
-        || indexSort.getSort()[0].getField().equals(field) == false) {
-      return null;
-    }
-
-    final int minDocID;
-    final int maxDocID;
-    if (indexSort.getSort()[0].getReverse()) {
-      if (skipper.maxValue() <= upperValue) {
-        minDocID = 0;
-      } else {
-        skipper.advance(Long.MIN_VALUE, upperValue);
-        minDocID = nextDoc(skipper.minDocID(0), numericDocValues, l -> l <= upperValue);
-      }
-      if (skipper.minValue() >= lowerValue) {
-        maxDocID = skipper.docCount();
-      } else {
-        skipper.advance(Long.MIN_VALUE, lowerValue);
-        maxDocID = nextDoc(skipper.minDocID(0), numericDocValues, l -> l < lowerValue);
-      }
-    } else {
-      if (skipper.minValue() >= lowerValue) {
-        minDocID = 0;
-      } else {
-        skipper.advance(lowerValue, Long.MAX_VALUE);
-        minDocID = nextDoc(skipper.minDocID(0), numericDocValues, l -> l >= lowerValue);
-      }
-      if (skipper.maxValue() <= upperValue) {
-        maxDocID = skipper.docCount();
-      } else {
-        skipper.advance(upperValue, Long.MAX_VALUE);
-        maxDocID = nextDoc(skipper.minDocID(0), numericDocValues, l -> l > upperValue);
-      }
-    }
-    return minDocID == maxDocID
-        ? DocIdSetIterator.empty()
-        : DocIdSetIterator.range(minDocID, maxDocID);
-  }
-
-  private static int nextDoc(int startDoc, NumericDocValues docValues, LongPredicate predicate)
-      throws IOException {
-    int doc = docValues.docID();
-    if (startDoc > doc) {
-      doc = docValues.advance(startDoc);
-    }
-    for (; doc < DocIdSetIterator.NO_MORE_DOCS; doc = docValues.nextDoc()) {
-      if (predicate.test(docValues.longValue())) {
-        break;
-      }
-    }
-    return doc;
+    return sf;
   }
 }

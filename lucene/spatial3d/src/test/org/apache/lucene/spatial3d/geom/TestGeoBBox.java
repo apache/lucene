@@ -20,13 +20,11 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.tests.geo.GeoTestUtil;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 public class TestGeoBBox extends LuceneTestCase {
 
   protected static final double DEGREES_TO_RADIANS = Math.PI / 180.0;
 
-  @Test
   public void testBBoxDegenerate() {
     GeoBBox box;
     int relationship;
@@ -58,7 +56,6 @@ public class TestGeoBBox extends LuceneTestCase {
     assertEquals(GeoArea.CONTAINS, relationship);
   }
 
-  @Test
   public void testBBoxPointWithin() {
     GeoBBox box;
     GeoPoint gp;
@@ -123,7 +120,6 @@ public class TestGeoBBox extends LuceneTestCase {
     assertTrue(box.isWithin(gp));
   }
 
-  @Test
   public void testBBoxExpand() {
     GeoBBox box;
     GeoPoint gp;
@@ -148,7 +144,6 @@ public class TestGeoBBox extends LuceneTestCase {
     assertFalse(box.isWithin(gp));
   }
 
-  @Test
   public void testBBoxBounds() {
     GeoBBox c;
     LatLonBounds b;
@@ -427,7 +422,6 @@ public class TestGeoBBox extends LuceneTestCase {
 
   }
 
-  @Test
   public void testFailureCase1() {
     final GeoPoint point =
         new GeoPoint(-0.017413370801260174, -2.132522881412925E-18, 0.9976113450663769);
@@ -449,7 +443,6 @@ public class TestGeoBBox extends LuceneTestCase {
     assertTrue(box.isWithin(point) ? solid.isWithin(point) : true);
   }
 
-  @Test
   public void testFailureCase2() {
     // final GeoPoint point = new GeoPoint(-0.7375647084975573, -2.3309121299774915E-10,
     // 0.6746626163258577);
@@ -482,7 +475,6 @@ public class TestGeoBBox extends LuceneTestCase {
     assertTrue(box.isWithin(point) == solid.isWithin(point));
   }
 
-  @Test
   public void testLUCENE10508() {
     double minX = Geo3DUtil.fromDegrees(GeoTestUtil.nextLongitude());
     double maxX = Geo3DUtil.fromDegrees(GeoTestUtil.nextLongitude());
@@ -491,7 +483,6 @@ public class TestGeoBBox extends LuceneTestCase {
     assertNotNull(GeoAreaFactory.makeGeoArea(PlanetModel.SPHERE, maxY, minY, minX, maxX));
   }
 
-  @Test
   public void testBBoxRandomDegenerate() {
     for (int i = 0; i < 100; i++) {
       double minX = Geo3DUtil.fromDegrees(GeoTestUtil.nextLongitude());
@@ -502,7 +493,6 @@ public class TestGeoBBox extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testBBoxLatDegenerate() {
     double minX = Geo3DUtil.fromDegrees(-180.0);
     double maxX = Geo3DUtil.fromDegrees(-174.37500008381903);
@@ -511,7 +501,6 @@ public class TestGeoBBox extends LuceneTestCase {
     assertNotNull(GeoAreaFactory.makeGeoArea(PlanetModel.SPHERE, maxY, minY, minX, maxX));
   }
 
-  @Test
   public void testBBoxRandomLatDegenerate() {
     for (int i = 0; i < 100; i++) {
       double minX = Geo3DUtil.fromDegrees(GeoTestUtil.nextLongitude());
@@ -522,7 +511,6 @@ public class TestGeoBBox extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testBBoxRandomLonDegenerate() {
     for (int i = 0; i < 100; i++) {
       double minX = Geo3DUtil.fromDegrees(GeoTestUtil.nextLongitude());

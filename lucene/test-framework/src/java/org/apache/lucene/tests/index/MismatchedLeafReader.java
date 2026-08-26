@@ -104,7 +104,7 @@ public class MismatchedLeafReader extends FilterLeafReader {
       shuffled.set(i, newInfo);
     }
 
-    return new FieldInfos(shuffled.toArray(new FieldInfo[shuffled.size()]));
+    return new FieldInfos(shuffled.toArray(FieldInfo[]::new));
   }
 
   /** StoredFieldsVisitor that remaps actual field numbers to our new shuffled ones. */

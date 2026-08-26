@@ -45,7 +45,7 @@ public final class NorwegianNormalizationFilter extends TokenFilter {
   private final CharTermAttribute charTermAttribute = addAttribute(CharTermAttribute.class);
 
   @Override
-  public final boolean incrementToken() throws IOException {
+  public boolean incrementToken() throws IOException {
     if (!input.incrementToken()) {
       return false;
     }

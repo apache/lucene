@@ -1483,38 +1483,6 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
     }
   }
 
-  @Deprecated
-  public void testGroupVIntOverflow() throws IOException {
-    try (Directory dir = getDirectory(createTempDir("testGroupVIntOverflow"))) {
-      final int size = 32;
-      final long[] values = new long[size];
-      final long[] restore = new long[size];
-      values[0] = 1L << 31; // values[0] = 2147483648 as long, but as int it is -2147483648
-
-      for (int i = 0; i < size; i++) {
-        if (random().nextBoolean()) {
-          values[i] = values[0];
-        }
-      }
-
-      // a smaller limit value cover default implementation of readGroupVInts
-      // and a bigger limit value cover the faster implementation.
-      final int limit = random().nextInt(1, size);
-      IndexOutput out = dir.createOutput("test", IOContext.DEFAULT);
-      out.writeGroupVInts(values, limit);
-      out.close();
-      try (IndexInput in = dir.openInput("test", IOContext.DEFAULT)) {
-        GroupVIntUtil.readGroupVInts(in, restore, limit);
-        for (int i = 0; i < limit; i++) {
-          assertEquals(values[i], restore[i]);
-        }
-      }
-
-      values[0] = 0xFFFFFFFFL + 1;
-      assertThrows(ArithmeticException.class, () -> out.writeGroupVInts(values, 4));
-    }
-  }
-
   public void testGroupVInt() throws IOException {
     try (Directory dir = getDirectory(createTempDir("testGroupVInt"))) {
       // test fallback to default implementation of readGroupVInt
@@ -1661,20 +1629,16 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
           // On Windows, we temporarily don't care until this is fixed: #14050
         } else if (mMapDir != null) {
           var wrappers = wrapperClasses(dir);
-          // Direct IO wraps MMap but does not support isLoaded.
-          // NRTCachingDirectory may return index inputs from cache.
-          if (wrappers.stream()
-              .noneMatch(
-                  clz ->
-                      clz.getName().contains("DirectIO")
-                          || NRTCachingDirectory.class.isAssignableFrom(clz))) {
+          // NRTCachingDirectory may return index inputs from cache and this
+          // depends on segment size.
+          if (wrappers.stream().anyMatch(NRTCachingDirectory.class::isAssignableFrom)) {
+            // Ignore the check.
+          } else if (wrappers.stream().anyMatch(clz -> clz.getName().contains("DirectIO"))) {
+            // Direct IO wraps MMap but does not support isLoaded.
+          } else {
             assertTrue(loaded.isPresent());
             assertTrue(loaded.get());
-          } else {
-            assertFalse(loaded.isPresent());
           }
-        } else {
-          assertFalse(loaded.isPresent());
         }
       }
     }

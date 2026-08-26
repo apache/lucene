@@ -30,10 +30,8 @@ import java.util.List;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IOConsumer;
-import org.junit.Test;
 
 public final class TestByteBuffersDataInput extends LuceneTestCase {
-  @Test
   public void testSanity() throws IOException {
     ByteBuffersDataOutput out = new ByteBuffersDataOutput();
     ByteBuffersDataInput o1 = out.toDataInput();
@@ -65,7 +63,6 @@ public final class TestByteBuffersDataInput extends LuceneTestCase {
     assertEquals(1, o2.position());
   }
 
-  @Test
   public void testRandomReads() throws Exception {
     ByteBuffersDataOutput dst = new ByteBuffersDataOutput();
 
@@ -85,7 +82,6 @@ public final class TestByteBuffersDataInput extends LuceneTestCase {
         });
   }
 
-  @Test
   public void testRandomReadsOnSlices() throws Exception {
     for (int reps = randomIntBetween(1, 20); --reps > 0; ) {
       ByteBuffersDataOutput dst = new ByteBuffersDataOutput();
@@ -117,7 +113,6 @@ public final class TestByteBuffersDataInput extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testSeekEmpty() throws Exception {
     ByteBuffersDataOutput dst = new ByteBuffersDataOutput();
     ByteBuffersDataInput in = dst.toDataInput();
@@ -137,7 +132,6 @@ public final class TestByteBuffersDataInput extends LuceneTestCase {
         });
   }
 
-  @Test
   public void testSeekAndSkip() throws Exception {
     for (int reps = randomIntBetween(1, 200); --reps > 0; ) {
       ByteBuffersDataOutput dst = new ByteBuffersDataOutput();
@@ -197,7 +191,6 @@ public final class TestByteBuffersDataInput extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testSlicingWindow() throws Exception {
     ByteBuffersDataOutput dst = new ByteBuffersDataOutput();
     assertEquals(0, dst.toDataInput().slice(0, 0).length());
@@ -214,7 +207,6 @@ public final class TestByteBuffersDataInput extends LuceneTestCase {
     assertEquals(0, in.slice((int) dst.size(), 0).length());
   }
 
-  @Test
   @Timeout(millis = 5000)
   public void testEofOnArrayReadPastBufferSize() throws Exception {
     ByteBuffersDataOutput dst = new ByteBuffersDataOutput();
@@ -236,7 +228,6 @@ public final class TestByteBuffersDataInput extends LuceneTestCase {
   }
 
   // https://issues.apache.org/jira/browse/LUCENE-8625
-  @Test
   public void testSlicingLargeBuffers() throws IOException {
     // Simulate a "large" (> 4GB) input by duplicating
     // buffers with the same content.

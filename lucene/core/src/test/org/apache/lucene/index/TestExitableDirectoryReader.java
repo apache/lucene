@@ -88,7 +88,7 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       Terms terms = super.terms(field);
       return terms == null ? null : new TestTerms(terms);
     }

@@ -60,7 +60,7 @@ createForUtilRegenerateTask(project, "ForUtil", "ForUtil.java", "gen_ForUtil.py"
 
 configure(project(":lucene:backward-codecs")) {
   createForUtilRegenerateTask(project, "ForUtil90", "ForUtil.java", "gen_ForUtil.py",
-      file("src/java/org/apache/lucene/backward_codecs/lucene90"))
+  file("src/java/org/apache/lucene/backward_codecs/lucene90"))
 
   createForUtilRegenerateTask(project, "ForUtil99", "ForUtil.java", "gen_ForUtil.py",
       file("src/java/org/apache/lucene/backward_codecs/lucene99"))
@@ -117,13 +117,18 @@ configure(project(":lucene:core")) {
   })
 }
 
+// Resolve the version catalog entry in this script's scope; looking it up
+// from within the configured project would trigger an implicit (deprecated)
+// property lookup in parent projects.
+def jflexDependency = deps.jflex
+
 configure(project(":lucene:analysis:common")) {
   configurations {
     jflex
   }
 
   dependencies {
-    jflex deps.jflex
+    jflex jflexDependency
   }
 
   def regenerateTlds = tasks.register("regenerateTlds", {
@@ -212,7 +217,7 @@ configure(project(":lucene:analysis:common")) {
     inputs.file file('src/java/org/apache/lucene/analysis/email/ASCIITLD.jflex')
 
     doFirst {
-      logger.lifecycle("Regenerating UAX29URLEmailTokenizerImpl. This may take a long time (and requires ${heapSize} of memory!).")
+      logger.lifecycle("Regenerating UAX29URLEmailTokenizerImpl. This may take a long time (and requires ${heapSize.get()} of memory!).")
     }
 
     doLast {
@@ -300,11 +305,11 @@ tasks.register("regeneratePacked64SingleBlock", {
     }
     // Correct line endings for Windows.
     project.ant.fixcrlf(
-        srcDir: targetDir,
-        includes: 'Packed64SingleBlock.java, BulkOperation*.java',
-        encoding: 'UTF-8',
-        eol: 'lf'
-        )
+            srcDir: targetDir,
+            includes: 'Packed64SingleBlock.java, BulkOperation*.java',
+            encoding: 'UTF-8',
+            eol: 'lf'
+            )
   }
 })
 
@@ -362,10 +367,10 @@ tasks.register("regenerateParametricDescription", {
       }
     }
     project.ant.fixcrlf(
-        srcDir: targetDir,
-        includes: '*ParametricDescription.java',
-        encoding: 'UTF-8',
-        eol: 'lf'
-        )
+            srcDir: targetDir,
+            includes: '*ParametricDescription.java',
+            encoding: 'UTF-8',
+            eol: 'lf'
+            )
   }
 })

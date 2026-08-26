@@ -65,7 +65,6 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.SuppressForbidden;
-import org.junit.Test;
 
 @LuceneTestCase.SuppressSysoutChecks(bugUrl = "none")
 @TimeoutSuite(millis = Integer.MAX_VALUE) // hopefully ~24 days is long enough ;)
@@ -81,7 +80,6 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
   private boolean split = true;
 
   @SuppressForbidden(reason = "Thread sleep")
-  @Test
   public void test20Newsgroups() throws Exception {
 
     String indexProperty = System.getProperty("index");

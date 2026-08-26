@@ -39,6 +39,7 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.IntToIntFunction;
 
@@ -96,19 +97,21 @@ final class FaissKnnVectorsWriter extends KnnVectorsWriter {
   }
 
   @Override
-  public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-    rawVectorsWriter.mergeOneField(fieldInfo, mergeState);
+  public IORunnable mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+    rawVectorsWriter.mergeOneFlatVectorField(fieldInfo, mergeState);
     switch (fieldInfo.getVectorEncoding()) {
       case BYTE ->
           // TODO: Support using SQ8 quantization, see:
           //  - https://github.com/opensearch-project/k-NN/pull/2425
           throw new UnsupportedOperationException("Byte vectors not supported");
+      case FLOAT16 -> throw new UnsupportedOperationException("Float16 vectors not supported");
       case FLOAT32 -> {
         FloatVectorValues merged =
             KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
         writeFloatField(fieldInfo, merged, doc -> doc);
       }
     }
+    return null;
   }
 
   @Override
@@ -128,6 +131,8 @@ final class FaissKnnVectorsWriter extends KnnVectorsWriter {
             // TODO: Support using SQ8 quantization, see:
             //  - https://github.com/opensearch-project/k-NN/pull/2425
             throw new UnsupportedOperationException("Byte vectors not supported");
+
+        case FLOAT16 -> throw new UnsupportedOperationException("Float16 vectors not supported");
 
         case FLOAT32 -> {
           @SuppressWarnings("unchecked")

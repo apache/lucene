@@ -33,7 +33,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.hamcrest.MatcherAssert;
 import org.junit.Before;
-import org.junit.Test;
 
 /**
  * Tests for {@link IntHashSet}.
@@ -64,7 +63,6 @@ public class TestIntHashSet extends LuceneTestCase {
     set = new IntHashSet();
   }
 
-  @Test
   public void testAddAllViaInterface() {
     set.addAll(key1, key2);
 
@@ -74,7 +72,6 @@ public class TestIntHashSet extends LuceneTestCase {
     MatcherAssert.assertThat(set(iface.toArray()), is(equalTo(set(key1, key2))));
   }
 
-  @Test
   public void testIndexMethods() {
     set.add(keyE);
     set.add(key1);
@@ -114,7 +111,6 @@ public class TestIntHashSet extends LuceneTestCase {
     MatcherAssert.assertThat(set.indexOf(key2), is(lessThan(0)));
   }
 
-  @Test
   public void testCursorIndexIsValid() {
     set.add(keyE);
     set.add(key1);
@@ -126,7 +122,6 @@ public class TestIntHashSet extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testEmptyKey() {
     IntHashSet set = new IntHashSet();
 
@@ -166,7 +161,6 @@ public class TestIntHashSet extends LuceneTestCase {
     MatcherAssert.assertThat(set.indexGet(index), is(equalTo(EMPTY_KEY)));
   }
 
-  @Test
   public void testEnsureCapacity() {
     final AtomicInteger expands = new AtomicInteger();
     IntHashSet set =
@@ -193,19 +187,16 @@ public class TestIntHashSet extends LuceneTestCase {
     assertEquals(before, expands.get());
   }
 
-  @Test
   public void testInitiallyEmpty() {
     assertEquals(0, set.size());
   }
 
-  @Test
   public void testAdd() {
     assertTrue(set.add(key1));
     assertFalse(set.add(key1));
     assertEquals(1, set.size());
   }
 
-  @Test
   public void testAdd2() {
     set.addAll(key1, key1);
     assertEquals(1, set.size());
@@ -213,14 +204,12 @@ public class TestIntHashSet extends LuceneTestCase {
     assertEquals(2, set.size());
   }
 
-  @Test
   public void testAddVarArgs() {
     set.addAll(asArray(0, 1, 2, 1, 0));
     assertEquals(3, set.size());
     assertSortedListEquals(set.toArray(), asArray(0, 1, 2));
   }
 
-  @Test
   public void testAddAll() {
     IntHashSet set2 = new IntHashSet();
     set2.addAll(asArray(1, 2));
@@ -233,7 +222,6 @@ public class TestIntHashSet extends LuceneTestCase {
     assertSortedListEquals(set.toArray(), asArray(0, 1, 2));
   }
 
-  @Test
   public void testRemove() {
     set.addAll(asArray(0, 1, 2, 3, 4));
 
@@ -243,7 +231,6 @@ public class TestIntHashSet extends LuceneTestCase {
     assertSortedListEquals(set.toArray(), asArray(0, 1, 3, 4));
   }
 
-  @Test
   public void testInitialCapacityAndGrowth() {
     for (int i = 0; i < 256; i++) {
       IntHashSet set = new IntHashSet(i);
@@ -256,7 +243,6 @@ public class TestIntHashSet extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testBug_HPPC73_FullCapacityGet() {
     final AtomicInteger reallocations = new AtomicInteger();
     final int elements = 0x7F;
@@ -301,7 +287,6 @@ public class TestIntHashSet extends LuceneTestCase {
     assertEquals(reallocationsBefore + 1, reallocations.get());
   }
 
-  @Test
   public void testRemoveAllFromLookupContainer() {
     set.addAll(asArray(0, 1, 2, 3, 4));
 
@@ -313,14 +298,12 @@ public class TestIntHashSet extends LuceneTestCase {
     assertSortedListEquals(set.toArray(), asArray(0, 2, 4));
   }
 
-  @Test
   public void testClear() {
     set.addAll(asArray(1, 2, 3));
     set.clear();
     assertEquals(0, set.size());
   }
 
-  @Test
   public void testRelease() {
     set.addAll(asArray(1, 2, 3));
     set.release();
@@ -329,7 +312,6 @@ public class TestIntHashSet extends LuceneTestCase {
     assertEquals(3, set.size());
   }
 
-  @Test
   public void testIterable() {
     set.addAll(asArray(1, 2, 2, 3, 4));
     set.remove(key2);
@@ -347,7 +329,6 @@ public class TestIntHashSet extends LuceneTestCase {
   }
 
   /** Runs random insertions/deletions/clearing and compares the results against {@link HashSet}. */
-  @Test
   @SuppressWarnings({"rawtypes", "unchecked"})
   public void testAgainstHashSet() {
     final Random rnd = RandomizedTest.getRandom();
@@ -395,7 +376,6 @@ public class TestIntHashSet extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testHashCodeEquals() {
     IntHashSet l0 = new IntHashSet();
     assertEquals(0, l0.hashCode());
@@ -409,7 +389,6 @@ public class TestIntHashSet extends LuceneTestCase {
     assertEquals(l1, l2);
   }
 
-  @Test
   public void testClone() {
     this.set.addAll(asArray(1, 2, 3));
 
@@ -420,7 +399,6 @@ public class TestIntHashSet extends LuceneTestCase {
     assertSortedListEquals(cloned.toArray(), asArray(2, 3));
   }
 
-  @Test
   public void testEqualsSameClass() {
     IntHashSet l1 = IntHashSet.from(key1, key2, key3);
     IntHashSet l2 = IntHashSet.from(key1, key2, key3);
@@ -431,7 +409,6 @@ public class TestIntHashSet extends LuceneTestCase {
     MatcherAssert.assertThat(l1, is(not(equalTo(l3))));
   }
 
-  @Test
   public void testEqualsSubClass() {
     class Sub extends IntHashSet {}
     ;

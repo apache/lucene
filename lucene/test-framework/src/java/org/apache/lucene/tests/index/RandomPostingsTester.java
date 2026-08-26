@@ -55,6 +55,7 @@ import org.apache.lucene.index.FreqAndNormBuffer;
 import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentInfo;
@@ -325,7 +326,7 @@ public class RandomPostingsTester {
       fixedPayloads = random.nextBoolean();
       byte[] payloadBytes = new byte[payloadSize];
       payload = new BytesRef(payloadBytes);
-      doPositions = IndexOptions.DOCS_AND_FREQS_AND_POSITIONS.compareTo(options) <= 0;
+      doPositions = options.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
     }
 
     @Override
@@ -562,20 +563,19 @@ public class RandomPostingsTester {
 
     @Override
     public boolean hasFreqs() {
-      return fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
+      return fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS);
     }
 
     @Override
     public boolean hasOffsets() {
       return fieldInfo
-              .getIndexOptions()
-              .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
-          >= 0;
+          .getIndexOptions()
+          .subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
     }
 
     @Override
     public boolean hasPositions() {
-      return fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+      return fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
     }
 
     @Override
@@ -658,11 +658,11 @@ public class RandomPostingsTester {
     @Override
     public final PostingsEnum postings(PostingsEnum reuse, int flags) throws IOException {
       if (PostingsEnum.featureRequested(flags, PostingsEnum.POSITIONS)) {
-        if (maxAllowed.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) < 0) {
+        if (!maxAllowed.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS)) {
           return null;
         }
         if (PostingsEnum.featureRequested(flags, PostingsEnum.OFFSETS)
-            && maxAllowed.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) < 0) {
+            && !maxAllowed.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)) {
           return null;
         }
         if (PostingsEnum.featureRequested(flags, PostingsEnum.PAYLOADS) && allowPayloads == false) {
@@ -670,7 +670,7 @@ public class RandomPostingsTester {
         }
       }
       if (PostingsEnum.featureRequested(flags, PostingsEnum.FREQS)
-          && maxAllowed.compareTo(IndexOptions.DOCS_AND_FREQS) < 0) {
+          && !maxAllowed.subsumes(IndexOptions.DOCS_AND_FREQS)) {
         return null;
       }
       return getSeedPostings(
@@ -731,7 +731,7 @@ public class RandomPostingsTester {
           IndexOptions.values()[
               alwaysTestMax ? maxIndexOption : TestUtil.nextInt(random, 1, maxIndexOption)];
       boolean doPayloads =
-          indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0 && allowPayloads;
+          indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) && allowPayloads;
 
       newFieldInfoArray[fieldUpto] =
           new FieldInfo(
@@ -826,7 +826,7 @@ public class RandomPostingsTester {
           }
 
           @Override
-          public void checkIntegrity() throws IOException {}
+          public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {}
         };
     FieldsConsumer consumer = codec.postingsFormat().fieldsConsumer(writeState);
     boolean success = false;
@@ -887,19 +887,18 @@ public class RandomPostingsTester {
     assertEquals(expected.docFreq, termsEnum.docFreq());
 
     boolean allowFreqs =
-        fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0
-            && maxTestOptions.compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
+        fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS)
+            && maxTestOptions.subsumes(IndexOptions.DOCS_AND_FREQS);
     boolean doCheckFreqs = allowFreqs && (alwaysTestMax || random.nextInt(3) <= 2);
 
     boolean allowPositions =
-        fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0
-            && maxTestOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+        fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS)
+            && maxTestOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
     boolean doCheckPositions = allowPositions && (alwaysTestMax || random.nextInt(3) <= 2);
 
     boolean allowOffsets =
-        fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
-                >= 0
-            && maxTestOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) >= 0;
+        fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
+            && maxTestOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
     boolean doCheckOffsets = allowOffsets && (alwaysTestMax || random.nextInt(3) <= 2);
 
     boolean doCheckPayloads =
@@ -1204,10 +1203,9 @@ public class RandomPostingsTester {
                 System.out.println("      skip check offsets");
               }
             }
-          } else if (fieldInfo
-                  .getIndexOptions()
-                  .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
-              < 0) {
+          } else if (!fieldInfo
+              .getIndexOptions()
+              .subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)) {
             if (LuceneTestCase.VERBOSE) {
               System.out.println("      now check offsets are -1");
             }
@@ -1270,7 +1268,7 @@ public class RandomPostingsTester {
         long norm = docToNorm.applyAsLong(doc);
         int idx =
             Collections.binarySearch(
-                impactsCopy, new Impact(freq, norm), Comparator.comparing(i -> i.freq));
+                impactsCopy, new Impact(freq, norm), Comparator.comparingInt(i -> i.freq));
         if (idx < 0) {
           idx = -1 - idx;
         }
@@ -1358,7 +1356,7 @@ public class RandomPostingsTester {
         long norm = docToNorm.applyAsLong(doc);
         int idx =
             Collections.binarySearch(
-                impactsCopy, new Impact(freq, norm), Comparator.comparing(i -> i.freq));
+                impactsCopy, new Impact(freq, norm), Comparator.comparingInt(i -> i.freq));
         if (idx < 0) {
           idx = -1 - idx;
         }
@@ -1630,7 +1628,7 @@ public class RandomPostingsTester {
         termsEnum.seekExact(fieldAndTerm.term, termState);
       }
 
-      // check we really seeked to the right place
+      // check we really seek()ed to the right place
       assertEquals(fieldAndTerm.term, termsEnum.term());
 
       long termOrd;

@@ -25,11 +25,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 /** Random test for polygons. */
 public class TestRandomGeoPolygon extends LuceneTestCase {
-  @Test
   public void testRandomLUCENE8157() {
     final PlanetModel planetModel = randomPlanetModel();
     final GeoPoint startPoint = randomGeoPoint(planetModel);
@@ -71,7 +69,6 @@ public class TestRandomGeoPolygon extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testCoplanarityTilePolygon() {
     // POLYGON((-90.55764 -0.34907,-90.55751 -0.34868,-90.55777 -0.34842,-90.55815
     // -0.34766,-90.55943 -0.34842, -90.55918 -0.34842,-90.55764 -0.34907))
@@ -100,13 +97,11 @@ public class TestRandomGeoPolygon extends LuceneTestCase {
   }
 
   /** Test comparing different polygon (Big) technologies using random biased doubles. */
-  @Test
   public void testCompareBigPolygons() {
     testComparePolygons(Math.PI);
   }
 
   /** Test comparing different polygon (Small) technologies using random biased doubles. */
-  @Test
   public void testCompareSmallPolygons() {
     testComparePolygons(1e-4 * Math.PI);
   }

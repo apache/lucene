@@ -61,7 +61,7 @@ public class MultiPhraseQueryNodeBuilder implements StandardQueryBuilder {
 
       for (Map.Entry<Integer, List<Term>> entry : positionTermMap.entrySet()) {
         List<Term> termList = entry.getValue();
-        phraseQueryBuilder.add(termList.toArray(new Term[0]), entry.getKey());
+        phraseQueryBuilder.add(termList.toArray(Term[]::new), entry.getKey());
       }
     }
 

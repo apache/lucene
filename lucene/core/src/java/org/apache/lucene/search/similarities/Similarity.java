@@ -22,10 +22,10 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.index.FieldInvertState;
 import org.apache.lucene.index.IndexOptions;
-import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.Explanation;
+import org.apache.lucene.search.FieldStats;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.TermStats;
 import org.apache.lucene.util.SmallFloat;
 
 /**
@@ -52,8 +52,7 @@ import org.apache.lucene.util.SmallFloat;
  * single byte, this might not be suitable for all purposes.
  *
  * <p>Many formulas require the use of average document length, which can be computed via a
- * combination of {@link CollectionStatistics#sumTotalTermFreq()} and {@link
- * CollectionStatistics#docCount()}.
+ * combination of {@link FieldStats#sumTotalTermFreq()} and {@link FieldStats#docCount()}.
  *
  * <p>Additional scoring factors can be stored in named {@link NumericDocValuesField}s and accessed
  * at query-time with {@link org.apache.lucene.index.LeafReader#getNumericDocValues(String)}.
@@ -70,13 +69,12 @@ import org.apache.lucene.util.SmallFloat;
  * steps:
  *
  * <ol>
- *   <li>The {@link #scorer(float, CollectionStatistics, TermStatistics...)} method is called a
- *       single time, allowing the implementation to compute any statistics (such as IDF, average
- *       document length, etc) across <i>the entire collection</i>. The {@link TermStatistics} and
- *       {@link CollectionStatistics} passed in already contain all of the raw statistics involved,
- *       so a Similarity can freely use any combination of statistics without causing any additional
- *       I/O. Lucene makes no assumption about what is stored in the returned {@link
- *       Similarity.SimScorer} object.
+ *   <li>The {@link #scorer(float, FieldStats, TermStats...)} method is called a single time,
+ *       allowing the implementation to compute any statistics (such as IDF, average document
+ *       length, etc) across <i>the entire field</i>. The {@link TermStats} and {@link FieldStats}
+ *       passed in already contain all of the raw statistics involved, so a Similarity can freely
+ *       use any combination of statistics without causing any additional I/O. Lucene makes no
+ *       assumption about what is stored in the returned {@link Similarity.SimScorer} object.
  *   <li>Then {@link SimScorer#score(float, long)} is called for every matching document to compute
  *       its score.
  * </ol>
@@ -179,23 +177,21 @@ public abstract class Similarity {
   }
 
   /**
-   * Compute any collection-level weight (e.g. IDF, average document length, etc) needed for scoring
-   * a query.
+   * Compute any field-level weight (e.g. IDF, average document length, etc) needed for scoring a
+   * query.
    *
    * @param boost a multiplicative factor to apply to the produces scores
-   * @param collectionStats collection-level statistics, such as the number of tokens in the
-   *     collection.
+   * @param fieldStats field-level statistics, such as the number of tokens in the field.
    * @param termStats term-level statistics, such as the document frequency of a term across the
-   *     collection.
+   *     field.
    * @return SimWeight object with the information this Similarity needs to score a query.
    */
-  public abstract SimScorer scorer(
-      float boost, CollectionStatistics collectionStats, TermStatistics... termStats);
+  public abstract SimScorer scorer(float boost, FieldStats fieldStats, TermStats... termStats);
 
   /**
-   * Stores the weight for a query across the indexed collection. This abstract implementation is
-   * empty; descendants of {@code Similarity} should subclass {@code SimWeight} and define the
-   * statistics they require in the subclass. Examples include idf, average field length, etc.
+   * Stores the weight for a query across the indexed field. This abstract implementation is empty;
+   * descendants of {@code Similarity} should subclass {@code SimWeight} and define the statistics
+   * they require in the subclass. Examples include idf, average field length, etc.
    */
   public abstract static class SimScorer {
 

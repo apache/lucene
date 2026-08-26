@@ -32,7 +32,7 @@ public final class MockLowerCaseFilter extends TokenFilter {
   }
 
   @Override
-  public final boolean incrementToken() throws IOException {
+  public boolean incrementToken() throws IOException {
     if (input.incrementToken()) {
       CharacterUtils.toLowerCase(termAtt.buffer(), 0, termAtt.length());
       return true;

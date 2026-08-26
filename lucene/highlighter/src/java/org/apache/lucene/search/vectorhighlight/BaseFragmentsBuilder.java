@@ -194,7 +194,7 @@ public abstract class BaseFragmentsBuilder implements FragmentsBuilder {
                 return fieldInfo.name.equals(fieldName) ? Status.YES : Status.NO;
               }
             });
-    return fields.toArray(new Field[fields.size()]);
+    return fields.toArray(Field[]::new);
   }
 
   protected String makeFragment(

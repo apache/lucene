@@ -37,7 +37,6 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.util.IOUtils;
-import org.junit.Test;
 
 public class TestMultipleIndexFields extends FacetTestCase {
 
@@ -60,7 +59,6 @@ public class TestMultipleIndexFields extends FacetTestCase {
     return config;
   }
 
-  @Test
   public void testDefault() throws Exception {
     Directory indexDir = newDirectory();
     Directory taxoDir = newDirectory();
@@ -97,7 +95,6 @@ public class TestMultipleIndexFields extends FacetTestCase {
     IOUtils.close(tr, ir, tw, indexDir, taxoDir);
   }
 
-  @Test
   public void testCustom() throws Exception {
     Directory indexDir = newDirectory();
     Directory taxoDir = newDirectory();
@@ -140,7 +137,6 @@ public class TestMultipleIndexFields extends FacetTestCase {
     IOUtils.close(tr, ir, tw, indexDir, taxoDir);
   }
 
-  @Test
   public void testTwoCustomsSameField() throws Exception {
     Directory indexDir = newDirectory();
     Directory taxoDir = newDirectory();
@@ -197,7 +193,6 @@ public class TestMultipleIndexFields extends FacetTestCase {
     fail("no ordinals found for " + field);
   }
 
-  @Test
   public void testDifferentFieldsAndText() throws Exception {
     Directory indexDir = newDirectory();
     Directory taxoDir = newDirectory();
@@ -242,7 +237,6 @@ public class TestMultipleIndexFields extends FacetTestCase {
     IOUtils.close(tr, ir, tw, indexDir, taxoDir);
   }
 
-  @Test
   public void testSomeSameSomeDifferent() throws Exception {
     Directory indexDir = newDirectory();
     Directory taxoDir = newDirectory();

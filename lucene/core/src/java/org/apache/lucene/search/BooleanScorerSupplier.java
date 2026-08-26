@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.OptionalLong;
-import java.util.stream.Stream;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.Weight.DefaultBulkScorer;
 import org.apache.lucene.util.Bits;
@@ -69,19 +68,31 @@ final class BooleanScorerSupplier extends ScorerSupplier {
     this.maxDoc = maxDoc;
   }
 
-  private long computeShouldCost() {
+  private long computeShouldCost() throws IOException {
     final Collection<ScorerSupplier> optionalScorers = subs.get(Occur.SHOULD);
+    long[] costs = new long[optionalScorers.size()];
+    int i = 0;
+    for (ScorerSupplier ss : optionalScorers) {
+      costs[i++] = ss.cost();
+    }
     return ScorerUtil.costWithMinShouldMatch(
-        optionalScorers.stream().mapToLong(ScorerSupplier::cost),
-        optionalScorers.size(),
-        minShouldMatch);
+        Arrays.stream(costs), optionalScorers.size(), minShouldMatch);
   }
 
-  private long computeCost() {
-    OptionalLong minRequiredCost =
-        Stream.concat(subs.get(Occur.MUST).stream(), subs.get(Occur.FILTER).stream())
-            .mapToLong(ScorerSupplier::cost)
-            .min();
+  private long computeCost() throws IOException {
+    OptionalLong minRequiredCost = OptionalLong.empty();
+    for (ScorerSupplier ss : subs.get(Occur.MUST)) {
+      long c = ss.cost();
+      if (minRequiredCost.isEmpty() || c < minRequiredCost.getAsLong()) {
+        minRequiredCost = OptionalLong.of(c);
+      }
+    }
+    for (ScorerSupplier ss : subs.get(Occur.FILTER)) {
+      long c = ss.cost();
+      if (minRequiredCost.isEmpty() || c < minRequiredCost.getAsLong()) {
+        minRequiredCost = OptionalLong.of(c);
+      }
+    }
     if (minRequiredCost.isPresent() && minShouldMatch == 0) {
       return minRequiredCost.getAsLong();
     } else {
@@ -105,7 +116,7 @@ final class BooleanScorerSupplier extends ScorerSupplier {
   }
 
   @Override
-  public long cost() {
+  public long cost() throws IOException {
     if (cost == -1) {
       cost = computeCost();
     }
@@ -292,7 +303,14 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       return subs.get(Occur.SHOULD).iterator().next().bulkScorer();
     }
 
-    if (scoreMode == ScoreMode.TOP_SCORES && minShouldMatch <= 1) {
+    if (scoreMode == ScoreMode.TOP_SCORES) {
+      if (minShouldMatch > 1) {
+        // Fall back to BS2/WANDScorer: it supports both block-max impact
+        // pruning and minShouldMatch > 1. BooleanScorer (the fall-through
+        // below) does not consult score upper bounds and would score every
+        // doc in the 2048-doc window, defeating top-K pruning.
+        return null;
+      }
       List<Scorer> optionalScorers = new ArrayList<>();
       for (ScorerSupplier ss : subs.get(Occur.SHOULD)) {
         optionalScorers.add(ss.get(Long.MAX_VALUE));
@@ -346,7 +364,15 @@ final class BooleanScorerSupplier extends ScorerSupplier {
         return DenseConjunctionBulkScorer.of(filters, maxDoc, 0f);
       }
 
-      return new DefaultBulkScorer(new ConjunctionScorer(filters, Collections.emptyList()));
+      Scorer scorer = new ConjunctionScorer(filters, Collections.emptyList());
+      DocIdSetIterator iterator = scorer.iterator();
+      if ((cost >> 1) >= DenseConjunctionBulkScorer.WINDOW_SIZE) {
+        TwoPhaseIterator twoPhase = TwoPhaseIterator.unwrap(iterator);
+        return twoPhase == null
+            ? new ConstantScoreBulkScorer(0f, scoreMode, iterator)
+            : new ConstantScoreBulkScorer(0f, scoreMode, twoPhase);
+      }
+      return new DefaultBulkScorer(scorer);
     }
   }
 
@@ -368,13 +394,14 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       return scorer;
     }
 
-    long mustLeadCost =
-        subs.get(Occur.MUST).stream().mapToLong(ScorerSupplier::cost).min().orElse(Long.MAX_VALUE);
-    long filterLeadCost =
-        subs.get(Occur.FILTER).stream()
-            .mapToLong(ScorerSupplier::cost)
-            .min()
-            .orElse(Long.MAX_VALUE);
+    long mustLeadCost = Long.MAX_VALUE;
+    for (ScorerSupplier ss : subs.get(Occur.MUST)) {
+      mustLeadCost = Math.min(mustLeadCost, ss.cost());
+    }
+    long filterLeadCost = Long.MAX_VALUE;
+    for (ScorerSupplier ss : subs.get(Occur.FILTER)) {
+      filterLeadCost = Math.min(filterLeadCost, ss.cost());
+    }
     long leadCost = Math.min(mustLeadCost, filterLeadCost);
 
     List<Scorer> requiredNoScoring = new ArrayList<>();

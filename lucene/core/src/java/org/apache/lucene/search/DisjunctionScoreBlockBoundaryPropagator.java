@@ -40,7 +40,7 @@ final class DisjunctionScoreBlockBoundaryPropagator {
                   throw new RuntimeException(e);
                 }
               })
-          .thenComparing(s -> s.iterator().cost());
+          .thenComparingLong(s -> s.iterator().cost());
 
   private final Scorer[] scorers;
   private final float[] maxScores;

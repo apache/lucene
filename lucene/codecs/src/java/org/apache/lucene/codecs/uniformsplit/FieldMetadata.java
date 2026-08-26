@@ -211,7 +211,7 @@ public class FieldMetadata {
       output.writeVLong(fieldMetadata.numTerms);
       output.writeVLong(fieldMetadata.sumDocFreq);
 
-      if (fieldMetadata.fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0) {
+      if (fieldMetadata.fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS)) {
         assert fieldMetadata.sumTotalTermFreq >= fieldMetadata.sumDocFreq
             : "sumTotalFQ: "
                 + fieldMetadata.sumTotalTermFreq
@@ -254,7 +254,7 @@ public class FieldMetadata {
 
       fieldMetadata.sumDocFreq = input.readVLong();
       fieldMetadata.sumTotalTermFreq = fieldMetadata.sumDocFreq;
-      if (fieldMetadata.fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0) {
+      if (fieldMetadata.fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS)) {
         fieldMetadata.sumTotalTermFreq += input.readVLong();
         if (fieldMetadata.sumTotalTermFreq < fieldMetadata.sumDocFreq) {
           // #positions must be >= #postings.

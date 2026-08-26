@@ -54,7 +54,6 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.PriorityQueue;
-import org.junit.Test;
 
 public class TestCommonTermsQuery extends LuceneTestCase {
 
@@ -356,7 +355,6 @@ public class TestCommonTermsQuery extends LuceneTestCase {
         });
   }
 
-  @Test
   public void testExtend() throws IOException {
     Directory dir = newDirectory();
     MockAnalyzer analyzer = new MockAnalyzer(random());
@@ -520,7 +518,7 @@ public class TestCommonTermsQuery extends LuceneTestCase {
     }
   }
 
-  /** populates a writer with random stuff. this must be fully reproducable with the seed! */
+  /** populates a writer with random stuff. this must be fully reproducible with the seed! */
   public static void createRandomIndex(int numdocs, RandomIndexWriter writer, long seed)
       throws IOException {
     Random random = new Random(seed);

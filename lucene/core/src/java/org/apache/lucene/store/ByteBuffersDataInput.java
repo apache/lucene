@@ -429,11 +429,11 @@ public final class ByteBuffersDataInput extends DataInput
         offset == 0 ? "" : String.format(Locale.ROOT, " [offset: %,d]", offset));
   }
 
-  private final int blockIndex(long pos) {
+  private int blockIndex(long pos) {
     return Math.toIntExact(pos >> blockBits);
   }
 
-  private final int blockOffset(long pos) {
+  private int blockOffset(long pos) {
     return (int) pos & blockMask;
   }
 
@@ -441,7 +441,7 @@ public final class ByteBuffersDataInput extends DataInput
     return 1 << blockBits;
   }
 
-  private static final boolean isPowerOfTwo(int v) {
+  private static boolean isPowerOfTwo(int v) {
     return (v & (v - 1)) == 0;
   }
 

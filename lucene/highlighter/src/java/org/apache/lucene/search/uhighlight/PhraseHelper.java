@@ -214,8 +214,7 @@ public class PhraseHelper {
 
   /** Returns the terms that are position-insensitive (sorted). */
   public BytesRef[] getAllPositionInsensitiveTerms() {
-    BytesRef[] result =
-        positionInsensitiveTerms.toArray(new BytesRef[positionInsensitiveTerms.size()]);
+    BytesRef[] result = positionInsensitiveTerms.toArray(BytesRef[]::new);
     Arrays.sort(result);
     return result;
   }
@@ -305,7 +304,7 @@ public class PhraseHelper {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       // ensure the underlying PostingsEnum returns offsets.  It's sad we have to do this to use the
       // SpanCollector.
       return new FilterTerms(super.terms(fieldName)) {

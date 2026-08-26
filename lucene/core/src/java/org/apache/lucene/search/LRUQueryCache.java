@@ -26,6 +26,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.ConcurrentModificationException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -523,14 +524,17 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
     }
   }
 
-  // pkg-private for testing
-  // return the list of cached queries in LRU order
+  // package-private for testing only; returns the list of unique
+  // cached queries in LRU order.
   List<Query> cachedQueries() {
+    Set<Query> dedup = new HashSet<>();
     List<Query> list = new ArrayList<>();
     for (int i = 0; i < this.numberOfPartitions; i++) {
       List<QueryCacheKey> segmentQueryList = lruQueryCachePartition[i].cachedQueries();
       for (QueryCacheKey queryCacheKey : segmentQueryList) {
-        list.add(queryCacheKey.query);
+        if (dedup.add(queryCacheKey.query)) {
+          list.add(queryCacheKey.query);
+        }
       }
     }
     return list;
@@ -606,16 +610,22 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
           private int[] buffer;
 
           @Override
-          public void setScorer(Scorable scorer) throws IOException {}
+          public void setScorer(Scorable scorer) {}
 
           @Override
-          public void collect(int doc) throws IOException {
+          public void collect(int doc) {
             count[0]++;
             bitSet.set(doc);
           }
 
           @Override
-          public void collect(DocIdStream stream) throws IOException {
+          public void collectRange(int min, int max) {
+            count[0] += max - min;
+            bitSet.set(min, max);
+          }
+
+          @Override
+          public void collect(DocIdStream stream) {
             if (buffer == null) {
               buffer = new int[128];
             }
@@ -639,26 +649,22 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
     scorer.score(
         new LeafCollector() {
 
-          private int[] buffer = null;
+          @Override
+          public void setScorer(Scorable scorer) {}
 
           @Override
-          public void setScorer(Scorable scorer) throws IOException {}
-
-          @Override
-          public void collect(int doc) throws IOException {
+          public void collect(int doc) {
             builder.add(doc);
           }
 
           @Override
+          public void collectRange(int min, int max) {
+            builder.add(min, max);
+          }
+
+          @Override
           public void collect(DocIdStream stream) throws IOException {
-            if (buffer == null) {
-              buffer = new int[128];
-            }
-            for (int c = stream.intoArray(buffer); c != 0; c = stream.intoArray(buffer)) {
-              for (int i = 0; i < c; ++i) {
-                builder.add(buffer[i]);
-              }
-            }
+            stream.forEach(builder::add);
           }
         },
         null,

@@ -82,7 +82,7 @@ public class TestLatLonMultiPolygonShapeQueries extends BaseLatLonShapeTestCase 
       Field[] fields = LatLonShape.createIndexableFields(name, polygon);
       Collections.addAll(allFields, fields);
     }
-    return allFields.toArray(new Field[0]);
+    return allFields.toArray(Field[]::new);
   }
 
   @Override

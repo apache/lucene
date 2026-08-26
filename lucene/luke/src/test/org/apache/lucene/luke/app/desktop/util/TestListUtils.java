@@ -21,11 +21,9 @@ import java.util.Arrays;
 import java.util.List;
 import javax.swing.JList;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 public class TestListUtils extends LuceneTestCase {
 
-  @Test
   public void testGetAllItems() {
     JList<String> list = new JList<>(new String[] {"Item 1", "Item 2"});
     List<String> items = ListUtils.getAllItems(list);

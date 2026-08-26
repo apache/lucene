@@ -114,7 +114,7 @@ public abstract class CodecReader extends LeafReader {
   }
 
   @Override
-  public final Terms terms(String field) throws IOException {
+  public final Terms terms(String field) {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (fi == null || fi.getIndexOptions() == IndexOptions.NONE) {
@@ -197,7 +197,7 @@ public abstract class CodecReader extends LeafReader {
   }
 
   @Override
-  public final DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+  public final DocValuesSkipper getDocValuesSkipper(String field) {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (fi == null || fi.docValuesSkipIndexType() == DocValuesSkipIndexType.NONE) {
@@ -219,7 +219,7 @@ public abstract class CodecReader extends LeafReader {
   }
 
   @Override
-  public final PointValues getPointValues(String field) throws IOException {
+  public final PointValues getPointValues(String field) {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (fi == null || fi.getPointDimensionCount() == 0) {
@@ -259,6 +259,20 @@ public abstract class CodecReader extends LeafReader {
   }
 
   @Override
+  public final Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+    ensureOpen();
+    FieldInfo fi = getFieldInfos().fieldInfo(field);
+    if (fi == null
+        || fi.getVectorDimension() == 0
+        || fi.getVectorEncoding() != VectorEncoding.FLOAT16) {
+      // Field does not exist or does not index vectors
+      return null;
+    }
+
+    return getVectorReader().getFloat16VectorValues(field);
+  }
+
+  @Override
   public final void searchNearestVectors(
       String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
@@ -266,7 +280,22 @@ public abstract class CodecReader extends LeafReader {
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (fi == null
         || fi.getVectorDimension() == 0
-        || fi.getVectorEncoding() != VectorEncoding.FLOAT32) {
+        || (fi.getVectorEncoding() != VectorEncoding.FLOAT32)) {
+      // Field does not exist or does not index vectors
+      return;
+    }
+    getVectorReader().search(field, target, knnCollector, acceptDocs);
+  }
+
+  @Override
+  public final void searchNearestVectors(
+      String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
+    ensureOpen();
+    FieldInfo fi = getFieldInfos().fieldInfo(field);
+    if (fi == null
+        || fi.getVectorDimension() == 0
+        || fi.getVectorEncoding() != VectorEncoding.FLOAT16) {
       // Field does not exist or does not index vectors
       return;
     }
@@ -297,37 +326,37 @@ public abstract class CodecReader extends LeafReader {
 
     // terms/postings
     if (getPostingsReader() != null) {
-      getPostingsReader().checkIntegrity();
+      getPostingsReader().checkIntegrity(null);
     }
 
     // norms
     if (getNormsReader() != null) {
-      getNormsReader().checkIntegrity();
+      getNormsReader().checkIntegrity(null);
     }
 
     // docvalues
     if (getDocValuesReader() != null) {
-      getDocValuesReader().checkIntegrity();
+      getDocValuesReader().checkIntegrity(null);
     }
 
     // stored fields
     if (getFieldsReader() != null) {
-      getFieldsReader().checkIntegrity();
+      getFieldsReader().checkIntegrity(null);
     }
 
     // term vectors
     if (getTermVectorsReader() != null) {
-      getTermVectorsReader().checkIntegrity();
+      getTermVectorsReader().checkIntegrity(null);
     }
 
     // points
     if (getPointsReader() != null) {
-      getPointsReader().checkIntegrity();
+      getPointsReader().checkIntegrity(null);
     }
 
     // vectors
     if (getVectorReader() != null) {
-      getVectorReader().checkIntegrity();
+      getVectorReader().checkIntegrity(null);
     }
   }
 }

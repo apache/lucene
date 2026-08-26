@@ -50,7 +50,6 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.util.IOUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Test;
 
 public class TestTaxonomyFacetCounts2 extends FacetTestCase {
 
@@ -264,7 +263,6 @@ public class TestTaxonomyFacetCounts2 extends FacetTestCase {
     IOUtils.close(taxoWriter);
   }
 
-  @Test
   public void testDifferentNumResults() throws Exception {
     // test the collector w/ FacetRequests and different numResults
     DirectoryReader indexReader = DirectoryReader.open(indexDir);
@@ -288,7 +286,6 @@ public class TestTaxonomyFacetCounts2 extends FacetTestCase {
     IOUtils.close(indexReader, taxoReader);
   }
 
-  @Test
   public void testAllCounts() throws Exception {
     DirectoryReader indexReader = DirectoryReader.open(indexDir);
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
@@ -329,7 +326,6 @@ public class TestTaxonomyFacetCounts2 extends FacetTestCase {
     IOUtils.close(indexReader, taxoReader);
   }
 
-  @Test
   public void testBigNumResults() throws Exception {
     DirectoryReader indexReader = DirectoryReader.open(indexDir);
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
@@ -353,7 +349,6 @@ public class TestTaxonomyFacetCounts2 extends FacetTestCase {
     IOUtils.close(indexReader, taxoReader);
   }
 
-  @Test
   public void testNoParents() throws Exception {
     DirectoryReader indexReader = DirectoryReader.open(indexDir);
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);

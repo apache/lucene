@@ -18,12 +18,15 @@ package org.apache.lucene.index.memory;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.lucene.tests.util.LuceneTestCase;
+import java.util.Random;
+import org.apache.lucene.tests.util.LuceneTestCaseJupiter;
 import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.IntBlockPool;
+import org.junit.jupiter.api.Test;
 
-public class TestSlicedIntBlockPool extends LuceneTestCase {
-  public void testSingleWriterReader() {
+public class TestSlicedIntBlockPool extends LuceneTestCaseJupiter {
+  @Test
+  public void testSingleWriterReader(Random random) {
     Counter bytesUsed = Counter.newCounter();
     MemoryIndex.SlicedIntBlockPool slicedIntBlockPool =
         new MemoryIndex.SlicedIntBlockPool(new ByteTrackingAllocator(bytesUsed));
@@ -32,7 +35,7 @@ public class TestSlicedIntBlockPool extends LuceneTestCase {
       MemoryIndex.SlicedIntBlockPool.SliceWriter writer =
           new MemoryIndex.SlicedIntBlockPool.SliceWriter(slicedIntBlockPool);
       int start = writer.startNewSlice();
-      int num = atLeast(100);
+      int num = atLeast(random, 100);
       for (int i = 0; i < num; i++) {
         writer.writeInt(i);
       }
@@ -45,7 +48,7 @@ public class TestSlicedIntBlockPool extends LuceneTestCase {
         assertEquals(i, reader.readInt());
       }
       assertTrue(reader.endOfSlice());
-      if (random().nextBoolean()) {
+      if (random.nextBoolean()) {
         slicedIntBlockPool.reset(true, false);
         assertEquals(0, bytesUsed.get());
       } else {
@@ -55,24 +58,25 @@ public class TestSlicedIntBlockPool extends LuceneTestCase {
     }
   }
 
-  public void testMultipleWriterReader() {
+  @Test
+  public void testMultipleWriterReader(Random random) {
     Counter bytesUsed = Counter.newCounter();
     MemoryIndex.SlicedIntBlockPool slicedIntBlockPool =
         new MemoryIndex.SlicedIntBlockPool(new ByteTrackingAllocator(bytesUsed));
     for (int j = 0; j < 2; j++) {
       List<StartEndAndValues> holders = new ArrayList<>();
-      int num = atLeast(4);
+      int num = atLeast(random, 4);
       for (int i = 0; i < num; i++) {
-        holders.add(new StartEndAndValues(random().nextInt(1000)));
+        holders.add(new StartEndAndValues(random.nextInt(1000)));
       }
       MemoryIndex.SlicedIntBlockPool.SliceWriter writer =
           new MemoryIndex.SlicedIntBlockPool.SliceWriter(slicedIntBlockPool);
       MemoryIndex.SlicedIntBlockPool.SliceReader reader =
           new MemoryIndex.SlicedIntBlockPool.SliceReader(slicedIntBlockPool);
 
-      int numValuesToWrite = atLeast(10000);
+      int numValuesToWrite = atLeast(random, 10000);
       for (int i = 0; i < numValuesToWrite; i++) {
-        StartEndAndValues values = holders.get(random().nextInt(holders.size()));
+        StartEndAndValues values = holders.get(random.nextInt(holders.size()));
         if (values.valueCount == 0) {
           values.start = writer.startNewSlice();
         } else {
@@ -80,17 +84,17 @@ public class TestSlicedIntBlockPool extends LuceneTestCase {
         }
         writer.writeInt(values.nextValue());
         values.end = writer.getCurrentOffset();
-        if (random().nextInt(5) == 0) {
+        if (random.nextInt(5) == 0) {
           // pick one and reader the ints
-          assertReader(reader, holders.get(random().nextInt(holders.size())));
+          assertReader(reader, holders.get(random.nextInt(holders.size())));
         }
       }
 
       while (!holders.isEmpty()) {
-        StartEndAndValues values = holders.remove(random().nextInt(holders.size()));
+        StartEndAndValues values = holders.remove(random.nextInt(holders.size()));
         assertReader(reader, values);
       }
-      if (random().nextBoolean()) {
+      if (random.nextBoolean()) {
         slicedIntBlockPool.reset(true, false);
         assertEquals(0, bytesUsed.get());
       } else {

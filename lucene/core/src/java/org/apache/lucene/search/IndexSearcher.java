@@ -42,7 +42,7 @@ import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.automaton.ByteRunAutomaton;
+import org.apache.lucene.util.automaton.ByteRunnable;
 
 /**
  * Implements search over a single IndexReader.
@@ -493,28 +493,39 @@ public class IndexSearcher {
    * possible.
    */
   public int count(Query query) throws IOException {
-    // Rewrite query before optimization check
+    // CSQ.rewrite may simplify the query -- don't need scores
     query = rewrite(new ConstantScoreQuery(query));
-    if (query instanceof ConstantScoreQuery csq) {
-      query = csq.getQuery();
-    }
 
-    // Check if two clause disjunction optimization applies
-    if (query instanceof BooleanQuery booleanQuery
-        && this.reader.hasDeletions() == false
-        && booleanQuery.isTwoClausePureDisjunctionWithTerms()) {
-      Query[] queries = booleanQuery.rewriteTwoClauseDisjunctionWithTermsForCount(this);
-      int countTerm1 = count(queries[0]);
-      int countTerm2 = count(queries[1]);
-      if (countTerm1 == 0 || countTerm2 == 0) {
-        return Math.max(countTerm1, countTerm2);
-        // Only apply optimization if the intersection is significantly smaller than the union
-      } else if ((double) Math.min(countTerm1, countTerm2) / Math.max(countTerm1, countTerm2)
-          < 0.1) {
-        return countTerm1 + countTerm2 - count(queries[2]);
+    {
+      // Unwrap CSQ to check for optimizations on the inner query
+      Query innerQuery = query;
+      if (innerQuery instanceof ConstantScoreQuery csq) {
+        innerQuery = csq.getQuery();
+      }
+
+      // Check if two clause disjunction optimization applies
+      if (innerQuery instanceof BooleanQuery booleanQuery
+          && this.reader.hasDeletions() == false
+          && booleanQuery.isTwoClausePureDisjunctionWithTerms()) {
+        Query[] queries = booleanQuery.rewriteTwoClauseDisjunctionWithTermsForCount(this);
+        int countTerm1 = count(queries[0]);
+        int countTerm2 = count(queries[1]);
+        if (countTerm1 == 0 || countTerm2 == 0) {
+          return Math.max(countTerm1, countTerm2);
+          // Only apply optimization if the intersection is significantly smaller than the union
+        } else if ((double) Math.min(countTerm1, countTerm2) / Math.max(countTerm1, countTerm2)
+            < 0.1) {
+          return countTerm1 + countTerm2 - count(queries[2]);
+        }
       }
     }
-    return search(new ConstantScoreQuery(query), new TotalHitCountCollectorManager(getSlices()));
+
+    // Use the already-rewritten query directly, avoiding a redundant rewrite in search(query,
+    // collector)
+    var collectorManager = new TotalHitCountCollectorManager(getSlices());
+    var firstCollector = collectorManager.newCollector();
+    final Weight weight = createWeight(query, firstCollector.scoreMode(), 1);
+    return search(weight, collectorManager, firstCollector);
   }
 
   /**
@@ -911,7 +922,7 @@ public class IndexSearcher {
 
       @Override
       public void consumeTermsMatching(
-          Query query, String field, Supplier<ByteRunAutomaton> automaton) {
+          Query query, String field, Supplier<ByteRunnable> automaton) {
         if (numClauses > maxClauseCount) {
           throw new TooManyNestedClauses();
         }
@@ -958,7 +969,7 @@ public class IndexSearcher {
 
   /**
    * Creates a {@link Weight} for the given query, potentially adding caching if possible and
-   * configured.
+   * configured. The query is assumed to have been {@link #rewrite(Query)}-en already.
    *
    * @lucene.experimental
    */
@@ -1106,32 +1117,31 @@ public class IndexSearcher {
   }
 
   /**
-   * Returns {@link TermStatistics} for a term.
+   * Returns {@link TermStats} for a term.
    *
    * <p>This can be overridden for example, to return a term's statistics across a distributed
    * collection.
    *
    * @param docFreq The document frequency of the term. It must be greater or equal to 1.
    * @param totalTermFreq The total term frequency.
-   * @return A {@link TermStatistics} (never null).
+   * @return A {@link TermStats} (never null).
    * @lucene.experimental
    */
-  public TermStatistics termStatistics(Term term, int docFreq, long totalTermFreq)
-      throws IOException {
+  public TermStats termStats(Term term, int docFreq, long totalTermFreq) throws IOException {
     // This constructor will throw an exception if docFreq <= 0.
-    return new TermStatistics(term.bytes(), docFreq, totalTermFreq);
+    return new TermStats(term.bytes(), docFreq, totalTermFreq);
   }
 
   /**
-   * Returns {@link CollectionStatistics} for a field, or {@code null} if the field does not exist
-   * (has no indexed terms)
+   * Returns {@link FieldStats} for a field, or {@code null} if the field does not exist (has no
+   * indexed terms)
    *
    * <p>This can be overridden for example, to return a field's statistics across a distributed
    * collection.
    *
    * @lucene.experimental
    */
-  public CollectionStatistics collectionStatistics(String field) throws IOException {
+  public FieldStats fieldStats(String field) throws IOException {
     assert field != null;
     long docCount = 0;
     long sumTotalTermFreq = 0;
@@ -1145,7 +1155,7 @@ public class IndexSearcher {
     if (docCount == 0) {
       return null;
     }
-    return new CollectionStatistics(field, reader.maxDoc(), docCount, sumTotalTermFreq, sumDocFreq);
+    return new FieldStats(field, reader.maxDoc(), docCount, sumTotalTermFreq, sumDocFreq);
   }
 
   /**

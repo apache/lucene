@@ -27,7 +27,7 @@ import org.apache.lucene.search.IndexSearcher;
 
 /**
  * Abstract {@link ValueSource} implementation which wraps multiple ValueSources and applies an
- * extendible boolean function to their values.
+ * extendable boolean function to their values.
  */
 public abstract class MultiBoolFunction extends BoolFunction {
   protected final List<ValueSource> sources;

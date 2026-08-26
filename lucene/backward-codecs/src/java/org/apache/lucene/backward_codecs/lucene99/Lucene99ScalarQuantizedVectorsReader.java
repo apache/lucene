@@ -32,9 +32,12 @@ import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
@@ -47,6 +50,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.quantization.LegacyQuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.QuantizedVectorsReader;
@@ -64,6 +68,7 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
       RamUsageEstimator.shallowSizeOfInstance(Lucene99ScalarQuantizedVectorsReader.class);
 
   private final IntObjectHashMap<FieldEntry> fields = new IntObjectHashMap<>();
+  private final FlatVectorsScorer vectorScorer;
   private final IndexInput quantizedVectorData;
   private final FlatVectorsReader rawVectorsReader;
   private final FieldInfos fieldInfos;
@@ -72,7 +77,7 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
   public Lucene99ScalarQuantizedVectorsReader(
       SegmentReadState state, FlatVectorsReader rawVectorsReader, FlatVectorsScorer scorer)
       throws IOException {
-    super(scorer);
+    this.vectorScorer = scorer;
     this.rawVectorsReader = rawVectorsReader;
     this.fieldInfos = state.fieldInfos;
     int versionMeta = -1;
@@ -163,9 +168,9 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    rawVectorsReader.checkIntegrity();
-    CodecUtil.checksumEntireFile(quantizedVectorData);
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+    rawVectorsReader.checkIntegrity(merge);
+    CodecUtil.checksumEntireFile(quantizedVectorData, merge);
   }
 
   private FieldEntry getFieldEntry(String field) {
@@ -190,19 +195,6 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
   public FloatVectorValues getFloatVectorValues(String field) throws IOException {
     final FieldEntry fieldEntry = getFieldEntry(field);
     final FloatVectorValues rawVectorValues = rawVectorsReader.getFloatVectorValues(field);
-    if (rawVectorValues.size() == 0) {
-      return OffHeapQuantizedFloatVectorValues.load(
-          fieldEntry.ordToDoc,
-          fieldEntry.dimension,
-          fieldEntry.size,
-          fieldEntry.scalarQuantizer,
-          fieldEntry.similarityFunction,
-          vectorScorer,
-          fieldEntry.compress,
-          fieldEntry.vectorDataOffset,
-          fieldEntry.vectorDataLength,
-          quantizedVectorData);
-    }
 
     OffHeapQuantizedByteVectorValues quantizedByteVectorValues =
         OffHeapQuantizedByteVectorValues.load(
@@ -216,12 +208,38 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
             fieldEntry.vectorDataOffset,
             fieldEntry.vectorDataLength,
             quantizedVectorData);
+
+    if (rawVectorValues.size() == 0) {
+      // Full-precision vectors were dropped. Wrap the dequantizing read view with the quantized
+      // values so scorer() stays quantized (as in the full-precision branch) while
+      // vectorValue()/rescorer() dequantize. Passing the dequantized view straight to a scorer
+      // would misroute to the non-quantized flat scorer over the quantized slice.
+      FloatVectorValues dequantizedRawVectorValues =
+          OffHeapQuantizedFloatVectorValues.load(
+              fieldEntry.ordToDoc,
+              fieldEntry.dimension,
+              fieldEntry.size,
+              fieldEntry.scalarQuantizer,
+              fieldEntry.similarityFunction,
+              vectorScorer,
+              fieldEntry.compress,
+              fieldEntry.vectorDataOffset,
+              fieldEntry.vectorDataLength,
+              quantizedVectorData);
+      return new QuantizedVectorValues(dequantizedRawVectorValues, quantizedByteVectorValues);
+    }
+
     return new QuantizedVectorValues(rawVectorValues, quantizedByteVectorValues);
   }
 
   @Override
   public ByteVectorValues getByteVectorValues(String field) throws IOException {
     return rawVectorsReader.getByteVectorValues(field);
+  }
+
+  @Override
+  public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+    throw new UnsupportedOperationException();
   }
 
   private static IndexInput openDataInput(
@@ -262,6 +280,11 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
   }
 
   @Override
+  public FlatVectorsScorer getFlatVectorScorer(String field) throws IOException {
+    return vectorScorer;
+  }
+
+  @Override
   public RandomVectorScorer getRandomVectorScorer(String field, float[] target) throws IOException {
     final FieldEntry fieldEntry = getFieldEntry(field);
     if (fieldEntry.scalarQuantizer == null) {
@@ -280,6 +303,11 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
             fieldEntry.vectorDataLength,
             quantizedVectorData);
     return vectorScorer.getRandomVectorScorer(fieldEntry.similarityFunction, vectorValues, target);
+  }
+
+  @Override
+  public RandomVectorScorer getRandomVectorScorer(String field, short[] target) throws IOException {
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -346,6 +374,18 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
   public ScalarQuantizer getQuantizationState(String field) {
     final FieldEntry fieldEntry = getFieldEntry(field);
     return fieldEntry.scalarQuantizer;
+  }
+
+  @Override
+  public CloseableRandomVectorScorerSupplier getRandomVectorScorerSupplierForMerge(
+      FieldInfo fieldInfo, SegmentWriteState segmentWriteState) throws IOException {
+    LegacyQuantizedByteVectorValues quantizedByteVectorValues =
+        getQuantizedVectorValues(fieldInfo.name);
+    return CloseableRandomVectorScorerSupplier.create(
+        vectorScorer.getRandomVectorScorerSupplier(
+            fieldInfo.getVectorSimilarityFunction(), quantizedByteVectorValues),
+        quantizedByteVectorValues.size(),
+        () -> {});
   }
 
   private record FieldEntry(

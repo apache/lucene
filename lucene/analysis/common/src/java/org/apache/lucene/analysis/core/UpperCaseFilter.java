@@ -43,7 +43,7 @@ public final class UpperCaseFilter extends TokenFilter {
   }
 
   @Override
-  public final boolean incrementToken() throws IOException {
+  public boolean incrementToken() throws IOException {
     if (input.incrementToken()) {
       CharacterUtils.toUpperCase(termAtt.buffer(), 0, termAtt.length());
       return true;

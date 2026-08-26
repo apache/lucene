@@ -287,9 +287,7 @@ public class TestPostingsOffsets extends LuceneTestCase {
         // pos + " off=" + token.startOffset() + "/" + token.endOffset() + " (freq=" +
         // postingsByDoc.get(docCount).size() + ")");
       }
-      doc.add(
-          new Field(
-              "content", new CannedTokenStream(tokens.toArray(new Token[tokens.size()])), ft));
+      doc.add(new Field("content", new CannedTokenStream(tokens.toArray(Token[]::new)), ft));
       w.addDocument(doc);
     }
     final DirectoryReader r = w.getReader();

@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 import java.util.function.ToLongFunction;
+import org.apache.lucene.document.column.ColumnBatch;
 import org.apache.lucene.index.DocumentsWriterPerThread.FlushedSegment;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.store.AlreadyClosedException;
@@ -436,6 +437,43 @@ final class DocumentsWriter implements Closeable, Accountable {
       // If it is aborted, we shouldn't allow it to be reused
       // If the deleteQueue is advanced, this means the maximum seqNo has been set and it cannot be
       // reused
+      synchronized (flushControl) {
+        if (dwpt.isFlushPending() || dwpt.isAborted() || dwpt.isQueueAdvanced()) {
+          dwpt.unlock();
+        } else {
+          perThreadPool.marksAsFreeAndUnlock(dwpt);
+        }
+      }
+      assert dwpt.isHeldByCurrentThread() == false : "we didn't release the dwpt even on abort";
+    }
+
+    if (postUpdate(flushingDWPT, hasEvents)) {
+      seqNo = -seqNo;
+    }
+    return seqNo;
+  }
+
+  long updateBatch(final ColumnBatch columnBatch, final DocumentsWriterDeleteQueue.Node<?> delNode)
+      throws IOException {
+    boolean hasEvents = preUpdate();
+
+    final DocumentsWriterPerThread dwpt = flushControl.obtainAndLock();
+    final DocumentsWriterPerThread flushingDWPT;
+    long seqNo;
+
+    try {
+      // This must happen after we've pulled the DWPT because IW.close
+      // waits for all DWPT to be released:
+      ensureOpen();
+      try {
+        seqNo = dwpt.updateBatch(columnBatch, delNode, flushNotifications, numDocsInRAM::addAndGet);
+      } finally {
+        if (dwpt.isAborted()) {
+          flushControl.doOnAbort(dwpt);
+        }
+      }
+      flushingDWPT = flushControl.doAfterDocument(dwpt);
+    } finally {
       synchronized (flushControl) {
         if (dwpt.isFlushPending() || dwpt.isAborted() || dwpt.isQueueAdvanced()) {
           dwpt.unlock();

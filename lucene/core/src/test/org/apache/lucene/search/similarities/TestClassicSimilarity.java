@@ -157,7 +157,7 @@ public class TestClassicSimilarity extends BaseSimilarityTestCase {
   public void testSaneNormValues() throws IOException {
     ClassicSimilarity sim = new ClassicSimilarity();
     TFIDFSimilarity.TFIDFScorer stats =
-        (TFIDFSimilarity.TFIDFScorer) sim.scorer(1f, indexSearcher.collectionStatistics("test"));
+        (TFIDFSimilarity.TFIDFScorer) sim.scorer(1f, indexSearcher.fieldStats("test"));
     for (int i = 0; i < 256; i++) {
       float boost = stats.normTable[i];
       assertFalse("negative boost: " + boost + ", byte=" + i, boost < 0.0f);

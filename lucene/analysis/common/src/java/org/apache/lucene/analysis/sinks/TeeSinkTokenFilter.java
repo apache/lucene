@@ -90,7 +90,7 @@ public final class TeeSinkTokenFilter extends TokenFilter {
   }
 
   @Override
-  public final void end() throws IOException {
+  public void end() throws IOException {
     super.end();
     cachedStates.setFinalState(captureState());
   }
@@ -112,7 +112,7 @@ public final class TeeSinkTokenFilter extends TokenFilter {
     }
 
     @Override
-    public final boolean incrementToken() {
+    public boolean incrementToken() {
       if (!it.hasNext()) {
         return false;
       }
@@ -131,7 +131,7 @@ public final class TeeSinkTokenFilter extends TokenFilter {
     }
 
     @Override
-    public final void reset() {
+    public void reset() {
       it = cachedStates.getStates();
     }
   }

@@ -83,7 +83,7 @@ public final class TermScorer extends Scorer {
   }
 
   /** Returns term frequency in the current document. */
-  public final int freq() throws IOException {
+  public int freq() throws IOException {
     return postingsEnum.freq();
   }
 

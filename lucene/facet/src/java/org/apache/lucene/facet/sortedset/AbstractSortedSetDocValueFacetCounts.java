@@ -91,7 +91,7 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
     pathCount = adjustPathCountIfNecessary(dimConfig, iterationCursor.pathOrd, pathCount);
 
     return new FacetResult(
-        dim, path, pathCount, labelValues.toArray(new LabelAndValue[0]), labelValues.size());
+        dim, path, pathCount, labelValues.toArray(LabelAndValue[]::new), labelValues.size());
   }
 
   @Override

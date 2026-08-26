@@ -38,12 +38,10 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.junit.Test;
 
 /** */
 public class TestBlockJoinSorting extends LuceneTestCase {
 
-  @Test
   public void testNestedSorting() throws Exception {
     final Directory dir = newDirectory();
     final RandomIndexWriter w =
@@ -327,7 +325,6 @@ public class TestBlockJoinSorting extends LuceneTestCase {
     dir.close();
   }
 
-  @Test
   public void testParentMissingValueNestedSorting() throws Exception {
     final Directory dir = newDirectory();
     final RandomIndexWriter w =
@@ -451,7 +448,6 @@ public class TestBlockJoinSorting extends LuceneTestCase {
     dir.close();
   }
 
-  @Test
   public void testChildMissingValueNestedSorting() throws Exception {
     final Directory dir = newDirectory();
     final RandomIndexWriter w =

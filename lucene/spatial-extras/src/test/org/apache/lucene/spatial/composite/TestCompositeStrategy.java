@@ -28,7 +28,6 @@ import org.apache.lucene.spatial.prefix.tree.QuadPrefixTree;
 import org.apache.lucene.spatial.prefix.tree.SpatialPrefixTree;
 import org.apache.lucene.spatial.query.SpatialOperation;
 import org.apache.lucene.spatial.serialized.SerializedDVStrategy;
-import org.junit.Test;
 import org.locationtech.spatial4j.context.SpatialContext;
 import org.locationtech.spatial4j.context.SpatialContextFactory;
 import org.locationtech.spatial4j.shape.Point;
@@ -71,7 +70,6 @@ public class TestCompositeStrategy extends RandomSpatialOpStrategyTestCase {
     return rpt;
   }
 
-  @Test
   public void testOperations() throws IOException {
     // setup
     if (randomBoolean()) {

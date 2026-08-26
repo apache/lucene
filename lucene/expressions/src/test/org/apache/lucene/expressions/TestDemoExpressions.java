@@ -20,6 +20,7 @@ import static org.apache.lucene.expressions.js.VariableContext.Type.INT_INDEX;
 import static org.apache.lucene.expressions.js.VariableContext.Type.MEMBER;
 import static org.apache.lucene.expressions.js.VariableContext.Type.STR_INDEX;
 
+import java.util.Random;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -37,19 +38,22 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopFieldDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
-import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCaseJupiter;
+import org.apache.lucene.util.IOUtils;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /** simple demo of using expressions */
-public class TestDemoExpressions extends LuceneTestCase {
+public class TestDemoExpressions extends LuceneTestCaseJupiter {
   IndexSearcher searcher;
   DirectoryReader reader;
   Directory dir;
 
-  @Override
-  public void setUp() throws Exception {
-    super.setUp();
+  @BeforeEach
+  final void beforeEach(Random random) throws Exception {
     dir = newDirectory();
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
+    RandomIndexWriter iw = new RandomIndexWriter(random, dir);
 
     Document doc = new Document();
     doc.add(newStringField("id", "1", Field.Store.YES));
@@ -80,14 +84,13 @@ public class TestDemoExpressions extends LuceneTestCase {
     iw.close();
   }
 
-  @Override
-  public void tearDown() throws Exception {
-    reader.close();
-    dir.close();
-    super.tearDown();
+  @AfterEach
+  final void afterEach() throws Exception {
+    IOUtils.close(reader, dir);
   }
 
   /** an example of how to rank by an expression */
+  @Test
   public void test() throws Exception {
     // compile an expression:
     Expression expr = JavascriptCompiler.compile("sqrt(_score) + ln(popularity)");
@@ -104,6 +107,7 @@ public class TestDemoExpressions extends LuceneTestCase {
   }
 
   /** tests the returned sort values are correct */
+  @Test
   public void testSortValues() throws Exception {
     Expression expr = JavascriptCompiler.compile("sqrt(_score)");
 
@@ -122,6 +126,7 @@ public class TestDemoExpressions extends LuceneTestCase {
   }
 
   /** tests same binding used more than once in an expression */
+  @Test
   public void testTwoOfSameBinding() throws Exception {
     Expression expr = JavascriptCompiler.compile("_score + _score");
 
@@ -140,6 +145,7 @@ public class TestDemoExpressions extends LuceneTestCase {
   }
 
   /** Uses variables with $ */
+  @Test
   public void testDollarVariable() throws Exception {
     Expression expr = JavascriptCompiler.compile("$0+$score");
 
@@ -159,6 +165,7 @@ public class TestDemoExpressions extends LuceneTestCase {
   }
 
   /** tests expression referring to another expression */
+  @Test
   public void testExpressionRefersToExpression() throws Exception {
     Expression expr1 = JavascriptCompiler.compile("_score");
     Expression expr2 = JavascriptCompiler.compile("2*expr1");
@@ -179,6 +186,7 @@ public class TestDemoExpressions extends LuceneTestCase {
   }
 
   /** tests huge amounts of variables in the expression */
+  @Test
   public void testLotsOfBindings() throws Exception {
     doTestLotsOfBindings(Byte.MAX_VALUE - 1);
     doTestLotsOfBindings(Byte.MAX_VALUE);
@@ -211,6 +219,7 @@ public class TestDemoExpressions extends LuceneTestCase {
     }
   }
 
+  @Test
   public void testDistanceSort() throws Exception {
     Expression distance =
         JavascriptCompiler.compile("haversin(40.7143528,-74.0059731,latitude,longitude)");
@@ -230,6 +239,7 @@ public class TestDemoExpressions extends LuceneTestCase {
     assertEquals(5.2859D, (Double) d.fields[0], 1E-1);
   }
 
+  @Test
   public void testHaversinMetersDistanceSort() throws Exception {
     Expression distance =
         JavascriptCompiler.compile("haversinMeters(40.7143528,-74.0059731,latitude,longitude)");
@@ -249,6 +259,7 @@ public class TestDemoExpressions extends LuceneTestCase {
     assertEquals(5285.9D, (Double) d.fields[0], 1E-1);
   }
 
+  @Test
   public void testStaticExtendedVariableExample() throws Exception {
     Expression popularity = JavascriptCompiler.compile("doc[\"popularity\"].value");
     SimpleBindings bindings = new SimpleBindings();
@@ -266,6 +277,7 @@ public class TestDemoExpressions extends LuceneTestCase {
     assertEquals(2D, (Double) d.fields[0], 1E-4);
   }
 
+  @Test
   public void testDynamicExtendedVariableExample() throws Exception {
     Expression popularity =
         JavascriptCompiler.compile("doc['popularity'].value + magicarray[0] + fourtytwo");

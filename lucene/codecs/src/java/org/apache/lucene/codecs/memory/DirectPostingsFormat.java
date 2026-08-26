@@ -30,6 +30,7 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.OrdTermState;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
@@ -106,7 +107,7 @@ public final class DirectPostingsFormat extends PostingsFormat {
     if (state.context.context() != IOContext.Context.MERGE) {
       FieldsProducer loadedPostings;
       try {
-        postings.checkIntegrity();
+        postings.checkIntegrity(null);
         loadedPostings = new DirectFields(state, postings, minSkipCount, lowFreqCutoff);
       } finally {
         postings.close();
@@ -148,7 +149,7 @@ public final class DirectPostingsFormat extends PostingsFormat {
     public void close() {}
 
     @Override
-    public void checkIntegrity() throws IOException {
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
       // if we read entirely into ram, we already validated.
       // otherwise returned the raw postings reader
     }
@@ -303,10 +304,12 @@ public final class DirectPostingsFormat extends PostingsFormat {
 
       this.minSkipCount = minSkipCount;
 
-      hasFreq = fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS) > 0;
-      hasPos = fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) > 0;
+      hasFreq = fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS);
+      hasPos = fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
       hasOffsets =
-          fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) > 0;
+          fieldInfo
+              .getIndexOptions()
+              .subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
       hasPayloads = fieldInfo.hasPayloads();
 
       BytesRef term;

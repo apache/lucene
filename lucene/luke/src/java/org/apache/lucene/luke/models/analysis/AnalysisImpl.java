@@ -72,7 +72,7 @@ public final class AnalysisImpl implements Analysis {
 
     // reload available tokenizers, charfilters, and tokenfilters
     URLClassLoader classLoader =
-        new URLClassLoader(urls.toArray(new URL[0]), this.getClass().getClassLoader());
+        new URLClassLoader(urls.toArray(URL[]::new), this.getClass().getClassLoader());
     CharFilterFactory.reloadCharFilters(classLoader);
     TokenizerFactory.reloadTokenizers(classLoader);
     TokenFilterFactory.reloadTokenFilters(classLoader);

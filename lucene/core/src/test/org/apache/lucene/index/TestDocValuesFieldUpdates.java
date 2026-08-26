@@ -58,7 +58,7 @@ public class TestDocValuesFieldUpdates extends LuceneTestCase {
     Collections.shuffle(iterators, random());
     DocValuesFieldUpdates.Iterator iterator =
         DocValuesFieldUpdates.mergedIterator(
-            iterators.toArray(new DocValuesFieldUpdates.Iterator[0]));
+            iterators.toArray(DocValuesFieldUpdates.Iterator[]::new));
     assertEquals(0, iterator.nextDoc());
     assertEquals(18, iterator.longValue());
     assertEquals(1, iterator.nextDoc());

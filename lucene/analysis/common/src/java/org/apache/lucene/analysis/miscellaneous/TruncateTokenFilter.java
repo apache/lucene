@@ -81,7 +81,7 @@ public final class TruncateTokenFilter extends TokenFilter {
   }
 
   @Override
-  public final boolean incrementToken() throws IOException {
+  public boolean incrementToken() throws IOException {
     if (!input.incrementToken()) {
       return false;
     }
