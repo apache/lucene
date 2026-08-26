@@ -69,7 +69,6 @@ import org.apache.lucene.internal.tests.IndexWriterAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldExistsQuery;
-import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
@@ -1885,7 +1884,7 @@ public class IndexWriter
 
     // LUCENE-6379: Specialize MatchAllDocsQuery
     for (Query query : queries) {
-      if (query.getClass() == MatchAllDocsQuery.class) {
+      if (query.isKnownToMatchAllDocs()) {
         return deleteAll();
       }
     }

@@ -133,7 +133,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
     }
 
     Query rewrittenFallback = fallbackQuery.rewrite(indexSearcher);
-    if (rewrittenFallback.getClass() == MatchAllDocsQuery.class) {
+    if (rewrittenFallback.isKnownToMatchAllDocs()) {
       return MatchAllDocsQuery.INSTANCE;
     }
     if (rewrittenFallback == fallbackQuery) {

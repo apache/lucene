@@ -39,6 +39,11 @@ public final class ConstantScoreQuery extends Query {
   }
 
   @Override
+  public boolean isKnownToMatchAllDocs() {
+    return query.isKnownToMatchAllDocs();
+  }
+
+  @Override
   public Query rewrite(IndexSearcher indexSearcher) throws IOException {
 
     Query rewritten = query.rewrite(indexSearcher);

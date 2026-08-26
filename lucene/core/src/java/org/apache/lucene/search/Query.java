@@ -86,6 +86,17 @@ public abstract class Query {
   }
 
   /**
+   * Returns whether this query is known to match all documents. This method may return {@code
+   * false} for a query that matches all documents, but never {@code true} for one that does not.
+   *
+   * <p>This is an inexpensive structural check and says nothing about scores. Wrappers may delegate
+   * when they do not restrict the set of matching documents.
+   */
+  public boolean isKnownToMatchAllDocs() {
+    return false;
+  }
+
+  /**
    * Recurse through the query tree, visiting any child queries.
    *
    * @param visitor a QueryVisitor to be called by each query in the tree
