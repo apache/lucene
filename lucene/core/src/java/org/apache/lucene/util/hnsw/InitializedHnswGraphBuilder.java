@@ -257,7 +257,8 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
         }
 
         // Mark as disconnected if node lost more than the acceptable threshold of neighbors
-        if (newNeighbors.size() < oldNeighbourCount * DISCONNECTED_NODE_FACTOR) {
+        if (newNeighbors.size() < oldNeighbourCount * DISCONNECTED_NODE_FACTOR
+            || newNeighbors.size() < M * DISCONNECTED_NODE_FACTOR) {
           disconnectedNodes.add(newOrd);
         }
       }
