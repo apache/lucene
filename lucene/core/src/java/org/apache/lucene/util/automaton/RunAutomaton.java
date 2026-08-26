@@ -75,7 +75,7 @@ public abstract class RunAutomaton implements Accountable {
     for (int n = 0; n < size; n++) {
       if (a.isAccept(n)) {
         accept.set(n);
-        if (detectMatchAllSuffix(n)) {
+        if (computeMatchAllSuffix(n)) {
           matchAllSuffix.set(n);
         }
       }
@@ -101,8 +101,8 @@ public abstract class RunAutomaton implements Accountable {
     }
   }
 
-  /** Detect whether this state can accept everything(all remaining suffixes). */
-  private boolean detectMatchAllSuffix(int state) {
+  /** Returns true if this state can accept all remaining byte suffixes. */
+  private boolean computeMatchAllSuffix(int state) {
     assert automaton.isAccept(state);
     Transition transition = new Transition();
     int numTransitions = automaton.getNumTransitions(state);
@@ -114,8 +114,9 @@ public abstract class RunAutomaton implements Accountable {
       }
     }
 
-    // TODO: Detect match-all-suffix states for more complex UTF-8 automata produced by
-    // UTF32ToUTF8 conversion, such as those used by RegexpQuery and WildcardQuery.
+    // TODO: Also recognize equivalent match-all-suffix states after UTF32ToUTF8 splits a
+    // match-any-codepoint transition into multiple UTF-8 byte transitions. e.g. those used by
+    // RegexpQuery and WildcardQuery.
     return false;
   }
 
