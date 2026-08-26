@@ -181,6 +181,9 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#16431: Add support for Block-Max WAND dynamic score skipping in FunctionScoreQuery
+  and DoubleValuesSource using DocValuesSkipper. (Rajat Jain)
+
 * GITHUB#16382: WildcardQuery.toAutomaton now collapses consecutive unescaped '*'
   wildcards into a single any-string automaton, avoiding a quadratic blow-up in
   automaton size for patterns with many repeated asterisks. (Vismay Tiwari)
@@ -475,6 +478,8 @@ Optimizations
 
 Bug Fixes
 ---------------------
+
+* GITHUB#16546: Prevent RangeBulkScorer from passing empty ranges to LeafCollector. (jxy)
 
 * GITHUB#16450: Fix DocValuesRangeIterator.docIDRunEnd() returning incorrect run boundaries,
   causing bulk-scoring to skip or mis-score documents in range and ordinal set queries.
