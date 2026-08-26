@@ -46,10 +46,11 @@ import org.apache.lucene.util.BitSet;
  *   <li>Allows incremental addition of new nodes while preserving initialized nodes
  * </ul>
  *
- * <p><b>Disconnected Node Detection:</b> A node is considered disconnected if it retains less than
- * {@link #DISCONNECTED_NODE_FACTOR} of its original neighbor count from the source graph. This
- * typically occurs when many of the node's neighbors were deleted documents that couldn't be
- * remapped.
+ * <p><b>Disconnected Node Detection:</b> A node that lost neighbors this merge is flagged for
+ * repair if it either kept less than {@link #DISCONNECTED_NODE_FACTOR} of its neighbors from the
+ * source graph, or fell below {@link #CUMULATIVE_DEGREE_FLOOR_FACTOR} of the level's connection
+ * budget. The first catches a large loss in a single merge; the second catches slow decay across
+ * many merges.
  *
  * @lucene.experimental
  */
@@ -77,6 +78,15 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
    * search performance.
    */
   private final double DISCONNECTED_NODE_FACTOR = 0.85;
+
+  /**
+   * The cumulative disconnection threshold. A node is disconnected when its out-degree falls below
+   * this fraction of the level's connection budget ({@code M} on upper levels, {@code 2*M} at level
+   * 0). Because the budget is fixed, the check holds a node to the same target on every merge, so
+   * it catches out-degree that drifts down gradually across many merges rather than in a single
+   * one.
+   */
+  private final double CUMULATIVE_DEGREE_FLOOR_FACTOR = 0.5;
 
   // Tracks if the graph has deletes
   private boolean hasDeletes = false;
@@ -200,13 +210,16 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
    * Copies the graph structure from the initializer graph, applying ordinal remapping and
    * identifying nodes that have lost neighbors.
    *
-   * <p>A node is considered disconnected if it retains less than {@link #DISCONNECTED_NODE_FACTOR}
-   * of its original neighbors. This happens when many neighbors were deleted documents that
-   * couldn't be remapped (indicated by -1 in newOrdMap).
+   * <p>Deleted neighbors show up as -1 in newOrdMap and are dropped. A node that loses any this way
+   * is flagged for repair when it crosses one of the two thresholds ({@link
+   * #DISCONNECTED_NODE_FACTOR} and {@link #CUMULATIVE_DEGREE_FLOOR_FACTOR}); flagged nodes are
+   * repaired afterwards.
    *
-   * <p><b>Example:</b> With DISCONNECTED_NODE_FACTOR = 0.9, if a node had 20 neighbors in the
-   * source graph but only 17 remain after remapping (17/20 = 0.85 < 0.9), it's marked as
-   * disconnected and will be repaired.
+   * <p><b>Example:</b> at level 0 with {@code M=16} (budget {@code 2*M = 32}), a node that kept 16
+   * of 20 neighbors is flagged by the per-merge check ({@code 16/20 = 0.8 <
+   * DISCONNECTED_NODE_FACTOR = 0.85}); a node that has drifted to 15 neighbors is flagged by the
+   * cumulative check ({@code 15 < 32 * CUMULATIVE_DEGREE_FLOOR_FACTOR = 16}) even if it lost only
+   * one this merge.
    *
    * @param initializerGraph the source graph to copy from
    * @param newOrdMap maps old ordinals to new ordinals; -1 indicates deleted documents
@@ -255,8 +268,11 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
           }
         }
 
-        // Mark as disconnected if node lost more than the acceptable threshold of neighbors
-        if (newNeighbors.size() < oldNeighbourCount * DISCONNECTED_NODE_FACTOR) {
+        // Flag a node that lost neighbors and crossed either disconnection threshold.
+        int maxConnOnLevel = newNeighbors.maxSize() - 1; // M on upper levels, 2*M on level 0
+        if (newNeighbors.size() < oldNeighbourCount * DISCONNECTED_NODE_FACTOR
+            || (newNeighbors.size() < oldNeighbourCount
+                && newNeighbors.size() < maxConnOnLevel * CUMULATIVE_DEGREE_FLOOR_FACTOR)) {
           disconnectedNodes.add(newOrd);
         }
       }

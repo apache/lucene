@@ -7,10 +7,11 @@ http://s.apache.org/luceneversions
 
 Bug Fixes
 ---------------------
-(No changes)
 
-Optimizations
----------------------
+* GITHUB#16552: Reconnect HNSW nodes whose out-degree decays across successive
+  merge-reuse generations, preventing progressive recall loss under low delete
+  rates. (Ethan Baker)
+
 * GITHUB#16527: Hunspell: check for cancellation while building the suggestible entry cache. (Ilia Permiashkin)
 
 ======================= Lucene 10.5.1 =======================
