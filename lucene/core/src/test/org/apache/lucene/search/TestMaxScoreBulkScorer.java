@@ -1430,16 +1430,14 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     Query filterQuery = SortedNumericDocValuesField.newSlowRangeQuery("filter", 1, 1);
 
     LeafReaderContext context = reader.leaves().get(0);
-    Weight filterWeight = searcher.createWeight(searcher.rewrite(filterQuery), ScoreMode.COMPLETE, 1f);
+    Weight filterWeight =
+        searcher.createWeight(searcher.rewrite(filterQuery), ScoreMode.COMPLETE, 1f);
     Scorer filterScorer = filterWeight.scorer(context);
     assertNotNull(filterScorer);
     assertTrue(TwoPhaseIterator.unwrap(filterScorer.iterator()) instanceof DocValuesRangeIterator);
 
     BooleanQuery outerQuery =
-        new BooleanQuery.Builder()
-            .add(innerOr, Occur.MUST)
-            .add(filterQuery, Occur.FILTER)
-            .build();
+        new BooleanQuery.Builder().add(innerOr, Occur.MUST).add(filterQuery, Occur.FILTER).build();
 
     Query rewritten = searcher.rewrite(outerQuery);
     Weight weight = searcher.createWeight(rewritten, ScoreMode.TOP_SCORES, 1f);
@@ -1547,5 +1545,4 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
       return 31 * classHash() + delegate.hashCode();
     }
   }
-
 }
