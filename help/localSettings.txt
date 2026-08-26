@@ -11,30 +11,30 @@ See your 'gradle.properties' file for more details of those settings.
 Intranet mirrors for gradle (wrapper and distribution)
 ======================================================
 
-gradlew downloads gradle-wrapper.jar (from GitHub) and the gradle
+Lucene's gradlew scripts download gradle-wrapper.jar (from GitHub) and the gradle
 distribution (from services.gradle.org) on first use. If these hosts are
-not reachable, point gradlew at internal mirrors with environment
+not reachable, you can point to mirrors using environment
 variables (both are optional and may contain a ${gradleVersion}
-placeholder, replaced with the version from gradle/wrapper/gradle-wrapper.properties):
+placeholder, replaced with the current gradle's version read from
+gradle/wrapper/gradle-wrapper.properties). For example:
 
 LUCENE_GRADLE_WRAPPER_URL=https://mirror.example.com/gradle/${gradleVersion}/gradle-wrapper.jar
 LUCENE_GRADLE_DISTRIBUTION_URL=https://mirror.example.com/gradle/gradle-${gradleVersion}-bin.zip
 
-When either is set, gradlew runs IntranetGradleSetup.java first: it downloads
-gradle-wrapper.jar into gradle/wrapper/ (the jar must match the checksum in
+If any of these variables are set, gradlew will download gradle-wrapper.jar into
+gradle/wrapper/ (the jar must match the checksum in
 gradle-wrapper.jar.sha256) and installs the distribution (which must match
 distributionSha256Sum in gradle-wrapper.properties) into the gradle user
 home (GRADLE_USER_HOME or ~/.gradle) at the location the gradle wrapper expects
-for the official distribution URL, so nothing else needs to be downloaded.
-Local files work too, e.g. LUCENE_GRADLE_DISTRIBUTION_URL=file:///path/to/gradle-9.7.0-bin.zip
+for the "official" distribution.
+
+Local URLs work too, for example:
+
+LUCENE_GRADLE_DISTRIBUTION_URL=file:///path/to/gradle-9.7.0-bin.zip
 
 Setting LUCENE_GRADLE_VERIFY_CHECKSUMS=false disables checksum verification
-in these bootstrap steps: gradlew skips the gradle-wrapper.jar checksum
-check (and the automatic download of the jar if it is missing or does not
-match gradle-wrapper.jar.sha256), and IntranetGradleSetup uses an existing
-gradle-wrapper.jar as-is and installs what it downloads without verifying
-it against gradle-wrapper.jar.sha256/distributionSha256Sum. Use this only
-if you trust the origin of the jar and the mirror URLs.
+in these bootstrap steps. Use this only if you trust the origin of the
+jar and the mirror URLs.
 
 
 Build options

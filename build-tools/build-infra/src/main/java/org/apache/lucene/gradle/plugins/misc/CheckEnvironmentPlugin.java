@@ -64,10 +64,10 @@ public class CheckEnvironmentPlugin extends LuceneGradlePlugin {
             task -> {
               task.setDistributionType(Wrapper.DistributionType.BIN);
               task.setGradleVersion(expectedGradleVersion);
-              // gradle-wrapper.properties carries the distribution's checksum (verified by the
-              // wrapper and by IntranetGradleSetup). Unless provided explicitly
+              // gradle-wrapper.properties carries gradle distribution's checksum. Unless provided
+              // explicitly
               // (--gradle-distribution-sha256-sum), fetch the checksum published next to the
-              // distribution so that it stays in sync on upgrades.
+              // distribution so that it stays in sync on wrapper upgrades.
               task.doFirst(
                   _ -> {
                     if (task.getDistributionSha256Sum() == null) {

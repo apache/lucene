@@ -53,53 +53,64 @@ import java.util.stream.Stream;
 
 /**
  * Standalone class run by {@code gradlew}/{@code gradlew.bat} (before the gradle wrapper) when the
- * {@value #WRAPPER_URL_ENV} and/or {@value #DISTRIBUTION_URL_ENV} environment variables are set. It
- * supports environments that cannot reach GitHub and services.gradle.org by downloading:
+ * {@value #LUCENE_GRADLE_DISTRIBUTION_URL_ENV} and/or {@value #LUCENE_GRADLE_WRAPPER_URL_ENV}
+ * environment variables are set. This should be used in environments that cannot reach GitHub
+ * and/or services.gradle.org.
+ *
+ * <p>This class downloads (each step only if the corresponding variable is set):
  *
  * <ul>
- *   <li>{@code gradle-wrapper.jar} from {@value #WRAPPER_URL_ENV} into {@code gradle/wrapper/}
- *       (verified against the checksum in {@code gradle-wrapper.jar.sha256}, so that {@code
- *       WrapperDownloader} doesn't need to fetch it),
- *   <li>the gradle distribution from {@value #DISTRIBUTION_URL_ENV}, installing it in the gradle
- *       user home exactly where the gradle wrapper would install the "official" distribution (under
- *       the hash of the {@code distributionUrl} from {@code gradle-wrapper.properties}), so that
- *       the wrapper considers it already installed.
+ *   <li>{@code gradle-wrapper.jar} from {@value #LUCENE_GRADLE_WRAPPER_URL_ENV} into {@code
+ *       gradle/wrapper/} (otherwise GradleWrapperDownloader would fetch it from GitHub),
+ *   <li>the gradle distribution from {@value #LUCENE_GRADLE_DISTRIBUTION_URL_ENV}, installing it in
+ *       the gradle user home exactly where the gradle wrapper would install the "official"
+ *       distribution so that the wrapper considers it already installed.
  * </ul>
  *
  * <p>Both URLs may contain a {@code ${gradleVersion}} placeholder, replaced with the version parsed
- * from {@code distributionUrl} in {@code gradle-wrapper.properties}.
+ * from {@code distributionUrl} in {@code gradle-wrapper.properties}. For example:
  *
- * <p>Setting {@value #VERIFY_CHECKSUMS_ENV} to {@code false} disables all checksum verification: an
- * existing {@code gradle-wrapper.jar} is used as-is and downloads are installed unverified.
+ * <pre>
+ * LUCENE_GRADLE_DISTRIBUTION_URL=file:///tmp/local-gradle-mirror/${gradleVersion}/gradle-${gradleVersion}-bin.zip
+ * LUCENE_GRADLE_WRAPPER_URL=file:///tmp/local-gradle-mirror/${gradleVersion}/gradle-wrapper.jar
+ * </pre>
  *
- * <p>Ensure this class has no dependencies outside of standard java libraries as it's run directly
- * from source. It only uses JDK 11 language features and APIs so that it runs on any reasonably
- * recent JDK (17+ is required by {@link #checkVersion()}; the actual build requires a newer one).
+ * <p>By default, checksums of the distribution and/or the wrapper must match those that are present
+ * in {@code gradle-wrapper.properties}. Setting {@value #LUCENE_GRADLE_VERIFY_CHECKSUMS_ENV} to
+ * {@code false} disables all checksum verification: an existing {@code gradle-wrapper.jar} is used
+ * as-is and downloads are installed unverified.
+ *
+ * <p>This class must not have any dependencies outside of standard java libraries as it's run
+ * directly from source.
+ *
+ * <p>The code in this class is based on automated analysis of gradle wrapper sources from gradle
+ * v9.7.1.
  */
-public class IntranetGradleSetup {
-  /**
-   * Copied to keep the class isolated from any other classes.
-   *
-   * @see "https://github.com/apache/lucene/issues/15399"
-   */
+public class GradleMirrorSetup {
+  public static final String LUCENE_GRADLE_DISTRIBUTION_URL_ENV = "LUCENE_GRADLE_DISTRIBUTION_URL";
+  public static final String LUCENE_GRADLE_WRAPPER_URL_ENV = "LUCENE_GRADLE_WRAPPER_URL";
+  public static final String LUCENE_GRADLE_VERIFY_CHECKSUMS_ENV = "LUCENE_GRADLE_VERIFY_CHECKSUMS";
+
+  /** Inline this annotation to keep this class self-contained. */
   @Retention(RetentionPolicy.CLASS)
   @Target({ElementType.CONSTRUCTOR, ElementType.FIELD, ElementType.METHOD, ElementType.TYPE})
   private @interface SuppressForbidden {
-    /** A reason for suppressing should always be given. */
     String reason();
   }
 
-  public static final String DISTRIBUTION_URL_ENV = "LUCENE_GRADLE_DISTRIBUTION_URL";
-  public static final String WRAPPER_URL_ENV = "LUCENE_GRADLE_WRAPPER_URL";
-  public static final String VERIFY_CHECKSUMS_ENV = "LUCENE_GRADLE_VERIFY_CHECKSUMS";
-
-  /** Checksum verification is on unless {@value #VERIFY_CHECKSUMS_ENV} is set to "false". */
+  /**
+   * Checksum verification is on unless {@value #LUCENE_GRADLE_VERIFY_CHECKSUMS_ENV} is set to
+   * "false".
+   */
   private static final boolean VERIFY_CHECKSUMS =
-      !"false".equalsIgnoreCase(System.getenv(VERIFY_CHECKSUMS_ENV));
+      !"false".equalsIgnoreCase(System.getenv(LUCENE_GRADLE_VERIFY_CHECKSUMS_ENV));
+
+  /** Used when {@code networkTimeout} is not set in {@code gradle-wrapper.properties}. */
+  private static final int DEFAULT_NETWORK_TIMEOUT_MILLIS = (int) TimeUnit.SECONDS.toMillis(10);
 
   private static final Pattern DISTRIBUTION_NAME =
       Pattern.compile("gradle-(?<version>.+?)-(bin|all)\\.zip");
-  private static final Pattern PLACEHOLDER = Pattern.compile("\\$\\{([^}]*)\\}");
+  private static final Pattern PLACEHOLDER = Pattern.compile("\\$\\{(?<varname>[^}]*)\\}");
   private static final boolean IS_WINDOWS =
       System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("windows");
 
@@ -108,13 +119,13 @@ public class IntranetGradleSetup {
 
   public static void main(String[] args) {
     if (args.length < 1) {
-      System.err.println("Usage: java IntranetGradleSetup.java <project dir> [gradle arguments]");
+      System.err.println("Usage: java GradleMirrorSetup.java <project dir> [gradle arguments]");
       System.exit(2);
     }
 
     try {
       checkVersion();
-      new IntranetGradleSetup(Paths.get(args[0]), args).run();
+      new GradleMirrorSetup(Paths.get(args[0]), args).run();
     } catch (Exception e) {
       System.err.println("ERROR: " + e.getMessage());
       System.exit(3);
@@ -128,7 +139,7 @@ public class IntranetGradleSetup {
     }
   }
 
-  IntranetGradleSetup(Path projectDir, String[] gradleArgs) {
+  GradleMirrorSetup(Path projectDir, String[] gradleArgs) {
     this.projectDir = projectDir.toAbsolutePath().normalize();
 
     // Gradle user home: -g/--gradle-user-home, GRADLE_USER_HOME or ~/.gradle.
@@ -164,9 +175,8 @@ public class IntranetGradleSetup {
     if (distributionUrl == null) {
       throw new IOException("No 'distributionUrl' in " + propertiesFile);
     }
-    Matcher m =
-        DISTRIBUTION_NAME.matcher(distributionUrl.replaceAll("\\?.*", "").replaceAll(".*/", ""));
-    if (!m.matches()) {
+    Matcher m = DISTRIBUTION_NAME.matcher(distributionUrl);
+    if (!m.find()) {
       throw new IOException(
           "Could not parse the gradle version from distributionUrl in "
               + propertiesFile
@@ -174,16 +184,26 @@ public class IntranetGradleSetup {
               + distributionUrl);
     }
     String gradleVersion = m.group("version");
-    int timeout = Integer.parseInt(props.getProperty("networkTimeout", "10000").trim());
+    int timeout =
+        Integer.parseInt(
+            props
+                .getProperty("networkTimeout", String.valueOf(DEFAULT_NETWORK_TIMEOUT_MILLIS))
+                .trim());
 
-    String wrapperUrl = expand(System.getenv(WRAPPER_URL_ENV), gradleVersion);
-    String mirrorDistributionUrl = expand(System.getenv(DISTRIBUTION_URL_ENV), gradleVersion);
+    String wrapperUrl = expand(System.getenv(LUCENE_GRADLE_WRAPPER_URL_ENV), gradleVersion);
+    String mirrorDistributionUrl =
+        expand(System.getenv(LUCENE_GRADLE_DISTRIBUTION_URL_ENV), gradleVersion);
 
     if (!VERIFY_CHECKSUMS) {
-      log("NOTE: checksum verification disabled (" + VERIFY_CHECKSUMS_ENV + "=false).");
+      log(
+          "NOTE: checksum verification disabled ("
+              + LUCENE_GRADLE_VERIFY_CHECKSUMS_ENV
+              + "=false).");
     }
 
-    setupWrapperJar(wrapperDir, wrapperUrl, timeout);
+    if (wrapperUrl != null) {
+      setupWrapperJar(wrapperDir, wrapperUrl, timeout);
+    }
     if (mirrorDistributionUrl != null) {
       setupDistribution(props, distributionUrl, mirrorDistributionUrl, gradleVersion, timeout);
     }
@@ -197,7 +217,7 @@ public class IntranetGradleSetup {
     Matcher m = PLACEHOLDER.matcher(template.trim());
     StringBuilder sb = new StringBuilder();
     while (m.find()) {
-      if (!m.group(1).equals("gradleVersion")) {
+      if (!m.group("varname").equals("gradleVersion")) {
         throw new IOException(
             "Unknown placeholder "
                 + m.group()
@@ -211,37 +231,28 @@ public class IntranetGradleSetup {
 
   /**
    * Makes sure gradle/wrapper/gradle-wrapper.jar is present and matches gradle-wrapper.jar.sha256,
-   * downloading it from the mirror if needed (otherwise WrapperDownloader would try GitHub). With
-   * checksum verification disabled, any existing jar is used as-is and downloads are not verified.
+   * downloading it from the mirror if needed. With checksum verification disabled, any existing jar
+   * is used as-is and downloads are not verified.
    */
   private void setupWrapperJar(Path wrapperDir, String wrapperUrl, int timeout) throws Exception {
     Path jar = wrapperDir.resolve("gradle-wrapper.jar");
     Path checksumFile = wrapperDir.resolve("gradle-wrapper.jar.sha256");
-    String expected = null;
+    String expectedChecksum = null;
     if (VERIFY_CHECKSUMS) {
       for (String line : Files.readAllLines(checksumFile, StandardCharsets.UTF_8)) {
         // sha256sum format: "<checksum> *gradle-wrapper.jar" ('*' marks binary mode).
         String[] parts = line.trim().split("\\s+");
         if (parts.length == 2 && parts[1].replaceFirst("^\\*", "").equals("gradle-wrapper.jar")) {
-          expected = parts[0];
+          expectedChecksum = parts[0];
         }
       }
-      if (expected == null) {
+      if (expectedChecksum == null) {
         throw new IOException("No checksum for gradle-wrapper.jar in " + checksumFile);
       }
     }
 
-    if (Files.exists(jar) && (!VERIFY_CHECKSUMS || sha256(jar).equalsIgnoreCase(expected))) {
-      return;
-    }
-    if (wrapperUrl == null) {
-      log(
-          "WARNING: "
-              + jar
-              + (VERIFY_CHECKSUMS ? " is missing or does not match " + checksumFile : " is missing")
-              + " and "
-              + WRAPPER_URL_ENV
-              + " is not set; WrapperDownloader will try to fetch it from GitHub.");
+    if (Files.exists(jar)
+        && (!VERIFY_CHECKSUMS || sha256(jar).equalsIgnoreCase(expectedChecksum))) {
       return;
     }
 
@@ -250,17 +261,17 @@ public class IntranetGradleSetup {
     try {
       download(new URI(wrapperUrl), temp, timeout);
       if (VERIFY_CHECKSUMS) {
-        String actual = sha256(temp);
-        if (!actual.equalsIgnoreCase(expected)) {
+        String actualChecksum = sha256(temp);
+        if (!actualChecksum.equalsIgnoreCase(expectedChecksum)) {
           throw new IOException(
               "The gradle-wrapper.jar downloaded from "
                   + wrapperUrl
                   + " does not match "
                   + checksumFile
                   + " (expected: "
-                  + expected
+                  + expectedChecksum
                   + ", actual: "
-                  + actual
+                  + actualChecksum
                   + ").");
         }
       }
@@ -380,7 +391,7 @@ public class IntranetGradleSetup {
       if (System.nanoTime() > deadline) {
         throw new IOException("Timed out waiting for the lock on " + lockFile);
       }
-      sleep(200);
+      sleep(500);
     }
   }
 
@@ -395,7 +406,10 @@ public class IntranetGradleSetup {
     }
   }
 
-  /** The gradle wrapper hashes the distribution URL with any user info stripped. */
+  /**
+   * The gradle wrapper hashes the distribution URL with any user info stripped so we recreate such
+   * an url here.
+   */
   private static String withoutUserInfo(URI uri) throws URISyntaxException {
     return new URI(
             uri.getScheme(),
@@ -456,6 +470,7 @@ public class IntranetGradleSetup {
         try (Stream<Path> entries = Files.walk(root)) {
           for (Path entry : entries.collect(Collectors.toList())) {
             String name = root.relativize(entry).toString();
+            // this corresponds to checks from PathTraversalChecker
             if (name.startsWith("/")
                 || name.startsWith("\\")
                 || (IS_WINDOWS && name.contains(":"))

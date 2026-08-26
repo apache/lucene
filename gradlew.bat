@@ -77,14 +77,14 @@ SET GRADLE_TEMPDIR=%DIRNAME%\.gradle\tmp
 IF NOT EXIST "%GRADLE_TEMPDIR%" MKDIR "%GRADLE_TEMPDIR%"
 SET DEFAULT_JVM_OPTS=%DEFAULT_JVM_OPTS% "-Djava.io.tmpdir=%GRADLE_TEMPDIR%"
 
-@rem Intranet mirrors for gradle-wrapper.jar and the gradle distribution, see IntranetGradleSetup.java
+@rem Intranet mirrors for gradle-wrapper.jar and the gradle distribution, see GradleMirrorSetup.java
 @rem and 'gradlew helpLocalSettings'.
 IF DEFINED LUCENE_GRADLE_DISTRIBUTION_URL goto intranetSetup
 IF DEFINED LUCENE_GRADLE_WRAPPER_URL goto intranetSetup
 goto wrapperJar
 
 :intranetSetup
-"%JAVA_EXE%" %JAVA_OPTS% "%APP_HOME%/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/IntranetGradleSetup.java" "%APP_HOME%" %*
+"%JAVA_EXE%" %JAVA_OPTS% "%APP_HOME%/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/GradleMirrorSetup.java" "%APP_HOME%" %*
 IF %ERRORLEVEL% NEQ 0 goto exitWithErrorLevel
 
 :wrapperJar
@@ -104,7 +104,7 @@ for /f "tokens=* delims=" %%H in ('certutil -hashfile "%GRADLE_WRAPPER_JAR%" SHA
 )
 
 if /i "%ACTUAL%" NEQ "%EXPECTED%" (
-  "%JAVA_EXE%" -XX:TieredStopAtLevel=1 %JAVA_OPTS% "%APP_HOME%/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/WrapperDownloader.java" "%GRADLE_WRAPPER_JAR%"
+  "%JAVA_EXE%" -XX:TieredStopAtLevel=1 %JAVA_OPTS% "%APP_HOME%/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/GradleWrapperDownloader.java" "%GRADLE_WRAPPER_JAR%"
   IF %ERRORLEVEL% EQU 1 goto failWithJvmMessage
   IF %ERRORLEVEL% NEQ 0 goto exitWithErrorLevel
 )

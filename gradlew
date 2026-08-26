@@ -215,10 +215,10 @@ if [ "$cygwin" = "true" -o "$msys" = "true" ] ; then
     APP_HOME=`cygpath --path --mixed "$APP_HOME"`
 fi
 
-# Intranet mirrors for gradle-wrapper.jar and the gradle distribution, see IntranetGradleSetup.java
+# Intranet mirrors for gradle-wrapper.jar and the gradle distribution, see GradleMirrorSetup.java
 # and 'gradlew helpLocalSettings'.
 if [ -n "$LUCENE_GRADLE_DISTRIBUTION_URL" ] || [ -n "$LUCENE_GRADLE_WRAPPER_URL" ]; then
-    "$JAVACMD" $JAVA_OPTS "$APP_HOME/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/IntranetGradleSetup.java" "$APP_HOME" "$@"
+    "$JAVACMD" $JAVA_OPTS "$APP_HOME/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/GradleMirrorSetup.java" "$APP_HOME" "$@"
     SETUP_STATUS=$?
     if [ "$SETUP_STATUS" -ne 0 ]; then
         exit $SETUP_STATUS
@@ -235,7 +235,7 @@ if [ "$LUCENE_GRADLE_VERIFY_CHECKSUMS" != "false" ]; then
         shasumcmd=sha256sum
     fi
     if [ ! -e "$GRADLE_WRAPPER_JAR" ] || ! ( cd "$APP_HOME/gradle/wrapper" && "$shasumcmd" --status -c "${GRADLE_WRAPPER_JAR}.sha256" ); then
-        "$JAVACMD" $JAVA_OPTS "$APP_HOME/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/WrapperDownloader.java" "$GRADLE_WRAPPER_JAR"
+        "$JAVACMD" $JAVA_OPTS "$APP_HOME/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/GradleWrapperDownloader.java" "$GRADLE_WRAPPER_JAR"
         WRAPPER_STATUS=$?
         if [ "$WRAPPER_STATUS" -eq 1 ]; then
             echo "ERROR: Something went wrong. Make sure you're using Java version of exactly 25."
