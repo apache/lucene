@@ -49,6 +49,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
   private TrieReader.Node[] nodes = new TrieReader.Node[5];
 
   final ByteRunnable runAutomaton;
+  final boolean hasMatchAllSuffixStates;
   final TransitionAccessor automaton;
   final BytesRef commonSuffix;
 
@@ -79,6 +80,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     assert runAutomaton != null;
 
     this.runAutomaton = runAutomaton;
+    this.hasMatchAllSuffixStates = runAutomaton.hasMatchAllSuffixStates();
     this.automaton = automaton;
     this.commonSuffix = commonSuffix;
 
@@ -379,7 +381,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     nextTerm:
     while (true) {
       // Match sub block's entry directly.
-      if (currentFrame.matchAllSuffix) {
+      if (hasMatchAllSuffixStates && currentFrame.matchAllSuffix) {
         while (true) {
           // There is no need to set currentTransition, state, etc.
           // It will be reset properly on the next recursion.
@@ -529,7 +531,9 @@ final class IntersectTermsEnum extends BaseTermsEnum {
             // No match
             isSubBlock = popPushNext();
             continue nextTerm;
-          } else if (runAutomaton.isAccept(state) && runAutomaton.isMatchAllSuffix(state)) {
+          } else if (hasMatchAllSuffixStates
+              && runAutomaton.isAccept(state)
+              && runAutomaton.isMatchAllSuffix(state)) {
             matchAllSuffix = true;
             break;
           }

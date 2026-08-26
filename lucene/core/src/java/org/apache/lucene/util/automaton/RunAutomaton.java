@@ -187,6 +187,10 @@ public abstract class RunAutomaton implements Accountable {
     return matchAllSuffix != null && matchAllSuffix.get(state);
   }
 
+  public final boolean hasMatchAllSuffixStates() {
+    return matchAllSuffix != null;
+  }
+
   /**
    * Returns array of codepoint class interval start points. The array should not be modified by the
    * caller.

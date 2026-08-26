@@ -45,6 +45,11 @@ public interface ByteRunnable {
    */
   boolean isMatchAllSuffix(int state);
 
+  /** Returns true if this automaton computed any match-all-suffix state information. */
+  default boolean hasMatchAllSuffixStates() {
+    return false;
+  }
+
   /**
    * Returns number of states this automaton has, note this may not be an accurate number in case of
    * NFA
