@@ -200,8 +200,7 @@ class SegmentDocValuesProducer extends DocValuesProducer {
   }
 
   // sorted/sorted-set/sorted-numeric and skippers are never overlaid: only numeric/binary values
-  // can be updated in
-  // place, so these always have a single producer.
+  // can be updated in place, so these always have a single producer.
   private DocValuesProducer single(FieldInfo field) {
     DocValuesProducer[] producers = dvProducersByField.get(field.number);
     assert producers != null && producers.length == 1

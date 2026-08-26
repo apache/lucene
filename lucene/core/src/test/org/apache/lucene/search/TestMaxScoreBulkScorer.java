@@ -1293,7 +1293,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
             }
 
             @Override
-            public long cost() {
+            public long cost() throws IOException {
               return innerSS.cost();
             }
           };
@@ -1450,7 +1450,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
             }
 
             @Override
-            public long cost() {
+            public long cost() throws IOException {
               return innerSS.cost();
             }
           };

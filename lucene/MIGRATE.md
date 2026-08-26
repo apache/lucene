@@ -48,6 +48,19 @@ called `LuceneTestCaseParent` but you should reference them either
 without an explicit type or via the type of the parent class
 for your test framework. The parent class may be removed in the future.
 
+### Directory#copyFrom is now abstract (GITHUB#16530)
+
+`Directory#copyFrom` no longer has a default implementation, so classes that extend
+`Directory` directly must now implement it. Subclasses of `BaseDirectory` inherit the
+standard implementation, which routes the copy through `createOutput`; it is also
+available to subclasses as the protected final helper `Directory#copyThroughCreateOutput`.
+
+`FilterDirectory#copyFrom` no longer delegates to the wrapped directory's `copyFrom`.
+It instead routes through `createOutput`, so filter directories that override
+`createOutput` for per-file bookkeeping now see copied files as well. Filter directories
+that relied on the wrapped directory's optimized copy should override `copyFrom` and
+delegate explicitly, as `HardlinkCopyDirectoryWrapper` does.
+
 ### Relaxed Index Upgrade Policy (GITHUB#13797)
 
 Starting with Lucene 11.0.0, the index upgrade policy has been relaxed to allow safe upgrades across multiple major version numbers without reindexing when no format breaks occur.
