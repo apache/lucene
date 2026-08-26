@@ -249,6 +249,7 @@ public class TestRuleLimitSysouts extends TestRuleAdapter {
 
     if (LuceneTestCase.VERBOSE
         || LuceneTestCase.INFOSTREAM
+        || isRepeatingTestCases()
         || target.isAnnotationPresent(Monster.class)
         || target.isAnnotationPresent(SuppressSysoutChecks.class)) {
       return false;
@@ -259,6 +260,11 @@ public class TestRuleLimitSysouts extends TestRuleAdapter {
     }
 
     return true;
+  }
+
+  /** Whether the runner repeats test cases, via {@code tests.iters}. */
+  private static boolean isRepeatingTestCases() {
+    return RandomizedTest.systemPropertyAsInt(SysGlobals.SYSPROP_ITERATIONS(), 1) > 1;
   }
 
   /**

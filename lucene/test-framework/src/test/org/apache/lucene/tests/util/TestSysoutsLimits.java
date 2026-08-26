@@ -79,6 +79,21 @@ public class TestSysoutsLimits extends WithNestedTests {
     Assert.assertTrue(msg, msg.contains("The test or suite printed 10 bytes"));
   }
 
+  @Test
+  public void testNotEnforcedWhenRepeatingTestCases() {
+    String iters = SysGlobals.SYSPROP_ITERATIONS();
+    try {
+      // Still apply limit for single iter.
+      System.setProperty(iters, "1");
+      Assert.assertEquals(1, new JUnitCore().run(OverSoftLimit.class).getFailureCount());
+
+      System.setProperty(iters, "3");
+      Assert.assertEquals(0, new JUnitCore().run(OverSoftLimit.class).getFailureCount());
+    } finally {
+      System.clearProperty(iters);
+    }
+  }
+
   @TestRuleLimitSysouts.Limit(bytes = 10)
   public static class UnderLimit extends ParentNestedTest {
     @Test
