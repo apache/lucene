@@ -188,6 +188,7 @@ public abstract class RunAutomaton implements Accountable {
     return matchAllSuffix.get(state);
   }
 
+  /** Returns true if match-all-suffix state information was computed for this automaton. */
   public final boolean hasMatchAllSuffixStates() {
     return matchAllSuffix != null;
   }

@@ -45,7 +45,10 @@ public interface ByteRunnable {
    */
   boolean isMatchAllSuffix(int state);
 
-  /** Returns true if this automaton computed any match-all-suffix state information. */
+  /**
+   * Returns true if this automaton can report match-all-suffix states via {@link
+   * #isMatchAllSuffix(int)}.
+   */
   default boolean hasMatchAllSuffixStates() {
     return false;
   }
