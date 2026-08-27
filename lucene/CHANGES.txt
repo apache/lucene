@@ -123,7 +123,7 @@ API Changes
 
 New Features
 ---------------------
-* GITHUB#xxx: Add ReturnFieldsRetriever, a concurrent scatter/gather engine that computes one value per hit for an
+* GITHUB#16572: Add ReturnFieldsRetriever, a concurrent scatter/gather engine that computes one value per hit for an
   int[] of global doc IDs and returns them in input order, built on ReaderUtil.partitionByLeaf. Callers supply a
   per-leaf visitor for the value type. Includes DoubleValuesRetriever, a DoubleValuesSource specialization. (Zihan Xu)
 
