@@ -78,7 +78,9 @@ import java.util.stream.Stream;
  * <p>By default, checksums of the distribution and/or the wrapper must match those that are present
  * in {@code gradle-wrapper.properties}. Setting {@value #LUCENE_GRADLE_VERIFY_CHECKSUMS_ENV} to
  * {@code false} disables all checksum verification: an existing {@code gradle-wrapper.jar} is used
- * as-is and downloads are installed unverified.
+ * as-is and downloads are installed unverified. This is refused if the {@code CI} environment
+ * variable is set (an unverified distribution would be trusted by all subsequent builds sharing the
+ * same gradle user home).
  *
  * <p>This class must not have any dependencies outside of standard java libraries as it's run
  * directly from source.
@@ -125,6 +127,7 @@ public class GradleMirrorSetup {
 
     try {
       checkVersion();
+      checkVerificationAllowed();
       new GradleMirrorSetup(Paths.get(args[0]), args).run();
     } catch (Exception e) {
       System.err.println("ERROR: " + e.getMessage());
@@ -136,6 +139,16 @@ public class GradleMirrorSetup {
     int major = Runtime.version().feature();
     if (major < 17) {
       throw new IllegalStateException("java version must be 17 or later, your version: " + major);
+    }
+  }
+
+  /** Refuses to run with checksum verification disabled in CI environments. */
+  static void checkVerificationAllowed() {
+    String ci = System.getenv("CI");
+    if (!VERIFY_CHECKSUMS && ci != null && !ci.isEmpty()) {
+      throw new IllegalStateException(
+          LUCENE_GRADLE_VERIFY_CHECKSUMS_ENV
+              + "=false is not allowed when the CI environment variable is set.");
     }
   }
 

@@ -120,6 +120,24 @@ jobs:
             exit 1
           fi
 
+      - name: gradlew must refuse LUCENE_GRADLE_VERIFY_CHECKSUMS=false in CI
+        env:
+          GRADLE_USER_HOME: ${{ runner.temp }}/gradle-user-home-bad
+          LUCENE_GRADLE_VERIFY_CHECKSUMS: false
+          LUCENE_GRADLE_WRAPPER_URL: file://${{ runner.temp }}/gradle-mirror-bad/${gradleVersion}/gradle-wrapper.jar
+          LUCENE_GRADLE_DISTRIBUTION_URL: file://${{ runner.temp }}/gradle-mirror-bad/${gradleVersion}/gradle-${gradleVersion}-bin.zip
+        run: |
+          set +e
+          test -n "$CI" || { echo "Expected the CI variable to be set."; exit 1; }
+          output=$(./gradlew --version 2>&1); status=$?
+          if [ $status -ne 0 ] && [[ "$output" == *"not allowed when the CI environment variable is set"* ]]; then
+            echo "Passed (rejected as expected)."
+          else
+            echo "Expected a refusal, got status $status. gradlew output echoed below:"
+            echo -e "\n$output\n\n---(end of output)"
+            exit 1
+          fi
+
   gradleWindowsSanityCheck:
     name: "Check gradlew help works on Windows."
     timeout-minutes: 30
