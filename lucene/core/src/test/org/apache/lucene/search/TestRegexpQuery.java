@@ -100,6 +100,7 @@ public class TestRegexpQuery extends LuceneTestCase {
     assertEquals(0, regexQueryNrHits("q.[aeiou]c"));
   }
 
+  // TODO: remove. Match-all-suffix optimization does not support RegexpQuery yet; debug only.
   public void testSubBlock() throws Exception {
     Directory dir = newDirectory();
     // Set minTermBlockSize to 2, maxTermBlockSize to 3, to generate subBlock.
@@ -132,6 +133,7 @@ public class TestRegexpQuery extends LuceneTestCase {
     dir.close();
   }
 
+  // TODO: remove. Match-all-suffix optimization does not support RegexpQuery yet; debug only.
   public void testDeepSubBlock() throws Exception {
     Directory dir = newDirectory();
     // Set minTermBlockSize to 2, maxTermBlockSize to 3, to generate deep subBlock.
