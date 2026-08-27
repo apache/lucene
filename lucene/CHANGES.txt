@@ -181,6 +181,8 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#16564: Optimize automaton intersection when all remaining byte suffixes match. (Zhou Hui)
+
 * GITHUB#16431: Add support for Block-Max WAND dynamic score skipping in FunctionScoreQuery
   and DoubleValuesSource using DocValuesSkipper. (Rajat Jain)
 
