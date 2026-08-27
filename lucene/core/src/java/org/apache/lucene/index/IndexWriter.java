@@ -4467,10 +4467,6 @@ public class IndexWriter
     final ReadersAndUpdates mergedDeletesAndUpdates = getPooledInstance(merge.info, true);
     int numDeletesBefore = mergedDeletesAndUpdates.getDelCount();
     // field -> delGen -> dv field updates
-    Map<String, LongObjectHashMap<DocValuesFieldUpdates>> mappedDVUpdates = new HashMap<>();
-
-    boolean anyDVUpdates = false;
-
     assert sourceSegments.size() == docMaps.length;
     for (int i = 0; i < sourceSegments.size(); i++) {
       SegmentCommitInfo info = sourceSegments.get(i);
@@ -4489,79 +4485,23 @@ public class IndexWriter
           merge.getMergeReader().get(i).hardLiveDocs,
           rld.getHardLiveDocs(),
           segDocMap);
-
-      // Now carry over all doc values updates that were resolved while we were merging, remapping
-      // the docIDs to the newly merged docIDs.
-      // We only carry over packets that finished resolving; if any are still running (concurrently)
-      // they will detect that our merge completed
-      // and re-resolve against the newly merged segment:
-      Map<String, List<DocValuesFieldUpdates>> mergingDVUpdates = rld.getMergingDVUpdates();
-      for (Map.Entry<String, List<DocValuesFieldUpdates>> ent : mergingDVUpdates.entrySet()) {
-
-        String field = ent.getKey();
-
-        LongObjectHashMap<DocValuesFieldUpdates> mappedField = mappedDVUpdates.get(field);
-        if (mappedField == null) {
-          mappedField = new LongObjectHashMap<>();
-          mappedDVUpdates.put(field, mappedField);
-        }
-
-        for (DocValuesFieldUpdates updates : ent.getValue()) {
-
-          if (bufferedUpdatesStream.stillRunning(updates.delGen)) {
-            continue;
-          }
-
-          // sanity check:
-          assert field.equals(updates.field);
-
-          DocValuesFieldUpdates mappedUpdates = mappedField.get(updates.delGen);
-          if (mappedUpdates == null) {
-            switch (updates.type) {
-              case NUMERIC:
-                mappedUpdates =
-                    new NumericDocValuesFieldUpdates(
-                        updates.delGen, updates.field, merge.info.info.maxDoc());
-                break;
-              case BINARY:
-                mappedUpdates =
-                    new BinaryDocValuesFieldUpdates(
-                        updates.delGen, updates.field, merge.info.info.maxDoc());
-                break;
-              case NONE:
-              case SORTED:
-              case SORTED_SET:
-              case SORTED_NUMERIC:
-              default:
-                throw new AssertionError();
-            }
-            mappedField.put(updates.delGen, mappedUpdates);
-          }
-
-          DocValuesFieldUpdates.Iterator it = updates.iterator();
-          int doc;
-          while ((doc = it.nextDoc()) != NO_MORE_DOCS) {
-            int mappedDoc = segDocMap.get(doc);
-            if (mappedDoc != -1) {
-              if (it.hasValue()) {
-                // not deleted
-                mappedUpdates.add(mappedDoc, it);
-              } else {
-                mappedUpdates.reset(mappedDoc);
-              }
-              anyDVUpdates = true;
-            }
-          }
-        }
-      }
     }
 
-    if (anyDVUpdates) {
-      // Persist the merged DV updates onto the RAU for the merged segment:
+    // Carry over the doc-values updates that resolved while we were merging, remapping the docIDs to
+    // the newly merged docIDs. These are reconstructed from the source segments' on-disk state plus
+    // their residual pending updates (see buildMappedDVUpdatesFromDisk) rather than from a heap copy
+    // retained for the whole merge. Packets still resolving concurrently are skipped; they re-resolve
+    // against the newly merged segment once they complete.
+    Map<String, LongObjectHashMap<DocValuesFieldUpdates>> mappedDVUpdates =
+        buildMappedDVUpdatesFromDisk(merge, docMaps, minGen);
+
+    boolean anyDVUpdates = false;
+    if (mappedDVUpdates.isEmpty() == false) {
+      // Persist the merged DV updates onto the RAU for the merged segment (already finished):
       for (LongObjectHashMap<DocValuesFieldUpdates> d : mappedDVUpdates.values()) {
         for (ObjectCursor<DocValuesFieldUpdates> updates : d.values()) {
-          updates.value.finish();
           mergedDeletesAndUpdates.addDVUpdate(updates.value);
+          anyDVUpdates = true;
         }
       }
     }
@@ -4587,24 +4527,151 @@ public class IndexWriter
   private static final Object DV_NO_VALUE = new Object();
 
   /**
-   * Assertion-only invariant check backing the removal of {@code ReadersAndUpdates.mergingDVUpdates}:
-   * the doc-values-update carry-over accumulated in heap for the whole merge is redundant with what
-   * the source segments already persist. Rebuilds the mapped carry-over purely from disk via
-   * {@link #buildMappedDVUpdatesFromDisk} and asserts it has the same effect (newest value per merged
-   * doc) as {@code mappedDVUpdates} produced from {@code mergingDVUpdates}. Read-only.
+   * Assertion-only cross-check backing the removal of {@code ReadersAndUpdates.mergingDVUpdates}:
+   * asserts the disk-reconstructed carry-over now used in production ({@code mappedFromDisk}) has the
+   * same effect (newest value per merged doc) as the legacy carry-over built from the heap-retained
+   * {@code mergingDVUpdates}. Read-only.
    */
   private boolean assertCarryOverReconstructibleFromDisk(
       MergePolicy.OneMerge merge,
       MergeState.DocMap[] docMaps,
-      Map<String, LongObjectHashMap<DocValuesFieldUpdates>> mappedDVUpdates,
+      Map<String, LongObjectHashMap<DocValuesFieldUpdates>> mappedFromDisk,
       long minGen)
       throws IOException {
-    Map<String, Map<Integer, Object>> expected = effectiveMap(mappedDVUpdates);
-    Map<String, Map<Integer, Object>> actual =
-        effectiveMap(buildMappedDVUpdatesFromDisk(merge, docMaps, minGen));
-    assert dvCarryOverEquals(expected, actual)
-        : "DV-update carry-over not reconstructible from disk:\n expected=" + expected + "\n actual=" + actual;
+    Map<String, Map<Integer, Object>> expected =
+        effectiveMap(buildMappedDVUpdatesFromMerging(merge, docMaps));
+    Map<String, Map<Integer, Object>> actual = effectiveMap(mappedFromDisk);
+    // Compare the resulting merged value per doc, not the raw carried packets: mergingDVUpdates may
+    // carry a no-op (an update, or a reset, to the value the merged baseline already has), which the
+    // disk reconstruction correctly omits. Fall back to the baseline value for docs a side omits.
+    Set<String> fields = new HashSet<>(expected.keySet());
+    fields.addAll(actual.keySet());
+    Map<String, Map<Integer, Object>> baseline = baselineValuesByMergedDoc(merge, docMaps, fields);
+    assert dvCarryOverEffectEquals(expected, actual, baseline)
+        : "DV-update carry-over from disk differs from mergingDVUpdates:\n expected="
+            + expected
+            + "\n actual="
+            + actual
+            + "\n baseline="
+            + baseline;
     return true;
+  }
+
+  /** Merge-reader baseline value per merged doc for the given fields (Long | BytesRef | DV_NO_VALUE). */
+  private Map<String, Map<Integer, Object>> baselineValuesByMergedDoc(
+      MergePolicy.OneMerge merge, MergeState.DocMap[] docMaps, Set<String> fields) throws IOException {
+    Map<String, Map<Integer, Object>> out = new HashMap<>();
+    for (String f : fields) {
+      out.put(f, new HashMap<>());
+    }
+    for (int i = 0; i < merge.segments.size(); i++) {
+      final CodecReader baseline = merge.getMergeReader().get(i).codecReader;
+      final MergeState.DocMap segDocMap = docMaps[i];
+      final int maxDoc = baseline.maxDoc();
+      final FieldInfos fis = baseline.getFieldInfos();
+      for (String f : fields) {
+        FieldInfo fi = fis.fieldInfo(f);
+        if (fi == null) {
+          continue;
+        }
+        Map<Integer, Object> m = out.get(f);
+        final boolean binary = fi.getDocValuesType() == DocValuesType.BINARY;
+        BinaryDocValues b = binary ? baseline.getBinaryDocValues(f) : null;
+        NumericDocValues n = binary ? null : baseline.getNumericDocValues(f);
+        for (int doc = 0; doc < maxDoc; doc++) {
+          int md = segDocMap.get(doc);
+          if (md == -1) {
+            continue;
+          }
+          Object v;
+          if (binary) {
+            v = (b != null && b.advanceExact(doc)) ? BytesRef.deepCopyOf(b.binaryValue()) : DV_NO_VALUE;
+          } else {
+            v = (n != null && n.advanceExact(doc)) ? Long.valueOf(n.longValue()) : DV_NO_VALUE;
+          }
+          m.put(md, v);
+        }
+      }
+    }
+    return out;
+  }
+
+  /**
+   * True iff, for every (field, merged doc) either side touches, the resulting merged value matches —
+   * where a doc a side does not carry falls back to that field's baseline value.
+   */
+  private static boolean dvCarryOverEffectEquals(
+      Map<String, Map<Integer, Object>> expected,
+      Map<String, Map<Integer, Object>> actual,
+      Map<String, Map<Integer, Object>> baseline) {
+    Set<String> fields = new HashSet<>(expected.keySet());
+    fields.addAll(actual.keySet());
+    for (String f : fields) {
+      Map<Integer, Object> exp = expected.getOrDefault(f, Map.of());
+      Map<Integer, Object> act = actual.getOrDefault(f, Map.of());
+      Map<Integer, Object> base = baseline.getOrDefault(f, Map.of());
+      Set<Integer> docs = new HashSet<>(exp.keySet());
+      docs.addAll(act.keySet());
+      for (int d : docs) {
+        Object ev = exp.containsKey(d) ? exp.get(d) : base.getOrDefault(d, DV_NO_VALUE);
+        Object av = act.containsKey(d) ? act.get(d) : base.getOrDefault(d, DV_NO_VALUE);
+        if (dvEquals(ev, av) == false) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Legacy carry-over reconstruction from the heap-retained {@code mergingDVUpdates}, kept only as
+   * the assertion oracle for {@link #buildMappedDVUpdatesFromDisk} until {@code mergingDVUpdates} is
+   * removed. Mirrors the pre-existing merge-commit logic.
+   */
+  private Map<String, LongObjectHashMap<DocValuesFieldUpdates>> buildMappedDVUpdatesFromMerging(
+      MergePolicy.OneMerge merge, MergeState.DocMap[] docMaps) throws IOException {
+    final int mergedMaxDoc = merge.info.info.maxDoc();
+    Map<String, LongObjectHashMap<DocValuesFieldUpdates>> mapped = new HashMap<>();
+    for (int i = 0; i < merge.segments.size(); i++) {
+      final ReadersAndUpdates rld = getPooledInstance(merge.segments.get(i), false);
+      final MergeState.DocMap segDocMap = docMaps[i];
+      Map<String, List<DocValuesFieldUpdates>> mergingDVUpdates = rld.getMergingDVUpdates();
+      for (Map.Entry<String, List<DocValuesFieldUpdates>> ent : mergingDVUpdates.entrySet()) {
+        LongObjectHashMap<DocValuesFieldUpdates> byGen =
+            mapped.computeIfAbsent(ent.getKey(), _ -> new LongObjectHashMap<>());
+        for (DocValuesFieldUpdates updates : ent.getValue()) {
+          if (bufferedUpdatesStream.stillRunning(updates.delGen)) {
+            continue;
+          }
+          DocValuesFieldUpdates mappedUpdates = byGen.get(updates.delGen);
+          if (mappedUpdates == null) {
+            mappedUpdates =
+                updates.type == DocValuesType.BINARY
+                    ? new BinaryDocValuesFieldUpdates(updates.delGen, updates.field, mergedMaxDoc)
+                    : new NumericDocValuesFieldUpdates(updates.delGen, updates.field, mergedMaxDoc);
+            byGen.put(updates.delGen, mappedUpdates);
+          }
+          DocValuesFieldUpdates.Iterator it = updates.iterator();
+          int doc;
+          while ((doc = it.nextDoc()) != NO_MORE_DOCS) {
+            int mappedDoc = segDocMap.get(doc);
+            if (mappedDoc != -1) {
+              if (it.hasValue()) {
+                mappedUpdates.add(mappedDoc, it);
+              } else {
+                mappedUpdates.reset(mappedDoc);
+              }
+            }
+          }
+        }
+      }
+    }
+    for (LongObjectHashMap<DocValuesFieldUpdates> byGen : mapped.values()) {
+      for (ObjectCursor<DocValuesFieldUpdates> c : byGen.values()) {
+        c.value.finish();
+      }
+    }
+    return mapped;
   }
 
   /**
@@ -4816,26 +4883,6 @@ public class IndexWriter
       return a == b;
     }
     return a.equals(b);
-  }
-
-  private static boolean dvCarryOverEquals(
-      Map<String, Map<Integer, Object>> expected, Map<String, Map<Integer, Object>> actual) {
-    if (expected.keySet().equals(actual.keySet()) == false) {
-      return false;
-    }
-    for (Map.Entry<String, Map<Integer, Object>> e : expected.entrySet()) {
-      Map<Integer, Object> exp = e.getValue();
-      Map<Integer, Object> act = actual.get(e.getKey());
-      if (exp.size() != act.size()) {
-        return false;
-      }
-      for (Map.Entry<Integer, Object> de : exp.entrySet()) {
-        if (act.containsKey(de.getKey()) == false || dvEquals(de.getValue(), act.get(de.getKey())) == false) {
-          return false;
-        }
-      }
-    }
-    return true;
   }
 
   /**
