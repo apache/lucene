@@ -16,13 +16,13 @@
 #
 # ####################################################################
 #
-# Instructions for generating SVG renderings of the functions 
+# Instructions for generating SVG renderings of the functions
 # used in SweetSpotSimilarity
 #
 # ####################################################################
 #
 #
-set terminal svg size 600,400 dynamic enhanced fname 'arial'  fsize 11 butt solid 
+set terminal svg size 600,400 dynamic enhanced fname 'arial'  fsize 11 butt solid
 set key inside left top vertical Right noreverse enhanced autotitles box linetype -1 linewidth 1.000
 #
 # #######  BASELINE TF
@@ -58,7 +58,7 @@ set output 'ss.computeLengthNorm.svg'
 set title "SweetSpotSimilarity.computeLengthNorm(t)"
 set xrange [0:20]
 set yrange [0:1.2]
-set mxtics 5 
+set mxtics 5
 cln(min,max,steepness,x)=1/sqrt( steepness * (abs(x-min) + abs(x-max) - (max-min)) + 1 )
 #
 plot cln(1,1,0.5,x) ti "all defaults", \

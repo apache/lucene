@@ -37,8 +37,8 @@ public abstract class FilterDirectory extends Directory {
    * FilterDirectory}.
    */
   public static Directory unwrap(Directory dir) {
-    while (dir instanceof FilterDirectory) {
-      dir = ((FilterDirectory) dir).in;
+    while (dir instanceof FilterDirectory fd) {
+      dir = fd.in;
     }
     return dir;
   }
@@ -114,6 +114,18 @@ public abstract class FilterDirectory extends Directory {
   @Override
   public String toString() {
     return getClass().getSimpleName() + "(" + in.toString() + ")";
+  }
+
+  /**
+   * Not delegated to {@link #in}: routes through {@link #createOutput} so per-file bookkeeping
+   * there covers copied files too. Subclasses that don't override {@link #createOutput} and want an
+   * optimized copy (e.g. {@code HardlinkCopyDirectoryWrapper}) may override to delegate: {@code
+   * in.copyFrom(from, src, dest, context)}.
+   */
+  @Override
+  public void copyFrom(Directory from, String src, String dest, IOContext context)
+      throws IOException {
+    copyThroughCreateOutput(from, src, dest, context);
   }
 
   @Override

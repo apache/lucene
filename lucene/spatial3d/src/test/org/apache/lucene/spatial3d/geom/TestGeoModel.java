@@ -17,14 +17,12 @@
 package org.apache.lucene.spatial3d.geom;
 
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 /** Test basic plane functionality. */
 public class TestGeoModel extends LuceneTestCase {
 
   protected static final PlanetModel scaledModel = new PlanetModel(1.2, 1.5);
 
-  @Test
   public void testBasicCircle() {
     // The point of this test is just to make sure nothing blows up doing normal things with a quite
     // non-spherical model
@@ -76,7 +74,6 @@ public class TestGeoModel extends LuceneTestCase {
     assertEquals(0.0089, bounds.getRightLongitude(), 0.0001);
   }
 
-  @Test
   public void testBasicRectangle() {
     final GeoBBox bbox = GeoBBoxFactory.makeGeoBBox(scaledModel, 1.0, 0.0, 0.0, 1.0);
     final GeoPoint insidePoint = new GeoPoint(scaledModel, 0.5, 0.5);

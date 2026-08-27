@@ -70,7 +70,7 @@ public class TestFastVectorHighlighter extends LuceneTestCase {
     type.freeze();
     Field field =
         new Field(
-            "field", "This is a test where foo is highlighed and should be highlighted", type);
+            "field", "This is a test where foo is highlighted and should be highlighted", type);
 
     doc.add(field);
     writer.addDocument(doc);
@@ -84,12 +84,12 @@ public class TestFastVectorHighlighter extends LuceneTestCase {
         highlighter.getBestFragments(fieldQuery, reader, docId, "field", 54, 1);
     // highlighted results are centered
     assertEquals(
-        "This is a test where <b>foo</b> is highlighed and should be highlighted",
+        "This is a test where <b>foo</b> is highlighted and should be highlighted",
         bestFragments[0]);
     bestFragments = highlighter.getBestFragments(fieldQuery, reader, docId, "field", 52, 1);
-    assertEquals("This is a test where <b>foo</b> is highlighed and should be", bestFragments[0]);
+    assertEquals("This is a test where <b>foo</b> is highlighted and should be", bestFragments[0]);
     bestFragments = highlighter.getBestFragments(fieldQuery, reader, docId, "field", 30, 1);
-    assertEquals("a test where <b>foo</b> is highlighed", bestFragments[0]);
+    assertEquals("a test where <b>foo</b> is highlighted", bestFragments[0]);
     reader.close();
     writer.close();
     dir.close();
@@ -106,7 +106,7 @@ public class TestFastVectorHighlighter extends LuceneTestCase {
     type.freeze();
     Field field =
         new Field(
-            "field", "This is a test where foo is highlighed and should be highlighted", type);
+            "field", "This is a test where foo is highlighted and should be highlighted", type);
 
     doc.add(field);
     writer.addDocument(doc);
@@ -123,12 +123,12 @@ public class TestFastVectorHighlighter extends LuceneTestCase {
         highlighter.getBestFragments(fieldQuery, reader, docId, "field", 54, 1);
     // highlighted results are centered
     assertEquals(
-        "This is a test where <b>foo</b> is highlighed and should be highlighted",
+        "This is a test where <b>foo</b> is highlighted and should be highlighted",
         bestFragments[0]);
     bestFragments = highlighter.getBestFragments(fieldQuery, reader, docId, "field", 52, 1);
-    assertEquals("This is a test where <b>foo</b> is highlighed and should be", bestFragments[0]);
+    assertEquals("This is a test where <b>foo</b> is highlighted and should be", bestFragments[0]);
     bestFragments = highlighter.getBestFragments(fieldQuery, reader, docId, "field", 30, 1);
-    assertEquals("a test where <b>foo</b> is highlighed", bestFragments[0]);
+    assertEquals("a test where <b>foo</b> is highlighted", bestFragments[0]);
     reader.close();
     writer.close();
     dir.close();
@@ -197,12 +197,12 @@ public class TestFastVectorHighlighter extends LuceneTestCase {
     Field longTermField =
         new Field(
             "long_term",
-            "This is a test thisisaverylongwordandmakessurethisfails where foo is highlighed and should be highlighted",
+            "This is a test thisisaverylongwordandmakessurethisfails where foo is highlighted and should be highlighted",
             type);
     Field noLongTermField =
         new Field(
             "no_long_term",
-            "This is a test where foo is highlighed and should be highlighted",
+            "This is a test where foo is highlighted and should be highlighted",
             type);
 
     doc.add(longTermField);
@@ -216,32 +216,33 @@ public class TestFastVectorHighlighter extends LuceneTestCase {
       BooleanQuery.Builder query = new BooleanQuery.Builder();
       query.add(new TermQuery(new Term(field, "test")), Occur.MUST);
       query.add(new TermQuery(new Term(field, "foo")), Occur.MUST);
-      query.add(new TermQuery(new Term(field, "highlighed")), Occur.MUST);
+      query.add(new TermQuery(new Term(field, "highlighted")), Occur.MUST);
       FieldQuery fieldQuery = highlighter.getFieldQuery(query.build(), reader);
       String[] bestFragments =
           highlighter.getBestFragments(fieldQuery, reader, docId, field, 18, 1);
       // highlighted results are centered
       assertEquals(1, bestFragments.length);
-      assertEquals("<b>foo</b> is <b>highlighed</b> and", bestFragments[0]);
+      assertEquals("<b>foo</b> is <b>highlighted</b>", bestFragments[0]);
     }
     {
       BooleanQuery.Builder query = new BooleanQuery.Builder();
-      PhraseQuery pq = new PhraseQuery(5, field, "test", "foo", "highlighed");
+      PhraseQuery pq = new PhraseQuery(5, field, "test", "foo", "highlighted");
       query.add(new TermQuery(new Term(field, "foo")), Occur.MUST);
       query.add(pq, Occur.MUST);
-      query.add(new TermQuery(new Term(field, "highlighed")), Occur.MUST);
+      query.add(new TermQuery(new Term(field, "highlighted")), Occur.MUST);
       FieldQuery fieldQuery = highlighter.getFieldQuery(query.build(), reader);
       String[] bestFragments =
           highlighter.getBestFragments(fieldQuery, reader, docId, field, 18, 1);
       // highlighted results are centered
-      assertEquals(0, bestFragments.length);
+      assertEquals(1, bestFragments.length);
+      assertEquals("be <b>highlighted</b>", bestFragments[0]);
       bestFragments = highlighter.getBestFragments(fieldQuery, reader, docId, field, 30, 1);
       // highlighted results are centered
       assertEquals(1, bestFragments.length);
-      assertEquals("a <b>test</b> where <b>foo</b> is <b>highlighed</b> and", bestFragments[0]);
+      assertEquals("<b>test</b> where <b>foo</b> is <b>highlighted</b> and", bestFragments[0]);
     }
     {
-      PhraseQuery query = new PhraseQuery(3, field, "test", "foo", "highlighed");
+      PhraseQuery query = new PhraseQuery(3, field, "test", "foo", "highlighted");
       FieldQuery fieldQuery = highlighter.getFieldQuery(query, reader);
       String[] bestFragments =
           highlighter.getBestFragments(fieldQuery, reader, docId, field, 18, 1);
@@ -250,10 +251,10 @@ public class TestFastVectorHighlighter extends LuceneTestCase {
       bestFragments = highlighter.getBestFragments(fieldQuery, reader, docId, field, 30, 1);
       // highlighted results are centered
       assertEquals(1, bestFragments.length);
-      assertEquals("a <b>test</b> where <b>foo</b> is <b>highlighed</b> and", bestFragments[0]);
+      assertEquals("<b>test</b> where <b>foo</b> is <b>highlighted</b> and", bestFragments[0]);
     }
     {
-      PhraseQuery query = new PhraseQuery(30, field, "test", "foo", "highlighed");
+      PhraseQuery query = new PhraseQuery(30, field, "test", "foo", "highlighted");
       FieldQuery fieldQuery = highlighter.getFieldQuery(query, reader);
       String[] bestFragments =
           highlighter.getBestFragments(fieldQuery, reader, docId, field, 18, 1);
@@ -261,22 +262,23 @@ public class TestFastVectorHighlighter extends LuceneTestCase {
     }
     {
       BooleanQuery.Builder query = new BooleanQuery.Builder();
-      PhraseQuery pq = new PhraseQuery(5, field, "test", "foo", "highlighed");
+      PhraseQuery pq = new PhraseQuery(5, field, "test", "foo", "highlighted");
       BooleanQuery.Builder inner = new BooleanQuery.Builder();
       inner.add(pq, Occur.MUST);
       inner.add(new TermQuery(new Term(field, "foo")), Occur.MUST);
       query.add(inner.build(), Occur.MUST);
       query.add(pq, Occur.MUST);
-      query.add(new TermQuery(new Term(field, "highlighed")), Occur.MUST);
+      query.add(new TermQuery(new Term(field, "highlighted")), Occur.MUST);
       FieldQuery fieldQuery = highlighter.getFieldQuery(query.build(), reader);
       String[] bestFragments =
           highlighter.getBestFragments(fieldQuery, reader, docId, field, 18, 1);
-      assertEquals(0, bestFragments.length);
+      assertEquals(1, bestFragments.length);
+      assertEquals("be <b>highlighted</b>", bestFragments[0]);
 
       bestFragments = highlighter.getBestFragments(fieldQuery, reader, docId, field, 30, 1);
       // highlighted results are centered
       assertEquals(1, bestFragments.length);
-      assertEquals("a <b>test</b> where <b>foo</b> is <b>highlighed</b> and", bestFragments[0]);
+      assertEquals("<b>test</b> where <b>foo</b> is <b>highlighted</b> and", bestFragments[0]);
     }
 
     field = "long_term";
@@ -285,7 +287,7 @@ public class TestFastVectorHighlighter extends LuceneTestCase {
       query.add(
           new TermQuery(new Term(field, "thisisaverylongwordandmakessurethisfails")), Occur.MUST);
       query.add(new TermQuery(new Term(field, "foo")), Occur.MUST);
-      query.add(new TermQuery(new Term(field, "highlighed")), Occur.MUST);
+      query.add(new TermQuery(new Term(field, "highlighted")), Occur.MUST);
       FieldQuery fieldQuery = highlighter.getFieldQuery(query.build(), reader);
       String[] bestFragments =
           highlighter.getBestFragments(fieldQuery, reader, docId, field, 18, 1);
@@ -503,7 +505,7 @@ public class TestFastVectorHighlighter extends LuceneTestCase {
 
     // Phrases and tokens inside one another are joined
     matchedFieldsTestCase(
-        "cats wow", "<b>cats w</b>ow", clause("field", "cats"), clause("field_tripples", "s w"));
+        "cats wow", "<b>cats w</b>ow", clause("field", "cats"), clause("field_triples", "s w"));
 
     // Everything works pretty well even if you don't require a field match
     matchedFieldsTestCase(
@@ -766,7 +768,7 @@ public class TestFastVectorHighlighter extends LuceneTestCase {
 
   public void testPhrasesSpanningFieldValues() throws IOException {
     Directory dir = newDirectory();
-    // positionIncrementGap is 0 so the pharse is found across multiple field
+    // positionIncrementGap is 0 so the phrase is found across multiple field
     // values.
     IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
     FieldType type = new FieldType(TextField.TYPE_STORED);
@@ -865,7 +867,7 @@ public class TestFastVectorHighlighter extends LuceneTestCase {
         new Field(
             "field_super_exact", fieldValue, matched)); // Whitespace tokenized without toLower
     doc.add(new Field("field_characters", fieldValue, matched)); // Each letter is a token
-    doc.add(new Field("field_tripples", fieldValue, matched)); // Every three letters is a token
+    doc.add(new Field("field_triples", fieldValue, matched)); // Every three letters is a token
     doc.add(
         new Field(
             "field_sliced",
@@ -892,7 +894,7 @@ public class TestFastVectorHighlighter extends LuceneTestCase {
         "field_characters",
         new MockAnalyzer(random(), new CharacterRunAutomaton(new RegExp(".").toAutomaton()), true));
     fieldAnalyzers.put(
-        "field_tripples",
+        "field_triples",
         new MockAnalyzer(
             random(), new CharacterRunAutomaton(new RegExp("...").toAutomaton()), true));
     fieldAnalyzers.put("field_sliced", fieldAnalyzers.get("field"));
@@ -931,7 +933,7 @@ public class TestFastVectorHighlighter extends LuceneTestCase {
       matchedFields.add("field_exact");
       matchedFields.add("field_super_exact");
       matchedFields.add("field_characters");
-      matchedFields.add("field_tripples");
+      matchedFields.add("field_triples");
       matchedFields.add("field_sliced");
       matchedFields.add("field_der_red");
       bestFragments =

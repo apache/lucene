@@ -58,16 +58,13 @@ public class SimpleTextStoredFieldsWriter extends StoredFieldsWriter {
 
   public SimpleTextStoredFieldsWriter(Directory directory, String segment, IOContext context)
       throws IOException {
-    boolean success = false;
     try {
       out =
           directory.createOutput(
               IndexFileNames.segmentFileName(segment, "", FIELDS_EXTENSION), context);
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 

@@ -64,7 +64,7 @@ public final class ReadAheadMatchAllDocsQuery extends Query {
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         // Don't use ConstantScoreScoreSupplier, which only uses DenseConjunctionBulkScorer on
-        // larg-ish segments.
+        // large-ish segments.
         return new ScorerSupplier() {
 
           @Override

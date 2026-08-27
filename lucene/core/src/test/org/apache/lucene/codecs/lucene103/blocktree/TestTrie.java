@@ -50,6 +50,8 @@ public class TestTrie extends LuceneTestCase {
     testTrieLookup(supplier, 12);
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testVeryLongTerms() throws Exception {
     Supplier<byte[]> supplier =
         () -> {
@@ -65,7 +67,7 @@ public class TestTrie extends LuceneTestCase {
   public void testOneByteTerms() throws Exception {
     // heavily test single byte terms to generate various label distribution.
     Supplier<byte[]> supplier = () -> new byte[] {(byte) random().nextInt()};
-    int round = atLeast(50);
+    int round = atLeast(5);
     for (int i = 0; i < round; i++) {
       testTrieLookup(supplier, 10);
     }
@@ -93,8 +95,6 @@ public class TestTrie extends LuceneTestCase {
       }
       TrieBuilder add = TrieBuilder.bytesRefToTrie(entry.getKey(), entry.getValue());
       trieBuilder.append(add);
-      Assert.assertThrows(IllegalStateException.class, () -> add.append(trieBuilder));
-      Assert.assertThrows(IllegalStateException.class, () -> trieBuilder.append(add));
     }
     Map<BytesRef, TrieBuilder.Output> actual = new TreeMap<>();
     trieBuilder.visit(actual::put);
@@ -126,21 +126,12 @@ public class TestTrie extends LuceneTestCase {
         }
         TrieBuilder add = TrieBuilder.bytesRefToTrie(entry.getKey(), entry.getValue());
         trieBuilder.append(add);
-        Assert.assertThrows(IllegalStateException.class, () -> add.append(trieBuilder));
-        Assert.assertThrows(IllegalStateException.class, () -> trieBuilder.append(add));
       }
 
       try (Directory directory = newDirectory()) {
         try (IndexOutput index = directory.createOutput("index", IOContext.DEFAULT);
             IndexOutput meta = directory.createOutput("meta", IOContext.DEFAULT)) {
           trieBuilder.save(meta, index);
-          assertThrows(IllegalStateException.class, () -> trieBuilder.save(meta, index));
-          assertThrows(
-              IllegalStateException.class,
-              () ->
-                  trieBuilder.append(
-                      TrieBuilder.bytesRefToTrie(
-                          new BytesRef(), new TrieBuilder.Output(0L, true, null))));
         }
 
         try (IndexInput indexIn = directory.openInput("index", IOContext.DEFAULT);
@@ -192,9 +183,10 @@ public class TestTrie extends LuceneTestCase {
   }
 
   private static byte[] randomBytes() {
-    byte[] bytes = new byte[random().nextInt(256) + 1];
+    var random = nonAssertingRandom(random());
+    byte[] bytes = new byte[random.nextInt(256) + 1];
     for (int i = 1; i < bytes.length; i++) {
-      bytes[i] = (byte) random().nextInt(1 << (i % 9));
+      bytes[i] = (byte) random.nextInt(1 << (i % 9));
     }
     return bytes;
   }

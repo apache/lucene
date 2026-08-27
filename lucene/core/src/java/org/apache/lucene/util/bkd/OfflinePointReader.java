@@ -122,9 +122,7 @@ public final class OfflinePointReader implements PointReader {
           countLeft = 0;
         }
         this.offset = 0;
-      } catch (
-          @SuppressWarnings("unused")
-          EOFException eofe) {
+      } catch (EOFException _) {
         assert countLeft == -1;
         return false;
       }
@@ -144,10 +142,10 @@ public final class OfflinePointReader implements PointReader {
   @Override
   public void close() throws IOException {
     try {
-      if (countLeft == 0 && in instanceof ChecksumIndexInput && checked == false) {
+      if (countLeft == 0 && in instanceof ChecksumIndexInput cii && checked == false) {
         // System.out.println("NOW CHECK: " + name);
         checked = true;
-        CodecUtil.checkFooter((ChecksumIndexInput) in);
+        CodecUtil.checkFooter(cii);
       }
     } finally {
       in.close();

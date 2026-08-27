@@ -25,9 +25,7 @@ public final class BytesRefUtils {
   public static String decode(BytesRef ref) {
     try {
       return ref.utf8ToString();
-    } catch (
-        @SuppressWarnings("unused")
-        Exception e) {
+    } catch (Exception _) {
       return ref.toString();
     }
   }

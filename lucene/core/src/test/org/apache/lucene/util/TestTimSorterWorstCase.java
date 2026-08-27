@@ -17,7 +17,7 @@
 package org.apache.lucene.util;
 
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.LuceneTestCase.Nightly;
@@ -105,7 +105,7 @@ public class TestTimSorterWorstCase extends LuceneTestCase {
    * merged (by <code>TimSort.mergeCollapse</code>) into an X_i that violates the invariant.
    */
   private static List<Integer> runsWorstCase(int length, int minRun) {
-    List<Integer> runs = new LinkedList<>();
+    List<Integer> runs = new ArrayList<>();
 
     int runningTotal = 0, Y = minRun + 4, X = minRun;
 

@@ -54,10 +54,10 @@ public class GradlePropertiesGenerator {
     }
 
     // Approximate a common-sense default for running gradle/tests with parallel
-    // workers: half the count of available cpus but not more than 12.
+    // workers: the count of available cpus but not more than 12.
     var cpus = Runtime.getRuntime().availableProcessors();
-    var maxWorkers = (int) Math.max(1d, Math.min(cpus * 0.5d, 12));
-    var testsJvms = (int) Math.max(1d, Math.min(cpus * 0.5d, 12));
+    var maxWorkers = Math.min(cpus, 12);
+    var testsJvms = Math.min(cpus, 12);
 
     var replacements = Map.of("@MAX_WORKERS@", maxWorkers, "@TEST_JVMS@", testsJvms);
 

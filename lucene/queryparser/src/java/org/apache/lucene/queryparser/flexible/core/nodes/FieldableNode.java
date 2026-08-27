@@ -26,9 +26,7 @@ package org.apache.lucene.queryparser.flexible.core.nodes;
 public interface FieldableNode extends QueryNode {
 
   /**
-   * Returns the field associated to the node and every node under it.
-   *
-   * @return the field name
+   * @return name of the filed associated to the node and every node under it
    */
   CharSequence getField();
 

@@ -39,11 +39,11 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.FilterLeafReader.FilterFields;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Terms;
-import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.MergedIterator;
 
@@ -132,7 +132,7 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
 
   private class FieldsWriter extends FieldsConsumer {
     final SegmentWriteState writeState;
-    final List<Closeable> toClose = new ArrayList<Closeable>();
+    final List<Closeable> toClose = new ArrayList<>();
 
     public FieldsWriter(SegmentWriteState writeState) {
       this.writeState = writeState;
@@ -143,7 +143,6 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
       Map<PostingsFormat, FieldsGroup> formatToGroups = buildFieldsGroupMapping(fields);
 
       // Write postings
-      boolean success = false;
       try {
         for (Map.Entry<PostingsFormat, FieldsGroup> ent : formatToGroups.entrySet()) {
           PostingsFormat format = ent.getKey();
@@ -162,11 +161,9 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
           toClose.add(consumer);
           consumer.write(maskedFields, norms);
         }
-        success = true;
-      } finally {
-        if (!success) {
-          IOUtils.closeWhileHandlingException(toClose);
-        }
+      } catch (Throwable t) {
+        IOUtils.closeWhileSuppressingExceptions(t, toClose);
+        throw t;
       }
     }
 
@@ -184,7 +181,6 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
       Map<PostingsFormat, FieldsGroup> formatToGroups = buildFieldsGroupMapping(indexedFieldNames);
 
       // Merge postings
-      boolean success = false;
       try {
         for (Map.Entry<PostingsFormat, FieldsGroup> ent : formatToGroups.entrySet()) {
           PostingsFormat format = ent.getKey();
@@ -194,11 +190,9 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
           toClose.add(consumer);
           consumer.merge(PerFieldMergeState.restrictFields(mergeState, group.fields), norms);
         }
-        success = true;
-      } finally {
-        if (!success) {
-          IOUtils.closeWhileHandlingException(toClose);
-        }
+      } catch (Throwable t) {
+        IOUtils.closeWhileSuppressingExceptions(t, toClose);
+        throw t;
       }
     }
 
@@ -251,12 +245,16 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
 
         groupBuilder.addField(field);
 
-        fieldInfo.putAttribute(PER_FIELD_FORMAT_KEY, formatName);
-        fieldInfo.putAttribute(PER_FIELD_SUFFIX_KEY, Integer.toString(groupBuilder.suffix));
+        fieldInfo.putAttributes(
+            Map.of(
+                PER_FIELD_FORMAT_KEY,
+                formatName,
+                PER_FIELD_SUFFIX_KEY,
+                Integer.toString(groupBuilder.suffix)));
       }
 
       Map<PostingsFormat, FieldsGroup> formatToGroups =
-          CollectionUtil.newHashMap(formatToGroupBuilders.size());
+          HashMap.newHashMap(formatToGroupBuilders.size());
       formatToGroupBuilders.forEach(
           (postingsFormat, builder) -> formatToGroups.put(postingsFormat, builder.build()));
       return formatToGroups;
@@ -297,7 +295,6 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
     public FieldsReader(final SegmentReadState readState) throws IOException {
 
       // Read _X.per and init each format:
-      boolean success = false;
       try {
         // Read field name -> format name
         for (FieldInfo fi : readState.fieldInfos) {
@@ -322,11 +319,9 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
             }
           }
         }
-        success = true;
-      } finally {
-        if (!success) {
-          IOUtils.closeWhileHandlingException(formats.values());
-        }
+      } catch (Throwable t) {
+        IOUtils.closeWhileSuppressingExceptions(t, formats.values());
+        throw t;
       }
 
       this.segment = readState.segmentInfo.name;
@@ -338,7 +333,7 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       FieldsProducer fieldsProducer = fields.get(field);
       return fieldsProducer == null ? null : fieldsProducer.terms(field);
     }
@@ -354,9 +349,9 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
       for (FieldsProducer producer : formats.values()) {
-        producer.checkIntegrity();
+        producer.checkIntegrity(merge);
       }
     }
 

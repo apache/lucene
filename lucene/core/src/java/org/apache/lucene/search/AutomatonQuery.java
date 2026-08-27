@@ -34,8 +34,8 @@ import org.apache.lucene.util.automaton.CompiledAutomaton;
  * Alternatively, it can be created from a regular expression with {@link RegexpQuery} or from the
  * standard Lucene wildcard syntax with {@link WildcardQuery}.
  *
- * <p>When the query is executed, it will will enumerate the term dictionary in an intelligent way
- * to reduce the number of comparisons. For example: the regular expression of <code>[dl]og?</code>
+ * <p>When the query is executed, it will enumerate the term dictionary in an intelligent way to
+ * reduce the number of comparisons. For example: the regular expression of <code>[dl]og?</code>
  * will make approximately four comparisons: do, dog, lo, and log.
  *
  * @lucene.experimental
@@ -98,8 +98,10 @@ public class AutomatonQuery extends MultiTermQuery implements Accountable {
     this.automatonIsBinary = isBinary;
     this.compiled = new CompiledAutomaton(automaton, false, true, isBinary);
 
+    // compiled may already reference the same Automaton instance; only count its bytes once.
+    long automatonBytes = compiled.sharesAutomaton(automaton) ? 0L : automaton.ramBytesUsed();
     this.ramBytesUsed =
-        BASE_RAM_BYTES + term.ramBytesUsed() + automaton.ramBytesUsed() + compiled.ramBytesUsed();
+        BASE_RAM_BYTES + term.ramBytesUsed() + automatonBytes + compiled.ramBytesUsed();
   }
 
   @Override

@@ -56,7 +56,6 @@ import org.apache.lucene.tests.codecs.blockterms.LuceneVarGapFixedInterval;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
-import org.junit.Test;
 
 /** */
 // TODO: would be better in this test to pull termsenums and instanceof or something?
@@ -67,9 +66,9 @@ public class TestPerFieldPostingsFormat2 extends LuceneTestCase {
 
   private IndexWriter newWriter(Directory dir, IndexWriterConfig conf) throws IOException {
     LogDocMergePolicy logByteSizeMergePolicy = new LogDocMergePolicy();
-    logByteSizeMergePolicy.setNoCFSRatio(0.0); // make sure we use plain
-    // files
     conf.setMergePolicy(logByteSizeMergePolicy);
+    conf.getCodec().compoundFormat().setShouldUseCompoundFile(false); // make sure we use plain
+    // files
 
     final IndexWriter writer = new IndexWriter(dir, conf);
     return writer;
@@ -103,7 +102,6 @@ public class TestPerFieldPostingsFormat2 extends LuceneTestCase {
   /*
    * Test that heterogeneous index segments are merge successfully
    */
-  @Test
   public void testMergeUnusedPerFieldCodec() throws IOException {
     Directory dir = newDirectory();
     IndexWriterConfig iwconf =
@@ -126,11 +124,10 @@ public class TestPerFieldPostingsFormat2 extends LuceneTestCase {
   }
 
   /*
-   * Test that heterogeneous index segments are merged sucessfully
+   * Test that heterogeneous index segments are merged successfully
    */
   // TODO: not sure this test is that great, we should probably peek inside PerFieldPostingsFormat
   // or something?!
-  @Test
   public void testChangeCodecAndMerge() throws IOException {
     Directory dir = newDirectory();
     if (VERBOSE) {
@@ -231,7 +228,6 @@ public class TestPerFieldPostingsFormat2 extends LuceneTestCase {
   /*
    * Test per field codec support - adding fields with random codecs
    */
-  @Test
   public void testStressPerFieldCodec() throws IOException {
     Directory dir = newDirectory(random());
     final int docsPerRound = 97;

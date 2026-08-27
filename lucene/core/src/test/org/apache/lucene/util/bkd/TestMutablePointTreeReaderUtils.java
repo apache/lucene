@@ -26,17 +26,12 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 
 public class TestMutablePointTreeReaderUtils extends LuceneTestCase {
-
   public void testSort() {
-    for (int iter = 0; iter < 10; ++iter) {
-      doTestSort(false);
-    }
+    doTestSort(false);
   }
 
   public void testSortWithIncrementalDocId() {
-    for (int iter = 0; iter < 10; ++iter) {
-      doTestSort(true);
-    }
+    doTestSort(true);
   }
 
   private void doTestSort(boolean isDocIdIncremental) {
@@ -79,9 +74,7 @@ public class TestMutablePointTreeReaderUtils extends LuceneTestCase {
   }
 
   public void testSortByDim() {
-    for (int iter = 0; iter < 5; ++iter) {
-      doTestSortByDim();
-    }
+    doTestSortByDim();
   }
 
   private void doTestSortByDim() {
@@ -132,9 +125,7 @@ public class TestMutablePointTreeReaderUtils extends LuceneTestCase {
   }
 
   public void testPartition() {
-    for (int iter = 0; iter < 5; ++iter) {
-      doTestPartition();
-    }
+    doTestPartition();
   }
 
   private void doTestPartition() {

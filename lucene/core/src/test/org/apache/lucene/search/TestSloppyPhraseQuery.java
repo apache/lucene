@@ -29,7 +29,6 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
-import org.apache.lucene.tests.search.AssertingScorable;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.store.MockDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -157,7 +156,8 @@ public class TestSloppyPhraseQuery extends LuceneTestCase {
 
     IndexReader reader = writer.getReader();
 
-    IndexSearcher searcher = newSearcher(reader);
+    // Disable assertions as the collector expects a PhraseScorer, not an asserting wrapper.
+    IndexSearcher searcher = newSearcher(reader, random().nextBoolean(), false);
     Result result = searcher.search(query, new MaxFreqCollectorManager());
     assertEquals(
         "slop: " + slop + "  query: " + query + "  doc: " + doc + "  Wrong number of hits",
@@ -218,7 +218,7 @@ public class TestSloppyPhraseQuery extends LuceneTestCase {
 
     @Override
     public void setScorer(Scorable scorer) throws IOException {
-      this.scorer = (Scorer) AssertingScorable.unwrap(scorer);
+      this.scorer = (Scorer) scorer;
     }
 
     @Override
@@ -250,7 +250,7 @@ public class TestSloppyPhraseQuery extends LuceneTestCase {
 
               @Override
               public void setScorer(Scorable scorer) {
-                this.scorer = (Scorer) AssertingScorable.unwrap(scorer);
+                this.scorer = (Scorer) scorer;
               }
 
               @Override
@@ -323,7 +323,8 @@ public class TestSloppyPhraseQuery extends LuceneTestCase {
     IndexReader ir = iw.getReader();
     iw.close();
 
-    IndexSearcher is = newSearcher(ir);
+    // Disable assertions as the collector expects a PhraseScorer, not an asserting wrapper.
+    IndexSearcher is = newSearcher(ir, random().nextBoolean(), false);
     PhraseQuery.Builder builder = new PhraseQuery.Builder();
     builder.add(new Term("lyrics", "drug"), 1);
     builder.add(new Term("lyrics", "drug"), 3);
@@ -377,7 +378,8 @@ public class TestSloppyPhraseQuery extends LuceneTestCase {
     IndexReader ir = iw.getReader();
     iw.close();
 
-    IndexSearcher is = newSearcher(ir);
+    // Disable assertions as the collector expects a PhraseScorer, not an asserting wrapper.
+    IndexSearcher is = newSearcher(ir, random().nextBoolean(), false);
 
     PhraseQuery.Builder builder = new PhraseQuery.Builder();
     builder.add(new Term("lyrics", "drug"), 1);

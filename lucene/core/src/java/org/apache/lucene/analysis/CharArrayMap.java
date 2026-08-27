@@ -32,6 +32,7 @@ import org.apache.lucene.util.CharsRef;
  */
 public class CharArrayMap<V> extends AbstractMap<Object, V> {
   // private only because missing generics
+  @SuppressWarnings("ClassInitializationDeadlock") // FIXME: may cause hangs!
   private static final CharArrayMap<?> EMPTY_MAP = new EmptyCharArrayMap<>();
 
   private static final int INIT_SIZE = 8;
@@ -607,7 +608,7 @@ public class CharArrayMap<V> extends AbstractMap<Object, V> {
    */
   private static final class EmptyCharArrayMap<V> extends UnmodifiableCharArrayMap<V> {
     EmptyCharArrayMap() {
-      super(new CharArrayMap<V>(0, false));
+      super(new CharArrayMap<>(0, false));
     }
 
     @Override

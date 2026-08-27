@@ -142,9 +142,10 @@ public abstract class FilteredIntervalsSource extends IntervalsSource {
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    if (o == null || o instanceof FilteredIntervalsSource == false) return false;
-    FilteredIntervalsSource that = (FilteredIntervalsSource) o;
-    return Objects.equals(name, that.name) && Objects.equals(in, that.in);
+    if (o instanceof FilteredIntervalsSource that) {
+      return Objects.equals(name, that.name) && Objects.equals(in, that.in);
+    }
+    return false;
   }
 
   @Override

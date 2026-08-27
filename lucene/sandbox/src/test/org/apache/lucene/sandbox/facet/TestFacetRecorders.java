@@ -253,7 +253,7 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
     // NRT open
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
 
-    Query query = new MatchAllDocsQuery();
+    Query query = MatchAllDocsQuery.INSTANCE;
 
     TaxonomyFacetsCutter defaultTaxoCutter =
         new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader);
@@ -351,7 +351,7 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
     // NRT open
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
 
-    Query query = new MatchAllDocsQuery();
+    Query query = MatchAllDocsQuery.INSTANCE;
 
     TaxonomyFacetsCutter defaultTaxoCutter =
         new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader);
@@ -417,7 +417,7 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
 
     TaxonomyOrdLabelBiMap ordLabels = new TaxonomyOrdLabelBiMap(taxoReader);
     FacetLabel parentLabel = new FacetLabel(dimension, path);
-    OrdinalIterator childrenIternator =
+    OrdinalIterator childrenIterator =
         new TaxonomyChildrenOrdinalIterator(
             countFacetRecorder.recordedOrds(),
             taxoReader.getParallelTaxonomyArrays().parents(),
@@ -428,13 +428,13 @@ public class TestFacetRecorders extends SandboxFacetTestCase {
           ComparableUtils.byAggregatedValue(
               countFacetRecorder, longAggregationsFacetRecorder, sortByLongAggregationId);
       OrdinalIterator topByCountOrds =
-          new TopnOrdinalIterator<>(childrenIternator, comparableSupplier, topN);
+          new TopnOrdinalIterator<>(childrenIterator, comparableSupplier, topN);
       resultOrdinals = topByCountOrds.toArray();
     } else {
       ComparableSupplier<ComparableUtils.ByCountComparable> countComparable =
           ComparableUtils.byCount(countFacetRecorder);
       OrdinalIterator topByCountOrds =
-          new TopnOrdinalIterator<>(childrenIternator, countComparable, topN);
+          new TopnOrdinalIterator<>(childrenIterator, countComparable, topN);
       resultOrdinals = topByCountOrds.toArray();
     }
 

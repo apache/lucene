@@ -33,16 +33,12 @@ public abstract class RandomizedShapeTestCase extends LuceneTestCase {
     for (Class<?> clazz : classes) {
       try {
         clazz.getDeclaredMethod("equals", Object.class);
-      } catch (
-          @SuppressWarnings("unused")
-          Exception e) {
+      } catch (Exception _) {
         fail("Shape needs to define 'equals' : " + clazz.getName());
       }
       try {
         clazz.getDeclaredMethod("hashCode");
-      } catch (
-          @SuppressWarnings("unused")
-          Exception e) {
+      } catch (Exception _) {
         fail("Shape needs to define 'hashCode' : " + clazz.getName());
       }
     }

@@ -197,9 +197,7 @@ class SimpleReplicaNode extends ReplicaNode {
 
       try {
         cmd = in.readByte();
-      } catch (
-          @SuppressWarnings("unused")
-          EOFException eofe) {
+      } catch (EOFException _) {
         break;
       }
 
@@ -268,7 +266,7 @@ class SimpleReplicaNode extends ReplicaNode {
             IndexSearcher searcher = mgr.acquire();
             try {
               long version = ((DirectoryReader) searcher.getIndexReader()).getVersion();
-              int hitCount = searcher.count(new MatchAllDocsQuery());
+              int hitCount = searcher.count(MatchAllDocsQuery.INSTANCE);
               // node.message("version=" + version + " searcher=" + searcher);
               out.writeVLong(version);
               out.writeVInt(hitCount);
@@ -343,7 +341,6 @@ class SimpleReplicaNode extends ReplicaNode {
 
           // Silly keep alive mechanism, else if e.g. we (replica node) crash, the primary
           // won't notice for a very long time:
-          boolean success = false;
           try {
             int count = 0;
             while (true) {
@@ -367,9 +364,10 @@ class SimpleReplicaNode extends ReplicaNode {
 
             out.writeByte((byte) 1);
             bos.flush();
-            success = true;
-          } finally {
-            message("done merge copy files=" + files.keySet() + " success=" + success);
+            message("done merge copy files=" + files.keySet() + " success=true");
+          } catch (Throwable t) {
+            message("done merge copy files=" + files.keySet() + " success=false");
+            throw t;
           }
           break;
 

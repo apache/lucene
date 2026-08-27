@@ -793,9 +793,7 @@ abstract class SpatialQuery extends Query {
               return rel;
             }
           });
-    } catch (
-        @SuppressWarnings("unused")
-        CollectionTerminatedException e) {
+    } catch (CollectionTerminatedException _) {
       return true;
     }
     return false;

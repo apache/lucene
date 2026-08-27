@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.search;
 
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.lessThan;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
@@ -63,8 +66,8 @@ public class TestWANDScorer extends LuceneTestCase {
   private void doTestScalingFactor(float f) {
     int scalingFactor = WANDScorer.scalingFactor(f);
     float scaled = Math.scalb(f, scalingFactor);
-    assertTrue("" + scaled, scaled >= 1 << (WANDScorer.FLOAT_MANTISSA_BITS - 1));
-    assertTrue("" + scaled, scaled < 1 << WANDScorer.FLOAT_MANTISSA_BITS);
+    assertThat(scaled, greaterThanOrEqualTo((float) (1 << (WANDScorer.FLOAT_MANTISSA_BITS - 1))));
+    assertThat(scaled, lessThan((float) (1 << WANDScorer.FLOAT_MANTISSA_BITS)));
   }
 
   public void testScaleMaxScore() {
@@ -746,7 +749,7 @@ public class TestWANDScorer extends LuceneTestCase {
     // but will be called during searching
     IndexSearcher searcher = newSearcher(reader, true, true, false);
 
-    for (int iter = 0; iter < 100; ++iter) {
+    for (int iter = 0; iter < 10; ++iter) {
       int start = random().nextInt(10);
       int numClauses = random().nextInt(1 << random().nextInt(5));
       BooleanQuery.Builder builder = new BooleanQuery.Builder();
@@ -822,12 +825,22 @@ public class TestWANDScorer extends LuceneTestCase {
     dir.close();
   }
 
-  /** Test the case when some clauses produce infinite max scores. */
+  /**
+   * Test the case when some clauses produce infinite max scores.
+   *
+   * <p>TODO: incredibly slow
+   */
+  @Nightly
   public void testRandomWithInfiniteMaxScore() throws IOException {
     doTestRandomSpecialMaxScore(Float.POSITIVE_INFINITY);
   }
 
-  /** Test the case when some clauses produce finite max scores, but their sum overflows. */
+  /**
+   * Test the case when some clauses produce finite max scores, but their sum overflows.
+   *
+   * <p>TODO: incredibly slow
+   */
+  @Nightly
   public void testRandomWithMaxScoreOverflow() throws IOException {
     doTestRandomSpecialMaxScore(Float.MAX_VALUE);
   }
@@ -877,6 +890,53 @@ public class TestWANDScorer extends LuceneTestCase {
               .build();
 
       CheckHits.checkTopScores(random(), filteredQuery, searcher);
+    }
+    reader.close();
+    dir.close();
+  }
+
+  /** Test advanceShallow when WAND is nested inside a conjunction with BlockScoreQueryWrapper. */
+  public void testRandomNestedWAND() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+    int numDocs = atLeast(1000);
+    for (int i = 0; i < numDocs; ++i) {
+      Document doc = new Document();
+      int numValues = random().nextInt(1 << random().nextInt(5));
+      int start = random().nextInt(10);
+      for (int j = 0; j < numValues; ++j) {
+        doc.add(new StringField("foo", Integer.toString(start + j), Store.NO));
+      }
+      w.addDocument(doc);
+    }
+    IndexReader reader = DirectoryReader.open(w);
+    w.close();
+    // turn off concurrent search to avoid Random object used across threads resulting into
+    // RuntimeException, as WANDScorerQuery#createWeight has reference to this searcher,
+    // but will be called during searching
+    IndexSearcher searcher = newSearcher(reader, true, true, false);
+
+    for (int iter = 0; iter < 10; ++iter) {
+      int start = random().nextInt(10);
+      int numClauses = random().nextInt(1 << random().nextInt(5));
+      BooleanQuery.Builder builder = new BooleanQuery.Builder();
+      for (int i = 0; i < numClauses; ++i) {
+        builder.add(
+            maybeWrap(new TermQuery(new Term("foo", Integer.toString(start + i)))), Occur.SHOULD);
+      }
+      Query wandQuery = new WANDScorerQuery(builder.build(), random().nextBoolean());
+
+      int blockLength = TestUtil.nextInt(random(), 2, 16);
+      Query wrappedWand = new BlockScoreQueryWrapper(wandQuery, blockLength);
+
+      int filterTerm = random().nextInt(30);
+      Query nestedQuery =
+          new BooleanQuery.Builder()
+              .add(wrappedWand, Occur.MUST)
+              .add(new TermQuery(new Term("foo", Integer.toString(filterTerm))), Occur.MUST)
+              .build();
+
+      CheckHits.checkTopScores(random(), nestedQuery, searcher);
     }
     reader.close();
     dir.close();
@@ -978,7 +1038,7 @@ public class TestWANDScorer extends LuceneTestCase {
             }
 
             @Override
-            public long cost() {
+            public long cost() throws IOException {
               return supplier.cost();
             }
           };

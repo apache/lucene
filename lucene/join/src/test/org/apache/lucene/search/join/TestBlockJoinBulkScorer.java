@@ -315,6 +315,8 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
     }
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testScoreRandomIndices() throws IOException {
     for (int i = 0; i < 200 * RANDOM_MULTIPLIER; i++) {
       try (Directory dir = newDirectory()) {
@@ -326,7 +328,12 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
                 newIndexWriterConfig()
                     .setMergePolicy(
                         // retain doc id order
-                        newLogMergePolicy(random().nextBoolean())))) {
+                        newLogMergePolicy()))) {
+          w.w
+              .getConfig()
+              .getCodec()
+              .compoundFormat()
+              .setShouldUseCompoundFile(random().nextBoolean());
 
           expectedMatches =
               populateRandomIndex(
@@ -371,8 +378,12 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
               newIndexWriterConfig()
                   .setMergePolicy(
                       // retain doc id order
-                      newLogMergePolicy(random().nextBoolean())))) {
-
+                      newLogMergePolicy()))) {
+        w.w
+            .getConfig()
+            .getCodec()
+            .compoundFormat()
+            .setShouldUseCompoundFile(random().nextBoolean());
         populateStaticIndex(w);
         w.forceMerge(1);
       }
@@ -441,8 +452,12 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
               newIndexWriterConfig()
                   .setMergePolicy(
                       // retain doc id order
-                      newLogMergePolicy(random().nextBoolean())))) {
-
+                      newLogMergePolicy()))) {
+        w.w
+            .getConfig()
+            .getCodec()
+            .compoundFormat()
+            .setShouldUseCompoundFile(random().nextBoolean());
         populateStaticIndex(w);
         w.forceMerge(1);
       }

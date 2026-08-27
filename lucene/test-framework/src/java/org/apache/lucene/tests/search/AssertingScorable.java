@@ -19,7 +19,6 @@ package org.apache.lucene.tests.search;
 
 import java.io.IOException;
 import org.apache.lucene.search.FilterScorable;
-import org.apache.lucene.search.FilterScorer;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.Scorer;
 
@@ -44,45 +43,16 @@ public class AssertingScorable extends FilterScorable {
   }
 
   public static Scorable wrap(Scorable in) {
-    if (in instanceof WrappedScorer || in instanceof AssertingScorable) {
+    if (in instanceof AssertingScorable || in instanceof AssertingScorer) {
       return in;
     }
+
     // If `in` is Scorer, we need to wrap it as a Scorer instead of Scorable because
     // NumericComparator uses the iterator cost of a Scorer in sort optimization.
-    if (in instanceof Scorer) {
-      return new WrappedScorer((Scorer) in);
+    if (in instanceof Scorer scorer) {
+      return AssertingScorer.wrap(scorer, true, true);
     } else {
       return new AssertingScorable(in);
-    }
-  }
-
-  private static class WrappedScorer extends FilterScorer {
-    WrappedScorer(Scorer in) {
-      super(in);
-    }
-
-    @Override
-    public float score() throws IOException {
-      return new AssertingScorable(in).score();
-    }
-
-    @Override
-    public void setMinCompetitiveScore(float minScore) throws IOException {
-      in.setMinCompetitiveScore(minScore);
-    }
-
-    @Override
-    public float getMaxScore(int upTo) throws IOException {
-      return in.getMaxScore(upTo);
-    }
-  }
-
-  public static Scorable unwrap(Scorable in) {
-    while (true) {
-      if (in instanceof AssertingScorable) in = ((AssertingScorable) in).in;
-      else if (in instanceof AssertingScorer) in = ((AssertingScorer) in).in;
-      else if (in instanceof WrappedScorer) in = ((WrappedScorer) in).unwrap();
-      else return in;
     }
   }
 }

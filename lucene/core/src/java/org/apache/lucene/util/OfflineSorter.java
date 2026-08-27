@@ -97,6 +97,11 @@ public class OfflineSorter {
       this.bytes = (int) bytes;
     }
 
+    // internal for testing
+    static BufferSize kilobytes(long kb) {
+      return new BufferSize(kb * 1024);
+    }
+
     /** Creates a {@link BufferSize} in MB. The given values must be &gt; 0 and &lt; 2048. */
     public static BufferSize megabytes(long mb) {
       return new BufferSize(mb * MB);
@@ -290,7 +295,6 @@ public class OfflineSorter {
     // So we can remove any partially written temp files on exception:
     TrackingDirectoryWrapper trackingDir = new TrackingDirectoryWrapper(dir);
 
-    boolean success = false;
     try (ByteSequencesReader is = getReader(dir.openChecksumInput(inputFileName), inputFileName)) {
       while (true) {
         Partition part = readPartition(is);
@@ -354,17 +358,14 @@ public class OfflineSorter {
       sortInfo.totalTimeMS = System.currentTimeMillis() - startMS;
 
       CodecUtil.checkFooter(is.in);
-
-      success = true;
-
       return result;
 
     } catch (InterruptedException ie) {
+      IOUtils.deleteFilesSuppressingExceptions(ie, trackingDir, trackingDir.getCreatedFiles());
       throw new ThreadInterruptedException(ie);
-    } finally {
-      if (success == false) {
-        IOUtils.deleteFilesIgnoringExceptions(trackingDir, trackingDir.getCreatedFiles());
-      }
+    } catch (Throwable t) {
+      IOUtils.deleteFilesSuppressingExceptions(t, trackingDir, trackingDir.getCreatedFiles());
+      throw t;
     }
   }
 
@@ -430,7 +431,6 @@ public class OfflineSorter {
     if (partitionsInRAM != null) {
       partitionsInRAM.acquire();
     }
-    boolean success = false;
     try {
       long start = System.currentTimeMillis();
       SortableBytesRefArray buffer;
@@ -475,12 +475,12 @@ public class OfflineSorter {
         }
       }
       sortInfo.readTimeMS += System.currentTimeMillis() - start;
-      success = true;
       return new Partition(buffer, exhausted);
-    } finally {
-      if (success == false && partitionsInRAM != null) {
+    } catch (Throwable t) {
+      if (partitionsInRAM != null) {
         partitionsInRAM.release();
       }
+      throw t;
     }
   }
 
@@ -687,12 +687,8 @@ public class OfflineSorter {
       }
 
       PriorityQueue<FileAndTop> queue =
-          new PriorityQueue<>(segmentsToMerge.size()) {
-            @Override
-            protected boolean lessThan(FileAndTop a, FileAndTop b) {
-              return comparator.compare(a.current, b.current) < 0;
-            }
-          };
+          PriorityQueue.usingComparator(
+              segmentsToMerge.size(), Comparator.comparing(ft -> ft.current, comparator));
 
       ByteSequencesReader[] streams = new ByteSequencesReader[segmentsToMerge.size()];
 

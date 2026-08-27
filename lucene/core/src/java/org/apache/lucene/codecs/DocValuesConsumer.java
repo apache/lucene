@@ -132,7 +132,8 @@ public abstract class DocValuesConsumer implements Closeable {
   public void merge(MergeState mergeState) throws IOException {
     for (DocValuesProducer docValuesProducer : mergeState.docValuesProducers) {
       if (docValuesProducer != null) {
-        docValuesProducer.checkIntegrity();
+        mergeState.checkAborted();
+        docValuesProducer.checkIntegrity(mergeState.oneMerge);
       }
     }
 
@@ -678,7 +679,7 @@ public abstract class DocValuesConsumer implements Closeable {
     }
 
     final int numReaders = toMerge.size();
-    final SortedDocValues[] dvs = toMerge.toArray(new SortedDocValues[numReaders]);
+    final SortedDocValues[] dvs = toMerge.toArray(SortedDocValues[]::new);
 
     TermsEnum[] liveTerms = new TermsEnum[dvs.length];
     long[] weights = new long[liveTerms.length];
@@ -1086,13 +1087,13 @@ public abstract class DocValuesConsumer implements Closeable {
       final Iterable<Number> values,
       final Number missingValue) {
     assert isSingleValued(docToValueCount);
-    return new Iterable<Number>() {
+    return new Iterable<>() {
 
       @Override
       public Iterator<Number> iterator() {
         final Iterator<Number> countIterator = docToValueCount.iterator();
         final Iterator<Number> valuesIterator = values.iterator();
-        return new Iterator<Number>() {
+        return new Iterator<>() {
 
           @Override
           public boolean hasNext() {

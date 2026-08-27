@@ -41,7 +41,7 @@ import org.apache.lucene.util.ResourceLoaderAware;
 /**
  * Factory for {@link SynonymFilter}.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_synonym" class="solr.TextField" positionIncrementGap="100"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.WhitespaceTokenizerFactory"/&gt;
@@ -50,7 +50,7 @@ import org.apache.lucene.util.ResourceLoaderAware;
  *             tokenizerFactory="solr.WhitespaceTokenizerFactory"
  *             [optional tokenizer factory parameters]/&gt;
  *   &lt;/analyzer&gt;
- * &lt;/fieldType&gt;</pre>
+ * &lt;/fieldType&gt;</code></pre>
  *
  * <p>An optional param name prefix of "tokenizerFactory." may be used for any init params that the
  * SynonymFilterFactory needs to pass to the specified TokenizerFactory. If the TokenizerFactory
@@ -204,8 +204,8 @@ public class SynonymFilterFactory extends TokenFilterFactory implements Resource
     Class<? extends TokenizerFactory> clazz = loader.findClass(cname, TokenizerFactory.class);
     try {
       TokenizerFactory tokFactory = clazz.getConstructor(Map.class).newInstance(tokArgs);
-      if (tokFactory instanceof ResourceLoaderAware) {
-        ((ResourceLoaderAware) tokFactory).inform(loader);
+      if (tokFactory instanceof ResourceLoaderAware rla) {
+        rla.inform(loader);
       }
       return tokFactory;
     } catch (Exception e) {
@@ -217,8 +217,8 @@ public class SynonymFilterFactory extends TokenFilterFactory implements Resource
     Class<? extends Analyzer> clazz = loader.findClass(cname, Analyzer.class);
     try {
       Analyzer analyzer = clazz.getConstructor().newInstance();
-      if (analyzer instanceof ResourceLoaderAware) {
-        ((ResourceLoaderAware) analyzer).inform(loader);
+      if (analyzer instanceof ResourceLoaderAware rla) {
+        rla.inform(loader);
       }
       return analyzer;
     } catch (Exception e) {

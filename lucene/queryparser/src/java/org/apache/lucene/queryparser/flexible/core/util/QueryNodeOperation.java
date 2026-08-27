@@ -43,7 +43,7 @@ public final class QueryNodeOperation {
    * children of that node if q1 or q2 is null it returns the not null node if q1 = q2 = null it
    * returns null
    */
-  public static final QueryNode logicalAnd(QueryNode q1, QueryNode q2) {
+  public static QueryNode logicalAnd(QueryNode q1, QueryNode q2) {
     if (q1 == null) return q2;
     if (q2 == null) return q1;
 

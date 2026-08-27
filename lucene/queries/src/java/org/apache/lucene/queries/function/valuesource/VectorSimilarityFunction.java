@@ -53,6 +53,11 @@ public abstract class VectorSimilarityFunction extends ValueSource {
       }
 
       @Override
+      public double doubleVal(int doc) throws IOException {
+        return floatVal(doc);
+      }
+
+      @Override
       public String strVal(int doc) throws IOException {
         return Float.toString(floatVal(doc));
       }

@@ -54,7 +54,7 @@ import java.util.Enumeration;
  */
 public class TernaryTree implements Cloneable {
 
-  /**
+  /*
    * We use 4 arrays to represent a node. I guess I should have created a proper node class, but
    * somehow Knuth's pascal code made me forget we now have a portable language with virtual memory
    * management and automatic garbage collection! And now is kind of late, furthermore, if it ain't
@@ -172,7 +172,7 @@ public class TernaryTree implements Cloneable {
         eq[p] = pp;
         lo[pp]++;
         if (kv.get(lo[pp]) == 0) {
-          // key completly decompressed leaving garbage in key array
+          // key completely decompressed leaving garbage in key array
           lo[pp] = 0;
           sc[pp] = 0;
           hi[pp] = 0;

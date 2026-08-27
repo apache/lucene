@@ -16,7 +16,9 @@
  */
 package org.apache.lucene.analysis.no;
 
-import org.apache.lucene.analysis.*;
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
 import org.apache.lucene.analysis.miscellaneous.ScandinavianNormalizationFilter;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;

@@ -32,9 +32,9 @@ class PendingDeletes {
   protected final SegmentCommitInfo info;
   // Read-only live docs, null until live docs are initialized or if all docs are alive
   private Bits liveDocs;
-  // Writeable live docs, null if this instance is not ready to accept writes, in which
+  // Writable live docs, null if this instance is not ready to accept writes, in which
   // case getMutableBits needs to be called
-  private FixedBitSet writeableLiveDocs;
+  private FixedBitSet writableLiveDocs;
   protected int pendingDeleteCount;
   boolean liveDocsInitialized;
 
@@ -64,20 +64,20 @@ class PendingDeletes {
     // if we pull mutable bits but we haven't been initialized something is completely off.
     // this means we receive deletes without having the bitset that is on-disk ready to be cloned
     assert liveDocsInitialized : "can't delete if liveDocs are not initialized";
-    if (writeableLiveDocs == null) {
+    if (writableLiveDocs == null) {
       // Copy on write: this means we've cloned a
       // SegmentReader sharing the current liveDocs
       // instance; must now make a private clone so we can
       // change it:
       if (liveDocs != null) {
-        writeableLiveDocs = FixedBitSet.copyOf(liveDocs);
+        writableLiveDocs = FixedBitSet.copyOf(liveDocs);
       } else {
-        writeableLiveDocs = new FixedBitSet(info.info.maxDoc());
-        writeableLiveDocs.set(0, info.info.maxDoc());
+        writableLiveDocs = new FixedBitSet(info.info.maxDoc());
+        writableLiveDocs.set(0, info.info.maxDoc());
       }
-      liveDocs = writeableLiveDocs.asReadOnlyBits();
+      liveDocs = writableLiveDocs.asReadOnlyBits();
     }
-    return writeableLiveDocs;
+    return writableLiveDocs;
   }
 
   /**
@@ -107,7 +107,7 @@ class PendingDeletes {
   /** Returns a snapshot of the current live docs. */
   Bits getLiveDocs() {
     // Prevent modifications to the returned live docs
-    writeableLiveDocs = null;
+    writableLiveDocs = null;
     return liveDocs;
   }
 
@@ -126,7 +126,7 @@ class PendingDeletes {
    */
   void onNewReader(CodecReader reader, SegmentCommitInfo info) throws IOException {
     if (liveDocsInitialized == false) {
-      assert writeableLiveDocs == null;
+      assert writableLiveDocs == null;
       if (reader.hasDeletions()) {
         // we only initialize this once either in the ctor or here
         // if we use the live docs from a reader it has to be in a situation where we don't
@@ -163,7 +163,7 @@ class PendingDeletes {
     StringBuilder sb = new StringBuilder();
     sb.append("PendingDeletes(seg=").append(info);
     sb.append(" numPendingDeletes=").append(pendingDeleteCount);
-    sb.append(" writeable=").append(writeableLiveDocs != null);
+    sb.append(" writable=").append(writableLiveDocs != null);
     return sb.toString();
   }
 
@@ -186,24 +186,21 @@ class PendingDeletes {
     // We can write directly to the actual name (vs to a
     // .tmp & renaming it) because the file is not live
     // until segments file is written:
-    boolean success = false;
     try {
       Codec codec = info.info.getCodec();
       codec
           .liveDocsFormat()
           .writeLiveDocs(liveDocs, trackingDir, info, pendingDeleteCount, IOContext.DEFAULT);
-      success = true;
-    } finally {
-      if (!success) {
-        // Advance only the nextWriteDelGen so that a 2nd
-        // attempt to write will write to a new file
-        info.advanceNextWriteDelGen();
+    } catch (Throwable t) {
+      // Advance only the nextWriteDelGen so that a 2nd
+      // attempt to write will write to a new file
+      info.advanceNextWriteDelGen();
 
-        // Delete any partially created file(s):
-        for (String fileName : trackingDir.getCreatedFiles()) {
-          IOUtils.deleteFilesIgnoringExceptions(dir, fileName);
-        }
+      // Delete any partially created file(s):
+      for (String fileName : trackingDir.getCreatedFiles()) {
+        IOUtils.deleteFilesIgnoringExceptions(dir, fileName);
       }
+      throw t;
     }
 
     // If we hit an exc in the line above (eg disk full)

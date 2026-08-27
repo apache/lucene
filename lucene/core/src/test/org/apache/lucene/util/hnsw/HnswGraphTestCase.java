@@ -41,7 +41,6 @@ import java.util.stream.Collectors;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
-import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -50,6 +49,7 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
@@ -61,6 +61,7 @@ import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.search.AbstractKnnCollector;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
@@ -90,7 +91,7 @@ import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
 abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
   VectorSimilarityFunction similarityFunction;
-  DefaultFlatVectorScorer flatVectorScorer = new DefaultFlatVectorScorer();
+  DefaultFlatVectorScorer flatVectorScorer = DefaultFlatVectorScorer.INSTANCE;
 
   abstract VectorEncoding getVectorEncoding();
 
@@ -123,6 +124,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     return switch (getVectorEncoding()) {
       case BYTE ->
           flatVectorScorer.getRandomVectorScorer(similarityFunction, vectorsCopy, (byte[]) query);
+      case FLOAT16 ->
+          flatVectorScorer.getRandomVectorScorer(similarityFunction, vectorsCopy, (short[]) query);
       case FLOAT32 ->
           flatVectorScorer.getRandomVectorScorer(similarityFunction, vectorsCopy, (float[]) query);
     };
@@ -175,6 +178,13 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                         (T) ((ByteVectorValues) vectors).vectorValue(ord),
                         similarityFunction));
               }
+              case FLOAT16 -> {
+                doc.add(
+                    knnVectorField(
+                        "field",
+                        (T) ((Float16VectorValues) vectors).vectorValue(ord),
+                        similarityFunction));
+              }
               case FLOAT32 -> {
                 doc.add(
                     knnVectorField(
@@ -207,10 +217,91 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
   }
 
   @SuppressWarnings("unchecked")
+  public void testGraphMergeWithDeletes() throws IOException {
+
+    int M = 4;
+    int beamWidth = 20;
+    String vectorFieldName = "vec1";
+    int numVectors = random().nextInt(1000) + 1;
+    int deletionProbaility = random().nextInt(100);
+    int dim = random().nextInt(64) + 1;
+    if (dim % 2 == 1) {
+      dim++;
+    }
+    KnnVectorValues vectors = vectorValues(numVectors, dim);
+    int deleteCount = 0;
+
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc =
+          new IndexWriterConfig()
+              .setCodec(
+                  TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat(M, beamWidth, 0)))
+              // set a random merge policy
+              .setMergePolicy(newMergePolicy(random()));
+      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+
+        for (int i = 0; i < numVectors; i++) {
+          Document doc = new Document();
+          switch (vectors.getEncoding()) {
+            case BYTE -> {
+              doc.add(
+                  knnVectorField(
+                      vectorFieldName,
+                      (T) ((ByteVectorValues) vectors).vectorValue(i),
+                      similarityFunction));
+            }
+            case FLOAT16 -> {
+              doc.add(
+                  knnVectorField(
+                      vectorFieldName,
+                      (T) ((Float16VectorValues) vectors).vectorValue(i),
+                      similarityFunction));
+            }
+            case FLOAT32 -> {
+              doc.add(
+                  knnVectorField(
+                      vectorFieldName,
+                      (T) ((FloatVectorValues) vectors).vectorValue(i),
+                      similarityFunction));
+            }
+          }
+          doc.add(new StringField("id", Integer.toString(i), Field.Store.NO));
+          w.addDocument(doc);
+        }
+        w.commit();
+
+        for (int d = 0; d < numVectors; d++) {
+          if (random().nextInt(100) < deletionProbaility) {
+            deleteCount++;
+            w.deleteDocuments(new Term("id", Integer.toString(d)));
+          }
+        }
+        w.commit();
+        w.forceMerge(1);
+      }
+
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        for (LeafReaderContext ctx : reader.leaves()) {
+          HnswGraph graphValues =
+              ((Lucene99HnswVectorsReader)
+                      ((CodecReader) ctx.reader())
+                          .getVectorReader()
+                          .unwrapReaderForField(vectorFieldName))
+                  .getGraph(vectorFieldName);
+          assertEquals(numVectors - deleteCount, graphValues.size());
+        }
+      }
+    }
+  }
+
+  @SuppressWarnings("unchecked")
   private T vectorValue(KnnVectorValues vectors, int ord) throws IOException {
     switch (vectors.getEncoding()) {
       case BYTE -> {
         return (T) ((ByteVectorValues) vectors).vectorValue(ord);
+      }
+      case FLOAT16 -> {
+        return (T) ((Float16VectorValues) vectors).vectorValue(ord);
       }
       case FLOAT32 -> {
         return (T) ((FloatVectorValues) vectors).vectorValue(ord);
@@ -242,7 +333,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
       IndexWriterConfig iwc =
           new IndexWriterConfig()
               .setCodec(
-                  TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat(M, beamWidth)));
+                  TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat(M, beamWidth, 0)));
       try (IndexWriter iw = new IndexWriter(dir, iwc)) {
         KnnVectorValues.DocIndexIterator it2 = v2.iterator();
         while (it2.nextDoc() != NO_MORE_DOCS) {
@@ -269,9 +360,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
           assertVectorsEqual(v3, values);
           HnswGraph graphValues =
               ((Lucene99HnswVectorsReader)
-                      ((PerFieldKnnVectorsFormat.FieldsReader)
-                              ((CodecReader) ctx.reader()).getVectorReader())
-                          .getFieldReader("field"))
+                      ((CodecReader) ctx.reader()).getVectorReader().unwrapReaderForField("field"))
                   .getGraph("field");
           assertGraphEqual(hnsw, graphValues);
         }
@@ -537,7 +626,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, M, beamWidth, seed);
     HnswGraph graph = builder.build(vectors.size());
 
-    Set<Integer> j = UpdateGraphsUtils.computeJoinSet(graph);
+    IntHashSet j = UpdateGraphsUtils.computeJoinSet(graph);
     assertTrue(
         "Join set size [" + j.size() + "] is not less than graph size [" + graph.size() + "]",
         j.size() < graph.size());
@@ -548,12 +637,13 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     int initializerSize = random().nextInt(5, totalSize);
     int docIdOffset = 0;
     int dim = atLeast(10);
+    int beamWidth = 30;
     long seed = random().nextLong();
 
     KnnVectorValues initializerVectors = vectorValues(initializerSize, dim);
     RandomVectorScorerSupplier initialscorerSupplier = buildScorerSupplier(initializerVectors);
     HnswGraphBuilder initializerBuilder =
-        HnswGraphBuilder.create(initialscorerSupplier, 10, 30, seed);
+        HnswGraphBuilder.create(initialscorerSupplier, 10, beamWidth, seed);
 
     OnHeapHnswGraph initializerGraph = initializerBuilder.build(initializerVectors.size());
     KnnVectorValues finalVectorValues =
@@ -568,7 +658,11 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     // another graph to do the assertion
     OnHeapHnswGraph graphAfterInit =
         InitializedHnswGraphBuilder.initGraph(
-            initializerGraph, initializerOrdMap, initializerGraph.size());
+            initializerGraph,
+            initializerOrdMap,
+            initializerGraph.size(),
+            beamWidth,
+            initialscorerSupplier);
 
     HnswGraphBuilder finalBuilder =
         InitializedHnswGraphBuilder.fromGraph(
@@ -735,6 +829,9 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
             case BYTE ->
                 similarityFunction.compare(
                     ((ByteVectorValues) vectorValues).vectorValue(i), (byte[]) target);
+            case FLOAT16 ->
+                similarityFunction.compare(
+                    ((Float16VectorValues) vectorValues).vectorValue(i), (short[]) target);
             case FLOAT32 ->
                 similarityFunction.compare(
                     ((FloatVectorValues) vectorValues).vectorValue(i), (float[]) target);
@@ -786,6 +883,16 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
         IllegalArgumentException.class, () -> HnswGraphBuilder.create(scorerSupplier, 10, 0, 0));
   }
 
+  public void testAbortCheckSetAtMostOnce() throws IOException {
+    RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectorValues(1, 1));
+    HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 10, 10, 0);
+    expectThrows(NullPointerException.class, () -> builder.setAbortCheck(null));
+    builder.setAbortCheck(() -> {});
+    expectThrows(IllegalStateException.class, () -> builder.setAbortCheck(() -> {}));
+  }
+
+  // TODO: incredibly slow
+  @Nightly
   public void testRamUsageEstimate() throws IOException {
     int size = atLeast(2000);
     int dim = randomIntBetween(100, 1024);
@@ -958,6 +1065,9 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
           if (getVectorEncoding() == VectorEncoding.BYTE) {
             expected.add(
                 j, similarityFunction.compare((byte[]) query, (byte[]) vectorValue(vectors, j)));
+          } else if (getVectorEncoding() == VectorEncoding.FLOAT16) {
+            expected.add(
+                j, similarityFunction.compare((short[]) query, (short[]) vectorValue(vectors, j)));
           } else {
             expected.add(
                 j, similarityFunction.compare((float[]) query, (float[]) vectorValue(vectors, j)));
@@ -1179,6 +1289,71 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
   }
 
   /** Returns vectors evenly distributed around the upper unit semicircle. */
+  static class CircularFloat16VectorValues extends Float16VectorValues {
+    private final int size;
+    private final short[] value;
+
+    int doc = -1;
+
+    CircularFloat16VectorValues(int size) {
+      this.size = size;
+      value = new short[2];
+    }
+
+    @Override
+    public CircularFloat16VectorValues copy() {
+      return new CircularFloat16VectorValues(size);
+    }
+
+    @Override
+    public int dimension() {
+      return 2;
+    }
+
+    @Override
+    public int size() {
+      return size;
+    }
+
+    public short[] vectorValue() {
+      return vectorValue(doc);
+    }
+
+    public int docID() {
+      return doc;
+    }
+
+    public int nextDoc() {
+      return advance(doc + 1);
+    }
+
+    public int advance(int target) {
+      if (target >= 0 && target < size) {
+        doc = target;
+      } else {
+        doc = NO_MORE_DOCS;
+      }
+      return doc;
+    }
+
+    @Override
+    public short[] vectorValue(int ord) {
+      return unitVector2d(ord / (double) size, value);
+    }
+
+    private static short[] unitVector2d(double piRadians, short[] value) {
+      value[0] = Float.floatToFloat16((float) Math.cos(Math.PI * piRadians));
+      value[1] = Float.floatToFloat16((float) Math.sin(Math.PI * piRadians));
+      return value;
+    }
+
+    @Override
+    public VectorScorer scorer(short[] target) {
+      throw new UnsupportedOperationException();
+    }
+  }
+
+  /** Returns vectors evenly distributed around the upper unit semicircle. */
   static class CircularByteVectorValues extends ByteVectorValues {
     private final int size;
     private final float[] value;
@@ -1275,6 +1450,11 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                 "vectors do not match for doc=" + uDoc,
                 (byte[]) vectorValue(u, ord),
                 (byte[]) vectorValue(v, ord));
+        case FLOAT16 ->
+            assertArrayEquals(
+                "vectors do not match for doc=" + uDoc,
+                (short[]) vectorValue(u, ord),
+                (short[]) vectorValue(v, ord));
         case FLOAT32 ->
             assertArrayEquals(
                 "vectors do not match for doc=" + uDoc,
@@ -1291,6 +1471,14 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     float[][] vectors = new float[size][];
     for (int offset = 0; offset < size; offset++) {
       vectors[offset] = randomVector(random, dimension);
+    }
+    return vectors;
+  }
+
+  static short[][] createRandomFloat16Vectors(int size, int dimension, Random random) {
+    short[][] vectors = new short[size][];
+    for (int offset = 0; offset < size; offset++) {
+      vectors[offset] = randomFloat16Vector(random, dimension);
     }
     return vectors;
   }
@@ -1332,6 +1520,15 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     }
     VectorUtil.l2normalize(vec);
     return vec;
+  }
+
+  static short[] randomFloat16Vector(Random random, int dim) {
+    float[] vec = randomVector(random, dim);
+    short[] v = new short[vec.length];
+    for (int i = 0; i < dim; i++) {
+      v[i] = Float.floatToFloat16(vec[i]);
+    }
+    return v;
   }
 
   static byte[] randomVector8(Random random, int dim) {

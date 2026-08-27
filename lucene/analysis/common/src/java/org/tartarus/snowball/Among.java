@@ -2,7 +2,7 @@
 Copyright (c) 2001, Dr Martin Porter
 Copyright (c) 2004,2005, Richard Boulton
 Copyright (c) 2013, Yoshiki Shibukawa
-Copyright (c) 2006,2007,2009,2010,2011,2014-2019, Olly Betts
+Copyright (c) 2006-2025, Olly Betts
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -79,4 +79,3 @@ public class Among {
   // Make sure this is not accessible outside package for Java security reasons!
   final MethodHandle method; /* method to use if substring matches */
 }
-;

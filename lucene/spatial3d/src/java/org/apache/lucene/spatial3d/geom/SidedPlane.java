@@ -220,9 +220,7 @@ public class SidedPlane extends Plane implements Membership {
       // To construct the plane, we now just need D, which is simply the negative of the evaluation
       // of the circle normal vector at one of the points.
       return new SidedPlane(insidePoint, newNormalVector, -newNormalVector.dotProduct(point1));
-    } catch (
-        @SuppressWarnings("unused")
-        IllegalArgumentException e) {
+    } catch (IllegalArgumentException _) {
       return null;
     }
   }
@@ -263,9 +261,7 @@ public class SidedPlane extends Plane implements Membership {
               point2.y - point3.y,
               point2.z - point3.z);
       rval = new SidedPlane(insidePoint, planeNormal, -planeNormal.dotProduct(point2));
-    } catch (
-        @SuppressWarnings("unused")
-        IllegalArgumentException e) {
+    } catch (IllegalArgumentException _) {
     }
 
     if (rval == null) {
@@ -279,9 +275,7 @@ public class SidedPlane extends Plane implements Membership {
                 point3.y - point2.y,
                 point3.z - point2.z);
         rval = new SidedPlane(insidePoint, planeNormal, -planeNormal.dotProduct(point3));
-      } catch (
-          @SuppressWarnings("unused")
-          IllegalArgumentException e) {
+      } catch (IllegalArgumentException _) {
       }
     }
 
@@ -296,9 +290,7 @@ public class SidedPlane extends Plane implements Membership {
                 point1.y - point2.y,
                 point1.z - point2.z);
         rval = new SidedPlane(insidePoint, planeNormal, -planeNormal.dotProduct(point1));
-      } catch (
-          @SuppressWarnings("unused")
-          IllegalArgumentException e) {
+      } catch (IllegalArgumentException _) {
       }
     }
 
@@ -347,14 +339,12 @@ public class SidedPlane extends Plane implements Membership {
     if (this == o) {
       return true;
     }
-    if (!(o instanceof SidedPlane)) {
+    if (!(o instanceof SidedPlane that)) {
       return false;
     }
     if (!super.equals(o)) {
       return false;
     }
-
-    SidedPlane that = (SidedPlane) o;
 
     return Double.compare(that.sigNum, sigNum) == 0;
   }

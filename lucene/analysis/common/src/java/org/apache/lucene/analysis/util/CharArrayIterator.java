@@ -192,9 +192,7 @@ public abstract class CharArrayIterator implements CharacterIterator {
       bi.setText("\udb40\udc53");
       bi.next();
       v = false;
-    } catch (
-        @SuppressWarnings("unused")
-        Exception e) {
+    } catch (Exception _) {
       v = true;
     }
     HAS_BUGGY_BREAKITERATORS = v;

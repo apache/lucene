@@ -135,7 +135,7 @@ public class FileSwitchDirectory extends Directory {
     if (exc != null && files.isEmpty()) {
       throw exc;
     }
-    String[] result = files.toArray(new String[files.size()]);
+    String[] result = files.toArray(String[]::new);
     Arrays.sort(result);
     return result;
   }
@@ -235,6 +235,12 @@ public class FileSwitchDirectory extends Directory {
   @Override
   public IndexInput openInput(String name, IOContext context) throws IOException {
     return getDirectory(name).openInput(name, context);
+  }
+
+  @Override
+  public void copyFrom(Directory from, String src, String dest, IOContext context)
+      throws IOException {
+    getDirectory(dest).copyFrom(from, src, dest, context);
   }
 
   @Override

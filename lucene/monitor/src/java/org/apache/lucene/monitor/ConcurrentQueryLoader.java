@@ -39,14 +39,14 @@ import org.apache.lucene.util.NamedThreadFactory;
  *
  * <p>Use as follows:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *     List&lt;QueryError&gt; errors = new ArrayList&lt;&gt;();
  *     try (ConcurrentQueryLoader loader = new ConcurrentQueryLoader(monitor, errors)) {
  *         for (MonitorQuery mq : getQueries()) {
  *             loader.add(mq);
  *         }
  *     }
- * </pre>
+ * </code></pre>
  *
  * <p>The Monitor's MonitorQueryParser must be thread-safe for this to work correctly.
  */
@@ -109,9 +109,7 @@ public class ConcurrentQueryLoader implements Closeable {
     this.executor.shutdown();
     try {
       this.shutdownLatch.await();
-    } catch (
-        @SuppressWarnings("unused")
-        InterruptedException e) {
+    } catch (InterruptedException _) {
       // fine
     }
     if (errors.size() > 0) {
@@ -145,9 +143,7 @@ public class ConcurrentQueryLoader implements Closeable {
         }
       } catch (IOException e) {
         errors.add(e);
-      } catch (
-          @SuppressWarnings("unused")
-          InterruptedException e) {
+      } catch (InterruptedException _) {
         Thread.currentThread().interrupt();
       } finally {
         shutdownLatch.countDown();

@@ -29,7 +29,7 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
-import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Bits;
 
@@ -49,8 +49,8 @@ public final class SlowCodecReaderWrapper {
    * (slow) view is returned.
    */
   public static CodecReader wrap(final LeafReader reader) throws IOException {
-    if (reader instanceof CodecReader) {
-      return (CodecReader) reader;
+    if (reader instanceof CodecReader cr) {
+      return cr;
     } else {
       // simulate it slowly, over the leafReader api:
       reader.checkIntegrity();
@@ -148,12 +148,12 @@ public final class SlowCodecReaderWrapper {
     return new PointsReader() {
 
       @Override
-      public PointValues getValues(String field) throws IOException {
+      public PointValues getValues(String field) {
         return reader.getPointValues(field);
       }
 
       @Override
-      public void checkIntegrity() throws IOException {
+      public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
         // We already checkIntegrity the entire reader up front
       }
 
@@ -175,19 +175,33 @@ public final class SlowCodecReaderWrapper {
       }
 
       @Override
-      public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
+      public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+        return reader.getFloat16VectorValues(field);
+      }
+
+      @Override
+      public void search(
+          String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
           throws IOException {
         reader.searchNearestVectors(field, target, knnCollector, acceptDocs);
       }
 
       @Override
-      public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
+      public void search(
+          String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
           throws IOException {
         reader.searchNearestVectors(field, target, knnCollector, acceptDocs);
       }
 
       @Override
-      public void checkIntegrity() {
+      public void search(
+          String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+          throws IOException {
+        reader.searchNearestVectors(field, target, knnCollector, acceptDocs);
+      }
+
+      @Override
+      public void checkIntegrity(MergePolicy.OneMerge merge) {
         // We already checkIntegrity the entire reader up front
       }
 
@@ -195,15 +209,13 @@ public final class SlowCodecReaderWrapper {
       public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
         SegmentReader segmentReader = segmentReader(reader);
         var vectorsReader = segmentReader.getVectorReader();
-        if (vectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader fieldsReader) {
-          vectorsReader = fieldsReader.getFieldReader(fieldInfo.name);
-        }
+        vectorsReader = vectorsReader.unwrapReaderForField(fieldInfo.name);
         return vectorsReader.getOffHeapByteSize(fieldInfo);
       }
 
       static SegmentReader segmentReader(LeafReader reader) {
-        if (reader instanceof SegmentReader) {
-          return (SegmentReader) reader;
+        if (reader instanceof SegmentReader sr) {
+          return sr;
         } else if (reader instanceof final FilterLeafReader fReader) {
           return segmentReader(FilterLeafReader.unwrap(fReader));
         } else if (reader instanceof final FilterCodecReader fReader) {
@@ -226,7 +238,7 @@ public final class SlowCodecReaderWrapper {
       }
 
       @Override
-      public void checkIntegrity() throws IOException {
+      public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
         // We already checkIntegrity the entire reader up front
       }
 
@@ -264,12 +276,12 @@ public final class SlowCodecReaderWrapper {
       }
 
       @Override
-      public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
+      public DocValuesSkipper getSkipper(FieldInfo field) {
         return reader.getDocValuesSkipper(field.name);
       }
 
       @Override
-      public void checkIntegrity() throws IOException {
+      public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
         // We already checkIntegrity the entire reader up front
       }
 
@@ -302,7 +314,7 @@ public final class SlowCodecReaderWrapper {
       }
 
       @Override
-      public void checkIntegrity() throws IOException {
+      public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
         // We already checkIntegrity the entire reader up front
       }
 
@@ -335,7 +347,7 @@ public final class SlowCodecReaderWrapper {
       }
 
       @Override
-      public void checkIntegrity() throws IOException {
+      public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
         // We already checkIntegrity the entire reader up front
       }
 
@@ -359,7 +371,7 @@ public final class SlowCodecReaderWrapper {
       }
 
       @Override
-      public Terms terms(String field) throws IOException {
+      public Terms terms(String field) {
         return reader.terms(field);
       }
 
@@ -369,7 +381,7 @@ public final class SlowCodecReaderWrapper {
       }
 
       @Override
-      public void checkIntegrity() throws IOException {
+      public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
         // We already checkIntegrity the entire reader up front
       }
 

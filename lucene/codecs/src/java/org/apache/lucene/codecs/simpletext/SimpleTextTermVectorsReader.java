@@ -16,9 +16,25 @@
  */
 package org.apache.lucene.codecs.simpletext;
 
-import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.*;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.DOC;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.END;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.ENDOFFSET;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.FIELD;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.FIELDNAME;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.FIELDOFFSETS;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.FIELDPAYLOADS;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.FIELDPOSITIONS;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.FIELDTERMCOUNT;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.NUMFIELDS;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.PAYLOAD;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.POSITION;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.STARTOFFSET;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.TERMFREQ;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.TERMTEXT;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.VECTORS_EXTENSION;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
@@ -29,6 +45,7 @@ import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.SlowImpactsEnum;
@@ -63,21 +80,13 @@ public class SimpleTextTermVectorsReader extends TermVectorsReader {
 
   public SimpleTextTermVectorsReader(Directory directory, SegmentInfo si, IOContext context)
       throws IOException {
-    boolean success = false;
     try {
       in =
           directory.openInput(
               IndexFileNames.segmentFileName(si.name, "", VECTORS_EXTENSION), context);
-      success = true;
-    } finally {
-      if (!success) {
-        try {
-          close();
-        } catch (
-            @SuppressWarnings("unused")
-            Throwable t) {
-        } // ensure we throw our original exception
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
     readIndex(si.maxDoc());
   }
@@ -254,7 +263,7 @@ public class SimpleTextTermVectorsReader extends TermVectorsReader {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       return fields.get(field);
     }
 
@@ -289,23 +298,27 @@ public class SimpleTextTermVectorsReader extends TermVectorsReader {
     }
 
     @Override
-    public long getSumTotalTermFreq() throws IOException {
-      // TODO: make it constant-time
-      long ttf = 0;
-      TermsEnum iterator = iterator();
-      for (BytesRef b = iterator.next(); b != null; b = iterator.next()) {
-        ttf += iterator.totalTermFreq();
+    public long getSumTotalTermFreq() {
+      try {
+        // TODO: make it constant-time by pre-computing during indexing
+        long ttf = 0;
+        TermsEnum iterator = iterator();
+        for (BytesRef b = iterator.next(); b != null; b = iterator.next()) {
+          ttf += iterator.totalTermFreq();
+        }
+        return ttf;
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
       }
-      return ttf;
     }
 
     @Override
-    public long getSumDocFreq() throws IOException {
+    public long getSumDocFreq() {
       return terms.size();
     }
 
     @Override
-    public int getDocCount() throws IOException {
+    public int getDocCount() {
       return 1;
     }
 
@@ -582,5 +595,5 @@ public class SimpleTextTermVectorsReader extends TermVectorsReader {
   }
 
   @Override
-  public void checkIntegrity() throws IOException {}
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {}
 }

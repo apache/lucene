@@ -420,6 +420,8 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     }
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testRandom() throws Exception {
     int numDocs = atLeast(50);
     Directory dir = newDirectory();

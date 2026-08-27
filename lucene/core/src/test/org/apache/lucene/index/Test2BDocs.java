@@ -53,9 +53,9 @@ public class Test2BDocs extends LuceneTestCase {
                 .setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH)
                 .setRAMBufferSizeMB(256.0)
                 .setMergeScheduler(new ConcurrentMergeScheduler())
-                .setMergePolicy(newLogMergePolicy(false, 10))
+                .setMergePolicy(newLogMergePolicy(10))
                 .setOpenMode(IndexWriterConfig.OpenMode.CREATE)
-                .setCodec(TestUtil.getDefaultCodec()));
+                .setCodec(TestUtil.getDefaultCodec(false)));
 
     Document doc = new Document();
     Field field = new Field("f1", "a", StringField.TYPE_NOT_STORED);

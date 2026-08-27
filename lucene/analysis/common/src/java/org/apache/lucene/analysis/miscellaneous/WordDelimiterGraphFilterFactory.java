@@ -16,8 +16,22 @@
  */
 package org.apache.lucene.analysis.miscellaneous;
 
-import static org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter.*;
-import static org.apache.lucene.analysis.miscellaneous.WordDelimiterIterator.*;
+import static org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter.CATENATE_ALL;
+import static org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter.CATENATE_NUMBERS;
+import static org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter.CATENATE_WORDS;
+import static org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter.GENERATE_NUMBER_PARTS;
+import static org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter.GENERATE_WORD_PARTS;
+import static org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter.IGNORE_KEYWORDS;
+import static org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter.PRESERVE_ORIGINAL;
+import static org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter.SPLIT_ON_CASE_CHANGE;
+import static org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter.SPLIT_ON_NUMERICS;
+import static org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter.STEM_ENGLISH_POSSESSIVE;
+import static org.apache.lucene.analysis.miscellaneous.WordDelimiterIterator.ALPHA;
+import static org.apache.lucene.analysis.miscellaneous.WordDelimiterIterator.ALPHANUM;
+import static org.apache.lucene.analysis.miscellaneous.WordDelimiterIterator.DIGIT;
+import static org.apache.lucene.analysis.miscellaneous.WordDelimiterIterator.LOWER;
+import static org.apache.lucene.analysis.miscellaneous.WordDelimiterIterator.SUBWORD_DELIM;
+import static org.apache.lucene.analysis.miscellaneous.WordDelimiterIterator.UPPER;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -37,7 +51,7 @@ import org.apache.lucene.util.ResourceLoaderAware;
 /**
  * Factory for {@link WordDelimiterGraphFilter}.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_wd" class="solr.TextField" positionIncrementGap="100"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.WhitespaceTokenizerFactory"/&gt;
@@ -47,7 +61,7 @@ import org.apache.lucene.util.ResourceLoaderAware;
  *             generateWordParts="1" generateNumberParts="1" stemEnglishPossessive="1"
  *             types="wdfftypes.txt" ignoreKeywords="0" /&gt;
  *   &lt;/analyzer&gt;
- * &lt;/fieldType&gt;</pre>
+ * &lt;/fieldType&gt;</code></pre>
  *
  * @since 6.5.0
  * @lucene.spi {@value #NAME}

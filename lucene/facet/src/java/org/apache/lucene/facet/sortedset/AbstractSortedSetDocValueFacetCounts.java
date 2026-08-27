@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -90,7 +91,7 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
     pathCount = adjustPathCountIfNecessary(dimConfig, iterationCursor.pathOrd, pathCount);
 
     return new FacetResult(
-        dim, path, pathCount, labelValues.toArray(new LabelAndValue[0]), labelValues.size());
+        dim, path, pathCount, labelValues.toArray(LabelAndValue[]::new), labelValues.size());
   }
 
   @Override
@@ -150,18 +151,10 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
     // Creates priority queue to store top dimensions and sort by their aggregated values/hits and
     // string values.
     PriorityQueue<DimValue> pq =
-        new PriorityQueue<>(topNDims) {
-          @Override
-          protected boolean lessThan(DimValue a, DimValue b) {
-            if (a.value > b.value) {
-              return false;
-            } else if (a.value < b.value) {
-              return true;
-            } else {
-              return a.dim.compareTo(b.dim) > 0;
-            }
-          }
-        };
+        PriorityQueue.usingComparator(
+            topNDims,
+            Comparator.<DimValue>comparingInt(dv -> dv.value)
+                .thenComparing(dv -> dv.dim, Comparator.reverseOrder()));
 
     // Keep track of intermediate results, if we compute them, so we can reuse them later:
     Map<String, TopChildrenForPath> intermediateResults = null;

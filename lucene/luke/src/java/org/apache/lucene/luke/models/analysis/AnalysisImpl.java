@@ -52,7 +52,6 @@ public final class AnalysisImpl implements Analysis {
 
   private Analyzer analyzer = defaultAnalyzer();
 
-  @SuppressWarnings("BanClassLoader")
   @Override
   public void addExternalJars(List<String> jarFiles) {
     List<URL> urls = new ArrayList<>();
@@ -73,7 +72,7 @@ public final class AnalysisImpl implements Analysis {
 
     // reload available tokenizers, charfilters, and tokenfilters
     URLClassLoader classLoader =
-        new URLClassLoader(urls.toArray(new URL[0]), this.getClass().getClassLoader());
+        new URLClassLoader(urls.toArray(URL[]::new), this.getClass().getClassLoader());
     CharFilterFactory.reloadCharFilters(classLoader);
     TokenizerFactory.reloadTokenizers(classLoader);
     TokenFilterFactory.reloadTokenFilters(classLoader);
@@ -250,18 +249,14 @@ public final class AnalysisImpl implements Analysis {
             new NamedTokens(TokenFilterFactory.findSPIName(tokenFilterFactory.getClass()), tokens));
         try {
           listBasedTokenStream.close();
-        } catch (
-            @SuppressWarnings("unused")
-            IOException e) {
+        } catch (IOException _) {
           // do nothing;
         }
         listBasedTokenStream = new ListBasedTokenStream(listBasedTokenStream, attributeSources);
       }
       try {
         listBasedTokenStream.close();
-      } catch (
-          @SuppressWarnings("unused")
-          IOException e) {
+      } catch (IOException _) {
         // do nothing.
       } finally {
         reader.close();

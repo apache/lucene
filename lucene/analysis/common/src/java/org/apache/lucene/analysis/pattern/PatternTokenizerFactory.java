@@ -46,12 +46,12 @@ import org.apache.lucene.util.AttributeFactory;
  *
  * <p>NOTE: This Tokenizer does not output tokens that are of zero length.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_ptn" class="solr.TextField" positionIncrementGap="100"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.PatternTokenizerFactory" pattern="\'([^\']+)\'" group="1"/&gt;
  *   &lt;/analyzer&gt;
- * &lt;/fieldType&gt;</pre>
+ * &lt;/fieldType&gt;</code></pre>
  *
  * @see PatternTokenizer
  * @since solr1.2

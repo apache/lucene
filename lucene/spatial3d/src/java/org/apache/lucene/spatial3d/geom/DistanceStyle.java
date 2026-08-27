@@ -26,18 +26,23 @@ public interface DistanceStyle {
   // convenient access to built-in styles:
 
   /** Arc distance calculator */
+  @SuppressWarnings("ClassInitializationDeadlock") // FIXME: may cause hangs!
   public static final ArcDistance ARC = ArcDistance.INSTANCE;
 
   /** Linear distance calculator */
+  @SuppressWarnings("ClassInitializationDeadlock") // FIXME: may cause hangs!
   public static final LinearDistance LINEAR = LinearDistance.INSTANCE;
 
   /** Linear distance squared calculator */
+  @SuppressWarnings("ClassInitializationDeadlock") // FIXME: may cause hangs!
   public static final LinearSquaredDistance LINEAR_SQUARED = LinearSquaredDistance.INSTANCE;
 
   /** Normal distance calculator */
+  @SuppressWarnings("ClassInitializationDeadlock") // FIXME: may cause hangs!
   public static final NormalDistance NORMAL = NormalDistance.INSTANCE;
 
   /** Normal distance squared calculator */
+  @SuppressWarnings("ClassInitializationDeadlock") // FIXME: may cause hangs!
   public static final NormalSquaredDistance NORMAL_SQUARED = NormalSquaredDistance.INSTANCE;
 
   /**

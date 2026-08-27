@@ -291,14 +291,14 @@ public final class SynonymFilter extends TokenFilter {
   }
 
   /*
-   This is the core of this TokenFilter: it locates the
-   synonym matches and buffers up the results into
-   futureInputs/Outputs.
-
-   NOTE: this calls input.incrementToken and does not
-   capture the state if no further tokens were checked.  So
-   caller must then forward state to our caller, or capture:
-  */
+   * This is the core of this TokenFilter: it locates the
+   * synonym matches and buffers up the results into
+   * futureInputs/Outputs.
+   *
+   * NOTE: this calls input.incrementToken and does not
+   * capture the state if no further tokens were checked.  So
+   * caller must then forward state to our caller, or capture:
+   */
   private int lastStartOffset;
   private int lastEndOffset;
 

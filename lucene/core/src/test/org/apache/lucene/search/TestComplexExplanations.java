@@ -55,7 +55,7 @@ public class TestComplexExplanations extends BaseExplanationTestCase {
   }
 
   public void testMA3() throws Exception {
-    Query q = new MatchAllDocsQuery();
+    Query q = MatchAllDocsQuery.INSTANCE;
     bqtest(new BoostQuery(q, 0), new int[] {0, 1, 2, 3});
   }
 
@@ -144,5 +144,40 @@ public class TestComplexExplanations extends BaseExplanationTestCase {
     BooleanQuery query = builder.build();
 
     bqtest(new BoostQuery(query, 0), new int[] {0, 1, 2, 3});
+  }
+
+  public void testExplainFailingOptionalClauses() throws Exception {
+    // minShouldMatch not satisfied, show failing SHOULD.
+    BooleanQuery msm =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term(FIELD, "w1")), Occur.SHOULD)
+            .add(new TermQuery(new Term(FIELD, "xx")), Occur.SHOULD)
+            .add(new TermQuery(new Term(FIELD, "zz")), Occur.SHOULD)
+            .setMinimumNumberShouldMatch(2)
+            .build();
+    String msmExpl = searcher.explain(msm, 0).toString();
+    assertTrue(
+        msmExpl.contains("Failure to match minimum number of optional clauses: 2, matched: 1"));
+    assertTrue(msmExpl.contains("no match on optional clause (field:xx)"));
+    assertTrue(msmExpl.contains("no match on optional clause (field:zz)"));
+    assertFalse(msmExpl.contains("no match on optional clause (field:w1)"));
+
+    // nothing matches in disjunction, show failing SHOULD.
+    BooleanQuery disj =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term(FIELD, "xx")), Occur.SHOULD)
+            .add(new TermQuery(new Term(FIELD, "zz")), Occur.SHOULD)
+            .build();
+    String disjExpl = searcher.explain(disj, 0).toString();
+    assertTrue(disjExpl.contains("no match on optional clause (field:xx)"));
+    assertTrue(disjExpl.contains("no match on optional clause (field:zz)"));
+
+    // MUST clause fails, failing SHOULD are not shown.
+    BooleanQuery mustFail =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term(FIELD, "missing")), Occur.MUST)
+            .add(new TermQuery(new Term(FIELD, "xx")), Occur.SHOULD)
+            .build();
+    assertFalse(searcher.explain(mustFail, 0).toString().contains("no match on optional clause"));
   }
 }

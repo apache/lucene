@@ -248,10 +248,9 @@ class XdYZSolid extends BaseXYZSolid {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof XdYZSolid)) {
+    if (!(o instanceof XdYZSolid other)) {
       return false;
     }
-    XdYZSolid other = (XdYZSolid) o;
     if (!super.equals(other)) {
       return false;
     }

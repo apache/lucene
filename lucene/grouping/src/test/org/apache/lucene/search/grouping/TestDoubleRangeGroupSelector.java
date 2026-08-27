@@ -50,7 +50,7 @@ public class TestDoubleRangeGroupSelector extends BaseGroupSelectorTestCase<Doub
   protected Query filterQuery(DoubleRange groupValue) {
     if (groupValue == null) {
       return new BooleanQuery.Builder()
-          .add(new MatchAllDocsQuery(), BooleanClause.Occur.FILTER)
+          .add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.FILTER)
           .add(new FieldExistsQuery("double"), BooleanClause.Occur.MUST_NOT)
           .build();
     }

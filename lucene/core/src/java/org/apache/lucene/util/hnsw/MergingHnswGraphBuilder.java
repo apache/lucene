@@ -20,7 +20,8 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import java.util.Set;
+import java.util.Arrays;
+import java.util.Locale;
 import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.util.BitSet;
 
@@ -84,7 +85,8 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
    * @param ordMaps the ordinal maps for the graphs
    * @param totalNumberOfVectors the total number of vectors in the new graph, this should include
    *     all vectors expected to be added to the graph in the future
-   * @param initializedNodes the nodes will be initialized through the merging
+   * @param initializedNodes the nodes will be initialized through the merging, if null, all nodes
+   *     should be already initialized after {@link #updateGraph(HnswGraph, int[])} being called
    * @return a new HnswGraphBuilder that is initialized with the provided HnswGraph
    * @throws IOException when reading the graph fails
    */
@@ -98,7 +100,8 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
       BitSet initializedNodes)
       throws IOException {
     OnHeapHnswGraph graph =
-        InitializedHnswGraphBuilder.initGraph(graphs[0], ordMaps[0], totalNumberOfVectors);
+        InitializedHnswGraphBuilder.initGraph(
+            graphs[0], ordMaps[0], totalNumberOfVectors, beamWidth, scorerSupplier);
     return new MergingHnswGraphBuilder(
         scorerSupplier, beamWidth, seed, graph, graphs, ordMaps, initializedNodes);
   }
@@ -108,6 +111,7 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
     if (frozen) {
       throw new IllegalStateException("This HnswGraphBuilder is frozen and cannot be updated");
     }
+    long startTimeNs = System.nanoTime();
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
       String graphSizes = "";
       for (HnswGraph g : graphs) {
@@ -126,25 +130,41 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
       updateGraph(graphs[i], ordMaps[i]);
     }
 
-    // TODO: optimize to iterate only over unset bits in initializedNodes
-    if (initializedNodes != null) {
-      for (int node = 0; node < maxOrd; node++) {
-        if (initializedNodes.get(node) == false) {
-          addGraphNode(node);
-        }
+    if (initializedNodes != null && maxOrd > 0) {
+      for (int node = initializedNodes.nextClearBit(0, maxOrd);
+          node != NO_MORE_DOCS;
+          node =
+              (node + 1 < maxOrd)
+                  ? initializedNodes.nextClearBit(node + 1, maxOrd)
+                  : NO_MORE_DOCS) {
+        addGraphNode(node);
       }
     }
 
+    if (infoStream.isEnabled(HNSW_COMPONENT)) {
+      double elapsedMs = (System.nanoTime() - startTimeNs) / 1_000_000.0;
+      infoStream.message(
+          HNSW_COMPONENT,
+          String.format(
+              Locale.ROOT,
+              "merge completed: %d vectors from merging %d graphs in %.2f ms",
+              maxOrd,
+              graphs.length,
+              elapsedMs));
+    }
     return getCompletedGraph();
   }
 
   /** Merge the smaller graph into the current larger graph. */
   private void updateGraph(HnswGraph gS, int[] ordMapS) throws IOException {
     int size = gS.size();
-    Set<Integer> j = UpdateGraphsUtils.computeJoinSet(gS);
+    IntHashSet j = UpdateGraphsUtils.computeJoinSet(gS);
 
-    // for nodes that in the join set, add them directly to the graph
-    for (int node : j) {
+    // add nodes in the join set directly to the graph
+    // sort for stability
+    int[] nodes = j.toArray();
+    Arrays.sort(nodes);
+    for (int node : nodes) {
       addGraphNode(ordMapS[node]);
     }
 
@@ -172,7 +192,7 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
           }
         }
       }
-      addGraphNodeWithEps(ordMapS[u], eps);
+      addGraphNode(ordMapS[u], eps);
     }
   }
 }

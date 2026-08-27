@@ -1,0 +1,5 @@
+---
+rules:
+  # Setting these limits causes failed builds which can be confusing
+  concurrency-limits:
+    disable: true

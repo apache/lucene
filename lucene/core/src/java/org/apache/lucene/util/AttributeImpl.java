@@ -76,12 +76,12 @@ public abstract class AttributeImpl implements Cloneable, Attribute {
    *
    * <p>Implementations look like this (e.g. for a combined attribute implementation):
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    *   public void reflectWith(AttributeReflector reflector) {
    *     reflector.reflect(CharTermAttribute.class, "term", term());
    *     reflector.reflect(PositionIncrementAttribute.class, "positionIncrement", getPositionIncrement());
    *   }
-   * </pre>
+   * </code></pre>
    *
    * <p>If you implement this method, make sure that for each invocation, the same set of {@link
    * Attribute} interfaces and keys are passed to {@link AttributeReflector#reflect} in the same

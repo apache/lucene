@@ -61,11 +61,11 @@ public class IDFValueSource extends DocFreqValueSource {
 
   // tries extra hard to cast the sim to TFIDFSimilarity
   static TFIDFSimilarity asTFIDF(Similarity sim, String field) {
-    while (sim instanceof PerFieldSimilarityWrapper) {
-      sim = ((PerFieldSimilarityWrapper) sim).get(field);
+    while (sim instanceof PerFieldSimilarityWrapper pfsw) {
+      sim = pfsw.get(field);
     }
-    if (sim instanceof TFIDFSimilarity) {
-      return (TFIDFSimilarity) sim;
+    if (sim instanceof TFIDFSimilarity tfidfSimilarity) {
+      return tfidfSimilarity;
     } else {
       return null;
     }

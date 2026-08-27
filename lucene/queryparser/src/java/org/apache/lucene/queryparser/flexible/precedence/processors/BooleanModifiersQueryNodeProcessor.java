@@ -102,11 +102,10 @@ public class BooleanModifiersQueryNodeProcessor extends QueryNodeProcessorImpl {
   private QueryNode applyModifier(QueryNode node, ModifierQueryNode.Modifier mod) {
 
     // check if modifier is not already defined and is default
-    if (!(node instanceof ModifierQueryNode)) {
+    if (!(node instanceof ModifierQueryNode modNode)) {
       return new ModifierQueryNode(node, mod);
 
     } else {
-      ModifierQueryNode modNode = (ModifierQueryNode) node;
 
       if (modNode.getModifier() == ModifierQueryNode.Modifier.MOD_NONE) {
         return new ModifierQueryNode(modNode.getChild(), mod);

@@ -27,25 +27,25 @@ public class TestBoostQuery extends LuceneTestCase {
   public void testValidation() {
     IllegalArgumentException e =
         expectThrows(
-            IllegalArgumentException.class, () -> new BoostQuery(new MatchAllDocsQuery(), -3));
+            IllegalArgumentException.class, () -> new BoostQuery(MatchAllDocsQuery.INSTANCE, -3));
     assertEquals("boost must be a positive float, got -3.0", e.getMessage());
 
     e =
         expectThrows(
-            IllegalArgumentException.class, () -> new BoostQuery(new MatchAllDocsQuery(), -0f));
+            IllegalArgumentException.class, () -> new BoostQuery(MatchAllDocsQuery.INSTANCE, -0f));
     assertEquals("boost must be a positive float, got -0.0", e.getMessage());
 
     e =
         expectThrows(
             IllegalArgumentException.class,
-            () -> new BoostQuery(new MatchAllDocsQuery(), Float.NaN));
+            () -> new BoostQuery(MatchAllDocsQuery.INSTANCE, Float.NaN));
     assertEquals("boost must be a positive float, got NaN", e.getMessage());
   }
 
   public void testEquals() {
     final float boost = random().nextFloat() * 3;
-    BoostQuery q1 = new BoostQuery(new MatchAllDocsQuery(), boost);
-    BoostQuery q2 = new BoostQuery(new MatchAllDocsQuery(), boost);
+    BoostQuery q1 = new BoostQuery(MatchAllDocsQuery.INSTANCE, boost);
+    BoostQuery q2 = new BoostQuery(MatchAllDocsQuery.INSTANCE, boost);
     assertEquals(q1, q2);
     assertEquals(q1.getBoost(), q2.getBoost(), 0f);
 
@@ -53,9 +53,9 @@ public class TestBoostQuery extends LuceneTestCase {
     while (boost == boost2) {
       boost2 = random().nextFloat() * 3;
     }
-    BoostQuery q3 = new BoostQuery(new MatchAllDocsQuery(), boost2);
+    BoostQuery q3 = new BoostQuery(MatchAllDocsQuery.INSTANCE, boost2);
     assertFalse(q1.equals(q3));
-    assertFalse(q1.hashCode() == q3.hashCode());
+    assertNotEquals(q3.hashCode(), q1.hashCode());
   }
 
   public void testToString() {
@@ -77,22 +77,22 @@ public class TestBoostQuery extends LuceneTestCase {
     assertEquals(new BoostQuery(new TermQuery(new Term("foo", "bar")), 2), searcher.rewrite(q));
 
     // boosts are merged
-    q = new BoostQuery(new BoostQuery(new MatchAllDocsQuery(), 3), 2);
-    assertEquals(new BoostQuery(new MatchAllDocsQuery(), 6), searcher.rewrite(q));
+    q = new BoostQuery(new BoostQuery(MatchAllDocsQuery.INSTANCE, 3), 2);
+    assertEquals(new BoostQuery(MatchAllDocsQuery.INSTANCE, 6), searcher.rewrite(q));
 
     // scores are not computed when the boost is 0
-    q = new BoostQuery(new MatchAllDocsQuery(), 0);
+    q = new BoostQuery(MatchAllDocsQuery.INSTANCE, 0);
     assertEquals(
-        new BoostQuery(new ConstantScoreQuery(new MatchAllDocsQuery()), 0), searcher.rewrite(q));
+        new BoostQuery(new ConstantScoreQuery(MatchAllDocsQuery.INSTANCE), 0), searcher.rewrite(q));
   }
 
   public void testRewriteBubblesUpMatchNoDocsQuery() throws IOException {
     IndexSearcher searcher = newSearcher(new MultiReader());
 
-    Query query = new BoostQuery(new MatchNoDocsQuery(), 2f);
-    assertEquals(new MatchNoDocsQuery(), searcher.rewrite(query));
+    Query query = new BoostQuery(MatchNoDocsQuery.INSTANCE, 2f);
+    assertEquals(MatchNoDocsQuery.INSTANCE, searcher.rewrite(query));
 
-    query = new BoostQuery(new MatchNoDocsQuery(), 0f);
-    assertEquals(new MatchNoDocsQuery(), searcher.rewrite(query));
+    query = new BoostQuery(MatchNoDocsQuery.INSTANCE, 0f);
+    assertEquals(MatchNoDocsQuery.INSTANCE, searcher.rewrite(query));
   }
 }

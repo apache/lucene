@@ -175,7 +175,7 @@ public class ToParentBlockJoinQuery extends Query {
         }
 
         @Override
-        public long cost() {
+        public long cost() throws IOException {
           return childScorerSupplier.cost();
         }
 
@@ -216,6 +216,11 @@ public class ToParentBlockJoinQuery extends Query {
         }
       }
       return MatchesUtils.MATCH_WITH_NO_TERMS;
+    }
+
+    @Override
+    public int count(LeafReaderContext context) {
+      return -1;
     }
   }
 

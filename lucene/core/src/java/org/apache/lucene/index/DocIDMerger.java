@@ -145,13 +145,12 @@ public abstract class DocIDMerger<T extends DocIDMerger.Sub> {
       }
       this.subs = subs;
       queue =
-          new PriorityQueue<T>(maxCount - 1) {
-            @Override
-            protected boolean lessThan(Sub a, Sub b) {
-              assert a.mappedDocID != b.mappedDocID;
-              return a.mappedDocID < b.mappedDocID;
-            }
-          };
+          PriorityQueue.usingComparator(
+              maxCount - 1,
+              (a, b) -> {
+                assert a.mappedDocID != b.mappedDocID;
+                return Integer.compare(a.mappedDocID, b.mappedDocID);
+              });
       reset();
     }
 
@@ -198,7 +197,9 @@ public abstract class DocIDMerger<T extends DocIDMerger.Sub> {
         } else {
           current = queue.pop();
         }
-      } else if (queue.size() > 0) {
+      } else {
+        // queue cannot be empty here: if it were, queueMinDocID == NO_MORE_DOCS, and any valid
+        // nextDoc would satisfy nextDoc < queueMinDocID, taking the fast path above
         assert queueMinDocID == queue.top().mappedDocID;
         assert nextDoc > queueMinDocID;
         T newCurrent = queue.top();

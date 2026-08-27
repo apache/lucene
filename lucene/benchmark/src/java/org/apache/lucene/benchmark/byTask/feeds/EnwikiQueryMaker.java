@@ -31,7 +31,6 @@ import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.MultiTermQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.WildcardQuery;
-import org.apache.lucene.util.automaton.Operations;
 
 /**
  * A QueryMaker that uses common and uncommon actual Wikipedia queries for searching the English
@@ -132,10 +131,7 @@ public class EnwikiQueryMaker extends AbstractQueryMaker {
 
   private static Query[] getPrebuiltQueries(String field) {
     WildcardQuery wcq =
-        new WildcardQuery(
-            new Term(field, "fo*"),
-            Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
-            MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE);
+        new WildcardQuery(new Term(field, "fo*"), MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE);
     // be wary of unanalyzed text
     return new Query[] {
       new SpanFirstQuery(new SpanTermQuery(new Term(field, "ford")), 5),
@@ -172,11 +168,11 @@ public class EnwikiQueryMaker extends AbstractQueryMaker {
 
         Object query = qs.get(i);
         Query q = null;
-        if (query instanceof String) {
-          q = qp.parse((String) query);
+        if (query instanceof String s) {
+          q = qp.parse(s);
 
-        } else if (query instanceof Query) {
-          q = (Query) query;
+        } else if (query instanceof Query qq) {
+          q = qq;
 
         } else {
           System.err.println("Unsupported Query Type: " + query);
@@ -191,7 +187,7 @@ public class EnwikiQueryMaker extends AbstractQueryMaker {
       }
     }
 
-    return queries.toArray(new Query[0]);
+    return queries.toArray(Query[]::new);
   }
 
   @Override

@@ -81,7 +81,7 @@ public final class ByteBuffersDirectory extends BaseDirectory {
       OUTPUT_AS_ONE_BUFFER;
 
   private final Function<String, String> tempFileName =
-      new Function<String, String>() {
+      new Function<>() {
         private final AtomicLong counter = new AtomicLong();
 
         @Override
@@ -247,8 +247,8 @@ public final class ByteBuffersDirectory extends BaseDirectory {
       return local.clone();
     }
 
-    final IndexOutput createOutput(
-        BiFunction<String, ByteBuffersDataOutput, IndexInput> outputToInput) throws IOException {
+    IndexOutput createOutput(BiFunction<String, ByteBuffersDataOutput, IndexInput> outputToInput)
+        throws IOException {
       if (content != null) {
         throw new IOException("Can only write to a file once: " + fileName);
       }

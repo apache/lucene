@@ -37,6 +37,7 @@ import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.DFRSimilarity;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -51,8 +52,8 @@ import org.apache.lucene.util.SmallFloat;
  *
  * <ol>
  *   <li>Given a list of fields and weights, it pretends there is a synthetic combined field where
- *       all terms have been indexed. It computes new term and collection statistics for this
- *       combined field.
+ *       all terms have been indexed. It computes new term and field statistics for this combined
+ *       field.
  *   <li>It uses a disjunction iterator and {@link IndexSearcher#getSimilarity} to score documents.
  * </ol>
  *
@@ -278,41 +279,37 @@ public final class CombinedFieldQuery extends Query implements Accountable {
         TermStates ts = TermStates.build(searcher, fieldTerms[i], true);
         termStates[i] = ts;
         if (ts.docFreq() > 0) {
-          TermStatistics termStats =
-              searcher.termStatistics(fieldTerms[i], ts.docFreq(), ts.totalTermFreq());
+          TermStats termStats = searcher.termStats(fieldTerms[i], ts.docFreq(), ts.totalTermFreq());
           docFreq = Math.max(termStats.docFreq(), docFreq);
           totalTermFreq += (double) field.weight * termStats.totalTermFreq();
         }
       }
       if (docFreq > 0) {
-        CollectionStatistics pseudoCollectionStats = mergeCollectionStatistics(searcher);
-        TermStatistics pseudoTermStatistics =
-            new TermStatistics(new BytesRef("pseudo_term"), docFreq, Math.max(1, totalTermFreq));
-        this.simWeight =
-            searcher.getSimilarity().scorer(boost, pseudoCollectionStats, pseudoTermStatistics);
+        FieldStats pseudoFieldStats = mergeFieldStats(searcher);
+        TermStats pseudoTermStats =
+            new TermStats(new BytesRef("pseudo_term"), docFreq, Math.max(1, totalTermFreq));
+        this.simWeight = searcher.getSimilarity().scorer(boost, pseudoFieldStats, pseudoTermStats);
       } else {
         this.simWeight = null;
       }
     }
 
-    private CollectionStatistics mergeCollectionStatistics(IndexSearcher searcher)
-        throws IOException {
+    private FieldStats mergeFieldStats(IndexSearcher searcher) throws IOException {
       long maxDoc = 0;
       long docCount = 0;
       long sumTotalTermFreq = 0;
       long sumDocFreq = 0;
       for (FieldAndWeight fieldWeight : fieldAndWeights.values()) {
-        CollectionStatistics collectionStats = searcher.collectionStatistics(fieldWeight.field);
-        if (collectionStats != null) {
-          maxDoc = Math.max(collectionStats.maxDoc(), maxDoc);
-          docCount = Math.max(collectionStats.docCount(), docCount);
-          sumDocFreq = Math.max(collectionStats.sumDocFreq(), sumDocFreq);
-          sumTotalTermFreq += (double) fieldWeight.weight * collectionStats.sumTotalTermFreq();
+        FieldStats fieldStats = searcher.fieldStats(fieldWeight.field);
+        if (fieldStats != null) {
+          maxDoc = Math.max(fieldStats.maxDoc(), maxDoc);
+          docCount = Math.max(fieldStats.docCount(), docCount);
+          sumDocFreq = Math.max(fieldStats.sumDocFreq(), sumDocFreq);
+          sumTotalTermFreq += (double) fieldWeight.weight * fieldStats.sumTotalTermFreq();
         }
       }
 
-      return new CollectionStatistics(
-          "pseudo_field", maxDoc, docCount, sumTotalTermFreq, sumDocFreq);
+      return new FieldStats("pseudo_field", maxDoc, docCount, sumTotalTermFreq, sumDocFreq);
     }
 
     @Override
@@ -378,8 +375,10 @@ public final class CombinedFieldQuery extends Query implements Accountable {
           List<DisiWrapper> wrappers = new ArrayList<>(iterators.size());
           for (int i = 0; i < iterators.size(); i++) {
             float weight = fields.get(i).weight;
-            wrappers.add(
-                new WeightedDisiWrapper(new TermScorer(iterators.get(i), simWeight, null), weight));
+            Scorer scorer = new TermScorer(iterators.get(i), simWeight, null);
+            DisiWrapper w = new DisiWrapper(scorer, false, weight);
+            assert w.postingsEnum != null; // needed to access term frequencies
+            wrappers.add(w);
           }
           // Even though it is called approximation, it is accurate since none of
           // the sub iterators are two-phase iterators.
@@ -392,27 +391,17 @@ public final class CombinedFieldQuery extends Query implements Accountable {
         public long cost() {
           return finalCost;
         }
+
+        @Override
+        public BulkScorer bulkScorer() throws IOException {
+          return new BatchScoreBulkScorer(get(Long.MAX_VALUE));
+        }
       };
     }
 
     @Override
     public boolean isCacheable(LeafReaderContext ctx) {
       return false;
-    }
-  }
-
-  private static class WeightedDisiWrapper extends DisiWrapper {
-    final PostingsEnum postingsEnum;
-    final float weight;
-
-    WeightedDisiWrapper(Scorer scorer, float weight) {
-      super(scorer, false);
-      this.weight = weight;
-      this.postingsEnum = (PostingsEnum) scorer.iterator();
-    }
-
-    float freq() throws IOException {
-      return weight * postingsEnum.freq();
     }
   }
 
@@ -434,9 +423,9 @@ public final class CombinedFieldQuery extends Query implements Accountable {
 
     float freq() throws IOException {
       DisiWrapper w = iterator.topList();
-      float freq = ((WeightedDisiWrapper) w).freq();
+      float freq = w.postingsEnum.freq() * w.weight;
       for (w = w.next; w != null; w = w.next) {
-        freq += ((WeightedDisiWrapper) w).freq();
+        freq += w.postingsEnum.freq() * w.weight;
         if (freq < 0) { // overflow
           return Integer.MAX_VALUE;
         }
@@ -457,6 +446,24 @@ public final class CombinedFieldQuery extends Query implements Accountable {
     @Override
     public float getMaxScore(int upTo) throws IOException {
       return maxScore;
+    }
+
+    @Override
+    public void nextDocsAndScores(int upTo, Bits liveDocs, DocAndFloatFeatureBuffer buffer)
+        throws IOException {
+      int batchSize = 64; // arbitrary
+      buffer.growNoCopy(batchSize);
+      int size = 0;
+      DocIdSetIterator iterator = iterator();
+      for (int doc = docID(); doc < upTo && size < batchSize; doc = iterator.nextDoc()) {
+        if (liveDocs == null || liveDocs.get(doc)) {
+          buffer.docs[size] = doc;
+          buffer.features[size] = freq();
+          ++size;
+        }
+      }
+      buffer.size = size;
+      simScorer.scoreRange(buffer);
     }
   }
 }

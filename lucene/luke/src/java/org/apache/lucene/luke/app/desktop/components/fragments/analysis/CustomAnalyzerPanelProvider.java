@@ -519,7 +519,7 @@ public final class CustomAnalyzerPanelProvider implements CustomAnalyzerPanelOpe
         selectedItem,
         cfParamsList.get(cfParamsList.size() - 1),
         () -> {
-          selectedCfList.setModel(new DefaultComboBoxModel<>(updatedList.toArray(new String[0])));
+          selectedCfList.setModel(new DefaultComboBoxModel<>(updatedList.toArray(String[]::new)));
           cfFactoryCombo.setSelectedItem("");
           cfEditBtn.setEnabled(true);
           buildBtn.setEnabled(true);
@@ -567,7 +567,7 @@ public final class CustomAnalyzerPanelProvider implements CustomAnalyzerPanelOpe
         selectedItem,
         tfParamsList.get(tfParamsList.size() - 1),
         () -> {
-          selectedTfList.setModel(new DefaultComboBoxModel<>(updatedList.toArray(new String[0])));
+          selectedTfList.setModel(new DefaultComboBoxModel<>(updatedList.toArray(String[]::new)));
           tfFactoryCombo.setSelectedItem("");
           tfEditBtn.setEnabled(true);
           buildBtn.setEnabled(true);
@@ -663,7 +663,7 @@ public final class CustomAnalyzerPanelProvider implements CustomAnalyzerPanelOpe
     Collection<String> charFilters = analysisModel.getAvailableCharFilters();
     String[] charFilterNames = new String[charFilters.size() + 1];
     charFilterNames[0] = "";
-    System.arraycopy(charFilters.toArray(new String[0]), 0, charFilterNames, 1, charFilters.size());
+    System.arraycopy(charFilters.toArray(String[]::new), 0, charFilterNames, 1, charFilters.size());
     cfFactoryCombo.setModel(new DefaultComboBoxModel<>(charFilterNames));
   }
 
@@ -671,7 +671,7 @@ public final class CustomAnalyzerPanelProvider implements CustomAnalyzerPanelOpe
     Collection<String> tokenizers = analysisModel.getAvailableTokenizers();
     String[] tokenizerNames = new String[tokenizers.size() + 1];
     tokenizerNames[0] = "";
-    System.arraycopy(tokenizers.toArray(new String[0]), 0, tokenizerNames, 1, tokenizers.size());
+    System.arraycopy(tokenizers.toArray(String[]::new), 0, tokenizerNames, 1, tokenizers.size());
     tokFactoryCombo.setModel(new DefaultComboBoxModel<>(tokenizerNames));
   }
 
@@ -680,7 +680,7 @@ public final class CustomAnalyzerPanelProvider implements CustomAnalyzerPanelOpe
     String[] tokenFilterNames = new String[tokenFilters.size() + 1];
     tokenFilterNames[0] = "";
     System.arraycopy(
-        tokenFilters.toArray(new String[0]), 0, tokenFilterNames, 1, tokenFilters.size());
+        tokenFilters.toArray(String[]::new), 0, tokenFilterNames, 1, tokenFilters.size());
     tfFactoryCombo.setModel(new DefaultComboBoxModel<>(tokenFilterNames));
   }
 

@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.analysis.no;
 
 /*
  * This algorithm is updated based on code located at:
@@ -51,9 +50,11 @@ package org.apache.lucene.analysis.no;
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+package org.apache.lucene.analysis.no;
+
 import static org.apache.lucene.analysis.no.NorwegianLightStemmer.BOKMAAL;
 import static org.apache.lucene.analysis.no.NorwegianLightStemmer.NYNORSK;
-import static org.apache.lucene.analysis.util.StemmerUtil.*;
+import static org.apache.lucene.analysis.util.StemmerUtil.endsWith;
 
 /**
  * Minimal Stemmer for Norwegian Bokmål (no-nb) and Nynorsk (no-nn)

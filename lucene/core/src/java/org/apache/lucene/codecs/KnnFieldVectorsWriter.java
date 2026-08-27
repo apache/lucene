@@ -21,7 +21,7 @@ import java.io.IOException;
 import org.apache.lucene.util.Accountable;
 
 /**
- * Vectors' writer for a field
+ * Vectors writer for a field.
  *
  * @param <T> an array type; the type of vectors to be written
  */

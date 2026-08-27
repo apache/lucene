@@ -98,7 +98,8 @@ public class PerfRunData implements Closeable {
   private TaxonomyWriter taxonomyWriter;
   private TaxonomyReader taxonomyReader;
 
-  // we use separate (identical) instances for each "read" task type, so each can iterate the quries
+  // we use separate (identical) instances for each "read" task type, so each can iterate the
+  // queries
   // separately.
   private HashMap<Class<? extends ReadTask>, QueryMaker> readTaskQueryMaker;
   private Class<? extends QueryMaker> qmkrClass;
@@ -178,8 +179,8 @@ public class PerfRunData implements Closeable {
     // close all perf objects that are closeable.
     ArrayList<Closeable> perfObjectsToClose = new ArrayList<>();
     for (Object obj : perfObjects.values()) {
-      if (obj instanceof Closeable) {
-        perfObjectsToClose.add((Closeable) obj);
+      if (obj instanceof Closeable c) {
+        perfObjectsToClose.add(c);
       }
     }
     IOUtils.close(perfObjectsToClose);

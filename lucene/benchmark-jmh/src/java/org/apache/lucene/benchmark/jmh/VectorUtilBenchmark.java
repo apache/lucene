@@ -19,7 +19,18 @@ package org.apache.lucene.benchmark.jmh;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.util.VectorUtil;
-import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.BenchmarkMode;
+import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Level;
+import org.openjdk.jmh.annotations.Measurement;
+import org.openjdk.jmh.annotations.Mode;
+import org.openjdk.jmh.annotations.OutputTimeUnit;
+import org.openjdk.jmh.annotations.Param;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
+import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.Warmup;
 
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
@@ -43,11 +54,19 @@ public class VectorUtilBenchmark {
   private byte[] bytesA;
   private byte[] bytesB;
   private byte[] halfBytesA;
+  private byte[] halfBytesAPacked;
   private byte[] halfBytesB;
   private byte[] halfBytesBPacked;
+  private byte[] int4QuantizedBit;
+  private byte[] binaryQuantized;
+  private byte[] int4QuantizedDibit;
+  private byte[] dibitQuantized;
   private float[] floatsA;
   private float[] floatsB;
-  private int expectedhalfByteDotProduct;
+  private short[] shortsA;
+  private short[] shortsB;
+  private int expectedHalfByteDotProduct;
+  private int expectedHalfByteSquareDistance;
 
   @Param({"1", "128", "207", "256", "300", "512", "702", "1024"})
   int size;
@@ -63,16 +82,23 @@ public class VectorUtilBenchmark {
     random.nextBytes(bytesB);
     // random half byte arrays for binary methods
     // this means that all values must be between 0 and 15
-    expectedhalfByteDotProduct = 0;
+    expectedHalfByteDotProduct = 0;
+    expectedHalfByteSquareDistance = 0;
     halfBytesA = new byte[size];
     halfBytesB = new byte[size];
     for (int i = 0; i < size; ++i) {
       halfBytesA[i] = (byte) random.nextInt(16);
       halfBytesB[i] = (byte) random.nextInt(16);
-      expectedhalfByteDotProduct += halfBytesA[i] * halfBytesB[i];
+      expectedHalfByteDotProduct += halfBytesA[i] * halfBytesB[i];
+
+      int diff = halfBytesA[i] - halfBytesB[i];
+      expectedHalfByteSquareDistance += diff * diff;
     }
     // pack the half byte arrays
     if (size % 2 == 0) {
+      halfBytesAPacked = new byte[(size + 1) >> 1];
+      compressBytes(halfBytesA, halfBytesAPacked);
+
       halfBytesBPacked = new byte[(size + 1) >> 1];
       compressBytes(halfBytesB, halfBytesBPacked);
     }
@@ -80,10 +106,32 @@ public class VectorUtilBenchmark {
     // random float arrays for float methods
     floatsA = new float[size];
     floatsB = new float[size];
+    shortsA = new short[size];
+    shortsB = new short[size];
     for (int i = 0; i < size; ++i) {
       floatsA[i] = random.nextFloat();
+      shortsA[i] = Float.floatToFloat16(floatsA[i]);
       floatsB[i] = random.nextFloat();
+      shortsB[i] = Float.floatToFloat16(floatsB[i]);
     }
+
+    // arrays for BBQ int4-bit and int4-dibit dot product benchmarks
+    int4QuantizedBit = new byte[size * 4];
+    random.nextBytes(int4QuantizedBit);
+    binaryQuantized = new byte[size];
+    random.nextBytes(binaryQuantized);
+
+    int4QuantizedDibit = new byte[size * 2];
+    random.nextBytes(int4QuantizedDibit);
+    dibitQuantized = new byte[size];
+    random.nextBytes(dibitQuantized);
+  }
+
+  @Benchmark
+  @Fork(
+      jvmArgsPrepend = {"--add-modules=jdk.incubator.vector", "-Dlucene.useNativeDotProduct=true"})
+  public int dot8sNative() {
+    return VectorUtil.dotProduct(bytesA, bytesB);
   }
 
   @Benchmark
@@ -98,17 +146,6 @@ public class VectorUtilBenchmark {
   }
 
   @Benchmark
-  public int binaryDotProductScalar() {
-    return VectorUtil.dotProduct(bytesA, bytesB);
-  }
-
-  @Benchmark
-  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
-  public int binaryDotProductVector() {
-    return VectorUtil.dotProduct(bytesA, bytesB);
-  }
-
-  @Benchmark
   public int binarySquareScalar() {
     return VectorUtil.squareDistance(bytesA, bytesB);
   }
@@ -120,37 +157,170 @@ public class VectorUtilBenchmark {
   }
 
   @Benchmark
-  public int binaryHalfByteScalar() {
-    return VectorUtil.int4DotProduct(halfBytesA, halfBytesB);
-  }
-
-  @Benchmark
-  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
-  public int binaryHalfByteVector() {
-    return VectorUtil.int4DotProduct(halfBytesA, halfBytesB);
-  }
-
-  @Benchmark
-  public int binaryHalfByteScalarPacked() {
-    if (size % 2 != 0) {
-      throw new RuntimeException("Size must be even for this benchmark");
-    }
-    int v = VectorUtil.int4DotProductPacked(halfBytesA, halfBytesBPacked);
-    if (v != expectedhalfByteDotProduct) {
-      throw new RuntimeException("Expected " + expectedhalfByteDotProduct + " but got " + v);
+  public int binaryHalfByteSquareScalar() {
+    int v = VectorUtil.int4SquareDistance(halfBytesA, halfBytesB);
+    if (v != expectedHalfByteSquareDistance) {
+      throw new RuntimeException("Expected " + expectedHalfByteDotProduct + " but got " + v);
     }
     return v;
   }
 
   @Benchmark
   @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
-  public int binaryHalfByteVectorPacked() {
-    if (size % 2 != 0) {
-      throw new RuntimeException("Size must be even for this benchmark");
+  public int binaryHalfByteSquareVector() {
+    int v = VectorUtil.int4SquareDistance(halfBytesA, halfBytesB);
+    if (v != expectedHalfByteSquareDistance) {
+      throw new RuntimeException("Expected " + expectedHalfByteDotProduct + " but got " + v);
     }
-    int v = VectorUtil.int4DotProductPacked(halfBytesA, halfBytesBPacked);
-    if (v != expectedhalfByteDotProduct) {
-      throw new RuntimeException("Expected " + expectedhalfByteDotProduct + " but got " + v);
+    return v;
+  }
+
+  @Benchmark
+  public int binaryHalfByteSquareSinglePackedScalar() {
+    int v = VectorUtil.int4SquareDistanceSinglePacked(halfBytesA, halfBytesBPacked);
+    if (v != expectedHalfByteSquareDistance) {
+      throw new RuntimeException("Expected " + expectedHalfByteDotProduct + " but got " + v);
+    }
+    return v;
+  }
+
+  @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public int binaryHalfByteSquareSinglePackedVector() {
+    int v = VectorUtil.int4SquareDistanceSinglePacked(halfBytesA, halfBytesBPacked);
+    if (v != expectedHalfByteSquareDistance) {
+      throw new RuntimeException("Expected " + expectedHalfByteDotProduct + " but got " + v);
+    }
+    return v;
+  }
+
+  @Benchmark
+  public int binaryHalfByteSquareBothPackedScalar() {
+    int v = VectorUtil.int4SquareDistanceBothPacked(halfBytesAPacked, halfBytesBPacked);
+    if (v != expectedHalfByteSquareDistance) {
+      throw new RuntimeException("Expected " + expectedHalfByteDotProduct + " but got " + v);
+    }
+    return v;
+  }
+
+  @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public int binaryHalfByteSquareBothPackedVector() {
+    int v = VectorUtil.int4SquareDistanceBothPacked(halfBytesAPacked, halfBytesBPacked);
+    if (v != expectedHalfByteSquareDistance) {
+      throw new RuntimeException("Expected " + expectedHalfByteDotProduct + " but got " + v);
+    }
+    return v;
+  }
+
+  @Benchmark
+  public int binaryDotProductScalar() {
+    return VectorUtil.dotProduct(bytesA, bytesB);
+  }
+
+  @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public int binaryDotProductVector() {
+    return VectorUtil.dotProduct(bytesA, bytesB);
+  }
+
+  @Benchmark
+  public int binaryDotProductUint8Scalar() {
+    return VectorUtil.uint8DotProduct(bytesA, bytesB);
+  }
+
+  @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public int binaryDotProductUint8Vector() {
+    return VectorUtil.uint8DotProduct(bytesA, bytesB);
+  }
+
+  @Benchmark
+  public int binaryHalfByteDotProductScalar() {
+    int v = VectorUtil.int4DotProduct(halfBytesA, halfBytesB);
+    if (v != expectedHalfByteDotProduct) {
+      throw new RuntimeException("Expected " + expectedHalfByteDotProduct + " but got " + v);
+    }
+    return v;
+  }
+
+  @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public int binaryHalfByteDotProductVector() {
+    int v = VectorUtil.int4DotProduct(halfBytesA, halfBytesB);
+    if (v != expectedHalfByteDotProduct) {
+      throw new RuntimeException("Expected " + expectedHalfByteDotProduct + " but got " + v);
+    }
+    return v;
+  }
+
+  @Benchmark
+  public int binarySquareUint8Scalar() {
+    return VectorUtil.uint8SquareDistance(bytesA, bytesB);
+  }
+
+  @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public int binarySquareUint8Vector() {
+    return VectorUtil.uint8SquareDistance(bytesA, bytesB);
+  }
+
+  @Benchmark
+  public long int4BitDotProductScalar() {
+    return VectorUtil.int4BitDotProduct(int4QuantizedBit, binaryQuantized);
+  }
+
+  @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public long int4BitDotProductVector() {
+    return VectorUtil.int4BitDotProduct(int4QuantizedBit, binaryQuantized);
+  }
+
+  @Benchmark
+  public long int4DibitDotProductScalar() {
+    return VectorUtil.int4DibitDotProduct(int4QuantizedDibit, dibitQuantized);
+  }
+
+  @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public long int4DibitDotProductVector() {
+    return VectorUtil.int4DibitDotProduct(int4QuantizedDibit, dibitQuantized);
+  }
+
+  @Benchmark
+  public int binaryHalfByteDotProductSinglePackedScalar() {
+    int v = VectorUtil.int4DotProductSinglePacked(halfBytesA, halfBytesBPacked);
+    if (v != expectedHalfByteDotProduct) {
+      throw new RuntimeException("Expected " + expectedHalfByteDotProduct + " but got " + v);
+    }
+    return v;
+  }
+
+  @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public int binaryHalfByteDotProductSinglePackedVector() {
+    int v = VectorUtil.int4DotProductSinglePacked(halfBytesA, halfBytesBPacked);
+    if (v != expectedHalfByteDotProduct) {
+      throw new RuntimeException("Expected " + expectedHalfByteDotProduct + " but got " + v);
+    }
+    return v;
+  }
+
+  @Benchmark
+  public int binaryHalfByteDotProductBothPackedScalar() {
+    int v = VectorUtil.int4DotProductBothPacked(halfBytesAPacked, halfBytesBPacked);
+    if (v != expectedHalfByteDotProduct) {
+      throw new RuntimeException("Expected " + expectedHalfByteDotProduct + " but got " + v);
+    }
+    return v;
+  }
+
+  @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public int binaryHalfByteDotProductBothPackedVector() {
+    int v = VectorUtil.int4DotProductBothPacked(halfBytesAPacked, halfBytesBPacked);
+    if (v != expectedHalfByteDotProduct) {
+      throw new RuntimeException("Expected " + expectedHalfByteDotProduct + " but got " + v);
     }
     return v;
   }
@@ -161,11 +331,24 @@ public class VectorUtilBenchmark {
   }
 
   @Benchmark
+  public float[] l2Normalize() {
+    return VectorUtil.l2normalize(floatsA, false);
+  }
+
+  @Benchmark
   @Fork(
       value = 15,
       jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public float floatCosineVector() {
     return VectorUtil.cosine(floatsA, floatsB);
+  }
+
+  @Benchmark
+  @Fork(
+      value = 15,
+      jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public float[] l2NormalizeVector() {
+    return VectorUtil.l2normalize(floatsA, false);
   }
 
   @Benchmark
@@ -179,6 +362,11 @@ public class VectorUtilBenchmark {
       jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public float floatDotProductVector() {
     return VectorUtil.dotProduct(floatsA, floatsB);
+  }
+
+  @Benchmark
+  public float fp16DotProductScalar() {
+    return VectorUtil.dotProduct(shortsA, shortsB);
   }
 
   @Benchmark

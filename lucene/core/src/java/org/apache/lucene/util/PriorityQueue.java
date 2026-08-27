@@ -16,31 +16,68 @@
  */
 package org.apache.lucene.util;
 
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.function.Function;
+import java.util.function.IntFunction;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 /**
  * A priority queue maintains a partial ordering of its elements such that the least element can
- * always be found in constant time. Put()'s and pop()'s require log(size) time but the remove()
- * cost implemented here is linear.
+ * always be found in constant time. Put()'s and pop()'s require log(size) time.
  *
  * <p><b>NOTE</b>: This class pre-allocates an array of length {@code maxSize+1} and pre-fills it
- * with elements if instantiated via the {@link #PriorityQueue(int,Supplier)} constructor.
+ * with elements if instantiated via the {@link #PriorityQueue(int,LessThan,Supplier)} constructor.
  *
  * <p><b>NOTE</b>: Iteration order is not specified.
  *
  * @lucene.internal
  */
-public abstract class PriorityQueue<T> implements Iterable<T> {
-  private int size = 0;
+public class PriorityQueue<T> implements Iterable<T> {
+
+  /** Represents a {@code <} operation, which is less prescriptive than {@link Comparator} */
+  @FunctionalInterface
+  public interface LessThan<T> {
+    boolean lessThan(T a, T b);
+  }
+
+  /** Create a {@code PriorityQueue} that orders elements using the specified {@code lessThan} */
+  public static <T> PriorityQueue<T> usingLessThan(int maxSize, LessThan<? super T> lessThan) {
+    return new PriorityQueue<>(maxSize, lessThan);
+  }
+
+  /** Create a {@code PriorityQueue} that orders elements using the specified {@code lessThan} */
+  public static <T> PriorityQueue<T> usingLessThan(
+      int maxSize, Supplier<T> sentinelObjectSupplier, LessThan<? super T> lessThan) {
+    return new PriorityQueue<>(maxSize, lessThan, sentinelObjectSupplier);
+  }
+
+  /** Create a {@code PriorityQueue} that orders elements using the specified {@code comparator} */
+  public static <T> PriorityQueue<T> usingComparator(
+      int maxSize, Comparator<? super T> comparator) {
+    return new PriorityQueue<>(maxSize, (a, b) -> comparator.compare(a, b) < 0);
+  }
+
+  /** Create a {@code PriorityQueue} that orders elements using the specified {@code comparator} */
+  public static <T> PriorityQueue<T> usingComparator(
+      int maxSize, Supplier<T> sentinelObjectSupplier, Comparator<? super T> comparator) {
+    return new PriorityQueue<>(
+        maxSize, (a, b) -> comparator.compare(a, b) < 0, sentinelObjectSupplier);
+  }
+
+  protected int size = 0;
   private final int maxSize;
   private final T[] heap;
+  private final LessThan<? super T> lessThan;
 
-  /** Create an empty priority queue of the configured size. */
-  public PriorityQueue(int maxSize) {
-    this(maxSize, () -> null);
+  /** Create an empty priority queue of the configured size using the specified {@link LessThan}. */
+  public PriorityQueue(int maxSize, LessThan<? super T> lessThan) {
+    this(maxSize, lessThan, () -> null);
   }
 
   /**
@@ -57,8 +94,8 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
    * <p>If this method is extended to return a non-null value, then the following usage pattern is
    * recommended:
    *
-   * <pre class="prettyprint">
-   * PriorityQueue&lt;MyObject&gt; pq = new MyQueue&lt;MyObject&gt;(numHits);
+   * <pre><code class="language-java">
+   * PriorityQueue&lt;MyObject&gt; pq = new PriorityQueue&lt;MyObject&gt;(numHits, lessThan);
    * // save the 'top' element, which is guaranteed to not be null.
    * MyObject pqTop = pq.top();
    * &lt;...&gt;
@@ -66,14 +103,15 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
    * // you've verified it is better), it is as simple as:
    * pqTop.change().
    * pqTop = pq.updateTop();
-   * </pre>
+   * </code></pre>
    *
    * <b>NOTE:</b> the given supplier will be called {@code maxSize} times, relying on a new object
    * to be returned and will not check if it's null again. Therefore you should ensure any call to
    * this method creates a new instance and behaves consistently, e.g., it cannot return null if it
-   * previously returned non-null and all returned instances must {@link #lessThan compare equal}.
+   * previously returned non-null and all returned instances must {@link LessThan compare equal}.
    */
-  public PriorityQueue(int maxSize, Supplier<T> sentinelObjectSupplier) {
+  public PriorityQueue(
+      int maxSize, LessThan<? super T> lessThan, Supplier<T> sentinelObjectSupplier) {
     final int heapSize;
 
     if (0 == maxSize) {
@@ -96,6 +134,7 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
     final T[] h = (T[]) new Object[heapSize];
     this.heap = h;
     this.maxSize = maxSize;
+    this.lessThan = lessThan;
 
     // If sentinel objects are supported, populate the queue with them
     T sentinel = sentinelObjectSupplier.get();
@@ -114,38 +153,58 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
    * faster.
    *
    * <p>If one tries to add more objects than the maxSize passed in the constructor, an {@link
-   * ArrayIndexOutOfBoundsException} is thrown.
+   * ArrayIndexOutOfBoundsException} is thrown. Which may result in parts of elements added into the
+   * queue, but the heap is still stay in correct state. In this case, if caller wants to readd or
+   * {@link #updateTop(Object)} with remaining elements, it should skip(continue) consumed elements
+   * with the delta size of queue.
    */
   public void addAll(Collection<T> elements) {
-    if (this.size + elements.size() > this.maxSize) {
-      throw new ArrayIndexOutOfBoundsException(
-          "Cannot add "
-              + elements.size()
-              + " elements to a queue with remaining capacity: "
-              + (maxSize - size));
-    }
-
     // Heap with size S always takes first S elements of the array,
     // and thus it's safe to fill array further - no actual non-sentinel value will be overwritten.
-    Iterator<T> iterator = elements.iterator();
-    while (iterator.hasNext()) {
-      this.heap[size + 1] = iterator.next();
-      this.size++;
-    }
-
-    // The loop goes down to 1 as heap is 1-based not 0-based.
-    for (int i = (size >>> 1); i >= 1; i--) {
-      downHeap(i);
+    try {
+      for (T element : elements) {
+        this.heap[size + 1] = element;
+        this.size++;
+      }
+    } finally {
+      // The loop goes down to 1 as heap is 1-based not 0-based.
+      for (int i = (size >>> 1); i >= 1; i--) {
+        downHeap(i);
+      }
     }
   }
 
   /**
-   * Determines the ordering of objects in this priority queue. Subclasses must define this one
-   * method.
+   * Adds all elements of the stream into the queue. This method should be preferred over calling
+   * {@link #add(Object)} in loop if all elements are known in advance as it builds queue faster.
    *
-   * @return <code>true</code> iff parameter <code>a</code> is less than parameter <code>b</code>.
+   * <p>If one needs to map or filter element in the iteration of elements in this method, call this
+   * method with elements wrapped by {@link Stream#map(Function)} or {@link
+   * Stream#filter(Predicate)}, etc. In these cases, this method should be preferred over calling
+   * {@link #addAll(Collection)}.
+   *
+   * <p>If one tries to add more objects than the maxSize passed in the constructor, an {@link
+   * ArrayIndexOutOfBoundsException} is thrown. Which may result in parts of elements added into the
+   * queue, but the heap is still stay in correct state. In this case, if caller wants to readd or
+   * {@link #updateTop(Object)} with remaining elements, it should use a new stream, and use {@link
+   * Stream#skip(long)} to skip consumed elements with the delta size of queue.
    */
-  protected abstract boolean lessThan(T a, T b);
+  public void addAll(Stream<T> elements) {
+    // Heap with size S always takes first S elements of the array,
+    // and thus it's safe to fill array further - no actual non-sentinel value will be overwritten.
+    try {
+      elements.forEachOrdered(
+          element -> {
+            this.heap[size + 1] = element;
+            this.size++;
+          });
+    } finally {
+      // The loop goes down to 1 as heap is 1-based not 0-based.
+      for (int i = (size >>> 1); i >= 1; i--) {
+        downHeap(i);
+      }
+    }
+  }
 
   /**
    * Adds an Object to a PriorityQueue in log(size) time. If one tries to add more objects than
@@ -173,7 +232,7 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
     if (size < maxSize) {
       add(element);
       return null;
-    } else if (size > 0 && lessThan(heap[1], element)) {
+    } else if (size > 0 && lessThan.lessThan(heap[1], element)) {
       T ret = heap[1];
       heap[1] = element;
       updateTop();
@@ -209,18 +268,18 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
    * Should be called when the Object at top changes values. Still log(n) worst case, but it's at
    * least twice as fast to
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * pq.top().change();
    * pq.updateTop();
-   * </pre>
+   * </code></pre>
    *
    * instead of
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * o = pq.pop();
    * o.change();
    * pq.push(o);
-   * </pre>
+   * </code></pre>
    *
    * @return the new 'top' element.
    */
@@ -242,39 +301,39 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
 
   /** Removes all entries from the PriorityQueue. */
   public final void clear() {
-    for (int i = 0; i <= size; i++) {
-      heap[i] = null;
-    }
+    Arrays.fill(heap, 0, size + 1, null);
     size = 0;
   }
 
   /**
-   * Removes an existing element currently stored in the PriorityQueue. Cost is linear with the size
-   * of the queue. (A specialization of PriorityQueue which tracks element positions would provide a
-   * constant remove time but the trade-off would be extra cost to all additions/insertions)
+   * Moves the contents of this queue into a new array created by {@code newArray}, lowest items
+   * first
    */
-  public final boolean remove(T element) {
-    for (int i = 1; i <= size; i++) {
-      if (heap[i] == element) {
-        heap[i] = heap[size];
-        heap[size] = null; // permit GC of objects
-        size--;
-        if (i <= size) {
-          if (!upHeap(i)) {
-            downHeap(i);
-          }
-        }
-        return true;
-      }
+  public T[] drainToArrayLowestFirst(IntFunction<T[]> newArray) {
+    T[] array = newArray.apply(size);
+    for (int i = 0; i < array.length; i++) {
+      array[i] = pop();
     }
-    return false;
+    return array;
   }
 
-  private final boolean upHeap(int origPos) {
+  /**
+   * Moves the contents of this queue into a new array created by {@code newArray}, highest items
+   * first
+   */
+  public T[] drainToArrayHighestFirst(IntFunction<T[]> newArray) {
+    T[] array = newArray.apply(size);
+    for (int i = array.length - 1; i >= 0; i--) {
+      array[i] = pop();
+    }
+    return array;
+  }
+
+  protected boolean upHeap(int origPos) {
     int i = origPos;
     T node = heap[i]; // save bottom node
     int j = i >>> 1;
-    while (j > 0 && lessThan(node, heap[j])) {
+    while (j > 0 && lessThan.lessThan(node, heap[j])) {
       heap[i] = heap[j]; // shift parents down
       i = j;
       j = j >>> 1;
@@ -283,19 +342,19 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
     return i != origPos;
   }
 
-  private final void downHeap(int i) {
+  protected void downHeap(int i) {
     T node = heap[i]; // save top node
     int j = i << 1; // find smaller child
     int k = j + 1;
-    if (k <= size && lessThan(heap[k], heap[j])) {
+    if (k <= size && lessThan.lessThan(heap[k], heap[j])) {
       j = k;
     }
-    while (j <= size && lessThan(heap[j], node)) {
+    while (j <= size && lessThan.lessThan(heap[j], node)) {
       heap[i] = heap[j]; // shift up child
       i = j;
       j = i << 1;
       k = j + 1;
-      if (k <= size && lessThan(heap[k], heap[j])) {
+      if (k <= size && lessThan.lessThan(heap[k], heap[j])) {
         j = k;
       }
     }
@@ -313,7 +372,7 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
 
   @Override
   public Iterator<T> iterator() {
-    return new Iterator<T>() {
+    return new Iterator<>() {
 
       int i = 1;
 

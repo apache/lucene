@@ -51,8 +51,9 @@ public class Test2BPostings extends LuceneTestCase {
             .setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH)
             .setRAMBufferSizeMB(256.0)
             .setMergeScheduler(new ConcurrentMergeScheduler())
-            .setMergePolicy(newLogMergePolicy(false, 10))
+            .setMergePolicy(newLogMergePolicy(10))
             .setOpenMode(IndexWriterConfig.OpenMode.CREATE);
+    iwc.getCodec().compoundFormat().setShouldUseCompoundFile(false);
 
     IndexWriter w = new IndexWriter(dir, iwc);
 

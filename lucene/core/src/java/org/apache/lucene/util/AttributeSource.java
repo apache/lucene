@@ -116,7 +116,7 @@ public class AttributeSource {
   public final Iterator<AttributeImpl> getAttributeImplsIterator() {
     final State initState = getCurrentState();
     if (initState != null) {
-      return new Iterator<AttributeImpl>() {
+      return new Iterator<>() {
         private State state = initState;
 
         @Override
@@ -147,7 +147,7 @@ public class AttributeSource {
    * reflection)
    */
   private static final ClassValue<Class<? extends Attribute>[]> implInterfaces =
-      new ClassValue<Class<? extends Attribute>[]>() {
+      new ClassValue<>() {
         @Override
         protected Class<? extends Attribute>[] computeValue(Class<?> clazz) {
           final Set<Class<? extends Attribute>> intfSet = new LinkedHashSet<>();
@@ -163,7 +163,7 @@ public class AttributeSource {
             clazz = clazz.getSuperclass();
           } while (clazz != null);
           @SuppressWarnings({"unchecked", "rawtypes"})
-          final Class<? extends Attribute>[] a = intfSet.toArray(new Class[intfSet.size()]);
+          final Class<? extends Attribute>[] a = intfSet.toArray(Class[]::new);
           return a;
         }
       };

@@ -155,7 +155,7 @@
  * <p>{@link org.apache.lucene.index.Terms} represents the collection of terms within a field,
  * exposes some metadata and <a href="#fieldstats">statistics</a>, and an API for enumeration.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * Terms terms = leafReader.terms("body");
  * // metadata about the field
  * System.out.println("positions? " + terms.hasPositions());
@@ -167,13 +167,13 @@
  * while ((term = termsEnum.next()) != null) {
  *   doSomethingWith(term);
  * }
- * </pre>
+ * </code></pre>
  *
  * {@link org.apache.lucene.index.TermsEnum} provides an iterator over the list of terms within a
  * field, some <a href="#termstats">statistics</a> about the term, and methods to access the term's
  * <a href="#documents">documents</a> and <a href="#positions">positions</a>.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * // seek to a specific term
  * boolean found = termsEnum.seekExact(new BytesRef("foobar"));
  * if (found) {
@@ -184,7 +184,7 @@
  *   // enumerate through documents and positions
  *   PostingsEnum docsAndPositions = termsEnum.postings(null, PostingsEnum.POSITIONS);
  * }
- * </pre>
+ * </code></pre>
  *
  * <a id="documents"></a>
  *
@@ -194,13 +194,13 @@
  * org.apache.lucene.search.DocIdSetIterator} that iterates over the list of documents for a term,
  * along with the term frequency within that document.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * int docid;
  * while ((docid = docsEnum.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
  *   System.out.println(docid);
  *   System.out.println(docsEnum.freq());
  * }
- * </pre>
+ * </code></pre>
  *
  * <a id="positions"></a>
  *
@@ -210,7 +210,7 @@
  * any additional per-position information (offsets and payload). The information available is
  * controlled by flags passed to TermsEnum#postings
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * int docid;
  * PostingsEnum postings = termsEnum.postings(null, PostingsEnum.PAYLOADS | PostingsEnum.OFFSETS);
  * while ((docid = postings.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
@@ -223,7 +223,7 @@
  *     System.out.println(postings.getPayload());
  *   }
  * }
- * </pre>
+ * </code></pre>
  *
  * <h3>Impacts</h3>
  *
@@ -233,7 +233,7 @@
  * these blocks of postings, so that they can be skipped if they cannot possibly produce a
  * competitive hit.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * int docid;
  * ImpactsEnum impactsEnum = termsEnum.impacts(PostingsEnum.FREQS);
  * int targetDocID = 420;
@@ -245,7 +245,7 @@
  *   // List of pareto-optimal (termFreq, lengthNorm) tuples between targetDocID inclusive and docIdUpTo inclusive.
  *   List&lt;Impact&gt; perLevelImpacts = impacts.getImpacts(level);
  * }
- * </pre>
+ * </code></pre>
  *
  * <a id="stats"></a>
  *

@@ -42,7 +42,6 @@ import org.apache.lucene.spatial3d.geom.GeoPoint;
 import org.apache.lucene.spatial3d.geom.GeoPointShape;
 import org.apache.lucene.spatial3d.geom.GeoPolygonFactory;
 import org.apache.lucene.spatial3d.geom.PlanetModel;
-import org.junit.Test;
 import org.locationtech.spatial4j.shape.Rectangle;
 import org.locationtech.spatial4j.shape.Shape;
 
@@ -88,10 +87,9 @@ public class TestGeo3dRpt extends RandomSpatialOpStrategyTestCase {
             "composite_" + getClass().getSimpleName(), rptStrategy, serializedDVStrategy);
   }
 
-  @Test
   public void testFailure1() throws IOException {
     setupStrategy();
-    final List<GeoPoint> points = new ArrayList<GeoPoint>();
+    final List<GeoPoint> points = new ArrayList<>();
     points.add(new GeoPoint(planetModel, 18 * DEGREES_TO_RADIANS, -27 * DEGREES_TO_RADIANS));
     points.add(new GeoPoint(planetModel, -57 * DEGREES_TO_RADIANS, 146 * DEGREES_TO_RADIANS));
     points.add(new GeoPoint(planetModel, 14 * DEGREES_TO_RADIANS, -180 * DEGREES_TO_RADIANS));
@@ -103,7 +101,6 @@ public class TestGeo3dRpt extends RandomSpatialOpStrategyTestCase {
     testOperation(rect, SpatialOperation.Intersects, triangle, false);
   }
 
-  @Test
   public void testFailureLucene6535() throws IOException {
     setupStrategy();
 
@@ -126,7 +123,6 @@ public class TestGeo3dRpt extends RandomSpatialOpStrategyTestCase {
     testOperation(rect, SpatialOperation.Intersects, shape, true);
   }
 
-  @Test
   public void testOperations() throws IOException {
     setupStrategy();
 
@@ -150,7 +146,8 @@ public class TestGeo3dRpt extends RandomSpatialOpStrategyTestCase {
     return new Geo3dShape<>(areaShape, ctx);
   }
 
-  @Test
+  // TODO: incredibly slow
+  @Nightly
   public void testOperationsFromFile() throws IOException {
     setupStrategy();
     final Iterator<SpatialTestData> indexedSpatialData = getSampleData("states-poly.txt");

@@ -23,9 +23,9 @@ import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.ValueSource;
 import org.apache.lucene.queries.function.docvalues.FloatDocValues;
-import org.apache.lucene.search.CollectionStatistics;
+import org.apache.lucene.search.FieldStats;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.TermStats;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.search.similarities.TFIDFSimilarity;
 import org.apache.lucene.util.BytesRef;
@@ -73,9 +73,7 @@ public class NormValueSource extends ValueSource {
     // is 1 when docCount == docFreq == 1
     final SimScorer simScorer =
         similarity.scorer(
-            1f,
-            new CollectionStatistics(field, 1, 1, 1, 1),
-            new TermStatistics(new BytesRef("bogus"), 1, 1));
+            1f, new FieldStats(field, 1, 1, 1, 1), new TermStats(new BytesRef("bogus"), 1, 1));
     final NumericDocValues norms = readerContext.reader().getNormValues(field);
 
     return new FloatDocValues(this) {

@@ -141,4 +141,3 @@ best	best
 føle	føl
 følte	føl
 følt	følt
-

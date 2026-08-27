@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.util;
 
 /*
  * Some of this code came from the excellent Unicode
@@ -83,6 +82,8 @@ package org.apache.lucene.util;
  * copyright holder.
  */
 
+package org.apache.lucene.util;
+
 import java.util.Arrays;
 
 /**
@@ -125,6 +126,9 @@ public final class UnicodeUtil {
 
   /** Maximum number of UTF8 bytes per UTF16 character. */
   public static final int MAX_UTF8_BYTES_PER_CHAR = 3;
+
+  /** Max charCount where the string's UTF-8 byte count is guaranteed to need only a 1-byte VInt */
+  public static final int MAX_CHARS_FOR_1_BYTE_VINT = 127 / MAX_UTF8_BYTES_PER_CHAR;
 
   /**
    * Encode characters from a char[] source, starting at offset for length chars. It is the
@@ -584,9 +588,7 @@ public final class UnicodeUtil {
             w += 2;
           }
           break;
-        } catch (
-            @SuppressWarnings("unused")
-            IndexOutOfBoundsException ex) {
+        } catch (IndexOutOfBoundsException _) {
           int newlen = (int) (Math.ceil((double) codePoints.length * (w + 2) / (r - offset + 1)));
           char[] temp = new char[newlen];
           System.arraycopy(chars, 0, temp, 0, w);
@@ -683,5 +685,10 @@ public final class UnicodeUtil {
    */
   public static int UTF8toUTF16(BytesRef bytesRef, char[] chars) {
     return UTF8toUTF16(bytesRef.bytes, bytesRef.offset, bytesRef.length, chars);
+  }
+
+  /** Returns the Unicode simple case folding of {@code codepoint}. */
+  public static int foldCase(int codepoint) {
+    return SimpleCaseFolding.fold(codepoint);
   }
 }

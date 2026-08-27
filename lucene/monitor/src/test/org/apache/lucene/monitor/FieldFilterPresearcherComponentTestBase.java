@@ -119,7 +119,7 @@ public abstract class FieldFilterPresearcherComponentTestBase extends Presearche
     try (Monitor monitor = newMonitor()) {
       monitor.register(
           new MonitorQuery(
-              "1", new MatchAllDocsQuery(), null, Collections.singletonMap("language", "de")));
+              "1", MatchAllDocsQuery.INSTANCE, null, Collections.singletonMap("language", "de")));
 
       Document enDoc = new Document();
       enDoc.add(newTextField(TEXTFIELD, "this is a test", Field.Store.NO));

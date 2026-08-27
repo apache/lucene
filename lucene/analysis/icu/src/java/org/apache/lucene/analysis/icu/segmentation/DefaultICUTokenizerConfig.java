@@ -114,12 +114,12 @@ public class DefaultICUTokenizerConfig extends ICUTokenizerConfig {
         return (RuleBasedBreakIterator) cjkBreakIterator.clone();
       case UScript.MYANMAR:
         if (myanmarAsWords) {
-          return (RuleBasedBreakIterator) defaultBreakIterator.clone();
+          return defaultBreakIterator.clone();
         } else {
-          return (RuleBasedBreakIterator) myanmarSyllableIterator.clone();
+          return myanmarSyllableIterator.clone();
         }
       default:
-        return (RuleBasedBreakIterator) defaultBreakIterator.clone();
+        return defaultBreakIterator.clone();
     }
   }
 

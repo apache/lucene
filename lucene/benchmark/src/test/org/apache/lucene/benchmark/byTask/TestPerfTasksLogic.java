@@ -642,7 +642,7 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
     assertEquals(
         IndexWriterConfig.DISABLE_AUTO_FLUSH, (int) writer.getConfig().getRAMBufferSizeMB());
     assertEquals(3, ((LogMergePolicy) writer.getConfig().getMergePolicy()).getMergeFactor());
-    assertEquals(0.0d, writer.getConfig().getMergePolicy().getNoCFSRatio(), 0.0);
+    assertFalse(writer.getConfig().getCodec().compoundFormat().getShouldUseCompoundFile());
     writer.close();
     Directory dir = benchmark.getRunData().getDirectory();
     IndexReader reader = DirectoryReader.open(dir);
@@ -683,7 +683,7 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
     TaxonomyReader taxoReader = runData.getTaxonomyReader();
     assertNotNull("taxo reader was not opened", taxoReader);
     assertTrue(
-        "nothing was added to the taxnomy (expecting root and at least one addtional category)",
+        "nothing was added to the taxonomy (expecting root and at least one additional category)",
         taxoReader.getSize() > 1);
     taxoReader.close();
   }

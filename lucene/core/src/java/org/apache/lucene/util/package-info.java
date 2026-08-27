@@ -15,5 +15,23 @@
  * limitations under the License.
  */
 
-/** Some utility classes. */
+/**
+ * Core utility classes used throughout Lucene.
+ *
+ * <p>This package provides low-level helper utilities that support many parts of the Lucene
+ * indexing and search infrastructure. These classes are generally not intended for direct use by
+ * most applications, but may be useful for advanced integrations or extensions.
+ *
+ * <p>The utilities include:
+ *
+ * <ul>
+ *   <li>Data structures optimized for performance and memory usage
+ *   <li>Bit set and numeric helpers
+ *   <li>String and byte sequence abstractions such as {@link org.apache.lucene.util.BytesRef}
+ *   <li>Reusable iterators and collection helpers
+ *   <li>Math and hashing utilities used internally by indexing and search components
+ * </ul>
+ *
+ * <p>APIs in this package are primarily internal and may change between releases.
+ */
 package org.apache.lucene.util;

@@ -153,8 +153,6 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
   @Override
   protected void createIndex(Directory directory) throws IOException {
     LogByteSizeMergePolicy mp = new LogByteSizeMergePolicy();
-    mp.setNoCFSRatio(1.0);
-    mp.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
     MockAnalyzer analyzer = new MockAnalyzer(random());
 
     // Don't filter out tokens that are too short because we use those tokens in assertions (#14344)
@@ -162,6 +160,8 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
 
     // TODO: remove randomness
     IndexWriterConfig conf = new IndexWriterConfig(analyzer);
+    conf.getCodec().compoundFormat().setShouldUseCompoundFile(true);
+    conf.getCodec().compoundFormat().setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
     conf.setMergePolicy(mp);
     conf.setUseCompoundFile(false);
     conf.setCodec(TestUtil.getDefaultCodec());
@@ -218,7 +218,7 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
     assertTrue(topDocs.totalHits.value() > 0);
     topDocs =
         searcher.search(
-            new MatchAllDocsQuery(), 5, new Sort(new SortField("dateDV", SortField.Type.LONG)));
+            MatchAllDocsQuery.INSTANCE, 5, new Sort(new SortField("dateDV", SortField.Type.LONG)));
     assertEquals(50, topDocs.totalHits.value());
     assertEquals(5, topDocs.scoreDocs.length);
     long firstDate = (Long) ((FieldDoc) topDocs.scoreDocs[0]).fields[0];

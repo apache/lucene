@@ -260,7 +260,7 @@ public abstract class PointRangeQuery extends Query {
 
           @Override
           public void visit(IntsRef ref) {
-            for (int i = ref.offset; i < ref.offset + ref.length; i++) {
+            for (int i = ref.offset, to = ref.offset + ref.length; i < to; i++) {
               result.set(ref.ints[i]);
             }
             cost[0] += ref.length;
@@ -636,20 +636,20 @@ public abstract class PointRangeQuery extends Query {
     byte[] globalMaxPacked = PointValues.getMaxPackedValue(reader, getField());
 
     if (globalMinPacked == null || globalMaxPacked == null) {
-      return new MatchNoDocsQuery();
+      return MatchNoDocsQuery.INSTANCE;
     }
 
     return switch (relate(globalMinPacked, globalMaxPacked)) {
       case CELL_INSIDE_QUERY -> {
         if (canRewriteToMatchAllQuery(reader)) {
-          yield new MatchAllDocsQuery();
+          yield MatchAllDocsQuery.INSTANCE;
         } else if (canRewriteToFieldExistsQuery(reader)) {
           yield new FieldExistsQuery(field);
         } else {
           yield super.rewrite(searcher);
         }
       }
-      case CELL_OUTSIDE_QUERY -> new MatchNoDocsQuery();
+      case CELL_OUTSIDE_QUERY -> MatchNoDocsQuery.INSTANCE;
       case CELL_CROSSES_QUERY -> super.rewrite(searcher);
     };
   }
@@ -694,9 +694,13 @@ public abstract class PointRangeQuery extends Query {
         return Relation.CELL_OUTSIDE_QUERY;
       }
 
-      crosses |=
-          comparator.compare(minPackedValue, offset, lowerPoint, offset) < 0
-              || comparator.compare(maxPackedValue, offset, upperPoint, offset) > 0;
+      // Evaluate crosses only when false. Still need to iterate through
+      // all the dimensions to ensure, none of them is completely outside
+      if (crosses == false) {
+        crosses =
+            comparator.compare(minPackedValue, offset, lowerPoint, offset) < 0
+                || comparator.compare(maxPackedValue, offset, upperPoint, offset) > 0;
+      }
     }
 
     if (crosses) {

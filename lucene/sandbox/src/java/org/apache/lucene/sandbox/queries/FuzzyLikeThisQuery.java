@@ -18,6 +18,7 @@ package org.apache.lucene.sandbox.queries;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -45,6 +46,7 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.search.similarities.TFIDFSimilarity;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FloatComparator;
 import org.apache.lucene.util.PriorityQueue;
 import org.apache.lucene.util.automaton.LevenshteinAutomata;
 
@@ -189,7 +191,8 @@ public class FuzzyLikeThisQuery extends Query {
     fieldVals.add(new FieldVals(fieldName, maxEdits, prefixLength, queryString));
   }
 
-  private void addTerms(IndexReader reader, FieldVals f, ScoreTermQueue q) throws IOException {
+  private void addTerms(IndexReader reader, FieldVals f, PriorityQueue<ScoreTerm> q)
+      throws IOException {
     if (f.queryString == null) return;
     final Terms terms = MultiTerms.getTerms(reader, f.fieldName);
     if (terms == null) {
@@ -205,8 +208,8 @@ public class FuzzyLikeThisQuery extends Query {
         String term = termAtt.toString();
         if (!processedTerms.contains(term)) {
           processedTerms.add(term);
-          ScoreTermQueue variantsQ =
-              new ScoreTermQueue(
+          PriorityQueue<ScoreTerm> variantsQ =
+              createScoreTermQueue(
                   MAX_VARIANTS_PER_TERM); // maxNum variants considered for any one term
           float minScore = 0;
           Term startTerm = new Term(f.fieldName, term);
@@ -282,7 +285,7 @@ public class FuzzyLikeThisQuery extends Query {
   @Override
   public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     IndexReader reader = indexSearcher.getIndexReader();
-    ScoreTermQueue q = new ScoreTermQueue(maxNumTerms);
+    PriorityQueue<ScoreTerm> q = createScoreTermQueue(maxNumTerms);
     // load up the list of possible terms
     for (FieldVals f : fieldVals) {
       addTerms(reader, f, q);
@@ -347,20 +350,11 @@ public class FuzzyLikeThisQuery extends Query {
     }
   }
 
-  private static class ScoreTermQueue extends PriorityQueue<ScoreTerm> {
-    public ScoreTermQueue(int size) {
-      super(size);
-    }
-
-    /* (non-Javadoc)
-     * @see org.apache.lucene.util.PriorityQueue#lessThan(java.lang.Object, java.lang.Object)
-     */
-    @Override
-    protected boolean lessThan(ScoreTerm termA, ScoreTerm termB) {
-      if (termA.score == termB.score) {
-        return termA.term.compareTo(termB.term) > 0;
-      } else return termA.score < termB.score;
-    }
+  private static PriorityQueue<ScoreTerm> createScoreTermQueue(int size) {
+    return PriorityQueue.usingComparator(
+        size,
+        FloatComparator.<ScoreTerm>comparing(st -> st.score)
+            .thenComparing(st -> st.term, Comparator.reverseOrder()));
   }
 
   /* (non-Javadoc)

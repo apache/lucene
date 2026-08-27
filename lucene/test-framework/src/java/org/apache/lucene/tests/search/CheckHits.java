@@ -174,7 +174,7 @@ public class CheckHits {
    *
    * @param query the query to test
    * @param searcher the searcher to test the query against
-   * @param defaultFieldName used for displaing the query in assertion messages
+   * @param defaultFieldName used for displaying the query in assertion messages
    * @param results a list of documentIds that must match the query
    * @see #checkHitCollector
    */
@@ -310,7 +310,7 @@ public class CheckHits {
    *
    * @param query the query to test
    * @param searcher the searcher to test the query against
-   * @param defaultFieldName used for displaing the query in assertion messages
+   * @param defaultFieldName used for displaying the query in assertion messages
    * @see ExplanationAsserter
    * @see #checkExplanations(Query, String, IndexSearcher, boolean) for a "deep" testing of the
    *     explanation details.
@@ -326,7 +326,7 @@ public class CheckHits {
    *
    * @param query the query to test
    * @param searcher the searcher to test the query against
-   * @param defaultFieldName used for displaing the query in assertion messages
+   * @param defaultFieldName used for displaying the query in assertion messages
    * @param deep indicates whether a deep comparison of sub-Explanation details should be executed
    * @see ExplanationAsserter
    */
@@ -391,9 +391,7 @@ public class CheckHits {
     // TODO: clean this up if we use junit 5 (the assert message is costly)
     try {
       assertEquals(score, value, 0d);
-    } catch (
-        @SuppressWarnings("unused")
-        Exception e) {
+    } catch (Exception _) {
       fail(
           q
               + ": score(doc="
@@ -450,9 +448,7 @@ public class CheckHits {
               if (descr.substring(k2).trim().equals("times others of:")) {
                 maxTimesOthers = true;
               }
-            } catch (
-                @SuppressWarnings("unused")
-                NumberFormatException e) {
+            } catch (NumberFormatException _) {
             }
           }
         }
@@ -502,9 +498,7 @@ public class CheckHits {
         // TODO: clean this up if we use junit 5 (the assert message is costly)
         try {
           assertEquals(combined, value, maxError);
-        } catch (
-            @SuppressWarnings("unused")
-            Exception e) {
+        } catch (Exception _) {
           fail(
               q
                   + ": actual subDetails combined=="

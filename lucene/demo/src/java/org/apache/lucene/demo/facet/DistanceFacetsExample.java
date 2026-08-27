@@ -215,7 +215,7 @@ public class DistanceFacetsExample implements Closeable {
   /** User runs a query and counts facets. */
   public FacetResult search() throws IOException {
 
-    FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+    FacetsCollector fc = searcher.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
     Facets facets =
         new DoubleRangeFacetCounts(

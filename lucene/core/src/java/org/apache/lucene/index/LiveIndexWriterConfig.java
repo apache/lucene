@@ -21,6 +21,7 @@ import java.util.Comparator;
 import java.util.Set;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.CompoundFormat;
 import org.apache.lucene.index.IndexWriter.IndexReaderWarmer;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.search.IndexSearcher;
@@ -89,6 +90,12 @@ public class LiveIndexWriterConfig {
   /** True if calls to {@link IndexWriter#close()} should first do a commit. */
   protected boolean commitOnClose = IndexWriterConfig.DEFAULT_COMMIT_ON_CLOSE;
 
+  /**
+   * Maximum number of sparse doc-values overlays a field keeps before they are folded into one;
+   * {@code 0} disables the feature. See {@link IndexWriterConfig#setMaxDocValuesOverlays}.
+   */
+  protected int maxDocValuesOverlays;
+
   /** The sort order to use to write merged segments. */
   protected Sort indexSort = null;
 
@@ -136,6 +143,7 @@ public class LiveIndexWriterConfig {
     mergePolicy = new TieredMergePolicy();
     flushPolicy = new FlushByRamOrCountsPolicy();
     readerPooling = IndexWriterConfig.DEFAULT_READER_POOLING;
+    maxDocValuesOverlays = IndexWriterConfig.DEFAULT_MAX_DOC_VALUES_OVERLAYS;
     perThreadHardLimitMB = IndexWriterConfig.DEFAULT_RAM_PER_THREAD_HARD_LIMIT_MB;
     maxFullFlushMergeWaitMillis = IndexWriterConfig.DEFAULT_MAX_FULL_FLUSH_MERGE_WAIT_MILLIS;
     eventListener = IndexWriterEventListener.NO_OP_LISTENER;
@@ -368,9 +376,8 @@ public class LiveIndexWriterConfig {
    *
    * <p>Use <code>false</code> for batch indexing with very large ram buffer settings.
    *
-   * <p><b>Note: To control compound file usage during segment merges see {@link
-   * MergePolicy#setNoCFSRatio(double)} and {@link MergePolicy#setMaxCFSSegmentSizeMB(double)}. This
-   * setting only applies to newly created segments.</b>
+   * <p><b>Note: To control compound file usage during segment merges. More here: {@link
+   * CompoundFormat}</b>.
    */
   public LiveIndexWriterConfig setUseCompoundFile(boolean useCompoundFile) {
     this.useCompoundFile = useCompoundFile;
@@ -383,6 +390,16 @@ public class LiveIndexWriterConfig {
    */
   public boolean getUseCompoundFile() {
     return useCompoundFile;
+  }
+
+  /**
+   * Returns the maximum number of sparse doc-values overlays a field keeps before they are folded
+   * into one, or {@code 0} if the feature is disabled.
+   *
+   * @lucene.experimental
+   */
+  public int getMaxDocValuesOverlays() {
+    return maxDocValuesOverlays;
   }
 
   /**
@@ -487,6 +504,7 @@ public class LiveIndexWriterConfig {
     sb.append("readerPooling=").append(getReaderPooling()).append("\n");
     sb.append("perThreadHardLimitMB=").append(getRAMPerThreadHardLimitMB()).append("\n");
     sb.append("useCompoundFile=").append(getUseCompoundFile()).append("\n");
+    sb.append("maxDocValuesOverlays=").append(getMaxDocValuesOverlays()).append("\n");
     sb.append("commitOnClose=").append(getCommitOnClose()).append("\n");
     sb.append("indexSort=").append(getIndexSort()).append("\n");
     sb.append("checkPendingFlushOnUpdate=").append(isCheckPendingFlushOnUpdate()).append("\n");

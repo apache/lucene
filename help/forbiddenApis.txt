@@ -3,24 +3,44 @@ Forbidden API rules
 
 Uwe's excellent forbidden API checker is applied as part of 'check'
 task. The rules for each project are sourced dynamically based on the
-actual set of dependencies.
+actual set of dependencies of a project.
 
-If a given project has a dependency on an artifact called "foo.bar:baz"
-then all of these rule files will be applied (all paths relative
-to: gradle/validation/forbidden-apis/).
+Signature files are under gradle/validation/forbidden-apis and are grouped
+into these three main categories:
 
-defaults.all.txt
-defaults.[project].txt
-foo.bar.baz.all.txt
-foo.bar.baz.[project].txt
+all/
+main/
+test/
 
-Note that the "defaults" can't reference any JARs other than Java's
-runtime.
+and these extra exceptional ones:
+
+main-build-infra/
+non-standard/
+
+Signatures under all/ are applied to all sources, main/ are applied to
+all main source sets and test/ to tests only (and test fixtures, if any).
+main-build-infra is applied to gradle's build-infra project sources (build
+plugins). non-standard/ contains signature files applied selectively
+to just certain projects.
+
+Let's say a project has a test dependency on an artifact called "foo.bar:baz".
+An attempt would be made to load the following signature files:
+
+all/defaults.txt
+test/defaults.txt
+test/foo.bar.baz.txt
+
+From the above, only those files that actually exist are applied. You can
+verify which signature locations are expected and which actually
+exist by running forbiddenApis tasks with info logger:
+
+./gradlew -p lucene/analysis/morfologik forbiddenApis --info
+
 
 Example
 -------
 
-We'd like to prevent people from using Guava's
+Let's say we'd like to prevent people from using Guava's
 com.google.common.base.Charsets class. The rule would be:
 
 @defaultMessage Use java.nio.charset.StandardCharsets instead
@@ -28,7 +48,7 @@ com.google.common.base.Charsets
 
 and we would place this rule in this file:
 
-gradle/validation/forbidden-apis/com.google.guava.guava.all.txt
+gradle/validation/forbidden-apis/all/com.google.guava.guava.txt
 
 From now on, if *any* module depends on this library, it will
-automatically pick up the rule and enforce it.
+automatically pick up the signature file and enforce it.

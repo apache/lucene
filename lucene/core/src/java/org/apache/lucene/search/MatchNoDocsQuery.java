@@ -24,12 +24,29 @@ public class MatchNoDocsQuery extends Query {
 
   private final String reason;
 
-  /** Default constructor */
+  /**
+   * A singleton instance with a blank reason
+   *
+   * @see #MatchNoDocsQuery(String)
+   */
+  public static final MatchNoDocsQuery INSTANCE = new MatchNoDocsQuery();
+
+  /**
+   * Default constructor
+   *
+   * @deprecated Use either {@link MatchAllDocsQuery#INSTANCE} or {@link #MatchNoDocsQuery(String)}
+   */
+  @Deprecated
   public MatchNoDocsQuery() {
     this("");
   }
 
-  /** Provides a reason explaining why this query was used */
+  /**
+   * Provides a reason explaining why this query was used.
+   *
+   * <p>NOTE: All instances of this class are equal, even if they were constructed with distinct
+   * reasons.
+   */
   public MatchNoDocsQuery(String reason) {
     this.reason = reason;
   }

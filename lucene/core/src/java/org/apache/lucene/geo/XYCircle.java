@@ -76,8 +76,9 @@ public final class XYCircle extends XYGeometry {
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    if (!(o instanceof XYCircle)) return false;
-    XYCircle circle = (XYCircle) o;
+    if (!(o instanceof XYCircle circle)) {
+      return false;
+    }
     return Float.compare(x, circle.x) == 0
         && Float.compare(y, circle.y) == 0
         && Float.compare(radius, circle.radius) == 0;

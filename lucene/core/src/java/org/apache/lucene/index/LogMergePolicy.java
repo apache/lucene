@@ -56,14 +56,6 @@ public abstract class LogMergePolicy extends MergePolicy {
    */
   public static final int DEFAULT_MAX_MERGE_DOCS = Integer.MAX_VALUE;
 
-  /**
-   * Default noCFSRatio. If a merge's size is {@code >= 10%} of the index, then we disable compound
-   * file for it.
-   *
-   * @see MergePolicy#setNoCFSRatio
-   */
-  public static final double DEFAULT_NO_CFS_RATIO = 0.1;
-
   /** How many segments to merge at a time. */
   protected int mergeFactor = DEFAULT_MERGE_FACTOR;
 
@@ -97,9 +89,7 @@ public abstract class LogMergePolicy extends MergePolicy {
   protected int targetSearchConcurrency = 1;
 
   /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
-  public LogMergePolicy() {
-    super(DEFAULT_NO_CFS_RATIO, MergePolicy.DEFAULT_MAX_CFS_SEGMENT_SIZE);
-  }
+  public LogMergePolicy() {}
 
   /**
    * Returns the number of segments that are merged at once and also controls the total number of
@@ -730,8 +720,6 @@ public abstract class LogMergePolicy extends MergePolicy {
     sb.append("maxMergeSizeForForcedMerge=").append(maxMergeSizeForForcedMerge).append(", ");
     sb.append("calibrateSizeByDeletes=").append(calibrateSizeByDeletes).append(", ");
     sb.append("maxMergeDocs=").append(maxMergeDocs).append(", ");
-    sb.append("maxCFSSegmentSizeMB=").append(getMaxCFSSegmentSizeMB()).append(", ");
-    sb.append("noCFSRatio=").append(noCFSRatio);
     sb.append("]");
     return sb.toString();
   }

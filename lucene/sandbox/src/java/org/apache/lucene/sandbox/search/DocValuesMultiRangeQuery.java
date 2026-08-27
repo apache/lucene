@@ -21,7 +21,8 @@ import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
-import org.apache.lucene.search.*;
+import org.apache.lucene.search.MatchNoDocsQuery;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -137,7 +138,7 @@ public final class DocValuesMultiRangeQuery {
 
     public Query build() {
       if (clauses.isEmpty()) {
-        return new MatchNoDocsQuery();
+        return MatchNoDocsQuery.INSTANCE;
       }
       if (clauses.size() == 1) {
         ByteRange theOnlyOne = clauses.getFirst();
@@ -172,7 +173,7 @@ public final class DocValuesMultiRangeQuery {
 
     public Query build() {
       if (clauses.isEmpty()) {
-        return new MatchNoDocsQuery();
+        return MatchNoDocsQuery.INSTANCE;
       }
       if (clauses.size() == 1) {
         LongRange theOnlyOne = clauses.getFirst();

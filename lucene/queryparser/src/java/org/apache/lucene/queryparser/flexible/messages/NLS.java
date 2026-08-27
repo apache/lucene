@@ -24,7 +24,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.MissingResourceException;
 import java.util.ResourceBundle;
-import org.apache.lucene.util.CollectionUtil;
 
 /**
  * MessageBundles classes extend this class, to implement a bundle.
@@ -118,7 +117,7 @@ public class NLS {
 
     // build a map of field names to Field objects
     final int len = fieldArray.length;
-    Map<String, Field> fields = CollectionUtil.newHashMap(len);
+    Map<String, Field> fields = HashMap.newHashMap(len);
     for (Field field : fieldArray) {
       fields.put(field.getName(), field);
       loadfieldValue(field, clazz);

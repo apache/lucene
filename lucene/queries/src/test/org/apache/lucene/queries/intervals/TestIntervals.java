@@ -1224,7 +1224,7 @@ public class TestIntervals extends LuceneTestCase {
                 s.intervals("field1", ctx);
               }
             });
-    assertEquals("Automaton [\\p(.)*\\e] expanded to too many terms (limit 1)", e.getMessage());
+    assertEquals("Automaton [p(.)*e] expanded to too many terms (limit 1)", e.getMessage());
 
     checkVisits(source, 1);
   }

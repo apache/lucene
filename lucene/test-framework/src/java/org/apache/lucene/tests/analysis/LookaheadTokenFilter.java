@@ -118,7 +118,7 @@ public abstract class LookaheadTokenFilter<T extends LookaheadTokenFilter.Positi
   protected abstract T newPosition();
 
   protected final RollingBuffer<T> positions =
-      new RollingBuffer<T>() {
+      new RollingBuffer<>() {
         @Override
         protected T newInstance() {
           return newPosition();

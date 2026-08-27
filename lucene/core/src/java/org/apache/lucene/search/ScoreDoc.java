@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.search;
 
+import java.util.Comparator;
 import org.apache.lucene.index.StoredFields;
 
 /** Holds one hit in {@link TopDocs}. */
@@ -51,4 +52,16 @@ public class ScoreDoc {
   public String toString() {
     return "doc=" + doc + " score=" + score + " shardIndex=" + shardIndex;
   }
+
+  /** Utility comparator that sorts by score descending, then by docId ascending */
+  public static final Comparator<ScoreDoc> COMPARATOR =
+      (a, b) -> {
+        if (a.score > b.score) {
+          return -1;
+        } else if (a.score < b.score) {
+          return 1;
+        } else {
+          return a.doc - b.doc;
+        }
+      };
 }

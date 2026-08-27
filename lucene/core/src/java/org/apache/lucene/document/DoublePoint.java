@@ -208,7 +208,7 @@ public final class DoublePoint extends Field {
    * {@code lowerValue = Double.NEGATIVE_INFINITY} or {@code upperValue = Double.POSITIVE_INFINITY}.
    *
    * <p>Ranges are inclusive. For exclusive ranges, pass {@link #nextUp(double) nextUp(lowerValue)}
-   * or {@link #nextUp(double) nextDown(upperValue)}.
+   * or {@link #nextDown(double) nextDown(upperValue)}.
    *
    * <p>Range comparisons are consistent with {@link Double#compareTo(Double)}.
    *
@@ -302,7 +302,7 @@ public final class DoublePoint extends Field {
    * @param values all values to match
    */
   public static Query newSetQuery(String field, Collection<Double> values) {
-    Double[] boxed = values.toArray(new Double[0]);
+    Double[] boxed = values.toArray(Double[]::new);
     double[] unboxed = new double[boxed.length];
     for (int i = 0; i < boxed.length; i++) {
       unboxed[i] = boxed[i];

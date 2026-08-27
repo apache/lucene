@@ -43,7 +43,7 @@
  * should be used after your main query has been executed. For each hit execute the {@link
  * org.apache.lucene.search.join.ParentChildrenBlockJoinQuery} query
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   TopDocs results = searcher.search(mainQuery, 10);
  *   for (int i = 0; i &lt; results.scoreDocs.length; i++) {
  *     ScoreDoc scoreDoc = results.scoreDocs[i];
@@ -54,7 +54,7 @@
  *     TopDocs topChildResults = searcher.search(parentChildrenBlockJoinQuery, 3);
  *     // Process top child hits...
  *   }
- * </pre>
+ * </code></pre>
  *
  * <p>To map/join in the opposite direction, use {@link
  * org.apache.lucene.search.join.ToChildBlockJoinQuery}. This wraps any query matching parent
@@ -89,7 +89,7 @@
  * org.apache.lucene.search.Query, org.apache.lucene.search.IndexSearcher,
  * org.apache.lucene.search.join.ScoreMode) JoinUtil.createJoinQuery()} :
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   String fromField = "from"; // Name of the from field
  *   boolean multipleValuesPerDocument = false; // Set only to true in the case when your fromField has multiple values per document in your index
  *   String toField = "to"; // Name of the to field
@@ -99,6 +99,6 @@
  *   Query joinQuery = JoinUtil.createJoinQuery(fromField, multipleValuesPerDocument, toField, fromQuery, fromSearcher, scoreMode);
  *   TopDocs topDocs = toSearcher.search(joinQuery, 10); // Note: toSearcher can be the same as the fromSearcher
  *   // Render topDocs...
- * </pre>
+ * </code></pre>
  */
 package org.apache.lucene.search.join;

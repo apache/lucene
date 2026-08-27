@@ -28,7 +28,6 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.TestVectorUtil;
 
 public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
@@ -109,7 +108,7 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
         IndexReader reader = DirectoryReader.open(indexStore)) {
       Query filter = null;
       if (random().nextBoolean()) {
-        filter = new MatchAllDocsQuery();
+        filter = MatchAllDocsQuery.INSTANCE;
       }
       AbstractKnnVectorQuery query =
           new KnnFloatVectorQuery("field", new float[] {0, 1}, 10, filter);
@@ -149,7 +148,7 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
     @Override
     protected TopDocs approximateSearch(
         LeafReaderContext context,
-        Bits acceptDocs,
+        AcceptDocs acceptDocs,
         int visitedLimit,
         KnnCollectorManager knnCollectorManager)
         throws IOException {

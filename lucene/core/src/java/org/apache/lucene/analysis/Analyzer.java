@@ -41,7 +41,7 @@ import org.apache.lucene.util.CloseableThreadLocal;
  *
  * <p>Simple example:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * Analyzer analyzer = new Analyzer() {
  *  {@literal @Override}
  *   protected TokenStreamComponents createComponents(String fieldName) {
@@ -57,7 +57,7 @@ import org.apache.lucene.util.CloseableThreadLocal;
  *     return new FooFilter(in);
  *   }
  * };
- * </pre>
+ * </code></pre>
  *
  * For more examples, see the {@link org.apache.lucene.analysis Analysis package documentation}.
  *

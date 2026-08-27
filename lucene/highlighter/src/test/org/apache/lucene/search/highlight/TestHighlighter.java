@@ -41,6 +41,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
@@ -96,7 +97,6 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.CharacterRunAutomaton;
-import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -1040,9 +1040,7 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
             numHighlights = 0;
             WildcardQuery wildcardQuery =
                 new WildcardQuery(
-                    new Term(FIELD_NAME, "k?nnedy"),
-                    Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
-                    MultiTermQuery.SCORING_BOOLEAN_REWRITE);
+                    new Term(FIELD_NAME, "k?nnedy"), MultiTermQuery.SCORING_BOOLEAN_REWRITE);
             doSearching(wildcardQuery);
             doStandardHighlights(analyzer, searcher, hits, query, TestHighlighter.this);
             assertTrue(
@@ -1063,9 +1061,7 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
             numHighlights = 0;
             WildcardQuery wildcardQuery =
                 new WildcardQuery(
-                    new Term(FIELD_NAME, "k*dy"),
-                    Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
-                    MultiTermQuery.SCORING_BOOLEAN_REWRITE);
+                    new Term(FIELD_NAME, "k*dy"), MultiTermQuery.SCORING_BOOLEAN_REWRITE);
             doSearching(wildcardQuery);
             doStandardHighlights(analyzer, searcher, hits, query, TestHighlighter.this);
             assertTrue(
@@ -1115,9 +1111,7 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
 
     query =
         new WildcardQuery(
-            new Term(FIELD_NAME, "ken*"),
-            Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
-            MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE);
+            new Term(FIELD_NAME, "ken*"), MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE);
     searcher = newSearcher(reader);
     // can't rewrite ConstantScore if you want to highlight it -
     // it rewrites to ConstantScoreQuery which cannot be highlighted
@@ -2231,6 +2225,23 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
       String result = h.getBestFragment(stream, text);
       assertEquals("random <B>words</B> and words", result); // only highlight first "word"
     }
+  }
+
+  public void testSortedNumericDocValuesRangeQuery() throws IOException {
+    Query query =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("text", "compensation")), Occur.MUST)
+            .add(
+                SortedNumericDocValuesField.newSlowRangeQuery(
+                    "date_of_review", 20190210L, 20260210L),
+                Occur.FILTER)
+            .build();
+
+    WeightedSpanTermExtractor extractor = new WeightedSpanTermExtractor();
+    Map<String, WeightedSpanTerm> terms =
+        extractor.getWeightedSpanTerms(
+            query, 1, new CannedTokenStream(new Token("compensation", 0, 12)), "text");
+    assertTrue("Term 'compensation' should be extracted", terms.containsKey("compensation"));
   }
 
   @Override

@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
+import java.util.Comparator;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
@@ -159,24 +160,12 @@ abstract class DocValuesFieldUpdates implements Accountable {
       return subs[0];
     }
 
+    // sort by smaller docID, then larger delGen
     PriorityQueue<Iterator> queue =
-        new PriorityQueue<Iterator>(subs.length) {
-          @Override
-          protected boolean lessThan(Iterator a, Iterator b) {
-            // sort by smaller docID
-            int cmp = Integer.compare(a.docID(), b.docID());
-            if (cmp == 0) {
-              // then by larger delGen
-              cmp = Long.compare(b.delGen(), a.delGen());
-
-              // delGens are unique across our subs:
-              assert cmp != 0;
-            }
-
-            return cmp < 0;
-          }
-        };
-
+        PriorityQueue.usingComparator(
+            subs.length,
+            Comparator.comparingInt(Iterator::docID)
+                .thenComparing(Comparator.comparingLong(Iterator::delGen).reversed()));
     for (Iterator sub : subs) {
       if (sub.nextDoc() != NO_MORE_DOCS) {
         queue.add(sub);
@@ -248,6 +237,10 @@ abstract class DocValuesFieldUpdates implements Accountable {
   protected final int maxDoc;
   protected PagedMutable docs;
   protected int size;
+  // true once any doc's value was reset (removed); such a buffer cannot take the sparse incremental
+  // path. Protected so subclasses that override reset() (e.g. NumericDocValuesFieldUpdates) can set
+  // it too.
+  protected boolean anyReset;
 
   protected DocValuesFieldUpdates(int maxDoc, long delGen, String field, DocValuesType type) {
     this.maxDoc = maxDoc;
@@ -360,7 +353,13 @@ abstract class DocValuesFieldUpdates implements Accountable {
    * @param doc the doc to update
    */
   synchronized void reset(int doc) {
+    anyReset = true;
     addInternal(doc, HAS_NO_VALUE_MASK);
+  }
+
+  /** Whether this buffer removed any doc's value (vs. only setting values). */
+  final synchronized boolean anyReset() {
+    return anyReset;
   }
 
   final synchronized int add(int doc) {

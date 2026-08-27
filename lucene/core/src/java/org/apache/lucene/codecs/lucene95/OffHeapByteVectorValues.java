@@ -82,6 +82,23 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues implement
   }
 
   @Override
+  public void prefetch(final int[] ordsToPrefetch, int numOrds) throws IOException {
+    if (ordsToPrefetch == null) {
+      return;
+    }
+    int finalNumOrds = Math.min(numOrds, ordsToPrefetch.length);
+    if (finalNumOrds <= 1) {
+      return;
+    }
+
+    // 1. calculate offset and prefetch immediately
+    for (int i = 0; i < finalNumOrds; i++) {
+      long offset = (long) ordsToPrefetch[i] * byteSize;
+      slice.prefetch(offset, byteSize);
+    }
+  }
+
+  @Override
   public IndexInput getSlice() {
     return slice;
   }
@@ -172,6 +189,11 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues implement
         public DocIdSetIterator iterator() {
           return iterator;
         }
+
+        @Override
+        public VectorScorer.Bulk bulk(DocIdSetIterator matchingDocs) {
+          return Bulk.fromRandomScorerDense(scorer, iterator, matchingDocs);
+        }
       };
     }
   }
@@ -260,6 +282,7 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues implement
       SparseOffHeapVectorValues copy = copy();
       RandomVectorScorer scorer =
           flatVectorsScorer.getRandomVectorScorer(similarityFunction, copy, query);
+      DocIndexIterator iterator = copy.iterator();
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
@@ -268,7 +291,12 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues implement
 
         @Override
         public DocIdSetIterator iterator() {
-          return copy.disi;
+          return iterator;
+        }
+
+        @Override
+        public VectorScorer.Bulk bulk(DocIdSetIterator matchingDocs) {
+          return Bulk.fromRandomScorerSparse(scorer, iterator, matchingDocs);
         }
       };
     }

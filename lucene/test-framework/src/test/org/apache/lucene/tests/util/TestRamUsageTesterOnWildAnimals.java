@@ -39,9 +39,7 @@ public class TestRamUsageTesterOnWildAnimals extends LuceneTestCase {
         }
         RamUsageTester.ramUsed(first); // cause SOE or pass.
         lower = mid;
-      } catch (
-          @SuppressWarnings("unused")
-          StackOverflowError e) {
+      } catch (StackOverflowError _) {
         upper = mid;
       }
     }

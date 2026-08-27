@@ -48,6 +48,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -179,6 +180,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     switch (fieldData.fieldInfo.getVectorEncoding()) {
       case BYTE -> writeByteVectors(fieldData);
       case FLOAT32 -> writeFloat32Vectors(fieldData);
+      case FLOAT16 -> throw new UnsupportedOperationException("FLOAT16 is not supported");
     }
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
 
@@ -245,6 +247,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
         switch (fieldData.fieldInfo.getVectorEncoding()) {
           case BYTE -> writeSortedByteVectors(fieldData, ordMap);
           case FLOAT32 -> writeSortedFloat32Vectors(fieldData, ordMap);
+          case FLOAT16 -> throw new UnsupportedOperationException("FLOAT16 is not supported");
         };
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
 
@@ -317,7 +320,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       int node = nodesOnLevel0.nextInt();
       NeighborArray neighbors = graph.getNeighbors(0, newToOldMap[node]);
       long offset = vectorIndex.getFilePointer();
-      reconstructAndWriteNeigbours(neighbors, oldToNewMap, maxConnOnLevel, maxOrd);
+      reconstructAndWriteNeighbours(neighbors, oldToNewMap, maxConnOnLevel, maxOrd);
       levelNodeOffsets[0][node] = Math.toIntExact(vectorIndex.getFilePointer() - offset);
     }
 
@@ -335,7 +338,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       for (int node : newNodes) {
         NeighborArray neighbors = graph.getNeighbors(level, newToOldMap[node]);
         long offset = vectorIndex.getFilePointer();
-        reconstructAndWriteNeigbours(neighbors, oldToNewMap, maxConnOnLevel, maxOrd);
+        reconstructAndWriteNeighbours(neighbors, oldToNewMap, maxConnOnLevel, maxOrd);
         levelNodeOffsets[level][nodeOffsetIndex++] =
             Math.toIntExact(vectorIndex.getFilePointer() - offset);
       }
@@ -381,13 +384,13 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
         if (level == 0) {
           return graph.getNodesOnLevel(0);
         } else {
-          return new ArrayNodesIterator(nodesByLevel.get(level), nodesByLevel.get(level).length);
+          return new ArrayNodesIterator(nodesByLevel.get(level));
         }
       }
     };
   }
 
-  private void reconstructAndWriteNeigbours(
+  private void reconstructAndWriteNeighbours(
       NeighborArray neighbors, int[] oldToNewMap, int maxConnOnLevel, int maxOrd)
       throws IOException {
     int size = neighbors.size();
@@ -411,7 +414,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
   }
 
   @Override
-  public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+  public IORunnable mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
     IndexOutput tempVectorData =
         segmentWriteState.directory.createTempOutput(
@@ -431,6 +434,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                 writeVectorData(
                     tempVectorData,
                     MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState));
+            case FLOAT16 -> throw new UnsupportedOperationException("FLOAT16 is not supported");
           };
       CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);
@@ -477,6 +481,8 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                         defaultFlatVectorScorer,
                         fieldInfo.getVectorSimilarityFunction()));
             break;
+          case FLOAT16:
+            throw new UnsupportedOperationException("FLOAT16 is not supported");
           default:
             throw new IllegalArgumentException(
                 "Unsupported vector encoding: " + fieldInfo.getVectorEncoding());
@@ -498,6 +504,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
           case FLOAT32 ->
               mergedVectorValues =
                   KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
+          case FLOAT16 -> throw new UnsupportedOperationException("FLOAT16 is not supported");
         }
         graph =
             merger.merge(
@@ -526,6 +533,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
             segmentWriteState.directory, tempVectorData.getName());
       }
     }
+    return null;
   }
 
   /**
@@ -539,11 +547,11 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     int countOnLevel0 = graph.size();
     int[][] offsets = new int[graph.numLevels()][];
     for (int level = 0; level < graph.numLevels(); level++) {
-      int[] sortedNodes = HnswGraph.NodesIterator.getSortedNodes(graph.getNodesOnLevel(level));
-      offsets[level] = new int[sortedNodes.length];
+      HnswGraph.NodesIterator sortedNodes = graph.getSortedNodes(level);
+      offsets[level] = new int[sortedNodes.size()];
       int nodeOffsetId = 0;
-      for (int node : sortedNodes) {
-        NeighborArray neighbors = graph.getNeighbors(level, node);
+      while (sortedNodes.hasNext()) {
+        NeighborArray neighbors = graph.getNeighbors(level, sortedNodes.next());
         int size = neighbors.size();
         // Write size in VInt as the neighbors list is typically small
         long offsetStart = vectorIndex.getFilePointer();
@@ -709,6 +717,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                 return ArrayUtil.copyOfSubArray(value, 0, dim);
               }
             };
+        case FLOAT16 -> throw new UnsupportedOperationException("FLOAT16 is not supported");
       };
     }
 
@@ -729,6 +738,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                 defaultFlatVectorScorer.getRandomVectorScorerSupplier(
                     fieldInfo.getVectorSimilarityFunction(),
                     FloatVectorValues.fromFloats((List<float[]>) vectors, dim));
+            case FLOAT16 -> throw new UnsupportedOperationException("FLOAT16 is not supported");
           };
       hnswGraphBuilder =
           HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);

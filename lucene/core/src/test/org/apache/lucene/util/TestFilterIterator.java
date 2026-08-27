@@ -41,7 +41,7 @@ public class TestFilterIterator extends LuceneTestCase {
 
   public void testEmpty() {
     final Iterator<String> it =
-        new FilterIterator<String, String>(set.iterator()) {
+        new FilterIterator<>(set.iterator()) {
           @Override
           protected boolean predicateFunction(String s) {
             return false;
@@ -52,7 +52,7 @@ public class TestFilterIterator extends LuceneTestCase {
 
   public void testA1() {
     final Iterator<String> it =
-        new FilterIterator<String, String>(set.iterator()) {
+        new FilterIterator<>(set.iterator()) {
           @Override
           protected boolean predicateFunction(String s) {
             return "a".equals(s);
@@ -65,7 +65,7 @@ public class TestFilterIterator extends LuceneTestCase {
 
   public void testA2() {
     final Iterator<String> it =
-        new FilterIterator<String, String>(set.iterator()) {
+        new FilterIterator<>(set.iterator()) {
           @Override
           protected boolean predicateFunction(String s) {
             return "a".equals(s);
@@ -78,7 +78,7 @@ public class TestFilterIterator extends LuceneTestCase {
 
   public void testB1() {
     final Iterator<String> it =
-        new FilterIterator<String, String>(set.iterator()) {
+        new FilterIterator<>(set.iterator()) {
           @Override
           protected boolean predicateFunction(String s) {
             return "b".equals(s);
@@ -91,7 +91,7 @@ public class TestFilterIterator extends LuceneTestCase {
 
   public void testB2() {
     final Iterator<String> it =
-        new FilterIterator<String, String>(set.iterator()) {
+        new FilterIterator<>(set.iterator()) {
           @Override
           protected boolean predicateFunction(String s) {
             return "b".equals(s);
@@ -104,7 +104,7 @@ public class TestFilterIterator extends LuceneTestCase {
 
   public void testAll1() {
     final Iterator<String> it =
-        new FilterIterator<String, String>(set.iterator()) {
+        new FilterIterator<>(set.iterator()) {
           @Override
           protected boolean predicateFunction(String s) {
             return true;
@@ -121,7 +121,7 @@ public class TestFilterIterator extends LuceneTestCase {
 
   public void testAll2() {
     final Iterator<String> it =
-        new FilterIterator<String, String>(set.iterator()) {
+        new FilterIterator<>(set.iterator()) {
           @Override
           protected boolean predicateFunction(String s) {
             return true;
@@ -135,7 +135,7 @@ public class TestFilterIterator extends LuceneTestCase {
 
   public void testUnmodifiable() {
     final Iterator<String> it =
-        new FilterIterator<String, String>(set.iterator()) {
+        new FilterIterator<>(set.iterator()) {
           @Override
           protected boolean predicateFunction(String s) {
             return true;

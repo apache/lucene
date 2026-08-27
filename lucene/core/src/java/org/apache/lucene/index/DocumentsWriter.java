@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 import java.util.function.ToLongFunction;
+import org.apache.lucene.document.column.ColumnBatch;
 import org.apache.lucene.index.DocumentsWriterPerThread.FlushedSegment;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.store.AlreadyClosedException;
@@ -209,7 +210,6 @@ final class DocumentsWriter implements Closeable, Accountable {
    * all currently buffered docs. This resets our state, discarding any docs added since last flush.
    */
   synchronized void abort() throws IOException {
-    boolean success = false;
     try {
       deleteQueue.clear();
       if (infoStream.isEnabled("DW")) {
@@ -224,19 +224,22 @@ final class DocumentsWriter implements Closeable, Accountable {
       }
       flushControl.abortPendingFlushes();
       flushControl.waitForFlush();
+
       assert perThreadPool.size() == 0
           : "There are still active DWPT in the pool: " + perThreadPool.size();
-      success = true;
-    } finally {
-      if (success) {
-        assert flushControl.getFlushingBytes() == 0
-            : "flushingBytes has unexpected value 0 != " + flushControl.getFlushingBytes();
-        assert flushControl.netBytes() == 0
-            : "netBytes has unexpected value 0 != " + flushControl.netBytes();
-      }
+      assert flushControl.getFlushingBytes() == 0
+          : "flushingBytes has unexpected value 0 != " + flushControl.getFlushingBytes();
+      assert flushControl.netBytes() == 0
+          : "netBytes has unexpected value 0 != " + flushControl.netBytes();
+
       if (infoStream.isEnabled("DW")) {
-        infoStream.message("DW", "done abort success=" + success);
+        infoStream.message("DW", "done abort success=true");
       }
+    } catch (Throwable t) {
+      if (infoStream.isEnabled("DW")) {
+        infoStream.message("DW", "done abort success=false");
+      }
+      throw t;
     }
   }
 
@@ -450,6 +453,43 @@ final class DocumentsWriter implements Closeable, Accountable {
     return seqNo;
   }
 
+  long updateBatch(final ColumnBatch columnBatch, final DocumentsWriterDeleteQueue.Node<?> delNode)
+      throws IOException {
+    boolean hasEvents = preUpdate();
+
+    final DocumentsWriterPerThread dwpt = flushControl.obtainAndLock();
+    final DocumentsWriterPerThread flushingDWPT;
+    long seqNo;
+
+    try {
+      // This must happen after we've pulled the DWPT because IW.close
+      // waits for all DWPT to be released:
+      ensureOpen();
+      try {
+        seqNo = dwpt.updateBatch(columnBatch, delNode, flushNotifications, numDocsInRAM::addAndGet);
+      } finally {
+        if (dwpt.isAborted()) {
+          flushControl.doOnAbort(dwpt);
+        }
+      }
+      flushingDWPT = flushControl.doAfterDocument(dwpt);
+    } finally {
+      synchronized (flushControl) {
+        if (dwpt.isFlushPending() || dwpt.isAborted() || dwpt.isQueueAdvanced()) {
+          dwpt.unlock();
+        } else {
+          perThreadPool.marksAsFreeAndUnlock(dwpt);
+        }
+      }
+      assert dwpt.isHeldByCurrentThread() == false : "we didn't release the dwpt even on abort";
+    }
+
+    if (postUpdate(flushingDWPT, hasEvents)) {
+      seqNo = -seqNo;
+    }
+    return seqNo;
+  }
+
   private boolean maybeFlush() throws IOException {
     final DocumentsWriterPerThread flushingDWPT = flushControl.nextPendingFlush();
     if (flushingDWPT != null) {
@@ -463,7 +503,6 @@ final class DocumentsWriter implements Closeable, Accountable {
     assert flushingDWPT != null : "Flushing DWPT must not be null";
     do {
       assert flushingDWPT.hasFlushed() == false;
-      boolean success = false;
       DocumentsWriterFlushQueue.FlushTicket ticket = null;
       try {
         assert currentFullFlushDelQueue == null
@@ -514,14 +553,14 @@ final class DocumentsWriter implements Closeable, Accountable {
           }
           // flush was successful once we reached this point - new seg. has been assigned to the
           // ticket!
-          success = true;
-        } finally {
-          if (!success && ticket != null) {
+        } catch (Throwable t) {
+          if (ticket != null) {
             // In the case of a failure make sure we are making progress and
             // apply all the deletes since the segment flush failed since the flush
             // ticket could hold global deletes see FlushTicket#canPublish()
             ticketQueue.markTicketFailed(ticket);
           }
+          throw t;
         }
         /*
          * Now we are done and try to flush the ticket queue if the head of the

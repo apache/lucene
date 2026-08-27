@@ -37,8 +37,41 @@ import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.KnnByteVectorField;
+import org.apache.lucene.document.KnnFloat16VectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
-import org.apache.lucene.index.*;
+import org.apache.lucene.index.BaseTermsEnum;
+import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.DocValuesSkipIndexType;
+import org.apache.lucene.index.DocValuesSkipper;
+import org.apache.lucene.index.DocValuesType;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.FieldInvertState;
+import org.apache.lucene.index.Fields;
+import org.apache.lucene.index.Float16VectorValues;
+import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.ImpactsEnum;
+import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.IndexableField;
+import org.apache.lucene.index.IndexableFieldType;
+import org.apache.lucene.index.LeafMetaData;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.OrdTermState;
+import org.apache.lucene.index.PointValues;
+import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.SlowImpactsEnum;
+import org.apache.lucene.index.SortedDocValues;
+import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.index.SortedSetDocValues;
+import org.apache.lucene.index.StoredFieldVisitor;
+import org.apache.lucene.index.StoredFields;
+import org.apache.lucene.index.TermState;
+import org.apache.lucene.index.TermVectors;
+import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -79,9 +112,9 @@ import org.apache.lucene.util.Version;
  * search), this class targets fulltext search of huge numbers of queries over comparatively small
  * transient realtime data (prospective search). For example as in
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * float score = search(String text, Query query)
- * </pre>
+ * </code></pre>
  *
  * <p>Each instance can hold at most one Lucene "document", with a document containing zero or more
  * "fields", each field having a name and a fulltext value. The fulltext value is tokenized (split
@@ -110,7 +143,7 @@ import org.apache.lucene.util.Version;
  *
  * <p><b>Example Usage</b> <br>
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * Analyzer analyzer = new SimpleAnalyzer(version);
  * MemoryIndex index = new MemoryIndex();
  * index.addField("content", "Readings about Salmons and other select Alaska fishing Manuals", analyzer);
@@ -123,11 +156,11 @@ import org.apache.lucene.util.Version;
  *     System.out.println("no match found");
  * }
  * System.out.println("indexData=" + index.toString());
- * </pre>
+ * </code></pre>
  *
  * <p><b>Example XQuery Usage</b>
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * (: An XQuery that finds all books authored by James that have something to do with "salmon fishing manuals", sorted by relevance :)
  * declare namespace lucene = "java:nux.xom.pool.FullTextUtil";
  * declare variable $query := "+salmon~ +fish* manual~"; (: any arbitrary Lucene query can go here :)
@@ -136,7 +169,7 @@ import org.apache.lucene.util.Version;
  * let $score := lucene:match($book/abstract, $query)
  * order by $score descending
  * return $book
- * </pre>
+ * </code></pre>
  *
  * <p><b>Thread safety guarantees</b>
  *
@@ -602,7 +635,7 @@ public class MemoryIndex {
     }
     if (tokenStream != null) {
       storeTerms(info, tokenStream, positionIncrementGap, offsetGap);
-    } else if (field.fieldType().indexOptions().compareTo(IndexOptions.DOCS) >= 0) {
+    } else if (field.fieldType().indexOptions().subsumes(IndexOptions.DOCS)) {
       BytesRef binaryValue = field.binaryValue();
       if (binaryValue == null) {
         throw new IllegalArgumentException(
@@ -782,6 +815,30 @@ public class MemoryIndex {
                 + vectorField.name()
                 + "] is not a byte vector field, but the field info is configured for byte vectors");
       }
+
+      case FLOAT16 -> {
+        if (vectorField instanceof KnnFloat16VectorField float16VectorField) {
+          if (info.float16VectorCount == 1) {
+            throw new IllegalArgumentException(
+                "Only one value per field allowed for float16 vector field ["
+                    + vectorField.name()
+                    + "]");
+          }
+          info.float16VectorCount++;
+          if (info.float16VectorValues == null) {
+            info.float16VectorValues = new short[1][];
+          }
+          info.float16VectorValues[0] =
+              ArrayUtil.copyOfSubArray(
+                  float16VectorField.vectorValue(), 0, info.fieldInfo.getVectorDimension());
+          return;
+        }
+        throw new IllegalArgumentException(
+            "Field ["
+                + vectorField.name()
+                + "] is not a float16 vector field, but the field info is configured for float16 vectors");
+      }
+
       case FLOAT32 -> {
         if (vectorField instanceof KnnFloatVectorField floatVectorField) {
           if (info.floatVectorCount == 1) {
@@ -1212,8 +1269,14 @@ public class MemoryIndex {
     /** the float vectors added for this field */
     private float[][] floatVectorValues;
 
+    /** the float16 vectors added for this field */
+    private short[][] float16VectorValues;
+
     /** Number of byte vectors added for this field */
     private int byteVectorCount;
+
+    /** Number of float16 vectors added for this field */
+    private int float16VectorCount;
 
     /** the byte vectors added for this field */
     private byte[][] byteVectorValues;
@@ -1338,9 +1401,7 @@ public class MemoryIndex {
     }
   }
 
-  ///////////////////////////////////////////////////////////////////////////////
   // Nested classes:
-  ///////////////////////////////////////////////////////////////////////////////
 
   private static class MemoryDocValuesIterator {
 
@@ -1695,7 +1756,7 @@ public class MemoryIndex {
     }
 
     @Override
-    public DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+    public DocValuesSkipper getDocValuesSkipper(String field) {
       // Skipping isn't needed on a 1-doc index.
       return null;
     }
@@ -1719,6 +1780,15 @@ public class MemoryIndex {
     }
 
     @Override
+    public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+      Info info = fields.get(field);
+      if (info == null || info.float16VectorValues == null) {
+        return null;
+      }
+      return new MemoryFloat16VectorValues(info);
+    }
+
+    @Override
     public ByteVectorValues getByteVectorValues(String fieldName) {
       Info info = fields.get(fieldName);
       if (info == null || info.byteVectorValues == null) {
@@ -1729,11 +1799,16 @@ public class MemoryIndex {
 
     @Override
     public void searchNearestVectors(
-        String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {}
+        String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {}
 
     @Override
     public void searchNearestVectors(
-        String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {}
+        String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+        throws IOException {}
+
+    @Override
+    public void searchNearestVectors(
+        String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {}
 
     @Override
     public void checkIntegrity() throws IOException {
@@ -1741,7 +1816,7 @@ public class MemoryIndex {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       return memoryFields.terms(field);
     }
 
@@ -2102,27 +2177,27 @@ public class MemoryIndex {
       }
 
       @Override
-      public byte[] getMinPackedValue() throws IOException {
+      public byte[] getMinPackedValue() {
         return info.minPackedValue;
       }
 
       @Override
-      public byte[] getMaxPackedValue() throws IOException {
+      public byte[] getMaxPackedValue() {
         return info.maxPackedValue;
       }
 
       @Override
-      public int getNumDimensions() throws IOException {
+      public int getNumDimensions() {
         return info.fieldInfo.getPointDimensionCount();
       }
 
       @Override
-      public int getNumIndexDimensions() throws IOException {
+      public int getNumIndexDimensions() {
         return info.fieldInfo.getPointDimensionCount();
       }
 
       @Override
-      public int getBytesPerDimension() throws IOException {
+      public int getBytesPerDimension() {
         return info.fieldInfo.getPointNumBytes();
       }
 
@@ -2343,6 +2418,70 @@ public class MemoryIndex {
 
     @Override
     public MemoryFloatVectorValues copy() {
+      return this;
+    }
+  }
+
+  private static final class MemoryFloat16VectorValues extends Float16VectorValues {
+    private final Info info;
+
+    MemoryFloat16VectorValues(Info info) {
+      this.info = info;
+    }
+
+    @Override
+    public int dimension() {
+      return info.fieldInfo.getVectorDimension();
+    }
+
+    @Override
+    public int size() {
+      return info.float16VectorCount;
+    }
+
+    @Override
+    public short[] vectorValue(int ord) {
+      if (ord == 0) {
+        return info.float16VectorValues[0];
+      } else {
+        return null;
+      }
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      return createDenseIterator();
+    }
+
+    @Override
+    public VectorScorer scorer(short[] query) {
+      if (query.length != info.fieldInfo.getVectorDimension()) {
+        throw new IllegalArgumentException(
+            "query vector dimension "
+                + query.length
+                + " does not match field dimension "
+                + info.fieldInfo.getVectorDimension());
+      }
+      MemoryFloat16VectorValues vectorValues = new MemoryFloat16VectorValues(info);
+      DocIndexIterator iterator = vectorValues.iterator();
+      return new VectorScorer() {
+        @Override
+        public float score() throws IOException {
+          assert iterator.docID() == 0;
+          return info.fieldInfo
+              .getVectorSimilarityFunction()
+              .compare(vectorValues.vectorValue(0), query);
+        }
+
+        @Override
+        public DocIdSetIterator iterator() {
+          return iterator;
+        }
+      };
+    }
+
+    @Override
+    public MemoryFloat16VectorValues copy() {
       return this;
     }
   }

@@ -82,7 +82,7 @@ public class Trec1MQReader {
       reader.close();
     }
     // sort result array (by ID)
-    QualityQuery[] qq = res.toArray(new QualityQuery[0]);
+    QualityQuery[] qq = res.toArray(QualityQuery[]::new);
     Arrays.sort(qq);
     return qq;
   }

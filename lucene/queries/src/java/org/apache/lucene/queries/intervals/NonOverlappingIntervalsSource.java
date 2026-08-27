@@ -45,9 +45,11 @@ class NonOverlappingIntervalsSource extends DifferenceIntervalsSource {
 
   @Override
   public boolean equals(Object other) {
-    if (other instanceof NonOverlappingIntervalsSource == false) return false;
-    NonOverlappingIntervalsSource o = (NonOverlappingIntervalsSource) other;
-    return Objects.equals(this.minuend, o.minuend) && Objects.equals(this.subtrahend, o.subtrahend);
+    if (other instanceof NonOverlappingIntervalsSource o) {
+      return Objects.equals(this.minuend, o.minuend)
+          && Objects.equals(this.subtrahend, o.subtrahend);
+    }
+    return false;
   }
 
   @Override

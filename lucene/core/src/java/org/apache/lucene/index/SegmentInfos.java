@@ -43,7 +43,6 @@ import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.Version;
@@ -63,7 +62,8 @@ import org.apache.lucene.util.Version;
  * <ul>
  *   <li><code>segments_N</code>: Header, LuceneVersion, Version, NameCounter, SegCount,
  *       MinSegmentLuceneVersion, &lt;SegName, SegID, SegCodec, DelGen, DeletionCount,
- *       FieldInfosGen, DocValuesGen, UpdatesFiles&gt;<sup>SegCount</sup>, CommitUserData, Footer
+ *       FieldInfosGen, DocValuesGen, UpdatesFiles, DocValuesOverlays&gt;<sup>SegCount</sup>,
+ *       CommitUserData, Footer
  * </ul>
  *
  * Data types:
@@ -83,6 +83,10 @@ import org.apache.lucene.util.Version;
  *   <li>CommitUserData --&gt; {@link DataOutput#writeMapOfStrings Map&lt;String,String&gt;}
  *   <li>UpdatesFiles --&gt; Map&lt;{@link DataOutput#writeInt Int32}, {@link
  *       DataOutput#writeSetOfStrings(Set) Set&lt;String&gt;}&gt;
+ *   <li>DocValuesOverlays --&gt; OverlayCount, &lt;FieldNumber, BaseGen, DeltaCount,
+ *       DeltaGen<sup>DeltaCount</sup>&gt;<sup>OverlayCount</sup>; OverlayCount, FieldNumber and
+ *       DeltaCount are {@link DataOutput#writeInt Int32}, BaseGen and DeltaGen are {@link
+ *       DataOutput#writeLong Int64}
  *   <li>Footer --&gt; {@link CodecUtil#writeFooter CodecFooter}
  * </ul>
  *
@@ -107,6 +111,9 @@ import org.apache.lucene.util.Version;
  *       no updates to DocValues in that segment. Anything above zero means there are updates to
  *       DocValues stored by {@link DocValuesFormat}.
  *   <li>UpdatesFiles stores the set of files that were updated in that segment per field.
+ *   <li>DocValuesOverlays records, per field that has incremental (sparse) doc-values updates, the
+ *       base generation and the delta generations (newest first) overlaid on it at read time; empty
+ *       for segments without overlays.
  * </ul>
  *
  * @lucene.experimental
@@ -119,7 +126,10 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
   /** The version that recorded SegmentCommitInfo IDs */
   public static final int VERSION_86 = 10;
 
-  static final int VERSION_CURRENT = VERSION_86;
+  /** The version that records per-field incremental doc-values overlay generations. */
+  public static final int VERSION_11_0 = 11;
+
+  static final int VERSION_CURRENT = VERSION_11_0;
 
   /** Name of the generation reference file name */
   static final String OLD_SEGMENTS_GEN = "segments.gen";
@@ -280,7 +290,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
    * @throws CorruptIndexException if the index is corrupt
    * @throws IOException if there is a low-level IO error
    */
-  public static final SegmentInfos readCommit(Directory directory, String segmentFileName)
+  public static SegmentInfos readCommit(Directory directory, String segmentFileName)
       throws IOException {
     return readCommit(directory, segmentFileName, Version.MIN_SUPPORTED_MAJOR);
   }
@@ -292,7 +302,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
    * IndexFormatTooOldException} will be thrown. Note that this may throw an IOException if a commit
    * is in process.
    */
-  public static final SegmentInfos readCommit(
+  public static SegmentInfos readCommit(
       Directory directory, String segmentFileName, int minSupportedMajorVersion)
       throws IOException {
 
@@ -309,19 +319,19 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
   }
 
   /** Read the commit from the provided {@link ChecksumIndexInput}. */
-  public static final SegmentInfos readCommit(
+  public static SegmentInfos readCommit(
       Directory directory, ChecksumIndexInput input, long generation) throws IOException {
     return readCommit(directory, input, generation, Version.MIN_SUPPORTED_MAJOR);
   }
 
   /** Read the commit from the provided {@link ChecksumIndexInput}. */
-  public static final SegmentInfos readCommit(
+  public static SegmentInfos readCommit(
       Directory directory, ChecksumIndexInput input, long generation, int minSupportedMajorVersion)
       throws IOException {
     Throwable priorE = null;
     int format = -1;
     try {
-      // NOTE: as long as we want to throw indexformattooold (vs corruptindexexception), we need
+      // NOTE: as we want to throw IndexFormatTooOld (vs CorruptIndexException), we need
       // to read the magic ourselves.
       int magic = CodecUtil.readBEInt(input);
       if (magic != CodecUtil.CODEC_MAGIC) {
@@ -346,25 +356,12 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
             input);
       }
 
-      if (indexCreatedVersion < minSupportedMajorVersion) {
-        throw new IndexFormatTooOldException(
-            input,
-            "This index was initially created with Lucene "
-                + indexCreatedVersion
-                + ".x while the current version is "
-                + Version.LATEST
-                + " and Lucene only supports reading"
-                + (minSupportedMajorVersion == Version.MIN_SUPPORTED_MAJOR
-                    ? " the current and previous major versions"
-                    : " from version " + minSupportedMajorVersion + " upwards"));
-      }
-
       SegmentInfos infos = new SegmentInfos(indexCreatedVersion);
       infos.id = id;
       infos.generation = generation;
       infos.lastGeneration = generation;
       infos.luceneVersion = luceneVersion;
-      parseSegmentInfos(directory, input, infos, format);
+      parseSegmentInfos(directory, input, infos, format, minSupportedMajorVersion);
       return infos;
 
     } catch (Throwable t) {
@@ -380,7 +377,12 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
   }
 
   private static void parseSegmentInfos(
-      Directory directory, DataInput input, SegmentInfos infos, int format) throws IOException {
+      Directory directory,
+      DataInput input,
+      SegmentInfos infos,
+      int format,
+      int minSupportedMajorVersion)
+      throws IOException {
     infos.version = CodecUtil.readBELong(input);
     // System.out.println("READ sis version=" + infos.version);
     infos.counter = input.readVLong();
@@ -397,13 +399,14 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
     }
 
     long totalDocs = 0;
+
     for (int seg = 0; seg < numSegments; seg++) {
       String segName = input.readString();
       byte[] segmentID = new byte[StringHelper.ID_LENGTH];
       input.readBytes(segmentID, 0, segmentID.length);
       Codec codec = readCodec(input);
       SegmentInfo info =
-          codec.segmentInfoFormat().read(directory, segName, segmentID, IOContext.DEFAULT);
+          codec.segmentInfoFormat().read(directory, segName, segmentID, IOContext.READONCE);
       info.setCodec(codec);
       totalDocs += info.maxDoc();
       long delGen = CodecUtil.readBELong(input);
@@ -450,13 +453,26 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       if (numDVFields == 0) {
         dvUpdateFiles = Collections.emptyMap();
       } else {
-        Map<Integer, Set<String>> map = CollectionUtil.newHashMap(numDVFields);
+        Map<Integer, Set<String>> map = HashMap.newHashMap(numDVFields);
         for (int i = 0; i < numDVFields; i++) {
           map.put(CodecUtil.readBEInt(input), input.readSetOfStrings());
         }
         dvUpdateFiles = Collections.unmodifiableMap(map);
       }
       siPerCommit.setDocValuesUpdatesFiles(dvUpdateFiles);
+      if (format >= VERSION_11_0) {
+        final int numOverlayFields = CodecUtil.readBEInt(input);
+        for (int i = 0; i < numOverlayFields; i++) {
+          final int fieldNumber = CodecUtil.readBEInt(input);
+          final long baseGen = CodecUtil.readBELong(input);
+          final int numDeltas = CodecUtil.readBEInt(input);
+          final long[] deltaGens = new long[numDeltas];
+          for (int g = 0; g < numDeltas; g++) {
+            deltaGens[g] = CodecUtil.readBELong(input);
+          }
+          siPerCommit.setDocValuesOverlay(fieldNumber, baseGen, deltaGens);
+        }
+      }
       infos.add(siPerCommit);
 
       Version segmentVersion = info.getVersion();
@@ -490,6 +506,30 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
                 + infos.indexCreatedVersionMajor,
             input);
       }
+
+      int createdOrSegmentMinVersion =
+          info.getMinVersion() == null
+              ? infos.indexCreatedVersionMajor
+              : info.getMinVersion().major;
+
+      // version >=7 are expected to record minVersion
+      if (info.getMinVersion() == null || info.getMinVersion().major < minSupportedMajorVersion) {
+        throw new IndexFormatTooOldException(
+            input,
+            "Index has segments derived from Lucene version "
+                + createdOrSegmentMinVersion
+                + ".x and is not supported by Lucene "
+                + Version.LATEST
+                + ". This Lucene version only supports indexes with major version "
+                + minSupportedMajorVersion
+                + " or later (found: "
+                + createdOrSegmentMinVersion
+                + ", minimum supported: "
+                + minSupportedMajorVersion
+                + "). To resolve this issue re-index your data using Lucene "
+                + minSupportedMajorVersion
+                + ".x or later.");
+      }
     }
 
     infos.userData = input.readMapOfStrings();
@@ -512,18 +552,20 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
     } catch (IllegalArgumentException e) {
       // maybe it's an old default codec that moved
       if (name.startsWith("Lucene")) {
-        throw new IllegalArgumentException(
+        throw new IndexFormatTooOldException(
+            input,
             "Could not load codec '"
                 + name
-                + "'. Did you forget to add lucene-backward-codecs.jar?",
-            e);
+                + "'. "
+                + e.getMessage()
+                + ". Did you forget to add lucene-backward-codecs.jar?");
       }
       throw e;
     }
   }
 
   /** Find the latest commit ({@code segments_N file}) and load all {@link SegmentCommitInfo}s. */
-  public static final SegmentInfos readLatestCommit(Directory directory) throws IOException {
+  public static SegmentInfos readLatestCommit(Directory directory) throws IOException {
     return readLatestCommit(directory, Version.MIN_SUPPORTED_MAJOR);
   }
 
@@ -533,8 +575,8 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
    * than the provided minimum supported major version. If the commit's version is older, an {@link
    * IndexFormatTooOldException} will be thrown.
    */
-  public static final SegmentInfos readLatestCommit(
-      Directory directory, int minSupportedMajorVersion) throws IOException {
+  public static SegmentInfos readLatestCommit(Directory directory, int minSupportedMajorVersion)
+      throws IOException {
     return new FindSegmentsFile<SegmentInfos>(directory) {
       @Override
       protected SegmentInfos doBody(String segmentFileName) throws IOException {
@@ -557,25 +599,20 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
     generation = nextGeneration;
 
     IndexOutput segnOutput = null;
-    boolean success = false;
 
     try {
       segnOutput = directory.createOutput(segmentFileName, IOContext.DEFAULT);
       write(segnOutput);
       segnOutput.close();
       directory.sync(Collections.singleton(segmentFileName));
-      success = true;
-    } finally {
-      if (success) {
-        pendingCommit = true;
-      } else {
-        // We hit an exception above; try to close the file
-        // but suppress any exception:
-        IOUtils.closeWhileHandlingException(segnOutput);
-        // Try not to leave a truncated segments_N file in
-        // the index:
-        IOUtils.deleteFilesIgnoringExceptions(directory, segmentFileName);
-      }
+      pendingCommit = true;
+    } catch (Throwable t) {
+      // try to close the file but suppress any exception:
+      IOUtils.closeWhileSuppressingExceptions(t, segnOutput);
+      // Try not to leave a truncated segments_N file in
+      // the index:
+      IOUtils.deleteFilesSuppressingExceptions(t, directory, segmentFileName);
+      throw t;
     }
   }
 
@@ -681,6 +718,20 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
         CodecUtil.writeBEInt(out, e.getKey());
         out.writeSetOfStrings(e.getValue());
       }
+      // Doc-values overlays, part of the format since VERSION_11_0 (which VERSION_CURRENT always
+      // is).
+      // field -> {baseGen, deltaGenNewestFirst...}; empty for segments without overlays.
+      final Map<Integer, long[]> overlays = siPerCommit.getDocValuesOverlays();
+      CodecUtil.writeBEInt(out, overlays.size());
+      for (Entry<Integer, long[]> e : overlays.entrySet()) {
+        final long[] packed = e.getValue();
+        CodecUtil.writeBEInt(out, e.getKey());
+        CodecUtil.writeBELong(out, packed[0]); // baseGen
+        CodecUtil.writeBEInt(out, packed.length - 1); // number of delta generations
+        for (int g = 1; g < packed.length; g++) {
+          CodecUtil.writeBELong(out, packed[g]);
+        }
+      }
     }
     out.writeMapOfStrings(userData);
     CodecUtil.writeFooter(out);
@@ -715,7 +766,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
     return generation;
   }
 
-  /** Returns last succesfully read or written generation. */
+  /** Returns the last successfully read or written generation. */
   public long getLastGeneration() {
     return lastGeneration;
   }
@@ -875,7 +926,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
     this.generation = generation;
   }
 
-  final void rollbackCommit(Directory dir) {
+  void rollbackCommit(Directory dir) {
     if (pendingCommit) {
       pendingCommit = false;
 
@@ -899,7 +950,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
    * <p>Note: {@link #changed()} should be called prior to this method if changes have been made to
    * this {@link SegmentInfos} instance
    */
-  final void prepareCommit(Directory dir) throws IOException {
+  void prepareCommit(Directory dir) throws IOException {
     if (pendingCommit) {
       throw new IllegalStateException("prepareCommit was already called");
     }
@@ -929,11 +980,10 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
   }
 
   /** Returns the committed segments_N filename. */
-  final String finishCommit(Directory dir) throws IOException {
+  String finishCommit(Directory dir) throws IOException {
     if (pendingCommit == false) {
       throw new IllegalStateException("prepareCommit was not called");
     }
-    boolean successRenameAndSync = false;
     final String dest;
     try {
       final String src =
@@ -942,20 +992,16 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       dir.rename(src, dest);
       try {
         dir.syncMetaData();
-        successRenameAndSync = true;
-      } finally {
-        if (successRenameAndSync == false) {
-          // at this point we already created the file but missed to sync directory let's also
-          // remove the
-          // renamed file
-          IOUtils.deleteFilesIgnoringExceptions(dir, dest);
-        }
+      } catch (Throwable t) {
+        // at this point we already created the file but missed to sync directory let's also
+        // remove the renamed file
+        IOUtils.deleteFilesSuppressingExceptions(t, dir, dest);
+        throw t;
       }
-    } finally {
-      if (successRenameAndSync == false) {
-        // deletes pending_segments_N:
-        rollbackCommit(dir);
-      }
+    } catch (Throwable t) {
+      // deletes pending_segments_N:
+      rollbackCommit(dir);
+      throw t;
     }
 
     pendingCommit = false;
@@ -969,7 +1015,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
    * <p>Note: {@link #changed()} should be called prior to this method if changes have been made to
    * this {@link SegmentInfos} instance
    */
-  public final void commit(Directory dir) throws IOException {
+  public void commit(Directory dir) throws IOException {
     prepareCommit(dir);
     finishCommit(dir);
   }
@@ -977,6 +1023,14 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
   /** Returns readable description of this segment. */
   @Override
   public String toString() {
+    return toString(false);
+  }
+
+  String toStringVerbose() {
+    return toString(true);
+  }
+
+  String toString(boolean verbose) {
     StringBuilder buffer = new StringBuilder();
     buffer.append(getSegmentsFileName()).append(": ");
     final int count = size();
@@ -984,8 +1038,11 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       if (i > 0) {
         buffer.append(' ');
       }
-      final SegmentCommitInfo info = info(i);
-      buffer.append(info.toString(0));
+      if (verbose) {
+        buffer.append(info(i).toStringVerbose());
+      } else {
+        buffer.append(info(i).toString(0));
+      }
     }
     return buffer.toString();
   }

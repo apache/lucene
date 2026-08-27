@@ -44,9 +44,7 @@ public final class BitUtil {
       if (prop != null) {
         return (prop.hashCode() % 2 == 0) ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN;
       }
-    } catch (
-        @SuppressWarnings("unused")
-        SecurityException se) {
+    } catch (SecurityException _) {
       // fall-through
     }
     return ByteOrder.nativeOrder();

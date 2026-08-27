@@ -31,7 +31,6 @@ import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
-import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.IntsRefBuilder;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -48,12 +47,12 @@ import org.apache.lucene.util.fst.Util;
  *
  * <p>Example of using a {@link CompletionQuery} with boosted contexts:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *  CompletionQuery completionQuery = ...;
  *  ContextQuery query = new ContextQuery(completionQuery);
  *  query.addContext("context1", 2);
  *  query.addContext("context2", 1);
- * </pre>
+ * </code></pre>
  *
  * <p>NOTE:
  *
@@ -202,7 +201,7 @@ public class ContextQuery extends CompletionQuery implements Accountable {
     contextsAutomaton =
         Operations.determinize(contextsAutomaton, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
 
-    final Map<IntsRef, Float> contextMap = CollectionUtil.newHashMap(contexts.size());
+    final Map<IntsRef, Float> contextMap = HashMap.newHashMap(contexts.size());
     final IntHashSet contextLengths = new IntHashSet();
     for (Map.Entry<IntsRef, ContextMetaData> entry : contexts.entrySet()) {
       ContextMetaData contextMetaData = entry.getValue();

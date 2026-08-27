@@ -597,7 +597,7 @@ public class TestBKD extends LuceneTestCase {
       }
     }
 
-    byte[][][] docValuesArray = docValues.toArray(new byte[docValues.size()][][]);
+    byte[][][] docValuesArray = docValues.toArray(byte[][][]::new);
     int[] docIDsArray = new int[docIDs.size()];
     for (int i = 0; i < docIDsArray.length; i++) {
       docIDsArray[i] = docIDs.get(i);
@@ -1320,6 +1320,8 @@ public class TestBKD extends LuceneTestCase {
     dir.close();
   }
 
+  // TODO: can this use less docs?
+  @Nightly
   public void test2DLongOrdsOffline() throws Exception {
     try (Directory dir = newDirectory()) {
       int numDocs = 100000;

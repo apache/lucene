@@ -31,6 +31,7 @@ import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SegmentReadState;
@@ -185,7 +186,6 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
       }
       final String formatName = format.getName();
 
-      field.putAttribute(PER_FIELD_FORMAT_KEY, formatName);
       Integer suffix = null;
 
       ConsumerAndSuffix consumer = formats.get(format);
@@ -229,8 +229,8 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
         assert suffixes.containsKey(formatName);
         suffix = consumer.suffix;
       }
-
-      field.putAttribute(PER_FIELD_SUFFIX_KEY, Integer.toString(suffix));
+      field.putAttributes(
+          Map.of(PER_FIELD_FORMAT_KEY, formatName, PER_FIELD_SUFFIX_KEY, Integer.toString(suffix)));
       // TODO: we should only provide the "slice" of FIS
       // that this DVF actually sees ...
       return consumer.consumer;
@@ -281,7 +281,6 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
     public FieldsReader(final SegmentReadState readState) throws IOException {
 
       // Init each unique format:
-      boolean success = false;
       try {
         // Read field name -> format name
         for (FieldInfo fi : readState.fieldInfos) {
@@ -307,11 +306,9 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
             }
           }
         }
-        success = true;
-      } finally {
-        if (!success) {
-          IOUtils.closeWhileHandlingException(formats.values());
-        }
+      } catch (Throwable t) {
+        IOUtils.closeWhileSuppressingExceptions(t, formats.values());
+        throw t;
       }
     }
 
@@ -346,7 +343,7 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
     }
 
     @Override
-    public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
+    public DocValuesSkipper getSkipper(FieldInfo field) {
       DocValuesProducer producer = fields.get(field.number);
       return producer == null ? null : producer.getSkipper(field);
     }
@@ -357,9 +354,9 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
       for (DocValuesProducer format : formats.values()) {
-        format.checkIntegrity();
+        format.checkIntegrity(merge);
       }
     }
 

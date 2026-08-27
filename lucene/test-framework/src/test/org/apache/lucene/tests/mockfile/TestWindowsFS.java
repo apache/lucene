@@ -122,9 +122,7 @@ public class TestWindowsFS extends MockFileSystemTestCase {
                   Files.move(file, target);
                   Files.delete(target);
                 }
-              } catch (
-                  @SuppressWarnings("unused")
-                  IOException ignored) {
+              } catch (IOException _) {
                 // continue
               }
             }
@@ -140,7 +138,7 @@ public class TestWindowsFS extends MockFileSystemTestCase {
           opened = true;
           stream.write(0);
           // just create
-        } catch (@SuppressWarnings("unused") FileNotFoundException | NoSuchFileException ex) {
+        } catch (FileNotFoundException | NoSuchFileException _) {
           assertEquals(
               "File handle leaked - file is closed but still registered",
               0,
@@ -197,14 +195,16 @@ public class TestWindowsFS extends MockFileSystemTestCase {
     if (r.nextBoolean()) {
       // We need at least one char after the special char
       // For example, in case of '/' we interpret `foo/` to just be a file `foo` which is valid
+      // We need at least 2 chars before the special character, because resolving a drive
+      // letter (C:) or a path starting with "/" will not fail on real Windows.
       fileName =
-          RandomStrings.randomAsciiLettersOfLength(r, r.nextInt(10))
+          RandomStrings.randomAsciiLettersOfLength(r, r.nextInt(2, 10))
               + reservedCharacters[r.nextInt(reservedCharacters.length)]
               + RandomStrings.randomAsciiLettersOfLength(r, r.nextInt(1, 10));
     } else {
       fileName = reservedNames[r.nextInt(reservedNames.length)];
     }
-    expectThrows(InvalidPathException.class, () -> dir.resolve(fileName));
+    expectThrows(InvalidPathException.class, fileName, () -> dir.resolve(fileName));
 
     // some other basic tests
     expectThrows(InvalidPathException.class, () -> dir.resolve("foo:bar"));

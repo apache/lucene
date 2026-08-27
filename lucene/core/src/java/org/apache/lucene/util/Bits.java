@@ -42,7 +42,7 @@ public interface Bits {
    *
    * <p>This should behave the same way as the default implementation, which does the following:
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * for (int i = bitSet.nextSetBit(0);
    *     i != DocIdSetIterator.NO_MORE_DOCS;
    *     i = i + 1 >= bitSet.length() ? DocIdSetIterator.NO_MORE_DOCS : bitSet.nextSetBit(i + 1)) {
@@ -50,7 +50,7 @@ public interface Bits {
    *     bitSet.clear(i);
    *   }
    * }
-   * </pre>
+   * </code></pre>
    */
   default void applyMask(FixedBitSet bitSet, int offset) {
     for (int i = bitSet.nextSetBit(0);

@@ -181,14 +181,14 @@ public class TestTransactionRollback extends LuceneTestCase {
           int last = Integer.parseInt(lastVal);
           if (last > rollbackPoint) {
             /*
-            System.out.print("\tRolling back commit point:" +
-                             " UserData="+commit.getUserData() +")  ("+(commits.size()-1)+" commit points left) files=");
-            Collection files = commit.getFileNames();
-            for (Iterator iterator2 = files.iterator(); iterator2.hasNext();) {
-              System.out.print(" "+iterator2.next());
-            }
-            System.out.println();
-            */
+             * System.out.print("\tRolling back commit point:" +
+             *                 " UserData="+commit.getUserData() +")  ("+(commits.size()-1)+" commit points left) files=");
+             * Collection files = commit.getFileNames();
+             * for (Iterator iterator2 = files.iterator(); iterator2.hasNext();) {
+             *   System.out.print(" "+iterator2.next());
+             * }
+             * System.out.println();
+             */
 
             commit.delete();
           }

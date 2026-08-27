@@ -46,7 +46,7 @@ import org.apache.lucene.analysis.TokenStream;
  *       assumed to be correct.
  * </ul>
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_cptlztn" class="solr.TextField" positionIncrementGap="100"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.WhitespaceTokenizerFactory"/&gt;
@@ -54,7 +54,7 @@ import org.apache.lucene.analysis.TokenStream;
  *           keep="java solr lucene" keepIgnoreCase="false"
  *           okPrefix="McK McD McA"/&gt;
  *   &lt;/analyzer&gt;
- * &lt;/fieldType&gt;</pre>
+ * &lt;/fieldType&gt;</code></pre>
  *
  * @since solr 1.3
  * @lucene.spi {@value #NAME}

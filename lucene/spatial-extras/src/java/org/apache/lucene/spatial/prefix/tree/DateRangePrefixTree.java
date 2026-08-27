@@ -41,22 +41,21 @@ import org.locationtech.spatial4j.shape.Shape;
 public class DateRangePrefixTree extends NumberRangePrefixTree {
 
   /*
-    WARNING  java.util.Calendar is tricky to work with:
-    * If you "get" any field value, every field becomes "set". This can introduce a Heisenbug effect,
-        when in a debugger in some cases. Fortunately, Calendar.toString() doesn't apply.
-    * Beware Calendar underflow of the underlying long.  If you create a Calendar from LONG.MIN_VALUE, and clear
-     a field, it will underflow and appear close to LONG.MAX_VALUE (BC to AD).
-
-    There are no doubt other reasons but those two were hard fought lessons here.
-
-    TODO Improvements:
-    * Make max precision configurable (i.e. to SECOND).
-    * Make min & max year span configurable. Use that to remove pointless top levels of the SPT.
-        If year span is > 10k, then add 1k year level. If year span is > 10k of 1k levels, add 1M level.
-    * NumberRangePrefixTree: override getTreeCellIterator for optimized case where the shape isn't a date span; use
-      FilterCellIterator of the cell stack.
-
-  */
+   * WARNING  java.util.Calendar is tricky to work with:
+   * - If you "get" any field value, every field becomes "set". This can introduce a Heisenbug effect,
+   *   when in a debugger in some cases. Fortunately, Calendar.toString() doesn't apply.
+   * - Beware Calendar underflow of the underlying long.  If you create a Calendar from LONG.MIN_VALUE, and clear
+   *   a field, it will underflow and appear close to LONG.MAX_VALUE (BC to AD).
+   *
+   * There are no doubt other reasons but those two were hard fought lessons here.
+   *
+   * TODO Improvements:
+   * - Make max precision configurable (i.e. to SECOND).
+   * - Make min & max year span configurable. Use that to remove pointless top levels of the SPT.
+   *   If year span is > 10k, then add 1k year level. If year span is > 10k of 1k levels, add 1M level.
+   * - NumberRangePrefixTree: override getTreeCellIterator for optimized case where the shape isn't a date span; use
+   *   FilterCellIterator of the cell stack.
+   */
 
   private static final TimeZone UTC = TimeZone.getTimeZone("UTC");
 
@@ -292,11 +291,11 @@ public class DateRangePrefixTree extends NumberRangePrefixTree {
    */
   @Override
   public UnitNRShape toUnitShape(Object value) {
-    if (value instanceof Calendar) {
-      return toShape((Calendar) value);
-    } else if (value instanceof Date) {
+    if (value instanceof Calendar cal) {
+      return toShape(cal);
+    } else if (value instanceof Date date) {
       Calendar cal = newCal();
-      cal.setTime((Date) value);
+      cal.setTime(date);
       return toShape(cal);
     }
     throw new IllegalArgumentException("Expecting Calendar or Date but got: " + value.getClass());
@@ -394,7 +393,7 @@ public class DateRangePrefixTree extends NumberRangePrefixTree {
     if (calPrecField == -1) return "*";
     try {
       StringBuilder builder = new StringBuilder("yyyy-MM-dd'T'HH:mm:ss.SSS".length()); // typical
-      int year = cal.get(Calendar.YEAR); // within the era (thus always positve).  >= 1.
+      int year = cal.get(Calendar.YEAR); // within the era (thus always positive).  >= 1.
       if (cal.get(Calendar.ERA) == 0) { // BC
         year -= 1; // 1BC should be "0000", so shift by one
         if (year > 0) {
@@ -494,34 +493,34 @@ public class DateRangePrefixTree extends NumberRangePrefixTree {
       offset += 3;
       if (lastOffset < offset) return cal;
       // day:
-      checkDelimeter(str, offset - 1, '-');
+      checkDelimiter(str, offset - 1, '-');
 
       parsedVal = parseAndCheck(str, offset, 1, 31);
       cal.set(Calendar.DAY_OF_MONTH, parsedVal);
       offset += 3;
       if (lastOffset < offset) return cal;
-      checkDelimeter(str, offset - 1, 'T');
+      checkDelimiter(str, offset - 1, 'T');
       // hour:
 
       parsedVal = parseAndCheck(str, offset, 0, 24);
       cal.set(Calendar.HOUR_OF_DAY, parsedVal);
       offset += 3;
       if (lastOffset < offset) return cal;
-      checkDelimeter(str, offset - 1, ':');
+      checkDelimiter(str, offset - 1, ':');
       // minute:
 
       parsedVal = parseAndCheck(str, offset, 0, 59);
       cal.set(Calendar.MINUTE, parsedVal);
       offset += 3;
       if (lastOffset < offset) return cal;
-      checkDelimeter(str, offset - 1, ':');
+      checkDelimiter(str, offset - 1, ':');
       // second:
 
       parsedVal = parseAndCheck(str, offset, 0, 59);
       cal.set(Calendar.SECOND, parsedVal);
       offset += 3;
       if (lastOffset < offset) return cal;
-      checkDelimeter(str, offset - 1, '.');
+      checkDelimiter(str, offset - 1, '.');
       // ms:
 
       int maxOffset = lastOffset - offset; // assume remaining is all digits to compute milliseconds
@@ -539,10 +538,10 @@ public class DateRangePrefixTree extends NumberRangePrefixTree {
     }
   }
 
-  private void checkDelimeter(String str, int offset, char delim) {
+  private void checkDelimiter(String str, int offset, char delim) {
     if (str.charAt(offset) != delim) {
       throw new IllegalArgumentException(
-          "Invalid delimeter: '" + str.charAt(offset) + "', expecting '" + delim + "'");
+          "Invalid delimiter: '" + str.charAt(offset) + "', expecting '" + delim + "'");
     }
   }
 

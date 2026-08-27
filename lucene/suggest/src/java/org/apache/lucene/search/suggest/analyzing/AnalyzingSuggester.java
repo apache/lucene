@@ -509,7 +509,7 @@ public class AnalyzingSuggester extends Lookup {
       ByteArrayDataInput input = new ByteArrayDataInput();
 
       // Used to remove duplicate surface forms (but we
-      // still index the hightest-weight one).  We clear
+      // still index the highest-weight one).  We clear
       // this when we see a new analyzed form, so it cannot
       // grow unbounded (at most 256 entries):
       Set<BytesRef> seenSurfaceForms = new HashSet<>();
@@ -763,7 +763,7 @@ public class AnalyzingSuggester extends Lookup {
         // into the FST output, so we more efficiently hone
         // in on the exact surface-form match.  Still, I
         // suspect very little time is spent in this linear
-        // seach: it's bounded by how many prefix start
+        // search: it's bounded by how many prefix start
         // nodes we have and the
         // maxSurfaceFormsPerAnalyzedForm:
         for (Result<Pair<Long, BytesRef>> completion : completions) {
@@ -782,7 +782,7 @@ public class AnalyzingSuggester extends Lookup {
 
       Util.TopNSearcher<Pair<Long, BytesRef>> searcher;
       searcher =
-          new Util.TopNSearcher<Pair<Long, BytesRef>>(
+          new Util.TopNSearcher<>(
               fst, num - results.size(), num * maxAnalyzedPathsForOneInput, weightComparator) {
             private final Set<BytesRef> seen = new HashSet<>();
 
@@ -917,7 +917,7 @@ public class AnalyzingSuggester extends Lookup {
   }
 
   static final Comparator<Pair<Long, BytesRef>> weightComparator =
-      new Comparator<Pair<Long, BytesRef>>() {
+      new Comparator<>() {
         @Override
         public int compare(Pair<Long, BytesRef> left, Pair<Long, BytesRef> right) {
           return left.output1.compareTo(right.output1);

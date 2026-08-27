@@ -45,20 +45,18 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
 
     final LeafFieldComparator comparator;
     final int reverseMul;
+    // Whether the search sort is a prefix of this segment's index sort (decided per segment).
+    final boolean searchSortPartOfIndexSort;
     Scorable scorer;
     boolean collectedAllCompetitiveHits = false;
 
     TopFieldLeafCollector(FieldValueHitQueue<Entry> queue, Sort sort, LeafReaderContext context)
         throws IOException {
-      // as all segments are sorted in the same way, enough to check only the 1st segment for
-      // indexSort
-      if (searchSortPartOfIndexSort == null) {
-        final Sort indexSort = context.reader().getMetaData().sort();
-        searchSortPartOfIndexSort = canEarlyTerminate(sort, indexSort);
-        if (searchSortPartOfIndexSort) {
-          firstComparator.disableSkipping();
-        }
-      }
+      // Whether the search sort is a prefix of the index sort is decided per segment: a MultiReader
+      // may combine segments with different index sorts, so this cannot be cached across leaves
+      // (GITHUB#14399).
+      final Sort indexSort = context.reader().getMetaData().sort();
+      searchSortPartOfIndexSort = canEarlyTerminate(sort, indexSort);
       LeafFieldComparator[] comparators = queue.getComparators(context);
       int[] reverseMuls = queue.getReverseMul();
       if (comparators.length == 1) {
@@ -68,9 +66,15 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
         this.reverseMul = 1;
         this.comparator = new MultiLeafFieldComparator(comparators, reverseMuls);
       }
+      if (searchSortPartOfIndexSort) {
+        // Early termination handles this segment; skipping work in the comparator is redundant.
+        for (LeafFieldComparator comparator : comparators) {
+          comparator.disableSkipping();
+        }
+      }
     }
 
-    void countHit(int doc) throws IOException {
+    void countHit() throws IOException {
       int hitCountSoFar = ++totalHits;
 
       if (minScoreAcc != null && (hitCountSoFar & minScoreAcc.modInterval) == 0) {
@@ -197,7 +201,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
 
             @Override
             public void collect(int doc) throws IOException {
-              countHit(doc);
+              countHit();
               if (queueFull) {
                 if (thresholdCheck(doc)) {
                   return;
@@ -241,7 +245,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
       this.queue = queue;
       this.after = after;
 
-      FieldComparator<?>[] comparators = queue.comparators;
+      FieldComparator<?>[] comparators = queue.getComparators();
       // Tell all comparators their top value:
       for (int i = 0; i < comparators.length; i++) {
         @SuppressWarnings("unchecked")
@@ -262,7 +266,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
 
             @Override
             public void collect(int doc) throws IOException {
-              countHit(doc);
+              countHit();
               if (queueFull) {
                 if (thresholdCheck(doc)) {
                   return;
@@ -304,8 +308,6 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
   final FieldComparator<?> firstComparator;
   final boolean canSetMinScore;
 
-  Boolean searchSortPartOfIndexSort = null; // shows if Search Sort if a part of the Index Sort
-
   // an accumulator that maintains the maximum of the segment's minimum competitive scores
   final MaxScoreAccumulator minScoreAcc;
   // the current local minimum competitive score already propagated to the underlying scorer
@@ -335,7 +337,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
     this.totalHitsThreshold = Math.max(totalHitsThreshold, numHits);
     this.numComparators = pq.getComparators().length;
     this.firstComparator = pq.getComparators()[0];
-    int reverseMul = pq.reverseMul[0];
+    int reverseMul = pq.getReverseMul()[0];
 
     if (firstComparator.getClass().equals(FieldComparator.RelevanceComparator.class)
         && reverseMul == 1 // if the natural sort is preserved (sort by descending relevance)
@@ -367,7 +369,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
       long maxMinScore = minScoreAcc.getRaw();
       float score;
       if (maxMinScore != Long.MIN_VALUE
-          && (score = MaxScoreAccumulator.toScore(maxMinScore)) > minCompetitiveScore) {
+          && (score = DocScoreEncoder.toScore(maxMinScore)) > minCompetitiveScore) {
         scorer.setMinCompetitiveScore(score);
         minCompetitiveScore = score;
         totalHitsRelation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
@@ -384,7 +386,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
         minCompetitiveScore = minScore;
         totalHitsRelation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
         if (minScoreAcc != null) {
-          minScoreAcc.accumulate(docBase, minScore);
+          minScoreAcc.accumulate(DocScoreEncoder.encode(docBase, minScore));
         }
       }
     }

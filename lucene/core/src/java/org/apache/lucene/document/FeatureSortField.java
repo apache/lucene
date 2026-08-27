@@ -50,11 +50,6 @@ final class FeatureSortField extends SortField {
   }
 
   @Override
-  public void setMissingValue(Object missingValue) {
-    throw new IllegalArgumentException("Missing value not supported for FeatureSortField");
-  }
-
-  @Override
   public int hashCode() {
     final int prime = 31;
     int result = super.hashCode();

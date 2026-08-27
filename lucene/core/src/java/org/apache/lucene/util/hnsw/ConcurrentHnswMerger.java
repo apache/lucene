@@ -19,7 +19,7 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import java.util.Comparator;
+import java.util.Arrays;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.index.FieldInfo;
@@ -29,6 +29,7 @@ import org.apache.lucene.internal.hppc.IntIntHashMap;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IORunnable;
 
 /** This merger merges graph in a concurrent manner, by using {@link HnswConcurrentMergeBuilder} */
 public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
@@ -46,7 +47,24 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
       int beamWidth,
       TaskExecutor taskExecutor,
       int numWorker) {
-    super(fieldInfo, scorerSupplier, M, beamWidth);
+    this(fieldInfo, scorerSupplier, M, beamWidth, taskExecutor, numWorker, null);
+  }
+
+  /**
+   * @param fieldInfo FieldInfo for the field being merged
+   * @param abortCheck optional check invoked before every node insertion during graph construction;
+   *     may throw {@link org.apache.lucene.index.MergePolicy.MergeAbortedException} to abort the
+   *     build when the surrounding merge has been aborted, or null
+   */
+  public ConcurrentHnswMerger(
+      FieldInfo fieldInfo,
+      RandomVectorScorerSupplier scorerSupplier,
+      int M,
+      int beamWidth,
+      TaskExecutor taskExecutor,
+      int numWorker,
+      IORunnable abortCheck) {
+    super(fieldInfo, scorerSupplier, M, beamWidth, abortCheck);
     this.taskExecutor = taskExecutor;
     this.numWorker = numWorker;
   }
@@ -57,14 +75,12 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
     OnHeapHnswGraph graph;
     BitSet initializedNodes = null;
 
-    if (graphReaders.size() == 0) {
+    if (largestGraphReader == null) {
       graph = new OnHeapHnswGraph(M, maxOrd);
     } else {
-      graphReaders.sort(Comparator.comparingInt(GraphReader::graphSize).reversed());
-      GraphReader initGraphReader = graphReaders.get(0);
-      KnnVectorsReader initReader = initGraphReader.reader();
-      MergeState.DocMap initDocMap = initGraphReader.initDocMap();
-      int initGraphSize = initGraphReader.graphSize();
+      KnnVectorsReader initReader = largestGraphReader.reader();
+      MergeState.DocMap initDocMap = largestGraphReader.initDocMap();
+      int initGraphSize = largestGraphReader.graphSize();
       HnswGraph initializerGraph = ((HnswGraphProvider) initReader).getGraph(fieldInfo.name);
 
       if (initializerGraph.size() == 0) {
@@ -79,7 +95,9 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
                 initGraphSize,
                 mergedVectorValues,
                 initializedNodes);
-        graph = InitializedHnswGraphBuilder.initGraph(initializerGraph, oldToNewOrdinalMap, maxOrd);
+        graph =
+            InitializedHnswGraphBuilder.initGraph(
+                initializerGraph, oldToNewOrdinalMap, maxOrd, beamWidth, scorerSupplier);
       }
     }
     return new HnswConcurrentMergeBuilder(
@@ -107,6 +125,8 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
 
     switch (fieldInfo.getVectorEncoding()) {
       case BYTE -> initializerIterator = initReader.getByteVectorValues(fieldInfo.name).iterator();
+      case FLOAT16 ->
+          initializerIterator = initReader.getFloat16VectorValues(fieldInfo.name).iterator();
       case FLOAT32 ->
           initializerIterator = initReader.getFloatVectorValues(fieldInfo.name).iterator();
     }
@@ -117,6 +137,9 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
         docId != NO_MORE_DOCS;
         docId = initializerIterator.nextDoc()) {
       int newId = initDocMap.get(docId);
+      if (newId == -1) {
+        continue;
+      }
       maxNewDocID = Math.max(newId, maxNewDocID);
       assert newIdToOldOrdinal.containsKey(newId) == false;
       newIdToOldOrdinal.put(newId, initializerIterator.index());
@@ -126,6 +149,7 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
       return new int[0];
     }
     final int[] oldToNewOrdinalMap = new int[initGraphSize];
+    Arrays.fill(oldToNewOrdinalMap, -1);
     KnnVectorValues.DocIndexIterator mergedVectorIterator = mergedVectorValues.iterator();
     for (int newDocId = mergedVectorIterator.nextDoc();
         newDocId <= maxNewDocID;

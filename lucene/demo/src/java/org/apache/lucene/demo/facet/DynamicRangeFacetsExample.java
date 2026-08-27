@@ -122,7 +122,8 @@ public class DynamicRangeFacetsExample {
     // for all non-deleted docs in the index); normally
     // you'd use a "normal" query:
     FacetsCollector fc =
-        FacetsCollectorManager.search(searcher, new MatchAllDocsQuery(), 10, fcm).facetsCollector();
+        FacetsCollectorManager.search(searcher, MatchAllDocsQuery.INSTANCE, 10, fcm)
+            .facetsCollector();
 
     try (ExecutorService executor =
         Executors.newFixedThreadPool(2, new NamedThreadFactory("dynamic-ranges"))) {

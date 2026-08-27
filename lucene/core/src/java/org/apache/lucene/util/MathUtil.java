@@ -192,4 +192,9 @@ public final class MathUtil {
     double b = MathUtil.sumRelativeErrorBound(numValues);
     return (1.0 + 2 * b) * sum;
   }
+
+  /** Return the min of the two given unsigned integers. */
+  public static int unsignedMin(int a, int b) {
+    return Integer.compareUnsigned(a, b) < 0 ? a : b;
+  }
 }

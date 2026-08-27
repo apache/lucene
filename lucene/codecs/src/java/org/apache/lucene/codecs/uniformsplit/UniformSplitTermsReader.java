@@ -38,6 +38,7 @@ import org.apache.lucene.codecs.PostingsReaderBase;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.store.ByteArrayDataInput;
@@ -107,7 +108,6 @@ public class UniformSplitTermsReader extends FieldsProducer {
       throws IOException {
     IndexInput dictionaryInput = null;
     IndexInput blockInput = null;
-    boolean success = false;
     try {
       this.postingsReader = postingsReader;
       String segmentName = state.segmentInfo.name;
@@ -165,12 +165,9 @@ public class UniformSplitTermsReader extends FieldsProducer {
       List<String> fieldNames = new ArrayList<>(fieldToTermsMap.keySet());
       Collections.sort(fieldNames);
       sortedFieldNames = Collections.unmodifiableList(fieldNames);
-
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(blockInput, dictionaryInput);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, blockInput, dictionaryInput);
+      throw t;
     }
   }
 
@@ -273,12 +270,12 @@ public class UniformSplitTermsReader extends FieldsProducer {
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
     // term dictionary
-    CodecUtil.checksumEntireFile(blockInput);
+    CodecUtil.checksumEntireFile(blockInput, merge);
 
     // postings
-    postingsReader.checkIntegrity();
+    postingsReader.checkIntegrity(merge);
   }
 
   @Override

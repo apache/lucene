@@ -27,6 +27,7 @@ import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
@@ -83,7 +84,6 @@ final class Lucene90NormsProducer extends NormsProducer implements Cloneable {
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, dataExtension);
     // Norms have a forward-only access pattern
     data = state.directory.openInput(dataName, state.context.withHints(FileTypeHint.DATA));
-    boolean success = false;
     try {
       final int version2 =
           CodecUtil.checkIndexHeader(
@@ -103,12 +103,9 @@ final class Lucene90NormsProducer extends NormsProducer implements Cloneable {
       // for FOOTER_MAGIC + algorithmID. This is cheap and can detect some forms of corruption
       // such as file truncation.
       CodecUtil.retrieveChecksum(data);
-
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(this.data);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this.data);
+      throw t;
     }
   }
 
@@ -349,8 +346,9 @@ final class Lucene90NormsProducer extends NormsProducer implements Cloneable {
       }
 
       @Override
-      public void prefetch(long offset, long length) throws IOException {
+      public boolean prefetch(long offset, long length) throws IOException {
         // Not delegating to the wrapped instance on purpose. This is only used for merging.
+        return false;
       }
     };
   }
@@ -397,6 +395,14 @@ final class Lucene90NormsProducer extends NormsProducer implements Cloneable {
             @Override
             public long longValue() throws IOException {
               return slice.readByte(doc);
+            }
+
+            @Override
+            public void longValues(int size, int[] docs, long[] values, long defaultValue)
+                throws IOException {
+              // Delegate to help performance: when the super call inlines, calls to
+              // #advanceExact/#longValue become monomorphic.
+              super.longValues(size, docs, values, defaultValue);
             }
           };
         case 2:
@@ -452,6 +458,14 @@ final class Lucene90NormsProducer extends NormsProducer implements Cloneable {
             public long longValue() throws IOException {
               return slice.readByte(disi.index());
             }
+
+            @Override
+            public void longValues(int size, int[] docs, long[] values, long defaultValue)
+                throws IOException {
+              // Delegate to help performance: when the super call inlines, calls to
+              // #advanceExact/#longValue become monomorphic.
+              super.longValues(size, docs, values, defaultValue);
+            }
           };
         case 2:
           return new SparseNormsIterator(disi) {
@@ -487,8 +501,8 @@ final class Lucene90NormsProducer extends NormsProducer implements Cloneable {
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    CodecUtil.checksumEntireFile(data);
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+    CodecUtil.checksumEntireFile(data, merge);
   }
 
   @Override

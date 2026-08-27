@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.analysis.fr;
 
-import static org.apache.lucene.tests.analysis.VocabularyAssert.*;
+import static org.apache.lucene.tests.analysis.VocabularyAssert.assertVocabulary;
 
 import java.io.IOException;
 import org.apache.lucene.analysis.Analyzer;
@@ -65,7 +65,7 @@ public class TestFrenchMinimalStemFilter extends BaseTokenStreamTestCase {
     checkOneTerm(analyzer, "baron", "baron");
   }
 
-  public void testIntergerWithLastCharactersEqual() throws IOException {
+  public void testIntegerWithLastCharactersEqual() throws IOException {
     // Trailing repeated char elision :
     checkOneTerm(analyzer, "1234555", "1234555");
     // Repeated char within numbers with more than 6 characters :

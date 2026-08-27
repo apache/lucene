@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.util;
 
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
@@ -44,7 +45,7 @@ import java.util.NoSuchElementException;
  */
 public final class MergedIterator<T extends Comparable<T>> implements Iterator<T> {
   private T current;
-  private final TermMergeQueue<T> queue;
+  private final PriorityQueue<SubIterator<T>> queue;
   private final SubIterator<T>[] top;
   private final boolean removeDuplicates;
   private int numTop;
@@ -57,7 +58,11 @@ public final class MergedIterator<T extends Comparable<T>> implements Iterator<T
   @SuppressWarnings({"unchecked", "rawtypes"})
   public MergedIterator(boolean removeDuplicates, Iterator<T>... iterators) {
     this.removeDuplicates = removeDuplicates;
-    queue = new TermMergeQueue<>(iterators.length);
+    queue =
+        PriorityQueue.usingComparator(
+            iterators.length,
+            Comparator.<SubIterator<T>, T>comparing(it -> it.current)
+                .thenComparingInt(it -> it.index));
     top = new SubIterator[iterators.length];
     int index = 0;
     for (Iterator<T> iterator : iterators) {
@@ -137,22 +142,5 @@ public final class MergedIterator<T extends Comparable<T>> implements Iterator<T
     Iterator<I> iterator;
     I current;
     int index;
-  }
-
-  private static class TermMergeQueue<C extends Comparable<C>>
-      extends PriorityQueue<SubIterator<C>> {
-    TermMergeQueue(int size) {
-      super(size);
-    }
-
-    @Override
-    protected boolean lessThan(SubIterator<C> a, SubIterator<C> b) {
-      final int cmp = a.current.compareTo(b.current);
-      if (cmp != 0) {
-        return cmp < 0;
-      } else {
-        return a.index < b.index;
-      }
-    }
   }
 }

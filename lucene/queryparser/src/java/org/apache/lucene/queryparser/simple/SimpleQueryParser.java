@@ -159,7 +159,7 @@ public class SimpleQueryParser extends QueryBuilder {
   /** Parses the query text and returns parsed query */
   public Query parse(String queryText) {
     if ("*".equals(queryText.trim())) {
-      return new MatchAllDocsQuery();
+      return MatchAllDocsQuery.INSTANCE;
     }
 
     char[] data = queryText.toCharArray();
@@ -453,7 +453,7 @@ public class SimpleQueryParser extends QueryBuilder {
       if (state.not % 2 == 1) {
         BooleanQuery.Builder nq = new BooleanQuery.Builder();
         nq.add(branch, BooleanClause.Occur.MUST_NOT);
-        nq.add(new MatchAllDocsQuery(), BooleanClause.Occur.SHOULD);
+        nq.add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.SHOULD);
         branch = nq.build();
       }
 

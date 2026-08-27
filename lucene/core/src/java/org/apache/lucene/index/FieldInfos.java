@@ -35,7 +35,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
-import org.apache.lucene.util.CollectionUtil;
 
 /**
  * Collection of {@link FieldInfo}s (accessible by number or by name).
@@ -86,7 +85,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
     String softDeletesField = null;
     String parentField = null;
 
-    byName = CollectionUtil.newHashMap(infos.length);
+    byName = HashMap.newHashMap(infos.length);
     int maxFieldNumber = -1;
     boolean fieldNumberStrictlyAscending = true;
     for (FieldInfo info : infos) {
@@ -113,11 +112,10 @@ public class FieldInfos implements Iterable<FieldInfo> {
 
       hasTermVectors |= info.hasTermVectors();
       hasPostings |= info.getIndexOptions() != IndexOptions.NONE;
-      hasProx |= info.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+      hasProx |= info.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
       hasFreq |= info.getIndexOptions() != IndexOptions.DOCS;
       hasOffsets |=
-          info.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
-              >= 0;
+          info.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
       hasNorms |= info.hasNorms();
       hasDocValues |= info.getDocValuesType() != DocValuesType.NONE;
       hasPayloads |= info.hasPayloads();
@@ -775,7 +773,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
       if (curFi != null) {
         curFi.verifySameSchema(fi);
         if (fi.attributes() != null) {
-          fi.attributes().forEach((k, v) -> curFi.putAttribute(k, v));
+          curFi.putAttributes(fi.attributes());
         }
         if (fi.hasPayloads()) {
           curFi.setStorePayloads();
@@ -828,7 +826,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
 
     FieldInfos finish() {
       finished = true;
-      return new FieldInfos(byName.values().toArray(new FieldInfo[byName.size()]));
+      return new FieldInfos(byName.values().toArray(FieldInfo[]::new));
     }
   }
 }

@@ -38,19 +38,16 @@ final class DocumentsWriterFlushQueue {
   synchronized FlushTicket addTicket(Supplier<FlushTicket> ticketSupplier) throws IOException {
     // first inc the ticket count - freeze opens a window for #anyChanges to fail
     incTickets();
-    boolean success = false;
     try {
       FlushTicket ticket = ticketSupplier.get();
       if (ticket != null) {
         // no need to publish anything if we don't have any frozen updates
         queue.add(ticket);
-        success = true;
       }
       return ticket;
-    } finally {
-      if (!success) {
-        decTickets();
-      }
+    } catch (Throwable t) {
+      decTickets();
+      throw t;
     }
   }
 

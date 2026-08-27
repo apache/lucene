@@ -24,7 +24,10 @@ import java.util.List;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.opennlp.tools.NLPLemmatizerOp;
-import org.apache.lucene.analysis.tokenattributes.*;
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
+import org.apache.lucene.analysis.tokenattributes.SentenceAttribute;
+import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.IgnoreRandomChains;
 
@@ -86,8 +89,8 @@ public class OpenNLPLemmatizerFilter extends TokenFilter {
         typeList.add(attributeSource.getAttribute(TypeAttribute.class).type());
       }
     }
-    String[] sentenceTokens = tokenList.toArray(new String[0]);
-    String[] sentenceTokenTypes = typeList.toArray(new String[0]);
+    String[] sentenceTokens = tokenList.toArray(String[]::new);
+    String[] sentenceTokenTypes = typeList.toArray(String[]::new);
     lemmas = lemmatizerOp.lemmatize(sentenceTokens, sentenceTokenTypes);
     sentenceTokenAttrsIter = sentenceAttributes.iterator();
     return sentenceAttributeExtractor.getSentenceAttributes();

@@ -138,7 +138,7 @@
  *
  * <h2>Examples</h2>
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   public void testHyphenationCompoundWordsDE() throws Exception {
  *     String[] dict = { "Rind", "Fleisch", "Draht", "Schere", "Gesetz",
  *         "Aufgabe", "&Uuml;berwachung" };
@@ -192,6 +192,6 @@
  *        System.out.println(t);
  *     }
  *   }
- * </pre>
+ * </code></pre>
  */
 package org.apache.lucene.analysis.compound;

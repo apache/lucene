@@ -25,18 +25,15 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 public class TestNoDeletionPolicy extends LuceneTestCase {
 
-  @Test
   public void testNoDeletionPolicy() throws Exception {
     IndexDeletionPolicy idp = NoDeletionPolicy.INSTANCE;
     idp.onInit(null);
     idp.onCommit(null);
   }
 
-  @Test
   public void testFinalSingleton() throws Exception {
     assertTrue(Modifier.isFinal(NoDeletionPolicy.class.getModifiers()));
     Constructor<?>[] ctors = NoDeletionPolicy.class.getDeclaredConstructors();
@@ -45,7 +42,6 @@ public class TestNoDeletionPolicy extends LuceneTestCase {
         "that 1 should be private: " + ctors[0], Modifier.isPrivate(ctors[0].getModifiers()));
   }
 
-  @Test
   public void testMethodsOverridden() throws Exception {
     // Ensures that all methods of IndexDeletionPolicy are
     // overridden/implemented. That's important to ensure that NoDeletionPolicy
@@ -65,7 +61,6 @@ public class TestNoDeletionPolicy extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testAllCommitsRemain() throws Exception {
     Directory dir = newDirectory();
     IndexWriter writer =

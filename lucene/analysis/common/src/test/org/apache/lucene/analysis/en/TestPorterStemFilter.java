@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.analysis.en;
 
-import static org.apache.lucene.tests.analysis.VocabularyAssert.*;
+import static org.apache.lucene.tests.analysis.VocabularyAssert.assertVocabulary;
 
 import java.io.IOException;
 import java.io.StringReader;

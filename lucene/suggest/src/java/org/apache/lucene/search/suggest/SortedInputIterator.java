@@ -82,7 +82,6 @@ public class SortedInputIterator implements InputIterator {
 
   @Override
   public BytesRef next() throws IOException {
-    boolean success = false;
     if (done) {
       return null;
     }
@@ -97,18 +96,16 @@ public class SortedInputIterator implements InputIterator {
         if (hasContexts) {
           contexts = decodeContexts(bytes, input);
         }
-        success = true;
         return bytes;
       }
-      close();
-      success = done = true;
-      return null;
-    } finally {
-      if (!success) {
-        done = true;
-        close();
-      }
+    } catch (Throwable t) {
+      done = true;
+      IOUtils.closeWhileSuppressingExceptions(t, this::close);
+      throw t;
     }
+    done = true;
+    close();
+    return null;
   }
 
   @Override
@@ -141,7 +138,7 @@ public class SortedInputIterator implements InputIterator {
 
   /** Sortes by BytesRef (ascending) then cost (ascending). */
   private final Comparator<BytesRef> tieBreakByCostComparator =
-      new Comparator<BytesRef>() {
+      new Comparator<>() {
 
         private final BytesRef leftScratch = new BytesRef();
         private final BytesRef rightScratch = new BytesRef();

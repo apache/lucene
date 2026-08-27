@@ -210,9 +210,7 @@ public class VectorValueSource extends MultiValueSource {
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    if (!(o instanceof VectorValueSource)) return false;
-
-    VectorValueSource that = (VectorValueSource) o;
+    if (!(o instanceof VectorValueSource that)) return false;
 
     return sources.equals(that.sources);
   }

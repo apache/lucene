@@ -23,9 +23,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
-import org.apache.lucene.search.knn.MultiLeafKnnCollector;
 import org.apache.lucene.util.BitSet;
-import org.apache.lucene.util.hnsw.BlockingFloatHeap;
 
 /**
  * DiversifyingNearestChildrenKnnCollectorManager responsible for creating {@link
@@ -37,7 +35,6 @@ public class DiversifyingNearestChildrenKnnCollectorManager implements KnnCollec
   private final int k;
   // filter identifying the parent documents.
   private final BitSetProducer parentsFilter;
-  private final BlockingFloatHeap globalScoreQueue;
 
   /**
    * Constructor
@@ -49,8 +46,6 @@ public class DiversifyingNearestChildrenKnnCollectorManager implements KnnCollec
       int k, BitSetProducer parentsFilter, IndexSearcher indexSearcher) {
     this.k = k;
     this.parentsFilter = parentsFilter;
-    this.globalScoreQueue =
-        indexSearcher.getIndexReader().leaves().size() > 1 ? new BlockingFloatHeap(k) : null;
   }
 
   /**
@@ -67,15 +62,24 @@ public class DiversifyingNearestChildrenKnnCollectorManager implements KnnCollec
     if (parentBitSet == null) {
       return null;
     }
-    if (globalScoreQueue == null) {
-      return new DiversifyingNearestChildrenKnnCollector(
-          k, visitedLimit, searchStrategy, parentBitSet);
-    } else {
-      return new MultiLeafKnnCollector(
-          k,
-          globalScoreQueue,
-          new DiversifyingNearestChildrenKnnCollector(
-              k, visitedLimit, searchStrategy, parentBitSet));
+    return new DiversifyingNearestChildrenKnnCollector(
+        k, visitedLimit, searchStrategy, parentBitSet);
+  }
+
+  @Override
+  public KnnCollector newOptimisticCollector(
+      int visitedLimit, KnnSearchStrategy searchStrategy, LeafReaderContext context, int k)
+      throws IOException {
+    BitSet parentBitSet = parentsFilter.getBitSet(context);
+    if (parentBitSet == null) {
+      return null;
     }
+    return new DiversifyingNearestChildrenKnnCollector(
+        k, visitedLimit, searchStrategy, parentBitSet);
+  }
+
+  @Override
+  public boolean isOptimistic() {
+    return true;
   }
 }

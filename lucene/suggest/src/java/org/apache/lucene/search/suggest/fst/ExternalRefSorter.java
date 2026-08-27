@@ -74,16 +74,9 @@ public class ExternalRefSorter implements BytesRefSorter, Closeable {
 
       closeWriter();
 
-      boolean success = false;
-      try {
+      // delete temp file after this
+      try (Closeable _ = () -> sorter.getDirectory().deleteFile(tempOutput.getName())) {
         sortedOutput = sorter.sort(tempOutput.getName());
-        success = true;
-      } finally {
-        if (success) {
-          sorter.getDirectory().deleteFile(tempOutput.getName());
-        } else {
-          IOUtils.deleteFilesIgnoringExceptions(sorter.getDirectory(), tempOutput.getName());
-        }
       }
 
       tempOutput = null;
@@ -126,18 +119,15 @@ public class ExternalRefSorter implements BytesRefSorter, Closeable {
 
     @Override
     public BytesRef next() throws IOException {
-      boolean success = false;
       try {
         BytesRef scratch = reader.next();
         if (scratch == null) {
           close();
         }
-        success = true;
         return scratch;
-      } finally {
-        if (!success) {
-          IOUtils.closeWhileHandlingException(reader);
-        }
+      } catch (Throwable t) {
+        IOUtils.closeWhileSuppressingExceptions(t, reader);
+        throw t;
       }
     }
 

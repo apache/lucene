@@ -226,8 +226,8 @@ public class FSTCompiler<T> {
    * @throws IllegalStateException if the DataOutput does not implement FSTReader
    */
   public FSTReader getFSTReader() {
-    if (dataOutput instanceof FSTReader) {
-      return (FSTReader) dataOutput;
+    if (dataOutput instanceof FSTReader fstReader) {
+      return fstReader;
     }
     throw new IllegalStateException(
         "The DataOutput must implement FSTReader, but got " + dataOutput);
@@ -960,8 +960,8 @@ public class FSTCompiler<T> {
     fst.metadata.startNode = newStartNode;
     fst.metadata.numBytes = numBytesWritten;
     // freeze the dataOutput if applicable
-    if (dataOutput instanceof ReadWriteDataOutput) {
-      ((ReadWriteDataOutput) dataOutput).freeze();
+    if (dataOutput instanceof ReadWriteDataOutput rwdo) {
+      rwdo.freeze();
     }
   }
 
@@ -978,20 +978,20 @@ public class FSTCompiler<T> {
    * <p>- If a FSTReader DataOutput was used, such as the one returned by {@link
    * #getOnHeapReaderWriter(int)}
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    *     fstMetadata = fstCompiler.compile();
    *     fst = FST.fromFSTReader(fstMetadata, fstCompiler.getFSTReader());
-   * </pre>
+   * </code></pre>
    *
    * <p>- If a non-FSTReader DataOutput was used, such as {@link
    * org.apache.lucene.store.IndexOutput}, you need to first create the corresponding {@link
    * org.apache.lucene.store.DataInput}, such as {@link org.apache.lucene.store.IndexInput} then
    * pass it to the FST construct
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    *     fstMetadata = fstCompiler.compile();
    *     fst = new FST&lt;&gt;(fstMetadata, dataInput, new OffHeapFSTStore());
-   * </pre>
+   * </code></pre>
    */
   public FST.FSTMetadata<T> compile() throws IOException {
 
@@ -1035,8 +1035,8 @@ public class FSTCompiler<T> {
 
   public long fstRamBytesUsed() {
     long ramBytesUsed = scratchBytes.ramBytesUsed();
-    if (dataOutput instanceof Accountable) {
-      ramBytesUsed += ((Accountable) dataOutput).ramBytesUsed();
+    if (dataOutput instanceof Accountable accountable) {
+      ramBytesUsed += accountable.ramBytesUsed();
     }
     return ramBytesUsed;
   }

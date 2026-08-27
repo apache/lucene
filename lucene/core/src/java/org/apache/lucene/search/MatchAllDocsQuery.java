@@ -22,6 +22,19 @@ import org.apache.lucene.index.LeafReaderContext;
 /** A query that matches all documents. */
 public final class MatchAllDocsQuery extends Query {
 
+  /** A singleton instance */
+  public static final MatchAllDocsQuery INSTANCE = new MatchAllDocsQuery();
+
+  /**
+   * Default constructor
+   *
+   * @deprecated Use {@link MatchAllDocsQuery#INSTANCE}
+   */
+  @Deprecated
+  public MatchAllDocsQuery() {
+    super();
+  }
+
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) {
     return new ConstantScoreWeight(this, boost) {

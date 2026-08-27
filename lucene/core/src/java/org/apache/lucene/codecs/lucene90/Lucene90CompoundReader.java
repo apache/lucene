@@ -19,6 +19,7 @@ package org.apache.lucene.codecs.lucene90;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.codecs.CodecUtil;
@@ -30,7 +31,6 @@ import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.IOUtils;
 
 /**
@@ -64,7 +64,6 @@ final class Lucene90CompoundReader extends CompoundDirectory {
     String entriesFileName =
         IndexFileNames.segmentFileName(segmentName, "", Lucene90CompoundFormat.ENTRIES_EXTENSION);
     this.entries = readEntries(si.getId(), directory, entriesFileName);
-    boolean success = false;
 
     // find the last FileEntry in the map (largest offset+length) and add length of codec footer:
     final long expectedLength =
@@ -92,12 +91,9 @@ final class Lucene90CompoundReader extends CompoundDirectory {
             "length should be " + expectedLength + " bytes, but is " + handle.length() + " instead",
             handle);
       }
-
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(handle);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, handle);
+      throw t;
     }
   }
 
@@ -130,7 +126,7 @@ final class Lucene90CompoundReader extends CompoundDirectory {
 
   private Map<String, FileEntry> readMapping(IndexInput entriesStream) throws IOException {
     final int numEntries = entriesStream.readVInt();
-    Map<String, FileEntry> mapping = CollectionUtil.newHashMap(numEntries);
+    Map<String, FileEntry> mapping = HashMap.newHashMap(numEntries);
     for (int i = 0; i < numEntries; i++) {
       final FileEntry fileEntry = new FileEntry();
       final String id = entriesStream.readString();
@@ -175,7 +171,7 @@ final class Lucene90CompoundReader extends CompoundDirectory {
   @Override
   public String[] listAll() {
     ensureOpen();
-    String[] res = entries.keySet().toArray(new String[entries.size()]);
+    String[] res = entries.keySet().toArray(String[]::new);
 
     // Add the segment name
     for (int i = 0; i < res.length; i++) {

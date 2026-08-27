@@ -17,6 +17,7 @@
 package org.apache.lucene.search.highlight;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -28,7 +29,6 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.memory.MemoryIndex;
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.util.CollectionUtil;
 
 /**
  * {@link Scorer} implementation which scores text fragments by the number of unique query terms
@@ -99,7 +99,7 @@ public class QueryScorer implements Scorer {
    * @param weightedTerms an array of pre-created {@link WeightedSpanTerm}s
    */
   public QueryScorer(WeightedSpanTerm[] weightedTerms) {
-    this.fieldWeightedSpanTerms = CollectionUtil.newHashMap(weightedTerms.length);
+    this.fieldWeightedSpanTerms = HashMap.newHashMap(weightedTerms.length);
 
     for (WeightedSpanTerm weightedTerm : weightedTerms) {
       WeightedSpanTerm existingTerm = fieldWeightedSpanTerms.get(weightedTerm.term);

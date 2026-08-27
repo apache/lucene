@@ -862,9 +862,6 @@ public class TestIndexWriterDelete extends LuceneTestCase {
                 .setReaderPooling(false)
                 .setMergePolicy(newLogMergePolicy()));
 
-    MergePolicy lmp = modifier.getConfig().getMergePolicy();
-    lmp.setNoCFSRatio(1.0);
-
     dir.failOn(failure.reset());
 
     FieldType custom1 = new FieldType();
@@ -944,9 +941,7 @@ public class TestIndexWriterDelete extends LuceneTestCase {
     try {
       modifier.commit();
       writerClosed = false;
-    } catch (
-        @SuppressWarnings("unused")
-        IllegalStateException ise) {
+    } catch (IllegalStateException _) {
       // The above exc struck during merge, and closed the writer
       writerClosed = true;
     }

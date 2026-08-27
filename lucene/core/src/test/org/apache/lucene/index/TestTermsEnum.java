@@ -651,7 +651,7 @@ public class TestTermsEnum extends LuceneTestCase {
       int loc;
       final TermState termState;
       if (random().nextInt(6) == 4) {
-        // pick term that doens't exist:
+        // pick term that doesn't exist:
         t = getNonExistTerm(validTerms);
         termState = null;
         if (VERBOSE) {
@@ -865,7 +865,7 @@ public class TestTermsEnum extends LuceneTestCase {
     doc = new Document();
     // add empty string to both documents, so that singletonDocID == -1.
     // For a FST-based term dict, we'll expect to see the first arc is
-    // flaged with HAS_FINAL_OUTPUT
+    // flagged with HAS_FINAL_OUTPUT
     doc.add(newStringField("field", "abc", Field.Store.NO));
     doc.add(newStringField("field", "", Field.Store.NO));
     w.addDocument(doc);
@@ -912,7 +912,7 @@ public class TestTermsEnum extends LuceneTestCase {
   public void testCommonPrefixTerms() throws Exception {
     Directory d = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), d);
-    Set<String> terms = new HashSet<String>();
+    Set<String> terms = new HashSet<>();
     // String prefix = TestUtil.randomSimpleString(random(), 1, 20);
     String prefix = TestUtil.randomRealisticUnicodeString(random(), 1, 20);
     int numTerms = atLeast(100);
@@ -994,7 +994,7 @@ public class TestTermsEnum extends LuceneTestCase {
   @Nightly
   public void testVaryingTermsPerSegment() throws Exception {
     Directory dir = newDirectory();
-    Set<BytesRef> terms = new HashSet<BytesRef>();
+    Set<BytesRef> terms = new HashSet<>();
     int MAX_TERMS = atLeast(1000);
     while (terms.size() < MAX_TERMS) {
       terms.add(newBytesRef(TestUtil.randomSimpleString(random(), 1, 40)));

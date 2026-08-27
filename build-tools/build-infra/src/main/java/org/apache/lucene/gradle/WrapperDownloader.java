@@ -38,13 +38,26 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 
 /**
- * Standalone class that can be used to download a gradle-wrapper.jar
+ * Standalone class used to download the {@code gradle-wrapper.jar}.
  *
- * <p>Has no dependencies outside of standard java libraries
+ * <p>Ensure this class has no dependencies outside of standard java libraries as it's used direct
  */
 public class WrapperDownloader {
+  /**
+   * Copied to keep the class isolated from any other classes.
+   *
+   * @see "https://github.com/apache/lucene/issues/15399"
+   */
+  @Retention(RetentionPolicy.CLASS)
+  @Target({ElementType.CONSTRUCTOR, ElementType.FIELD, ElementType.METHOD, ElementType.TYPE})
+  private @interface SuppressForbidden {
+    /** A reason for suppressing should always be given. */
+    String reason();
+  }
+
   public static void main(String[] args) {
     if (args.length != 1) {
       System.err.println("Usage: java WrapperDownloader.java <destination>");
@@ -62,8 +75,8 @@ public class WrapperDownloader {
 
   public static void checkVersion() {
     int major = Runtime.version().feature();
-    if (major != 24) {
-      throw new IllegalStateException("java version must be 24, your version: " + major);
+    if (major < 25 || major > 26) {
+      throw new IllegalStateException("java version must be 25..26, your version: " + major);
     }
   }
 
@@ -110,12 +123,28 @@ public class WrapperDownloader {
       }
     }
 
-    Path versionPath =
-        destination.resolveSibling(destination.getFileName().toString() + ".version");
-    if (!Files.exists(versionPath)) {
-      throw new IOException("Wrapper version file not found: " + versionPath);
+    Path wrapperProperties =
+        destination.resolveSibling(
+            destination.getFileName().toString().replace(".jar", ".properties"));
+    if (!Files.exists(wrapperProperties)) {
+      throw new IOException("Wrapper property file not found: " + wrapperProperties);
     }
-    String wrapperVersion = Files.readString(versionPath, StandardCharsets.UTF_8).trim();
+
+    Pattern versionPattern = Pattern.compile("gradle-(?<version>.+?)-bin.zip");
+    String wrapperVersion =
+        Files.readAllLines(wrapperProperties, StandardCharsets.UTF_8).stream()
+            .map(
+                line -> {
+                  var matcher = versionPattern.matcher(line);
+                  if (matcher.find()) {
+                    return matcher.group("version");
+                  } else {
+                    return null;
+                  }
+                })
+            .filter(Objects::nonNull)
+            .findAny()
+            .orElseThrow();
 
     MessageDigest digest = MessageDigest.getInstance("SHA-256");
 
@@ -159,6 +188,9 @@ public class WrapperDownloader {
         }
 
         switch (connection.getResponseCode()) {
+          case /* TOO_MANY_REQUESTS */ 429:
+          // it may not be possible to recover from this using a short delay
+          // but try anyway.
           case HttpURLConnection.HTTP_INTERNAL_ERROR:
           case HttpURLConnection.HTTP_UNAVAILABLE:
           case HttpURLConnection.HTTP_BAD_GATEWAY:
@@ -210,7 +242,7 @@ public class WrapperDownloader {
     }
   }
 
-  @SuppressForbidden(reason = "Correct use of thread.sleep.")
+  @SuppressForbidden(reason = "Valid use of thread.sleep.")
   private static void sleep(long millis) throws InterruptedException {
     Thread.sleep(millis);
   }
@@ -228,12 +260,5 @@ public class WrapperDownloader {
       throw new IOException(
           "Could not compute digest of file: " + path + " (" + e.getMessage() + ")");
     }
-  }
-
-  @Retention(RetentionPolicy.CLASS)
-  @Target({ElementType.CONSTRUCTOR, ElementType.FIELD, ElementType.METHOD, ElementType.TYPE})
-  public @interface SuppressForbidden {
-    /** A reason for suppressing should always be given. */
-    String reason();
   }
 }

@@ -20,9 +20,9 @@ package org.apache.lucene.analysis.standard;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
 /**
- * This class implements Word Break rules from the Unicode Text Segmentation 
- * algorithm, as specified in 
- * <a href="http://unicode.org/reports/tr29/">Unicode Standard Annex #29</a>. 
+ * This class implements Word Break rules from the Unicode Text Segmentation
+ * algorithm, as specified in
+ * <a href="http://unicode.org/reports/tr29/">Unicode Standard Annex #29</a>.
  * <p>
  * Tokens produced are of the following types:
  * <ul>
@@ -87,8 +87,8 @@ ExtFmtZwj           = [\p{WB:Format}\p{WB:Extend}\p{WB:ZWJ}]*
 HangulEx            = [\p{Script:Hangul}&&[\p{WB:ALetter}\p{WB:Hebrew_Letter}]] {ExtFmtZwj}
 AHLetterEx          = [\p{WB:ALetter}\p{WB:Hebrew_Letter}]                      {ExtFmtZwj}
 NumericEx           = [\p{WB:Numeric}]                                          {ExtFmtZwj}
-KatakanaEx          = \p{WB:Katakana}                                           {ExtFmtZwj} 
-MidLetterEx         = [\p{WB:MidLetter}\p{WB:MidNumLet}\p{WB:SingleQuote}]      {ExtFmtZwj} 
+KatakanaEx          = \p{WB:Katakana}                                           {ExtFmtZwj}
+MidLetterEx         = [\p{WB:MidLetter}\p{WB:MidNumLet}\p{WB:SingleQuote}]      {ExtFmtZwj}
 MidNumericEx        = [\p{WB:MidNum}\p{WB:MidNumLet}\p{WB:SingleQuote}]         {ExtFmtZwj}
 ExtendNumLetEx      = \p{WB:ExtendNumLet}                                       {ExtFmtZwj}
 HanEx               = \p{Script:Han}                                            {ExtFmtZwj}
@@ -102,32 +102,32 @@ ComplexContextEx    = \p{LB:Complex_Context}                                    
 %{
   /** Alphanumeric sequences */
   public static final int WORD_TYPE = StandardTokenizer.ALPHANUM;
-  
+
   /** Numbers */
   public static final int NUMERIC_TYPE = StandardTokenizer.NUM;
-  
+
   /**
    * Chars in class \p{Line_Break = Complex_Context} are from South East Asian
-   * scripts (Thai, Lao, Myanmar, Khmer, etc.).  Sequences of these are kept 
+   * scripts (Thai, Lao, Myanmar, Khmer, etc.).  Sequences of these are kept
    * together as as a single token rather than broken up, because the logic
    * required to break them at word boundaries is too complex for UAX#29.
    * <p>
    * See Unicode Line Breaking Algorithm: http://www.unicode.org/reports/tr14/#SA
    */
   public static final int SOUTH_EAST_ASIAN_TYPE = StandardTokenizer.SOUTHEAST_ASIAN;
-  
+
   /** Ideographic token type */
   public static final int IDEOGRAPHIC_TYPE = StandardTokenizer.IDEOGRAPHIC;
-  
+
   /** Hiragana token type */
   public static final int HIRAGANA_TYPE = StandardTokenizer.HIRAGANA;
-  
+
   /** Katakana token type */
   public static final int KATAKANA_TYPE = StandardTokenizer.KATAKANA;
 
   /** Hangul token type */
   public static final int HANGUL_TYPE = StandardTokenizer.HANGUL;
-  
+
   /** Emoji token type */
   public static final int EMOJI_TYPE = StandardTokenizer.EMOJI;
 
@@ -144,7 +144,7 @@ ComplexContextEx    = \p{LB:Complex_Context}                                    
   public final void getText(CharTermAttribute t) {
     t.copyBuffer(zzBuffer, zzStartRead, zzMarkedPos-zzStartRead);
   }
-  
+
   /**
    * Sets the scanner buffer size in chars
    */
@@ -168,7 +168,7 @@ ComplexContextEx    = \p{LB:Complex_Context}                                    
 //                          WB16. [^RI] (RI RI)* RI × RI
 //
 // We use the "emoji_sequence" rule from http://www.unicode.org/reports/tr51/tr51-16.html (Unicode 12.0)
-// 
+//
 // emoji_sequence :=
 //    Top-level EBNF           Expanded #1                       Expanded #2                       Expanded #3
 //    ---------------------    ----------------------------      -----------------------------     ----------------------------------------------
@@ -182,18 +182,18 @@ ComplexContextEx    = \p{LB:Complex_Context}                                    
 //                                                               | emoji_presentation_sequence     | \p{Emoji} \uFE0F
 //                                                               | emoji_modifier_sequence         | \p{Emoji_Modifier_Base} \p{Emoji_Modifier} )
 //                             ( ZWJ emoji_zwj_element )+                                          ( \p{WB:ZWJ} ^^ )+
-// 
+//
 //    | emoji_tag_sequence     tag_base                            emoji_character                 ( \p{Emoji}
 //                                                               | emoji_presentation_sequence     | \p{Emoji} \uFE0F
 //                                                               | emoji_modifier_sequence         | \p{Emoji_Modifier_Base} \p{Emoji_Modifier} )
 //                             tag_spec                                                            [\u{E0020}-\u{E007E}]+
 //                             tag_term                                                            \u{E007F}
 //
-// [1] https://unicode.org/Public/emoji/12.1/emoji-test.txt includes key cap sequences 
+// [1] https://unicode.org/Public/emoji/12.1/emoji-test.txt includes key cap sequences
 //     WITHOUT \uFE0F (emoji presentation indicator), annotating them as "non-fully-qualified";
 //     TR#51 says about non-fully-qualified *ZWJ sequences* that implementations may
 //     choose whether to support them for segmentation.  This implementation will
-//     recognize /[0-9#*]\u20E3/ - i.e. without \uFE0F - as Emoji. 
+//     recognize /[0-9#*]\u20E3/ - i.e. without \uFE0F - as Emoji.
 //
 // See also: http://www.unicode.org/L2/L2016/16315-handling-seg-emoji.pdf
 //           https://docs.google.com/document/d/1yDZ5TUZNVVKaM9zYCCLbRIAKGNZANsAGl0bcNzGGvn8
@@ -202,9 +202,9 @@ ComplexContextEx    = \p{LB:Complex_Context}                                    
 //
 //         WB3c′ ZWJ × (Extended_Pictographic | EmojiNRK)
 //
-  {EmojiCharOrPresSeqOrModSeq} ( ( \p{WB:ZWJ} {EmojiCharOrPresSeqOrModSeq} )* | {TagSpec}+ {TagTerm} ) 
-| {KeyCapBaseCharEx} {EmojiPresentationSelector}? {KeyCapEx} 
-| {RegionalIndicatorEx}{2} 
+  {EmojiCharOrPresSeqOrModSeq} ( ( \p{WB:ZWJ} {EmojiCharOrPresSeqOrModSeq} )* | {TagSpec}+ {TagTerm} )
+| {KeyCapBaseCharEx} {EmojiPresentationSelector}? {KeyCapEx}
+| {RegionalIndicatorEx}{2}
   { return EMOJI_TYPE; }
 
 // UAX#29 WB8.    Numeric × Numeric
@@ -219,7 +219,7 @@ ComplexContextEx    = \p{LB:Complex_Context}                                    
 // subset of the below for typing purposes only!
 {HangulEx}+
   { return HANGUL_TYPE; }
-  
+
 {KatakanaEx}+
   { return KATAKANA_TYPE; }
 
@@ -233,7 +233,7 @@ ComplexContextEx    = \p{LB:Complex_Context}                                    
 //        WB10.   Numeric × AHLetter
 //        WB13.   Katakana × Katakana
 //        WB13a.  (ALetter | Hebrew_Letter | Numeric | Katakana | ExtendNumLet) × ExtendNumLet
-//        WB13b.  ExtendNumLet × (ALetter | Hebrew_Letter | Numeric | Katakana) 
+//        WB13b.  ExtendNumLet × (ALetter | Hebrew_Letter | Numeric | Katakana)
 //
 {ExtendNumLetEx}*  ( {KatakanaEx}          ( {ExtendNumLetEx}*   {KatakanaEx}                        )*
                    | ( {HebrewLetterEx}    ( {SingleQuoteEx}     | {DoubleQuoteEx}  {HebrewLetterEx} )
@@ -248,7 +248,7 @@ ComplexContextEx    = \p{LB:Complex_Context}                                    
                      )+
                    )
 )*
-{ExtendNumLetEx}* 
+{ExtendNumLetEx}*
   { return WORD_TYPE; }
 
 
@@ -259,7 +259,7 @@ ComplexContextEx    = \p{LB:Complex_Context}                                    
 //    boundary property values based on criteria outside of the scope of this
 //    annex.  That means that satisfactory treatment of languages like Chinese
 //    or Thai requires special handling.
-// 
+//
 // In Unicode 9.0, only one character has the \p{Line_Break = Contingent_Break}
 // property: U+FFFC ( ￼ ) OBJECT REPLACEMENT CHARACTER.
 //

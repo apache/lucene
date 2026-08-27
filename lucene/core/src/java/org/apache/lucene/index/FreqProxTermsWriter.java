@@ -117,7 +117,7 @@ final class FreqProxTermsWriter extends TermsHash {
           new FilterLeafReader.FilterFields(fields) {
 
             @Override
-            public Terms terms(final String field) throws IOException {
+            public Terms terms(final String field) {
               Terms terms = in.terms(field);
               if (terms == null) {
                 return null;
@@ -176,14 +176,14 @@ final class FreqProxTermsWriter extends TermsHash {
     @Override
     public PostingsEnum postings(PostingsEnum reuse, final int flags) throws IOException {
 
-      if (indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS) >= 0
+      if (indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS)
           && PostingsEnum.featureRequested(flags, PostingsEnum.FREQS)) {
         final PostingsEnum inReuse;
         final SortingPostingsEnum wrapReuse;
-        if (reuse != null && reuse instanceof SortingPostingsEnum) {
+        if (reuse != null && reuse instanceof SortingPostingsEnum spe) {
           // if we're asked to reuse the given DocsEnum and it is Sorting, return
           // the wrapped one, since some Codecs expect it.
-          wrapReuse = (SortingPostingsEnum) reuse;
+          wrapReuse = spe;
           inReuse = wrapReuse.getWrapped();
         } else {
           wrapReuse = new SortingPostingsEnum();
@@ -196,19 +196,19 @@ final class FreqProxTermsWriter extends TermsHash {
         // ask for everything. if that assumption changes in the future, we can
         // factor in whether 'flags' says offsets are not required.
         final boolean storePositions =
-            indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+            indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
         final boolean storeOffsets =
-            indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) >= 0;
+            indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
         wrapReuse.reset(docMap, inDocsAndPositions, storePositions, storeOffsets);
         return wrapReuse;
       }
 
       final PostingsEnum inReuse;
       final SortingDocsEnum wrapReuse;
-      if (reuse != null && reuse instanceof SortingDocsEnum) {
+      if (reuse != null && reuse instanceof SortingDocsEnum sde) {
         // if we're asked to reuse the given DocsEnum and it is Sorting, return
         // the wrapped one, since some Codecs expect it.
-        wrapReuse = (SortingDocsEnum) reuse;
+        wrapReuse = sde;
         inReuse = wrapReuse.getWrapped();
       } else {
         wrapReuse = new SortingDocsEnum();

@@ -104,7 +104,7 @@ public class TestTermPresearcher extends PresearcherTestBase {
 
     QueryAnalyzer analyzer = new QueryAnalyzer();
     QueryTree qt =
-        analyzer.buildTree(new MatchAllDocsQuery(), TermFilteredPresearcher.DEFAULT_WEIGHTOR);
+        analyzer.buildTree(MatchAllDocsQuery.INSTANCE, TermFilteredPresearcher.DEFAULT_WEIGHTOR);
 
     TermFilteredPresearcher presearcher = new TermFilteredPresearcher();
     Map<String, BytesRefHash> extractedTerms = presearcher.collectTerms(qt);

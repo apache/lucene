@@ -66,7 +66,6 @@ final class CompletionFieldsConsumer extends FieldsConsumer {
     this.state = state;
     String dictFile =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, DICT_EXTENSION);
-    boolean success = false;
     try {
       this.delegateFieldsConsumer = delegatePostingsFormat.fieldsConsumer(state);
       dictOut = state.directory.createOutput(dictFile, state.context);
@@ -76,11 +75,9 @@ final class CompletionFieldsConsumer extends FieldsConsumer {
           COMPLETION_VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(dictOut, delegateFieldsConsumer);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, dictOut, delegateFieldsConsumer);
+      throw t;
     }
   }
 
@@ -126,7 +123,6 @@ final class CompletionFieldsConsumer extends FieldsConsumer {
     String indexFile =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, INDEX_EXTENSION);
-    boolean success = false;
     try (IndexOutput indexOut = state.directory.createOutput(indexFile, state.context)) {
       delegateFieldsConsumer.close();
       CodecUtil.writeIndexHeader(
@@ -155,11 +151,9 @@ final class CompletionFieldsConsumer extends FieldsConsumer {
       CodecUtil.writeFooter(indexOut);
       CodecUtil.writeFooter(dictOut);
       IOUtils.close(dictOut);
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(dictOut, delegateFieldsConsumer);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, dictOut, delegateFieldsConsumer);
+      throw t;
     }
   }
 

@@ -29,8 +29,8 @@ public class BitSetIterator extends AbstractDocIdSetIterator {
 
   private static <T extends BitSet> T getBitSet(
       DocIdSetIterator iterator, Class<? extends T> clazz) {
-    if (iterator instanceof BitSetIterator) {
-      BitSet bits = ((BitSetIterator) iterator).bits;
+    if (iterator instanceof BitSetIterator bsi) {
+      BitSet bits = bsi.bits;
       assert bits != null;
       if (clazz.isInstance(bits)) {
         return clazz.cast(bits);
@@ -94,13 +94,24 @@ public class BitSetIterator extends AbstractDocIdSetIterator {
   }
 
   @Override
+  public int docIDRunEnd() {
+    assert doc != NO_MORE_DOCS;
+    int next = doc + 1;
+    if (next >= length) {
+      return length;
+    }
+    int end = bits.nextClearBit(next);
+    return end == NO_MORE_DOCS ? length : end;
+  }
+
+  @Override
   public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
     if (upTo > doc && bits instanceof FixedBitSet fixedBits) {
       int actualUpto = Math.min(upTo, length);
       // The destination bit set may be shorter than this bit set. This is only legal if all bits
       // beyond offset + bitSet.length() are clear. If not, the below call to `super.intoBitSet`
       // will throw an exception.
-      actualUpto = (int) Math.min(actualUpto, offset + (long) bitSet.length());
+      actualUpto = MathUtil.unsignedMin(actualUpto, offset + bitSet.length());
       FixedBitSet.orRange(fixedBits, doc, bitSet, doc - offset, actualUpto - doc);
       advance(actualUpto); // set the current doc
     }

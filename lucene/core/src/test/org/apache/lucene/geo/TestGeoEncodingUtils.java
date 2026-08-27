@@ -27,6 +27,7 @@ import static org.apache.lucene.geo.GeoUtils.MAX_LON_INCL;
 import static org.apache.lucene.geo.GeoUtils.MIN_LAT_INCL;
 import static org.apache.lucene.geo.GeoUtils.MIN_LON_INCL;
 
+import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.util.Random;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
@@ -42,8 +43,8 @@ public class TestGeoEncodingUtils extends LuceneTestCase {
    */
   public void testLatitudeQuantization() throws Exception {
     final double LATITUDE_DECODE = 180.0D / (0x1L << 32);
-    Random random = random();
-    for (int i = 0; i < 10000; i++) {
+    Random random = nonAssertingRandom(random());
+    for (int i = 0; i < RandomizedTest.randomIntBetween(1000, 10000); i++) {
       int encoded = random.nextInt();
       double min = MIN_LAT_INCL + (encoded - (long) Integer.MIN_VALUE) * LATITUDE_DECODE;
       double decoded = decodeLatitude(encoded);
@@ -92,8 +93,8 @@ public class TestGeoEncodingUtils extends LuceneTestCase {
    */
   public void testLongitudeQuantization() throws Exception {
     final double LONGITUDE_DECODE = 360.0D / (0x1L << 32);
-    Random random = random();
-    for (int i = 0; i < 10000; i++) {
+    Random random = nonAssertingRandom(random());
+    for (int i = 0; i < RandomizedTest.randomIntBetween(1000, 10000); i++) {
       int encoded = random.nextInt();
       double min = MIN_LON_INCL + (encoded - (long) Integer.MIN_VALUE) * LONGITUDE_DECODE;
       double decoded = decodeLongitude(encoded);

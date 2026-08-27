@@ -33,11 +33,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.ThrowingConsumer;
-import org.junit.Test;
 
 /** Verify that scripts included in the distribution work. */
 public class TestScripts extends AbstractLuceneDistributionTest {
-  @Test
   @RequiresGUI
   public void testLukeCanBeLaunched() throws Exception {
     Path distributionPath;

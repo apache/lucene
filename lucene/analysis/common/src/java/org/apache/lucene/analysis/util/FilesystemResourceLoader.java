@@ -84,7 +84,7 @@ public final class FilesystemResourceLoader implements ResourceLoader {
   public InputStream openResource(String resource) throws IOException {
     try {
       return Files.newInputStream(baseDirectory.resolve(resource));
-    } catch (@SuppressWarnings("unused") FileNotFoundException | NoSuchFileException fnfe) {
+    } catch (FileNotFoundException | NoSuchFileException _) {
       return delegate.openResource(resource);
     }
   }

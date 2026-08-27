@@ -19,12 +19,11 @@ package org.apache.lucene.demo.facet;
 import java.util.List;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 // We require sorted set DVs:
+
 public class TestSimpleSortedSetFacetsExample extends LuceneTestCase {
 
-  @Test
   public void testSimple() throws Exception {
     List<FacetResult> results = new SimpleSortedSetFacetsExample().runSearch();
     assertEquals(2, results.size());
@@ -36,7 +35,6 @@ public class TestSimpleSortedSetFacetsExample extends LuceneTestCase {
         results.get(1).toString());
   }
 
-  @Test
   public void testDrillDown() throws Exception {
     FacetResult result = new SimpleSortedSetFacetsExample().runDrillDown();
     assertEquals(

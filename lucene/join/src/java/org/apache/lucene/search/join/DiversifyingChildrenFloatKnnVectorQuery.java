@@ -24,6 +24,7 @@ import java.util.Objects;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.HitQueue;
 import org.apache.lucene.search.IndexSearcher;
@@ -38,20 +39,19 @@ import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.util.BitSet;
-import org.apache.lucene.util.Bits;
 
 /**
  * kNN float vector query that joins matching children vector documents with their parent doc id.
  * The top documents returned are the child document ids and the calculated scores. Here is how to
  * use this in conjunction with {@link ToParentBlockJoinQuery}.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   Query knnQuery = new DiversifyingChildrenFloatKnnVectorQuery(fieldName, queryVector, ...);
  *   // Rewrite executes kNN search and collects nearest children docIds and their scores
  *   Query rewrittenKnnQuery = searcher.rewrite(knnQuery);
  *   // Join the scored children docs with their parents and score the parents
  *   Query childrenToParents = new ToParentBlockJoinQuery(rewrittenKnnQuery, parentsFilter, ScoreMode.MAX);
- * </pre>
+ * </code></pre>
  */
 public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery {
   private static final TopDocs NO_RESULTS = TopDocsCollector.EMPTY_TOPDOCS;
@@ -147,10 +147,7 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
       queue.pop();
     }
 
-    ScoreDoc[] topScoreDocs = new ScoreDoc[queue.size()];
-    for (int i = topScoreDocs.length - 1; i >= 0; i--) {
-      topScoreDocs[i] = queue.pop();
-    }
+    ScoreDoc[] topScoreDocs = queue.drainToArrayHighestFirst(ScoreDoc[]::new);
 
     TotalHits totalHits = new TotalHits(acceptIterator.cost(), relation);
     return new TopDocs(totalHits, topScoreDocs);
@@ -164,7 +161,7 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
   @Override
   protected TopDocs approximateSearch(
       LeafReaderContext context,
-      Bits acceptDocs,
+      AcceptDocs acceptDocs,
       int visitedLimit,
       KnnCollectorManager knnCollectorManager)
       throws IOException {

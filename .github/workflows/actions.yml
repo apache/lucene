@@ -1,0 +1,44 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: Validate Actions (online checks)
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '22 2 * * *'
+
+permissions: {}
+
+jobs:
+  zizmor:
+    name: Run zizmor
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      security-events: write # integration with github advanced security
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version-file: dev-tools/pyproject.toml
+          enable-cache: true
+          save-cache: false
+          cache-dependency-glob: dev-tools/uv.lock
+          cache-suffix: dev-tools
+
+      - name: Run zizmor
+        run: uv run zizmor --pedantic --format=sarif . > results.sarif
+        env:
+          UV_PROJECT: dev-tools
+          UV_FROZEN: "1"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4.37.3
+        with:
+          sarif_file: results.sarif
+          category: zizmor

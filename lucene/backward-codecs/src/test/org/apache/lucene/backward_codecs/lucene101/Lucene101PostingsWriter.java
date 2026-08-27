@@ -16,13 +16,14 @@
  */
 package org.apache.lucene.backward_codecs.lucene101;
 
-import static org.apache.lucene.backward_codecs.lucene101.Lucene101PostingsFormat.*;
+import static org.apache.lucene.backward_codecs.lucene101.Lucene101PostingsFormat.BLOCK_SIZE;
 import static org.apache.lucene.backward_codecs.lucene101.Lucene101PostingsFormat.DOC_CODEC;
 import static org.apache.lucene.backward_codecs.lucene101.Lucene101PostingsFormat.LEVEL1_MASK;
 import static org.apache.lucene.backward_codecs.lucene101.Lucene101PostingsFormat.META_CODEC;
 import static org.apache.lucene.backward_codecs.lucene101.Lucene101PostingsFormat.PAY_CODEC;
 import static org.apache.lucene.backward_codecs.lucene101.Lucene101PostingsFormat.POS_CODEC;
 import static org.apache.lucene.backward_codecs.lucene101.Lucene101PostingsFormat.TERMS_CODEC;
+import static org.apache.lucene.backward_codecs.lucene101.Lucene101PostingsFormat.VERSION_DENSE_BLOCKS_AS_BITSETS;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -32,10 +33,10 @@ import org.apache.lucene.backward_codecs.lucene101.Lucene101PostingsFormat.IntBl
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.CompetitiveImpactAccumulator;
+import org.apache.lucene.codecs.Impact;
 import org.apache.lucene.codecs.PushPostingsWriterBase;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.Impact;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.NumericDocValues;

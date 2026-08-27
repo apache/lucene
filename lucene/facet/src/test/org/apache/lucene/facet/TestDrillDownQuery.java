@@ -243,7 +243,7 @@ public class TestDrillDownQuery extends FacetTestCase {
   }
 
   public void testClone() throws Exception {
-    DrillDownQuery q = new DrillDownQuery(config, new MatchAllDocsQuery());
+    DrillDownQuery q = new DrillDownQuery(config, MatchAllDocsQuery.INSTANCE);
     q.add("a");
 
     DrillDownQuery clone = q.clone();
@@ -255,7 +255,7 @@ public class TestDrillDownQuery extends FacetTestCase {
   }
 
   public void testNoDrillDown() throws Exception {
-    Query base = new MatchAllDocsQuery();
+    Query base = MatchAllDocsQuery.INSTANCE;
     DrillDownQuery q = new DrillDownQuery(config, base);
     IndexSearcher searcher = newSearcher(reader);
     Query rewrite = q.rewrite(searcher).rewrite(searcher);

@@ -21,6 +21,7 @@ import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
 
 /** Selects a value from the document's set to use as the representative value */
 public class SortedSetSelector {
@@ -131,6 +132,16 @@ public class SortedSetSelector {
     }
 
     @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      in.intoBitSet(upTo, bitSet, offset);
+    }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      return in.docIDRunEnd();
+    }
+
+    @Override
     public int ordValue() {
       return ord;
     }
@@ -197,6 +208,16 @@ public class SortedSetSelector {
     @Override
     public long cost() {
       return in.cost();
+    }
+
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      in.intoBitSet(upTo, bitSet, offset);
+    }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      return in.docIDRunEnd();
     }
 
     @Override
@@ -273,6 +294,16 @@ public class SortedSetSelector {
     }
 
     @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      in.intoBitSet(upTo, bitSet, offset);
+    }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      return in.docIDRunEnd();
+    }
+
+    @Override
     public int ordValue() {
       return ord;
     }
@@ -344,6 +375,16 @@ public class SortedSetSelector {
     @Override
     public long cost() {
       return in.cost();
+    }
+
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      in.intoBitSet(upTo, bitSet, offset);
+    }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      return in.docIDRunEnd();
     }
 
     @Override

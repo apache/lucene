@@ -119,9 +119,7 @@ public class TestIndexWriterOnDiskFull extends LuceneTestCase {
               dir.setMaxSizeInBytes(0);
               try {
                 writer.close();
-              } catch (
-                  @SuppressWarnings("unused")
-                  AlreadyClosedException ace) {
+              } catch (AlreadyClosedException _) {
                 // OK
               }
             }
@@ -268,7 +266,8 @@ public class TestIndexWriterOnDiskFull extends LuceneTestCase {
         IndexWriterConfig iwc =
             newIndexWriterConfig(new MockAnalyzer(random()))
                 .setOpenMode(OpenMode.APPEND)
-                .setMergePolicy(newLogMergePolicy(false));
+                .setMergePolicy(newLogMergePolicy());
+        iwc.getCodec().compoundFormat().setShouldUseCompoundFile(false);
         writer = new IndexWriter(dir, iwc);
         Exception err = null;
 
@@ -389,7 +388,8 @@ public class TestIndexWriterOnDiskFull extends LuceneTestCase {
                     dir,
                     newIndexWriterConfig(new MockAnalyzer(random()))
                         .setOpenMode(OpenMode.APPEND)
-                        .setMergePolicy(newLogMergePolicy(false)));
+                        .setMergePolicy(newLogMergePolicy()));
+            writer.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(false);
           }
 
           if (VERBOSE) {

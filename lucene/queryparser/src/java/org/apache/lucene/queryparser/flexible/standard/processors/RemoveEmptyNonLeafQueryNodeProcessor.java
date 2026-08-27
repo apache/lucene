@@ -16,7 +16,8 @@
  */
 package org.apache.lucene.queryparser.flexible.standard.processors;
 
-import java.util.LinkedList;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import org.apache.lucene.queryparser.flexible.core.QueryNodeException;
 import org.apache.lucene.queryparser.flexible.core.nodes.GroupQueryNode;
@@ -37,7 +38,7 @@ import org.apache.lucene.queryparser.flexible.core.processors.QueryNodeProcessor
  */
 public class RemoveEmptyNonLeafQueryNodeProcessor extends QueryNodeProcessorImpl {
 
-  private LinkedList<QueryNode> childrenBuffer = new LinkedList<>();
+  private final Collection<QueryNode> childrenBuffer = new ArrayList<>();
 
   public RemoveEmptyNonLeafQueryNodeProcessor() {
     // empty constructor

@@ -35,7 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
 class GeoDegeneratePath extends GeoBasePath {
 
   /** The original list of path points */
-  protected final List<GeoPoint> points = new ArrayList<GeoPoint>();
+  protected final List<GeoPoint> points = new ArrayList<>();
 
   /** A list of SegmentEndpoints */
   protected List<SegmentEndpoint> endPoints;
@@ -368,10 +368,9 @@ class GeoDegeneratePath extends GeoBasePath {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof GeoDegeneratePath)) {
+    if (!(o instanceof GeoDegeneratePath p)) {
       return false;
     }
-    GeoDegeneratePath p = (GeoDegeneratePath) o;
     if (!super.equals(p)) {
       return false;
     }
@@ -582,10 +581,9 @@ class GeoDegeneratePath extends GeoBasePath {
 
     @Override
     public boolean equals(Object o) {
-      if (!(o instanceof SegmentEndpoint)) {
+      if (!(o instanceof SegmentEndpoint other)) {
         return false;
       }
-      SegmentEndpoint other = (SegmentEndpoint) o;
       return point.equals(other.point);
     }
 

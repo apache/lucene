@@ -20,13 +20,14 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.Set;
-import org.apache.lucene.util.LongHeap;
+import org.apache.lucene.internal.hppc.IntHashSet;
+import org.apache.lucene.util.TernaryLongHeap;
 
 /**
  * Utility class for updating a big graph with smaller graphs. This is used during merging of
  * segments containing HNSW graphs.
+ *
+ * @lucene.internal
  */
 public class UpdateGraphsUtils {
 
@@ -37,18 +38,18 @@ public class UpdateGraphsUtils {
    *
    * @return a set of nodes that best cover the graph
    */
-  public static Set<Integer> computeJoinSet(HnswGraph graph) throws IOException {
+  public static IntHashSet computeJoinSet(HnswGraph graph) throws IOException {
     int k; // coverage for the current node
     int size = graph.size();
-    LongHeap heap = new LongHeap(size);
-    Set<Integer> j = new HashSet<>();
+    TernaryLongHeap heap = new TernaryLongHeap(size);
+    IntHashSet j = new IntHashSet();
     boolean[] stale = new boolean[size];
     short[] counts = new short[size];
     long gExit = 0L;
     for (int v = 0; v < size; v++) {
       graph.seek(0, v);
       int degree = graph.neighborCount();
-      k = degree < 9 ? 2 : Math.ceilDiv(degree, 4);
+      k = coverage(degree);
       gExit += k;
       int gain = k + degree;
       heap.push(encode(gain, v));
@@ -66,7 +67,7 @@ public class UpdateGraphsUtils {
       for (int u = graph.nextNeighbor(); u != NO_MORE_DOCS; u = graph.nextNeighbor()) {
         ns[i++] = u;
       }
-      k = degree < 9 ? 2 : Math.ceilDiv(degree, 4);
+      k = coverage(degree);
       if (stale[v]) { // if stale, recalculate gain
         int newGain = Math.max(0, k - counts[v]);
         for (int u : ns) {
@@ -98,6 +99,22 @@ public class UpdateGraphsUtils {
       }
     }
     return j;
+  }
+
+  /**
+   * How many times a node needs to be covered by the nodes of the join set before we consider it
+   * covered.
+   *
+   * <p>A node's neighbours are the only nodes that can cover it, so a node can never be covered
+   * more than {@code degree} times. Requesting a bigger coverage than that would make the coverage
+   * unsatisfiable, and the node would be forced to join the join set itself. This happens on
+   * degenerate graphs (e.g. hub-and-spoke shapes produced by highly duplicated or low dimensional
+   * vectors) where most of the nodes have a degree of 1: without clamping, every leaf ends up in
+   * the join set, and the join set degenerates to the whole graph.
+   */
+  private static int coverage(int degree) {
+    int k = degree < 9 ? 2 : Math.ceilDiv(degree, 4);
+    return Math.min(k, degree);
   }
 
   private static long encode(int value1, int value2) {

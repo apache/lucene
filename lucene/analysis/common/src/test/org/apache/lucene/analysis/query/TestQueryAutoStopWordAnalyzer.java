@@ -18,7 +18,8 @@ package org.apache.lucene.analysis.query;
 
 import java.util.Arrays;
 import java.util.Collections;
-import org.apache.lucene.analysis.*;
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.TextField;

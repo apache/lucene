@@ -1,23 +1,30 @@
 version: 2
 updates:
   - package-ecosystem: github-actions
-    directory: /
+    directories:
+      - "/"
+      - ".github/actions/eclint"
+      - ".github/actions/prepare-for-build"
     open-pull-requests-limit: 25
     schedule:
       interval: monthly
     commit-message:
       prefix: ci
-    labels: [dependencies]
+    labels: [dependencies, skip-changelog]
+    cooldown:
+      default-days: 7
 
-  # python dependencies in /dev-tools/scripts
-  - package-ecosystem: pip
-    directory: /dev-tools/scripts/
+  # python dependencies in /dev-tools
+  - package-ecosystem: uv
+    directory: /dev-tools/
     open-pull-requests-limit: 25
     schedule:
       interval: monthly
     commit-message:
       prefix: build(deps)
-    labels: [dependencies]
+    labels: [dependencies, skip-changelog]
+    cooldown:
+      default-days: 7
 
   - package-ecosystem: gradle
     directory: /
@@ -27,4 +34,6 @@ updates:
       day: tuesday
     commit-message:
       prefix: deps(java)
-    labels: [dependencies]
+    labels: [dependencies, skip-changelog]
+    cooldown:
+      default-days: 7

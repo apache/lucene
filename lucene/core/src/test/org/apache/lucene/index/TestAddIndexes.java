@@ -80,7 +80,8 @@ public class TestAddIndexes extends LuceneTestCase {
             aux,
             newIndexWriterConfig(new MockAnalyzer(random()))
                 .setOpenMode(OpenMode.CREATE)
-                .setMergePolicy(newLogMergePolicy(false)));
+                .setMergePolicy(newLogMergePolicy()));
+    writer.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(false);
     // add 40 documents in separate files
     addDocs(writer, 40);
     assertEquals(40, writer.getDocStats().maxDoc);
@@ -314,7 +315,8 @@ public class TestAddIndexes extends LuceneTestCase {
             newIndexWriterConfig(new MockAnalyzer(random()))
                 .setOpenMode(OpenMode.CREATE)
                 .setMaxBufferedDocs(1000)
-                .setMergePolicy(newLogMergePolicy(false)));
+                .setMergePolicy(newLogMergePolicy()));
+    writer.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(false);
     // add 140 documents in separate files
     addDocs(writer, 40);
     writer.close();
@@ -324,7 +326,8 @@ public class TestAddIndexes extends LuceneTestCase {
             newIndexWriterConfig(new MockAnalyzer(random()))
                 .setOpenMode(OpenMode.CREATE)
                 .setMaxBufferedDocs(1000)
-                .setMergePolicy(newLogMergePolicy(false)));
+                .setMergePolicy(newLogMergePolicy()));
+    writer.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(false);
     addDocs(writer, 100);
     writer.close();
 
@@ -608,7 +611,8 @@ public class TestAddIndexes extends LuceneTestCase {
             newIndexWriterConfig(new MockAnalyzer(random()))
                 .setOpenMode(OpenMode.CREATE)
                 .setMaxBufferedDocs(1000)
-                .setMergePolicy(newLogMergePolicy(false, 10)));
+                .setMergePolicy(newLogMergePolicy(10)));
+    writer.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(false);
     // add 30 documents in 3 segments
     for (int i = 0; i < 3; i++) {
       if (withID) {
@@ -623,7 +627,8 @@ public class TestAddIndexes extends LuceneTestCase {
               newIndexWriterConfig(new MockAnalyzer(random()))
                   .setOpenMode(OpenMode.APPEND)
                   .setMaxBufferedDocs(1000)
-                  .setMergePolicy(newLogMergePolicy(false, 10)));
+                  .setMergePolicy(newLogMergePolicy(10)));
+      writer.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(false);
     }
     assertEquals(30, writer.getDocStats().maxDoc);
     assertEquals(3, writer.getSegmentCount());
@@ -635,7 +640,6 @@ public class TestAddIndexes extends LuceneTestCase {
 
     Directory dir = newDirectory();
     LogByteSizeMergePolicy lmp = new LogByteSizeMergePolicy();
-    lmp.setNoCFSRatio(0.0);
     lmp.setMergeFactor(100);
     IndexWriter writer =
         new IndexWriter(
@@ -643,7 +647,7 @@ public class TestAddIndexes extends LuceneTestCase {
             newIndexWriterConfig(new MockAnalyzer(random()))
                 .setMaxBufferedDocs(5)
                 .setMergePolicy(lmp));
-
+    writer.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(false);
     Document doc = new Document();
     FieldType customType = new FieldType(TextField.TYPE_STORED);
     customType.setStoreTermVectors(true);
@@ -665,7 +669,6 @@ public class TestAddIndexes extends LuceneTestCase {
     Directory dir2 = newDirectory();
     lmp = new LogByteSizeMergePolicy();
     lmp.setMinMergeMB(0.0001);
-    lmp.setNoCFSRatio(0.0);
     lmp.setMergeFactor(4);
     writer =
         new IndexWriter(
@@ -673,6 +676,7 @@ public class TestAddIndexes extends LuceneTestCase {
             newIndexWriterConfig(new MockAnalyzer(random()))
                 .setMergeScheduler(new SerialMergeScheduler())
                 .setMergePolicy(lmp));
+    writer.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(false);
     writer.addIndexes(dir);
     writer.close();
     dir.close();
@@ -1381,7 +1385,8 @@ public class TestAddIndexes extends LuceneTestCase {
                 .setOpenMode(OpenMode.CREATE)
                 .setCodec(codec)
                 .setMaxBufferedDocs(10)
-                .setMergePolicy(newLogMergePolicy(false)));
+                .setMergePolicy(newLogMergePolicy()));
+    writer.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(false);
     // add 40 documents in separate files
     addDocs(writer, 40);
     assertEquals(40, writer.getDocStats().maxDoc);
@@ -1450,11 +1455,10 @@ public class TestAddIndexes extends LuceneTestCase {
 
     MockDirectoryWrapper dir = new MockDirectoryWrapper(random(), new ByteBuffersDirectory());
     IndexWriterConfig conf =
-        new IndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(newLogMergePolicy(true));
-    MergePolicy lmp = conf.getMergePolicy();
+        new IndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(newLogMergePolicy());
     // Force creation of CFS:
-    lmp.setNoCFSRatio(1.0);
-    lmp.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
+    conf.getCodec().compoundFormat().setShouldUseCompoundFile(true);
+    conf.getCodec().compoundFormat().setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
     IndexWriter w3 = new IndexWriter(dir, conf);
     TestUtil.addIndexesSlowly(w3, readers);
     w3.close();

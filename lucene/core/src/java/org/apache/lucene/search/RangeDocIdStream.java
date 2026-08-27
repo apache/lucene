@@ -17,6 +17,8 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import org.apache.lucene.util.IOIntConsumer;
+import org.apache.lucene.util.MathUtil;
 
 final class RangeDocIdStream extends DocIdStream {
 
@@ -37,7 +39,7 @@ final class RangeDocIdStream extends DocIdStream {
   }
 
   @Override
-  public void forEach(int upTo, CheckedIntConsumer<IOException> consumer) throws IOException {
+  public void forEach(int upTo, IOIntConsumer consumer) throws IOException {
     if (upTo > this.upTo) {
       upTo = Math.min(upTo, max);
       for (int doc = this.upTo; doc < upTo; ++doc) {
@@ -57,5 +59,20 @@ final class RangeDocIdStream extends DocIdStream {
     } else {
       return 0;
     }
+  }
+
+  @Override
+  public int intoArray(int upTo, int[] array) {
+    int start = this.upTo;
+    upTo = Math.min(upTo, max);
+    upTo = MathUtil.unsignedMin(upTo, start + array.length);
+    if (upTo > start) {
+      for (int doc = start; doc < upTo; ++doc) {
+        array[doc - start] = doc;
+      }
+      this.upTo = upTo;
+      return upTo - start;
+    }
+    return 0;
   }
 }

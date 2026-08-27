@@ -46,6 +46,7 @@ import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.SlowImpactsEnum;
@@ -138,7 +139,6 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
       throws IOException {
     this.compressionMode = compressionMode;
     final String segment = si.name;
-    boolean success = false;
     fieldInfos = fn;
     numDocs = si.maxDoc();
 
@@ -227,18 +227,16 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
 
       this.prefetchedBlockIDCache = new long[PREFETCH_CACHE_SIZE];
       Arrays.fill(prefetchedBlockIDCache, -1);
-
-      success = true;
     } catch (Throwable t) {
-      if (metaIn != null) {
-        CodecUtil.checkFooter(metaIn, t);
-        throw new AssertionError("unreachable");
-      } else {
-        throw t;
-      }
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(this, metaIn);
+      try {
+        if (metaIn != null) {
+          CodecUtil.checkFooter(metaIn, t);
+          throw new AssertionError("unreachable");
+        } else {
+          throw t;
+        }
+      } finally {
+        IOUtils.closeWhileSuppressingExceptions(t, this, metaIn);
       }
     }
   }
@@ -876,7 +874,7 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
 
     @Override
     public Iterator<String> iterator() {
-      return new Iterator<String>() {
+      return new Iterator<>() {
         int i = 0;
 
         @Override
@@ -901,7 +899,7 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       final FieldInfo fieldInfo = fieldInfos.fieldInfo(field);
       if (fieldInfo == null) {
         return null;
@@ -1020,17 +1018,17 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     }
 
     @Override
-    public long getSumTotalTermFreq() throws IOException {
+    public long getSumTotalTermFreq() {
       return totalTermFreq;
     }
 
     @Override
-    public long getSumDocFreq() throws IOException {
+    public long getSumDocFreq() {
       return numTerms;
     }
 
     @Override
-    public int getDocCount() throws IOException {
+    public int getDocCount() {
       return 1;
     }
 
@@ -1179,10 +1177,10 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     }
 
     @Override
-    public final PostingsEnum postings(PostingsEnum reuse, int flags) throws IOException {
+    public PostingsEnum postings(PostingsEnum reuse, int flags) throws IOException {
       final TVPostingsEnum docsEnum;
-      if (reuse != null && reuse instanceof TVPostingsEnum) {
-        docsEnum = (TVPostingsEnum) reuse;
+      if (reuse != null && reuse instanceof TVPostingsEnum tvpe) {
+        docsEnum = tvpe;
       } else {
         docsEnum = new TVPostingsEnum();
       }
@@ -1352,9 +1350,9 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    indexReader.checkIntegrity();
-    CodecUtil.checksumEntireFile(vectorsStream);
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+    indexReader.checkIntegrity(merge);
+    CodecUtil.checksumEntireFile(vectorsStream, merge);
   }
 
   @Override

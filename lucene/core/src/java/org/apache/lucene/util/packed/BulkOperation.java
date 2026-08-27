@@ -20,6 +20,7 @@ package org.apache.lucene.util.packed;
 
 /** Efficient sequential read/write of packed integers. */
 abstract class BulkOperation implements PackedInts.Decoder, PackedInts.Encoder {
+  @SuppressWarnings("ClassInitializationDeadlock") // FIXME: may cause hangs!
   private static final BulkOperation[] packedBulkOps =
       new BulkOperation[] {
         new BulkOperationPacked1(),
@@ -89,6 +90,7 @@ abstract class BulkOperation implements PackedInts.Decoder, PackedInts.Encoder {
       };
 
   // NOTE: this is sparse (some entries are null):
+  @SuppressWarnings("ClassInitializationDeadlock") // FIXME: may cause hangs!
   private static final BulkOperation[] packedSingleBlockBulkOps =
       new BulkOperation[] {
         new BulkOperationPackedSingleBlock(1),

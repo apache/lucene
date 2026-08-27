@@ -4,7 +4,7 @@
 # The ASF licenses this file to You under the Apache License, Version 2.0
 # (the "License"); you may not use this file except in compliance with
 # the License.  You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -36,12 +36,12 @@ log.step=100000
     -SetProp(docs.file,work/top100k-out/top.uk.wikipedia.words.txt)
     ResetInputs
     { "UkrainianKeyword" { ReadTokens > : * ResetInputs } : 10
- 
+
     -NewAnalyzer(KeywordAnalyzer)
     -SetProp(docs.file,work/top100k-out/top.en.wikipedia.words.txt)
     ResetInputs
     { "EnglishKeyword" { ReadTokens > : * ResetInputs } : 10
- 
+
     -NewLocale(fr)
     -NewCollationAnalyzer
     -SetProp(docs.file,work/top100k-out/top.fr.wikipedia.words.txt)

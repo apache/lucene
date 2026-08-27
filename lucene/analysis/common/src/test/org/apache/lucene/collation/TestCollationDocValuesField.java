@@ -64,7 +64,7 @@ public class TestCollationDocValuesField extends LuceneTestCase {
 
     SortField sortField = new SortField("collated", SortField.Type.STRING);
 
-    TopDocs td = is.search(new MatchAllDocsQuery(), 5, new Sort(sortField));
+    TopDocs td = is.search(MatchAllDocsQuery.INSTANCE, 5, new Sort(sortField));
     StoredFields storedFields = ir.storedFields();
     assertEquals("abc", storedFields.document(td.scoreDocs[0].doc).get("field"));
     assertEquals("ABC", storedFields.document(td.scoreDocs[1].doc).get("field"));

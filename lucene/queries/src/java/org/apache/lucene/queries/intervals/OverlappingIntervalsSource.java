@@ -89,9 +89,10 @@ class OverlappingIntervalsSource extends ConjunctionIntervalsSource {
 
   @Override
   public boolean equals(Object other) {
-    if (other instanceof OverlappingIntervalsSource == false) return false;
-    OverlappingIntervalsSource o = (OverlappingIntervalsSource) other;
-    return Objects.equals(this.subSources, o.subSources);
+    if (other instanceof OverlappingIntervalsSource o) {
+      return Objects.equals(this.subSources, o.subSources);
+    }
+    return false;
   }
 
   @Override

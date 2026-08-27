@@ -50,6 +50,10 @@ public class KnnFloatVectorField extends Field {
     if (similarityFunction == null) {
       throw new IllegalArgumentException("similarity function must not be null");
     }
+    if (similarityFunction == VectorSimilarityFunction.COSINE
+        && VectorUtil.isZeroVector(v) == true) {
+      throw new IllegalArgumentException("zero vector not allowed with cosine similarity function");
+    }
     FieldType type = new FieldType();
     type.setVectorAttributes(dimension, VectorEncoding.FLOAT32, similarityFunction);
     type.freeze();
@@ -139,6 +143,11 @@ public class KnnFloatVectorField extends Field {
       throw new IllegalArgumentException(
           "The number of vector dimensions does not match the field type");
     }
+    if (fieldType.vectorSimilarityFunction() == VectorSimilarityFunction.COSINE
+        && VectorUtil.isZeroVector(vector) == true) {
+      throw new IllegalArgumentException(
+          "zero vector not allowed with cosine similarity configured in field type");
+    }
     fieldsData = VectorUtil.checkFinite(vector);
   }
 
@@ -160,6 +169,10 @@ public class KnnFloatVectorField extends Field {
       throw new IllegalArgumentException(
           "value length " + value.length + " must match field dimension " + type.vectorDimension());
     }
-    fieldsData = value;
+    if (type.vectorSimilarityFunction() == VectorSimilarityFunction.COSINE
+        && VectorUtil.isZeroVector(value)) {
+      throw new IllegalArgumentException("zero vector not allowed with cosine similarity function");
+    }
+    fieldsData = VectorUtil.checkFinite(value);
   }
 }

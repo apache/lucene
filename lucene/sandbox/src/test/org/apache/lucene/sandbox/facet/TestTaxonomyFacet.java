@@ -92,7 +92,7 @@ public class TestTaxonomyFacet extends SandboxFacetTestCase {
     // NRT open
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
 
-    Query query = new MatchAllDocsQuery();
+    Query query = MatchAllDocsQuery.INSTANCE;
 
     TaxonomyFacetsCutter defaultTaxoCutter =
         new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader);
@@ -163,11 +163,13 @@ public class TestTaxonomyFacet extends SandboxFacetTestCase {
               new FacetLabel("Author", "Bob"),
             }));
 
-    expectThrows(
-        AssertionError.class,
-        () -> {
-          getTopChildrenByCount(countRecorder2, taxoReader, 10, "Non exitent dim");
-        });
+    if (TEST_ASSERTS_ENABLED) {
+      expectThrows(
+          AssertionError.class,
+          () -> {
+            getTopChildrenByCount(countRecorder2, taxoReader, 10, "Non exitent dim");
+          });
+    }
 
     writer.close();
     IOUtils.close(taxoWriter, searcher.getIndexReader(), taxoReader, taxoDir, dir);
@@ -191,7 +193,7 @@ public class TestTaxonomyFacet extends SandboxFacetTestCase {
 
     IndexSearcher searcher = newSearcher(writer.getReader());
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
-    Query query = new MatchAllDocsQuery();
+    Query query = MatchAllDocsQuery.INSTANCE;
 
     TaxonomyFacetsCutter defaultTaxoCutter =
         new TaxonomyFacetsCutter(DEFAULT_INDEX_FIELD_NAME, config, taxoReader, true);

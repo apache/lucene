@@ -57,9 +57,8 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter w =
         new RandomIndexWriter(
-            random(),
-            dir,
-            newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
+            random(), dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()));
+    w.w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
     Document doc = new Document();
     LongField field = new LongField("foo", 0L, Store.NO);
     doc.add(field);
@@ -118,9 +117,8 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter w =
         new RandomIndexWriter(
-            random(),
-            dir,
-            newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
+            random(), dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()));
+    w.w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
     Document doc = new Document();
     LongField field = new LongField("foo", 0L, Store.NO);
     doc.add(field);
@@ -204,9 +202,8 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter w =
         new RandomIndexWriter(
-            random(),
-            dir,
-            newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
+            random(), dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()));
+    w.w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
     Document doc = new Document();
     LongField field = new LongField("foo", 0L, Store.NO);
     doc.add(field);
@@ -246,10 +243,8 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter w =
         new RandomIndexWriter(
-            random(),
-            dir,
-            newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
-
+            random(), dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()));
+    w.w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
     Document doc = new Document();
     for (long v : new long[] {3, 1000, Long.MAX_VALUE}) {
       doc.add(new LongField("foo", v, Store.NO));
@@ -318,8 +313,8 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
   public void testRandom() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w =
-        new IndexWriter(
-            dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
+        new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()));
+    w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
     Document doc = new Document();
     LongField field = new LongField("foo", 0L, Store.NO);
     doc.add(field);

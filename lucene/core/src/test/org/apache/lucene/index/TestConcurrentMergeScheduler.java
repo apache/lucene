@@ -962,6 +962,30 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
     assertFalse(failed.get());
   }
 
+  // GITHUB#14971
+  public void testMergeSchedulerClosedOnIndexWriterInitFailure() throws Exception {
+    AtomicBoolean closed = new AtomicBoolean(false);
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random()));
+    iwc.setOpenMode(OpenMode.APPEND);
+    iwc.setMergeScheduler(
+        new ConcurrentMergeScheduler() {
+          @Override
+          public void close() throws IOException {
+            super.close();
+            closed.set(true);
+          }
+        });
+
+    // Opening with APPEND on an empty directory should fail with IndexNotFoundException,
+    // which happens after mergeScheduler.initialize() has already created the CachedExecutor.
+    expectThrows(IndexNotFoundException.class, () -> new IndexWriter(dir, iwc));
+
+    // Verify the merge scheduler was properly closed despite the init failure
+    assertTrue("MergeScheduler should be closed on IndexWriter init failure", closed.get());
+    dir.close();
+  }
+
   /*
    * This test tries to produce 2 merges running concurrently with 2 segments per merge. While these
    * merges run we kick off a forceMerge that puts a pending merge in the queue but waits for things to happen.

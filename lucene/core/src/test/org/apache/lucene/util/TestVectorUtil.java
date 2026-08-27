@@ -23,6 +23,7 @@ import java.util.Random;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.vectorization.BaseVectorizationTestCase;
 import org.apache.lucene.internal.vectorization.VectorizationProvider;
+import org.apache.lucene.search.DocAndScoreAccBuffer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
@@ -121,6 +122,48 @@ public class TestVectorUtil extends LuceneTestCase {
     expectThrows(IllegalArgumentException.class, () -> VectorUtil.l2normalize(v));
   }
 
+  public void testCheckFiniteFloat16() {
+    // finite vector passes and returns the same array
+    short[] finite = {
+      Float.floatToFloat16(-1.5f),
+      Float.floatToFloat16(0f),
+      Float.floatToFloat16(3.25f),
+      (short) 0x7BFF, // largest finite float16 (65504)
+      (short) 0xFBFF // most negative finite float16 (-65504)
+    };
+    assertSame(finite, VectorUtil.checkFiniteFloat16(finite));
+
+    // +Infinity
+    IllegalArgumentException e =
+        expectThrows(
+            IllegalArgumentException.class,
+            () ->
+                VectorUtil.checkFiniteFloat16(
+                    new short[] {Float.floatToFloat16(1f), (short) 0x7C00}));
+    assertTrue(e.getMessage(), e.getMessage().contains("non-finite float16 value at vector[1]"));
+
+    // -Infinity
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> VectorUtil.checkFiniteFloat16(new short[] {(short) 0xFC00}));
+
+    // NaN (any non-zero mantissa with all exponent bits set)
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> VectorUtil.checkFiniteFloat16(new short[] {(short) 0x7E00}));
+  }
+
+  public void testNormalizeToUnitInterval() {
+    for (int i = 0; i < 100; i++) {
+      // Generates a float in the range [-1.0, 1.0)
+      float f = random().nextFloat() * 2 - 1;
+      float v = VectorUtil.normalizeToUnitInterval(f);
+      assertTrue(v >= 0);
+      assertTrue(v <= 1);
+      assertEquals(Math.max((1 + f) / 2, 0), v, 0.0f);
+    }
+  }
+
   public void testExtremeNumerics() {
     float[] v1 = new float[1536];
     float[] v2 = new float[1536];
@@ -163,6 +206,14 @@ public class TestVectorUtil extends LuceneTestCase {
     float l2 = 0;
     for (int i = 0; i < v.length; i++) {
       l2 += v[i] * v[i];
+    }
+    return l2;
+  }
+
+  private static float uint8L2(byte[] v) {
+    float l2 = 0;
+    for (int i = 0; i < v.length; i++) {
+      l2 += Byte.toUnsignedInt(v[i]) * Byte.toUnsignedInt(v[i]);
     }
     return l2;
   }
@@ -256,6 +307,33 @@ public class TestVectorUtil extends LuceneTestCase {
     byte[] v = randomVectorBytes();
     byte[] u = negative(v);
     assertEquals(4 * l2(v), VectorUtil.squareDistance(u, v), DELTA);
+  }
+
+  public void testBasicDotProductUint8() {
+    byte[] a = new byte[] {1, 2, 3};
+    byte[] b = new byte[] {-10, 0, 5};
+    assertEquals(261, VectorUtil.uint8DotProduct(a, b), 0);
+
+    byte[] min = new byte[] {-128, -128};
+    byte[] max = new byte[] {127, 127};
+    assertEquals(32512, VectorUtil.uint8DotProduct(min, max), DELTA);
+  }
+
+  public void testSelfDotProductUint8() {
+    // the dot product of a vector with itself is equal to the sum of the squares of its components
+    byte[] v = randomVectorBytes();
+    assertEquals(uint8L2(v), VectorUtil.uint8DotProduct(v, v), DELTA);
+  }
+
+  public void testSelfSquareDistanceUint8() {
+    // the l2 distance of a vector with itself is zero
+    byte[] v = randomVectorBytes();
+    assertEquals(0, VectorUtil.uint8SquareDistance(v, v), DELTA);
+  }
+
+  public void testBasicSquareDistanceUint8() {
+    assertEquals(
+        64524, VectorUtil.uint8SquareDistance(new byte[] {1, 2, 3}, new byte[] {-1, 0, 5}), 0);
   }
 
   public void testBasicCosineBytes() {
@@ -390,6 +468,45 @@ public class TestVectorUtil extends LuceneTestCase {
     return length;
   }
 
+  public void testFilterByScore() {
+    for (int iter = 0; iter < 1_000; ++iter) {
+      int padding = TestUtil.nextInt(random(), 0, 5);
+      DocAndScoreAccBuffer b1 = new DocAndScoreAccBuffer();
+      DocAndScoreAccBuffer b2 = new DocAndScoreAccBuffer();
+      b1.growNoCopy(128 + padding);
+      b2.growNoCopy(128 + padding);
+
+      int doc = 0;
+      for (int i = 0; i < 128 + padding; ++i) {
+        doc += TestUtil.nextInt(random(), 1, 1000);
+        b1.docs[i] = b2.docs[i] = doc;
+        b1.scores[i] = b2.scores[i] = random().nextDouble();
+      }
+
+      double minScoreInclusive = random().nextDouble();
+      int upTo = TestUtil.nextInt(random(), 0, 127);
+      b1.size = slowFilterByScore(b1.docs, b1.scores, minScoreInclusive, upTo);
+      b2.size = VectorUtil.filterByScore(b2.docs, b2.scores, minScoreInclusive, upTo);
+      assertEquals(b1.size, b2.size);
+      assertTrue(Arrays.equals(b1.docs, 0, b1.size, b2.docs, 0, b2.size));
+      // two double array should be exactly the same, so just use simple Arrays.equals
+      assertTrue(Arrays.equals(b1.scores, 0, b1.size, b2.scores, 0, b2.size));
+    }
+  }
+
+  private static int slowFilterByScore(
+      int[] docBuffer, double[] scoreBuffer, double minScoreInclusive, int upTo) {
+    int newSize = 0;
+    for (int i = 0; i < upTo; i++) {
+      if (scoreBuffer[i] >= minScoreInclusive) {
+        docBuffer[newSize] = docBuffer[i];
+        scoreBuffer[newSize] = scoreBuffer[i];
+        newSize++;
+      }
+    }
+    return newSize;
+  }
+
   public void testInt4BitDotProductInvariants() {
     int iterations = atLeast(10);
     for (int i = 0; i < iterations; i++) {
@@ -400,10 +517,20 @@ public class TestVectorUtil extends LuceneTestCase {
     }
   }
 
+  public void testInt4DibitDotProductInvariants() {
+    int iterations = atLeast(10);
+    for (int i = 0; i < iterations; i++) {
+      int size = randomIntBetween(random(), 1, 10);
+      var d = new byte[size];
+      var q = new byte[size * 2 - 1];
+      expectThrows(IllegalArgumentException.class, () -> VectorUtil.int4DibitDotProduct(q, d));
+    }
+  }
+
   static final VectorizationProvider defaultedProvider =
       BaseVectorizationTestCase.defaultProvider();
   static final VectorizationProvider defOrPanamaProvider =
-      BaseVectorizationTestCase.maybePanamaProvider();
+      BaseVectorizationTestCase.maybePanamaOrNativeProvider();
 
   public void testBasicInt4BitDotProduct() {
     testBasicInt4BitDotProductImpl(VectorUtil::int4BitDotProduct);
@@ -497,6 +624,81 @@ public class TestVectorUtil extends LuceneTestCase {
     int res = 0;
     for (int i = 0; i < 4; i++) {
       res += (popcount(q, i * d.length, d, d.length) << i);
+    }
+    return res;
+  }
+
+  public void testBasicInt4DibitDotProduct() {
+    testBasicInt4DibitDotProductImpl(VectorUtil::int4DibitDotProduct);
+    testBasicInt4DibitDotProductImpl(defaultedProvider.getVectorUtilSupport()::int4DibitDotProduct);
+    testBasicInt4DibitDotProductImpl(
+        defOrPanamaProvider.getVectorUtilSupport()::int4DibitDotProduct);
+  }
+
+  interface Int4DibitDotProduct {
+    long apply(byte[] q, byte[] d);
+  }
+
+  void testBasicInt4DibitDotProductImpl(Int4DibitDotProduct int4DibitDotProductFunc) {
+    // q is 4 stripes, d is 2 stripes (lower bits first, then upper bits)
+    assertEquals(45L, int4DibitDotProductFunc.apply(new byte[] {1, 1, 1, 1}, new byte[] {1, 1}));
+    assertEquals(90L, int4DibitDotProductFunc.apply(new byte[] {3, 3, 3, 3}, new byte[] {3, 3}));
+    assertEquals(1L, int4DibitDotProductFunc.apply(new byte[] {1, 2, 4, 8}, new byte[] {1, 0}));
+
+    // Multi-stripe deterministic cases (stripe sizes 2 and 3)
+    assertEquals(
+        90L,
+        int4DibitDotProductFunc.apply(
+            new byte[] {1, 2, 1, 2, 1, 2, 1, 2}, new byte[] {1, 2, 1, 2}));
+    assertEquals(
+        180L,
+        int4DibitDotProductFunc.apply(
+            new byte[] {1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3}, new byte[] {1, 2, 3, 1, 2, 3}));
+  }
+
+  public void testInt4DibitDotProduct() {
+    testInt4DibitDotProductImpl(VectorUtil::int4DibitDotProduct);
+    testInt4DibitDotProductImpl(defaultedProvider.getVectorUtilSupport()::int4DibitDotProduct);
+    testInt4DibitDotProductImpl(defOrPanamaProvider.getVectorUtilSupport()::int4DibitDotProduct);
+  }
+
+  void testInt4DibitDotProductImpl(Int4DibitDotProduct int4DibitDotProductFunc) {
+    int iterations = atLeast(50);
+    for (int i = 0; i < iterations; i++) {
+      int size = random().nextInt(5000);
+      var d = new byte[size];
+      var q = new byte[size * 2];
+      random().nextBytes(d);
+      random().nextBytes(q);
+      assertEquals(scalarInt4DibitDotProduct(q, d), int4DibitDotProductFunc.apply(q, d));
+
+      Arrays.fill(d, Byte.MAX_VALUE);
+      Arrays.fill(q, Byte.MAX_VALUE);
+      assertEquals(scalarInt4DibitDotProduct(q, d), int4DibitDotProductFunc.apply(q, d));
+
+      Arrays.fill(d, Byte.MIN_VALUE);
+      Arrays.fill(q, Byte.MIN_VALUE);
+      assertEquals(scalarInt4DibitDotProduct(q, d), int4DibitDotProductFunc.apply(q, d));
+    }
+  }
+
+  // Independent reference: int4 query (4 bit-plane stripes) dot dibit doc (2 bit-plane stripes).
+  // value = sum over query plane i and doc plane j of popcount(q_i AND d_j) << (i + j).
+  static long scalarInt4DibitDotProduct(byte[] q, byte[] d) {
+    int stripeSize = d.length / 2;
+    long res = 0;
+    for (int i = 0; i < 4; i++) {
+      for (int j = 0; j < 2; j++) {
+        res += ((long) dibitPopcount(q, i * stripeSize, d, j * stripeSize, stripeSize)) << (i + j);
+      }
+    }
+    return res;
+  }
+
+  static int dibitPopcount(byte[] a, int aOffset, byte[] b, int bOffset, int length) {
+    int res = 0;
+    for (int k = 0; k < length; k++) {
+      res += Integer.bitCount((a[aOffset + k] & b[bOffset + k]) & 0xFF);
     }
     return res;
   }

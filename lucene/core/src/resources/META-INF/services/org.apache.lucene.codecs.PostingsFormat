@@ -13,4 +13,4 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat
+org.apache.lucene.codecs.lucene104.Lucene104PostingsFormat

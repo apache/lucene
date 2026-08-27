@@ -1,4 +1,5 @@
-# Generated from IANA TLD Database (gradlew generateTlds).aaa
+# Generated from IANA TLD Database (gradlew generateTlds).
+aaa
 aarp
 abb
 abbott
@@ -343,7 +344,6 @@ download
 drive
 dtv
 dubai
-dunlop
 dupont
 durban
 dvag
@@ -486,7 +486,6 @@ godaddy
 gold
 goldpoint
 golf
-goo
 goodyear
 goog
 google
@@ -742,6 +741,7 @@ meme
 memorial
 men
 menu
+merck
 merckmsd
 mg
 mh
@@ -911,7 +911,6 @@ politie
 porn
 post
 pr
-pramerica
 praxi
 press
 prime
@@ -945,7 +944,6 @@ realtor
 realty
 recipes
 red
-redstone
 redumbrella
 rehab
 reise
@@ -1252,7 +1250,6 @@ windows
 wine
 winners
 wme
-wolterskluwer
 woodside
 work
 works

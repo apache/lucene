@@ -50,9 +50,57 @@ public final class BytesRefHash implements Accountable {
   private int hashSize;
   private int hashHalfSize;
   private int hashMask;
+  // This mask is used to extract the high bits from a hashcode
+  private int highMask;
   private int count;
-  private int lastCount = -1;
+
+  /**
+   * The <code>ids</code> array serves a dual purpose:
+   *
+   * <ol>
+   *   <li>When the value is <code>-1</code>, it indicates an empty slot in the hash table.
+   *   <li>When the value is not <code>-1</code>, it stores:
+   *       <ul>
+   *         <li>The actual index into the <code>bytesStart</code> array (low bits, masked by <code>
+   *             hashMask</code>).
+   *         <li>The high bits of the original hashcode (high bits, masked by <code>highMask</code>
+   *             ).
+   *       </ul>
+   * </ol>
+   *
+   * <p>This "trick" allows us to store both the index and part of the hashcode in a single int,
+   * which speeds up hash collisions by quickly rejecting non-matching entries without having to
+   * compare the actual byte values. During lookups, we can immediately check if the high bits match
+   * before doing the more expensive byte comparison.
+   *
+   * <p><b>Example:</b>
+   *
+   * <ul>
+   *   <li>hashSize = 16, therefore <code>hashMask = 15</code> (<code>0x0000000F</code>)
+   *   <li><code>highMask = ~hashMask = 0xFFFFFFF0</code>
+   * </ul>
+   *
+   * <p>When storing the value 7 with hashcode <code>0x12345678</code>:
+   *
+   * <ul>
+   *   <li>The low bits (index) are 7 (<code>0x00000007</code>)
+   *   <li>The high bits of hashcode are <code>0x12345670</code>
+   *   <li>The stored value becomes: <code>0x12345677</code>
+   * </ul>
+   *
+   * <p><b>During lookup:</b>
+   *
+   * <ol>
+   *   <li>We compute the hashcode and find the slot.
+   *   <li>We extract the stored value's high bits (<code>& highMask</code>).
+   *   <li>If they match the lookup hashcode's high bits, we proceed to comparing actual bytes.
+   *   <li>Otherwise, we immediately know it's not a match and continue probing.
+   * </ol>
+   *
+   * <p>This significantly improves performance for hash lookups, especially with many collisions.
+   */
   private int[] ids;
+
   private final BytesStartArray bytesStartArray;
   private final Counter bytesUsed;
 
@@ -71,9 +119,17 @@ public final class BytesRefHash implements Accountable {
 
   /** Creates a new {@link BytesRefHash} */
   public BytesRefHash(ByteBlockPool pool, int capacity, BytesStartArray bytesStartArray) {
+    if (capacity <= 0) {
+      throw new IllegalArgumentException("capacity must be greater than 0");
+    }
+
+    if (BitUtil.isZeroOrPowerOfTwo(capacity) == false) {
+      throw new IllegalArgumentException("capacity must be a power of two, got " + capacity);
+    }
     hashSize = capacity;
     hashHalfSize = hashSize >> 1;
     hashMask = hashSize - 1;
+    highMask = ~hashMask;
     this.pool = new BytesRefBlockPool(pool);
     ids = new int[hashSize];
     Arrays.fill(ids, -1);
@@ -81,7 +137,7 @@ public final class BytesRefHash implements Accountable {
     bytesStart = bytesStartArray.init();
     final Counter bytesUsed = bytesStartArray.bytesUsed();
     this.bytesUsed = bytesUsed == null ? Counter.newCounter() : bytesUsed;
-    bytesUsed.addAndGet(hashSize * (long) Integer.BYTES);
+    this.bytesUsed.addAndGet(hashSize * (long) Integer.BYTES);
   }
 
   /**
@@ -96,7 +152,7 @@ public final class BytesRefHash implements Accountable {
   /**
    * Populates and returns a {@link BytesRef} with the bytes for the given bytesID.
    *
-   * <p>Note: the given bytesID must be a positive integer less than the current size ({@link
+   * <p>Note: the given bytesID must be a non-negative integer less than the current size ({@link
    * #size()})
    *
    * @param bytesID the id
@@ -121,19 +177,13 @@ public final class BytesRefHash implements Accountable {
    */
   public int[] compact() {
     assert bytesStart != null : "bytesStart is null - not initialized";
-    int upto = 0;
-    for (int i = 0; i < hashSize; i++) {
-      if (ids[i] != -1) {
-        if (upto < i) {
-          ids[upto] = ids[i];
-          ids[i] = -1;
-        }
-        upto++;
-      }
-    }
 
-    assert upto == count;
-    lastCount = count;
+    // id is the sequence number when bytes added to the pool
+    for (int i = 0; i < count; i++) {
+      ids[i] = i;
+    }
+    Arrays.fill(ids, count, hashSize, -1);
+
     return ids;
   }
 
@@ -232,6 +282,7 @@ public final class BytesRefHash implements Accountable {
       Arrays.fill(ids, -1);
       hashHalfSize = newSize / 2;
       hashMask = newSize - 1;
+      highMask = ~hashMask;
       return true;
     } else {
       return false;
@@ -240,28 +291,20 @@ public final class BytesRefHash implements Accountable {
 
   /** Clears the {@link BytesRef} which maps to the given {@link BytesRef} */
   public void clear(boolean resetPool) {
-    lastCount = count;
-    count = 0;
     if (resetPool) {
       pool.reset();
     }
     bytesStart = bytesStartArray.clear();
-    if (lastCount != -1 && shrink(lastCount)) {
-      // shrink clears the hash entries
-      return;
+    final boolean shrunk = shrink(count);
+    count = 0;
+    if (shrunk == false) {
+      // shrink already cleared the hash entries; otherwise clear them here
+      Arrays.fill(ids, -1);
     }
-    Arrays.fill(ids, -1);
   }
 
   public void clear() {
     clear(true);
-  }
-
-  /** Closes the BytesRefHash and releases all internally used memory */
-  public void close() {
-    clear(true);
-    ids = null;
-    bytesUsed.addAndGet(Integer.BYTES * (long) -hashSize);
   }
 
   /**
@@ -275,9 +318,10 @@ public final class BytesRefHash implements Accountable {
    *     ByteBlockPool#BYTE_BLOCK_SIZE}
    */
   public int add(BytesRef bytes) {
-    assert bytesStart != null : "Bytesstart is null - not initialized";
+    assert bytesStart != null : "bytesStart is null - not initialized";
+    final int hashcode = doHash(bytes.bytes, bytes.offset, bytes.length);
     // final position
-    final int hashPos = findHash(bytes);
+    final int hashPos = findHash(bytes, hashcode);
     int e = ids[hashPos];
 
     if (e == -1) {
@@ -289,13 +333,14 @@ public final class BytesRefHash implements Accountable {
       bytesStart[count] = pool.addBytesRef(bytes);
       e = count++;
       assert ids[hashPos] == -1;
-      ids[hashPos] = e;
+      ids[hashPos] = e | (hashcode & highMask);
 
       if (count == hashHalfSize) {
         rehash(2 * hashSize, true);
       }
       return e;
     }
+    e = e & hashMask;
     return -(e + 1);
   }
 
@@ -306,25 +351,28 @@ public final class BytesRefHash implements Accountable {
    * @return the id of the given bytes, or {@code -1} if there is no mapping for the given bytes.
    */
   public int find(BytesRef bytes) {
-    return ids[findHash(bytes)];
+    final int hashcode = doHash(bytes.bytes, bytes.offset, bytes.length);
+    final int id = ids[findHash(bytes, hashcode)];
+    return id == -1 ? -1 : id & hashMask;
   }
 
-  private int findHash(BytesRef bytes) {
+  private int findHash(BytesRef bytes, int hashcode) {
     assert bytesStart != null : "bytesStart is null - not initialized";
+    assert hashcode == doHash(bytes.bytes, bytes.offset, bytes.length);
 
-    int code = doHash(bytes.bytes, bytes.offset, bytes.length);
-
+    int code = hashcode;
     // final position
     int hashPos = code & hashMask;
     int e = ids[hashPos];
-    if (e != -1 && pool.equals(bytesStart[e], bytes) == false) {
-      // Conflict; use linear probe to find an open slot
-      // (see LUCENE-5604):
-      do {
-        code++;
-        hashPos = code & hashMask;
-        e = ids[hashPos];
-      } while (e != -1 && pool.equals(bytesStart[e], bytes) == false);
+    final int highBits = hashcode & highMask;
+
+    // Conflict; use linear probe to find an open slot
+    // (see LUCENE-5604):
+    while (e != -1
+        && ((e & highMask) != highBits || pool.equals(bytesStart[e & hashMask], bytes) == false)) {
+      code++;
+      hashPos = code & hashMask;
+      e = ids[hashPos];
     }
 
     return hashPos;
@@ -337,19 +385,18 @@ public final class BytesRefHash implements Accountable {
    * textStart) in TermsHashPerField.
    */
   public int addByPoolOffset(int offset) {
-    assert bytesStart != null : "Bytesstart is null - not initialized";
+    assert bytesStart != null : "bytesStart is null - not initialized";
     // final position
     int code = offset;
     int hashPos = offset & hashMask;
     int e = ids[hashPos];
-    if (e != -1 && bytesStart[e] != offset) {
-      // Conflict; use linear probe to find an open slot
-      // (see LUCENE-5604):
-      do {
-        code++;
-        hashPos = code & hashMask;
-        e = ids[hashPos];
-      } while (e != -1 && bytesStart[e] != offset);
+
+    // Conflict; use linear probe to find an open slot
+    // (see LUCENE-5604):
+    while (e != -1 && bytesStart[e] != offset) {
+      code++;
+      hashPos = code & hashMask;
+      e = ids[hashPos];
     }
     if (e == -1) {
       // new entry
@@ -370,41 +417,41 @@ public final class BytesRefHash implements Accountable {
     return -(e + 1);
   }
 
-  /**
-   * Called when hash is too small ({@code > 50%} occupied) or too large ({@code < 20%} occupied).
-   */
+  /** Called when hash reaches {@code 50%} occupancy. */
   private void rehash(final int newSize, boolean hashOnData) {
     final int newMask = newSize - 1;
-    bytesUsed.addAndGet(Integer.BYTES * (long) newSize);
-    final int[] newHash = new int[newSize];
-    Arrays.fill(newHash, -1);
-    for (int i = 0; i < hashSize; i++) {
-      final int e0 = ids[i];
-      if (e0 != -1) {
-        int code;
-        if (hashOnData) {
-          code = pool.hash(bytesStart[e0]);
-        } else {
-          code = bytesStart[e0];
-        }
+    final int newHighMask = ~newMask;
+    bytesUsed.addAndGet(Integer.BYTES * (long) (newSize - ids.length));
 
-        int hashPos = code & newMask;
-        assert hashPos >= 0;
-        if (newHash[hashPos] != -1) {
-          // Conflict; use linear probe to find an open slot
-          // (see LUCENE-5604):
-          do {
-            code++;
-            hashPos = code & newMask;
-          } while (newHash[hashPos] != -1);
-        }
-        newHash[hashPos] = e0;
+    ids = new int[newSize];
+    Arrays.fill(ids, -1);
+
+    // rebuild ids from terms in pool pointed by bytesStart
+    for (int id = 0; id < count; id++) {
+      final int hashcode;
+      int code;
+      if (hashOnData) {
+        hashcode = code = pool.hash(bytesStart[id]);
+      } else {
+        code = bytesStart[id];
+        hashcode = 0;
       }
+
+      int hashPos = code & newMask;
+      assert hashPos >= 0;
+
+      // Conflict; use linear probe to find an open slot
+      // (see LUCENE-5604):
+      while (ids[hashPos] != -1) {
+        code++;
+        hashPos = code & newMask;
+      }
+
+      ids[hashPos] = id | (hashcode & newHighMask);
     }
 
     hashMask = newMask;
-    bytesUsed.addAndGet(Integer.BYTES * (long) -ids.length);
-    ids = newHash;
+    highMask = newHighMask;
     hashSize = newSize;
     hashHalfSize = newSize / 2;
   }
@@ -501,9 +548,6 @@ public final class BytesRefHash implements Accountable {
    * instance.
    */
   public static class DirectBytesStartArray extends BytesStartArray {
-    // TODO: can't we just merge this w/
-    // TrackingDirectBytesStartArray...?  Just add a ctor
-    // that makes a private bytesUsed?
 
     protected final int initSize;
     private int[] bytesStart;

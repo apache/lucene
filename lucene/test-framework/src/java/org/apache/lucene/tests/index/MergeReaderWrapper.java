@@ -30,6 +30,7 @@ import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafMetaData;
 import org.apache.lucene.index.LeafReader;
@@ -41,6 +42,7 @@ import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Bits;
 
@@ -91,7 +93,7 @@ class MergeReaderWrapper extends LeafReader {
   }
 
   @Override
-  public Terms terms(String field) throws IOException {
+  public Terms terms(String field) {
     ensureOpen();
     // We could check the FieldInfo IndexOptions but there's no point since
     //   PostingsReader will simply return null for fields that don't exist or that have no terms
@@ -189,7 +191,7 @@ class MergeReaderWrapper extends LeafReader {
   }
 
   @Override
-  public DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+  public DocValuesSkipper getDocValuesSkipper(String field) {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (fi == null) {
@@ -225,7 +227,7 @@ class MergeReaderWrapper extends LeafReader {
   }
 
   @Override
-  public PointValues getPointValues(String fieldName) throws IOException {
+  public PointValues getPointValues(String fieldName) {
     return in.getPointValues(fieldName);
   }
 
@@ -235,19 +237,33 @@ class MergeReaderWrapper extends LeafReader {
   }
 
   @Override
+  public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+    return in.getFloat16VectorValues(field);
+  }
+
+  @Override
   public ByteVectorValues getByteVectorValues(String fieldName) throws IOException {
     return in.getByteVectorValues(fieldName);
   }
 
   @Override
   public void searchNearestVectors(
-      String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
+      String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
     in.searchNearestVectors(field, target, knnCollector, acceptDocs);
   }
 
   @Override
   public void searchNearestVectors(
-      String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
+      String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
+    in.searchNearestVectors(field, target, knnCollector, acceptDocs);
+  }
+
+  @Override
+  public void searchNearestVectors(
+      String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
     in.searchNearestVectors(field, target, knnCollector, acceptDocs);
   }
 

@@ -19,11 +19,9 @@ package org.apache.lucene.demo.facet;
 import java.util.List;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 public class TestSimpleFacetsExample extends LuceneTestCase {
 
-  @Test
   public void testFacetOnly() throws Exception {
     List<FacetResult> results = new SimpleFacetsExample().runFacetOnly();
     assertEquals(2, results.size());
@@ -35,7 +33,6 @@ public class TestSimpleFacetsExample extends LuceneTestCase {
         results.get(1).toString());
   }
 
-  @Test
   public void testSimple() throws Exception {
     List<FacetResult> results = new SimpleFacetsExample().runSearch();
     assertEquals(2, results.size());
@@ -47,14 +44,12 @@ public class TestSimpleFacetsExample extends LuceneTestCase {
         results.get(1).toString());
   }
 
-  @Test
   public void testDrillDown() throws Exception {
     FacetResult result = new SimpleFacetsExample().runDrillDown();
     assertEquals(
         "dim=Author path=[] value=2 childCount=2\n  Bob (1)\n  Lisa (1)\n", result.toString());
   }
 
-  @Test
   public void testDrillSideways() throws Exception {
     List<FacetResult> result = new SimpleFacetsExample().runDrillSideways();
     assertEquals(

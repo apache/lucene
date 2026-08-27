@@ -21,7 +21,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 /**
  * Check relationship between polygon and GeoShapes of composite polygons. Normally we construct the
@@ -29,7 +28,6 @@ import org.junit.Test;
  */
 public class TestCompositeGeoPolygonRelationships extends LuceneTestCase {
 
-  @Test
   public void testGeoCompositePolygon1() {
 
     // POLYGON ((19.845091 -60.452631, 20.119948 -61.655652, 23.207901 -61.453298, 22.820804
@@ -91,7 +89,6 @@ public class TestCompositeGeoPolygonRelationships extends LuceneTestCase {
     assertEquals(GeoArea.OVERLAPS, rel);
   }
 
-  @Test
   public void testGeoCompositePolygon2() {
 
     // POLYGON ((19.845091 -60.452631, 20.119948 -61.655652, 23.207901 -61.453298, 22.820804
@@ -154,7 +151,6 @@ public class TestCompositeGeoPolygonRelationships extends LuceneTestCase {
     assertEquals(GeoArea.OVERLAPS, rel);
   }
 
-  @Test
   public void testGeoCompositePolygon3() {
 
     // POLYGON ((19.845091 -60.452631, 20.119948 -61.655652, 23.207901 -61.453298, 22.820804
@@ -217,7 +213,6 @@ public class TestCompositeGeoPolygonRelationships extends LuceneTestCase {
     assertEquals(GeoArea.OVERLAPS, rel);
   }
 
-  @Test
   public void testGeoCompositePolygon4() {
 
     // POLYGON ((19.845091 -60.452631, 20.119948 -61.655652, 23.207901 -61.453298, 22.820804
@@ -280,12 +275,11 @@ public class TestCompositeGeoPolygonRelationships extends LuceneTestCase {
     assertEquals(GeoArea.WITHIN, rel);
   }
 
-  @Test
   public void testGeoCompositePolygon5() {
 
     // POLYGON ((19.845091 -60.452631, 20.119948 -61.655652, 23.207901 -61.453298, 22.820804
     // -60.257713, 21 -61,19.845091 -60.452631))
-    GeoPolygon originaConvexlPol =
+    GeoPolygon originalConvexPol =
         buildGeoPolygon(
             19.84509,
             -60.452631,
@@ -319,14 +313,14 @@ public class TestCompositeGeoPolygonRelationships extends LuceneTestCase {
     GeoPolygon polConcave = buildConcaveGeoPolygon(19, -62, 23, -62, 23, -60, 19, -60);
 
     // convex
-    int rel = originaConvexlPol.getRelationship(polConvex);
+    int rel = originalConvexPol.getRelationship(polConvex);
     assertEquals(GeoArea.OVERLAPS, rel);
-    rel = polConvex.getRelationship(originaConvexlPol);
+    rel = polConvex.getRelationship(originalConvexPol);
     assertEquals(GeoArea.OVERLAPS, rel);
 
-    rel = originaConvexlPol.getRelationship(polConcave);
+    rel = originalConvexPol.getRelationship(polConcave);
     assertEquals(GeoArea.OVERLAPS, rel);
-    rel = polConcave.getRelationship(originaConvexlPol);
+    rel = polConcave.getRelationship(originalConvexPol);
     assertEquals(GeoArea.OVERLAPS, rel);
 
     // concave
@@ -341,7 +335,6 @@ public class TestCompositeGeoPolygonRelationships extends LuceneTestCase {
     assertEquals(GeoArea.OVERLAPS, rel);
   }
 
-  @Test
   public void testGeoCompositePolygon6() {
 
     // POLYGON ((19.845091 -60.452631, 20.119948 -61.655652, 23.207901 -61.453298, 22.820804
@@ -402,7 +395,6 @@ public class TestCompositeGeoPolygonRelationships extends LuceneTestCase {
     assertEquals(GeoArea.CONTAINS, rel);
   }
 
-  @Test
   public void testGeoCompositePolygon7() {
 
     // POLYGON ((19.845091 -60.452631, 20.119948 -61.655652, 23.207901 -61.453298, 22.820804
@@ -465,7 +457,6 @@ public class TestCompositeGeoPolygonRelationships extends LuceneTestCase {
     assertEquals(GeoArea.OVERLAPS, rel);
   }
 
-  @Test
   public void testGeoCompositePolygon8() {
 
     // POLYGON ((19.845091 -60.452631, 20.119948 -61.655652, 23.207901 -61.453298, 22.820804
@@ -489,7 +480,6 @@ public class TestCompositeGeoPolygonRelationships extends LuceneTestCase {
     assertEquals(GeoArea.WITHIN, rel);
   }
 
-  @Test
   public void testGeoPolygonPole1() {
     // POLYGON((0 80, 45 85 ,90 80,135 85,180 80, -135 85, -90 80, -45 85,0 80))
     GeoPolygon compositePol = getCompositePolygon();
@@ -523,7 +513,6 @@ public class TestCompositeGeoPolygonRelationships extends LuceneTestCase {
     assertEquals(GeoArea.WITHIN, rel);
   }
 
-  @Test
   public void testGeoPolygonPole2() {
     // POLYGON((0 80, 45 85 ,90 80,135 85,180 80, -135 85, -90 80, -45 85,0 80))
     GeoPolygon compositePol = getCompositePolygon();
@@ -555,7 +544,6 @@ public class TestCompositeGeoPolygonRelationships extends LuceneTestCase {
     assertEquals(GeoArea.OVERLAPS, rel);
   }
 
-  @Test
   public void testGeoPolygonPole3() {
     // POLYGON((0 80, 45 85 ,90 80,135 85,180 80, -135 85, -90 80, -45 85,0 80))
     GeoPolygon compositePol = getCompositePolygon();
@@ -587,7 +575,6 @@ public class TestCompositeGeoPolygonRelationships extends LuceneTestCase {
     assertEquals(GeoArea.OVERLAPS, rel);
   }
 
-  @Test
   public void testMultiPolygon1() {
     // MULTIPOLYGON(((-145.790967486 -5.17543698881, -145.790854979 -5.11348060995, -145.853073512
     // -5.11339421216, -145.853192037 -5.17535061936, -145.790967486 -5.17543698881)),
@@ -621,7 +608,6 @@ public class TestCompositeGeoPolygonRelationships extends LuceneTestCase {
     assertEquals(false, polConcave.intersects(multiPol));
   }
 
-  @Test
   public void testMultiPolygon2() {
     // MULTIPOLYGON(((-145.790967486 -5.17543698881, -145.790854979 -5.11348060995, -145.853073512
     // -5.11339421216, -145.853192037 -5.17535061936, -145.790967486 -5.17543698881)),
@@ -652,7 +638,6 @@ public class TestCompositeGeoPolygonRelationships extends LuceneTestCase {
     assertEquals(true, polConcave.intersects(multiPol));
   }
 
-  @Test
   public void testMultiPolygon3() {
     // MULTIPOLYGON(((-145.790967486 -5.17543698881, -145.790854979 -5.11348060995, -145.853073512
     // -5.11339421216, -145.853192037 -5.17535061936, -145.790967486 -5.17543698881)),
@@ -683,7 +668,6 @@ public class TestCompositeGeoPolygonRelationships extends LuceneTestCase {
     assertEquals(false, polConcave.intersects(multiPol));
   }
 
-  @Test
   public void testMultiPolygon4() {
     // MULTIPOLYGON(((-145.790967486 -5.17543698881, -145.790854979 -5.11348060995, -145.853073512
     // -5.11339421216, -145.853192037 -5.17535061936, -145.790967486 -5.17543698881)),
@@ -714,7 +698,6 @@ public class TestCompositeGeoPolygonRelationships extends LuceneTestCase {
     assertEquals(false, polConcave.intersects(multiPol));
   }
 
-  @Test
   public void testMultiPolygon5() {
     // MULTIPOLYGON(((-145.790967486 -5.17543698881, -145.790854979 -5.11348060995, -145.853073512
     // -5.11339421216, -145.853192037 -5.17535061936, -145.790967486 -5.17543698881)),

@@ -102,6 +102,6 @@ public class FileBasedQueryMaker extends AbstractQueryMaker {
         System.err.println("No Reader available for: " + fileName);
       }
     }
-    return qq.toArray(new Query[qq.size()]);
+    return qq.toArray(Query[]::new);
   }
 }

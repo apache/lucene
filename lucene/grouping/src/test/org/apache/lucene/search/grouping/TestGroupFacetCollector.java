@@ -109,7 +109,7 @@ public class TestGroupFacetCollector extends AbstractGroupingTestCase {
       groupedAirportFacetCollector =
           createRandomCollector(
               useDv ? "hotel_dv" : "hotel", useDv ? "airport_dv" : "airport", null, false);
-      indexSearcher.search(new MatchAllDocsQuery(), groupedAirportFacetCollector);
+      indexSearcher.search(MatchAllDocsQuery.INSTANCE, groupedAirportFacetCollector);
       int maxOffset = 5;
       airportResult =
           groupedAirportFacetCollector.mergeSegmentResults(
@@ -137,7 +137,7 @@ public class TestGroupFacetCollector extends AbstractGroupingTestCase {
     GroupFacetCollector groupedDurationFacetCollector =
         createRandomCollector(
             useDv ? "hotel_dv" : "hotel", useDv ? "duration_dv" : "duration", null, false);
-    indexSearcher.search(new MatchAllDocsQuery(), groupedDurationFacetCollector);
+    indexSearcher.search(MatchAllDocsQuery.INSTANCE, groupedDurationFacetCollector);
     TermGroupFacetCollector.GroupedFacetResult durationResult =
         groupedDurationFacetCollector.mergeSegmentResults(10, 0, false);
     assertEquals(4, durationResult.getTotalCount());
@@ -186,7 +186,7 @@ public class TestGroupFacetCollector extends AbstractGroupingTestCase {
     groupedAirportFacetCollector =
         createRandomCollector(
             useDv ? "hotel_dv" : "hotel", useDv ? "airport_dv" : "airport", null, !useDv);
-    indexSearcher.search(new MatchAllDocsQuery(), groupedAirportFacetCollector);
+    indexSearcher.search(MatchAllDocsQuery.INSTANCE, groupedAirportFacetCollector);
     airportResult = groupedAirportFacetCollector.mergeSegmentResults(3, 0, true);
     entries = airportResult.getFacetEntries(1, 2);
     assertEquals(2, entries.size());
@@ -209,7 +209,7 @@ public class TestGroupFacetCollector extends AbstractGroupingTestCase {
     groupedDurationFacetCollector =
         createRandomCollector(
             useDv ? "hotel_dv" : "hotel", useDv ? "duration_dv" : "duration", null, false);
-    indexSearcher.search(new MatchAllDocsQuery(), groupedDurationFacetCollector);
+    indexSearcher.search(MatchAllDocsQuery.INSTANCE, groupedDurationFacetCollector);
     durationResult = groupedDurationFacetCollector.mergeSegmentResults(10, 2, true);
     assertEquals(5, durationResult.getTotalCount());
     assertEquals(0, durationResult.getTotalMissingCount());
@@ -238,7 +238,7 @@ public class TestGroupFacetCollector extends AbstractGroupingTestCase {
     groupedAirportFacetCollector =
         createRandomCollector(
             useDv ? "hotel_dv" : "hotel", useDv ? "airport_dv" : "airport", null, false);
-    indexSearcher.search(new MatchAllDocsQuery(), groupedAirportFacetCollector);
+    indexSearcher.search(MatchAllDocsQuery.INSTANCE, groupedAirportFacetCollector);
     airportResult = groupedAirportFacetCollector.mergeSegmentResults(10, 0, false);
     entries = airportResult.getFacetEntries(0, 10);
     if (useDv) {
@@ -268,7 +268,7 @@ public class TestGroupFacetCollector extends AbstractGroupingTestCase {
     groupedDurationFacetCollector =
         createRandomCollector(
             useDv ? "hotel_dv" : "hotel", useDv ? "duration_dv" : "duration", "1", false);
-    indexSearcher.search(new MatchAllDocsQuery(), groupedDurationFacetCollector);
+    indexSearcher.search(MatchAllDocsQuery.INSTANCE, groupedDurationFacetCollector);
     durationResult = groupedDurationFacetCollector.mergeSegmentResults(10, 0, true);
     assertEquals(5, durationResult.getTotalCount());
     assertEquals(0, durationResult.getTotalMissingCount());
@@ -357,7 +357,7 @@ public class TestGroupFacetCollector extends AbstractGroupingTestCase {
     IndexSearcher indexSearcher = newSearcher(DirectoryReader.open(dir));
     GroupFacetCollector groupedAirportFacetCollector =
         createRandomCollector(groupField + "_dv", "airport", null, true);
-    indexSearcher.search(new MatchAllDocsQuery(), groupedAirportFacetCollector);
+    indexSearcher.search(MatchAllDocsQuery.INSTANCE, groupedAirportFacetCollector);
     TermGroupFacetCollector.GroupedFacetResult airportResult =
         groupedAirportFacetCollector.mergeSegmentResults(10, 0, false);
     assertEquals(3, airportResult.getTotalCount());

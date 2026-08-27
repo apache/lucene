@@ -72,8 +72,8 @@ public class TokenizedPhraseQueryNode extends QueryNodeImpl implements Fieldable
     List<QueryNode> children = getChildren();
     if (children != null) {
       for (QueryNode child : children) {
-        if (child instanceof FieldableNode) {
-          return ((FieldableNode) child).getField();
+        if (child instanceof FieldableNode fieldableNode) {
+          return fieldableNode.getField();
         }
       }
     }
@@ -85,8 +85,8 @@ public class TokenizedPhraseQueryNode extends QueryNodeImpl implements Fieldable
     List<QueryNode> children = getChildren();
     if (children != null) {
       for (QueryNode child : children) {
-        if (child instanceof FieldableNode) {
-          ((FieldableNode) child).setField(fieldName);
+        if (child instanceof FieldableNode fieldableNode) {
+          fieldableNode.setField(fieldName);
         }
       }
     }

@@ -42,7 +42,6 @@ import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.TestVectorUtil;
 import org.apache.lucene.util.VectorUtil;
 
@@ -102,7 +101,7 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
         IndexReader reader = DirectoryReader.open(indexStore)) {
       Query filter = null;
       if (random().nextBoolean()) {
-        filter = new MatchAllDocsQuery();
+        filter = MatchAllDocsQuery.INSTANCE;
       }
       AbstractKnnVectorQuery query = new KnnByteVectorQuery("field", new byte[] {0, 1}, 10, filter);
       IndexSearcher searcher = newSearcher(reader);
@@ -222,7 +221,7 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
         for (int doc = 0; doc < 30; doc += 1 + random().nextInt(5)) {
           scoreDocsList.add(new ScoreDoc(doc, randomFloat()));
         }
-        ScoreDoc[] scoreDocs = scoreDocsList.toArray(new ScoreDoc[0]);
+        ScoreDoc[] scoreDocs = scoreDocsList.toArray(ScoreDoc[]::new);
         int[] docs = new int[scoreDocs.length];
         float[] scores = new float[scoreDocs.length];
         float maxScore = Float.MIN_VALUE;
@@ -232,10 +231,10 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
           maxScore = Math.max(maxScore, scores[i]);
         }
         IndexReader indexReader = searcher.getIndexReader();
-        int[] segments = AbstractKnnVectorQuery.findSegmentStarts(indexReader.leaves(), docs);
+        int[] segments = DocAndScoreQuery.findSegmentStarts(indexReader.leaves(), docs);
 
-        AbstractKnnVectorQuery.DocAndScoreQuery query =
-            new AbstractKnnVectorQuery.DocAndScoreQuery(
+        DocAndScoreQuery query =
+            new DocAndScoreQuery(
                 docs,
                 scores,
                 maxScore,
@@ -307,7 +306,7 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
     @Override
     protected TopDocs approximateSearch(
         LeafReaderContext context,
-        Bits acceptDocs,
+        AcceptDocs acceptDocs,
         int visitedLimit,
         KnnCollectorManager knnCollectorManager)
         throws IOException {

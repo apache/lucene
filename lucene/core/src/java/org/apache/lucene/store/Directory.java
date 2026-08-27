@@ -173,18 +173,27 @@ public abstract class Directory implements Closeable {
   /**
    * Copies an existing {@code src} file from directory {@code from} to a non-existent file {@code
    * dest} in this directory. The given IOContext is only used for opening the destination file.
+   *
+   * <p>Any per-file bookkeeping performed by {@link #createOutput} must also cover copied files;
+   * most implementations should delegate to {@link #copyThroughCreateOutput}.
    */
-  public void copyFrom(Directory from, String src, String dest, IOContext context)
-      throws IOException {
-    boolean success = false;
+  public abstract void copyFrom(Directory from, String src, String dest, IOContext context)
+      throws IOException;
+
+  /**
+   * Copies {@code src} from {@code from} to {@code dest} in this directory via {@link
+   * #createOutput}. On failure, deletes the file named {@code dest} from {@code this} — subclasses
+   * whose {@link #createOutput} maps {@code dest} to a different physical file must override {@link
+   * #copyFrom} and clean up that file instead.
+   */
+  protected final void copyThroughCreateOutput(
+      Directory from, String src, String dest, IOContext context) throws IOException {
     try (IndexInput is = from.openInput(src, IOContext.READONCE);
         IndexOutput os = createOutput(dest, context)) {
       os.copyBytes(is, is.length());
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.deleteFilesIgnoringExceptions(this, dest);
-      }
+    } catch (Throwable t) {
+      IOUtils.deleteFilesSuppressingExceptions(t, this, dest);
+      throw t;
     }
   }
 

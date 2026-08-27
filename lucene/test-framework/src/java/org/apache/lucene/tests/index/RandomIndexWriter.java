@@ -32,6 +32,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.LiveIndexWriterConfig;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.SoftDeletesDirectoryReaderWrapper;
 import org.apache.lucene.index.Term;
@@ -50,7 +51,7 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 
 /**
- * Silly class that randomizes the indexing experience. EG it may swap in a different merge
+ * Silly class that randomizes the indexing experience. E.g. it may swap in a different merge
  * policy/scheduler; may commit periodically; may or may not forceMerge in the end, may flush by doc
  * count instead of RAM, etc.
  */
@@ -195,7 +196,7 @@ public class RandomIndexWriter implements Closeable {
 
                 @Override
                 public Iterator<Iterable<T>> iterator() {
-                  return new Iterator<Iterable<T>>() {
+                  return new Iterator<>() {
 
                     boolean done;
 
@@ -430,14 +431,20 @@ public class RandomIndexWriter implements Closeable {
   private boolean doRandomForceMerge;
   private boolean doRandomForceMergeAssert;
 
-  public void forceMergeDeletes(boolean doWait) throws IOException {
+  /**
+   * @see IndexWriter#forceMergeDeletes(boolean)
+   */
+  public MergePolicy.MergeObserver forceMergeDeletes(boolean doWait) throws IOException {
     LuceneTestCase.maybeChangeLiveIndexWriterConfig(r, config);
-    w.forceMergeDeletes(doWait);
+    return w.forceMergeDeletes(doWait);
   }
 
-  public void forceMergeDeletes() throws IOException {
+  /**
+   * @see IndexWriter#forceMergeDeletes()
+   */
+  public MergePolicy.MergeObserver forceMergeDeletes() throws IOException {
     LuceneTestCase.maybeChangeLiveIndexWriterConfig(r, config);
-    w.forceMergeDeletes();
+    return w.forceMergeDeletes();
   }
 
   public void setDoRandomForceMerge(boolean v) {

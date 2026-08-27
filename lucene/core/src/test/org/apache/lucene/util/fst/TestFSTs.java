@@ -303,7 +303,7 @@ public class TestFSTs extends LuceneTestCase {
           final String term = getRandomString(random);
           termsSet.add(toIntsRef(term, inputMode));
         }
-        doTest(inputMode, termsSet.toArray(new IntsRef[0]));
+        doTest(inputMode, termsSet.toArray(IntsRef[]::new));
       }
     }
   }
@@ -386,9 +386,7 @@ public class TestFSTs extends LuceneTestCase {
         if (ord == 0) {
           try {
             termsEnum.ord();
-          } catch (
-              @SuppressWarnings("unused")
-              UnsupportedOperationException uoe) {
+          } catch (UnsupportedOperationException _) {
             if (VERBOSE) {
               System.out.println("TEST: codec doesn't support ord; FST stores docFreq");
             }
@@ -720,8 +718,7 @@ public class TestFSTs extends LuceneTestCase {
       final PositiveIntOutputs o1 = PositiveIntOutputs.getSingleton();
       final PositiveIntOutputs o2 = PositiveIntOutputs.getSingleton();
       final PairOutputs<Long, Long> outputs = new PairOutputs<>(o1, o2);
-      new VisitTerms<PairOutputs.Pair<Long, Long>>(
-          dirOut, wordsFileIn, inputMode, outputs, noArcArrays) {
+      new VisitTerms<>(dirOut, wordsFileIn, inputMode, outputs, noArcArrays) {
         Random rand;
 
         @Override
@@ -735,7 +732,7 @@ public class TestFSTs extends LuceneTestCase {
     } else if (storeOrds) {
       // Store only ords
       final PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
-      new VisitTerms<Long>(dirOut, wordsFileIn, inputMode, outputs, noArcArrays) {
+      new VisitTerms<>(dirOut, wordsFileIn, inputMode, outputs, noArcArrays) {
         @Override
         public Long getOutput(IntsRef input, int ord) {
           return (long) ord;
@@ -744,7 +741,7 @@ public class TestFSTs extends LuceneTestCase {
     } else if (storeDocFreqs) {
       // Store only docFreq
       final PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
-      new VisitTerms<Long>(dirOut, wordsFileIn, inputMode, outputs, noArcArrays) {
+      new VisitTerms<>(dirOut, wordsFileIn, inputMode, outputs, noArcArrays) {
         Random rand;
 
         @Override
@@ -759,7 +756,7 @@ public class TestFSTs extends LuceneTestCase {
       // Store nothing
       final NoOutputs outputs = NoOutputs.getSingleton();
       final Object NO_OUTPUT = outputs.getNoOutput();
-      new VisitTerms<Object>(dirOut, wordsFileIn, inputMode, outputs, noArcArrays) {
+      new VisitTerms<>(dirOut, wordsFileIn, inputMode, outputs, noArcArrays) {
         @Override
         public Object getOutput(IntsRef input, int ord) {
           return NO_OUTPUT;
@@ -1159,7 +1156,7 @@ public class TestFSTs extends LuceneTestCase {
     ArrayList<String> out = new ArrayList<>();
     StringBuilder b = new StringBuilder();
     s.generate(out, b, 'a', 'i', 10);
-    String[] input = out.toArray(new String[0]);
+    String[] input = out.toArray(String[]::new);
     Arrays.sort(input);
     FST<Object> fst = s.compile(input);
     FST.Arc<Object> arc = fst.getFirstArc(new FST.Arc<>());
@@ -1230,14 +1227,14 @@ public class TestFSTs extends LuceneTestCase {
     FST<Long> loadedFST = new FST<>(FST.readMetadata(in, outputs), in);
 
     // now save the FST again, this time to different DataOutput for meta
-    ByteArrayOutputStream metdataOS = new ByteArrayOutputStream();
-    OutputStreamDataOutput metaOut = new OutputStreamDataOutput(metdataOS);
+    ByteArrayOutputStream metadataOS = new ByteArrayOutputStream();
+    OutputStreamDataOutput metaOut = new OutputStreamDataOutput(metadataOS);
     ByteArrayOutputStream dataOS = new ByteArrayOutputStream();
     OutputStreamDataOutput dataOut = new OutputStreamDataOutput(dataOS);
     loadedFST.save(metaOut, dataOut);
 
     // finally load it again
-    ByteArrayDataInput metaIn = new ByteArrayDataInput(metdataOS.toByteArray());
+    ByteArrayDataInput metaIn = new ByteArrayDataInput(metadataOS.toByteArray());
     ByteArrayDataInput dataIn = new ByteArrayDataInput(dataOS.toByteArray());
     loadedFST = new FST<>(FST.readMetadata(metaIn, outputs), dataIn);
 
@@ -1469,7 +1466,7 @@ public class TestFSTs extends LuceneTestCase {
     final Random random = random();
     int numWords = atLeast(1000);
 
-    final TreeMap<String, Long> slowCompletor = new TreeMap<>();
+    final TreeMap<String, Long> slowCompleter = new TreeMap<>();
     final TreeSet<String> allPrefixes = new TreeSet<>();
 
     final PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
@@ -1481,16 +1478,16 @@ public class TestFSTs extends LuceneTestCase {
       String s;
       do {
         s = TestUtil.randomSimpleString(random);
-      } while (slowCompletor.containsKey(s));
+      } while (slowCompleter.containsKey(s));
 
       for (int j = 1; j < s.length(); j++) {
         allPrefixes.add(s.substring(0, j));
       }
       int weight = TestUtil.nextInt(random, 1, 100); // weights 1..100
-      slowCompletor.put(s, (long) weight);
+      slowCompleter.put(s, (long) weight);
     }
 
-    for (Map.Entry<String, Long> e : slowCompletor.entrySet()) {
+    for (Map.Entry<String, Long> e : slowCompleter.entrySet()) {
       // System.out.println("add: " + e);
       fstCompiler.add(Util.toIntsRef(newBytesRef(e.getKey()), scratch), e.getValue());
     }
@@ -1523,11 +1520,11 @@ public class TestFSTs extends LuceneTestCase {
           Util.shortestPaths(fst, arc, fst.outputs.getNoOutput(), minLongComparator, topN, true);
       assertTrue(r.isComplete);
 
-      // 2. go thru whole treemap (slowCompletor) and check it's actually the best suggestion
+      // 2. go thru whole treemap (slowCompleter) and check it's actually the best suggestion
       final List<Result<Long>> matches = new ArrayList<>();
 
-      // TODO: could be faster... but it's slowCompletor for a reason
-      for (Map.Entry<String, Long> e : slowCompletor.entrySet()) {
+      // TODO: could be faster... but it's slowCompleter for a reason
+      for (Map.Entry<String, Long> e : slowCompleter.entrySet()) {
         if (e.getKey().startsWith(prefix)) {
           // System.out.println("  consider " + e.getKey());
           matches.add(
@@ -1583,7 +1580,7 @@ public class TestFSTs extends LuceneTestCase {
   public void testShortestPathsWFSTRandom() throws Exception {
     int numWords = atLeast(1000);
 
-    final TreeMap<String, TwoLongs> slowCompletor = new TreeMap<>();
+    final TreeMap<String, TwoLongs> slowCompleter = new TreeMap<>();
     final TreeSet<String> allPrefixes = new TreeSet<>();
 
     PairOutputs<Long, Long> outputs =
@@ -1600,17 +1597,17 @@ public class TestFSTs extends LuceneTestCase {
       String s;
       do {
         s = TestUtil.randomSimpleString(random);
-      } while (slowCompletor.containsKey(s));
+      } while (slowCompleter.containsKey(s));
 
       for (int j = 1; j < s.length(); j++) {
         allPrefixes.add(s.substring(0, j));
       }
       int weight = TestUtil.nextInt(random, 1, 100); // weights 1..100
       int output = TestUtil.nextInt(random, 0, 500); // outputs 0..500
-      slowCompletor.put(s, new TwoLongs(weight, output));
+      slowCompleter.put(s, new TwoLongs(weight, output));
     }
 
-    for (Map.Entry<String, TwoLongs> e : slowCompletor.entrySet()) {
+    for (Map.Entry<String, TwoLongs> e : slowCompleter.entrySet()) {
       // System.out.println("add: " + e);
       long weight = e.getValue().a;
       long output = e.getValue().b;
@@ -1647,11 +1644,11 @@ public class TestFSTs extends LuceneTestCase {
           Util.shortestPaths(
               fst, arc, fst.outputs.getNoOutput(), minPairWeightComparator, topN, true);
       assertTrue(r.isComplete);
-      // 2. go thru whole treemap (slowCompletor) and check it's actually the best suggestion
+      // 2. go thru whole treemap (slowCompleter) and check it's actually the best suggestion
       final List<Result<Pair<Long, Long>>> matches = new ArrayList<>();
 
-      // TODO: could be faster... but it's slowCompletor for a reason
-      for (Map.Entry<String, TwoLongs> e : slowCompletor.entrySet()) {
+      // TODO: could be faster... but it's slowCompleter for a reason
+      for (Map.Entry<String, TwoLongs> e : slowCompleter.entrySet()) {
         if (e.getKey().startsWith(prefix)) {
           // System.out.println("  consider " + e.getKey());
           matches.add(
@@ -1709,7 +1706,7 @@ public class TestFSTs extends LuceneTestCase {
   }
 
   public void testIllegallyModifyRootArc() throws Exception {
-    assumeTrue("test relies on assertions", assertsAreEnabled);
+    assumeTrue("test relies on assertions", TEST_ASSERTS_ENABLED);
 
     Set<BytesRef> terms = new HashSet<>();
     for (int i = 0; i < 100; i++) {
@@ -1752,9 +1749,7 @@ public class TestFSTs extends LuceneTestCase {
     fst.getFirstArc(arc);
     try {
       fst.findTargetArc((int) 'm', arc, arc, reader);
-    } catch (
-        @SuppressWarnings("unused")
-        AssertionError ae) {
+    } catch (AssertionError _) {
       // expected
     }
   }

@@ -63,8 +63,9 @@ public final class XYPoint extends XYGeometry {
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    if (!(o instanceof XYPoint)) return false;
-    XYPoint point = (XYPoint) o;
+    if (!(o instanceof XYPoint point)) {
+      return false;
+    }
     return Float.compare(point.x, x) == 0 && Float.compare(point.y, y) == 0;
   }
 

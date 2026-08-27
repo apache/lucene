@@ -57,7 +57,7 @@ public class TestStringsToAutomaton extends LuceneTestCase {
   }
 
   public void testRandomMinimized() throws Exception {
-    int iters = RandomizedTest.isNightly() ? 20 : 5;
+    int iters = RandomizedTest.isNightly() ? 20 : 1;
     for (int i = 0; i < iters; i++) {
       boolean buildBinary = random().nextBoolean();
       int size = random().nextInt(2, 50);

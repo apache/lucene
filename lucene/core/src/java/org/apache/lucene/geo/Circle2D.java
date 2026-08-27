@@ -100,7 +100,7 @@ class Circle2D implements Component2D {
         || contains(bX, bY)
         || contains(cX, cY)
         || Component2D.pointInTriangle(
-            minX, maxX, minY, maxY, calculator.geX(), calculator.getY(), aX, aY, bX, bY, cX, cY)
+            minX, maxX, minY, maxY, calculator.getX(), calculator.getY(), aX, aY, bX, bY, cX, cY)
         || calculator.intersectsLine(aX, aY, bX, bY)
         || calculator.intersectsLine(bX, bY, cX, cY)
         || calculator.intersectsLine(cX, cY, aX, aY);
@@ -209,7 +209,7 @@ class Circle2D implements Component2D {
     // candidate but that is ol
     // is fine as the center must be inside to be one of the triangles.
     if (Component2D.pointInTriangle(
-            minX, maxX, minY, maxY, calculator.geX(), calculator.getY(), aX, aY, bX, bY, cX, cY)
+            minX, maxX, minY, maxY, calculator.getX(), calculator.getY(), aX, aY, bX, bY, cX, cY)
         == true) {
       return WithinRelation.CANDIDATE;
     }
@@ -285,7 +285,7 @@ class Circle2D implements Component2D {
     double getMaxY();
 
     /** get center X */
-    double geX();
+    double getX();
 
     /** get center Y */
     double getY();
@@ -390,7 +390,7 @@ class Circle2D implements Component2D {
     }
 
     @Override
-    public double geX() {
+    public double getX() {
       return centerX;
     }
 
@@ -555,7 +555,7 @@ class Circle2D implements Component2D {
     }
 
     @Override
-    public double geX() {
+    public double getX() {
       return centerLon;
     }
 

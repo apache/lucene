@@ -123,7 +123,7 @@ public class DatasetSplitter {
       gs.setAllGroups(true);
       gs.setGroupDocsLimit(originalIndex.maxDoc());
       TopGroups<Object> topGroups =
-          gs.search(indexSearcher, new MatchAllDocsQuery(), 0, noOfClasses);
+          gs.search(indexSearcher, MatchAllDocsQuery.INSTANCE, 0, noOfClasses);
 
       // set the type to be indexed, stored, with term vectors
       FieldType ft = new FieldType(TextField.TYPE_STORED);

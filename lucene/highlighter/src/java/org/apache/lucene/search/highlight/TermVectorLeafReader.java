@@ -27,6 +27,7 @@ import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.Fields;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.LeafMetaData;
@@ -42,6 +43,7 @@ import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.Version;
@@ -65,7 +67,7 @@ public class TermVectorLeafReader extends LeafReader {
           }
 
           @Override
-          public Terms terms(String fld) throws IOException {
+          public Terms terms(String fld) {
             if (!field.equals(fld)) {
               return null;
             }
@@ -115,7 +117,7 @@ public class TermVectorLeafReader extends LeafReader {
   protected void doClose() throws IOException {}
 
   @Override
-  public Terms terms(String field) throws IOException {
+  public Terms terms(String field) {
     return fields.terms(field);
   }
 
@@ -145,7 +147,7 @@ public class TermVectorLeafReader extends LeafReader {
   }
 
   @Override
-  public DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+  public DocValuesSkipper getDocValuesSkipper(String field) {
     return null;
   }
 
@@ -175,17 +177,27 @@ public class TermVectorLeafReader extends LeafReader {
   }
 
   @Override
+  public Float16VectorValues getFloat16VectorValues(String field) {
+    return null;
+  }
+
+  @Override
   public ByteVectorValues getByteVectorValues(String fieldName) {
     return null;
   }
 
   @Override
   public void searchNearestVectors(
-      String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {}
+      String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {}
 
   @Override
   public void searchNearestVectors(
-      String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {}
+      String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {}
+
+  @Override
+  public void searchNearestVectors(
+      String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {}
 
   @Override
   public void checkIntegrity() throws IOException {}

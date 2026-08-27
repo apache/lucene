@@ -51,7 +51,7 @@ import org.apache.lucene.util.BytesRef;
 // disk (but, should run successfully).  Best to run w/
 // -Dtests.codec=<current codec>, and w/ plenty of RAM, eg:
 //
-//   ant test -Dtests.monster=true -Dtests.heapsize=8g -Dtests.codec=Lucene62 -Dtestcase=Test2BTerms
+// gradlew test -Ptests.monster=true -Ptests.heapsize=8g -Ptests.codec=Lucene62 --tests Test2BTerms
 //
 @SuppressCodecs({"SimpleText", "Direct"})
 @Monster("very slow, use 5g minimum heap")
@@ -175,10 +175,11 @@ public class Test2BTerms extends LuceneTestCase {
                   .setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH)
                   .setRAMBufferSizeMB(256.0)
                   .setMergeScheduler(new ConcurrentMergeScheduler())
-                  .setMergePolicy(newLogMergePolicy(false, 10))
+                  .setMergePolicy(newLogMergePolicy(10))
                   .setOpenMode(IndexWriterConfig.OpenMode.CREATE)
                   .setCodec(TestUtil.getDefaultCodec()));
 
+      w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(false);
       MergePolicy mp = w.getConfig().getMergePolicy();
       if (mp instanceof LogByteSizeMergePolicy) {
         // 1 petabyte:

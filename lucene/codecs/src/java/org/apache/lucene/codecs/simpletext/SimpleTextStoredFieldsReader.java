@@ -36,6 +36,7 @@ import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.store.AlreadyClosedException;
@@ -69,23 +70,15 @@ public class SimpleTextStoredFieldsReader extends StoredFieldsReader {
   public SimpleTextStoredFieldsReader(
       Directory directory, SegmentInfo si, FieldInfos fn, IOContext context) throws IOException {
     this.fieldInfos = fn;
-    boolean success = false;
     try {
       in =
           directory.openInput(
               IndexFileNames.segmentFileName(
                   si.name, "", SimpleTextStoredFieldsWriter.FIELDS_EXTENSION),
               context);
-      success = true;
-    } finally {
-      if (!success) {
-        try {
-          close();
-        } catch (
-            @SuppressWarnings("unused")
-            Throwable t) {
-        } // ensure we throw our original exception
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
     readIndex(si.maxDoc());
   }
@@ -233,5 +226,5 @@ public class SimpleTextStoredFieldsReader extends StoredFieldsReader {
   }
 
   @Override
-  public void checkIntegrity() throws IOException {}
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {}
 }

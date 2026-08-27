@@ -111,8 +111,9 @@ public class XYLine extends XYGeometry {
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    if (!(o instanceof XYLine)) return false;
-    XYLine line = (XYLine) o;
+    if (!(o instanceof XYLine line)) {
+      return false;
+    }
     return Arrays.equals(x, line.x) && Arrays.equals(y, line.y);
   }
 

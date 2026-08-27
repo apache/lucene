@@ -31,16 +31,18 @@ import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
@@ -211,9 +213,9 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    CodecUtil.checksumEntireFile(vectorData);
-    CodecUtil.checksumEntireFile(vectorIndex);
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+    CodecUtil.checksumEntireFile(vectorData, merge);
+    CodecUtil.checksumEntireFile(vectorIndex, merge);
   }
 
   private FieldEntry getFieldEntry(String field) {
@@ -236,7 +238,12 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
+  public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void search(String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     final FieldEntry fieldEntry = getFieldEntry(field);
     if (fieldEntry.size() == 0) {
@@ -251,11 +258,17 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
         scorer,
         new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc),
         getGraph(fieldEntry),
-        vectorValues.getAcceptOrds(acceptDocs));
+        vectorValues.getAcceptOrds(acceptDocs.bits()));
   }
 
   @Override
-  public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
+  public void search(String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void search(String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     throw new UnsupportedOperationException();
   }
@@ -485,9 +498,9 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
     @Override
     public NodesIterator getNodesOnLevel(int level) {
       if (level == 0) {
-        return new ArrayNodesIterator(size());
+        return new DenseNodesIterator(size());
       } else {
-        return new ArrayNodesIterator(nodesByLevel[level], nodesByLevel[level].length);
+        return new ArrayNodesIterator(nodesByLevel[level]);
       }
     }
   }

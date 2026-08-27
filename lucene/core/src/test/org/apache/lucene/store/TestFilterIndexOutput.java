@@ -19,7 +19,6 @@ package org.apache.lucene.store;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import org.junit.Test;
 
 public class TestFilterIndexOutput extends BaseDataOutputTestCase<FilterIndexOutput> {
 
@@ -36,7 +35,6 @@ public class TestFilterIndexOutput extends BaseDataOutputTestCase<FilterIndexOut
     return ((ByteBuffersIndexOutput) instance.out).toArrayCopy();
   }
 
-  @Test
   public void testOverrides() {
     for (Method m : FilterIndexOutput.class.getMethods()) {
       if (m.getDeclaringClass() == FilterIndexOutput.class) {

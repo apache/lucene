@@ -17,6 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import org.apache.lucene.util.IOIntConsumer;
 
 /**
  * A stream of doc IDs. Doc IDs may be consumed at most once.
@@ -30,20 +31,19 @@ public abstract class DocIdStream {
   protected DocIdStream() {}
 
   /**
-   * Iterate over doc IDs contained in this stream in order, calling the given {@link
-   * CheckedIntConsumer} on them. This is a terminal operation.
+   * Iterate over doc IDs contained in this stream in order, calling the given {@link IOIntConsumer}
+   * on them. This is a terminal operation.
    */
-  public void forEach(CheckedIntConsumer<IOException> consumer) throws IOException {
+  public void forEach(IOIntConsumer consumer) throws IOException {
     forEach(DocIdSetIterator.NO_MORE_DOCS, consumer);
   }
 
   /**
    * Iterate over doc IDs contained in this doc ID stream up to the given {@code upTo} exclusive,
-   * calling the given {@link CheckedIntConsumer} on them. It is not possible to iterate these doc
-   * IDs again later on.
+   * calling the given {@link IOIntConsumer} on them. It is not possible to iterate these doc IDs
+   * again later on.
    */
-  public abstract void forEach(int upTo, CheckedIntConsumer<IOException> consumer)
-      throws IOException;
+  public abstract void forEach(int upTo, IOIntConsumer consumer) throws IOException;
 
   /** Count the number of entries in this stream. This is a terminal operation. */
   public int count() throws IOException {
@@ -57,6 +57,22 @@ public abstract class DocIdStream {
   // Note: it's abstract rather than having a default impl that delegates to #forEach because doing
   // so would defeat the purpose of collecting hits via a DocIdStream.
   public abstract int count(int upTo) throws IOException;
+
+  /**
+   * Copy some matching doc IDs into the provided array and return the number of copied elements. A
+   * return value of {@code 0} indicates that there are no remaining doc IDs. The given array must
+   * not be empty.
+   */
+  public int intoArray(int[] array) {
+    return intoArray(DocIdSetIterator.NO_MORE_DOCS, array);
+  }
+
+  /**
+   * Copy some matching doc IDs under {@code upTo} (exclusive) into the provided array and return
+   * the number of copied elements. A return value of {@code 0} indicates that there are no matching
+   * doc IDs under {@code upTo} anymore. The given array must not be empty.
+   */
+  public abstract int intoArray(int upTo, int[] array);
 
   /**
    * Return {@code true} if this stream may have remaining doc IDs. This must eventually return

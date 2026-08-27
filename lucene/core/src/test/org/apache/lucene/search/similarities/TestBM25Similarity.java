@@ -47,6 +47,46 @@ public class TestBM25Similarity extends BaseSimilarityTestCase {
     assertTrue(expected.getMessage().contains("illegal k1 value"));
   }
 
+  public void testIllegalK3() {
+    IllegalArgumentException expected =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              new BM25Similarity(1.2f, 0.75f, true, Float.POSITIVE_INFINITY);
+            });
+    assertTrue(expected.getMessage().contains("illegal k3 value"));
+
+    expected =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              new BM25Similarity(1.2f, 0.75f, true, Float.NEGATIVE_INFINITY);
+            });
+    assertTrue(expected.getMessage().contains("illegal k3 value"));
+
+    expected =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              new BM25Similarity(1.2f, 0.75f, true, Float.NaN);
+            });
+    assertTrue(expected.getMessage().contains("illegal k3 value"));
+  }
+
+  public void testValidK3() {
+    // negative k3 disables saturation — should be allowed
+    BM25Similarity sim = new BM25Similarity(1.2f, 0.75f, true, -1f);
+    assertEquals(-1f, sim.getK3(), 0f);
+
+    // zero k3 — maximum saturation
+    sim = new BM25Similarity(1.2f, 0.75f, true, 0f);
+    assertEquals(0f, sim.getK3(), 0f);
+
+    // typical k3 value
+    sim = new BM25Similarity(1.2f, 0.75f, true, 8f);
+    assertEquals(8f, sim.getK3(), 0f);
+  }
+
   public void testIllegalB() {
     IllegalArgumentException expected =
         expectThrows(
@@ -126,6 +166,6 @@ public class TestBM25Similarity extends BaseSimilarityTestCase {
         b = random.nextFloat();
         break;
     }
-    return new BM25Similarity(k1, b);
+    return new BM25Similarity(k1, b, true, random.nextBoolean() ? -1f : random.nextFloat() * 20f);
   }
 }

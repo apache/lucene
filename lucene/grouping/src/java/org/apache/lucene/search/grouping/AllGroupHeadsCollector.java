@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.LeafFieldComparator;
@@ -30,7 +29,6 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
-import org.apache.lucene.util.FixedBitSet;
 
 /**
  * This collector specializes in collecting the most relevant document (group head) for each group
@@ -40,7 +38,7 @@ import org.apache.lucene.util.FixedBitSet;
  *
  * @lucene.experimental
  */
-@SuppressWarnings({"unchecked", "rawtypes"})
+@SuppressWarnings({"rawtypes"})
 public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
 
   private final GroupSelector<T> groupSelector;
@@ -77,44 +75,6 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
       reversed[i] = sortFields[i].getReverse() ? -1 : 1;
     }
     this.compIDXEnd = this.reversed.length - 1;
-  }
-
-  /**
-   * @param maxDoc The maxDoc of the top level {@link IndexReader}.
-   * @return a {@link FixedBitSet} containing all group heads.
-   */
-  public FixedBitSet retrieveGroupHeads(int maxDoc) {
-    FixedBitSet bitSet = new FixedBitSet(maxDoc);
-
-    Collection<? extends GroupHead<T>> groupHeads = getCollectedGroupHeads();
-    for (GroupHead groupHead : groupHeads) {
-      bitSet.set(groupHead.doc);
-    }
-
-    return bitSet;
-  }
-
-  /**
-   * @return an int array containing all group heads. The size of the array is equal to number of
-   *     collected unique groups.
-   */
-  public int[] retrieveGroupHeads() {
-    Collection<? extends GroupHead<T>> groupHeads = getCollectedGroupHeads();
-    int[] docHeads = new int[groupHeads.size()];
-
-    int i = 0;
-    for (GroupHead groupHead : groupHeads) {
-      docHeads[i++] = groupHead.doc;
-    }
-
-    return docHeads;
-  }
-
-  /**
-   * @return the number of group heads found for a query.
-   */
-  public int groupHeadsSize() {
-    return getCollectedGroupHeads().size();
   }
 
   /**
@@ -173,6 +133,7 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
   @Override
   public void setScorer(Scorable scorer) throws IOException {
     this.scorer = scorer;
+    groupSelector.setScorer(scorer);
     for (GroupHead<T> head : heads.values()) {
       head.setScorer(scorer);
     }
@@ -232,6 +193,20 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
      * @throws IOException If I/O related errors occur
      */
     protected abstract void updateDocHead(int doc) throws IOException;
+
+    /**
+     * Returns the sort values for this group head.
+     *
+     * @return the sort values, or null if not stored
+     */
+    protected abstract Object[] getSortValues();
+
+    /**
+     * Returns the field comparators used to determine the group head ordering.
+     *
+     * @return the comparators, one per sort field
+     */
+    protected abstract FieldComparator[] getComparators();
   }
 
   /** General implementation using a {@link FieldComparator} to select the group head */
@@ -252,6 +227,7 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
 
     final FieldComparator[] comparators;
     final LeafFieldComparator[] leafComparators;
+    final Object[] sortValues;
 
     protected SortingGroupHead(
         Sort sort, T groupValue, int doc, LeafReaderContext context, Scorable scorer)
@@ -260,12 +236,14 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
       final SortField[] sortFields = sort.getSort();
       comparators = new FieldComparator[sortFields.length];
       leafComparators = new LeafFieldComparator[sortFields.length];
+      sortValues = new Object[sortFields.length];
       for (int i = 0; i < sortFields.length; i++) {
         comparators[i] = sortFields[i].getComparator(1, Pruning.NONE);
         leafComparators[i] = comparators[i].getLeafComparator(context);
         leafComparators[i].setScorer(scorer);
         leafComparators[i].copy(0, doc);
         leafComparators[i].setBottom(0);
+        sortValues[i] = comparators[i].value(0);
       }
     }
 
@@ -291,11 +269,22 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
 
     @Override
     public void updateDocHead(int doc) throws IOException {
-      for (LeafFieldComparator comparator : leafComparators) {
-        comparator.copy(0, doc);
-        comparator.setBottom(0);
+      for (int i = 0; i < leafComparators.length; i++) {
+        leafComparators[i].copy(0, doc);
+        leafComparators[i].setBottom(0);
+        sortValues[i] = comparators[i].value(0);
       }
       this.doc = doc + docBase;
+    }
+
+    @Override
+    protected Object[] getSortValues() {
+      return sortValues;
+    }
+
+    @Override
+    protected FieldComparator[] getComparators() {
+      return comparators;
     }
   }
 
@@ -317,12 +306,14 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
 
     private Scorable scorer;
     private float topScore;
+    private final Object[] sortValues;
 
     protected ScoringGroupHead(Scorable scorer, T groupValue, int doc, int docBase)
         throws IOException {
       super(groupValue, doc, docBase);
       this.scorer = scorer;
       this.topScore = scorer.score();
+      this.sortValues = new Object[] {topScore};
     }
 
     @Override
@@ -344,6 +335,17 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
     @Override
     protected void updateDocHead(int doc) throws IOException {
       this.doc = doc + docBase;
+      sortValues[0] = topScore;
+    }
+
+    @Override
+    protected Object[] getSortValues() {
+      return sortValues;
+    }
+
+    @Override
+    protected FieldComparator[] getComparators() {
+      return null;
     }
   }
 }

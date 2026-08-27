@@ -80,7 +80,8 @@ public abstract class FieldsConsumer implements Closeable {
 
       final int maxDoc = mergeState.maxDocs[readerIndex];
       if (f != null) {
-        f.checkIntegrity();
+        mergeState.checkAborted();
+        f.checkIntegrity(mergeState.oneMerge);
         slices.add(new ReaderSlice(docBase, maxDoc, readerIndex));
         fields.add(f);
       }
@@ -90,8 +91,7 @@ public abstract class FieldsConsumer implements Closeable {
     Fields mergedFields =
         new MappedMultiFields(
             mergeState,
-            new MultiFields(
-                fields.toArray(Fields.EMPTY_ARRAY), slices.toArray(ReaderSlice.EMPTY_ARRAY)));
+            new MultiFields(fields.toArray(Fields[]::new), slices.toArray(ReaderSlice[]::new)));
     write(mergedFields, norms);
   }
 

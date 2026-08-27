@@ -16,15 +16,19 @@
  */
 package org.apache.lucene.tests.search;
 
+import static org.apache.lucene.tests.util.LuceneTestCase.rarely;
+
 import java.io.IOException;
-import org.apache.lucene.search.CheckedIntConsumer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.DocIdStream;
 import org.apache.lucene.search.FilterDocIdSetIterator;
 import org.apache.lucene.search.FilterLeafCollector;
+import org.apache.lucene.search.FilterScorer;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorable;
+import org.apache.lucene.search.Scorer;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IOIntConsumer;
 
 /** Wraps another Collector and checks that order is respected. */
 class AssertingLeafCollector extends FilterLeafCollector {
@@ -35,6 +39,9 @@ class AssertingLeafCollector extends FilterLeafCollector {
   private int lastCollected = -1;
   private boolean finishCalled;
 
+  private int[] docBuffer;
+  private int batchCollectionDepth;
+
   AssertingLeafCollector(LeafCollector collector, int min, int max) {
     super(collector);
     this.min = min;
@@ -43,12 +50,62 @@ class AssertingLeafCollector extends FilterLeafCollector {
 
   @Override
   public void setScorer(Scorable scorer) throws IOException {
-    super.setScorer(AssertingScorable.wrap(scorer));
+    Scorable wrappedScorer = AssertingScorable.wrap(scorer);
+    if (wrappedScorer instanceof Scorer wrappedScorerAsScorer) {
+      super.setScorer(
+          new FilterScorer(wrappedScorerAsScorer) {
+            @Override
+            public float score() throws IOException {
+              assert batchCollectionDepth == 0
+                  : "Scorable.score() must not be called inside collect(DocIdStream) or "
+                      + "collectRange() since the scorer is not positioned on individual "
+                      + "documents during batch collection";
+              return super.score();
+            }
+
+            @Override
+            public void setMinCompetitiveScore(float minScore) throws IOException {
+              in.setMinCompetitiveScore(minScore);
+            }
+
+            @Override
+            public float getMaxScore(int upTo) throws IOException {
+              return in.getMaxScore(upTo);
+            }
+
+            @Override
+            public int advanceShallow(int target) throws IOException {
+              return in.advanceShallow(target);
+            }
+          });
+    } else {
+      // Some bulk scorers install synthetic Scorables that are deliberately safe to score during
+      // batching, so only iterator-backed Scorers get the batch-position assertion above.
+      super.setScorer(wrappedScorer);
+    }
   }
 
   @Override
   public void collect(DocIdStream stream) throws IOException {
-    in.collect(new AssertingDocIdStream(stream));
+    if (rarely()) {
+      if (docBuffer == null) {
+        docBuffer = new int[32];
+      }
+      for (int count = stream.intoArray(docBuffer);
+          count != 0;
+          count = stream.intoArray(docBuffer)) {
+        for (int i = 0; i < count; ++i) {
+          collect(docBuffer[i]);
+        }
+      }
+    } else {
+      batchCollectionDepth++;
+      try {
+        in.collect(new AssertingDocIdStream(stream));
+      } finally {
+        batchCollectionDepth--;
+      }
+    }
   }
 
   @Override
@@ -57,7 +114,12 @@ class AssertingLeafCollector extends FilterLeafCollector {
     assert max > min;
     assert min >= this.min : "Out of range: " + min + " < " + this.min;
     assert max <= this.max : "Out of range: " + (max - 1) + " >= " + this.max;
-    in.collectRange(min, max);
+    batchCollectionDepth++;
+    try {
+      in.collectRange(min, max);
+    } finally {
+      batchCollectionDepth--;
+    }
     lastCollected = max - 1;
   }
 
@@ -105,7 +167,8 @@ class AssertingLeafCollector extends FilterLeafCollector {
         assert docID() != -1;
         assert docID() != NO_MORE_DOCS;
         int nextNonMatchingDocID = in.docIDRunEnd();
-        assert nextNonMatchingDocID > docID();
+        assert nextNonMatchingDocID > docID()
+            : "docIDRunEnd=" + nextNonMatchingDocID + ", docID=" + docID();
         return nextNonMatchingDocID;
       }
     };
@@ -128,7 +191,7 @@ class AssertingLeafCollector extends FilterLeafCollector {
     }
 
     @Override
-    public void forEach(CheckedIntConsumer<IOException> consumer) throws IOException {
+    public void forEach(IOIntConsumer consumer) throws IOException {
       assert lastUpTo != DocIdSetIterator.NO_MORE_DOCS : "exhausted";
       stream.forEach(
           doc -> {
@@ -143,7 +206,7 @@ class AssertingLeafCollector extends FilterLeafCollector {
     }
 
     @Override
-    public void forEach(int upTo, CheckedIntConsumer<IOException> consumer) throws IOException {
+    public void forEach(int upTo, IOIntConsumer consumer) throws IOException {
       assert lastUpTo < upTo : "upTo=" + upTo + " but previous upTo=" + lastUpTo;
       stream.forEach(
           doc -> {
@@ -176,6 +239,45 @@ class AssertingLeafCollector extends FilterLeafCollector {
       if (upTo == DocIdSetIterator.NO_MORE_DOCS) {
         assert stream.mayHaveRemaining() == false;
       }
+      return count;
+    }
+
+    @Override
+    public int intoArray(int[] array) {
+      assert array.length > 0;
+      int count = stream.intoArray(array);
+      assert lastUpTo != DocIdSetIterator.NO_MORE_DOCS || count == 0;
+      if (count < array.length) {
+        lastUpTo = DocIdSetIterator.NO_MORE_DOCS;
+        assert stream.mayHaveRemaining() == false;
+      } else {
+        lastUpTo = array[array.length - 1] + 1;
+      }
+      return count;
+    }
+
+    @Override
+    public int intoArray(int upTo, int[] array) {
+      assert array.length > 0;
+      assert lastUpTo <= upTo : "upTo=" + upTo + " but previous upTo=" + lastUpTo;
+      int count = stream.intoArray(upTo, array);
+
+      assert lastUpTo != upTo || count == 0;
+
+      if (count != 0) {
+        assert array[count - 1] < upTo;
+      }
+
+      if (count < array.length) {
+        lastUpTo = upTo;
+      } else {
+        lastUpTo = array[array.length - 1] + 1;
+      }
+
+      if (upTo == DocIdSetIterator.NO_MORE_DOCS && count < array.length) {
+        assert stream.mayHaveRemaining() == false;
+      }
+
       return count;
     }
 

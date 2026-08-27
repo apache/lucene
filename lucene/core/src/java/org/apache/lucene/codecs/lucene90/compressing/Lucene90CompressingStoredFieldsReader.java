@@ -50,6 +50,7 @@ import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.StoredFieldDataInput;
 import org.apache.lucene.index.StoredFieldVisitor;
@@ -133,7 +134,6 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
       throws IOException {
     this.compressionMode = compressionMode;
     final String segment = si.name;
-    boolean success = false;
     fieldInfos = fn;
     numDocs = si.maxDoc();
 
@@ -225,18 +225,16 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
 
       CodecUtil.checkFooter(metaIn, null);
       metaIn.close();
-
-      success = true;
     } catch (Throwable t) {
-      if (metaIn != null) {
-        CodecUtil.checkFooter(metaIn, t);
-        throw new AssertionError("unreachable");
-      } else {
-        throw t;
-      }
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(this, metaIn);
+      try {
+        if (metaIn != null) {
+          CodecUtil.checkFooter(metaIn, t);
+          throw new AssertionError("unreachable");
+        } else {
+          throw t;
+        }
+      } finally {
+        IOUtils.closeWhileSuppressingExceptions(t, this, metaIn);
       }
     }
   }
@@ -443,19 +441,16 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
 
     /** Reset this block so that it stores state for the block that contains the given doc id. */
     void reset(int docID) throws IOException {
-      boolean success = false;
       try {
         doReset(docID);
-        success = true;
-      } finally {
-        if (success == false) {
-          // if the read failed, set chunkDocs to 0 so that it does not
-          // contain any docs anymore and is not reused. This should help
-          // get consistent exceptions when trying to get several
-          // documents which are in the same corrupted block since it will
-          // force the header to be decoded again
-          chunkDocs = 0;
-        }
+      } catch (Throwable t) {
+        // if the read failed, set chunkDocs to 0 so that it does not
+        // contain any docs anymore and is not reused. This should help
+        // get consistent exceptions when trying to get several
+        // documents which are in the same corrupted block since it will
+        // force the header to be decoded again
+        chunkDocs = 0;
+        throw t;
       }
     }
 
@@ -761,9 +756,9 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    indexReader.checkIntegrity();
-    CodecUtil.checksumEntireFile(fieldsStream);
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+    indexReader.checkIntegrity(merge);
+    CodecUtil.checksumEntireFile(fieldsStream, merge);
   }
 
   @Override

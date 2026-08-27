@@ -51,6 +51,8 @@ public class TestBlockMaxConjunction extends LuceneTestCase {
     return query;
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testRandom() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());

@@ -533,8 +533,8 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
 
       final ByteSequenceOutputs outputs = ByteSequenceOutputs.getSingleton();
       final int fstVersion;
-      if (version >= Lucene90BlockTreeTermsReader.VERSION_CURRENT) {
-        fstVersion = FST.VERSION_CURRENT;
+      if (version >= Lucene90BlockTreeTermsReader.VERSION_FST_CONTINUOUS_ARCS) {
+        fstVersion = FST.VERSION_CONTINUOUS_ARCS;
       } else {
         fstVersion = FST.VERSION_90;
       }

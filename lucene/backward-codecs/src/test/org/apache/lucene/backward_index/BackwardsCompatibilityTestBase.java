@@ -126,13 +126,14 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
   public void setUp() throws Exception {
     super.setUp();
     assertNull(
-        "Index name " + version + " should not exist found",
-        TestAncientIndicesCompatibility.class.getResourceAsStream(
-            indexName(LATEST_PREVIOUS_MAJOR)));
+        "Index name "
+            + LATEST_PREVIOUS_MAJOR
+            + " for latest previous major (not yet released, so may need to be added to Version.java) should not exist, but found",
+        BackwardsCompatibilityTestBase.class.getResource(indexName(LATEST_PREVIOUS_MAJOR)));
     if (supportsVersion(version) == false) {
       assertNull(
-          "Index name " + version + " should not exist found",
-          TestAncientIndicesCompatibility.class.getResourceAsStream(indexName(version)));
+          "Index name " + version + " should not exist as it is not supported, but found",
+          BackwardsCompatibilityTestBase.class.getResource(indexName(version)));
     }
     assumeTrue("This test doesn't support version: " + version, supportsVersion(version));
     if (version.equals(Version.LATEST)) {
@@ -141,7 +142,7 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
     } else {
       Path dir = createTempDir();
       InputStream resource =
-          TestAncientIndicesCompatibility.class.getResourceAsStream(indexName(version));
+          BackwardsCompatibilityTestBase.class.getResourceAsStream(indexName(version));
       assertNotNull("Index name " + version + " not found: " + indexName(version), resource);
       TestUtil.unzip(resource, dir);
       directory = newFSDirectory(dir);
@@ -160,7 +161,7 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
   private static Version getLatestPreviousMajorVersion() {
     Version lastPrevMajorVersion = null;
     for (Version v : getAllCurrentVersions()) {
-      if (v.major == Version.LATEST.major - 1
+      if (v.major == Version.MIN_SUPPORTED_MAJOR
           && (lastPrevMajorVersion == null || v.onOrAfter(lastPrevMajorVersion))) {
         lastPrevMajorVersion = v;
       }
@@ -215,7 +216,7 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
     for (Iterator<Version> it = currentReleasedVersions.iterator(); it.hasNext(); ) {
       Version version = it.next();
       String indexName = String.format(Locale.ROOT, "index.%s-cfs.zip", version);
-      if (TestAncientIndicesCompatibility.class.getResource(indexName) == null) {
+      if (BackwardsCompatibilityTestBase.class.getResource(indexName) == null) {
         missingVersions.add(version);
         it.remove();
       }

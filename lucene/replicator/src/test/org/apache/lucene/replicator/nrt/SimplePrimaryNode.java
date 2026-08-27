@@ -533,9 +533,7 @@ class SimplePrimaryNode extends PrimaryNode {
       byte cmd;
       try {
         cmd = in.readByte();
-      } catch (
-          @SuppressWarnings("unused")
-          EOFException eofe) {
+      } catch (EOFException _) {
         // done
         return;
       }
@@ -682,9 +680,7 @@ class SimplePrimaryNode extends PrimaryNode {
 
       try {
         cmd = in.readByte();
-      } catch (
-          @SuppressWarnings("unused")
-          EOFException eofe) {
+      } catch (EOFException _) {
         break;
       }
 
@@ -730,7 +726,7 @@ class SimplePrimaryNode extends PrimaryNode {
             IndexSearcher searcher = mgr.acquire();
             try {
               long version = ((DirectoryReader) searcher.getIndexReader()).getVersion();
-              int hitCount = searcher.count(new MatchAllDocsQuery());
+              int hitCount = searcher.count(MatchAllDocsQuery.INSTANCE);
               // message("version=" + version + " searcher=" + searcher);
               out.writeVLong(version);
               out.writeVInt(hitCount);

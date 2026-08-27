@@ -21,9 +21,12 @@ import java.util.Objects;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.DocValuesSkipIndexType;
+import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
@@ -137,18 +140,15 @@ public class FieldExistsQuery extends Query {
       } else if (fieldInfo.getDocValuesType()
           != DocValuesType.NONE) { // the field indexes doc values or points
 
-        // This optimization is possible due to LUCENE-9334 enforcing a field to always uses the
-        // same data structures (all or nothing). Since there's no index statistic to detect when
-        // all documents have doc values for a specific field, FieldExistsQuery can only be
-        // rewritten to MatchAllDocsQuery for doc values field, when that same field also indexes
-        // terms or point values which do have index statistics, and those statistics confirm that
-        // all documents in this segment have values terms or point values.
-
-        Terms terms = leaf.terms(field);
-        PointValues pointValues = leaf.getPointValues(field);
+        // This optimization is possible due to LUCENE-9334 enforcing a field to always use the
+        // same data structures (all or nothing).
+        final Terms terms = leaf.terms(field);
+        final PointValues pointValues = leaf.getPointValues(field);
+        final DocValuesSkipper docValuesSkipper = leaf.getDocValuesSkipper(field);
 
         if ((terms == null || terms.getDocCount() != leaf.maxDoc())
-            && (pointValues == null || pointValues.getDocCount() != leaf.maxDoc())) {
+            && (pointValues == null || pointValues.getDocCount() != leaf.maxDoc())
+            && (docValuesSkipper == null || docValuesSkipper.docCount() != leaf.maxDoc())) {
           allReadersRewritable = false;
           break;
         }
@@ -157,7 +157,7 @@ public class FieldExistsQuery extends Query {
       }
     }
     if (allReadersRewritable) {
-      return new MatchAllDocsQuery();
+      return MatchAllDocsQuery.INSTANCE;
     }
     return super.rewrite(indexSearcher);
   }
@@ -181,8 +181,9 @@ public class FieldExistsQuery extends Query {
         } else if (fieldInfo.getVectorDimension() != 0) { // the field indexes vectors
           iterator =
               switch (fieldInfo.getVectorEncoding()) {
-                case FLOAT32 -> context.reader().getFloatVectorValues(field).iterator();
                 case BYTE -> context.reader().getByteVectorValues(field).iterator();
+                case FLOAT16 -> context.reader().getFloat16VectorValues(field).iterator();
+                case FLOAT32 -> context.reader().getFloatVectorValues(field).iterator();
               };
         } else if (fieldInfo.getDocValuesType()
             != DocValuesType.NONE) { // the field indexes doc values
@@ -213,8 +214,8 @@ public class FieldExistsQuery extends Query {
         if (iterator == null) {
           return null;
         }
-        final var scorer = new ConstantScoreScorer(score(), scoreMode, iterator);
-        return new DefaultScorerSupplier(scorer);
+        return ConstantScoreScorerSupplier.fromIterator(
+            iterator, score(), scoreMode, context.reader().maxDoc());
       }
 
       @Override
@@ -232,29 +233,44 @@ public class FieldExistsQuery extends Query {
           if (reader.getDocCount(field) == reader.maxDoc()) {
             return reader.numDocs();
           }
+          return super.count(context);
+        }
 
-          return super.count(context);
-        } else if (fieldInfo.hasVectorValues()) { // the field indexes vectors
-          if (reader.hasDeletions() == false) {
-            return getVectorValuesSize(fieldInfo, reader);
-          }
-          return super.count(context);
+        int count = -1;
+        if (fieldInfo.hasVectorValues()) { // the field indexes vectors
+          count = getVectorValuesSize(fieldInfo, reader);
         } else if (fieldInfo.getDocValuesType()
             != DocValuesType.NONE) { // the field indexes doc values
-          if (reader.hasDeletions() == false) {
+          if (fieldInfo.docValuesSkipIndexType() != DocValuesSkipIndexType.NONE) {
+            DocValuesSkipper docValuesSkipper = reader.getDocValuesSkipper(field);
+            count = (docValuesSkipper == null ? 0 : docValuesSkipper.docCount());
+          } else if (reader.hasDeletions() == false) {
+            // No deletions: we can use points or terms doc count as a proxy for doc values.
             if (fieldInfo.getPointDimensionCount() > 0) {
               PointValues pointValues = reader.getPointValues(field);
-              return pointValues == null ? 0 : pointValues.getDocCount();
+              count = (pointValues == null ? 0 : pointValues.getDocCount());
             } else if (fieldInfo.getIndexOptions() != IndexOptions.NONE) {
               Terms terms = reader.terms(field);
-              return terms == null ? 0 : terms.getDocCount();
+              count = (terms == null ? 0 : terms.getDocCount());
             }
           }
-
-          return super.count(context);
         } else {
           throw new IllegalStateException(buildErrorMsg(fieldInfo));
         }
+
+        if (count == 0) {
+          // One of the above cases shows the field is not present on this leaf
+          return 0;
+        } else if (count == reader.maxDoc()) {
+          // All docs in the leaf (live or deleted) have the field. Return the count of live docs.
+          return reader.numDocs();
+        } else if (count >= 0 && reader.hasDeletions() == false) {
+          // No deleted docs. The computed count can be trusted.
+          return count;
+        }
+        // Some docs don't have the field and some docs are deleted.
+        // Need to scan to get the correct intersection between field exists docs and live docs.
+        return super.count(context);
       }
 
       @Override
@@ -280,15 +296,20 @@ public class FieldExistsQuery extends Query {
   private int getVectorValuesSize(FieldInfo fi, LeafReader reader) throws IOException {
     assert fi.name.equals(field);
     return switch (fi.getVectorEncoding()) {
-      case FLOAT32 -> {
-        FloatVectorValues floatVectorValues = reader.getFloatVectorValues(field);
-        assert floatVectorValues != null : "unexpected null float vector values";
-        yield floatVectorValues.size();
-      }
       case BYTE -> {
         ByteVectorValues byteVectorValues = reader.getByteVectorValues(field);
         assert byteVectorValues != null : "unexpected null byte vector values";
         yield byteVectorValues.size();
+      }
+      case FLOAT16 -> {
+        Float16VectorValues float16VectorValues = reader.getFloat16VectorValues(field);
+        assert float16VectorValues != null : "unexpected null float vector values";
+        yield float16VectorValues.size();
+      }
+      case FLOAT32 -> {
+        FloatVectorValues floatVectorValues = reader.getFloatVectorValues(field);
+        assert floatVectorValues != null : "unexpected null float vector values";
+        yield floatVectorValues.size();
       }
     };
   }

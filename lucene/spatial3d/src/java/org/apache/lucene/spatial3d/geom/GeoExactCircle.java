@@ -317,10 +317,9 @@ class GeoExactCircle extends GeoBaseCircle {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof GeoExactCircle)) {
+    if (!(o instanceof GeoExactCircle other)) {
       return false;
     }
-    GeoExactCircle other = (GeoExactCircle) o;
     return super.equals(other)
         && other.center.equals(center)
         && other.radius == radius

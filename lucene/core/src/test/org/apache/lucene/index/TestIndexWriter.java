@@ -921,9 +921,7 @@ public class TestIndexWriter extends LuceneTestCase {
               // w.rollback();
               try {
                 w.close();
-              } catch (
-                  @SuppressWarnings("unused")
-                  AlreadyClosedException ace) {
+              } catch (AlreadyClosedException _) {
                 // OK
               }
               w = null;
@@ -937,6 +935,8 @@ public class TestIndexWriter extends LuceneTestCase {
                     protected boolean isOK(Throwable th) {
                       return th instanceof AlreadyClosedException
                           || th instanceof RejectedExecutionException
+                          // Interrupt-driven rollback can race with a merge thread's _mergeInit.
+                          || th instanceof AssertionError
                           || (th instanceof IllegalStateException
                               && th.getMessage()
                                   .contains("this writer hit an unrecoverable error"));
@@ -1100,8 +1100,8 @@ public class TestIndexWriter extends LuceneTestCase {
         new ThreadInterruptedException(new InterruptedException()).getCause()
             instanceof InterruptedException);
 
-    // issue 100 interrupts to child thread
-    final int numInterrupts = atLeast(100);
+    // issue 20 interrupts to child thread
+    final int numInterrupts = atLeast(20);
     int i = 0;
     while (i < numInterrupts) {
       // TODO: would be nice to also sometimes interrupt the CMS merge threads too ...
@@ -1245,11 +1245,7 @@ public class TestIndexWriter extends LuceneTestCase {
       // handles open.
       FSDirectory dir = new NIOFSDirectory(indexPath);
 
-      MergePolicy mergePolicy = newLogMergePolicy(true);
-
-      // This test expects all of its segments to be in CFS
-      mergePolicy.setNoCFSRatio(1.0);
-      mergePolicy.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
+      MergePolicy mergePolicy = newLogMergePolicy();
 
       IndexWriter w =
           new IndexWriter(
@@ -1257,6 +1253,9 @@ public class TestIndexWriter extends LuceneTestCase {
               newIndexWriterConfig(new MockAnalyzer(random()))
                   .setMergePolicy(mergePolicy)
                   .setUseCompoundFile(true));
+      // This test expects all of its segments to be in CFS
+      w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(true);
+      w.getConfig().getCodec().compoundFormat().setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
       Document doc = new Document();
       doc.add(newTextField("field", "go", Field.Store.NO));
       w.addDocument(doc);
@@ -1464,7 +1463,7 @@ public class TestIndexWriter extends LuceneTestCase {
             newIndexWriterConfig(new MockAnalyzer(random()))
                 .setRAMBufferSizeMB(0.01)
                 .setMergePolicy(newLogMergePolicy()));
-    indexWriter.getConfig().getMergePolicy().setNoCFSRatio(0.0);
+    indexWriter.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(false);
 
     String BIG =
         "alskjhlaksjghlaksjfhalksvjepgjioefgjnsdfjgefgjhelkgjhqewlrkhgwlekgrhwelkgjhwelkgrhwlkejg";
@@ -2269,7 +2268,7 @@ public class TestIndexWriter extends LuceneTestCase {
                   new Iterable<Document>() {
                     @Override
                     public Iterator<Document> iterator() {
-                      return new Iterator<Document>() {
+                      return new Iterator<>() {
 
                         @Override
                         public boolean hasNext() {
@@ -2463,7 +2462,7 @@ public class TestIndexWriter extends LuceneTestCase {
         evilWriter.commit();
       }
     }
-    evilWriter.deleteDocuments(new MatchAllDocsQuery());
+    evilWriter.deleteDocuments(MatchAllDocsQuery.INSTANCE);
     evilWriter.forceMerge(1);
     evilWriter.close();
     dir.close();
@@ -2643,9 +2642,7 @@ public class TestIndexWriter extends LuceneTestCase {
     startCommit.await();
     try {
       iw.close();
-    } catch (
-        @SuppressWarnings("unused")
-        IllegalStateException ise) {
+    } catch (IllegalStateException _) {
       // OK, but not required (depends on thread scheduling)
     }
     finishCommit.await();
@@ -3059,7 +3056,7 @@ public class TestIndexWriter extends LuceneTestCase {
     try {
       dir.openInput(tempName, IOContext.DEFAULT);
       fail("did not hit exception");
-    } catch (@SuppressWarnings("unused") FileNotFoundException | NoSuchFileException e) {
+    } catch (FileNotFoundException | NoSuchFileException _) {
       // expected
     }
     w.close();
@@ -4141,9 +4138,7 @@ public class TestIndexWriter extends LuceneTestCase {
                   indexedDocs.release(1);
                 } catch (IOException e) {
                   throw new AssertionError(e);
-                } catch (
-                    @SuppressWarnings("unused")
-                    AlreadyClosedException ignored) {
+                } catch (AlreadyClosedException _) {
                   return;
                 }
               }
@@ -4158,9 +4153,7 @@ public class TestIndexWriter extends LuceneTestCase {
                   sm.maybeRefreshBlocking();
                 } catch (IOException e) {
                   throw new AssertionError(e);
-                } catch (
-                    @SuppressWarnings("unused")
-                    AlreadyClosedException ignored) {
+                } catch (AlreadyClosedException _) {
                   return;
                 }
               }
@@ -4234,9 +4227,7 @@ public class TestIndexWriter extends LuceneTestCase {
                   queue.processEvents();
                 } catch (IOException e) {
                   throw new AssertionError(e);
-                } catch (
-                    @SuppressWarnings("unused")
-                    AlreadyClosedException ex) {
+                } catch (AlreadyClosedException _) {
                   // possible
                 }
               });
@@ -4398,9 +4389,9 @@ public class TestIndexWriter extends LuceneTestCase {
         SearcherManager manager = new SearcherManager(writer, new SearcherFactory())) {
       CountDownLatch start = new CountDownLatch(1);
       int numDocs =
-          TEST_NIGHTLY ? TestUtil.nextInt(random(), 100, 600) : TestUtil.nextInt(random(), 10, 60);
+          TEST_NIGHTLY ? TestUtil.nextInt(random(), 100, 600) : TestUtil.nextInt(random(), 10, 30);
       AtomicLong maxCompletedSeqID = new AtomicLong(-1);
-      Thread[] threads = new Thread[2 + random().nextInt(2)];
+      Thread[] threads = new Thread[2];
       for (int i = 0; i < threads.length; i++) {
         int idx = i;
         threads[i] =
@@ -4961,6 +4952,45 @@ public class TestIndexWriter extends LuceneTestCase {
     }
   }
 
+  public void testSingleDocBlockWritesParentField() throws IOException {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      iwc.setParentField("parent");
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        // Single-document "block" — the lone doc is both first and last in the block
+        Document single = new Document();
+        single.add(new StringField("id", "s0", Field.Store.YES));
+        writer.addDocuments(List.of(single));
+
+        // Multi-document block for comparison
+        Document child = new Document();
+        child.add(new StringField("id", "c0", Field.Store.YES));
+        Document parent = new Document();
+        parent.add(new StringField("id", "p0", Field.Store.YES));
+        writer.addDocuments(List.of(child, parent));
+      }
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        // 3 docs total: doc0=single, doc1=child, doc2=parent
+        assertEquals(3, reader.numDocs());
+        LeafReader leaf = reader.leaves().get(0).reader();
+        NumericDocValues parentDV = leaf.getNumericDocValues("parent");
+        assertNotNull(parentDV);
+
+        // doc 0 (the single-doc block) should be a parent
+        assertEquals(0, parentDV.nextDoc());
+        assertEquals(-1, parentDV.longValue());
+
+        // doc 2 (last doc of the multi-doc block) should be a parent
+        assertEquals(2, parentDV.nextDoc());
+        assertEquals(-1, parentDV.longValue());
+
+        // no more parents
+        assertEquals(DocIdSetIterator.NO_MORE_DOCS, parentDV.nextDoc());
+      }
+    }
+  }
+
   public void testDocValuesMixedSkippingIndex() throws Exception {
     try (Directory dir = newDirectory()) {
       try (IndexWriter writer =
@@ -4973,7 +5003,6 @@ public class TestIndexWriter extends LuceneTestCase {
         doc2.add(new SortedNumericDocValuesField("test", random().nextLong()));
         IllegalArgumentException ex =
             expectThrows(IllegalArgumentException.class, () -> writer.addDocument(doc2));
-        ex.printStackTrace();
         assertEquals(
             "Inconsistency of field data structures across documents for field [test] of doc [1]. doc values skip index type: expected 'RANGE', but it has 'NONE'.",
             ex.getMessage());

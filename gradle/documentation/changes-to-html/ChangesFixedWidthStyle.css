@@ -10,12 +10,12 @@ h1 {
 
 h2 {
   font-family: Courier New, monospace;
-  font-size: 10pt; 
+  font-size: 10pt;
 }
 
 h3 {
   font-family: Courier New, monospace;
-  font-size: 10pt; 
+  font-size: 10pt;
 }
 
 a:link {
@@ -23,7 +23,7 @@ a:link {
 }
 
 a:visited {
-  color: purple; 
+  color: purple;
 }
 
 li.bulleted-list {

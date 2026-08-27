@@ -37,7 +37,6 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.IOUtils;
 
 /** Split an index based on a {@link Query}. */
 public class PKIndexSplitter {
@@ -101,19 +100,10 @@ public class PKIndexSplitter {
   }
 
   public void split() throws IOException {
-    boolean success = false;
-    DirectoryReader reader = DirectoryReader.open(input);
-    try {
+    try (DirectoryReader reader = DirectoryReader.open(input)) {
       // pass an individual config in here since one config can not be reused!
       createIndex(config1, dir1, reader, docsInFirstIndex, false);
       createIndex(config2, dir2, reader, docsInFirstIndex, true);
-      success = true;
-    } finally {
-      if (success) {
-        IOUtils.close(reader);
-      } else {
-        IOUtils.closeWhileHandlingException(reader);
-      }
     }
   }
 
@@ -124,9 +114,7 @@ public class PKIndexSplitter {
       Query preserveFilter,
       boolean negateFilter)
       throws IOException {
-    boolean success = false;
-    final IndexWriter w = new IndexWriter(target, config);
-    try {
+    try (IndexWriter w = new IndexWriter(target, config)) {
       final IndexSearcher searcher = new IndexSearcher(reader);
       searcher.setQueryCache(null);
       preserveFilter = searcher.rewrite(preserveFilter);
@@ -139,13 +127,6 @@ public class PKIndexSplitter {
         subReaders[i++] = new DocumentFilteredLeafIndexReader(ctx, preserveWeight, negateFilter);
       }
       w.addIndexes(subReaders);
-      success = true;
-    } finally {
-      if (success) {
-        w.close();
-      } else {
-        IOUtils.closeWhileHandlingException(w);
-      }
     }
   }
 
@@ -160,9 +141,9 @@ public class PKIndexSplitter {
       final int maxDoc = in.maxDoc();
       final FixedBitSet bits = new FixedBitSet(maxDoc);
       // ignore livedocs here, as we filter them later:
-      final Scorer preverveScorer = preserveWeight.scorer(context);
-      if (preverveScorer != null) {
-        bits.or(preverveScorer.iterator());
+      final Scorer preserveScorer = preserveWeight.scorer(context);
+      if (preserveScorer != null) {
+        bits.or(preserveScorer.iterator());
       }
       if (negateFilter) {
         bits.flip(0, maxDoc);

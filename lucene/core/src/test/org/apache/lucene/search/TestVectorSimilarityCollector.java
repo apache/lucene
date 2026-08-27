@@ -16,21 +16,24 @@
  */
 package org.apache.lucene.search;
 
+import static org.apache.lucene.search.AbstractVectorSimilarityQuery.DEFAULT_DECAY;
+import static org.apache.lucene.search.AbstractVectorSimilarityQuery.DEFAULT_STRATEGY;
+
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestVectorSimilarityCollector extends LuceneTestCase {
   public void testResultCollection() {
-    float traversalSimilarity = 0.3f, resultSimilarity = 0.5f;
+    float resultSimilarity = 0.5f;
 
     VectorSimilarityCollector collector =
-        new VectorSimilarityCollector(traversalSimilarity, resultSimilarity, Integer.MAX_VALUE);
+        new VectorSimilarityCollector(resultSimilarity, DEFAULT_DECAY, Integer.MAX_VALUE);
+
     int[] nodes = {1, 5, 10, 4, 8, 3, 2, 6, 7, 9};
     float[] scores = {0.1f, 0.2f, 0.3f, 0.5f, 0.2f, 0.6f, 0.9f, 0.3f, 0.7f, 0.8f};
 
-    float[] minCompetitiveSimilarities = new float[nodes.length];
     for (int i = 0; i < nodes.length; i++) {
       collector.collect(nodes[i], scores[i]);
-      minCompetitiveSimilarities[i] = collector.minCompetitiveSimilarity();
     }
 
     ScoreDoc[] scoreDocs = collector.topDocs().scoreDocs;
@@ -44,11 +47,24 @@ public class TestVectorSimilarityCollector extends LuceneTestCase {
     // All nodes above resultSimilarity appear in order of collection
     assertArrayEquals(new int[] {4, 3, 2, 7, 9}, resultNodes);
     assertArrayEquals(new float[] {0.5f, 0.6f, 0.9f, 0.7f, 0.8f}, resultScores, 1e-3f);
+  }
 
-    // Min competitive similarity is minimum of traversalSimilarity or best result encountered
-    assertArrayEquals(
-        new float[] {0.1f, 0.2f, 0.3f, 0.3f, 0.3f, 0.3f, 0.3f, 0.3f, 0.3f, 0.3f},
-        minCompetitiveSimilarities,
-        1e-3f);
+  public void testDefaultConstructorUsesDefaultStrategy() {
+    VectorSimilarityCollector collector =
+        new VectorSimilarityCollector(0.5f, DEFAULT_DECAY, Integer.MAX_VALUE);
+    assertEquals(DEFAULT_STRATEGY, collector.getSearchStrategy());
+  }
+
+  public void testCustomStrategyIsPropagated() {
+    KnnSearchStrategy strategy = new KnnSearchStrategy.Hnsw(42);
+    VectorSimilarityCollector collector =
+        new VectorSimilarityCollector(0.5f, DEFAULT_DECAY, Integer.MAX_VALUE, strategy);
+    assertSame(strategy, collector.getSearchStrategy());
+  }
+
+  public void testNullStrategyDefaultsToDefault() {
+    VectorSimilarityCollector collector =
+        new VectorSimilarityCollector(0.5f, DEFAULT_DECAY, Integer.MAX_VALUE, null);
+    assertSame(DEFAULT_STRATEGY, collector.getSearchStrategy());
   }
 }

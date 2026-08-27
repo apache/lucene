@@ -173,7 +173,7 @@ public final class QueryAutoStopWordAnalyzer extends AnalyzerWrapper {
    */
   public String[] getStopWords(String fieldName) {
     Set<String> stopWords = stopWordsPerField.get(fieldName);
-    return stopWords != null ? stopWords.toArray(new String[stopWords.size()]) : new String[0];
+    return stopWords != null ? stopWords.toArray(String[]::new) : new String[0];
   }
 
   /**
@@ -191,6 +191,6 @@ public final class QueryAutoStopWordAnalyzer extends AnalyzerWrapper {
         allStopWords.add(new Term(field, text));
       }
     }
-    return allStopWords.toArray(new Term[allStopWords.size()]);
+    return allStopWords.toArray(Term[]::new);
   }
 }

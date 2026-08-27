@@ -46,7 +46,8 @@ public class Test4GBStoredFields extends LuceneTestCase {
     iwc.setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH);
     iwc.setRAMBufferSizeMB(256.0);
     iwc.setMergeScheduler(new ConcurrentMergeScheduler());
-    iwc.setMergePolicy(newLogMergePolicy(false, 10));
+    iwc.setMergePolicy(newLogMergePolicy(10));
+    iwc.getCodec().compoundFormat().setShouldUseCompoundFile(false);
     iwc.setOpenMode(IndexWriterConfig.OpenMode.CREATE);
 
     // TODO: we disable "Compressing" since it likes to pick very extreme values which will be too

@@ -220,7 +220,7 @@ public final class FileDeleter {
     }
 
     // Only delete other files if we were able to remove the segments_N files; this way we never
-    // leave a corrupt commit in the index even in the presense of virus checkers:
+    // leave a corrupt commit in the index even in the presence of virus checkers:
     for (String fileName : toDelete) {
       assert exists(fileName) == false;
       if (fileName.startsWith(IndexFileNames.SEGMENTS) == false) {

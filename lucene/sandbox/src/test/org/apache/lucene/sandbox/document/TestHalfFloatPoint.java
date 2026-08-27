@@ -20,6 +20,7 @@ import java.util.Arrays;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.NumericFieldStats;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -92,15 +93,14 @@ public class TestHalfFloatPoint extends LuceneTestCase {
     values = ArrayUtil.copyOfSubArray(values, 0, o);
 
     int iters = atLeast(1000000);
+    var rnd = nonAssertingRandom(random());
     for (int iter = 0; iter < iters; ++iter) {
       float f;
-      if (random().nextBoolean()) {
-        int floatBits = random().nextInt();
+      if (rnd.nextBoolean()) {
+        int floatBits = rnd.nextInt();
         f = Float.intBitsToFloat(floatBits);
       } else {
-        f =
-            (float)
-                ((2 * random().nextFloat() - 1) * Math.pow(2, TestUtil.nextInt(random(), -16, 16)));
+        f = (float) ((2 * rnd.nextFloat() - 1) * Math.pow(2, TestUtil.nextInt(rnd, -16, 16)));
       }
       float rounded = HalfFloatPoint.shortBitsToHalfFloat(HalfFloatPoint.halfFloatToShortBits(f));
       if (Float.isFinite(f) == false) {
@@ -243,6 +243,29 @@ public class TestHalfFloatPoint extends LuceneTestCase {
     assertEquals(
         Float.floatToIntBits(-0f), Float.floatToIntBits(HalfFloatPoint.nextUp(-Float.MIN_VALUE)));
     assertEquals(Float.floatToIntBits(0f), Float.floatToIntBits(HalfFloatPoint.nextUp(-0f)));
+  }
+
+  public void testNumericFieldStats() throws Exception {
+    Directory dir = newDirectory();
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+    Document doc1 = new Document();
+    doc1.add(new HalfFloatPoint("field", -2f));
+    writer.addDocument(doc1);
+    Document doc2 = new Document();
+    doc2.add(new HalfFloatPoint("field", 1.25f));
+    writer.addDocument(doc2);
+    Document doc3 = new Document();
+    doc3.add(new HalfFloatPoint("field", 100f));
+    writer.addDocument(doc3);
+    IndexReader reader = writer.getReader();
+    NumericFieldStats.Stats stats = NumericFieldStats.getStats(reader, "field");
+    assertNotNull(stats);
+    assertTrue(stats.min() < 0);
+    assertTrue(stats.max() > 0);
+    assertEquals(3, stats.docCount());
+    reader.close();
+    writer.close();
+    dir.close();
   }
 
   public void testNextDown() {

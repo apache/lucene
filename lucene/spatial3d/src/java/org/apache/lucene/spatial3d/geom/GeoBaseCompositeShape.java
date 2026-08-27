@@ -116,7 +116,7 @@ public abstract class GeoBaseCompositeShape<T extends GeoShape> extends BasePlan
     for (GeoShape shape : shapes) {
       edgePoints.addAll(Arrays.asList(shape.getEdgePoints()));
     }
-    return edgePoints.toArray(new GeoPoint[edgePoints.size()]);
+    return edgePoints.toArray(GeoPoint[]::new);
   }
 
   @Override
@@ -144,10 +144,9 @@ public abstract class GeoBaseCompositeShape<T extends GeoShape> extends BasePlan
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof GeoBaseCompositeShape<?>)) {
+    if (!(o instanceof GeoBaseCompositeShape<?> other)) {
       return false;
     }
-    GeoBaseCompositeShape<?> other = (GeoBaseCompositeShape<?>) o;
     return super.equals(other) && shapes.equals(other.shapes);
   }
 

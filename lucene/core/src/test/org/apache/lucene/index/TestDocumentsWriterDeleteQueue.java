@@ -213,7 +213,7 @@ public class TestDocumentsWriterDeleteQueue extends LuceneTestCase {
       }
       expectThrows(AlreadyClosedException.class, () -> queue.addDelete(new Term("foo", "bar")));
       expectThrows(AlreadyClosedException.class, () -> queue.freezeGlobalBuffer(null));
-      expectThrows(AlreadyClosedException.class, () -> queue.addDelete(new MatchNoDocsQuery()));
+      expectThrows(AlreadyClosedException.class, () -> queue.addDelete(MatchNoDocsQuery.INSTANCE));
       expectThrows(
           AlreadyClosedException.class,
           () ->

@@ -147,7 +147,7 @@ public final class XYPolygon extends XYGeometry {
     return holes[i];
   }
 
-  /** Returns the winding order (CW, COLINEAR, CCW) for the polygon shell */
+  /** Returns the winding order (CW, COLLINEAR, CCW) for the polygon shell */
   public GeoUtils.WindingOrder getWindingOrder() {
     return this.windingOrder;
   }
@@ -182,6 +182,19 @@ public final class XYPolygon extends XYGeometry {
     if (!Arrays.equals(x, other.x)) return false;
     if (!Arrays.equals(y, other.y)) return false;
     return true;
+  }
+
+  public static String verticesToGeoJSON(final float[] xs, final float[] ys) {
+    StringBuilder sb = new StringBuilder();
+    sb.append('[');
+    for (int i = 0; i < xs.length; i++) {
+      sb.append("[").append(xs[i]).append(", ").append(ys[i]).append("]");
+      if (i != xs.length - 1) {
+        sb.append(", ");
+      }
+    }
+    sb.append(']');
+    return sb.toString();
   }
 
   @Override

@@ -136,9 +136,7 @@ public final class BPReorderingMergePolicy extends FilterMergePolicy {
               if (reader.numDocs() >= minNumDocs) {
                 try {
                   docMap = reorderer.computeDocMap(reader, dir, executor);
-                } catch (
-                    @SuppressWarnings("unused")
-                    NotEnoughRAMException e) {
+                } catch (NotEnoughRAMException _) {
                   // skip reordering, we don't have enough RAM anyway
                 }
               }

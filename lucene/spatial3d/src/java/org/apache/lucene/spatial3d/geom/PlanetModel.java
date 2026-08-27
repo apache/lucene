@@ -83,8 +83,6 @@ public class PlanetModel implements SerializableObject {
   /** The inverse of scale */
   public final double inverseScale;
 
-  /** The mean radius of the planet model */
-
   // We do NOT include radius, because all computations in geo3d are in radians, not meters.
 
   // Compute north and south pole for planet model, since these are commonly used.
@@ -874,10 +872,9 @@ public class PlanetModel implements SerializableObject {
 
   @Override
   public boolean equals(final Object o) {
-    if (!(o instanceof PlanetModel)) {
+    if (!(o instanceof PlanetModel other)) {
       return false;
     }
-    final PlanetModel other = (PlanetModel) o;
     return a == other.a && b == other.b;
   }
 

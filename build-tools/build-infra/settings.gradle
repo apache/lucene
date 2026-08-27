@@ -18,9 +18,9 @@
 rootProject.name = 'build-infra'
 
 dependencyResolutionManagement {
-    versionCatalogs {
-        deps {
-            from(files('../../gradle/libs.versions.toml'))
-        }
+  versionCatalogs {
+    deps {
+      from(files('../../gradle/libs.versions.toml'))
     }
+  }
 }

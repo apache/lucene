@@ -47,7 +47,7 @@ public abstract class AbstractKnnCollector implements KnnCollector {
 
   @Override
   public final void incVisitedCount(int count) {
-    assert count > 0;
+    assert count >= 0;
     this.visitedCount += count;
   }
 

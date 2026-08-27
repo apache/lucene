@@ -29,7 +29,7 @@ public class ScoringMatch extends QueryMatch {
   public static final MatcherFactory<ScoringMatch> matchWithSimilarity(Similarity similarity) {
     return searcher -> {
       searcher.setSimilarity(similarity);
-      return new CollectingMatcher<ScoringMatch>(searcher, ScoreMode.COMPLETE) {
+      return new CollectingMatcher<>(searcher, ScoreMode.COMPLETE) {
         @Override
         protected ScoringMatch doMatch(String queryId, int doc, Scorable scorer)
             throws IOException {
@@ -63,9 +63,8 @@ public class ScoringMatch extends QueryMatch {
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    if (!(o instanceof ScoringMatch)) return false;
+    if (!(o instanceof ScoringMatch that)) return false;
     if (!super.equals(o)) return false;
-    ScoringMatch that = (ScoringMatch) o;
     return Float.compare(that.score, score) == 0;
   }
 

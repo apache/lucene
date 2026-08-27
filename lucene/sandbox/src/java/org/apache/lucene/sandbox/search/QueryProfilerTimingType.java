@@ -21,16 +21,30 @@ import java.util.Locale;
 
 /** This enum breaks down the query into different sections to describe what was timed. */
 public enum QueryProfilerTimingType {
-  CREATE_WEIGHT,
-  COUNT,
-  BUILD_SCORER,
-  NEXT_DOC,
-  ADVANCE,
-  MATCH,
-  SCORE,
-  SHALLOW_ADVANCE,
-  COMPUTE_MAX_SCORE,
-  SET_MIN_COMPETITIVE_SCORE;
+  COUNT(true),
+  BUILD_SCORER(true),
+  NEXT_DOC(true),
+  ADVANCE(true),
+  MATCH(true),
+  SCORE(true),
+  SHALLOW_ADVANCE(true),
+  COMPUTE_MAX_SCORE(true),
+  SET_MIN_COMPETITIVE_SCORE(true),
+
+  // IMPORTANT: Global timer types must be defined after all the
+  // slice level timers to preserve the contiguous enum ordinals
+  CREATE_WEIGHT(false);
+
+  private boolean leafLevel;
+
+  private QueryProfilerTimingType(boolean leafLevel) {
+    this.leafLevel = leafLevel;
+  }
+
+  /** Indicates if the operation runs on a LeafReader as opposed to the top-level IndexReader */
+  public boolean isLeafLevel() {
+    return leafLevel;
+  }
 
   @Override
   public String toString() {

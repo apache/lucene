@@ -20,6 +20,7 @@ import java.util.Arrays;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.util.TestVectorUtil;
 import org.junit.Before;
 
@@ -59,24 +60,26 @@ public class TestFloatVectorSimilarityQuery
 
   @Override
   FloatVectorSimilarityQuery getVectorQuery(
+      String field, float[] vector, float resultSimilarity, float decay, Query filter) {
+    return new FloatVectorSimilarityQuery(field, vector, resultSimilarity, decay, filter);
+  }
+
+  @Override
+  FloatVectorSimilarityQuery getVectorQuery(
       String field,
       float[] vector,
-      float traversalSimilarity,
       float resultSimilarity,
-      Query filter) {
+      float decay,
+      Query filter,
+      KnnSearchStrategy searchStrategy) {
     return new FloatVectorSimilarityQuery(
-        field, vector, traversalSimilarity, resultSimilarity, filter);
+        field, vector, resultSimilarity, decay, filter, searchStrategy);
   }
 
   @Override
   FloatVectorSimilarityQuery getThrowingVectorQuery(
-      String field,
-      float[] vector,
-      float traversalSimilarity,
-      float resultSimilarity,
-      Query filter) {
-    return new FloatVectorSimilarityQuery(
-        field, vector, traversalSimilarity, resultSimilarity, filter) {
+      String field, float[] vector, float resultSimilarity, float decay, Query filter) {
+    return new FloatVectorSimilarityQuery(field, vector, resultSimilarity, decay, filter) {
       @Override
       VectorScorer createVectorScorer(LeafReaderContext context) {
         throw new UnsupportedOperationException();

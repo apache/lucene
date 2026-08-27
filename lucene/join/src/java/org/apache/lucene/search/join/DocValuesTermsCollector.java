@@ -23,13 +23,12 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.search.SimpleCollector;
+import org.apache.lucene.util.IOFunction;
 
 abstract class DocValuesTermsCollector<DV> extends SimpleCollector {
 
   @FunctionalInterface
-  interface Function<R> {
-    R apply(LeafReader t) throws IOException;
-  }
+  interface Function<R> extends IOFunction<LeafReader, R> {}
 
   protected DV docValues;
   private final Function<DV> docValuesCall;

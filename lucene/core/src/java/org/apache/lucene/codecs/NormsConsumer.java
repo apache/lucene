@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.index.DocIDMerger;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SegmentWriteState;
@@ -66,7 +67,8 @@ public abstract class NormsConsumer implements Closeable {
   public void merge(MergeState mergeState) throws IOException {
     for (NormsProducer normsProducer : mergeState.normsProducers) {
       if (normsProducer != null) {
-        normsProducer.checkIntegrity();
+        mergeState.checkAborted();
+        normsProducer.checkIntegrity(mergeState.oneMerge);
       }
     }
     for (FieldInfo mergeFieldInfo : mergeState.mergeFieldInfos) {
@@ -175,7 +177,7 @@ public abstract class NormsConsumer implements Closeable {
           }
 
           @Override
-          public void checkIntegrity() {}
+          public void checkIntegrity(MergePolicy.OneMerge merge) {}
 
           @Override
           public void close() {}

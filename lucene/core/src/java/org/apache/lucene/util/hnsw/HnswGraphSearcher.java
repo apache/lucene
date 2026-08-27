@@ -20,6 +20,7 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
@@ -40,6 +41,35 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
   protected final NeighborQueue candidates;
 
   protected BitSet visited;
+
+  protected int[] bulkNodes = null;
+  protected float[] bulkScores = null;
+
+  /**
+   * HNSW search is roughly logarithmic. This doesn't take maxConn into account, but it is a pretty
+   * good approximation.
+   *
+   * @param k neighbors to find
+   * @param graphSize size of the graph
+   * @return expected number of visited nodes
+   */
+  public static int expectedVisitedNodes(int k, int graphSize) {
+    return (int) (Math.log(graphSize) * k);
+  }
+
+  /**
+   * Follows similar logic to {@link FixedBitSet#of(DocIdSetIterator, int)} to determine the best
+   * bit set given the expected number of visited nodes vs total graph size.
+   *
+   * @param k neighbors to find
+   * @param graphSize size of the graph
+   * @return a bit set appropriate for the expected number of visited nodes
+   */
+  static BitSet createBitSet(int k, int graphSize) {
+    return expectedVisitedNodes(k, graphSize) < (graphSize >>> 7)
+        ? new SparseFixedBitSet(graphSize)
+        : new FixedBitSet(graphSize);
+  }
 
   /**
    * Creates a new graph searcher.
@@ -117,7 +147,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
       innerSearcher =
           new HnswGraphSearcher(
               new NeighborQueue(knnCollector.k(), true),
-              new SparseFixedBitSet(getGraphSize(graph)));
+              createBitSet(knnCollector.k(), getGraphSize(graph)));
     }
     // Then, check if we the search strategy is seeded
     final AbstractHnswGraphSearcher graphSearcher;
@@ -196,7 +226,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
       return new int[] {currentEp};
     }
     int size = getGraphSize(graph);
-    prepareScratchState(size);
+    prepareScratchState(size, graph.maxConn() * 2);
     float currentScore = scorer.score(currentEp);
     collector.incVisitedCount(1);
     boolean foundBetter;
@@ -208,6 +238,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
         foundBetter = false;
         graphSeek(graph, level, currentEp);
         int friendOrd;
+        int numNodes = 0;
         while ((friendOrd = graphNextNeighbor(graph)) != NO_MORE_DOCS) {
           assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
           if (visited.getAndSet(friendOrd)) {
@@ -216,12 +247,21 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
           if (collector.earlyTerminated()) {
             return new int[] {UNK_EP};
           }
-          float friendSimilarity = scorer.score(friendOrd);
-          collector.incVisitedCount(1);
-          if (friendSimilarity > currentScore) {
-            currentScore = friendSimilarity;
-            currentEp = friendOrd;
-            foundBetter = true;
+          bulkNodes[numNodes++] = friendOrd;
+        }
+        float maxScore =
+            numNodes > 0
+                ? scorer.bulkScore(bulkNodes, bulkScores, numNodes)
+                : Float.NEGATIVE_INFINITY;
+        collector.incVisitedCount(numNodes);
+        if (maxScore > currentScore) {
+          for (int i = 0; i < numNodes; i++) {
+            float score = bulkScores[i];
+            if (score > currentScore) {
+              currentScore = score;
+              currentEp = bulkNodes[i];
+              foundBetter = true;
+            }
           }
         }
       }
@@ -247,20 +287,16 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
 
     int size = getGraphSize(graph);
 
-    prepareScratchState(size);
-
-    for (int ep : eps) {
-      if (visited.getAndSet(ep) == false) {
-        if (results.earlyTerminated()) {
-          break;
-        }
-        float score = scorer.score(ep);
-        results.incVisitedCount(1);
-        candidates.add(ep, score);
-        if (acceptOrds == null || acceptOrds.get(ep)) {
-          results.collect(ep, score);
-        }
-      }
+    prepareScratchState(size, graph.maxConn() * 2);
+    if (bulkScores == null || bulkScores.length < eps.length) {
+      bulkScores = new float[eps.length];
+    }
+    if (results.earlyTerminated()) {
+      return;
+    }
+    scoreEntryPoints(results, scorer, visited, eps, acceptOrds, candidates, bulkScores);
+    if (results.earlyTerminated()) {
+      return;
     }
 
     // A bound that holds the minimum similarity to the query vector that a candidate vector must
@@ -286,6 +322,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
       int topCandidateNode = candidates.pop();
       graphSeek(graph, level, topCandidateNode);
       int friendOrd;
+      int numNodes = 0;
       while ((friendOrd = graphNextNeighbor(graph)) != NO_MORE_DOCS) {
         assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
         if (visited.getAndSet(friendOrd)) {
@@ -295,18 +332,29 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
         if (results.earlyTerminated()) {
           break;
         }
-        float friendSimilarity = scorer.score(friendOrd);
-        results.incVisitedCount(1);
-        if (friendSimilarity >= minAcceptedSimilarity) {
-          candidates.add(friendOrd, friendSimilarity);
-          if (acceptOrds == null || acceptOrds.get(friendOrd)) {
-            if (results.collect(friendOrd, friendSimilarity)) {
-              float oldMinAcceptedSimilarity = minAcceptedSimilarity;
-              minAcceptedSimilarity = Math.nextUp(results.minCompetitiveSimilarity());
-              if (minAcceptedSimilarity > oldMinAcceptedSimilarity) {
-                // we adjusted our minAcceptedSimilarity, so we should explore the next equivalent
-                // if necessary
-                shouldExploreMinSim = true;
+
+        bulkNodes[numNodes++] = friendOrd;
+      }
+
+      numNodes = (int) Math.min(numNodes, results.visitLimit() - results.visitedCount());
+      results.incVisitedCount(numNodes);
+      if (numNodes > 0
+          && scorer.bulkScore(bulkNodes, bulkScores, numNodes)
+              > results.minCompetitiveSimilarity()) {
+        for (int i = 0; i < numNodes; i++) {
+          int node = bulkNodes[i];
+          float score = bulkScores[i];
+          if (score >= minAcceptedSimilarity) {
+            candidates.add(node, score);
+            if (acceptOrds == null || acceptOrds.get(node)) {
+              if (results.collect(node, score)) {
+                float oldMinAcceptedSimilarity = minAcceptedSimilarity;
+                minAcceptedSimilarity = Math.nextUp(results.minCompetitiveSimilarity());
+                if (minAcceptedSimilarity > oldMinAcceptedSimilarity) {
+                  // we adjusted our minAcceptedSimilarity, so we should explore the next equivalent
+                  // if necessary
+                  shouldExploreMinSim = true;
+                }
               }
             }
           }
@@ -318,12 +366,17 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
     }
   }
 
-  private void prepareScratchState(int capacity) {
+  private void prepareScratchState(int capacity, int bulkScoreSize) {
     candidates.clear();
     if (visited.length() < capacity) {
-      visited = FixedBitSet.ensureCapacity((FixedBitSet) visited, capacity);
+      visited = FixedBitSet.ensureCapacityAndClear((FixedBitSet) visited, capacity);
+    } else {
+      visited.clear();
     }
-    visited.clear();
+    if (bulkNodes == null || bulkNodes.length < bulkScoreSize) {
+      bulkNodes = new int[bulkScoreSize];
+      bulkScores = new float[bulkScoreSize];
+    }
   }
 
   /**

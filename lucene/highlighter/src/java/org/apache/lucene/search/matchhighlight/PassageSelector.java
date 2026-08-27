@@ -93,13 +93,7 @@ public class PassageSelector {
     int pqSize = Math.max(16, maxPassages);
 
     // Best passages so far.
-    PriorityQueue<Passage> pq =
-        new PriorityQueue<>(pqSize) {
-          @Override
-          protected boolean lessThan(Passage a, Passage b) {
-            return passageScorer.compare(a, b) < 0;
-          }
-        };
+    PriorityQueue<Passage> pq = PriorityQueue.usingComparator(pqSize, passageScorer);
 
     markers = splitOrTruncateToWindows(markers, maxPassageWindow, permittedPassageRanges);
 
@@ -174,10 +168,7 @@ public class PassageSelector {
     // Collect from the priority queue (reverse the order so that highest-scoring are first).
     Passage[] passages;
     if (pq.size() > 0) {
-      passages = new Passage[pq.size()];
-      for (int i = pq.size(); --i >= 0; ) {
-        passages[i] = pq.pop();
-      }
+      passages = pq.drainToArrayHighestFirst(Passage[]::new);
     } else {
       // Handle the default, no highlighting markers case.
       passages = pickDefaultPassage(value, maxPassageWindow, maxPassages, permittedPassageRanges);
@@ -210,7 +201,7 @@ public class PassageSelector {
         for (int j = i + 1; j < passages.length; j++) {
           Passage b = passages[j];
           if (b != null) {
-            if (adjecentOrOverlapping(a, b)) {
+            if (adjacentOrOverlapping(a, b)) {
               passages[j] = null;
             }
           }
@@ -312,7 +303,7 @@ public class PassageSelector {
     return defaultPassages.toArray(Passage[]::new);
   }
 
-  private static boolean adjecentOrOverlapping(Passage a, Passage b) {
+  private static boolean adjacentOrOverlapping(Passage a, Passage b) {
     if (a.from >= b.from) {
       return a.from <= b.to - 1;
     } else {

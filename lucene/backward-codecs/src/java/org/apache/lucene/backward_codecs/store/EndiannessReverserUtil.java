@@ -62,22 +62,22 @@ public final class EndiannessReverserUtil {
 
   /** wraps a data output */
   public static DataOutput wrapDataOutput(DataOutput dataOutput) {
-    if (dataOutput instanceof EndiannessReverserDataOutput) {
-      return ((EndiannessReverserDataOutput) dataOutput).out;
+    if (dataOutput instanceof EndiannessReverserDataOutput erdo) {
+      return erdo.out;
     }
-    if (dataOutput instanceof EndiannessReverserIndexOutput) {
-      return ((EndiannessReverserIndexOutput) dataOutput).getDelegate();
+    if (dataOutput instanceof EndiannessReverserIndexOutput erio) {
+      return erio.getDelegate();
     }
     return new EndiannessReverserDataOutput(dataOutput);
   }
 
   /** wraps a data input */
   public static DataInput wrapDataInput(DataInput dataInput) {
-    if (dataInput instanceof EndiannessReverserDataInput) {
-      return ((EndiannessReverserDataInput) dataInput).in;
+    if (dataInput instanceof EndiannessReverserDataInput erdi) {
+      return erdi.in;
     }
-    if (dataInput instanceof EndiannessReverserIndexInput) {
-      return ((EndiannessReverserIndexInput) dataInput).getDelegate();
+    if (dataInput instanceof EndiannessReverserIndexInput erii) {
+      return erii.getDelegate();
     }
     return new EndiannessReverserDataInput(dataInput);
   }

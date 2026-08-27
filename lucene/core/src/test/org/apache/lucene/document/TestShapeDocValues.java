@@ -49,7 +49,7 @@ public class TestShapeDocValues extends LuceneTestCase {
     assertEquals(
         dv.relate(LatLonGeometry.create(new Rectangle(-0.25, -0.24, -3.8, -3.7))),
         PointValues.Relation.CELL_OUTSIDE_QUERY);
-    assertNotEquals(
+    assertEquals(
         dv.relate(LatLonGeometry.create(new Rectangle(-1.2, 1.2, -1.5, 1.7))),
         PointValues.Relation.CELL_CROSSES_QUERY);
   }
@@ -214,15 +214,14 @@ public class TestShapeDocValues extends LuceneTestCase {
   }
 
   private Polygon getTestPolygonWithHole() {
-    Polygon poly = GeoTestUtil.createRegularPolygon(0.0, 0.0, 100000, 7);
+    Polygon poly = GeoTestUtil.createRegularPolygon(0.0, 0.0, 500000, 7);
     Polygon inner =
         new Polygon(
             new double[] {-1.0, -1.0, 0.5, 1.0, 1.0, 0.5, -1.0},
             new double[] {1.0, -1.0, -0.5, -1.0, 1.0, 0.5, 1.0});
     Polygon inner2 =
         new Polygon(
-            new double[] {-1.0, -1.0, 0.5, 1.0, 1.0, 0.5, -1.0},
-            new double[] {-2.0, -4.0, -3.5, -4.0, -2.0, -2.5, -2.0});
+            new double[] {-1.0, -1.0, 1.0, 1.0, -1.0}, new double[] {-2.0, -4.0, -4.0, -2.0, -2.0});
 
     return new Polygon(poly.getPolyLats(), poly.getPolyLons(), inner, inner2);
   }

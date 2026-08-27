@@ -36,7 +36,7 @@ public class QueryMatch {
 
   public static final MatcherFactory<QueryMatch> SIMPLE_MATCHER =
       searcher ->
-          new CollectingMatcher<QueryMatch>(searcher, ScoreMode.COMPLETE_NO_SCORES) {
+          new CollectingMatcher<>(searcher, ScoreMode.COMPLETE_NO_SCORES) {
             @Override
             public QueryMatch resolve(QueryMatch match1, QueryMatch match2) {
               return match1;
@@ -67,8 +67,7 @@ public class QueryMatch {
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    if (!(o instanceof QueryMatch)) return false;
-    QueryMatch that = (QueryMatch) o;
+    if (!(o instanceof QueryMatch that)) return false;
     return Objects.equals(queryId, that.queryId);
   }
 

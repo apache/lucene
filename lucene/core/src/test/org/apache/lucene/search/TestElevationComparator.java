@@ -116,16 +116,16 @@ public class TestElevationComparator extends LuceneTestCase {
     }
 
     /*
-     StoredFields storedFields = searcher.storedFields();
-     for (int i = 0; i < nDocsReturned; i++) {
-      ScoreDoc scoreDoc = topDocs.scoreDocs[i];
-      ids[i] = scoreDoc.doc;
-      scores[i] = scoreDoc.score;
-      documents[i] = storedFields.document(ids[i]);
-      System.out.println("ids[i] = " + ids[i]);
-      System.out.println("documents[i] = " + documents[i]);
-      System.out.println("scores[i] = " + scores[i]);
-    }
+     * StoredFields storedFields = searcher.storedFields();
+     * for (int i = 0; i < nDocsReturned; i++) {
+     *   ScoreDoc scoreDoc = topDocs.scoreDocs[i];
+     *   ids[i] = scoreDoc.doc;
+     *   scores[i] = scoreDoc.score;
+     *   documents[i] = storedFields.document(ids[i]);
+     *   System.out.println("ids[i] = " + ids[i]);
+     *   System.out.println("documents[i] = " + documents[i]);
+     *   System.out.println("scores[i] = " + scores[i]);
+     * }
      */
   }
 
@@ -163,7 +163,7 @@ class ElevationComparatorSource extends FieldComparatorSource {
   @Override
   public FieldComparator<Integer> newComparator(
       final String fieldname, final int numHits, Pruning pruning, boolean reversed) {
-    return new FieldComparator<Integer>() {
+    return new FieldComparator<>() {
 
       private final int[] values = new int[numHits];
       int bottomVal;

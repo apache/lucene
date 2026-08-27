@@ -51,7 +51,7 @@ public class TestTermGroupSelector extends BaseGroupSelectorTestCase<BytesRef> {
   protected Query filterQuery(BytesRef groupValue) {
     if (groupValue == null) {
       return new BooleanQuery.Builder()
-          .add(new MatchAllDocsQuery(), BooleanClause.Occur.FILTER)
+          .add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.FILTER)
           .add(new FieldExistsQuery("groupField"), BooleanClause.Occur.MUST_NOT)
           .build();
     }

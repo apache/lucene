@@ -35,19 +35,21 @@ import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
@@ -71,7 +73,6 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
   Lucene95HnswVectorsReader(SegmentReadState state) throws IOException {
     this.fieldInfos = state.fieldInfos;
     int versionMeta = readMetadata(state);
-    boolean success = false;
     try {
       vectorData =
           openDataInput(
@@ -85,11 +86,9 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
               versionMeta,
               Lucene95HnswVectorsFormat.VECTOR_INDEX_EXTENSION,
               Lucene95HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME);
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 
@@ -125,7 +124,6 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
     String fileName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, fileExtension);
     IndexInput in = state.directory.openInput(fileName, state.context);
-    boolean success = false;
     try {
       int versionVectorData =
           CodecUtil.checkIndexHeader(
@@ -146,12 +144,10 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
             in);
       }
       CodecUtil.retrieveChecksum(in);
-      success = true;
       return in;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(in);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, in);
+      throw t;
     }
   }
 
@@ -182,6 +178,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
     int byteSize =
         switch (info.getVectorEncoding()) {
           case BYTE -> Byte.BYTES;
+          case FLOAT16 -> Short.BYTES;
           case FLOAT32 -> Float.BYTES;
         };
     long vectorBytes = Math.multiplyExact((long) dimension, byteSize);
@@ -235,9 +232,9 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    CodecUtil.checksumEntireFile(vectorData);
-    CodecUtil.checksumEntireFile(vectorIndex);
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+    CodecUtil.checksumEntireFile(vectorData, merge);
+    CodecUtil.checksumEntireFile(vectorIndex, merge);
   }
 
   private FieldEntry getFieldEntryOrThrow(String field) {
@@ -296,7 +293,12 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
   }
 
   @Override
-  public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
+  public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void search(String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.FLOAT32);
     if (fieldEntry.size() == 0 || knnCollector.k() == 0) {
@@ -320,11 +322,11 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
         scorer,
         new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc),
         getGraph(fieldEntry),
-        vectorValues.getAcceptOrds(acceptDocs));
+        vectorValues.getAcceptOrds(acceptDocs.bits()));
   }
 
   @Override
-  public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
+  public void search(String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.BYTE);
     if (fieldEntry.size() == 0 || knnCollector.k() == 0) {
@@ -348,7 +350,13 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
         scorer,
         new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc),
         getGraph(fieldEntry),
-        vectorValues.getAcceptOrds(acceptDocs));
+        vectorValues.getAcceptOrds(acceptDocs.bits()));
+  }
+
+  @Override
+  public void search(String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
+    throw new UnsupportedOperationException();
   }
 
   /** Get knn graph values; used for testing */
@@ -572,9 +580,9 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
     @Override
     public NodesIterator getNodesOnLevel(int level) {
       if (level == 0) {
-        return new ArrayNodesIterator(size());
+        return new DenseNodesIterator(size());
       } else {
-        return new ArrayNodesIterator(nodesByLevel[level], nodesByLevel[level].length);
+        return new ArrayNodesIterator(nodesByLevel[level]);
       }
     }
   }

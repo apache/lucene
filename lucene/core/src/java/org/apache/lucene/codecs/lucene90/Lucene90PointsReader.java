@@ -22,6 +22,7 @@ import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
@@ -57,7 +58,6 @@ public class Lucene90PointsReader extends PointsReader {
             readState.segmentSuffix,
             Lucene90PointsFormat.DATA_EXTENSION);
 
-    boolean success = false;
     try {
       indexIn =
           readState.directory.openInput(
@@ -119,11 +119,9 @@ public class Lucene90PointsReader extends PointsReader {
       // know that indexLength and dataLength are very likely correct.
       CodecUtil.retrieveChecksum(indexIn, indexLength);
       CodecUtil.retrieveChecksum(dataIn, dataLength);
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 
@@ -146,9 +144,9 @@ public class Lucene90PointsReader extends PointsReader {
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    CodecUtil.checksumEntireFile(indexIn);
-    CodecUtil.checksumEntireFile(dataIn);
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+    CodecUtil.checksumEntireFile(indexIn, merge);
+    CodecUtil.checksumEntireFile(dataIn, merge);
   }
 
   @Override

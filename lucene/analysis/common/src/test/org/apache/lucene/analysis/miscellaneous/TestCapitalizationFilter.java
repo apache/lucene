@@ -16,7 +16,8 @@
  */
 package org.apache.lucene.analysis.miscellaneous;
 
-import static org.apache.lucene.analysis.miscellaneous.CapitalizationFilter.*;
+import static org.apache.lucene.analysis.miscellaneous.CapitalizationFilter.DEFAULT_MAX_TOKEN_LENGTH;
+import static org.apache.lucene.analysis.miscellaneous.CapitalizationFilter.DEFAULT_MAX_WORD_COUNT;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -30,7 +31,6 @@ import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.tests.analysis.MockTokenizer;
-import org.junit.Test;
 
 /** Tests {@link CapitalizationFilter} */
 public class TestCapitalizationFilter extends BaseTokenStreamTestCase {
@@ -294,42 +294,51 @@ public class TestCapitalizationFilter extends BaseTokenStreamTestCase {
   }
 
   /** checking the validity of constructor arguments */
-  @Test(expected = IllegalArgumentException.class)
   public void testIllegalArguments() throws Exception {
-    new CapitalizationFilter(
-        whitespaceMockTokenizer("accept only valid arguments"),
-        true,
-        null,
-        true,
-        null,
-        -1,
-        DEFAULT_MAX_WORD_COUNT,
-        DEFAULT_MAX_TOKEN_LENGTH);
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new CapitalizationFilter(
+              whitespaceMockTokenizer("accept only valid arguments"),
+              true,
+              null,
+              true,
+              null,
+              -1,
+              DEFAULT_MAX_WORD_COUNT,
+              DEFAULT_MAX_TOKEN_LENGTH);
+        });
   }
 
-  @Test(expected = IllegalArgumentException.class)
   public void testIllegalArguments1() throws Exception {
-    new CapitalizationFilter(
-        whitespaceMockTokenizer("accept only valid arguments"),
-        true,
-        null,
-        true,
-        null,
-        0,
-        -10,
-        DEFAULT_MAX_TOKEN_LENGTH);
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new CapitalizationFilter(
+              whitespaceMockTokenizer("accept only valid arguments"),
+              true,
+              null,
+              true,
+              null,
+              0,
+              -10,
+              DEFAULT_MAX_TOKEN_LENGTH);
+        });
   }
 
-  @Test(expected = IllegalArgumentException.class)
   public void testIllegalArguments2() throws Exception {
-    new CapitalizationFilter(
-        whitespaceMockTokenizer("accept only valid arguments"),
-        true,
-        null,
-        true,
-        null,
-        0,
-        DEFAULT_MAX_WORD_COUNT,
-        -50);
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new CapitalizationFilter(
+              whitespaceMockTokenizer("accept only valid arguments"),
+              true,
+              null,
+              true,
+              null,
+              0,
+              DEFAULT_MAX_WORD_COUNT,
+              -50);
+        });
   }
 }

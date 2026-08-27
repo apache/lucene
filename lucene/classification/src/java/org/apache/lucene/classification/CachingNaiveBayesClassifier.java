@@ -103,7 +103,7 @@ public class CachingNaiveBayesClassifier extends SimpleNaiveBayesClassifier {
     // for each word
     for (String word : tokenizedText) {
       // search with text:word for all class:c
-      Map<BytesRef, Integer> hitsInClasses = getWordFreqForClassess(word);
+      Map<BytesRef, Integer> hitsInClasses = getWordFreqForClasses(word);
       // for each class
       for (BytesRef cclass : cclasses) {
         Integer hitsI = hitsInClasses.get(cclass);
@@ -147,7 +147,7 @@ public class CachingNaiveBayesClassifier extends SimpleNaiveBayesClassifier {
     return ret;
   }
 
-  private Map<BytesRef, Integer> getWordFreqForClassess(String word) throws IOException {
+  private Map<BytesRef, Integer> getWordFreqForClasses(String word) throws IOException {
 
     Map<BytesRef, Integer> insertPoint;
     insertPoint = termCClassHitCache.get(word);
@@ -199,7 +199,7 @@ public class CachingNaiveBayesClassifier extends SimpleNaiveBayesClassifier {
    * eat lot of memory. There is an option to lower the memory consume, if a word have really low
    * occurrence in the index you could filter it out. The other parameter is switching between the
    * term searching, if it true, just the terms in the skeleton will be searched, but if it false
-   * the terms whoes not in the cache will be searched out too (but not cached).
+   * the terms whose not in the cache will be searched out too (but not cached).
    *
    * @param minTermOccurrenceInCache Lower cache size with higher value.
    * @param justCachedTerms The switch for fully exclude low occurrence docs.

@@ -14,8 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# 
-# Parses Myanmar text, with syllable as token. 
+#
+# Parses Myanmar text, with syllable as token.
 #
 
 $Consonant            = [:Indic_Syllabic_Category = Consonant:];
@@ -25,7 +25,7 @@ $Virama               = [:Indic_Syllabic_Category = Invisible_Stacker:];
 $Asat                 = [:Indic_Syllabic_Category = Pure_Killer:];
 # for our purposes, $Cons means 'base'
 $Cons = $Consonant | $ConsonantPlaceholder | $VowelIndependent;
-$WordJoin = [:Line_Break=Word_Joiner:]; 
+$WordJoin = [:Line_Break=Word_Joiner:];
 
 #
 # default numerical definitions
@@ -35,7 +35,7 @@ $Format       = [\p{Word_Break = Format}];
 $MidNumLet    = [\p{Word_Break = MidNumLet}];
 $MidNum       = [\p{Word_Break = MidNum}];
 $Numeric      = [\p{Word_Break = Numeric}];
-$ExtendNumLet = [\p{Word_Break = ExtendNumLet}];                                                          
+$ExtendNumLet = [\p{Word_Break = ExtendNumLet}];
 $MidNumLetEx    = $MidNumLet    ($Extend |  $Format)*;
 $MidNumEx       = $MidNum       ($Extend |  $Format)*;
 $NumericEx      = $Numeric      ($Extend |  $Format)*;

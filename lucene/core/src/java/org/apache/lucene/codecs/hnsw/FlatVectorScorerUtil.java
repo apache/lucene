@@ -37,4 +37,8 @@ public final class FlatVectorScorerUtil {
   public static FlatVectorsScorer getLucene99FlatVectorsScorer() {
     return IMPL.getLucene99FlatVectorsScorer();
   }
+
+  public static FlatVectorsScorer getLucene99ScalarQuantizedVectorsScorer() {
+    return IMPL.getLucene99ScalarQuantizedVectorsScorer();
+  }
 }

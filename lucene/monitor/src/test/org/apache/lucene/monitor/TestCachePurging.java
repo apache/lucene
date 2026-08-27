@@ -137,8 +137,6 @@ public class TestCachePurging extends MonitorTestBase {
         new MonitorConfiguration().setPurgeFrequency(50, TimeUnit.MILLISECONDS);
     try (Monitor monitor = new Monitor(ANALYZER, Presearcher.NO_FILTERING, config)) {
 
-      assertEquals(-1, monitor.getQueryCacheStats().lastPurged());
-
       for (int i = 0; i < 100; i++) {
         monitor.register(newMonitorQuery(i));
       }

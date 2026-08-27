@@ -26,6 +26,7 @@ import java.util.List;
 import org.apache.lucene.codecs.BufferingKnnVectorsWriter;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.KnnVectorValues;
@@ -49,7 +50,6 @@ public class SimpleTextKnnVectorsWriter extends BufferingKnnVectorsWriter {
   private final BytesRefBuilder scratch = new BytesRefBuilder();
 
   SimpleTextKnnVectorsWriter(SegmentWriteState state) throws IOException {
-    boolean success = false;
     // exception handling to pass TestSimpleTextKnnVectorsFormat#testRandomExceptions
     try {
       String metaFileName =
@@ -65,11 +65,9 @@ public class SimpleTextKnnVectorsWriter extends BufferingKnnVectorsWriter {
               state.segmentSuffix,
               SimpleTextKnnVectorsFormat.VECTOR_EXTENSION);
       vectorData = state.directory.createOutput(vectorDataFileName, state.context);
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 
@@ -90,6 +88,28 @@ public class SimpleTextKnnVectorsWriter extends BufferingKnnVectorsWriter {
   private void writeFloatVectorValue(FloatVectorValues vectors, int ord) throws IOException {
     // write vector value
     float[] value = vectors.vectorValue(ord);
+    assert value.length == vectors.dimension();
+    write(vectorData, Arrays.toString(value));
+    newline(vectorData);
+  }
+
+  @Override
+  public void writeField(FieldInfo fieldInfo, Float16VectorValues float16VectorValues, int maxDoc)
+      throws IOException {
+    long vectorDataOffset = vectorData.getFilePointer();
+    List<Integer> docIds = new ArrayList<>();
+    KnnVectorValues.DocIndexIterator iter = float16VectorValues.iterator();
+    for (int docV = iter.nextDoc(); docV != NO_MORE_DOCS; docV = iter.nextDoc()) {
+      writeFloat16VectorValue(float16VectorValues, iter.index());
+      docIds.add(docV);
+    }
+    long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
+    writeMeta(fieldInfo, vectorDataOffset, vectorDataLength, docIds);
+  }
+
+  private void writeFloat16VectorValue(Float16VectorValues vectors, int ord) throws IOException {
+    // write vector value
+    short[] value = vectors.vectorValue(ord);
     assert value.length == vectors.dimension();
     write(vectorData, Arrays.toString(value));
     newline(vectorData);

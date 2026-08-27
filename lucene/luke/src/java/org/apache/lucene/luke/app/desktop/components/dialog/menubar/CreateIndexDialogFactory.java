@@ -294,7 +294,7 @@ public class CreateIndexDialogFactory implements DialogOpener.DialogFactory {
             Executors.newFixedThreadPool(1, new NamedThreadFactory("create-index-dialog"));
 
         SwingWorker<Void, Void> task =
-            new SwingWorker<Void, Void>() {
+            new SwingWorker<>() {
 
               @Override
               protected Void doInBackground() throws Exception {
@@ -334,9 +334,7 @@ public class CreateIndexDialogFactory implements DialogOpener.DialogFactory {
                           }
                         });
                     Files.deleteIfExists(path);
-                  } catch (
-                      @SuppressWarnings("unused")
-                      IOException ex2) {
+                  } catch (IOException _) {
                   }
 
                   log.log(Level.SEVERE, "Cannot create index", ex);

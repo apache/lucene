@@ -28,6 +28,7 @@ import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.store.IndexInput;
@@ -63,7 +64,6 @@ public final class OrdsBlockTreeTermsReader extends FieldsProducer {
             state.segmentInfo.name, state.segmentSuffix, OrdsBlockTreeTermsWriter.TERMS_EXTENSION);
     in = state.directory.openInput(termsFile, state.context);
 
-    boolean success = false;
     IndexInput indexIn = null;
 
     try {
@@ -173,13 +173,9 @@ public final class OrdsBlockTreeTermsReader extends FieldsProducer {
         }
       }
       indexIn.close();
-
-      success = true;
-    } finally {
-      if (!success) {
-        // this.close() will close in:
-        IOUtils.closeWhileHandlingException(indexIn, this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, indexIn, this);
+      throw t;
     }
   }
 
@@ -220,7 +216,7 @@ public final class OrdsBlockTreeTermsReader extends FieldsProducer {
   }
 
   @Override
-  public Terms terms(String field) throws IOException {
+  public Terms terms(String field) {
     assert field != null;
     return fields.get(field);
   }
@@ -231,12 +227,12 @@ public final class OrdsBlockTreeTermsReader extends FieldsProducer {
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
     // term dictionary
-    CodecUtil.checksumEntireFile(in);
+    CodecUtil.checksumEntireFile(in, merge);
 
     // postings
-    postingsReader.checkIntegrity();
+    postingsReader.checkIntegrity(merge);
   }
 
   @Override

@@ -91,14 +91,14 @@ public final class FieldReader extends Terms {
     var metadata = FST.readMetadata(metaIn, ByteSequenceOutputs.getSingleton());
     index = FST.fromFSTReader(metadata, new OffHeapFSTStore(indexIn, indexStartFP, metadata));
     /*
-     if (false) {
-     final String dotFileName = segment + "_" + fieldInfo.name + ".dot";
-     Writer w = new OutputStreamWriter(new FileOutputStream(dotFileName));
-     Util.toDot(index, w, false, false);
-     System.out.println("FST INDEX: SAVED to " + dotFileName);
-     w.close();
-     }
-    */
+     * if (false) {
+     *   final String dotFileName = segment + "_" + fieldInfo.name + ".dot";
+     *   Writer w = new OutputStreamWriter(new FileOutputStream(dotFileName));
+     *   Util.toDot(index, w, false, false);
+     *   System.out.println("FST INDEX: SAVED to " + dotFileName);
+     *   w.close();
+     * }
+     */
     BytesRef emptyOutput = metadata.getEmptyOutput();
     if (rootCode.equals(emptyOutput) == false) {
       // TODO: this branch is never taken
@@ -163,20 +163,19 @@ public final class FieldReader extends Terms {
 
   @Override
   public boolean hasFreqs() {
-    return fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
+    return fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS);
   }
 
   @Override
   public boolean hasOffsets() {
     return fieldInfo
-            .getIndexOptions()
-            .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
-        >= 0;
+        .getIndexOptions()
+        .subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
   }
 
   @Override
   public boolean hasPositions() {
-    return fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+    return fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
   }
 
   @Override
