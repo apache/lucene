@@ -18,7 +18,6 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.FixedBitSet;
 
 /**
  * Expert: Common scoring functionality for different types of queries.
@@ -124,32 +123,6 @@ public abstract class Scorer extends Scorable {
     DocIdSetIterator iterator = iterator();
     for (int doc = docID(); doc < upTo && size < batchSize; doc = iterator.nextDoc()) {
       if (liveDocs == null || liveDocs.get(doc)) {
-        buffer.docs[size] = doc;
-        buffer.features[size] = score();
-        ++size;
-      }
-    }
-    buffer.size = size;
-  }
-
-  /**
-   * Return a new batch of doc IDs and scores, retaining only docs whose bit at {@code doc - offset}
-   * is set in {@code acceptDocs}.
-   *
-   * <p>The default implementation checks the mask before computing scores. Implementations may
-   * override this method in order to retrieve documents in batches.
-   *
-   * @lucene.internal
-   */
-  public void nextDocsAndScores(
-      int upTo, FixedBitSet acceptDocs, int offset, DocAndFloatFeatureBuffer buffer)
-      throws IOException {
-    int batchSize = 64; // arbitrary
-    buffer.growNoCopy(batchSize);
-    int size = 0;
-    DocIdSetIterator iterator = iterator();
-    for (int doc = docID(); doc < upTo && size < batchSize; doc = iterator.nextDoc()) {
-      if (acceptDocs.get(doc - offset)) {
         buffer.docs[size] = doc;
         buffer.features[size] = score();
         ++size;

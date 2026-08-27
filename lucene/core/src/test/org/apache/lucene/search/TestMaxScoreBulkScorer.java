@@ -1203,6 +1203,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
 
     Query rewritten = searcher.rewrite(outerQuery);
     Weight weight = searcher.createWeight(rewritten, ScoreMode.TOP_SCORES, 1f);
+    int[] collectedDocs = {0};
     for (LeafReaderContext ctx : reader.leaves()) {
       ScorerSupplier ss = weight.scorerSupplier(ctx);
       if (ss != null) {
@@ -1216,7 +1217,10 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
               public void setScorer(Scorable scorer) {}
 
               @Override
-              public void collect(int doc) {}
+              public void collect(int doc) {
+                assertEquals(1, doc % 20);
+                collectedDocs[0]++;
+              }
             },
             null,
             0,
@@ -1230,6 +1234,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
             + " advance="
             + advanceCalls[0],
         intoBitSetCalls[0] > 0);
+    assertEquals(500, collectedDocs[0]);
 
     reader.close();
     dir.close();
