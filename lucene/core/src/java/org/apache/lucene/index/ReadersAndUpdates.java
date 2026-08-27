@@ -192,6 +192,21 @@ final class ReadersAndUpdates {
     return count;
   }
 
+  /**
+   * Assertion-only snapshot of the currently-pending (resolved but not yet written) doc-values
+   * updates, keyed by field. Used to validate that the merge carry-over is fully reconstructible
+   * from the source segment's on-disk state plus this residual, i.e. that {@code mergingDVUpdates}
+   * is redundant. Returns copies of the per-field lists so callers can iterate without holding the
+   * lock.
+   */
+  synchronized Map<String, List<DocValuesFieldUpdates>> getPendingDVUpdatesForAssert() {
+    Map<String, List<DocValuesFieldUpdates>> copy = new HashMap<>();
+    for (Map.Entry<String, List<DocValuesFieldUpdates>> ent : pendingDVUpdates.entrySet()) {
+      copy.put(ent.getKey(), new ArrayList<>(ent.getValue()));
+    }
+    return copy;
+  }
+
   /** Returns a {@link SegmentReader}. */
   public synchronized SegmentReader getReader(IOContext context) throws IOException {
     if (reader == null) {
