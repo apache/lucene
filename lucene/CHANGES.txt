@@ -185,7 +185,9 @@ Bug Fixes
   exceptional exits, so vector inputs switch back from sequential read advice.
   (Simon Cooper, John Maurice)
 
-* GITHUB#16173: FilterDirectory now delegates copyFrom() to the wrapped directory. (Prithvi S)
+* GITHUB#16530: FilterDirectory#copyFrom routes through createOutput so that per-file bookkeeping
+  in subclasses applies to copied files, reverting the delegation from GITHUB#16173. Also fixes
+  temp file cleanup when TrackingTmpOutputDirectoryWrapper#copyFrom fails. (Tim Allison, Prithvi S)
 
 * GITHUB#16452: Fix over-allocation in MemoryAccountingBitsetCollectorManager.Result#bitSet, which
   is now sized to highestMatchedDoc + 1 instead of the full searched range. (Sasilekha R)

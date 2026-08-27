@@ -44,25 +44,25 @@ public class TestFilterDirectory extends BaseDirectoryTestCase {
     }
   }
 
-  public void testCopyFromDelegates() throws IOException {
+  public void testCopyFromRoutesThroughCreateOutput() throws IOException {
     try (Directory srcDir = new ByteBuffersDirectory();
         Directory destDir = new ByteBuffersDirectory()) {
       try (IndexOutput out = srcDir.createOutput("test.txt", IOContext.DEFAULT)) {
         out.writeString("hello");
       }
-      boolean[] delegated = {false};
-      FilterDirectory wrappedDestDir =
+      Set<String> created = new HashSet<>();
+      FilterDirectory filterDestDir =
           new FilterDirectory(destDir) {
             @Override
-            public void copyFrom(Directory from, String src, String dest, IOContext context)
-                throws IOException {
-              delegated[0] = true;
-              in.copyFrom(from, src, dest, context);
+            public IndexOutput createOutput(String name, IOContext context) throws IOException {
+              created.add(name);
+              return in.createOutput(name, context);
             }
           };
-      FilterDirectory filterDestDir = new FilterDirectory(wrappedDestDir) {};
       filterDestDir.copyFrom(srcDir, "test.txt", "copied.txt", IOContext.DEFAULT);
-      assertTrue("copyFrom should delegate to wrapped directory", delegated[0]);
+      assertTrue(
+          "copyFrom should route through the wrapper's createOutput",
+          created.contains("copied.txt"));
       assertTrue(slowFileExists(destDir, "copied.txt"));
       try (IndexInput in = destDir.openInput("copied.txt", IOContext.DEFAULT)) {
         assertEquals("hello", in.readString());
