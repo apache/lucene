@@ -59,7 +59,11 @@ public class TestMultiCollector extends LuceneTestCase {
         w.addDocument(doc);
       }
       try (IndexReader reader = w.getReader()) {
-        final IndexSearcher searcher = newSearcher(reader, true, true, true);
+        // wrapWithAssertions must stay false: the collector below deliberately violates the
+        // Scorable#setMinCompetitiveScore contract (that is the whole point of the test), and
+        // AssertingScorer asserts that only TOP_SCORES may call it. Reader wrapping and
+        // intra-segment concurrency are still exercised.
+        final IndexSearcher searcher = newSearcher(reader, true, false, true);
         final TopScoreDocCollector in = new TopScoreDocCollectorManager(1, 1).newCollector();
         final AtomicInteger totalCalls = new AtomicInteger();
         final Collector out =

@@ -96,15 +96,6 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
     return new DenseConjunctionBulkScorer(iterators, twoPhases, maxDoc, constantScore, scoreMode);
   }
 
-  /** Constructor that allows dynamic pruning, for tests and callers that never collect matches. */
-  DenseConjunctionBulkScorer(
-      List<DocIdSetIterator> iterators,
-      List<TwoPhaseIterator> twoPhases,
-      int maxDoc,
-      float constantScore) {
-    this(iterators, twoPhases, maxDoc, constantScore, ScoreMode.TOP_SCORES);
-  }
-
   DenseConjunctionBulkScorer(
       List<DocIdSetIterator> iterators,
       List<TwoPhaseIterator> twoPhases,
