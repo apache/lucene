@@ -113,6 +113,7 @@ public class GradleMirrorSetup {
   private static final Pattern DISTRIBUTION_NAME =
       Pattern.compile("gradle-(?<version>.+?)-(bin|all)\\.zip");
   private static final Pattern PLACEHOLDER = Pattern.compile("\\$\\{(?<varname>[^}]*)\\}");
+
   private static final boolean IS_WINDOWS =
       System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("windows");
 
@@ -203,9 +204,8 @@ public class GradleMirrorSetup {
                 .getProperty("networkTimeout", String.valueOf(DEFAULT_NETWORK_TIMEOUT_MILLIS))
                 .trim());
 
-    String wrapperUrl = expand(System.getenv(LUCENE_GRADLE_WRAPPER_URL_ENV), gradleVersion);
-    String mirrorDistributionUrl =
-        expand(System.getenv(LUCENE_GRADLE_DISTRIBUTION_URL_ENV), gradleVersion);
+    URI wrapperUrl = expand(LUCENE_GRADLE_WRAPPER_URL_ENV, gradleVersion);
+    URI mirrorDistributionUrl = expand(LUCENE_GRADLE_DISTRIBUTION_URL_ENV, gradleVersion);
 
     if (!VERIFY_CHECKSUMS) {
       log(
@@ -222,8 +222,11 @@ public class GradleMirrorSetup {
     }
   }
 
-  /** Replaces {@code ${gradleVersion}}; null/blank input yields null. */
-  private static String expand(String template, String gradleVersion) throws IOException {
+  /**
+   * Replaces {@code ${gradleVersion}} and parses the result as a URI; null/blank input yields null.
+   */
+  private static URI expand(String envName, String gradleVersion) throws IOException {
+    String template = System.getenv(envName);
     if (template == null || template.trim().isEmpty()) {
       return null;
     }
@@ -239,7 +242,13 @@ public class GradleMirrorSetup {
       }
       m.appendReplacement(sb, Matcher.quoteReplacement(gradleVersion));
     }
-    return m.appendTail(sb).toString();
+    try {
+      return new URI(m.appendTail(sb).toString());
+    } catch (URISyntaxException e) {
+      // Don't echo the input: it may contain credentials.
+      throw new IOException(
+          "Invalid URL in " + envName + ": " + e.getReason() + " (at index " + e.getIndex() + ").");
+    }
   }
 
   /**
@@ -247,7 +256,7 @@ public class GradleMirrorSetup {
    * downloading it from the mirror if needed. With checksum verification disabled, any existing jar
    * is used as-is and downloads are not verified.
    */
-  private void setupWrapperJar(Path wrapperDir, String wrapperUrl, int timeout) throws Exception {
+  private void setupWrapperJar(Path wrapperDir, URI wrapperUrl, int timeout) throws Exception {
     Path jar = wrapperDir.resolve("gradle-wrapper.jar");
     Path checksumFile = wrapperDir.resolve("gradle-wrapper.jar.sha256");
     String expectedChecksum = null;
@@ -269,16 +278,16 @@ public class GradleMirrorSetup {
       return;
     }
 
-    log("Downloading gradle-wrapper.jar from " + wrapperUrl);
+    log("Downloading gradle-wrapper.jar from " + withoutUserInfo(wrapperUrl));
     Path temp = Files.createTempFile(wrapperDir, ".gradle-wrapper", ".tmp");
     try {
-      download(new URI(wrapperUrl), temp, timeout);
+      download(wrapperUrl, temp, timeout);
       if (VERIFY_CHECKSUMS) {
         String actualChecksum = sha256(temp);
         if (!actualChecksum.equalsIgnoreCase(expectedChecksum)) {
           throw new IOException(
               "The gradle-wrapper.jar downloaded from "
-                  + wrapperUrl
+                  + withoutUserInfo(wrapperUrl)
                   + " does not match "
                   + checksumFile
                   + " (expected: "
@@ -299,7 +308,7 @@ public class GradleMirrorSetup {
    * install the official one: {@code <base>/<path>/<name>/<md5 of the official url as base36>/}.
    */
   private void setupDistribution(
-      Properties props, String distributionUrl, String mirrorUrl, String gradleVersion, int timeout)
+      Properties props, String distributionUrl, URI mirrorUrl, String gradleVersion, int timeout)
       throws Exception {
     String expectedSha256 = props.getProperty("distributionSha256Sum");
     if (expectedSha256 == null || expectedSha256.trim().isEmpty()) {
@@ -349,15 +358,15 @@ public class GradleMirrorSetup {
               return;
             }
 
-            log("Downloading gradle distribution from " + mirrorUrl);
-            download(new URI(mirrorUrl), zip, timeout);
+            log("Downloading gradle distribution from " + withoutUserInfo(mirrorUrl));
+            download(mirrorUrl, zip, timeout);
             if (VERIFY_CHECKSUMS) {
               String actual = sha256(zip);
               if (!actual.equalsIgnoreCase(expectedSha256)) {
                 Files.delete(zip);
                 throw new IOException(
                     "The distribution downloaded from "
-                        + mirrorUrl
+                        + withoutUserInfo(mirrorUrl)
                         + " does not match distributionSha256Sum in gradle-wrapper.properties"
                         + " (expected: "
                         + expectedSha256
@@ -379,7 +388,9 @@ public class GradleMirrorSetup {
             Path launcherJar = findLauncherJar(distDir);
             if (launcherJar == null) {
               throw new IOException(
-                  "The archive downloaded from " + mirrorUrl + " is not a gradle distribution?");
+                  "The archive downloaded from "
+                      + withoutUserInfo(mirrorUrl)
+                      + " is not a gradle distribution?");
             }
             Path gradleCommand = launcherJar.getParent().resolveSibling("bin").resolve("gradle");
             if (!IS_WINDOWS && Files.exists(gradleCommand)) {
@@ -420,19 +431,33 @@ public class GradleMirrorSetup {
   }
 
   /**
-   * The gradle wrapper hashes the distribution URL with any user info stripped so we recreate such
-   * an url here.
+   * Rebuilds the URI from its components, without any user info. Used for all logged URLs (so that
+   * credentials never end up in build logs) and for the distribution directory hash (the gradle
+   * wrapper hashes the distribution URL with user info stripped, this recreates such an URL).
+   *
+   * <p>The URI is rebuilt from scheme, host, port, path, query and fragment; the authority (where
+   * user info lives) is never copied over. Opaque URIs ({@code mailto:}, {@code jar:} etc.) have no
+   * authority and are returned as-is.
    */
-  private static String withoutUserInfo(URI uri) throws URISyntaxException {
-    return new URI(
-            uri.getScheme(),
-            null,
-            uri.getHost(),
-            uri.getPort(),
-            uri.getPath(),
-            uri.getQuery(),
-            uri.getFragment())
-        .toASCIIString();
+  private static String withoutUserInfo(URI uri) {
+    if (uri.isOpaque()) {
+      return uri.toASCIIString();
+    }
+    try {
+      return new URI(
+              uri.getScheme(),
+              null,
+              uri.getHost(),
+              uri.getPort(),
+              uri.getPath(),
+              uri.getQuery(),
+              uri.getFragment())
+          .toASCIIString();
+    } catch (URISyntaxException e) {
+      // Cannot happen for a hierarchical URI parsed from a string, but never fall back to the
+      // original (it may contain credentials).
+      return uri.getScheme() + ":<unprintable>";
+    }
   }
 
   /** Downloads to a temporary ".part" file first; retries a few times on failures. */
@@ -458,9 +483,15 @@ public class GradleMirrorSetup {
       } catch (IOException e) {
         Files.deleteIfExists(part);
         if (attempt >= 3 || !uri.getScheme().startsWith("http")) {
-          throw new IOException("Could not download " + uri + ": " + e.getMessage(), e);
+          throw new IOException(
+              "Could not download " + withoutUserInfo(uri) + ": " + e.getMessage(), e);
         }
-        log("Could not download " + uri + " (" + e.getMessage() + "), will retry in 10 seconds.");
+        log(
+            "Could not download "
+                + withoutUserInfo(uri)
+                + " ("
+                + e.getMessage()
+                + "), will retry in 10 seconds.");
         sleep(TimeUnit.SECONDS.toMillis(10));
       }
     }
