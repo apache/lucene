@@ -223,6 +223,9 @@ Bug Fixes
   merge-reuse generations, preventing progressive recall loss under low delete
   rates. (Ethan Baker)
 
+* GITHUB#16565: IndexWriter#updateBinaryDocValue now rejects updating a field that is part of the
+  index sort, matching IndexWriter#updateNumericDocValue. (Jim Ferenczi)
+
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
 
