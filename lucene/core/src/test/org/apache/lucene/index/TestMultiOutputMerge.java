@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -1090,6 +1091,137 @@ public class TestMultiOutputMerge extends LuceneTestCase {
         assertEquals(expected.size(), live.size());
         assertEquals(expected, new HashSet<>(live));
       }
+    }
+  }
+
+  /**
+   * What the whole point of an index sort is: boundaries placed where the key changes, rather than
+   * on document counts, give outputs that each own a disjoint range of that key.
+   *
+   * <p>The boundaries are offsets into the inputs as they stand before the merge, but each input is
+   * already sorted, so a contiguous range of an input is a range of keys within it. Taking the same
+   * key in every input therefore gives one output the whole of that key range, and the merge sorts
+   * it as usual.
+   */
+  public void testBoundariesOnAKeyGiveDisjointKeyRanges() throws Exception {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = newIndexWriterConfig(analyzer);
+      iwc.setIndexSort(new Sort(new SortField("tenant", SortField.Type.STRING)));
+      iwc.setMergePolicy(new KeyPartitioningMergePolicy());
+      Random random = random();
+      int expected = 0;
+      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+        for (int seg = 0; seg < SEGMENTS; seg++) {
+          for (int d = 0; d < PER_SEGMENT; d++) {
+            Document doc = doc(id(seg, d), 0);
+            // Tenants land in every segment, so no input holds a key range of its own.
+            doc.add(new SortedDocValuesField("tenant", new BytesRef(tenant(random.nextInt(10)))));
+            w.addDocument(doc);
+            expected++;
+          }
+          w.commit();
+        }
+        w.forceMerge(OUTPUTS, true);
+      }
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        assertEquals(OUTPUTS, reader.leaves().size());
+        assertEquals(expected, reader.numDocs());
+        String previousMax = null;
+        for (LeafReaderContext ctx : reader.leaves()) {
+          SortedDocValues tenants = ctx.reader().getSortedDocValues("tenant");
+          String min = null;
+          String max = null;
+          for (int doc = 0; doc < ctx.reader().maxDoc(); doc++) {
+            assertTrue(tenants.advanceExact(doc));
+            String value = tenants.lookupOrd(tenants.ordValue()).utf8ToString();
+            if (min == null) {
+              min = value;
+            }
+            assertTrue(
+                "segment is not sorted at doc " + doc, max == null || value.compareTo(max) >= 0);
+            max = value;
+          }
+          assertNotNull("an output holds no documents", min);
+          if (previousMax != null) {
+            assertTrue(
+                "key ranges overlap: " + previousMax + " then " + min,
+                min.compareTo(previousMax) > 0);
+          }
+          previousMax = max;
+        }
+      }
+    }
+  }
+
+  private static String tenant(int i) {
+    return String.format(java.util.Locale.ROOT, "tenant-%02d", i);
+  }
+
+  /**
+   * Cuts each input where the tenant reaches a boundary value, which is what a policy partitioning
+   * by key does. The offsets differ per input, since each holds its own mix of tenants.
+   */
+  private class KeyPartitioningMergePolicy extends MergePolicy {
+    private final String[] cuts = {tenant(3), tenant(7)};
+
+    @Override
+    public MergeSpecification findForcedMerges(
+        SegmentInfos infos, int max, Map<SegmentCommitInfo, Boolean> toMerge, MergeContext ctx) {
+      List<SegmentCommitInfo> segs = new ArrayList<>();
+      for (SegmentCommitInfo si : infos) {
+        if (ctx.getMergingSegments().contains(si)) {
+          return null;
+        }
+        if (toMerge.containsKey(si)) {
+          segs.add(si);
+        }
+      }
+      // Splitting leaves as many segments as it found outputs, so answering again would replan
+      // the merge for ever.
+      if (segs.size() <= max) {
+        return null;
+      }
+      MergeSpecification spec = new MergeSpecification();
+      spec.add(
+          new MergePolicy.OneMerge(segs) {
+            @Override
+            public boolean isPartitioned() {
+              return true;
+            }
+
+            @Override
+            public int[][] getDocRangePartitions(List<CodecReader> readers) throws IOException {
+              int[][] boundaries = new int[readers.size()][cuts.length + 2];
+              for (int i = 0; i < readers.size(); i++) {
+                CodecReader reader = readers.get(i);
+                SortedDocValues tenants = reader.getSortedDocValues("tenant");
+                int next = 1;
+                for (int doc = 0; doc < reader.maxDoc() && next <= cuts.length; doc++) {
+                  assertTrue(tenants.advanceExact(doc));
+                  String value = tenants.lookupOrd(tenants.ordValue()).utf8ToString();
+                  while (next <= cuts.length && value.compareTo(cuts[next - 1]) >= 0) {
+                    boundaries[i][next++] = doc;
+                  }
+                }
+                while (next <= cuts.length) {
+                  boundaries[i][next++] = reader.maxDoc();
+                }
+                boundaries[i][cuts.length + 1] = reader.maxDoc();
+              }
+              return boundaries;
+            }
+          });
+      return spec;
+    }
+
+    @Override
+    public MergeSpecification findMerges(MergeTrigger t, SegmentInfos infos, MergeContext ctx) {
+      return null;
+    }
+
+    @Override
+    public MergeSpecification findForcedDeletesMerges(SegmentInfos i, MergeContext c) {
+      return null;
     }
   }
 
