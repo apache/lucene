@@ -17,7 +17,10 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.codecs.Codec;
@@ -51,6 +54,11 @@ final class SegmentMerger {
   final MergeState mergeState;
   private final FieldInfos.Builder fieldInfosBuilder;
   final Thread mergeStateCreationThread;
+
+  // Set once the stored fields are merged, and read by the phases after that.
+  private SegmentWriteState segmentWriteState;
+  private SegmentReadState segmentReadState;
+  private int numMerged;
 
   // note, just like in codec apis Directory 'dir' is NOT the same as segmentInfo.dir!!
   SegmentMerger(
@@ -119,14 +127,14 @@ final class SegmentMerger {
     }
     mergeFieldInfos();
 
-    int numMerged = mergeWithLogging(this::mergeFields, "stored fields");
+    numMerged = mergeWithLogging(this::mergeFields, "stored fields");
     assert numMerged == mergeState.segmentInfo.maxDoc()
         : "numMerged="
             + numMerged
             + " vs mergeState.segmentInfo.maxDoc()="
             + mergeState.segmentInfo.maxDoc();
 
-    final SegmentWriteState segmentWriteState =
+    segmentWriteState =
         new SegmentWriteState(
             mergeState.infoStream,
             directory,
@@ -134,7 +142,7 @@ final class SegmentMerger {
             mergeState.mergeFieldInfos,
             null,
             context);
-    final SegmentReadState segmentReadState =
+    segmentReadState =
         new SegmentReadState(
             directory,
             mergeState.segmentInfo,
@@ -145,8 +153,6 @@ final class SegmentMerger {
     if (mergeState.mergeFieldInfos.hasNorms()) {
       mergeWithLogging(this::mergeNorms, segmentWriteState, segmentReadState, "norms", numMerged);
     }
-
-    mergeWithLogging(this::mergeTerms, segmentWriteState, segmentReadState, "postings", numMerged);
 
     if (mergeState.mergeFieldInfos.hasDocValues()) {
       mergeWithLogging(
@@ -170,10 +176,17 @@ final class SegmentMerger {
       mergeWithLogging(this::mergeTermVectors, "term vectors");
     }
 
-    // write the merged infos
+    mergeWithLogging(this::mergeTerms, segmentWriteState, segmentReadState, "postings", numMerged);
+
+    // Field infos last: a per-field format records which format wrote a field as a FieldInfo
+    // attribute while writing it, so every format that stamps one must have run by now.
+    return writeFieldInfos();
+  }
+
+  /** Persists the field infos, which every other phase may still have been adding to. */
+  MergeState writeFieldInfos() throws IOException {
     mergeWithLogging(
         this::mergeFieldInfos, segmentWriteState, segmentReadState, "field infos", numMerged);
-
     return mergeState;
   }
 
@@ -228,7 +241,15 @@ final class SegmentMerger {
     }
   }
 
-  private void mergeFieldInfos() {
+  /**
+   * Works out which fields the merged segment will have. This writes nothing, so a caller may run
+   * it while still free to refuse the merge, before any file exists. Running it twice would add
+   * every field to the builder again, hence the guard.
+   */
+  void mergeFieldInfos() {
+    if (mergeState.mergeFieldInfos != null) {
+      return;
+    }
     for (FieldInfos readerFieldInfos : mergeState.fieldInfos) {
       for (FieldInfo fi : readerFieldInfos) {
         fieldInfosBuilder.add(fi);
@@ -329,8 +350,21 @@ final class SegmentMerger {
   }
 
   void cleanupMerge() throws IOException {
+    cleanupMerge(Collections.newSetFromMap(new IdentityHashMap<>()));
+  }
+
+  /**
+   * Finishes each merge instance exactly once, skipping any the caller has already finished.
+   *
+   * <p>A partitioned merge builds one merger per output over the same input readers, and {@link
+   * KnnVectorsReader#getMergeInstance()} may return {@code this} -- {@code
+   * Lucene99FlatVectorsReader} does, having only flipped the read advice on an input it keeps.
+   * Finishing once per output would then touch that input again after the first call reverted it,
+   * so the outputs share the set of readers they have finished.
+   */
+  void cleanupMerge(Set<KnnVectorsReader> finished) throws IOException {
     for (KnnVectorsReader reader : mergeState.knnVectorsReaders) {
-      if (reader != null) {
+      if (reader != null && finished.add(reader)) {
         reader.finishMerge();
       }
     }

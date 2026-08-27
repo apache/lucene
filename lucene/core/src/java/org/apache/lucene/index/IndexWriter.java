@@ -31,6 +31,7 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -54,6 +55,7 @@ import java.util.stream.StreamSupport;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FieldInfosFormat;
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.column.ColumnBatch;
 import org.apache.lucene.index.DocValuesUpdate.BinaryDocValuesUpdate;
@@ -4437,15 +4439,21 @@ public class IndexWriter
   }
 
   /**
-   * Carefully merges deletes and updates for the segments we just merged. This is tricky because,
-   * although merging will clear all deletes (compacts the documents) and compact all the updates,
-   * new deletes and updates may have been flushed to the segments since the merge was started. This
-   * method "carries over" such new deletes and updates onto the newly merged segment, and saves the
-   * resulting deletes and updates files (incrementing the delete and DV generations for
-   * merge.info). If no deletes were flushed, no new deletes file is saved.
+   * Carry deletes and doc-values updates that arrived while merging into {@code target}.
+   *
+   * <p>This is tricky because, although merging clears all deletes and compacts the updates, new
+   * deletes and updates may have been flushed to the source segments since the merge started. They
+   * are carried over onto the merged segment here, incrementing its delete and doc-values
+   * generations; if nothing was flushed, no new file is written.
+   *
+   * <p>For a partitioned merge this is called once per output with that output's doc maps.
+   * Documents belonging to another output map to {@code -1}, and {@link #carryOverHardDeletes}
+   * already skips those, so each concurrently-arriving delete lands on exactly the one output that
+   * owns the document.
    */
   private synchronized ReadersAndUpdates commitMergedDeletesAndUpdates(
-      MergePolicy.OneMerge merge, MergeState.DocMap[] docMaps) throws IOException {
+      MergePolicy.OneMerge merge, SegmentCommitInfo target, MergeState.DocMap[] docMaps)
+      throws IOException {
 
     mergeFinishedGen.incrementAndGet();
 
@@ -4462,7 +4470,7 @@ public class IndexWriter
     long minGen = Long.MAX_VALUE;
 
     // Lazy init (only when we find a delete or update to carry over):
-    final ReadersAndUpdates mergedDeletesAndUpdates = getPooledInstance(merge.info, true);
+    final ReadersAndUpdates mergedDeletesAndUpdates = getPooledInstance(target, true);
     int numDeletesBefore = mergedDeletesAndUpdates.getDelCount();
     // field -> delGen -> dv field updates
     Map<String, LongObjectHashMap<DocValuesFieldUpdates>> mappedDVUpdates = new HashMap<>();
@@ -4519,12 +4527,12 @@ public class IndexWriter
               case NUMERIC:
                 mappedUpdates =
                     new NumericDocValuesFieldUpdates(
-                        updates.delGen, updates.field, merge.info.info.maxDoc());
+                        updates.delGen, updates.field, target.info.maxDoc());
                 break;
               case BINARY:
                 mappedUpdates =
                     new BinaryDocValuesFieldUpdates(
-                        updates.delGen, updates.field, merge.info.info.maxDoc());
+                        updates.delGen, updates.field, target.info.maxDoc());
                 break;
               case NONE:
               case SORTED:
@@ -4574,7 +4582,7 @@ public class IndexWriter
       infoStream.message("IW", msg);
     }
 
-    merge.info.setBufferedDeletesGen(minGen);
+    target.setBufferedDeletesGen(minGen);
 
     return mergedDeletesAndUpdates;
   }
@@ -4645,6 +4653,24 @@ public class IndexWriter
   @SuppressWarnings("try")
   private synchronized boolean commitMerge(MergePolicy.OneMerge merge, MergeState.DocMap[] docMaps)
       throws IOException {
+    return commitMerge(merge, List.of(merge.info), Collections.singletonList(docMaps));
+  }
+
+  /**
+   * Swaps a merge's inputs for its outputs: one segment for an ordinary merge, one per output for a
+   * partitioned one. An output that ends up holding no live document is dropped rather than
+   * inserted, which is why the two cases are the same code -- an ordinary merge is the case where
+   * either every output survives or the only one does not.
+   *
+   * @param outputs every segment this merge produced, in the order they should appear in the index
+   * @param docMapsPerOutput each output's document maps, so a delete that arrived while merging is
+   *     carried over to the one output that owns the document
+   */
+  private synchronized boolean commitMerge(
+      MergePolicy.OneMerge merge,
+      List<SegmentCommitInfo> outputs,
+      List<MergeState.DocMap[]> docMapsPerOutput)
+      throws IOException {
     merge.onMergeComplete();
     testPoint("startCommitMerge");
 
@@ -4670,64 +4696,69 @@ public class IndexWriter
       if (infoStream.isEnabled("IW")) {
         infoStream.message("IW", "commitMerge: skip: it was aborted");
       }
-      // In case we opened and pooled a reader for this
-      // segment, drop it now.  This ensures that we close
-      // the reader before trying to delete any of its
-      // files.  This is not a very big deal, since this
-      // reader will never be used by any NRT reader, and
-      // another thread is currently running close(false)
-      // so it will be dropped shortly anyway, but not
-      // doing this  makes  MockDirWrapper angry in
-      // TestNRTThreads (LUCENE-5434):
-      readerPool.drop(merge.info);
-      // Safe: these files must exist:
-      deleteNewFiles(merge.info.files());
+      for (SegmentCommitInfo info : outputs) {
+        // In case we opened and pooled a reader for this
+        // segment, drop it now.  This ensures that we close
+        // the reader before trying to delete any of its
+        // files.  This is not a very big deal, since this
+        // reader will never be used by any NRT reader, and
+        // another thread is currently running close(false)
+        // so it will be dropped shortly anyway, but not
+        // doing this  makes  MockDirWrapper angry in
+        // TestNRTThreads (LUCENE-5434):
+        readerPool.drop(info);
+        // Safe: these files must exist:
+        deleteNewFiles(info.files());
+      }
       return false;
     }
 
-    final ReadersAndUpdates mergedUpdates =
-        merge.info.info.maxDoc() == 0 ? null : commitMergedDeletesAndUpdates(merge, docMaps);
+    final boolean[] dropped = new boolean[outputs.size()];
+    final List<SegmentCommitInfo> survivors = new ArrayList<>(outputs.size());
+    int keptDocs = 0;
+    for (int output = 0; output < outputs.size(); output++) {
+      final SegmentCommitInfo info = outputs.get(output);
+      assert !segmentInfos.contains(info);
 
-    // If the doc store we are using has been closed and
-    // is in now compound format (but wasn't when we
-    // started), then we will switch to the compound
-    // format as well:
+      final ReadersAndUpdates mergedUpdates =
+          info.info.maxDoc() == 0
+              ? null
+              : commitMergedDeletesAndUpdates(merge, info, docMapsPerOutput.get(output));
 
-    assert !segmentInfos.contains(merge.info);
+      final boolean allDeleted =
+          merge.segments.size() == 0
+              || info.info.maxDoc() == 0
+              || (mergedUpdates != null && isFullyDeleted(mergedUpdates));
 
-    final boolean allDeleted =
-        merge.segments.size() == 0
-            || merge.info.info.maxDoc() == 0
-            || (mergedUpdates != null && isFullyDeleted(mergedUpdates));
-
-    if (infoStream.isEnabled("IW")) {
-      if (allDeleted) {
-        infoStream.message(
-            "IW", "merged segment " + merge.info + " is 100% deleted; skipping insert");
+      if (infoStream.isEnabled("IW") && allDeleted) {
+        infoStream.message("IW", "merged segment " + info + " is 100% deleted; skipping insert");
       }
-    }
 
-    final boolean dropSegment = allDeleted;
+      // If we merged no segments then we better be dropping
+      // the new segment:
+      assert merge.segments.size() > 0 || allDeleted;
+      assert info.info.maxDoc() != 0 || allDeleted;
 
-    // If we merged no segments then we better be dropping
-    // the new segment:
-    assert merge.segments.size() > 0 || dropSegment;
-
-    assert merge.info.info.maxDoc() != 0 || dropSegment;
-
-    if (mergedUpdates != null) {
-      try {
-        if (dropSegment) {
+      if (mergedUpdates != null) {
+        try {
+          if (allDeleted) {
+            mergedUpdates.dropChanges();
+          }
+          // Pass false for assertInfoLive because the merged
+          // segment is not yet live (only below do we commit it
+          // to the segmentInfos):
+          release(mergedUpdates, false);
+        } catch (Throwable t) {
           mergedUpdates.dropChanges();
+          readerPool.drop(info);
+          throw t;
         }
-        // Pass false for assertInfoLive because the merged
-        // segment is not yet live (only below do we commit it
-        // to the segmentInfos):
-        release(mergedUpdates, false);
-      } catch (Throwable t) {
-        mergedUpdates.dropChanges();
-        readerPool.drop(merge.info);
-        throw t;
+      }
+
+      dropped[output] = allDeleted;
+      if (allDeleted == false) {
+        survivors.add(info);
+        keptDocs += info.info.maxDoc();
       }
     }
 
@@ -4735,44 +4766,43 @@ public class IndexWriter
     // exception is hit e.g. writing the live docs for the
     // merge segment, in which case we need to abort the
     // merge:
-    segmentInfos.applyMergeChanges(merge, dropSegment);
+    segmentInfos.applyMergeChanges(merge, survivors);
 
-    // Now deduct the deleted docs that we just reclaimed from this
-    // merge:
-    int delDocCount;
-    if (dropSegment) {
-      // if we drop the segment we have to reduce the pendingNumDocs by merge.totalMaxDocs since we
-      // never drop
-      // the docs when we apply deletes if the segment is currently merged.
-      delDocCount = merge.totalMaxDoc;
-    } else {
-      delDocCount = merge.totalMaxDoc - merge.info.info.maxDoc();
-    }
-    assert delDocCount >= 0;
+    // Now deduct the deleted docs that we just reclaimed from this merge. A dropped output
+    // contributes nothing, so this is merge.totalMaxDoc when every output is dropped, which is what
+    // the single-output path spells out separately: we never drop the docs when applying deletes to
+    // a segment that is currently merging.
+    final int delDocCount = merge.totalMaxDoc - keptDocs;
+    assert delDocCount >= 0 : "totalMaxDoc=" + merge.totalMaxDoc + " kept=" + keptDocs;
     adjustPendingNumDocs(-delDocCount);
 
-    if (dropSegment) {
-      assert !segmentInfos.contains(merge.info);
-      readerPool.drop(merge.info);
-      // Safe: these files must exist
-      deleteNewFiles(merge.info.files());
+    for (int output = 0; output < outputs.size(); output++) {
+      if (dropped[output]) {
+        final SegmentCommitInfo info = outputs.get(output);
+        assert !segmentInfos.contains(info);
+        readerPool.drop(info);
+        // Safe: these files must exist
+        deleteNewFiles(info.files());
+      }
     }
 
     try (Closeable _ = this::checkpoint) {
       // Must close before checkpoint, otherwise IFD won't be
       // able to delete the held-open files from the merge
       // readers:
-      closeMergeReaders(merge, false, dropSegment);
+      closeMergeReaders(merge, false, survivors.isEmpty());
     }
 
     if (infoStream.isEnabled("IW")) {
       infoStream.message("IW", "after commitMerge: " + segString());
     }
 
-    if (merge.maxNumSegments != UNBOUNDED_MAX_MERGE_SEGMENTS && !dropSegment) {
+    if (merge.maxNumSegments != UNBOUNDED_MAX_MERGE_SEGMENTS) {
       // cascade the forceMerge:
-      if (!segmentsToMerge.containsKey(merge.info)) {
-        segmentsToMerge.put(merge.info, Boolean.FALSE);
+      for (SegmentCommitInfo info : survivors) {
+        if (!segmentsToMerge.containsKey(info)) {
+          segmentsToMerge.put(info, Boolean.FALSE);
+        }
       }
     }
 
@@ -4865,15 +4895,19 @@ public class IndexWriter
       throw t;
     }
 
-    if (merge.info != null && merge.isAborted() == false) {
-      if (infoStream.isEnabled("IW")) {
-        infoStream.message("IW", "merged new segment " + merge.info.toStringVerbose());
+    if (merge.isAborted() == false && infoStream.isEnabled("IW")) {
+      // A partitioned merge populates getMergeInfos() rather than merge.info.
+      for (SegmentCommitInfo info : merge.getMergeInfos()) {
+        if (info == null) {
+          continue;
+        }
+        infoStream.message("IW", "merged new segment " + info.toStringVerbose());
         infoStream.message(
             "IW",
             "merge time "
                 + (System.currentTimeMillis() - t0)
                 + " ms for "
-                + merge.info.info.maxDoc()
+                + info.info.maxDoc()
                 + " docs");
       }
     }
@@ -5092,11 +5126,17 @@ public class IndexWriter
     details.put("mergeMaxNumSegments", "" + merge.maxNumSegments);
     details.put("mergeFactor", Integer.toString(merge.segments.size()));
     setDiagnostics(si, SOURCE_MERGE, details);
-    merge.setMergeInfo(new SegmentCommitInfo(si, 0, 0, -1L, -1L, -1L, StringHelper.randomId()));
+    if (merge.isPartitioned() == false) {
+      merge.setMergeInfo(new SegmentCommitInfo(si, 0, 0, -1L, -1L, -1L, StringHelper.randomId()));
+    }
 
     if (infoStream.isEnabled("IW")) {
       infoStream.message(
-          "IW", "merge seg=" + merge.info.info.name + " " + segString(merge.segments));
+          "IW",
+          "merge seg="
+              + (merge.info == null ? "(partitioned)" : merge.info.info.name)
+              + " "
+              + segString(merge.segments));
     }
   }
 
@@ -5215,10 +5255,462 @@ public class IndexWriter
   }
 
   /**
+   * Turns one finished merge output into a segment on disk: packs its files into a compound file if
+   * the codec asks for one, writes its segment info, and warms it.
+   *
+   * <p>Shared by the single-output and the partitioned merge paths, which differ in how many
+   * outputs they produce and not in what packaging one of them means. The delete-on-failure and
+   * abort handling here is the delicate part, and is the reason this is one method rather than two
+   * similar ones.
+   *
+   * @return false if the merge was aborted while this ran, in which case the caller must abandon it
+   */
+  private boolean packageMergedSegment(
+      MergePolicy.OneMerge merge,
+      MergePolicy mergePolicy,
+      SegmentCommitInfo info,
+      IOContext context)
+      throws IOException {
+    // Very important to do this before opening the reader
+    // because codec must know if prox was written for
+    // this segment:
+    boolean useCompoundFile;
+    synchronized (this) { // Guard segmentInfos
+      useCompoundFile =
+          info.info
+              .getCodec()
+              .compoundFormat()
+              .useCompoundFile(mergePolicy.size(info, this), mergePolicy);
+    }
+
+    if (useCompoundFile) {
+      Collection<String> filesToRemove = info.files();
+      // NOTE: Creation of the CFS file must be performed with the original
+      // directory rather than with the merging directory, so that it is not
+      // subject to merge throttling.
+      TrackingDirectoryWrapper trackingCFSDir = new TrackingDirectoryWrapper(directory);
+      try {
+        createCompoundFile(infoStream, trackingCFSDir, info.info, context, this::deleteNewFiles);
+      } catch (Throwable t) {
+        try {
+          synchronized (this) {
+            if (merge.isAborted()) {
+              // This can happen if rollback is called while we were building
+              // our CFS -- fall through to logic below to remove the non-CFS
+              // merged files:
+              if (infoStream.isEnabled("IW")) {
+                infoStream.message(
+                    "IW", "hit merge abort exception creating compound file during merge: " + t);
+              }
+              return false;
+            } else {
+              handleMergeException(t, merge);
+            }
+          }
+        } finally {
+          if (infoStream.isEnabled("IW")) {
+            infoStream.message("IW", "hit exception creating compound file during merge: " + t);
+          }
+          // Safe: these files must exist
+          deleteNewFiles(info.files());
+        }
+      }
+
+      synchronized (this) {
+
+        // delete new non cfs files directly: they were never
+        // registered with IFD
+        deleteNewFiles(filesToRemove);
+
+        if (merge.isAborted()) {
+          if (infoStream.isEnabled("IW")) {
+            infoStream.message("IW", "abort merge after building CFS");
+          }
+          // Safe: these files must exist
+          deleteNewFiles(info.files());
+          return false;
+        }
+      }
+
+      info.info.setUseCompoundFile(true);
+    }
+
+    // Have codec write SegmentInfo.  Must do this after
+    // creating CFS so that 1) .si isn't slurped into CFS,
+    // and 2) .si reflects useCompoundFile=true change
+    // above:
+    try {
+      config.getCodec().segmentInfoFormat().write(directory, info.info, context);
+    } catch (Throwable t) {
+      // Safe: these files must exist
+      deleteNewFiles(info.files());
+      throw t;
+    }
+
+    // TODO: ideally we would freeze info here!!
+    // because any changes after writing the .si will be
+    // lost...
+
+    final IndexReaderWarmer mergedSegmentWarmer = config.getMergedSegmentWarmer();
+    if (readerPool.isReaderPoolingEnabled() && mergedSegmentWarmer != null) {
+      final ReadersAndUpdates rld = getPooledInstance(info, true);
+      final SegmentReader sr = rld.getReader(IOContext.DEFAULT);
+      try {
+        mergedSegmentWarmer.warm(sr);
+      } finally {
+        synchronized (this) {
+          rld.release(sr);
+          release(rld);
+        }
+      }
+    }
+    return true;
+  }
+
+  /** Opens a pooled reader for each of a merge's input segments, and holds their files open. */
+  private void initMergeReaders(MergePolicy.OneMerge merge, IOContext context) throws IOException {
+    merge.initMergeReaders(
+        sci -> {
+          final ReadersAndUpdates rld = getPooledInstance(sci, true);
+          rld.setIsMerging();
+          synchronized (this) {
+            return rld.getReaderForMerge(
+                context, mr -> deleter.incRef(mr.reader.getSegmentInfo().files()));
+          }
+        });
+  }
+
+  /** Fresh {@link SegmentCommitInfo} for one output of a merge. */
+  private SegmentCommitInfo newMergeSegmentInfo(MergePolicy.OneMerge merge) {
+    boolean hasBlocks = false;
+    for (SegmentCommitInfo info : merge.segments) {
+      if (info.info.getHasBlocks()) {
+        hasBlocks = true;
+        break;
+      }
+    }
+    SegmentInfo si =
+        new SegmentInfo(
+            directoryOrig,
+            Version.LATEST,
+            null,
+            newSegmentName(),
+            -1,
+            false,
+            hasBlocks,
+            config.getCodec(),
+            Collections.emptyMap(),
+            StringHelper.randomId(),
+            Collections.emptyMap(),
+            config.getIndexSort());
+    Map<String, String> details = new HashMap<>();
+    details.put("mergeMaxNumSegments", "" + merge.maxNumSegments);
+    details.put("mergeFactor", Integer.toString(merge.segments.size()));
+    details.put("mergeOutputs", Integer.toString(merge.getOutputCount()));
+    setDiagnostics(si, SOURCE_MERGE, details);
+    return new SegmentCommitInfo(si, 0, 0, -1L, -1L, -1L, StringHelper.randomId());
+  }
+
+  /**
+   * Validate a doc-range partition spec. Only the SHAPE is checked -- one boundary array per input,
+   * all the same length, non-decreasing, starting at 0 and ending at that input's maxDoc. Given
+   * that shape, the two properties the merge depends on, disjointness and full coverage, hold by
+   * construction rather than by trusting the caller.
+   *
+   * <p>Plus the one thing that is not about the spec: an index sort. Correctness rests on the
+   * outputs being contiguous AND in order in the merged document space, which holds under a sort,
+   * where the merged order is key order and the outputs are key ranges. Without one, {@link
+   * DocIDMerger} concatenates input by input, so an output's documents land in one block per input
+   * rather than in a single run, and splitting a term's postings by document id would quietly hand
+   * documents to the wrong output.
+   */
+  private void validateDocRangePartitions(
+      MergePolicy.OneMerge merge, int[][] partitions, List<CodecReader> readers)
+      throws IOException {
+    if (partitions.length != merge.segments.size()) {
+      throw new IllegalArgumentException(
+          "docRangePartitions has "
+              + partitions.length
+              + " entries but the merge has "
+              + merge.segments.size()
+              + " input segments");
+    }
+    final int outputs = merge.getOutputCount();
+    if (outputs < 1) {
+      throw new IllegalArgumentException("a partitioned merge must have at least one output");
+    }
+    for (int i = 0; i < partitions.length; i++) {
+      final int[] b = partitions[i];
+      final int maxDoc = merge.segments.get(i).info.maxDoc();
+      if (b.length != outputs + 1) {
+        throw new IllegalArgumentException(
+            "docRangePartitions[" + i + "] has length " + b.length + ", expected " + (outputs + 1));
+      }
+      if (b[0] != 0 || b[outputs] != maxDoc) {
+        throw new IllegalArgumentException(
+            "docRangePartitions["
+                + i
+                + "] must span [0, "
+                + maxDoc
+                + "], got ["
+                + b[0]
+                + ", "
+                + b[outputs]
+                + "]");
+      }
+      for (int o = 1; o <= outputs; o++) {
+        if (b[o] < b[o - 1]) {
+          throw new IllegalArgumentException(
+              "docRangePartitions[" + i + "] is not non-decreasing at " + o);
+        }
+      }
+      checkBoundariesRespectBlocks(readers.get(i), b, i);
+    }
+  }
+
+  /**
+   * Refuses a boundary that falls inside a document block.
+   *
+   * <p>A block is a run of documents ending at its parent, and queries over it find the children by
+   * counting back from the parent. An index sort keeps a block contiguous, but says nothing about
+   * where a partition may cut, so a boundary landing between a child and its parent would put them
+   * in different segments and leave both halves quietly wrong.
+   *
+   * <p>Carrying the same partitioning value on the children is not sufficient on its own: the
+   * boundary is a document offset, and whether the offset a caller derives from that value lands
+   * before the children or between them and their parent depends on whether the children carry the
+   * value at all. So the invariant is enforced here, on the offsets themselves. A policy that wants
+   * to partition a block index has the readers when it chooses its boundaries, and can align them
+   * by reading the same parent field this does.
+   */
+  private static void checkBoundariesRespectBlocks(CodecReader reader, int[] b, int input)
+      throws IOException {
+    final String parentField = reader.getFieldInfos().getParentField();
+    if (parentField == null) {
+      return;
+    }
+    final NumericDocValues parents = reader.getNumericDocValues(parentField);
+    if (parents == null) {
+      return;
+    }
+    final int maxDoc = reader.maxDoc();
+    int previous = -1;
+    for (int o = 1; o < b.length - 1; o++) {
+      final int boundary = b[o];
+      // The ends of the space are block boundaries by construction, and a repeated boundary is an
+      // empty output, which cannot split anything the previous one did not.
+      if (boundary == 0 || boundary == maxDoc || boundary == previous) {
+        continue;
+      }
+      previous = boundary;
+      // A boundary is legal exactly when the document before it ends a block.
+      if (parents.advanceExact(boundary - 1) == false) {
+        throw new IllegalArgumentException(
+            "docRangePartitions["
+                + input
+                + "] cuts inside a document block at "
+                + boundary
+                + ": document "
+                + (boundary - 1)
+                + " is not the last of its block, and a partitioned merge must not separate a "
+                + "block's documents from their parent");
+      }
+    }
+  }
+
+  /**
+   * Merge producing several output segments, each holding a contiguous doc range of every input.
+   * Kept separate from {@link #mergeMiddle} so the single-output path stays untouched.
+   */
+  private int multiOutputMergeMiddle(MergePolicy.OneMerge merge, MergePolicy mergePolicy)
+      throws IOException {
+    testPoint("mergeMiddleStart");
+    merge.checkAborted();
+
+    final Directory mergeDirectory = mergeScheduler.wrapForMerge(merge, directory);
+    final IOContext context = IOContext.merge(merge.getStoreMergeInfo());
+
+    boolean success = false;
+    int totalDocs = 0;
+    // Outlive the loop that creates them: the postings of every output are written between the
+    // phases either side of them, so each merger stays open across all three phases.
+    final List<SegmentMerger> mergers = new ArrayList<>();
+    // The outputs share one set of input readers, so a reader that hands out itself as its own
+    // merge instance must still be finished exactly once, whichever path gets there first.
+    final Set<KnnVectorsReader> finishedVectorReaders =
+        Collections.newSetFromMap(new IdentityHashMap<>());
+    try {
+      initMergeReaders(merge, context);
+
+      // Resolved only now, so the policy can place boundaries on real key values
+      // from the actual readers rather than guessing from doc counts. They are
+      // passed in rather than read back off the merge, so that a wrapping merge
+      // can delegate this method.
+      final List<CodecReader> rawReaders = new ArrayList<>();
+      for (MergePolicy.MergeReader mr : merge.getMergeReader()) {
+        rawReaders.add(mr.reader);
+      }
+      final int[][] partitions = merge.getDocRangePartitions(rawReaders);
+      if (partitions == null) {
+        throw new IllegalStateException(
+            "OneMerge.isPartitioned() returned true but getDocRangePartitions() returned null");
+      }
+      // Before indexing into it: a policy that returns the wrong shape should be told so, rather
+      // than reaching this with an array index out of bounds.
+      if (partitions.length != merge.segments.size()) {
+        throw new IllegalArgumentException(
+            "docRangePartitions has "
+                + partitions.length
+                + " entries but the merge has "
+                + merge.segments.size()
+                + " input segments");
+      }
+      merge.outputCount = partitions[0].length - 1;
+      validateDocRangePartitions(merge, partitions, rawReaders);
+      final int outputCount = merge.getOutputCount();
+
+      if (infoStream.isEnabled("IW")) {
+        infoStream.message(
+            "IW", "merging " + segString(merge.segments) + " into " + outputCount + " outputs");
+      }
+
+      // Wrapped once and shared by every output. Wrapping is where a caller filters a reader, and
+      // every output sees the same inputs, so doing it per output would repeat that work k times.
+      // This is also where the inputs are verified: each format checksums the files it is about to
+      // read when its merge begins, which costs a full read of them, and a partitioned merge runs
+      // those merges once per output. Verifying here instead leaves one check per input per merge,
+      // and does it before any output has written anything.
+      final List<CodecReader> wrappedReaders = new ArrayList<>(rawReaders.size());
+      for (MergePolicy.MergeReader mergeReader : merge.getMergeReader()) {
+        merge.checkAborted();
+        final CodecReader wrapped = merge.wrapForMerge(mergeReader.reader);
+        validateMergeReader(wrapped);
+        wrapped.checkIntegrity(merge);
+        wrappedReaders.add(wrapped);
+      }
+      // Only now, so that the checks just above are the ones that read the files.
+      merge.markInputsVerified();
+
+      final Executor intraMergeExecutor = mergeScheduler.getIntraMergeExecutor(merge);
+      final List<MergeState.DocMap[]> docMapsPerOutput = new ArrayList<>(outputCount);
+      merge.mergeStartNS = System.nanoTime();
+
+      final List<SegmentCommitInfo> outInfos = new ArrayList<>(outputCount);
+      final List<TrackingDirectoryWrapper> dirWrappers = new ArrayList<>(outputCount);
+      // Phase A: merge each output.
+      for (int output = 0; output < outputCount; output++) {
+        merge.checkAborted();
+        final TrackingDirectoryWrapper dirWrapper = new TrackingDirectoryWrapper(mergeDirectory);
+        final SegmentCommitInfo outInfo = newMergeSegmentInfo(merge);
+        merge.setMergeInfo(output, outInfo);
+
+        final List<CodecReader> mergeReaders = new ArrayList<>();
+        final Counter softDeleteCount = Counter.newCounter(false);
+        int i = 0;
+        for (MergePolicy.MergeReader mergeReader : merge.getMergeReader()) {
+          // Everything outside this output's range looks deleted, so it maps to -1 in the
+          // resulting DocMap -- which is what routes concurrent deletes to the right output.
+          CodecReader wrapped =
+              new DocRangeCodecReader(
+                  wrappedReaders.get(i), partitions[i][output], partitions[i][output + 1]);
+          if (softDeletesEnabled) {
+            // Count soft deletes that fall INSIDE this output's range. The
+            // single-output shortcut (softDelCount - numDeletedDocs) cannot be
+            // used here: numDeletedDocs on a range-restricted reader also counts
+            // every document belonging to the other outputs. hardLiveDocs may be
+            // null and countSoftDeletes handles that.
+            Counter hardDeleteCounter = Counter.newCounter(false);
+            countSoftDeletes(
+                wrapped,
+                wrapped.getLiveDocs(),
+                mergeReader.hardLiveDocs,
+                softDeleteCount,
+                hardDeleteCounter);
+          }
+          mergeReaders.add(wrapped);
+          i++;
+        }
+
+        final SegmentMerger merger =
+            new SegmentMerger(
+                mergeReaders,
+                outInfo.info,
+                infoStream,
+                dirWrapper,
+                globalFieldNumberMap,
+                context,
+                intraMergeExecutor,
+                merge);
+        mergers.add(merger);
+        outInfos.add(outInfo);
+        dirWrappers.add(dirWrapper);
+        docMapsPerOutput.add(merger.mergeState.docMaps);
+        outInfo.setSoftDelCount(Math.toIntExact(softDeleteCount.get()));
+        merge.checkAborted();
+        if (merger.shouldMerge()) {
+          // Each output is merged in full. Formats ordered by document -- doc values, norms,
+          // vectors, and stored fields and term vectors by random access -- narrow to the range
+          // this output owns and cost about what an ordinary merge costs. Postings and points
+          // cannot: a terms dictionary is ordered by term and a block k-d tree by value, so no
+          // part of either can be skipped by document range and every output reads all of both.
+          // That is linear in the output count. Removing it means one pass feeding every output's
+          // writer rather than a merge per output, which both formats are shaped for -- their
+          // write paths are sinks -- but which needs somewhere to hand back those sinks. Left to
+          // a follow-up so that partitioning costs no new format API.
+          merger.merge();
+        }
+      }
+
+      // Before packaging or committing: commitMerge closes the input readers, and finishing a
+      // merge instance can still touch them -- the Lucene99 flat vectors reader reverts the read
+      // advice on the input it kept. The single-output path finishes in the finally of its merge
+      // block for the same reason.
+      for (SegmentMerger merger : mergers) {
+        merger.cleanupMerge(finishedVectorReaders);
+      }
+
+      // Phase B: package each output.
+      for (int output = 0; output < outputCount; output++) {
+        final SegmentMerger merger = mergers.get(output);
+        final SegmentCommitInfo outInfo = outInfos.get(output);
+        merge.checkAborted();
+        outInfo.info.setFiles(new HashSet<>(dirWrappers.get(output).getCreatedFiles()));
+
+        if (merger.shouldMerge() == false) {
+          continue; // this output is empty; commit will drop it
+        }
+        totalDocs += outInfo.info.maxDoc();
+
+        if (packageMergedSegment(merge, mergePolicy, outInfo, context) == false) {
+          return 0;
+        }
+      }
+
+      if (commitMerge(merge, merge.getMergeInfos(), docMapsPerOutput) == false) {
+        return 0;
+      }
+      success = true;
+    } finally {
+      // A net for the paths that did not reach the call above; the shared set makes it a no-op
+      // for anything already finished.
+      for (SegmentMerger merger : mergers) {
+        merger.cleanupMerge(finishedVectorReaders);
+      }
+      if (success == false) {
+        closeMergeReaders(merge, true, false);
+      }
+    }
+    return totalDocs;
+  }
+
+  /**
    * Does the actual (time-consuming) work of the merge, but without holding synchronized lock on
    * IndexWriter instance
    */
   private int mergeMiddle(MergePolicy.OneMerge merge, MergePolicy mergePolicy) throws IOException {
+    if (merge.isPartitioned()) {
+      return multiOutputMergeMiddle(merge, mergePolicy);
+    }
     testPoint("mergeMiddleStart");
     merge.checkAborted();
 
@@ -5235,15 +5727,7 @@ public class IndexWriter
     // closed:
     boolean success = false;
     try {
-      merge.initMergeReaders(
-          sci -> {
-            final ReadersAndUpdates rld = getPooledInstance(sci, true);
-            rld.setIsMerging();
-            synchronized (this) {
-              return rld.getReaderForMerge(
-                  context, mr -> deleter.incRef(mr.reader.getSegmentInfo().files()));
-            }
-          });
+      initMergeReaders(merge, context);
       // Let the merge wrap readers
       List<CodecReader> mergeReaders = new ArrayList<>();
       Counter softDeleteCount = Counter.newCounter(false);
@@ -5432,100 +5916,15 @@ public class IndexWriter
 
       assert merge.info.info.maxDoc() > 0;
 
-      // Very important to do this before opening the reader
-      // because codec must know if prox was written for
-      // this segment:
-      boolean useCompoundFile;
-      synchronized (this) { // Guard segmentInfos
-        useCompoundFile =
-            merge
-                .getMergeInfo()
-                .info
-                .getCodec()
-                .compoundFormat()
-                .useCompoundFile(mergePolicy.size(merge.getMergeInfo(), this), mergePolicy);
-      }
-
-      if (useCompoundFile) {
-        Collection<String> filesToRemove = merge.info.files();
-        // NOTE: Creation of the CFS file must be performed with the original
-        // directory rather than with the merging directory, so that it is not
-        // subject to merge throttling.
-        TrackingDirectoryWrapper trackingCFSDir = new TrackingDirectoryWrapper(directory);
-        try {
-          createCompoundFile(
-              infoStream, trackingCFSDir, merge.info.info, context, this::deleteNewFiles);
-        } catch (Throwable t) {
-          try {
-            synchronized (this) {
-              if (merge.isAborted()) {
-                // This can happen if rollback is called while we were building
-                // our CFS -- fall through to logic below to remove the non-CFS
-                // merged files:
-                if (infoStream.isEnabled("IW")) {
-                  infoStream.message(
-                      "IW", "hit merge abort exception creating compound file during merge: " + t);
-                }
-                return 0;
-              } else {
-                handleMergeException(t, merge);
-              }
-            }
-          } finally {
-            if (infoStream.isEnabled("IW")) {
-              infoStream.message("IW", "hit exception creating compound file during merge: " + t);
-            }
-            // Safe: these files must exist
-            deleteNewFiles(merge.info.files());
-          }
-        }
-
-        // So that, if we hit exc in deleteNewFiles (next)
-        // or in commitMerge (later), we close the
-        // per-segment readers in the finally clause below:
-        success = false;
-
-        synchronized (this) {
-
-          // delete new non cfs files directly: they were never
-          // registered with IFD
-          deleteNewFiles(filesToRemove);
-
-          if (merge.isAborted()) {
-            if (infoStream.isEnabled("IW")) {
-              infoStream.message("IW", "abort merge after building CFS");
-            }
-            // Safe: these files must exist
-            deleteNewFiles(merge.info.files());
-            return 0;
-          }
-        }
-
-        merge.info.info.setUseCompoundFile(true);
-      } else {
-        // So that, if we hit exc in commitMerge (later),
-        // we close the per-segment readers in the finally
-        // clause below:
-        success = false;
-      }
-
       merge.setMergeInfo(merge.info);
 
-      // Have codec write SegmentInfo.  Must do this after
-      // creating CFS so that 1) .si isn't slurped into CFS,
-      // and 2) .si reflects useCompoundFile=true change
-      // above:
-      try {
-        codec.segmentInfoFormat().write(directory, merge.info.info, context);
-      } catch (Throwable t) {
-        // Safe: these files must exist
-        deleteNewFiles(merge.info.files());
-        throw t;
-      }
+      // So that, if we hit an exception below or in commitMerge (later), we close the
+      // per-segment readers in the finally clause below:
+      success = false;
 
-      // TODO: ideally we would freeze merge.info here!!
-      // because any changes after writing the .si will be
-      // lost...
+      if (packageMergedSegment(merge, mergePolicy, merge.info, context) == false) {
+        return 0;
+      }
 
       if (infoStream.isEnabled("IW")) {
         infoStream.message(
@@ -5535,20 +5934,6 @@ public class IndexWriter
                 "merged segment size=%.3f MB vs estimate=%.3f MB",
                 merge.info.sizeInBytes() / 1024. / 1024.,
                 merge.estimatedMergeBytes / 1024. / 1024.));
-      }
-
-      final IndexReaderWarmer mergedSegmentWarmer = config.getMergedSegmentWarmer();
-      if (readerPool.isReaderPoolingEnabled() && mergedSegmentWarmer != null) {
-        final ReadersAndUpdates rld = getPooledInstance(merge.info, true);
-        final SegmentReader sr = rld.getReader(IOContext.DEFAULT);
-        try {
-          mergedSegmentWarmer.warm(sr);
-        } finally {
-          synchronized (this) {
-            rld.release(sr);
-            release(rld);
-          }
-        }
       }
 
       if (!commitMerge(merge, docMaps)) {

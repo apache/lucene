@@ -287,6 +287,36 @@ public class MergeState {
     return docMapBuilder.build();
   }
 
+  /**
+   * A copy of {@code other} that maps documents differently: same inputs, same fields, same
+   * everything a format reads, but a different view of where each document ends up.
+   *
+   * <p>This exists for a merge writing several outputs from one pass, which needs the same readers
+   * addressed in the whole merged document space rather than in one output's. Copying keeps that
+   * caller out of the constructor below, whose argument list is long enough that a caller passing
+   * the fields through by hand is one reordering away from a silent bug.
+   */
+  MergeState(MergeState other, DocMap[] docMaps, boolean needsIndexSort) {
+    this(
+        docMaps,
+        other.segmentInfo,
+        other.mergeFieldInfos,
+        other.storedFieldsReaders,
+        other.termVectorsReaders,
+        other.normsProducers,
+        other.docValuesProducers,
+        other.fieldInfos,
+        other.liveDocs,
+        other.fieldsProducers,
+        other.pointsReaders,
+        other.knnVectorsReaders,
+        other.maxDocs,
+        other.infoStream,
+        other.intraMergeTaskExecutor,
+        needsIndexSort,
+        other.oneMerge);
+  }
+
   /** Create a new merge instance. */
   public MergeState(
       DocMap[] docMaps,
