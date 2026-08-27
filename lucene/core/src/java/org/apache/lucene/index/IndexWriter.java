@@ -2010,6 +2010,15 @@ public class IndexWriter
     if (value == null) {
       throw new IllegalArgumentException("cannot update a field to a null value: " + field);
     }
+    // Checked before the doc-values-type check below: an index sort field is never binary, so this
+    // would otherwise surface as a less clear doc-values-type mismatch.
+    if (config.getIndexSortFields().contains(field)) {
+      throw new IllegalArgumentException(
+          "cannot update docvalues field involved in the index sort, field="
+              + field
+              + ", sort="
+              + config.getIndexSort());
+    }
     globalFieldNumberMap.verifyOrCreateDvOnlyField(field, DocValuesType.BINARY, true);
     try {
       return maybeProcessEvents(

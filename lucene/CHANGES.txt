@@ -140,6 +140,9 @@ Bug Fixes
 
 * GITHUB#16546: Prevent RangeBulkScorer from passing empty ranges to LeafCollector. (jxy)
 
+* GITHUB#16565: IndexWriter#updateBinaryDocValue now rejects updating a field that is part of the
+  index sort, matching IndexWriter#updateNumericDocValue. (Jim Ferenczi)
+
 * GITHUB#16450: Fix DocValuesRangeIterator.docIDRunEnd() returning incorrect run boundaries,
   causing bulk-scoring to skip or mis-score documents in range and ordinal set queries.
   (Parker Timmins)
