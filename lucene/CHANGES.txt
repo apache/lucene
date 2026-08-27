@@ -146,6 +146,8 @@ New Features
 
 * GITHUB#16383: Add fp16 vector encoding support. (Pulkit Gupta)
 
+* GITHUB#16473: Add scalar quantization support in Fp16 vector encoding. (Pulkit Gupta)
+
 Improvements
 ---------------------
 * GITHUB#15704: Replace LinkedList with more efficient data structure. (Renato Haeberli)
@@ -217,6 +219,13 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#16552: Reconnect HNSW nodes whose out-degree decays across successive
+  merge-reuse generations, preventing progressive recall loss under low delete
+  rates. (Ethan Baker)
+
+* GITHUB#16565: IndexWriter#updateBinaryDocValue now rejects updating a field that is part of the
+  index sort, matching IndexWriter#updateNumericDocValue. (Jim Ferenczi)
+
 * GITHUB#15239: BatchScoreBulkScorer and DenseConjunctionBulkScorer no longer skip hits from
   setMinCompetitiveScore when the search ScoreMode is exhaustive. Nested TopScoreDocCollectors can
   still track a competitive threshold without dropping matches from an outer COMPLETE collector.
