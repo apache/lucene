@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.index;
 
+import org.apache.lucene.codecs.DocValuesProducer;
+import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 
@@ -64,6 +67,44 @@ final class DocRangeCodecReader extends FilterCodecReader {
   @Override
   public int numDocs() {
     return numDocs;
+  }
+
+  /**
+   * Doc values restricted to the range rather than merely masked.
+   *
+   * <p>Masking is enough for correctness but not for cost: a merge reads a field's values with
+   * {@link DocValuesIterator#nextDoc()} and discards whatever the document map sends to {@code -1},
+   * having already decoded it. Each output of a partitioned merge would therefore read every
+   * document's values to keep its own share, and k outputs would read the segment k times. Seeking
+   * to the range instead makes the outputs together read it once.
+   */
+  @Override
+  public DocValuesProducer getDocValuesReader() {
+    final DocValuesProducer values = in.getDocValuesReader();
+    if (values == null) {
+      return null;
+    }
+    return new DocRangeDocValuesProducer(values, start, end);
+  }
+
+  /** Norms restricted to the range, for the same reason as the doc values above. */
+  @Override
+  public NormsProducer getNormsReader() {
+    final NormsProducer norms = in.getNormsReader();
+    if (norms == null) {
+      return null;
+    }
+    return new DocRangeNormsProducer(norms, start, end);
+  }
+
+  /** Vector values restricted to the range, for the same reason as the doc values above. */
+  @Override
+  public KnnVectorsReader getVectorReader() {
+    final KnnVectorsReader vectors = in.getVectorReader();
+    if (vectors == null) {
+      return null;
+    }
+    return new DocRangeKnnVectorsReader(vectors, start, end);
   }
 
   @Override

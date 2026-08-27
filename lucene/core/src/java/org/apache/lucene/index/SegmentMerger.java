@@ -364,7 +364,8 @@ final class SegmentMerger {
    */
   void cleanupMerge(Set<KnnVectorsReader> finished) throws IOException {
     for (KnnVectorsReader reader : mergeState.knnVectorsReaders) {
-      if (reader != null && finished.add(reader)) {
+      // Keyed on the reader underneath: every output of a partitioned merge narrows the same one.
+      if (reader != null && finished.add(DocRangeKnnVectorsReader.unwrap(reader))) {
         reader.finishMerge();
       }
     }
