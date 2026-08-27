@@ -84,7 +84,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
       if (minScorerCost >= this.filter.cost
           || (allScorers.length > 4 && this.cost >= this.filter.cost)) {
         this.filterMatches = new FixedBitSet(INNER_WINDOW_SIZE);
-        this.filterMatchesBits = new OffsetBits(filterMatches, maxDoc);
+        this.filterMatchesBits = new OffsetBits(filterMatches);
       }
     }
   }
@@ -365,9 +365,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
     scoreNonEssentialClauses(collector, docAndScoreAccBuffer, firstEssentialScorer);
   }
 
-  /**
-   * A wrapper around {@link FixedBitSet} that supports setting an offset.
-   */
+  /** A wrapper around {@link FixedBitSet} that supports setting an offset. */
   private static final class OffsetBits implements Bits {
     private final FixedBitSet bits;
     private int offset;
