@@ -49,13 +49,17 @@ public class TestMultiCollector extends LuceneTestCase {
   public void testSimpleCollectorWrappingTopScoreDocCollector() throws Exception {
     try (Directory dir = newDirectory();
         RandomIndexWriter w = new RandomIndexWriter(random(), dir)) {
+      // The Document is deliberately reused and never cleared: document i ends up carrying
+      // bar0..bari, so "bar1" matches 999 documents, each with a different norm and therefore a
+      // different score. That is what makes the inner TopScoreDocCollector raise a competitive
+      // threshold part-way through collection.
       final Document doc = new Document();
       for (int i = 0; i < 1000; ++i) {
         doc.add(new StringField("foo", "bar" + i, Store.NO));
         w.addDocument(doc);
       }
       try (IndexReader reader = w.getReader()) {
-        final IndexSearcher searcher = newSearcher(reader, false, false, false);
+        final IndexSearcher searcher = newSearcher(reader, true, true, true);
         final TopScoreDocCollector in = new TopScoreDocCollectorManager(1, 1).newCollector();
         final AtomicInteger totalCalls = new AtomicInteger();
         final Collector out =

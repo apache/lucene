@@ -72,6 +72,7 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
   private final int maxDoc;
   private final List<DisiWrapper> iterators;
   private final SimpleScorable scorable;
+  private final boolean applyMinCompetitiveScore;
 
   private final FixedBitSet windowMatches = new FixedBitSet(WINDOW_SIZE);
   private final FixedBitSet clauseWindowMatches = new FixedBitSet(WINDOW_SIZE);
@@ -80,7 +81,8 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
   private final List<DocIdSetIterator> windowApproximations = new ArrayList<>();
   private final List<TwoPhaseIterator> windowTwoPhases = new ArrayList<>();
 
-  static DenseConjunctionBulkScorer of(List<Scorer> filters, int maxDoc, float constantScore) {
+  static DenseConjunctionBulkScorer of(
+      List<Scorer> filters, int maxDoc, float constantScore, ScoreMode scoreMode) {
     List<DocIdSetIterator> iterators = new ArrayList<>();
     List<TwoPhaseIterator> twoPhases = new ArrayList<>();
     for (Scorer filter : filters) {
@@ -91,14 +93,24 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
         iterators.add(filter.iterator());
       }
     }
-    return new DenseConjunctionBulkScorer(iterators, twoPhases, maxDoc, constantScore);
+    return new DenseConjunctionBulkScorer(iterators, twoPhases, maxDoc, constantScore, scoreMode);
+  }
+
+  /** Constructor that allows dynamic pruning, for tests and callers that never collect matches. */
+  DenseConjunctionBulkScorer(
+      List<DocIdSetIterator> iterators,
+      List<TwoPhaseIterator> twoPhases,
+      int maxDoc,
+      float constantScore) {
+    this(iterators, twoPhases, maxDoc, constantScore, ScoreMode.TOP_SCORES);
   }
 
   DenseConjunctionBulkScorer(
       List<DocIdSetIterator> iterators,
       List<TwoPhaseIterator> twoPhases,
       int maxDoc,
-      float constantScore) {
+      float constantScore,
+      ScoreMode scoreMode) {
     if (iterators.isEmpty() && twoPhases.isEmpty()) {
       throw new IllegalArgumentException("Expected one or more iterators, got 0");
     }
@@ -121,6 +133,9 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
             .thenComparingDouble(w -> w.twoPhase() == null ? 0 : w.twoPhase().matchCost()));
     this.scorable = new SimpleScorable();
     scorable.score = constantScore;
+    // Exhaustive collection must visit every match even if a nested collector calls
+    // setMinCompetitiveScore (GITHUB#15239).
+    this.applyMinCompetitiveScore = scoreMode.isExhaustive() == false;
   }
 
   @Override
@@ -145,7 +160,7 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
     }
 
     while (min < max) {
-      if (scorable.minCompetitiveScore > scorable.score) {
+      if (applyMinCompetitiveScore && scorable.minCompetitiveScore > scorable.score) {
         return DocIdSetIterator.NO_MORE_DOCS;
       }
       min = scoreWindow(collector, acceptDocs, iterators, min, max);
