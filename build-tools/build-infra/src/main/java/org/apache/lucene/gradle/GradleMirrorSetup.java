@@ -439,6 +439,7 @@ public class GradleMirrorSetup {
    * user info lives) is never copied over. Opaque URIs ({@code mailto:}, {@code jar:} etc.) have no
    * authority and are returned as-is.
    */
+  @SuppressWarnings("unused") // keep the source compatible with older Java versions (no '_').
   private static String withoutUserInfo(URI uri) {
     if (uri.isOpaque()) {
       return uri.toASCIIString();
