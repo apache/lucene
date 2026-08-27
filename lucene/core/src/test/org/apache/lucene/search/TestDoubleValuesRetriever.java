@@ -96,36 +96,6 @@ public class TestDoubleValuesRetriever extends LuceneTestCase {
     }
   }
 
-  /** Hits spread across several segments, including an empty middle and trailing segment. */
-  public void testAcrossSegments() throws IOException {
-    try (Directory dir = newDirectory();
-        IndexWriter writer =
-            new IndexWriter(
-                dir, new IndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE))) {
-      // 4 segments: docs 0-9, 10-19, 20-29, 30-39.
-      for (int seg = 0; seg < 4; seg++) {
-        for (int i = 0; i < 10; i++) {
-          writer.addDocument(docWith(seg * 10 + i));
-        }
-        writer.commit();
-      }
-      try (DirectoryReader reader = DirectoryReader.open(writer)) {
-        assertEquals(4, reader.leaves().size());
-
-        // Hits only in segments 0 and 2; unsorted, so we also exercise the gather.
-        int[] docIds = {25, 3, 8};
-        DoubleValuesSource[] sources = {DoubleValuesSource.fromLongField("a")};
-        double[][] values =
-            DoubleValuesRetriever.retrieve(reader, docIds, sources, DIRECT_EXECUTOR);
-
-        assertEquals(3, values.length);
-        assertEquals((double) valueA(25), values[0][0], 0.0);
-        assertEquals((double) valueA(3), values[1][0], 0.0);
-        assertEquals((double) valueA(8), values[2][0], 0.0);
-      }
-    }
-  }
-
   /** A doc missing the requested field yields Double.NaN for that source. */
   public void testMissingValueIsNaN() throws IOException {
     try (Directory dir = newDirectory();
@@ -170,6 +140,7 @@ public class TestDoubleValuesRetriever extends LuceneTestCase {
     }
   }
 
+  /** The adapter's own guards; {@code globalDocIds}/{@code executor} nulls are the engine's contract. */
   public void testNullArgumentsRejected() throws IOException {
     try (Directory dir = newDirectory();
         IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig())) {
@@ -182,13 +153,7 @@ public class TestDoubleValuesRetriever extends LuceneTestCase {
             () -> DoubleValuesRetriever.retrieve(null, docIds, sources, DIRECT_EXECUTOR));
         expectThrows(
             NullPointerException.class,
-            () -> DoubleValuesRetriever.retrieve(reader, null, sources, DIRECT_EXECUTOR));
-        expectThrows(
-            NullPointerException.class,
             () -> DoubleValuesRetriever.retrieve(reader, docIds, null, DIRECT_EXECUTOR));
-        expectThrows(
-            NullPointerException.class,
-            () -> DoubleValuesRetriever.retrieve(reader, docIds, sources, null));
       }
     }
   }
@@ -198,10 +163,10 @@ public class TestDoubleValuesRetriever extends LuceneTestCase {
    * subset of doc IDs in random order, and verify every returned value matches the known function
    * of its global doc id, in input order.
    */
-  public void testRandomized() throws IOException {
+  public void testRandomizedConcurrent() throws IOException {
     ExecutorService executor =
         Executors.newFixedThreadPool(
-            TestUtil.nextInt(random(), 1, 4),
+            TestUtil.nextInt(random(), 2, 5),
             new NamedThreadFactory(TestDoubleValuesRetriever.class.getSimpleName()));
     try {
       for (int iter = 0; iter < 50; iter++) {

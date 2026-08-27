@@ -18,36 +18,17 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.ReaderUtil;
 
 /**
- * Utility for retrieving {@link DoubleValuesSource} values for a set of global doc IDs (the "return
- * fields" of a set of hits), concurrently across leaves.
+ * Retrieves {@link DoubleValuesSource} values for an {@code int[]} of global doc IDs, returning a
+ * {@code double[hit][source]} grid in input order: {@code result[i][s]} is {@code sources[s]}'s
+ * value for {@code globalDocIds[i]}. The input array is not mutated.
  *
- * <p>Given an {@link IndexReader}, an {@code int[]} of global doc IDs (typically the doc IDs of a
- * page of hits, in ranking order), and one or more {@link DoubleValuesSource}s, this returns a
- * {@code double[hit][source]} grid. The result preserves input order: row {@code i} holds the
- * values for {@code globalDocIds[i]}, and column {@code s} holds the value produced by {@code
- * sources[s]}.
- *
- * <p>Internally the doc IDs are scattered to their leaves and sorted ascending within each leaf
- * (via {@link ReaderUtil#partitionByLeaf}), each leaf is processed as an independent task on the
- * supplied {@link Executor}, and the per-leaf results are gathered back into input order using the
- * ordinals tracked by {@code partitionByLeaf}. The input array is not mutated.
- *
- * <p>Documents that have no value for a given source (i.e. {@link DoubleValues#advanceExact} returns
- * {@code false}) are reported as {@link Double#NaN}.
- *
- * <p>This concrete retriever does not supply document scores, so every source must return {@code
- * false} from {@link DoubleValuesSource#needsScores()}; otherwise an {@link
- * IllegalArgumentException} is thrown.
+ * <p>A {@code DoubleValuesSource}-specific specialization of {@link ReturnFieldsRetriever}. A doc
+ * with no value for a source yields {@link Double#NaN}.
  *
  * @lucene.experimental
  */
@@ -64,14 +45,13 @@ public final class DoubleValuesRetriever {
    * @param executor executor used to process leaves concurrently
    * @return a {@code double[globalDocIds.length][sources.length]} grid, in input order; missing
    *     values are {@link Double#NaN}
+   * @throws IllegalArgumentException if any source needs scores (this retriever supplies none)
    */
   public static double[][] retrieve(
       IndexReader reader, int[] globalDocIds, DoubleValuesSource[] sources, Executor executor)
       throws IOException {
     Objects.requireNonNull(reader, "reader");
-    Objects.requireNonNull(globalDocIds, "globalDocIds");
     Objects.requireNonNull(sources, "sources");
-    Objects.requireNonNull(executor, "executor");
 
     // Rewrite the sources once against the top-level reader, as required by DoubleValuesSource.
     final IndexSearcher searcher = new IndexSearcher(reader);
@@ -87,64 +67,23 @@ public final class DoubleValuesRetriever {
       }
     }
 
-    final double[][] values = new double[globalDocIds.length][];
-    if (globalDocIds.length == 0) {
-      return values;
-    }
-
-    final List<LeafReaderContext> leaves = reader.leaves();
-    final ReaderUtil.PartitionedHits partitioned =
-        ReaderUtil.partitionByLeaf(globalDocIds, leaves);
-    final int[][] docIdsByLeaf = partitioned.docIdsByLeaf();
-    final int[][] ordinalsByLeaf = partitioned.ordinalsByLeaf();
-
-    // One task per non-empty leaf. Each task writes disjoint rows of `values` (each ordinal is
-    // unique across leaves), so no synchronization is needed.
-    final List<Callable<Void>> tasks = new ArrayList<>();
-    for (int leafIdx = 0; leafIdx < leaves.size(); leafIdx++) {
-      final int[] leafDocs = docIdsByLeaf[leafIdx];
-      if (leafDocs.length == 0) {
-        continue;
-      }
-      final int[] leafOrds = ordinalsByLeaf[leafIdx];
-      final LeafReaderContext leaf = leaves.get(leafIdx);
-      tasks.add(
-          () -> {
-            retrieveLeaf(leaf, leafDocs, leafOrds, rewritten, values);
-            return null;
-          });
-    }
-
-    new TaskExecutor(executor).invokeAll(tasks);
-    return values;
-  }
-
-  /**
-   * Retrieves values for a single leaf: builds one {@link DoubleValues} cursor per source, then
-   * walks the leaf's (ascending) doc IDs, writing each hit's row into {@code values} at its
-   * original input ordinal.
-   */
-  private static void retrieveLeaf(
-      LeafReaderContext leaf,
-      int[] leafDocs,
-      int[] leafOrds,
-      DoubleValuesSource[] sources,
-      double[][] values)
-      throws IOException {
-    final int docBase = leaf.docBase;
-    final DoubleValues[] cursors = new DoubleValues[sources.length];
-    for (int s = 0; s < sources.length; s++) {
-      cursors[s] = sources[s].getValues(leaf, null);
-    }
-    for (int i = 0; i < leafDocs.length; i++) {
-      final int localDoc = leafDocs[i] - docBase;
-      final double[] row = new double[sources.length];
-      for (int s = 0; s < sources.length; s++) {
-        // TODO(discuss): missing-value policy. We report NaN when a doc has no value for a source.
-        // Revisit for the abstract/visitor version.
-        row[s] = cursors[s].advanceExact(localDoc) ? cursors[s].doubleValue() : Double.NaN;
-      }
-      values[leafOrds[i]] = row;
-    }
+    return ReturnFieldsRetriever.retrieve(
+        reader,
+        globalDocIds,
+        leaf -> {
+          final DoubleValues[] cursors = new DoubleValues[rewritten.length];
+          for (int s = 0; s < rewritten.length; s++) {
+            cursors[s] = rewritten[s].getValues(leaf, null);
+          }
+          return localDoc -> {
+            final double[] row = new double[cursors.length];
+            for (int s = 0; s < cursors.length; s++) {
+              row[s] = cursors[s].advanceExact(localDoc) ? cursors[s].doubleValue() : Double.NaN;
+            }
+            return row;
+          };
+        },
+        double[][]::new,
+        executor);
   }
 }
