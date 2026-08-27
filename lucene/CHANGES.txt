@@ -477,7 +477,7 @@ Optimizations
   LatLonDocValuesQuery, XYDocValuesPointInGeometryQuery, and
   SortedNumericDocValuesSetQuery. (Costin Leau)
 
-* GITHUB#XXXX: In `TopGroupsCollector`, omit `MaxScoreCollector` when `withinGroupSort` has score
+* GITHUB#16569: In `TopGroupsCollector`, omit `MaxScoreCollector` when `withinGroupSort` has score
   as the primary field. The group max score is instead derived from `FieldDoc.fields[0]` (set by
   `RelevanceComparator`), avoiding the overhead of a parallel score-tracking collector. (Binlong Gao)
 
