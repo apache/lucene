@@ -1015,7 +1015,7 @@ public class TestDocValuesQueries extends LuceneTestCaseJupiter {
   }
 
   @Test
-  public void testRewriteWorksWithPointsButNoSkipIndex(Random random) throws IOException {
+  public void testRewriteDoesNotUsePointStatsWithoutSkipIndex(Random random) throws IOException {
     try (Directory dir = newDirectory()) {
       try (RandomIndexWriter iw = new RandomIndexWriter(random, dir)) {
         for (int i = 0; i < 100; i++) {
@@ -1026,16 +1026,20 @@ public class TestDocValuesQueries extends LuceneTestCaseJupiter {
         iw.commit();
         try (IndexReader reader = iw.getReader()) {
           final IndexSearcher searcher = new IndexSearcher(reader);
-          // Query range [0, 50] is entirely below field range [100, 199]
+          // LongField also indexes points, but point encodings can differ from
+          // doc-values (GITHUB#16573). Without a skipper, rewrite must not use
+          // point min/max. Hits are still correct via the doc-values query.
           Query query = SortedNumericDocValuesField.newSlowRangeQuery("field", 0, 50);
           Query rewritten = searcher.rewrite(query);
-          assertThat(rewritten, instanceOf(MatchNoDocsQuery.class));
+          assertThat(
+              rewritten.getClass().toString(), containsString("SortedNumericDocValuesRangeQuery"));
+          assertEquals(0, searcher.count(query));
 
-          // Query range [0, 250] covers entire field range [100, 199]
-          // and all docs have a value
           query = SortedNumericDocValuesField.newSlowRangeQuery("field", 0, 250);
           rewritten = searcher.rewrite(query);
-          assertThat(rewritten, instanceOf(MatchAllDocsQuery.class));
+          assertThat(
+              rewritten.getClass().toString(), containsString("SortedNumericDocValuesRangeQuery"));
+          assertEquals(100, searcher.count(query));
         }
       }
     }
