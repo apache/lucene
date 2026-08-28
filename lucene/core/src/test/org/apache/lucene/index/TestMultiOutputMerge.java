@@ -1095,6 +1095,72 @@ public class TestMultiOutputMerge extends LuceneTestCase {
   }
 
   /**
+   * A range reader's cursor must not walk on after being asked for a document beyond its range.
+   * {@code advanceExact} answers such a request without moving the values it wraps, so a following
+   * {@code nextDoc} would step an iterator still positioned behind the range and hand back a
+   * document a second time.
+   */
+  public void testAdvanceExactPastTheRangeEndsTheIteration() throws Exception {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = newIndexWriterConfig(analyzer);
+      iwc.setMergePolicy(NoMergePolicy.INSTANCE);
+      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+        for (int d = 0; d < PER_SEGMENT; d++) {
+          w.addDocument(doc(id(0, d), d));
+        }
+      }
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        CodecReader leaf = (CodecReader) reader.leaves().get(0).reader();
+        final int start = PER_SEGMENT / 4;
+        final int end = PER_SEGMENT / 2;
+        DocRangeCodecReader ranged = new DocRangeCodecReader(leaf, start, end);
+        FieldInfo field = ranged.getFieldInfos().fieldInfo("val");
+
+        NumericDocValues values = ranged.getDocValuesReader().getNumeric(field);
+        assertFalse("nothing is exposed past the range", values.advanceExact(end + 1));
+        assertEquals(DocValuesIterator.NO_MORE_DOCS, values.nextDoc());
+
+        // The same reader still iterates its range correctly from a fresh cursor.
+        NumericDocValues fresh = ranged.getDocValuesReader().getNumeric(field);
+        int seen = 0;
+        for (int doc = fresh.nextDoc();
+            doc != DocValuesIterator.NO_MORE_DOCS;
+            doc = fresh.nextDoc()) {
+          assertTrue("walked outside the range at " + doc, doc >= start && doc < end);
+          seen++;
+        }
+        assertEquals(end - start, seen);
+      }
+    }
+  }
+
+  /** An output owning no document here reads no terms dictionary and no points. */
+  public void testEmptyRangeReadsNothing() throws Exception {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = newIndexWriterConfig(analyzer);
+      iwc.setMergePolicy(NoMergePolicy.INSTANCE);
+      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+        for (int d = 0; d < PER_SEGMENT; d++) {
+          w.addDocument(doc(id(0, d), d));
+        }
+      }
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        CodecReader leaf = (CodecReader) reader.leaves().get(0).reader();
+        DocRangeCodecReader empty = new DocRangeCodecReader(leaf, 7, 7);
+        assertEquals(0, empty.numDocs());
+        assertNull(empty.getPostingsReader());
+        assertNull(empty.getPointsReader());
+        assertFalse(empty.getLiveDocs().get(7));
+
+        DocRangeCodecReader occupied = new DocRangeCodecReader(leaf, 7, 8);
+        assertNotNull(occupied.getPostingsReader());
+        assertTrue(occupied.getLiveDocs().get(7));
+        assertFalse(occupied.getLiveDocs().get(8));
+      }
+    }
+  }
+
+  /**
    * What the whole point of an index sort is: boundaries placed where the key changes, rather than
    * on document counts, give outputs that each own a disjoint range of that key.
    *

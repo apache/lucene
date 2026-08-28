@@ -63,6 +63,11 @@ final class DocRangeDocValuesProducer extends DocValuesProducer {
     }
 
     int nextDoc() throws IOException {
+      // advanceExact() may have left the cursor past the range without moving the values it wraps,
+      // so stop here rather than stepping an iterator that is still behind us.
+      if (doc >= end) {
+        return doc = DocValuesIterator.NO_MORE_DOCS;
+      }
       // The first call seeks to the range; the rest walk inside it. Reaching its end is the end of
       // the iteration, not a step to the next document.
       return doc = clamp(doc < start ? values.advance(start) : values.nextDoc());
