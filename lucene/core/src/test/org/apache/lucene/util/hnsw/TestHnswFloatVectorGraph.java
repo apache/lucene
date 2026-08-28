@@ -19,6 +19,7 @@ package org.apache.lucene.util.hnsw;
 
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.io.IOException;
+import java.util.Random;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.FloatVectorValues;
@@ -66,6 +67,54 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
   @Override
   MockVectorValues vectorValues(float[][] values) {
     return MockVectorValues.fromValues(values);
+  }
+
+  public void testReconnectsNodeDecayedBelowFloorDuringMerge() throws IOException {
+    // Pin vectors, both graph seeds, and similarity so the merged graph is identical every run.
+    long savedRandSeed = HnswGraphBuilder.randSeed;
+    try {
+      HnswGraphBuilder.randSeed = 42;
+      similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
+      int M = 16;
+      int beamWidth = 100;
+      int size = 128;
+      int dim = 16;
+      MockVectorValues vectors =
+          MockVectorValues.fromValues(createRandomFloatVectors(size, dim, new Random(42)));
+      RandomVectorScorerSupplier supplier = buildScorerSupplier(vectors);
+      OnHeapHnswGraph graph = HnswGraphBuilder.create(supplier, M, beamWidth, 42).build(size);
+
+      int entry = graph.entryNode();
+      int target = entry == 0 ? 1 : 0;
+
+      // Degree 10, below the floor (0.5 * 2M = 16). Deleting one neighbor leaves 9: too small a
+      // loss for the per-merge check, but below the floor, so only the cumulative check flags it.
+      int degreeBefore = 10;
+      NeighborArray targetNeighbors = graph.getNeighbors(0, target);
+      targetNeighbors.clear();
+      for (int node = 0, added = 0; added < degreeBefore; node++) {
+        if (node != target && node != entry) {
+          targetNeighbors.addOutOfOrder(node, Float.NaN);
+          added++;
+        }
+      }
+      int deleted = targetNeighbors.nodes()[0];
+      int[] newOrdMap = new int[size];
+      for (int i = 0; i < size; i++) {
+        newOrdMap[i] = i;
+      }
+      newOrdMap[deleted] = -1;
+
+      OnHeapHnswGraph merged =
+          InitializedHnswGraphBuilder.initGraph(graph, newOrdMap, size, beamWidth, supplier);
+
+      // Old per-merge-only check leaves the target at 9; the cumulative check reconnects it.
+      assertTrue(
+          "target below the cumulative floor should be reconnected during merge",
+          merged.getNeighbors(0, target).size() >= degreeBefore);
+    } finally {
+      HnswGraphBuilder.randSeed = savedRandSeed;
+    }
   }
 
   @Override
