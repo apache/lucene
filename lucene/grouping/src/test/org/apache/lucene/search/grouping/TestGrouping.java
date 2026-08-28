@@ -386,6 +386,8 @@ public class TestGrouping extends LuceneTestCase {
     assertFalse(topGroups.isEmpty());
 
     Sort withinGroupSort = new Sort(new SortField("id", SortField.Type.INT));
+    // totalHitsThresholdPerGroup=1 (=maxDocsPerGroup): per-group hit counts may be
+    // reported as GREATER_THAN_OR_EQUAL_TO once the threshold fires.
     TopGroups<BytesRef> approxGroups =
         toByteTopGroups(
             searcher.search(
@@ -399,7 +401,7 @@ public class TestGrouping extends LuceneTestCase {
                     0,
                     1,
                     false,
-                    false)));
+                    1)));
 
     assertEquals(2, approxGroups.groups.length);
     assertEquals(6, approxGroups.totalHitCount);
@@ -496,15 +498,7 @@ public class TestGrouping extends LuceneTestCase {
             searcher.search(
                 query,
                 createSecondPassCollectorManager(
-                    true,
-                    groupField,
-                    topGroups,
-                    Sort.RELEVANCE,
-                    withinGroupSort,
-                    0,
-                    1,
-                    false,
-                    false)));
+                    true, groupField, topGroups, Sort.RELEVANCE, withinGroupSort, 0, 1, false, 1)));
 
     assertEquals(2, result.groups.length);
 
@@ -566,7 +560,7 @@ public class TestGrouping extends LuceneTestCase {
         withinGroupOffset,
         maxDocsPerGroup,
         getMaxScores,
-        false);
+        Integer.MAX_VALUE);
   }
 
   // Basically converts searchGroups from MutableValue to BytesRef if grouping by ValueSource
@@ -579,7 +573,7 @@ public class TestGrouping extends LuceneTestCase {
       int withinGroupOffset,
       int maxDocsPerGroup,
       boolean getMaxScores,
-      boolean exactTotalHitsPerGroup)
+      int totalHitsThresholdPerGroup)
       throws IOException {
     if (isTermGroupSelector) {
       return new TopGroupsCollectorManager<>(
@@ -590,7 +584,7 @@ public class TestGrouping extends LuceneTestCase {
           withinGroupOffset,
           maxDocsPerGroup,
           getMaxScores,
-          exactTotalHitsPerGroup,
+          totalHitsThresholdPerGroup,
           TopGroups.ScoreMergeMode.None);
     } else {
       ValueSource vs = new BytesRefFieldSource(groupField);
@@ -615,7 +609,7 @@ public class TestGrouping extends LuceneTestCase {
           withinGroupOffset,
           maxDocsPerGroup,
           getMaxScores,
-          exactTotalHitsPerGroup,
+          totalHitsThresholdPerGroup,
           TopGroups.ScoreMergeMode.None);
     }
   }
