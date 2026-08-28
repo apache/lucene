@@ -73,8 +73,7 @@ public class TestReturnFieldsRetriever extends LuceneTestCase {
   public void testStringPayloadPreservesInputOrder() throws IOException {
     try (Directory dir = newDirectory();
         IndexWriter writer =
-            new IndexWriter(
-                dir, new IndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE))) {
+            new IndexWriter(dir, new IndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE))) {
       // 3 segments: docs 0-9, 10-19, 20-29.
       for (int seg = 0; seg < 3; seg++) {
         for (int i = 0; i < 10; i++) {
@@ -155,12 +154,10 @@ public class TestReturnFieldsRetriever extends LuceneTestCase {
                     reader, docIds, null, String[]::new, DIRECT_EXECUTOR));
         expectThrows(
             NullPointerException.class,
-            () ->
-                ReturnFieldsRetriever.retrieve(reader, docIds, factory, null, DIRECT_EXECUTOR));
+            () -> ReturnFieldsRetriever.retrieve(reader, docIds, factory, null, DIRECT_EXECUTOR));
         expectThrows(
             NullPointerException.class,
-            () ->
-                ReturnFieldsRetriever.retrieve(reader, docIds, factory, String[]::new, null));
+            () -> ReturnFieldsRetriever.retrieve(reader, docIds, factory, String[]::new, null));
       }
     }
   }

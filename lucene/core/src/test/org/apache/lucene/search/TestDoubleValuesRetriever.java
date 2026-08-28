@@ -70,7 +70,9 @@ public class TestDoubleValuesRetriever extends LuceneTestCase {
     }
   }
 
-  /** Single segment, multiple sources, deliberately unsorted input: output must be in input order. */
+  /**
+   * Single segment, multiple sources, deliberately unsorted input: output must be in input order.
+   */
   public void testPreservesInputOrder() throws IOException {
     try (Directory dir = newDirectory();
         IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig())) {
@@ -133,14 +135,15 @@ public class TestDoubleValuesRetriever extends LuceneTestCase {
         DoubleValuesSource[] sources = {DoubleValuesSource.SCORES};
         expectThrows(
             IllegalArgumentException.class,
-            () ->
-                DoubleValuesRetriever.retrieve(
-                    reader, new int[] {0}, sources, DIRECT_EXECUTOR));
+            () -> DoubleValuesRetriever.retrieve(reader, new int[] {0}, sources, DIRECT_EXECUTOR));
       }
     }
   }
 
-  /** The adapter's own guards; {@code globalDocIds}/{@code executor} nulls are the engine's contract. */
+  /**
+   * The adapter's own guards; {@code globalDocIds}/{@code executor} nulls are the engine's
+   * contract.
+   */
   public void testNullArgumentsRejected() throws IOException {
     try (Directory dir = newDirectory();
         IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig())) {
@@ -204,8 +207,7 @@ public class TestDoubleValuesRetriever extends LuceneTestCase {
             DoubleValuesSource[] sources = {
               DoubleValuesSource.fromLongField("a"), DoubleValuesSource.fromLongField("b")
             };
-            double[][] values =
-                DoubleValuesRetriever.retrieve(reader, docIds, sources, executor);
+            double[][] values = DoubleValuesRetriever.retrieve(reader, docIds, sources, executor);
 
             assertArrayEquals("input array must not be mutated", inputCopy, docIds);
             assertEquals(docIds.length, values.length);

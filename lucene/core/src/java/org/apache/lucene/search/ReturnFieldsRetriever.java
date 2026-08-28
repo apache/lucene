@@ -31,12 +31,13 @@ import org.apache.lucene.index.ReaderUtil;
 /**
  * Generic engine for computing per-hit "return fields": given an {@link IndexReader} and an {@code
  * int[]} of global doc IDs (in any order), it produces one result per hit and returns them in input
- * order ({@code result[i]} is the value for {@code globalDocIds[i]}). The input array is not mutated.
+ * order ({@code result[i]} is the value for {@code globalDocIds[i]}). The input array is not
+ * mutated.
  *
  * <p>It owns the scatter/gather machinery (partition via {@link ReaderUtil#partitionByLeaf}, run
- * leaves on the {@link Executor}, gather back to input order) but is agnostic about <em>what</em> is
- * produced per hit: the caller supplies a {@link LeafVisitorFactory} that turns a document into a
- * value of type {@code T}.
+ * leaves on the {@link Executor}, gather back to input order) but is agnostic about <em>what</em>
+ * is produced per hit: the caller supplies a {@link LeafVisitorFactory} that turns a document into
+ * a value of type {@code T}.
  *
  * <p><b>Concurrency contract.</b> Leaves run concurrently, so {@link
  * LeafVisitorFactory#newLeafVisitor} must return a <em>fresh</em>, single-threaded {@link
@@ -112,8 +113,7 @@ public final class ReturnFieldsRetriever {
     }
 
     final List<LeafReaderContext> leaves = reader.leaves();
-    final ReaderUtil.PartitionedHits partitioned =
-        ReaderUtil.partitionByLeaf(globalDocIds, leaves);
+    final ReaderUtil.PartitionedHits partitioned = ReaderUtil.partitionByLeaf(globalDocIds, leaves);
     final int[][] docIdsByLeaf = partitioned.docIdsByLeaf();
     final int[][] ordinalsByLeaf = partitioned.ordinalsByLeaf();
 
