@@ -38,6 +38,7 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockSynonymFilter;
+import org.apache.lucene.tests.analysis.MockTokenFilter;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.IOUtils;
@@ -433,5 +434,25 @@ public class TestMultiFieldQueryParser extends LuceneTestCase {
     assertEquals(
         "+((field1:foo)^2.0 field2:foo) +((field1:bar)^2.0 field2:bar)",
         parser.parse(queryText).toString());
+  }
+
+  public void testDefaultOperatorAppliesStopwordNextToTerm() throws Exception {
+    MultiFieldQueryParser parser =
+        new MultiFieldQueryParser(
+            new String[] {"field1", "field2"},
+            new MockAnalyzer(
+                random(), MockTokenizer.WHITESPACE, true, MockTokenFilter.ENGLISH_STOPSET));
+    parser.setDefaultOperator(QueryParserBase.AND_OPERATOR);
+
+    String expected = "+(field1:foo field2:foo) +(field1:bar field2:bar)";
+
+    // Baseline
+    assertEquals(expected, parser.parse("+foo bar").toString());
+
+    // The issue: "the" is dropped by the analyzer, so "bar the" reaches getFieldQuery as one chunk
+    // that
+    // analyzes to a single term, hence in getMultiFieldQuery maxTerms = 1 and we are back
+    // to addMultiTermClauses issue where default operator is ignored
+    assertEquals(expected, parser.parse("+foo bar the").toString());
   }
 }
