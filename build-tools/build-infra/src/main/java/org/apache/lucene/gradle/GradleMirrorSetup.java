@@ -110,6 +110,12 @@ public class GradleMirrorSetup {
   /** Used when {@code networkTimeout} is not set in {@code gradle-wrapper.properties}. */
   private static final int DEFAULT_NETWORK_TIMEOUT_MILLIS = (int) TimeUnit.SECONDS.toMillis(10);
 
+  /**
+   * Read timeout while a download is actively streaming. Deliberately much larger than the connect
+   * timeout.
+   */
+  private static final int READ_TIMEOUT_MILLIS = (int) TimeUnit.SECONDS.toMillis(60);
+
   private static final Pattern DISTRIBUTION_NAME =
       Pattern.compile("gradle-(?<version>.+?)-(bin|all)\\.zip");
   private static final Pattern PLACEHOLDER = Pattern.compile("\\$\\{(?<varname>[^}]*)\\}");
@@ -462,14 +468,14 @@ public class GradleMirrorSetup {
   }
 
   /** Downloads to a temporary ".part" file first; retries a few times on failures. */
-  private void download(URI uri, Path target, int timeout) throws Exception {
+  private void download(URI uri, Path target, int connectTimeout) throws Exception {
     Path part = target.resolveSibling(target.getFileName() + ".part");
     for (int attempt = 1; ; attempt++) {
       try {
         // Proxies are configured using the standard HTTP(S) proxy system properties.
         URLConnection conn = uri.toURL().openConnection();
-        conn.setConnectTimeout(timeout);
-        conn.setReadTimeout(timeout);
+        conn.setConnectTimeout(connectTimeout);
+        conn.setReadTimeout(READ_TIMEOUT_MILLIS);
         if (conn instanceof HttpURLConnection
             && ((HttpURLConnection) conn).getResponseCode() != HttpURLConnection.HTTP_OK) {
           throw new IOException(
