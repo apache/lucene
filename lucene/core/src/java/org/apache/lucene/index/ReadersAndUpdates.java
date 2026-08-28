@@ -173,7 +173,8 @@ final class ReadersAndUpdates {
 
   /**
    * Copies of the currently-pending (resolved but not yet written) doc-values updates, keyed by
-   * field, so callers can iterate without holding the lock.
+   * field. Returning copies lets the merge carry-over iterate them, and do its disk I/O, without
+   * holding this monitor; IndexWriter still coordinates the carry-over for correctness.
    */
   synchronized Map<String, List<DocValuesFieldUpdates>> getPendingDVUpdatesSnapshot() {
     Map<String, List<DocValuesFieldUpdates>> copy = new HashMap<>();

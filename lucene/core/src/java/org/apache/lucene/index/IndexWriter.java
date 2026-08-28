@@ -4673,14 +4673,10 @@ public class IndexWriter
       Object curVal;
       Object baseVal;
       if (binary) {
-        curVal =
-            (curB != null && curB.advanceExact(doc))
-                ? BytesRef.deepCopyOf(curB.binaryValue())
-                : DV_NO_VALUE;
-        baseVal =
-            (baseB != null && baseB.advanceExact(doc))
-                ? BytesRef.deepCopyOf(baseB.binaryValue())
-                : DV_NO_VALUE;
+        // Live BytesRefs suffice to compare; only a changed value is copied, below, when it is
+        // stored.
+        curVal = (curB != null && curB.advanceExact(doc)) ? curB.binaryValue() : DV_NO_VALUE;
+        baseVal = (baseB != null && baseB.advanceExact(doc)) ? baseB.binaryValue() : DV_NO_VALUE;
       } else {
         curVal =
             (curN != null && curN.advanceExact(doc)) ? Long.valueOf(curN.longValue()) : DV_NO_VALUE;
@@ -4696,7 +4692,7 @@ public class IndexWriter
       if (curVal == DV_NO_VALUE) {
         p.reset(md);
       } else if (binary) {
-        ((BinaryDocValuesFieldUpdates) p).add(md, (BytesRef) curVal);
+        ((BinaryDocValuesFieldUpdates) p).add(md, BytesRef.deepCopyOf((BytesRef) curVal));
       } else {
         ((NumericDocValuesFieldUpdates) p).add(md, (Long) curVal);
       }

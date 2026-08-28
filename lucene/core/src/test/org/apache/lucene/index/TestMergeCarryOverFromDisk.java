@@ -109,8 +109,8 @@ public class TestMergeCarryOverFromDisk extends LuceneTestCase {
     // output.
     dir.mergeStarted.await();
 
-    // Update numeric + binary values on docs in the now-merging segments, and reset one, then
-    // resolve them to the segments (and disk) by reopening a reader from the writer.
+    // Update numeric + binary values on docs in the now-merging segments, then resolve them to the
+    // segments (and disk) by reopening a reader from the writer.
     writer.updateNumericDocValue(new Term("id", "1"), "ndv", 101L);
     writer.updateNumericDocValue(new Term("id", "5"), "ndv", 105L);
     writer.updateBinaryDocValue(new Term("id", "2"), "bdv", new BytesRef("updated-2"));
