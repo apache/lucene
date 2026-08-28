@@ -1741,9 +1741,11 @@ public class IndexWriter
                           case BINARY:
                             return new BinaryDocValuesFieldUpdates(
                                 nextGen, k, rld.info.info.maxDoc());
+                          case SORTED_NUMERIC:
+                            return new NumericDocValuesFieldUpdates(
+                                nextGen, k, DocValuesType.SORTED_NUMERIC, rld.info.info.maxDoc());
                           case NONE:
                           case SORTED:
-                          case SORTED_NUMERIC:
                           case SORTED_SET:
                           default:
                             throw new AssertionError("type: " + update.type + " is not supported");
@@ -1759,10 +1761,13 @@ public class IndexWriter
                     docValuesFieldUpdates.add(
                         leafDocId, ((BinaryDocValuesUpdate) update).getValue());
                     break;
+                  case SORTED_NUMERIC:
+                    docValuesFieldUpdates.add(
+                        leafDocId, ((NumericDocValuesUpdate) update).getValue());
+                    break;
                   case NONE:
                   case SORTED:
                   case SORTED_SET:
-                  case SORTED_NUMERIC:
                   default:
                     throw new AssertionError("type: " + update.type + " is not supported");
                 }
@@ -2018,6 +2023,45 @@ public class IndexWriter
   }
 
   /**
+   * Updates a document's {@link org.apache.lucene.index.SortedNumericDocValues} for <code>field
+   * </code> to the given <code>value</code>. You can only update fields that already exist in the
+   * index, not add new fields through this method. You can only update fields that were indexed
+   * only with doc values.
+   *
+   * <p><b>NOTE:</b> only single-valued updates are supported: a single-valued sorted-numeric field
+   * is stored as a numeric column, so it can be updated in place. The update replaces the value of
+   * all affected documents.
+   *
+   * @param term the term to identify the document(s) to be updated
+   * @param field field name of the {@link org.apache.lucene.index.SortedNumericDocValues} field
+   * @param value new value for the field
+   * @return The <a href="#sequence_number">sequence number</a> for this operation
+   * @throws CorruptIndexException if the index is corrupt
+   * @throws IOException if there is a low-level IO error
+   */
+  public long updateSortedNumericDocValue(Term term, String field, long value) throws IOException {
+    ensureOpen();
+    // Checked before the doc-values-type check below, mirroring updateNumericDocValue/
+    // updateBinaryDocValue, so an index-sort field surfaces this clear message.
+    if (config.getIndexSortFields().contains(field)) {
+      throw new IllegalArgumentException(
+          "cannot update docvalues field involved in the index sort, field="
+              + field
+              + ", sort="
+              + config.getIndexSort());
+    }
+    globalFieldNumberMap.verifyOrCreateDvOnlyField(field, DocValuesType.SORTED_NUMERIC, true);
+    try {
+      return maybeProcessEvents(
+          docWriter.updateDocValues(
+              new NumericDocValuesUpdate(DocValuesType.SORTED_NUMERIC, term, field, value)));
+    } catch (Error tragedy) {
+      tragicEvent(tragedy, "updateSortedNumericDocValue");
+      throw tragedy;
+    }
+  }
+
+  /**
    * Updates documents' DocValues fields to the given values. Each field update is applied to the
    * set of documents that are associated with the {@link Term} to the same value. All updates are
    * atomically applied and flushed together. If a doc values fields data is <code>null</code> the
@@ -2072,13 +2116,26 @@ public class IndexWriter
         case BINARY:
           dvUpdates[i] = new BinaryDocValuesUpdate(term, f.name(), f.binaryValue());
           break;
+        case SORTED_NUMERIC:
+          // Only single-valued sorted-numeric updates are supported (a single-valued sorted-numeric
+          // field is stored as a numeric column, so it reuses the numeric update path).
+          Number snValue = f.numericValue();
+          dvUpdates[i] =
+              new NumericDocValuesUpdate(
+                  DocValuesType.SORTED_NUMERIC,
+                  term,
+                  f.name(),
+                  snValue == null ? null : snValue.longValue());
+          break;
         case NONE:
         case SORTED:
-        case SORTED_NUMERIC:
         case SORTED_SET:
         default:
           throw new IllegalArgumentException(
-              "can only update NUMERIC or BINARY fields: field=" + f.name() + ", type=" + dvType);
+              "can only update NUMERIC, BINARY or (single-valued) SORTED_NUMERIC fields: field="
+                  + f.name()
+                  + ", type="
+                  + dvType);
       }
     }
     return dvUpdates;
@@ -4526,10 +4583,17 @@ public class IndexWriter
                     new BinaryDocValuesFieldUpdates(
                         updates.delGen, updates.field, merge.info.info.maxDoc());
                 break;
+              case SORTED_NUMERIC:
+                mappedUpdates =
+                    new NumericDocValuesFieldUpdates(
+                        updates.delGen,
+                        updates.field,
+                        DocValuesType.SORTED_NUMERIC,
+                        merge.info.info.maxDoc());
+                break;
               case NONE:
               case SORTED:
               case SORTED_SET:
-              case SORTED_NUMERIC:
               default:
                 throw new AssertionError();
             }

@@ -199,7 +199,7 @@ class SegmentDocValuesProducer extends DocValuesProducer {
     return new OverlayBinaryDocValues(layers);
   }
 
-  // sorted/sorted-set/sorted-numeric and skippers are never overlaid: only numeric/binary values
+  // sorted/sorted-set and skippers are never overlaid: only numeric/binary/sorted-numeric values
   // can be updated in place, so these always have a single producer.
   private DocValuesProducer single(FieldInfo field) {
     DocValuesProducer[] producers = dvProducersByField.get(field.number);
@@ -215,7 +215,20 @@ class SegmentDocValuesProducer extends DocValuesProducer {
 
   @Override
   public SortedNumericDocValues getSortedNumeric(FieldInfo field) throws IOException {
-    return single(field).getSortedNumeric(field);
+    DocValuesProducer[] producers = dvProducersByField.get(field.number);
+    assert producers != null;
+    if (producers.length == 1) {
+      return producers[0].getSortedNumeric(field);
+    }
+    // Overlaid single-valued sorted-numeric field: each generation is stored as a singleton numeric
+    // column, so unwrap the layers, overlay them (newest-doc wins), and re-wrap as a singleton.
+    NumericDocValues[] layers = new NumericDocValues[producers.length];
+    for (int i = 0; i < producers.length; i++) {
+      NumericDocValues n = DocValues.unwrapSingleton(producers[i].getSortedNumeric(field));
+      assert n != null : "overlaid sorted-numeric generation must be single-valued";
+      layers[i] = n;
+    }
+    return DocValues.singleton(new OverlayNumericDocValues(layers));
   }
 
   @Override

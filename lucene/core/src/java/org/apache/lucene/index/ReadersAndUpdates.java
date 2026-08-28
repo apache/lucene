@@ -315,7 +315,9 @@ final class ReadersAndUpdates {
       final String field = ent.getKey();
       final List<DocValuesFieldUpdates> updates = ent.getValue();
       DocValuesType type = updates.get(0).type;
-      assert type == DocValuesType.NUMERIC || type == DocValuesType.BINARY
+      assert type == DocValuesType.NUMERIC
+              || type == DocValuesType.BINARY
+              || type == DocValuesType.SORTED_NUMERIC
           : "unsupported type: " + type;
       final List<DocValuesFieldUpdates> updatesToApply = new ArrayList<>();
       long bytes = 0;
@@ -367,6 +369,24 @@ final class ReadersAndUpdates {
       // back to the dense
       // rewrite. (Skip-indexed fields can't reach here: IndexWriter rejects doc-values updates on
       // them.)
+      // A single-valued sorted-numeric field is stored as a numeric column and reuses the numeric
+      // update path; a genuinely multi-valued column can't be updated in place, so reject it here.
+      // This is the universal choke point for every update path (buffered resolve, NRT
+      // tryUpdateDocValue and merge carry-over all funnel through here), and the earliest place we
+      // hold a reader to know the column's cardinality. An active overlay (existingOverlay != null)
+      // is single-valued by construction, so we only need to check the base column.
+      if (type == DocValuesType.SORTED_NUMERIC && existingOverlay == null) {
+        SortedNumericDocValues baseDV = reader.getSortedNumericDocValues(field);
+        if (baseDV != null && DocValues.unwrapSingleton(baseDV) == null) {
+          throw new IllegalArgumentException(
+              "cannot update SORTED_NUMERIC field \""
+                  + field
+                  + "\": only single-valued sorted-numeric doc-values can be updated in place, but"
+                  + " segment "
+                  + info.info.name
+                  + " has multiple values for some documents");
+        }
+      }
       final boolean sparseDelta = config.getMaxDocValuesOverlays() > 0 && anyRemoval == false;
       // Past maxDocValuesOverlays, fold the prior deltas into this write as one sparse generation
       // (base untouched) instead of appending another.
@@ -394,9 +414,11 @@ final class ReadersAndUpdates {
             // maxDoc for sparse columns) and deltas are small by construction.
             deltaCoverage +=
                 docsWithValueCount(
-                    type == DocValuesType.BINARY
-                        ? p.getBinary(fieldInfo)
-                        : p.getNumeric(fieldInfo));
+                    switch (type) {
+                      case BINARY -> p.getBinary(fieldInfo);
+                      case SORTED_NUMERIC -> p.getSortedNumeric(fieldInfo);
+                      default -> p.getNumeric(fieldInfo);
+                    });
           }
         } catch (Throwable t) {
           // The try-with-resources below owns the normal close; close here if opening a delta fails
@@ -493,7 +515,7 @@ final class ReadersAndUpdates {
                   };
                 }
               });
-        } else {
+        } else if (type == DocValuesType.NUMERIC) {
           // write the numeric updates to a new gen'd docvalues file
           fieldsConsumer.addNumericField(
               fieldInfo,
@@ -556,6 +578,72 @@ final class ReadersAndUpdates {
                   };
                 }
               });
+        } else {
+          assert type == DocValuesType.SORTED_NUMERIC : "unsupported type: " + type;
+          // A single-valued sorted-numeric field is physically a numeric column, so we reuse the
+          // numeric merge/overlay machinery and only wrap the result as a singleton sorted-numeric
+          // at the codec boundary. Both the updates and the base column are single-valued (a
+          // multi-valued base was rejected above), so the base always unwraps to a
+          // NumericDocValues.
+          fieldsConsumer.addSortedNumericField(
+              fieldInfo,
+              new EmptyDocValuesProducer() {
+                @Override
+                public SortedNumericDocValues getSortedNumeric(FieldInfo fieldInfoIn)
+                    throws IOException {
+                  DocValuesFieldUpdates.Iterator iterator = updateSupplier.apply(fieldInfo);
+                  if (sparseDelta && compact == false) {
+                    // write only the updated docs (single-valued) as a singleton column; unchanged
+                    // docs come from the base at read time
+                    return DocValues.singleton(
+                        DocValuesFieldUpdates.Iterator.asNumericDocValues(iterator));
+                  }
+                  final SortedNumericDocValues base =
+                      compact && foldToDense == false
+                          ? overlaySortedNumeric(deltaProducers, fieldInfo)
+                          : reader.getSortedNumericDocValues(field);
+                  final NumericDocValues singletonBase = DocValues.unwrapSingleton(base);
+                  assert singletonBase != null : "sorted-numeric base column must be single-valued";
+                  // reuse the numeric merge and re-wrap as singleton
+                  final MergedDocValues<NumericDocValues> mergedDocValues =
+                      new MergedDocValues<>(
+                          singletonBase,
+                          DocValuesFieldUpdates.Iterator.asNumericDocValues(iterator),
+                          iterator);
+                  return DocValues.singleton(
+                      new NumericDocValues() {
+                        @Override
+                        public long longValue() throws IOException {
+                          return mergedDocValues.currentValuesSupplier.longValue();
+                        }
+
+                        @Override
+                        public boolean advanceExact(int target) {
+                          return mergedDocValues.advanceExact(target);
+                        }
+
+                        @Override
+                        public int docID() {
+                          return mergedDocValues.docID();
+                        }
+
+                        @Override
+                        public int nextDoc() throws IOException {
+                          return mergedDocValues.nextDoc();
+                        }
+
+                        @Override
+                        public int advance(int target) {
+                          return mergedDocValues.advance(target);
+                        }
+
+                        @Override
+                        public long cost() {
+                          return mergedDocValues.cost();
+                        }
+                      });
+                }
+              });
         }
       } finally {
         IOUtils.close(deltaProducers);
@@ -613,6 +701,23 @@ final class ReadersAndUpdates {
       layers[i] = producers.get(i).getBinary(fieldInfo);
     }
     return new OverlayBinaryDocValues(layers);
+  }
+
+  /**
+   * Fresh overlay over the delta generations of a sorted-numeric field. The delta generations are
+   * always written single-valued (sparse updates are single-valued), so each unwraps to a {@link
+   * NumericDocValues}; we overlay those and re-wrap as a singleton sorted-numeric column so the
+   * caller can keep using the numeric merge path.
+   */
+  private static SortedNumericDocValues overlaySortedNumeric(
+      List<DocValuesProducer> producers, FieldInfo fieldInfo) throws IOException {
+    NumericDocValues[] layers = new NumericDocValues[producers.size()];
+    for (int i = 0; i < layers.length; i++) {
+      NumericDocValues n = DocValues.unwrapSingleton(producers.get(i).getSortedNumeric(fieldInfo));
+      assert n != null : "sorted-numeric delta generation must be single-valued";
+      layers[i] = n;
+    }
+    return DocValues.singleton(new OverlayNumericDocValues(layers));
   }
 
   /**

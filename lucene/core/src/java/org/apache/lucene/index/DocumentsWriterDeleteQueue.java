@@ -501,6 +501,8 @@ final class DocumentsWriterDeleteQueue implements Accountable, Closeable {
       for (DocValuesUpdate update : item) {
         switch (update.type) {
           case NUMERIC:
+          case SORTED_NUMERIC:
+            // a single-valued sorted-numeric update shares the numeric update object and buffer
             bufferedUpdates.addNumericUpdate((NumericDocValuesUpdate) update, docIDUpto);
             break;
           case BINARY:
@@ -509,7 +511,6 @@ final class DocumentsWriterDeleteQueue implements Accountable, Closeable {
           case NONE:
           case SORTED:
           case SORTED_SET:
-          case SORTED_NUMERIC:
           default:
             throw new IllegalArgumentException(
                 update.type + " DocValues updates not supported yet!");
