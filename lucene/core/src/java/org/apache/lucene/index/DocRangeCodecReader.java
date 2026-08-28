@@ -70,7 +70,7 @@ final class DocRangeCodecReader extends FilterCodecReader {
    * output, and the ranges of one input partition its documents, so materialising a bit per
    * document would cost the whole segment's worth of bits once per output.
    */
-  private static final class RangeLiveDocs implements Bits {
+  static final class RangeLiveDocs implements Bits {
     private final Bits liveDocs;
     private final int start;
     private final int end;

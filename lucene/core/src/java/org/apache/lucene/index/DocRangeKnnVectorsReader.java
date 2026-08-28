@@ -76,6 +76,11 @@ final class DocRangeKnnVectorsReader extends KnnVectorsReader {
 
       @Override
       public int nextDoc() throws IOException {
+        // Once past the range, stay there rather than stepping the iterator underneath into the
+        // documents another output owns.
+        if (doc >= end) {
+          return doc = NO_MORE_DOCS;
+        }
         // The first call seeks to the range; the rest walk inside it.
         return doc = clamp(doc < start ? it.advance(start) : it.nextDoc());
       }

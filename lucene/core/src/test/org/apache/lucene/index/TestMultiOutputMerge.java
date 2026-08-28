@@ -59,6 +59,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
 
 /** Tests for merges that produce several output segments. */
 public class TestMultiOutputMerge extends LuceneTestCase {
@@ -1091,6 +1092,73 @@ public class TestMultiOutputMerge extends LuceneTestCase {
         assertEquals(expected.size(), live.size());
         assertEquals(expected, new HashSet<>(live));
       }
+    }
+  }
+
+  /**
+   * The live documents of an output are a view over the reader's own, so they must answer exactly
+   * as the bit set they replaced would have. Checked against that bit set, for {@code get} and for
+   * {@code applyMask}, which the bulk merge paths use.
+   */
+  public void testRangeLiveDocsMatchesAMaterialisedBitSet() throws Exception {
+    Random random = random();
+    for (int iter = 0; iter < 200; iter++) {
+      final int maxDoc = TestUtil.nextInt(random, 1, 400);
+      final int a = random.nextInt(maxDoc + 1);
+      final int b = random.nextInt(maxDoc + 1);
+      final int start = Math.min(a, b);
+      final int end = Math.max(a, b);
+
+      // No deletions, everything deleted, or a random scatter of them.
+      final Bits deletes;
+      switch (random.nextInt(3)) {
+        case 0 -> deletes = null;
+        case 1 -> deletes = new Bits.MatchNoBits(maxDoc);
+        default -> {
+          FixedBitSet scattered = new FixedBitSet(maxDoc);
+          for (int doc = 0; doc < maxDoc; doc++) {
+            if (random.nextBoolean()) {
+              scattered.set(doc);
+            }
+          }
+          deletes = scattered;
+        }
+      }
+
+      // What the reader used to build: a bit per document, masked by the deletions.
+      FixedBitSet expected = new FixedBitSet(maxDoc);
+      if (start < end) {
+        expected.set(start, end);
+      }
+      if (deletes != null) {
+        deletes.applyMask(expected, 0);
+      }
+
+      Bits view = new DocRangeCodecReader.RangeLiveDocs(deletes, start, end, maxDoc);
+      assertEquals(maxDoc, view.length());
+      for (int doc = 0; doc < maxDoc; doc++) {
+        assertEquals(
+            "doc " + doc + " of [" + start + "," + end + ")", expected.get(doc), view.get(doc));
+      }
+
+      // applyMask over a window that stays inside the reader, since the contract reads
+      // length() only up to the end of the window.
+      final int offset = random.nextInt(maxDoc);
+      final int window = TestUtil.nextInt(random, 1, maxDoc - offset);
+      FixedBitSet fromView = new FixedBitSet(window);
+      FixedBitSet fromBitSet = new FixedBitSet(window);
+      for (int i = 0; i < window; i++) {
+        if (random.nextBoolean()) {
+          fromView.set(i);
+          fromBitSet.set(i);
+        }
+      }
+      view.applyMask(fromView, offset);
+      expected.applyMask(fromBitSet, offset);
+      assertEquals(
+          "applyMask at offset " + offset + " window " + window + " of [" + start + "," + end + ")",
+          fromBitSet,
+          fromView);
     }
   }
 
