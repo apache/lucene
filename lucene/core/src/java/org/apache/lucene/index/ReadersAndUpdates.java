@@ -35,6 +35,7 @@ import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldInfosFormat;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FlushInfo;
 import org.apache.lucene.store.IOContext;
@@ -378,10 +379,13 @@ final class ReadersAndUpdates {
                     Long.toString(gen, Character.MAX_RADIX));
             DocValuesProducer p = dvFormat.fieldsProducer(srs);
             deltaProducers.add(p);
+            // Count docs-with-value by iteration: cost() is only an estimate (SimpleText reports
+            // maxDoc for sparse columns) and deltas are small by construction.
             deltaCoverage +=
-                type == DocValuesType.BINARY
-                    ? p.getBinary(fieldInfo).cost()
-                    : p.getNumeric(fieldInfo).cost();
+                docsWithValueCount(
+                    type == DocValuesType.BINARY
+                        ? p.getBinary(fieldInfo)
+                        : p.getNumeric(fieldInfo));
           }
         } catch (Throwable t) {
           // The try-with-resources below owns the normal close; close here if opening a delta fails
@@ -567,6 +571,15 @@ final class ReadersAndUpdates {
       assert !fieldFiles.containsKey(fieldInfo.number);
       fieldFiles.put(fieldInfo.number, trackingDir.getCreatedFiles());
     }
+  }
+
+  /** Exact number of docs with a value; the iterator is consumed. */
+  private static long docsWithValueCount(DocIdSetIterator it) throws IOException {
+    long count = 0;
+    while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+      count++;
+    }
+    return count;
   }
 
   /**
