@@ -296,6 +296,8 @@ public class TestFixedShingleFilter extends BaseTokenStreamTestCase {
   }
 
   public void testPositionIncrementAfterSkippedGraphToken() throws IOException {
+    // 2-gram shingle cannot be formed starting a "Wi-Fi", so the next branch
+    // starting at "Wi" should have a position increment of 1, not 0.
     TokenStream ts =
         new CannedTokenStream(
             new Token("Secure", 0, 6),
@@ -310,6 +312,8 @@ public class TestFixedShingleFilter extends BaseTokenStreamTestCase {
   }
 
   public void testFirstShinglePositionIncrementAfterSkippedGraphToken() throws IOException {
+    // Special case of previous test: "Wi-Fi" is the first token in the input stream.
+    // So first output token is emmited from branch starting at "Wi" which should have a position increment of 1, not 0.
     TokenStream ts =
         new CannedTokenStream(
             new Token("Wi-Fi", 1, 0, 5, 2), new Token("Wi", 0, 0, 2), new Token("Fi", 1, 3, 5));
