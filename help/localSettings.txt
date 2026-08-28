@@ -37,3 +37,33 @@ overridden by, in order of priority:
 If you'd like to tweak some of the build options permanently, use the
 build-options.local.properties file. For temporary overrides, use
 cli parameters (preferably gradle parameters -Pxyz=value).
+
+
+Intranet mirrors for gradle (wrapper and distribution)
+======================================================
+
+Lucene's gradlew scripts download gradle-wrapper.jar (from GitHub) and the gradle
+distribution (from services.gradle.org) on first use. If these hosts are
+not reachable, you can point to mirrors using environment
+variables (both are optional and may contain a ${gradleVersion}
+placeholder, replaced with the current gradle's version read from
+gradle/wrapper/gradle-wrapper.properties). For example:
+
+LUCENE_GRADLE_WRAPPER_URL=https://mirror.example.com/gradle/${gradleVersion}/gradle-wrapper.jar
+LUCENE_GRADLE_DISTRIBUTION_URL=https://mirror.example.com/gradle/gradle-${gradleVersion}-bin.zip
+
+If any of these variables are set, gradlew will download gradle-wrapper.jar into
+gradle/wrapper/ (the jar must match the checksum in
+gradle-wrapper.jar.sha256) and installs the distribution (which must match
+distributionSha256Sum in gradle-wrapper.properties) into the gradle user
+home (GRADLE_USER_HOME or ~/.gradle) at the location the gradle wrapper expects
+for the "official" distribution.
+
+Local URLs work too, for example:
+
+LUCENE_GRADLE_DISTRIBUTION_URL=file:///path/to/gradle-9.7.0-bin.zip
+
+Setting LUCENE_GRADLE_VERIFY_CHECKSUMS=false disables checksum verification
+in these bootstrap steps. Use this only if you trust the origin of the
+jar and the mirror URLs. This setting is refused (gradlew fails) if the CI
+environment variable is set.

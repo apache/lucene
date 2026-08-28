@@ -10,6 +10,9 @@ on:
     paths:
       - '.github/workflows/run-checks-gradle-upgrade.yml'
       - 'gradle/wrapper/**'
+      - 'gradlew'
+      - 'gradlew.bat'
+      - 'build-tools/build-infra/src/main/java/org/apache/lucene/gradle/*.java'
 
   push:
     branches:
@@ -18,6 +21,9 @@ on:
     paths:
       - '.github/workflows/run-checks-gradle-upgrade.yml'
       - 'gradle/wrapper/**'
+      - 'gradlew'
+      - 'gradlew.bat'
+      - 'build-tools/build-infra/src/main/java/org/apache/lucene/gradle/*.java'
 
 permissions: {}
 
@@ -53,6 +59,85 @@ jobs:
             exit 1
           fi
 
+  gradleMirrorCheck:
+    name: "Check gradle bootstrap from an intranet mirror (LUCENE_GRADLE_*_URL)."
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/prepare-for-build
+        with:
+          java-version: '25'
+          use-cache: false
+
+      - name: Build a local mirror from the official distribution and wrapper jar
+        run: |
+          set -e
+          MIRROR="$RUNNER_TEMP/gradle-mirror"
+          VERSION=$(grep -oP 'gradle-\K[^-]+(?=-bin\.zip)' gradle/wrapper/gradle-wrapper.properties)
+          echo "Gradle version: $VERSION"
+          mkdir -p "$MIRROR/$VERSION"
+          curl -sSfL -o "$MIRROR/$VERSION/gradle-$VERSION-bin.zip" \
+            "https://services.gradle.org/distributions/gradle-$VERSION-bin.zip"
+          curl -sSfL -o "$MIRROR/$VERSION/gradle-wrapper.jar" \
+            "https://raw.githubusercontent.com/gradle/gradle/v$VERSION/gradle/wrapper/gradle-wrapper.jar"
+          # A tampered copy for the negative test.
+          cp -r "$MIRROR" "$MIRROR-bad"
+          echo x >> "$MIRROR-bad/$VERSION/gradle-wrapper.jar"
+          echo x >> "$MIRROR-bad/$VERSION/gradle-$VERSION-bin.zip"
+
+      - name: Make the official download hosts unreachable
+        run: echo "127.0.0.1 services.gradle.org raw.githubusercontent.com" | sudo tee -a /etc/hosts
+
+      # The ${gradleVersion} placeholder below is expanded by GradleMirrorSetup, not by GitHub.
+      - name: gradlew must bootstrap from the mirror only
+        env:
+          GRADLE_USER_HOME: ${{ runner.temp }}/gradle-user-home
+          LUCENE_GRADLE_WRAPPER_URL: file://${{ runner.temp }}/gradle-mirror/${gradleVersion}/gradle-wrapper.jar
+          LUCENE_GRADLE_DISTRIBUTION_URL: file://${{ runner.temp }}/gradle-mirror/${gradleVersion}/gradle-${gradleVersion}-bin.zip
+        run: |
+          rm -f gradle/wrapper/gradle-wrapper.jar
+          ./gradlew help
+
+      - name: gradlew must reject a mirror with wrong checksums
+        env:
+          GRADLE_USER_HOME: ${{ runner.temp }}/gradle-user-home-bad
+          LUCENE_GRADLE_WRAPPER_URL: file://${{ runner.temp }}/gradle-mirror-bad/${gradleVersion}/gradle-wrapper.jar
+          LUCENE_GRADLE_DISTRIBUTION_URL: file://${{ runner.temp }}/gradle-mirror-bad/${gradleVersion}/gradle-${gradleVersion}-bin.zip
+        run: |
+          set +e
+          rm -f gradle/wrapper/gradle-wrapper.jar
+          output=$(./gradlew --version 2>&1); status=$?
+          if [ $status -ne 0 ] && [[ "$output" == *"does not match"* ]]; then
+            echo "Passed (rejected as expected)."
+          else
+            echo "Expected a checksum failure, got status $status. gradlew output echoed below:"
+            echo -e "\n$output\n\n---(end of output)"
+            exit 1
+          fi
+
+      - name: gradlew must refuse LUCENE_GRADLE_VERIFY_CHECKSUMS=false in CI
+        env:
+          GRADLE_USER_HOME: ${{ runner.temp }}/gradle-user-home-bad
+          LUCENE_GRADLE_VERIFY_CHECKSUMS: false
+          LUCENE_GRADLE_WRAPPER_URL: file://${{ runner.temp }}/gradle-mirror-bad/${gradleVersion}/gradle-wrapper.jar
+          LUCENE_GRADLE_DISTRIBUTION_URL: file://${{ runner.temp }}/gradle-mirror-bad/${gradleVersion}/gradle-${gradleVersion}-bin.zip
+        run: |
+          set +e
+          test -n "$CI" || { echo "Expected the CI variable to be set."; exit 1; }
+          output=$(./gradlew --version 2>&1); status=$?
+          if [ $status -ne 0 ] && [[ "$output" == *"not allowed when the CI environment variable is set"* ]]; then
+            echo "Passed (rejected as expected)."
+          else
+            echo "Expected a refusal, got status $status. gradlew output echoed below:"
+            echo -e "\n$output\n\n---(end of output)"
+            exit 1
+          fi
+
   gradleWindowsSanityCheck:
     name: "Check gradlew help works on Windows."
     timeout-minutes: 30
@@ -76,7 +161,7 @@ jobs:
   gradleSanityCheck:
     name: "Run tasks (java: ${{ matrix.java-version }}, alt-java: ${{ matrix.uses-alt-java }})"
     timeout-minutes: 30
-    needs: [gradleScriptBootstrapCheck, gradleWindowsSanityCheck]
+    needs: [gradleScriptBootstrapCheck, gradleMirrorCheck, gradleWindowsSanityCheck]
 
     strategy:
       matrix:

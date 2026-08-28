@@ -273,6 +273,11 @@ Changes in Runtime Behavior
 
 Build
 ---------------------
+* GITHUB#16543, GITHUB#16521, GITHUB#16483: allow custom gradle-wrapper.jar
+  and gradle distribution mirrors (via environment variables LUCENE_GRADLE_WRAPPER_URL,
+  LUCENE_GRADLE_DISTRIBUTION_URL), see './gradlew helpLocalSettings' for more
+  information. (David Smiley, Dawid Weiss)
+
 * GITHUB#15327: New low-level build options to detect abuse of LuceneTestCase.random():
   tests.random.maxacquires and tests.random.maxcalls (Robert Muir, Dawid Weiss)
 
