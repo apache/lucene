@@ -57,6 +57,11 @@ public final class FixedShingleFilter extends GraphTokenFilter {
 
   private final CharTermAttribute buffer = new CharTermAttributeImpl();
 
+  // Accumulates position increments from base tokens until a shingle is emitted.  This is needed
+  // when a base token cannot produce a shingle but a later token, possibly stacked at the same
+  // position, can.
+  private int pendingPosInc;
+
   /**
    * Creates a FixedShingleFilter over an input token stream
    *
@@ -91,7 +96,8 @@ public final class FixedShingleFilter extends GraphTokenFilter {
   @Override
   public boolean incrementToken() throws IOException {
 
-    int shinglePosInc, startOffset, endOffset;
+    int startOffset, endOffset;
+    pendingPosInc = 0;
 
     outer:
     while (true) {
@@ -99,12 +105,9 @@ public final class FixedShingleFilter extends GraphTokenFilter {
         if (incrementBaseToken() == false) {
           return false;
         }
-        // starting a shingle at a new base position, use base position increment
-        shinglePosInc = incAtt.getPositionIncrement();
-      } else {
-        // starting a new shingle at the same base with a different graph, use a 0
-        // position increment
-        shinglePosInc = 0;
+        // Starting a shingle at a new base position.  Keep increments from bases that did not
+        // produce a shingle so that the next emitted shingle retains its correct position.
+        pendingPosInc += incAtt.getPositionIncrement();
       }
 
       startOffset = offsetAtt.startOffset();
@@ -156,9 +159,21 @@ public final class FixedShingleFilter extends GraphTokenFilter {
     }
     clearAttributes();
     this.offsetAtt.setOffset(startOffset, endOffset);
-    this.incAtt.setPositionIncrement(shinglePosInc);
+    this.incAtt.setPositionIncrement(pendingPosInc);
     this.termAtt.setEmpty().append(buffer);
     this.typeAtt.setType("shingle");
     return true;
+  }
+
+  @Override
+  public void end() throws IOException {
+    super.end();
+    this.incAtt.setPositionIncrement(this.incAtt.getPositionIncrement() + pendingPosInc);
+  }
+
+  @Override
+  public void reset() throws IOException {
+    super.reset();
+    pendingPosInc = 0;
   }
 }
