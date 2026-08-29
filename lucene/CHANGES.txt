@@ -217,6 +217,8 @@ Optimizations
 
 * GITHUB#12324: ELiminate redundant work in AbstractKnnVectorQuery.rewrite (Mike Sokolov)
 
+* GITHUB#15683: Reuse reader's fieldinfos. (Vliam Durina)
+
 Bug Fixes
 ---------------------
 * GITHUB#16552: Reconnect HNSW nodes whose out-degree decays across successive
