@@ -101,10 +101,13 @@ final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery 
       if (lowerValue > stats.max() || upperValue < stats.min()) {
         return MatchNoDocsQuery.INSTANCE;
       }
-      if (lowerValue <= stats.min()
-          && upperValue >= stats.max()
-          && stats.docCount() == indexSearcher.getIndexReader().maxDoc()) {
-        return MatchAllDocsQuery.INSTANCE;
+      if (lowerValue <= stats.min() && upperValue >= stats.max()) {
+        // Every value in the field falls within [lowerValue, upperValue], so this matches exactly
+        // the documents that have a value for the field.
+        if (stats.docCount() == indexSearcher.getIndexReader().maxDoc()) {
+          return MatchAllDocsQuery.INSTANCE;
+        }
+        return new FieldExistsQuery(field);
       }
     }
     return super.rewrite(indexSearcher);
