@@ -23,6 +23,7 @@ module org.apache.lucene.core.tests {
   requires org.apache.lucene.core.tests.main;
 
   exports org.apache.lucene.core.tests;
+  exports org.apache.lucene.core.tests.util.hnsw;
 
   // this is to test ModuleResourceLoader
   opens org.apache.lucene.core.testresources to
