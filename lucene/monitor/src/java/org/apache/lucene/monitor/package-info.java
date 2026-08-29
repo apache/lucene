@@ -70,7 +70,8 @@
  * is checked against. For example, you can specify a language that each query should apply to, and
  * documents containing a value in their language field would only be checked against queries that
  * have that same value in their language metadata. Note that when matching documents in batches,
- * all documents in the batch must have the same values in their filter fields.
+ * all documents in the batch must have the same values in their filter fields. Note also that a
+ * filter field should appear only in the query's metadata, not as a field in the query itself.
  *
  * <p>Query analysis uses the {@link org.apache.lucene.search.QueryVisitor} API to extract terms,
  * which will work for all basic term-based queries shipped with Lucene. The analyzer builds a
