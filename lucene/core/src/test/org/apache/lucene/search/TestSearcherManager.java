@@ -786,17 +786,11 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
       w.commit();
     }
 
-    // maybeRefresh only refreshes on the next incremental commit
-    // so it takes us numCommits to get to latest
-    int stepsToCurrent = 0;
-    while (sm.isSearcherCurrent() == false) {
-      long oldGen = sm.getSearcherCommitGeneration();
-      sm.maybeRefreshBlocking();
-      long newGen = sm.getSearcherCommitGeneration();
-      assertTrue(newGen == oldGen + 1);
-      stepsToCurrent++;
-    }
-    assertEquals(numCommits, stepsToCurrent);
+    // maybeRefresh now refreshes to the latest commit in one call
+    long initialGen = sm.getSearcherCommitGeneration();
+    sm.maybeRefreshBlocking();
+    assertTrue(sm.isSearcherCurrent());
+    assertEquals(initialGen + numCommits, sm.getSearcherCommitGeneration());
     sm.close();
     w.close();
     dir.close();
