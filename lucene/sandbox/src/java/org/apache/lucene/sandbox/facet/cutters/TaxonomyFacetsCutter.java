@@ -17,8 +17,6 @@
 package org.apache.lucene.sandbox.facet.cutters;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.Map;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
@@ -27,7 +25,9 @@ import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.sandbox.facet.iterators.OrdinalIterator;
+import org.apache.lucene.util.ArrayUtil;
 
 /**
  * {@link FacetCutter} for facets that use taxonomy side-car index.
@@ -41,8 +41,16 @@ public final class TaxonomyFacetsCutter implements FacetCutter {
   private final String indexFieldName;
   private final boolean disableRollup;
 
-  private ParallelTaxonomyArrays.IntArray children;
-  private ParallelTaxonomyArrays.IntArray siblings;
+  // Lazy; loaded on first remapOrd call (which is single-threaded, inside reduce).
+  private ParallelTaxonomyArrays.IntArray parents;
+  // Null until first getSingleValuedDimOrds() call; empty when disableRollup=true.
+  private IntHashSet singleValuedDimOrds;
+
+  // Reusable scratch buffer and iterator for the ancestor path. Both are safe to reuse
+  // because reduce is single-threaded and the iterator is always fully consumed before
+  // the next remapOrd call.
+  private int[] ancestorBuf = new int[8];
+  private final AncestorOrdinalIterator ancestorIterator = new AncestorOrdinalIterator();
 
   /** Create {@link FacetCutter} for taxonomy facets. */
   public TaxonomyFacetsCutter(
@@ -70,25 +78,90 @@ public final class TaxonomyFacetsCutter implements FacetCutter {
   }
 
   /**
-   * Returns int[] mapping each ordinal to its first child; this is a large array and is computed
-   * (and then saved) the first time this method is invoked.
+   * Returns int[] mapping each ordinal to its parent; this is a large array and is computed (and
+   * then saved) the first time this method is invoked.
    */
-  ParallelTaxonomyArrays.IntArray getChildren() throws IOException {
-    if (children == null) {
-      children = taxoReader.getParallelTaxonomyArrays().children();
+  private ParallelTaxonomyArrays.IntArray getParents() throws IOException {
+    if (parents == null) {
+      parents = taxoReader.getParallelTaxonomyArrays().parents();
     }
-    return children;
+    return parents;
   }
 
   /**
-   * Returns int[] mapping each ordinal to its next sibling; this is a large array and is computed
-   * (and then saved) the first time this method is invoked.
+   * Returns the set of dimension ordinals that require rollup (single-valued dims whose index field
+   * matches this cutter). Returns an empty set when rollup is disabled. Computed lazily and cached.
    */
-  ParallelTaxonomyArrays.IntArray getSiblings() throws IOException {
-    if (siblings == null) {
-      siblings = taxoReader.getParallelTaxonomyArrays().siblings();
+  private IntHashSet getSingleValuedDimOrds() throws IOException {
+    if (singleValuedDimOrds != null) {
+      return singleValuedDimOrds;
     }
-    return siblings;
+    singleValuedDimOrds = new IntHashSet();
+    if (disableRollup) {
+      return singleValuedDimOrds;
+    }
+    for (Map.Entry<String, FacetsConfig.DimConfig> ent : facetsConfig.getDimConfigs().entrySet()) {
+      String dim = ent.getKey();
+      FacetsConfig.DimConfig ft = ent.getValue();
+      if (ft.multiValued == false && ft.indexFieldName.equals(indexFieldName)) {
+        // ft.hierarchical is ignored - rollup even if path length is only two
+        int dimOrd = taxoReader.getOrdinal(new FacetLabel(dim));
+        if (dimOrd != TaxonomyReader.INVALID_ORDINAL) {
+          singleValuedDimOrds.add(dimOrd);
+        }
+      }
+    }
+    return singleValuedDimOrds;
+  }
+
+  @Override
+  public boolean needsRemapping() throws IOException {
+    // Skip remapping when rollup is disabled or when all dims are multi-valued
+    // (single-valued dim set is empty). In both cases every ordinal maps to itself.
+    return !getSingleValuedDimOrds().isEmpty();
+  }
+
+  @Override
+  public OrdinalIterator remapOrd(int ord) throws IOException {
+    ParallelTaxonomyArrays.IntArray parentsArr = getParents();
+
+    // Walk up from ord to the direct child of ROOT, collecting the ancestor path into a
+    // reusable scratch buffer.
+    int len = 0;
+    int cur = ord;
+    while (true) {
+      ancestorBuf = ArrayUtil.grow(ancestorBuf, len + 1);
+      ancestorBuf[len++] = cur;
+      int parent = parentsArr.get(cur);
+      if (parent == TaxonomyReader.ROOT_ORDINAL) {
+        break;
+      }
+      cur = parent;
+    }
+    if (getSingleValuedDimOrds().contains(cur) == false) {
+      // Multi-valued dim or rollup disabled: ordinal maps only to itself.
+      return OrdinalIterator.fromSingleOrd(ord);
+    }
+
+    // Single-valued dim: emit the full path from the leaf ordinal up to and including the
+    // dim ordinal.
+    ancestorIterator.reset(len);
+    return ancestorIterator;
+  }
+
+  private class AncestorOrdinalIterator implements OrdinalIterator {
+    private int len;
+    private int idx;
+
+    void reset(int len) {
+      this.len = len;
+      this.idx = 0;
+    }
+
+    @Override
+    public int nextOrd() {
+      return idx < len ? ancestorBuf[idx++] : NO_MORE_ORDS;
+    }
   }
 
   @Override
@@ -99,76 +172,11 @@ public final class TaxonomyFacetsCutter implements FacetCutter {
     assert multiValued != null;
     // TODO: if multiValued is emptySortedNumeric we can throw CollectionTerminatedException
     //       in FacetFieldLeafCollector and save some CPU cycles.
-    TaxonomyLeafFacetCutterMultiValue leafCutter =
-        new TaxonomyLeafFacetCutterMultiValue(multiValued);
-    return leafCutter;
+    return new TaxonomyLeafFacetCutterMultiValue(multiValued);
 
     // TODO: does unwrapping Single valued make things any faster? We still need to wrap it into
     //       LeafFacetCutter
     // NumericDocValues singleValued = DocValues.unwrapSingleton(multiValued);
-  }
-
-  @Override
-  public OrdinalIterator getOrdinalsToRollup() throws IOException {
-    if (disableRollup) {
-      return null;
-    }
-
-    // Rollup any necessary dims:
-    Iterator<Map.Entry<String, FacetsConfig.DimConfig>> dimensions =
-        facetsConfig.getDimConfigs().entrySet().iterator();
-
-    ArrayList<FacetLabel> dimsToRollup = new ArrayList<>();
-
-    while (dimensions.hasNext()) {
-      Map.Entry<String, FacetsConfig.DimConfig> ent = dimensions.next();
-      String dim = ent.getKey();
-      FacetsConfig.DimConfig ft = ent.getValue();
-      if (ft.multiValued == false && ft.indexFieldName.equals(indexFieldName)) {
-        // ft.hierarchical is ignored - rollup even if path length is only two
-        dimsToRollup.add(new FacetLabel(dim));
-      }
-    }
-
-    int[] dimOrdToRollup = taxoReader.getBulkOrdinals(dimsToRollup.toArray(FacetLabel[]::new));
-
-    return new OrdinalIterator() {
-      int currentIndex = 0;
-
-      @Override
-      public int nextOrd() throws IOException {
-        for (; currentIndex < dimOrdToRollup.length; currentIndex++) {
-          // It can be invalid if this field was declared in the
-          // config but never indexed
-          if (dimOrdToRollup[currentIndex] != TaxonomyReader.INVALID_ORDINAL) {
-            return dimOrdToRollup[currentIndex++];
-          }
-        }
-        return NO_MORE_ORDS;
-      }
-    };
-  }
-
-  @Override
-  public OrdinalIterator getChildrenOrds(final int parentOrd) throws IOException {
-    ParallelTaxonomyArrays.IntArray children = getChildren();
-    ParallelTaxonomyArrays.IntArray siblings = getSiblings();
-    return new OrdinalIterator() {
-      int currentChild = parentOrd;
-
-      @Override
-      public int nextOrd() {
-        if (currentChild == parentOrd) {
-          currentChild = children.get(currentChild);
-        } else {
-          currentChild = siblings.get(currentChild);
-        }
-        if (currentChild != TaxonomyReader.INVALID_ORDINAL) {
-          return currentChild;
-        }
-        return NO_MORE_ORDS;
-      }
-    };
   }
 
   private static class TaxonomyLeafFacetCutterMultiValue implements LeafFacetCutter {
