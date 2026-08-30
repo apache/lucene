@@ -41,6 +41,10 @@ Query parsers, analyzers, and tokenizers operate on the input they are given. Ce
 
 The same principle applies to other APIs that consume caller-provided data: file paths passed to directory implementations, serialized or externally supplied data structures, and configuration values are trusted as given. Lucene also makes no security guarantees when running with untrusted code in the same JVM; it is a library executing with the full privileges of its host process.
 
+### Reporting out-of-scope issues publicly
+
+Issues that fall outside the scope above are still valid bug reports and hardening suggestions. They can be opened as regular public GitHub issues or pull requests, since no coordinated disclosure is needed. For example, a change that prevents an endless loop or replaces a low-level failure with a clean `CorruptIndexException` on a broken index is welcome, provided it does not negatively impact performance. Robustness improvements must not slow down the hot paths that motivate Lucene's trust in its input.
+
 ### In-scope reports
 
 We do treat as security issues any bugs that allow an attacker to break Lucene's documented guarantees despite correct usage, for example memory corruption or unexpected code execution triggered through APIs that are explicitly documented as safe for untrusted input, when reasonable limits recommended by the documentation are in place.
