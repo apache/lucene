@@ -34,7 +34,7 @@ so we add (or modify) the dependency block as follows:
 
 ```groovy
 dependencies {
-  moduleImplementation deps.baz
+    moduleImplementation deps.baz
 }
 ```
 
@@ -106,9 +106,9 @@ original declaration:
 
 ```groovy
 dependencies {
-  implementation(deps.baz, {
-    exclude group: "foo.bar", module: "irrelevant"
-  })
+    implementation(deps.baz, {
+        exclude group: "foo.bar", module: "irrelevant"
+    })
 }
 ```
 

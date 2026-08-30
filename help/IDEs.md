@@ -53,18 +53,18 @@ gradle/maven integration:
 
 ```lua
 init_options = {
-  settings = {
-    java = {
-      import = {
-        gradle = {
-          enabled = false,
+    settings = {
+        java = {
+            import = {
+                gradle = {
+                    enabled = false,
+                },
+                maven = {
+                    enabled = false,
+                },
+            },
         },
-        maven = {
-          enabled = false,
-        },
-      },
     },
-  },
 },
 ```
 
