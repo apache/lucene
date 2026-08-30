@@ -13,10 +13,8 @@ this topic can be found here:
 
 Lucene uses the following configurations and attach project dependencies to them:
 
-- `moduleApi` - makes the dependency available to main classes, tests and any other modules importing the project
-  (exportable dependency),
-- `moduleImplementation` - makes the dependency available to main classes, tests but will *not* export the dependency
-  to other modules (so their compilation classpath won't contain it).
+- `moduleApi` - makes the dependency available to main classes, tests and any other modules importing the project (exportable dependency),
+- `moduleImplementation` - makes the dependency available to main classes, tests but will *not* export the dependency to other modules (so their compilation classpath won't contain it).
 - `moduleTestImplementation` - makes the dependency available for test classes only.
 
 The `module` prefix is used to distinguish configurations which apply to modular builds, compared to the regular
