@@ -1,0 +1,50 @@
+<!--
+    Licensed to the Apache Software Foundation (ASF) under one or more
+    contributor license agreements.  See the NOTICE file distributed with
+    this work for additional information regarding copyright ownership.
+    The ASF licenses this file to You under the Apache License, Version 2.0
+    the "License"); you may not use this file except in compliance with
+    the License.  You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+-->
+
+# Security Policy
+
+## Reporting a Vulnerability
+
+Apache Lucene is a project of the Apache Software Foundation (ASF) and follows the standard [ASF vulnerability handling process](https://apache.org/security/#vulnerability-handling). Please report suspected vulnerabilities privately to [security@apache.org](mailto:security@apache.org) or to the project's private list at [security@lucene.apache.org](mailto:security@lucene.apache.org). Do not report vulnerabilities through public GitHub issues, pull requests, or mailing lists.
+
+Please do not send automated scanner reports or reports about publicly known CVEs in third-party dependencies. Dependency upgrades can be requested through a regular GitHub issue.
+
+## Scope and Threat Model
+
+Apache Lucene is a low-level search library, not a standalone server or end-user application. It is embedded into other software ("downstream applications") such as Apache Solr, Elasticsearch, OpenSearch, and many custom products. Lucene's threat model assumes that the application embedding it is responsible for authentication, authorization, network transport, and sanitization of all untrusted input. Reports that assume an attacker can directly feed arbitrary data into low-level Lucene APIs are therefore generally not treated as vulnerabilities in Lucene itself.
+
+### Index files are trusted
+
+Lucene index files are fully trusted by the Lucene code. For performance reasons, index file contents are not defensively validated when read. Modifying, corrupting, or crafting index files can cause undefined behavior such as endless loops, `ArrayIndexOutOfBoundsException`, other runtime exceptions, excessive memory allocation, or JVM crashes. This is by design and is not considered a security issue.
+
+Protecting index files from tampering is the responsibility of the downstream application and the operating environment. Applications that replicate or transfer index files over the network (as Solr, Elasticsearch, and OpenSearch do) must ensure the integrity and authenticity of those files themselves, for example through authenticated transport and filesystem permissions. An attacker who can write to index files already controls the data layer, which is outside Lucene's trust boundary.
+
+### Untrusted query and analysis input
+
+Query parsers, analyzers, and tokenizers operate on the input they are given. Certain inputs, such as pathological regular expressions, deeply nested queries, huge wildcard or fuzzy expansions, or extremely large tokens, can consume significant CPU or memory. Lucene provides mechanisms to bound this (for example, timeouts, `maxDeterminizedStates`, clause limits, and length limits), but applying such limits to untrusted user input is the responsibility of the downstream application. Resource exhaustion caused by unbounded, unfiltered input passed directly to Lucene APIs is not considered a vulnerability in Lucene.
+
+### Other out-of-scope reports
+
+The same principle applies to other APIs that consume caller-provided data: file paths passed to directory implementations, serialized or externally supplied data structures, and configuration values are trusted as given. Lucene also makes no security guarantees when running with untrusted code in the same JVM; it is a library executing with the full privileges of its host process.
+
+### In-scope reports
+
+We do treat as security issues any bugs that allow an attacker to break Lucene's documented guarantees despite correct usage, for example memory corruption or unexpected code execution triggered through APIs that are explicitly documented as safe for untrusted input, when reasonable limits recommended by the documentation are in place.
+
+## Supported Versions
+
+Security fixes are applied to the current main branch and the stable release branch. Users should always run the latest release of the branch they use. Older major versions do not receive security updates.
