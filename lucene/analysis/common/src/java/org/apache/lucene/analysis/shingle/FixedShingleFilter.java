@@ -97,16 +97,20 @@ public final class FixedShingleFilter extends GraphTokenFilter {
   public boolean incrementToken() throws IOException {
 
     int startOffset, endOffset;
+    // reset pendingPosInc to 0, since we are about to emit a shingle and any pending position increments
+    // have been accounted for in the position increment of previous shingle
     pendingPosInc = 0;
 
     outer:
     while (true) {
       if (incrementGraph() == false) {
+        // no more routes from the base token, so move base token to next token in the input stream
         if (incrementBaseToken() == false) {
+          // no more base tokens, we are done
           return false;
         }
-        // Starting a shingle at a new base position.  Keep increments from bases that did not
-        // produce a shingle so that the next emitted shingle retains its correct position.
+        // Accumulate into pendingPosInc, the position increment of the new token read from input stream.
+        // pendingPosInc could be non-zero when we reach here without emitting a new token (from `continue outer` path).
         pendingPosInc += incAtt.getPositionIncrement();
       }
 
