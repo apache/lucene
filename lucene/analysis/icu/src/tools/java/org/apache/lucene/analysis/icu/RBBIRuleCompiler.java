@@ -24,16 +24,24 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import org.apache.lucene.util.SuppressForbidden;
 
 /**
  * Command-line utility to converts RuleBasedBreakIterator (.rbbi) files into binary compiled form
  * (.brk).
  */
 public class RBBIRuleCompiler {
+  private static final PrintStream syserr = getSysErr();
+
+  @SuppressForbidden(reason = "Uses System.err, which is fine here.")
+  private static PrintStream getSysErr() {
+    return System.err;
+  }
 
   static String getRules(Path ruleFile) throws IOException {
     StringBuilder rules = new StringBuilder();
@@ -61,8 +69,7 @@ public class RBBIRuleCompiler {
     for (Path file : files) {
       Path outputFile = destDir.resolve(file.getFileName().toString().replaceAll("rbbi$", "brk"));
       String rules = getRules(file);
-      System.err.print(
-          "Compiling " + file.getFileName() + " to " + outputFile.getFileName() + ": ");
+      syserr.print("Compiling " + file.getFileName() + " to " + outputFile.getFileName() + ": ");
       /*
        * if there is a syntax error, compileRules() may succeed. the way to
        * check is to try to instantiate from the string. additionally if the
@@ -75,19 +82,19 @@ public class RBBIRuleCompiler {
          * do this intentionally, so you don't get a massive stack trace
          * instead, get a useful syntax error!
          */
-        System.err.println(e.getMessage());
+        syserr.println(e.getMessage());
         System.exit(1);
       }
       try (OutputStream os = Files.newOutputStream(outputFile)) {
         RuleBasedBreakIterator.compileRules(rules, os);
       }
-      System.err.println(Files.size(outputFile) + " bytes.");
+      syserr.println(Files.size(outputFile) + " bytes.");
     }
   }
 
   public static void main(String[] args) throws Exception {
     if (args.length < 2) {
-      System.err.println("Usage: RBBIRuleComputer <sourcedir> <destdir>");
+      syserr.println("Usage: RBBIRuleComputer <sourcedir> <destdir>");
       System.exit(1);
     }
     compile(Paths.get(args[0]), Paths.get(args[1]));

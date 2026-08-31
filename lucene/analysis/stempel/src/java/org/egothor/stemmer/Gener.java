@@ -89,7 +89,7 @@ public class Gener extends Reduce {
     }
 
     Arrays.fill(remap, -1);
-    rows = removeGaps(orig.root, orows, new ArrayList<Row>(), remap);
+    rows = removeGaps(orig.root, orows, new ArrayList<>(), remap);
 
     return new Trie(orig.forward, remap[orig.root], cmds, rows);
   }

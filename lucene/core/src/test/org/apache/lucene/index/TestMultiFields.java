@@ -88,7 +88,7 @@ public class TestMultiFields extends LuceneTestCase {
           String s = TestUtil.randomUnicodeString(random(), 10);
           BytesRef term = new BytesRef(s);
           if (!docs.containsKey(term)) {
-            docs.put(term, new ArrayList<Integer>());
+            docs.put(term, new ArrayList<>());
           }
           docs.get(term).add(i);
           terms.add(term);

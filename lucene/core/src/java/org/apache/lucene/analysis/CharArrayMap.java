@@ -607,7 +607,7 @@ public class CharArrayMap<V> extends AbstractMap<Object, V> {
    */
   private static final class EmptyCharArrayMap<V> extends UnmodifiableCharArrayMap<V> {
     EmptyCharArrayMap() {
-      super(new CharArrayMap<V>(0, false));
+      super(new CharArrayMap<>(0, false));
     }
 
     @Override

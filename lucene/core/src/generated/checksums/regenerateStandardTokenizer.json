@@ -1,0 +1,5 @@
+{
+    "gradle/regenerate/jflex/skeleton.disable.buffer.expansion.txt": "6e43a3a64a9b5eb82ec5b4bc21f95aff5a2a061e",
+    "lucene/core/src/java/org/apache/lucene/analysis/standard/StandardTokenizerImpl.java": "2c345a763b664d5d9e8d74654cd408cceebda08d",
+    "lucene/core/src/java/org/apache/lucene/analysis/standard/StandardTokenizerImpl.jflex": "2db77654bcef8add1523d9e6260a3f72a3c58ed1"
+}

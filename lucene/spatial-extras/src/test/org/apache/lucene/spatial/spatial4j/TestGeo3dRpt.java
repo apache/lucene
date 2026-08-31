@@ -91,7 +91,7 @@ public class TestGeo3dRpt extends RandomSpatialOpStrategyTestCase {
   @Test
   public void testFailure1() throws IOException {
     setupStrategy();
-    final List<GeoPoint> points = new ArrayList<GeoPoint>();
+    final List<GeoPoint> points = new ArrayList<>();
     points.add(new GeoPoint(planetModel, 18 * DEGREES_TO_RADIANS, -27 * DEGREES_TO_RADIANS));
     points.add(new GeoPoint(planetModel, -57 * DEGREES_TO_RADIANS, 146 * DEGREES_TO_RADIANS));
     points.add(new GeoPoint(planetModel, 14 * DEGREES_TO_RADIANS, -180 * DEGREES_TO_RADIANS));

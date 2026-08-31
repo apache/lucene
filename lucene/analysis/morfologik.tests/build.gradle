@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-apply plugin: 'java-library'
+
 
 description = 'Module tests for :lucene:analysis:morfologik'
 

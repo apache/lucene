@@ -52,6 +52,7 @@ import org.apache.lucene.expressions.Expression;
 import org.apache.lucene.expressions.js.JavascriptParser.ExpressionContext;
 import org.apache.lucene.search.DoubleValues;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.SuppressForbidden;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.ConstantDynamic;
 import org.objectweb.asm.Handle;
@@ -283,6 +284,7 @@ public final class JavascriptCompiler {
    * @return A new compiled expression
    * @throws ParseException on failure to compile
    */
+  @SuppressForbidden(reason = "defines new bytecode on purpose, carefully")
   private Expression compileExpression() throws ParseException {
     final Map<String, Integer> externalsMap = new LinkedHashMap<>(),
         constantsMap = new LinkedHashMap<>();

@@ -62,7 +62,7 @@ public class TestPhoneticFilterFactory extends BaseTokenStreamTestCase {
         expectThrows(
             IllegalArgumentException.class,
             () -> {
-              new PhoneticFilterFactory(new HashMap<String, String>());
+              new PhoneticFilterFactory(new HashMap<>());
             });
     assertTrue(expected.getMessage().contains("Configuration Error: missing parameter 'encoder'"));
   }

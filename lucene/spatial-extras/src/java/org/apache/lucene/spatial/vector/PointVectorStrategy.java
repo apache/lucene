@@ -127,14 +127,18 @@ public class PointVectorStrategy extends SpatialStrategy {
     this.fieldNameX = fieldNamePrefix + SUFFIX_X;
     this.fieldNameY = fieldNamePrefix + SUFFIX_Y;
 
+    this.hasStored = fieldType.stored();
+    this.hasDocVals = fieldType.docValuesType() != DocValuesType.NONE;
+    this.hasPointVals = fieldType.pointDimensionCount() > 0;
+
     int numPairs = 0;
-    if ((this.hasStored = fieldType.stored())) {
+    if (hasStored) {
       numPairs++;
     }
-    if ((this.hasDocVals = fieldType.docValuesType() != DocValuesType.NONE)) {
+    if (hasDocVals) {
       numPairs++;
     }
-    if ((this.hasPointVals = fieldType.pointDimensionCount() > 0)) {
+    if (hasPointVals) {
       numPairs++;
     }
     this.fieldsLen = numPairs * 2;

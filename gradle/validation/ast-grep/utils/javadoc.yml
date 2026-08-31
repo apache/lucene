@@ -1,0 +1,8 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: javadoc
+language: java
+rule:
+  # detect javadoc
+  kind: block_comment
+  regex: "^/[*][*]"

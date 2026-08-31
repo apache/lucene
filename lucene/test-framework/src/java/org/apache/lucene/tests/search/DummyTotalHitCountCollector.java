@@ -63,7 +63,7 @@ public class DummyTotalHitCountCollector implements Collector {
 
   /** Create a collector manager. */
   public static CollectorManager<DummyTotalHitCountCollector, Integer> createManager() {
-    return new CollectorManager<DummyTotalHitCountCollector, Integer>() {
+    return new CollectorManager<>() {
 
       @Override
       public DummyTotalHitCountCollector newCollector() throws IOException {

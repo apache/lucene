@@ -427,7 +427,7 @@ public class TestCommonTermsQuery extends LuceneTestCase {
     String field = "body";
     Terms terms = wrapper.terms(field);
     PriorityQueue<TermAndFreq> lowFreqQueue =
-        new PriorityQueue<TestCommonTermsQuery.TermAndFreq>(5) {
+        new PriorityQueue<>(5) {
 
           @Override
           protected boolean lessThan(TermAndFreq a, TermAndFreq b) {
@@ -435,7 +435,7 @@ public class TestCommonTermsQuery extends LuceneTestCase {
           }
         };
     PriorityQueue<TermAndFreq> highFreqQueue =
-        new PriorityQueue<TestCommonTermsQuery.TermAndFreq>(5) {
+        new PriorityQueue<>(5) {
 
           @Override
           protected boolean lessThan(TermAndFreq a, TermAndFreq b) {

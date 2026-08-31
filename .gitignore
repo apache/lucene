@@ -9,8 +9,11 @@ build/
 gradle/wrapper/gradle-wrapper.jar
 
 # IntelliJ IDEA
-/.idea/
-#    IntelliJ creates this folder, ignore.
+**/.idea/*
+# Do add the icon to git
+!/.idea/icon.*
+# IntelliJ creates this folder, ignore.
+/build-tools/build-infra/out/
 /dev-tools/missing-doclet/out/
 
 # Eclipse
@@ -27,9 +30,13 @@ gradle/wrapper/gradle-wrapper.jar
 # Python
 .pydevproject
 __pycache__
+.venv
 
 # Emacs backup
 *~
 
 # SDKMAN
 .sdkmanrc
+
+# Directenv
+.envrc

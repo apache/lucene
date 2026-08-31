@@ -322,7 +322,7 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
   private void assertInnerScoreMode(
       ScoreMode expectedScoreMode, ScoreMode inputScoreMode, DoubleValuesSource valueSource)
       throws IOException {
-    final AtomicReference<ScoreMode> scoreModeInWeight = new AtomicReference<ScoreMode>();
+    final AtomicReference<ScoreMode> scoreModeInWeight = new AtomicReference<>();
     Query innerQ =
         new TermQuery(new Term(TEXT_FIELD, "a")) {
 

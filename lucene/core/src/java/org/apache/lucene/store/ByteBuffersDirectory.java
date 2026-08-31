@@ -81,7 +81,7 @@ public final class ByteBuffersDirectory extends BaseDirectory {
       OUTPUT_AS_ONE_BUFFER;
 
   private final Function<String, String> tempFileName =
-      new Function<String, String>() {
+      new Function<>() {
         private final AtomicLong counter = new AtomicLong();
 
         @Override

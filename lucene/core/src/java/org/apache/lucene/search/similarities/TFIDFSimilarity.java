@@ -481,7 +481,7 @@ public abstract class TFIDFSimilarity extends Similarity {
     }
 
     private Explanation explainScore(Explanation freq, long encodedNorm, float[] normTable) {
-      List<Explanation> subs = new ArrayList<Explanation>();
+      List<Explanation> subs = new ArrayList<>();
       if (boost != 1F) {
         subs.add(Explanation.match(boost, "boost"));
       }

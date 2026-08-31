@@ -798,7 +798,7 @@ public abstract class LuceneTestCase extends Assert {
     return threadAndTestNameRule.testMethodName;
   }
 
-  /**
+  /*
    * Some tests expect the directory to contain a single segment, and want to do tests on that
    * segment's reader. This is an utility method to help them.
    */
@@ -3199,7 +3199,7 @@ public abstract class LuceneTestCase extends Assert {
 
   static {
     boolean enabled = false;
-    assert enabled = true; // Intentional side-effect!!!
+    assert (enabled = true) == true; // Intentional side-effect!!!
     assertsAreEnabled = enabled;
   }
 

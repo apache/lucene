@@ -145,7 +145,7 @@ public abstract class DocIDMerger<T extends DocIDMerger.Sub> {
       }
       this.subs = subs;
       queue =
-          new PriorityQueue<T>(maxCount - 1) {
+          new PriorityQueue<>(maxCount - 1) {
             @Override
             protected boolean lessThan(Sub a, Sub b) {
               assert a.mappedDocID != b.mappedDocID;

@@ -83,7 +83,7 @@ public class PlanetModel implements SerializableObject {
   /** The inverse of scale */
   public final double inverseScale;
 
-  /** The mean radius of the planet model */
+  // The mean radius of the planet model
 
   // We do NOT include radius, because all computations in geo3d are in radians, not meters.
 

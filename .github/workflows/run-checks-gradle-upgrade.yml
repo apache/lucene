@@ -114,7 +114,7 @@ jobs:
         run: |
           # add this package for generateEmojiTokenizationTestChecksumLoad.
           sudo apt-get install libwww-perl
-          ./gradlew regenerate -x generateUAX29URLEmailTokenizerInternal --rerun-tasks
+          ./gradlew regenerate -x regenerateUAX29URLEmailTokenizer --rerun-tasks
           if [ ! -z "$(git status --porcelain)" ]; then
             echo ":warning: **regenerate left local checkout in modified state**" >> "$GITHUB_STEP_SUMMARY"
             echo '```' >> "$GITHUB_STEP_SUMMARY"
@@ -123,10 +123,10 @@ jobs:
             git reset --hard && git clean -xfd .
           fi
 
-      - run: ./gradlew testOpts
+      - run: ./gradlew allOptions
       - run: ./gradlew helpWorkflow
-      - run: ./gradlew licenses updateLicenses
-      - run: ./gradlew check -x test -Pvalidation.git.failOnModified=false
+      - run: ./gradlew licenses writeChecksums
+      - run: ./gradlew check -x test
       - run: ./gradlew assembleRelease mavenToLocal
 
       # Conserve resources: only run these in non-alt-java mode.

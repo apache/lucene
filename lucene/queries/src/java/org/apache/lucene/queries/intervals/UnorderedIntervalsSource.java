@@ -108,7 +108,7 @@ class UnorderedIntervalsSource extends MinimizingConjunctionIntervalsSource {
     UnorderedIntervalIterator(List<IntervalIterator> subIterators, MatchCallback onMatch) {
       super(subIterators);
       this.queue =
-          new PriorityQueue<IntervalIterator>(subIterators.size()) {
+          new PriorityQueue<>(subIterators.size()) {
             @Override
             protected boolean lessThan(IntervalIterator a, IntervalIterator b) {
               return a.start() < b.start() || (a.start() == b.start() && a.end() >= b.end());

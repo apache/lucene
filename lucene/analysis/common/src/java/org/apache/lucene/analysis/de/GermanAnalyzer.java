@@ -86,8 +86,6 @@ public final class GermanAnalyzer extends StopwordAnalyzerBase {
     }
   }
 
-  /** Contains the stopwords used with the {@link StopFilter}. */
-
   /** Contains words that should be indexed but not stemmed. */
   private final CharArraySet exclusionSet;
 

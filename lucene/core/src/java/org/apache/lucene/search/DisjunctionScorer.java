@@ -88,7 +88,7 @@ abstract class DisjunctionScorer extends Scorer {
       super(approximation);
       this.matchCost = matchCost;
       unverifiedMatches =
-          new PriorityQueue<DisiWrapper>(numClauses) {
+          new PriorityQueue<>(numClauses) {
             @Override
             protected boolean lessThan(DisiWrapper a, DisiWrapper b) {
               return a.matchCost < b.matchCost;
