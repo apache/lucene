@@ -313,7 +313,8 @@ public class TestFixedShingleFilter extends BaseTokenStreamTestCase {
 
   public void testFirstShinglePositionIncrementAfterSkippedGraphToken() throws IOException {
     // Special case of previous test: "Wi-Fi" is the first token in the input stream.
-    // So first output token is emitted from branch starting at "Wi" which should have a position increment of 1, not 0.
+    // So first output token is emitted from branch starting at "Wi" which should have a position
+    // increment of 1, not 0.
     TokenStream ts =
         new CannedTokenStream(
             new Token("Wi-Fi", 1, 0, 5, 2), new Token("Wi", 0, 0, 2), new Token("Fi", 1, 3, 5));
