@@ -3,7 +3,7 @@
 Starting with (LUCENE-9564) Java code is enforced to comply with google-java-format conventions. In theory, you
 shouldn't worry about what the convention actually looks like - write the code in any way you like and then run:
 
-```shell
+```bash
 ./gradlew tidy
 ```
 

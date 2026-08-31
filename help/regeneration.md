@@ -49,14 +49,14 @@ changed). Then decide if the change was accidental or intentional and either:
 
 If you decide to regenerate, just running the task hinted at in the error message should work fine, for example:
 
-```shell
+```bash
 gradlew :lucene:core:regenerateStandardTokenizer
 ```
 
 This regenerates all resources the task `generateStandardTokenizer` produces and updates the corresponding checksums.
 If you want to bypass any of gradle's smart up-to-date checks and force regeneration, use the standard gradle's switch:
 
-```shell
+```bash
 gradlew :lucene:core:regenerateStandardTokenizer --rerun-tasks
 ```
 
@@ -65,25 +65,25 @@ gradlew :lucene:core:regenerateStandardTokenizer --rerun-tasks
 Lucene's "convention" task for regenerating all derived resources in a given module is called `regenerate` and you can
 apply it to all Lucene modules at once by running:
 
-```shell
+```bash
 gradlew regenerate
 ```
 
 It is typically much wiser to limit the scope of regeneration to only the module you're working with though:
 
-```shell
+```bash
 gradlew -p lucene/analysis/common regenerate
 ```
 
 If you're interested in what specific generation tasks are available, see the task list for the generation group:
 
-```shell
+```bash
 gradlew tasks --group regeneration
 ```
 
 or limit the output to a particular module:
 
-```shell
+```bash
 gradlew -p lucene/analysis/common tasks --group regeneration
 ```
 
@@ -107,7 +107,7 @@ available on all platforms. In LUCENE-9868 we tried to make resource generation 
 run if their sources (or outputs) have changed. So if you run the generic `regenerate` task, many of the actual
 regeneration sub-tasks will be "skipped" - you can see this if you run gradle with plain console, for example:
 
-```shell
+```bash
 gradlew -p lucene/analysis/common regenerate --console=plain
 ```
 
@@ -127,31 +127,31 @@ This may happen if you're paranoid or don't trust gradle (and there's no reason 
 
 If you want to force-run the regeneration, use gradle's `--rerun-tasks` option:
 
-```shell
+```bash
 gradlew regenerate --rerun-tasks
 ```
 
 Scoping the call to a particular module will also work:
 
-```shell
+```bash
 gradlew -p lucene/analysis/common regenerate --rerun-tasks
 ```
 
 Scoping the call to a particular task will also work:
 
-```shell
+```bash
 gradlew -p lucene/analysis/common regenerateUnicodeProps --rerun-tasks
 ```
 
 Finally, if you do feel like force-regenerating everything, remember to exclude this monster (it takes quite a long
 time and requires significant heap memory)...
 
-```shell
+```bash
 gradlew regenerate -x regenerateUAX29URLEmailTokenizer --rerun-tasks
 ```
 
 and on Windows, exclude snowball regeneration (requires bash):
 
-```shell
+```bash
 gradlew regenerate -x regenerateUAX29URLEmailTokenizer -x snowball --rerun-tasks
 ```

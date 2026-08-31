@@ -12,13 +12,13 @@ features (for example enable code coverage or profiling).
 
 To see the current values of all these options, run:
 
-```shell
+```bash
 ./gradlew allOptions
 ```
 
 this prints all build options for all modules. You can print all options for a single module too, for example:
 
-```shell
+```bash
 ./gradlew -p lucene/core buildOptions
 ```
 

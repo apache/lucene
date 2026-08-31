@@ -9,13 +9,13 @@ Checks use the prek tool:
 
 To run checks automatically before committing:
 
-```shell
+```bash
 uvx prek
 ```
 
 To install a precommit hook so this happens automatically:
 
-```shell
+```bash
 uv tool install prek
 prek install --allow-missing-config
 ```
@@ -25,7 +25,7 @@ branches that do not yet have support for prek.
 
 To exhaustively force-check all files (like CI does):
 
-```shell
+```bash
 uvx prek --all-files
 ```
 

@@ -2,7 +2,7 @@
 
 See all distribution-related tasks by running:
 
-```shell
+```bash
 gradlew tasks --group distribution
 ```
 
@@ -10,13 +10,13 @@ gradlew tasks --group distribution
 
 To publish Lucene Maven artifacts to a local `~/.m2` repository, run:
 
-```shell
+```bash
 gradlew mavenToLocal
 ```
 
 To publish Lucene Maven artifacts to Apache repositories (CI or release manager's job, typically!), run:
 
-```shell
+```bash
 gradlew mavenToApacheSnapshots -PasfNexusUsername= -PasfNexusPassword=
 gradlew mavenToApacheReleases  -PasfNexusUsername= -PasfNexusPassword= [optional signing options]
 ```
@@ -32,7 +32,7 @@ Apache Releases repository will not accept snapshots.
 
 To collect all release artifacts, and optionally sign them, run:
 
-```shell
+```bash
 gradlew assembleRelease [optional signing options]
 ```
 
@@ -53,7 +53,7 @@ Certain tasks may optionally sign artifacts or require artifacts to be signed:
 
 Signing can be enabled by adding the `-Psign` option, for example:
 
-```shell
+```bash
 gradlew assembleRelease mavenToApacheReleases -Psign
 ```
 
@@ -64,7 +64,7 @@ via either `~/.gradle/gradle.properties` or command-line options:
 
 An example full command-line that assembles signed artifacts could look like this:
 
-```shell
+```bash
 gradlew assembleRelease mavenToApacheReleases -Psign -Psigning.keyId=... -Psigning.password=... -Psigning.secretKeyRingFile=...
 ```
 
@@ -78,13 +78,13 @@ adding a `-PuseGpg=true` option, but this changes the properties you must specif
 
 For gpg2:
 
-```shell
+```bash
 gradlew [tasks] -Psign -PuseGpg=true -Psigning.gnupg.keyName=...
 ```
 
 For gpg:
 
-```shell
+```bash
 gradlew [tasks] -Psign -PuseGpg=true -Psigning.gnupg.keyName=... -Psigning.gnupg.useLegacyGpg=true
 ```
 
@@ -113,7 +113,7 @@ the tty to prompt you for a password.
 
 If the following command fails with your GPG configuration, you can not use an external GPG process with gradle:
 
-```shell
+```bash
 echo foo | gpg --batch --no-tty --armor --detach-sign --use-agent --local-user YOUR_KEY_NAME
 ```
 

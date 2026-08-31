@@ -52,7 +52,7 @@ baz = { module = "foo.bar:baz", version.ref = "baz" }
 The version defined in the `versions` section is the preferred version of the library we wish to use. Finally, run
 tidy to sort all entries in `libs.versions.toml`:
 
-```shell
+```bash
 gradlew tidy
 ```
 
@@ -61,7 +61,7 @@ may complain if it encounters conflicting versions in the dependency tree. We wa
 so we use an additional build plugin to ensure no accidental version changes occur. Whenever we add or remove
 dependencies, we have to follow-up with lock file regeneration:
 
-```shell
+```bash
 gradlew writeLocks
 git diff versions.*
 ```
@@ -76,7 +76,7 @@ changed (and why).
 
 The tree of dependencies of a project (in all configurations) can be dumped by the following command (example):
 
-```shell
+```bash
 gradlew -p lucene/analysis/icu dependencies
 ```
 
@@ -86,13 +86,13 @@ But this can be a bit overwhelming; we will most likely be interested in just th
 The publicly visible project dependencies (classes shared by other modules importing our module) can be displayed
 with:
 
-```shell
+```bash
 gradlew -p lucene/analysis/icu dependencies --configuration moduleApi
 ```
 
 And the "private" set of dependencies (real classpath) can be dumped with:
 
-```shell
+```bash
 gradlew -p lucene/analysis/icu dependencies --configuration moduleRuntimePath
 ```
 
@@ -117,12 +117,12 @@ Note the brackets - they are important and prevent accidental mistakes of applyi
 The last step is to make sure the licenses, notice files and checksums are in place for any new dependencies. This
 command will print what's missing and where:
 
-```shell
+```bash
 gradlew licenses
 ```
 
 To update JAR checksums for licenses use:
 
-```shell
+```bash
 gradlew writeChecksums
 ```

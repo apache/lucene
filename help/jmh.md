@@ -9,7 +9,7 @@ Look at existing classes and JMH documentation for inspiration on how to write g
 
 To compile the project and prepare JMH launcher, run:
 
-```shell
+```bash
 gradlew :lucene:benchmark-jmh:assemble
 ```
 
@@ -17,7 +17,7 @@ The above target will display exact commands to execute JMH from command line.
 
 ## Run
 
-```shell
+```bash
 java --module-path lucene/benchmark-jmh/build/benchmarks --module org.apache.lucene.benchmark.jmh
 ```
 
@@ -34,13 +34,13 @@ regexp           execute all benchmark containing regexp
 
 Here is an example running a targeted benchmark:
 
-```shell
+```bash
 java --module-path lucene/benchmark-jmh/build/benchmarks --module org.apache.lucene.benchmark.jmh VectorUtilBenchmark.binaryCosine -p size=1024
 ```
 
 Or running all methods and sizes of VectorUtilBenchmark:
 
-```shell
+```bash
 java --module-path lucene/benchmark-jmh/build/benchmarks --module org.apache.lucene.benchmark.jmh VectorUtilBenchmark
 ```
 
@@ -50,7 +50,7 @@ java --module-path lucene/benchmark-jmh/build/benchmarks --module org.apache.luc
 
 In order to see disassembled instructions and not just binary instructions when using `-prof perfasm`:
 
-```shell
+```bash
 git clone --depth 1 https://github.com/openjdk/jdk/
 curl -f https://ftp.gnu.org/gnu/binutils/binutils-2.38.tar.gz | tar -zxf -
 (cd jdk && bash ./configure --with-hsdis=binutils --with-binutils-src=../binutils-2.38 && make build-hsdis)
@@ -65,7 +65,7 @@ This one is a little rough because they removed the Makefile so you have to brin
 are stuck wrestling down full dependencies of OpenJDK (metal etc) just to compile a single C file. Also you must run
 benchmarks as root to use dtrace, but it works.
 
-```shell
+```bash
 git clone --depth 1 https://github.com/openjdk/jdk/
 curl -f https://ftp.gnu.org/gnu/binutils/binutils-2.38.tar.gz | tar -zxf -
 curl -fo jdk/src/utils/hsdis/binutils/Makefile https://raw.githubusercontent.com/openjdk/jdk/3c7ae1225f0d5575fd927a9b76fb40dc30e208cd/src/utils/hsdis/Makefile

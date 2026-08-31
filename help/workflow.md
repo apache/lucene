@@ -4,70 +4,70 @@ This shows some typical workflow gradle commands.
 
 Ensure your changes are correctly formatted (run `gradlew :helpFormatting` for more):
 
-```shell
+```bash
 gradlew tidy
 ```
 
 Run tests on a module:
 
-```shell
+```bash
 gradlew -p lucene/core test
 ```
 
 Run test of a single-class (run `gradlew :helpTests` for more):
 
-```shell
+```bash
 gradlew -p lucene/core test --tests "*Demo*"
 ```
 
 Run all tests and validation checks on a module:
 
-```shell
+```bash
 gradlew -p lucene/core check
 ```
 
 Run all tests and validation checks on everything:
 
-```shell
+```bash
 gradlew check
 ```
 
 Run all validation checks but skip all tests:
 
-```shell
+```bash
 gradlew check -x test
 ```
 
 Assemble a single module's JAR (here for lucene-core):
 
-```shell
+```bash
 gradlew -p lucene/core assemble
 ls lucene/core/build/libs
 ```
 
 Assemble all Lucene artifacts (JARs, and so on):
 
-```shell
+```bash
 gradlew assemble
 ```
 
 Create all distributable packages, POMs, etc. and create a local maven repository for inspection:
 
-```shell
+```bash
 gradlew mavenLocal
 ls -R build/maven-local/
 ```
 
 Assemble Javadocs on a module:
 
-```shell
+```bash
 gradlew -p lucene/core javadoc
 ls lucene/core/build/docs
 ```
 
 Assemble entire documentation (including javadocs):
 
-```shell
+```bash
 gradlew documentation
 ls lucene/documentation/build/site
 ```

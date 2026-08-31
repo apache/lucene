@@ -8,7 +8,7 @@ Importing the project as a gradle project should just run out of the box.
 
 Run the following to set up Eclipse project files:
 
-```shell
+```bash
 ./gradlew eclipse
 ```
 
@@ -25,7 +25,7 @@ the sources and dependencies are available in one large bin.
 
 Run the following to set up Eclipse project files:
 
-```shell
+```bash
 ./gradlew eclipse
 ```
 
@@ -42,7 +42,7 @@ Open the lucene checkout in VSCode.
 
 Run the following to set up Eclipse project files:
 
-```shell
+```bash
 ./gradlew eclipse
 ```
 

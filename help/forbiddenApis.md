@@ -34,7 +34,7 @@ test/foo.bar.baz.txt
 From the above, only those files that actually exist are applied. You can verify which signature locations are
 expected and which actually exist by running forbiddenApis tasks with info logger:
 
-```shell
+```bash
 ./gradlew -p lucene/analysis/morfologik forbiddenApis --info
 ```
 

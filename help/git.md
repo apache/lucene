@@ -12,6 +12,6 @@ A list of resources that may be helpful for those learning git:
 Git blame shows the last revision that touched a line in a given file. Certain reformatting commits may stand in the
 way here. Please issue the following command so that git ignores those irrelevant commits:
 
-```shell
+```bash
 git config blame.ignoreRevsFile .git-blame-ignore-revs
 ```

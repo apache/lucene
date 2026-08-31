@@ -6,13 +6,13 @@ Examples below assume cwd at the gradlew script in the top directory of the proj
 
 Run all unit tests:
 
-```shell
+```bash
 gradlew test
 ```
 
 Run all(\*) verification tasks, including tests:
 
-```shell
+```bash
 gradlew check
 ```
 
@@ -22,13 +22,13 @@ a good idea to run patches via the CI.
 
 Run all verification tasks, excluding tests (`-x` is gradle's generic task exclusion mechanism):
 
-```shell
+```bash
 gradlew check -x test
 ```
 
 Run verification for a selected module only:
 
-```shell
+```bash
 gradlew :lucene:core:check     # By full gradle project path
 gradlew -p lucene/core check   # By folder designation + task
 ```
@@ -37,20 +37,20 @@ gradlew -p lucene/core check   # By folder designation + task
 
 To run tests with the given starting seed pass `tests.seed` property:
 
-```shell
+```bash
 gradlew :lucene:misc:test -Ptests.seed=DEADBEEF
 ```
 
 There are a lot of other test randomization properties available. To list them, their defaults and current values run
 the `buildOptions` task against a project that has tests. For example:
 
-```shell
+```bash
 gradlew -p lucene/core buildOptions
 ```
 
 or list all options with:
 
-```shell
+```bash
 gradlew allOptions
 ```
 
@@ -58,26 +58,26 @@ gradlew allOptions
 
 Run tests of lucene-core module:
 
-```shell
+```bash
 gradlew -p lucene/core test
 ```
 
 Run a single test case (from a single module). Uses gradle's built-in filtering
 (<https://docs.gradle.org/current/userguide/java_testing.html#test_filtering>):
 
-```shell
+```bash
 gradlew -p lucene/core test --tests TestDemo
 ```
 
 Run all tests in a package:
 
-```shell
+```bash
 gradlew -p lucene/core test --tests "org.apache.lucene.document.*"
 ```
 
 Run all test classes/ methods that match this pattern:
 
-```shell
+```bash
 gradlew -p lucene/core test --tests "*testFeatureMissing*"
 ```
 
@@ -89,13 +89,13 @@ Tests can be filtered by an annotation they're marked with. Some test group anno
 This uses filtering infrastructure on the *runner* (randomizedtesting), not gradle's built-in mechanisms (but it can be
 combined with `--tests`). For example, run all lucene-core tests annotated as `@Nightly`:
 
-```shell
+```bash
 gradlew -p lucene/core test -Ptests.filter=@Nightly
 ```
 
 Test group filters can be combined into Boolean expressions:
 
-```shell
+```bash
 gradlew -p lucene/core test "default and not(@awaitsfix or @nightly)"
 ```
 
@@ -103,7 +103,7 @@ gradlew -p lucene/core test "default and not(@awaitsfix or @nightly)"
 
 Multiply each test case N times (this works by repeating the same test within the same JVM; it also works in IDEs):
 
-```shell
+```bash
 gradlew -p lucene/core test --tests TestDemo -Ptests.iters=5
 ```
 
@@ -111,14 +111,14 @@ Tests tasks will be (by default) re-executed on each invocation because we pick 
 because we want them to (force the test task to run). If you want to make the `tests` task obey up-to-date gradle
 rules, fix the seed and force rerunning:
 
-```shell
+```bash
 gradlew -p lucene/core test -Ptests.seed=deadbeef -Ptests.rerun=true
 ```
 
 These properties can be set in your local `gradle.properties`. To force re-execution of tests, even for the same master
 seed, apply `cleanTest` task:
 
-```shell
+```bash
 gradlew -p lucene/core cleanTest test -Ptests.seed=deadbeef
 ```
 
@@ -126,7 +126,7 @@ The `tests.iters` option should be sufficient for individual test cases and is *
 re-runs of the entire test suites. When it is absolutely needed to re-run an entire suite (because of randomization in
 the static initialization, for example), you can do it by running the `beast` task with `tests.dups` option:
 
-```shell
+```bash
 gradlew -p lucene/core beast -Ptests.dups=10 --tests TestPerFieldDocValuesFormat
 ```
 
@@ -135,7 +135,7 @@ including no filter at all, but it rarely makes sense (will take ages). By defau
 `beast` mode use a random starting seed for randomization. If you pass an explicit seed, this won't be the case (all
 tasks will use exactly the same starting seed):
 
-```shell
+```bash
 gradlew -p lucene/core beast -Ptests.dups=10 --tests TestPerFieldDocValuesFormat -Dtests.seed=deadbeef
 ```
 
@@ -144,7 +144,7 @@ gradlew -p lucene/core beast -Ptests.dups=10 --tests TestPerFieldDocValuesFormat
 The `tests.verbose` mode switch enables standard streams from tests to be dumped directly to the console. Run your
 verbose tests explicitly specifying the project and test task or a fully qualified task path. Example:
 
-```shell
+```bash
 gradlew -p lucene/core test -Ptests.verbose=true --tests "TestDemo"
 ```
 
@@ -153,7 +153,7 @@ gradlew -p lucene/core test -Ptests.verbose=true --tests "TestDemo"
 By default tests run with a 512 MB max heap. But some tests (monster/nightly) need more heap. Use `-Ptests.heapsize`
 for this:
 
-```shell
+```bash
 gradlew -p lucene/core test --tests "Test2BFST" -Ptests.heapsize=32g
 ```
 
@@ -163,7 +163,7 @@ GUI test for Luke application launches a window, this might mess up your monitor
 are using. In that case, you can install Xvfb (X Virtual Frame Buffer) so that the test runs on the virtual display
 and does not open a real window.
 
-```shell
+```bash
 # redhat-type OS
 sudo yum install Xvfb
 
@@ -181,13 +181,13 @@ end.
 
 For example, top-10 histogram of methods (cpu samples):
 
-```shell
+```bash
 gradlew -p lucene/core test -Ptests.profile=true
 ```
 
 Alternatively, you can profile heap allocations instead:
 
-```shell
+```bash
 gradlew -p lucene/core test -Ptests.profile=true -Ptests.profile.mode=heap
 ```
 
@@ -195,19 +195,19 @@ By default, results are computed (deduplicated) on just the method name, folding
 method. To drill down further, you can increase the stack size from the default of 1, to get a histogram of
 stacktraces instead:
 
-```shell
+```bash
 gradlew -p lucene/core test -Ptests.profile=true -Ptests.profile.stacksize=8
 ```
 
 For big methods, it can also be helpful to include line numbers for more granularity:
 
-```shell
+```bash
 gradlew -p lucene/core test -Ptests.profile=true -Ptests.profile.linenumbers=true
 ```
 
 Using these additional options will make the results more sparse, so it may be useful to increase the top-N count:
 
-```shell
+```bash
 gradlew -p lucene/core test -Ptests.profile=true -Ptests.profile.count=100
 ```
 
@@ -218,7 +218,7 @@ to record code coverage.
 
 Example:
 
-```shell
+```bash
 gradlew -p lucene/core coverage
 open lucene/core/build/reports/jacoco/test/html/index.html
 ```
@@ -226,7 +226,7 @@ open lucene/core/build/reports/jacoco/test/html/index.html
 If you want to use test filtering to just check a particular test, specify the `test` task explicitly before
 `coverage`:
 
-```shell
+```bash
 gradlew -p lucene/core test --tests TestDemo coverage
 open lucene/core/build/reports/jacoco/test/html/index.html
 ```
@@ -236,6 +236,6 @@ open lucene/core/build/reports/jacoco/test/html/index.html
 Some tests may require external (and large) data sets. To see relevant tasks that download and extract these data
 files automatically, run the following:
 
-```shell
+```bash
 gradlew tasks --group "Data set download"
 ```

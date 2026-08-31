@@ -9,7 +9,7 @@ If property is being used, it can be a system property (`-D...`) or a project pr
 
 Example:
 
-```shell
+```bash
 gradlew test -p lucene/test-framework --tests TestJvmInfo -Dtests.verbose=true -Druntime.java.home=/jvms/jdk14
 ```
 
