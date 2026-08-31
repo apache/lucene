@@ -123,6 +123,10 @@ API Changes
 
 New Features
 ---------------------
+* GITHUB#16572: Add ReturnFieldsRetriever, a concurrent scatter/gather engine that computes one value per hit for an
+  int[] of global doc IDs and returns them in input order, built on ReaderUtil.partitionByLeaf. Callers supply a
+  per-leaf visitor for the value type. Includes DoubleValuesRetriever, a DoubleValuesSource specialization. (Zihan Xu)
+
 * GITHUB#16418: Incremental doc-values updates. A set-only doc-values update (NUMERIC or BINARY) is written as a sparse
   "delta" overlay holding just the updated documents and layered over the base column at read time, instead of
   rewriting the whole column, turning per-update write amplification from O(column) into O(updated docs). Enabled by
