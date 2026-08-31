@@ -40,7 +40,14 @@ public interface Bits {
    * Apply this {@code Bits} instance to the given {@link FixedBitSet}, which starts at the given
    * {@code offset}.
    *
-   * <p>This should behave the same way as the default implementation, which does the following:
+   * <p>{@code offset} must be non-negative, and no bit of {@code bitSet} at index {@code length() -
+   * offset} or beyond may be set: those bits are not covered by this instance. Implementations that
+   * can detect such a bit cheaply -- {@link FixedBitSet#applyMask} and the {@link LiveDocs}
+   * implementations do -- throw {@link IllegalArgumentException}; the default implementation below
+   * silently reads out of bounds instead, which is undefined per {@link #get}.
+   *
+   * <p>Apart from that, this should behave the same way as the default implementation, which does
+   * the following:
    *
    * <pre><code class="language-java">
    * for (int i = bitSet.nextSetBit(0);
