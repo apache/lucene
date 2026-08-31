@@ -93,11 +93,20 @@ The keyName is the last 8 digits of your key (`gpg -k` will print your keys).
 There are additional (optional) `signing.gnupg.*` properties which exist that may be useful/necessary in your system:
 
 ```properties
-signing.gnupg.useLegacyGpg=true                    # Changes the default executable from `gpg2` to `gpg` and explicitly sets `--use-agent`
-signing.gnupg.executable=gpg                       # Allows explicit control over what command executable used (ex: `gpg2`, `gpg`, `gpg.exe`, etc...)
-signing.gnupg.homeDir=/tmp/gnupg-home              # overrides GnuPG's default home directory (ex: `~/.gnupg/`)
-signing.gnupg.optionsFile=/tmp/gnupg-home/my.conf  # overrides GnuPG's default configuration file
-signing.gnupg.passphrase=...                       # Provide your passphrase to gradle to hand off to gpg.  *NOT RECOMMENDED*, see below.
+# Changes the default executable from `gpg2` to `gpg` and explicitly sets `--use-agent`
+signing.gnupg.useLegacyGpg=true
+
+# Allows explicit control over what command executable used (ex: `gpg2`, `gpg`, `gpg.exe`, etc...)
+signing.gnupg.executable=gpg
+
+# Overrides GnuPG's default home directory (ex: `~/.gnupg/`)
+signing.gnupg.homeDir=/tmp/gnupg-home
+
+# Overrides GnuPG's default configuration file
+signing.gnupg.optionsFile=/tmp/gnupg-home/my.conf
+
+# Provide your passphrase to gradle to hand off to gpg. *NOT RECOMMENDED*, see below.
+signing.gnupg.passphrase=...
 ```
 
 If in doubt, consult gradle's signing plugin documentation:
