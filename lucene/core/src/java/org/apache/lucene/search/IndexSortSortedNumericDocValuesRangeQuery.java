@@ -704,7 +704,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
 
     @Override
     public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
-      assert offset <= doc;
+      assert offset <= doc && doc >= firstDoc;
       int boundedUpTo = Math.min(upTo, lastDoc);
       if (boundedUpTo > doc) {
         delegate.intoBitSet(boundedUpTo, bitSet, offset);

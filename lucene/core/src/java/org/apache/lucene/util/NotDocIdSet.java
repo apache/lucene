@@ -95,7 +95,7 @@ public final class NotDocIdSet extends DocIdSet {
             bitSet.set(doc - offset, runEnd - offset);
             doc = runEnd;
           }
-          while (doc == nextSkippedDoc) {
+          while (doc == nextSkippedDoc && doc < maxDoc) {
             doc += 1;
             nextSkippedDoc = inIterator.nextDoc();
           }
