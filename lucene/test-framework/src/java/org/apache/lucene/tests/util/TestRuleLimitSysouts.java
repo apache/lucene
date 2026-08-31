@@ -17,6 +17,7 @@
 package org.apache.lucene.tests.util;
 
 import com.carrotsearch.randomizedtesting.RandomizedTest;
+import com.carrotsearch.randomizedtesting.SysGlobals;
 import com.carrotsearch.randomizedtesting.rules.TestRuleAdapter;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -248,6 +249,7 @@ public class TestRuleLimitSysouts extends TestRuleAdapter {
 
     if (LuceneTestCase.VERBOSE
         || LuceneTestCase.INFOSTREAM
+        || isRepeatingTestCases()
         || target.isAnnotationPresent(Monster.class)
         || target.isAnnotationPresent(SuppressSysoutChecks.class)) {
       return false;
@@ -258,6 +260,11 @@ public class TestRuleLimitSysouts extends TestRuleAdapter {
     }
 
     return true;
+  }
+
+  /** Whether the runner repeats test cases, via {@code tests.iters}. */
+  private static boolean isRepeatingTestCases() {
+    return RandomizedTest.systemPropertyAsInt(SysGlobals.SYSPROP_ITERATIONS(), 1) > 1;
   }
 
   /**
