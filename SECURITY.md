@@ -47,7 +47,7 @@ Issues that fall outside the scope above are still valid bug reports and hardeni
 
 ### In-scope reports
 
-We do treat as security issues any bugs that allow an attacker to break Lucene's documented guarantees despite correct usage, for example memory corruption or unexpected code execution triggered through APIs that are explicitly documented as safe for untrusted input, when reasonable limits recommended by the documentation are in place.
+We do treat a bug as a security issue if it allows an attacker to break a guarantee that Lucene explicitly documents as safe to rely on for untrusted input, despite correct usage. Examples are memory corruption or unexpected code execution triggered through such APIs while reasonable limits recommended by the documentation are in place.
 
 ## Supported Versions
 
