@@ -366,27 +366,10 @@ final class ReadersAndUpdates {
         }
       }
       // Set-only updates become a sparse delta generation overlaid at read time; a removal falls
-      // back to the dense
-      // rewrite. (Skip-indexed fields can't reach here: IndexWriter rejects doc-values updates on
-      // them.)
-      // A single-valued sorted-numeric field is stored as a numeric column and reuses the numeric
-      // update path; a genuinely multi-valued column can't be updated in place, so reject it here.
-      // This is the universal choke point for every update path (buffered resolve, NRT
-      // tryUpdateDocValue and merge carry-over all funnel through here), and the earliest place we
-      // hold a reader to know the column's cardinality. An active overlay (existingOverlay != null)
-      // is single-valued by construction, so we only need to check the base column.
-      if (type == DocValuesType.SORTED_NUMERIC && existingOverlay == null) {
-        SortedNumericDocValues baseDV = reader.getSortedNumericDocValues(field);
-        if (baseDV != null && DocValues.unwrapSingleton(baseDV) == null) {
-          throw new IllegalArgumentException(
-              "cannot update SORTED_NUMERIC field \""
-                  + field
-                  + "\": only single-valued sorted-numeric doc-values can be updated in place, but"
-                  + " segment "
-                  + info.info.name
-                  + " has multiple values for some documents");
-        }
-      }
+      // back to the dense rewrite. (Skip-indexed fields can't reach here: IndexWriter rejects
+      // doc-values updates on them.) A single-valued sorted-numeric update writes a single-valued
+      // delta; the base column may be single- or multi-valued and is preserved per-doc by the
+      // sorted-numeric merge/overlay.
       final boolean sparseDelta = config.getMaxDocValuesOverlays() > 0 && anyRemoval == false;
       // Past maxDocValuesOverlays, fold the prior deltas into this write as one sparse generation
       // (base untouched) instead of appending another.
@@ -533,58 +516,13 @@ final class ReadersAndUpdates {
                       compact && foldToDense == false
                           ? overlayNumeric(deltaProducers, fieldInfo)
                           : reader.getNumericDocValues(field);
-                  final MergedDocValues<NumericDocValues> mergedDocValues =
-                      new MergedDocValues<>(
-                          onDisk,
-                          DocValuesFieldUpdates.Iterator.asNumericDocValues(iterator),
-                          iterator);
-                  // Merge sort of the original doc values with updated doc values:
-                  return new NumericDocValues() {
-                    @Override
-                    public long longValue() throws IOException {
-                      return mergedDocValues.currentValuesSupplier.longValue();
-                    }
-
-                    @Override
-                    public boolean advanceExact(int target) {
-                      return mergedDocValues.advanceExact(target);
-                    }
-
-                    @Override
-                    public int docID() {
-                      return mergedDocValues.docID();
-                    }
-
-                    @Override
-                    public int nextDoc() throws IOException {
-                      return mergedDocValues.nextDoc();
-                    }
-
-                    @Override
-                    public int advance(int target) {
-                      return mergedDocValues.advance(target);
-                    }
-
-                    @Override
-                    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset)
-                        throws IOException {
-                      mergedDocValues.intoBitSet(upTo, bitSet, offset);
-                    }
-
-                    @Override
-                    public long cost() {
-                      return mergedDocValues.cost();
-                    }
-                  };
+                  return handleMergedNumericDocValues(onDisk, iterator);
                 }
               });
         } else {
           assert type == DocValuesType.SORTED_NUMERIC : "unsupported type: " + type;
-          // A single-valued sorted-numeric field is physically a numeric column, so we reuse the
-          // numeric merge/overlay machinery and only wrap the result as a singleton sorted-numeric
-          // at the codec boundary. Both the updates and the base column are single-valued (a
-          // multi-valued base was rejected above), so the base always unwraps to a
-          // NumericDocValues.
+          // The update is single-valued but the base column may be multi-valued, so merge/overlay
+          // natively as sorted-numeric (the update wins per doc, other docs keep their whole set).
           fieldsConsumer.addSortedNumericField(
               fieldInfo,
               new EmptyDocValuesProducer() {
@@ -598,50 +536,22 @@ final class ReadersAndUpdates {
                     return DocValues.singleton(
                         DocValuesFieldUpdates.Iterator.asNumericDocValues(iterator));
                   }
-                  final SortedNumericDocValues base =
+                  // sparse fold merges the prior deltas (stays sparse); a dense rewrite (removal or
+                  // fold-to-dense) merges the base column
+                  final SortedNumericDocValues onDisk =
                       compact && foldToDense == false
                           ? overlaySortedNumeric(deltaProducers, fieldInfo)
                           : reader.getSortedNumericDocValues(field);
-                  final NumericDocValues singletonBase = DocValues.unwrapSingleton(base);
-                  assert singletonBase != null : "sorted-numeric base column must be single-valued";
-                  // reuse the numeric merge and re-wrap as singleton
-                  final MergedDocValues<NumericDocValues> mergedDocValues =
-                      new MergedDocValues<>(
-                          singletonBase,
-                          DocValuesFieldUpdates.Iterator.asNumericDocValues(iterator),
-                          iterator);
-                  return DocValues.singleton(
-                      new NumericDocValues() {
-                        @Override
-                        public long longValue() throws IOException {
-                          return mergedDocValues.currentValuesSupplier.longValue();
-                        }
-
-                        @Override
-                        public boolean advanceExact(int target) {
-                          return mergedDocValues.advanceExact(target);
-                        }
-
-                        @Override
-                        public int docID() {
-                          return mergedDocValues.docID();
-                        }
-
-                        @Override
-                        public int nextDoc() throws IOException {
-                          return mergedDocValues.nextDoc();
-                        }
-
-                        @Override
-                        public int advance(int target) {
-                          return mergedDocValues.advance(target);
-                        }
-
-                        @Override
-                        public long cost() {
-                          return mergedDocValues.cost();
-                        }
-                      });
+                  final NumericDocValues singletonOnDisk = DocValues.unwrapSingleton(onDisk);
+                  if (singletonOnDisk != null) {
+                    return DocValues.singleton(
+                        handleMergedNumericDocValues(singletonOnDisk, iterator));
+                  } else {
+                    return new MergedSortedNumericDocValues(
+                        onDisk,
+                        DocValuesFieldUpdates.Iterator.asNumericDocValues(iterator),
+                        iterator);
+                  }
                 }
               });
         }
@@ -704,20 +614,12 @@ final class ReadersAndUpdates {
   }
 
   /**
-   * Fresh overlay over the delta generations of a sorted-numeric field. The delta generations are
-   * always written single-valued (sparse updates are single-valued), so each unwraps to a {@link
-   * NumericDocValues}; we overlay those and re-wrap as a singleton sorted-numeric column so the
-   * caller can keep using the numeric merge path.
+   * Fresh overlay over the delta generations of a sorted-numeric field, newest first, used to fold
+   * deltas during compaction.
    */
   private static SortedNumericDocValues overlaySortedNumeric(
       List<DocValuesProducer> producers, FieldInfo fieldInfo) throws IOException {
-    NumericDocValues[] layers = new NumericDocValues[producers.size()];
-    for (int i = 0; i < layers.length; i++) {
-      NumericDocValues n = DocValues.unwrapSingleton(producers.get(i).getSortedNumeric(fieldInfo));
-      assert n != null : "sorted-numeric delta generation must be single-valued";
-      layers[i] = n;
-    }
-    return DocValues.singleton(new OverlayNumericDocValues(layers));
+    return OverlaySortedNumericDocValues.from(fieldInfo, producers);
   }
 
   /**
@@ -854,6 +756,139 @@ final class ReadersAndUpdates {
         currentValuesSupplier = updateDocValues;
       }
     }
+  }
+
+  /**
+   * Merges an on-disk {@link SortedNumericDocValues} (possibly multi-valued) with a single-valued
+   * update stream, giving the update precedence: a doc's value comes from the update (a single
+   * value) if it set one, else from the base's whole value set. Used for the dense rewrite / fold
+   * path; the sparse path writes only the updated docs as a single-valued delta.
+   */
+  static final class MergedSortedNumericDocValues extends SortedNumericDocValues {
+    private final DocValuesFieldUpdates.Iterator updateIterator;
+    private final SortedNumericDocValues onDisk;
+    private final NumericDocValues update;
+    private int docIDOut = -1;
+    private int docIDOnDisk = -1;
+    private int updateDocID = -1;
+    private boolean onUpdate;
+    private int valuesLeft;
+
+    MergedSortedNumericDocValues(
+        SortedNumericDocValues onDisk,
+        NumericDocValues update,
+        DocValuesFieldUpdates.Iterator updateIterator) {
+      this.onDisk = onDisk;
+      this.update = update;
+      this.updateIterator = updateIterator;
+    }
+
+    @Override
+    public int docID() {
+      return docIDOut;
+    }
+
+    @Override
+    public int nextDoc() throws IOException {
+      boolean hasValue;
+      do {
+        if (docIDOnDisk == docIDOut) {
+          docIDOnDisk = onDisk == null ? NO_MORE_DOCS : onDisk.nextDoc();
+        }
+        if (updateDocID == docIDOut) {
+          updateDocID = update.nextDoc();
+        }
+        if (docIDOnDisk < updateDocID) {
+          // no update to this doc: use the base's whole value set
+          docIDOut = docIDOnDisk;
+          onUpdate = false;
+          valuesLeft = onDisk.docValueCount();
+          hasValue = true;
+        } else {
+          docIDOut = updateDocID;
+          if (docIDOut != NO_MORE_DOCS) {
+            onUpdate = true;
+            hasValue = updateIterator.hasValue();
+            valuesLeft = hasValue ? 1 : 0;
+          } else {
+            hasValue = true;
+          }
+        }
+      } while (hasValue == false);
+      return docIDOut;
+    }
+
+    @Override
+    public int advance(int target) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean advanceExact(int target) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public long cost() {
+      return onDisk == null ? 0 : onDisk.cost();
+    }
+
+    @Override
+    public int docValueCount() {
+      return valuesLeft;
+    }
+
+    @Override
+    public long nextValue() throws IOException {
+      valuesLeft--;
+      return onUpdate ? update.longValue() : onDisk.nextValue();
+    }
+  }
+
+  private NumericDocValues handleMergedNumericDocValues(
+      NumericDocValues onDisk, DocValuesFieldUpdates.Iterator updateIterator) {
+    final MergedDocValues<NumericDocValues> mergedDocValues =
+        new MergedDocValues<>(
+            onDisk,
+            DocValuesFieldUpdates.Iterator.asNumericDocValues(updateIterator),
+            updateIterator);
+    // Merge sort of the original doc values with updated doc values:
+    return new NumericDocValues() {
+      @Override
+      public long longValue() throws IOException {
+        return mergedDocValues.currentValuesSupplier.longValue();
+      }
+
+      @Override
+      public boolean advanceExact(int target) {
+        return mergedDocValues.advanceExact(target);
+      }
+
+      @Override
+      public int docID() {
+        return mergedDocValues.docID();
+      }
+
+      @Override
+      public int nextDoc() throws IOException {
+        return mergedDocValues.nextDoc();
+      }
+
+      @Override
+      public int advance(int target) {
+        return mergedDocValues.advance(target);
+      }
+
+      @Override
+      public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+        mergedDocValues.intoBitSet(upTo, bitSet, offset);
+      }
+
+      @Override
+      public long cost() {
+        return mergedDocValues.cost();
+      }
+    };
   }
 
   private synchronized Set<String> writeFieldInfosGen(

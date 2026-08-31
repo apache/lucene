@@ -17,6 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
@@ -220,15 +221,7 @@ class SegmentDocValuesProducer extends DocValuesProducer {
     if (producers.length == 1) {
       return producers[0].getSortedNumeric(field);
     }
-    // Overlaid single-valued sorted-numeric field: each generation is stored as a singleton numeric
-    // column, so unwrap the layers, overlay them (newest-doc wins), and re-wrap as a singleton.
-    NumericDocValues[] layers = new NumericDocValues[producers.length];
-    for (int i = 0; i < producers.length; i++) {
-      NumericDocValues n = DocValues.unwrapSingleton(producers[i].getSortedNumeric(field));
-      assert n != null : "overlaid sorted-numeric generation must be single-valued";
-      layers[i] = n;
-    }
-    return DocValues.singleton(new OverlayNumericDocValues(layers));
+    return OverlaySortedNumericDocValues.from(field, Arrays.asList(producers));
   }
 
   @Override

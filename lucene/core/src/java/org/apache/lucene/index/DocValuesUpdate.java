@@ -156,11 +156,13 @@ abstract class DocValuesUpdate {
   /**
    * An in-place update to a numeric DocValues field.
    *
-   * <p>Also used for single-valued {@link org.apache.lucene.document.SortedNumericDocValuesField}
-   * updates ({@code type == SORTED_NUMERIC}): a single-valued sorted-numeric field is physically
-   * stored as a {@link NumericDocValues} column (the codec only writes an addresses table when a
-   * document has more than one value), so the update payload is identical to a numeric update —
-   * only the doc-values type differs, which drives the singleton wrapping at write/read time.
+   * <p>Also used for {@link org.apache.lucene.document.SortedNumericDocValuesField} updates ({@code
+   * type == SORTED_NUMERIC}): such an update sets a single value per matched document, so its
+   * payload is identical to a numeric update — only the doc-values type differs, which drives the
+   * singleton wrapping at write/read time. The updated field may itself be single- or multi-valued:
+   * a single-valued column is physically stored as a {@link NumericDocValues} column (the codec
+   * only writes an addresses table when a document has more than one value) and reuses the numeric
+   * write path, while a multi-valued column is merged per-doc.
    */
   static final class NumericDocValuesUpdate extends DocValuesUpdate {
     private final long value;
@@ -173,7 +175,7 @@ abstract class DocValuesUpdate {
       this(DocValuesType.NUMERIC, term, field, value);
     }
 
-    /** Creates a numeric or single-valued sorted-numeric update, depending on {@code type}. */
+    /** Creates a numeric or sorted-numeric update, depending on {@code type}. */
     NumericDocValuesUpdate(DocValuesType type, Term term, String field, Long value) {
       this(type, term, field, value != null ? value : -1, BufferedUpdates.MAX_INT, value != null);
     }

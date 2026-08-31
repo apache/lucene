@@ -35,9 +35,11 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 
 /**
- * Tests in-place updates of single-valued SORTED_NUMERIC doc-values. A single-valued sorted-numeric
- * field is stored as a numeric column, so it can be updated in place through the numeric update
- * machinery.
+ * Tests in-place updates of SORTED_NUMERIC doc-values. An update sets a single value per matched
+ * document, replacing whatever value(s) that document had; the field itself may be single- or
+ * multi-valued, and documents not matched by the update keep their existing values. A single-valued
+ * column is stored as a numeric column and reuses the numeric update machinery; a multi-valued
+ * column is preserved and merged per-doc.
  */
 public class TestSortedNumericDocValuesUpdates extends LuceneTestCase {
 
@@ -103,21 +105,52 @@ public class TestSortedNumericDocValuesUpdates extends LuceneTestCase {
     IOUtils.close(writer, dir);
   }
 
-  public void testUpdateOverMultiValuedBaseRejected() throws Exception {
+  public void testUpdateOverMultiValuedBase() throws Exception {
     Directory dir = newDirectory();
     IndexWriter writer = new IndexWriter(dir, conf());
     writer.addDocument(doc(0, 1, 2, 3)); // genuinely multi-valued base
     writer.addDocument(doc(1, 7, 8));
     writer.commit();
 
-    // a single-valued sorted-numeric column can be updated in place, but a multi-valued one cannot;
-    // the update is rejected when it is written (flushed) rather than silently rewriting the
-    // column.
+    // updating doc-0 to a single value succeeds even though the column is multi-valued; doc-1 keeps
+    // its whole value set.
     writer.updateSortedNumericDocValue(new Term("id", "doc-0"), "val", 99);
-    expectThrows(IllegalArgumentException.class, () -> DirectoryReader.open(writer).close());
-    // the writer is now in a tragic-free but unusable-for-this-update state; roll it back
-    writer.rollback();
-    dir.close();
+    try (DirectoryReader reader = DirectoryReader.open(writer)) {
+      Map<String, long[]> values = collect(reader);
+      assertArrayEquals(new long[] {99}, values.get("doc-0"));
+      assertArrayEquals(new long[] {7, 8}, values.get("doc-1"));
+    }
+    IOUtils.close(writer, dir);
+  }
+
+  public void testUpdateKeepsOtherDocsMultiValuedAcrossMerge() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriterConfig conf = conf();
+    conf.setMaxBufferedDocs(2);
+    IndexWriter writer = new IndexWriter(dir, conf);
+    for (int i = 0; i < 6; i++) {
+      writer.addDocument(doc(i, i * 10L, i * 10L + 1, i * 10L + 2)); // 3 values each
+      if (i % 2 == 1) {
+        writer.commit();
+      }
+    }
+    // update a few docs to a single value; the rest must keep their 3-value sets, through a merge.
+    writer.updateSortedNumericDocValue(new Term("id", "doc-1"), "val", 500);
+    writer.updateSortedNumericDocValue(new Term("id", "doc-4"), "val", 501);
+    writer.forceMerge(1);
+    try (DirectoryReader reader = DirectoryReader.open(writer)) {
+      Map<String, long[]> values = collect(reader);
+      for (int i = 0; i < 6; i++) {
+        if (i == 1) {
+          assertArrayEquals(new long[] {500}, values.get("doc-1"));
+        } else if (i == 4) {
+          assertArrayEquals(new long[] {501}, values.get("doc-4"));
+        } else {
+          assertArrayEquals(new long[] {i * 10L, i * 10L + 1, i * 10L + 2}, values.get("doc-" + i));
+        }
+      }
+    }
+    IOUtils.close(writer, dir);
   }
 
   public void testUpdateThenDelete() throws Exception {

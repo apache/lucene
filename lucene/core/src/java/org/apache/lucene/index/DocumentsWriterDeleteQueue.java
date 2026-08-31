@@ -502,7 +502,8 @@ final class DocumentsWriterDeleteQueue implements Accountable, Closeable {
         switch (update.type) {
           case NUMERIC:
           case SORTED_NUMERIC:
-            // a single-valued sorted-numeric update shares the numeric update object and buffer
+            // a sorted-numeric update carries a single value, so it shares the numeric update
+            // object and buffer
             bufferedUpdates.addNumericUpdate((NumericDocValuesUpdate) update, docIDUpto);
             break;
           case BINARY:

@@ -61,9 +61,9 @@ final class FieldUpdatesBuffer {
   private long maxNumeric = Long.MIN_VALUE;
   private long minNumeric = Long.MAX_VALUE;
   private String[] fields;
-  // the actual doc-values type of the updated field. A single-valued SORTED_NUMERIC field is stored
-  // as a NumericDocValues column on disk, so it shares the numeric buffering path but keeps its own
-  // type so the write/read side can apply the singleton wrapping.
+  // the actual doc-values type of the updated field. A SORTED_NUMERIC update sets a single long
+  // value per doc, identical to a numeric update, so it shares the numeric buffering path but keeps
+  // its own type so the write/read side can apply the singleton wrapping.
   private final DocValuesType type;
   private final boolean isNumeric;
   private boolean finished = false;
@@ -82,7 +82,7 @@ final class FieldUpdatesBuffer {
       bytesUsed.addAndGet(hasValues.ramBytesUsed());
     }
     this.type = type;
-    // NUMERIC and single-valued SORTED_NUMERIC both use the numeric (long) storage path.
+    // NUMERIC and SORTED_NUMERIC updates both carry a single long, so they share the storage path.
     this.isNumeric = type == DocValuesType.NUMERIC || type == DocValuesType.SORTED_NUMERIC;
     byteValues = isNumeric ? null : new BytesRefArray(bytesUsed);
   }
@@ -93,7 +93,7 @@ final class FieldUpdatesBuffer {
 
   FieldUpdatesBuffer(
       Counter bytesUsed, DocValuesUpdate.NumericDocValuesUpdate initialValue, int docUpTo) {
-    // NUMERIC and single-valued SORTED_NUMERIC share this buffer; the update carries which one.
+    // NUMERIC and SORTED_NUMERIC share this buffer; the update carries which one.
     this(bytesUsed, initialValue, docUpTo, initialValue.type);
     if (initialValue.hasValue()) {
       numericValues = new long[] {initialValue.getValue()};

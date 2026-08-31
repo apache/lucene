@@ -2028,9 +2028,9 @@ public class IndexWriter
    * index, not add new fields through this method. You can only update fields that were indexed
    * only with doc values.
    *
-   * <p><b>NOTE:</b> only single-valued updates are supported: a single-valued sorted-numeric field
-   * is stored as a numeric column, so it can be updated in place. The update replaces the value of
-   * all affected documents.
+   * <p><b>NOTE:</b> the update sets a single value per matched document, replacing all values that
+   * document previously had. The field itself may be single- or multi-valued; documents not matched
+   * by <code>term</code> keep their existing (possibly multiple) values.
    *
    * @param term the term to identify the document(s) to be updated
    * @param field field name of the {@link org.apache.lucene.index.SortedNumericDocValues} field
@@ -2117,8 +2117,8 @@ public class IndexWriter
           dvUpdates[i] = new BinaryDocValuesUpdate(term, f.name(), f.binaryValue());
           break;
         case SORTED_NUMERIC:
-          // Only single-valued sorted-numeric updates are supported (a single-valued sorted-numeric
-          // field is stored as a numeric column, so it reuses the numeric update path).
+          // A sorted-numeric update carries a single value (like a numeric update) and replaces all
+          // values of each matched doc; the field itself may be single- or multi-valued.
           Number snValue = f.numericValue();
           dvUpdates[i] =
               new NumericDocValuesUpdate(
@@ -2132,7 +2132,7 @@ public class IndexWriter
         case SORTED_SET:
         default:
           throw new IllegalArgumentException(
-              "can only update NUMERIC, BINARY or (single-valued) SORTED_NUMERIC fields: field="
+              "can only update NUMERIC, BINARY or SORTED_NUMERIC fields: field="
                   + f.name()
                   + ", type="
                   + dvType);
