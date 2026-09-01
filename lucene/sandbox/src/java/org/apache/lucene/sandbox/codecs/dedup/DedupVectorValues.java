@@ -51,7 +51,13 @@ import org.apache.lucene.util.packed.DirectReader;
  * (one entry per distinct vector). {@code fieldOrdToGroupOrd} translates a document ordinal in the
  * field into its group ordinal.
  */
-sealed interface DedupVectorValues {
+sealed interface DedupVectorValues
+    permits DedupVectorValues.ByteImpl,
+        DedupVectorValues.FloatImpl,
+        DedupVectorValues.Float16Impl,
+        DedupScalarQuantizedVectorValues.FieldValues,
+        DedupScalarQuantizedVectorValues.RawAndQuantizedValues {
+
   /** The dense view over distinct vectors, indexed by group ordinal. */
   KnnVectorValues getGroupView();
 
@@ -68,7 +74,7 @@ sealed interface DedupVectorValues {
     FieldOrdToGroupOrd copy() throws IOException;
   }
 
-  static ByteVectorValues loadDedupBytes(
+  static ByteImpl loadDedupBytes(
       FlatVectorsScorer vectorsScorer,
       VectorSimilarityFunction function,
       OrdToDocDISIReaderConfiguration configuration,
@@ -188,7 +194,7 @@ sealed interface DedupVectorValues {
     }
   }
 
-  static FloatVectorValues loadDedupFloats(
+  static FloatImpl loadDedupFloats(
       FlatVectorsScorer vectorsScorer,
       VectorSimilarityFunction function,
       OrdToDocDISIReaderConfiguration configuration,
@@ -345,7 +351,7 @@ sealed interface DedupVectorValues {
 
     @Override
     public FieldOrdToGroupOrd copy() {
-      return new FieldOrdToGroupOrdArrayList(fieldOrdToGroupOrd);
+      throw new UnsupportedOperationException("not meant for copying");
     }
   }
 
@@ -360,7 +366,7 @@ sealed interface DedupVectorValues {
 
     @Override
     public FieldOrdToGroupOrd copy() {
-      return new FieldOrdToGroupOrdMappedArrayList(map, fieldOrdToGroupOrd);
+      throw new UnsupportedOperationException("not meant for copying");
     }
   }
 
@@ -398,7 +404,7 @@ sealed interface DedupVectorValues {
     @Override
     public FieldOrdToGroupOrd copy() throws IOException {
       return new FieldOrdToGroupOrdOffHeap(
-          vectorData, fieldOrdToGroupOrdOffset, fieldOrdToGroupOrdSize);
+          vectorData.clone(), fieldOrdToGroupOrdOffset, fieldOrdToGroupOrdSize);
     }
   }
 }
