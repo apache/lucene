@@ -20,7 +20,6 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.apache.lucene.document.Document;
@@ -35,9 +34,6 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.NamedThreadFactory;
 
 public class TestDoubleValuesRetriever extends LuceneTestCase {
-
-  /** Same-thread executor, so the concurrency wrapper is exercised without real threads. */
-  private static final Executor DIRECT_EXECUTOR = Runnable::run;
 
   /**
    * Value stored in field "a" for the doc whose global id is {@code globalId}. Chosen to be a
@@ -61,10 +57,9 @@ public class TestDoubleValuesRetriever extends LuceneTestCase {
       try (DirectoryReader reader = DirectoryReader.open(writer)) {
         double[][] values =
             DoubleValuesRetriever.retrieve(
-                reader,
+                new IndexSearcher(reader),
                 new int[0],
-                new DoubleValuesSource[] {DoubleValuesSource.fromLongField("a")},
-                DIRECT_EXECUTOR);
+                new DoubleValuesSource[] {DoubleValuesSource.fromLongField("a")});
         assertEquals(0, values.length);
       }
     }
@@ -85,7 +80,7 @@ public class TestDoubleValuesRetriever extends LuceneTestCase {
           DoubleValuesSource.fromLongField("a"), DoubleValuesSource.fromLongField("b")
         };
         double[][] values =
-            DoubleValuesRetriever.retrieve(reader, docIds, sources, DIRECT_EXECUTOR);
+            DoubleValuesRetriever.retrieve(new IndexSearcher(reader), docIds, sources);
 
         assertEquals(docIds.length, values.length);
         for (int i = 0; i < docIds.length; i++) {
@@ -116,7 +111,7 @@ public class TestDoubleValuesRetriever extends LuceneTestCase {
           DoubleValuesSource.fromLongField("a"), DoubleValuesSource.fromLongField("b")
         };
         double[][] values =
-            DoubleValuesRetriever.retrieve(reader, new int[] {0, 1}, sources, DIRECT_EXECUTOR);
+            DoubleValuesRetriever.retrieve(new IndexSearcher(reader), new int[] {0, 1}, sources);
 
         assertEquals((double) valueA(0), values[0][0], 0.0);
         assertEquals((double) valueB(0), values[0][1], 0.0);
@@ -135,15 +130,13 @@ public class TestDoubleValuesRetriever extends LuceneTestCase {
         DoubleValuesSource[] sources = {DoubleValuesSource.SCORES};
         expectThrows(
             IllegalArgumentException.class,
-            () -> DoubleValuesRetriever.retrieve(reader, new int[] {0}, sources, DIRECT_EXECUTOR));
+            () ->
+                DoubleValuesRetriever.retrieve(new IndexSearcher(reader), new int[] {0}, sources));
       }
     }
   }
 
-  /**
-   * The adapter's own guards; {@code globalDocIds}/{@code executor} nulls are the engine's
-   * contract.
-   */
+  /** The adapter's own guards; {@code globalDocIds} nulls are the engine's contract. */
   public void testNullArgumentsRejected() throws IOException {
     try (Directory dir = newDirectory();
         IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig())) {
@@ -153,10 +146,10 @@ public class TestDoubleValuesRetriever extends LuceneTestCase {
         int[] docIds = {0};
         expectThrows(
             NullPointerException.class,
-            () -> DoubleValuesRetriever.retrieve(null, docIds, sources, DIRECT_EXECUTOR));
+            () -> DoubleValuesRetriever.retrieve(null, docIds, sources));
         expectThrows(
             NullPointerException.class,
-            () -> DoubleValuesRetriever.retrieve(reader, docIds, null, DIRECT_EXECUTOR));
+            () -> DoubleValuesRetriever.retrieve(new IndexSearcher(reader), docIds, null));
       }
     }
   }
@@ -207,7 +200,9 @@ public class TestDoubleValuesRetriever extends LuceneTestCase {
             DoubleValuesSource[] sources = {
               DoubleValuesSource.fromLongField("a"), DoubleValuesSource.fromLongField("b")
             };
-            double[][] values = DoubleValuesRetriever.retrieve(reader, docIds, sources, executor);
+            double[][] values =
+                DoubleValuesRetriever.retrieve(
+                    new IndexSearcher(reader, executor), docIds, sources);
 
             assertArrayEquals("input array must not be mutated", inputCopy, docIds);
             assertEquals(docIds.length, values.length);

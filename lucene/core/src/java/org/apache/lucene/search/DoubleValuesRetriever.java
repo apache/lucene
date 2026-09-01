@@ -19,16 +19,16 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Objects;
-import java.util.concurrent.Executor;
-import org.apache.lucene.index.IndexReader;
 
 /**
  * Retrieves {@link DoubleValuesSource} values for an {@code int[]} of global doc IDs, returning a
  * {@code double[hit][source]} grid in input order: {@code result[i][s]} is {@code sources[s]}'s
  * value for {@code globalDocIds[i]}. The input array is not mutated.
  *
- * <p>A {@code DoubleValuesSource}-specific specialization of {@link ReturnFieldsRetriever}. A doc
- * with no value for a source yields {@link Double#NaN}.
+ * <p>A {@code DoubleValuesSource}-specific specialization of {@link ReturnFieldsRetriever}.
+ *
+ * <p>A doc with no value for a source yields {@link Double#NaN}. This cannot be distinguished from
+ * a doc that legitimately stores {@code NaN} (e.g. via {@link DoubleValuesSource#fromDoubleField}).
  *
  * @lucene.experimental
  */
@@ -39,22 +39,23 @@ public final class DoubleValuesRetriever {
   /**
    * Retrieves the values of each source for each global doc ID.
    *
-   * @param reader an open index reader (the caller is responsible for its reference count)
+   * @param searcher the searcher whose reader holds the docs; its {@link
+   *     IndexSearcher#getSimilarity() similarity}, query cache, and {@link
+   *     IndexSearcher#getTaskExecutor() task executor} are used, so sources are rewritten against
+   *     the caller's actual search context
    * @param globalDocIds global doc IDs in any order (e.g. ranking order); not mutated
    * @param sources the value sources to evaluate for each doc; none may need scores
-   * @param executor executor used to process leaves concurrently
    * @return a {@code double[globalDocIds.length][sources.length]} grid, in input order; missing
    *     values are {@link Double#NaN}
    * @throws IllegalArgumentException if any source needs scores (this retriever supplies none)
    */
   public static double[][] retrieve(
-      IndexReader reader, int[] globalDocIds, DoubleValuesSource[] sources, Executor executor)
-      throws IOException {
-    Objects.requireNonNull(reader, "reader");
+      IndexSearcher searcher, int[] globalDocIds, DoubleValuesSource[] sources) throws IOException {
+    Objects.requireNonNull(searcher, "searcher");
+    Objects.requireNonNull(globalDocIds, "globalDocIds");
     Objects.requireNonNull(sources, "sources");
 
-    // Rewrite the sources once against the top-level reader, as required by DoubleValuesSource.
-    final IndexSearcher searcher = new IndexSearcher(reader);
+    // Rewrite the sources against the caller's searcher, as required by DoubleValuesSource.
     final DoubleValuesSource[] rewritten = new DoubleValuesSource[sources.length];
     for (int s = 0; s < sources.length; s++) {
       rewritten[s] = sources[s].rewrite(searcher);
@@ -68,7 +69,7 @@ public final class DoubleValuesRetriever {
     }
 
     return ReturnFieldsRetriever.retrieve(
-        reader,
+        searcher.getIndexReader(),
         globalDocIds,
         leaf -> {
           final DoubleValues[] cursors = new DoubleValues[rewritten.length];
@@ -84,6 +85,6 @@ public final class DoubleValuesRetriever {
           };
         },
         double[][]::new,
-        executor);
+        searcher.getTaskExecutor());
   }
 }

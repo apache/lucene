@@ -20,7 +20,6 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.apache.lucene.document.Document;
@@ -39,7 +38,7 @@ import org.apache.lucene.util.NamedThreadFactory;
 
 public class TestReturnFieldsRetriever extends LuceneTestCase {
 
-  private static final Executor DIRECT_EXECUTOR = Runnable::run;
+  private static final TaskExecutor DIRECT_EXECUTOR = new TaskExecutor(Runnable::run);
 
   /** Stored "title" for the doc whose global id is {@code globalId}. */
   private static String title(int globalId) {
@@ -168,6 +167,7 @@ public class TestReturnFieldsRetriever extends LuceneTestCase {
         Executors.newFixedThreadPool(
             TestUtil.nextInt(random(), 2, 5),
             new NamedThreadFactory(TestReturnFieldsRetriever.class.getSimpleName()));
+    TaskExecutor taskExecutor = new TaskExecutor(executor);
     try {
       for (int iter = 0; iter < 50; iter++) {
         int numSegments = random().nextInt(6) + 1;
@@ -201,7 +201,7 @@ public class TestReturnFieldsRetriever extends LuceneTestCase {
 
             String[] result =
                 ReturnFieldsRetriever.retrieve(
-                    reader, docIds, titleFactory(), String[]::new, executor);
+                    reader, docIds, titleFactory(), String[]::new, taskExecutor);
 
             assertArrayEquals("input must not be mutated", inputCopy, docIds);
             assertEquals(docIds.length, result.length);

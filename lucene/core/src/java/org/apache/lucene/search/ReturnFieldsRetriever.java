@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.Callable;
-import java.util.concurrent.Executor;
 import java.util.function.IntFunction;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -35,9 +34,9 @@ import org.apache.lucene.index.ReaderUtil;
  * mutated.
  *
  * <p>It owns the scatter/gather machinery (partition via {@link ReaderUtil#partitionByLeaf}, run
- * leaves on the {@link Executor}, gather back to input order) but is agnostic about <em>what</em>
- * is produced per hit: the caller supplies a {@link LeafVisitorFactory} that turns a document into
- * a value of type {@code T}.
+ * leaves on the {@link TaskExecutor}, gather back to input order) but is agnostic about
+ * <em>what</em> is produced per hit: the caller supplies a {@link LeafVisitorFactory} that turns a
+ * document into a value of type {@code T}.
  *
  * <p><b>Concurrency contract.</b> Leaves run concurrently, so {@link
  * LeafVisitorFactory#newLeafVisitor} must return a <em>fresh</em>, single-threaded {@link
@@ -89,7 +88,8 @@ public final class ReturnFieldsRetriever {
    * @param factory creates a fresh per-leaf {@link LeafVisitor}; see the concurrency contract
    * @param arrayFactory allocates the result array of the required length (e.g. {@code
    *     String[]::new})
-   * @param executor executor used to process leaves concurrently
+   * @param taskExecutor task executor used to process leaves concurrently (e.g. {@link
+   *     IndexSearcher#getTaskExecutor()})
    * @param <T> the per-hit result type
    * @return an array of length {@code globalDocIds.length}, where element {@code i} is the result
    *     for {@code globalDocIds[i]}
@@ -99,13 +99,13 @@ public final class ReturnFieldsRetriever {
       int[] globalDocIds,
       LeafVisitorFactory<T> factory,
       IntFunction<T[]> arrayFactory,
-      Executor executor)
+      TaskExecutor taskExecutor)
       throws IOException {
     Objects.requireNonNull(reader, "reader");
     Objects.requireNonNull(globalDocIds, "globalDocIds");
     Objects.requireNonNull(factory, "factory");
     Objects.requireNonNull(arrayFactory, "arrayFactory");
-    Objects.requireNonNull(executor, "executor");
+    Objects.requireNonNull(taskExecutor, "taskExecutor");
 
     final T[] results = arrayFactory.apply(globalDocIds.length);
     if (globalDocIds.length == 0) {
@@ -138,7 +138,7 @@ public final class ReturnFieldsRetriever {
           });
     }
 
-    new TaskExecutor(executor).invokeAll(tasks);
+    taskExecutor.invokeAll(tasks);
     return results;
   }
 }
