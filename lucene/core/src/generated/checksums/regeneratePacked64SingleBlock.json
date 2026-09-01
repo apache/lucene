@@ -1,7 +1,7 @@
 {
     "gradle/regenerate/packed/gen_BulkOperation.py": "fdf6504f2aa678c1b03140c232e01687e34251c6",
     "gradle/regenerate/packed/gen_Packed64SingleBlock.py": "5a071648201ddd91bf931989c23da99dcfd052eb",
-    "lucene/core/src/java/org/apache/lucene/util/packed/BulkOperation.java": "c4e16930960a18e74802c56ee60f8e83bd8b6dd2",
+    "lucene/core/src/java/org/apache/lucene/util/packed/BulkOperation.java": "35a89e4f3dd37084cc059a784bcbeb384256773b",
     "lucene/core/src/java/org/apache/lucene/util/packed/BulkOperationPacked.java": "2b0d9226bae8a07ce4970bcaa9d4d0cd4fe2c79a",
     "lucene/core/src/java/org/apache/lucene/util/packed/BulkOperationPacked1.java": "c483aa35c275bacc1f3a010c5b879441be502108",
     "lucene/core/src/java/org/apache/lucene/util/packed/BulkOperationPacked10.java": "35fe8a9c9a91cd840b239af4ddd1e0de53ef1404",

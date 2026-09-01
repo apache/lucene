@@ -450,7 +450,7 @@ public class WordFormGenerator {
     EntrySuggestion compress() {
       Comparator<String> stemSorter =
           Comparator.comparing((String s) -> existingStems.contains(s))
-              .thenComparing(s -> stemsToForms.get(s).size())
+              .thenComparingInt(s -> stemsToForms.get(s).size())
               .reversed();
       List<String> sortedStems = stemsToForms.keySet().stream().sorted(stemSorter).toList();
       PriorityQueue<State> queue = new PriorityQueue<>(solutionFitness);
