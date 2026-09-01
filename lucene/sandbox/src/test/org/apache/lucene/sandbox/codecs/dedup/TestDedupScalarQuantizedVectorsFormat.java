@@ -31,6 +31,7 @@ import java.util.List;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
+import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
@@ -418,7 +419,9 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
       LeafReader leafReader, String fieldName) {
     assertThat(leafReader, instanceOf(CodecReader.class));
     KnnVectorsReader knnVectorsReader = ((CodecReader) leafReader).getVectorReader();
-    knnVectorsReader = knnVectorsReader.unwrapReaderForField(fieldName);
+    if (knnVectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader fieldsReader) {
+      knnVectorsReader = fieldsReader.getFieldReader(fieldName);
+    }
 
     assertThat(knnVectorsReader, instanceOf(Lucene99HnswVectorsReader.class));
     FlatVectorsReader flatReader =

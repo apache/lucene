@@ -24,6 +24,7 @@ import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
+import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.VectorEncoding;
@@ -83,7 +84,9 @@ public class TestDedupHnswScalarQuantizedVectorsFormat extends TestDedupHnswVect
 
     if (r instanceof CodecReader codecReader) {
       KnnVectorsReader knnVectorsReader = codecReader.getVectorReader();
-      knnVectorsReader = knnVectorsReader.unwrapReaderForField(fieldName);
+      if (knnVectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader fieldsReader) {
+        knnVectorsReader = fieldsReader.getFieldReader(fieldName);
+      }
       var offHeap = knnVectorsReader.getOffHeapByteSize(fieldInfo);
       long totalByteSize = offHeap.values().stream().mapToLong(Long::longValue).sum();
       if (knnVectorsReader instanceof Lucene99HnswVectorsReader) {

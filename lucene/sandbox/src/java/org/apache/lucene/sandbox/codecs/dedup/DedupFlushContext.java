@@ -116,7 +116,8 @@ final class DedupFlushContext implements Accountable {
       for (FieldData fieldData : fieldDataList) {
         if (fieldData.fieldInfo.getVectorEncoding() == VectorEncoding.FLOAT32) {
           groupFlavors
-              .computeIfAbsent(fieldData.groupKey, _ -> EnumSet.noneOf(DedupQuantizer.Flavor.class))
+              .computeIfAbsent(
+                  fieldData.groupKey, groupKey -> EnumSet.noneOf(DedupQuantizer.Flavor.class))
               .add(DedupQuantizer.Flavor.of(fieldData.fieldInfo.getVectorSimilarityFunction()));
         }
       }

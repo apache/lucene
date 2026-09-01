@@ -54,7 +54,6 @@ import org.apache.lucene.util.packed.DirectReader;
 sealed interface DedupVectorValues
     permits DedupVectorValues.ByteImpl,
         DedupVectorValues.FloatImpl,
-        DedupVectorValues.Float16Impl,
         DedupScalarQuantizedVectorValues.FieldValues,
         DedupScalarQuantizedVectorValues.RawAndQuantizedValues {
 

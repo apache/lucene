@@ -17,10 +17,8 @@
 package org.apache.lucene.sandbox.codecs.dedup;
 
 import static org.apache.lucene.index.VectorEncoding.BYTE;
-import static org.apache.lucene.index.VectorEncoding.FLOAT16;
 import static org.apache.lucene.index.VectorEncoding.FLOAT32;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.loadDedupBytes;
-import static org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.loadDedupFloat16s;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.loadDedupFloats;
 
 import java.io.IOException;
@@ -35,10 +33,8 @@ import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
-import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorEncoding;
@@ -343,16 +339,9 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
   }
 
   @Override
-  public RandomVectorScorer getRandomVectorScorer(String field, short[] target) throws IOException {
-    FieldEntry entry = getEntry(field, FLOAT16);
-    Float16VectorValues vectorValues = getFloat16VectorValues(entry);
-    return vectorsScorer.getRandomVectorScorer(entry.fieldInfo().function(), vectorValues, target);
-  }
-
-  @Override
-  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
-    CodecUtil.checksumEntireFile(vectorData, merge);
-    CodecUtil.checksumEntireFile(quantizedVectorData, merge);
+  public void checkIntegrity() throws IOException {
+    CodecUtil.checksumEntireFile(vectorData);
+    CodecUtil.checksumEntireFile(quantizedVectorData);
   }
 
   private DedupVectorValues.FloatImpl getRawFloatVectorValues(FieldEntry entry) throws IOException {
@@ -409,25 +398,6 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
   @Override
   public ByteVectorValues getByteVectorValues(String field) throws IOException {
     return getByteVectorValues(getEntry(field, BYTE));
-  }
-
-  private Float16VectorValues getFloat16VectorValues(FieldEntry entry) throws IOException {
-    return loadDedupFloat16s(
-        vectorsScorer,
-        entry.fieldInfo().function(),
-        entry.fieldInfo().ordToDoc(),
-        entry.fieldInfo().dimension(),
-        entry.groupInfo().groupNumVectors(),
-        vectorData,
-        entry.groupInfo().vectorDataOffset(),
-        entry.groupInfo().vectorDataSize(),
-        entry.fieldInfo().fieldOrdToGroupOrdOffset(),
-        entry.fieldInfo().fieldOrdToGroupOrdSize());
-  }
-
-  @Override
-  public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
-    return getFloat16VectorValues(getEntry(field, FLOAT16));
   }
 
   @Override
@@ -497,8 +467,7 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
       CodecUtil.writeFooter(tempQueryVectors);
     } catch (Throwable t) {
       if (tempQueryVectorsName != null) {
-        IOUtils.deleteFilesSuppressingExceptions(
-            t, segmentWriteState.directory, tempQueryVectorsName);
+        IOUtils.deleteFilesIgnoringExceptions(segmentWriteState.directory, tempQueryVectorsName);
       }
       throw t;
     }
@@ -530,8 +499,7 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
           });
     } catch (Throwable t) {
       IOUtils.closeWhileSuppressingExceptions(t, queryVectorsInput);
-      IOUtils.deleteFilesSuppressingExceptions(
-          t, segmentWriteState.directory, finalTempQueryVectorsName);
+      IOUtils.deleteFilesIgnoringExceptions(segmentWriteState.directory, finalTempQueryVectorsName);
       throw t;
     }
   }
