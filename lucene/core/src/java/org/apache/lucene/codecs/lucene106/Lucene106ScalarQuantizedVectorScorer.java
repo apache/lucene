@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene105;
+package org.apache.lucene.codecs.lucene106;
 
 import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
 import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
@@ -38,10 +38,10 @@ import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncod
  *
  * @lucene.experimental
  */
-public class Lucene105ScalarQuantizedVectorScorer implements FlatVectorsScorer {
+public class Lucene106ScalarQuantizedVectorScorer implements FlatVectorsScorer {
   private final FlatVectorsScorer nonQuantizedDelegate;
 
-  public Lucene105ScalarQuantizedVectorScorer(FlatVectorsScorer nonQuantizedDelegate) {
+  public Lucene106ScalarQuantizedVectorScorer(FlatVectorsScorer nonQuantizedDelegate) {
     this.nonQuantizedDelegate = nonQuantizedDelegate;
   }
 
@@ -101,6 +101,14 @@ public class Lucene105ScalarQuantizedVectorScorer implements FlatVectorsScorer {
 
   @Override
   public RandomVectorScorer getRandomVectorScorer(
+      VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, short[] target)
+      throws IOException {
+    FlatVectorsScorer.checkDimensions(target.length, vectorValues.dimension());
+    return nonQuantizedDelegate.getRandomVectorScorer(similarityFunction, vectorValues, target);
+  }
+
+  @Override
+  public RandomVectorScorer getRandomVectorScorer(
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, byte[] target)
       throws IOException {
     FlatVectorsScorer.checkDimensions(target.length, vectorValues.dimension());
@@ -117,7 +125,7 @@ public class Lucene105ScalarQuantizedVectorScorer implements FlatVectorsScorer {
 
   @Override
   public String toString() {
-    return "Lucene105ScalarQuantizedVectorScorer(nonQuantizedDelegate="
+    return "Lucene106ScalarQuantizedVectorScorer(nonQuantizedDelegate="
         + nonQuantizedDelegate
         + ")";
   }

@@ -14,10 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene105;
+package org.apache.lucene.codecs.lucene106;
 
-import static org.apache.lucene.codecs.lucene105.Lucene105ScalarQuantizedVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
-import static org.apache.lucene.codecs.lucene105.Lucene105ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_COMPONENT;
+import static org.apache.lucene.codecs.lucene106.Lucene106ScalarQuantizedVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
+import static org.apache.lucene.codecs.lucene106.Lucene106ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_COMPONENT;
 import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.util.RamUsageEstimator.shallowSizeOfInstance;
@@ -62,9 +62,9 @@ import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncod
  *
  * @lucene.experimental
  */
-public class Lucene105ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
+public class Lucene106ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   private static final long SHALLOW_RAM_BYTES_USED =
-      shallowSizeOfInstance(Lucene105ScalarQuantizedVectorsWriter.class);
+      shallowSizeOfInstance(Lucene106ScalarQuantizedVectorsWriter.class);
 
   private final SegmentWriteState segmentWriteState;
   private final List<FieldWriter> fields = new ArrayList<>();
@@ -75,12 +75,12 @@ public class Lucene105ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   private boolean finished;
 
   /** Sole constructor */
-  public Lucene105ScalarQuantizedVectorsWriter(
+  public Lucene106ScalarQuantizedVectorsWriter(
       SegmentWriteState state,
       ScalarEncoding encoding,
       boolean enableCentering,
       FlatVectorsWriter rawVectorDelegate,
-      Lucene105ScalarQuantizedVectorScorer vectorsScorer)
+      Lucene106ScalarQuantizedVectorScorer vectorsScorer)
       throws IOException {
     super(vectorsScorer);
     this.encoding = encoding;
@@ -90,13 +90,13 @@ public class Lucene105ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
             state.segmentSuffix,
-            Lucene105ScalarQuantizedVectorsFormat.META_EXTENSION);
+            Lucene106ScalarQuantizedVectorsFormat.META_EXTENSION);
 
     String vectorDataFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
             state.segmentSuffix,
-            Lucene105ScalarQuantizedVectorsFormat.VECTOR_DATA_EXTENSION);
+            Lucene106ScalarQuantizedVectorsFormat.VECTOR_DATA_EXTENSION);
     this.rawVectorDelegate = rawVectorDelegate;
     try {
       meta = state.directory.createOutput(metaFileName, state.context);
@@ -104,14 +104,14 @@ public class Lucene105ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
 
       CodecUtil.writeIndexHeader(
           meta,
-          Lucene105ScalarQuantizedVectorsFormat.META_CODEC_NAME,
-          Lucene105ScalarQuantizedVectorsFormat.VERSION_CURRENT,
+          Lucene106ScalarQuantizedVectorsFormat.META_CODEC_NAME,
+          Lucene106ScalarQuantizedVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       CodecUtil.writeIndexHeader(
           vectorData,
-          Lucene105ScalarQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
-          Lucene105ScalarQuantizedVectorsFormat.VERSION_CURRENT,
+          Lucene106ScalarQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
+          Lucene106ScalarQuantizedVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
     } catch (Throwable t) {
@@ -504,7 +504,7 @@ public class Lucene105ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
 
   static float[] getCentroid(KnnVectorsReader vectorsReader, String fieldName) {
     vectorsReader = vectorsReader.unwrapReaderForField(fieldName);
-    if (vectorsReader instanceof Lucene105ScalarQuantizedVectorsReader reader) {
+    if (vectorsReader instanceof Lucene106ScalarQuantizedVectorsReader reader) {
       return reader.getCentroid(fieldName);
     }
     return null;
@@ -513,16 +513,16 @@ public class Lucene105ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   static boolean hasRawFloatVectors(KnnVectorsReader vectorsReader, String fieldName)
       throws IOException {
     vectorsReader = vectorsReader.unwrapReaderForField(fieldName);
-    if (vectorsReader instanceof Lucene105ScalarQuantizedVectorsReader reader) {
+    if (vectorsReader instanceof Lucene106ScalarQuantizedVectorsReader reader) {
       return reader.hasRawFloatVectors(fieldName);
     }
-    return true; // non-Lucene105 format; assume raw floats are available
+    return true; // non-Lucene106 format; assume raw floats are available
   }
 
   static QuantizedByteVectorValues getQuantizedVectorValues(
       KnnVectorsReader vectorsReader, String fieldName) throws IOException {
     vectorsReader = vectorsReader.unwrapReaderForField(fieldName);
-    if (vectorsReader instanceof Lucene105ScalarQuantizedVectorsReader reader) {
+    if (vectorsReader instanceof Lucene106ScalarQuantizedVectorsReader reader) {
       return reader.getQuantizedVectorValues(fieldName);
     }
     return null;

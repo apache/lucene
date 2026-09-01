@@ -19,4 +19,4 @@
  * Lucene 10.5 scalar quantized vector format, extending 10.4 with data-blind mode ({@code
  * enableCentering=false}) which omits raw float storage and enables lossless quantized-only merges.
  */
-package org.apache.lucene.codecs.lucene105;
+package org.apache.lucene.codecs.lucene106;

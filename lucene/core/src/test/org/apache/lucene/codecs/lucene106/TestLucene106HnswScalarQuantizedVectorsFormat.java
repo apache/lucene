@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene105;
+package org.apache.lucene.codecs.lucene106;
 
 import static java.lang.String.format;
 import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
@@ -52,7 +52,7 @@ import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
 import org.junit.Before;
 
-public class TestLucene105HnswScalarQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
+public class TestLucene106HnswScalarQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
 
   private KnnVectorsFormat format;
   private ScalarEncoding encoding;
@@ -63,7 +63,7 @@ public class TestLucene105HnswScalarQuantizedVectorsFormat extends BaseKnnVector
     var encodingValues = ScalarEncoding.values();
     encoding = encodingValues[random().nextInt(encodingValues.length)];
     format =
-        new Lucene105HnswScalarQuantizedVectorsFormat(
+        new Lucene106HnswScalarQuantizedVectorsFormat(
             encoding,
             Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
             Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH,
@@ -82,17 +82,17 @@ public class TestLucene105HnswScalarQuantizedVectorsFormat extends BaseKnnVector
         new FilterCodec("foo", Codec.getDefault()) {
           @Override
           public KnnVectorsFormat knnVectorsFormat() {
-            return new Lucene105HnswScalarQuantizedVectorsFormat(
+            return new Lucene106HnswScalarQuantizedVectorsFormat(
                 ScalarEncoding.UNSIGNED_BYTE, 10, 20, 1, null);
           }
         };
     String expectedPattern =
-        "Lucene105HnswScalarQuantizedVectorsFormat(name=Lucene105HnswScalarQuantizedVectorsFormat,"
+        "Lucene106HnswScalarQuantizedVectorsFormat(name=Lucene106HnswScalarQuantizedVectorsFormat,"
             + " maxConn=10, beamWidth=20, tinySegmentsThreshold=100,"
-            + " flatVectorFormat=Lucene105ScalarQuantizedVectorsFormat(name=Lucene105ScalarQuantizedVectorsFormat,"
+            + " flatVectorFormat=Lucene106ScalarQuantizedVectorsFormat(name=Lucene106ScalarQuantizedVectorsFormat,"
             + " encoding=UNSIGNED_BYTE,"
             + " enableCentering=true,"
-            + " flatVectorScorer=Lucene105ScalarQuantizedVectorScorer(nonQuantizedDelegate=%s()),"
+            + " flatVectorScorer=Lucene106ScalarQuantizedVectorScorer(nonQuantizedDelegate=%s()),"
             + " rawVectorFormat=Lucene99FlatVectorsFormat(vectorsScorer=%s())))";
 
     var defaultScorer =
@@ -153,24 +153,24 @@ public class TestLucene105HnswScalarQuantizedVectorsFormat extends BaseKnnVector
   public void testLimits() {
     expectThrows(
         IllegalArgumentException.class,
-        () -> new Lucene105HnswScalarQuantizedVectorsFormat(-1, 20));
+        () -> new Lucene106HnswScalarQuantizedVectorsFormat(-1, 20));
     expectThrows(
-        IllegalArgumentException.class, () -> new Lucene105HnswScalarQuantizedVectorsFormat(0, 20));
+        IllegalArgumentException.class, () -> new Lucene106HnswScalarQuantizedVectorsFormat(0, 20));
     expectThrows(
-        IllegalArgumentException.class, () -> new Lucene105HnswScalarQuantizedVectorsFormat(20, 0));
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> new Lucene105HnswScalarQuantizedVectorsFormat(20, -1));
+        IllegalArgumentException.class, () -> new Lucene106HnswScalarQuantizedVectorsFormat(20, 0));
     expectThrows(
         IllegalArgumentException.class,
-        () -> new Lucene105HnswScalarQuantizedVectorsFormat(512 + 1, 20));
+        () -> new Lucene106HnswScalarQuantizedVectorsFormat(20, -1));
     expectThrows(
         IllegalArgumentException.class,
-        () -> new Lucene105HnswScalarQuantizedVectorsFormat(20, 3201));
+        () -> new Lucene106HnswScalarQuantizedVectorsFormat(512 + 1, 20));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> new Lucene106HnswScalarQuantizedVectorsFormat(20, 3201));
     expectThrows(
         IllegalArgumentException.class,
         () ->
-            new Lucene105HnswScalarQuantizedVectorsFormat(
+            new Lucene106HnswScalarQuantizedVectorsFormat(
                 ScalarEncoding.UNSIGNED_BYTE, 20, 100, 1, new SameThreadExecutorService()));
   }
 

@@ -14,9 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene105;
+package org.apache.lucene.codecs.lucene106;
 
-import static org.apache.lucene.codecs.lucene105.Lucene105ScalarQuantizedVectorsFormat.VECTOR_DATA_EXTENSION;
+import static org.apache.lucene.codecs.lucene106.Lucene106ScalarQuantizedVectorsFormat.VECTOR_DATA_EXTENSION;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readSimilarityFunction;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
@@ -30,15 +30,18 @@ import java.util.stream.Stream;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
+import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.KnnVectorValues;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorEncoding;
@@ -70,35 +73,34 @@ import org.apache.lucene.util.quantization.ScalarQuantizer;
  *
  * @lucene.experimental
  */
-public class Lucene105ScalarQuantizedVectorsReader extends FlatVectorsReader
+public class Lucene106ScalarQuantizedVectorsReader extends FlatVectorsReader
     implements QuantizedVectorsReader {
 
   private static final long SHALLOW_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(Lucene105ScalarQuantizedVectorsReader.class);
+      RamUsageEstimator.shallowSizeOfInstance(Lucene106ScalarQuantizedVectorsReader.class);
 
   private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput quantizedVectorData;
   private final FlatVectorsReader rawVectorsReader;
-  private final Lucene105ScalarQuantizedVectorScorer vectorScorer;
+  private final Lucene106ScalarQuantizedVectorScorer vectorScorer;
   public static final int EXHAUSTIVE_BULK_SCORE_ORDS = 64;
 
-  public Lucene105ScalarQuantizedVectorsReader(
+  public Lucene106ScalarQuantizedVectorsReader(
       SegmentReadState state,
       FlatVectorsReader rawVectorsReader,
-      Lucene105ScalarQuantizedVectorScorer vectorsScorer)
+      Lucene106ScalarQuantizedVectorScorer vectorsScorer)
       throws IOException {
     // Quantized vectors are accessed randomly from their node ID stored in the HNSW
     // graph.
     this(state, rawVectorsReader, vectorsScorer, DataAccessHint.RANDOM);
   }
 
-  public Lucene105ScalarQuantizedVectorsReader(
+  public Lucene106ScalarQuantizedVectorsReader(
       SegmentReadState state,
       FlatVectorsReader rawVectorsReader,
-      Lucene105ScalarQuantizedVectorScorer vectorsScorer,
+      Lucene106ScalarQuantizedVectorScorer vectorsScorer,
       DataAccessHint accessHint)
       throws IOException {
-    super(vectorsScorer);
     this.vectorScorer = vectorsScorer;
     this.rawVectorsReader = rawVectorsReader;
     int versionMeta = -1;
@@ -106,16 +108,16 @@ public class Lucene105ScalarQuantizedVectorsReader extends FlatVectorsReader
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
             state.segmentSuffix,
-            Lucene105ScalarQuantizedVectorsFormat.META_EXTENSION);
+            Lucene106ScalarQuantizedVectorsFormat.META_EXTENSION);
     try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName)) {
       Throwable priorE = null;
       try {
         versionMeta =
             CodecUtil.checkIndexHeader(
                 meta,
-                Lucene105ScalarQuantizedVectorsFormat.META_CODEC_NAME,
-                Lucene105ScalarQuantizedVectorsFormat.VERSION_START,
-                Lucene105ScalarQuantizedVectorsFormat.VERSION_CURRENT,
+                Lucene106ScalarQuantizedVectorsFormat.META_CODEC_NAME,
+                Lucene106ScalarQuantizedVectorsFormat.VERSION_START,
+                Lucene106ScalarQuantizedVectorsFormat.VERSION_CURRENT,
                 state.segmentInfo.getId(),
                 state.segmentSuffix);
         readFields(meta, state.fieldInfos);
@@ -134,7 +136,7 @@ public class Lucene105ScalarQuantizedVectorsReader extends FlatVectorsReader
               state,
               versionMeta,
               VECTOR_DATA_EXTENSION,
-              Lucene105ScalarQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
+              Lucene106ScalarQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
               state.context.withHints(hints));
     } catch (Throwable t) {
       IOUtils.closeWhileSuppressingExceptions(t, this);
@@ -187,6 +189,11 @@ public class Lucene105ScalarQuantizedVectorsReader extends FlatVectorsReader
   }
 
   @Override
+  public FlatVectorsScorer getFlatVectorScorer(String field) throws IOException {
+    return vectorScorer;
+  }
+
+  @Override
   public RandomVectorScorer getRandomVectorScorer(String field, float[] target) throws IOException {
     FieldEntry fi = fields.get(field);
     if (fi == null) {
@@ -211,13 +218,18 @@ public class Lucene105ScalarQuantizedVectorsReader extends FlatVectorsReader
   }
 
   @Override
+  public RandomVectorScorer getRandomVectorScorer(String field, short[] target) throws IOException {
+    return rawVectorsReader.getRandomVectorScorer(field, target);
+  }
+
+  @Override
   public RandomVectorScorer getRandomVectorScorer(String field, byte[] target) throws IOException {
     return rawVectorsReader.getRandomVectorScorer(field, target);
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    rawVectorsReader.checkIntegrity();
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+    rawVectorsReader.checkIntegrity(merge);
     CodecUtil.checksumEntireFile(quantizedVectorData);
   }
 
@@ -269,6 +281,11 @@ public class Lucene105ScalarQuantizedVectorsReader extends FlatVectorsReader
             fi.vectorDataLength,
             quantizedVectorData);
     return new ScalarQuantizedVectorValues(rawFloatVectorValues, sqvv);
+  }
+
+  @Override
+  public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+    return rawVectorsReader.getFloat16VectorValues(field);
   }
 
   @Override
@@ -383,8 +400,8 @@ public class Lucene105ScalarQuantizedVectorsReader extends FlatVectorsReader
           CodecUtil.checkIndexHeader(
               in,
               codecName,
-              Lucene105ScalarQuantizedVectorsFormat.VERSION_START,
-              Lucene105ScalarQuantizedVectorsFormat.VERSION_CURRENT,
+              Lucene106ScalarQuantizedVectorsFormat.VERSION_START,
+              Lucene106ScalarQuantizedVectorsFormat.VERSION_CURRENT,
               state.segmentInfo.getId(),
               state.segmentSuffix);
       if (versionMeta != versionVectorData) {

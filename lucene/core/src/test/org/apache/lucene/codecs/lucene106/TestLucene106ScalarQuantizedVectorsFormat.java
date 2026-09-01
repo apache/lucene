@@ -14,10 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene105;
+package org.apache.lucene.codecs.lucene106;
 
 import static java.lang.String.format;
-import static org.apache.lucene.codecs.lucene105.Lucene105ScalarQuantizedVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
+import static org.apache.lucene.codecs.lucene106.Lucene106ScalarQuantizedVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.oneOf;
@@ -56,7 +56,7 @@ import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
 import org.junit.Before;
 
-public class TestLucene105ScalarQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
+public class TestLucene106ScalarQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
 
   private ScalarEncoding encoding;
   private KnnVectorsFormat format;
@@ -66,7 +66,7 @@ public class TestLucene105ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
   public void setUp() throws Exception {
     var encodingValues = ScalarEncoding.values();
     encoding = encodingValues[random().nextInt(encodingValues.length)];
-    format = new Lucene105ScalarQuantizedVectorsFormat(encoding);
+    format = new Lucene106ScalarQuantizedVectorsFormat(encoding);
     super.setUp();
   }
 
@@ -111,15 +111,15 @@ public class TestLucene105ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
         new FilterCodec("foo", Codec.getDefault()) {
           @Override
           public KnnVectorsFormat knnVectorsFormat() {
-            return new Lucene105ScalarQuantizedVectorsFormat();
+            return new Lucene106ScalarQuantizedVectorsFormat();
           }
         };
     String expectedPattern =
-        "Lucene105ScalarQuantizedVectorsFormat("
-            + "name=Lucene105ScalarQuantizedVectorsFormat, "
+        "Lucene106ScalarQuantizedVectorsFormat("
+            + "name=Lucene106ScalarQuantizedVectorsFormat, "
             + "encoding=UNSIGNED_BYTE, "
             + "enableCentering=true, "
-            + "flatVectorScorer=Lucene105ScalarQuantizedVectorScorer(nonQuantizedDelegate=%s()), "
+            + "flatVectorScorer=Lucene106ScalarQuantizedVectorScorer(nonQuantizedDelegate=%s()), "
             + "rawVectorFormat=Lucene99FlatVectorsFormat(vectorsScorer=%s()))";
     var defaultScorer =
         format(Locale.ROOT, expectedPattern, "DefaultFlatVectorScorer", "DefaultFlatVectorScorer");
@@ -169,7 +169,7 @@ public class TestLucene105ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
           FloatVectorValues vectorValues = r.getFloatVectorValues(fieldName);
           assertEquals(vectorValues.size(), numVectors);
           QuantizedByteVectorValues qvectorValues =
-              ((Lucene105ScalarQuantizedVectorsReader.ScalarQuantizedVectorValues) vectorValues)
+              ((Lucene106ScalarQuantizedVectorsReader.ScalarQuantizedVectorValues) vectorValues)
                   .getQuantizedVectorValues();
           float[] centroid = qvectorValues.getCentroid();
           assertEquals(centroid.length, dims);
@@ -179,7 +179,7 @@ public class TestLucene105ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
           byte[] expectedVector = new byte[encoding.getDocPackedLength(scratch.length)];
           if (similarityFunction == VectorSimilarityFunction.COSINE) {
             vectorValues =
-                new Lucene105ScalarQuantizedVectorsWriter.NormalizedFloatVectorValues(vectorValues);
+                new Lucene106ScalarQuantizedVectorsWriter.NormalizedFloatVectorValues(vectorValues);
           }
           KnnVectorValues.DocIndexIterator docIndexIterator = vectorValues.iterator();
 
@@ -260,7 +260,7 @@ public class TestLucene105ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
   // ---- data-blind (enableCentering=false) tests ----
 
   private Codec datablindCodec(ScalarEncoding enc) {
-    return TestUtil.alwaysKnnVectorsFormat(new Lucene105ScalarQuantizedVectorsFormat(enc, false));
+    return TestUtil.alwaysKnnVectorsFormat(new Lucene106ScalarQuantizedVectorsFormat(enc, false));
   }
 
   public void testDataBlindSearchCorrectness() throws Exception {
@@ -321,7 +321,7 @@ public class TestLucene105ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
           // by raw stored floats — so the returned type must NOT be a ScalarQuantizedVectorValues.
           assertFalse(
               "data-blind mode must not store raw float vectors",
-              fvv instanceof Lucene105ScalarQuantizedVectorsReader.ScalarQuantizedVectorValues);
+              fvv instanceof Lucene106ScalarQuantizedVectorsReader.ScalarQuantizedVectorValues);
         }
       }
     }
