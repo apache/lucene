@@ -35,6 +35,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 from collections import namedtuple
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import scriptutil
@@ -46,10 +47,10 @@ BASE_JAVA_VERSION = "21"
 # tested on Linux and on Cygwin under Windows 7.
 
 cygwin = platform.system().lower().startswith("cygwin")
-cygwinWindowsRoot = os.popen("cygpath -w /").read().strip().replace("\\", "/") if cygwin else ""
+cygwinWindowsRoot = os.popen("cygpath -w /").read().strip().replace("\\", "/") if cygwin else ""  # ty:ignore[deprecated]
 
 
-def unshortenURL(url: str):
+def unshortenURL(url: str) -> str:
   parsed = urllib.parse.urlparse(url)
   if parsed[0] in ("http", "https"):
     h = http.client.HTTPConnection(parsed.netloc)
@@ -70,7 +71,7 @@ reHREF = re.compile('<a href="(.*?)">(.*?)</a>')
 FORCE_CLEAN = True
 
 
-def getHREFs(urlString: str):
+def getHREFs(urlString: str) -> list[tuple[str, str]]:
   # Deref any redirects
   while True:
     url = urllib.parse.urlparse(urlString)
@@ -102,7 +103,7 @@ def getHREFs(urlString: str):
   return links
 
 
-def load(urlString: str):
+def load(urlString: str) -> str:
   try:
     content = urllib.request.urlopen(urlString).read().decode("utf-8")
   except Exception as e:
@@ -111,14 +112,14 @@ def load(urlString: str):
   return content
 
 
-def noJavaPackageClasses(desc: str, file: str):
+def noJavaPackageClasses(desc: str, file: str) -> None:
   with zipfile.ZipFile(file) as z2:
     for name2 in z2.namelist():
       if name2.endswith(".class") and (name2.startswith("java/") or name2.startswith("javax/")):
         raise RuntimeError('%s contains sheisty class "%s"' % (desc, name2))
 
 
-def decodeUTF8(bytes: bytes):
+def decodeUTF8(bytes: bytes) -> str:
   return codecs.getdecoder("UTF-8")(bytes)[0]
 
 
@@ -127,7 +128,7 @@ NOTICE_FILE_NAME = "META-INF/NOTICE.txt"
 LICENSE_FILE_NAME = "META-INF/LICENSE.txt"
 
 
-def checkJARMetaData(desc: str, jarFile: str, gitRevision: str, version: str):
+def checkJARMetaData(desc: str, jarFile: str, gitRevision: str, version: str) -> None:
   with zipfile.ZipFile(jarFile, "r") as z:
     for name in (MANIFEST_FILE_NAME, NOTICE_FILE_NAME, LICENSE_FILE_NAME):
       try:
@@ -148,13 +149,13 @@ def checkJARMetaData(desc: str, jarFile: str, gitRevision: str, version: str):
       "X-Compile-Source-JDK: %s" % BASE_JAVA_VERSION,
       "X-Compile-Target-JDK: %s" % BASE_JAVA_VERSION,
       "Specification-Version: %s" % version,
-      "X-Build-JDK: %s." % BASE_JAVA_VERSION,
+      re.compile("X-Build-JDK: %s[. ]" % re.escape(BASE_JAVA_VERSION)),
       "Extension-Name: org.apache.lucene",
     ):
       if type(verify) is not tuple:
         verify = (verify,)
       for x in verify:
-        if s.find(x) != -1:
+        if (isinstance(x, re.Pattern) and x.search(s)) or (isinstance(x, str) and s.find(x) != -1):
           break
       else:
         if len(verify) == 1:
@@ -185,11 +186,11 @@ def checkJARMetaData(desc: str, jarFile: str, gitRevision: str, version: str):
       raise RuntimeError("%s: %s contents doesn't match main LICENSE.txt" % (desc, LICENSE_FILE_NAME))
 
 
-def normSlashes(path: str):
+def normSlashes(path: str) -> str:
   return path.replace(os.sep, "/")
 
 
-def checkAllJARs(topDir: str, gitRevision: str, version: str):
+def checkAllJARs(topDir: str, gitRevision: str, version: str) -> None:
   print("    verify JAR metadata/identity/no javax.* or java.* classes...")
   for root, _, files in os.walk(topDir):
     normRoot = normSlashes(root)
@@ -204,7 +205,7 @@ def checkAllJARs(topDir: str, gitRevision: str, version: str):
           checkJARMetaData('JAR file "%s"' % fullPath, fullPath, gitRevision, version)
 
 
-def checkSigs(urlString: str, version: str, tmpDir: str, isSigned: bool, keysFile: str):
+def checkSigs(urlString: str, version: str, tmpDir: str, isSigned: bool, keysFile: str) -> None:
   print("  test basics...")
   ents = getDirEntries(urlString)
   artifact = None
@@ -262,7 +263,7 @@ def checkSigs(urlString: str, version: str, tmpDir: str, isSigned: bool, keysFil
   gpgHomeDir = "%s/lucene.gpg" % tmpDir
   if os.path.exists(gpgHomeDir):
     shutil.rmtree(gpgHomeDir)
-  os.makedirs(gpgHomeDir, 0o700)
+  Path(gpgHomeDir).mkdir(mode=0o700, parents=True)
   run("gpg --homedir %s --import %s" % (gpgHomeDir, keysFile), "%s/lucene.gpg.import.log" % tmpDir)
 
   if mavenURL is None:
@@ -304,7 +305,7 @@ def checkSigs(urlString: str, version: str, tmpDir: str, isSigned: bool, keysFil
             print("      GPG: %s" % line.strip())
 
 
-def testChanges(version: str, changesURLString: str):
+def testChanges(version: str, changesURLString: str) -> None:
   print("  check changes HTML...")
   changesURL = None
   for text, subURL in getDirEntries(changesURLString):
@@ -318,7 +319,7 @@ def testChanges(version: str, changesURLString: str):
   checkChangesContent(s, version, changesURL, True)
 
 
-def testChangesText(dir: str, version: str):
+def testChangesText(dir: str, version: str) -> None:
   "Checks all CHANGES.txt under this dir."
   for root, _, files in os.walk(dir):
     # NOTE: O(N) but N should be smallish:
@@ -333,7 +334,7 @@ reUnderbarNotDashHTML = re.compile(r"<li>(\s*(LUCENE)_\d\d\d\d+)")
 reUnderbarNotDashTXT = re.compile(r"\s+((LUCENE)_\d\d\d\d+)", re.MULTILINE)
 
 
-def checkChangesContent(s: str, version: str, name: str, isHTML: bool):
+def checkChangesContent(s: str, version: str, name: str, isHTML: bool) -> None:
   currentVersionTuple = versionToTuple(version, name)
 
   if isHTML and s.find("Release %s" % version) == -1:
@@ -370,7 +371,7 @@ def checkChangesContent(s: str, version: str, name: str, isHTML: bool):
         release = text[8:].strip()
         seenText.clear()
         releaseTuple = versionToTuple(release, name)
-        if releaseTuple > currentVersionTuple:
+        if releaseTuple > currentVersionTuple:  # ty:ignore[unsupported-operator]
           raise RuntimeError("Future release %s is greater than %s in %s" % (release, version, name))
       if id in seenIDs:
         raise RuntimeError('%s has duplicate section "%s" under release "%s"' % (name, text, release))
@@ -383,7 +384,7 @@ def checkChangesContent(s: str, version: str, name: str, isHTML: bool):
 reVersion = re.compile(r"(\d+)\.(\d+)(?:\.(\d+))?\s*(-alpha|-beta|final|RC\d+)?\s*(?:\[.*\])?", re.IGNORECASE)
 
 
-def versionToTuple(version: str, name: str):
+def versionToTuple(version: str, name: str) -> tuple[int | str | Any, ...]:
   versionMatch = reVersion.match(version)
   if versionMatch is None:
     raise RuntimeError("Version %s in %s cannot be parsed" % (version, name))
@@ -404,7 +405,7 @@ def versionToTuple(version: str, name: str):
 reUnixPath = re.compile(r'\b[a-zA-Z_]+=(?:"(?:\\"|[^"])*"' + "|(?:\\\\.|[^\"'\\s])*" + r"|'(?:\\'|[^'])*')" + r'|(/(?:\\.|[^"\'\s])*)' + r'|("/(?:\\.|[^"])*")' + r"|('/(?:\\.|[^'])*')")
 
 
-def unix2win(matchobj: re.Match[str]):
+def unix2win(matchobj: re.Match[str]) -> str:
   if matchobj.group(1) is not None:
     return cygwinWindowsRoot + matchobj.group()
   if matchobj.group(2) is not None:
@@ -414,7 +415,7 @@ def unix2win(matchobj: re.Match[str]):
   return matchobj.group()
 
 
-def cygwinifyPaths(command: str):
+def cygwinifyPaths(command: str) -> str:
   # The problem: Native Windows applications running under Cygwin can't
   # handle Cygwin's Unix-style paths.  However, environment variable
   # values are automatically converted, so only paths outside of
@@ -425,12 +426,12 @@ def cygwinifyPaths(command: str):
   return command
 
 
-def printFileContents(fileName: str):
+def printFileContents(fileName: str) -> None:
   # Assume log file was written in system's default encoding, but
   # even if we are wrong, we replace errors ... the ASCII chars
   # (which is what we mostly care about eg for the test seed) should
   # still survive:
-  txt = codecs.open(fileName, "r", encoding=sys.getdefaultencoding(), errors="replace").read()
+  txt = open(fileName, encoding=sys.getdefaultencoding(), errors="replace").read()
 
   # Encode to our output encoding (likely also system's default
   # encoding):
@@ -442,17 +443,17 @@ def printFileContents(fileName: str):
   print()
 
 
-def run(command: str, logFile: str):
+def run(command: str, logFile: str) -> None:
   if cygwin:
     command = cygwinifyPaths(command)
-  if os.system("%s > %s 2>&1" % (command, logFile)):
-    logPath = os.path.abspath(logFile)
+  if os.system("%s > %s 2>&1" % (command, logFile)):  # ty:ignore[deprecated]
+    logPath: str = str(Path(logFile).resolve())
     print('\ncommand "%s" failed:' % command)
     printFileContents(logFile)
     raise RuntimeError('command "%s" failed; see log file %s' % (command, logPath))
 
 
-def verifyDigests(artifact: str, urlString: str, tmpDir: str):
+def verifyDigests(artifact: str, urlString: str, tmpDir: str) -> None:
   print("    verify sha512 digest")
   sha512Expected, t = load(urlString + ".sha512").strip().split()
   if t != "*" + artifact:
@@ -471,7 +472,7 @@ def verifyDigests(artifact: str, urlString: str, tmpDir: str):
     raise RuntimeError("SHA512 digest mismatch for %s: expected %s but got %s" % (artifact, sha512Expected, sha512Actual))
 
 
-def getDirEntries(urlString: str):
+def getDirEntries(urlString: str) -> list[tuple[str, str]]:
   if urlString.startswith("file:/") and not urlString.startswith("file://"):
     # stupid bogus ant URI
     urlString = "file:///" + urlString[6:]
@@ -497,11 +498,11 @@ def getDirEntries(urlString: str):
   raise RuntimeError("could not enumerate %s" % (urlString))
 
 
-def unpackAndVerify(java: Any, tmpDir: str, artifact: str, gitRevision: str, version: str, testArgs: str):
+def unpackAndVerify(java: Any, tmpDir: str, artifact: str, gitRevision: str, version: str, testArgs: str) -> str:
   destDir = "%s/unpack" % tmpDir
   if os.path.exists(destDir):
     shutil.rmtree(destDir)
-  os.makedirs(destDir)
+  Path(destDir).mkdir(parents=True)
   os.chdir(destDir)
   print("  unpack %s..." % artifact)
   unpackLogFile = "%s/lucene-unpack-%s.log" % (tmpDir, artifact)
@@ -525,7 +526,7 @@ LUCENE_NOTICE = None
 LUCENE_LICENSE = None
 
 
-def is_in_list(in_folder: list[str], files: list[str], indent: int = 4):
+def is_in_list(in_folder: list[str], files: list[str], indent: int = 4) -> None:
   for fileName in files:
     print("%sChecking %s" % (" " * indent, fileName))
     found = False
@@ -537,7 +538,7 @@ def is_in_list(in_folder: list[str], files: list[str], indent: int = 4):
       raise RuntimeError('file "%s" is missing' % fileName)
 
 
-def verifyUnpacked(java: Any, artifact: str, unpackPath: str, gitRevision: str, version: str, testArgs: str):
+def verifyUnpacked(java: Any, artifact: str, unpackPath: str, gitRevision: str, version: str, testArgs: str) -> None:
   global LUCENE_NOTICE
   global LUCENE_LICENSE
 
@@ -605,6 +606,7 @@ def verifyUnpacked(java: Any, artifact: str, unpackPath: str, gitRevision: str, 
   if isSrc:
     expected_src_root_files = [
       "build.gradle",
+      "build-options.properties",
       "build-tools",
       "CONTRIBUTING.md",
       "dev-docs",
@@ -616,7 +618,6 @@ def verifyUnpacked(java: Any, artifact: str, unpackPath: str, gitRevision: str, 
       "lucene",
       "settings.gradle",
       "versions.lock",
-      "versions.toml",
     ]
     expected_src_lucene_files = ["build.gradle", "documentation", "distribution", "dev-docs"]
     is_in_list(in_root_folder, expected_src_root_files)
@@ -632,13 +633,13 @@ def verifyUnpacked(java: Any, artifact: str, unpackPath: str, gitRevision: str, 
 
   if isSrc:
     print("    make sure no JARs/WARs in src dist...")
-    lines = os.popen("find . -name \\*.jar").readlines()
+    lines = os.popen("find . -name \\*.jar -not -name \\*-api.jar").readlines()  # ty:ignore[deprecated]
     if len(lines) != 0:
       print("    FAILED:")
       for line in lines:
         print("      %s" % line.strip())
       raise RuntimeError("source release has JARs...")
-    lines = os.popen("find . -name \\*.war").readlines()
+    lines = os.popen("find . -name \\*.war").readlines()  # ty:ignore[deprecated]
     if len(lines) != 0:
       print("    FAILED:")
       for line in lines:
@@ -677,7 +678,7 @@ def verifyUnpacked(java: Any, artifact: str, unpackPath: str, gitRevision: str, 
   testChangesText(".", version)
 
 
-def testDemo(run_java: Callable[[str, str], None], isSrc: bool, version: str, jdk: str):
+def testDemo(run_java: Callable[[str, str], None], isSrc: bool, version: str, jdk: str) -> None:
   if os.path.exists("index"):
     shutil.rmtree("index")  # nuke any index from any previous iteration
 
@@ -726,17 +727,17 @@ def testDemo(run_java: Callable[[str, str], None], isSrc: bool, version: str, jd
     raise RuntimeError('wrong version from CheckIndex: got "%s" but expected "%s"' % (actualVersion, version))
 
 
-def removeTrailingZeros(version: str):
+def removeTrailingZeros(version: str) -> str:
   return re.sub(r"(\.0)*$", "", version)
 
 
-def checkMaven(baseURL: str, tmpDir: str, gitRevision: str, version: str, isSigned: bool, keysFile: str):
+def checkMaven(baseURL: str, tmpDir: str, gitRevision: str, version: str, isSigned: bool, keysFile: str) -> None:
   print("    download artifacts")
   artifacts: list[str] = []
   artifactsURL = "%s/lucene/maven/org/apache/lucene/" % baseURL
   targetDir = "%s/maven/org/apache/lucene" % tmpDir
   if not os.path.exists(targetDir):
-    os.makedirs(targetDir)
+    Path(targetDir).mkdir(parents=True)
   crawl(artifacts, artifactsURL, targetDir)
   print()
   verifyPOMperBinaryArtifact(artifacts, version)
@@ -752,7 +753,7 @@ def checkMaven(baseURL: str, tmpDir: str, gitRevision: str, version: str, isSign
   checkAllJARs("%s/maven/org/apache/lucene" % tmpDir, gitRevision, version)
 
 
-def getBinaryDistFiles(tmpDir: str, version: str, baseURL: str):
+def getBinaryDistFiles(tmpDir: str, version: str, baseURL: str) -> list[str]:
   distribution = "lucene-%s.tgz" % version
   if not os.path.exists("%s/%s" % (tmpDir, distribution)):
     distURL = "%s/lucene/%s" % (baseURL, distribution)
@@ -761,18 +762,18 @@ def getBinaryDistFiles(tmpDir: str, version: str, baseURL: str):
   destDir = "%s/unpack-lucene-getBinaryDistFiles" % tmpDir
   if os.path.exists(destDir):
     shutil.rmtree(destDir)
-  os.makedirs(destDir)
+  Path(destDir).mkdir(parents=True)
   os.chdir(destDir)
   print("    unpack %s..." % distribution)
   unpackLogFile = "%s/unpack-%s-getBinaryDistFiles.log" % (tmpDir, distribution)
   run("tar xzf %s/%s" % (tmpDir, distribution), unpackLogFile)
-  distributionFiles: list[str] = []
+  distributionFiles = []
   for root, _, files in os.walk(destDir):
     distributionFiles.extend([os.path.join(root, file) for file in files])
   return distributionFiles
 
 
-def checkJavadocAndSourceArtifacts(artifacts: list[str], version: str):
+def checkJavadocAndSourceArtifacts(artifacts: list[str], version: str) -> None:
   print("    check for javadoc and sources artifacts...")
   for artifact in artifacts:
     if artifact.endswith(version + ".jar"):
@@ -784,8 +785,8 @@ def checkJavadocAndSourceArtifacts(artifacts: list[str], version: str):
         raise RuntimeError("missing: %s" % sourcesJar)
 
 
-def getZipFileEntries(fileName: str):
-  entries: list[str] = []
+def getZipFileEntries(fileName: str) -> list[str]:
+  entries = []
   with zipfile.ZipFile(fileName) as zf:
     for zi in zf.infolist():
       entries.append(zi.filename)
@@ -794,7 +795,7 @@ def getZipFileEntries(fileName: str):
   return entries
 
 
-def checkIdenticalMavenArtifacts(distFiles: list[str], artifacts: list[str], version: str):
+def checkIdenticalMavenArtifacts(distFiles: list[str], artifacts: list[str], version: str) -> None:
   print("    verify that Maven artifacts are same as in the binary distribution...")
   reJarWar = re.compile(r"%s\.[wj]ar$" % version)  # exclude *-javadoc.jar and *-sources.jar
   distFilenames: dict[str, str] = dict()
@@ -811,7 +812,7 @@ def checkIdenticalMavenArtifacts(distFiles: list[str], artifacts: list[str], ver
         raise RuntimeError("Maven artifact %s is not identical to %s in lucene binary distribution" % (artifact, distFilenames[artifactFilename]))
 
 
-def verifyMavenDigests(artifacts: list[str]):
+def verifyMavenDigests(artifacts: list[str]) -> None:
   print("    verify Maven artifacts' md5/sha1 digests...")
   reJarWarPom = re.compile(r"\.(?:[wj]ar|pom)$")
   for artifactFile in [a for a in artifacts if reJarWarPom.search(a)]:
@@ -841,7 +842,7 @@ def verifyMavenDigests(artifacts: list[str]):
       raise RuntimeError("SHA1 digest mismatch for %s: expected %s but got %s" % (artifactFile, sha1Expected, sha1Actual))
 
 
-def getPOMcoordinate(treeRoot: ET.Element):
+def getPOMcoordinate(treeRoot: ET.Element) -> tuple[str, str, str, str]:
   namespace = "{http://maven.apache.org/POM/4.0.0}"
   groupId = treeRoot.find("%sgroupId" % namespace)
   if groupId is None:
@@ -871,14 +872,14 @@ def getPOMcoordinate(treeRoot: ET.Element):
   return groupId, artifactId, packaging, version
 
 
-def verifyMavenSigs(tmpDir: str, artifacts: list[str], keysFile: str):
+def verifyMavenSigs(tmpDir: str, artifacts: list[str], keysFile: str) -> None:
   print("    verify maven artifact sigs", end=" ")
 
   # Set up clean gpg world; import keys file:
   gpgHomeDir = "%s/lucene.gpg" % tmpDir
   if os.path.exists(gpgHomeDir):
     shutil.rmtree(gpgHomeDir)
-  os.makedirs(gpgHomeDir, 0o700)
+  Path(gpgHomeDir).mkdir(mode=0o700, parents=True)
   run("gpg --homedir %s --import %s" % (gpgHomeDir, keysFile), "%s/lucene.gpg.import.log" % tmpDir)
 
   reArtifacts = re.compile(r"\.(?:pom|[jw]ar)$")
@@ -903,14 +904,14 @@ def verifyMavenSigs(tmpDir: str, artifacts: list[str], keysFile: str):
   print()
 
 
-def print_warnings_in_file(file: str):
+def print_warnings_in_file(file: str) -> None:
   with open(file) as f:
     for line in f.readlines():
       if line.lower().find("warning") != -1 and line.find("WARNING: This key is not certified with a trusted signature") == -1 and line.find("WARNING: using insecure memory") == -1:
         print("      GPG: %s" % line.strip())
 
 
-def verifyPOMperBinaryArtifact(artifacts: list[str], version: str):
+def verifyPOMperBinaryArtifact(artifacts: list[str], version: str) -> None:
   print("    verify that each binary artifact has a deployed POM...")
   reBinaryJarWar = re.compile(r"%s\.[jw]ar$" % re.escape(version))
   for artifact in [a for a in artifacts if reBinaryJarWar.search(a)]:
@@ -919,7 +920,7 @@ def verifyPOMperBinaryArtifact(artifacts: list[str], version: str):
       raise RuntimeError("missing: POM for %s" % artifact)
 
 
-def verifyDeployedPOMsCoordinates(artifacts: list[str], version: str):
+def verifyDeployedPOMsCoordinates(artifacts: list[str], version: str) -> None:
   """Verify that each POM's coordinate (drawn from its content) matches
   its filepath, and verify that the corresponding artifact exists.
   """
@@ -936,14 +937,14 @@ def verifyDeployedPOMsCoordinates(artifacts: list[str], version: str):
       raise RuntimeError("Missing corresponding .%s artifact for POM %s" % (packaging, POM))
 
 
-def crawl(downloadedFiles: list[str], urlString: str, targetDir: str, exclusions: set[str] | None = None):
-  exclude: set[str] = exclusions if exclusions else set()
+def crawl(downloadedFiles: list[str], urlString: str, targetDir: str, exclusions: set[str] | None = None) -> None:
+  exclude: set[str] = exclusions or set()
   for text, subURL in getDirEntries(urlString):
     if text not in exclude:
       path = os.path.join(targetDir, text)
       if text.endswith("/"):
         if not os.path.exists(path):
-          os.makedirs(path)
+          Path(path).mkdir(parents=True)
         crawl(downloadedFiles, subURL, path, exclusions)
       else:
         if not os.path.exists(path) or FORCE_CLEAN:
@@ -952,8 +953,11 @@ def crawl(downloadedFiles: list[str], urlString: str, targetDir: str, exclusions
         sys.stdout.write(".")
 
 
-def make_java_config(parser: argparse.ArgumentParser, alt_java_homes: list[str]):
-  def _make_runner(java_home: str, is_base_version: bool = False):
+JavaConfig = namedtuple("JavaConfig", "run_java java_home run_alt_javas alt_java_homes alt_java_versions")
+
+
+def make_java_config(parser: argparse.ArgumentParser, alt_java_homes: list[str]) -> JavaConfig:
+  def _make_runner(java_home: str, is_base_version: bool = False) -> tuple[Callable[[str, str], None], str]:
     if cygwin:
       java_home = subprocess.check_output('cygpath -u "%s"' % java_home, shell=True).decode("utf-8").strip()
     cmd_prefix = 'export JAVA_HOME="%s" PATH="%s/bin:$PATH" JAVACMD="%s/bin/java"' % (java_home, java_home, java_home)
@@ -971,7 +975,7 @@ def make_java_config(parser: argparse.ArgumentParser, alt_java_homes: list[str])
     elif int(actual_version) < int(BASE_JAVA_VERSION):
       parser.error("got wrong version for java %s, less than base version %s:\n%s" % (actual_version, BASE_JAVA_VERSION, s))
 
-    def run_java(cmd: str, logfile: str):
+    def run_java(cmd: str, logfile: str) -> None:
       run("%s; %s" % (cmd_prefix, cmd), logfile)
 
     return run_java, actual_version
@@ -988,15 +992,14 @@ def make_java_config(parser: argparse.ArgumentParser, alt_java_homes: list[str])
       run_alt_javas.append(run_alt_java)
       alt_java_versions.append(version)
 
-  jc = namedtuple("JavaConfig", "run_java java_home run_alt_javas alt_java_homes alt_java_versions")
-  return jc(run_java, java_home, run_alt_javas, alt_java_homes, alt_java_versions)
+  return JavaConfig(run_java, java_home, run_alt_javas, alt_java_homes, alt_java_versions)
 
 
 version_re = re.compile(r"(\d+\.\d+\.\d+(-ALPHA|-BETA)?)")
 revision_re = re.compile(r"rev-([a-f\d]+)")
 
 
-def parse_config():
+def parse_config() -> argparse.Namespace:
   epilogue = textwrap.dedent("""
     Example usage:
     python3 -u dev-tools/scripts/smokeTestRelease.py https://dist.apache.org/repos/dist/dev/lucene/lucene-9.0.0-RC1-rev-c7510a0...
@@ -1036,7 +1039,7 @@ def parse_config():
   c.java = make_java_config(parser, c.test_alternative_java)
 
   if c.tmp_dir:
-    c.tmp_dir = os.path.abspath(c.tmp_dir)
+    c.tmp_dir = str(Path(c.tmp_dir).resolve())
   else:
     tmp = "/tmp/smoke_lucene_%s_%s" % (c.version, c.revision)
     c.tmp_dir = tmp
@@ -1052,7 +1055,7 @@ reVersion1 = re.compile(r"\>(\d+)\.(\d+)\.(\d+)(-alpha|-beta)?/\<", re.IGNORECAS
 reVersion2 = re.compile(r"-(\d+)\.(\d+)\.(\d+)(-alpha|-beta)?\.", re.IGNORECASE)
 
 
-def getAllLuceneReleases():
+def getAllLuceneReleases() -> list[tuple[int, ...]]:
   s = load("https://archive.apache.org/dist/lucene/java")
 
   releases: set[tuple[int, ...]] = set()
@@ -1073,7 +1076,7 @@ def getAllLuceneReleases():
   return releaseList
 
 
-def confirmAllReleasesAreTestedForBackCompat(smokeVersion: str, unpackPath: str):
+def confirmAllReleasesAreTestedForBackCompat(smokeVersion: str, unpackPath: str) -> None:
   print("    find all past Lucene releases...")
   allReleases = getAllLuceneReleases()
   # for tup in allReleases:
@@ -1145,7 +1148,7 @@ def confirmAllReleasesAreTestedForBackCompat(smokeVersion: str, unpackPath: str)
   print("    success!")
 
 
-def main():
+def main() -> None:
   c = parse_config()
 
   # Pick <major>.<minor> part of version and require script to be from same branch
@@ -1159,7 +1162,7 @@ def main():
   smokeTest(c.java, c.url, c.revision, c.version, c.tmp_dir, c.is_signed, c.local_keys, " ".join(c.test_args), downloadOnly=c.download_only)
 
 
-def smokeTest(java: Any, baseURL: str, gitRevision: str, version: str, tmpDir: str, isSigned: bool, local_keys: str | None, testArgs: str, downloadOnly: bool = False):
+def smokeTest(java: Any, baseURL: str, gitRevision: str, version: str, tmpDir: str, isSigned: bool, local_keys: str | None, testArgs: str, downloadOnly: bool = False) -> None:
   startTime = datetime.datetime.now()
 
   # Tests annotated @Nightly are more resource-intensive but often cover
@@ -1176,7 +1179,7 @@ def smokeTest(java: Any, baseURL: str, gitRevision: str, version: str, tmpDir: s
       raise RuntimeError("temp dir %s exists; please remove first" % tmpDir)
 
   if not os.path.exists(tmpDir):
-    os.makedirs(tmpDir)
+    Path(tmpDir).mkdir(parents=True)
 
   lucenePath = None
   print()

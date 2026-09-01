@@ -1,29 +1,16 @@
-[tool.pyright]
-pythonVersion = "3.12"
-venvPath = "."
-venv = ".venv"
-typeCheckingMode = "strict"
-reportCallInDefaultInitializer = "error"
-reportImplicitStringConcatenation = "error"
-reportImportCycles = "error"
-reportImplicitOverride = "error"
-reportPropertyTypeMismatch = "error"
-reportUninitializedInstanceVariable = "error"
-reportUnnecessaryTypeIgnoreComment = "error"
+[tool.ty.environment]
+python-version = "3.12"
 
-# This is a big TODO list of current typing problems
-# Pick an item off the list, change to "error", and send a pull request to fix it!
-# You can find more information on a rule at https://github.com/microsoft/pyright/blob/main/docs/configuration.md
-reportConstantRedefinition = "hint"          # Requires fixing nonstandard variable conventions
-reportMissingSuperCall = "hint"              # Requires adding missing super().__init__() calls
-reportMissingTypeStubs = "hint"              # Can be fixed by switching 'ics' to alternative such as 'icalendar'
-reportPrivateUsage = "hint"                  # Can be fixed by using TLS properly (Ruff S323)
-reportUnnecessaryComparison = "hint"         # Requires cleaning up some dead code
-reportUntypedNamedTuple = "hint"             # Requires moving to different type of named tuple
-reportUnusedCallResult = "none"              # Forces you to assign unused retvals to '_', very noisy.
+[tool.ty.rules]
+division-by-zero = "warn"
+missing-override-decorator = "warn"
+possibly-missing-attribute = "warn"
+possibly-missing-import = "warn"
+possibly-unresolved-reference = "warn"
+unsupported-dynamic-base = "warn"
 
-# Intentionally disabled because it slows pyright by 2x
-reportShadowedImports = "none"       # Extremely slow check
+[tool.ty.terminal]
+error-on-warning = true
 
 [tool.ruff]
 target-version = "py312"
@@ -40,14 +27,7 @@ ignore = [
   # You can find more information on a rule at https://docs.astral.sh/ruff/rules/
   "A001",    # variable name is shadowing a python builtin
   "A002",    # function argument name is shadowing a python builtin
-  "ANN001",  # missing type annotation for function argument
-  "ANN201",  # missing return annotation for public function
-  "ANN202",  # missing return annotation for private function
-  "ANN204",  # missing return annotation for special method
-  "ANN206",  # missing return annotation for classmethod
   "ANN401",  # use of Any as function parameter
-  "ARG001",  # unused function argument
-  "ARG002",  # unused method argument
   "ARG005",  # unused lambda argument
   "B006",    # do not use mutable datastructures for arg defaults
   "B904",    # within except clause, raise exceptions with .. from
@@ -56,6 +36,7 @@ ignore = [
   "C416",    # unnecessary list comprehension
   "C417",    # unnecessary map() usage
   "C901",    # function is too complex
+  "CPY001",  # probably needs copyright headers configured
   "D100",    # missing docstring in public module
   "D101",    # missing docstring in public class
   "D102",    # missing docstring in public method
@@ -88,6 +69,7 @@ ignore = [
   "PLR0912", # too many branches
   "PLR0913", # too many arguments in function definition
   "PLR0915", # too many statements
+  "PLR0917", # too many positional arguments
   "PLR1704", # redefining argument with local name
   "PLR1714", # consider merging multiple comparisons
   "PLR1722", # use sys.exit() instead of exit
@@ -95,10 +77,8 @@ ignore = [
   "PLW0602", # using global for variable but no assignment is done
   "PLW0603", # using global statement to update variable is discouraged
   "PLW2901", # loop variable overwritten by assignment target
-  "PTH100",  # os.path.abspath should be replaced by Path.resolve
-  "PTH103",  # os.mkdirs should be replaced by Path.mkdir(parents=True)
   "PTH104",  # os.rename should be replaced by Path.rename
-  "PTH107",  # os.remove shoudl be replaced by Path.unlink
+  "PTH107",  # os.remove should be replaced by Path.unlink
   "PTH109",  # os.getcwd should be replaced by Path.cwd
   "PTH110",  # os.path.exists should be replaced by Path.exists
   "PTH111",  # os.path.expanduser should be replaced by Path.expanduser
@@ -130,7 +110,7 @@ ignore = [
   "S506",    # probable use of unsafe yaml loader, consider yaml.safe_load
   "S602",    # subprocess call with shell=True identified, security issue
   "S603",    # subprocess call: check for execution of untrusted input
-  "S605",    # starting a process wtih a shell, seems safe, but may be changed in future
+  "S605",    # starting a process with a shell, seems safe, but may be changed in future
   "S607",    # starting a process with a partial executable path
   "S701",    # consider using jinja autoescape=True to mitigate XSS
   "SIM102",  # use single if statement instead of nested if statement
