@@ -456,7 +456,7 @@ public class TestIncrementalDocValuesUpdates extends LuceneTestCase {
       w.updateNumericDocValue(new Term("id", "0"), "val", 2L); // writes a sparse overlay generation
       w.commit();
     }
-    // The commit records overlay generations, so its segments file is written at VERSION_11_0; a
+    // The commit records overlay generations, so its segments file is written at VERSION_10_6; a
     // reader that only understands up to VERSION_86 rejects it with IndexFormatTooNewException.
     assertOldReaderRejects(dir);
     // And the current reader sees the overlay round-tripped through the segments file.
@@ -514,7 +514,98 @@ public class TestIncrementalDocValuesUpdates extends LuceneTestCase {
           assertNumeric(reader, "d" + i, 200L + i);
         }
       }
+      TestUtil.checkIndex(dir);
     }
+  }
+
+  /**
+   * Soft deletes are numeric doc-values updates on the soft-deletes field, so they ride the overlay
+   * path too. Marking docs across many commits folds that field's overlay (and folds it to a dense
+   * column once coverage crosses the threshold); liveness and the surviving values must stay
+   * correct throughout.
+   */
+  public void testSoftDeletesOverOverlay() throws Exception {
+    String softField = "__soft_deletes";
+    int numDocs = 20;
+    try (Directory dir = newDirectory();
+        IndexWriter w =
+            new IndexWriter(
+                dir,
+                new IndexWriterConfig(new MockAnalyzer(random()))
+                    .setSoftDeletesField(softField)
+                    .setMaxDocValuesOverlays(2)
+                    .setMergePolicy(NoMergePolicy.INSTANCE))) {
+      for (int i = 0; i < numDocs; i++) {
+        Document d = new Document();
+        d.add(new StringField("id", "d" + i, StringField.Store.NO));
+        d.add(new NumericDocValuesField("val", i));
+        w.addDocument(d);
+      }
+      w.commit();
+      // Soft-delete every even doc, one commit each, so the soft-deletes field accrues deltas that
+      // fold and eventually fold to a dense column (coverage reaches half the segment).
+      for (int i = 0; i < numDocs; i += 2) {
+        w.updateDocValues(new Term("id", "d" + i), new NumericDocValuesField(softField, 1L));
+        w.commit();
+      }
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        assertEquals(numDocs / 2, reader.numDocs());
+        for (int i = 1; i < numDocs; i += 2) {
+          assertNumeric(reader, "d" + i, i);
+        }
+      }
+      TestUtil.checkIndex(dir);
+    }
+  }
+
+  /**
+   * addIndexes(Directory...) copies segments as-is via copySegmentAsIs, so the copied segment must
+   * keep its doc-values overlay rather than flatten it the way the CodecReader path does.
+   */
+  public void testAddIndexesDirectoryCarriesOverlay() throws Exception {
+    try (Directory src = newDirectory();
+        Directory dst = newDirectory()) {
+      int numDocs = 10;
+      try (IndexWriter w =
+          new IndexWriter(src, incrementalConfig().setMergePolicy(NoMergePolicy.INSTANCE))) {
+        for (int i = 0; i < numDocs; i++) {
+          Document d = new Document();
+          d.add(new StringField("id", "d" + i, StringField.Store.NO));
+          d.add(new NumericDocValuesField("val", i));
+          w.addDocument(d);
+        }
+        w.commit();
+        for (int i = 0; i < numDocs; i++) {
+          w.updateNumericDocValue(new Term("id", "d" + i), "val", 100L + i);
+        }
+        w.commit();
+        assertTrue("source segment should carry an overlay", hasOverlay(src));
+      }
+      try (IndexWriter w =
+          new IndexWriter(
+              dst,
+              new IndexWriterConfig(new MockAnalyzer(random()))
+                  .setMergePolicy(NoMergePolicy.INSTANCE))) {
+        w.addIndexes(src);
+        w.commit();
+        assertTrue("copied segment should still carry the overlay", hasOverlay(dst));
+        try (DirectoryReader reader = DirectoryReader.open(w)) {
+          for (int i = 0; i < numDocs; i++) {
+            assertNumeric(reader, "d" + i, 100L + i);
+          }
+        }
+      }
+      TestUtil.checkIndex(dst);
+    }
+  }
+
+  private static boolean hasOverlay(Directory dir) throws IOException {
+    for (SegmentCommitInfo si : SegmentInfos.readLatestCommit(dir)) {
+      if (si.getDocValuesOverlays().isEmpty() == false) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private static void assertOldReaderRejects(Directory dir) throws IOException {
