@@ -385,9 +385,10 @@ New Features
   requiring the ICU analysis plugin. Uses a generated switch for fold exceptions with
   Character.toLowerCase() as the default fallback. (Robert Muir, Costin Leau)
 
-* GITHUB#15979: Add a sandboxed de-duplicating HNSW vector format (DedupHnswVectorsFormat) that stores
-  each distinct full-precision vector once, shared across all documents and fields that reference it.
-  (Kaival Parikh)
+* GITHUB#15979, GITHUB#16506: Add sandboxed de-duplicating HNSW vector formats (DedupHnswVectorsFormat,
+  DedupHnswScalarQuantizedVectorsFormat) that store each distinct full-precision and quantized vector
+  once, shared across all documents and fields that reference it. Quantization is data-blind (assumes
+  vectors are centered at zero) for effective de-duplication across fields. (Kaival Parikh)
 
 * GITHUB#16484: Add SpanMultiTermQueryWrapper.FrequentTermsSpanBooleanQueryRewrite.  It's a rewrite method that
   translates each term into a SpanTermQuery within a {@link SpanOrQuery}, but retains only the most frequent terms so it
