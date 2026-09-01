@@ -265,12 +265,14 @@ public final class CombinedFieldQuery extends Query implements Accountable {
     private final IndexSearcher searcher;
     private final TermStates[] termStates;
     private final Similarity.SimScorer simWeight;
+    private final ScoreMode scoreMode;
 
     CombinedFieldWeight(Query query, IndexSearcher searcher, ScoreMode scoreMode, float boost)
         throws IOException {
       super(query);
       assert scoreMode.needsScores();
       this.searcher = searcher;
+      this.scoreMode = scoreMode;
       long docFreq = 0;
       long totalTermFreq = 0;
       termStates = new TermStates[fieldTerms.length];
@@ -394,7 +396,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
 
         @Override
         public BulkScorer bulkScorer() throws IOException {
-          return new BatchScoreBulkScorer(get(Long.MAX_VALUE));
+          return new BatchScoreBulkScorer(get(Long.MAX_VALUE), scoreMode);
         }
       };
     }

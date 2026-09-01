@@ -19,7 +19,12 @@ package org.apache.lucene.search;
 /** Different modes of search. */
 public enum ScoreMode {
 
-  /** Produced scorers will allow visiting all matches and get their score. */
+  /**
+   * Produced scorers will allow visiting all matches and get their score. This score mode is
+   * exhaustive: a call to {@link Scorable#setMinCompetitiveScore(float)} must never cause a match
+   * to be skipped, even if a nested collector makes one in violation of the contract documented on
+   * that method.
+   */
   COMPLETE(true, true),
 
   /** Produced scorers will allow visiting all matches but scores won't be available. */

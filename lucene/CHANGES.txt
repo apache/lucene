@@ -226,6 +226,11 @@ Bug Fixes
 * GITHUB#16565: IndexWriter#updateBinaryDocValue now rejects updating a field that is part of the
   index sort, matching IndexWriter#updateNumericDocValue. (Jim Ferenczi)
 
+* GITHUB#15239: BatchScoreBulkScorer and DenseConjunctionBulkScorer no longer skip hits from
+  setMinCompetitiveScore when the search ScoreMode is exhaustive. Nested TopScoreDocCollectors can
+  still track a competitive threshold without dropping matches from an outer COMPLETE collector.
+  (Shrey Narayan, NextBrick)
+
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
 
@@ -482,6 +487,11 @@ Optimizations
 
 Bug Fixes
 ---------------------
+
+* GITHUB#15239: BatchScoreBulkScorer and DenseConjunctionBulkScorer no longer skip hits from
+  setMinCompetitiveScore when the search ScoreMode is exhaustive. Nested TopScoreDocCollectors can
+  still track a competitive threshold without dropping matches from an outer COMPLETE collector.
+  (Shrey Narayan, NextBrick)
 
 * GITHUB#16546: Prevent RangeBulkScorer from passing empty ranges to LeafCollector. (jxy)
 
