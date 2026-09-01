@@ -22,6 +22,8 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
+import org.apache.lucene.analysis.miscellaneous.KeywordMarkerFilter;
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 
@@ -107,5 +109,38 @@ public class TestPatternReplaceFilter extends BaseTokenStreamTestCase {
         };
     checkOneTerm(a, "", "");
     a.close();
+  }
+
+  public void testKeywordFilter() throws Exception {
+    assertAnalyzesTo(
+        keywordTestAnalyzer(true), "banana kappa alpha", new String[] {"bXnXnX", "kappa", "XlphX"});
+
+    assertAnalyzesTo(
+        keywordTestAnalyzer(false),
+        "banana kappa alpha",
+        new String[] {"bXnXnX", "kXppX", "XlphX"});
+  }
+
+  private Analyzer keywordTestAnalyzer(boolean ignoreKeywords) throws Exception {
+    return new Analyzer() {
+      @Override
+      protected TokenStreamComponents createComponents(String fieldName) {
+        Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
+        KeywordMarkerFilter keywordFilter =
+            new KeywordMarkerFilter(tokenizer) {
+              private final CharTermAttribute term = addAttribute(CharTermAttribute.class);
+
+              @Override
+              public boolean isKeyword() {
+                // Mark terms starting with 'k' as keywords
+                return term.toString().startsWith("k");
+              }
+            };
+        return new TokenStreamComponents(
+            tokenizer,
+            new PatternReplaceFilter(
+                keywordFilter, Pattern.compile("a"), "X", true, ignoreKeywords));
+      }
+    };
   }
 }

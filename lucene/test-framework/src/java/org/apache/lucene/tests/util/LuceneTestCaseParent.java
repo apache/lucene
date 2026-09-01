@@ -213,7 +213,7 @@ public abstract sealed class LuceneTestCaseParent extends Assert
   public static final String DEFAULT_LINE_DOCS_FILE = "europarl.lines.txt.gz";
 
   /**
-   * Random sample from enwiki used in tests. See {@code help/tests.txt}. gradle task downloading
+   * Random sample from enwiki used in tests. See {@code help/tests.md}. gradle task downloading
    * this data set: {@code gradlew getEnWikiRandomLines}.
    */
   public static final String JENKINS_LARGE_LINE_DOCS_FILE = "enwiki.random.lines.txt";
