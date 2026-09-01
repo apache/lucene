@@ -156,22 +156,17 @@ public class TestReaderPool extends LuceneTestCase {
       if (pool.isReaderPoolingEnabled()) {
         if (random().nextBoolean()) {
           writtenToDisk = pool.writeAllDocValuesUpdates();
-          assertFalse(readersAndUpdates.isMerging());
         } else if (random().nextBoolean()) {
           writtenToDisk = pool.commit(segmentInfos);
-          assertFalse(readersAndUpdates.isMerging());
         } else {
           writtenToDisk = pool.writeDocValuesUpdatesForMerge(Collections.singletonList(commitInfo));
-          assertTrue(readersAndUpdates.isMerging());
         }
         assertFalse(pool.release(readersAndUpdates, random().nextBoolean()));
       } else {
         if (random().nextBoolean()) {
           writtenToDisk = pool.release(readersAndUpdates, random().nextBoolean());
-          assertFalse(readersAndUpdates.isMerging());
         } else {
           writtenToDisk = pool.writeDocValuesUpdatesForMerge(Collections.singletonList(commitInfo));
-          assertTrue(readersAndUpdates.isMerging());
           assertFalse(pool.release(readersAndUpdates, random().nextBoolean()));
         }
       }

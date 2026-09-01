@@ -456,7 +456,7 @@ public class TestIncrementalDocValuesUpdates extends LuceneTestCase {
       w.updateNumericDocValue(new Term("id", "0"), "val", 2L); // writes a sparse overlay generation
       w.commit();
     }
-    // The commit records overlay generations, so its segments file is written at VERSION_11_0; a
+    // The commit records overlay generations, so its segments file is written at VERSION_10_6; a
     // reader that only understands up to VERSION_86 rejects it with IndexFormatTooNewException.
     assertOldReaderRejects(dir);
     // And the current reader sees the overlay round-tripped through the segments file.
