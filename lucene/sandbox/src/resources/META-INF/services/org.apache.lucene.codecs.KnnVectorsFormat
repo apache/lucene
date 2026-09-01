@@ -15,3 +15,4 @@
 
 org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormat
 org.apache.lucene.sandbox.codecs.dedup.DedupHnswVectorsFormat
+org.apache.lucene.sandbox.codecs.ivfaster.IVFasterVectorsFormat
