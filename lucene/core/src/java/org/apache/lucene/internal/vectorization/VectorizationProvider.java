@@ -65,7 +65,7 @@ public abstract class VectorizationProvider {
 
   private static final String UPPER_JAVA_FEATURE_VERSION_SYSPROP =
       "org.apache.lucene.vectorization.upperJavaFeatureVersion";
-  private static final int DEFAULT_UPPER_JAVA_FEATURE_VERSION = 25;
+  private static final int DEFAULT_UPPER_JAVA_FEATURE_VERSION = 26;
 
   private static int getUpperJavaFeatureVersion() {
     int runtimeVersion = DEFAULT_UPPER_JAVA_FEATURE_VERSION;
@@ -115,6 +115,20 @@ public abstract class VectorizationProvider {
   /** Create a new {@link PostingDecodingUtil} for the given {@link IndexInput}. */
   public abstract PostingDecodingUtil newPostingDecodingUtil(IndexInput input) throws IOException;
 
+  /**
+   * Returns a {@link DocValuesRangeSupport} instance for bulk numeric range evaluation. The
+   * returned instance uses SIMD when available (Panama Vector API), falling back to a scalar loop
+   * otherwise.
+   */
+  public abstract DocValuesRangeSupport getDocValuesRangeSupport();
+
+  /**
+   * Returns a {@link DocValuesBulkDecodeSupport} instance for bulk numeric value decode. The
+   * returned instance uses SIMD when available (Panama Vector API), falling back to a scalar loop
+   * otherwise.
+   */
+  public abstract DocValuesBulkDecodeSupport getDocValuesBulkDecodeSupport();
+
   // *** Lookup mechanism: ***
 
   private static final Logger LOG = Logger.getLogger(VectorizationProvider.class.getName());
@@ -122,18 +136,12 @@ public abstract class VectorizationProvider {
   // visible for tests
   static VectorizationProvider lookup(boolean testMode) {
     final int runtimeVersion = Runtime.version().feature();
-    assert runtimeVersion >= 21;
+    assert runtimeVersion >= 25;
     if (runtimeVersion <= UPPER_JAVA_FEATURE_VERSION) {
       // only use vector module with Hotspot VM
       if (!Constants.IS_HOTSPOT_VM) {
         LOG.warning(
             "Java runtime is not using Hotspot VM; Java vector incubator API can't be enabled.");
-        return new DefaultVectorizationProvider();
-      }
-      // don't use vector module with JVMCI (it does not work)
-      if (Constants.IS_JVMCI_VM) {
-        LOG.warning(
-            "Java runtime is using JVMCI Compiler; Java vector incubator API can't be enabled.");
         return new DefaultVectorizationProvider();
       }
       // is the incubator module present and readable (JVM providers may to exclude them or it is
@@ -213,6 +221,7 @@ public abstract class VectorizationProvider {
           "org.apache.lucene.util.VectorUtil",
           "org.apache.lucene.codecs.lucene104.Lucene104PostingsReader",
           "org.apache.lucene.codecs.lucene104.PostingIndexInput",
+          "org.apache.lucene.codecs.lucene90.Lucene90DocValuesProducer",
           "org.apache.lucene.tests.util.TestSysoutsLimits");
 
   private static final StackWalker STACKWALKER =

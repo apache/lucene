@@ -87,7 +87,7 @@ public final class EdgeNGramTokenFilter extends TokenFilter {
   }
 
   @Override
-  public final boolean incrementToken() throws IOException {
+  public boolean incrementToken() throws IOException {
     while (true) {
       if (curTermBuffer == null) {
         if (!input.incrementToken()) {

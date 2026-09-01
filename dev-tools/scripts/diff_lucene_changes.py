@@ -31,7 +31,7 @@ to users and avoid future annoying conflicts on backport.
 # e.g. python3 -u diff_lucene_changes.py branch_9_9 main 9.9.0
 
 
-def get_changes_url(branch_name: str):
+def get_changes_url(branch_name: str) -> str:
   if os.path.isdir(branch_name):
     url = f"file://{branch_name}/lucene/CHANGES.txt"
   else:
@@ -40,13 +40,13 @@ def get_changes_url(branch_name: str):
   return url
 
 
-def extract_release_section(changes_txt: bytes, release_name: str):
+def extract_release_section(changes_txt: bytes, release_name: str) -> bytes:
   match = re.search(f"=======+ Lucene {re.escape(release_name)} =======+(.*?)=======+ Lucene .*? =======+$", changes_txt.decode("utf-8"), re.MULTILINE | re.DOTALL)
   assert match
   return match.group(1).encode("utf-8")
 
 
-def main():
+def main() -> None:
   if len(sys.argv) < 3 or len(sys.argv) > 5:
     print("\nUsage: python3 -u dev-tools/scripts/diff_lucene_changes.py <branch1-or-local-clone> <branch2-or-local-clone> <release-name> [diff-commandline-extras]\n")
     print('  e.g.: python3 -u dev-tools/scripts/diff_lucene_changes.py branch_9_9 /l/trunk 9.9.0 "-w"\n')

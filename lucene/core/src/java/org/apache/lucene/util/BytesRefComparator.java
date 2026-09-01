@@ -26,7 +26,7 @@ import java.util.Comparator;
  */
 public abstract class BytesRefComparator implements Comparator<BytesRef> {
 
-  /** Comparing ByteRefs in natual order. */
+  /** Comparing ByteRefs in natural order. */
   public static final BytesRefComparator NATURAL =
       new BytesRefComparator(Integer.MAX_VALUE) {
         @Override

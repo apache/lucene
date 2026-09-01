@@ -146,7 +146,7 @@ public class Highlighter {
         fragTexts.add(frag[i].toString());
       }
     }
-    return fragTexts.toArray(new String[0]);
+    return fragTexts.toArray(String[]::new);
   }
 
   /**
@@ -303,7 +303,7 @@ public class Highlighter {
             fragTexts.add(frag[i]);
           }
         }
-        frag = fragTexts.toArray(new TextFragment[0]);
+        frag = fragTexts.toArray(TextFragment[]::new);
       }
 
       return frag;

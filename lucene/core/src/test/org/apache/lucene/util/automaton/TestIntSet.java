@@ -20,15 +20,12 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
 
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 public class TestIntSet extends LuceneTestCase {
-  @Test
   public void testFreezeEqualitySmallSet() {
     testFreezeEquality(10);
   }
 
-  @Test
   public void testFreezeEqualityLargeSet() {
     testFreezeEquality(100);
   }
@@ -51,7 +48,6 @@ public class TestIntSet extends LuceneTestCase {
     assertEquals("Frozen sets were not equal", frozen0, frozen1);
   }
 
-  @Test
   public void testMapCutover() {
     StateSet set = new StateSet(10);
     for (int i = 0; i < 35; i++) {
@@ -69,7 +65,6 @@ public class TestIntSet extends LuceneTestCase {
     assertThat(set.size(), equalTo(0));
   }
 
-  @Test
   public void testModify() {
     StateSet set = new StateSet(2);
     set.incr(1);
@@ -88,7 +83,6 @@ public class TestIntSet extends LuceneTestCase {
     assertNotEquals(set, set2);
   }
 
-  @Test
   public void testHashCode() {
     StateSet set = new StateSet(1000);
     StateSet set2 = new StateSet(100);

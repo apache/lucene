@@ -36,7 +36,7 @@ import org.apache.lucene.sandbox.facet.iterators.OrdinalIterator;
  * <p>TODO: add an option to keep counts in an array, to improve performance for facets with small
  * number of ordinals e.g. range facets. Options: - {@link LeafFacetCutter} can inform {@link
  * LeafFacetRecorder} about expected number of facet ordinals ({@link
- * org.apache.lucene.sandbox.facet.FacetFieldCollector} can orchestrate that). If expeted facet ord
+ * org.apache.lucene.sandbox.facet.FacetFieldCollector} can orchestrate that). If expected facet ord
  * number is below some threshold - use array instead of a map? - first 100/1k counts in array, the
  * rest - in a map; the limit can also be provided in a constructor? It is similar to what
  * LongValuesFacetCounts does today.

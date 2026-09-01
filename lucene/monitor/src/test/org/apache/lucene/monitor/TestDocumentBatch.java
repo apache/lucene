@@ -25,15 +25,17 @@ import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.hamcrest.MatcherAssert;
-import org.junit.Test;
 
 public class TestDocumentBatch extends LuceneTestCase {
 
   public static final Analyzer ANALYZER = new StandardAnalyzer();
 
-  @Test(expected = IllegalArgumentException.class)
   public void testDocumentBatchThrowsIllegalArgumentExceptionUponZeroDocument() {
-    DocumentBatch.of(ANALYZER);
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          DocumentBatch.of(ANALYZER);
+        });
   }
 
   public void testSingleDocumentAndArrayOfOneDocumentResultInSameDocumentBatch()

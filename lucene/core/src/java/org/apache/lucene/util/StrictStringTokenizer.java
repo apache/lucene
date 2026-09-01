@@ -27,7 +27,7 @@ final class StrictStringTokenizer {
     this.delimiter = delimiter;
   }
 
-  public final String nextToken() {
+  public String nextToken() {
     if (pos < 0) {
       throw new IllegalStateException("no more tokens");
     }
@@ -45,7 +45,7 @@ final class StrictStringTokenizer {
     return s1;
   }
 
-  public final boolean hasMoreTokens() {
+  public boolean hasMoreTokens() {
     return pos >= 0;
   }
 

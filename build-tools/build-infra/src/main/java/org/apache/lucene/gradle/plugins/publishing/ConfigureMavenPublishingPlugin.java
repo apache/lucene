@@ -275,7 +275,7 @@ public class ConfigureMavenPublishingPlugin extends LuceneGradlePlugin {
         throw new GradleException(
             "'"
                 + propName
-                + "' project property must be set when using external GPG via 'useGpg', please see help/publishing.txt");
+                + "' project property must be set when using external GPG via 'useGpg', please see help/publishing.md");
       }
 
       for (var p : project.getAllprojects()) {

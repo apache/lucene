@@ -30,32 +30,27 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.custom.CustomAnalyzer;
 import org.apache.lucene.luke.models.LukeException;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 public class TestAnalysisImpl extends LuceneTestCase {
 
-  @Test
   public void testGetAvailableCharFilters() {
     AnalysisImpl analysis = new AnalysisImpl();
     Collection<String> charFilters = analysis.getAvailableCharFilters();
     assertNotNull(charFilters);
   }
 
-  @Test
   public void testGetAvailableTokenizers() {
     AnalysisImpl analysis = new AnalysisImpl();
     Collection<String> tokenizers = analysis.getAvailableTokenizers();
     assertNotNull(tokenizers);
   }
 
-  @Test
   public void testGetAvailableTokenFilters() {
     AnalysisImpl analysis = new AnalysisImpl();
     Collection<String> tokenFilters = analysis.getAvailableTokenFilters();
     assertNotNull(tokenFilters);
   }
 
-  @Test
   public void testAnalyze_preset() {
     AnalysisImpl analysis = new AnalysisImpl();
     String analyzerType = "org.apache.lucene.analysis.standard.StandardAnalyzer";
@@ -68,7 +63,6 @@ public class TestAnalysisImpl extends LuceneTestCase {
     assertNotNull(tokens);
   }
 
-  @Test
   public void testAnalyze_custom() {
     AnalysisImpl analysis = new AnalysisImpl();
     Map<String, String> tkParams = new HashMap<>();
@@ -90,7 +84,6 @@ public class TestAnalysisImpl extends LuceneTestCase {
     assertNotNull(tokens);
   }
 
-  @Test
   public void testAnalyzer_custom_with_confdir() throws Exception {
     Path confDir = createTempDir("conf");
     Path stopFile = Files.createFile(Paths.get(confDir.toString(), "stop.txt"));
@@ -132,7 +125,6 @@ public class TestAnalysisImpl extends LuceneTestCase {
     assertNotNull(tokens);
   }
 
-  @Test
   public void testAnalyzeStepByStep_preset() {
     AnalysisImpl analysis = new AnalysisImpl();
     String analyzerType = "org.apache.lucene.analysis.standard.StandardAnalyzer";
@@ -143,7 +135,6 @@ public class TestAnalysisImpl extends LuceneTestCase {
     expectThrows(LukeException.class, () -> analysis.analyzeStepByStep(text));
   }
 
-  @Test
   public void testAnalyzeStepByStep_custom() {
     AnalysisImpl analysis = new AnalysisImpl();
     Map<String, String> tkParams = new HashMap<>();

@@ -129,7 +129,7 @@ public final class ClassicTokenizer extends Tokenizer {
    * @see org.apache.lucene.analysis.TokenStream#next()
    */
   @Override
-  public final boolean incrementToken() throws IOException {
+  public boolean incrementToken() throws IOException {
     clearAttributes();
     skippedPositions = 0;
 
@@ -161,7 +161,7 @@ public final class ClassicTokenizer extends Tokenizer {
   }
 
   @Override
-  public final void end() throws IOException {
+  public void end() throws IOException {
     super.end();
     // set final offset
     int finalOffset = correctOffset(scanner.yychar() + scanner.yylength());

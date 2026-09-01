@@ -22,7 +22,6 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Before;
-import org.junit.Test;
 
 /**
  * Tests for {@link IntArrayList}.
@@ -54,38 +53,32 @@ public class TestIntArrayList extends LuceneTestCase {
     list = new IntArrayList();
   }
 
-  @Test
   public void testInitiallyEmpty() {
     assertEquals(0, list.size());
   }
 
-  @Test
   public void testAdd() {
     list.add(key1, key2);
     assertListEquals(list.toArray(), 1, 2);
   }
 
-  @Test
   public void testAddTwoArgs() {
     list.add(key1, key2);
     list.add(key3, key4);
     assertListEquals(list.toArray(), 1, 2, 3, 4);
   }
 
-  @Test
   public void testAddArray() {
     list.add(asArray(0, 1, 2, 3), 1, 2);
     assertListEquals(list.toArray(), 1, 2);
   }
 
-  @Test
   public void testAddVarArg() {
     list.add(asArray(0, 1, 2, 3));
     list.add(key4, key5, key6, key7);
     assertListEquals(list.toArray(), 0, 1, 2, 3, 4, 5, 6, 7);
   }
 
-  @Test
   public void testAddAll() {
     IntArrayList list2 = new IntArrayList();
     list2.add(asArray(0, 1, 2));
@@ -96,7 +89,6 @@ public class TestIntArrayList extends LuceneTestCase {
     assertListEquals(list.toArray(), 0, 1, 2, 0, 1, 2);
   }
 
-  @Test
   public void testInsert() {
     list.insert(0, key1);
     list.insert(0, key2);
@@ -106,7 +98,6 @@ public class TestIntArrayList extends LuceneTestCase {
     assertListEquals(list.toArray(), 2, 4, 1, 3);
   }
 
-  @Test
   public void testSet() {
     list.add(asArray(0, 1, 2));
 
@@ -117,7 +108,6 @@ public class TestIntArrayList extends LuceneTestCase {
     assertListEquals(list.toArray(), 3, 4, 5);
   }
 
-  @Test
   public void testRemoveAt() {
     list.add(asArray(0, 1, 2, 3, 4));
 
@@ -128,7 +118,6 @@ public class TestIntArrayList extends LuceneTestCase {
     assertListEquals(list.toArray(), 1, 4);
   }
 
-  @Test
   public void testRemoveLast() {
     list.add(asArray(0, 1, 2, 3, 4));
 
@@ -144,7 +133,6 @@ public class TestIntArrayList extends LuceneTestCase {
     assertTrue(list.isEmpty());
   }
 
-  @Test
   public void testRemoveElement() {
     list.add(asArray(0, 1, 2, 3, 3, 4));
 
@@ -155,7 +143,6 @@ public class TestIntArrayList extends LuceneTestCase {
     assertListEquals(list.toArray(), 0, 1, 3, 4);
   }
 
-  @Test
   public void testRemoveRange() {
     list.add(asArray(0, 1, 2, 3, 4));
 
@@ -172,7 +159,6 @@ public class TestIntArrayList extends LuceneTestCase {
     assertListEquals(list.toArray(), 3);
   }
 
-  @Test
   public void testRemoveFirstLast() {
     list.add(asArray(0, 1, 2, 1, 0));
 
@@ -189,7 +175,6 @@ public class TestIntArrayList extends LuceneTestCase {
     assertEquals(-1, list.removeLast(key0));
   }
 
-  @Test
   public void testRemoveAll() {
     list.add(asArray(0, 1, 0, 1, 0));
 
@@ -201,7 +186,6 @@ public class TestIntArrayList extends LuceneTestCase {
     assertTrue(list.isEmpty());
   }
 
-  @Test
   public void testIndexOf() {
     list.add(asArray(0, 1, 2, 1, 0));
 
@@ -210,7 +194,6 @@ public class TestIntArrayList extends LuceneTestCase {
     assertEquals(2, list.indexOf(key2));
   }
 
-  @Test
   public void testLastIndexOf() {
     list.add(asArray(0, 1, 2, 1, 0));
 
@@ -219,7 +202,6 @@ public class TestIntArrayList extends LuceneTestCase {
     assertEquals(2, list.lastIndexOf(key2));
   }
 
-  @Test
   public void testEnsureCapacity() {
     IntArrayList list = new IntArrayList(0);
     assertEquals(list.size(), list.buffer.length);
@@ -228,7 +210,6 @@ public class TestIntArrayList extends LuceneTestCase {
     assertNotSame(buffer1, list.buffer);
   }
 
-  @Test
   public void testResizeAndCleanBuffer() {
     list.ensureCapacity(20);
     Arrays.fill(list.buffer, key1);
@@ -250,14 +231,12 @@ public class TestIntArrayList extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testTrimToSize() {
     list.add(asArray(1, 2));
     list.trimToSize();
     assertEquals(2, list.buffer.length);
   }
 
-  @Test
   public void testRelease() {
     list.add(asArray(1, 2));
     list.release();
@@ -266,7 +245,6 @@ public class TestIntArrayList extends LuceneTestCase {
     assertEquals(2, list.size());
   }
 
-  @Test
   public void testIterable() {
     list.add(asArray(0, 1, 2, 3));
     int count = 0;
@@ -285,7 +263,6 @@ public class TestIntArrayList extends LuceneTestCase {
     assertEquals(0, count);
   }
 
-  @Test
   public void testIterator() {
     list.add(asArray(0, 1, 2, 3));
     Iterator<IntCursor> iterator = list.iterator();
@@ -303,7 +280,6 @@ public class TestIntArrayList extends LuceneTestCase {
     assertFalse(list.iterator().hasNext());
   }
 
-  @Test
   public void testClear() {
     list.add(asArray(1, 2, 3));
     list.clear();
@@ -311,7 +287,6 @@ public class TestIntArrayList extends LuceneTestCase {
     assertEquals(-1, list.indexOf(cast(1)));
   }
 
-  @Test
   public void testFrom() {
     list = IntArrayList.from(key1, key2, key3);
     assertEquals(3, list.size());
@@ -319,7 +294,6 @@ public class TestIntArrayList extends LuceneTestCase {
     assertEquals(list.size(), list.buffer.length);
   }
 
-  @Test
   public void testCopyList() {
     list.add(asArray(1, 2, 3));
     IntArrayList copy = new IntArrayList(list);
@@ -328,7 +302,6 @@ public class TestIntArrayList extends LuceneTestCase {
     assertEquals(copy.size(), copy.buffer.length);
   }
 
-  @Test
   public void testHashCodeEquals() {
     IntArrayList l0 = IntArrayList.from();
     assertEquals(1, l0.hashCode());
@@ -342,7 +315,6 @@ public class TestIntArrayList extends LuceneTestCase {
     assertEquals(l1, l2);
   }
 
-  @Test
   public void testEqualElements() {
     IntArrayList l1 = IntArrayList.from(key1, key2, key3);
     IntArrayList l2 = IntArrayList.from(key1, key2);
@@ -352,7 +324,6 @@ public class TestIntArrayList extends LuceneTestCase {
     assertTrue(l2.equalElements(l1));
   }
 
-  @Test
   public void testToArray() {
     IntArrayList l1 = IntArrayList.from(key1, key2, key3);
     l1.ensureCapacity(100);
@@ -360,7 +331,6 @@ public class TestIntArrayList extends LuceneTestCase {
     assertArrayEquals(new int[] {key1, key2, key3}, result);
   }
 
-  @Test
   public void testClone() {
     list.add(key1, key2, key3);
 
@@ -371,14 +341,12 @@ public class TestIntArrayList extends LuceneTestCase {
     assertSortedListEquals(cloned.toArray(), key2, key3);
   }
 
-  @Test
   public void testToString() {
     assertEquals(
         "[" + key1 + ", " + key2 + ", " + key3 + "]",
         IntArrayList.from(key1, key2, key3).toString());
   }
 
-  @Test
   public void testEqualsSameClass() {
     IntArrayList l1 = IntArrayList.from(key1, key2, key3);
     IntArrayList l2 = IntArrayList.from(key1, key2, key3);
@@ -389,7 +357,6 @@ public class TestIntArrayList extends LuceneTestCase {
     assertNotEquals(l1, l3);
   }
 
-  @Test
   public void testEqualsSubClass() {
     class Sub extends IntArrayList {}
     ;
@@ -404,7 +371,6 @@ public class TestIntArrayList extends LuceneTestCase {
     assertNotEquals(l1, l3);
   }
 
-  @Test
   public void testStream() {
     assertEquals(key1, IntArrayList.from(key1, key2, key3).stream().min().orElseThrow());
     assertEquals(key3, IntArrayList.from(key2, key1, key3).stream().max().orElseThrow());
@@ -416,7 +382,6 @@ public class TestIntArrayList extends LuceneTestCase {
         });
   }
 
-  @Test
   public void testSort() {
     list.add(key3, key1, key3, key2);
     IntArrayList list2 = new IntArrayList();
@@ -426,7 +391,6 @@ public class TestIntArrayList extends LuceneTestCase {
     assertEquals(IntArrayList.from(key1, key2, key3, key3), list2);
   }
 
-  @Test
   public void testReverse() {
     for (int i = 0; i < 10; i++) {
       int[] elements = new int[i];

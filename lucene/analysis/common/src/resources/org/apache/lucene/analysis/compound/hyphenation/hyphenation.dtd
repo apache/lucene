@@ -25,7 +25,7 @@
 <!ATTLIST hyphen-char value CDATA #REQUIRED>
 
 <!--
-  Default minimun length in characters of hyphenated word fragments
+  Default minimum length in characters of hyphenated word fragments
   before and after the line break. For some languages this is not
   only for aesthetic purposes, wrong hyphens may be generated if this
   is not accounted for.

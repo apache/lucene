@@ -198,6 +198,16 @@ public class TestConjunctionDISI extends LuceneTestCase {
     return set;
   }
 
+  private static DocIdSetIterator bitSetConjunction(
+      FixedBitSet lead, FixedBitSet... bitSetFilters) {
+    List<DocIdSetIterator> iterators = new ArrayList<>();
+    iterators.add(anonymizeIterator(new BitDocIdSet(lead).iterator()));
+    for (FixedBitSet filter : bitSetFilters) {
+      iterators.add(new BitDocIdSet(filter).iterator());
+    }
+    return ConjunctionUtils.intersectIterators(iterators);
+  }
+
   // Test that the conjunction iterator is correct
   public void testConjunction() throws IOException {
     final int iters = atLeast(100);
@@ -444,5 +454,167 @@ public class TestConjunctionDISI extends LuceneTestCase {
 
     assertEquals(NO_MORE_DOCS, conjunction.nextDoc());
     assertEquals(NO_MORE_DOCS, conjunction.docID());
+  }
+
+  public void testBitSetConjunctionIntoBitSet() throws IOException {
+    int maxDoc = 9000;
+    FixedBitSet lead = new FixedBitSet(maxDoc);
+    for (int doc : new int[] {1, 2, 4, 4097, 4100, 8190}) {
+      lead.set(doc);
+    }
+    FixedBitSet filter1 = new FixedBitSet(maxDoc);
+    for (int doc : new int[] {2, 4, 4100, 8190}) {
+      filter1.set(doc);
+    }
+    FixedBitSet filter2 = new FixedBitSet(maxDoc);
+    for (int doc : new int[] {2, 4100, 8190}) {
+      filter2.set(doc);
+    }
+
+    DocIdSetIterator conjunction = bitSetConjunction(lead, filter1, filter2);
+    assertEquals(2, conjunction.nextDoc());
+
+    FixedBitSet actual = new FixedBitSet(maxDoc);
+    actual.set(1234);
+    conjunction.intoBitSet(5000, actual, 0);
+
+    FixedBitSet expected = new FixedBitSet(maxDoc);
+    expected.set(2);
+    expected.set(1234);
+    expected.set(4100);
+    assertEquals(expected, actual);
+    assertEquals(8190, conjunction.docID());
+    assertEquals(NO_MORE_DOCS, conjunction.nextDoc());
+  }
+
+  public void testBitSetConjunctionIntoBitSetMultipleWindows() throws IOException {
+    int maxDoc = 9000;
+    FixedBitSet lead = new FixedBitSet(maxDoc);
+    FixedBitSet filter = new FixedBitSet(maxDoc);
+    for (int doc : new int[] {2, 4100, 8190}) {
+      lead.set(doc);
+      filter.set(doc);
+    }
+
+    DocIdSetIterator conjunction = bitSetConjunction(lead, filter);
+    assertEquals(2, conjunction.nextDoc());
+
+    FixedBitSet firstWindow = new FixedBitSet(4096);
+    conjunction.intoBitSet(4096, firstWindow, 0);
+    assertTrue(firstWindow.get(2));
+    assertEquals(1, firstWindow.cardinality());
+    assertEquals(4100, conjunction.docID());
+
+    FixedBitSet secondWindow = new FixedBitSet(4096);
+    conjunction.intoBitSet(8192, secondWindow, 4096);
+    assertTrue(secondWindow.get(4));
+    assertTrue(secondWindow.get(4094));
+    assertEquals(2, secondWindow.cardinality());
+    assertEquals(NO_MORE_DOCS, conjunction.docID());
+  }
+
+  public void testBitSetConjunctionIntoBitSetIgnoresLeadOnlyDocsPastDestination()
+      throws IOException {
+    FixedBitSet lead = new FixedBitSet(20);
+    lead.set(2);
+    lead.set(10);
+    FixedBitSet filter = new FixedBitSet(20);
+    filter.set(2);
+
+    DocIdSetIterator conjunction = bitSetConjunction(lead, filter);
+    assertEquals(2, conjunction.nextDoc());
+
+    FixedBitSet actual = new FixedBitSet(5);
+    conjunction.intoBitSet(20, actual, 0);
+    assertTrue(actual.get(2));
+    assertEquals(1, actual.cardinality());
+    assertEquals(NO_MORE_DOCS, conjunction.docID());
+  }
+
+  public void testBitSetConjunctionIntoBitSetUsesBulkPathWhenLeadCostIsHigh() throws IOException {
+    int maxDoc = 9000;
+    int[] docs = {2, 4, 4100, 8190};
+    CountingDocIdSetIterator lead = new CountingDocIdSetIterator(docs, 4096);
+    FixedBitSet filter = new FixedBitSet(maxDoc);
+    filter.set(0, maxDoc);
+
+    DocIdSetIterator conjunction =
+        ConjunctionUtils.intersectIterators(
+            Arrays.asList(lead, new BitDocIdSet(filter).iterator()));
+    assertEquals(2, conjunction.nextDoc());
+
+    FixedBitSet actual = new FixedBitSet(4096);
+    conjunction.intoBitSet(4096, actual, 0);
+    assertTrue(actual.get(2));
+    assertTrue(actual.get(4));
+    assertEquals(2, actual.cardinality());
+    assertEquals(1, lead.intoBitSetCalls);
+    assertEquals(4100, conjunction.docID());
+  }
+
+  public void testBitSetConjunctionIntoBitSetUsesPerDocPathWhenLeadCostIsLow() throws IOException {
+    int maxDoc = 9000;
+    int[] docs = {2, 4, 4100, 8190};
+    CountingDocIdSetIterator lead = new CountingDocIdSetIterator(docs, 4);
+    FixedBitSet filter = new FixedBitSet(maxDoc);
+    filter.set(0, maxDoc);
+
+    DocIdSetIterator conjunction =
+        ConjunctionUtils.intersectIterators(
+            Arrays.asList(lead, new BitDocIdSet(filter).iterator()));
+    assertEquals(2, conjunction.nextDoc());
+
+    FixedBitSet actual = new FixedBitSet(4096);
+    conjunction.intoBitSet(4096, actual, 0);
+    assertTrue(actual.get(2));
+    assertTrue(actual.get(4));
+    assertEquals(2, actual.cardinality());
+    assertEquals(0, lead.intoBitSetCalls);
+    assertEquals(4100, conjunction.docID());
+  }
+
+  private static class CountingDocIdSetIterator extends DocIdSetIterator {
+    private final int[] docs;
+    private final long cost;
+    private int index = -1;
+    private int doc = -1;
+    int intoBitSetCalls;
+
+    CountingDocIdSetIterator(int[] docs, long cost) {
+      this.docs = docs;
+      this.cost = cost;
+    }
+
+    @Override
+    public int docID() {
+      return doc;
+    }
+
+    @Override
+    public int nextDoc() {
+      if (++index == docs.length) {
+        return doc = NO_MORE_DOCS;
+      }
+      return doc = docs[index];
+    }
+
+    @Override
+    public int advance(int target) {
+      while (doc < target) {
+        nextDoc();
+      }
+      return doc;
+    }
+
+    @Override
+    public long cost() {
+      return cost;
+    }
+
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      ++intoBitSetCalls;
+      super.intoBitSet(upTo, bitSet, offset);
+    }
   }
 }

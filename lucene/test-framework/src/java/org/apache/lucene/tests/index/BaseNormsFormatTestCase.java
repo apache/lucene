@@ -809,7 +809,7 @@ public abstract class BaseNormsFormatTestCase extends BaseIndexFileFormatTestCas
     dir.close();
   }
 
-  public void testIndependantIterators() throws IOException {
+  public void testIndependentIterators() throws IOException {
     Directory dir = newDirectory();
     IndexWriterConfig conf = newIndexWriterConfig().setMergePolicy(newLogMergePolicy());
     CannedNormSimilarity sim = new CannedNormSimilarity(new long[] {42, 10, 20});
@@ -842,7 +842,7 @@ public abstract class BaseNormsFormatTestCase extends BaseIndexFileFormatTestCas
     IOUtils.close(r, writer, dir);
   }
 
-  public void testIndependantSparseIterators() throws IOException {
+  public void testIndependentSparseIterators() throws IOException {
     Directory dir = newDirectory();
     IndexWriterConfig conf = newIndexWriterConfig().setMergePolicy(newLogMergePolicy());
     CannedNormSimilarity sim = new CannedNormSimilarity(new long[] {42, 10, 20});

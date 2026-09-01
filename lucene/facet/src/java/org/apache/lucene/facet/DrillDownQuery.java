@@ -207,7 +207,7 @@ public final class DrillDownQuery extends Query {
     }
     dirtyDimQueryIndex.clear();
 
-    return builtDimQueries.toArray(new Query[0]);
+    return builtDimQueries.toArray(Query[]::new);
   }
 
   Map<String, Integer> getDims() {

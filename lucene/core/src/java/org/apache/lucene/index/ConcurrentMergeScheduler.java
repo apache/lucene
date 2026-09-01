@@ -692,7 +692,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
       removeMergeThread();
       updateMergeThreads();
       // In case we had stalled indexing, we can now wake up
-      // and possibly unstall:
+      // and possibly un-stall:
       notifyAll();
     }
   }

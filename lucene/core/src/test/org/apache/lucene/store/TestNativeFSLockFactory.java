@@ -17,6 +17,8 @@
 package org.apache.lucene.store;
 
 import java.io.IOException;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.FileSystem;
@@ -25,6 +27,7 @@ import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
 import java.util.Set;
+import org.apache.lucene.tests.mockfile.FilterFileChannel;
 import org.apache.lucene.tests.mockfile.FilterFileSystemProvider;
 import org.apache.lucene.tests.mockfile.FilterPath;
 import org.apache.lucene.tests.store.BaseLockFactoryTestCase;
@@ -140,6 +143,56 @@ public class TestNativeFSLockFactory extends BaseLockFactoryTestCase {
             });
     AccessDeniedException suppressed = (AccessDeniedException) expected.getSuppressed()[0];
     assertTrue(suppressed.getMessage().contains("fake access denied"));
+
+    dir.close();
+  }
+
+  /** MockFileSystem that throws exception on lock and close */
+  static class MockFailingCloseFileSystem extends FilterFileSystemProvider {
+    public MockFailingCloseFileSystem(FileSystem delegateInstance) {
+      super("mockfailingclose://", delegateInstance);
+    }
+
+    @Override
+    public FileChannel newFileChannel(
+        Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs)
+        throws IOException {
+      if (path.getFileName().toString().equals("test.lock")) {
+        return new FilterFileChannel(super.newFileChannel(path, options, attrs)) {
+          @Override
+          public FileLock tryLock(long position, long size, boolean shared) throws IOException {
+            throw new IOException("fake lock failure");
+          }
+
+          @Override
+          protected void implCloseChannel() throws IOException {
+            super.implCloseChannel();
+            throw new IOException("fake close failure");
+          }
+        };
+      }
+      return super.newFileChannel(path, options, attrs);
+    }
+  }
+
+  public void testSuppressedExceptionOnLockFailure() throws IOException {
+    Path tmpDir = createTempDir();
+    tmpDir = FilterPath.unwrap(tmpDir).toRealPath();
+    FileSystem mock = new MockFailingCloseFileSystem(tmpDir.getFileSystem()).getFileSystem(null);
+    Path mockPath = mock.getPath(tmpDir.toString());
+
+    Directory dir = getDirectory(mockPath.resolve("indexDir"));
+    IOException expected =
+        expectThrows(
+            IOException.class,
+            () -> {
+              dir.obtainLock("test.lock");
+            });
+
+    assertEquals("fake lock failure", expected.getMessage());
+    Throwable[] suppressed = expected.getSuppressed();
+    assertEquals(1, suppressed.length);
+    assertEquals("fake close failure", suppressed[0].getMessage());
 
     dir.close();
   }

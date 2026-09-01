@@ -48,6 +48,8 @@ import org.apache.lucene.util.Constants;
  *
  * <p>It Uses <code>Linker.Option.critical(true)</code> for optimal performance by eliminating the
  * overhead of ensuring MemorySegments are allocated off-heap before native calls.
+ *
+ * @lucene.experimental
  */
 @SuppressWarnings("restricted")
 final class NativeVectorUtilSupport implements VectorUtilSupport {
@@ -576,6 +578,21 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
         (byte) (throwOnZero ? 1 : 0),
         v.length);
     return v;
+  }
+
+  @Override
+  public float dotProduct(short[] a, short[] b) {
+    return delegateVectorUtilSupport.dotProduct(a, b);
+  }
+
+  @Override
+  public float cosine(short[] v1, short[] v2) {
+    return delegateVectorUtilSupport.cosine(v1, v2);
+  }
+
+  @Override
+  public float squareDistance(short[] a, short[] b) {
+    return delegateVectorUtilSupport.squareDistance(a, b);
   }
 
   @Override

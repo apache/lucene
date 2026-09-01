@@ -255,7 +255,7 @@ public class PhraseWildcardQuery extends Query {
             .scorer(
                 boost,
                 searcher.fieldStats(field),
-                termsData.termStatsList.toArray(new org.apache.lucene.search.TermStats[0]));
+                termsData.termStatsList.toArray(org.apache.lucene.search.TermStats[]::new));
       }
 
       @Override

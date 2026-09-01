@@ -31,7 +31,6 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Test;
 
 public class TestRegexCompletionQuery extends LuceneTestCase {
   public Directory dir;
@@ -46,7 +45,6 @@ public class TestRegexCompletionQuery extends LuceneTestCase {
     dir.close();
   }
 
-  @Test
   public void testRegexQuery() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =
@@ -82,7 +80,6 @@ public class TestRegexCompletionQuery extends LuceneTestCase {
     iw.close();
   }
 
-  @Test
   public void testEmptyRegexQuery() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =
@@ -106,7 +103,6 @@ public class TestRegexCompletionQuery extends LuceneTestCase {
     iw.close();
   }
 
-  @Test
   public void testSimpleRegexContextQuery() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =
@@ -144,7 +140,6 @@ public class TestRegexCompletionQuery extends LuceneTestCase {
     iw.close();
   }
 
-  @Test
   public void testRegexContextQueryWithBoost() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =
@@ -185,7 +180,6 @@ public class TestRegexCompletionQuery extends LuceneTestCase {
     iw.close();
   }
 
-  @Test
   public void testEmptyRegexContextQuery() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =

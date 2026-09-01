@@ -485,7 +485,7 @@ public class TestSpellChecker extends LuceneTestCase {
 
   private void assertLastSearcherOpen(int numSearchers) {
     assertEquals(numSearchers, searchers.size());
-    IndexSearcher[] searcherArray = searchers.toArray(new IndexSearcher[0]);
+    IndexSearcher[] searcherArray = searchers.toArray(IndexSearcher[]::new);
     for (int i = 0; i < searcherArray.length; i++) {
       if (i == searcherArray.length - 1) {
         assertTrue(

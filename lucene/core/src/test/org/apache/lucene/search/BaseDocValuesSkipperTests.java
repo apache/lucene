@@ -19,78 +19,106 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.tests.index.AssertingLeafReader.AssertingNumericDocValues;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public abstract class BaseDocValuesSkipperTests extends LuceneTestCase {
 
+  // Dense up to 1024+64=1088, sparse (even docs only) from 1088 onward.
+  // This means block [1024,1087] is dense YES while [1088,1151] is sparse YES_IF_PRESENT,
+  // both in the same level-1 block [1024,1151] — exercising the docIDRunEnd density check.
+  static final int DENSE_END = 1088;
+
+  /** Number of docs in the fake segment; docs at or beyond this bound do not exist. */
+  static final int MAX_DOC = 2048;
+
   /**
-   * Fake numeric doc values so that: - docs 0-256 all match - docs in 256-512 are all greater than
-   * queryMax - docs in 512-768 are all less than queryMin - docs in 768-1024 have some docs that
-   * match the range, others not - docs in 1024-2048 follow a similar pattern as docs in 0-1024
-   * except that not all docs have a - value
+   * Single definition of the fake field's data shape: the first doc that has a value and is greater
+   * than or equal to {@code target}, or {@link DocIdSetIterator#NO_MORE_DOCS}. Pure function, does
+   * not touch iteration state.
+   */
+  private static int firstDocWithValueOnOrAfter(int target) {
+    if (target >= MAX_DOC) {
+      return DocIdSetIterator.NO_MORE_DOCS;
+    } else if (target < DENSE_END) {
+      return target;
+    } else {
+      // sparse: round up to even
+      int d = target + (target & 1);
+      return d >= MAX_DOC ? DocIdSetIterator.NO_MORE_DOCS : d;
+    }
+  }
+
+  /**
+   * Fake numeric doc values: value pattern repeats every 1024 docs (d%1024 in [0,128) matches,
+   * [128,256) is above queryMax, [256,512) is below queryMin, [512,1024) is a mix). Docs 0 through
+   * {@link #DENSE_END}-1 are dense (all have values); docs from {@link #DENSE_END} onward are
+   * sparse (only even docs have a value).
+   *
+   * <p>The returned instance is wrapped in {@link AssertingNumericDocValues}, which enforces the
+   * forward-only iteration contracts like real sparse implementations rely on.
    */
   protected static NumericDocValues docValues(long queryMin, long queryMax) {
-    return new NumericDocValues() {
+    NumericDocValues values =
+        new NumericDocValues() {
 
-      int doc = -1;
+          int doc = -1;
 
-      @Override
-      public boolean advanceExact(int target) throws IOException {
-        throw new UnsupportedOperationException();
-      }
+          @Override
+          public boolean advanceExact(int target) throws IOException {
+            // Per the advanceExact contract, position on target whether or not it has a value
+            // (the asserting wrapper checks this).
+            doc = target;
+            return firstDocWithValueOnOrAfter(target) == target;
+          }
 
-      @Override
-      public int docID() {
-        return doc;
-      }
+          @Override
+          public int docID() {
+            return doc;
+          }
 
-      @Override
-      public int nextDoc() throws IOException {
-        return advance(doc + 1);
-      }
+          @Override
+          public int nextDoc() throws IOException {
+            return advance(doc + 1);
+          }
 
-      @Override
-      public int advance(int target) throws IOException {
-        if (target < 1024) {
-          // dense up to 1024
-          return doc = target;
-        } else if (doc < 2047) {
-          // 50% docs have a value up to 2048
-          return doc = target + (target & 1);
-        } else {
-          return doc = DocIdSetIterator.NO_MORE_DOCS;
-        }
-      }
+          @Override
+          public int advance(int target) throws IOException {
+            return doc = firstDocWithValueOnOrAfter(target);
+          }
 
-      @Override
-      public long longValue() throws IOException {
-        int d = doc % 1024;
-        if (d < 128) {
-          return (queryMin + queryMax) >> 1;
-        } else if (d < 256) {
-          return queryMax + 1;
-        } else if (d < 512) {
-          return queryMin - 1;
-        } else {
-          return switch ((d / 2) % 3) {
-            case 0 -> queryMin - 1;
-            case 1 -> queryMax + 1;
-            case 2 -> (queryMin + queryMax) >> 1;
-            default -> throw new AssertionError();
-          };
-        }
-      }
+          @Override
+          public long longValue() throws IOException {
+            int d = doc % 1024;
+            if (d < 128) {
+              return (queryMin + queryMax) >> 1;
+            } else if (d < 256) {
+              return queryMax + 1;
+            } else if (d < 512) {
+              return queryMin - 1;
+            } else {
+              return switch ((d / 2) % 3) {
+                case 0 -> queryMin - 1;
+                case 1 -> queryMax + 1;
+                case 2 -> (queryMin + queryMax) >> 1;
+                default -> throw new AssertionError();
+              };
+            }
+          }
 
-      @Override
-      public long cost() {
-        return 42;
-      }
-    };
+          @Override
+          public long cost() {
+            return 42;
+          }
+        };
+    return new AssertingNumericDocValues(values, MAX_DOC);
   }
 
   /**
    * Fake skipper over a NumericDocValues field built by an equivalent call to {@link
-   * #docValues(long, long)}
+   * #docValues(long, long)}. Dense up to doc {@link #DENSE_END}, sparse (even docs only) after
+   * that. This means block [1024,1087] is dense YES while [1088,1151] is sparse YES_IF_PRESENT,
+   * both in the same level-1 block — exercising the docIDRunEnd density check.
    */
   protected static DocValuesSkipper docValuesSkipper(
       long queryMin, long queryMax, boolean doLevels) {
@@ -115,7 +143,7 @@ public abstract class BaseDocValuesSkipperTests extends LuceneTestCase {
         // the level is the log2 of the interval
         if (doc < 0) {
           return -1;
-        } else if (doc >= 2048) {
+        } else if (doc >= MAX_DOC) {
           return DocIdSetIterator.NO_MORE_DOCS;
         } else {
           int mask = (1 << rangeLog) - 1;
@@ -163,13 +191,18 @@ public abstract class BaseDocValuesSkipperTests extends LuceneTestCase {
       @Override
       public int docCount(int level) {
         int rangeLog = 9 - numLevels() + level;
-
-        if (doc < 1024) {
-          return 1 << rangeLog;
-        } else {
-          // half docs have a value
-          return 1 << rangeLog >> 1;
+        int blockSize = 1 << rangeLog;
+        int minDoc = minDocID(level);
+        if (minDoc < 0 || minDoc >= MAX_DOC) {
+          return 0;
         }
+        if (minDoc >= DENSE_END) {
+          return blockSize / 2;
+        }
+        // Block starts in dense region — count dense + sparse portions
+        int denseCount = Math.min(blockSize, DENSE_END - minDoc);
+        int sparseCount = (blockSize - denseCount) / 2;
+        return denseCount + sparseCount;
       }
 
       @Override
@@ -184,7 +217,12 @@ public abstract class BaseDocValuesSkipperTests extends LuceneTestCase {
 
       @Override
       public int docCount() {
-        return 1024 + 1024 / 2;
+        return DENSE_END + (MAX_DOC - DENSE_END) / 2; // 1088 + 480 = 1568
+      }
+
+      @Override
+      public int maxValueCount() {
+        return 1;
       }
     };
   }

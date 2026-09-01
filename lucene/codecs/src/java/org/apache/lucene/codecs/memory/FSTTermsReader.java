@@ -32,6 +32,7 @@ import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.SegmentReadState;
@@ -152,7 +153,7 @@ public class FSTTermsReader extends FieldsProducer {
   }
 
   @Override
-  public Terms terms(String field) throws IOException {
+  public Terms terms(String field) {
     assert field != null;
     return fields.get(field);
   }
@@ -246,12 +247,12 @@ public class FSTTermsReader extends FieldsProducer {
     }
 
     @Override
-    public long getSumDocFreq() throws IOException {
+    public long getSumDocFreq() {
       return sumDocFreq;
     }
 
     @Override
-    public int getDocCount() throws IOException {
+    public int getDocCount() {
       return docCount;
     }
 
@@ -787,7 +788,7 @@ public class FSTTermsReader extends FieldsProducer {
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    postingsReader.checkIntegrity();
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+    postingsReader.checkIntegrity(merge);
   }
 }

@@ -35,7 +35,6 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Test;
 
 public class TestCommitsImpl extends LuceneTestCase {
 
@@ -94,7 +93,6 @@ public class TestCommitsImpl extends LuceneTestCase {
     dir.close();
   }
 
-  @Test
   public void testListCommits() {
     CommitsImpl commits = new CommitsImpl(reader, indexDir.toString());
     List<Commit> commitList = commits.listCommits();
@@ -104,7 +102,6 @@ public class TestCommitsImpl extends LuceneTestCase {
     assertEquals(1, commitList.get(commitList.size() - 1).getGeneration());
   }
 
-  @Test
   public void testGetCommit() {
     CommitsImpl commits = new CommitsImpl(reader, indexDir.toString());
     Optional<Commit> commit = commits.getCommit(1);
@@ -112,13 +109,11 @@ public class TestCommitsImpl extends LuceneTestCase {
     assertEquals(1, commit.get().getGeneration());
   }
 
-  @Test
   public void testGetCommit_generation_notfound() {
     CommitsImpl commits = new CommitsImpl(reader, indexDir.toString());
     assertFalse(commits.getCommit(10).isPresent());
   }
 
-  @Test
   public void testGetFiles() {
     CommitsImpl commits = new CommitsImpl(reader, indexDir.toString());
     List<File> files = commits.getFiles(1);
@@ -126,81 +121,69 @@ public class TestCommitsImpl extends LuceneTestCase {
     assertTrue(files.stream().anyMatch(file -> file.getFileName().equals("segments_1")));
   }
 
-  @Test
   public void testGetFiles_generation_notfound() {
     CommitsImpl commits = new CommitsImpl(reader, indexDir.toString());
     assertTrue(commits.getFiles(10).isEmpty());
   }
 
-  @Test
   public void testGetSegments() {
     CommitsImpl commits = new CommitsImpl(reader, indexDir.toString());
     List<Segment> segments = commits.getSegments(1);
     assertTrue(segments.size() > 0);
   }
 
-  @Test
   public void testGetSegments_generation_notfound() {
     CommitsImpl commits = new CommitsImpl(reader, indexDir.toString());
     assertTrue(commits.getSegments(10).isEmpty());
   }
 
-  @Test
   public void testGetSegmentAttributes() {
     CommitsImpl commits = new CommitsImpl(reader, indexDir.toString());
     Map<String, String> attributes = commits.getSegmentAttributes(1, "_0");
     assertTrue(attributes.size() > 0);
   }
 
-  @Test
   public void testGetSegmentAttributes_generation_notfound() {
     CommitsImpl commits = new CommitsImpl(reader, indexDir.toString());
     Map<String, String> attributes = commits.getSegmentAttributes(3, "_0");
     assertTrue(attributes.isEmpty());
   }
 
-  @Test
   public void testGetSegmentAttributes_invalid_name() {
     CommitsImpl commits = new CommitsImpl(reader, indexDir.toString());
     Map<String, String> attributes = commits.getSegmentAttributes(1, "xxx");
     assertTrue(attributes.isEmpty());
   }
 
-  @Test
   public void testGetSegmentDiagnostics() {
     CommitsImpl commits = new CommitsImpl(reader, indexDir.toString());
     Map<String, String> diagnostics = commits.getSegmentDiagnostics(1, "_0");
     assertTrue(diagnostics.size() > 0);
   }
 
-  @Test
   public void testGetSegmentDiagnostics_generation_notfound() {
     CommitsImpl commits = new CommitsImpl(reader, indexDir.toString());
     assertTrue(commits.getSegmentDiagnostics(10, "_0").isEmpty());
   }
 
-  @Test
   public void testGetSegmentDiagnostics_invalid_name() {
     CommitsImpl commits = new CommitsImpl(reader, indexDir.toString());
     Map<String, String> diagnostics = commits.getSegmentDiagnostics(1, "xxx");
     assertTrue(diagnostics.isEmpty());
   }
 
-  @Test
   public void testSegmentCodec() {
     CommitsImpl commits = new CommitsImpl(reader, indexDir.toString());
     Optional<Codec> codec = commits.getSegmentCodec(1, "_0");
     assertTrue(codec.isPresent());
   }
 
-  @Test
   public void testSegmentCodec_generation_notfound() {
     CommitsImpl commits = new CommitsImpl(reader, indexDir.toString());
     Optional<Codec> codec = commits.getSegmentCodec(10, "_0");
     assertFalse(codec.isPresent());
   }
 
-  @Test
   public void testSegmentCodec_invalid_name() {
     CommitsImpl commits = new CommitsImpl(reader, indexDir.toString());
     Optional<Codec> codec = commits.getSegmentCodec(1, "xxx");

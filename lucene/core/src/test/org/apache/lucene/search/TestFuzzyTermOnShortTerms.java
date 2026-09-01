@@ -29,12 +29,10 @@ import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
-import org.junit.Test;
 
 public class TestFuzzyTermOnShortTerms extends LuceneTestCase {
   private static final String FIELD = "field";
 
-  @Test
   public void test() throws Exception {
     // proves rule that edit distance between the two terms
     // must be > smaller term for there to be a match

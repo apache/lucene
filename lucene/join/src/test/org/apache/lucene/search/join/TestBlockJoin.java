@@ -115,10 +115,10 @@ public class TestBlockJoin extends LuceneTestCase {
     return job;
   }
 
-  private Document makeVector(String vectorField, String childsParent, float[] value) {
+  private Document makeVector(String vectorField, String parentOfChild, float[] value) {
     Document vectorDoc = new Document();
     vectorDoc.add(new KnnFloatVectorField(vectorField, value));
-    vectorDoc.add(newStringField("my_parent_id", childsParent, Store.YES));
+    vectorDoc.add(newStringField("my_parent_id", parentOfChild, Store.YES));
     return vectorDoc;
   }
 
@@ -623,7 +623,7 @@ public class TestBlockJoin extends LuceneTestCase {
     }
     // Break ties:
     sortFields.add(new SortField(prefix + "ID", SortField.Type.INT));
-    return new Sort(sortFields.toArray(new SortField[sortFields.size()]));
+    return new Sort(sortFields.toArray(SortField[]::new));
   }
 
   // TODO: incredibly slow
@@ -913,8 +913,7 @@ public class TestBlockJoin extends LuceneTestCase {
       // Merge both sorts:
       final List<SortField> sortFields = new ArrayList<>(Arrays.asList(parentSort.getSort()));
       sortFields.addAll(Arrays.asList(childSort.getSort()));
-      final Sort parentAndChildSort =
-          new Sort(sortFields.toArray(new SortField[sortFields.size()]));
+      final Sort parentAndChildSort = new Sort(sortFields.toArray(SortField[]::new));
 
       final TopDocs results = s.search(parentQuery, r.numDocs(), parentAndChildSort);
 

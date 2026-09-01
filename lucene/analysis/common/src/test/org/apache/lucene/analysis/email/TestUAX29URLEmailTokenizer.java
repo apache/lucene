@@ -526,7 +526,7 @@ public class TestUAX29URLEmailTokenizer extends BaseTokenStreamTestCase {
           urlList.add(line);
         }
       }
-      urls = urlList.toArray(new String[0]);
+      urls = urlList.toArray(String[]::new);
     } finally {
       if (null != bufferedReader) {
         bufferedReader.close();
@@ -575,7 +575,7 @@ public class TestUAX29URLEmailTokenizer extends BaseTokenStreamTestCase {
           emailList.add(line);
         }
       }
-      emails = emailList.toArray(new String[0]);
+      emails = emailList.toArray(String[]::new);
     } finally {
       if (null != bufferedReader) {
         bufferedReader.close();
@@ -666,7 +666,7 @@ public class TestUAX29URLEmailTokenizer extends BaseTokenStreamTestCase {
           urlList.add(line);
         }
       }
-      urls = urlList.toArray(new String[0]);
+      urls = urlList.toArray(String[]::new);
     } finally {
       if (null != bufferedReader) {
         bufferedReader.close();

@@ -126,7 +126,7 @@ public final class IndexUtils {
     if (readers.size() == 1) {
       return readers.get(0);
     } else {
-      return new MultiReader(readers.toArray(new IndexReader[0]));
+      return new MultiReader(readers.toArray(IndexReader[]::new));
     }
   }
 
@@ -350,8 +350,10 @@ public final class IndexUtils {
               format = "Lucene 7.4 or later";
             } else if (actualVersion == SegmentInfos.VERSION_86) {
               format = "Lucene 8.6 or later";
-            } else if (actualVersion > SegmentInfos.VERSION_86) {
-              format = "Lucene 8.6 or later (UNSUPPORTED)";
+            } else if (actualVersion == SegmentInfos.VERSION_11_0) {
+              format = "Lucene 11.0 or later";
+            } else if (actualVersion > SegmentInfos.VERSION_11_0) {
+              format = "Lucene 11.0 or later (UNSUPPORTED)";
             }
           } else {
             format = "Lucene 6.x or prior (UNSUPPORTED)";

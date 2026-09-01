@@ -133,7 +133,7 @@ public class ShowSlowestTestsAtEndPlugin extends LuceneGradlePlugin {
                       // concrete class.
                       if (collectSlowestSuites && suite.getClassName() != null) {
                         long duration = (result.getEndTime() - result.getStartTime());
-                        if (duration >= slowestTestsMinTime) {
+                        if (duration >= slowestSuitesMinTime) {
                           service
                               .get()
                               .addSuiteEntry(
@@ -151,7 +151,7 @@ public class ShowSlowestTestsAtEndPlugin extends LuceneGradlePlugin {
                     public void afterTest(TestDescriptor testDescriptor, TestResult result) {
                       if (collectSlowestTests) {
                         long duration = (result.getEndTime() - result.getStartTime());
-                        if (duration >= slowestSuitesMinTime) {
+                        if (duration >= slowestTestsMinTime) {
                           service
                               .get()
                               .addTestEntry(

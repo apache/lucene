@@ -493,28 +493,39 @@ public class IndexSearcher {
    * possible.
    */
   public int count(Query query) throws IOException {
-    // Rewrite query before optimization check
+    // CSQ.rewrite may simplify the query -- don't need scores
     query = rewrite(new ConstantScoreQuery(query));
-    if (query instanceof ConstantScoreQuery csq) {
-      query = csq.getQuery();
-    }
 
-    // Check if two clause disjunction optimization applies
-    if (query instanceof BooleanQuery booleanQuery
-        && this.reader.hasDeletions() == false
-        && booleanQuery.isTwoClausePureDisjunctionWithTerms()) {
-      Query[] queries = booleanQuery.rewriteTwoClauseDisjunctionWithTermsForCount(this);
-      int countTerm1 = count(queries[0]);
-      int countTerm2 = count(queries[1]);
-      if (countTerm1 == 0 || countTerm2 == 0) {
-        return Math.max(countTerm1, countTerm2);
-        // Only apply optimization if the intersection is significantly smaller than the union
-      } else if ((double) Math.min(countTerm1, countTerm2) / Math.max(countTerm1, countTerm2)
-          < 0.1) {
-        return countTerm1 + countTerm2 - count(queries[2]);
+    {
+      // Unwrap CSQ to check for optimizations on the inner query
+      Query innerQuery = query;
+      if (innerQuery instanceof ConstantScoreQuery csq) {
+        innerQuery = csq.getQuery();
+      }
+
+      // Check if two clause disjunction optimization applies
+      if (innerQuery instanceof BooleanQuery booleanQuery
+          && this.reader.hasDeletions() == false
+          && booleanQuery.isTwoClausePureDisjunctionWithTerms()) {
+        Query[] queries = booleanQuery.rewriteTwoClauseDisjunctionWithTermsForCount(this);
+        int countTerm1 = count(queries[0]);
+        int countTerm2 = count(queries[1]);
+        if (countTerm1 == 0 || countTerm2 == 0) {
+          return Math.max(countTerm1, countTerm2);
+          // Only apply optimization if the intersection is significantly smaller than the union
+        } else if ((double) Math.min(countTerm1, countTerm2) / Math.max(countTerm1, countTerm2)
+            < 0.1) {
+          return countTerm1 + countTerm2 - count(queries[2]);
+        }
       }
     }
-    return search(new ConstantScoreQuery(query), new TotalHitCountCollectorManager(getSlices()));
+
+    // Use the already-rewritten query directly, avoiding a redundant rewrite in search(query,
+    // collector)
+    var collectorManager = new TotalHitCountCollectorManager(getSlices());
+    var firstCollector = collectorManager.newCollector();
+    final Weight weight = createWeight(query, firstCollector.scoreMode(), 1);
+    return search(weight, collectorManager, firstCollector);
   }
 
   /**
@@ -958,7 +969,7 @@ public class IndexSearcher {
 
   /**
    * Creates a {@link Weight} for the given query, potentially adding caching if possible and
-   * configured.
+   * configured. The query is assumed to have been {@link #rewrite(Query)}-en already.
    *
    * @lucene.experimental
    */

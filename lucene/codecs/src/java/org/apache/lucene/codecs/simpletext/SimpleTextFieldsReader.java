@@ -28,6 +28,7 @@ import static org.apache.lucene.codecs.simpletext.SimpleTextFieldsWriter.TERM;
 import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.SKIP_LIST;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
@@ -41,6 +42,7 @@ import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SlowImpactsEnum;
@@ -768,12 +770,12 @@ class SimpleTextFieldsReader extends FieldsProducer {
     }
 
     @Override
-    public long getSumDocFreq() throws IOException {
+    public long getSumDocFreq() {
       return sumDocFreq;
     }
 
     @Override
-    public int getDocCount() throws IOException {
+    public int getDocCount() {
       return docCount;
     }
 
@@ -808,14 +810,19 @@ class SimpleTextFieldsReader extends FieldsProducer {
   private final Map<String, SimpleTextTerms> termsCache = new HashMap<>();
 
   @Override
-  public synchronized Terms terms(String field) throws IOException {
+  public synchronized Terms terms(String field) {
     SimpleTextTerms terms = termsCache.get(field);
     if (terms == null) {
       Long fp = fields.get(field);
       if (fp == null) {
         return null;
       } else {
-        terms = new SimpleTextTerms(field, fp, maxDoc);
+        try {
+          // TODO: rework SimpleTextTerms to avoid IO during construction
+          terms = new SimpleTextTerms(field, fp, maxDoc);
+        } catch (IOException e) {
+          throw new UncheckedIOException(e);
+        }
         termsCache.put(field, terms);
       }
     }
@@ -838,5 +845,5 @@ class SimpleTextFieldsReader extends FieldsProducer {
   }
 
   @Override
-  public void checkIntegrity() throws IOException {}
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {}
 }

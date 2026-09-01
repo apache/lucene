@@ -119,7 +119,7 @@ public class GenerateJflexTLDMacros {
 
   private final SortedMap<String, Boolean> processedTLDsLongestFirst =
       new TreeMap<>(
-          Comparator.comparing(String::length).reversed().thenComparing(String::compareTo));
+          Comparator.comparingInt(String::length).reversed().thenComparing(String::compareTo));
 
   // list position indicates suffix length
   private final List<SortedSet<String>> TLDsBySuffixLength = new ArrayList<>();

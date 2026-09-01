@@ -77,7 +77,7 @@ public abstract class FilterLeafReader extends LeafReader {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       return in.terms(field);
     }
 
@@ -121,17 +121,17 @@ public abstract class FilterLeafReader extends LeafReader {
     }
 
     @Override
-    public long getSumTotalTermFreq() throws IOException {
+    public long getSumTotalTermFreq() {
       return in.getSumTotalTermFreq();
     }
 
     @Override
-    public long getSumDocFreq() throws IOException {
+    public long getSumDocFreq() {
       return in.getSumDocFreq();
     }
 
     @Override
-    public int getDocCount() throws IOException {
+    public int getDocCount() {
       return in.getDocCount();
     }
 
@@ -349,13 +349,18 @@ public abstract class FilterLeafReader extends LeafReader {
   }
 
   @Override
-  public PointValues getPointValues(String field) throws IOException {
+  public PointValues getPointValues(String field) {
     return in.getPointValues(field);
   }
 
   @Override
   public FloatVectorValues getFloatVectorValues(String field) throws IOException {
     return in.getFloatVectorValues(field);
+  }
+
+  @Override
+  public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+    return in.getFloat16VectorValues(field);
   }
 
   @Override
@@ -366,6 +371,13 @@ public abstract class FilterLeafReader extends LeafReader {
   @Override
   public void searchNearestVectors(
       String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
+    in.searchNearestVectors(field, target, knnCollector, acceptDocs);
+  }
+
+  @Override
+  public void searchNearestVectors(
+      String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     in.searchNearestVectors(field, target, knnCollector, acceptDocs);
   }
@@ -407,7 +419,7 @@ public abstract class FilterLeafReader extends LeafReader {
   }
 
   @Override
-  public Terms terms(String field) throws IOException {
+  public Terms terms(String field) {
     ensureOpen();
     return in.terms(field);
   }
@@ -451,7 +463,7 @@ public abstract class FilterLeafReader extends LeafReader {
   }
 
   @Override
-  public DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+  public DocValuesSkipper getDocValuesSkipper(String field) {
     ensureOpen();
     return in.getDocValuesSkipper(field);
   }

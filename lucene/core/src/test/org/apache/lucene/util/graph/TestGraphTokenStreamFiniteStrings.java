@@ -679,7 +679,7 @@ public class TestGraphTokenStreamFiniteStrings extends LuceneTestCase {
       tokens.add(token("network", 1, 1));
     }
 
-    TokenStream ts = new CannedTokenStream(tokens.toArray(new Token[0]));
+    TokenStream ts = new CannedTokenStream(tokens.toArray(Token[]::new));
     GraphTokenStreamFiniteStrings graph = new GraphTokenStreamFiniteStrings(ts);
 
     assertThrows(IllegalArgumentException.class, graph::articulationPoints);
