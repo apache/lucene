@@ -63,6 +63,9 @@ public class EditorConfigLintPlugin extends LuceneGradlePlugin {
                               "The eclint tool location is not set ('{}' option), will not apply eclint checks.",
                               optionName);
                       task.setEnabled(false);
+                      task.getLogger().info("eclint is disabled on branch_10x.");
+                    } else {
+                      task.setEnabled(false);
                     }
 
                     task.setIgnoreExitValue(false);

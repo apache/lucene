@@ -60,10 +60,10 @@ createForUtilRegenerateTask(project, "ForUtil", "ForUtil.java", "gen_ForUtil.py"
 
 configure(project(":lucene:backward-codecs")) {
   createForUtilRegenerateTask(project, "ForUtil84", "ForUtil.java", "gen_ForUtil.py",
-      file("src/java/org/apache/lucene/backward_codecs/lucene84"))
+  file("src/java/org/apache/lucene/backward_codecs/lucene84"))
 
   createForUtilRegenerateTask(project, "ForUtil90", "ForUtil.java", "gen_ForUtil.py",
-  file("src/java/org/apache/lucene/backward_codecs/lucene90"))
+      file("src/java/org/apache/lucene/backward_codecs/lucene90"))
 
   createForUtilRegenerateTask(project, "ForUtil99", "ForUtil.java", "gen_ForUtil.py",
       file("src/java/org/apache/lucene/backward_codecs/lucene99"))

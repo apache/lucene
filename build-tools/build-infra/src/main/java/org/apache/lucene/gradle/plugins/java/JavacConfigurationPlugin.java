@@ -69,52 +69,53 @@ public class JavacConfigurationPlugin extends LuceneGradlePlugin {
 
               // Configure warnings. Use 'javac --help-lint' to get the supported list
               compilerArgs.addAll(
-                  new ArrayList<>(List.of(
-                      "-Xlint:auxiliaryclass",
-                      "-Xlint:cast",
-                      "-Xlint:classfile",
-                      "-Xlint:dangling-doc-comments",
-                      "-Xlint:-deprecation",
-                      "-Xlint:dep-ann",
-                      "-Xlint:divzero",
-                      "-Xlint:empty",
-                      // TODO: uh-oh we have broken APIs.
-                      "-Xlint:-exports",
-                      "-Xlint:fallthrough",
-                      "-Xlint:finally",
-                      "-Xlint:identity",
-                      "-Xlint:incubating",
-                      // TODO: there are problems
-                      "-Xlint:-lossy-conversions",
-                      // TODO: there are problems
-                      "-Xlint:-missing-explicit-ctor",
-                      "-Xlint:module",
-                      "-Xlint:opens",
-                      "-Xlint:options",
-                      "-Xlint:output-file-clash",
-                      "-Xlint:overloads",
-                      "-Xlint:overrides",
-                      "-Xlint:path",
-                      "-Xlint:processing",
-                      "-Xlint:rawtypes",
-                      "-Xlint:removal",
-                      "-Xlint:requires-automatic",
-                      "-Xlint:requires-transitive-automatic",
-                      "-Xlint:-serial",
-                      "-Xlint:static",
-                      "-Xlint:strictfp",
-                      "-Xlint:synchronization",
-                      "-Xlint:text-blocks",
-                      // TODO: there are problems
-                      "-Xlint:-this-escape",
-                      "-Xlint:try",
-                      "-Xlint:unchecked",
-                      "-Xlint:varargs",
-                      "-Xlint:preview",
-                      "-Xlint:restricted",
-                      "-Xdoclint:all/protected",
-                      "-Xdoclint:-missing",
-                      "-Xdoclint:-accessibility")));
+                  new ArrayList<>(
+                      List.of(
+                          "-Xlint:auxiliaryclass",
+                          "-Xlint:cast",
+                          "-Xlint:classfile",
+                          "-Xlint:dangling-doc-comments",
+                          "-Xlint:-deprecation",
+                          "-Xlint:dep-ann",
+                          "-Xlint:divzero",
+                          "-Xlint:empty",
+                          // TODO: uh-oh we have broken APIs.
+                          "-Xlint:-exports",
+                          "-Xlint:fallthrough",
+                          "-Xlint:finally",
+                          "-Xlint:identity",
+                          "-Xlint:incubating",
+                          // TODO: there are problems
+                          "-Xlint:-lossy-conversions",
+                          // TODO: there are problems
+                          "-Xlint:-missing-explicit-ctor",
+                          "-Xlint:module",
+                          "-Xlint:opens",
+                          "-Xlint:options",
+                          "-Xlint:output-file-clash",
+                          "-Xlint:overloads",
+                          "-Xlint:overrides",
+                          "-Xlint:path",
+                          "-Xlint:processing",
+                          "-Xlint:rawtypes",
+                          "-Xlint:removal",
+                          "-Xlint:requires-automatic",
+                          "-Xlint:requires-transitive-automatic",
+                          "-Xlint:-serial",
+                          "-Xlint:static",
+                          "-Xlint:strictfp",
+                          "-Xlint:synchronization",
+                          "-Xlint:text-blocks",
+                          // TODO: there are problems
+                          "-Xlint:-this-escape",
+                          "-Xlint:try",
+                          "-Xlint:unchecked",
+                          "-Xlint:varargs",
+                          "-Xlint:preview",
+                          "-Xlint:restricted",
+                          "-Xdoclint:all/protected",
+                          "-Xdoclint:-missing",
+                          "-Xdoclint:-accessibility")));
 
               // Remove lint options that the compiler JVM used on this branch may not
               // support yet (the minimum supported compiler is Java 21).
