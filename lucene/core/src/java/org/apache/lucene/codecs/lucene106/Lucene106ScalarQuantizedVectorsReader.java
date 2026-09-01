@@ -252,7 +252,9 @@ public class Lucene106ScalarQuantizedVectorsReader extends FlatVectorsReader
     FloatVectorValues rawFloatVectorValues =
         fi.isDataBlind() ? null : rawVectorsReader.getFloatVectorValues(field);
 
-    if (rawFloatVectorValues == null || rawFloatVectorValues.size() == 0) {
+    if (rawFloatVectorValues == null) {
+      // Data-blind mode: full-precision float vectors were never stored. Reconstruct floats from
+      // the quantized data.
       return OffHeapScalarQuantizedFloatVectorValues.load(
           fi.ordToDocDISIReaderConfiguration,
           fi.dimension,
@@ -280,6 +282,27 @@ public class Lucene106ScalarQuantizedVectorsReader extends FlatVectorsReader
             fi.vectorDataOffset,
             fi.vectorDataLength,
             quantizedVectorData);
+
+    if (rawFloatVectorValues.size() == 0) {
+      // Full-precision vectors were dropped after writing. Wrap the dequantizing read view with
+      // sqvv so scorer() stays quantized (as in the branch where raw vectors are present) while
+      // vectorValue()/rescorer() dequantize. Passing the dequantized view straight to a scorer
+      // would misroute to the non-quantized flat scorer over the quantized slice.
+      FloatVectorValues dequantizedRawVectorValues =
+          OffHeapScalarQuantizedFloatVectorValues.load(
+              fi.ordToDocDISIReaderConfiguration,
+              fi.dimension,
+              fi.size,
+              fi.scalarEncoding,
+              fi.similarityFunction,
+              vectorScorer,
+              fi.centroid,
+              fi.vectorDataOffset,
+              fi.vectorDataLength,
+              quantizedVectorData);
+      return new ScalarQuantizedVectorValues(dequantizedRawVectorValues, sqvv);
+    }
+
     return new ScalarQuantizedVectorValues(rawFloatVectorValues, sqvv);
   }
 
@@ -295,6 +318,12 @@ public class Lucene106ScalarQuantizedVectorsReader extends FlatVectorsReader
 
   @Override
   public void search(String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
+    rawVectorsReader.search(field, target, knnCollector, acceptDocs);
+  }
+
+  @Override
+  public void search(String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     rawVectorsReader.search(field, target, knnCollector, acceptDocs);
   }
@@ -361,7 +390,10 @@ public class Lucene106ScalarQuantizedVectorsReader extends FlatVectorsReader
     var raw = rawVectorsReader.getOffHeapByteSize(fieldInfo);
     var fieldEntry = fields.get(fieldInfo.name);
     if (fieldEntry == null) {
-      assert fieldInfo.getVectorEncoding() == VectorEncoding.BYTE;
+      // Only FLOAT32 fields are scalar-quantized by this format; BYTE and FLOAT16 fields are
+      // stored raw by the delegate and therefore have no quantized field entry here.
+      assert fieldInfo.getVectorEncoding() == VectorEncoding.BYTE
+          || fieldInfo.getVectorEncoding() == VectorEncoding.FLOAT16;
       return raw;
     }
     var quant = Map.of(VECTOR_DATA_EXTENSION, fieldEntry.vectorDataLength());
