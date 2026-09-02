@@ -120,6 +120,10 @@ grant codeBase "file:${randomizedtesting.jar}" {
 };
 grant codeBase "file:${junit.jar}" {
   permission java.lang.reflect.ReflectPermission "suppressAccessChecks";
+  // Gradle's class-level @Ignore handling (IgnoredTestDescriptorProvider) calls
+  // Class.getClassLoader() while junit's RunNotifier/IgnoredClassRunner frames
+  // are on the stack.
+  permission java.lang.RuntimePermission "getClassLoader";
 };
 grant codeBase "file:${lucene.test.framework}${/}-" {
   permission java.lang.reflect.ReflectPermission "suppressAccessChecks";
