@@ -416,6 +416,10 @@ Improvements
 * GITHUB#16091: Replace deprecated IndexSearcher#search(Query, Collector) usage with CollectorManager
   in JoinUtil#createJoinQuery for the GlobalOrdinalsCollector case. (Luca Cavanna)
 
+* GITHUB#16292: Introduce TermGroupFacetCollectorManager to enable concurrent search with grouped
+  faceting, removing usages of the deprecated IndexSearcher#search(Query, Collector).
+  (Luca Cavanna)
+
 Optimizations
 ---------------------
 * GITHUB#16416: Use ArrayDeque instead of ArrayList for FIFO output buffering in
