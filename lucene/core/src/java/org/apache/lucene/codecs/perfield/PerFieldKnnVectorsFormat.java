@@ -265,7 +265,15 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public KnnVectorsReader unwrapReaderForField(String field) {
       FieldInfo fi = fieldInfos.fieldInfo(field);
-      return fi != null ? fields.get(fi.number) : this;
+      if (fi == null) {
+        return this;
+      }
+      KnnVectorsReader reader = fields.get(fi.number);
+      // The per-field reader may itself be a wrapper (e.g. a rotating/preconditioning format), so
+      // keep unwrapping: callers such as CheckIndex's HNSW graph validation need the concrete
+      // format's reader, not an intermediate delegating one. Non-wrapping readers return
+      // themselves, so this is a no-op for them.
+      return reader == null ? this : reader.unwrapReaderForField(field);
     }
 
     @Override
