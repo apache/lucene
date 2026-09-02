@@ -144,6 +144,21 @@ public final class SparseLiveDocs implements LiveDocs {
     return deletedCount;
   }
 
+  @Override
+  public FixedBitSet toFixedBitSet() {
+    FixedBitSet result = new FixedBitSet(maxDoc);
+    result.set(0, maxDoc);
+    for (int del = deletedDocs.nextSetBit(0);
+        del != DocIdSetIterator.NO_MORE_DOCS;
+        del =
+            del + 1 >= maxDoc
+                ? DocIdSetIterator.NO_MORE_DOCS
+                : deletedDocs.nextSetBit(del + 1)) {
+      result.clear(del);
+    }
+    return result;
+  }
+
   /**
    * Returns the memory usage in bytes.
    *
