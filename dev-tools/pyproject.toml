@@ -22,7 +22,7 @@ dev = [
   # validates various
   "ast-grep-cli==0.45.2",
   # checks spelling
-  "typos==1.48.0",
+  "typos==1.49.0",
 ]
 
 [tool.uv]
