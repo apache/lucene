@@ -79,7 +79,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
   private static final long SHALLOW_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(Lucene104ScalarQuantizedVectorsReader.class);
 
-  private final Map<String, FieldEntry> fields = new HashMap<>();
+  private final Map<String, FieldEntry> fields;
   private final IndexInput quantizedVectorData;
   private final FlatVectorsReader rawVectorsReader;
   private final Lucene104ScalarQuantizedVectorScorer vectorScorer;
@@ -101,6 +101,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
       Lucene104ScalarQuantizedVectorScorer vectorsScorer,
       DataAccessHint accessHint)
       throws IOException {
+    this.fields = new HashMap<>();
     this.vectorScorer = vectorsScorer;
     this.rawVectorsReader = rawVectorsReader;
     int versionMeta = -1;
@@ -142,6 +143,36 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
       IOUtils.closeWhileSuppressingExceptions(t, this);
       throw t;
     }
+  }
+
+  /**
+   * Copy constructor for {@link #getMergeInstance()}: the copy shares {@code reader}'s open state
+   * and reads raw vectors through {@code rawVectorsReader}, normally the merge instance of the
+   * original's. It is used only by the merging thread and is never closed.
+   */
+  protected Lucene104ScalarQuantizedVectorsReader(
+      Lucene104ScalarQuantizedVectorsReader reader, FlatVectorsReader rawVectorsReader) {
+    this.fields = reader.fields;
+    this.quantizedVectorData = reader.quantizedVectorData;
+    this.rawVectorsReader = rawVectorsReader;
+    this.vectorScorer = reader.vectorScorer;
+  }
+
+  /**
+   * Returns a copy of this reader that reads raw vectors through the raw reader's merge instance. A
+   * subclass that adds state must override this method and build its own copy through the {@link
+   * #Lucene104ScalarQuantizedVectorsReader(Lucene104ScalarQuantizedVectorsReader,
+   * FlatVectorsReader) copy constructor}, or its merge instance will be a plain {@code
+   * Lucene104ScalarQuantizedVectorsReader}.
+   */
+  @Override
+  public FlatVectorsReader getMergeInstance() throws IOException {
+    return new Lucene104ScalarQuantizedVectorsReader(this, rawVectorsReader.getMergeInstance());
+  }
+
+  @Override
+  public void finishMerge() throws IOException {
+    rawVectorsReader.finishMerge();
   }
 
   private void readFields(ChecksumIndexInput meta, FieldInfos infos) throws IOException {
