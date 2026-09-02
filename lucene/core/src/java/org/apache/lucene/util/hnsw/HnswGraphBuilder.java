@@ -220,6 +220,16 @@ public class HnswGraphBuilder implements HnswBuilder {
     this.abortCheck = abortCheck;
   }
 
+  /**
+   * Runs the abort check if one has been set, otherwise does nothing. Subclasses should call this
+   * from any long-running merge operation so that a cancelled merge can be aborted promptly.
+   */
+  protected final void maybeAbort() throws IOException {
+    if (abortCheck != null) {
+      abortCheck.run();
+    }
+  }
+
   @Override
   public OnHeapHnswGraph getCompletedGraph() throws IOException {
     if (!frozen) {
