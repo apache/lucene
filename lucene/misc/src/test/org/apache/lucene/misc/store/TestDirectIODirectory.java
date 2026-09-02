@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.misc.store;
 
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.io.EOFException;
 import java.io.IOException;
@@ -228,15 +230,30 @@ public class TestDirectIODirectory extends BaseDirectoryTestCase {
     return bytes;
   }
 
+  /**
+   * Slice offsets to exercise: the start of the file, a few unaligned offsets inside the first
+   * block (the shape of a codec header), two block starts and an unaligned offset after one, the
+   * last four bytes of the file, plus random offsets. Offsets stop at {@code fileSize - 2} so every
+   * slice is at least two bytes long, which the correctness matrix relies on for its inner-slice
+   * and clone cases.
+   */
+  private static long[] sliceOffsets(int blockSize, int fileSize) {
+    assert fileSize >= 4 * blockSize;
+    long[] fixed = {0, 1, 7, 96, blockSize, blockSize + 188, 2L * blockSize, fileSize - 4};
+    long[] offsets = ArrayUtil.growExact(fixed, fixed.length + atLeast(3));
+    for (int i = fixed.length; i < offsets.length; i++) {
+      offsets[i] = RandomizedTest.randomLongBetween(0, fileSize - 2);
+    }
+    return offsets;
+  }
+
   public void testSliceDefersIOAtEveryOffset() throws Exception {
     Path path = createTempDir("testSliceDefersIOAtEveryOffset");
     final int blockSize = Math.toIntExact(Files.getFileStore(path).getBlockSize());
     final int fileSize = 4 * blockSize;
     try (Directory dir = getDirectory(path)) {
       byte[] bytes = writeRandomFile(dir, "out", fileSize);
-      final long[] offsets = {
-        0, 1, 7, 96, blockSize, blockSize + 188, 2L * blockSize, 3L * blockSize - 4
-      };
+      final long[] offsets = sliceOffsets(blockSize, fileSize);
       try (IndexInput in = dir.openInput("out", IOContext.DEFAULT)) {
         for (long offset : offsets) {
           IndexInput slice = in.slice("slice@" + offset, offset, fileSize - offset);
@@ -260,9 +277,7 @@ public class TestDirectIODirectory extends BaseDirectoryTestCase {
     final int fileSize = 4 * blockSize;
     try (Directory dir = getDirectory(path)) {
       byte[] bytes = writeRandomFile(dir, "out", fileSize);
-      final long[] offsets = {
-        0, 1, 7, 96, blockSize, blockSize + 188, 2L * blockSize, 3L * blockSize - 4
-      };
+      final long[] offsets = sliceOffsets(blockSize, fileSize);
       try (IndexInput in = dir.openInput("out", IOContext.DEFAULT)) {
         for (long offset : offsets) {
           final long[] lengths = {1, 4, blockSize - 7, blockSize, blockSize + 3, fileSize - offset};
@@ -358,6 +373,13 @@ public class TestDirectIODirectory extends BaseDirectoryTestCase {
     }
   }
 
+  /**
+   * A characterization test, not an endorsement. Today a read past a slice's own length is served
+   * from the buffered block as long as it stays inside the window, and only a read that runs off
+   * the end of the window throws {@link EOFException}. That quirk predates this change; the lazy
+   * first fill must reproduce it exactly rather than "fix" it in passing. If the quirk is ever
+   * removed on purpose, this test should change with it.
+   */
   public void testFirstFillEofSemanticsMatchEagerFill() throws Exception {
     Path path = createTempDir("testFirstFillEofSemantics");
     final int blockSize = Math.toIntExact(Files.getFileStore(path).getBlockSize());
@@ -378,10 +400,8 @@ public class TestDirectIODirectory extends BaseDirectoryTestCase {
             for (int readLen : readLens) {
               IndexInput slice = in.slice("s", offset, length);
               final String cell = "offset=" + offset + " length=" + length + " readLen=" + readLen;
-              // Pins today's behaviour, quirk included: bytes inside the buffered window are
-              // served even past the slice's own length, and only a read that runs off the end
-              // of the window throws, as EOFException. If the first fill ever checked EOF against
-              // the caller's read length instead, the in-window cells below would fail.
+              // if the first fill ever checked EOF against the caller's read length instead of
+              // the pending offset, the in-window cells below would fail
               if (readLen <= fileSize - offset) {
                 byte[] dst = new byte[readLen];
                 slice.readBytes(dst, 0, readLen);
@@ -435,7 +455,7 @@ public class TestDirectIODirectory extends BaseDirectoryTestCase {
         // seek silently repositions and the read serves the byte beyond the slice's end. A
         // fresh lazy slice must do the same rather than throw EOFException, and
         // getFilePointer() must return normally afterwards (assertions are enabled)
-        final long[] offsets = {blockSize, 700};
+        final long[] offsets = {blockSize, blockSize + 188};
         final long[] seekTargets = {10, blockSize + 50L};
         for (long offset : offsets) {
           for (long target : seekTargets) {
@@ -450,10 +470,10 @@ public class TestDirectIODirectory extends BaseDirectoryTestCase {
         }
         // a target outside the buffered window: the refill checks EOF against the slice's own
         // end and throws, as today; getFilePointer() must still return normally afterwards
-        IndexInput far = in.slice("s", 700, 4);
+        IndexInput far = in.slice("s", blockSize + 188, 4);
         expectThrows(
             EOFException.class, () -> far.seek(DirectIODirectory.DEFAULT_MERGE_BUFFER_SIZE + 100L));
-        assertTrue(far.getFilePointer() >= 0);
+        assertThat(far.getFilePointer(), greaterThanOrEqualTo(0L));
       }
     }
   }
