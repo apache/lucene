@@ -25,7 +25,7 @@ Please do not send automated scanner reports or reports about publicly known CVE
 
 ## Scope and Threat Model
 
-Apache Lucene is a low-level search library, not a standalone server or end-user application. It is embedded into other software ("downstream applications") such as Apache Solr, Elasticsearch, OpenSearch, and many custom products. Lucene's threat model assumes that the embedding application is responsible for authentication, authorization, network transport, and sanitization of all untrusted input. Reports that assume an attacker can directly feed arbitrary data into low-level Lucene APIs are therefore generally not treated as vulnerabilities in Lucene itself.
+Apache Lucene is a low-level search library, not a standalone server or end-user application. It is embedded into other software ("downstream applications") such as Apache Solr, Elasticsearch, OpenSearch, and many custom products. Lucene's threat model assumes that the downstream application is responsible for authentication, authorization, network transport, and sanitization of all untrusted input. Reports that assume an attacker can directly feed arbitrary data into low-level Lucene APIs are therefore generally not treated as vulnerabilities in Lucene itself.
 
 ### Index files are trusted
 
