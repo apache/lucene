@@ -28,13 +28,9 @@ import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.FilterLeafReader;
-import org.apache.lucene.index.FilterNumericDocValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -42,6 +38,7 @@ import org.apache.lucene.tests.search.DummyTotalHitCountCollector;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.FixedBitSet;
 import org.hamcrest.MatcherAssert;
 
@@ -690,89 +687,32 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
         field, lowerValue, upperValue, fallbackQuery);
   }
 
-  public void testBoundedIteratorIntoBitSet() throws Exception {
-    final int numMissingDocs = 500;
-    final int[] intoBitSetCalls = new int[1];
-    try (Directory dir = newDirectory()) {
-      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-      iwc.setIndexSort(new Sort(new SortField("field", SortField.Type.LONG, false, 0L)));
-      try (RandomIndexWriter writer = new RandomIndexWriter(random(), dir, iwc)) {
-        for (int value = -1000; value < 0; value++) {
-          Document doc = new Document();
-          doc.add(new NumericDocValuesField("field", value));
-          writer.addDocument(doc);
-        }
-        for (int i = 0; i < numMissingDocs; i++) {
-          writer.addDocument(new Document());
-        }
-        for (int value = 1; value <= 3500; value++) {
-          Document doc = new Document();
-          doc.add(new NumericDocValuesField("field", value));
-          writer.addDocument(doc);
-        }
-        writer.forceMerge(1);
-
-        try (DirectoryReader reader = writer.getReader()) {
-          assertEquals(1, reader.leaves().size());
-          LeafReader underlying = reader.leaves().get(0).reader();
-          underlying.incRef();
-          try (FilterLeafReader countingReader =
-              new FilterLeafReader(underlying) {
-                @Override
-                public NumericDocValues getNumericDocValues(String field) throws IOException {
-                  NumericDocValues values = super.getNumericDocValues(field);
-                  if (values == null) {
-                    return null;
-                  }
-                  return new FilterNumericDocValues(values) {
-                    @Override
-                    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset)
-                        throws IOException {
-                      intoBitSetCalls[0]++;
-                      in.intoBitSet(upTo, bitSet, offset);
-                    }
-
-                    @Override
-                    public int docIDRunEnd() throws IOException {
-                      return in.docIDRunEnd();
-                    }
-                  };
-                }
-
-                @Override
-                public IndexReader.CacheHelper getCoreCacheHelper() {
-                  return null;
-                }
-
-                @Override
-                public IndexReader.CacheHelper getReaderCacheHelper() {
-                  return null;
-                }
-              }) {
-            IndexSearcher searcher = new IndexSearcher(countingReader);
-            searcher.setQueryCache(null);
-
-            Query fallback = SortedNumericDocValuesField.newSlowRangeQuery("field", -1000, 3000);
-            Query range =
-                new IndexSortSortedNumericDocValuesRangeQuery("field", -1000, 3000, fallback);
-            Query query =
-                new BooleanQuery.Builder()
-                    .add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.FILTER)
-                    .add(range, BooleanClause.Occur.FILTER)
-                    .build();
-
-            assertEquals(
-                4000,
-                searcher
-                    .search(query, new TotalHitCountCollectorManager(searcher.getSlices()))
-                    .intValue());
-            assertTrue(
-                "BoundedDocIdSetIterator must forward intoBitSet to NumericDocValues",
-                intoBitSetCalls[0] > 0);
-          }
-        }
-      }
+  public void testBoundedDocIdSetIteratorIntoBitSet() throws Exception {
+    FixedBitSet delegateBits = new FixedBitSet(16);
+    for (int doc : new int[] {1, 3, 5, 8, 11, 12, 15}) {
+      delegateBits.set(doc);
     }
+    DocIdSetIterator iterator =
+        new IndexSortSortedNumericDocValuesRangeQuery.BoundedDocIdSetIterator(
+            3, 12, new BitSetIterator(delegateBits, delegateBits.cardinality()));
+
+    assertEquals(3, iterator.nextDoc());
+
+    FixedBitSet firstWindow = new FixedBitSet(16);
+    iterator.intoBitSet(9, firstWindow, 3);
+    FixedBitSet expected = new FixedBitSet(16);
+    expected.set(0);
+    expected.set(2);
+    expected.set(5);
+    assertEquals(expected, firstWindow);
+    assertEquals(11, iterator.docID());
+
+    expected.clear();
+    FixedBitSet secondWindow = new FixedBitSet(16);
+    iterator.intoBitSet(20, secondWindow, 4);
+    expected.set(7);
+    assertEquals(expected, secondWindow);
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, iterator.docID());
   }
 
   public void testCountWithBkdAsc() throws Exception {

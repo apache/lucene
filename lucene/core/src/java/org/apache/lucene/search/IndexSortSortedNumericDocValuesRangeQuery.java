@@ -665,7 +665,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
    * A doc ID set iterator that wraps a delegate iterator and only returns doc IDs in the range
    * [firstDocInclusive, lastDoc).
    */
-  private static class BoundedDocIdSetIterator extends AbstractDocIdSetIterator {
+  static class BoundedDocIdSetIterator extends AbstractDocIdSetIterator {
     private final int firstDoc;
     private final int lastDoc;
     private final DocIdSetIterator delegate;
