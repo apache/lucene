@@ -253,7 +253,7 @@ groups:
         fingerprint for the key.
 
       You can choose between signing the release with the gpg program or with the
-      gradle signing plugin. Read about the difference in https://github.com/apache/lucene/blob/main/help/publishing.txt
+      gradle signing plugin. Read about the difference in https://github.com/apache/lucene/blob/main/help/publishing.md
 
       This wizard can prompt you securely for your passphrase (will not be stored) and pass it on to
       buildAndPushRelease in a secure way. However, you can also configure your passphrase in advance
@@ -265,7 +265,7 @@ groups:
     - https://infra.apache.org/openpgp.html#apache-wot
     - https://id.apache.org
     - https://dist.apache.org/repos/dist/release/lucene/KEYS
-    - https://github.com/apache/lucene/blob/main/help/publishing.txt
+    - https://github.com/apache/lucene/blob/main/help/publishing.md
 - !TodoGroup
   id: preparation
   title: Prepare for the release
@@ -888,7 +888,7 @@ groups:
 
         {% if minus > 0 %}
         However, there were negative votes. A release cannot be vetoed, and as long as
-        there are more positive than negative votes you can techically release
+        there are more positive than negative votes you can technically release
         the software. However, please review the negative votes and consider
         a re-spin.
 
@@ -1040,6 +1040,13 @@ groups:
         cmd: svn -m "Add docs, changes and javadocs for Lucene {{ release_version }}"  import {{ git_checkout_folder }}/lucene/documentation/build/site  https://svn.apache.org/repos/infra/sites/lucene/core/{{ version }}
         logfile: add-docs-lucene.log
         comment: Add docs for Lucene
+      - !Command
+        cmd: echo >> {{ git_checkout_folder }}/lucene/documentation/build/site/changes/Changes.html
+        comment: Add trailing newline to Changes.html to prepare svnpubsub nudge
+      - !Command
+        cmd: svnmucc put {{ git_checkout_folder }}/lucene/documentation/build/site/changes/Changes.html -m "Touch Changes.html to ensure svnpubsub publishes the new docs for Lucene {{ release_version }}"  https://svn.apache.org/repos/infra/sites/lucene/core/{{ version }}/changes/Changes.html
+        logfile: svnmucc-touch-changes.log
+        comment: Re-upload Changes.html to trigger svnpubsub after bulk import
   - !Todo
     id: website_git_clone
     title: Do a clean git clone of the website repo

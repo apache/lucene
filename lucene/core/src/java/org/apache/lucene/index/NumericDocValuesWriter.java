@@ -64,6 +64,20 @@ class NumericDocValuesWriter extends DocValuesWriter<NumericDocValues> {
     lastDocID = docID;
   }
 
+  void addRepeatValues(int firstDocID, long value, int count) {
+    if (count == 0) {
+      return;
+    }
+    assert firstDocID > lastDocID;
+
+    pending.add(value, count);
+    docsWithField.addRange(firstDocID, firstDocID + count);
+
+    updateBytesUsed();
+
+    lastDocID = firstDocID + count - 1;
+  }
+
   void addDenseValues(int firstDocID, LongValuesCursor cursor) {
     int numValues = cursor.size();
     if (numValues == 0) {

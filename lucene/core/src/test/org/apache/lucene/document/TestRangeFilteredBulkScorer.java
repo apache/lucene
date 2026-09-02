@@ -19,11 +19,9 @@ package org.apache.lucene.document;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.search.BulkScorer;
-import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorable;
-import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.FixedBitSet;
 
@@ -51,6 +49,14 @@ public class TestRangeFilteredBulkScorer extends LuceneTestCase {
     int next = bs.score(collector, null, 55, 200);
     assertTrue(collector.ranges.isEmpty());
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, next);
+  }
+
+  public void testEmptyScoringWindowInsideRange() throws Exception {
+    BulkScorer bs = newBulkScorer(20, 80);
+    var collector = new RangeRecordingCollector();
+    int next = bs.score(collector, null, 40, 40);
+    assertTrue(collector.ranges.isEmpty());
+    assertEquals(40, next);
   }
 
   public void testCost() {
@@ -103,8 +109,7 @@ public class TestRangeFilteredBulkScorer extends LuceneTestCase {
 
   private static RangeBulkScorer newBulkScorer(int rangeMin, int rangeMaxExclusive) {
     var iterator = DocIdSetIterator.range(rangeMin, rangeMaxExclusive);
-    var scorer = new ConstantScoreScorer(1f, ScoreMode.COMPLETE, iterator);
-    return new RangeBulkScorer(scorer, rangeMin, rangeMaxExclusive);
+    return new RangeBulkScorer(iterator, 1f, rangeMin, rangeMaxExclusive);
   }
 
   /** Records {@link LeafCollector#collectRange} calls as {@code [min inclusive, max exclusive)}. */

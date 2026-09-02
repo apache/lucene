@@ -282,9 +282,14 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
   @Override
   public long ramBytesUsed() {
     long total = SHALLOW_RAM_BYTES_USED;
+    // The rawVectorDelegate tracks all vector data for both byte and float32 fields.
+    // For byte vector fields (which bypass our FieldWriter), this is the only accounting.
+    total += rawVectorDelegate.ramBytesUsed();
     for (FieldWriter field : fields) {
-      // the field tracks the delegate field usage
-      total += field.ramBytesUsed();
+      // quantizationOverheadBytesUsed() intentionally excludes flatFieldVectorsWriter
+      // because rawVectorDelegate.ramBytesUsed() already accounts for all flat vector
+      // data at the writer level. Calling field.ramBytesUsed() here would double-count.
+      total += field.quantizationOverheadBytesUsed();
     }
     return total;
   }
@@ -727,9 +732,17 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       return quantizer;
     }
 
+    /**
+     * Returns the RAM usage of quantization-specific state only. The underlying flat vector data is
+     * tracked separately by the rawVectorDelegate at the writer level.
+     */
+    long quantizationOverheadBytesUsed() {
+      return SHALLOW_SIZE;
+    }
+
     @Override
     public long ramBytesUsed() {
-      long size = SHALLOW_SIZE;
+      long size = quantizationOverheadBytesUsed();
       size += flatFieldVectorsWriter.ramBytesUsed();
       return size;
     }

@@ -208,19 +208,19 @@ public abstract class LZ4TestCase extends LuceneTestCase {
   }
 
   public void testEmpty() throws IOException {
-    // literals and matchs lengths <= 15
+    // literals and matches lengths <= 15
     final byte[] data = "".getBytes(StandardCharsets.UTF_8);
     doTest(data, newHashTable());
   }
 
-  public void testShortLiteralsAndMatchs() throws IOException {
-    // literals and matchs lengths <= 15
+  public void testShortLiteralsAndMatches() throws IOException {
+    // literals and matches lengths <= 15
     final byte[] data = "1234562345673456745678910123".getBytes(StandardCharsets.UTF_8);
     doTest(data, newHashTable());
     doTestWithDictionary(data, newHashTable());
   }
 
-  public void testLongMatchs() throws IOException {
+  public void testLongMatches() throws IOException {
     // match length >= 20
     final byte[] data = new byte[RandomNumbers.randomIntBetween(random(), 300, 1024)];
     for (int i = 0; i < data.length; ++i) {

@@ -194,7 +194,7 @@ public class DrillSideways {
     if (sort != null) {
       int limit = searcher.getIndexReader().maxDoc();
       if (limit == 0) {
-        limit = 1; // the collector does not alow numHits = 0
+        limit = 1; // the collector does not allow numHits = 0
       }
       final int fTopN = Math.min(topN, limit);
       final TopFieldCollectorManager collectorManager =
@@ -226,7 +226,7 @@ public class DrillSideways {
       throws IOException {
     int limit = searcher.getIndexReader().maxDoc();
     if (limit == 0) {
-      limit = 1; // the collector does not alow numHits = 0
+      limit = 1; // the collector does not allow numHits = 0
     }
     final int fTopN = Math.min(topN, limit);
     final TopScoreDocCollectorManager collectorManager =

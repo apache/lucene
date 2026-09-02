@@ -71,7 +71,7 @@ public class TestExpectThrows extends LuceneTestCase {
 
   /**
    * Tests that {@link #expectThrows} behaves correctly when the Runnable contains an assertion that
-   * does not pass: by allowing that assertion to propogate and <code>FAIL</code> the test.
+   * does not pass: by allowing that assertion to propagate and <code>FAIL</code> the test.
    */
   public void testNestedFail() {
     final AtomicBoolean ran = new AtomicBoolean(false);
@@ -81,7 +81,7 @@ public class TestExpectThrows extends LuceneTestCase {
           IOException.class,
           () -> {
             ran.getAndSet(true);
-            fail("this failure should propogate");
+            fail("this failure should propagate");
           });
       fail("must not complete"); // NOTE: we don't use expectThrows to test expectThrows
     } catch (AssertionError ae) {
@@ -89,12 +89,12 @@ public class TestExpectThrows extends LuceneTestCase {
     }
     assertTrue(ran.get());
     assertNotNull(caught);
-    assertEquals("this failure should propogate", caught.getMessage());
+    assertEquals("this failure should propagate", caught.getMessage());
   }
 
   /**
    * Tests that {@link #expectThrows} behaves correctly when the Runnable contains an assumption
-   * that does not pass: by allowing that assumption to propogate and cause the test to <code>SKIP
+   * that does not pass: by allowing that assumption to propagate and cause the test to <code>SKIP
    * </code>.
    */
   public void testNestedAssume() {
@@ -105,7 +105,7 @@ public class TestExpectThrows extends LuceneTestCase {
           IOException.class,
           () -> {
             ran.getAndSet(true);
-            assumeTrue("this assumption should propogate", false);
+            assumeTrue("this assumption should propagate", false);
           });
       fail("must not complete"); // NOTE: we don't use expectThrows to test expectThrows
     } catch (AssumptionViolatedException ave) {
@@ -113,7 +113,7 @@ public class TestExpectThrows extends LuceneTestCase {
     }
     assertTrue(ran.get());
     assertNotNull(caught);
-    assertEquals("this assumption should propogate", caught.getMessage());
+    assertEquals("this assumption should propagate", caught.getMessage());
   }
 
   /**
@@ -130,14 +130,14 @@ public class TestExpectThrows extends LuceneTestCase {
               AssertionError.class,
               () -> {
                 ran.getAndSet(true);
-                fail("this failure should be returned, not propogated");
+                fail("this failure should be returned, not propagated");
               });
     } catch (AssertionError caught) { // NOTE: we don't use expectThrows to test expectThrows
       assertNull("An exception should not have been thrown", caught);
     }
     assertTrue(ran.get());
     assertNotNull(returned);
-    assertEquals("this failure should be returned, not propogated", returned.getMessage());
+    assertEquals("this failure should be returned, not propagated", returned.getMessage());
   }
 
   /**
@@ -154,7 +154,7 @@ public class TestExpectThrows extends LuceneTestCase {
               AssumptionViolatedException.class,
               () -> {
                 ran.getAndSet(true);
-                assumeTrue("this assumption should be returned, not propogated", false);
+                assumeTrue("this assumption should be returned, not propagated", false);
               });
     } catch (
         AssumptionViolatedException
@@ -163,6 +163,6 @@ public class TestExpectThrows extends LuceneTestCase {
     }
     assertTrue(ran.get());
     assertNotNull(returned);
-    assertEquals("this assumption should be returned, not propogated", returned.getMessage());
+    assertEquals("this assumption should be returned, not propagated", returned.getMessage());
   }
 }

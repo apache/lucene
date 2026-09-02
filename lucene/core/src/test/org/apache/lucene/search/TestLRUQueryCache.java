@@ -2125,7 +2125,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
     // due to thread contention
     IndexSearcher searcher = new AssertingIndexSearcher(random(), reader);
     searcher.setQueryCachingPolicy(ALWAYS_CACHE);
-    // 160 so that each parition(total 16 by default) can hold 10 keys at max.
+    // 160 so that each partition(total 16 by default) can hold 10 keys at max.
     LRUQueryCache cache =
         new LRUQueryCache(160, 10000, _ -> true, Float.POSITIVE_INFINITY, 1, null);
     searcher.setQueryCache(cache);
@@ -2669,9 +2669,11 @@ public class TestLRUQueryCache extends LuceneTestCase {
           }
         };
 
-    // Force exactly 1 segment so cache behavior is deterministic
+    // Force exactly 1 segment so cache behavior is deterministic.
+    // Use a non-randomized IndexWriterConfig to prevent randomized flush thresholds
+    // (e.g., tiny RAM buffer) from splitting 3 docs into multiple segments.
     Directory dir = newDirectory();
-    IndexWriterConfig iwc = newIndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE);
+    IndexWriterConfig iwc = new IndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE);
     IndexWriter iw = new IndexWriter(dir, iwc);
     Document doc = new Document();
     doc.add(new StringField("color", "red", Store.NO));

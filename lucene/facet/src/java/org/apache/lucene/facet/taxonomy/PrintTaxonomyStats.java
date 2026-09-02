@@ -67,9 +67,9 @@ public class PrintTaxonomyStats {
     ChildrenIterator it = r.getChildren(TaxonomyReader.ROOT_ORDINAL);
     int child;
     while ((child = it.next()) != TaxonomyReader.INVALID_ORDINAL) {
-      ChildrenIterator chilrenIt = r.getChildren(child);
+      ChildrenIterator childrenIt = r.getChildren(child);
       int numImmediateChildren = 0;
-      while (chilrenIt.next() != TaxonomyReader.INVALID_ORDINAL) {
+      while (childrenIt.next() != TaxonomyReader.INVALID_ORDINAL) {
         numImmediateChildren++;
       }
       FacetLabel cp = r.getPath(child);

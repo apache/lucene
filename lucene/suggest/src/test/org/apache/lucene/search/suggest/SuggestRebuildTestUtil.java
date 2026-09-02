@@ -38,7 +38,7 @@ public final class SuggestRebuildTestUtil {
    * @param initialData initial data to use for initial {@link Lookup#build}
    * @param initialChecks assertions to test after the initial build, and during the re-{@link
    *     Lookup#build}
-   * @param extraData will be aded to <code>initialData</code> and used to re-<code>build()</code>
+   * @param extraData will be added to <code>initialData</code> and used to re-<code>build()</code>
    *     the suggester
    * @param finalChecks assertions to test after the re-<code>build()</code> completes
    */
@@ -106,7 +106,7 @@ public final class SuggestRebuildTestUtil {
 
   /**
    * An InputArrayIterator wrapper whose {@link InputIterator#next} method releases on a Semaphore,
-   * and then acquires from a differnet Semaphore.
+   * and then acquires from a different Semaphore.
    */
   private record DelayedInputIterator(
       Semaphore releaseOnNext, Semaphore acquireOnNext, InputIterator inner)

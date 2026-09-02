@@ -112,7 +112,7 @@ public class TestCustomSearcherSort extends LuceneTestCase {
       resultMap.put(
           Integer.valueOf(hitsByRank[hitid].doc), // Key: Lucene
           // Document ID
-          Integer.valueOf(hitid)); // Value: Hits-Objekt Index
+          Integer.valueOf(hitid)); // Value: Hits-Object Index
     }
 
     // now make a query using the sort criteria
@@ -167,7 +167,7 @@ public class TestCustomSearcherSort extends LuceneTestCase {
     }
   }
 
-  // Simply write to console - choosen to be independant of log4j etc
+  // Simply write to console - chosen to be independent of log4j etc
   private void log(String message) {
     if (VERBOSE) System.out.println(message);
   }

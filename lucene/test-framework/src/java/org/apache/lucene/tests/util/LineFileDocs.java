@@ -148,7 +148,8 @@ public class LineFileDocs implements Closeable {
 
         // read until newline char, otherwise we may hit "java.nio.charset.MalformedInputException:
         // Input length = 1"
-        // exception in readline() below, because we seeked part way through a multi-byte (in UTF-8)
+        // exception in readline() below, because we seek()ed part way through a multi-byte (in
+        // UTF-8)
         // encoded
         // unicode character:
         if (seekTo > 0L) {

@@ -155,4 +155,8 @@ public class TestSparseFixedBitSet extends BaseBitSetTestCase<SparseFixedBitSet>
       }
     }
   }
+
+  public void testLargeValuesDoNotOverflow() {
+    assertEquals(524288, SparseFixedBitSet.blockCount(2147479553));
+  }
 }

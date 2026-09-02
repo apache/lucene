@@ -74,6 +74,13 @@ final class SingletonSortedNumericDocValues extends SortedNumericDocValues {
   }
 
   @Override
+  public void rangeIntoBitSet(
+      int fromDoc, int toDoc, long minValue, long maxValue, FixedBitSet bitSet, int offset)
+      throws IOException {
+    in.rangeIntoBitSet(fromDoc, toDoc, minValue, maxValue, bitSet, offset);
+  }
+
+  @Override
   public long cost() {
     return in.cost();
   }

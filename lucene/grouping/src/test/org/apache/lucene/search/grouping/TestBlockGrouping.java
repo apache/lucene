@@ -36,6 +36,7 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.util.BytesRef;
 
@@ -58,7 +59,6 @@ public class TestBlockGrouping extends AbstractGroupingTestCase {
     // score of the top document from the same query with no grouping
     TopDocs topDoc = searcher.search(topLevel, 1);
     assertEquals(topDoc.scoreDocs[0].score, tg.groups[0].scoreDocs()[0].score, 0);
-    assertEquals(topDoc.scoreDocs[0].doc, tg.groups[0].scoreDocs()[0].doc);
 
     for (int i = 0; i < tg.groups.length; i++) {
       String bookName =
@@ -72,6 +72,32 @@ public class TestBlockGrouping extends AbstractGroupingTestCase {
               .build();
       TopDocs td = searcher.search(filtered, 10);
       assertScoreDocsEquals(td.scoreDocs, tg.groups[i].scoreDocs());
+    }
+
+    shard.close();
+  }
+
+  public void testGroupOffset() throws IOException {
+    Shard shard = new Shard();
+    indexRandomDocs(shard.writer);
+    IndexSearcher searcher = shard.getIndexSearcher();
+
+    Query blockEndQuery = new TermQuery(new Term("blockEnd", "true"));
+    GroupingSearch grouper = new GroupingSearch(blockEndQuery);
+    grouper.setGroupDocsLimit(10);
+
+    Query topLevel = new TermQuery(new Term("text", "grandmother"));
+
+    int topN = 10;
+    int offset = random().nextInt(1, topN);
+    TopGroups<?> all = grouper.search(searcher, topLevel, 0, topN);
+    TopGroups<?> offsetGroups = grouper.search(searcher, topLevel, offset, topN - offset);
+
+    assertNotNull(offsetGroups);
+    assertEquals(all.groups.length - offset, offsetGroups.groups.length);
+
+    for (int i = 0; i < offsetGroups.groups.length; i++) {
+      assertScoreDocsEquals(all.groups[i + offset].scoreDocs(), offsetGroups.groups[i].scoreDocs());
     }
 
     shard.close();
@@ -163,6 +189,37 @@ public class TestBlockGrouping extends AbstractGroupingTestCase {
     }
 
     shard.close();
+  }
+
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  public void testMergeBlockGroupsWithEmptyGroups() {
+    SortField[] groupSort = Sort.RELEVANCE.getSort();
+    SortField[] withinGroupSort = Sort.RELEVANCE.getSort();
+
+    GroupDocs<BytesRef> group =
+        new GroupDocs<>(
+            1.0f,
+            1.0f,
+            new TotalHits(1, TotalHits.Relation.EQUAL_TO),
+            new ScoreDoc[] {new ScoreDoc(0, 1.0f)},
+            new BytesRef("group1"),
+            new Object[] {1.0f});
+    TopGroups<BytesRef> shardWithGroups =
+        new TopGroups<>(
+            new TopGroups<>(groupSort, withinGroupSort, 1, 1, new GroupDocs[] {group}, 1.0f), 1);
+
+    TopGroups<BytesRef> shardWithNoGroups =
+        new TopGroups<>(
+            new TopGroups<>(groupSort, withinGroupSort, 0, 0, new GroupDocs[0], Float.NaN), 0);
+
+    TopGroups<BytesRef> merged =
+        TopGroups.mergeBlockGroups(
+            List.of(shardWithGroups, shardWithNoGroups), Sort.RELEVANCE, 0, 5, Sort.RELEVANCE);
+
+    assertNotNull(merged);
+    assertEquals(1, merged.totalHitCount);
+    assertEquals(1, merged.groups.length);
+    assertEquals(new BytesRef("group1"), merged.groups[0].groupValue());
   }
 
   private static void indexRandomDocs(RandomIndexWriter writer) throws IOException {

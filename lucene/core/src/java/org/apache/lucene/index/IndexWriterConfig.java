@@ -107,6 +107,13 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
    */
   public static final long DEFAULT_MAX_FULL_FLUSH_MERGE_WAIT_MILLIS = 500;
 
+  /**
+   * Default maximum number of sparse doc-values overlays a field keeps before they are folded into
+   * one: {@code 16}. {@code 0} disables the feature (classic full-column rewrite); higher values
+   * lower write amplification but keep more overlays (hence more files) live to merge at read time.
+   */
+  public static final int DEFAULT_MAX_DOC_VALUES_OVERLAYS = 16;
+
   // indicates whether this config instance is already attached to a writer.
   // not final so that it can be cloned properly.
   private SetOnce<IndexWriter> writer = new SetOnce<>();
@@ -325,6 +332,29 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
   }
 
   /**
+   * Sets the maximum number of sparse doc-values overlays a field may accumulate before they are
+   * folded into a single overlay, which also enables or disables the feature. When enabled, a
+   * doc-values update that only sets values (no removals) is written as a sparse "delta" holding
+   * just the updated documents and overlaid on the existing column at read time, rather than
+   * rewriting the whole column. This trades some read cost for much lower write amplification on
+   * frequently updated fields. Pass {@code 0} to disable the feature and keep the classic
+   * full-column rewrite; any value {@code > 0} enables it, keeping up to that many overlays before
+   * a fold. Enabled by default (see {@link #DEFAULT_MAX_DOC_VALUES_OVERLAYS}).
+   *
+   * <p>Only takes effect when IndexWriter is first created.
+   *
+   * @lucene.experimental
+   */
+  public IndexWriterConfig setMaxDocValuesOverlays(int maxDocValuesOverlays) {
+    if (maxDocValuesOverlays < 0) {
+      throw new IllegalArgumentException(
+          "maxDocValuesOverlays must be >= 0; got " + maxDocValuesOverlays);
+    }
+    this.maxDocValuesOverlays = maxDocValuesOverlays;
+    return this;
+  }
+
+  /**
    * Expert: Controls when segments are flushed to disk during indexing. The {@link FlushPolicy}
    * initialized during {@link IndexWriter} instantiation and once initialized the given instance is
    * bound to this {@link IndexWriter} and should not be used with another writer.
@@ -462,7 +492,7 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
    *
    * <p>Note: Set to 0 to disable merging on full flush.
    *
-   * <p>Note: If {@link SerialMergeScheduler} is used and a non-zero timout is configured,
+   * <p>Note: If {@link SerialMergeScheduler} is used and a non-zero timeout is configured,
    * full-flush merges will always wait for the merge to finish without honoring the configured
    * timeout.
    */

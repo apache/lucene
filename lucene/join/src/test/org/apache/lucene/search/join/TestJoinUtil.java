@@ -21,6 +21,7 @@ import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -65,6 +66,7 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BoostQuery;
+import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.FieldExistsQuery;
@@ -72,7 +74,7 @@ import org.apache.lucene.search.FilterScorer;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.MatchNoDocsQuery;
-import org.apache.lucene.search.MultiCollector;
+import org.apache.lucene.search.MultiCollectorManager;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.Scorable;
@@ -82,7 +84,6 @@ import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TopScoreDocCollector;
 import org.apache.lucene.search.TopScoreDocCollectorManager;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.Weight;
@@ -90,6 +91,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.FixedBitSetCollector;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
@@ -282,7 +284,7 @@ public class TestJoinUtil extends LuceneTestCase {
     doc.add(new SortedDocValuesField(joinField, new BytesRef("2")));
     w.addDocument(doc);
 
-    IndexSearcher indexSearcher = new IndexSearcher(w.getReader());
+    IndexSearcher indexSearcher = newSearcher(w.getReader());
     w.close();
 
     IndexReader r = indexSearcher.getIndexReader();
@@ -397,7 +399,7 @@ public class TestJoinUtil extends LuceneTestCase {
     w.addDocument(doc);
 
     IndexReader r = DirectoryReader.open(w);
-    IndexSearcher indexSearcher = new IndexSearcher(r);
+    IndexSearcher indexSearcher = newSearcher(r);
     SortedDocValues[] values = new SortedDocValues[r.leaves().size()];
     for (int i = 0; i < values.length; i++) {
       LeafReader leafReader = r.leaves().get(i).reader();
@@ -488,14 +490,16 @@ public class TestJoinUtil extends LuceneTestCase {
         System.out.println("joinQuery=" + joinQuery);
       }
 
-      final BitSet actualResult = new FixedBitSet(indexSearcher.getIndexReader().maxDoc());
-      final TopScoreDocCollector topScoreDocCollector =
-          new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE).newCollector();
-      indexSearcher.search(
-          joinQuery, MultiCollector.wrap(new BitSetCollector(actualResult), topScoreDocCollector));
+      Object[] searchResults =
+          indexSearcher.search(
+              joinQuery,
+              new MultiCollectorManager(
+                  FixedBitSetCollector.createManager(indexSearcher.getIndexReader().maxDoc()),
+                  new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE)));
+      final BitSet actualResult = (BitSet) searchResults[0];
       assertBitSet(expectedResult, actualResult, indexSearcher);
       TopDocs expectedTopDocs = createExpectedTopDocs(randomValue, from, scoreMode, context);
-      TopDocs actualTopDocs = topScoreDocCollector.topDocs();
+      TopDocs actualTopDocs = (TopDocs) searchResults[1];
       assertTopDocs(expectedTopDocs, actualTopDocs, scoreMode, indexSearcher, joinQuery);
     }
     context.close();
@@ -899,7 +903,8 @@ public class TestJoinUtil extends LuceneTestCase {
     w.addDocument(doc);
 
     w.forceMerge(1);
-
+    // single segment test, that relies on sequential collection, the searcher is also created
+    // without an executor
     IndexSearcher indexSearcher = new IndexSearcher(w.getReader());
     w.close();
 
@@ -919,26 +924,37 @@ public class TestJoinUtil extends LuceneTestCase {
 
     indexSearcher.search(
         bq.build(),
-        new SimpleCollector() {
-          boolean sawFive;
-
+        new CollectorManager<SimpleCollector, Void>() {
           @Override
-          public void collect(int docID) {
-            // Hairy / evil (depends on how BooleanScorer
-            // stores temporarily collected docIDs by
-            // appending to head of linked list):
-            if (docID == 5) {
-              sawFive = true;
-            } else if (docID == 1) {
-              assertFalse(
-                  "optimized bulkScorer was not used for join query embedded in boolean query!",
-                  sawFive);
-            }
+          public SimpleCollector newCollector() {
+            return new SimpleCollector() {
+              boolean sawFive;
+
+              @Override
+              public void collect(int docID) {
+                // Hairy / evil (depends on how BooleanScorer
+                // stores temporarily collected docIDs by
+                // appending to head of linked list):
+                if (docID == 5) {
+                  sawFive = true;
+                } else if (docID == 1) {
+                  assertFalse(
+                      "optimized bulkScorer was not used for join query embedded in boolean query!",
+                      sawFive);
+                }
+              }
+
+              @Override
+              public org.apache.lucene.search.ScoreMode scoreMode() {
+                return org.apache.lucene.search.ScoreMode.COMPLETE_NO_SCORES;
+              }
+            };
           }
 
           @Override
-          public org.apache.lucene.search.ScoreMode scoreMode() {
-            return org.apache.lucene.search.ScoreMode.COMPLETE_NO_SCORES;
+          public Void reduce(Collection<SimpleCollector> collectors) {
+            assert collectors.size() == 1 : "concurrent execution is not supported by this test";
+            return null;
           }
         });
 
@@ -1564,17 +1580,17 @@ public class TestJoinUtil extends LuceneTestCase {
 
         // Need to know all documents that have matches. TopDocs doesn't give me that and then I'd
         // be also testing TopDocsCollector...
-        final BitSet actualResult = new FixedBitSet(indexSearcher.getIndexReader().maxDoc());
-        final TopScoreDocCollector topScoreDocCollector =
-            new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE).newCollector();
-        indexSearcher.search(
-            joinQuery,
-            MultiCollector.wrap(new BitSetCollector(actualResult), topScoreDocCollector));
+        Object[] searchResults =
+            indexSearcher.search(
+                joinQuery,
+                new MultiCollectorManager(
+                    FixedBitSetCollector.createManager(indexSearcher.getIndexReader().maxDoc()),
+                    new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE)));
         // Asserting bit set...
-        assertBitSet(expectedResult, actualResult, indexSearcher);
+        assertBitSet(expectedResult, (BitSet) searchResults[0], indexSearcher);
         // Asserting TopDocs...
         TopDocs expectedTopDocs = createExpectedTopDocs(randomValue, from, scoreMode, context);
-        TopDocs actualTopDocs = topScoreDocCollector.topDocs();
+        TopDocs actualTopDocs = (TopDocs) searchResults[1];
         assertTopDocs(expectedTopDocs, actualTopDocs, scoreMode, indexSearcher, joinQuery);
       }
       context.close();
@@ -1787,98 +1803,40 @@ public class TestJoinUtil extends LuceneTestCase {
         toField = "from";
         queryVals = context.toHitsToJoinScore;
       }
-      final Map<BytesRef, JoinScore> joinValueToJoinScores = new HashMap<>();
+      final Map<BytesRef, JoinScore> joinValueToJoinScores;
       if (multipleValuesPerDocument) {
-        searcher.search(
-            new TermQuery(new Term("value", uniqueRandomValue)),
-            new SimpleCollector() {
-
-              private Scorable scorer;
-              private SortedSetDocValues docTermOrds;
-
-              @Override
-              public void collect(int doc) throws IOException {
-                if (doc > docTermOrds.docID()) {
-                  docTermOrds.advance(doc);
-                }
-                if (doc == docTermOrds.docID()) {
-                  long ord;
-                  for (int j = 0; j < docTermOrds.docValueCount(); j++) {
-                    ord = docTermOrds.nextOrd();
-                    final BytesRef joinValue = docTermOrds.lookupOrd(ord);
-                    JoinScore joinScore = joinValueToJoinScores.get(joinValue);
-                    if (joinScore == null) {
-                      joinValueToJoinScores.put(
-                          BytesRef.deepCopyOf(joinValue), joinScore = new JoinScore());
-                    }
-                    joinScore.addScore(scorer.score());
+        joinValueToJoinScores =
+            searcher.search(
+                new TermQuery(new Term("value", uniqueRandomValue)),
+                new CollectorManager<SortedSetJoinScoreCollector, Map<BytesRef, JoinScore>>() {
+                  @Override
+                  public SortedSetJoinScoreCollector newCollector() {
+                    return new SortedSetJoinScoreCollector(fromField);
                   }
-                }
-              }
 
-              @Override
-              protected void doSetNextReader(LeafReaderContext context) throws IOException {
-                docTermOrds = DocValues.getSortedSet(context.reader(), fromField);
-              }
-
-              @Override
-              public void setScorer(Scorable scorer) {
-                this.scorer = scorer;
-              }
-
-              @Override
-              public org.apache.lucene.search.ScoreMode scoreMode() {
-                return org.apache.lucene.search.ScoreMode.COMPLETE;
-              }
-            });
+                  @Override
+                  public Map<BytesRef, JoinScore> reduce(
+                      Collection<SortedSetJoinScoreCollector> collectors) {
+                    return SortedSetJoinScoreCollector.mergeJoinValueMaps(collectors);
+                  }
+                });
       } else {
-        searcher.search(
-            new TermQuery(new Term("value", uniqueRandomValue)),
-            new SimpleCollector() {
+        joinValueToJoinScores =
+            searcher.search(
+                new TermQuery(new Term("value", uniqueRandomValue)),
+                new CollectorManager<
+                    SortedDocValuesJoinScoreCollector, Map<BytesRef, JoinScore>>() {
+                  @Override
+                  public SortedDocValuesJoinScoreCollector newCollector() {
+                    return new SortedDocValuesJoinScoreCollector(fromField);
+                  }
 
-              private Scorable scorer;
-              private SortedDocValues terms;
-
-              @Override
-              public void collect(int doc) throws IOException {
-                final BytesRef joinValue;
-                if (terms.advanceExact(doc)) {
-                  joinValue = terms.lookupOrd(terms.ordValue());
-                } else {
-                  // missing;
-                  return;
-                }
-
-                JoinScore joinScore = joinValueToJoinScores.get(joinValue);
-                if (joinScore == null) {
-                  joinValueToJoinScores.put(
-                      BytesRef.deepCopyOf(joinValue), joinScore = new JoinScore());
-                }
-                if (VERBOSE) {
-                  System.out.println(
-                      "expected val="
-                          + joinValue.utf8ToString()
-                          + " expected score="
-                          + scorer.score());
-                }
-                joinScore.addScore(scorer.score());
-              }
-
-              @Override
-              protected void doSetNextReader(LeafReaderContext context) throws IOException {
-                terms = DocValues.getSorted(context.reader(), fromField);
-              }
-
-              @Override
-              public void setScorer(Scorable scorer) {
-                this.scorer = scorer;
-              }
-
-              @Override
-              public org.apache.lucene.search.ScoreMode scoreMode() {
-                return org.apache.lucene.search.ScoreMode.COMPLETE;
-              }
-            });
+                  @Override
+                  public Map<BytesRef, JoinScore> reduce(
+                      Collection<SortedDocValuesJoinScoreCollector> collectors) {
+                    return SortedDocValuesJoinScoreCollector.mergeJoinValueMaps(collectors);
+                  }
+                });
       }
 
       final Map<Integer, JoinScore> docToJoinScore = new HashMap<>();
@@ -1906,43 +1864,25 @@ public class TestJoinUtil extends LuceneTestCase {
           }
         }
       } else {
-        searcher.search(
-            MatchAllDocsQuery.INSTANCE,
-            new SimpleCollector() {
+        docToJoinScore.putAll(
+            searcher.search(
+                MatchAllDocsQuery.INSTANCE,
+                new CollectorManager<DocToJoinScoreCollector, Map<Integer, JoinScore>>() {
+                  @Override
+                  public DocToJoinScoreCollector newCollector() {
+                    return new DocToJoinScoreCollector(toField, joinValueToJoinScores);
+                  }
 
-              private SortedDocValues terms;
-              private int docBase;
-
-              @Override
-              public void collect(int doc) throws IOException {
-                final BytesRef joinValue;
-                if (terms.advanceExact(doc)) {
-                  joinValue = terms.lookupOrd(terms.ordValue());
-                } else {
-                  // missing;
-                  joinValue = new BytesRef(BytesRef.EMPTY_BYTES);
-                }
-                JoinScore joinScore = joinValueToJoinScores.get(joinValue);
-                if (joinScore == null) {
-                  return;
-                }
-                docToJoinScore.put(docBase + doc, joinScore);
-              }
-
-              @Override
-              protected void doSetNextReader(LeafReaderContext context) throws IOException {
-                terms = DocValues.getSorted(context.reader(), toField);
-                docBase = context.docBase;
-              }
-
-              @Override
-              public void setScorer(Scorable scorer) {}
-
-              @Override
-              public org.apache.lucene.search.ScoreMode scoreMode() {
-                return org.apache.lucene.search.ScoreMode.COMPLETE_NO_SCORES;
-              }
-            });
+                  @Override
+                  public Map<Integer, JoinScore> reduce(
+                      Collection<DocToJoinScoreCollector> collectors) {
+                    Map<Integer, JoinScore> merged = new HashMap<>();
+                    for (DocToJoinScoreCollector c : collectors) {
+                      merged.putAll(c.localMap);
+                    }
+                    return merged;
+                  }
+                }));
       }
       queryVals.put(uniqueRandomValue, docToJoinScore);
     }
@@ -2107,7 +2047,10 @@ public class TestJoinUtil extends LuceneTestCase {
 
     float minScore = Float.POSITIVE_INFINITY;
     float maxScore = Float.NEGATIVE_INFINITY;
-    float total;
+    // Accumulated in double precision, because float addition isn't associative, so summing the
+    // same scores
+    // in a different order may round to a different float.
+    double total;
     int count;
 
     void addScore(float score) {
@@ -2126,9 +2069,9 @@ public class TestJoinUtil extends LuceneTestCase {
         case None:
           return 1f;
         case Total:
-          return total;
+          return (float) total;
         case Avg:
-          return total / count;
+          return (float) (total / count);
         case Min:
           return minScore;
         case Max:
@@ -2138,24 +2081,149 @@ public class TestJoinUtil extends LuceneTestCase {
     }
   }
 
-  private static class BitSetCollector extends SimpleCollector {
+  private abstract static class JoinValueCollector extends SimpleCollector {
+    final Map<BytesRef, JoinScore> localMap = new HashMap<>();
+    final String fromField;
+    Scorable scorer;
 
-    private final BitSet bitSet;
-    private int docBase;
+    JoinValueCollector(String fromField) {
+      this.fromField = fromField;
+    }
 
-    private BitSetCollector(BitSet bitSet) {
-      this.bitSet = bitSet;
+    @Override
+    public final void setScorer(Scorable s) {
+      this.scorer = s;
+    }
+
+    @Override
+    public final org.apache.lucene.search.ScoreMode scoreMode() {
+      return org.apache.lucene.search.ScoreMode.COMPLETE;
+    }
+
+    static Map<BytesRef, JoinScore> mergeJoinValueMaps(
+        Collection<? extends JoinValueCollector> collectors) {
+      Map<BytesRef, JoinScore> merged = new HashMap<>();
+      for (JoinValueCollector c : collectors) {
+        for (Map.Entry<BytesRef, JoinScore> entry : c.localMap.entrySet()) {
+          merged.merge(
+              entry.getKey(),
+              entry.getValue(),
+              (existing, src) -> {
+                if (src.minScore < existing.minScore) {
+                  existing.minScore = src.minScore;
+                }
+                if (src.maxScore > existing.maxScore) {
+                  existing.maxScore = src.maxScore;
+                }
+                existing.total += src.total;
+                existing.count += src.count;
+                return existing;
+              });
+        }
+      }
+      return merged;
+    }
+  }
+
+  private static class SortedSetJoinScoreCollector extends JoinValueCollector {
+    private SortedSetDocValues docTermOrds;
+
+    SortedSetJoinScoreCollector(String fromField) {
+      super(fromField);
     }
 
     @Override
     public void collect(int doc) throws IOException {
-      bitSet.set(docBase + doc);
+      if (doc > docTermOrds.docID()) {
+        docTermOrds.advance(doc);
+      }
+      if (doc == docTermOrds.docID()) {
+        long ord;
+        for (int j = 0; j < docTermOrds.docValueCount(); j++) {
+          ord = docTermOrds.nextOrd();
+          final BytesRef joinValue = docTermOrds.lookupOrd(ord);
+          JoinScore joinScore = localMap.get(joinValue);
+          if (joinScore == null) {
+            localMap.put(BytesRef.deepCopyOf(joinValue), joinScore = new JoinScore());
+          }
+          joinScore.addScore(scorer.score());
+        }
+      }
     }
 
     @Override
-    protected void doSetNextReader(LeafReaderContext context) throws IOException {
-      docBase = context.docBase;
+    protected void doSetNextReader(LeafReaderContext ctx) throws IOException {
+      docTermOrds = DocValues.getSortedSet(ctx.reader(), fromField);
     }
+  }
+
+  private static class SortedDocValuesJoinScoreCollector extends JoinValueCollector {
+    private SortedDocValues terms;
+
+    SortedDocValuesJoinScoreCollector(String fromField) {
+      super(fromField);
+    }
+
+    @Override
+    public void collect(int doc) throws IOException {
+      final BytesRef joinValue;
+      if (terms.advanceExact(doc)) {
+        joinValue = terms.lookupOrd(terms.ordValue());
+      } else {
+        return;
+      }
+      JoinScore joinScore = localMap.get(joinValue);
+      if (joinScore == null) {
+        localMap.put(BytesRef.deepCopyOf(joinValue), joinScore = new JoinScore());
+      }
+      if (LuceneTestCase.VERBOSE) {
+        System.out.println(
+            "expected val=" + joinValue.utf8ToString() + " expected score=" + scorer.score());
+      }
+      joinScore.addScore(scorer.score());
+    }
+
+    @Override
+    protected void doSetNextReader(LeafReaderContext ctx) throws IOException {
+      terms = DocValues.getSorted(ctx.reader(), fromField);
+    }
+  }
+
+  private static class DocToJoinScoreCollector extends SimpleCollector {
+    final Map<Integer, JoinScore> localMap = new HashMap<>();
+    private final String toField;
+    private final Map<BytesRef, JoinScore> joinValueToJoinScores;
+    private SortedDocValues terms;
+    private int docBase;
+
+    DocToJoinScoreCollector(String toField, Map<BytesRef, JoinScore> joinValueToJoinScores) {
+      this.toField = toField;
+      this.joinValueToJoinScores = joinValueToJoinScores;
+    }
+
+    @Override
+    public void collect(int doc) throws IOException {
+      final BytesRef joinValue;
+      if (terms.advanceExact(doc)) {
+        joinValue = terms.lookupOrd(terms.ordValue());
+      } else {
+        joinValue = new BytesRef(BytesRef.EMPTY_BYTES);
+      }
+      JoinScore joinScore = joinValueToJoinScores.get(joinValue);
+      if (joinScore == null) {
+        return;
+      }
+      localMap.put(docBase + doc, joinScore);
+    }
+
+    @Override
+    protected void doSetNextReader(LeafReaderContext ctx) throws IOException {
+      terms = DocValues.getSorted(ctx.reader(), toField);
+      docBase = ctx.docBase;
+    }
+
+    @Override
+    public void setScorer(Scorable scorer) {}
 
     @Override
     public org.apache.lucene.search.ScoreMode scoreMode() {

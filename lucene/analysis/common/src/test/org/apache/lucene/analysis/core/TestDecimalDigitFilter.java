@@ -168,18 +168,18 @@ public class TestDecimalDigitFilter extends BaseTokenStreamTestCase {
     checkRandomData(random(), tokenized, 200 * RANDOM_MULTIPLIER);
   }
 
-  /** returns a psuedo-random codepoint which is a Decimal Digit */
+  /** returns a pseudo-random codepoint which is a Decimal Digit */
   public static int getRandomDecimalDigit(Random r) {
-    final int aprox = TestUtil.nextInt(r, 0, DECIMAL_DIGIT_CODEPOINTS.length() - 1);
+    final int approx = TestUtil.nextInt(r, 0, DECIMAL_DIGIT_CODEPOINTS.length() - 1);
 
-    if (DECIMAL_DIGIT_CODEPOINTS.get(aprox)) { // lucky guess
-      assert Character.isDigit(aprox);
-      return aprox;
+    if (DECIMAL_DIGIT_CODEPOINTS.get(approx)) { // lucky guess
+      assert Character.isDigit(approx);
+      return approx;
     }
 
     // seek up and down for closest set bit
-    final int lower = DECIMAL_DIGIT_CODEPOINTS.prevSetBit(aprox);
-    final int higher = DECIMAL_DIGIT_CODEPOINTS.nextSetBit(aprox);
+    final int lower = DECIMAL_DIGIT_CODEPOINTS.prevSetBit(approx);
+    final int higher = DECIMAL_DIGIT_CODEPOINTS.nextSetBit(approx);
 
     // sanity check edge cases
     if (lower < 0) {
@@ -194,7 +194,7 @@ public class TestDecimalDigitFilter extends BaseTokenStreamTestCase {
     }
 
     // which is closer?
-    final int cmp = Integer.compare(aprox - lower, higher - aprox);
+    final int cmp = Integer.compare(approx - lower, higher - approx);
 
     if (0 == cmp) {
       // dead even, flip a coin

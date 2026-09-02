@@ -40,9 +40,11 @@ import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.KnnVectorValues;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorEncoding;
@@ -211,9 +213,14 @@ public class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    rawVectorsReader.checkIntegrity();
-    CodecUtil.checksumEntireFile(quantizedVectorData);
+  public RandomVectorScorer getRandomVectorScorer(String field, short[] target) throws IOException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+    rawVectorsReader.checkIntegrity(merge);
+    CodecUtil.checksumEntireFile(quantizedVectorData, merge);
   }
 
   @Override
@@ -250,6 +257,11 @@ public class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader
   @Override
   public ByteVectorValues getByteVectorValues(String field) throws IOException {
     return rawVectorsReader.getByteVectorValues(field);
+  }
+
+  @Override
+  public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+    throw new UnsupportedOperationException();
   }
 
   @Override

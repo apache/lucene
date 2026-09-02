@@ -77,7 +77,7 @@ public class TestLimitTokenPositionFilter extends BaseTokenStreamTestCase {
     }
   }
 
-  public void testMaxPosition3WithSynomyms() throws IOException {
+  public void testMaxPosition3WithSynonyms() throws IOException {
     for (final boolean consumeAll : new boolean[] {true, false}) {
       MockTokenizer tokenizer = whitespaceMockTokenizer("one two three four five");
       // if we are consuming all tokens, we can use the checks, otherwise we can't

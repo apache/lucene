@@ -24,6 +24,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.LongPoint;
+import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
@@ -851,6 +852,91 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     }
 
     writer.close();
+    reader.close();
+    dir.close();
+  }
+
+  /**
+   * Verifies that the binary-search optimization activates when the primary index sort field has a
+   * single constant value (detected as a no-op via its skip index), promoting the secondary field
+   * to effective primary and enabling direct doc-ID range iteration without a two-phase iterator.
+   */
+  public void testNoOpPrimarySort() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    Sort indexSort =
+        new Sort(
+            new SortField("field1", SortField.Type.LONG), // constant → no-op via skipper
+            new SortField("field2", SortField.Type.LONG)); // varying → effective primary
+    iwc.setIndexSort(indexSort);
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
+    for (int i = 0; i < 10; i++) {
+      Document doc = new Document();
+      doc.add(NumericDocValuesField.indexedField("field1", 42)); // constant; skip index present
+      doc.add(NumericDocValuesField.indexedField("field2", i)); // varying
+      iw.addDocument(doc);
+    }
+    iw.forceMerge(1);
+    DirectoryReader reader = iw.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+    iw.close();
+
+    // field1 has a single distinct value, so getPrimarySortField skips it and returns field2.
+    // The binary-search optimization should activate for the query on field2, producing a plain
+    // range iterator with no two-phase iterator.
+    Query fallback = SortedNumericDocValuesField.newSlowRangeQuery("field2", 3, 7);
+    Query query = new IndexSortSortedNumericDocValuesRangeQuery("field2", 3, 7, fallback);
+    Weight weight = query.createWeight(searcher, ScoreMode.TOP_SCORES, 1.0F);
+    for (LeafReaderContext context : searcher.getIndexReader().leaves()) {
+      Scorer scorer = weight.scorer(context);
+      assertNotNull(scorer);
+      assertNull(
+          "binary-search optimization should be active when primary sort is a no-op",
+          scorer.twoPhaseIterator());
+    }
+
+    reader.close();
+    dir.close();
+  }
+
+  /**
+   * Verifies that the binary-search optimization activates when the primary index sort field has no
+   * values in the segment at all (detected as a no-op via FieldInfos), promoting the secondary
+   * field to effective primary.
+   */
+  public void testMissingPrimarySort() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    Sort indexSort =
+        new Sort(
+            new SortField("field1", SortField.Type.LONG), // absent → no-op via FieldInfos check
+            new SortField("field2", SortField.Type.LONG)); // varying → effective primary
+    iwc.setIndexSort(indexSort);
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
+    for (int i = 0; i < 10; i++) {
+      Document doc = new Document();
+      // field1 intentionally absent: no FieldInfo in segment → detected as no-op
+      doc.add(NumericDocValuesField.indexedField("field2", i));
+      iw.addDocument(doc);
+    }
+    iw.forceMerge(1);
+    DirectoryReader reader = iw.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+    iw.close();
+
+    // field1 has no FieldInfo, so getPrimarySortField skips it and returns field2.
+    // The binary-search optimization should activate for the query on field2.
+    Query fallback = SortedNumericDocValuesField.newSlowRangeQuery("field2", 3, 7);
+    Query query = new IndexSortSortedNumericDocValuesRangeQuery("field2", 3, 7, fallback);
+    Weight weight = query.createWeight(searcher, ScoreMode.TOP_SCORES, 1.0F);
+    for (LeafReaderContext context : searcher.getIndexReader().leaves()) {
+      Scorer scorer = weight.scorer(context);
+      assertNotNull(scorer);
+      assertNull(
+          "binary-search optimization should be active when primary sort field has no values",
+          scorer.twoPhaseIterator());
+    }
+
     reader.close();
     dir.close();
   }

@@ -60,7 +60,7 @@ public final class PostCollectionFaceting<C extends Collector, T, K extends Coll
   private final Map<String, FacetsCollector> drillSidewaysFacetsCollectors;
   private final TaskExecutor taskExecutor;
   private final Map<String, Integer> dimToIndexMap;
-  private final int numOfIndexLeafs;
+  private final int numOfIndexLeaves;
 
   /**
    * Creates a new PostCollectionFaceting instance.
@@ -91,7 +91,7 @@ public final class PostCollectionFaceting<C extends Collector, T, K extends Coll
     } else {
       this.taskExecutor = new TaskExecutor(executor);
     }
-    this.numOfIndexLeafs = calculateNumOfIndexLeafs();
+    this.numOfIndexLeaves = calculateNumOfIndexLeaves();
     this.dimToIndexMap = new HashMap<>();
     int ind = 0;
     if (drillSidewaysCollectorManagers == null) {
@@ -124,7 +124,7 @@ public final class PostCollectionFaceting<C extends Collector, T, K extends Coll
     this(drillDownCollectorManager, null, drillDownFacetsCollector, null, executor);
   }
 
-  private int calculateNumOfIndexLeafs() {
+  private int calculateNumOfIndexLeaves() {
     int maxOrd = -1;
     for (FacetsCollector.MatchingDocs matchingDocs : drillDownFacetsCollector.getMatchingDocs()) {
       maxOrd = Math.max(maxOrd, matchingDocs.context().ord);
@@ -160,7 +160,7 @@ public final class PostCollectionFaceting<C extends Collector, T, K extends Coll
   private FacetsCollector.MatchingDocs[][] getPerLeafMatchingDocs() {
     // Max dim
     FacetsCollector.MatchingDocs[][] perLeafMatchingDocs =
-        new FacetsCollector.MatchingDocs[numOfIndexLeafs]
+        new FacetsCollector.MatchingDocs[numOfIndexLeaves]
             [drillSidewaysCollectorManagers.size() + 1];
     for (FacetsCollector.MatchingDocs drillDownMatchingDocs :
         drillDownFacetsCollector.getMatchingDocs()) {

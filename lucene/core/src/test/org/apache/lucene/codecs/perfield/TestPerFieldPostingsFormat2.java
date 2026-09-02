@@ -124,7 +124,7 @@ public class TestPerFieldPostingsFormat2 extends LuceneTestCase {
   }
 
   /*
-   * Test that heterogeneous index segments are merged sucessfully
+   * Test that heterogeneous index segments are merged successfully
    */
   // TODO: not sure this test is that great, we should probably peek inside PerFieldPostingsFormat
   // or something?!

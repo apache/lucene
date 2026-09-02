@@ -22,7 +22,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
-class Suggestion {
+/** A spelling suggestion with its raw and final output forms. */
+public class Suggestion {
   final String raw;
   final String[] result;
 
@@ -37,6 +38,20 @@ class Suggestion {
       result.add(cleanOutput(speller, raw));
     }
     this.result = result.toArray(String[]::new);
+  }
+
+  /**
+   * @return the raw suggestion before output conversion and case adjustment
+   */
+  public String getRaw() {
+    return raw;
+  }
+
+  /**
+   * @return the final spell-check suggestions produced from this raw suggestion
+   */
+  public List<String> getResult() {
+    return List.of(result);
   }
 
   private String adjustSuggestionCase(String candidate, String misspelled, WordCase originalCase) {

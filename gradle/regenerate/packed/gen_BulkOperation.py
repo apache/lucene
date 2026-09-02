@@ -102,8 +102,7 @@ def casts(typ):
 def hexNoLSuffix(n):
     # On 32 bit Python values > (1 << 31)-1 will have L appended by hex function:
     s = hex(n)
-    if s.endswith("L"):
-        s = s[:-1]
+    s = s.removesuffix("L")
     return s
 
 
@@ -200,7 +199,7 @@ def p64_decode(bpv, f, bits):
             )
             f.write("      }\n")
         else:
-            for i in range(0, values):
+            for i in range(values):
                 block_offset = i * bpv // 64
                 bit_offset = (i * bpv) % 64
                 if bit_offset == 0:
@@ -289,7 +288,7 @@ def p64_decode(bpv, f, bits):
             f.write("    }\n")
         else:
             f.write("    for (int i = 0; i < iterations; ++i) {\n")
-            for i in range(0, byte_values):
+            for i in range(byte_values):
                 byte_start = i * bpv // 8
                 bit_start = (i * bpv) % 8
                 byte_end = ((i + 1) * bpv - 1) // 8

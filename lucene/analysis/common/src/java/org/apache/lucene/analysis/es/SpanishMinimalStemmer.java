@@ -20,7 +20,7 @@ package org.apache.lucene.analysis.es;
 /**
  * Minimal plural stemmer for Spanish.
  *
- * <p>This stemmer implements the "plurals" stemmer for spanish lanugage.
+ * <p>This stemmer implements the "plurals" stemmer for spanish language.
  *
  * @deprecated Use {@link SpanishPluralStemmer} instead.
  */

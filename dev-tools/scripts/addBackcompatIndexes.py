@@ -34,7 +34,7 @@ import urllib.request
 import scriptutil
 
 
-def create_and_add_index(source: str, indextype: str, index_version: scriptutil.Version, current_version: scriptutil.Version, temp_dir: str):
+def create_and_add_index(source: str, indextype: str, index_version: scriptutil.Version, current_version: scriptutil.Version, temp_dir: str) -> None:
   if not current_version.is_back_compat_with(index_version):
     prefix = "unsupported"
   else:
@@ -79,7 +79,7 @@ def create_and_add_index(source: str, indextype: str, index_version: scriptutil.
   print("done")
 
 
-def update_backcompat_tests(index_version: scriptutil.Version, current_version: scriptutil.Version):
+def update_backcompat_tests(index_version: scriptutil.Version, current_version: scriptutil.Version) -> None:
   print("  adding new indexes to backcompat tests...", end="", flush=True)
   module = "lucene/backward-codecs"
 
@@ -91,12 +91,12 @@ def update_backcompat_tests(index_version: scriptutil.Version, current_version: 
 
   strip_dash_suffix_re = re.compile(r"-.*")
 
-  def find_version(x: str):
+  def find_version(x: str) -> scriptutil.Version:
     x = x.strip()
     x = re.sub(strip_dash_suffix_re, "", x)  # remove the -suffix if any
     return scriptutil.Version.parse(x)
 
-  def edit(buffer: list[str], _match: re.Match[str], line: str):
+  def edit(buffer: list[str], _match: re.Match[str], line: str) -> bool:
     v = find_version(line)
     changed = False
     if v.on_or_after(index_version):
@@ -106,7 +106,7 @@ def update_backcompat_tests(index_version: scriptutil.Version, current_version: 
     buffer.append(line)
     return changed
 
-  def append(buffer: list[str], changed: bool):
+  def append(buffer: list[str], changed: bool) -> bool:
     if changed:
       return changed
     if not buffer[len(buffer) - 1].endswith("\n"):
@@ -118,13 +118,13 @@ def update_backcompat_tests(index_version: scriptutil.Version, current_version: 
   print("done" if changed else "uptodate")
 
 
-def check_backcompat_tests():
+def check_backcompat_tests() -> None:
   print("  checking backcompat tests...", end="", flush=True)
   scriptutil.run("./gradlew -p lucene/backward-codecs test --tests TestGenerateBwcIndices")
   print("ok")
 
 
-def download_from_cdn(version: scriptutil.Version, remotename: str, localname: str):
+def download_from_cdn(version: scriptutil.Version, remotename: str, localname: str) -> bool:
   url = "http://dlcdn.apache.org/lucene/java/%s/%s" % (version, remotename)
   try:
     urllib.request.urlretrieve(url, localname)
@@ -135,7 +135,7 @@ def download_from_cdn(version: scriptutil.Version, remotename: str, localname: s
     raise e
 
 
-def download_from_archives(version: scriptutil.Version, remotename: str, localname: str):
+def download_from_archives(version: scriptutil.Version, remotename: str, localname: str) -> bool:
   url = "http://archive.apache.org/dist/lucene/java/%s/%s" % (version, remotename)
   try:
     urllib.request.urlretrieve(url, localname)
@@ -146,7 +146,7 @@ def download_from_archives(version: scriptutil.Version, remotename: str, localna
     raise e
 
 
-def download_release(version: scriptutil.Version, temp_dir: str, force: bool):
+def download_release(version: scriptutil.Version, temp_dir: str, force: bool) -> str:
   print("  downloading %s source release..." % version, end="", flush=True)
   source = os.path.join(temp_dir, "lucene-%s" % version)
   if os.path.exists(source):
@@ -169,7 +169,7 @@ def download_release(version: scriptutil.Version, temp_dir: str, force: bool):
   return source
 
 
-def read_config():
+def read_config() -> argparse.Namespace:
   parser = argparse.ArgumentParser(
     formatter_class=argparse.RawDescriptionHelpFormatter,
     description="""\
@@ -186,7 +186,7 @@ http://wiki.apache.org/lucene-java/ReleaseTodo#Generate_Backcompat_Indexes
   return c
 
 
-def main():
+def main() -> None:
   c = read_config()
   if not os.path.exists(c.temp_dir):
     Path(c.temp_dir).mkdir(parents=True)

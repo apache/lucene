@@ -239,7 +239,8 @@ public class TestDoc extends LuceneTestCase {
             trackingDir,
             new FieldInfos.FieldNumbers(null, null),
             context,
-            new SameThreadExecutorService());
+            new SameThreadExecutorService(),
+            null);
 
     merger.merge();
     merger.cleanupMerge();

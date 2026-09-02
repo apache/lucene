@@ -210,7 +210,7 @@ public class TestMonitor extends MonitorTestBase {
     }
   }
 
-  public void testMutliValuedFieldWithNonDefaultGaps() throws IOException {
+  public void testMultiValuedFieldWithNonDefaultGaps() throws IOException {
 
     Analyzer analyzer =
         new Analyzer() {

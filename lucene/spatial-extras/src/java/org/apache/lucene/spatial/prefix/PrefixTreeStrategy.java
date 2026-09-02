@@ -117,7 +117,7 @@ public abstract class PrefixTreeStrategy extends SpatialStrategy {
   }
 
   /**
-   * True if only indexed points shall be supported. There are no "leafs" in such a case, except
+   * True if only indexed points shall be supported. There are no "leaves" in such a case, except
    * those at maximum precision.
    */
   public void setPointsOnly(boolean pointsOnly) {

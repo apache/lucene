@@ -69,10 +69,12 @@ tasks.named("jar").configure {
   manifest {
     attributes([
       "Main-Class": "org.apache.lucene.benchmark.jmh.Main",
-      "Class-Path": new Object () {
+      "Class-Path": new Object() {
         @Override
         String toString() {
-          return configurations.runtimeClasspath.collect { f -> f.name }.join(" ")
+          return configurations.runtimeClasspath.collect { f ->
+            f.name
+          }.join(" ")
         }
       }
     ])

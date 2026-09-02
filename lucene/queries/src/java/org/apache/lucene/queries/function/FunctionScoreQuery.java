@@ -252,8 +252,20 @@ public final class FunctionScoreQuery extends Query {
             }
 
             @Override
+            public int advanceShallow(int target) throws IOException {
+              int innerShallow = in.advanceShallow(target);
+              int scoreShallow = scores.advanceShallow(target);
+              return Math.min(innerShallow, scoreShallow);
+            }
+
+            @Override
             public float getMaxScore(int upTo) throws IOException {
-              return Float.POSITIVE_INFINITY;
+              float innerMaxScore = in.getMaxScore(upTo);
+              float valueMaxScore = scores.getMaxScore(upTo);
+              if (Float.isInfinite(valueMaxScore)) {
+                return Float.POSITIVE_INFINITY;
+              }
+              return innerMaxScore * valueMaxScore * boost;
             }
           };
       return new DefaultScorerSupplier(scorer);

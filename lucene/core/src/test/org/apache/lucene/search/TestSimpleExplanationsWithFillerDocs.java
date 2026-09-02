@@ -94,9 +94,9 @@ public class TestSimpleExplanationsWithFillerDocs extends TestSimpleExplanations
   }
 
   /**
-   * Adjusts <code>expDocNrs</code> based on the filler docs injected in the index, and if
-   * neccessary wraps the <code>q</code> in a BooleanQuery that will filter out all filler docs
-   * using the {@link #EXTRA} field.
+   * Adjusts <code>expDocNrs</code> based on the filler docs injected in the index, and if necessary
+   * wraps the <code>q</code> in a BooleanQuery that will filter out all filler docs using the
+   * {@link #EXTRA} field.
    *
    * @see #replaceIndex
    */

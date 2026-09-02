@@ -65,7 +65,7 @@ def icupkg
 if (Os.isFamily(Os.FAMILY_WINDOWS)) {
   icuBinDir = file("${icuBuildDir}/bin64")
   gennorm = file("${icuBinDir}/gennorm2.exe")
-  icupkg =  file("${icuBinDir}/icupkg.exe")
+  icupkg = file("${icuBinDir}/icupkg.exe")
 } else {
   icuBinDir = file("${icuBuildDir}/icu/source/bin")
   gennorm = file("${icuBinDir}/gennorm2")
@@ -284,10 +284,10 @@ configure(project(":lucene:analysis:common")) {
 configure(project(":lucene:core")) {
   setupIcuDependencies(project)
 
-  tasks.register("generateUnicodeProps", {
+  tasks.register("regenerateCaseExpansion", {
     def icuConfig = configurations.icu_current
     def groovyConfig = configurations.groovy
-    def outputFile = file("src/java/org/apache/lucene/util/automaton/CaseFolding.java")
+    def outputFile = file("src/java/org/apache/lucene/util/automaton/CaseExpansion.java")
 
     description = "Regenerate ${outputFile} using ICU"
 
@@ -304,7 +304,34 @@ configure(project(":lucene:core")) {
         args = [
           "--encoding",
           "UTF-8",
-          file("${resources}/GenerateCaseFolding.groovy"),
+          file("${resources}/GenerateCaseExpansion.groovy"),
+          outputFile
+        ]
+      })
+    }
+  })
+
+  tasks.register("regenerateSimpleCaseFolding", {
+    def icuConfig = configurations.icu_current
+    def groovyConfig = configurations.groovy
+    def outputFile = file("src/java/org/apache/lucene/util/SimpleCaseFolding.java")
+
+    description = "Regenerate ${outputFile} using ICU"
+
+    dependsOn icuConfig
+
+    inputs.property "icuConfig", icu4jVersion
+    outputs.file outputFile
+
+    doFirst {
+      buildGlobals.execOps.javaexec({
+        mainClass = "groovy.lang.GroovyShell"
+        classpath icuConfig, groovyConfig
+
+        args = [
+          "--encoding",
+          "UTF-8",
+          file("${resources}/GenerateSimpleCaseFolding.groovy"),
           outputFile
         ]
       })

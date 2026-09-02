@@ -35,8 +35,10 @@ import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
@@ -149,10 +151,10 @@ final class FaissKnnVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    rawVectorsReader.checkIntegrity();
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+    rawVectorsReader.checkIntegrity(merge);
     // TODO: Evaluate if we need an explicit check for validity of Faiss indexes
-    CodecUtil.checksumEntireFile(data);
+    CodecUtil.checksumEntireFile(data, merge);
   }
 
   @Override
@@ -165,6 +167,11 @@ final class FaissKnnVectorsReader extends KnnVectorsReader {
     // TODO: Support using SQ8 quantization, see:
     //  - https://github.com/opensearch-project/k-NN/pull/2425
     throw new UnsupportedOperationException("Byte vectors not supported");
+  }
+
+  @Override
+  public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+    throw new UnsupportedOperationException("Float16 vectors not supported");
   }
 
   @Override
@@ -182,6 +189,12 @@ final class FaissKnnVectorsReader extends KnnVectorsReader {
     // TODO: Support using SQ8 quantization, see:
     //  - https://github.com/opensearch-project/k-NN/pull/2425
     throw new UnsupportedOperationException("Byte vectors not supported");
+  }
+
+  @Override
+  public void search(String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
+    throw new UnsupportedOperationException("Float16 vectors not supported");
   }
 
   @Override

@@ -41,12 +41,12 @@ public class SparseFixedBitSet extends BitSet {
   private static final long SINGLE_ELEMENT_ARRAY_BYTES_USED = RamUsageEstimator.sizeOf(new long[1]);
   private static final int MASK_4096 = (1 << 12) - 1;
 
-  private static int blockCount(int length) {
+  static int blockCount(int length) {
     int blockCount = length >>> 12;
     if ((blockCount << 12) < length) {
       ++blockCount;
     }
-    assert (blockCount << 12) >= length;
+    assert ((long) blockCount << 12) >= length;
     return blockCount;
   }
 

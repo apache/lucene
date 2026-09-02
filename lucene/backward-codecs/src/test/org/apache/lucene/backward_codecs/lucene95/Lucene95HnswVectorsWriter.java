@@ -180,6 +180,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     switch (fieldData.fieldInfo.getVectorEncoding()) {
       case BYTE -> writeByteVectors(fieldData);
       case FLOAT32 -> writeFloat32Vectors(fieldData);
+      case FLOAT16 -> throw new UnsupportedOperationException("FLOAT16 is not supported");
     }
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
 
@@ -246,6 +247,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
         switch (fieldData.fieldInfo.getVectorEncoding()) {
           case BYTE -> writeSortedByteVectors(fieldData, ordMap);
           case FLOAT32 -> writeSortedFloat32Vectors(fieldData, ordMap);
+          case FLOAT16 -> throw new UnsupportedOperationException("FLOAT16 is not supported");
         };
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
 
@@ -318,7 +320,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       int node = nodesOnLevel0.nextInt();
       NeighborArray neighbors = graph.getNeighbors(0, newToOldMap[node]);
       long offset = vectorIndex.getFilePointer();
-      reconstructAndWriteNeigbours(neighbors, oldToNewMap, maxConnOnLevel, maxOrd);
+      reconstructAndWriteNeighbours(neighbors, oldToNewMap, maxConnOnLevel, maxOrd);
       levelNodeOffsets[0][node] = Math.toIntExact(vectorIndex.getFilePointer() - offset);
     }
 
@@ -336,7 +338,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       for (int node : newNodes) {
         NeighborArray neighbors = graph.getNeighbors(level, newToOldMap[node]);
         long offset = vectorIndex.getFilePointer();
-        reconstructAndWriteNeigbours(neighbors, oldToNewMap, maxConnOnLevel, maxOrd);
+        reconstructAndWriteNeighbours(neighbors, oldToNewMap, maxConnOnLevel, maxOrd);
         levelNodeOffsets[level][nodeOffsetIndex++] =
             Math.toIntExact(vectorIndex.getFilePointer() - offset);
       }
@@ -388,7 +390,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     };
   }
 
-  private void reconstructAndWriteNeigbours(
+  private void reconstructAndWriteNeighbours(
       NeighborArray neighbors, int[] oldToNewMap, int maxConnOnLevel, int maxOrd)
       throws IOException {
     int size = neighbors.size();
@@ -432,6 +434,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                 writeVectorData(
                     tempVectorData,
                     MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState));
+            case FLOAT16 -> throw new UnsupportedOperationException("FLOAT16 is not supported");
           };
       CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);
@@ -478,6 +481,8 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                         defaultFlatVectorScorer,
                         fieldInfo.getVectorSimilarityFunction()));
             break;
+          case FLOAT16:
+            throw new UnsupportedOperationException("FLOAT16 is not supported");
           default:
             throw new IllegalArgumentException(
                 "Unsupported vector encoding: " + fieldInfo.getVectorEncoding());
@@ -499,6 +504,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
           case FLOAT32 ->
               mergedVectorValues =
                   KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
+          case FLOAT16 -> throw new UnsupportedOperationException("FLOAT16 is not supported");
         }
         graph =
             merger.merge(
@@ -711,6 +717,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                 return ArrayUtil.copyOfSubArray(value, 0, dim);
               }
             };
+        case FLOAT16 -> throw new UnsupportedOperationException("FLOAT16 is not supported");
       };
     }
 
@@ -731,6 +738,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                 defaultFlatVectorScorer.getRandomVectorScorerSupplier(
                     fieldInfo.getVectorSimilarityFunction(),
                     FloatVectorValues.fromFloats((List<float[]>) vectors, dim));
+            case FLOAT16 -> throw new UnsupportedOperationException("FLOAT16 is not supported");
           };
       hnswGraphBuilder =
           HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);

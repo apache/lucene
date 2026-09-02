@@ -101,7 +101,10 @@ public final class TermStates {
     if (needsStats) {
       PendingTermLookup[] pendingTermLookups = new PendingTermLookup[0];
       for (LeafReaderContext ctx : context.leaves()) {
-        Terms terms = Terms.getTerms(ctx.reader(), term.field());
+        Terms terms = ctx.reader().terms(term.field());
+        if (terms == null) {
+          continue;
+        }
         TermsEnum termsEnum = terms.iterator();
         // Schedule the I/O in the terms dictionary in the background.
         IOBooleanSupplier termExistsSupplier = termsEnum.prepareSeekExact(term.bytes());

@@ -564,7 +564,7 @@ public class TestQPHelper extends LuceneTestCase {
 
     /*
      * Tests to see that wild card terms are (or are not) properly lower-cased
-     * with propery parser configuration
+     * with parser configuration
      */
     // First prefix queries:
     // by default, convert to lowercase:
@@ -876,7 +876,7 @@ public class TestQPHelper extends LuceneTestCase {
     // Tests bug LUCENE-800
     assertQueryEquals("(item:\\\\ item:ABCD\\\\)", a, "item:\\ item:ABCD\\");
     assertQueryNodeException("(item:\\\\ item:ABCD\\\\))"); // unmatched closing
-    // paranthesis
+    // parenthesis
     assertQueryEquals("\\*", a, "*");
     assertQueryEquals("\\\\", a, "\\"); // escaped backslash
 
@@ -1236,7 +1236,7 @@ public class TestQPHelper extends LuceneTestCase {
 
     qp.setEnablePositionIncrements(true);
 
-    String qtxt = "\"the words in poisitions pos02578 are stopped in this phrasequery\"";
+    String qtxt = "\"the words in positions pos02578 are stopped in this phrasequery\"";
     // 0 2 5 7 8
     int[] expectedPositions = {1, 3, 4, 6, 9};
     PhraseQuery pq = (PhraseQuery) qp.parse(qtxt, "a");

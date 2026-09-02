@@ -29,7 +29,7 @@ import org.apache.lucene.index.LeafReaderContext;
  *
  * <p>Objects that depend on doc values should return {@link
  * DocValues#isCacheable(LeafReaderContext, String...)}, which will check to see if the doc values
- * fields have been updated. Updated doc values fields are not suitable for cacheing.
+ * fields have been updated. Updated doc values fields are not suitable for caching.
  *
  * <p>Objects that are not segment-immutable, such as those that rely on global statistics or
  * scores, should return {@code false}

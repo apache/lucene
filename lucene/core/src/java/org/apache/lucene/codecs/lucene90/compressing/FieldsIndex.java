@@ -18,6 +18,7 @@ package org.apache.lucene.codecs.lucene90.compressing;
 
 import java.io.Closeable;
 import java.io.IOException;
+import org.apache.lucene.index.MergePolicy;
 
 abstract class FieldsIndex implements Cloneable, Closeable {
 
@@ -35,8 +36,8 @@ abstract class FieldsIndex implements Cloneable, Closeable {
     return getBlockStartPointer(getBlockID(docID));
   }
 
-  /** Check the integrity of the index. */
-  abstract void checkIntegrity() throws IOException;
+  /** Check the integrity of the index, with periodic merge abort checks. */
+  abstract void checkIntegrity(MergePolicy.OneMerge merge) throws IOException;
 
   @Override
   public abstract FieldsIndex clone();

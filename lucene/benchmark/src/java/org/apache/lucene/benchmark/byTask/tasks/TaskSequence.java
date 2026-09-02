@@ -43,7 +43,7 @@ public class TaskSequence extends PerfTask {
   private boolean resetExhausted = false;
   private PerfTask[] tasksArray;
   private boolean anyExhaustibleTasks;
-  private final boolean collapsable; // to not collapse external sequence named in alg.
+  private final boolean collapsible; // to not collapse external sequence named in alg.
 
   private boolean fixedTime; // true if we run for fixed time
   private double runTimeSec; // how long to run for
@@ -51,7 +51,7 @@ public class TaskSequence extends PerfTask {
 
   public TaskSequence(PerfRunData runData, String name, TaskSequence parent, boolean parallel) {
     super(runData);
-    collapsable = (name == null);
+    collapsible = (name == null);
     name = (name != null ? name : (parallel ? "Par" : "Seq"));
     setName(name);
     setSequenceName();
@@ -260,7 +260,7 @@ public class TaskSequence extends PerfTask {
         if (stopNow) {
           break;
         }
-        nextStartTime += delayStep; // this aims at avarage rate.
+        nextStartTime += delayStep; // this aims at average rate.
         try {
           final int inc = task.runAndMaybeStats(letChildReport);
           count += inc;
@@ -434,7 +434,7 @@ public class TaskSequence extends PerfTask {
    */
   @Override
   public String toString() {
-    String padd = getPadding();
+    String padded = getPadding();
     StringBuilder sb = new StringBuilder(super.toString());
     sb.append(parallel ? " [" : " {");
     sb.append(NEW_LINE);
@@ -442,7 +442,7 @@ public class TaskSequence extends PerfTask {
       sb.append(task.toString());
       sb.append(NEW_LINE);
     }
-    sb.append(padd);
+    sb.append(padded);
     sb.append(!letChildReport ? ">" : (parallel ? "]" : "}"));
     if (fixedTime) {
       sb.append(' ')
@@ -536,7 +536,7 @@ public class TaskSequence extends PerfTask {
   }
 
   /** Return true if can be collapsed in case it is outermost sequence */
-  public boolean isCollapsable() {
-    return collapsable;
+  public boolean isCollapsible() {
+    return collapsible;
   }
 }

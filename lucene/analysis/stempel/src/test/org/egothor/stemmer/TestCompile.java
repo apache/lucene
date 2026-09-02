@@ -124,7 +124,7 @@ public class TestCompile extends LuceneTestCase {
     return trie;
   }
 
-  private static void assertTrie(Trie trie, Path file, boolean usefull, boolean storeorig)
+  private static void assertTrie(Trie trie, Path file, boolean useFull, boolean storeOrig)
       throws Exception {
     LineNumberReader in =
         new LineNumberReader(Files.newBufferedReader(file, StandardCharsets.UTF_8));
@@ -134,8 +134,8 @@ public class TestCompile extends LuceneTestCase {
         line = line.toLowerCase(Locale.ROOT);
         StringTokenizer st = new StringTokenizer(line);
         String stem = st.nextToken();
-        if (storeorig) {
-          CharSequence cmd = (usefull) ? trie.getFully(stem) : trie.getLastOnPath(stem);
+        if (storeOrig) {
+          CharSequence cmd = (useFull) ? trie.getFully(stem) : trie.getLastOnPath(stem);
           StringBuilder stm = new StringBuilder(stem);
           Diff.apply(stm, cmd);
           assertEquals(stem.toLowerCase(Locale.ROOT), stm.toString().toLowerCase(Locale.ROOT));
@@ -145,7 +145,7 @@ public class TestCompile extends LuceneTestCase {
           if (token.equals(stem)) {
             continue;
           }
-          CharSequence cmd = (usefull) ? trie.getFully(token) : trie.getLastOnPath(token);
+          CharSequence cmd = (useFull) ? trie.getFully(token) : trie.getLastOnPath(token);
           StringBuilder stm = new StringBuilder(token);
           Diff.apply(stm, cmd);
           assertEquals(stem.toLowerCase(Locale.ROOT), stm.toString().toLowerCase(Locale.ROOT));

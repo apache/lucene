@@ -279,7 +279,7 @@ public class Algorithm implements AutoCloseable {
     }
 
     // remove redundant top level enclosing sequences
-    while (sequence.isCollapsable() && sequence.getRepetitions() == 1 && sequence.getRate() == 0) {
+    while (sequence.isCollapsible() && sequence.getRepetitions() == 1 && sequence.getRate() == 0) {
       ArrayList<PerfTask> t = sequence.getTasks();
       if (t != null && t.size() == 1) {
         PerfTask p = t.get(0);

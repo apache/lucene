@@ -66,6 +66,12 @@ public abstract class CompoundDirectory extends Directory {
   public final void syncMetaData() {}
 
   @Override
+  public final void copyFrom(Directory from, String src, String dest, IOContext context)
+      throws IOException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public final IndexOutput createOutput(String name, IOContext context) throws IOException {
     throw new UnsupportedOperationException();
   }

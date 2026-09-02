@@ -91,14 +91,24 @@ public class MergeState {
   /** Indicates if the index needs to be sorted * */
   public boolean needsIndexSort;
 
+  /**
+   * The merge that this state is associated with, or {@code null} if this merge state is not
+   * associated with an {@link IndexWriter} merge (e.g. for addIndexes).
+   *
+   * @lucene.internal
+   */
+  public final MergePolicy.OneMerge oneMerge;
+
   /** Sole constructor. */
   MergeState(
       List<CodecReader> readers,
       SegmentInfo segmentInfo,
       InfoStream infoStream,
-      Executor intraMergeTaskExecutor)
+      Executor intraMergeTaskExecutor,
+      MergePolicy.OneMerge oneMerge)
       throws IOException {
     verifyIndexSort(readers, segmentInfo);
+    this.oneMerge = oneMerge;
     this.infoStream = infoStream;
     int numReaders = readers.size();
     this.intraMergeTaskExecutor = intraMergeTaskExecutor;
@@ -230,6 +240,16 @@ public class MergeState {
     }
   }
 
+  /**
+   * Checks if the merge has been aborted, throwing {@link MergePolicy.MergeAbortedException} if so.
+   * This is a no-op if this merge state is not associated with an {@link IndexWriter} merge.
+   */
+  public void checkAborted() throws MergePolicy.MergeAbortedException {
+    if (oneMerge != null) {
+      oneMerge.checkAborted();
+    }
+  }
+
   private static void verifyIndexSort(List<CodecReader> readers, SegmentInfo segmentInfo) {
     Sort indexSort = segmentInfo.getIndexSort();
     if (indexSort == null) {
@@ -284,7 +304,8 @@ public class MergeState {
       int[] maxDocs,
       InfoStream infoStream,
       Executor intraMergeTaskExecutor,
-      boolean needsIndexSort) {
+      boolean needsIndexSort,
+      MergePolicy.OneMerge oneMerge) {
     this.docMaps = docMaps;
     this.segmentInfo = segmentInfo;
     this.mergeFieldInfos = mergeFieldInfos;
@@ -301,5 +322,6 @@ public class MergeState {
     this.infoStream = infoStream;
     this.intraMergeTaskExecutor = intraMergeTaskExecutor;
     this.needsIndexSort = needsIndexSort;
+    this.oneMerge = oneMerge;
   }
 }

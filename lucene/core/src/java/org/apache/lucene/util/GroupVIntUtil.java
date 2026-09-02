@@ -137,13 +137,6 @@ public final class GroupVIntUtil {
     return Integer.BYTES - (Integer.numberOfLeadingZeros(v | 1) >> 3);
   }
 
-  private static int toInt(long value) {
-    if ((Long.compareUnsigned(value, 0xFFFFFFFFL) > 0)) {
-      throw new ArithmeticException("integer overflow");
-    }
-    return (int) value;
-  }
-
   /**
    * The implementation for group-varint encoding, It uses a maximum of {@link
    * #MAX_LENGTH_PER_GROUP} bytes scratch buffer.
@@ -176,85 +169,6 @@ public final class GroupVIntUtil {
     // tail vints
     for (; readPos < limit; readPos++) {
       out.writeVInt(values[readPos]);
-    }
-  }
-
-  /**
-   * Read all the group varints, including the tail vints to a long[].
-   *
-   * @param dst the array to read ints into.
-   * @param limit the number of int values to read.
-   * @lucene.experimental
-   * @deprecated Only for backwards codecs
-   */
-  @Deprecated
-  public static void readGroupVInts(DataInput in, long[] dst, int limit) throws IOException {
-    int i;
-    for (i = 0; i <= limit - 4; i += 4) {
-      readGroupVInt(in, dst, i);
-    }
-    for (; i < limit; ++i) {
-      dst[i] = in.readVInt() & 0xFFFFFFFFL;
-    }
-  }
-
-  /**
-   * Default implementation of read single group, for optimal performance, you should use {@link
-   * GroupVIntUtil#readGroupVInts(DataInput, long[], int)} instead.
-   *
-   * @param in the input to use to read data.
-   * @param dst the array to read ints into.
-   * @param offset the offset in the array to start storing ints.
-   * @deprecated Only for backwards codecs
-   */
-  @Deprecated
-  public static void readGroupVInt(DataInput in, long[] dst, int offset) throws IOException {
-    final int flag = in.readByte() & 0xFF;
-
-    final int n1Minus1 = flag >> 6;
-    final int n2Minus1 = (flag >> 4) & 0x03;
-    final int n3Minus1 = (flag >> 2) & 0x03;
-    final int n4Minus1 = flag & 0x03;
-
-    dst[offset] = readIntInGroup(in, n1Minus1) & 0xFFFFFFFFL;
-    dst[offset + 1] = readIntInGroup(in, n2Minus1) & 0xFFFFFFFFL;
-    dst[offset + 2] = readIntInGroup(in, n3Minus1) & 0xFFFFFFFFL;
-    dst[offset + 3] = readIntInGroup(in, n4Minus1) & 0xFFFFFFFFL;
-  }
-
-  /**
-   * The implementation for group-varint encoding, It uses a maximum of {@link
-   * #MAX_LENGTH_PER_GROUP} bytes scratch buffer.
-   */
-  @Deprecated
-  public static void writeGroupVInts(DataOutput out, byte[] scratch, long[] values, int limit)
-      throws IOException {
-    int readPos = 0;
-
-    // encode each group
-    while ((limit - readPos) >= 4) {
-      int writePos = 0;
-      final int n1Minus1 = numBytes(toInt(values[readPos])) - 1;
-      final int n2Minus1 = numBytes(toInt(values[readPos + 1])) - 1;
-      final int n3Minus1 = numBytes(toInt(values[readPos + 2])) - 1;
-      final int n4Minus1 = numBytes(toInt(values[readPos + 3])) - 1;
-      int flag = (n1Minus1 << 6) | (n2Minus1 << 4) | (n3Minus1 << 2) | (n4Minus1);
-      scratch[writePos++] = (byte) flag;
-      BitUtil.VH_LE_INT.set(scratch, writePos, (int) (values[readPos++]));
-      writePos += n1Minus1 + 1;
-      BitUtil.VH_LE_INT.set(scratch, writePos, (int) (values[readPos++]));
-      writePos += n2Minus1 + 1;
-      BitUtil.VH_LE_INT.set(scratch, writePos, (int) (values[readPos++]));
-      writePos += n3Minus1 + 1;
-      BitUtil.VH_LE_INT.set(scratch, writePos, (int) (values[readPos++]));
-      writePos += n4Minus1 + 1;
-
-      out.writeBytes(scratch, writePos);
-    }
-
-    // tail vints
-    for (; readPos < limit; readPos++) {
-      out.writeVInt(toInt(values[readPos]));
     }
   }
 }

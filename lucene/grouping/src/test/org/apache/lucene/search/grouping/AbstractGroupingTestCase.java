@@ -69,7 +69,14 @@ public abstract class AbstractGroupingTestCase extends LuceneTestCase {
 
     IndexSearcher getIndexSearcher() throws IOException {
       if (searcher == null) {
-        searcher = new IndexSearcher(this.writer.getReader());
+        // BlockGroupingCollectorManager does not support INTRA_SEGMENT concurrency (requires more
+        // work).
+        searcher =
+            newSearcher(
+                writer.getReader(),
+                random().nextBoolean(),
+                random().nextBoolean(),
+                Concurrency.INTER_SEGMENT);
       }
       return searcher;
     }

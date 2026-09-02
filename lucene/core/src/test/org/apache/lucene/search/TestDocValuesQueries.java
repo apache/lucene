@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Random;
 import java.util.Set;
 import java.util.function.IntFunction;
@@ -40,7 +41,10 @@ import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.LeafReaderContext;
@@ -305,6 +309,70 @@ public class TestDocValuesQueries extends LuceneTestCaseJupiter {
   public void testDuelPointRangeMultivaluedSortedSetRangeSkipperQuery(Random random)
       throws IOException {
     doTestDuelPointRangeSortedRangeQuery(random, true, 3, true);
+  }
+
+  @Test
+  public void testSortedSetRangeQueryUsesTwoPhaseRangeIteratorWithSkipper() throws IOException {
+    assertSortedSetRangeQueryUsesTwoPhaseRangeIteratorWithSkipper(false);
+    assertSortedSetRangeQueryUsesTwoPhaseRangeIteratorWithSkipper(true);
+  }
+
+  private void assertSortedSetRangeQueryUsesTwoPhaseRangeIteratorWithSkipper(boolean multiValued)
+      throws IOException {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec(8));
+      try (IndexWriter iw = new IndexWriter(dir, config)) {
+        for (int i = 0; i < 512; i++) {
+          Document doc = new Document();
+          addSortedSetValue(doc, i % 100);
+          if (multiValued) {
+            addSortedSetValue(doc, 100 + (i % 100));
+          }
+          iw.addDocument(doc);
+        }
+        iw.forceMerge(1);
+
+        try (IndexReader reader = DirectoryReader.open(iw)) {
+          IndexSearcher searcher = newSearcher(reader, false);
+          byte[] encodedMin = new byte[Long.BYTES];
+          byte[] encodedMax = new byte[Long.BYTES];
+          LongPoint.encodeDimension(20, encodedMin, 0);
+          LongPoint.encodeDimension(40, encodedMax, 0);
+          Query query =
+              SortedSetDocValuesField.newSlowRangeQuery(
+                  "dv", newBytesRef(encodedMin), newBytesRef(encodedMax), true, true);
+
+          LeafReaderContext leaf = reader.leaves().get(0);
+          assertSame(query, searcher.rewrite(query));
+          assertNull(leaf.reader().getMetaData().sort());
+          assertNotNull(leaf.reader().getDocValuesSkipper("dv"));
+          assertEquals(
+              multiValued == false,
+              DocValues.unwrapSingleton(DocValues.getSortedSet(leaf.reader(), "dv")) != null);
+
+          Weight weight = query.createWeight(searcher, ScoreMode.COMPLETE_NO_SCORES, 1f);
+          ScorerSupplier scorerSupplier = weight.scorerSupplier(leaf);
+
+          assertNotNull(scorerSupplier);
+          assertTrue(
+              scorerSupplier.getClass().getName(),
+              scorerSupplier instanceof ConstantScoreScorerSupplier);
+          DocIdSetIterator iterator =
+              ((ConstantScoreScorerSupplier) scorerSupplier).iterator(Long.MAX_VALUE);
+          // The skipper route exposes a two-phase DocValuesRangeIterator whose intoBitSet
+          // bulk-evaluates skip blocks, rather than a per-doc plain iterator.
+          TwoPhaseIterator twoPhase = TwoPhaseIterator.unwrap(iterator);
+          assertNotNull(iterator.getClass().getName(), twoPhase);
+          assertTrue(twoPhase.getClass().getName(), twoPhase instanceof DocValuesRangeIterator);
+        }
+      }
+    }
+  }
+
+  private void addSortedSetValue(Document doc, long value) {
+    byte[] encoded = new byte[Long.BYTES];
+    LongPoint.encodeDimension(value, encoded, 0);
+    doc.add(SortedSetDocValuesField.indexedField("dv", newBytesRef(encoded)));
   }
 
   @Test
@@ -690,6 +758,190 @@ public class TestDocValuesQueries extends LuceneTestCaseJupiter {
   }
 
   @Test
+  public void testSortedSetDocValuesRangeQueryCount() throws Exception {
+    try (Directory dir = newDirectory();
+        RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
+      for (int i = 0; i < 100; i++) {
+        String val = String.format(Locale.ROOT, "%03d", i);
+        Document doc = new Document();
+        doc.add(SortedSetDocValuesField.indexedField("with_index", newBytesRef(val)));
+        doc.add(new SortedSetDocValuesField("without_index", newBytesRef(val)));
+        if (i != 55) {
+          doc.add(SortedSetDocValuesField.indexedField("sparse", newBytesRef(val)));
+        }
+        iw.addDocument(doc);
+      }
+      iw.commit();
+      iw.forceMerge(1);
+
+      try (IndexReader reader = iw.getReader()) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+
+        // Nonexistent field
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "nonexistent", newBytesRef("000"), newBytesRef("099"), true, true),
+            0);
+
+        // Below all values: range is entirely before "000"
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "with_index", newBytesRef("!"), newBytesRef("/"), true, true),
+            0);
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "without_index", newBytesRef("!"), newBytesRef("/"), true, true),
+            0);
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "sparse", newBytesRef("!"), newBytesRef("/"), true, true),
+            0);
+
+        // Match all values: "000" through "099"
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "with_index", newBytesRef("000"), newBytesRef("099"), true, true),
+            100);
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "without_index", newBytesRef("000"), newBytesRef("099"), true, true),
+            -1);
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "sparse", newBytesRef("000"), newBytesRef("099"), true, true),
+            -1);
+
+        // Partial match: "050" through "060" = 11 values
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "with_index", newBytesRef("050"), newBytesRef("060"), true, true),
+            -1);
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "without_index", newBytesRef("050"), newBytesRef("060"), true, true),
+            -1);
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "sparse", newBytesRef("050"), newBytesRef("060"), true, true),
+            -1);
+
+        // Partial match with bounds not in the index: "0501" falls between "050" and "051"
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "with_index", newBytesRef("0501"), newBytesRef("100"), true, true),
+            -1);
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "without_index", newBytesRef("0501"), newBytesRef("100"), true, true),
+            -1);
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "sparse", newBytesRef("0501"), newBytesRef("100"), true, true),
+            -1);
+
+        // Non-indexed bounds that cover all values: "//" < "000" and "1000" > "099"
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "with_index", newBytesRef("//"), newBytesRef("1000"), true, true),
+            100);
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "without_index", newBytesRef("//"), newBytesRef("1000"), true, true),
+            -1);
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "sparse", newBytesRef("//"), newBytesRef("1000"), true, true),
+            -1);
+
+        // Non-indexed bounds that match nothing: "0991" through "0999" are above all values
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "with_index", newBytesRef("0991"), newBytesRef("0999"), true, true),
+            0);
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "without_index", newBytesRef("0991"), newBytesRef("0999"), true, true),
+            0);
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "sparse", newBytesRef("0991"), newBytesRef("0999"), true, true),
+            0);
+
+        // Above all values: range is entirely after "099"
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "with_index", newBytesRef("100"), newBytesRef("199"), true, true),
+            0);
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "without_index", newBytesRef("100"), newBytesRef("199"), true, true),
+            0);
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "sparse", newBytesRef("100"), newBytesRef("199"), true, true),
+            0);
+      }
+
+      // Delete docs with values "020" through "030" (11 docs)
+      iw.deleteDocuments(
+          SortedSetDocValuesField.newSlowRangeQuery(
+              "with_index", newBytesRef("020"), newBytesRef("030"), true, true));
+      iw.commit();
+
+      try (IndexReader reader = iw.getReader()) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+
+        // Below all values still matches nothing
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "with_index", newBytesRef("!"), newBytesRef("/"), true, true),
+            0);
+        // All values minus 11 deleted = 89
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "with_index", newBytesRef("000"), newBytesRef("099"), true, true),
+            89);
+        // Partial match still can't be counted cheaply
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "with_index", newBytesRef("050"), newBytesRef("060"), true, true),
+            -1);
+        // Above all values still matches nothing
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "with_index", newBytesRef("100"), newBytesRef("199"), true, true),
+            0);
+      }
+    }
+  }
+
+  @Test
   public void testSortedNumericDocValuesRangeQueryRewrites(Random random) throws Exception {
     try (Directory dir = newDirectory();
         RandomIndexWriter iw = new RandomIndexWriter(random, dir)) {
@@ -867,6 +1119,254 @@ public class TestDocValuesQueries extends LuceneTestCaseJupiter {
       assertThat(supplier.cost(), greaterThanOrEqualTo((long) sizes[i]));
       assertThat(supplier.cost(), lessThanOrEqualTo(totalSizes[i] + 2L * skipIntervalSize));
     }
+    reader.close();
+    dir.close();
+  }
+
+  /**
+   * Verifies that SortedNumericDocValuesRangeQuery can use a secondary sort field to accelerate
+   * querying if the primary sort field is single-valued and therefore a no-op
+   */
+  @Test
+  public void testSortedNumericRangeQueryOptimizesWithConstantPrimary(Random random)
+      throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec(random));
+    config.setIndexSort(
+        new Sort(
+            new SortField("primary", SortField.Type.LONG), // constant → no-op
+            new SortField("secondary", SortField.Type.LONG))); // varying → effective primary
+    IndexWriter iw = new IndexWriter(dir, config);
+    for (int i = 0; i < 10; i++) {
+      Document doc = new Document();
+      doc.add(NumericDocValuesField.indexedField("primary", 42)); // constant, skip index present
+      doc.add(NumericDocValuesField.indexedField("secondary", i)); // varying
+      iw.addDocument(doc);
+    }
+    iw.forceMerge(1);
+    iw.close();
+    DirectoryReader reader = DirectoryReader.open(dir);
+    IndexSearcher searcher = new IndexSearcher(reader);
+
+    // primary has a constant value, so getPrimarySortField skips it and returns "secondary".
+    // The query on "secondary" should therefore use SortedSkipperScorerSupplier,
+    // which yields a plain range iterator with no two-phase iterator.
+    Query query = SortedNumericDocValuesField.newSlowRangeQuery("secondary", 3, 7);
+    Weight weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
+    Scorer scorer = weight.scorer(reader.leaves().get(0));
+    assertNotNull(scorer);
+    assertNull(
+        "SortedSkipperScorerSupplier should be used when primary sort is a no-op",
+        scorer.twoPhaseIterator());
+
+    reader.close();
+    dir.close();
+  }
+
+  /**
+   * Verifies that SortedNumericDocValuesRangeQuery can use a secondary sort field to accelerate
+   * querying if the primary sort field is empty and therefore a no-op
+   */
+  @Test
+  public void testSortedNumericRangeQueryOptimizesWithEmptyPrimary(Random random)
+      throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec(random));
+    config.setIndexSort(
+        new Sort(
+            new SortField("primary", SortField.Type.LONG), // empty → no-op
+            new SortField("secondary", SortField.Type.LONG))); // varying → effective primary
+    IndexWriter iw = new IndexWriter(dir, config);
+    for (int i = 0; i < 10; i++) {
+      Document doc = new Document();
+      // nothing added for the primary sort field
+      doc.add(NumericDocValuesField.indexedField("secondary", i)); // varying
+      iw.addDocument(doc);
+    }
+    iw.forceMerge(1);
+    iw.close();
+    DirectoryReader reader = DirectoryReader.open(dir);
+    IndexSearcher searcher = new IndexSearcher(reader);
+
+    // primary has a constant value, so getPrimarySortField skips it and returns "secondary".
+    // The query on "secondary" should therefore use SortedSkipperScorerSupplier,
+    // which yields a plain range iterator with no two-phase iterator.
+    Query query = SortedNumericDocValuesField.newSlowRangeQuery("secondary", 3, 7);
+    Weight weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
+    Scorer scorer = weight.scorer(reader.leaves().get(0));
+    assertNotNull(scorer);
+    assertNull(
+        "SortedSkipperScorerSupplier should be used when primary sort is a no-op",
+        scorer.twoPhaseIterator());
+
+    reader.close();
+    dir.close();
+  }
+
+  /**
+   * Verifies that SortedNumericDocValuesRangeQuery does not use a secondary sort field to
+   * accelerate querying if the primary sort field is a genuine sort field.
+   */
+  @Test
+  public void testSortedNumericRangeQueryDoesNotOptimizeWithActivePrimary(Random random)
+      throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec(random));
+    config.setIndexSort(
+        new Sort(
+            new SortField("primary", SortField.Type.LONG), // multiple values → effective primary
+            new SortField("secondary", SortField.Type.LONG)));
+    IndexWriter iw = new IndexWriter(dir, config);
+    for (int i = 0; i < 10; i++) {
+      Document doc = new Document();
+      doc.add(NumericDocValuesField.indexedField("primary", i)); // varying
+      doc.add(NumericDocValuesField.indexedField("secondary", i)); // varying
+      iw.addDocument(doc);
+    }
+    iw.forceMerge(1);
+    iw.close();
+    DirectoryReader reader = DirectoryReader.open(dir);
+    IndexSearcher searcher = new IndexSearcher(reader);
+
+    // primary is active, so getPrimarySortField returns "primary", not "secondary".
+    // The query on "secondary" must fall back to the TwoPhaseIterator path.
+    Query query = SortedNumericDocValuesField.newSlowRangeQuery("secondary", 3, 7);
+    Weight weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
+    Scorer scorer = weight.scorer(reader.leaves().get(0));
+    assertNotNull(scorer);
+    assertNotNull(
+        "TwoPhaseIterator fallback should be used when secondary is not the effective primary",
+        scorer.twoPhaseIterator());
+
+    reader.close();
+    dir.close();
+  }
+
+  /**
+   * Verifies that SortedSetDocValuesRangeQuery can use a secondary sort field to accelerate
+   * querying if the primary sort field is single-valued and therefore a no-op
+   */
+  @Test
+  public void testSortedSetRangeQueryOptimizesWithConstantPrimary(Random random)
+      throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec(random));
+    config.setIndexSort(
+        new Sort(
+            new SortField("primary", SortField.Type.STRING), // constant → no-op
+            new SortField("secondary", SortField.Type.STRING))); // varying → effective primary
+    IndexWriter iw = new IndexWriter(dir, config);
+    for (int i = 0; i < 10; i++) {
+      Document doc = new Document();
+      doc.add(SortedDocValuesField.indexedField("primary", newBytesRef("constant")));
+      doc.add(
+          SortedDocValuesField.indexedField(
+              "secondary", newBytesRef(String.format(Locale.ROOT, "%03d", i))));
+      iw.addDocument(doc);
+    }
+    iw.forceMerge(1);
+    iw.close();
+    DirectoryReader reader = DirectoryReader.open(dir);
+    IndexSearcher searcher = new IndexSearcher(reader);
+
+    // primary has a constant ordinal, so getPrimarySortField skips it and returns "secondary".
+    // The query on "secondary" should therefore use SortedSkipperScorerSupplier,
+    // which yields a plain range iterator with no two-phase iterator.
+    Query query =
+        SortedSetDocValuesField.newSlowRangeQuery(
+            "secondary", newBytesRef("003"), newBytesRef("007"), true, true);
+    Weight weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
+    Scorer scorer = weight.scorer(reader.leaves().get(0));
+    assertNotNull(scorer);
+    assertNull(
+        "SortedSkipperScorerSupplier should be used when primary sort is a no-op",
+        scorer.twoPhaseIterator());
+
+    reader.close();
+    dir.close();
+  }
+
+  /**
+   * Verifies that SortedSetDocValuesRangeQuery can use a secondary sort field to accelerate
+   * querying if the primary sort field is empty and therefore a no-op
+   */
+  @Test
+  public void testSortedSetRangeQueryOptimizesWithEmptyPrimary(Random random) throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec(random));
+    config.setIndexSort(
+        new Sort(
+            new SortField("primary", SortField.Type.STRING), // constant → no-op
+            new SortField("secondary", SortField.Type.STRING))); // varying → effective primary
+    IndexWriter iw = new IndexWriter(dir, config);
+    for (int i = 0; i < 10; i++) {
+      Document doc = new Document();
+      // no values added for primary field
+      doc.add(
+          SortedDocValuesField.indexedField(
+              "secondary", newBytesRef(String.format(Locale.ROOT, "%03d", i))));
+      iw.addDocument(doc);
+    }
+    iw.forceMerge(1);
+    iw.close();
+    DirectoryReader reader = DirectoryReader.open(dir);
+    IndexSearcher searcher = new IndexSearcher(reader);
+
+    // primary has a constant ordinal, so getPrimarySortField skips it and returns "secondary".
+    // The query on "secondary" should therefore use SortedSkipperScorerSupplier,
+    // which yields a plain range iterator with no two-phase iterator.
+    Query query =
+        SortedSetDocValuesField.newSlowRangeQuery(
+            "secondary", newBytesRef("003"), newBytesRef("007"), true, true);
+    Weight weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
+    Scorer scorer = weight.scorer(reader.leaves().get(0));
+    assertNotNull(scorer);
+    assertNull(
+        "SortedSkipperScorerSupplier should be used when primary sort is a no-op",
+        scorer.twoPhaseIterator());
+
+    reader.close();
+    dir.close();
+  }
+
+  /**
+   * Verifies that SortedSetDocValuesRangeQuery does not use a secondary sort field to accelerate
+   * querying if the primary sort field is a genuine sort field.
+   */
+  @Test
+  public void testSortedSetRangeQueryDoesNotOptimizeWithActivePrimary(Random random)
+      throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec(random));
+    config.setIndexSort(
+        new Sort(
+            new SortField("primary", SortField.Type.STRING), // multiple values → effective primary
+            new SortField("secondary", SortField.Type.STRING)));
+    IndexWriter iw = new IndexWriter(dir, config);
+    for (int i = 0; i < 10; i++) {
+      String val = String.format(Locale.ROOT, "%03d", i);
+      Document doc = new Document();
+      doc.add(SortedDocValuesField.indexedField("primary", newBytesRef(val))); // varying
+      doc.add(SortedDocValuesField.indexedField("secondary", newBytesRef(val))); // varying
+      iw.addDocument(doc);
+    }
+    iw.forceMerge(1);
+    iw.close();
+    DirectoryReader reader = DirectoryReader.open(dir);
+    IndexSearcher searcher = new IndexSearcher(reader);
+
+    // primary is active, so getPrimarySortField returns "primary", not "secondary".
+    // The query on "secondary" must fall back to the TwoPhaseIterator path.
+    Query query =
+        SortedSetDocValuesField.newSlowRangeQuery(
+            "secondary", newBytesRef("003"), newBytesRef("007"), true, true);
+    Weight weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
+    Scorer scorer = weight.scorer(reader.leaves().get(0));
+    assertNotNull(scorer);
+    assertNotNull(
+        "TwoPhaseIterator fallback should be used when secondary is not the effective primary",
+        scorer.twoPhaseIterator());
+
     reader.close();
     dir.close();
   }

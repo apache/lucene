@@ -63,7 +63,7 @@ public class SuggestIndexSearcher extends IndexSearcher {
    */
   public void suggest(CompletionQuery query, TopSuggestDocsCollector collector) throws IOException {
     // TODO use IndexSearcher.rewrite instead
-    // have to implement equals() and hashCode() in CompletionQuerys and co
+    // have to implement equals() and hashCode() in CompletionQuery and co
     query = (CompletionQuery) query.rewrite(this);
     Weight weight = query.createWeight(this, collector.scoreMode(), 1f);
     for (LeafReaderContext context : getIndexReader().leaves()) {

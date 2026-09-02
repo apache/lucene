@@ -98,6 +98,40 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
     assertFloatReturningProviders(p -> p.cosine(a, b));
   }
 
+  public void testUint8Vectors() {
+    var a = new byte[size];
+    var b = new byte[size];
+    random().nextBytes(a);
+    random().nextBytes(b);
+    assertIntReturningProviders(p -> p.uint8DotProduct(a, b));
+    assertIntReturningProviders(p -> p.uint8SquareDistance(a, b));
+  }
+
+  public void testUint8VectorsBoundaries() {
+    var a = new byte[size];
+    var b = new byte[size];
+
+    Arrays.fill(a, Byte.MIN_VALUE);
+    Arrays.fill(b, Byte.MIN_VALUE);
+    assertIntReturningProviders(p -> p.uint8DotProduct(a, b));
+    assertIntReturningProviders(p -> p.uint8SquareDistance(a, b));
+
+    Arrays.fill(a, Byte.MAX_VALUE);
+    Arrays.fill(b, Byte.MAX_VALUE);
+    assertIntReturningProviders(p -> p.uint8DotProduct(a, b));
+    assertIntReturningProviders(p -> p.uint8SquareDistance(a, b));
+
+    Arrays.fill(a, Byte.MIN_VALUE);
+    Arrays.fill(b, Byte.MAX_VALUE);
+    assertIntReturningProviders(p -> p.uint8DotProduct(a, b));
+    assertIntReturningProviders(p -> p.uint8SquareDistance(a, b));
+
+    Arrays.fill(a, Byte.MAX_VALUE);
+    Arrays.fill(b, Byte.MIN_VALUE);
+    assertIntReturningProviders(p -> p.uint8DotProduct(a, b));
+    assertIntReturningProviders(p -> p.uint8SquareDistance(a, b));
+  }
+
   public void testInt4DotProduct() {
     assumeTrue("even sizes only", size % 2 == 0);
     var a = new byte[size];
@@ -269,6 +303,27 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
     Arrays.fill(binaryQuantized, Byte.MIN_VALUE);
     Arrays.fill(int4Quantized, Byte.MIN_VALUE);
     assertLongReturningProviders(p -> p.int4BitDotProduct(int4Quantized, binaryQuantized));
+  }
+
+  public void testInt4DibitDotProduct() {
+    var dibitQuantized = new byte[size];
+    var int4Quantized = new byte[size * 2];
+    random().nextBytes(dibitQuantized);
+    random().nextBytes(int4Quantized);
+    assertLongReturningProviders(p -> p.int4DibitDotProduct(int4Quantized, dibitQuantized));
+  }
+
+  public void testInt4DibitDotProductBoundaries() {
+    var dibitQuantized = new byte[size];
+    var int4Quantized = new byte[size * 2];
+
+    Arrays.fill(dibitQuantized, Byte.MAX_VALUE);
+    Arrays.fill(int4Quantized, Byte.MAX_VALUE);
+    assertLongReturningProviders(p -> p.int4DibitDotProduct(int4Quantized, dibitQuantized));
+
+    Arrays.fill(dibitQuantized, Byte.MIN_VALUE);
+    Arrays.fill(int4Quantized, Byte.MIN_VALUE);
+    assertLongReturningProviders(p -> p.int4DibitDotProduct(int4Quantized, dibitQuantized));
   }
 
   static byte[] pack(byte[] unpacked) {

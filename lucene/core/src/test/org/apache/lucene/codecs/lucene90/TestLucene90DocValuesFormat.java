@@ -279,6 +279,162 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
     }
   }
 
+  public void testDenseBinaryValuesBulkFetch() throws Exception {
+    doTestDenseBinaryValuesBulkFetch(true);
+    doTestDenseBinaryValuesBulkFetch(false);
+  }
+
+  private void doTestDenseBinaryValuesBulkFetch(boolean fixedLength) throws Exception {
+    final int numDocs = 512;
+    final BytesRef[] expected = new BytesRef[numDocs];
+    for (int i = 0; i < numDocs; i++) {
+      int length = fixedLength ? 8 : 1 + random().nextInt(32);
+      byte[] bytes = new byte[length];
+      random().nextBytes(bytes);
+      expected[i] = new BytesRef(bytes);
+    }
+
+    Directory dir = newDirectory();
+    IndexWriterConfig conf = new IndexWriterConfig(new MockAnalyzer(random()));
+    conf.setMergeScheduler(new SerialMergeScheduler());
+    IndexWriter writer = new IndexWriter(dir, conf);
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      doc.add(new BinaryDocValuesField("binary", expected[i]));
+      writer.addDocument(doc);
+    }
+    writer.forceMerge(1);
+
+    try (DirectoryReader reader = DirectoryReader.open(writer)) {
+      BinaryDocValues values = reader.leaves().get(0).reader().getBinaryDocValues("binary");
+      BinaryDocValues singleValues = reader.leaves().get(0).reader().getBinaryDocValues("binary");
+      assertBulkBinaryValues(values, singleValues, expected, 0, 128, 1, fixedLength);
+      assertBulkBinaryValues(values, singleValues, expected, 17, 128, 1, fixedLength);
+      assertBulkBinaryValues(values, singleValues, expected, 0, 128, 2, fixedLength);
+    }
+
+    writer.close();
+    dir.close();
+  }
+
+  private static void assertBulkBinaryValues(
+      BinaryDocValues values,
+      BinaryDocValues singleValues,
+      BytesRef[] expected,
+      int startDoc,
+      int size,
+      int docStep,
+      boolean fixedLength)
+      throws IOException {
+    int[] docs = new int[size];
+    BytesRef[] actual = new BytesRef[size];
+    for (int i = 0; i < size; i++) {
+      docs[i] = startDoc + i * docStep;
+    }
+
+    values.binaryValues(size, docs, actual);
+    if (size != 0) {
+      assertEquals(docs[size - 1], values.docID());
+    }
+    for (int i = 0; i < size; i++) {
+      assertTrue(singleValues.advanceExact(docs[i]));
+      BytesRef singleValue = BytesRef.deepCopyOf(singleValues.binaryValue());
+      assertEquals(
+          "fixedLength="
+              + fixedLength
+              + " doc="
+              + docs[i]
+              + " startDoc="
+              + startDoc
+              + " docStep="
+              + docStep,
+          singleValue,
+          actual[i]);
+      assertEquals(
+          "fixedLength=" + fixedLength + " doc=" + docs[i], expected[docs[i]], singleValue);
+    }
+
+    // Verify offset-aware variant produces identical results
+    if (size > 2) {
+      int docsOffset = 1;
+      int sliceSize = size - 2;
+      BytesRef sentinel = new BytesRef("SENTINEL");
+      BytesRef[] offsetActual = new BytesRef[sliceSize + 4];
+      int valuesOffset = 2;
+      Arrays.fill(offsetActual, sentinel);
+      values.binaryValues(sliceSize, docs, docsOffset, offsetActual, valuesOffset);
+      for (int i = 0; i < sliceSize; i++) {
+        assertEquals(
+            "offset variant mismatch at i=" + i + " fixedLength=" + fixedLength,
+            actual[docsOffset + i],
+            offsetActual[valuesOffset + i]);
+      }
+      // sentinel positions should be untouched
+      assertSame(sentinel, offsetActual[0]);
+      assertSame(sentinel, offsetActual[1]);
+      assertSame(sentinel, offsetActual[valuesOffset + sliceSize]);
+    }
+  }
+
+  public void testSparseBinaryValuesBulkFetch() throws Exception {
+    final int numDocs = 512;
+    final BytesRef[] expected = new BytesRef[numDocs];
+    // Only even-numbered docs have binary values
+    for (int i = 0; i < numDocs; i++) {
+      if (i % 2 == 0) {
+        byte[] bytes = new byte[8];
+        random().nextBytes(bytes);
+        expected[i] = new BytesRef(bytes);
+      }
+    }
+
+    Directory dir = newDirectory();
+    IndexWriterConfig conf = new IndexWriterConfig(new MockAnalyzer(random()));
+    conf.setMergeScheduler(new SerialMergeScheduler());
+    IndexWriter writer = new IndexWriter(dir, conf);
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      if (expected[i] != null) {
+        doc.add(new BinaryDocValuesField("binary", expected[i]));
+      }
+      writer.addDocument(doc);
+    }
+    writer.forceMerge(1);
+
+    try (DirectoryReader reader = DirectoryReader.open(writer)) {
+      BinaryDocValues values = reader.leaves().get(0).reader().getBinaryDocValues("binary");
+      BinaryDocValues singleValues = reader.leaves().get(0).reader().getBinaryDocValues("binary");
+
+      // Request a mix of docs with and without values
+      int size = 64;
+      int[] docs = new int[size];
+      BytesRef[] actual = new BytesRef[size];
+      for (int i = 0; i < size; i++) {
+        docs[i] = i * 4; // every 4th doc: even (has value) and odd (no value) mix
+      }
+
+      values.binaryValues(size, docs, actual);
+      for (int i = 0; i < size; i++) {
+        if (singleValues.advanceExact(docs[i])) {
+          BytesRef singleValue = BytesRef.deepCopyOf(singleValues.binaryValue());
+          assertNotNull("doc " + docs[i] + " should have a value", actual[i]);
+          assertEquals("doc " + docs[i], singleValue, actual[i]);
+        } else {
+          assertNull("doc " + docs[i] + " should be null", actual[i]);
+        }
+      }
+
+      // Test size == 0 edge case
+      BinaryDocValues zeroValues = reader.leaves().get(0).reader().getBinaryDocValues("binary");
+      int docIdBefore = zeroValues.docID();
+      zeroValues.binaryValues(0, new int[0], new BytesRef[0]);
+      assertEquals(docIdBefore, zeroValues.docID());
+    }
+
+    writer.close();
+    dir.close();
+  }
+
   private void doTestSparseDocValuesVsStoredFields() throws Exception {
     final long[] values = new long[TestUtil.nextInt(random(), 1, 500)];
     for (int i = 0; i < values.length; ++i) {

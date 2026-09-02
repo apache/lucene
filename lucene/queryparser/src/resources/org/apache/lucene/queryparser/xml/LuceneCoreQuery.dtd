@@ -28,7 +28,7 @@
       </ul>
   </li>
   <li>To provide a shorthand way of expressing query logic which echos the logical tree structure of query objects more closely than reading procedural Java query construction code</li>
-  <li>To bridge the growing gap between Lucene query/filtering functionality and the set of functionality accessible throught the standard Lucene QueryParser syntax</li>
+  <li>To bridge the growing gap between Lucene query/filtering functionality and the set of functionality accessible through the standard Lucene QueryParser syntax</li>
   <li>To provide a simply extensible syntax that does not require complex parser skills such as knowledge of JavaCC syntax</li>
   </ol>
 
@@ -86,7 +86,7 @@
 <!ENTITY % filters "%coreFilters;%extendedFilters1;" >
 
 <!--
-  BooleanQuerys implement Boolean logic which controls how multiple Clauses should be interpreted.
+  BooleanQuery implements Boolean logic which controls how multiple Clauses should be interpreted.
   Some clauses may represent optional Query criteria while others represent mandatory criteria.
   @example
     <em>Find articles about banks, preferably talking about mergers but nothing to do with "sumitomo"</em>
@@ -434,7 +434,7 @@ Passes content directly through to the standard LuceneQuery parser see "Lucene Q
 <!-- Controls if matching terms  have to appear in the order listed or can be reversed -->
 <!ATTLIST SpanNear inOrder (true | false) "true">
 
-<!-- Looks for a SpanQuery match occuring near the beginning of a document
+<!-- Looks for a SpanQuery match occurring near the beginning of a document
   @example
     <em>Find letters where the first 50 words talk about a resignation:</em>
       %

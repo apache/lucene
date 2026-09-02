@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.search.grouping;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -29,6 +28,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.function.Supplier;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.SortedDocValuesField;
@@ -134,16 +134,22 @@ public class TestDistinctValuesCollector extends AbstractGroupingTestCase {
           }
         };
 
-    // === Search for content:random
-    FirstPassGroupingCollector<Comparable<Object>> firstCollector =
-        createRandomFirstPassCollector(new Sort(), GROUP_FIELD, 10);
-    indexSearcher.search(new TermQuery(new Term("content", "random")), firstCollector);
-    DistinctValuesCollector<Comparable<Object>, Comparable<Object>> distinctValuesCollector =
-        createDistinctCountCollector(firstCollector, COUNT_FIELD);
-    indexSearcher.search(new TermQuery(new Term("content", "random")), distinctValuesCollector);
+    boolean useValueSource = random.nextBoolean();
+    Supplier<GroupSelector<Comparable<Object>>> groupSelectorFactory =
+        createGroupSelectorFactory(GROUP_FIELD, useValueSource);
+    Supplier<GroupSelector<Comparable<Object>>> valueSelectorFactory =
+        createGroupSelectorFactory(COUNT_FIELD, useValueSource);
 
+    // === Search for content:random
+    Collection<SearchGroup<Comparable<Object>>> searchGroups =
+        indexSearcher.search(
+            new TermQuery(new Term("content", "random")),
+            new FirstPassGroupingCollectorManager<>(groupSelectorFactory, new Sort(), 0, 10));
     List<DistinctValuesCollector.GroupCount<Comparable<Object>, Comparable<Object>>> gcs =
-        distinctValuesCollector.getGroups();
+        indexSearcher.search(
+            new TermQuery(new Term("content", "random")),
+            new DistinctValuesCollectorManager<>(
+                groupSelectorFactory, searchGroups, valueSelectorFactory));
     Collections.sort(gcs, cmp);
     assertEquals(4, gcs.size());
 
@@ -170,12 +176,15 @@ public class TestDistinctValuesCollector extends AbstractGroupingTestCase {
     compare("1", countValues.get(0));
 
     // === Search for content:some
-    firstCollector = createRandomFirstPassCollector(new Sort(), GROUP_FIELD, 10);
-    indexSearcher.search(new TermQuery(new Term("content", "some")), firstCollector);
-    distinctValuesCollector = createDistinctCountCollector(firstCollector, COUNT_FIELD);
-    indexSearcher.search(new TermQuery(new Term("content", "some")), distinctValuesCollector);
-
-    gcs = distinctValuesCollector.getGroups();
+    searchGroups =
+        indexSearcher.search(
+            new TermQuery(new Term("content", "some")),
+            new FirstPassGroupingCollectorManager<>(groupSelectorFactory, new Sort(), 0, 10));
+    gcs =
+        indexSearcher.search(
+            new TermQuery(new Term("content", "some")),
+            new DistinctValuesCollectorManager<>(
+                groupSelectorFactory, searchGroups, valueSelectorFactory));
     Collections.sort(gcs, cmp);
     assertEquals(3, gcs.size());
 
@@ -197,12 +206,15 @@ public class TestDistinctValuesCollector extends AbstractGroupingTestCase {
     compare("1", countValues.get(0));
 
     // === Search for content:blob
-    firstCollector = createRandomFirstPassCollector(new Sort(), GROUP_FIELD, 10);
-    indexSearcher.search(new TermQuery(new Term("content", "blob")), firstCollector);
-    distinctValuesCollector = createDistinctCountCollector(firstCollector, COUNT_FIELD);
-    indexSearcher.search(new TermQuery(new Term("content", "blob")), distinctValuesCollector);
-
-    gcs = distinctValuesCollector.getGroups();
+    searchGroups =
+        indexSearcher.search(
+            new TermQuery(new Term("content", "blob")),
+            new FirstPassGroupingCollectorManager<>(groupSelectorFactory, new Sort(), 0, 10));
+    gcs =
+        indexSearcher.search(
+            new TermQuery(new Term("content", "blob")),
+            new DistinctValuesCollectorManager<>(
+                groupSelectorFactory, searchGroups, valueSelectorFactory));
     Collections.sort(gcs, cmp);
     assertEquals(2, gcs.size());
 
@@ -235,25 +247,35 @@ public class TestDistinctValuesCollector extends AbstractGroupingTestCase {
         List<DistinctValuesCollector.GroupCount<Comparable<Object>, Comparable<Object>>>
             expectedResult = createExpectedResult(context, term, groupSort, topN);
 
-        FirstPassGroupingCollector<Comparable<Object>> firstCollector =
-            createRandomFirstPassCollector(groupSort, GROUP_FIELD, topN);
-        searcher.search(new TermQuery(new Term("content", term)), firstCollector);
-        DistinctValuesCollector<Comparable<Object>, Comparable<Object>> distinctValuesCollector =
-            createDistinctCountCollector(firstCollector, COUNT_FIELD);
-        searcher.search(new TermQuery(new Term("content", term)), distinctValuesCollector);
-        @SuppressWarnings("unchecked")
+        boolean useValueSource = random.nextBoolean();
+        Supplier<GroupSelector<Comparable<Object>>> groupSelectorFactory =
+            createGroupSelectorFactory(GROUP_FIELD, useValueSource);
+        Supplier<GroupSelector<Comparable<Object>>> valueSelectorFactory =
+            createGroupSelectorFactory(COUNT_FIELD, useValueSource);
+
+        Collection<SearchGroup<Comparable<Object>>> searchGroups =
+            searcher.search(
+                new TermQuery(new Term("content", term)),
+                new FirstPassGroupingCollectorManager<>(groupSelectorFactory, groupSort, 0, topN));
+
+        if (searchGroups == null || searchGroups.isEmpty()) {
+          assertEquals(0, expectedResult.size());
+          continue;
+        }
+
         List<DistinctValuesCollector.GroupCount<Comparable<Object>, Comparable<Object>>>
-            actualResult = distinctValuesCollector.getGroups();
+            actualResult =
+                searcher.search(
+                    new TermQuery(new Term("content", term)),
+                    new DistinctValuesCollectorManager<>(
+                        groupSelectorFactory, searchGroups, valueSelectorFactory));
 
         if (VERBOSE) {
           System.out.println("Index iter=" + indexIter);
           System.out.println("Search iter=" + searchIter);
-          System.out.println(
-              "1st pass collector class name=" + firstCollector.getClass().getName());
-          System.out.println(
-              "2nd pass collector class name=" + distinctValuesCollector.getClass().getName());
+          System.out.println("useValueSource=" + useValueSource);
           System.out.println("Search term=" + term);
-          System.out.println("1st pass groups=" + firstCollector.getTopGroups(0));
+          System.out.println("1st pass groups=" + searchGroups);
           System.out.println("Expected:");
           printGroups(expectedResult);
           System.out.println("Actual:");
@@ -350,37 +372,15 @@ public class TestDistinctValuesCollector extends AbstractGroupingTestCase {
     doc.add(new SortedDocValuesField(field, new BytesRef(value)));
   }
 
-  @SuppressWarnings({"unchecked", "rawtypes"})
-  private <T extends Comparable<Object>, R extends Comparable<Object>>
-      DistinctValuesCollector<T, R> createDistinctCountCollector(
-          FirstPassGroupingCollector<T> firstPassGroupingCollector, String countField)
-          throws IOException {
-    Collection<SearchGroup<T>> searchGroups = firstPassGroupingCollector.getTopGroups(0);
-    GroupSelector<T> selector = firstPassGroupingCollector.getGroupSelector();
-    if (ValueSourceGroupSelector.class.isAssignableFrom(selector.getClass())) {
-      GroupSelector gs =
-          new ValueSourceGroupSelector(new BytesRefFieldSource(countField), new HashMap<>());
-      return new DistinctValuesCollector<>(selector, searchGroups, gs);
+  @SuppressWarnings({"unchecked"})
+  private static <T> Supplier<GroupSelector<T>> createGroupSelectorFactory(
+      String field, boolean useValueSource) {
+    if (useValueSource) {
+      return () ->
+          (GroupSelector<T>)
+              new ValueSourceGroupSelector(new BytesRefFieldSource(field), new HashMap<>());
     } else {
-      GroupSelector ts = new TermGroupSelector(countField);
-      return new DistinctValuesCollector<>(selector, searchGroups, ts);
-    }
-  }
-
-  @SuppressWarnings({"unchecked", "rawtypes"})
-  private <T> FirstPassGroupingCollector<T> createRandomFirstPassCollector(
-      Sort groupSort, String groupField, int topNGroups) throws IOException {
-    Random random = random();
-    if (random.nextBoolean()) {
-      return (FirstPassGroupingCollector<T>)
-          new FirstPassGroupingCollector<>(
-              new ValueSourceGroupSelector(new BytesRefFieldSource(groupField), new HashMap<>()),
-              groupSort,
-              topNGroups);
-    } else {
-      return (FirstPassGroupingCollector<T>)
-          new FirstPassGroupingCollector<>(
-              new TermGroupSelector(groupField), groupSort, topNGroups);
+      return () -> (GroupSelector<T>) new TermGroupSelector(field);
     }
   }
 

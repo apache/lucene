@@ -103,7 +103,8 @@ final class OrdsIntersectTermsEnumFrame {
 
   void loadNextFloorBlock() throws IOException {
     assert numFollowFloorBlocks > 0;
-    // if (DEBUG) System.out.println("    loadNextFoorBlock trans=" + transitions[transitionIndex]);
+    // if (DEBUG) System.out.println("    loadNextFloorBlock trans=" +
+    // transitions[transitionIndex]);
 
     do {
       fp = fpOrig + (floorDataReader.readVLong() >>> 1);

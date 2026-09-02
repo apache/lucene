@@ -23,6 +23,7 @@ import org.apache.lucene.analysis.CharacterUtils.CharacterBuffer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.UnicodeUtil;
 
 /** TestCase for the {@link CharacterUtils} class. */
 public class TestCharacterUtils extends LuceneTestCase {
@@ -108,5 +109,45 @@ public class TestCharacterUtils extends LuceneTestCase {
         new String(buffer.getBuffer(), buffer.getOffset(), buffer.getLength()));
     assertFalse(CharacterUtils.fill(buffer, reader));
     assertEquals(0, buffer.getLength());
+  }
+
+  public void testAsciiFoldMatchesToLowerCase() {
+    for (int c = 0; c < 128; c++) {
+      assertEquals(Character.toLowerCase(c), UnicodeUtil.foldCase(c));
+    }
+  }
+
+  public void testFoldExceptions() {
+    assertEquals(0x03BC, UnicodeUtil.foldCase(0x00B5));
+    assertEquals(0x0073, UnicodeUtil.foldCase(0x017F));
+    assertEquals(0x03C3, UnicodeUtil.foldCase(0x03C2));
+    assertEquals('0', UnicodeUtil.foldCase('0'));
+    assertEquals('a', UnicodeUtil.foldCase('a'));
+    assertEquals('a', UnicodeUtil.foldCase('A'));
+  }
+
+  public void testFoldIdempotent() {
+    for (int c = 0; c <= 0xFFFF; c++) {
+      int folded = UnicodeUtil.foldCase(c);
+      assertEquals(
+          "Not idempotent at U+" + Integer.toHexString(c), folded, UnicodeUtil.foldCase(folded));
+    }
+  }
+
+  public void testSimpleCaseFold() {
+    char[] buf = "ABcΣσς".toCharArray();
+    CharacterUtils.simpleCaseFold(buf, 0, buf.length);
+    assertEquals("abcσσσ", new String(buf));
+  }
+
+  public void testSimpleCaseFoldRandom() {
+    for (int iter = 0; iter < 100; iter++) {
+      String s = TestUtil.randomUnicodeString(random(), 100);
+      char[] buf = s.toCharArray();
+      CharacterUtils.simpleCaseFold(buf, 0, buf.length);
+      char[] buf2 = new String(buf).toCharArray();
+      CharacterUtils.simpleCaseFold(buf2, 0, buf2.length);
+      assertArrayEquals(buf, buf2);
+    }
   }
 }

@@ -50,7 +50,7 @@ public class TestWord2VecSynonymFilter extends BaseTokenStreamTestCase {
         new int[] {3, 5, 5, 5, 5, 5, 10}, // end offset
         new String[] {"word", "word", "SYNONYM", "SYNONYM", "SYNONYM", "SYNONYM", "word"}, // types
         new int[] {1, 1, 0, 0, 0, 0, 1}, // posIncrements
-        new int[] {1, 1, 1, 1, 1, 1, 1}); // posLenghts
+        new int[] {1, 1, 1, 1, 1, 1, 1}); // posLengths
     a.close();
   }
 
@@ -76,7 +76,7 @@ public class TestWord2VecSynonymFilter extends BaseTokenStreamTestCase {
         new int[] {3, 5, 5, 5, 10}, // end offset
         new String[] {"word", "word", "SYNONYM", "SYNONYM", "word"}, // types
         new int[] {1, 1, 0, 0, 1}, // posIncrements
-        new int[] {1, 1, 1, 1, 1}); // posLenghts
+        new int[] {1, 1, 1, 1, 1}); // posLengths
     a.close();
   }
 

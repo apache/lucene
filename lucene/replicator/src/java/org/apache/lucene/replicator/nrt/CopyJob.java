@@ -157,7 +157,7 @@ public abstract class CopyJob implements Comparable<CopyJob> {
       } else if (prevJob.current != null && prevJob.current.name.equals(fileName)) {
         // This fileName is common to both jobs, and it's the file that the previous job was in the
         // process of copying.  In this case
-        // we continue copying it from the prevoius job.  This is important for cases where we are
+        // we continue copying it from the previous job.  This is important for cases where we are
         // copying over a large file
         // because otherwise we could keep failing the NRT copy and restarting this file from the
         // beginning and never catch up:

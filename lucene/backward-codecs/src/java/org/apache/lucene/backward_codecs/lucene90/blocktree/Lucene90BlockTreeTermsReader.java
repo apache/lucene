@@ -29,6 +29,7 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.internal.hppc.IntCursor;
@@ -327,15 +328,15 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
     // terms index
-    CodecUtil.checksumEntireFile(indexIn);
+    CodecUtil.checksumEntireFile(indexIn, merge);
 
     // term dictionary
-    CodecUtil.checksumEntireFile(termsIn);
+    CodecUtil.checksumEntireFile(termsIn, merge);
 
     // postings
-    postingsReader.checkIntegrity();
+    postingsReader.checkIntegrity(merge);
   }
 
   @Override

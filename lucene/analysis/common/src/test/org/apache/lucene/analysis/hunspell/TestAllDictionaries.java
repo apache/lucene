@@ -90,7 +90,7 @@ public class TestAllDictionaries extends LuceneTestCase {
     }
   }
 
-  /** Hack bais to expose current position. */
+  /** Hack ByteArrayInputStream to expose current position. */
   private static class ExposePosition extends ByteArrayInputStream {
     public ExposePosition(byte[] buf) {
       super(buf);

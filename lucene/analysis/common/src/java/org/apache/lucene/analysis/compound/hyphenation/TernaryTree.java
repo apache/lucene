@@ -172,7 +172,7 @@ public class TernaryTree implements Cloneable {
         eq[p] = pp;
         lo[pp]++;
         if (kv.get(lo[pp]) == 0) {
-          // key completly decompressed leaving garbage in key array
+          // key completely decompressed leaving garbage in key array
           lo[pp] = 0;
           sc[pp] = 0;
           hi[pp] = 0;

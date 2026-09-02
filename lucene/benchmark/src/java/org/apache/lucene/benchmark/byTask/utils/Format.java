@@ -27,7 +27,7 @@ public class Format {
     NumberFormat.getInstance(Locale.ROOT),
     NumberFormat.getInstance(Locale.ROOT),
   };
-  private static final String padd = "                                                 ";
+  private static final String padding = "                                                 ";
 
   static {
     numFormat[0].setMaximumFractionDigits(0);
@@ -39,7 +39,7 @@ public class Format {
   }
 
   /**
-   * Padd a number from left.
+   * Pad a number from left.
    *
    * @param numFracDigits number of digits in fraction part - must be 0 or 1 or 2.
    * @param f number to be formatted.
@@ -47,12 +47,12 @@ public class Format {
    * @return formatted string.
    */
   public static String format(int numFracDigits, float f, String col) {
-    String res = padd + numFormat[numFracDigits].format(f);
+    String res = padding + numFormat[numFracDigits].format(f);
     return res.substring(res.length() - col.length());
   }
 
   public static String format(int numFracDigits, double f, String col) {
-    String res = padd + numFormat[numFracDigits].format(f);
+    String res = padding + numFormat[numFracDigits].format(f);
     return res.substring(res.length() - col.length());
   }
 
@@ -64,13 +64,13 @@ public class Format {
    * @param col column name (used for deciding on length).
    * @return formatted string.
    */
-  public static String formatPaddRight(int numFracDigits, float f, String col) {
-    String res = numFormat[numFracDigits].format(f) + padd;
+  public static String formatPadRight(int numFracDigits, float f, String col) {
+    String res = numFormat[numFracDigits].format(f) + padding;
     return res.substring(0, col.length());
   }
 
-  public static String formatPaddRight(int numFracDigits, double f, String col) {
-    String res = numFormat[numFracDigits].format(f) + padd;
+  public static String formatPadRight(int numFracDigits, double f, String col) {
+    String res = numFormat[numFracDigits].format(f) + padding;
     return res.substring(0, col.length());
   }
 
@@ -82,7 +82,7 @@ public class Format {
    * @return formatted string.
    */
   public static String format(int n, String col) {
-    String res = padd + n;
+    String res = padding + n;
     return res.substring(res.length() - col.length());
   }
 
@@ -94,7 +94,7 @@ public class Format {
    * @return formatted string.
    */
   public static String format(String s, String col) {
-    String s1 = (s + padd);
+    String s1 = (s + padding);
     return s1.substring(0, Math.min(col.length(), s1.length()));
   }
 
@@ -105,8 +105,8 @@ public class Format {
    * @param col column name (used for deciding on length).
    * @return formatted string.
    */
-  public static String formatPaddLeft(String s, String col) {
-    String res = padd + s;
+  public static String formatPadLeft(String s, String col) {
+    String res = padding + s;
     return res.substring(res.length() - col.length());
   }
 }

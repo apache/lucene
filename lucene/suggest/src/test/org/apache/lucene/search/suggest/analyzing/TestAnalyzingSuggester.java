@@ -726,7 +726,7 @@ public class TestAnalyzingSuggester extends LuceneTestCase {
 
     int numQueries = atLeast(200);
 
-    final List<TermFreq2> slowCompletor = new ArrayList<>();
+    final List<TermFreq2> slowCompleter = new ArrayList<>();
     final TreeSet<String> allPrefixes = new TreeSet<>();
     final Set<String> seen = new HashSet<>();
 
@@ -824,13 +824,13 @@ public class TestAnalyzingSuggester extends LuceneTestCase {
         payload = null;
       }
 
-      slowCompletor.add(new TermFreq2(key, analyzedKey, weight, payload));
+      slowCompleter.add(new TermFreq2(key, analyzedKey, weight, payload));
     }
 
     if (VERBOSE) {
       // Don't just sort original list, to avoid VERBOSE
       // altering the test:
-      List<TermFreq2> sorted = new ArrayList<>(slowCompletor);
+      List<TermFreq2> sorted = new ArrayList<>(slowCompleter);
       Collections.sort(sorted);
       for (TermFreq2 ent : sorted) {
         System.out.println(
@@ -922,8 +922,8 @@ public class TestAnalyzingSuggester extends LuceneTestCase {
         System.out.println("  analyzed: " + analyzedKey);
       }
 
-      // TODO: could be faster... but it's slowCompletor for a reason
-      for (TermFreq2 e : slowCompletor) {
+      // TODO: could be faster... but it's slowCompleter for a reason
+      for (TermFreq2 e : slowCompleter) {
         if (e.analyzedForm.startsWith(analyzedKey)) {
           matches.add(e);
         }
