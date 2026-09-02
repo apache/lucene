@@ -1736,14 +1736,12 @@ public class IndexWriter
                       k -> {
                         switch (update.type) {
                           case NUMERIC:
+                          case SORTED_NUMERIC:
                             return new NumericDocValuesFieldUpdates(
-                                nextGen, k, rld.info.info.maxDoc());
+                                nextGen, k, update.type, rld.info.info.maxDoc());
                           case BINARY:
                             return new BinaryDocValuesFieldUpdates(
                                 nextGen, k, rld.info.info.maxDoc());
-                          case SORTED_NUMERIC:
-                            return new NumericDocValuesFieldUpdates(
-                                nextGen, k, DocValuesType.SORTED_NUMERIC, rld.info.info.maxDoc());
                           case NONE:
                           case SORTED:
                           case SORTED_SET:
@@ -1754,16 +1752,13 @@ public class IndexWriter
               if (update.hasValue()) {
                 switch (update.type) {
                   case NUMERIC:
+                  case SORTED_NUMERIC:
                     docValuesFieldUpdates.add(
                         leafDocId, ((NumericDocValuesUpdate) update).getValue());
                     break;
                   case BINARY:
                     docValuesFieldUpdates.add(
                         leafDocId, ((BinaryDocValuesUpdate) update).getValue());
-                    break;
-                  case SORTED_NUMERIC:
-                    docValuesFieldUpdates.add(
-                        leafDocId, ((NumericDocValuesUpdate) update).getValue());
                     break;
                   case NONE:
                   case SORTED:
@@ -2110,22 +2105,12 @@ public class IndexWriter
 
       switch (dvType) {
         case NUMERIC:
+        case SORTED_NUMERIC:
           Long value = (Long) f.numericValue();
-          dvUpdates[i] = new NumericDocValuesUpdate(term, f.name(), value);
+          dvUpdates[i] = new NumericDocValuesUpdate(dvType, term, f.name(), value);
           break;
         case BINARY:
           dvUpdates[i] = new BinaryDocValuesUpdate(term, f.name(), f.binaryValue());
-          break;
-        case SORTED_NUMERIC:
-          // A sorted-numeric update carries a single value (like a numeric update) and replaces all
-          // values of each matched doc; the field itself may be single- or multi-valued.
-          Number snValue = f.numericValue();
-          dvUpdates[i] =
-              new NumericDocValuesUpdate(
-                  DocValuesType.SORTED_NUMERIC,
-                  term,
-                  f.name(),
-                  snValue == null ? null : snValue.longValue());
           break;
         case NONE:
         case SORTED:
@@ -4571,9 +4556,6 @@ public class IndexWriter
     return mergedDeletesAndUpdates;
   }
 
-  /** Sentinel for "no doc-values value" (a reset, or a doc that simply has no value). */
-  private static final Object DV_NO_VALUE = new Object();
-
   /**
    * Builds the doc-values-update merge carry-over from the source segments' on-disk state plus
    * their residual (resolved but not-yet-written) pending updates, remapping to merged docIDs.
@@ -4666,14 +4648,9 @@ public class IndexWriter
               DocValuesFieldUpdates p = byGen.get(u.delGen);
               if (p == null) {
                 p =
-                    switch (u.type) {
-                      case BINARY ->
-                          new BinaryDocValuesFieldUpdates(u.delGen, u.field, mergedMaxDoc);
-                      case SORTED_NUMERIC ->
-                          new NumericDocValuesFieldUpdates(
-                              u.delGen, u.field, DocValuesType.SORTED_NUMERIC, mergedMaxDoc);
-                      default -> new NumericDocValuesFieldUpdates(u.delGen, u.field, mergedMaxDoc);
-                    };
+                    u.type == DocValuesType.BINARY
+                        ? new BinaryDocValuesFieldUpdates(u.delGen, u.field, mergedMaxDoc)
+                        : new NumericDocValuesFieldUpdates(u.delGen, u.field, u.type, mergedMaxDoc);
                 byGen.put(u.delGen, p);
               }
               if (it.hasValue()) {
@@ -4701,13 +4678,10 @@ public class IndexWriter
     DocValuesFieldUpdates p = byGen.get(delGen);
     if (p == null) {
       p =
-          switch (fi.getDocValuesType()) {
-            case BINARY -> new BinaryDocValuesFieldUpdates(delGen, fi.name, mergedMaxDoc);
-            case SORTED_NUMERIC ->
-                new NumericDocValuesFieldUpdates(
-                    delGen, fi.name, DocValuesType.SORTED_NUMERIC, mergedMaxDoc);
-            default -> new NumericDocValuesFieldUpdates(delGen, fi.name, mergedMaxDoc);
-          };
+          fi.getDocValuesType() == DocValuesType.BINARY
+              ? new BinaryDocValuesFieldUpdates(delGen, fi.name, mergedMaxDoc)
+              : new NumericDocValuesFieldUpdates(
+                  delGen, fi.name, fi.getDocValuesType(), mergedMaxDoc);
       byGen.put(delGen, p);
     }
     return p;
@@ -4727,56 +4701,92 @@ public class IndexWriter
       int mergedMaxDoc,
       LongObjectHashMap<DocValuesFieldUpdates> byGen)
       throws IOException {
-    if (fi.getDocValuesType() == DocValuesType.SORTED_NUMERIC) {
-      addSortedNumericDiskDiffToPacket(
-          fi, baseline, current, segDocMap, diskDelGen, mergedMaxDoc, byGen);
-      return;
+    switch (fi.getDocValuesType()) {
+      case NUMERIC ->
+          addNumericDiskDiffToPacket(
+              fi, baseline, current, segDocMap, diskDelGen, mergedMaxDoc, byGen);
+      case BINARY ->
+          addBinaryDiskDiffToPacket(
+              fi, baseline, current, segDocMap, diskDelGen, mergedMaxDoc, byGen);
+      case SORTED_NUMERIC ->
+          addSortedNumericDiskDiffToPacket(
+              fi, baseline, current, segDocMap, diskDelGen, mergedMaxDoc, byGen);
+      default ->
+          throw new AssertionError(
+              "unexpected doc-values type for update carry-over: " + fi.getDocValuesType());
     }
+  }
+
+  private static void addNumericDiskDiffToPacket(
+      FieldInfo fi,
+      CodecReader baseline,
+      CodecReader current,
+      MergeState.DocMap segDocMap,
+      long diskDelGen,
+      int mergedMaxDoc,
+      LongObjectHashMap<DocValuesFieldUpdates> byGen)
+      throws IOException {
     final int maxDoc = current.maxDoc();
-    final boolean binary = fi.getDocValuesType() == DocValuesType.BINARY;
-    BinaryDocValues curB = binary ? current.getBinaryDocValues(fi.name) : null;
-    BinaryDocValues baseB = binary ? baseline.getBinaryDocValues(fi.name) : null;
-    NumericDocValues curN = binary ? null : current.getNumericDocValues(fi.name);
-    NumericDocValues baseN = binary ? null : baseline.getNumericDocValues(fi.name);
+    NumericDocValues cur = current.getNumericDocValues(fi.name);
+    NumericDocValues base = baseline.getNumericDocValues(fi.name);
     for (int doc = 0; doc < maxDoc; doc++) {
       int md = segDocMap.get(doc);
       if (md == -1) {
         continue;
       }
-      Object curVal;
-      Object baseVal;
-      if (binary) {
-        // Live BytesRefs suffice to compare; only a changed value is copied, below, when it is
-        // stored.
-        curVal = (curB != null && curB.advanceExact(doc)) ? curB.binaryValue() : DV_NO_VALUE;
-        baseVal = (baseB != null && baseB.advanceExact(doc)) ? baseB.binaryValue() : DV_NO_VALUE;
-      } else {
-        curVal =
-            (curN != null && curN.advanceExact(doc)) ? Long.valueOf(curN.longValue()) : DV_NO_VALUE;
-        baseVal =
-            (baseN != null && baseN.advanceExact(doc))
-                ? Long.valueOf(baseN.longValue())
-                : DV_NO_VALUE;
-      }
-      if (dvEquals(curVal, baseVal)) {
-        continue;
+      boolean hasCur = cur != null && cur.advanceExact(doc);
+      boolean hasBase = base != null && base.advanceExact(doc);
+      long curVal = hasCur ? cur.longValue() : 0;
+      if (hasCur == hasBase && (hasCur == false || curVal == base.longValue())) {
+        continue; // unchanged: both absent, or both present with an equal value
       }
       DocValuesFieldUpdates p = getOrCreatePacket(byGen, diskDelGen, fi, mergedMaxDoc);
-      if (curVal == DV_NO_VALUE) {
+      if (hasCur == false) {
         p.reset(md);
-      } else if (binary) {
-        ((BinaryDocValuesFieldUpdates) p).add(md, BytesRef.deepCopyOf((BytesRef) curVal));
       } else {
-        ((NumericDocValuesFieldUpdates) p).add(md, (Long) curVal);
+        p.add(md, curVal);
+      }
+    }
+  }
+
+  private static void addBinaryDiskDiffToPacket(
+      FieldInfo fi,
+      CodecReader baseline,
+      CodecReader current,
+      MergeState.DocMap segDocMap,
+      long diskDelGen,
+      int mergedMaxDoc,
+      LongObjectHashMap<DocValuesFieldUpdates> byGen)
+      throws IOException {
+    final int maxDoc = current.maxDoc();
+    BinaryDocValues cur = current.getBinaryDocValues(fi.name);
+    BinaryDocValues base = baseline.getBinaryDocValues(fi.name);
+    for (int doc = 0; doc < maxDoc; doc++) {
+      int md = segDocMap.get(doc);
+      if (md == -1) {
+        continue;
+      }
+      // cur and base are independent readers, so their live BytesRefs can be compared directly; a
+      // changed value is deep-copied only when it is stored below.
+      boolean hasCur = cur != null && cur.advanceExact(doc);
+      BytesRef curVal = hasCur ? cur.binaryValue() : null;
+      boolean hasBase = base != null && base.advanceExact(doc);
+      if (hasCur == hasBase && (hasCur == false || curVal.bytesEquals(base.binaryValue()))) {
+        continue; // unchanged: both absent, or both present with an equal value
+      }
+      DocValuesFieldUpdates p = getOrCreatePacket(byGen, diskDelGen, fi, mergedMaxDoc);
+      if (hasCur == false) {
+        p.reset(md);
+      } else {
+        p.add(md, BytesRef.deepCopyOf(curVal));
       }
     }
   }
 
   /**
-   * The sorted-numeric analog of {@link #addDiskDiffToPacket}: a doc whose whole value set changed
-   * during the merge was updated, and an update always sets a single value (an unchanged
-   * multi-valued doc compares equal and is skipped), so a changed doc is emitted as either a single
-   * value or a reset.
+   * The sorted-numeric analog: a doc whose whole value set changed during the merge was updated,
+   * and an update always sets a single value (an unchanged multi-valued doc compares equal and is
+   * skipped), so a changed doc is emitted as either a single value or a reset.
    */
   private static void addSortedNumericDiskDiffToPacket(
       FieldInfo fi,
@@ -4795,40 +4805,25 @@ public class IndexWriter
       if (md == -1) {
         continue;
       }
-      long[] curVals = readSortedNumeric(cur, doc);
-      long[] baseVals = readSortedNumeric(base, doc);
-      if (Arrays.equals(curVals, baseVals)) { // both-null (no value) compares equal
+      boolean hasCur = cur != null && cur.advanceExact(doc);
+      if (hasCur && cur.docValueCount() > 1) {
+        // Updates are always single-valued, so a still-multi-valued doc cannot have been updated.
+        continue;
+      }
+      long curVal = hasCur ? cur.nextValue() : 0;
+      boolean hasBase = base != null && base.advanceExact(doc);
+      if (hasCur == false && hasBase == false) {
+        continue;
+      } else if (hasCur && hasBase && base.docValueCount() == 1 && base.nextValue() == curVal) {
         continue;
       }
       DocValuesFieldUpdates p = getOrCreatePacket(byGen, diskDelGen, fi, mergedMaxDoc);
-      if (curVals == null) {
+      if (hasCur == false) {
         p.reset(md);
       } else {
-        assert curVals.length == 1
-            : "sorted-numeric merge carry-over expects a single-valued update, got "
-                + curVals.length;
-        ((NumericDocValuesFieldUpdates) p).add(md, curVals[0]);
+        p.add(md, curVal);
       }
     }
-  }
-
-  /** Reads the whole value set of {@code doc}, or {@code null} if the doc has no value. */
-  private static long[] readSortedNumeric(SortedNumericDocValues dv, int doc) throws IOException {
-    if (dv == null || dv.advanceExact(doc) == false) {
-      return null;
-    }
-    long[] vals = new long[dv.docValueCount()];
-    for (int i = 0; i < vals.length; i++) {
-      vals[i] = dv.nextValue();
-    }
-    return vals;
-  }
-
-  private static boolean dvEquals(Object a, Object b) {
-    if (a == DV_NO_VALUE || b == DV_NO_VALUE) {
-      return a == b;
-    }
-    return a.equals(b);
   }
 
   /**
