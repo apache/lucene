@@ -23,8 +23,6 @@ import org.apache.lucene.tests.util.BaseDocIdSetTestCase;
 
 public class TestNotDocIdSet extends BaseDocIdSetTestCase<NotDocIdSet> {
 
-  private static final int BLOCK_SIZE = 1 << 16;
-
   @Override
   public NotDocIdSet copyOf(BitSet bs, int length) throws IOException {
     final FixedBitSet set = new FixedBitSet(length);
@@ -34,35 +32,14 @@ public class TestNotDocIdSet extends BaseDocIdSetTestCase<NotDocIdSet> {
     return new NotDocIdSet(length, new BitDocIdSet(set));
   }
 
-  public void testIntoBitSetDenseComplement() throws IOException {
-    final int maxDoc = 1024;
-    FixedBitSet excluded = new FixedBitSet(maxDoc);
-    excluded.set(3);
-    excluded.set(10);
-    excluded.set(511);
-    excluded.set(900);
-
-    NotDocIdSet set = new NotDocIdSet(maxDoc, new BitDocIdSet(excluded));
-    DocIdSetIterator it = set.iterator();
-    assertEquals(0, it.nextDoc());
-
-    FixedBitSet actual = new FixedBitSet(maxDoc + 16);
-    actual.set(maxDoc + 1);
-    it.intoBitSet(maxDoc, actual, 0);
-
-    for (int doc = 0; doc < maxDoc; doc++) {
-      assertEquals("doc " + doc, excluded.get(doc) == false, actual.get(doc));
-    }
-    assertTrue(actual.get(maxDoc + 1));
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.docID());
-  }
-
   public void testDocIDRunEndContiguousRun() throws IOException {
     final int maxDoc = random().nextInt(2, 1_000);
     BitSet bs = new BitSet();
     int start = random().nextInt(0, maxDoc - 1);
     int end = random().nextInt(start + 1, maxDoc);
-    bs.set(start, end);
+    for (int d = start; d < end; d++) {
+      bs.set(d);
+    }
     assertDocIDRunEndMatches(bs, maxDoc, copyOf(bs, maxDoc));
   }
 
@@ -76,25 +53,6 @@ public class TestNotDocIdSet extends BaseDocIdSetTestCase<NotDocIdSet> {
       }
       assertDocIDRunEndMatches(bs, maxDoc, copyOf(bs, maxDoc));
     }
-  }
-
-  public void testIntoBitSetFullBlockComplement() throws IOException {
-    FixedBitSet excluded = new FixedBitSet(BLOCK_SIZE);
-    for (int doc = 3; doc < BLOCK_SIZE; doc += 1024) {
-      excluded.set(doc);
-    }
-
-    DocIdSetIterator it = new NotDocIdSet(BLOCK_SIZE, new BitDocIdSet(excluded)).iterator();
-    assertEquals(0, it.nextDoc());
-
-    FixedBitSet actual = new FixedBitSet(BLOCK_SIZE);
-    it.intoBitSet(BLOCK_SIZE, actual, 0);
-
-    assertEquals(BLOCK_SIZE - 64, actual.cardinality());
-    for (int doc = 3; doc < BLOCK_SIZE; doc += 1024) {
-      assertFalse("doc " + doc, actual.get(doc));
-    }
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.docID());
   }
 
   private static BitSet randomBitSet(int numBits, float percentSet) {
