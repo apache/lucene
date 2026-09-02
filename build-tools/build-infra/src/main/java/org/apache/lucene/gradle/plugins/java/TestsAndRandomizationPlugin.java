@@ -549,6 +549,13 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
                   securityArgumentProvider
                       .getJavaSecurityPolicy()
                       .set(gradlePluginResource(project, "testing/policies/tests.policy").toFile());
+
+                  // The junit platform's JFR execution listener fails to initialize its event
+                  // classes under the security manager (each skipped test then logs a warning,
+                  // overflowing sysout limits); turn it off entirely.
+                  task.systemProperty(
+                      "junit.platform.execution.listeners.deactivate",
+                      "org.junit.platform.launcher.jfr.*");
                 }
                 task.getJvmArgumentProviders().add(securityArgumentProvider);
 
