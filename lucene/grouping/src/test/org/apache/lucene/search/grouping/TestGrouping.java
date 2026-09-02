@@ -350,6 +350,173 @@ public class TestGrouping extends LuceneTestCase {
     assertTrue(result.isEmpty());
   }
 
+  public void testTotalHitsThreshold() throws Exception {
+    Directory dir = newDirectory();
+    RandomIndexWriter w =
+        new RandomIndexWriter(random(), dir, newIndexWriterConfig(new MockAnalyzer(random())));
+
+    String groupField = "author";
+    for (int i = 0; i < 5; i++) {
+      Document doc = new Document();
+      addGroupField(doc, groupField, "author1");
+      doc.add(new TextField("content", "random text", Field.Store.NO));
+      doc.add(new NumericDocValuesField("id", i));
+      w.addDocument(doc);
+    }
+    Document doc = new Document();
+    addGroupField(doc, groupField, "author2");
+    doc.add(new TextField("content", "random text", Field.Store.NO));
+    doc.add(new NumericDocValuesField("id", 99));
+    w.addDocument(doc);
+
+    DirectoryReader reader = w.getReader();
+    w.close();
+    IndexSearcher searcher = newSearcher(reader);
+    searcher.setSimilarity(new BM25Similarity());
+
+    Query query = new TermQuery(new Term("content", "random"));
+    boolean isTermGroupSelector = random().nextBoolean();
+
+    Collection<SearchGroup<BytesRef>> topGroups =
+        toByteRefSearchGroups(
+            searcher.search(
+                query,
+                createFirstPassCollectorManager(
+                    isTermGroupSelector, groupField, Sort.RELEVANCE, 0, 10)));
+    assertFalse(topGroups.isEmpty());
+
+    Sort withinGroupSort = new Sort(new SortField("id", SortField.Type.INT));
+    // totalHitsThresholdPerGroup=1 (=maxDocsPerGroup): per-group hit counts may be
+    // reported as GREATER_THAN_OR_EQUAL_TO once the threshold fires.
+    TopGroups<BytesRef> approxGroups =
+        toByteTopGroups(
+            searcher.search(
+                query,
+                createSecondPassCollectorManager(
+                    isTermGroupSelector,
+                    groupField,
+                    topGroups,
+                    Sort.RELEVANCE,
+                    withinGroupSort,
+                    0,
+                    1,
+                    false,
+                    1)));
+
+    assertEquals(2, approxGroups.groups.length);
+    assertEquals(6, approxGroups.totalHitCount);
+    for (GroupDocs<BytesRef> g : approxGroups.groups) {
+      assertTrue(g.totalHits().value() >= 1);
+    }
+
+    // --- exact: default threshold (Integer.MAX_VALUE) ---
+    TopGroups<BytesRef> exactGroups =
+        toByteTopGroups(
+            searcher.search(
+                query,
+                createSecondPassCollectorManager(
+                    isTermGroupSelector,
+                    groupField,
+                    topGroups,
+                    Sort.RELEVANCE,
+                    withinGroupSort,
+                    0,
+                    10,
+                    false)));
+
+    assertEquals(6, exactGroups.totalHitCount);
+    assertEquals(6, exactGroups.totalGroupedHitCount);
+    for (GroupDocs<BytesRef> g : exactGroups.groups) {
+      assertEquals(TotalHits.Relation.EQUAL_TO, g.totalHits().relation());
+      if (new BytesRef("author1").equals(g.groupValue())) {
+        assertEquals(5, g.totalHits().value());
+      } else {
+        assertEquals(1, g.totalHits().value());
+      }
+    }
+
+    reader.close();
+    dir.close();
+  }
+
+  /**
+   * Verifies that when withinGroupSort matches the index sort (searchSortPartOfIndexSort=true), a
+   * CollectionTerminatedException thrown by a per-group TopFieldCollector is caught inside
+   * GroupReducer and does NOT propagate to SecondPassGroupingCollector, so that totalHitCount
+   * remains accurate.
+   */
+  public void testIndexSortEarlyTerminationDoesNotCorruptTotalHitCount() throws Exception {
+    // Use an index sorted by "id" so that a withinGroupSort on "id" triggers
+    // searchSortPartOfIndexSort=true in TopFieldCollector, enabling CollectionTerminatedException.
+    Sort indexSort = new Sort(new SortField("id", SortField.Type.INT));
+    Directory dir = newDirectory();
+    RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(),
+            dir,
+            newIndexWriterConfig(new MockAnalyzer(random())).setIndexSort(indexSort));
+
+    String groupField = "author";
+    // author1: 5 docs with ids 0-4
+    for (int i = 0; i < 5; i++) {
+      Document doc = new Document();
+      addGroupField(doc, groupField, "author1");
+      doc.add(new TextField("content", "hello", Field.Store.NO));
+      doc.add(new NumericDocValuesField("id", i));
+      w.addDocument(doc);
+    }
+    // author2: 3 docs with ids 10-12
+    for (int i = 10; i < 13; i++) {
+      Document doc = new Document();
+      addGroupField(doc, groupField, "author2");
+      doc.add(new TextField("content", "hello", Field.Store.NO));
+      doc.add(new NumericDocValuesField("id", i));
+      w.addDocument(doc);
+    }
+
+    DirectoryReader reader = w.getReader();
+    w.close();
+    IndexSearcher searcher = newSearcher(reader);
+
+    Query query = new TermQuery(new Term("content", "hello"));
+
+    // First pass: collect top groups
+    Collection<SearchGroup<BytesRef>> topGroups =
+        toByteRefSearchGroups(
+            searcher.search(
+                query, createFirstPassCollectorManager(true, groupField, Sort.RELEVANCE, 0, 10)));
+    assertEquals(2, topGroups.size());
+
+    // Second pass: withinGroupSort matches the index sort → searchSortPartOfIndexSort=true.
+    // maxDocsPerGroup=1 means the threshold fires immediately, and for the index-sorted
+    // segment CollectionTerminatedException is thrown once a group's queue is full and
+    // a non-competitive doc arrives. GroupReducer must catch it per-group so that
+    // SecondPassGroupingCollector keeps counting all 8 matching docs in totalHitCount.
+    Sort withinGroupSort = new Sort(new SortField("id", SortField.Type.INT));
+    TopGroups<BytesRef> result =
+        toByteTopGroups(
+            searcher.search(
+                query,
+                createSecondPassCollectorManager(
+                    true, groupField, topGroups, Sort.RELEVANCE, withinGroupSort, 0, 1, false, 1)));
+
+    assertEquals(2, result.groups.length);
+
+    // totalHitCount must equal total query matches (8), not stop early due to per-group
+    // CollectionTerminatedException propagating to the outer collector.
+    assertEquals(8, result.totalHitCount);
+    assertEquals(8, result.totalGroupedHitCount);
+
+    // Each group still returns the correct top-1 doc; total hits may be approximate.
+    for (GroupDocs<BytesRef> g : result.groups) {
+      assertEquals(1, g.scoreDocs().length);
+      assertTrue(g.totalHits().value() >= 1);
+    }
+
+    reader.close();
+    dir.close();
+  }
+
   private void addGroupField(Document doc, String groupField, String value) {
     doc.add(new SortedDocValuesField(groupField, new BytesRef(value)));
   }
@@ -384,6 +551,30 @@ public class TestGrouping extends LuceneTestCase {
       int maxDocsPerGroup,
       boolean getMaxScores)
       throws IOException {
+    return createSecondPassCollectorManager(
+        isTermGroupSelector,
+        groupField,
+        searchGroups,
+        groupSort,
+        sortWithinGroup,
+        withinGroupOffset,
+        maxDocsPerGroup,
+        getMaxScores,
+        Integer.MAX_VALUE);
+  }
+
+  // Basically converts searchGroups from MutableValue to BytesRef if grouping by ValueSource
+  private TopGroupsCollectorManager<?> createSecondPassCollectorManager(
+      boolean isTermGroupSelector,
+      String groupField,
+      Collection<SearchGroup<BytesRef>> searchGroups,
+      Sort groupSort,
+      Sort sortWithinGroup,
+      int withinGroupOffset,
+      int maxDocsPerGroup,
+      boolean getMaxScores,
+      int totalHitsThresholdPerGroup)
+      throws IOException {
     if (isTermGroupSelector) {
       return new TopGroupsCollectorManager<>(
           () -> new TermGroupSelector(groupField),
@@ -392,7 +583,9 @@ public class TestGrouping extends LuceneTestCase {
           sortWithinGroup,
           withinGroupOffset,
           maxDocsPerGroup,
-          getMaxScores);
+          getMaxScores,
+          totalHitsThresholdPerGroup,
+          TopGroups.ScoreMergeMode.None);
     } else {
       ValueSource vs = new BytesRefFieldSource(groupField);
       List<SearchGroup<MutableValue>> mvalSearchGroups = new ArrayList<>(searchGroups.size());
@@ -415,7 +608,9 @@ public class TestGrouping extends LuceneTestCase {
           sortWithinGroup,
           withinGroupOffset,
           maxDocsPerGroup,
-          getMaxScores);
+          getMaxScores,
+          totalHitsThresholdPerGroup,
+          TopGroups.ScoreMergeMode.None);
     }
   }
 

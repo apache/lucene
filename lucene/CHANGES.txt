@@ -481,6 +481,12 @@ Optimizations
   LatLonDocValuesQuery, XYDocValuesPointInGeometryQuery, and
   SortedNumericDocValuesSetQuery. (Costin Leau)
 
+* GITHUB#16548: Add `totalHitsThresholdPerGroup` parameter to `TopGroupsCollector` and
+  `TopGroupsCollectorManager`. When set to a value smaller than `Integer.MAX_VALUE`, per-group
+  hit counts may be reported as `TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO` once the threshold
+  is exceeded, saving the cost of exact counting. Defaults to `Integer.MAX_VALUE` (exact counts).
+  (Binlong Gao)
+
 Bug Fixes
 ---------------------
 

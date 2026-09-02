@@ -30,6 +30,7 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopDocsCollector;
 import org.apache.lucene.search.TopFieldCollector;
@@ -66,10 +67,48 @@ public class TopGroupsCollector<T> extends SecondPassGroupingCollector<T> {
       Sort withinGroupSort,
       int maxDocsPerGroup,
       boolean getMaxScores) {
+    this(
+        groupSelector,
+        groups,
+        groupSort,
+        withinGroupSort,
+        maxDocsPerGroup,
+        getMaxScores,
+        Integer.MAX_VALUE);
+  }
+
+  /**
+   * Create a new TopGroupsCollector
+   *
+   * @param groupSelector the group selector used to define groups
+   * @param groups the groups to collect TopDocs for
+   * @param groupSort the order in which groups are returned
+   * @param withinGroupSort the order in which documents are sorted in each group
+   * @param maxDocsPerGroup the maximum number of docs to collect for each group
+   * @param getMaxScores if true, record the maximum score for each group
+   * @param totalHitsThresholdPerGroup the threshold to control per-group hit count accuracy. If the
+   *     number of hits for a group exceeds this threshold, the hit count may be reported as {@link
+   *     org.apache.lucene.search.TotalHits.Relation#GREATER_THAN_OR_EQUAL_TO} rather than exact.
+   *     Use {@link Integer#MAX_VALUE} (the default) for exact counts, or a smaller value such as
+   *     {@code maxDocsPerGroup} to save the cost of exact counting once enough hits per group have
+   *     been collected. Note: this parameter has no effect when {@code withinGroupSort} sorts
+   *     primarily by score descending, as that case always uses exact counting to avoid incorrectly
+   *     skipping documents at the query level, which would both undercount {@code totalHitCount}
+   *     and cause other groups to miss documents.
+   */
+  public TopGroupsCollector(
+      GroupSelector<T> groupSelector,
+      Collection<SearchGroup<T>> groups,
+      Sort groupSort,
+      Sort withinGroupSort,
+      int maxDocsPerGroup,
+      boolean getMaxScores,
+      int totalHitsThresholdPerGroup) {
     super(
         groupSelector,
         groups,
-        new TopDocsReducer<>(withinGroupSort, maxDocsPerGroup, getMaxScores));
+        new TopDocsReducer<>(
+            withinGroupSort, maxDocsPerGroup, getMaxScores, totalHitsThresholdPerGroup));
     this.groupSort = Objects.requireNonNull(groupSort);
     this.withinGroupSort = Objects.requireNonNull(withinGroupSort);
     this.maxDocsPerGroup = maxDocsPerGroup;
@@ -124,7 +163,11 @@ public class TopGroupsCollector<T> extends SecondPassGroupingCollector<T> {
     private final Supplier<TopDocsAndMaxScoreCollector> supplier;
     private final boolean needsScores;
 
-    TopDocsReducer(Sort withinGroupSort, int maxDocsPerGroup, boolean getMaxScores) {
+    TopDocsReducer(
+        Sort withinGroupSort,
+        int maxDocsPerGroup,
+        boolean getMaxScores,
+        int totalHitsThresholdPerGroup) {
       this.needsScores = getMaxScores || withinGroupSort.needsScores();
       if (withinGroupSort == Sort.RELEVANCE) {
         supplier =
@@ -135,12 +178,23 @@ public class TopGroupsCollector<T> extends SecondPassGroupingCollector<T> {
                         .newCollector(),
                     null);
       } else {
+        // When the primary sort is score-descending, TopFieldCollector sets canSetMinScore=true
+        // and would call setMinCompetitiveScore() on the shared outer scorer, causing docs to
+        // be skipped at the query level before SecondPassGroupingCollector sees them. This would
+        // both undercount totalHitCount and cause other groups to miss documents, producing
+        // incorrect results. Force Integer.MAX_VALUE in that case regardless of the caller's
+        // threshold.
+        SortField primarySort = withinGroupSort.getSort()[0];
+        boolean primarySortByScoreDesc =
+            primarySort.getType() == SortField.Type.SCORE && !primarySort.getReverse();
+        int totalHitsThreshold =
+            primarySortByScoreDesc ? Integer.MAX_VALUE : totalHitsThresholdPerGroup;
         supplier =
             () -> {
               TopFieldCollector topDocsCollector =
                   new TopFieldCollectorManager(
-                          withinGroupSort, maxDocsPerGroup, null, Integer.MAX_VALUE)
-                      .newCollector(); // TODO: disable exact counts?
+                          withinGroupSort, maxDocsPerGroup, null, totalHitsThreshold)
+                      .newCollector();
               MaxScoreCollector maxScoreCollector = getMaxScores ? new MaxScoreCollector() : null;
               return new TopDocsAndMaxScoreCollector(false, topDocsCollector, maxScoreCollector);
             };

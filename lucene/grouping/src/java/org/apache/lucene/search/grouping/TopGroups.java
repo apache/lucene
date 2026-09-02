@@ -29,7 +29,6 @@ import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopFieldDocs;
 import org.apache.lucene.search.TotalHits;
-import org.apache.lucene.search.TotalHits.Relation;
 import org.apache.lucene.util.ArrayUtil;
 
 /**
@@ -194,6 +193,7 @@ public class TopGroups<T> {
       // Arrays.toString(shardGroups[0].groups[groupIDX].groupSortValues));
       float maxScore = Float.NaN;
       int totalHits = 0;
+      TotalHits.Relation totalHitsRelation = TotalHits.Relation.EQUAL_TO;
       double scoreSum = 0.0;
       for (int shardIDX = 0; shardIDX < shardGroups.size(); shardIDX++) {
         // System.out.println("    shard=" + shardIDX);
@@ -231,7 +231,9 @@ public class TopGroups<T> {
         if (!sortByRelevance) {
           maxScore = nonNANmax(maxScore, shardGroupDocs.maxScore());
         }
-        assert shardGroupDocs.totalHits().relation() == Relation.EQUAL_TO;
+        if (shardGroupDocs.totalHits().relation() == TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO) {
+          totalHitsRelation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
+        }
         totalHits += shardGroupDocs.totalHits().value();
         scoreSum += shardGroupDocs.score();
       }
@@ -283,7 +285,7 @@ public class TopGroups<T> {
           new GroupDocs<>(
               groupScore,
               maxScore,
-              new TotalHits(totalHits, TotalHits.Relation.EQUAL_TO),
+              new TotalHits(totalHits, totalHitsRelation),
               mergedScoreDocs,
               groupValue,
               firstShardGroup.groups[groupIDX].groupSortValues());

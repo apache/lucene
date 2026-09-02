@@ -34,6 +34,7 @@ public class TopGroupsCollectorManager<T>
   private final int withinGroupOffset;
   private final int maxDocsPerGroup;
   private final boolean getMaxScores;
+  private final int totalHitsThresholdPerGroup;
   private final TopGroups.ScoreMergeMode scoreMergeMode;
 
   /**
@@ -63,6 +64,7 @@ public class TopGroupsCollectorManager<T>
         withinGroupOffset,
         maxDocsPerGroup,
         getMaxScores,
+        Integer.MAX_VALUE,
         TopGroups.ScoreMergeMode.None);
   }
 
@@ -87,6 +89,49 @@ public class TopGroupsCollectorManager<T>
       int maxDocsPerGroup,
       boolean getMaxScores,
       TopGroups.ScoreMergeMode scoreMergeMode) {
+    this(
+        groupSelectorFactory,
+        searchGroups,
+        groupSort,
+        sortWithinGroup,
+        withinGroupOffset,
+        maxDocsPerGroup,
+        getMaxScores,
+        Integer.MAX_VALUE,
+        scoreMergeMode);
+  }
+
+  /**
+   * Creates a new TopGroupsCollectorManager.
+   *
+   * @param groupSelectorFactory factory to create group selectors for each collector
+   * @param searchGroups the search groups from the first pass
+   * @param groupSort the sort to use for groups
+   * @param sortWithinGroup the sort to use within each group
+   * @param withinGroupOffset the offset within each group to start collecting documents
+   * @param maxDocsPerGroup the maximum number of documents per group
+   * @param getMaxScores whether to compute max scores
+   * @param totalHitsThresholdPerGroup the threshold to control per-group hit count accuracy. If the
+   *     number of hits for a group exceeds this threshold, the hit count may be reported as {@link
+   *     org.apache.lucene.search.TotalHits.Relation#GREATER_THAN_OR_EQUAL_TO} rather than exact.
+   *     Use {@link Integer#MAX_VALUE} (the default) for exact counts, or a smaller value such as
+   *     {@code maxDocsPerGroup} to save the cost of exact counting once enough hits per group have
+   *     been collected. Note: this parameter has no effect when {@code sortWithinGroup} sorts
+   *     primarily by score descending, as that case always uses exact counting to avoid incorrectly
+   *     skipping documents at the query level, which would both undercount {@code totalHitCount}
+   *     and cause other groups to miss documents.
+   * @param scoreMergeMode the mode for merging scores across shards
+   */
+  public TopGroupsCollectorManager(
+      Supplier<GroupSelector<T>> groupSelectorFactory,
+      Collection<SearchGroup<T>> searchGroups,
+      Sort groupSort,
+      Sort sortWithinGroup,
+      int withinGroupOffset,
+      int maxDocsPerGroup,
+      boolean getMaxScores,
+      int totalHitsThresholdPerGroup,
+      TopGroups.ScoreMergeMode scoreMergeMode) {
     this.groupSelectorFactory = groupSelectorFactory;
     this.searchGroups = searchGroups;
     this.groupSort = groupSort;
@@ -94,6 +139,7 @@ public class TopGroupsCollectorManager<T>
     this.withinGroupOffset = withinGroupOffset;
     this.maxDocsPerGroup = maxDocsPerGroup;
     this.getMaxScores = getMaxScores;
+    this.totalHitsThresholdPerGroup = totalHitsThresholdPerGroup;
     this.scoreMergeMode = scoreMergeMode;
   }
 
@@ -105,7 +151,8 @@ public class TopGroupsCollectorManager<T>
         groupSort,
         sortWithinGroup,
         withinGroupOffset + maxDocsPerGroup,
-        getMaxScores);
+        getMaxScores,
+        totalHitsThresholdPerGroup);
   }
 
   @Override
