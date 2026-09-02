@@ -33,21 +33,21 @@ set -eEuo pipefail
 # and likely fail. so only ask for our specific target.
 (cd ${SRCDIR} && make dist_libstemmer_java)
 
-for file in "SnowballStemmer.java" "Among.java" "SnowballProgram.java" "CharArraySequence.java"; do
-  # add license header to files since they have none.
+for file in "SnowballStemmer.java" "Among.java" "SnowballProgram.java"; do
+  # add license header to files since they have none, otherwise rat will flip the fuck out
   echo "/*" > ${DESTDIR}/${file}
   cat ${SRCDIR}/COPYING >> ${DESTDIR}/${file}
   echo "*/" >> ${DESTDIR}/${file}
-  cat ${SRCDIR}/java/org/tartarus/snowball/${file} | sed 's/public class CharArraySequence/@SuppressWarnings("all") \0/' >> ${DESTDIR}/${file}
+  cat ${SRCDIR}/java/org/tartarus/snowball/${file} >> ${DESTDIR}/${file}
 done
 
 rm ${DESTDIR}/ext/*Stemmer.java
 rm -f ${TESTDSTDIR}/languages.txt
-for file in $(find ${SRCDIR}/java/org/tartarus/snowball/ext/ -name "*.java" | sort); do
+for file in ${SRCDIR}/java/org/tartarus/snowball/ext/*.java; do
   # title-case the classes (fooStemmer -> FooStemmer) so they obey normal java conventions
   base=$(basename $file)
   oldclazz="${base%.*}"
-  newclazz=$(echo "$oldclazz" | perl -pe 's/^(.)/\U$1/')
+  newclazz=${oldclazz^}
   echo ${newclazz} | sed -e 's/Stemmer//' >> ${TESTDSTDIR}/languages.txt
   cat $file | sed "s/${oldclazz}/${newclazz}/g" > ${DESTDIR}/ext/${newclazz}.java
 done
@@ -57,14 +57,14 @@ rm -f ${WWWDSTDIR}/*_stop.txt
 for file in ${WWWSRCDIR}/algorithms/*/stop.txt; do
   language=$(basename $(dirname ${file}))
   cat > ${WWWDSTDIR}/${language}_stop.txt << EOF
-| From https://snowballstem.org/algorithms/${language}/stop.txt
-| This file is distributed under the BSD License.
-| See https://snowballstem.org/license.html
-| Also see https://opensource.org/licenses/bsd-license.html
-|  - Encoding was converted to UTF-8.
-|  - This notice was added.
-|
-| NOTE: To use this file with StopFilterFactory, you must specify format="snowball"
+ | From https://snowballstem.org/algorithms/${language}/stop.txt
+ | This file is distributed under the BSD License.
+ | See https://snowballstem.org/license.html
+ | Also see https://opensource.org/licenses/bsd-license.html
+ |  - Encoding was converted to UTF-8.
+ |  - This notice was added.
+ |
+ | NOTE: To use this file with StopFilterFactory, you must specify format="snowball"
 EOF
 # try to confirm its really UTF-8
 iconv -f UTF-8 -t UTF-8 $file >> ${WWWDSTDIR}/${language}_stop.txt

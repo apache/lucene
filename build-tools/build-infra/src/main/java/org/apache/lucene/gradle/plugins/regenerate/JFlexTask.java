@@ -111,7 +111,9 @@ public abstract class JFlexTask extends DefaultTask {
       // https://github.com/jflex-de/jflex/issues/762
       text =
           text.replace(
-              "SuppressWarnings(\"fallthrough\")",
+              // jflex 1.8.2 (used on this branch) emits "FallThrough"; newer jflex
+              // versions (and main) emit "fallthrough".
+              "SuppressWarnings(\"FallThrough\")",
               "SuppressWarnings({\"fallthrough\",\"unused\"})");
 
       // Seems like a bug in gjf. https://github.com/google/google-java-format/issues/1260
