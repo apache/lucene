@@ -6,7 +6,7 @@
       "com.ibm.icu:icu4j:77.1" : "47ea4550,refs=6",
       "commons-codec:commons-codec:1.17.2" : "e9962aab,refs=4",
       "io.sgr:s2-geometry-library-java:1.0.0" : "cbc357ab,refs=4",
-      "junit:junit:4.13.2" : "fa9ef26b,refs=4",
+      "junit:junit:4.13.1" : "fa9ef26b,refs=4",
       "net.sf.jopt-simple:jopt-simple:5.0.4" : "85a1e4c6,refs=2",
       "net.sourceforge.nekohtml:nekohtml:1.9.17" : "5ce8cdc6,refs=2",
       "org.antlr:antlr4-runtime:4.13.2" : "d9953130,refs=4",
@@ -50,7 +50,7 @@
       "io.github.java-diff-utils:java-diff-utils:4.12" : "90685606,refs=39",
       "io.sgr:s2-geometry-library-java:1.0.0" : "1d5a4b2b,refs=4",
       "javax.inject:javax.inject:1" : "90685606,refs=39",
-      "junit:junit:4.13.2" : "129da9bf,refs=76",
+      "junit:junit:4.13.1" : "129da9bf,refs=76",
       "net.sf.jopt-simple:jopt-simple:5.0.4" : "152d9f78,refs=3",
       "net.sourceforge.nekohtml:nekohtml:1.9.17" : "6f16ff86,refs=2",
       "org.antlr:antlr4-runtime:4.13.2" : "6fbc4021,refs=5",
@@ -64,16 +64,10 @@
       "org.checkerframework:checker-qual:3.19.0" : "90685606,refs=39",
       "org.hamcrest:hamcrest:2.2" : "129da9bf,refs=76",
       "org.jspecify:jspecify:1.0.0" : "90685606,refs=39",
-      "org.junit.platform:junit-platform-commons:6.1.3" : "1ec8e4d2,refs=39",
-      "org.junit.platform:junit-platform-engine:6.1.3" : "1ec8e4d2,refs=39",
-      "org.junit.platform:junit-platform-launcher:6.1.3" : "1ec8e4d2,refs=39",
-      "org.junit.vintage:junit-vintage-engine:6.1.3" : "1ec8e4d2,refs=39",
-      "org.junit:junit-bom:6.1.3" : "1ec8e4d2,refs=39",
       "org.locationtech.jts:jts-core:1.17.0" : "180518e6,refs=2",
       "org.locationtech.spatial4j:spatial4j:0.8" : "1d5a4b2b,refs=4",
       "org.openjdk.jmh:jmh-core:1.37" : "152d9f78,refs=3",
       "org.openjdk.jmh:jmh-generator-annprocess:1.37" : "ecaf1d73,refs=1",
-      "org.opentest4j:opentest4j:1.3.0" : "1ec8e4d2,refs=39",
       "org.ow2.asm:asm:9.6" : "6fbc4021,refs=5",
       "org.ow2.asm:asm-commons:9.6" : "6fbc4021,refs=5",
       "org.ow2.asm:asm-tree:9.6" : "6fbc4021,refs=5",
@@ -430,164 +424,6 @@
       {
         "configuration" : "testRuntimeClasspath",
         "projectPath" : ":lucene:spatial-extras"
-      }
-    ],
-    "1ec8e4d2" : [
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":build-tools:missing-doclet"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:analysis.tests"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:backward-codecs"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:benchmark"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:benchmark-jmh"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:classification"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:codecs"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:core"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:core.tests"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:demo"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:distribution.tests"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:expressions"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:facet"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:grouping"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:highlighter"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:join"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:luke"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:memory"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:misc"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:monitor"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:queries"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:queryparser"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:replicator"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:sandbox"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:spatial-extras"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:spatial-test-fixtures"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:spatial3d"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:suggest"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:test-framework"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:analysis:common"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:analysis:icu"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:analysis:kuromoji"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:analysis:morfologik"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:analysis:morfologik.tests"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:analysis:nori"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:analysis:opennlp"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:analysis:phonetic"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:analysis:smartcn"
-      },
-      {
-        "configuration" : "testRuntimeClasspath",
-        "projectPath" : ":lucene:analysis:stempel"
       }
     ],
     "2f760bab" : [

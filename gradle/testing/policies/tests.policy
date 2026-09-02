@@ -124,21 +124,3 @@ grant codeBase "file:${junit.jar}" {
 grant codeBase "file:${lucene.test.framework}${/}-" {
   permission java.lang.reflect.ReflectPermission "suppressAccessChecks";
 };
-
-// The JUnit Platform jars are part of the test runner infrastructure (tests are run via
-// the junit-vintage engine); they are trusted in the same way gradle's own worker jar is.
-grant codeBase "file:${junit-platform-launcher.jar}" {
-  permission java.security.AllPermission;
-};
-grant codeBase "file:${junit-platform-engine.jar}" {
-  permission java.security.AllPermission;
-};
-grant codeBase "file:${junit-platform-commons.jar}" {
-  permission java.security.AllPermission;
-};
-grant codeBase "file:${junit-vintage-engine.jar}" {
-  permission java.security.AllPermission;
-};
-grant codeBase "file:${opentest4j.jar}" {
-  permission java.security.AllPermission;
-};

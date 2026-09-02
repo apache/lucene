@@ -391,14 +391,6 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
         secManagerExclusions.getName(),
         versionCatalog.findLibrary("junit").orElseThrow(),
         config -> config.exclude(Map.of("group", "org.hamcrest")));
-    dependencyHandler.addProvider(
-        secManagerExclusions.getName(),
-        versionCatalog.findLibrary("junitplatform-launcher").orElseThrow(),
-        config -> {});
-    dependencyHandler.addProvider(
-        secManagerExclusions.getName(),
-        versionCatalog.findLibrary("junitplatform-vintage").orElseThrow(),
-        config -> config.exclude(Map.of("group", "junit")));
 
     TaskContainer tasks = project.getTasks();
 
@@ -470,8 +462,10 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
                 task.setFailFast(true);
               }
 
-              // Use junit platform and junit-vintage to run the tests.
-              configureJUnitPlatform(task);
+              // Use good old JUnit4 to run the tests (unlike main, which runs its junit4
+              // tests through the junit platform's vintage engine; the platform machinery
+              // does not play well with the security manager still used on this branch).
+              task.useJUnit();
 
               task.setWorkingDir(testsCwd);
 
@@ -549,13 +543,6 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
                   securityArgumentProvider
                       .getJavaSecurityPolicy()
                       .set(gradlePluginResource(project, "testing/policies/tests.policy").toFile());
-
-                  // The junit platform's JFR execution listener fails to initialize its event
-                  // classes under the security manager (each skipped test then logs a warning,
-                  // overflowing sysout limits); turn it off entirely.
-                  task.systemProperty(
-                      "junit.platform.execution.listeners.deactivate",
-                      "org.junit.platform.launcher.jfr.*");
                 }
                 task.getJvmArgumentProviders().add(securityArgumentProvider);
 
@@ -577,12 +564,7 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
                 for (var e :
                     Map.of(
                             "randomizedtesting.jar", "randomizedtesting-runner-",
-                            "junit.jar", "junit-4",
-                            "junit-platform-launcher.jar", "junit-platform-launcher-",
-                            "junit-platform-engine.jar", "junit-platform-engine-",
-                            "junit-platform-commons.jar", "junit-platform-commons-",
-                            "junit-vintage-engine.jar", "junit-vintage-engine-",
-                            "opentest4j.jar", "opentest4j-")
+                            "junit.jar", "junit-")
                         .entrySet()) {
                   String jarPrefix = e.getValue();
                   otherProperties.put(
@@ -681,34 +663,6 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
                             task.getPath(),
                             testsCwd,
                             testsTmpDir);
-                  });
-            });
-  }
-
-  private static void configureJUnitPlatform(Test task) {
-    task.useJUnitPlatform();
-
-    var versionCatalogProvider =
-        task.getProject()
-            .getProviders()
-            .provider(
-                () ->
-                    task.getProject()
-                        .getExtensions()
-                        .findByType(VersionCatalogsExtension.class)
-                        .named("deps"));
-
-    DependencyHandler dependencies = task.getProject().getDependencies();
-    List.of("junitplatform-launcher", "junitplatform-vintage")
-        .forEach(
-            library -> {
-              dependencies.addProvider(
-                  "moduleTestRuntimeOnly",
-                  versionCatalogProvider.flatMap(
-                      versionCatalog -> versionCatalog.findLibrary(library).orElseThrow()),
-                  config -> {
-                    config.exclude(Map.of("group", "org.hamcrest"));
-                    config.exclude(Map.of("group", "junit"));
                   });
             });
   }
