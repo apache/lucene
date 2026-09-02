@@ -203,7 +203,7 @@ public final class DocValues {
    * Returns whether the provided SortedNumericDocValues is a single-valued view of a
    * NumericDocValues.
    */
-  public static boolean isSingleton(SortedNumericDocValues dv) {
+  static boolean isSingleton(SortedNumericDocValues dv) {
     return dv instanceof SingletonSortedNumericDocValues;
   }
 

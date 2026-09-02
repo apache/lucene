@@ -547,10 +547,55 @@ final class ReadersAndUpdates {
                     return DocValues.singleton(
                         handleMergedNumericDocValues(singletonOnDisk, iterator));
                   } else {
-                    return new MergedSortedNumericDocValues(
-                        onDisk,
-                        DocValuesFieldUpdates.Iterator.asNumericDocValues(iterator),
-                        iterator);
+                    final MergedDocValues<SortedNumericDocValues> mergedDocValues =
+                        new MergedDocValues<>(
+                            onDisk,
+                            DocValues.singleton(
+                                DocValuesFieldUpdates.Iterator.asNumericDocValues(iterator)),
+                            iterator);
+                    // Merge sort of the original doc values with updated doc values:
+                    return new SortedNumericDocValues() {
+                      @Override
+                      public long nextValue() throws IOException {
+                        return mergedDocValues.currentValuesSupplier.nextValue();
+                      }
+
+                      @Override
+                      public int docValueCount() {
+                        return mergedDocValues.currentValuesSupplier.docValueCount();
+                      }
+
+                      @Override
+                      public boolean advanceExact(int target) {
+                        return mergedDocValues.advanceExact(target);
+                      }
+
+                      @Override
+                      public int docID() {
+                        return mergedDocValues.docID();
+                      }
+
+                      @Override
+                      public int nextDoc() throws IOException {
+                        return mergedDocValues.nextDoc();
+                      }
+
+                      @Override
+                      public int advance(int target) {
+                        return mergedDocValues.advance(target);
+                      }
+
+                      @Override
+                      public void intoBitSet(int upTo, FixedBitSet bitSet, int offset)
+                          throws IOException {
+                        mergedDocValues.intoBitSet(upTo, bitSet, offset);
+                      }
+
+                      @Override
+                      public long cost() {
+                        return mergedDocValues.cost();
+                      }
+                    };
                   }
                 }
               });
@@ -755,93 +800,6 @@ final class ReadersAndUpdates {
         docIDOut = updateDocID;
         currentValuesSupplier = updateDocValues;
       }
-    }
-  }
-
-  /**
-   * Merges an on-disk {@link SortedNumericDocValues} (possibly multi-valued) with a single-valued
-   * update stream, giving the update precedence: a doc's value comes from the update (a single
-   * value) if it set one, else from the base's whole value set. Used for the dense rewrite / fold
-   * path; the sparse path writes only the updated docs as a single-valued delta.
-   */
-  static final class MergedSortedNumericDocValues extends SortedNumericDocValues {
-    private final DocValuesFieldUpdates.Iterator updateIterator;
-    private final SortedNumericDocValues onDisk;
-    private final NumericDocValues update;
-    private int docIDOut = -1;
-    private int docIDOnDisk = -1;
-    private int updateDocID = -1;
-    private boolean onUpdate;
-    private int valuesLeft;
-
-    MergedSortedNumericDocValues(
-        SortedNumericDocValues onDisk,
-        NumericDocValues update,
-        DocValuesFieldUpdates.Iterator updateIterator) {
-      this.onDisk = onDisk;
-      this.update = update;
-      this.updateIterator = updateIterator;
-    }
-
-    @Override
-    public int docID() {
-      return docIDOut;
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      boolean hasValue;
-      do {
-        if (docIDOnDisk == docIDOut) {
-          docIDOnDisk = onDisk == null ? NO_MORE_DOCS : onDisk.nextDoc();
-        }
-        if (updateDocID == docIDOut) {
-          updateDocID = update.nextDoc();
-        }
-        if (docIDOnDisk < updateDocID) {
-          // no update to this doc: use the base's whole value set
-          docIDOut = docIDOnDisk;
-          onUpdate = false;
-          valuesLeft = onDisk.docValueCount();
-          hasValue = true;
-        } else {
-          docIDOut = updateDocID;
-          if (docIDOut != NO_MORE_DOCS) {
-            onUpdate = true;
-            hasValue = updateIterator.hasValue();
-            valuesLeft = hasValue ? 1 : 0;
-          } else {
-            hasValue = true;
-          }
-        }
-      } while (hasValue == false);
-      return docIDOut;
-    }
-
-    @Override
-    public int advance(int target) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean advanceExact(int target) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public long cost() {
-      return onDisk == null ? 0 : onDisk.cost();
-    }
-
-    @Override
-    public int docValueCount() {
-      return valuesLeft;
-    }
-
-    @Override
-    public long nextValue() throws IOException {
-      valuesLeft--;
-      return onUpdate ? update.longValue() : onDisk.nextValue();
     }
   }
 

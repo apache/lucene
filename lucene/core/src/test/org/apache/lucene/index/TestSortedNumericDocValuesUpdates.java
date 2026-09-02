@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.index;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
@@ -151,6 +152,90 @@ public class TestSortedNumericDocValuesUpdates extends LuceneTestCase {
       }
     }
     IOUtils.close(writer, dir);
+  }
+
+  public void testDenseRewriteOverMultiValuedBase() throws Exception {
+    // maxDocValuesOverlays == 0 forces a dense full-column rewrite on every update. With a
+    // multi-valued base that rewrite goes through ReadersAndUpdates.MergedSortedNumericDocValues:
+    // the matched doc collapses to the single update value while every other doc keeps its whole
+    // (sorted) value set read from the base column.
+    try (Directory dir = newDirectory();
+        IndexWriter w =
+            new IndexWriter(
+                dir,
+                new IndexWriterConfig(new MockAnalyzer(random())).setMaxDocValuesOverlays(0))) {
+      w.addDocument(doc(0, 5, 1, 3)); // multi-valued, unsorted input
+      w.addDocument(doc(1, 9, 8));
+      w.addDocument(doc(2, 2)); // single-valued
+      w.commit();
+
+      w.updateSortedNumericDocValue(new Term("id", "doc-1"), "val", 42);
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        Map<String, long[]> values = collect(reader);
+        assertArrayEquals(new long[] {1, 3, 5}, values.get("doc-0")); // untouched, sorted
+        assertArrayEquals(new long[] {42}, values.get("doc-1")); // replaced with a single value
+        assertArrayEquals(new long[] {2}, values.get("doc-2")); // untouched
+      }
+      // overlays are disabled, so the update produced a dense column, not a sparse delta.
+      SegmentInfos sis = SegmentInfos.readLatestCommit(dir);
+      assertTrue(sis.info(0).getDocValuesOverlays().isEmpty());
+      TestUtil.checkIndex(dir);
+    }
+  }
+
+  public void testFoldToDenseOverMultiValuedBase() throws Exception {
+    // Drive a fold-to-dense rewrite over a genuinely multi-valued base. With
+    // maxDocValuesOverlays==1
+    // the first round writes a sparse delta; once its coverage crosses
+    // FOLD_TO_DENSE_COVERAGE_RATIO (0.5) the next update folds the field back to a single dense
+    // column, reading the multi-valued base through MergedSortedNumericDocValues. Docs never
+    // updated
+    // must keep their full value sets.
+    int numDocs = 10;
+    try (Directory dir = newDirectory();
+        IndexWriter w =
+            new IndexWriter(
+                dir,
+                new IndexWriterConfig(new MockAnalyzer(random()))
+                    .setMaxDocValuesOverlays(1)
+                    .setMergePolicy(NoMergePolicy.INSTANCE))) {
+      for (int i = 0; i < numDocs; i++) {
+        w.addDocument(doc(i, i, i + 100)); // two values each; sorted view is {i, i+100}
+      }
+      w.commit();
+
+      // Round 1: update 7 of 10 docs (> 50% coverage) so the delta will trigger a fold on the next
+      // write. Docs 7, 8, 9 are never touched and stay multi-valued in the base.
+      Map<String, long[]> expected = new HashMap<>();
+      for (int i = 0; i < numDocs; i++) {
+        expected.put("doc-" + i, new long[] {i, i + 100L});
+      }
+      for (int i = 0; i <= 6; i++) {
+        w.updateSortedNumericDocValue(new Term("id", "doc-" + i), "val", 1000L + i);
+        expected.put("doc-" + i, new long[] {1000L + i});
+      }
+      w.commit();
+
+      // Round 2: a single further update now folds to a dense column over the multi-valued base.
+      w.updateSortedNumericDocValue(new Term("id", "doc-0"), "val", 2000L);
+      expected.put("doc-0", new long[] {2000L});
+      w.commit();
+
+      // The fold collapses the field back to one dense column, clearing the sparse overlay.
+      SegmentInfos sis = SegmentInfos.readLatestCommit(dir);
+      assertEquals(1, sis.size());
+      assertTrue(
+          "fold-to-dense should have cleared the overlay",
+          sis.info(0).getDocValuesOverlays().isEmpty());
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        Map<String, long[]> values = collect(reader);
+        for (Map.Entry<String, long[]> e : expected.entrySet()) {
+          assertArrayEquals(e.getKey(), e.getValue(), values.get(e.getKey()));
+        }
+      }
+      TestUtil.checkIndex(dir);
+    }
   }
 
   public void testUpdateThenDelete() throws Exception {
@@ -356,6 +441,53 @@ public class TestSortedNumericDocValuesUpdates extends LuceneTestCase {
       long v = random().nextInt(1000);
       writer.updateSortedNumericDocValue(new Term("id", "doc-" + id), "val", v);
       expected.put("doc-" + id, new long[] {v});
+      if (rarely()) {
+        writer.commit();
+      }
+      if (rarely()) {
+        writer.forceMerge(1 + random().nextInt(3));
+      }
+    }
+    try (DirectoryReader reader = DirectoryReader.open(writer)) {
+      Map<String, long[]> actual = collect(reader);
+      for (Map.Entry<String, long[]> e : expected.entrySet()) {
+        assertArrayEquals(e.getKey(), e.getValue(), actual.get(e.getKey()));
+      }
+    }
+    IOUtils.close(writer, dir);
+  }
+
+  public void testRandomMultiValued() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriterConfig conf = newIndexWriterConfig(new MockAnalyzer(random()));
+    // Low overlay budget (0..2) so stacked deltas frequently fold to a dense rewrite over the
+    // multi-valued base, exercising MergedSortedNumericDocValues against the model.
+    conf.setMaxDocValuesOverlays(random().nextInt(3));
+    IndexWriter writer = new IndexWriter(dir, conf);
+    int numDocs = atLeast(50);
+    Map<String, long[]> expected = new HashMap<>();
+    for (int i = 0; i < numDocs; i++) {
+      // Seed genuinely multi-valued docs (1..4 values). Many docs are never updated below, so they
+      // keep their multi-valued sets and force the dense rewrites to read a multi-valued base.
+      long[] vals = new long[1 + random().nextInt(4)];
+      for (int j = 0; j < vals.length; j++) {
+        vals[j] = random().nextInt(1000);
+      }
+      writer.addDocument(doc(i, vals));
+      long[] sorted = vals.clone();
+      Arrays.sort(sorted); // a sorted-numeric column returns its values ascending, keeping dups
+      expected.put("doc-" + i, sorted);
+      if (rarely()) {
+        writer.commit();
+      }
+    }
+    int numUpdates = atLeast(100);
+    for (int u = 0; u < numUpdates; u++) {
+      // Only update a subset of docs so a good fraction stay multi-valued in the base.
+      int id = random().nextInt(numDocs);
+      long v = random().nextInt(1000);
+      writer.updateSortedNumericDocValue(new Term("id", "doc-" + id), "val", v);
+      expected.put("doc-" + id, new long[] {v}); // an update replaces the whole set with one value
       if (rarely()) {
         writer.commit();
       }
