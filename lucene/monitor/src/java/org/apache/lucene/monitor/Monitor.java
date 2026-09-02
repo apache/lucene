@@ -26,6 +26,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Executor;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.LeafReader;
@@ -47,6 +48,8 @@ public class Monitor implements Closeable {
   private final QueryIndex queryIndex;
 
   private final long commitBatchSize;
+
+  private final Executor executor;
 
   /**
    * Create a non-persistent Monitor instance with the default term-filtering Presearcher
@@ -96,6 +99,7 @@ public class Monitor implements Closeable {
     }
 
     this.commitBatchSize = configuration.getQueryUpdateBufferSize();
+    this.executor = configuration.getExecutor();
   }
 
   /**
@@ -219,7 +223,9 @@ public class Monitor implements Closeable {
       Document[] docs, MatcherFactory<T> factory) throws IOException {
     try (DocumentBatch batch = DocumentBatch.of(analyzer, docs)) {
       LeafReader reader = batch.get();
-      CandidateMatcher<T> matcher = factory.createMatcher(new IndexSearcher(batch.get()));
+      IndexSearcher indexSearcher =
+          (executor != null) ? new IndexSearcher(reader, executor) : new IndexSearcher(reader);
+      CandidateMatcher<T> matcher = factory.createMatcher(indexSearcher);
       StandardQueryCollector<T> collector = new StandardQueryCollector<>(matcher);
       long buildTime = queryIndex.search(t -> presearcher.buildQuery(reader, t), collector);
       return matcher.finish(buildTime, collector.queryCount);
@@ -318,7 +324,8 @@ public class Monitor implements Closeable {
       Document[] docs, MatcherFactory<T> factory) throws IOException {
     try (DocumentBatch batch = DocumentBatch.of(analyzer, docs)) {
       LeafReader reader = batch.get();
-      IndexSearcher searcher = new IndexSearcher(reader);
+      IndexSearcher searcher =
+          (executor != null) ? new IndexSearcher(reader, executor) : new IndexSearcher(reader);
       searcher.setQueryCache(null);
       PresearcherQueryCollector<T> collector =
           new PresearcherQueryCollector<>(factory.createMatcher(searcher));
