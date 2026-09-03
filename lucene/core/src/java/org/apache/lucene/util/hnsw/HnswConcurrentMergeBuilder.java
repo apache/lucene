@@ -42,10 +42,12 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
 
   private static final int DEFAULT_BATCH_SIZE =
       2048; // number of vectors the worker handles sequentially at one batch
+  private static final int REPAIR_BATCH_SIZE = 64;
 
   private final TaskExecutor taskExecutor;
   private final ConcurrentMergeWorker[] workers;
   private final HnswLock hnswLock;
+  private final InitializedHnswGraphBuilder.CopiedGraph copied;
   private InfoStream infoStream = InfoStream.getDefault();
   private boolean frozen;
 
@@ -56,6 +58,24 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
       int beamWidth,
       OnHeapHnswGraph hnsw,
       BitSet initializedNodes)
+      throws IOException {
+    this(taskExecutor, numWorker, scorerSupplier, beamWidth, hnsw, initializedNodes, null);
+  }
+
+  /**
+   * Creates a builder that, when the copied source graph had deletes, repairs its disconnected
+   * nodes across the worker pool and rebalances it before inserting the remaining vectors.
+   *
+   * @param copied the copy-phase result, or null when the graph was not initialized from another
+   */
+  HnswConcurrentMergeBuilder(
+      TaskExecutor taskExecutor,
+      int numWorker,
+      RandomVectorScorerSupplier scorerSupplier,
+      int beamWidth,
+      OnHeapHnswGraph hnsw,
+      BitSet initializedNodes,
+      InitializedHnswGraphBuilder.CopiedGraph copied)
       throws IOException {
     this.taskExecutor = taskExecutor;
     AtomicInteger workProgress = new AtomicInteger(0);
@@ -72,6 +92,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
               initializedNodes,
               workProgress);
     }
+    this.copied = copied;
   }
 
   @Override
@@ -89,6 +110,23 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     for (ConcurrentMergeWorker worker : workers) {
       worker.setMergeStartTimeNs(mergeStartTimeNs);
       worker.setCumulativeWorkTimeNs(cumulativeWorkTimeNs);
+    }
+    if (copied != null && copied.hasDeletes()) {
+      long repairStartNs = System.nanoTime();
+      repairDisconnectedNodes();
+      long rebalanceStartNs = System.nanoTime();
+      copied.builder().rebalanceGraph();
+      long rebalanceEndNs = System.nanoTime();
+      if (infoStream.isEnabled(HNSW_COMPONENT)) {
+        infoStream.message(
+            HNSW_COMPONENT,
+            String.format(
+                Locale.ROOT,
+                "repaired reused graph: %.2f ms repair with %d workers, %.2f ms rebalance",
+                (rebalanceStartNs - repairStartNs) / 1_000_000.0,
+                workers.length,
+                (rebalanceEndNs - rebalanceStartNs) / 1_000_000.0));
+      }
     }
     List<Callable<Void>> futures = new ArrayList<>();
     for (int i = 0; i < workers.length; i++) {
@@ -115,6 +153,40 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
               effectiveConcurrency));
     }
     return getCompletedGraph();
+  }
+
+  /**
+   * Repairs the copied graph's disconnected nodes across the worker pool, one level at a time from
+   * the top down. The per-level {@link TaskExecutor#invokeAll} is a barrier, so {@link
+   * HnswGraphBuilder#addConnections} always navigates finished upper levels.
+   */
+  private void repairDisconnectedNodes() throws IOException {
+    for (int level = copied.numLevels() - 1; level >= 0; level--) {
+      List<Integer> disconnectedNodes = copied.disconnectedNodesByLevel().get(level);
+      if (disconnectedNodes == null || disconnectedNodes.isEmpty()) {
+        continue;
+      }
+      int total = disconnectedNodes.size();
+      int taskCount = Math.min(workers.length, 1 + (total - 1) / REPAIR_BATCH_SIZE);
+      AtomicInteger repairProgress = new AtomicInteger(0);
+      int repairLevel = level;
+      List<Callable<Void>> tasks = new ArrayList<>(taskCount);
+      for (int t = 0; t < taskCount; t++) {
+        ConcurrentMergeWorker worker = workers[t];
+        tasks.add(
+            () -> {
+              int from;
+              while ((from = repairProgress.getAndAdd(REPAIR_BATCH_SIZE)) < total) {
+                worker.fixDisconnectedNodes(
+                    disconnectedNodes.subList(from, Math.min(from + REPAIR_BATCH_SIZE, total)),
+                    repairLevel,
+                    worker.scorer);
+              }
+              return null;
+            });
+      }
+      taskExecutor.invokeAll(tasks);
+    }
   }
 
   @Override

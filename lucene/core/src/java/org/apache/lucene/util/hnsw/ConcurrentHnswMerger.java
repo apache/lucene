@@ -74,6 +74,7 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
       throws IOException {
     OnHeapHnswGraph graph;
     BitSet initializedNodes = null;
+    InitializedHnswGraphBuilder.CopiedGraph copied = null;
 
     if (largestGraphReader == null) {
       graph = new OnHeapHnswGraph(M, maxOrd);
@@ -95,18 +96,19 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
                 initGraphSize,
                 mergedVectorValues,
                 initializedNodes);
-        graph =
-            InitializedHnswGraphBuilder.initGraph(
+        copied =
+            InitializedHnswGraphBuilder.copyGraph(
+                scorerSupplier,
+                beamWidth,
                 initializerGraph,
                 oldToNewOrdinalMap,
                 maxOrd,
-                beamWidth,
-                scorerSupplier,
                 abortCheck);
+        graph = copied.graph();
       }
     }
     return new HnswConcurrentMergeBuilder(
-        taskExecutor, numWorker, scorerSupplier, beamWidth, graph, initializedNodes);
+        taskExecutor, numWorker, scorerSupplier, beamWidth, graph, initializedNodes, copied);
   }
 
   /**
