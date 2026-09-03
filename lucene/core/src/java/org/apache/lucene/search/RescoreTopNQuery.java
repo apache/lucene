@@ -151,6 +151,23 @@ public class RescoreTopNQuery extends Query {
   }
 
   /**
+   * Utility method to create a new RescoreTopNQuery which uses half-precision
+   * (FLOAT16) vectors for rescoring.
+   *
+   * @param in the inner Query to rescore
+   * @param targetVector the target vector to compute score, as FLOAT16 bit patterns
+   * @param field the vector field to compute score
+   * @param n the number of results to keep
+   * @return the RescoreTopNQuery
+   */
+  public static Query createFullPrecisionRescorerQuery(
+      Query in, short[] targetVector, String field, int n) {
+    DoubleValuesSource valuesSource =
+        new FullPrecisionFloat16VectorSimilarityValuesSource(targetVector, field);
+    return new RescoreTopNQuery(in, valuesSource, n);
+  }
+
+  /**
    * Creates a {@code RescoreTopNQuery} that computes top N results using multi-vector similarity
    * comparisons against a late interaction field.
    *
