@@ -78,6 +78,8 @@ The instructions for running the benchmarks can be found in the luceneutil [READ
 The Lucene community is also interested in other implementations of these benchmark tasks.
 Feel free to share your findings (especially if your implementation performs better!) through the [Lucene mailing lists](https://lucene.apache.org/core/discussion.html) or open [PRs](https://github.com/mikemccand/luceneutil/pulls), [issues](https://github.com/mikemccand/luceneutil/issues) on the luceneutil project directly.
 
+A note on micro-benchmarks: one-off JMH benchmarks used to validate a change generally shouldn't be committed. Just drop the benchmark and its numbers in the PR description so reviewers can see the evidence. Only add benchmarks to the dedicated JMH [module](https://github.com/apache/lucene/tree/main/lucene/benchmark-jmh) if they have lasting value and can be reused in the future.
+
 ## Contributing your work
 
 You can open a pull request at <https://github.com/apache/lucene>.
