@@ -214,6 +214,9 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#16553: Fix stored-fields corruption when PerField#finish throws: the stored-fields frame
+  was left open, causing "Wrote N docs, finish called with numDocs=M" at flush. (Michael Marshall)
+
 * GITHUB#16552: Reconnect HNSW nodes whose out-degree decays across successive
   merge-reuse generations, preventing progressive recall loss under low delete
   rates. (Ethan Baker)
@@ -382,9 +385,10 @@ New Features
   requiring the ICU analysis plugin. Uses a generated switch for fold exceptions with
   Character.toLowerCase() as the default fallback. (Robert Muir, Costin Leau)
 
-* GITHUB#15979: Add a sandboxed de-duplicating HNSW vector format (DedupHnswVectorsFormat) that stores
-  each distinct full-precision vector once, shared across all documents and fields that reference it.
-  (Kaival Parikh)
+* GITHUB#15979, GITHUB#16506: Add sandboxed de-duplicating HNSW vector formats (DedupHnswVectorsFormat,
+  DedupHnswScalarQuantizedVectorsFormat) that store each distinct full-precision and quantized vector
+  once, shared across all documents and fields that reference it. Quantization is data-blind (assumes
+  vectors are centered at zero) for effective de-duplication across fields. (Kaival Parikh)
 
 * GITHUB#16484: Add SpanMultiTermQueryWrapper.FrequentTermsSpanBooleanQueryRewrite.  It's a rewrite method that
   translates each term into a SpanTermQuery within a {@link SpanOrQuery}, but retains only the most frequent terms so it
@@ -476,6 +480,9 @@ Optimizations
   Affects BinaryRangeFieldRangeQuery, LatLonDocValuesBoxQuery,
   LatLonDocValuesQuery, XYDocValuesPointInGeometryQuery, and
   SortedNumericDocValuesSetQuery. (Costin Leau)
+
+* GITHUB#16297: Use LongHashSet for sparse ordinal sets in DocValuesRangeIterator so memory
+  scales with matching terms instead of segment cardinality. (Costin Leau)
 
 * GITHUB#16515: Apply filter before scoring in MaxScoreBulkScorer. (Ke Wei)
 
