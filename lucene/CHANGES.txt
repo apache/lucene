@@ -421,6 +421,9 @@ Improvements
 
 Optimizations
 ---------------------
+* Rewrite sorted-numeric doc-values range queries that cover every value of a field to a
+  FieldExistsQuery, and collapse an IndexOrDocValuesQuery whose two sides rewrite equally. (Houston Putman)
+
 * GITHUB#16416: Use ArrayDeque instead of ArrayList for FIFO output buffering in
   JapaneseCompletionFilter, avoiding repeated element shifting on removal. (Luiz Lima)
 

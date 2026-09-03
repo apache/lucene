@@ -980,12 +980,12 @@ public class TestDocValuesQueries extends LuceneTestCaseJupiter {
             searcher.rewrite(
                 SortedNumericDocValuesField.newSlowRangeQuery("super_sparse", 250, 350)),
             instanceOf(MatchNoDocsQuery.class));
-        assertThat(
-            searcher
-                .rewrite(SortedNumericDocValuesField.newSlowRangeQuery("super_sparse", 174, 174))
-                .getClass()
-                .toString(),
-            containsString("SortedNumericDocValuesRangeQuery"));
+        // A range that covers the field's only value but not every doc rewrites to a
+        // FieldExistsQuery (super_sparse has a value on a single doc).
+        assertEquals(
+            new FieldExistsQuery("super_sparse"),
+            searcher.rewrite(
+                SortedNumericDocValuesField.newSlowRangeQuery("super_sparse", 174, 174)));
         assertThat(
             searcher
                 .rewrite(SortedNumericDocValuesField.newSlowRangeQuery("with_index", 0, 150))
@@ -1004,12 +1004,11 @@ public class TestDocValuesQueries extends LuceneTestCaseJupiter {
                 .getClass()
                 .toString(),
             containsString("SortedNumericDocValuesRangeQuery"));
-        assertThat(
-            searcher
-                .rewrite(SortedNumericDocValuesField.newSlowRangeQuery("sparse", 0, 250))
-                .getClass()
-                .toString(),
-            containsString("SortedNumericDocValuesRangeQuery"));
+        // A range that covers every value of a sparse field (a value on all but one doc) rewrites
+        // to a FieldExistsQuery rather than staying a range query.
+        assertEquals(
+            new FieldExistsQuery("sparse"),
+            searcher.rewrite(SortedNumericDocValuesField.newSlowRangeQuery("sparse", 0, 250)));
       }
     }
   }
