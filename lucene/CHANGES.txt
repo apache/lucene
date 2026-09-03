@@ -141,13 +141,6 @@ Optimizations
 
 Bug Fixes
 ---------------------
-* GITHUB#16553: Fix stored-fields corruption when PerField#finish throws: the stored-fields frame
-  was left open, causing "Wrote N docs, finish called with numDocs=M" at flush. (Michael Marshall)
-
-* GITHUB#16552: Reconnect HNSW nodes whose out-degree decays across successive
-  merge-reuse generations, preventing progressive recall loss under low delete
-  rates. (Ethan Baker)
-
 * GITHUB#16546: Prevent RangeBulkScorer from passing empty ranges to LeafCollector. (jxy)
 
 * GITHUB#16565: IndexWriter#updateBinaryDocValue now rejects updating a field that is part of the
@@ -225,6 +218,15 @@ Other
   (Sanghun Lee)
 
 * GITHUB#16516: Simplify array copy by ArrayUtil.copyOfSubArray() in grouping package (Binlong Gao)
+
+======================= Lucene 10.5.2 =======================
+
+* GITHUB#16553: Fix stored-fields corruption when PerField#finish throws: the stored-fields frame
+  was left open, causing "Wrote N docs, finish called with numDocs=M" at flush. (Michael Marshall)
+
+* GITHUB#16552: Reconnect HNSW nodes whose out-degree decays across successive
+  merge-reuse generations, preventing progressive recall loss under low delete
+  rates. (Ethan Baker)
 
 ======================= Lucene 10.5.1 =======================
 
