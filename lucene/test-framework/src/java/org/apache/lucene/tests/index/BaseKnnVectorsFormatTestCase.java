@@ -2309,7 +2309,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
       float[] queryEmbedding = new float[dim];
-      // indexed 421 lines from LICENSE.txt
+      // indexed 379 lines from LICENSE.txt
       // indexed 157 lines from NOTICE.txt
       int topK = 10;
       int efSearch = 25;

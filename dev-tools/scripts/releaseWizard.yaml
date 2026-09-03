@@ -253,7 +253,7 @@ groups:
         fingerprint for the key.
 
       You can choose between signing the release with the gpg program or with the
-      gradle signing plugin. Read about the difference in https://github.com/apache/lucene/blob/main/help/publishing.txt
+      gradle signing plugin. Read about the difference in https://github.com/apache/lucene/blob/main/help/publishing.md
 
       This wizard can prompt you securely for your passphrase (will not be stored) and pass it on to
       buildAndPushRelease in a secure way. However, you can also configure your passphrase in advance
@@ -265,7 +265,7 @@ groups:
     - https://infra.apache.org/openpgp.html#apache-wot
     - https://id.apache.org
     - https://dist.apache.org/repos/dist/release/lucene/KEYS
-    - https://github.com/apache/lucene/blob/main/help/publishing.txt
+    - https://github.com/apache/lucene/blob/main/help/publishing.md
 - !TodoGroup
   id: preparation
   title: Prepare for the release
