@@ -1187,6 +1187,8 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     // minScorerCost = min(5000, 5000) = 5000 >= filter.cost(500) → bitset path
     int[] intoBitSetCalls = {0};
     int[] advanceCalls = {0};
+    int[] nextDocsAndScoresCalls = {0};
+    int[] scoredDocs = {0};
 
     Query filterQuery =
         new CountingFilterQuery(
@@ -1194,8 +1196,22 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
 
     BooleanQuery innerOr =
         new BooleanQuery.Builder()
-            .add(new TermQuery(new Term("body", "dense1")), Occur.SHOULD)
-            .add(new TermQuery(new Term("body", "dense2")), Occur.SHOULD)
+            .add(
+                new CountingScorerQuery(
+                    new TermQuery(new Term("body", "dense1")),
+                    new int[] {Integer.MAX_VALUE},
+                    new int[] {Integer.MAX_VALUE},
+                    scoredDocs,
+                    nextDocsAndScoresCalls),
+                Occur.SHOULD)
+            .add(
+                new CountingScorerQuery(
+                    new TermQuery(new Term("body", "dense2")),
+                    new int[] {Integer.MAX_VALUE},
+                    new int[] {Integer.MAX_VALUE},
+                    scoredDocs,
+                    nextDocsAndScoresCalls),
+                Occur.SHOULD)
             .build();
 
     BooleanQuery outerQuery =
@@ -1234,6 +1250,8 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
             + " advance="
             + advanceCalls[0],
         intoBitSetCalls[0] > 0);
+    assertTrue("Expected nextDocsAndScores() calls", nextDocsAndScoresCalls[0] > 0);
+    assertEquals(500, scoredDocs[0]);
     assertEquals(500, collectedDocs[0]);
 
     reader.close();
@@ -1363,7 +1381,11 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
 
     Query dense1 =
         new CountingScorerQuery(
-            new TermQuery(new Term("body", "dense1")), minAdvanceShallowTarget, minGetMaxScoreUpTo);
+            new TermQuery(new Term("body", "dense1")),
+            minAdvanceShallowTarget,
+            minGetMaxScoreUpTo,
+            new int[1],
+            new int[1]);
     Query dense2 = new TermQuery(new Term("body", "dense2"));
 
     BooleanQuery innerOr =
@@ -1419,11 +1441,20 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     private final Query delegate;
     private final int[] minAdvanceShallowTarget;
     private final int[] minGetMaxScoreUpTo;
+    private final int[] scoredDocs;
+    private final int[] nextDocsAndScoresCalls;
 
-    CountingScorerQuery(Query delegate, int[] minAdvanceShallowTarget, int[] minGetMaxScoreUpTo) {
+    private CountingScorerQuery(
+        Query delegate,
+        int[] minAdvanceShallowTarget,
+        int[] minGetMaxScoreUpTo,
+        int[] scoredDocs,
+        int[] nextDocsAndScoresCalls) {
       this.delegate = delegate;
       this.minAdvanceShallowTarget = minAdvanceShallowTarget;
       this.minGetMaxScoreUpTo = minGetMaxScoreUpTo;
+      this.scoredDocs = scoredDocs;
+      this.nextDocsAndScoresCalls = nextDocsAndScoresCalls;
     }
 
     @Override
@@ -1450,6 +1481,14 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
                 public float getMaxScore(int upTo) throws IOException {
                   minGetMaxScoreUpTo[0] = Math.min(minGetMaxScoreUpTo[0], upTo);
                   return in.getMaxScore(upTo);
+                }
+
+                @Override
+                public void nextDocsAndScores(
+                    int upTo, Bits liveDocs, DocAndFloatFeatureBuffer buffer) throws IOException {
+                  in.nextDocsAndScores(upTo, liveDocs, buffer);
+                  scoredDocs[0] += buffer.size;
+                  nextDocsAndScoresCalls[0]++;
                 }
               };
             }

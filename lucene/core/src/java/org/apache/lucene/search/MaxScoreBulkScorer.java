@@ -49,7 +49,6 @@ final class MaxScoreBulkScorer extends BulkScorer {
 
   private final FixedBitSet windowMatches = new FixedBitSet(INNER_WINDOW_SIZE);
   private final double[] windowScores = new double[INNER_WINDOW_SIZE];
-  private FixedBitSet filterMatches = null;
   private OffsetBits filterMatchesBits = null;
 
   private final DocAndFloatFeatureBuffer docAndScoreBuffer = new DocAndFloatFeatureBuffer();
@@ -83,8 +82,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
       //    filter advance()
       if (minScorerCost >= this.filter.cost
           || (allScorers.length > 4 && this.cost >= this.filter.cost)) {
-        this.filterMatches = new FixedBitSet(INNER_WINDOW_SIZE);
-        this.filterMatchesBits = new OffsetBits(filterMatches);
+        this.filterMatchesBits = new OffsetBits(new FixedBitSet(INNER_WINDOW_SIZE));
       }
     }
   }
@@ -218,7 +216,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
     int innerWindowMax = MathUtil.unsignedMin(max, innerWindowMin + INNER_WINDOW_SIZE);
 
     docAndScoreAccBuffer.size = 0;
-    if (filterMatches == null) {
+    if (filterMatchesBits == null) {
       fillScoreBufferViaLeapFrog(top, acceptDocs, innerWindowMax);
     } else {
       fillScoreBufferViaBitSet(top, acceptDocs, innerWindowMax);
@@ -229,19 +227,19 @@ final class MaxScoreBulkScorer extends BulkScorer {
 
   private void fillScoreBufferViaBitSet(DisiWrapper top, Bits acceptDocs, int innerWindowMax)
       throws IOException {
-    filterMatches.clear();
+    filterMatchesBits.bits.clear();
     int innerWindowMin = top.doc;
     if (filter.doc < innerWindowMax) {
       if (filter.doc < innerWindowMin) {
         filter.doc = filter.approximation.advance(innerWindowMin);
       }
       if (filter.doc < innerWindowMax) {
-        filter.approximation.intoBitSet(innerWindowMax, filterMatches, innerWindowMin);
+        filter.approximation.intoBitSet(innerWindowMax, filterMatchesBits.bits, innerWindowMin);
         filter.doc = filter.approximation.docID();
       }
     }
     if (acceptDocs != null) {
-      acceptDocs.applyMask(filterMatches, innerWindowMin);
+      acceptDocs.applyMask(filterMatchesBits.bits, innerWindowMin);
     }
     filterMatchesBits.setOffset(innerWindowMin);
 
