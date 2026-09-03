@@ -715,6 +715,28 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, iterator.docID());
   }
 
+  public void testBoundedDocIdSetIteratorDocIDRunEnd() throws Exception {
+    FixedBitSet delegateBits = new FixedBitSet(16);
+    delegateBits.set(1, 6);
+    delegateBits.set(8, 15);
+    DocIdSetIterator iterator =
+        new IndexSortSortedNumericDocValuesRangeQuery.BoundedDocIdSetIterator(
+            3, 12, new BitSetIterator(delegateBits, delegateBits.cardinality()));
+
+    assertEquals(3, iterator.nextDoc());
+    assertEquals(6, iterator.docIDRunEnd());
+    assertEquals(3, iterator.docID());
+
+    assertEquals(8, iterator.advance(6));
+    assertEquals(12, iterator.docIDRunEnd());
+    assertEquals(8, iterator.docID());
+
+    assertEquals(11, iterator.advance(11));
+    assertEquals(12, iterator.docIDRunEnd());
+    assertEquals(11, iterator.docID());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, iterator.nextDoc());
+  }
+
   public void testCountWithBkdAsc() throws Exception {
     doTestCountWithBkd(false);
   }
