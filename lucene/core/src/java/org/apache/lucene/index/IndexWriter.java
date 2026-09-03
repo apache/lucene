@@ -4711,6 +4711,7 @@ public class IndexWriter
       case SORTED_NUMERIC ->
           addSortedNumericDiskDiffToPacket(
               fi, baseline, current, segDocMap, diskDelGen, mergedMaxDoc, byGen);
+      // $CASES-OMITTED$
       default ->
           throw new AssertionError(
               "unexpected doc-values type for update carry-over: " + fi.getDocValuesType());

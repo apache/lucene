@@ -390,6 +390,7 @@ final class ReadersAndUpdates {
                     switch (type) {
                       case BINARY -> p.getBinary(fieldInfo);
                       case SORTED_NUMERIC -> p.getSortedNumeric(fieldInfo);
+                      // $CASES-OMITTED$
                       default -> p.getNumeric(fieldInfo);
                     });
           }
