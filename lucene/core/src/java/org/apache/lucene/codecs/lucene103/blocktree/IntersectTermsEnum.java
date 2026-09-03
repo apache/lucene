@@ -178,7 +178,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     final IntersectTermsEnumFrame f = getFrame(currentFrame == null ? 0 : 1 + currentFrame.ord);
 
     f.fp = f.fpOrig = currentFrame.lastSubFP;
-    f.prefixLength = currentFrame.prefixLength + currentFrame.prefixLength;
+    f.prefixLength = currentFrame.prefixLength + currentFrame.suffixLength;
     f.setState(state);
 
     // Walk the node through the index -- we only
