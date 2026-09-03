@@ -504,12 +504,137 @@ public class TestSortedNumericDocValuesUpdates extends LuceneTestCase {
     IOUtils.close(writer, dir);
   }
 
+  public void testMixedSingleAndMultiValuedSegments() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriter writer = new IndexWriter(dir, conf());
+
+    // Alternate segments: even segments hold only single-valued "val" docs (a singleton column on
+    // disk), odd segments hold multi-valued "val" docs (a true sorted-numeric column). Every doc
+    // also has an always-single-valued "sv" field. Merging then combines singleton and
+    // non-singleton columns for "val", while "sv" stays single-valued everywhere.
+    int numSegments = 6;
+    int docsPerSegment = 5;
+    Map<String, long[]> expectedVal = new HashMap<>();
+    Map<String, long[]> expectedSv = new HashMap<>();
+    int id = 0;
+    for (int s = 0; s < numSegments; s++) {
+      boolean multiValued = (s % 2 == 1);
+      for (int d = 0; d < docsPerSegment; d++, id++) {
+        Document doc = new Document();
+        doc.add(new StringField("id", "doc-" + id, Store.NO));
+        long sv = id * 7L;
+        doc.add(new SortedNumericDocValuesField("sv", sv));
+        expectedSv.put("doc-" + id, new long[] {sv});
+        long[] vals = multiValued ? new long[] {id, id + 1000L} : new long[] {id};
+        for (long v : vals) {
+          doc.add(new SortedNumericDocValuesField("val", v));
+        }
+        long[] sorted = vals.clone();
+        Arrays.sort(sorted);
+        expectedVal.put("doc-" + id, sorted);
+        writer.addDocument(doc);
+      }
+      writer.commit(); // one segment per iteration
+    }
+    int totalDocs = id;
+
+    // Update every third doc's "val" (a single-valued update: collapses a multi-valued doc, or just
+    // changes a single-valued one) and its "sv" (which stays single-valued).
+    for (int u = 0; u < totalDocs; u += 3) {
+      writer.updateSortedNumericDocValue(new Term("id", "doc-" + u), "val", 5000L + u);
+      expectedVal.put("doc-" + u, new long[] {5000L + u});
+      writer.updateSortedNumericDocValue(new Term("id", "doc-" + u), "sv", 9000L + u);
+      expectedSv.put("doc-" + u, new long[] {9000L + u});
+    }
+
+    writer.forceMerge(1);
+
+    try (DirectoryReader reader = DirectoryReader.open(writer)) {
+      assertEquals(1, reader.leaves().size());
+      LeafReader leaf = reader.leaves().get(0).reader();
+      // "val" mixes multi-valued docs from the odd segments, so its merged column is not a singleton.
+      assertFalse(
+          "val column should be multi-valued",
+          DocValues.isSingleton(leaf.getSortedNumericDocValues("val")));
+      // "sv" was single-valued on every doc and only ever updated with a single value, so its
+      // merged column must be a singleton.
+      assertTrue(
+          "sv column should be a singleton",
+          DocValues.isSingleton(leaf.getSortedNumericDocValues("sv")));
+
+      Map<String, long[]> actualVal = collect(reader, "val");
+      Map<String, long[]> actualSv = collect(reader, "sv");
+      for (int i = 0; i < totalDocs; i++) {
+        String key = "doc-" + i;
+        assertArrayEquals(key + " val", expectedVal.get(key), actualVal.get(key));
+        assertArrayEquals(key + " sv", expectedSv.get(key), actualSv.get(key));
+      }
+    }
+    writer.commit(); // persist the merged segment + updates so checkIndex validates them
+    TestUtil.checkIndex(dir);
+    IOUtils.close(writer, dir);
+  }
+
+  public void testUpdateAllToSingleValueBecomesSingletonAfterMerge() throws Exception {
+    Directory dir = newDirectory();
+    // Overlays on, so the single-valued updates are written as sparse deltas over the multi-valued
+    // base rather than as a dense rewrite.
+    IndexWriterConfig conf =
+        newIndexWriterConfig(new MockAnalyzer(random()))
+            .setMaxDocValuesOverlays(1 + random().nextInt(4));
+    IndexWriter writer = new IndexWriter(dir, conf);
+    int numDocs = 20;
+    for (int i = 0; i < numDocs; i++) {
+      writer.addDocument(doc(i, i, i + 100L, i + 200L)); // 3 values each -> multi-valued column
+    }
+    writer.commit();
+
+    // Update every doc to a single value.
+    Map<String, long[]> expected = new HashMap<>();
+    for (int i = 0; i < numDocs; i++) {
+      writer.updateSortedNumericDocValue(new Term("id", "doc-" + i), "val", 1000L + i);
+      expected.put("doc-" + i, new long[] {1000L + i});
+    }
+
+    // Add one more (single-valued) doc in its own segment: this guarantees at least two segments,
+    // so forceMerge(1) actually runs a merge (a forceMerge of a single segment is a no-op and would
+    // leave the sparse overlay in place, which reports non-singleton because its base layer is
+    // multi-valued). The merge materializes everything into one dense column; every doc now holds a
+    // single value, so the codec stores it without an addresses table and it reads back as a
+    // singleton.
+    writer.addDocument(doc(numDocs, 5000L));
+    expected.put("doc-" + numDocs, new long[] {5000L});
+    writer.commit();
+    writer.forceMerge(1);
+
+    try (DirectoryReader reader = DirectoryReader.open(writer)) {
+      assertEquals(1, reader.leaves().size());
+      LeafReader leaf = reader.leaves().get(0).reader();
+      assertTrue(
+          "a merged column whose every doc holds a single value should be a singleton",
+          DocValues.isSingleton(leaf.getSortedNumericDocValues("val")));
+      Map<String, long[]> actual = collect(reader);
+      for (int i = 0; i <= numDocs; i++) {
+        assertArrayEquals("doc-" + i, expected.get("doc-" + i), actual.get("doc-" + i));
+      }
+    }
+    writer.commit();
+    TestUtil.checkIndex(dir);
+    IOUtils.close(writer, dir);
+  }
+
   /** Collect field "val" for all live docs, keyed by the "id" stored term. */
   private static Map<String, long[]> collect(DirectoryReader reader) throws Exception {
+    return collect(reader, "val");
+  }
+
+  /** Collect the given sorted-numeric field for all live docs, keyed by the "id" stored term. */
+  private static Map<String, long[]> collect(DirectoryReader reader, String field)
+      throws Exception {
     Map<String, long[]> result = new TreeMap<>();
     for (LeafReaderContext ctx : reader.leaves()) {
       LeafReader lr = ctx.reader();
-      SortedNumericDocValues dv = lr.getSortedNumericDocValues("val");
+      SortedNumericDocValues dv = lr.getSortedNumericDocValues(field);
       Terms idTerms = lr.terms("id");
       if (idTerms == null || dv == null) {
         continue;
