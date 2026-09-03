@@ -156,9 +156,9 @@ public class TestSortedNumericDocValuesUpdates extends LuceneTestCase {
 
   public void testDenseRewriteOverMultiValuedBase() throws Exception {
     // maxDocValuesOverlays == 0 forces a dense full-column rewrite on every update. With a
-    // multi-valued base that rewrite goes through ReadersAndUpdates.MergedSortedNumericDocValues:
-    // the matched doc collapses to the single update value while every other doc keeps its whole
-    // (sorted) value set read from the base column.
+    // multi-valued base the rewrite merges the base column with the single-valued update per doc
+    // (the update winning): the matched doc collapses to the single update value while every other
+    // doc keeps its whole (sorted) value set read from the base column.
     try (Directory dir = newDirectory();
         IndexWriter w =
             new IndexWriter(
@@ -188,7 +188,7 @@ public class TestSortedNumericDocValuesUpdates extends LuceneTestCase {
     // maxDocValuesOverlays==1
     // the first round writes a sparse delta; once its coverage crosses
     // FOLD_TO_DENSE_COVERAGE_RATIO (0.5) the next update folds the field back to a single dense
-    // column, reading the multi-valued base through MergedSortedNumericDocValues. Docs never
+    // column, merging the single-valued update over the multi-valued base per doc. Docs never
     // updated
     // must keep their full value sets.
     int numDocs = 10;
@@ -461,7 +461,7 @@ public class TestSortedNumericDocValuesUpdates extends LuceneTestCase {
     Directory dir = newDirectory();
     IndexWriterConfig conf = newIndexWriterConfig(new MockAnalyzer(random()));
     // Low overlay budget (0..2) so stacked deltas frequently fold to a dense rewrite over the
-    // multi-valued base, exercising MergedSortedNumericDocValues against the model.
+    // multi-valued base, exercising the base+update dense merge against the model.
     conf.setMaxDocValuesOverlays(random().nextInt(3));
     IndexWriter writer = new IndexWriter(dir, conf);
     int numDocs = atLeast(50);
@@ -552,7 +552,8 @@ public class TestSortedNumericDocValuesUpdates extends LuceneTestCase {
     try (DirectoryReader reader = DirectoryReader.open(writer)) {
       assertEquals(1, reader.leaves().size());
       LeafReader leaf = reader.leaves().get(0).reader();
-      // "val" mixes multi-valued docs from the odd segments, so its merged column is not a singleton.
+      // "val" mixes multi-valued docs from the odd segments, so its merged column is not a
+      // singleton.
       assertFalse(
           "val column should be multi-valued",
           DocValues.isSingleton(leaf.getSortedNumericDocValues("val")));
