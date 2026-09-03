@@ -28,9 +28,11 @@ import java.nio.FloatBuffer;
 import java.nio.ShortBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
 import org.apache.lucene.index.DocsWithFieldSet;
@@ -94,10 +96,33 @@ final class DedupFlushContext implements Accountable {
     return fieldVectorsWriter;
   }
 
-  void flush(IndexOutput meta, IndexOutput vectorData, int maxDoc, Sorter.DocMap sortMap)
+  /**
+   * Writes each group's distinct vectors once, followed by per-field metadata. When {@code
+   * quantizer} is non-null, a quantized copy of each applicable group is also written and its block
+   * location appended to the group metadata.
+   */
+  void flush(
+      IndexOutput meta,
+      IndexOutput vectorData,
+      IndexOutput quantizedVectorData,
+      int maxDoc,
+      Sorter.DocMap sortMap,
+      DedupQuantizer quantizer)
       throws IOException {
 
     Map<GroupKey, Integer> groupOrds = new HashMap<>();
+
+    // quantization flavors referencing each group, derived from its fields' similarity functions
+    Map<GroupKey, Set<DedupQuantizer.Flavor>> groupFlavors = new HashMap<>();
+    if (quantizer != null) {
+      for (FieldData fieldData : fieldDataList) {
+        if (fieldData.fieldInfo.getVectorEncoding() == VectorEncoding.FLOAT32) {
+          groupFlavors
+              .computeIfAbsent(fieldData.groupKey, _ -> EnumSet.noneOf(DedupQuantizer.Flavor.class))
+              .add(DedupQuantizer.Flavor.of(fieldData.fieldInfo.getVectorSimilarityFunction()));
+        }
+      }
+    }
 
     int groupOrd = 0;
     for (Map.Entry<GroupKey, DedupGroup<?>> entry : groups.entrySet()) {
@@ -120,6 +145,22 @@ final class DedupFlushContext implements Accountable {
           new GroupInfo(
               groupOrd, dimension, encoding, groupNumVectors, vectorDataOffset, vectorDataSize);
       groupInfo.write(meta);
+
+      if (quantizer != null) {
+        if (group instanceof FloatGroup floatGroup) {
+          quantizer.writeGroup(
+              meta,
+              quantizedVectorData,
+              encoding,
+              dimension,
+              groupNumVectors,
+              groupFlavors.get(groupKey),
+              floatGroup::get,
+              null);
+        } else {
+          DedupQuantizer.writeEmptyGroup(meta);
+        }
+      }
 
       groupOrds.put(groupKey, groupOrd);
       groupOrd++;

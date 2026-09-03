@@ -24,7 +24,7 @@
  * <p>Lucene snowball classes require a few patches to the original Snowball source tree to generate
  * more efficient code.
  *
- * <p>Refer to {@code gradle/generation/snowball*} and {@code help/regeneration.txt} files in Lucene
+ * <p>Refer to {@code gradle/generation/snowball*} and {@code help/regeneration.md} files in Lucene
  * source code for instructions on how code regeneration from Snowball sources works, what
  * modifications are applied and what is required to regenerate snowball analyzers from scratch.
  *
