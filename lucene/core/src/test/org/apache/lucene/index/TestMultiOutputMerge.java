@@ -406,6 +406,55 @@ public class TestMultiOutputMerge extends LuceneTestCase {
     }
   }
 
+  /**
+   * A wrapper that keeps soft-deleted documents keeps hard-deleted ones with them. Those must not
+   * reach an output: the merge is the last chance to drop them, and nothing downstream knows they
+   * were deleted.
+   */
+  public void testHardDeletesDoNotSurviveRetention() throws Exception {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = config();
+      iwc.setSoftDeletesField(SOFT);
+      iwc.setMergePolicy(
+          new SoftDeletesRetentionMergePolicy(
+              SOFT, MatchAllDocsQuery::new, new PartitioningMergePolicy()));
+      Set<String> hardDeleted = new HashSet<>();
+      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+        for (int seg = 0; seg < SEGMENTS; seg++) {
+          for (int d = 0; d < PER_SEGMENT; d++) {
+            w.addDocument(doc(id(seg, d), 0));
+          }
+          w.flush();
+        }
+        // The document has to be soft-deleted AND hard-deleted: retention keeps it for the
+        // first reason, and the merge has to drop it for the second.
+        for (int seg = 0; seg < SEGMENTS; seg++) {
+          for (int d = 3; d < PER_SEGMENT; d += 23) {
+            Document tomb = doc(id(seg, d), 0);
+            tomb.add(new NumericDocValuesField(SOFT, 1));
+            w.softUpdateDocument(
+                new Term("id", id(seg, d)), tomb, new NumericDocValuesField(SOFT, 1));
+          }
+          w.commit();
+          for (int d = 3; d < PER_SEGMENT; d += 46) {
+            w.deleteDocuments(new Term("id", id(seg, d)));
+            hardDeleted.add(id(seg, d));
+          }
+        }
+        w.commit();
+        enabled = true;
+        proceed.countDown();
+        w.maybeMerge();
+      }
+      try (DirectoryReader r = DirectoryReader.open(dir)) {
+        Set<String> live = new HashSet<>(liveIds(r));
+        for (String id : hardDeleted) {
+          assertFalse("hard-deleted " + id + " came back", live.contains(id));
+        }
+      }
+    }
+  }
+
   /** A malformed partition spec must be rejected, not silently corrupt the index. */
   public void testRejectsBadPartitions() throws Exception {
     try (Directory dir = newDirectory()) {

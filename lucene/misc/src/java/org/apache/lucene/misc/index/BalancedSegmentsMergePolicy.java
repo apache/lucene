@@ -17,6 +17,7 @@
 package org.apache.lucene.misc.index;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -103,14 +104,16 @@ public class BalancedSegmentsMergePolicy extends FilterMergePolicy {
     }
     long total = 0;
     for (SegmentCommitInfo info : eligible) {
-      total += liveDocs(info);
+      total += liveDocs(info, context);
     }
     if (total == 0) {
       return super.findForcedMerges(infos, maxSegmentCount, segmentsToMerge, context);
     }
     // Largest first, so a segment bigger than a share of its own takes as many outputs as it needs
     // and the small ones pack into what is left.
-    eligible.sort(Comparator.comparingLong(BalancedSegmentsMergePolicy::liveDocs).reversed());
+    eligible.sort(
+        Comparator.comparingLong((SegmentCommitInfo info) -> liveDocsUnchecked(info, context))
+            .reversed());
 
     final double share = (double) total / maxSegmentCount;
     final MergeSpecification spec = new MergeSpecification();
@@ -119,10 +122,10 @@ public class BalancedSegmentsMergePolicy extends FilterMergePolicy {
     int assigned = 0;
     for (int i = 0; i < eligible.size(); i++) {
       group.add(eligible.get(i));
-      groupDocs += liveDocs(eligible.get(i));
+      groupDocs += liveDocs(eligible.get(i), context);
       final int left = eligible.size() - i - 1;
       if (left > 0) {
-        final double withNext = groupDocs + liveDocs(eligible.get(i + 1));
+        final double withNext = groupDocs + liveDocs(eligible.get(i + 1), context);
         if (Math.abs(withNext - share) < Math.abs(groupDocs - share)) {
           continue; // taking the next segment too gets this group closer to a share
         }
@@ -136,8 +139,9 @@ public class BalancedSegmentsMergePolicy extends FilterMergePolicy {
       if (outputs < 1) {
         continue; // no output left to give it; it joins the next group
       }
-      if (group.size() > 1 || outputs > 1) {
-        // A lone segment that is already about the right size needs no merge at all.
+      if (group.size() > 1 || outputs > 1 || isMerged(infos, group.get(0), context) == false) {
+        // A lone segment that is already the right size and carries nothing to reclaim needs no
+        // merge at all.
         spec.add(new Split(new ArrayList<>(group), outputs));
       }
       assigned += outputs;
@@ -147,8 +151,22 @@ public class BalancedSegmentsMergePolicy extends FilterMergePolicy {
     return spec.merges.isEmpty() ? null : spec;
   }
 
-  private static long liveDocs(SegmentCommitInfo info) {
-    return info.info.maxDoc() - info.getDelCount();
+  /**
+   * What this segment will contribute to an output. {@link MergeContext#numDeletesToMerge} rather
+   * than the recorded delete count, so that deletes still buffered, and any a policy has decided to
+   * reclaim, are shared out with everything else rather than turning up as an imbalance later.
+   */
+  private static long liveDocs(SegmentCommitInfo info, MergeContext context) throws IOException {
+    return info.info.maxDoc() - context.numDeletesToMerge(info);
+  }
+
+  /** {@link #liveDocs} for a comparator, which cannot throw. */
+  private static long liveDocsUnchecked(SegmentCommitInfo info, MergeContext context) {
+    try {
+      return liveDocs(info, context);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
   }
 
   /** One merge writing {@code outputs} segments, each an equal share of every input. */

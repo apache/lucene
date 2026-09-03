@@ -185,6 +185,29 @@ public class TestBalancedSegmentsMergePolicy extends LuceneTestCase {
     }
   }
 
+  /** A lone segment carrying deletes still has work to do, so a forced merge must not skip it. */
+  public void testForcedMergeReclaimsDeletesFromALoneSegment() throws Exception {
+    try (Directory dir = newDirectory()) {
+      // NoMergePolicy underneath, so only the forced merge can reclaim anything.
+      try (IndexWriter w =
+          new IndexWriter(dir, config(new BalancedSegmentsMergePolicy(NoMergePolicy.INSTANCE)))) {
+        index(w);
+        w.forceMerge(1, true);
+        for (int i = 0; i < DOCS / 2; i++) {
+          w.deleteDocuments(new Term("id", "" + i));
+        }
+        w.commit();
+        w.forceMerge(1, true);
+      }
+      TestUtil.checkIndex(dir);
+      try (DirectoryReader r = DirectoryReader.open(dir)) {
+        assertEquals(1, r.leaves().size());
+        assertEquals(DOCS / 2, r.numDocs());
+        assertEquals("deletes were not reclaimed", r.numDocs(), r.maxDoc());
+      }
+    }
+  }
+
   private int[] forceMergeInto(boolean balanced) throws Exception {
     try (Directory dir = newDirectory()) {
       Set<String> expected = new HashSet<>();

@@ -5416,13 +5416,6 @@ public class IndexWriter
    * all the same length, non-decreasing, starting at 0 and ending at that input's maxDoc. Given
    * that shape, the two properties the merge depends on, disjointness and full coverage, hold by
    * construction rather than by trusting the caller.
-   *
-   * <p>Plus the one thing that is not about the spec: an index sort. Correctness rests on the
-   * outputs being contiguous AND in order in the merged document space, which holds under a sort,
-   * where the merged order is key order and the outputs are key ranges. Without one, {@link
-   * DocIDMerger} concatenates input by input, so an output's documents land in one block per input
-   * rather than in a single run, and splitting a term's postings by document id would quietly hand
-   * documents to the wrong output.
    */
   private void validateDocRangePartitions(
       MergePolicy.OneMerge merge, int[][] partitions, List<CodecReader> readers)
@@ -5583,8 +5576,39 @@ public class IndexWriter
       final List<CodecReader> wrappedReaders = new ArrayList<>(rawReaders.size());
       for (MergePolicy.MergeReader mergeReader : merge.getMergeReader()) {
         merge.checkAborted();
-        final CodecReader wrapped = merge.wrapForMerge(mergeReader.reader);
+        final SegmentReader reader = mergeReader.reader;
+        CodecReader wrapped = merge.wrapForMerge(reader);
         validateMergeReader(wrapped);
+        final Bits hardLiveDocs = mergeReader.hardLiveDocs;
+        if (softDeletesEnabled && reader != wrapped && hardLiveDocs != null) {
+          // A wrapper that keeps soft-deleted documents keeps hard-deleted ones with them, and
+          // those must not reach any output. Excluded here rather than per output: which
+          // documents are hard-deleted does not depend on the range.
+          final Bits wrappedLiveDocs = wrapped.getLiveDocs();
+          final Counter hardDeleteCounter = Counter.newCounter(false);
+          countSoftDeletes(
+              wrapped, wrappedLiveDocs, hardLiveDocs, Counter.newCounter(false), hardDeleteCounter);
+          final int hardDeleteCount = Math.toIntExact(hardDeleteCounter.get());
+          if (hardDeleteCount > 0) {
+            final Bits liveDocs =
+                wrappedLiveDocs == null
+                    ? hardLiveDocs
+                    : new Bits() {
+                      @Override
+                      public boolean get(int index) {
+                        return hardLiveDocs.get(index) && wrappedLiveDocs.get(index);
+                      }
+
+                      @Override
+                      public int length() {
+                        return hardLiveDocs.length();
+                      }
+                    };
+            wrapped =
+                FilterCodecReader.wrapLiveDocs(
+                    wrapped, liveDocs, wrapped.numDocs() - hardDeleteCount);
+          }
+        }
         wrapped.checkIntegrity(merge);
         wrappedReaders.add(wrapped);
       }
@@ -5626,6 +5650,8 @@ public class IndexWriter
                 mergeReader.hardLiveDocs,
                 softDeleteCount,
                 hardDeleteCounter);
+            assert hardDeleteCounter.get() == 0
+                : "hard-deleted documents reached an output: " + hardDeleteCounter.get();
           }
           mergeReaders.add(wrapped);
           i++;
