@@ -666,6 +666,103 @@ public class HnswGraphBuilder implements HnswBuilder {
   }
 
   /**
+   * Fixes disconnected nodes at a specific level by performing graph searches from their existing
+   * neighbors to find additional connections.
+   *
+   * <p>For each disconnected node:
+   *
+   * <ol>
+   *   <li>Use existing neighbors as entry points for graph search
+   *   <li>Search the level to find candidate neighbors
+   *   <li>Add diverse neighbors using the HNSW heuristic selection algorithm
+   * </ol>
+   *
+   * <p>If a node has no neighbors at all, it cannot be repaired at this level and will rely on the
+   * rebalancing phase.
+   *
+   * @param disconnectedNodes list of node ordinals that need additional neighbors
+   * @param level the level at which to repair connections
+   * @param scorer vector similarity scorer for distance calculations
+   * @throws IOException if an I/O error occurs during search operations
+   */
+  void fixDisconnectedNodes(
+      List<Integer> disconnectedNodes, int level, UpdateableRandomVectorScorer scorer)
+      throws IOException {
+    if (disconnectedNodes.isEmpty()) return;
+
+    int beamWidth = beamCandidates.k();
+    GraphBuilderKnnCollector candidates = new GraphBuilderKnnCollector(beamWidth);
+    NeighborArray scratchArray = new NeighborArray(beamWidth, false);
+
+    for (int node : disconnectedNodes) {
+      maybeAbort();
+      scorer.setScoringOrdinal(node);
+      NeighborArray existingNeighbors = hnsw.getNeighbors(level, node);
+
+      // Only repair if node has at least one neighbor to use as entry point
+      if (existingNeighbors.size() > 0) {
+        // Use all existing neighbors as entry points for search
+        int[] entryPoints = new int[existingNeighbors.size()];
+        System.arraycopy(existingNeighbors.nodes(), 0, entryPoints, 0, existingNeighbors.size());
+
+        // Search from entry points to find candidate neighbors
+        graphSearcher.searchLevel(candidates, scorer, level, entryPoints, hnsw, null);
+        popToScratch(candidates, scratchArray);
+
+        // Add diverse neighbors using HNSW heuristic (prunes similar neighbors)
+        addDiverseNeighbors(level, node, scratchArray, scorer, true);
+      } else {
+        // Node has no nighbors, add connections from scratch
+        addConnections(node, level, scorer);
+      }
+
+      // Clear for next iteration
+      scratchArray.clear();
+      candidates.clear();
+    }
+  }
+
+  /**
+   * Adds connections for an existing node at a specific level in the graph hierarchy.
+   *
+   * <p>The process involves:
+   *
+   * <ol>
+   *   <li>Navigate down from the top level to find the closest node at the target level
+   *   <li>Perform a full search at the target level to find neighbors
+   *   <li>Add diverse neighbors using the HNSW heuristic selection
+   * </ol>
+   *
+   * @param node the node ordinal to add connections for
+   * @param targetLevel the level to add connections at
+   * @param scorer vector similarity scorer for distance calculations
+   * @throws IOException if an I/O error occurs during search or neighbor addition
+   */
+  void addConnections(int node, int targetLevel, UpdateableRandomVectorScorer scorer)
+      throws IOException {
+
+    int beamWidth = beamCandidates.k();
+    GraphBuilderKnnCollector candidates = new GraphBuilderKnnCollector(beamWidth);
+    int[] eps = {hnsw.entryNode()};
+
+    // Navigate down from top to target level, greedily moving toward the new node
+    for (int level = hnsw.numLevels() - 1; level > targetLevel; level--) {
+      graphSearcher.searchLevel(candidates, scorer, level, eps, hnsw, null);
+      eps[0] = candidates.popNode();
+      candidates.clear();
+    }
+
+    // Perform full search at target level to find neighbors
+    graphSearcher.searchLevel(candidates, scorer, targetLevel, eps, hnsw, null);
+
+    NeighborArray scratchArray = new NeighborArray(beamWidth, false);
+    popToScratch(candidates, scratchArray);
+
+    // Add diverse neighbors and establish bidirectional connections
+    addDiverseNeighbors(targetLevel, node, scratchArray, scorer, true);
+  }
+
+  /**
    * A restricted, specialized knnCollector that can be used when building a graph.
    *
    * <p>Does not support TopDocs
