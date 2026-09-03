@@ -17,6 +17,7 @@
 package org.apache.lucene.document.column;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.document.Field;
@@ -45,13 +46,40 @@ public abstract sealed class ColumnFieldAdapter extends Field
 
   /** Returns an adapter for the given column, dispatching on its concrete type. */
   public static ColumnFieldAdapter create(Column column) {
-    if (column instanceof LongColumn lc) {
-      return new LongColumnAdapter(lc);
-    } else if (column instanceof BinaryColumn bc) {
-      return new BinaryColumnAdapter(bc);
-    } else {
-      throw new IllegalArgumentException("Unknown column type: " + column.getClass().getName());
-    }
+    return switch (column) {
+      case LongColumn lc -> new LongColumnAdapter(lc);
+      case BinaryColumn bc ->
+          new BinaryColumnAdapter(
+              bc.name(),
+              bc.fieldType(),
+              bc.fieldType().stored() ? bc.storedType() : null,
+              bc.tuples());
+      case DictionaryColumn dc ->
+          new BinaryColumnAdapter(
+              dc.name(),
+              dc.fieldType(),
+              dc.fieldType().stored() ? dc.storedType() : null,
+              dictionaryCursor(dc.tuples(), dc.dictionary()));
+      case TokenStreamColumn tsc ->
+          new BinaryColumnAdapter(tsc.name(), tsc.fieldType(), tsc.tuples());
+      default ->
+          throw new IllegalArgumentException("Unknown column type: " + column.getClass().getName());
+    };
+  }
+
+  private static ObjectTupleCursor<BytesRef> dictionaryCursor(
+      OrdinalsTupleCursor ordinals, List<BytesRef> dictionary) {
+    return new ObjectTupleCursor<>() {
+      @Override
+      public int nextDoc() {
+        return ordinals.nextDoc();
+      }
+
+      @Override
+      public BytesRef value() {
+        return dictionary.get(ordinals.ordValue());
+      }
+    };
   }
 
   /** Advances to the next batch-local doc-id with a value. */
@@ -121,6 +149,9 @@ final class LongColumnAdapter extends ColumnFieldAdapter {
 
 final class BinaryColumnAdapter extends ColumnFieldAdapter {
   private final ObjectTupleCursor<BytesRef> cursor;
+  // Non-null only with a TokenStreamColumn; mutually exclusive with cursor. When set, this
+  // adapter feeds the inverter the caller's TokenStream directly instead of decoding bytes
+  private final ObjectTupleCursor<TokenStream> tokenStreamCursor;
   private final StoredValue reusableStoredValue;
   private final StoredValue.Type storedType;
   private final boolean tokenized;
@@ -128,18 +159,34 @@ final class BinaryColumnAdapter extends ColumnFieldAdapter {
   // Cached UTF-8 decode of the cursor's current value. Invalidated on nextDoc()
   private String cachedString;
 
-  BinaryColumnAdapter(BinaryColumn column) {
-    super(column.name(), column.fieldType());
-    this.cursor = column.tuples();
-    this.tokenized = column.fieldType().tokenized();
-    this.indexed = column.fieldType().indexOptions() != IndexOptions.NONE;
-    if (column.fieldType().stored()) {
-      this.storedType = column.storedType();
-      this.reusableStoredValue = newReusableStoredValue(storedType);
-    } else {
-      this.storedType = null;
-      this.reusableStoredValue = null;
-    }
+  BinaryColumnAdapter(
+      String name,
+      IndexableFieldType fieldType,
+      StoredValue.Type storedType,
+      ObjectTupleCursor<BytesRef> cursor) {
+    super(name, fieldType);
+    this.cursor = cursor;
+    this.tokenStreamCursor = null;
+    this.tokenized = fieldType.tokenized();
+    this.indexed = fieldType.indexOptions() != IndexOptions.NONE;
+    this.storedType = storedType;
+    this.reusableStoredValue = storedType != null ? newReusableStoredValue(storedType) : null;
+  }
+
+  /**
+   * Token-stream mode: the column yields a {@link TokenStream} per doc for inversion. A {@link
+   * TokenStreamColumn} is validated to be inverted-only, so {@code tokenized}/{@code indexed} are
+   * always true.
+   */
+  BinaryColumnAdapter(
+      String name, IndexableFieldType fieldType, ObjectTupleCursor<TokenStream> tokenStreamCursor) {
+    super(name, fieldType);
+    this.cursor = null;
+    this.tokenStreamCursor = tokenStreamCursor;
+    this.tokenized = true;
+    this.indexed = true;
+    this.storedType = null;
+    this.reusableStoredValue = null;
   }
 
   private static StoredValue newReusableStoredValue(StoredValue.Type type) {
@@ -147,11 +194,12 @@ final class BinaryColumnAdapter extends ColumnFieldAdapter {
       case STRING -> new StoredValue("");
       case BINARY -> new StoredValue(new BytesRef());
       case INTEGER, LONG, FLOAT, DOUBLE, DATA_INPUT ->
-          throw new IllegalArgumentException("rejected by ColumnValidation.validateBinaryColumn");
+          throw new IllegalArgumentException("rejected by ColumnValidation");
     };
   }
 
   private String decodedString() {
+    assert cursor != null : "decodedString() unreachable in token-stream mode";
     if (cachedString == null) {
       BytesRef ref = cursor.value();
       cachedString = new String(ref.bytes, ref.offset, ref.length, StandardCharsets.UTF_8);
@@ -162,16 +210,19 @@ final class BinaryColumnAdapter extends ColumnFieldAdapter {
   @Override
   public int nextDoc() {
     cachedString = null;
-    return cursor.nextDoc();
+    return tokenStreamCursor != null ? tokenStreamCursor.nextDoc() : cursor.nextDoc();
   }
 
   @Override
   public BytesRef binaryValue() {
-    return cursor.value();
+    return tokenStreamCursor != null ? null : cursor.value();
   }
 
   @Override
   public String stringValue() {
+    if (tokenStreamCursor != null) {
+      return null;
+    }
     return tokenized ? decodedString() : null;
   }
 
@@ -180,11 +231,12 @@ final class BinaryColumnAdapter extends ColumnFieldAdapter {
     if (reusableStoredValue == null) {
       return null;
     }
+    assert cursor != null : "storedValue() unreachable in token-stream mode";
     switch (storedType) {
       case STRING -> reusableStoredValue.setStringValue(decodedString());
       case BINARY -> reusableStoredValue.setBinaryValue(cursor.value());
       case INTEGER, LONG, FLOAT, DOUBLE, DATA_INPUT ->
-          throw new IllegalArgumentException("rejected by ColumnValidation.validateBinaryColumn");
+          throw new IllegalArgumentException("rejected by ColumnValidation");
     }
     return reusableStoredValue;
   }
@@ -199,6 +251,10 @@ final class BinaryColumnAdapter extends ColumnFieldAdapter {
 
   @Override
   public TokenStream tokenStream(Analyzer analyzer, TokenStream reuse) {
+    if (tokenStreamCursor != null) {
+      // Caller-supplied token stream: hand it straight to the inverter, bypassing the analyzer.
+      return tokenStreamCursor.value();
+    }
     if (tokenized) {
       return analyzer.tokenStream(name(), stringValue());
     }

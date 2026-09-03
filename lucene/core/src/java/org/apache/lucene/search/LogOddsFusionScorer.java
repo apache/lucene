@@ -17,6 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.IdentityHashMap;
 import java.util.List;
 
 /**
@@ -50,6 +51,10 @@ final class LogOddsFusionScorer extends DisjunctionScorer {
   private final List<Scorer> subScorers;
   private final int totalClauses;
   private final float scalingFactor;
+  private final float[] signalWeights;
+  private final float[] logitMin;
+  private final float[] logitMax;
+  private final IdentityHashMap<Scorer, Integer> scorerIndexMap;
 
   private final DisjunctionScoreBlockBoundaryPropagator disjunctionBlockPropagator;
 
@@ -59,16 +64,42 @@ final class LogOddsFusionScorer extends DisjunctionScorer {
    * @param subScorers the sub scorers to combine
    * @param totalClauses the total number of clauses (including non-matching)
    * @param alpha confidence scaling exponent (0.5 = sqrt(n) law)
+   * @param signalWeights per-signal weights parallel to subScorers (null for uniform weighting).
+   *     When provided, the scoring formula uses weighted sum instead of mean. Weights must be
+   *     non-negative and should sum to 1.
+   * @param logitMin per-signal logit lower bounds for normalization (null to use softplus gating).
+   *     When provided together with logitMax, logit values are normalized to [0, 1] instead of
+   *     applying softplus. This ensures non-negative contributions while preserving learned signal
+   *     scale calibration.
+   * @param logitMax per-signal logit upper bounds for normalization (null to use softplus gating)
    * @param scoreMode the score mode
    * @param leadCost the lead cost for iteration
    */
   LogOddsFusionScorer(
-      List<Scorer> subScorers, int totalClauses, float alpha, ScoreMode scoreMode, long leadCost)
+      List<Scorer> subScorers,
+      int totalClauses,
+      float alpha,
+      float[] signalWeights,
+      float[] logitMin,
+      float[] logitMax,
+      ScoreMode scoreMode,
+      long leadCost)
       throws IOException {
     super(subScorers, scoreMode, leadCost);
     this.subScorers = subScorers;
     this.totalClauses = totalClauses;
     this.scalingFactor = (float) Math.pow(totalClauses, alpha);
+    this.signalWeights = signalWeights;
+    this.logitMin = logitMin;
+    this.logitMax = logitMax;
+    if (signalWeights != null) {
+      this.scorerIndexMap = new IdentityHashMap<>(subScorers.size());
+      for (int i = 0; i < subScorers.size(); i++) {
+        this.scorerIndexMap.put(subScorers.get(i), i);
+      }
+    } else {
+      this.scorerIndexMap = null;
+    }
     if (scoreMode == ScoreMode.TOP_SCORES) {
       this.disjunctionBlockPropagator = new DisjunctionScoreBlockBoundaryPropagator(subScorers);
     } else {
@@ -108,19 +139,40 @@ final class LogOddsFusionScorer extends DisjunctionScorer {
     return (float) Math.log1p(Math.exp(x));
   }
 
+  /** Applies gating to a logit value: normalization if bounds are set, softplus otherwise. */
+  private float gateLogit(float rawLogit, int signalIndex) {
+    if (logitMin != null) {
+      float range = logitMax[signalIndex] - logitMin[signalIndex];
+      if (range > 0) {
+        return Math.clamp((rawLogit - logitMin[signalIndex]) / range, 0f, 1f);
+      }
+      return 0.5f;
+    }
+    return softplus(rawLogit);
+  }
+
   @Override
   protected float score(DisiWrapper topList) throws IOException {
     double logitSum = 0;
     for (DisiWrapper w = topList; w != null; w = w.next) {
       float subScore = w.scorable.score();
-      logitSum += softplus(logit(subScore));
+      int idx = scorerIndexMap != null ? scorerIndexMap.get(w.scorer) : -1;
+      float gated = gateLogit(logit(subScore), idx >= 0 ? idx : 0);
+      if (scorerIndexMap != null) {
+        logitSum += signalWeights[idx] * gated;
+      } else {
+        logitSum += gated;
+      }
     }
-    // Non-matching sub-scorers contribute logit(0.5) = 0, softplus(0) = log(2) ~ 0.693.
-    // But we do NOT add this for non-matching scorers: they contribute 0, not softplus(0).
-    // This is the key distinction: a match always contributes softplus(logit) > 0,
-    // while a non-match contributes exactly 0.
-    float meanLogit = (float) (logitSum / totalClauses);
-    float scaledLogit = meanLogit * scalingFactor;
+    // Non-matching sub-scorers contribute 0.
+    // With weights: sum(w_i * gated_i) already accounts for the 1/n factor.
+    // Without weights: divide by totalClauses to compute the mean.
+    float scaledLogit = 0f;
+    if (signalWeights != null) {
+      scaledLogit = (float) logitSum * scalingFactor;
+    } else {
+      scaledLogit = (float) (logitSum / totalClauses) * scalingFactor;
+    }
     return sigmoid(scaledLogit);
   }
 
@@ -134,17 +186,27 @@ final class LogOddsFusionScorer extends DisjunctionScorer {
 
   @Override
   public float getMaxScore(int upTo) throws IOException {
+    // Safe upper bound: gateLogit is monotone in p (both softplus and normalize are monotone),
+    // weights are non-negative, sum of upper bounds >= sum of actuals, and sigmoid is monotone.
     double maxLogitSum = 0;
-    for (Scorer scorer : subScorers) {
+    for (int i = 0; i < subScorers.size(); i++) {
+      Scorer scorer = subScorers.get(i);
       if (scorer.docID() <= upTo) {
         float maxSubScore = scorer.getMaxScore(upTo);
-        maxLogitSum += softplus(logit(maxSubScore));
+        float gated = gateLogit(logit(maxSubScore), i);
+        if (signalWeights != null) {
+          maxLogitSum += signalWeights[i] * gated;
+        } else {
+          maxLogitSum += gated;
+        }
       }
     }
-    // Safe upper bound: softplus(logit) is monotone in p, sum of upper bounds >= sum of actuals,
-    // sigmoid is monotone
-    float meanLogit = (float) (maxLogitSum / totalClauses);
-    float scaledLogit = meanLogit * scalingFactor;
+    float scaledLogit = 0f;
+    if (signalWeights != null) {
+      scaledLogit = (float) maxLogitSum * scalingFactor;
+    } else {
+      scaledLogit = (float) (maxLogitSum / totalClauses) * scalingFactor;
+    }
     return sigmoid(scaledLogit);
   }
 

@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search;
 
+import java.util.List;
+import java.util.Random;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.TextField;
@@ -30,6 +32,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.search.CheckHits;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.BytesRef;
 
 /** Tests for {@link BayesianScoreQuery}. */
 public class TestBayesianScoreQuery extends LuceneTestCase {
@@ -235,6 +238,36 @@ public class TestBayesianScoreQuery extends LuceneTestCase {
     assertTrue("should contain alpha", s.contains("alpha"));
   }
 
+  public void testCountDelegatesToInner() throws Exception {
+    Query inner = new TermQuery(new Term("body", "alpha"));
+    BayesianScoreQuery bsq = new BayesianScoreQuery(inner, 0.5f, 5.0f);
+
+    Weight w = searcher.createWeight(searcher.rewrite(bsq), ScoreMode.COMPLETE, 1);
+    LeafReaderContext context = searcher.getIndexReader().leaves().get(0);
+
+    // BayesianScoreQuery only transforms scores; matching docs are unchanged.
+    // count() should delegate to the inner weight.
+    int count = w.count(context);
+    assertEquals(2, count);
+
+    // Verify it matches the inner query's count
+    Weight innerW = searcher.createWeight(inner, ScoreMode.COMPLETE, 1);
+    assertEquals(innerW.count(context), count);
+  }
+
+  public void testCountWithNoScoring() throws Exception {
+    // When scoreMode.needsScores() == false, createWeight returns innerWeight directly
+    Query inner = new TermQuery(new Term("body", "alpha"));
+    BayesianScoreQuery bsq = new BayesianScoreQuery(inner, 0.5f, 5.0f);
+
+    Weight w = searcher.createWeight(searcher.rewrite(bsq), ScoreMode.COMPLETE_NO_SCORES, 1);
+    LeafReaderContext context = searcher.getIndexReader().leaves().get(0);
+
+    // Should delegate to inner weight's count
+    int count = w.count(context);
+    assertEquals(2, count);
+  }
+
   public void testDifferentAlphaBeta() throws Exception {
     Query inner = new TermQuery(new Term("body", "alpha"));
 
@@ -256,5 +289,175 @@ public class TestBayesianScoreQuery extends LuceneTestCase {
 
     // Same ranking order (sigmoid is monotone regardless of alpha/beta)
     assertEquals("same top doc", gentleHits[0].doc, steepHits[0].doc);
+  }
+
+  // ---- Base rate tests ----
+
+  public void testBaseRateLowersScores() throws Exception {
+    Query inner = new TermQuery(new Term("body", "alpha"));
+
+    BayesianScoreQuery noBaseRate = new BayesianScoreQuery(inner, 0.5f, 3.0f);
+    BayesianScoreQuery withBaseRate = new BayesianScoreQuery(inner, 0.5f, 3.0f, 0.01f);
+
+    ScoreDoc[] hitsNo = searcher.search(noBaseRate, 10).scoreDocs;
+    ScoreDoc[] hitsBR = searcher.search(withBaseRate, 10).scoreDocs;
+
+    assertTrue("both should have hits", hitsNo.length > 0 && hitsBR.length > 0);
+
+    // Same ranking order (baseRate is a constant shift in log-odds, preserves monotonicity)
+    assertEquals("same top doc", hitsNo[0].doc, hitsBR[0].doc);
+
+    // Base rate < 0.5 adds negative logit, so scores should be lower
+    for (int i = 0; i < Math.min(hitsNo.length, hitsBR.length); i++) {
+      if (hitsNo[i].doc == hitsBR[i].doc) {
+        assertTrue(
+            "base rate 0.01 should lower score: " + hitsBR[i].score + " < " + hitsNo[i].score,
+            hitsBR[i].score < hitsNo[i].score);
+      }
+    }
+  }
+
+  public void testBaseRateScoresInRange() throws Exception {
+    Query inner = new TermQuery(new Term("body", "alpha"));
+    BayesianScoreQuery bsq = new BayesianScoreQuery(inner, 0.5f, 3.0f, 0.001f);
+
+    ScoreDoc[] hits = searcher.search(bsq, 10).scoreDocs;
+    for (ScoreDoc hit : hits) {
+      assertTrue("score in (0,1): " + hit.score, hit.score > 0 && hit.score < 1);
+    }
+  }
+
+  public void testBaseRateMaxScoreCorrectness() throws Exception {
+    Query inner = new TermQuery(new Term("body", "alpha"));
+    BayesianScoreQuery bsq = new BayesianScoreQuery(inner, 0.5f, 3.0f, 0.01f);
+    CheckHits.checkTopScores(random(), bsq, searcher);
+  }
+
+  public void testBaseRateExplanation() throws Exception {
+    Query inner = new TermQuery(new Term("body", "alpha"));
+    BayesianScoreQuery bsq = new BayesianScoreQuery(inner, 0.5f, 3.0f, 0.05f);
+
+    Weight w = searcher.createWeight(searcher.rewrite(bsq), ScoreMode.COMPLETE, 1);
+    LeafReaderContext ctx = searcher.getIndexReader().leaves().get(0);
+    Explanation expl = w.explain(ctx, 0);
+    assertTrue("should match", expl.isMatch());
+    assertTrue("should mention base rate", expl.getDescription().contains("base rate"));
+  }
+
+  public void testBaseRateQueryUtils() throws Exception {
+    Query inner = new TermQuery(new Term("body", "alpha"));
+    BayesianScoreQuery bsq = new BayesianScoreQuery(inner, 0.5f, 3.0f, 0.01f);
+    QueryUtils.check(random(), bsq, searcher);
+  }
+
+  public void testBaseRateEqualsAndHashCode() {
+    Query inner = new TermQuery(new Term("body", "alpha"));
+    BayesianScoreQuery a = new BayesianScoreQuery(inner, 0.5f, 3.0f, 0.01f);
+    BayesianScoreQuery b = new BayesianScoreQuery(inner, 0.5f, 3.0f, 0.01f);
+    BayesianScoreQuery c = new BayesianScoreQuery(inner, 0.5f, 3.0f, 0.05f);
+    BayesianScoreQuery d = new BayesianScoreQuery(inner, 0.5f, 3.0f);
+
+    assertEquals(a, b);
+    assertEquals(a.hashCode(), b.hashCode());
+    assertNotEquals(a, c);
+    assertNotEquals(a, d);
+  }
+
+  public void testIllegalBaseRate() {
+    Query inner = new TermQuery(new Term("body", "alpha"));
+    expectThrows(
+        IllegalArgumentException.class, () -> new BayesianScoreQuery(inner, 0.5f, 3.0f, -0.1f));
+    expectThrows(
+        IllegalArgumentException.class, () -> new BayesianScoreQuery(inner, 0.5f, 3.0f, 1.0f));
+  }
+
+  // ---- Auto-estimation tests ----
+
+  public void testEstimatorReturnsFiniteValues() throws Exception {
+    BayesianScoreEstimator.Parameters params = BayesianScoreEstimator.estimate(searcher, "body");
+
+    assertTrue(
+        "alpha should be positive and finite",
+        params.alpha() > 0 && Float.isFinite(params.alpha()));
+    assertTrue("beta should be finite", Float.isFinite(params.beta()));
+    assertTrue("beta should reflect matching indexed terms", params.beta() > 0f);
+    assertTrue("baseRate in (0, 0.5]", params.baseRate() > 0 && params.baseRate() <= 0.5f);
+  }
+
+  public void testEstimatorSamplesIndexedVocabularyFromUnstoredField() throws Exception {
+    Directory prefixDir = newDirectory();
+    IndexWriter writer = new IndexWriter(prefixDir, new IndexWriterConfig());
+    for (int i = 0; i < 20; i++) {
+      Document doc = new Document();
+      doc.add(
+          new TextField(
+              "body", "license header boilerplate sharedprefix topic" + i, Field.Store.NO));
+      writer.addDocument(doc);
+    }
+    writer.forceMerge(1);
+    IndexReader prefixReader = DirectoryReader.open(writer);
+    writer.close();
+
+    try {
+      List<BytesRef> sampledTerms =
+          BayesianScoreEstimator.sampleVocabularyTerms(prefixReader, "body", 100, new Random(7));
+      assertTrue(
+          "sample should include indexed suffix term topic0", containsTerm(sampledTerms, "topic0"));
+      assertTrue(
+          "sample should include indexed suffix term topic19",
+          containsTerm(sampledTerms, "topic19"));
+
+      IndexSearcher prefixSearcher = new IndexSearcher(prefixReader);
+      prefixSearcher.setSimilarity(new BM25Similarity());
+      BayesianScoreEstimator.Parameters params =
+          BayesianScoreEstimator.estimate(prefixSearcher, "body", 4, 3, 7);
+      assertTrue("estimation should use indexed terms from non-stored fields", params.beta() > 0f);
+    } finally {
+      prefixReader.close();
+      prefixDir.close();
+    }
+  }
+
+  public void testEstimatedParametersProduceValidScores() throws Exception {
+    BayesianScoreEstimator.Parameters params = BayesianScoreEstimator.estimate(searcher, "body");
+
+    Query inner = new TermQuery(new Term("body", "alpha"));
+    BayesianScoreQuery bsq =
+        new BayesianScoreQuery(inner, params.alpha(), params.beta(), params.baseRate());
+
+    ScoreDoc[] hits = searcher.search(bsq, 10).scoreDocs;
+    assertTrue("should have hits", hits.length > 0);
+    for (ScoreDoc hit : hits) {
+      assertTrue("score in (0,1): " + hit.score, hit.score > 0 && hit.score < 1);
+    }
+  }
+
+  public void testEstimatedMaxScoreCorrectness() throws Exception {
+    BayesianScoreEstimator.Parameters params = BayesianScoreEstimator.estimate(searcher, "body");
+
+    Query inner = new TermQuery(new Term("body", "alpha"));
+    BayesianScoreQuery bsq =
+        new BayesianScoreQuery(inner, params.alpha(), params.beta(), params.baseRate());
+    CheckHits.checkTopScores(random(), bsq, searcher);
+  }
+
+  public void testEstimatorReproducibleWithSeed() throws Exception {
+    BayesianScoreEstimator.Parameters p1 =
+        BayesianScoreEstimator.estimate(searcher, "body", 20, 3, 123);
+    BayesianScoreEstimator.Parameters p2 =
+        BayesianScoreEstimator.estimate(searcher, "body", 20, 3, 123);
+
+    assertEquals("same seed should produce same alpha", p1.alpha(), p2.alpha(), 0f);
+    assertEquals("same seed should produce same beta", p1.beta(), p2.beta(), 0f);
+    assertEquals("same seed should produce same baseRate", p1.baseRate(), p2.baseRate(), 0f);
+  }
+
+  private static boolean containsTerm(List<BytesRef> terms, String expected) {
+    for (BytesRef term : terms) {
+      if (expected.equals(term.utf8ToString())) {
+        return true;
+      }
+    }
+    return false;
   }
 }

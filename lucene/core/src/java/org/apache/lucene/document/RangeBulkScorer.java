@@ -21,7 +21,7 @@ import java.util.Objects;
 import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.LeafCollector;
-import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.Scorable;
 import org.apache.lucene.util.Bits;
 
 /**
@@ -35,18 +35,24 @@ import org.apache.lucene.util.Bits;
 final class RangeBulkScorer extends BulkScorer {
   private final int minDocID;
   private final int maxDocID;
-  private final Scorer scorer;
+  private final Scorable scorer;
   private final DocIdSetIterator iterator;
 
   /** Creates a bulk scorer that collects only within {@code [minDocID, maxDocID)}. */
-  public RangeBulkScorer(Scorer scorer, int minDocID, int maxDocID) {
+  public RangeBulkScorer(DocIdSetIterator iterator, float score, int minDocID, int maxDocID) {
     if (minDocID >= maxDocID) {
       throw new IllegalArgumentException("minDocID must be less than maxDocID");
     }
     this.minDocID = minDocID;
     this.maxDocID = maxDocID;
-    this.scorer = Objects.requireNonNull(scorer);
-    this.iterator = scorer.iterator();
+    this.iterator = Objects.requireNonNull(iterator);
+    this.scorer =
+        new Scorable() {
+          @Override
+          public float score() {
+            return score;
+          }
+        };
   }
 
   @Override

@@ -20,13 +20,13 @@ PYTHON?=python3
 VENV=${PWD}/.venv
 
 # don't behave strangely if these files exist
-.PHONY: lint format reformat autofix ruff ruff-fix pyright env clean smoke-test
+.PHONY: lint format reformat autofix ruff ruff-fix ty env clean smoke-test
 
 # list of directories we check
 SOURCES=$(wildcard *.py)
 
 # check formatting, linting, and types
-lint: format ruff pyright
+lint: format ruff ty
 
 # check all formatting
 format: env
@@ -56,9 +56,9 @@ ruff-fix: env
 	$(VENV)/bin/ruff check --fix $(SOURCES)
 
 # checks types
-pyright: env
-	# type-check sources with basedpyright
-	$(VENV)/bin/basedpyright $(SOURCES)
+ty: env
+	# type-check sources with ty
+	$(VENV)/bin/ty check $(SOURCES)
 
 # runs smoketester against a release
 smoke-test: env

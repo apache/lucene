@@ -146,12 +146,70 @@ abstract class AbstractKnnVectorQuery extends Query {
       }
       assert leafReaderContexts.size() == tasks.size();
       assert perLeafResults.size() == reader.leaves().size();
-      topK = runSearchTasks(tasks, taskExecutor, perLeafResults, leafReaderContexts);
+      if (tasks.size() > 0) {
+        topK = runSearchTasks(tasks, taskExecutor, perLeafResults, leafReaderContexts);
+      }
     }
     if (topK.scoreDocs.length == 0) {
-      return MatchNoDocsQuery.INSTANCE;
+      return new MatchNoDocsQuery("No documents matched the nearest-neighbor search");
     }
-    return DocAndScoreQuery.createDocAndScoreQuery(reader, topK, reentryCount);
+    return DocAndScoreQuery.createDocAndScoreQuery(
+        reader, topK, reentryCount, noMatchExplainer(topK, filterWeight));
+  }
+
+  /** Builds the explainer for documents this query did not collect, capturing minTopKScore. */
+  private DocAndScoreQuery.NoMatchExplainer noMatchExplainer(TopDocs topK, Weight filterWeight) {
+    // topK is score-descending, so the lowest collected score is the last entry.
+    final float minTopKScore = topK.scoreDocs[topK.scoreDocs.length - 1].score;
+    return (context, doc, topN) ->
+        explainNotCollected(context, doc, topN, filterWeight, minTopKScore);
+  }
+
+  /** Explains why a doc was not collected, by recomputing its score. null when no vectors. */
+  private Explanation explainNotCollected(
+      LeafReaderContext context, int doc, int topN, Weight filterWeight, float minTopKScore)
+      throws IOException {
+    String prefix = "Not in top " + topN + " doc(s): ";
+    FieldInfo fi = context.reader().getFieldInfos().fieldInfo(field);
+    if (fi == null || fi.getVectorDimension() == 0) {
+      return null;
+    }
+    VectorScorer vectorScorer = createVectorScorer(context, fi);
+    if (vectorScorer == null) {
+      return null;
+    }
+    if (vectorScorer.iterator().advance(doc) != doc) {
+      return Explanation.noMatch(prefix + "no vector value in field \"" + field + "\"");
+    }
+    if (filterWeight != null && docPassesFilter(filterWeight, context, doc) == false) {
+      return Explanation.noMatch(prefix + "excluded by filter");
+    }
+    float score = vectorScorer.score();
+    if (score < minTopKScore) {
+      return Explanation.noMatch(
+          prefix + "score " + score + " < minimum top-K score " + minTopKScore);
+    }
+    // Score meets the cutoff but the doc was not collected (tie-break, recall miss, or rescoring).
+    return Explanation.noMatch(
+        prefix
+            + "score "
+            + score
+            + " >= minimum top-K score "
+            + minTopKScore
+            + " (tie-break or approximate-search miss)");
+  }
+
+  private static boolean docPassesFilter(Weight filterWeight, LeafReaderContext context, int doc)
+      throws IOException {
+    Scorer scorer = filterWeight.scorer(context);
+    if (scorer == null) {
+      return false;
+    }
+    TwoPhaseIterator twoPhase = scorer.twoPhaseIterator();
+    if (twoPhase != null) {
+      return twoPhase.approximation().advance(doc) == doc && twoPhase.matches();
+    }
+    return scorer.iterator().advance(doc) == doc;
   }
 
   private TopDocs runSearchTasks(

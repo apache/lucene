@@ -48,6 +48,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -72,6 +73,14 @@ abstract class BaseVectorSimilarityQueryTestCase<
 
   abstract Q getVectorQuery(
       String field, V vector, float resultSimilarity, float decay, Query filter);
+
+  abstract Q getVectorQuery(
+      String field,
+      V vector,
+      float resultSimilarity,
+      float decay,
+      Query filter,
+      KnnSearchStrategy searchStrategy);
 
   abstract Q getThrowingVectorQuery(
       String field, V vector, float resultSimilarity, float decay, Query filter);
@@ -113,6 +122,80 @@ abstract class BaseVectorSimilarityQueryTestCase<
 
     // Different filter
     assertNotEquals(query, getVectorQuery(field1, vector1, resultSimilarity1, decay1, filter2));
+  }
+
+  public void testEqualsWithSearchStrategy() {
+    String field = "f";
+    V vector = getRandomVector(dim);
+    float resultSimilarity = 0.4f;
+    float decay = 0.5f;
+    Query filter = new TermQuery(new Term("t", "v"));
+
+    KnnSearchStrategy strategyA = new KnnSearchStrategy.Hnsw(10);
+    KnnSearchStrategy strategyB = new KnnSearchStrategy.Hnsw(20);
+
+    Q queryA = getVectorQuery(field, vector, resultSimilarity, decay, filter, strategyA);
+    Q queryB = getVectorQuery(field, vector, resultSimilarity, decay, filter, strategyB);
+    Q queryADup = getVectorQuery(field, vector, resultSimilarity, decay, filter, strategyA);
+
+    // Queries with the same non-default strategy are equal.
+    assertEquals(queryA, queryADup);
+    assertEquals(queryA.hashCode(), queryADup.hashCode());
+
+    // Queries that differ only in strategy are not equal.
+    assertNotEquals(queryA, queryB);
+
+    // Query with default strategy is not equal to one with non-default strategy.
+    Q queryDefault = getVectorQuery(field, vector, resultSimilarity, decay, filter);
+    assertNotEquals(queryDefault, queryA);
+  }
+
+  public void testGetSearchStrategy() {
+    String field = "f";
+    V vector = getRandomVector(dim);
+    KnnSearchStrategy strategy = new KnnSearchStrategy.Hnsw(42);
+
+    // Default strategy is exposed via getter.
+    AbstractVectorSimilarityQuery defaultQuery = getVectorQuery(field, vector, 0.4f, 0.5f, null);
+    assertEquals(AbstractVectorSimilarityQuery.DEFAULT_STRATEGY, defaultQuery.getSearchStrategy());
+
+    // Custom strategy is propagated through to the getter.
+    AbstractVectorSimilarityQuery customQuery =
+        getVectorQuery(field, vector, 0.4f, 0.5f, null, strategy);
+    assertSame(strategy, customQuery.getSearchStrategy());
+  }
+
+  public void testNullSearchStrategyDefaultsToDefault() {
+    String field = "f";
+    V vector = getRandomVector(dim);
+    Q query = getVectorQuery(field, vector, 0.4f, 0.5f, null, /* searchStrategy= */ null);
+    assertSame(AbstractVectorSimilarityQuery.DEFAULT_STRATEGY, query.getSearchStrategy());
+  }
+
+  /**
+   * Verify that the {@link KnnSearchStrategy} supplied to the query is propagated through the
+   * {@code KnnCollectorManager} into the {@link VectorSimilarityCollector} that performs the
+   * search. This is a contract-level check on the query → manager → collector wiring and does not
+   * depend on which callbacks the underlying graph search happens to invoke. The manager produced
+   * by {@code AbstractVectorSimilarityQuery#getKnnCollectorManager()} ignores its strategy and
+   * {@code LeafReaderContext} arguments (it pins the strategy to the query's own at construction
+   * time), so this test does not need a real index.
+   */
+  public void testSearchStrategyReachesCollector() throws IOException {
+    KnnSearchStrategy strategy = new KnnSearchStrategy.Hnsw(7);
+    Q query =
+        getVectorQuery(
+            "field",
+            getRandomVector(dim),
+            /* resultSimilarity= */ 0.5f,
+            /* decay= */ 0.5f,
+            /* filter= */ null,
+            strategy);
+
+    KnnCollector collector =
+        query.getKnnCollectorManager().newCollector(Integer.MAX_VALUE, null, null);
+
+    assertSame(strategy, collector.getSearchStrategy());
   }
 
   public void testIllegalParams() {

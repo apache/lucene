@@ -603,7 +603,7 @@ public class TestFuzzySuggester extends LuceneTestCase {
 
     int numQueries = atLeast(20);
 
-    final List<TermFreqPayload2> slowCompletor = new ArrayList<>();
+    final List<TermFreqPayload2> slowCompleter = new ArrayList<>();
     final TreeSet<String> allPrefixes = new TreeSet<>();
     final Set<String> seen = new HashSet<>();
 
@@ -691,13 +691,13 @@ public class TestFuzzySuggester extends LuceneTestCase {
       int weight = random().nextInt(1 << 24);
       keys[i] = new Input(key, weight);
 
-      slowCompletor.add(new TermFreqPayload2(key, analyzedKey, weight));
+      slowCompleter.add(new TermFreqPayload2(key, analyzedKey, weight));
     }
 
     if (VERBOSE) {
       // Don't just sort original list, to avoid VERBOSE
       // altering the test:
-      List<TermFreqPayload2> sorted = new ArrayList<>(slowCompletor);
+      List<TermFreqPayload2> sorted = new ArrayList<>(slowCompleter);
       Collections.sort(sorted);
       for (TermFreqPayload2 ent : sorted) {
         System.out.println(
@@ -801,9 +801,9 @@ public class TestFuzzySuggester extends LuceneTestCase {
               suggester.toLevenshteinAutomata(suggester.toLookupAutomaton(analyzedKey)));
       assertTrue(automaton.isDeterministic());
 
-      // TODO: could be faster... but it's slowCompletor for a reason
+      // TODO: could be faster... but it's slowCompleter for a reason
       BytesRefBuilder spare = new BytesRefBuilder();
-      for (TermFreqPayload2 e : slowCompletor) {
+      for (TermFreqPayload2 e : slowCompleter) {
         spare.copyChars(e.analyzedForm);
         FiniteStringsIterator finiteStrings =
             new FiniteStringsIterator(suggester.toAutomaton(spare.get(), tokenStreamToAutomaton));

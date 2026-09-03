@@ -17,7 +17,6 @@
 package org.apache.lucene.document;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.function.LongPredicate;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.search.BulkScorer;
@@ -97,22 +96,15 @@ abstract class SortedSkipperScorerSupplier extends ScorerSupplier {
       return emptyBulkScorer();
     }
     DocIdSetIterator iterator = DocIdSetIterator.range(range.minDocID(), range.maxDocID());
-    return new RangeBulkScorer(
-        new ConstantScoreScorer(score, scoreMode, iterator), range.minDocID(), range.maxDocID());
+    return new RangeBulkScorer(iterator, score, range.minDocID(), range.maxDocID());
   }
 
   @Override
-  public long cost() {
+  public long cost() throws IOException {
     if (skipperMinDocId == -1) {
-      try {
-        // Similar to PointValues, IOExceptions needs to be caught and rethrown as
-        // UncheckedIOException
-        computeSkipperDocIds();
-      } catch (IOException e) {
-        throw new UncheckedIOException(e);
-      }
+      computeSkipperDocIds();
     }
-    if (skipperMinDocIdExact && skipperMaxDocIdExact) {
+    if (skipperMaxDocIdExact) {
       return skipperMaxDocId - skipperMinDocId;
     }
     return skipperMaxDocId - skipperMinDocId + skipper.docCount(0);
@@ -165,15 +157,9 @@ abstract class SortedSkipperScorerSupplier extends ScorerSupplier {
         skipperMaxDocId = skipper.docCount();
         skipperMaxDocIdExact = true;
       } else {
-        skipper.advance(Long.MIN_VALUE, minOrd);
-        if (skipper.minValue(0) == minOrd) {
-          skipperMaxDocId = skipper.maxDocID(0) + 1;
-          skipper.advance(skipperMaxDocId);
-          skipperMaxDocIdExact = skipper.maxValue(0) != minOrd;
-        } else {
-          skipperMaxDocId = skipper.minDocID(0);
-          skipperMaxDocIdExact = false;
-        }
+        skipper.advance(Long.MIN_VALUE, minOrd - 1);
+        skipperMaxDocId = skipper.minDocID(0);
+        skipperMaxDocIdExact = skipper.maxValue(0) < minOrd;
       }
     } else {
       if (skipper.minValue() >= minOrd) {
@@ -188,15 +174,9 @@ abstract class SortedSkipperScorerSupplier extends ScorerSupplier {
         skipperMaxDocId = skipper.docCount();
         skipperMaxDocIdExact = true;
       } else {
-        skipper.advance(maxOrd, Long.MAX_VALUE);
-        if (skipper.maxValue(0) == maxOrd) {
-          skipperMaxDocId = skipper.maxDocID(0) + 1;
-          skipper.advance(skipperMaxDocId);
-          skipperMaxDocIdExact = skipper.minValue(0) != maxOrd;
-        } else {
-          skipperMaxDocId = skipper.minDocID(0);
-          skipperMaxDocIdExact = false;
-        }
+        skipper.advance(maxOrd + 1, Long.MAX_VALUE);
+        skipperMaxDocId = skipper.minDocID(0);
+        skipperMaxDocIdExact = skipper.minValue(0) > maxOrd;
       }
     }
   }

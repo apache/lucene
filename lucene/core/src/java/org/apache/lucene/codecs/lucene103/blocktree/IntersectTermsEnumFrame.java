@@ -59,7 +59,7 @@ final class IntersectTermsEnumFrame {
   IndexInput floorDataReader;
 
   // Length of prefix shared by all terms in this block
-  int prefix;
+  int prefixLength;
 
   // Number of entries (term or sub-block) in this block
   int entCount;
@@ -91,7 +91,7 @@ final class IntersectTermsEnumFrame {
   final ByteArrayDataInput bytesReader = new ByteArrayDataInput();
 
   int startBytePos;
-  int suffix;
+  int suffixLength;
 
   private final IntersectTermsEnum ite;
 
@@ -247,9 +247,9 @@ final class IntersectTermsEnumFrame {
     assert nextEnt != -1 && nextEnt < entCount
         : "nextEnt=" + nextEnt + " entCount=" + entCount + " fp=" + fp;
     nextEnt++;
-    suffix = suffixLengthsReader.readVInt();
+    suffixLength = suffixLengthsReader.readVInt();
     startBytePos = suffixesReader.getPosition();
-    suffixesReader.skipBytes(suffix);
+    suffixesReader.skipBytes(suffixLength);
   }
 
   public boolean nextNonLeaf() {
@@ -257,9 +257,9 @@ final class IntersectTermsEnumFrame {
         : "nextEnt=" + nextEnt + " entCount=" + entCount + " fp=" + fp;
     nextEnt++;
     final int code = suffixLengthsReader.readVInt();
-    suffix = code >>> 1;
+    suffixLength = code >>> 1;
     startBytePos = suffixesReader.getPosition();
-    suffixesReader.skipBytes(suffix);
+    suffixesReader.skipBytes(suffixLength);
     if ((code & 1) == 0) {
       // A normal term
       termState.termBlockOrd++;

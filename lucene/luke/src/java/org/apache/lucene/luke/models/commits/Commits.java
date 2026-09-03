@@ -67,7 +67,7 @@ public interface Commits {
   Map<String, String> getSegmentAttributes(long commitGen, String name);
 
   /**
-   * Returns diagnotics for the specified segment.
+   * Returns diagnostics for the specified segment.
    *
    * @param commitGen - generation
    * @param name - segment name

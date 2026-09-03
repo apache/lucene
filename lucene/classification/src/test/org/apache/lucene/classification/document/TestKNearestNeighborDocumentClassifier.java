@@ -43,7 +43,7 @@ public class TestKNearestNeighborDocumentClassifier
               new String[] {textFieldName, titleFieldName, authorFieldName});
       checkCorrectDocumentClassification(classifier, videoGameDocument, VIDEOGAME_RESULT);
       checkCorrectDocumentClassification(classifier, batmanDocument, BATMAN_RESULT);
-      // considering only the text we have wrong classification because the text was ambiguos on
+      // considering only the text we have wrong classification because the text was ambiguous on
       // purpose
       checkCorrectDocumentClassification(
           new KNearestNeighborDocumentClassifier(
@@ -97,7 +97,7 @@ public class TestKNearestNeighborDocumentClassifier
       assertEquals(1.0, score1, 0);
       double score2 = checkCorrectDocumentClassification(classifier, batmanDocument, BATMAN_RESULT);
       assertEquals(1.0, score2, 0);
-      // considering only the text we have wrong classification because the text was ambiguos on
+      // considering only the text we have wrong classification because the text was ambiguous on
       // purpose
       double score3 =
           checkCorrectDocumentClassification(
@@ -147,7 +147,7 @@ public class TestKNearestNeighborDocumentClassifier
               categoryFieldName,
               field2analyzer,
               new String[] {textFieldName, titleFieldName + "^100", authorFieldName}),
-          getBatmanAmbiguosDocument(),
+          getBatmanAmbiguousDocument(),
           BATMAN_RESULT);
       // considering without boost wrong classification will appear
       checkCorrectDocumentClassification(
@@ -161,7 +161,7 @@ public class TestKNearestNeighborDocumentClassifier
               categoryFieldName,
               field2analyzer,
               new String[] {textFieldName, titleFieldName, authorFieldName}),
-          getBatmanAmbiguosDocument(),
+          getBatmanAmbiguousDocument(),
           VIDEOGAME_RESULT);
     } finally {
       IOUtils.close(indexReader);

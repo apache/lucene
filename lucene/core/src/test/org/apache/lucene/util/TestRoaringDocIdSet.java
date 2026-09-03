@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util;
 
+import static org.hamcrest.Matchers.greaterThan;
+
 import java.io.IOException;
 import java.util.BitSet;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -124,20 +126,56 @@ public class TestRoaringDocIdSet extends BaseDocIdSetTestCase<RoaringDocIdSet> {
 
   public void testAddRangeSmall() throws IOException {
     int maxDoc = 100;
-    BitSet expected = new BitSet(maxDoc);
-    expected.set(10, 80);
-    RoaringDocIdSet.Builder b = new RoaringDocIdSet.Builder(maxDoc);
-    b.add(10, 80);
-    assertEquals(maxDoc, expected, b.build());
+    long bytesSparseValues;
+    long bytesDenseRange;
+    {
+      BitSet expected = new BitSet(maxDoc);
+      expected.set(10, 79);
+      expected.set(80);
+      RoaringDocIdSet.Builder b = new RoaringDocIdSet.Builder(maxDoc);
+      b.add(10, 79);
+      b.add(80);
+      RoaringDocIdSet set = b.build();
+      assertEquals(maxDoc, expected, set);
+      bytesSparseValues = set.ramBytesUsed();
+    }
+    {
+      BitSet expected = new BitSet(maxDoc);
+      expected.set(10, 80);
+      RoaringDocIdSet.Builder b = new RoaringDocIdSet.Builder(maxDoc);
+      b.add(10, 80);
+      RoaringDocIdSet set = b.build();
+      assertEquals(maxDoc, expected, set);
+      bytesDenseRange = set.ramBytesUsed();
+    }
+    assertThat(bytesSparseValues, greaterThan(bytesDenseRange));
   }
 
-  public void testAddRangeDenseBlockUsesBitSetEncoding() throws IOException {
+  public void testAddRangeDenseBig() throws IOException {
     int maxDoc = 50_000;
-    BitSet expected = new BitSet(maxDoc);
-    expected.set(7, 43_000);
-    RoaringDocIdSet.Builder b = new RoaringDocIdSet.Builder(maxDoc);
-    b.add(7, 43_000);
-    assertEquals(maxDoc, expected, b.build());
+    long bytesSparseValues;
+    long bytesDenseRange;
+    {
+      BitSet expected = new BitSet(maxDoc);
+      expected.set(7, 42_999);
+      expected.set(43_000);
+      RoaringDocIdSet.Builder b = new RoaringDocIdSet.Builder(maxDoc);
+      b.add(7, 42_999);
+      b.add(43_000);
+      RoaringDocIdSet set = b.build();
+      assertEquals(maxDoc, expected, set);
+      bytesSparseValues = set.ramBytesUsed();
+    }
+    {
+      BitSet expected = new BitSet(maxDoc);
+      expected.set(7, 43_000);
+      RoaringDocIdSet.Builder b = new RoaringDocIdSet.Builder(maxDoc);
+      b.add(7, 43_000);
+      RoaringDocIdSet set = b.build();
+      assertEquals(maxDoc, expected, set);
+      bytesDenseRange = set.ramBytesUsed();
+    }
+    assertThat(bytesSparseValues, greaterThan(bytesDenseRange));
   }
 
   public void testAddRangeCrossesBlockBoundary() throws IOException {
@@ -158,6 +196,23 @@ public class TestRoaringDocIdSet extends BaseDocIdSetTestCase<RoaringDocIdSet> {
     b.add(5);
     b.add(100, 200);
     assertEquals(maxDoc, expected, b.build());
+  }
+
+  public void testAddRangeBlockCardinalityAtSparseBufferCapacity() throws IOException {
+    int maxDoc = 5_000;
+    // Cover the boundary at the sparse buffer capacity
+    for (int blockCardinality : new int[] {4095, 4096, 4097}) {
+      BitSet expected = new BitSet(maxDoc);
+      expected.set(0);
+
+      int docsInRange = blockCardinality - 1; // contiguous-range after the singleton at doc 0
+      int rangeEnd = 2 + docsInRange; // added via the contiguous-range add(min, max)
+      expected.set(2, rangeEnd);
+      RoaringDocIdSet.Builder b = new RoaringDocIdSet.Builder(maxDoc);
+      b.add(0);
+      b.add(2, rangeEnd);
+      assertEquals(maxDoc, expected, b.build());
+    }
   }
 
   public void testAddRangeEmptyNoOp() throws IOException {
@@ -199,5 +254,24 @@ public class TestRoaringDocIdSet extends BaseDocIdSetTestCase<RoaringDocIdSet> {
   public void testAddRangeMinGreaterThanMaxThrows() {
     RoaringDocIdSet.Builder b = new RoaringDocIdSet.Builder(100);
     expectThrows(IllegalArgumentException.class, () -> b.add(10, 5));
+  }
+
+  public void testIntoBitSetWhenExhausted() throws IOException {
+    int maxDoc = 3 << 16; // 3 blocks; docs only in block 0
+    RoaringDocIdSet set = new RoaringDocIdSet.Builder(maxDoc).add(5).add(10).add(20).build();
+
+    DocIdSetIterator it = set.iterator();
+    while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {}
+    FixedBitSet bitSet = new FixedBitSet(maxDoc);
+    it.intoBitSet(maxDoc, bitSet, 0);
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.docID());
+    assertTrue(bitSet.scanIsEmpty());
+
+    it = set.iterator();
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.advance(maxDoc));
+    bitSet = new FixedBitSet(maxDoc);
+    it.intoBitSet(maxDoc, bitSet, 0);
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.docID());
+    assertTrue(bitSet.scanIsEmpty());
   }
 }

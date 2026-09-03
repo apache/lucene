@@ -477,7 +477,7 @@ public class FSTTester<T> {
                   seekResult.input);
               assertTrue(outputsEqual(pairs.get(pos).output, seekResult.output));
             } else {
-              // seeked before start or beyond end
+              // seek()ed before start or beyond end
               // System.out.println("seek=" + seekTerm);
               assertNull(
                   "expected null but got "

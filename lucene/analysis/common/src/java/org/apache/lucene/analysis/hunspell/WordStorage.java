@@ -471,22 +471,22 @@ abstract class WordStorage {
     }
 
     @Override
-    boolean hasTitleCase() {
+    public boolean hasTitleCase() {
       return Character.isUpperCase(chars.charAt(0)) && WordCase.caseOf(chars) == WordCase.TITLE;
     }
 
     @Override
-    CharsRef root() {
+    public CharsRef root() {
       return chars;
     }
 
     @Override
-    CharSequence lowerCaseRoot() {
+    public CharSequence lowerCaseRoot() {
       return lower;
     }
 
     @Override
-    IntsRef forms() {
+    public IntsRef forms() {
       in.setPosition(dataPos);
       int entryCount = in.readVInt() / (hasCustomMorphData ? 2 : 1);
       if (forms.ints.length < entryCount) {
