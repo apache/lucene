@@ -107,6 +107,14 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
    */
   public static final long DEFAULT_MAX_FULL_FLUSH_MERGE_WAIT_MILLIS = 500;
 
+  /**
+   * Default maximum number of sparse doc-values overlays a field keeps before they are folded into
+   * one: {@code 0}, which disables the feature (classic full-column rewrite). Set a positive value
+   * to enable it; higher values lower write amplification but keep more overlays (hence more files)
+   * live to merge at read time.
+   */
+  public static final int DEFAULT_MAX_DOC_VALUES_OVERLAYS = 0;
+
   // indicates whether this config instance is already attached to a writer.
   // not final so that it can be cloned properly.
   private SetOnce<IndexWriter> writer = new SetOnce<>();
@@ -322,6 +330,29 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
   @Override
   public boolean getReaderPooling() {
     return readerPooling;
+  }
+
+  /**
+   * Sets the maximum number of sparse doc-values overlays a field may accumulate before they are
+   * folded into a single overlay, which also enables or disables the feature. When enabled, a
+   * doc-values update that only sets values (no removals) is written as a sparse "delta" holding
+   * just the updated documents and overlaid on the existing column at read time, rather than
+   * rewriting the whole column. This trades some read cost for much lower write amplification on
+   * frequently updated fields. Pass {@code 0} to disable the feature and keep the classic
+   * full-column rewrite; any value {@code > 0} enables it, keeping up to that many overlays before
+   * a fold. Disabled by default (see {@link #DEFAULT_MAX_DOC_VALUES_OVERLAYS}).
+   *
+   * <p>Only takes effect when IndexWriter is first created.
+   *
+   * @lucene.experimental
+   */
+  public IndexWriterConfig setMaxDocValuesOverlays(int maxDocValuesOverlays) {
+    if (maxDocValuesOverlays < 0) {
+      throw new IllegalArgumentException(
+          "maxDocValuesOverlays must be >= 0; got " + maxDocValuesOverlays);
+    }
+    this.maxDocValuesOverlays = maxDocValuesOverlays;
+    return this;
   }
 
   /**

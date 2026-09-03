@@ -19,6 +19,7 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
@@ -32,11 +33,13 @@ import java.util.function.Function;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesFormat;
+import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldInfosFormat;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FlushInfo;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.TrackingDirectoryWrapper;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
@@ -48,6 +51,13 @@ import org.apache.lucene.util.InfoStream;
 // searching or merging), plus pending deletes and updates,
 // for a given segment
 final class ReadersAndUpdates {
+
+  private static final long[] EMPTY_GENS = new long[0];
+
+  // Fold the deltas back into a dense column once they cover at least this fraction of the segment,
+  // capping the read-time overlay depth. TODO: expose as a config option.
+  private static final double FOLD_TO_DENSE_COVERAGE_RATIO = 0.5;
+
   // Not final because we replace (clone) when we need to
   // change it and it's been shared:
   final SegmentCommitInfo info;
@@ -64,6 +74,8 @@ final class ReadersAndUpdates {
 
   // the major version this index was created with
   private final int indexCreatedVersionMajor;
+
+  private final LiveIndexWriterConfig config;
 
   // Indicates whether this segment is currently being merged. While a segment
   // is merging, all field updates are also registered in the
@@ -88,10 +100,14 @@ final class ReadersAndUpdates {
   final AtomicLong ramBytesUsed = new AtomicLong();
 
   ReadersAndUpdates(
-      int indexCreatedVersionMajor, SegmentCommitInfo info, PendingDeletes pendingDeletes) {
+      int indexCreatedVersionMajor,
+      SegmentCommitInfo info,
+      PendingDeletes pendingDeletes,
+      LiveIndexWriterConfig config) {
     this.info = info;
     this.pendingDeletes = pendingDeletes;
     this.indexCreatedVersionMajor = indexCreatedVersionMajor;
+    this.config = config;
   }
 
   /**
@@ -100,9 +116,12 @@ final class ReadersAndUpdates {
    * <p>NOTE: steals incoming ref from reader.
    */
   ReadersAndUpdates(
-      int indexCreatedVersionMajor, SegmentReader reader, PendingDeletes pendingDeletes)
+      int indexCreatedVersionMajor,
+      SegmentReader reader,
+      PendingDeletes pendingDeletes,
+      LiveIndexWriterConfig config)
       throws IOException {
-    this(indexCreatedVersionMajor, reader.getOriginalSegmentInfo(), pendingDeletes);
+    this(indexCreatedVersionMajor, reader.getOriginalSegmentInfo(), pendingDeletes, config);
     this.reader = reader;
     pendingDeletes.onNewReader(reader, info);
   }
@@ -287,6 +306,7 @@ final class ReadersAndUpdates {
       DocValuesFormat dvFormat,
       final SegmentReader reader,
       Map<Integer, Set<String>> fieldFiles,
+      Map<Integer, long[]> newOverlays,
       long maxDelGen,
       InfoStream infoStream)
       throws IOException {
@@ -325,6 +345,66 @@ final class ReadersAndUpdates {
       final IOContext updatesContext = IOContext.flush(new FlushInfo(info.info.maxDoc(), bytes));
       final FieldInfo fieldInfo = infos.fieldInfo(field);
       assert fieldInfo != null;
+      // The field's current overlay {baseGen, deltas...} (or null). baseGen is the recorded base
+      // once the field has deltas, otherwise the field's current column (-1 = core, or an earlier
+      // dense generation).
+      final long[] existingOverlay = info.getDocValuesOverlay(fieldInfo.number);
+      final long baseGen =
+          existingOverlay != null ? existingOverlay[0] : fieldInfo.getDocValuesGen();
+      final long[] priorGens =
+          existingOverlay != null
+              ? ArrayUtil.copyOfSubArray(existingOverlay, 1, existingOverlay.length)
+              : EMPTY_GENS;
+      boolean anyRemoval = false;
+      for (DocValuesFieldUpdates u : updatesToApply) {
+        if (u.anyReset()) {
+          anyRemoval = true;
+          break;
+        }
+      }
+      // Set-only updates become a sparse delta generation overlaid at read time; a removal falls
+      // back to the dense
+      // rewrite. (Skip-indexed fields can't reach here: IndexWriter rejects doc-values updates on
+      // them.)
+      final boolean sparseDelta = config.getMaxDocValuesOverlays() > 0 && anyRemoval == false;
+      // Past maxDocValuesOverlays, fold the prior deltas into this write as one sparse generation
+      // (base untouched) instead of appending another.
+      // TODO: folding all deltas each cycle rewrites the folded generation repeatedly; a
+      // size-tiered policy would help.
+      final boolean compact = sparseDelta && priorGens.length >= config.getMaxDocValuesOverlays();
+      final List<DocValuesProducer> deltaProducers = new ArrayList<>();
+      long deltaCoverage = 0; // sum of the delta generations' docs-with-value counts (>= distinct)
+      // Open the prior deltas to measure their coverage; a sparse fold keeps the base separate
+      // (the core column or an earlier dense generation) and merges only the deltas.
+      if (compact) {
+        try {
+          for (long gen : priorGens) {
+            FieldInfo fiGen = SegmentDocValuesProducer.withGen(fieldInfo, gen);
+            SegmentReadState srs =
+                new SegmentReadState(
+                    info.info.dir,
+                    info.info,
+                    new FieldInfos(new FieldInfo[] {fiGen}),
+                    IOContext.DEFAULT,
+                    Long.toString(gen, Character.MAX_RADIX));
+            DocValuesProducer p = dvFormat.fieldsProducer(srs);
+            deltaProducers.add(p);
+            deltaCoverage +=
+                type == DocValuesType.BINARY
+                    ? p.getBinary(fieldInfo).cost()
+                    : p.getNumeric(fieldInfo).cost();
+          }
+        } catch (Throwable t) {
+          // The try-with-resources below owns the normal close; close here if opening a delta fails
+          // first.
+          IOUtils.closeWhileHandlingException(deltaProducers);
+          throw t;
+        }
+      }
+      // Fold into one dense column (reclaiming the base) once the deltas cover at least
+      // FOLD_TO_DENSE_COVERAGE_RATIO of the segment.
+      final boolean foldToDense =
+          compact && deltaCoverage >= info.info.maxDoc() * FOLD_TO_DENSE_COVERAGE_RATIO;
       fieldInfo.setDocValuesGen(nextDocValuesGen);
       final FieldInfos fieldInfos = new FieldInfos(new FieldInfo[] {fieldInfo});
       // separately also track which files were created for this gen
@@ -354,9 +434,19 @@ final class ReadersAndUpdates {
                 @Override
                 public BinaryDocValues getBinary(FieldInfo fieldInfoIn) throws IOException {
                   DocValuesFieldUpdates.Iterator iterator = updateSupplier.apply(fieldInfo);
+                  if (sparseDelta && compact == false) {
+                    // write only the updated docs; unchanged docs come from the base at read time
+                    return DocValuesFieldUpdates.Iterator.asBinaryDocValues(iterator);
+                  }
+                  // sparse fold merges the prior deltas (stays sparse); a dense rewrite (removal or
+                  // fold-to-dense) merges the base column
+                  final BinaryDocValues onDisk =
+                      compact && foldToDense == false
+                          ? overlayBinary(deltaProducers, fieldInfo)
+                          : reader.getBinaryDocValues(field);
                   final MergedDocValues<BinaryDocValues> mergedDocValues =
                       new MergedDocValues<>(
-                          reader.getBinaryDocValues(field),
+                          onDisk,
                           DocValuesFieldUpdates.Iterator.asBinaryDocValues(iterator),
                           iterator);
                   // Merge sort of the original doc values with updated doc values:
@@ -407,9 +497,19 @@ final class ReadersAndUpdates {
                 @Override
                 public NumericDocValues getNumeric(FieldInfo fieldInfoIn) throws IOException {
                   DocValuesFieldUpdates.Iterator iterator = updateSupplier.apply(fieldInfo);
+                  if (sparseDelta && compact == false) {
+                    // write only the updated docs; unchanged docs come from the base at read time
+                    return DocValuesFieldUpdates.Iterator.asNumericDocValues(iterator);
+                  }
+                  // sparse fold merges the prior deltas (stays sparse); a dense rewrite (removal or
+                  // fold-to-dense) merges the base column
+                  final NumericDocValues onDisk =
+                      compact && foldToDense == false
+                          ? overlayNumeric(deltaProducers, fieldInfo)
+                          : reader.getNumericDocValues(field);
                   final MergedDocValues<NumericDocValues> mergedDocValues =
                       new MergedDocValues<>(
-                          reader.getNumericDocValues(field),
+                          onDisk,
                           DocValuesFieldUpdates.Iterator.asNumericDocValues(iterator),
                           iterator);
                   // Merge sort of the original doc values with updated doc values:
@@ -453,11 +553,53 @@ final class ReadersAndUpdates {
                 }
               });
         }
+      } finally {
+        IOUtils.close(deltaProducers);
+      }
+      // Stage the field's overlay generations; writeFieldUpdates commits them to the commit info
+      // only if the whole batch succeeds, so a later field's failure (whose rollback deletes these
+      // gen files) never leaves info referencing them. Packed as {baseGen, deltas...}.
+      if (compact && foldToDense == false) {
+        // the single folded generation replaces the prior deltas (base kept)
+        newOverlays.put(fieldInfo.number, new long[] {baseGen, nextDocValuesGen});
+      } else if (sparseDelta && compact == false) {
+        // prepend this generation to the field's overlay list (base unchanged; -1 = the core
+        // column)
+        final long[] packed = new long[priorGens.length + 2];
+        packed[0] = baseGen;
+        packed[1] = nextDocValuesGen;
+        System.arraycopy(priorGens, 0, packed, 2, priorGens.length);
+        newOverlays.put(fieldInfo.number, packed);
+      } else {
+        // a dense rewrite (removal or fold-to-dense) is a single column again: clear the overlay
+        newOverlays.put(fieldInfo.number, new long[] {-1});
       }
       info.advanceDocValuesGen();
       assert !fieldFiles.containsKey(fieldInfo.number);
       fieldFiles.put(fieldInfo.number, trackingDir.getCreatedFiles());
     }
+  }
+
+  /**
+   * Fresh overlay (newest generation first) over the given delta producers, used to fold deltas
+   * during compaction.
+   */
+  private static NumericDocValues overlayNumeric(
+      List<DocValuesProducer> producers, FieldInfo fieldInfo) throws IOException {
+    NumericDocValues[] layers = new NumericDocValues[producers.size()];
+    for (int i = 0; i < layers.length; i++) {
+      layers[i] = producers.get(i).getNumeric(fieldInfo);
+    }
+    return new OverlayNumericDocValues(layers);
+  }
+
+  private static BinaryDocValues overlayBinary(
+      List<DocValuesProducer> producers, FieldInfo fieldInfo) throws IOException {
+    BinaryDocValues[] layers = new BinaryDocValues[producers.size()];
+    for (int i = 0; i < layers.length; i++) {
+      layers[i] = producers.get(i).getBinary(fieldInfo);
+    }
+    return new OverlayBinaryDocValues(layers);
   }
 
   /**
@@ -617,6 +759,9 @@ final class ReadersAndUpdates {
       throws IOException {
     long startTimeNS = System.nanoTime();
     final Map<Integer, Set<String>> newDVFiles = new HashMap<>();
+    // Overlay generations staged per field (committed to info only if the whole write succeeds); it
+    // also drives file retention: a field keeps the files of the generations it still references.
+    final Map<Integer, long[]> newOverlays = new HashMap<>();
     Set<String> fieldInfosFiles = null;
     FieldInfos fieldInfos = null;
     boolean any = false;
@@ -687,7 +832,14 @@ final class ReadersAndUpdates {
         final DocValuesFormat docValuesFormat = codec.docValuesFormat();
 
         handleDVUpdates(
-            fieldInfos, trackingDir, docValuesFormat, reader, newDVFiles, maxDelGen, infoStream);
+            fieldInfos,
+            trackingDir,
+            docValuesFormat,
+            reader,
+            newDVFiles,
+            newOverlays,
+            maxDelGen,
+            infoStream);
 
         fieldInfosFiles = writeFieldInfosGen(fieldInfos, trackingDir, codec.fieldInfosFormat());
       } finally {
@@ -742,17 +894,38 @@ final class ReadersAndUpdates {
     assert fieldInfosFiles != null;
     info.setFieldInfosFiles(fieldInfosFiles);
 
-    // update the doc-values updates files. the files map each field to its set
-    // of files, hence we copy from the existing map all fields w/ updates that
-    // were not updated in this session, and add new mappings for fields that
-    // were updated now.
+    // A field's live update files are those of the generations its overlay still references (the
+    // core column, baseGen -1, lives in the segment's own files). Carry over untouched fields; for
+    // the rest keep this session's files plus prior files whose generation is still referenced.
     assert newDVFiles.isEmpty() == false;
     for (Entry<Integer, Set<String>> e : info.getDocValuesUpdatesFiles().entrySet()) {
-      if (newDVFiles.containsKey(e.getKey()) == false) {
-        newDVFiles.put(e.getKey(), e.getValue());
+      final int field = e.getKey();
+      if (newDVFiles.containsKey(field) == false) {
+        newDVFiles.put(field, e.getValue());
+        continue;
       }
+      final long[] overlay = newOverlays.get(field); // {baseGen, deltas...}, or {-1} when cleared
+      final Set<String> live = new HashSet<>(newDVFiles.get(field));
+      for (String f : e.getValue()) {
+        final long gen = IndexFileNames.parseGeneration(f);
+        for (long liveGen : overlay) {
+          if (liveGen != -1 && liveGen == gen) {
+            live.add(f);
+            break;
+          }
+        }
+      }
+      newDVFiles.put(field, live);
     }
     info.setDocValuesUpdatesFiles(newDVFiles);
+
+    // Commit the staged overlay generations now that the write and file bookkeeping succeeded, and
+    // before reopening the reader below so it reflects them.
+    for (Entry<Integer, long[]> e : newOverlays.entrySet()) {
+      final long[] packed = e.getValue();
+      info.setDocValuesOverlay(
+          e.getKey(), packed[0], ArrayUtil.copyOfSubArray(packed, 1, packed.length));
+    }
 
     // if there is a reader open, reopen it to reflect the updates
     if (reader != null) {

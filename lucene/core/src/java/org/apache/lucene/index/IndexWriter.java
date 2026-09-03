@@ -1159,7 +1159,8 @@ public class IndexWriter
               bufferedUpdatesStream::getCompletedDelGen,
               infoStream,
               conf.getSoftDeletesField(),
-              reader);
+              reader,
+              config);
       if (config.getReaderPooling()) {
         readerPool.enableReaderPooling();
       }
@@ -2008,6 +2009,15 @@ public class IndexWriter
     ensureOpen();
     if (value == null) {
       throw new IllegalArgumentException("cannot update a field to a null value: " + field);
+    }
+    // Checked before the doc-values-type check below: an index sort field is never binary, so this
+    // would otherwise surface as a less clear doc-values-type mismatch.
+    if (config.getIndexSortFields().contains(field)) {
+      throw new IllegalArgumentException(
+          "cannot update docvalues field involved in the index sort, field="
+              + field
+              + ", sort="
+              + config.getIndexSort());
     }
     globalFieldNumberMap.verifyOrCreateDvOnlyField(field, DocValuesType.BINARY, true);
     try {
@@ -3660,6 +3670,13 @@ public class IndexWriter
     newInfo.setFiles(info.info.files());
     newInfoPerCommit.setFieldInfosFiles(info.getFieldInfosFiles());
     newInfoPerCommit.setDocValuesUpdatesFiles(info.getDocValuesUpdatesFiles());
+    // Carry over the incremental doc-values overlay generations (the copied update files keep their
+    // gen numbers).
+    for (Map.Entry<Integer, long[]> e : info.getDocValuesOverlays().entrySet()) {
+      final long[] packed = e.getValue();
+      newInfoPerCommit.setDocValuesOverlay(
+          e.getKey(), packed[0], ArrayUtil.copyOfSubArray(packed, 1, packed.length));
+    }
 
     boolean success = false;
 
