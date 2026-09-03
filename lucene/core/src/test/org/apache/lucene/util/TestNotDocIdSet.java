@@ -32,7 +32,7 @@ public class TestNotDocIdSet extends BaseDocIdSetTestCase<NotDocIdSet> {
     return new NotDocIdSet(length, new BitDocIdSet(set));
   }
 
-  public void testIntoBitSet() throws IOException {
+  public void testNotDocIdSetIntoBitSet() throws IOException {
     final int maxDoc = 1024;
     FixedBitSet excluded = new FixedBitSet(maxDoc);
     excluded.set(3);
