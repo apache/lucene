@@ -19,12 +19,6 @@ package org.apache.lucene.sandbox.codecs.dedup;
 import static org.apache.lucene.index.VectorEncoding.BYTE;
 import static org.apache.lucene.index.VectorEncoding.FLOAT16;
 import static org.apache.lucene.index.VectorEncoding.FLOAT32;
-import static org.apache.lucene.sandbox.codecs.dedup.DedupFlatVectorsFormat.META_CODEC_NAME;
-import static org.apache.lucene.sandbox.codecs.dedup.DedupFlatVectorsFormat.META_EXTENSION;
-import static org.apache.lucene.sandbox.codecs.dedup.DedupFlatVectorsFormat.VECTOR_DATA_CODEC_NAME;
-import static org.apache.lucene.sandbox.codecs.dedup.DedupFlatVectorsFormat.VECTOR_DATA_EXTENSION;
-import static org.apache.lucene.sandbox.codecs.dedup.DedupFlatVectorsFormat.VERSION_CURRENT;
-import static org.apache.lucene.sandbox.codecs.dedup.DedupFlatVectorsFormat.VERSION_START;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.loadDedupBytes;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.loadDedupFloat16s;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.loadDedupFloats;
@@ -72,15 +66,25 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
   private final FlatVectorsScorer vectorsScorer;
   private final Map<String, FieldEntry> fields;
   private final IndexInput vectorData;
+  private final String vectorDataExtension;
 
-  DedupFlatVectorsReader(SegmentReadState state, FlatVectorsScorer vectorsScorer)
+  DedupFlatVectorsReader(
+      SegmentReadState state,
+      FlatVectorsScorer vectorsScorer,
+      String metaCodecName,
+      String metaExtension,
+      String vectorDataCodecName,
+      String vectorDataExtension,
+      int versionStart,
+      int versionCurrent)
       throws IOException {
 
     this.vectorsScorer = vectorsScorer;
     this.fields = new HashMap<>();
+    this.vectorDataExtension = vectorDataExtension;
 
     String metaFileName =
-        IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, META_EXTENSION);
+        IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, metaExtension);
 
     int versionMeta;
     try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName)) {
@@ -89,9 +93,9 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
         versionMeta =
             CodecUtil.checkIndexHeader(
                 meta,
-                META_CODEC_NAME,
-                VERSION_START,
-                VERSION_CURRENT,
+                metaCodecName,
+                versionStart,
+                versionCurrent,
                 state.segmentInfo.getId(),
                 state.segmentSuffix);
         readMetaBody(meta, state.fieldInfos);
@@ -103,7 +107,14 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
       }
     }
 
-    this.vectorData = openDataInput(state, versionMeta);
+    this.vectorData =
+        openDataInput(
+            state,
+            versionMeta,
+            vectorDataCodecName,
+            vectorDataExtension,
+            versionStart,
+            versionCurrent);
   }
 
   private void readMetaBody(ChecksumIndexInput meta, FieldInfos fieldInfos) throws IOException {
@@ -174,12 +185,18 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
     }
   }
 
-  private static IndexInput openDataInput(SegmentReadState state, int versionMeta)
+  private static IndexInput openDataInput(
+      SegmentReadState state,
+      int versionMeta,
+      String vectorDataCodecName,
+      String vectorDataExtension,
+      int versionStart,
+      int versionCurrent)
       throws IOException {
 
     String fileName =
         IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, VECTOR_DATA_EXTENSION);
+            state.segmentInfo.name, state.segmentSuffix, vectorDataExtension);
 
     IOContext.FileOpenHint[] hints = {
       FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM
@@ -193,9 +210,9 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
       int versionVectorData =
           CodecUtil.checkIndexHeader(
               in,
-              VECTOR_DATA_CODEC_NAME,
-              VERSION_START,
-              VERSION_CURRENT,
+              vectorDataCodecName,
+              versionStart,
+              versionCurrent,
               state.segmentInfo.getId(),
               state.segmentSuffix);
       if (versionMeta != versionVectorData) {
@@ -203,7 +220,7 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
             "Format versions mismatch: meta="
                 + versionMeta
                 + ", "
-                + VECTOR_DATA_CODEC_NAME
+                + vectorDataCodecName
                 + "="
                 + versionVectorData,
             in);
@@ -348,10 +365,11 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
     }
     // TODO: This is an over-estimation.
     return Map.of(
-        VECTOR_DATA_EXTENSION,
+        vectorDataExtension,
         entry.fieldInfo.fieldOrdToGroupOrdSize() + entry.groupInfo.vectorDataSize());
   }
 
+  // package-private for testing
   record FieldEntry(ReadFieldInfo fieldInfo, GroupInfo groupInfo) {
     private static final long SHALLOW_SIZE =
         RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class)
