@@ -212,6 +212,9 @@ Optimizations
 
 * GITHUB#12324: ELiminate redundant work in AbstractKnnVectorQuery.rewrite (Mike Sokolov)
 
+* GITHUB#16619: DirectIODirectory's slice() no longer performs a blocking direct read when
+  creating a slice; the first read resolves the deferred start position instead. (John Maurice)
+
 Bug Fixes
 ---------------------
 * GITHUB#16620: Make HNSW merges abortable during graph initialization and repair, so that the
@@ -484,6 +487,9 @@ Optimizations
   Affects BinaryRangeFieldRangeQuery, LatLonDocValuesBoxQuery,
   LatLonDocValuesQuery, XYDocValuesPointInGeometryQuery, and
   SortedNumericDocValuesSetQuery. (Costin Leau)
+
+* GITHUB#16297: Use LongHashSet for sparse ordinal sets in DocValuesRangeIterator so memory
+  scales with matching terms instead of segment cardinality. (Costin Leau)
 
 Bug Fixes
 ---------------------
