@@ -109,9 +109,10 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
    *     tracking)
    * @param totalNumberOfVectors the total number of vectors in the merged graph (used for
    *     pre-allocation)
-   * @param abortCheck optional check invoked before every node insertion during graph construction;
-   *     may throw {@link org.apache.lucene.index.MergePolicy.MergeAbortedException} to abort the
-   *     build when the surrounding merge has been aborted, or null
+   * @param abortCheck optional check polled during graph construction, i.e. while copying,
+   *     repairing and rebalancing the initializer graph and before each node insertion; may throw
+   *     {@link org.apache.lucene.index.MergePolicy.MergeAbortedException} to abort the build when
+   *     the surrounding merge has been aborted, or null
    * @return a new builder initialized with the provided graph structure
    * @throws IOException if an I/O error occurs during graph initialization
    */
@@ -175,9 +176,10 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
    * @param totalNumberOfVectors the total number of vectors in the merged graph
    * @param beamWidth the search beam width for graph construction
    * @param scorerSupplier provides vector similarity scoring
-   * @param abortCheck optional check invoked before every node insertion during graph construction;
-   *     may throw {@link org.apache.lucene.index.MergePolicy.MergeAbortedException} to abort the
-   *     build when the surrounding merge has been aborted, or null
+   * @param abortCheck optional check polled during graph construction, i.e. while copying,
+   *     repairing and rebalancing the initializer graph and before each node insertion; may throw
+   *     {@link org.apache.lucene.index.MergePolicy.MergeAbortedException} to abort the build when
+   *     the surrounding merge has been aborted, or null
    * @return a fully initialized on-heap HNSW graph
    * @throws IOException if an I/O error occurs during graph initialization
    */
@@ -452,11 +454,11 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
       Iterator<IntCursor> it = levelToNodes[level - 1].iterator();
 
       while (it.hasNext() && currentNodesAtLevel < maxNodesAtLevel) {
-        maybeAbort();
         int node = it.next().value;
 
         // Promote with probability 1/M, matching HNSW's level assignment distribution
         if (random.nextDouble() < invMaxConn && !hnsw.nodeExistAtLevel(level, node)) {
+          maybeAbort();
           scorer.setScoringOrdinal(node);
           hnsw.addNode(level, node);
 
