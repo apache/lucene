@@ -16,6 +16,11 @@ updates:
       codeql:
         patterns:
           - github/codeql-action/*
+      # group patch/minor updates, typically no breaking changes
+      actions:
+        update-types:
+          - patch
+          - minor
     cooldown:
       default-days: 7
 
@@ -28,6 +33,12 @@ updates:
     commit-message:
       prefix: build(deps)
     labels: [dependencies, skip-changelog]
+    groups:
+      # group patch/minor updates, typically no breaking changes
+      python:
+        update-types:
+          - patch
+          - minor
     cooldown:
       default-days: 7
 
@@ -40,5 +51,11 @@ updates:
     commit-message:
       prefix: deps(java)
     labels: [dependencies, skip-changelog]
+    groups:
+      # group patch/minor updates, typically no breaking changes
+      java:
+        update-types:
+          - patch
+          - minor
     cooldown:
       default-days: 7
