@@ -188,7 +188,8 @@ public class TestRescoreTopNQuery extends LuceneTestCase {
       }
     }
 
-    // Step 2: Run an approximate FLOAT16 KNN query, then rescore with full-precision FLOAT16 vectors
+    // Step 2: Run an approximate FLOAT16 KNN query, then rescore with full-precision FLOAT16
+    // vectors
     try (IndexReader reader = DirectoryReader.open(directory)) {
       IndexSearcher searcher = new IndexSearcher(reader);
       short[] targetVector = randomFloat16Vector(VECTOR_DIMENSION, random);

@@ -24,8 +24,8 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorSimilarityFunction;
 
 /**
- * Base class for {@link DoubleValuesSource} implementations that compute vector similarity between a
- * query vector and the raw full precision vectors of a KNN vector field. Subclasses supply the
+ * Base class for {@link DoubleValuesSource} implementations that compute vector similarity between
+ * a query vector and the raw full precision vectors of a KNN vector field. Subclasses supply the
  * vector-type-specific access to the field values, leaving the common scoring flow here.
  */
 abstract class AbstractFullPrecisionVectorSimilarityValuesSource extends DoubleValuesSource {
@@ -93,7 +93,9 @@ abstract class AbstractFullPrecisionVectorSimilarityValuesSource extends DoubleV
     };
   }
 
-  /** Returns the full precision vector values for the field, or {@code null} if the field is absent. */
+  /**
+   * Returns the full precision vector values for the field, or {@code null} if the field is absent.
+   */
   protected abstract KnnVectorValues getVectorValues(LeafReaderContext ctx) throws IOException;
 
   /** Raises the appropriate error when the field has no vector values of the expected type. */

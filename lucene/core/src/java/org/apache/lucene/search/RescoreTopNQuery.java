@@ -151,8 +151,8 @@ public class RescoreTopNQuery extends Query {
   }
 
   /**
-   * Utility method to create a new RescoreTopNQuery which uses half-precision
-   * (FLOAT16) vectors for rescoring.
+   * Utility method to create a new RescoreTopNQuery which uses half-precision (FLOAT16) vectors for
+   * rescoring.
    *
    * @param in the inner Query to rescore
    * @param targetVector the target vector to compute score, as FLOAT16 bit patterns
