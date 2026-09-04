@@ -176,7 +176,10 @@ public abstract class AcceptDocs {
 
     private void createBitSetAcceptDocsIfNecessary() throws IOException {
       if (acceptBitSet == null) {
-        acceptBitSet = Objects.requireNonNull(createBitSet(iterator(), liveDocs, maxDoc));
+        // Pass the raw iterator: #createBitSet applies liveDocs itself, and filtering upfront
+        // would hide DocIdSetIterator#intoBitSet behind a wrapper that has no bulk implementation.
+        DocIdSetIterator iterator = Objects.requireNonNull(iteratorSupplier.get());
+        acceptBitSet = Objects.requireNonNull(createBitSet(iterator, liveDocs, maxDoc));
         cardinality = acceptBitSet.cardinality();
       }
     }

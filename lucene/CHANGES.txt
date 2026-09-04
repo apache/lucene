@@ -178,6 +178,9 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#16588: AcceptDocs builds its bit set from the raw filter iterator so that
+  DocIdSetIterator#intoBitSet is used on segments with deletions. (John Maurice)
+
 * GITHUB#16431: Add support for Block-Max WAND dynamic score skipping in FunctionScoreQuery
   and DoubleValuesSource using DocValuesSkipper. (Rajat Jain)
 
