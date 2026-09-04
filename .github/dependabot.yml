@@ -11,6 +11,11 @@ updates:
     commit-message:
       prefix: ci
     labels: [dependencies, skip-changelog]
+    groups:
+      # codeql init/analyze must match exactly: validate each others versions
+      codeql:
+        patterns:
+          - github/codeql-action/*
     cooldown:
       default-days: 7
 
