@@ -133,6 +133,8 @@ import org.apache.lucene.util.packed.DirectWriter;
  *   <li><code>.dvd</code>: DocValues data
  *   <li><code>.dvm</code>: DocValues metadata
  *   <li><code>.dvs</code>: DocValues skip index (since version 1)
+ *   <li><code>.dvp</code>: DocValues presence, i.e. the {@link IndexedDISI} for sparse fields
+ *       (since version 3)
  * </ol>
  *
  * @lucene.experimental
@@ -166,7 +168,9 @@ public final class Lucene90DocValuesFormat extends DocValuesFormat {
         META_CODEC,
         META_EXTENSION,
         SKIP_INDEX_CODEC,
-        SKIP_INDEX_EXTENSION);
+        SKIP_INDEX_EXTENSION,
+        DISI_CODEC,
+        DISI_EXTENSION);
   }
 
   @Override
@@ -178,7 +182,9 @@ public final class Lucene90DocValuesFormat extends DocValuesFormat {
         META_CODEC,
         META_EXTENSION,
         SKIP_INDEX_CODEC,
-        SKIP_INDEX_EXTENSION);
+        SKIP_INDEX_EXTENSION,
+        DISI_CODEC,
+        DISI_EXTENSION);
   }
 
   static final String DATA_CODEC = "Lucene90DocValuesData";
@@ -187,10 +193,17 @@ public final class Lucene90DocValuesFormat extends DocValuesFormat {
   static final String META_EXTENSION = "dvm";
   static final String SKIP_INDEX_CODEC = "Lucene90DocValuesSkipIndex";
   static final String SKIP_INDEX_EXTENSION = "dvs";
+  static final String DISI_CODEC = "Lucene90DocValuesDISI";
+  static final String DISI_EXTENSION = "dvp";
   static final int VERSION_START = 0;
   static final int VERSION_SKIPPER_SEPARATE_FILE = 1;
   static final int VERSION_SKIPPER_MAX_VALUE_COUNT = 2;
-  static final int VERSION_CURRENT = VERSION_SKIPPER_MAX_VALUE_COUNT;
+  // Moves the sparse-field IndexedDISI from .dvd into a dedicated .dvp file. The .dvp per-field
+  // region uses self-describing entries (see DISI_TYPE_*), so new presence data needs a new tag,
+  // not
+  // a version bump. Meant to be the last version bump this format needs for presence changes.
+  static final int VERSION_DISI_EXTENSIBLE_FILE = 3;
+  static final int VERSION_CURRENT = VERSION_DISI_EXTENSIBLE_FILE;
 
   // indicates docvalues type
   static final byte NUMERIC = 0;
@@ -198,6 +211,10 @@ public final class Lucene90DocValuesFormat extends DocValuesFormat {
   static final byte SORTED = 2;
   static final byte SORTED_SET = 3;
   static final byte SORTED_NUMERIC = 4;
+
+  // Entry type tags for the .dvp per-field region. The reader dispatches on the tag and skips
+  // unknown entries using their stored byte length, so new tags need no version bump.
+  static final byte DISI_TYPE_INDEXED = 0x01;
 
   static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
 
