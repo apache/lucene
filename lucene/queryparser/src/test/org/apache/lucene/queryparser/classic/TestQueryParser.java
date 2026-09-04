@@ -705,21 +705,21 @@ public class TestQueryParser extends QueryParserTestBase {
 
     assertQueryEquals("field:(guinea pig)", a, "((+guinea +pig) cavy)");
 
-    assertQueryEquals("+small guinea pig", a, "+small ((+guinea +pig) cavy)");
-    assertQueryEquals("-small guinea pig", a, "-small ((+guinea +pig) cavy)");
-    assertQueryEquals("!small guinea pig", a, "-small ((+guinea +pig) cavy)");
-    assertQueryEquals("NOT small guinea pig", a, "-small ((+guinea +pig) cavy)");
-    assertQueryEquals("small* guinea pig", a, "small* ((+guinea +pig) cavy)");
-    assertQueryEquals("small? guinea pig", a, "small? ((+guinea +pig) cavy)");
-    assertQueryEquals("\"small\" guinea pig", a, "small ((+guinea +pig) cavy)");
+    assertQueryEquals("+small guinea pig", a, "+small (((+guinea +pig) cavy))");
+    assertQueryEquals("-small guinea pig", a, "-small (((+guinea +pig) cavy))");
+    assertQueryEquals("!small guinea pig", a, "-small (((+guinea +pig) cavy))");
+    assertQueryEquals("NOT small guinea pig", a, "-small (((+guinea +pig) cavy))");
+    assertQueryEquals("small* guinea pig", a, "small* (((+guinea +pig) cavy))");
+    assertQueryEquals("small? guinea pig", a, "small? (((+guinea +pig) cavy))");
+    assertQueryEquals("\"small\" guinea pig", a, "small (((+guinea +pig) cavy))");
 
-    assertQueryEquals("guinea pig +running", a, "((+guinea +pig) cavy) +running");
-    assertQueryEquals("guinea pig -running", a, "((+guinea +pig) cavy) -running");
-    assertQueryEquals("guinea pig !running", a, "((+guinea +pig) cavy) -running");
-    assertQueryEquals("guinea pig NOT running", a, "((+guinea +pig) cavy) -running");
-    assertQueryEquals("guinea pig running*", a, "((+guinea +pig) cavy) running*");
-    assertQueryEquals("guinea pig running?", a, "((+guinea +pig) cavy) running?");
-    assertQueryEquals("guinea pig \"running\"", a, "((+guinea +pig) cavy) running");
+    assertQueryEquals("guinea pig +running", a, "(((+guinea +pig) cavy)) +running");
+    assertQueryEquals("guinea pig -running", a, "(((+guinea +pig) cavy)) -running");
+    assertQueryEquals("guinea pig !running", a, "(((+guinea +pig) cavy)) -running");
+    assertQueryEquals("guinea pig NOT running", a, "(((+guinea +pig) cavy)) -running");
+    assertQueryEquals("guinea pig running*", a, "(((+guinea +pig) cavy)) running*");
+    assertQueryEquals("guinea pig running?", a, "(((+guinea +pig) cavy)) running?");
+    assertQueryEquals("guinea pig \"running\"", a, "(((+guinea +pig) cavy)) running");
 
     assertQueryEquals("\"guinea pig\"~2", a, "\"guinea pig\" cavy");
 
@@ -890,9 +890,9 @@ public class TestQueryParser extends QueryParserTestBase {
     assertEquals("*bersetzung uber*ung", parser.parse("*bersetzung über*ung").toString(FIELD));
     parser.setAllowLeadingWildcard(false);
     assertEquals(
-        "motley crue motl?* cru?", parser.parse("Mötley Cr\u00fce Mötl?* Crü?").toString(FIELD));
+        "(motley crue) motl?* cru?", parser.parse("Mötley Cr\u00fce Mötl?* Crü?").toString(FIELD));
     assertEquals(
-        "renee zellweger ren?? zellw?ger",
+        "(renee zellweger) ren?? zellw?ger",
         parser.parse("Renée Zellweger Ren?? Zellw?ger").toString(FIELD));
   }
 
@@ -900,7 +900,8 @@ public class TestQueryParser extends QueryParserTestBase {
     Analyzer a = new ASCIIAnalyzer();
     QueryParser parser = new QueryParser(FIELD, a);
     assertEquals("ubersetzung ubersetz*", parser.parse("übersetzung übersetz*").toString(FIELD));
-    assertEquals("motley crue motl* cru*", parser.parse("Mötley Crüe Mötl* crü*").toString(FIELD));
+    assertEquals(
+        "(motley crue) motl* cru*", parser.parse("Mötley Crüe Mötl* crü*").toString(FIELD));
     assertEquals("rene? zellw*", parser.parse("René? Zellw*").toString(FIELD));
   }
 
@@ -917,10 +918,10 @@ public class TestQueryParser extends QueryParserTestBase {
     assertEquals(
         "ubersetzung ubersetzung~1", parser.parse("Übersetzung Übersetzung~0.9").toString(FIELD));
     assertEquals(
-        "motley crue motley~1 crue~2",
+        "(motley crue) motley~1 crue~2",
         parser.parse("Mötley Crüe Mötley~0.75 Crüe~0.5").toString(FIELD));
     assertEquals(
-        "renee zellweger renee~0 zellweger~2",
+        "(renee zellweger) renee~0 zellweger~2",
         parser.parse("Renée Zellweger Renée~0.9 Zellweger~").toString(FIELD));
   }
 
@@ -1025,5 +1026,14 @@ public class TestQueryParser extends QueryParserTestBase {
     } else {
       return false;
     }
+  }
+
+  @Override
+  public void testSimpleDAO() throws Exception {
+    assertQueryEqualsDOA("term term term", null, "+term +term +term");
+    assertQueryEqualsDOA("term +term term", null, "+term +term +term");
+    assertQueryEqualsDOA("term term +term", null, "+(+term +term) +term");
+    assertQueryEqualsDOA("term +term +term", null, "+term +term +term");
+    assertQueryEqualsDOA("-term term term", null, "-term +(+term +term)");
   }
 }
