@@ -84,7 +84,7 @@ abstract class AbstractKnnVectorQuery extends Query {
         // If the filter is a match no docs query, we can also skip it
         return rewrittenFilter;
       }
-      if (rewrittenFilter.getClass() != MatchAllDocsQuery.class) {
+      if (!rewrittenFilter.isKnownToMatchAllDocs()) {
         BooleanQuery booleanQuery =
             new BooleanQuery.Builder()
                 .add(filter, BooleanClause.Occur.FILTER)

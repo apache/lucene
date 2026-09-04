@@ -113,8 +113,7 @@ public final class IndexOrDocValuesQuery extends Query {
   public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     Query indexRewrite = indexQuery.rewrite(indexSearcher);
     Query dvRewrite = dvQuery.rewrite(indexSearcher);
-    if (indexRewrite.getClass() == MatchAllDocsQuery.class
-        || dvRewrite.getClass() == MatchAllDocsQuery.class) {
+    if (indexRewrite.isKnownToMatchAllDocs() || dvRewrite.isKnownToMatchAllDocs()) {
       return MatchAllDocsQuery.INSTANCE;
     }
     if (indexRewrite.getClass() == MatchNoDocsQuery.class

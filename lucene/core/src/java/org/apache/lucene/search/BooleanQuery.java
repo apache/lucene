@@ -456,7 +456,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
           must = boostQuery.getQuery();
           boost = boostQuery.getBoost();
         }
-        if (must.getClass() == MatchAllDocsQuery.class) {
+        if (must.isKnownToMatchAllDocs()) {
           // our single scoring clause matches everything: rewrite to a CSQ on the filter
           // ignore SHOULD clause for now
           BooleanQuery.Builder builder = new BooleanQuery.Builder();
