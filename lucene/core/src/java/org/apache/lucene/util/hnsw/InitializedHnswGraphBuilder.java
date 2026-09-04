@@ -30,6 +30,7 @@ import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
+import org.apache.lucene.util.IORunnable;
 
 /**
  * This creates a graph builder that is initialized with the provided HnswGraph. This is useful for
@@ -108,6 +109,10 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
    *     tracking)
    * @param totalNumberOfVectors the total number of vectors in the merged graph (used for
    *     pre-allocation)
+   * @param abortCheck optional check polled during graph construction, i.e. while copying,
+   *     repairing and rebalancing the initializer graph and before each node insertion; may throw
+   *     {@link org.apache.lucene.index.MergePolicy.MergeAbortedException} to abort the build when
+   *     the surrounding merge has been aborted, or null
    * @return a new builder initialized with the provided graph structure
    * @throws IOException if an I/O error occurs during graph initialization
    */
@@ -118,7 +123,8 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
       HnswGraph initializerGraph,
       int[] newOrdMap,
       BitSet initializedNodes,
-      int totalNumberOfVectors)
+      int totalNumberOfVectors,
+      IORunnable abortCheck)
       throws IOException {
 
     InitializedHnswGraphBuilder builder =
@@ -129,8 +135,35 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
             new OnHeapHnswGraph(initializerGraph.maxConn(), totalNumberOfVectors),
             initializedNodes);
 
+    if (abortCheck != null) {
+      builder.setAbortCheck(abortCheck);
+    }
     builder.initializeFromGraph(initializerGraph, newOrdMap);
     return builder;
+  }
+
+  /**
+   * Same as {@link #fromGraph(RandomVectorScorerSupplier, int, long, HnswGraph, int[], BitSet, int,
+   * IORunnable)} but without an abort check.
+   */
+  public static InitializedHnswGraphBuilder fromGraph(
+      RandomVectorScorerSupplier scorerSupplier,
+      int beamWidth,
+      long seed,
+      HnswGraph initializerGraph,
+      int[] newOrdMap,
+      BitSet initializedNodes,
+      int totalNumberOfVectors)
+      throws IOException {
+    return fromGraph(
+        scorerSupplier,
+        beamWidth,
+        seed,
+        initializerGraph,
+        newOrdMap,
+        initializedNodes,
+        totalNumberOfVectors,
+        null);
   }
 
   /**
@@ -143,6 +176,10 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
    * @param totalNumberOfVectors the total number of vectors in the merged graph
    * @param beamWidth the search beam width for graph construction
    * @param scorerSupplier provides vector similarity scoring
+   * @param abortCheck optional check polled during graph construction, i.e. while copying,
+   *     repairing and rebalancing the initializer graph and before each node insertion; may throw
+   *     {@link org.apache.lucene.index.MergePolicy.MergeAbortedException} to abort the build when
+   *     the surrounding merge has been aborted, or null
    * @return a fully initialized on-heap HNSW graph
    * @throws IOException if an I/O error occurs during graph initialization
    */
@@ -151,7 +188,8 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
       int[] newOrdMap,
       int totalNumberOfVectors,
       int beamWidth,
-      RandomVectorScorerSupplier scorerSupplier)
+      RandomVectorScorerSupplier scorerSupplier,
+      IORunnable abortCheck)
       throws IOException {
 
     InitializedHnswGraphBuilder builder =
@@ -162,8 +200,24 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
             initializerGraph,
             newOrdMap,
             null,
-            totalNumberOfVectors);
+            totalNumberOfVectors,
+            abortCheck);
     return builder.getGraph();
+  }
+
+  /**
+   * Same as {@link #initGraph(HnswGraph, int[], int, int, RandomVectorScorerSupplier, IORunnable)}
+   * but without an abort check.
+   */
+  public static OnHeapHnswGraph initGraph(
+      HnswGraph initializerGraph,
+      int[] newOrdMap,
+      int totalNumberOfVectors,
+      int beamWidth,
+      RandomVectorScorerSupplier scorerSupplier)
+      throws IOException {
+    return initGraph(
+        initializerGraph, newOrdMap, totalNumberOfVectors, beamWidth, scorerSupplier, null);
   }
 
   private InitializedHnswGraphBuilder(
@@ -239,6 +293,7 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
       HnswGraph.NodesIterator it = initializerGraph.getNodesOnLevel(level);
 
       while (it.hasNext()) {
+        maybeAbort();
         int oldOrd = it.nextInt();
         int newOrd = newOrdMap[oldOrd];
 
@@ -327,6 +382,7 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
     NeighborArray scratchArray = new NeighborArray(beamWidth, false);
 
     for (int node : disconnectedNodes) {
+      maybeAbort();
       scorer.setScoringOrdinal(node);
       NeighborArray existingNeighbors = hnsw.getNeighbors(level, node);
 
@@ -402,6 +458,7 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
 
         // Promote with probability 1/M, matching HNSW's level assignment distribution
         if (random.nextDouble() < invMaxConn && !hnsw.nodeExistAtLevel(level, node)) {
+          maybeAbort();
           scorer.setScoringOrdinal(node);
           hnsw.addNode(level, node);
 

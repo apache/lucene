@@ -490,6 +490,10 @@ Optimizations
 Bug Fixes
 ---------------------
 
+* GITHUB#16620: Make HNSW merges abortable during graph initialization and repair, so that the
+  copy, repair and rebalance phases of an initialized graph build can be promptly aborted when the
+  surrounding merge is cancelled. (Tanguy Leroux)
+
 * GITHUB#16565: IndexWriter#updateBinaryDocValue now rejects updating a field that is part of the
   index sort, matching IndexWriter#updateNumericDocValue. (Jim Ferenczi)
 
