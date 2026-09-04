@@ -487,6 +487,9 @@ Optimizations
 * GITHUB#16297: Use LongHashSet for sparse ordinal sets in DocValuesRangeIterator so memory
   scales with matching terms instead of segment cardinality. (Costin Leau)
 
+* GITHUB#16631: Vectorize the uint4 nibble unpack used by Lucene104ScalarQuantizedVectorsFormat
+  via VectorUtilSupport, vectors are now unpacked with the Panama Vector API. (Jakub Slowinski)
+
 Bug Fixes
 ---------------------
 
