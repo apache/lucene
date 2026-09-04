@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.function.IntPredicate;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
@@ -1187,12 +1188,12 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     // minScorerCost = min(5000, 5000) = 5000 >= filter.cost(500) → bitset path
     int[] intoBitSetCalls = {0};
     int[] advanceCalls = {0};
-    int[] nextDocsAndScoresCalls = {0};
     int[] scoredDocs = {0};
 
     Query filterQuery =
         new CountingFilterQuery(
             new TermQuery(new Term("filter", "yes")), intoBitSetCalls, advanceCalls);
+    IntPredicate expectedFilter = doc -> doc < reader.maxDoc() && doc % 20 == 1;
 
     BooleanQuery innerOr =
         new BooleanQuery.Builder()
@@ -1202,7 +1203,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
                     new int[] {Integer.MAX_VALUE},
                     new int[] {Integer.MAX_VALUE},
                     scoredDocs,
-                    nextDocsAndScoresCalls),
+                    expectedFilter),
                 Occur.SHOULD)
             .add(
                 new CountingScorerQuery(
@@ -1210,7 +1211,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
                     new int[] {Integer.MAX_VALUE},
                     new int[] {Integer.MAX_VALUE},
                     scoredDocs,
-                    nextDocsAndScoresCalls),
+                    expectedFilter),
                 Occur.SHOULD)
             .build();
 
@@ -1250,7 +1251,6 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
             + " advance="
             + advanceCalls[0],
         intoBitSetCalls[0] > 0);
-    assertTrue("Expected nextDocsAndScores() calls", nextDocsAndScoresCalls[0] > 0);
     assertEquals(500, scoredDocs[0]);
     assertEquals(500, collectedDocs[0]);
 
@@ -1385,7 +1385,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
             minAdvanceShallowTarget,
             minGetMaxScoreUpTo,
             new int[1],
-            new int[1]);
+            null);
     Query dense2 = new TermQuery(new Term("body", "dense2"));
 
     BooleanQuery innerOr =
@@ -1442,19 +1442,19 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     private final int[] minAdvanceShallowTarget;
     private final int[] minGetMaxScoreUpTo;
     private final int[] scoredDocs;
-    private final int[] nextDocsAndScoresCalls;
+    private final IntPredicate expectedLiveDocs;
 
     private CountingScorerQuery(
         Query delegate,
         int[] minAdvanceShallowTarget,
         int[] minGetMaxScoreUpTo,
         int[] scoredDocs,
-        int[] nextDocsAndScoresCalls) {
+        IntPredicate expectedLiveDocs) {
       this.delegate = delegate;
       this.minAdvanceShallowTarget = minAdvanceShallowTarget;
       this.minGetMaxScoreUpTo = minGetMaxScoreUpTo;
       this.scoredDocs = scoredDocs;
-      this.nextDocsAndScoresCalls = nextDocsAndScoresCalls;
+      this.expectedLiveDocs = expectedLiveDocs;
     }
 
     @Override
@@ -1486,9 +1486,17 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
                 @Override
                 public void nextDocsAndScores(
                     int upTo, Bits liveDocs, DocAndFloatFeatureBuffer buffer) throws IOException {
+                  if (expectedLiveDocs != null) {
+                    assertNotNull(liveDocs);
+                    for (int doc = in.docID(); doc < upTo; doc++) {
+                      assertEquals(
+                          "Unexpected liveDocs state for doc " + doc,
+                          expectedLiveDocs.test(doc),
+                          liveDocs.get(doc));
+                    }
+                  }
                   in.nextDocsAndScores(upTo, liveDocs, buffer);
                   scoredDocs[0] += buffer.size;
-                  nextDocsAndScoresCalls[0]++;
                 }
               };
             }
