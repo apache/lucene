@@ -128,6 +128,33 @@ public final class SparseLiveDocs implements LiveDocs {
     return maxDoc;
   }
 
+  /**
+   * {@inheritDoc}
+   *
+   * <p>Applying a mask may only ever clear bits, and the only bits it may clear are the deleted
+   * documents, so this is a word-level and-not of the deleted documents into the destination rather
+   * than the per-bit loop of the default implementation. It runs one word operation per non-zero
+   * word of the deleted documents in the window, that is at most one per 64 documents of the
+   * window, so its cost is bounded by the size of the window and does not depend on how many bits
+   * are set in the destination.
+   *
+   * @throws IllegalArgumentException if a bit of {@code bitSet} at or beyond {@code maxDoc -
+   *     offset} is set
+   */
+  @Override
+  public void applyMask(FixedBitSet bitSet, int offset) {
+    // Note: Some scorers don't track maxDoc and may thus call this method with an offset that is
+    // beyond maxDoc.
+    int length = Math.min(bitSet.length(), maxDoc - offset);
+    if (length > 0) {
+      SparseFixedBitSet.andNotRange(deletedDocs, offset, bitSet, 0, length);
+    }
+    if (length < bitSet.length()
+        && bitSet.nextSetBit(Math.max(0, length)) != DocIdSetIterator.NO_MORE_DOCS) {
+      throw new IllegalArgumentException("Some bits are set beyond the end of live docs");
+    }
+  }
+
   @Override
   public DocIdSetIterator liveDocsIterator() {
     return new FilteredDocIdSetIterator(

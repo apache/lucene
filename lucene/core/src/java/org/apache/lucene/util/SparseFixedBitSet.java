@@ -18,6 +18,7 @@ package org.apache.lucene.util;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Objects;
 import org.apache.lucene.search.DocIdSetIterator;
 
 /**
@@ -709,6 +710,92 @@ public class SparseFixedBitSet extends BitSet {
       super.or(it);
     } else {
       orDense(it);
+    }
+  }
+
+  /**
+   * And-not {@code length} bits starting at {@code sourceFrom} from {@code source} into {@code
+   * dest} starting at {@code destFrom}: bits of {@code dest} whose corresponding bit is set in
+   * {@code source} get cleared, other bits of {@code dest} are left untouched. Only {@code dest} is
+   * modified.
+   *
+   * <p>Only the longs of {@code source} that are not zero are visited, one word operation each, so
+   * the cost is bounded by {@code length / 64} and does not depend on how many bits {@code dest}
+   * has set.
+   */
+  public static void andNotRange(
+      SparseFixedBitSet source, int sourceFrom, FixedBitSet dest, int destFrom, int length) {
+    assert length >= 0 : length;
+    Objects.checkFromIndexSize(sourceFrom, length, source.length());
+    Objects.checkFromIndexSize(destFrom, length, dest.length());
+
+    if (length == 0) {
+      return;
+    }
+
+    final long[] destBits = dest.getBits();
+    final int sourceTo = sourceFrom + length;
+    final int firstLong = sourceFrom >>> 6;
+    final int lastLong = (sourceTo - 1) >>> 6;
+    final int firstBlock = sourceFrom >>> 12;
+    final int lastBlock = (sourceTo - 1) >>> 12;
+    // The long of source that holds bit i64<<6 maps to the bits of dest that start at
+    // (i64<<6) + delta, that is to dest longs i64 + (delta >> 6) and the one after it, with the
+    // bits shifted left by delta modulo 64.
+    final int delta = destFrom - sourceFrom;
+    final int destLongDelta = delta >> 6;
+    final int shift = delta & 0x3F;
+
+    for (int i4096 = firstBlock; i4096 <= lastBlock; ++i4096) {
+      final long index = source.indices[i4096];
+      if (index == 0) {
+        continue;
+      }
+      final long[] bitArray = source.bits[i4096];
+      // Restrict the index to the longs of this block that overlap with [sourceFrom, sourceTo).
+      long inRange = index;
+      if (i4096 == firstBlock) {
+        inRange &= -1L << firstLong; // shifts are mod 64
+      }
+      if (i4096 == lastBlock) {
+        inRange &= -1L >>> -(lastLong + 1); // shifts are mod 64
+      }
+
+      for (long remaining = inRange; remaining != 0; remaining &= remaining - 1) {
+        final int i = Long.numberOfTrailingZeros(remaining);
+        final int i64 = (i4096 << 6) | i;
+        long word = bitArray[Long.bitCount(index & ((1L << i) - 1))];
+        if (i64 == firstLong) {
+          word &= -1L << sourceFrom; // shifts are mod 64
+        }
+        if (i64 == lastLong) {
+          word &= -1L >>> -sourceTo; // shifts are mod 64
+        }
+        if (word == 0) {
+          continue;
+        }
+
+        final int destLong = i64 + destLongDelta;
+        assert destLong < destBits.length;
+        final long lowBits = word << shift;
+        if (destLong >= 0) {
+          destBits[destLong] &= ~lowBits;
+        } else {
+          // The first long of the range starts before the first long of dest, so it may only
+          // contribute to the long after it.
+          assert lowBits == 0;
+        }
+        if (shift != 0) {
+          final long highBits = word >>> -shift;
+          if (destLong + 1 < destBits.length) {
+            destBits[destLong + 1] &= ~highBits;
+          } else {
+            // The last long of the range ends after the last long of dest, so it may only
+            // contribute to the long before it.
+            assert highBits == 0;
+          }
+        }
+      }
     }
   }
 
