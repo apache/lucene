@@ -114,8 +114,8 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
   }
 
   /**
-   * Same as {@link #fromGraphs(RandomVectorScorerSupplier, int, long, HnswGraph[], int[][], int,
-   * BitSet, IORunnable)} but without an abort check.
+   * Same as {@link #fromGraphs(RandomVectorScorerSupplier, int, int, long, HnswGraph[], int[][],
+   * int, BitSet, IORunnable)} but without an abort check.
    *
    * <p>This parameter-less overload is kept deliberately so the abort-check change stays purely
    * additive: existing call sites keep compiling unchanged, which keeps the backport to 10.5
@@ -124,6 +124,7 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
    */
   public static MergingHnswGraphBuilder fromGraphs(
       RandomVectorScorerSupplier scorerSupplier,
+      int M,
       int beamWidth,
       long seed,
       HnswGraph[] graphs,
@@ -133,6 +134,7 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
       throws IOException {
     return fromGraphs(
         scorerSupplier,
+        M,
         beamWidth,
         seed,
         graphs,
