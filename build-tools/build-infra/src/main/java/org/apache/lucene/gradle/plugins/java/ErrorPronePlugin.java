@@ -730,7 +730,9 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "RecordComponentOverride:OFF", // not applicable in Lucene
     "RectIntersectReturnValueIgnored:OFF", // we don't use android
     "RedundantControlFlow:OFF", // stylistic
-    "RedundantNullCheck:ERROR",
+    // TODO: re-enable once JDK 21.0.8+ is installed on Jenkins/ CI boxes.
+    // https://github.com/apache/lucene/issues/16639
+    "RedundantNullCheck:OFF",
     "RedundantOverride:OFF", // TODO: new, not checked if applicable to Lucene
     "RedundantSetterCall:OFF", // we don't use protobuf
     "RedundantThrows:OFF", // TODO: new, not checked if applicable to Lucene
