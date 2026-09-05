@@ -49,7 +49,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
 
   private final FixedBitSet windowMatches = new FixedBitSet(INNER_WINDOW_SIZE);
   private final double[] windowScores = new double[INNER_WINDOW_SIZE];
-  private FixedBitSet filterMatches = null;
+  private OffsetBits filterMatchesBits = null;
 
   private final DocAndFloatFeatureBuffer docAndScoreBuffer = new DocAndFloatFeatureBuffer();
   private final DocAndScoreAccBuffer docAndScoreAccBuffer = new DocAndScoreAccBuffer();
@@ -82,7 +82,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
       //    filter advance()
       if (minScorerCost >= this.filter.cost
           || (allScorers.length > 4 && this.cost >= this.filter.cost)) {
-        this.filterMatches = new FixedBitSet(INNER_WINDOW_SIZE);
+        this.filterMatchesBits = new OffsetBits(new FixedBitSet(INNER_WINDOW_SIZE));
       }
     }
   }
@@ -216,7 +216,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
     int innerWindowMax = MathUtil.unsignedMin(max, innerWindowMin + INNER_WINDOW_SIZE);
 
     docAndScoreAccBuffer.size = 0;
-    if (filterMatches == null) {
+    if (filterMatchesBits == null) {
       fillScoreBufferViaLeapFrog(top, acceptDocs, innerWindowMax);
     } else {
       fillScoreBufferViaBitSet(top, acceptDocs, innerWindowMax);
@@ -227,24 +227,25 @@ final class MaxScoreBulkScorer extends BulkScorer {
 
   private void fillScoreBufferViaBitSet(DisiWrapper top, Bits acceptDocs, int innerWindowMax)
       throws IOException {
-    filterMatches.clear();
+    filterMatchesBits.bits.clear();
     int innerWindowMin = top.doc;
     if (filter.doc < innerWindowMax) {
       if (filter.doc < innerWindowMin) {
         filter.doc = filter.approximation.advance(innerWindowMin);
       }
       if (filter.doc < innerWindowMax) {
-        filter.approximation.intoBitSet(innerWindowMax, filterMatches, innerWindowMin);
+        filter.approximation.intoBitSet(innerWindowMax, filterMatchesBits.bits, innerWindowMin);
         filter.doc = filter.approximation.docID();
       }
     }
     if (acceptDocs != null) {
-      acceptDocs.applyMask(filterMatches, innerWindowMin);
+      acceptDocs.applyMask(filterMatchesBits.bits, innerWindowMin);
     }
+    filterMatchesBits.setOffset(innerWindowMin);
 
     int innerWindowSize = innerWindowMax - innerWindowMin;
     // Collect matches of essential clauses into a bitset, checking filter via bitset lookup
-    collectEssentialScoresIntoWindow(top, innerWindowMax, innerWindowMin, null, filterMatches);
+    collectEssentialScoresIntoWindow(top, innerWindowMax, innerWindowMin, filterMatchesBits);
     flushWindowToDocAndScoreAccBuffer(innerWindowMin, innerWindowSize);
   }
 
@@ -290,25 +291,15 @@ final class MaxScoreBulkScorer extends BulkScorer {
    * caller is responsible for populating {@link #docAndScoreAccBuffer} from the window afterwards.
    *
    * @param acceptDocs docs to accept, passed to {@link Scorer#nextDocsAndScores}
-   * @param filterMatches if non-null, only docs whose corresponding bit is set in this bitset will
-   *     be collected; if null, all docs are collected
    */
   private void collectEssentialScoresIntoWindow(
-      DisiWrapper top,
-      int innerWindowMax,
-      int innerWindowMin,
-      Bits acceptDocs,
-      FixedBitSet filterMatches)
-      throws IOException {
+      DisiWrapper top, int innerWindowMax, int innerWindowMin, Bits acceptDocs) throws IOException {
     do {
       for (top.scorer.nextDocsAndScores(innerWindowMax, acceptDocs, docAndScoreBuffer);
           docAndScoreBuffer.size > 0;
           top.scorer.nextDocsAndScores(innerWindowMax, acceptDocs, docAndScoreBuffer)) {
         for (int index = 0; index < docAndScoreBuffer.size; ++index) {
           final int doc = docAndScoreBuffer.docs[index];
-          if (filterMatches != null && filterMatches.get(doc - innerWindowMin) == false) {
-            continue;
-          }
           final float score = docAndScoreBuffer.features[index];
           final int i = doc - innerWindowMin;
           windowMatches.set(i);
@@ -366,10 +357,35 @@ final class MaxScoreBulkScorer extends BulkScorer {
     int innerWindowSize = innerWindowMax - innerWindowMin;
 
     // Collect matches of essential clauses into a bitset
-    collectEssentialScoresIntoWindow(top, innerWindowMax, innerWindowMin, acceptDocs, null);
+    collectEssentialScoresIntoWindow(top, innerWindowMax, innerWindowMin, acceptDocs);
     flushWindowToDocAndScoreAccBuffer(innerWindowMin, innerWindowSize);
 
     scoreNonEssentialClauses(collector, docAndScoreAccBuffer, firstEssentialScorer);
+  }
+
+  /** A wrapper around {@link FixedBitSet} that supports setting an offset. */
+  private static final class OffsetBits implements Bits {
+    private final FixedBitSet bits;
+    private int offset;
+
+    OffsetBits(FixedBitSet bits) {
+      this.bits = bits;
+    }
+
+    void setOffset(int offset) {
+      this.offset = offset;
+    }
+
+    @Override
+    public boolean get(int index) {
+      assert index >= 0 && offset <= index && index - offset < bits.length();
+      return bits.get(index - offset);
+    }
+
+    @Override
+    public int length() {
+      return bits.length();
+    }
   }
 
   private int computeOuterWindowMax(int windowMin) throws IOException {

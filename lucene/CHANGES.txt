@@ -487,6 +487,8 @@ Optimizations
 * GITHUB#16297: Use LongHashSet for sparse ordinal sets in DocValuesRangeIterator so memory
   scales with matching terms instead of segment cardinality. (Costin Leau)
 
+* GITHUB#16515: Apply filter before scoring in MaxScoreBulkScorer. (Ke Wei)
+
 Bug Fixes
 ---------------------
 
