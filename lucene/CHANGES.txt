@@ -397,6 +397,10 @@ New Features
   translates each term into a SpanTermQuery within a {@link SpanOrQuery}, but retains only the most frequent terms so it
   will not overflow the boolean max clause count. (Alan Woodward, Nishant Mehta, David Smiley)
 
+* GITHUB#16029: Scalar quantization option to disable centering and writing of float vectors. This
+  reduces vector storage costs by 4x or more but also reduces quantization accuracy.
+  (Trevor McCulloch)
+
 Improvements
 ---------------------
 
