@@ -423,6 +423,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   public IORunnable mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
     flatVectorWriter.mergeOneFlatVectorField(fieldInfo, mergeState);
     return () -> {
+      // Bail out before the potentially heavy graph build if the merge was already aborted
+      mergeState.checkAborted();
       // Lazily finish flat writer and open a reader for the written segment
       ensureFlatReaderOpen();
       // Get the vector values and scorer supplier from the written segment

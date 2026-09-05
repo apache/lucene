@@ -119,3 +119,9 @@ The rough criteria for picking your first issues are:
 ## Developer tips
 
 For more contribution guidelines and tips, see [DeveloperTips](https://cwiki.apache.org/confluence/display/LUCENE/DeveloperTips).
+
+## Security issues
+
+Please do not report suspected security vulnerabilities through public GitHub issues or pull requests. Follow the process described in [SECURITY.md](./SECURITY.md) instead. That document also explains what is in scope.
+
+If your findings are not in scope of a security issue, feel free to open a public pull request or public issue!
