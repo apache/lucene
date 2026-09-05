@@ -40,12 +40,16 @@ jobs:
         run: git config --global core.autocrlf false
 
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: Configure tools
         uses: ./.github/actions/prepare-for-build
+
+      - name: Install eclint
+        if: ${{ ! startsWith(matrix.os, 'windows') }}
+        uses: ./.github/actions/eclint
 
       - name: Run gradle check (without tests)
         run: ./gradlew check -x test "-Ptask.times=true"
@@ -77,7 +81,7 @@ jobs:
         run: git config --global core.autocrlf false
 
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -90,9 +94,10 @@ jobs:
           mkdir /tmp/tmpfs
           sudo mount_tmpfs -o noowners -s 1g /tmp/tmpfs
           sudo sysctl debug.lowpri_throttle_enabled=0
+          echo "tests.workDir=/tmp/tmpfs/lucene" >> build-options.local.properties
 
       - name: Run gradle tests
-        run: ./gradlew test "-Ptask.times=true" "-Pvalidation.errorprone=false" "-Ptests.workDir=/tmp/tmpfs/lucene"
+        run: ./gradlew displayGradleDiagnostics allOptions test "-Ptask.times=true" "-Pvalidation.errorprone=false"
         env:
           # Set to the defaults to override the "CI"-based logic that would enable C2
           # we can't afford C2 on github runners.
