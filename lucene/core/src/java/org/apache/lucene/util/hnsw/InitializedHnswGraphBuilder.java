@@ -92,6 +92,9 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
   // Tracks if the graph has deletes
   private boolean hasDeletes = false;
 
+  /** Seeds the rebalance promotions, kept separate from the level-assignment stream. */
+  private final long seed;
+
   /**
    * Creates an initialized HNSW graph builder from an existing graph.
    *
@@ -229,6 +232,62 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
       throws IOException {
     super(scorerSupplier, beamWidth, seed, initializedGraph);
     this.initializedNodes = initializedNodes;
+    this.seed = seed;
+  }
+
+  /**
+   * Copies the initializer graph without repairing or rebalancing it, returning the copied graph
+   * plus the state a caller needs to run those phases itself.
+   *
+   * @param scorerSupplier provides vector similarity scoring for graph operations
+   * @param beamWidth the search beam width for graph construction
+   * @param initializerGraph the source graph to copy structure from
+   * @param newOrdMap maps old ordinals to new ordinals; -1 indicates deleted documents
+   * @param totalNumberOfVectors the total number of vectors in the merged graph
+   * @param abortCheck optional check invoked during the copy; may be null
+   * @return the copied graph and its deferred repair/rebalance state
+   * @throws IOException if an I/O error occurs during the copy
+   */
+  static CopiedGraph copyGraph(
+      RandomVectorScorerSupplier scorerSupplier,
+      int beamWidth,
+      HnswGraph initializerGraph,
+      int[] newOrdMap,
+      int totalNumberOfVectors,
+      IORunnable abortCheck)
+      throws IOException {
+    InitializedHnswGraphBuilder builder =
+        new InitializedHnswGraphBuilder(
+            scorerSupplier,
+            beamWidth,
+            randSeed,
+            new OnHeapHnswGraph(initializerGraph.maxConn(), totalNumberOfVectors),
+            null);
+    if (abortCheck != null) {
+      builder.setAbortCheck(abortCheck);
+    }
+    Map<Integer, List<Integer>> disconnectedNodesByLevel =
+        builder.copyGraphStructure(initializerGraph, newOrdMap);
+    return new CopiedGraph(builder, disconnectedNodesByLevel, builder.hasDeletes);
+  }
+
+  /**
+   * A copied graph and the state needed to repair and rebalance it, as produced by {@link
+   * #copyGraph}. Repair and rebalance are deferred so a caller can parallelize the repair phase;
+   * the builder is retained because the serial rebalance runs on it.
+   */
+  record CopiedGraph(
+      InitializedHnswGraphBuilder builder,
+      Map<Integer, List<Integer>> disconnectedNodesByLevel,
+      boolean hasDeletes) {
+
+    OnHeapHnswGraph graph() {
+      return builder.getGraph();
+    }
+
+    int numLevels() {
+      return disconnectedNodesByLevel.size();
+    }
   }
 
   /**
@@ -353,93 +412,26 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
   }
 
   /**
-   * Fixes disconnected nodes at a specific level by performing graph searches from their existing
-   * neighbors to find additional connections.
-   *
-   * <p>For each disconnected node:
-   *
-   * <ol>
-   *   <li>Use existing neighbors as entry points for graph search
-   *   <li>Search the level to find candidate neighbors
-   *   <li>Add diverse neighbors using the HNSW heuristic selection algorithm
-   * </ol>
-   *
-   * <p>If a node has no neighbors at all, it cannot be repaired at this level and will rely on the
-   * rebalancing phase.
-   *
-   * @param disconnectedNodes list of node ordinals that need additional neighbors
-   * @param level the level at which to repair connections
-   * @param scorer vector similarity scorer for distance calculations
-   * @throws IOException if an I/O error occurs during search operations
-   */
-  private void fixDisconnectedNodes(
-      List<Integer> disconnectedNodes, int level, UpdateableRandomVectorScorer scorer)
-      throws IOException {
-    if (disconnectedNodes.isEmpty()) return;
-
-    int beamWidth = beamCandidates.k();
-    GraphBuilderKnnCollector candidates = new GraphBuilderKnnCollector(beamWidth);
-    NeighborArray scratchArray = new NeighborArray(beamWidth, false);
-
-    for (int node : disconnectedNodes) {
-      maybeAbort();
-      scorer.setScoringOrdinal(node);
-      NeighborArray existingNeighbors = hnsw.getNeighbors(level, node);
-
-      // Only repair if node has at least one neighbor to use as entry point
-      if (existingNeighbors.size() > 0) {
-        // Use all existing neighbors as entry points for search
-        int[] entryPoints = new int[existingNeighbors.size()];
-        System.arraycopy(existingNeighbors.nodes(), 0, entryPoints, 0, existingNeighbors.size());
-
-        // Search from entry points to find candidate neighbors
-        graphSearcher.searchLevel(candidates, scorer, level, entryPoints, hnsw, null);
-        popToScratch(candidates, scratchArray);
-
-        // Add diverse neighbors using HNSW heuristic (prunes similar neighbors)
-        addDiverseNeighbors(level, node, scratchArray, scorer, true);
-      } else {
-        // Node has no nighbors, add connections from scratch
-        addConnections(node, level, scorer);
-      }
-
-      // Clear for next iteration
-      scratchArray.clear();
-      candidates.clear();
-    }
-  }
-
-  /**
    * Rebalances the graph hierarchy by promoting nodes from lower levels to higher levels to
-   * maintain the expected exponential decay in level sizes according to the HNSW probabilistic
-   * model.
-   *
-   * <p>The expected number of nodes at each level follows the formula: <br>
-   * {@code maxNodesAtLevel = totalNodes * (1/M)^level}
-   *
-   * <p>For each level that has fewer nodes than expected, this method randomly promotes nodes from
-   * the level below with probability 1/M until the target count is reached.
-   *
-   * <p>This rebalancing is necessary during merging graph where deletions may have disrupted the
-   * proper hierarchical distribution, which could degrade semantic matches quality.
+   * maintain the expected exponential decay in level sizes ({@code totalNodes * (1/M)^level}) after
+   * deletions disrupted the distribution during a merge-reuse. For each under-populated level,
+   * nodes from the level below are promoted with probability {@code 1/M}.
    *
    * @throws IOException if an I/O error occurs during node promotion
    */
-  private void rebalanceGraph() throws IOException {
-    SplittableRandom random = new SplittableRandom();
+  void rebalanceGraph() throws IOException {
+    SplittableRandom random = new SplittableRandom(seed);
     int size = hnsw.size();
     double invMaxConn = 1.0 / M;
 
     // Process each level starting from level 1 (level 0 always contains all nodes)
     for (int level = 1; ; level++) {
 
-      // Calculate expected number of nodes at this level
       int maxNodesAtLevel = (int) (size * Math.pow(invMaxConn, level));
       if (maxNodesAtLevel <= 0) break; // Stop when expected nodes drops to zero
 
       int currentNodesAtLevel = 0;
 
-      // Expand levelToNodes array if we need to create new levels
       if (level >= levelToNodes.length) {
         levelToNodes = ArrayUtil.growExact(levelToNodes, level + 1);
         levelToNodes[level] = new IntArrayList();
@@ -447,10 +439,8 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
         currentNodesAtLevel = levelToNodes[level].size();
       }
 
-      // Skip if this level already has enough nodes
       if (currentNodesAtLevel >= maxNodesAtLevel) continue;
 
-      // Randomly promote nodes from the level below
       Iterator<IntCursor> it = levelToNodes[level - 1].iterator();
 
       while (it.hasNext() && currentNodesAtLevel < maxNodesAtLevel) {
@@ -462,11 +452,9 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
           scorer.setScoringOrdinal(node);
           hnsw.addNode(level, node);
 
-          // If this is the first node at this level, try to make it the entry point
           if (currentNodesAtLevel == 0) {
             hnsw.tryPromoteNewEntryNode(node, level, hnsw.numLevels() - 1);
           } else {
-            // Add connections for non-first nodes
             addConnections(node, level, scorer);
           }
 
@@ -475,46 +463,6 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
         }
       }
     }
-  }
-
-  /**
-   * Adds connections for an existing node at a specific level in the graph hierarchy.
-   *
-   * <p>The process involves:
-   *
-   * <ol>
-   *   <li>Navigate down from the top level to find the closest node at the target level
-   *   <li>Perform a full search at the target level to find neighbors
-   *   <li>Add diverse neighbors using the HNSW heuristic selection
-   * </ol>
-   *
-   * @param node the node ordinal to add connections for
-   * @param targetLevel the level to add connections at
-   * @param scorer vector similarity scorer for distance calculations
-   * @throws IOException if an I/O error occurs during search or neighbor addition
-   */
-  private void addConnections(int node, int targetLevel, UpdateableRandomVectorScorer scorer)
-      throws IOException {
-
-    int beamWidth = beamCandidates.k();
-    GraphBuilderKnnCollector candidates = new GraphBuilderKnnCollector(beamWidth);
-    int[] eps = {hnsw.entryNode()};
-
-    // Navigate down from top to target level, greedily moving toward the new node
-    for (int level = hnsw.numLevels() - 1; level > targetLevel; level--) {
-      graphSearcher.searchLevel(candidates, scorer, level, eps, hnsw, null);
-      eps[0] = candidates.popNode();
-      candidates.clear();
-    }
-
-    // Perform full search at target level to find neighbors
-    graphSearcher.searchLevel(candidates, scorer, targetLevel, eps, hnsw, null);
-
-    NeighborArray scratchArray = new NeighborArray(beamWidth, false);
-    popToScratch(candidates, scratchArray);
-
-    // Add diverse neighbors and establish bidirectional connections
-    addDiverseNeighbors(targetLevel, node, scratchArray, scorer, true);
   }
 
   @Override
