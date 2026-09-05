@@ -70,7 +70,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
     essentialQueue = DisiPriorityQueue.ofMaxSize(allScorers.length);
     maxScoreSums = new double[allScorers.length];
 
-    if (this.filter != null && this.filter.twoPhaseView == null && maxDoc >= INNER_WINDOW_SIZE) {
+    if (this.filter != null && maxDoc >= INNER_WINDOW_SIZE) {
       long minScorerCost = allScorers[0].cost;
       for (int j = 1; j < allScorers.length; j++) {
         minScorerCost = Math.min(minScorerCost, allScorers[j].cost);
@@ -234,7 +234,11 @@ final class MaxScoreBulkScorer extends BulkScorer {
         filter.doc = filter.approximation.advance(innerWindowMin);
       }
       if (filter.doc < innerWindowMax) {
-        filter.approximation.intoBitSet(innerWindowMax, filterMatches, innerWindowMin);
+        if (filter.twoPhaseView != null) {
+          filter.twoPhaseView.intoBitSet(innerWindowMax, filterMatches, innerWindowMin);
+        } else {
+          filter.approximation.intoBitSet(innerWindowMax, filterMatches, innerWindowMin);
+        }
         filter.doc = filter.approximation.docID();
       }
     }
