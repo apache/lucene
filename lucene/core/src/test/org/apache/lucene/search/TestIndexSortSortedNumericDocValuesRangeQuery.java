@@ -38,6 +38,8 @@ import org.apache.lucene.tests.search.DummyTotalHitCountCollector;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.BitSetIterator;
+import org.apache.lucene.util.FixedBitSet;
 import org.hamcrest.MatcherAssert;
 
 @LuceneTestCase.SuppressCodecs(value = "SimpleText")
@@ -683,6 +685,56 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
         SortedNumericDocValuesField.newSlowRangeQuery(field, lowerValue, upperValue);
     return new IndexSortSortedNumericDocValuesRangeQuery(
         field, lowerValue, upperValue, fallbackQuery);
+  }
+
+  public void testBoundedDocIdSetIteratorIntoBitSet() throws Exception {
+    FixedBitSet delegateBits = new FixedBitSet(16);
+    for (int doc : new int[] {1, 3, 5, 8, 11, 12, 15}) {
+      delegateBits.set(doc);
+    }
+    DocIdSetIterator iterator =
+        new IndexSortSortedNumericDocValuesRangeQuery.BoundedDocIdSetIterator(
+            3, 12, new BitSetIterator(delegateBits, delegateBits.cardinality()));
+
+    assertEquals(3, iterator.nextDoc());
+
+    FixedBitSet firstWindow = new FixedBitSet(16);
+    iterator.intoBitSet(9, firstWindow, 3);
+    FixedBitSet expected = new FixedBitSet(16);
+    expected.set(0);
+    expected.set(2);
+    expected.set(5);
+    assertEquals(expected, firstWindow);
+    assertEquals(11, iterator.docID());
+
+    expected.clear();
+    FixedBitSet secondWindow = new FixedBitSet(16);
+    iterator.intoBitSet(20, secondWindow, 4);
+    expected.set(7);
+    assertEquals(expected, secondWindow);
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, iterator.docID());
+  }
+
+  public void testBoundedDocIdSetIteratorDocIDRunEnd() throws Exception {
+    FixedBitSet delegateBits = new FixedBitSet(16);
+    delegateBits.set(1, 6);
+    delegateBits.set(8, 15);
+    DocIdSetIterator iterator =
+        new IndexSortSortedNumericDocValuesRangeQuery.BoundedDocIdSetIterator(
+            3, 12, new BitSetIterator(delegateBits, delegateBits.cardinality()));
+
+    assertEquals(3, iterator.nextDoc());
+    assertEquals(6, iterator.docIDRunEnd());
+    assertEquals(3, iterator.docID());
+
+    assertEquals(8, iterator.advance(6));
+    assertEquals(12, iterator.docIDRunEnd());
+    assertEquals(8, iterator.docID());
+
+    assertEquals(11, iterator.advance(11));
+    assertEquals(12, iterator.docIDRunEnd());
+    assertEquals(11, iterator.docID());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, iterator.nextDoc());
   }
 
   public void testCountWithBkdAsc() throws Exception {
