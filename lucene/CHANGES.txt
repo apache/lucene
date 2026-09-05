@@ -357,6 +357,12 @@ Other
 API Changes
 ---------------------
 
+* GITHUB#16573: Remove the NumericFieldStats API (added in 10.5.0 via GITHUB#15740, GITHUB#15817) and
+  revert SortedNumericDocValuesRangeQuery to no longer use it. The statistics it derived from points
+  and doc values could be incorrect if points and doc values are encoded differently -- for example when
+  a float/double field is indexed with points and NumericDocValues -- causing range queries to return
+  wrong results. (Houston Putman)
+
 * GITHUB#14399: Add a default LeafFieldComparator#disableSkipping method so document skipping can be
   disabled per segment. (Serhiy Bzhezytskyy)
 
