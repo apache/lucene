@@ -50,4 +50,70 @@ public class TestDecompressLZ4 extends LuceneTestCase {
             () -> LZ4.decompress(new ByteArrayDataInput(input), output.length, output, 0));
     assertEquals("offset 0 is invalid", e.getMessage());
   }
+
+  public void testDecompressOffsetBeyondOutput() {
+    // A match offset must not point before the start of the output, otherwise the match would
+    // reference bytes that this call never decompressed.
+    byte[] input =
+        new byte[] {
+          // token: 0 literals, match length 4 (MIN_MATCH)
+          0x0,
+          // offset 8, which is greater than the 0 bytes decompressed so far
+          8,
+          0,
+          // last literals
+          // token
+          7 << 4,
+          // literals
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        };
+
+    byte[] output = new byte[18];
+
+    var e =
+        assertThrows(
+            IOException.class,
+            () -> LZ4.decompress(new ByteArrayDataInput(input), output.length, output, 0));
+    assertEquals("match offset 8 is invalid, only 0 bytes are available", e.getMessage());
+  }
+
+  public void testDecompressOffsetBeyondOutputWithDictionary() {
+    // With a preset dictionary the match offset may reach into the dictionary that the caller
+    // placed in dest[dOff-dictLen:dOff], so the bound is dOff, not the number of bytes that this
+    // call decompressed.
+    byte[] input =
+        new byte[] {
+          // token: 0 literals, match length 4 (MIN_MATCH)
+          0x0,
+          // offset 5, one byte past the 4-byte dictionary
+          5,
+          0,
+          // last literals
+          // token
+          7 << 4,
+          // literals
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        };
+
+    byte[] output = new byte[22];
+    final int dictLen = 4;
+
+    var e =
+        assertThrows(
+            IOException.class,
+            () -> LZ4.decompress(new ByteArrayDataInput(input), 18, output, dictLen));
+    assertEquals("match offset 5 is invalid, only 4 bytes are available", e.getMessage());
+  }
 }
