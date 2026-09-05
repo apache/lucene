@@ -46,6 +46,10 @@ public final class NumericFieldStats {
    * Returns the global statistics for the given numeric field across all segments. Probes {@link
    * PointValues} first; if unavailable, falls back to {@link DocValuesSkipper}.
    *
+   * <p>Do not use this for doc-values range queries: point values for the same field name may use a
+   * different numeric encoding than the doc-values (for example {@code DoublePoint} vs {@code
+   * Double.doubleToLongBits}). Use {@link #getDocValuesStats} instead.
+   *
    * @param reader the {@link IndexReader} to query
    * @param field the name of the numeric field
    * @return a {@link Stats} containing the global min, max, and doc count, or {@code null} if
@@ -56,6 +60,18 @@ public final class NumericFieldStats {
     if (result != null) {
       return result;
     }
+    return getStatsFromSkipper(reader, field);
+  }
+
+  /**
+   * Returns global statistics from {@link DocValuesSkipper} only, ignoring {@link PointValues}.
+   *
+   * @param reader the {@link IndexReader} to query
+   * @param field the name of the numeric field
+   * @return a {@link Stats} containing the global min, max, and doc count, or {@code null} if no
+   *     skipper is available for the field
+   */
+  public static Stats getDocValuesStats(IndexReader reader, String field) {
     return getStatsFromSkipper(reader, field);
   }
 
