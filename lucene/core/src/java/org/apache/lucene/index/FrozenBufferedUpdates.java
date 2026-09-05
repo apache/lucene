@@ -380,6 +380,10 @@ final class FrozenBufferedUpdates {
 
       final LeafReaderContext readerContext = segState.reader.getContext();
       for (int i = 0; i < deleteQueries.length; i++) {
+        // Break this loop if this segment is fully deleted by prior delQueries.
+        if (segState.rld.isFullyDeleted()) {
+          break;
+        }
         Query query = deleteQueries[i];
         int limit;
         if (delGen == segState.delGen) {
@@ -466,6 +470,10 @@ final class FrozenBufferedUpdates {
       BytesRef delTerm;
       TermDocsIterator termDocsIterator = new TermDocsIterator(segState.reader, true);
       while ((delTerm = iter.next()) != null) {
+        // Break this loop if this segment is fully deleted by prior delTerms.
+        if (segState.rld.isFullyDeleted()) {
+          break;
+        }
         final DocIdSetIterator iterator = termDocsIterator.nextTerm(iter.field(), delTerm);
         if (iterator != null) {
           int docID;
