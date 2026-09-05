@@ -19,6 +19,7 @@ package org.apache.lucene.codecs.lucene103.blocktree;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.codecs.BlockTermState;
+import org.apache.lucene.codecs.lucene103.blocktree.art.Node;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.store.ByteArrayDataInput;
@@ -80,7 +81,7 @@ final class IntersectTermsEnumFrame {
   int transitionIndex;
   int transitionCount;
 
-  TrieReader.Node node;
+  Node node;
 
   final BlockTermState termState;
 
@@ -138,12 +139,12 @@ final class IntersectTermsEnumFrame {
     }
   }
 
-  void load(TrieReader.Node node) throws IOException {
+  void load(Node node) throws IOException {
     if (node != null) {
       // This block is the first one in a possible sequence of floor blocks corresponding to a
       // single seek point from the trie terms index
       if (node.isFloor()) {
-        floorDataReader = node.floorData(ite.trieReader);
+        floorDataReader = node.floorData(ite.artReader);
         // Floor frame
         numFollowFloorBlocks = floorDataReader.readVInt();
         nextFloorLabel = floorDataReader.readByte() & 0xff;
