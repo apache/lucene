@@ -85,7 +85,7 @@ final class MultiSorter {
     }
 
     PriorityQueue<LeafAndDocID> queue =
-        new PriorityQueue<LeafAndDocID>(leafCount) {
+        new PriorityQueue<>(leafCount) {
           @Override
           public boolean lessThan(LeafAndDocID a, LeafAndDocID b) {
             for (int i = 0; i < comparables.length; i++) {

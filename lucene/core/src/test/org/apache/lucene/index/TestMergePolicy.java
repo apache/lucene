@@ -159,7 +159,7 @@ public class TestMergePolicy extends LuceneTestCase {
                   .getBytes(StandardCharsets.US_ASCII),
               Collections.emptyMap(), // attributes
               null /* indexSort */);
-      final List<SegmentCommitInfo> segments = new LinkedList<SegmentCommitInfo>();
+      final List<SegmentCommitInfo> segments = new LinkedList<>();
       segments.add(new SegmentCommitInfo(si, 0, 0, 0, 0, 0, StringHelper.randomId()));
       ms.add(new MergePolicy.OneMerge(segments));
     }

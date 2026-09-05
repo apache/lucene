@@ -28,7 +28,7 @@ import org.apache.lucene.util.ClasspathResourceLoader;
 public class TestICUTokenizerFactory extends BaseTokenStreamTestCase {
   public void testMixedText() throws Exception {
     Reader reader = new StringReader("การที่ได้ต้องแสดงว่างานดี  This is a test ກວ່າດອກ");
-    ICUTokenizerFactory factory = new ICUTokenizerFactory(new HashMap<String, String>());
+    ICUTokenizerFactory factory = new ICUTokenizerFactory(new HashMap<>());
     factory.inform(new ClasspathResourceLoader(getClass()));
     Tokenizer stream = factory.create(newAttributeFactory());
     stream.setReader(reader);

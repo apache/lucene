@@ -88,6 +88,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   // the way FMA should work! if available use it, otherwise fall back to mul/add
+  @SuppressForbidden(reason = "Uses FMA only where fast and carefully contained")
   static FloatVector fma(FloatVector a, FloatVector b, FloatVector c) {
     if (Constants.HAS_FAST_VECTOR_FMA) {
       return a.fma(b, c);
@@ -1414,6 +1415,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
+  @SuppressForbidden(reason = "Uses compress and cast only where fast and carefully contained")
   public int filterByScore(
       int[] docBuffer, double[] scoreBuffer, double minScoreInclusive, int upTo) {
     int newUpto = 0;

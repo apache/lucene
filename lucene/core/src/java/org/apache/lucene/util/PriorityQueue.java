@@ -344,7 +344,7 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
 
   @Override
   public Iterator<T> iterator() {
-    return new Iterator<T>() {
+    return new Iterator<>() {
 
       int i = 1;
 

@@ -547,7 +547,7 @@ public class TestGrouping extends LuceneTestCase {
 
   private Comparator<GroupDoc> getComparator(Sort sort) {
     final SortField[] sortFields = sort.getSort();
-    return new Comparator<GroupDoc>() {
+    return new Comparator<>() {
       @Override
       public int compare(GroupDoc d1, GroupDoc d2) {
         for (SortField sf : sortFields) {
@@ -738,7 +738,7 @@ public class TestGrouping extends LuceneTestCase {
     for (GroupDoc groupDoc : groupDocs) {
       if (!groupMap.containsKey(groupDoc.group)) {
         groupValues.add(groupDoc.group);
-        groupMap.put(groupDoc.group, new ArrayList<GroupDoc>());
+        groupMap.put(groupDoc.group, new ArrayList<>());
       }
       groupMap.get(groupDoc.group).add(groupDoc);
     }

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-apply plugin: 'java-library'
+
 
 description = 'Filters and Queries that add to core Lucene'
 
@@ -25,4 +25,3 @@ dependencies {
   moduleTestImplementation project(':lucene:test-framework')
   moduleTestImplementation project(':lucene:expressions')
 }
-

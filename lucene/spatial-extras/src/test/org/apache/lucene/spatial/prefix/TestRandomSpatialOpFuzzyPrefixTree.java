@@ -85,8 +85,6 @@ public class TestRandomSpatialOpFuzzyPrefixTree extends StrategyTestCase {
     if (maxLevels == -1 && rarely()) {
       ((PrefixTreeStrategy) strategy).setPointsOnly(true);
     }
-
-    log.info("Strategy: " + strategy.toString()); // nowarn
   }
 
   private void setupCtx2D(SpatialContext ctx) {

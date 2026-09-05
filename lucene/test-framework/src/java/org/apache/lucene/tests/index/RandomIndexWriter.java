@@ -196,7 +196,7 @@ public class RandomIndexWriter implements Closeable {
 
                 @Override
                 public Iterator<Iterable<T>> iterator() {
-                  return new Iterator<Iterable<T>>() {
+                  return new Iterator<>() {
 
                     boolean done;
 

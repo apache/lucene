@@ -91,7 +91,7 @@ public class FilterFileSystem extends FileSystem {
     final Iterable<Path> roots = delegate.getRootDirectories();
     return () -> {
       final Iterator<Path> iterator = roots.iterator();
-      return new Iterator<Path>() {
+      return new Iterator<>() {
         @Override
         public boolean hasNext() {
           return iterator.hasNext();
@@ -115,7 +115,7 @@ public class FilterFileSystem extends FileSystem {
     final Iterable<FileStore> fileStores = delegate.getFileStores();
     return () -> {
       final Iterator<FileStore> iterator = fileStores.iterator();
-      return new Iterator<FileStore>() {
+      return new Iterator<>() {
         @Override
         public boolean hasNext() {
           return iterator.hasNext();

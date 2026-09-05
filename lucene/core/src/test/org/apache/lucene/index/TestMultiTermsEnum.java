@@ -188,7 +188,7 @@ public class TestMultiTermsEnum extends LuceneTestCase {
       @Override
       public Iterator<String> iterator() {
         final Iterator<FieldInfo> fieldInfoIterator = newFieldInfo.iterator();
-        return new Iterator<String>() {
+        return new Iterator<>() {
           @Override
           public boolean hasNext() {
             return fieldInfoIterator.hasNext();

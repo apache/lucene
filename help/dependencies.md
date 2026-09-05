@@ -1,0 +1,128 @@
+# Dependencies
+
+Each gradle project can have multiple (named) "configurations" and each configuration can have dependencies attached
+to it.
+
+There are some standard conventions so, for example, the Java plugin adds standard configurations such as `api`,
+`implementation`, `testImplementation` and others. These configurations can also inherit from each other; more about
+this topic can be found here:
+
+- <https://docs.gradle.org/current/userguide/dependency_management_for_java_projects.html#dependency_management_for_java_projects>
+- <https://docs.gradle.org/current/userguide/java_library_plugin.html#sec:java_library_separation>
+- <https://docs.gradle.org/current/userguide/java_plugin.html#sec:java_plugin_and_dependency_management>
+
+Lucene uses the following configurations and attach project dependencies to them:
+
+- `moduleApi` - makes the dependency available to main classes, tests and any other modules importing the project (exportable dependency),
+- `moduleImplementation` - makes the dependency available to main classes, tests but will *not* export the dependency to other modules (so their compilation classpath won't contain it).
+- `moduleTestImplementation` - makes the dependency available for test classes only.
+
+The `module` prefix is used to distinguish configurations which apply to modular builds, compared to the regular
+classpath-configurations defined by gradle's java module. Some Lucene modules may define regular classpath entries to
+bypass the limitations of the module system (or gradle's).
+
+## Adding a library dependency
+
+Lucene dependencies and their versions are managed globally using version catalogs (in `gradle/libs.versions.toml`)
+<https://docs.gradle.org/current/userguide/platforms.html>.
+
+Let's say we wish to add a dependency on library `foo.bar:baz` in version 1.2 to `:lucene:core`. Let's assume this
+library is only used internally by the project. The `:lucene:core` project is configured by `lucene/core/build.gradle`,
+so we add (or modify) the dependency block as follows:
+
+```groovy
+dependencies {
+    moduleImplementation deps.baz
+}
+```
+
+The `moduleImplementation` here is a named configuration explained in the section above. The `deps.baz` refers to the
+version catalog named `deps`, in which the dependency `baz` should be declared. If this is the first reference to this
+library, then we have to add it to `versions.toml` catalog: the version goes under the `versions` and module
+coordinates under the `libraries` section:
+
+```toml
+[versions]
+baz = "1.2"
+...
+[libraries]
+baz = { module = "foo.bar:baz", version.ref = "baz" }
+```
+
+The version defined in the `versions` section is the preferred version of the library we wish to use. Finally, run
+tidy to sort all entries in `libs.versions.toml`:
+
+```bash
+gradlew tidy
+```
+
+Gradle will try to consolidate different versions across different configurations to make sure they're compatible and
+may complain if it encounters conflicting versions in the dependency tree. We want all dependencies to be consistent,
+so we use an additional build plugin to ensure no accidental version changes occur. Whenever we add or remove
+dependencies, we have to follow-up with lock file regeneration:
+
+```bash
+gradlew writeLocks
+git diff versions.*
+```
+
+IMPORTANT: The `versions.lock` file will contain a list of actual library versions and configurations they occurred
+in.
+
+Once a new dependency is added it always makes sense to regenerate the lock file and look at which dependencies have
+changed (and why).
+
+## Inspecting current dependencies
+
+The tree of dependencies of a project (in all configurations) can be dumped by the following command (example):
+
+```bash
+gradlew -p lucene/analysis/icu dependencies
+```
+
+But this can be a bit overwhelming; we will most likely be interested in just the "publicly visible" and
+"classpath-visible" configurations.
+
+The publicly visible project dependencies (classes shared by other modules importing our module) can be displayed
+with:
+
+```bash
+gradlew -p lucene/analysis/icu dependencies --configuration moduleApi
+```
+
+And the "private" set of dependencies (real classpath) can be dumped with:
+
+```bash
+gradlew -p lucene/analysis/icu dependencies --configuration moduleRuntimePath
+```
+
+## Excluding a transitive dependency
+
+Let's say `foo.bar:baz` has a transitive dependency on project `foo.bar:irrelevant` and we know the transitive
+dependency is not crucial for the functioning of `foo.bar:baz`. We can exclude it by adding an exclusion block to the
+original declaration:
+
+```groovy
+dependencies {
+    implementation(deps.baz, {
+        exclude group: "foo.bar", module: "irrelevant"
+    })
+}
+```
+
+Note the brackets - they are important and prevent accidental mistakes of applying the exclusion to the wrong scope.
+
+## Updating dependency checksum and licenses
+
+The last step is to make sure the licenses, notice files and checksums are in place for any new dependencies. This
+command will print what's missing and where:
+
+```bash
+gradlew licenses
+```
+
+To update JAR checksums for licenses use:
+
+```bash
+gradlew writeChecksums
+```

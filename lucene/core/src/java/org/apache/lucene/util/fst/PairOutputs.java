@@ -181,7 +181,7 @@ public class PairOutputs<A, B> extends Outputs<PairOutputs.Pair<A, B>> {
   }
 
   private static final long BASE_NUM_BYTES =
-      RamUsageEstimator.shallowSizeOf(new Pair<Object, Object>(null, null));
+      RamUsageEstimator.shallowSizeOf(new Pair<>(null, null));
 
   @Override
   public long ramBytesUsed(Pair<A, B> output) {

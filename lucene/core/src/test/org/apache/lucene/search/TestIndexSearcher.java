@@ -83,7 +83,7 @@ public class TestIndexSearcher extends LuceneTestCase {
             4,
             0L,
             TimeUnit.MILLISECONDS,
-            new LinkedBlockingQueue<Runnable>(),
+            new LinkedBlockingQueue<>(),
             new NamedThreadFactory("TestIndexSearcher"));
 
     IndexSearcher[] searchers =

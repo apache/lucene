@@ -72,7 +72,7 @@ final class TestRuleTemporaryFilesCleanup extends TestRuleAdapter {
    *
    * @see #registerToRemoveAfterSuite(Path)
    */
-  private static final List<Path> cleanupQueue = new ArrayList<Path>();
+  private static final List<Path> cleanupQueue = new ArrayList<>();
 
   public TestRuleTemporaryFilesCleanup(TestRuleMarkFailure failureMarker) {
     this.failureMarker = failureMarker;

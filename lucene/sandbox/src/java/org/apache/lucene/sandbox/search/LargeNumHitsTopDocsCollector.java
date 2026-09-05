@@ -148,9 +148,9 @@ public final class LargeNumHitsTopDocsCollector implements Collector {
     assert totalHits <= requestedHitCount;
     Collections.sort(
         hits,
-        Comparator.comparing((ScoreDoc scoreDoc) -> scoreDoc.score)
+        Comparator.comparingDouble((ScoreDoc scoreDoc) -> scoreDoc.score)
             .reversed()
-            .thenComparing(scoreDoc -> scoreDoc.doc));
+            .thenComparingInt(scoreDoc -> scoreDoc.doc));
 
     for (int i = 0; i < howMany; i++) {
       results[i] = hits.get(i);
