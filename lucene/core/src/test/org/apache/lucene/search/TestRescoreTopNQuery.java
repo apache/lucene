@@ -29,6 +29,7 @@ import org.apache.lucene.codecs.lucene104.Lucene104HnswScalarQuantizedVectorsFor
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntField;
+import org.apache.lucene.document.KnnFloat16VectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.LateInteractionField;
 import org.apache.lucene.index.DirectoryReader;
@@ -161,6 +162,91 @@ public class TestRescoreTopNQuery extends LuceneTestCase {
     }
   }
 
+  // TODO: incredibly slow
+  @Nightly
+  public void testRescoreFieldFloat16() throws Exception {
+    Map<Integer, short[]> vectors = new HashMap<>();
+
+    Random random = random();
+
+    int numVectors = atLeast(NUM_VECTORS);
+    int numSegments = random.nextInt(2, 10);
+
+    // Step 1: Index random FLOAT16 vectors in quantized format
+    try (IndexWriter writer = new IndexWriter(directory, config)) {
+      for (int j = 0; j < numSegments; j++) {
+        for (int i = 0; i < numVectors; i++) {
+          short[] vector = randomFloat16Vector(VECTOR_DIMENSION, random);
+          Document doc = new Document();
+          int id = j * numVectors + i;
+          doc.add(new IntField("id", id, Field.Store.YES));
+          doc.add(new KnnFloat16VectorField(FIELD, vector, VECTOR_SIMILARITY_FUNCTION));
+          writer.addDocument(doc);
+          vectors.put(id, vector);
+        }
+        writer.flush();
+      }
+    }
+
+    // Step 2: Run an approximate FLOAT16 KNN query, then rescore with full-precision FLOAT16
+    // vectors
+    try (IndexReader reader = DirectoryReader.open(directory)) {
+      IndexSearcher searcher = new IndexSearcher(reader);
+      short[] targetVector = randomFloat16Vector(VECTOR_DIMENSION, random);
+      int k = 10;
+      double oversample = random.nextFloat(1.5f, 3.0f);
+
+      KnnFloat16VectorQuery knnQuery =
+          new KnnFloat16VectorQuery(FIELD, targetVector, k + (int) (k * oversample));
+
+      Query query =
+          RescoreTopNQuery.createFullPrecisionRescorerQuery(knnQuery, targetVector, FIELD, k);
+      TopDocs topDocs = searcher.search(query, k);
+
+      // Step 3: Verify that TopDocs scores match similarity with the raw FLOAT16 vectors
+      for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
+        Document retrievedDoc = searcher.storedFields().document(scoreDoc.doc);
+        int id = retrievedDoc.getField("id").numericValue().intValue();
+        short[] docVector = vectors.get(id);
+        assert docVector != null : "Vector for id " + id + " not found";
+        float expectedScore = VECTOR_SIMILARITY_FUNCTION.compare(targetVector, docVector);
+        Assert.assertEquals(
+            "Score does not match expected similarity for doc ord: " + scoreDoc.doc + ", id: " + id,
+            expectedScore,
+            scoreDoc.score,
+            1e-5);
+      }
+    }
+  }
+
+  public void testMissingDoubleValuesFloat16() throws IOException {
+    Random random = random();
+
+    try (IndexWriter writer = new IndexWriter(directory, config)) {
+      short[] vector = randomFloat16Vector(VECTOR_DIMENSION, random);
+      Document doc = new Document();
+      doc.add(new KnnFloat16VectorField(FIELD, vector, VECTOR_SIMILARITY_FUNCTION));
+      writer.addDocument(doc);
+    }
+
+    try (IndexReader reader = DirectoryReader.open(directory)) {
+      IndexSearcher searcher = new IndexSearcher(reader);
+      short[] targetVector = randomFloat16Vector(VECTOR_DIMENSION, random);
+      int k = 1;
+
+      KnnFloat16VectorQuery knnQuery = new KnnFloat16VectorQuery(FIELD, targetVector, k);
+
+      Query query =
+          RescoreTopNQuery.createFullPrecisionRescorerQuery(knnQuery, targetVector, "field-1", k);
+      TopDocs topDocs = searcher.search(query, k);
+
+      // The rescoring field is invalid, so the score should be 0
+      for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
+        Assert.assertEquals("Score must be 0 for missing DoubleValues", 0, scoreDoc.score, 1e-5);
+      }
+    }
+  }
+
   public void testLateInteractionQuery() throws Exception {
     final String LATE_I_FIELD = "li_vector";
     final String KNN_FIELD = "knn_vector";
@@ -246,6 +332,14 @@ public class TestRescoreTopNQuery extends LuceneTestCase {
     float[] vector = new float[dimension];
     for (int i = 0; i < dimension; i++) {
       vector[i] = random.nextFloat();
+    }
+    return vector;
+  }
+
+  private short[] randomFloat16Vector(int dimension, Random random) {
+    short[] vector = new short[dimension];
+    for (int i = 0; i < dimension; i++) {
+      vector[i] = Float.floatToFloat16(random.nextFloat());
     }
     return vector;
   }
