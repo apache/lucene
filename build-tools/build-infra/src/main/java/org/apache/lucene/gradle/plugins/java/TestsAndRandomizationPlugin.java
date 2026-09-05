@@ -362,7 +362,7 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
 
     // JDK versions where the vector module is still incubating.
     boolean incubatorJavaVersion =
-        Set.of("21", "22", "23", "24", "25", "26").contains(runtimeJava.getMajorVersion());
+        Set.of("21", "22", "23", "24", "25", "26", "27").contains(runtimeJava.getMajorVersion());
 
     // Whether to run tests with the (deprecated) security manager and Lucene's test policy.
     // The security manager is no longer supported as of Java 24.
