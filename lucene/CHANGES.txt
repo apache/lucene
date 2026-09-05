@@ -397,6 +397,12 @@ New Features
   translates each term into a SpanTermQuery within a {@link SpanOrQuery}, but retains only the most frequent terms so it
   will not overflow the boolean max clause count. (Alan Woodward, Nishant Mehta, David Smiley)
 
+* GITHUB#16580: Allow in-place updates of SORTED_NUMERIC doc-values via
+  IndexWriter#updateSortedNumericDocValue (and IndexWriter#updateDocValues with a single
+  SortedNumericDocValuesField). An update sets a single value per matched document; the field may be
+  single- or multi-valued. Single-valued columns reuse the numeric update path (including the
+  incremental delta overlay), and multi-valued columns are merged per-doc. (Houston Putman)
+
 Improvements
 ---------------------
 

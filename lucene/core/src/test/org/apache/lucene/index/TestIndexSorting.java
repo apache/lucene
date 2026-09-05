@@ -2017,6 +2017,13 @@ public class TestIndexSorting extends LuceneTestCase {
     assertEquals(
         exc.getMessage(),
         "cannot update docvalues field involved in the index sort, field=foo, sort=<long: \"foo\">");
+    exc =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> w.updateSortedNumericDocValue(new Term("id", "0"), "foo", -1));
+    assertEquals(
+        exc.getMessage(),
+        "cannot update docvalues field involved in the index sort, field=foo, sort=<long: \"foo\">");
     w.close();
     dir.close();
   }
