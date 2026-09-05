@@ -169,6 +169,57 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     return res1.add(res2).reduceLanes(ADD);
   }
 
+  /** */
+  @Override
+  public void dotProductBulk(float[] query, float[][] docs, float[] results) {
+    int docIdx = 0;
+
+    // Process in batches of 4 documents at a time
+    for (; docIdx + 3 < docs.length; docIdx += 4) {
+      float[] d0 = docs[docIdx];
+      float[] d1 = docs[docIdx + 1];
+      float[] d2 = docs[docIdx + 2];
+      float[] d3 = docs[docIdx + 3];
+
+      FloatVector acc0 = FloatVector.zero(FLOAT_SPECIES);
+      FloatVector acc1 = FloatVector.zero(FLOAT_SPECIES);
+      FloatVector acc2 = FloatVector.zero(FLOAT_SPECIES);
+      FloatVector acc3 = FloatVector.zero(FLOAT_SPECIES);
+
+      int i = 0;
+      int limit = FLOAT_SPECIES.loopBound(query.length);
+
+      for (; i < limit; i += FLOAT_SPECIES.length()) {
+        // LOAD QUERY ONCE
+        FloatVector vq = FloatVector.fromArray(FLOAT_SPECIES, query, i);
+
+        // SCORE AGAINST 4 DOCUMENTS
+        acc0 = fma(vq, FloatVector.fromArray(FLOAT_SPECIES, d0, i), acc0);
+        acc1 = fma(vq, FloatVector.fromArray(FLOAT_SPECIES, d1, i), acc1);
+        acc2 = fma(vq, FloatVector.fromArray(FLOAT_SPECIES, d2, i), acc2);
+        acc3 = fma(vq, FloatVector.fromArray(FLOAT_SPECIES, d3, i), acc3);
+      }
+
+      results[docIdx] = acc0.reduceLanes(ADD) + scalarDotProductBulk(query, d0, i);
+      results[docIdx + 1] = acc1.reduceLanes(ADD) + scalarDotProductBulk(query, d1, i);
+      results[docIdx + 2] = acc2.reduceLanes(ADD) + scalarDotProductBulk(query, d2, i);
+      results[docIdx + 3] = acc3.reduceLanes(ADD) + scalarDotProductBulk(query, d3, i);
+    }
+
+    for (; docIdx < docs.length; docIdx++) {
+      results[docIdx] = dotProduct(query, docs[docIdx]);
+    }
+  }
+
+  /** Helper method to process the remaining un-vectorized tail of the arrays */
+  private float scalarDotProductBulk(float[] a, float[] b, int startIndex) {
+    float res = 0;
+    for (int i = startIndex; i < a.length; i++) {
+      res = fma(a[i], b[i], res);
+    }
+    return res;
+  }
+
   @Override
   public float cosine(float[] a, float[] b) {
     int i = 0;
