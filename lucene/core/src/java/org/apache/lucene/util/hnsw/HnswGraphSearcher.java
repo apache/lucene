@@ -135,8 +135,18 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
       hnswStrategy = KnnSearchStrategy.Hnsw.DEFAULT;
     }
     final AbstractHnswGraphSearcher innerSearcher;
-    // First, check if we should use a filtered searcher
-    if (acceptOrds != null
+    // First, check if we should use a PathSeer searcher
+    boolean usePathSeer =
+        knnCollector.getSearchStrategy() instanceof KnnSearchStrategy.PathSeer
+            || (knnCollector.getSearchStrategy() instanceof KnnSearchStrategy.Seeded seeded
+                && seeded.originalStrategy() instanceof KnnSearchStrategy.PathSeer);
+    if (usePathSeer
+        && acceptOrds != null
+        // We can only use PathSeer search if we know the maxConn
+        && graph.maxConn() != HnswGraph.UNKNOWN_MAX_CONN
+        && filteredDocCount > 0) {
+      innerSearcher = PathSeerHnswGraphSearcher.create(knnCollector.k(), graph);
+    } else if (acceptOrds != null
         // We can only use filtered search if we know the maxConn
         && graph.maxConn() != HnswGraph.UNKNOWN_MAX_CONN
         && filteredDocCount > 0
