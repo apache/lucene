@@ -307,6 +307,18 @@ public final class VectorUtil {
   }
 
   /**
+   * Unpacks uint4 nibbles: the high nibble of {@code packed[i]} goes to {@code unpacked[i]}, the
+   * low nibble to {@code unpacked[packed.length + i]}.
+   */
+  public static void int4Unpack(byte[] packed, byte[] unpacked) {
+    if (unpacked.length != packed.length * 2) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + unpacked.length + " != 2 * " + packed.length);
+    }
+    IMPL.int4Unpack(packed, unpacked);
+  }
+
+  /**
    * Dot product computed over uint4 (values between [0,15]) bytes. Both vectors are considered
    * "packed" (i.e. every byte representing two values).
    *
