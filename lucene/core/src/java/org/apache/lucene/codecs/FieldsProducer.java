@@ -24,6 +24,9 @@ import org.apache.lucene.index.MergePolicy;
 /**
  * Abstract API that produces terms, doc, freq, prox, offset and payloads postings.
  *
+ * <p>Note that {@link Fields#iterator()} must return field names in ascending natural order; see
+ * there for what relies on it and what breaks otherwise.
+ *
  * @lucene.experimental
  */
 public abstract class FieldsProducer extends Fields implements Closeable {
