@@ -37,32 +37,25 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.util.hnsw.HnswGraph;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
 
 /**
- * An HNSW vector format that de-duplicates raw vectors.
+ * An HNSW vector format that de-duplicates vectors, storing each distinct vector once in both raw
+ * and scalar quantized form.
  *
  * <p>Graph construction and search are identical to {@link
- * org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat}. A {@link DedupFlatVectorsFormat} is
- * used for the flat vector storage, which stores each distinct vector exactly once, shared across
- * all documents that reference it.
- *
- * <p>This format is suitable for high-performance filtered vector search when filter information is
- * available at indexing time. In addition to the primary vector field, the user creates separate
- * fields for each filter value (e.g. product categories in an e-commerce search engine) to build
- * dedicated HNSW graphs that share the same raw vector storage. <b>The responsibility of searching
- * the right field at query-time lies on the user</b>.
- *
- * <p>This scheme allows for more efficient search than query-time pre-filtering (i.e. {@link
- * org.apache.lucene.search.AcceptDocs} derived from a {@link org.apache.lucene.search.Query} {@code
- * filter}) at the expense of slower indexing and larger indexes due to additional HNSW graphs.
+ * org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat}, with searches scoring against the
+ * quantized vectors. A {@link DedupScalarQuantizedVectorsFormat} is used for the flat vector
+ * storage, which stores each distinct vector exactly once, shared across all documents that
+ * reference it. See {@link DedupHnswVectorsFormat} for the intended multi-field usage pattern.
  *
  * <p>If you customize this format, be sure to <b>share the same instance</b> of the underlying
- * {@link DedupFlatVectorsFormat} to de-duplicate raw vectors correctly.
+ * {@link DedupScalarQuantizedVectorsFormat} to de-duplicate vectors correctly.
  *
  * @lucene.experimental
  */
-public final class DedupHnswVectorsFormat extends KnnVectorsFormat {
-  private static final String NAME = "DedupHnswVectorsFormat";
+public final class DedupHnswScalarQuantizedVectorsFormat extends KnnVectorsFormat {
+  private static final String NAME = "DedupHnswScalarQuantizedVectorsFormat";
 
   /**
    * Controls how many of the nearest neighbor candidates are connected to the new node. Defaults to
@@ -79,8 +72,11 @@ public final class DedupHnswVectorsFormat extends KnnVectorsFormat {
    */
   private final int beamWidth;
 
+  /** The scalar encoding for quantization. Defaults to {@link ScalarEncoding#UNSIGNED_BYTE}. */
+  private final ScalarEncoding encoding;
+
   /** The format for storing, reading, and merging vectors on disk. */
-  private static final FlatVectorsFormat FORMAT = new DedupFlatVectorsFormat();
+  private final FlatVectorsFormat flatVectorsFormat;
 
   private final int numMergeWorkers;
   private final TaskExecutor mergeExec;
@@ -98,53 +94,49 @@ public final class DedupHnswVectorsFormat extends KnnVectorsFormat {
    */
   private final int tinySegmentsThreshold;
 
-  /** Constructs a format using default graph construction parameters */
-  public DedupHnswVectorsFormat() {
+  /** Constructs a format with UNSIGNED_BYTE encoding and default graph construction parameters */
+  public DedupHnswScalarQuantizedVectorsFormat() {
     this(
-        DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, DEFAULT_NUM_MERGE_WORKER, null, HNSW_GRAPH_THRESHOLD);
+        ScalarEncoding.UNSIGNED_BYTE,
+        DEFAULT_MAX_CONN,
+        DEFAULT_BEAM_WIDTH,
+        DEFAULT_NUM_MERGE_WORKER,
+        null,
+        HNSW_GRAPH_THRESHOLD);
   }
 
   /**
-   * Constructs a format using the given graph construction parameters.
+   * Constructs a format with UNSIGNED_BYTE encoding, using the given graph construction parameters.
    *
    * @param maxConn the maximum number of connections to a node in the HNSW graph
    * @param beamWidth the size of the queue maintained during graph construction.
    */
-  public DedupHnswVectorsFormat(int maxConn, int beamWidth) {
-    this(maxConn, beamWidth, DEFAULT_NUM_MERGE_WORKER, null, HNSW_GRAPH_THRESHOLD);
+  public DedupHnswScalarQuantizedVectorsFormat(int maxConn, int beamWidth) {
+    this(
+        ScalarEncoding.UNSIGNED_BYTE,
+        maxConn,
+        beamWidth,
+        DEFAULT_NUM_MERGE_WORKER,
+        null,
+        HNSW_GRAPH_THRESHOLD);
   }
 
   /**
-   * Constructs a format using the given graph construction parameters.
+   * Constructs a format using the given quantization encoding and graph construction parameters.
    *
+   * @param encoding the quantization encoding used to encode the vectors
    * @param maxConn the maximum number of connections to a node in the HNSW graph
    * @param beamWidth the size of the queue maintained during graph construction.
-   * @param tinySegmentsThreshold the expected number of vector operations to return k nearest
-   *     neighbors of the current graph size
    */
-  public DedupHnswVectorsFormat(int maxConn, int beamWidth, int tinySegmentsThreshold) {
-    this(maxConn, beamWidth, DEFAULT_NUM_MERGE_WORKER, null, tinySegmentsThreshold);
+  public DedupHnswScalarQuantizedVectorsFormat(
+      ScalarEncoding encoding, int maxConn, int beamWidth) {
+    this(encoding, maxConn, beamWidth, DEFAULT_NUM_MERGE_WORKER, null, HNSW_GRAPH_THRESHOLD);
   }
 
   /**
-   * Constructs a format using the given graph construction parameters.
+   * Constructs a format using the given quantization encoding and graph construction parameters.
    *
-   * @param maxConn the maximum number of connections to a node in the HNSW graph
-   * @param beamWidth the size of the queue maintained during graph construction.
-   * @param numMergeWorkers number of workers (threads) that will be used when doing merge. If
-   *     larger than 1, a non-null {@link ExecutorService} must be passed as mergeExec
-   * @param mergeExec the {@link ExecutorService} that will be used by ALL vector writers that are
-   *     generated by this format to do the merge. If null, the configured {@link
-   *     MergeScheduler#getIntraMergeExecutor(MergePolicy.OneMerge)} is used.
-   */
-  public DedupHnswVectorsFormat(
-      int maxConn, int beamWidth, int numMergeWorkers, ExecutorService mergeExec) {
-    this(maxConn, beamWidth, numMergeWorkers, mergeExec, HNSW_GRAPH_THRESHOLD);
-  }
-
-  /**
-   * Constructs a format using the given graph construction parameters.
-   *
+   * @param encoding the quantization encoding used to encode the vectors
    * @param maxConn the maximum number of connections to a node in the HNSW graph
    * @param beamWidth the size of the queue maintained during graph construction.
    * @param numMergeWorkers number of workers (threads) that will be used when doing merge. If
@@ -152,10 +144,32 @@ public final class DedupHnswVectorsFormat extends KnnVectorsFormat {
    * @param mergeExec the {@link ExecutorService} that will be used by ALL vector writers that are
    *     generated by this format to do the merge. If null, the configured {@link
    *     MergeScheduler#getIntraMergeExecutor(MergePolicy.OneMerge)} is used.
+   */
+  public DedupHnswScalarQuantizedVectorsFormat(
+      ScalarEncoding encoding,
+      int maxConn,
+      int beamWidth,
+      int numMergeWorkers,
+      ExecutorService mergeExec) {
+    this(encoding, maxConn, beamWidth, numMergeWorkers, mergeExec, HNSW_GRAPH_THRESHOLD);
+  }
+
+  /**
+   * Constructs a format using the given quantization encoding and graph construction parameters.
+   *
+   * @param encoding the quantization encoding used to encode the vectors
+   * @param maxConn the maximum number of connections to a node in the HNSW graph
+   * @param beamWidth the size of the queue maintained during graph construction.
+   * @param numMergeWorkers number of workers (threads) that will be used when doing merge. If
+   *     larger than 1, a non-null {@link ExecutorService} must be passed as mergeExec
+   * @param mergeExec the {@link ExecutorService} that will be used by ALL vector writers that are
+   *     generated by this format to do the merge. If null, the configured {@link
+   *     MergeScheduler#getIntraMergeExecutor(MergePolicy.OneMerge)} is used.
    * @param tinySegmentsThreshold the expected number of vector operations to return k nearest
    *     neighbors of the current graph size
    */
-  public DedupHnswVectorsFormat(
+  public DedupHnswScalarQuantizedVectorsFormat(
+      ScalarEncoding encoding,
       int maxConn,
       int beamWidth,
       int numMergeWorkers,
@@ -178,6 +192,8 @@ public final class DedupHnswVectorsFormat extends KnnVectorsFormat {
     }
     this.maxConn = maxConn;
     this.beamWidth = beamWidth;
+    this.encoding = encoding;
+    this.flatVectorsFormat = new DedupScalarQuantizedVectorsFormat(encoding);
     this.tinySegmentsThreshold = tinySegmentsThreshold;
     if (numMergeWorkers == 1 && mergeExec != null) {
       throw new IllegalArgumentException(
@@ -193,14 +209,12 @@ public final class DedupHnswVectorsFormat extends KnnVectorsFormat {
 
   @Override
   public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    // TODO: Can we have an HNSW writer that uses de-duplication information to speed up graph
-    //  construction?
     return new Lucene99HnswVectorsWriter(
         state,
         maxConn,
         beamWidth,
-        FORMAT,
-        FORMAT.fieldsWriter(state),
+        flatVectorsFormat,
+        flatVectorsFormat.fieldsWriter(state),
         numMergeWorkers,
         mergeExec,
         tinySegmentsThreshold);
@@ -208,7 +222,7 @@ public final class DedupHnswVectorsFormat extends KnnVectorsFormat {
 
   @Override
   public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new Lucene99HnswVectorsReader(state, FORMAT.fieldsReader(state));
+    return new Lucene99HnswVectorsReader(state, flatVectorsFormat.fieldsReader(state));
   }
 
   @Override
@@ -223,6 +237,8 @@ public final class DedupHnswVectorsFormat extends KnnVectorsFormat {
         + maxConn
         + ", beamWidth="
         + beamWidth
+        + ", encoding="
+        + encoding
         + ", tinySegmentsThreshold="
         + tinySegmentsThreshold
         + ")";
