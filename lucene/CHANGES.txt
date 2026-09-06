@@ -176,6 +176,8 @@ Improvements
 
 * GITHUB#16499: Clean up BytesRefHash. Remove dead lastCount and unused close(), fix stale comments (neoremind)
 
+* GITHUB#16089: Upgrade DocIdSetBuilder to use FixedBitSet eagerly once exceeding the threshold (Ke Wei)
+
 Optimizations
 ---------------------
 * GITHUB#16431: Add support for Block-Max WAND dynamic score skipping in FunctionScoreQuery
