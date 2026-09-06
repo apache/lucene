@@ -114,6 +114,11 @@ public final class LZ4 {
       if (matchDec == 0) {
         throw new IOException("offset 0 is invalid");
       }
+      if (matchDec > dOff) {
+        // The match would reference bytes before dest[0], which this call never wrote.
+        throw new IOException(
+            "match offset " + matchDec + " is invalid, only " + dOff + " bytes are available");
+      }
 
       int matchLen = token & 0x0F;
       if (matchLen == 0x0F) {
