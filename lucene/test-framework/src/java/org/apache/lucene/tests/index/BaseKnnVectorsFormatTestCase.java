@@ -78,6 +78,8 @@ import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.SerialMergeScheduler;
+import org.apache.lucene.index.SlowCodecReaderWrapper;
+import org.apache.lucene.index.SortingCodecReader;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorEncoding;
@@ -1083,6 +1085,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         RandomIndexWriter w = new RandomIndexWriter(random(), dir, newIndexWriterConfig())) {
       for (int i = 0; i < numDocs; i++) {
         Document doc = new Document();
+        doc.add(new NumericDocValuesField("sortkey", i));
         for (int field = 0; field < numDenseFields; field++) {
           addRandomVectorField(
               doc,
@@ -1108,8 +1111,12 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         w.forceMerge(1);
       }
       try (IndexReader reader = w.getReader()) {
+        Sort sort = new Sort(new SortField("sortkey", SortField.Type.INT));
         for (LeafReaderContext ctx : reader.leaves()) {
-          assertVectorCountMatchesVectorValuesSize(ctx.reader());
+          CodecReader codecReader = (CodecReader) ctx.reader();
+          assertVectorCountMatchesVectorValuesSize(codecReader);
+          assertVectorCountMatchesVectorValuesSize(SlowCodecReaderWrapper.wrap(codecReader));
+          assertVectorCountMatchesVectorValuesSize(SortingCodecReader.wrap(codecReader, sort));
         }
       }
     }
@@ -2594,17 +2601,26 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
   protected void assertVectorCountMatchesVectorValuesSize(LeafReader leafReader)
       throws IOException {
     if (leafReader instanceof CodecReader codecReader) {
-      KnnVectorsReader vectorsReader = codecReader.getVectorReader();
-      for (FieldInfo fieldInfo : leafReader.getFieldInfos()) {
-        if (fieldInfo.getVectorDimension() <= 0) {
-          continue;
-        }
-        KnnVectorsReader fieldReader = vectorsReader.unwrapReaderForField(fieldInfo.name);
-        assertEquals(
-            "vector count for field=" + fieldInfo.name,
-            countVectorsFromValues(leafReader, fieldInfo),
-            fieldReader.getVectorCount(fieldInfo));
+      assertVectorCountMatchesVectorValuesSize(codecReader);
+    }
+  }
+
+  protected void assertVectorCountMatchesVectorValuesSize(CodecReader codecReader)
+      throws IOException {
+    KnnVectorsReader vectorsReader = codecReader.getVectorReader();
+    for (FieldInfo fieldInfo : codecReader.getFieldInfos()) {
+      if (fieldInfo.getVectorDimension() <= 0) {
+        continue;
       }
+      int expected = countVectorsFromValues(codecReader, fieldInfo);
+      assertEquals(
+          "wrapper vector count for field=" + fieldInfo.name,
+          expected,
+          vectorsReader.getVectorCount(fieldInfo));
+      assertEquals(
+          "format vector count for field=" + fieldInfo.name,
+          expected,
+          vectorsReader.unwrapReaderForField(fieldInfo.name).getVectorCount(fieldInfo));
     }
   }
 
