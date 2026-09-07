@@ -149,15 +149,24 @@ public class LongRangeFacetCounts extends RangeFacetCounts {
       LongValues fv = valueSource.getValues(hits.context(), null);
       totCount += hits.totalHits();
 
-      for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
+      long[] batchBuffer = new long[512];
+      int batchCount = 0;
+
+      for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
         // Skip missing docs:
         if (fv.advanceExact(doc)) {
-          counter.addSingleValued(fv.longValue());
+          batchBuffer[batchCount++] = fv.longValue();
+          if (batchCount == 512) {
+            counter.addSingleValuedBatch(batchBuffer, 512);
+            batchCount = 0;
+          }
         } else {
           missingCount++;
         }
+      }
 
-        doc = it.nextDoc();
+      if (batchCount > 0) {
+        counter.addSingleValuedBatch(batchBuffer, batchCount);
       }
     }
 
