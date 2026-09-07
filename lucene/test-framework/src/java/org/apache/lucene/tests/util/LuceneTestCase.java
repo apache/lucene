@@ -1049,6 +1049,17 @@ public abstract class LuceneTestCase extends Assert {
     }
 
     c.setMaxFullFlushMergeWaitMillis(rarely() ? atLeast(r, 1000) : atLeast(r, 200));
+
+    // Randomize the incremental doc-values overlay budget (GH#16418) over a small, bounded range.
+    // A field's reader keeps one producer open per live generation (base plus up to this many
+    // sparse deltas), so open file handles scale with segments x updated-fields x overlays; a fixed
+    // budget would both push update-heavy tests past the open-handle limit and leave the lower
+    // budgets (including the disabled path at 0) uncovered. Tests that need a specific budget set
+    // it
+    // explicitly after newIndexWriterConfig and, if update-heavy, annotate a matching
+    // @HandleLimitFS.MaxOpenHandles.
+    c.setMaxDocValuesOverlays(TestUtil.nextInt(r, 0, 4));
+
     return c;
   }
 
