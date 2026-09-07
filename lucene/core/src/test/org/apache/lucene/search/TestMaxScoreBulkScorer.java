@@ -19,7 +19,6 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.function.IntPredicate;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
@@ -1168,6 +1167,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     IndexWriter w = new IndexWriter(dir, new IndexWriterConfig());
     for (int i = 0; i < 10000; i++) {
       Document doc = new Document();
+      doc.add(new StringField("id", Integer.toString(i), Field.Store.NO));
       if (i % 2 == 0) {
         doc.add(new TextField("body", "dense1", Field.Store.NO));
       }
@@ -1179,9 +1179,12 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
       }
       w.addDocument(doc);
     }
+    w.deleteDocuments(
+        new Term("id", "20"), new Term("id", "21"), new Term("id", "4101"), new Term("id", "4102"));
     w.close();
 
     DirectoryReader reader = DirectoryReader.open(dir);
+    assertEquals(9996, reader.numDocs());
     IndexSearcher searcher = new IndexSearcher(reader);
     searcher.setQueryCache(null);
 
@@ -1193,7 +1196,6 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     Query filterQuery =
         new CountingFilterQuery(
             new TermQuery(new Term("filter", "yes")), intoBitSetCalls, advanceCalls);
-    IntPredicate expectedFilter = doc -> doc < reader.maxDoc() && doc % 20 == 1;
 
     BooleanQuery innerOr =
         new BooleanQuery.Builder()
@@ -1202,16 +1204,14 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
                     new TermQuery(new Term("body", "dense1")),
                     new int[] {Integer.MAX_VALUE},
                     new int[] {Integer.MAX_VALUE},
-                    scoredDocs,
-                    expectedFilter),
+                    scoredDocs),
                 Occur.SHOULD)
             .add(
                 new CountingScorerQuery(
                     new TermQuery(new Term("body", "dense2")),
                     new int[] {Integer.MAX_VALUE},
                     new int[] {Integer.MAX_VALUE},
-                    scoredDocs,
-                    expectedFilter),
+                    scoredDocs),
                 Occur.SHOULD)
             .build();
 
@@ -1239,7 +1239,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
                 collectedDocs[0]++;
               }
             },
-            null,
+            ctx.reader().getLiveDocs(),
             0,
             DocIdSetIterator.NO_MORE_DOCS);
       }
@@ -1251,8 +1251,8 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
             + " advance="
             + advanceCalls[0],
         intoBitSetCalls[0] > 0);
-    assertEquals(500, scoredDocs[0]);
-    assertEquals(500, collectedDocs[0]);
+    assertEquals(498, collectedDocs[0]);
+    assertEquals(collectedDocs[0], scoredDocs[0]);
 
     reader.close();
     dir.close();
@@ -1384,8 +1384,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
             new TermQuery(new Term("body", "dense1")),
             minAdvanceShallowTarget,
             minGetMaxScoreUpTo,
-            new int[1],
-            null);
+            new int[1]);
     Query dense2 = new TermQuery(new Term("body", "dense2"));
 
     BooleanQuery innerOr =
@@ -1442,19 +1441,13 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     private final int[] minAdvanceShallowTarget;
     private final int[] minGetMaxScoreUpTo;
     private final int[] scoredDocs;
-    private final IntPredicate expectedLiveDocs;
 
     private CountingScorerQuery(
-        Query delegate,
-        int[] minAdvanceShallowTarget,
-        int[] minGetMaxScoreUpTo,
-        int[] scoredDocs,
-        IntPredicate expectedLiveDocs) {
+        Query delegate, int[] minAdvanceShallowTarget, int[] minGetMaxScoreUpTo, int[] scoredDocs) {
       this.delegate = delegate;
       this.minAdvanceShallowTarget = minAdvanceShallowTarget;
       this.minGetMaxScoreUpTo = minGetMaxScoreUpTo;
       this.scoredDocs = scoredDocs;
-      this.expectedLiveDocs = expectedLiveDocs;
     }
 
     @Override
@@ -1486,15 +1479,6 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
                 @Override
                 public void nextDocsAndScores(
                     int upTo, Bits liveDocs, DocAndFloatFeatureBuffer buffer) throws IOException {
-                  if (expectedLiveDocs != null) {
-                    assertNotNull(liveDocs);
-                    for (int doc = in.docID(); doc < upTo; doc++) {
-                      assertEquals(
-                          "Unexpected liveDocs state for doc " + doc,
-                          expectedLiveDocs.test(doc),
-                          liveDocs.get(doc));
-                    }
-                  }
                   in.nextDocsAndScores(upTo, liveDocs, buffer);
                   scoredDocs[0] += buffer.size;
                 }

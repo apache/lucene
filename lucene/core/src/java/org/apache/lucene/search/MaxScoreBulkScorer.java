@@ -82,7 +82,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
       //    filter advance()
       if (minScorerCost >= this.filter.cost
           || (allScorers.length > 4 && this.cost >= this.filter.cost)) {
-        this.filterMatchesBits = new OffsetBits(new FixedBitSet(INNER_WINDOW_SIZE));
+        this.filterMatchesBits = new OffsetBits(new FixedBitSet(INNER_WINDOW_SIZE), maxDoc);
       }
     }
   }
@@ -366,25 +366,28 @@ final class MaxScoreBulkScorer extends BulkScorer {
   /** A wrapper around {@link FixedBitSet} that supports setting an offset. */
   private static final class OffsetBits implements Bits {
     private final FixedBitSet bits;
+    private final int maxDoc;
     private int offset;
 
-    OffsetBits(FixedBitSet bits) {
+    OffsetBits(FixedBitSet bits, int maxDoc) {
       this.bits = bits;
+      this.maxDoc = maxDoc;
     }
 
     void setOffset(int offset) {
+      assert offset < maxDoc;
       this.offset = offset;
     }
 
     @Override
     public boolean get(int index) {
-      assert index >= 0 && offset <= index && index - offset < bits.length();
+      assert index >= 0 && offset <= index && index - offset < bits.length() && index < maxDoc;
       return bits.get(index - offset);
     }
 
     @Override
     public int length() {
-      return bits.length();
+      return maxDoc;
     }
   }
 
