@@ -213,6 +213,14 @@ public final class SlowCodecReaderWrapper {
         return vectorsReader.getOffHeapByteSize(fieldInfo);
       }
 
+      @Override
+      public int getVectorCount(FieldInfo fieldInfo) throws IOException {
+        SegmentReader segmentReader = segmentReader(reader);
+        var vectorsReader = segmentReader.getVectorReader();
+        vectorsReader = vectorsReader.unwrapReaderForField(fieldInfo.name);
+        return vectorsReader.getVectorCount(fieldInfo);
+      }
+
       static SegmentReader segmentReader(LeafReader reader) {
         if (reader instanceof SegmentReader sr) {
           return sr;

@@ -363,6 +363,12 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
+    public int getVectorCount(FieldInfo fieldInfo) throws IOException {
+      KnnVectorsReader knnVectorsReader = fields.get(fieldInfo.number);
+      return knnVectorsReader.getVectorCount(fieldInfo);
+    }
+
+    @Override
     public void close() throws IOException {
       List<KnnVectorsReader> readers = new ArrayList<>(fields.size());
       for (ObjectCursor<KnnVectorsReader> cursor : fields.values()) {
