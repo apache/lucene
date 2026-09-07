@@ -333,7 +333,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
 
   @Override
   public int getVectorCount(FieldInfo fieldInfo) {
-    return getFieldEntry(fieldInfo.name).ordToDoc.length;
+    return getFieldEntry(fieldInfo.name).size();
   }
 
   @Override
