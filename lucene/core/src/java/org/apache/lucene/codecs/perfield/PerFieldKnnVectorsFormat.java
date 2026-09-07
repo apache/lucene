@@ -365,6 +365,9 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public int getVectorCount(FieldInfo fieldInfo) throws IOException {
       KnnVectorsReader knnVectorsReader = fields.get(fieldInfo.number);
+      if (knnVectorsReader == null) {
+        throw new IllegalArgumentException("field=\"" + fieldInfo.name + "\" not found");
+      }
       return knnVectorsReader.getVectorCount(fieldInfo);
     }
 

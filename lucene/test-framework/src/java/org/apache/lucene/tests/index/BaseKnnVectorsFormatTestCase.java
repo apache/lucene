@@ -1122,6 +1122,24 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     }
   }
 
+  /** Non-vector fields must not be passed to {@link KnnVectorsReader#getVectorCount}. */
+  public void testGetVectorCountInvalidField() throws Exception {
+    try (Directory dir = newDirectory();
+        RandomIndexWriter w = new RandomIndexWriter(random(), dir, newIndexWriterConfig())) {
+      Document doc = new Document();
+      doc.add(new StringField("text", "value", Field.Store.NO));
+      addRandomVectorField(
+          doc, "vector", randomVectorEncoding(), atLeast(2), randomSimilarity());
+      w.addDocument(doc);
+      try (IndexReader reader = w.getReader()) {
+        LeafReader leafReader = reader.leaves().get(0).reader();
+        FieldInfo textField = leafReader.getFieldInfos().fieldInfo("text");
+        KnnVectorsReader vectorsReader = ((CodecReader) leafReader).getVectorReader();
+        expectThrows(IllegalArgumentException.class, () -> vectorsReader.getVectorCount(textField));
+      }
+    }
+  }
+
   private void addRandomVectorField(
       Document doc,
       String fieldName,
