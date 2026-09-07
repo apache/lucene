@@ -23,7 +23,9 @@ import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
-/** Tests {@link org.apache.lucene.codecs.KnnVectorsReader#getVectorCount} on codec reader wrappers. */
+/**
+ * Tests {@link org.apache.lucene.codecs.KnnVectorsReader#getVectorCount} on codec reader wrappers.
+ */
 public class TestGetVectorCountCodecWrappers extends LuceneTestCase {
 
   public void testSlowCompositeCodecReaderWrapperGetVectorCount() throws Exception {

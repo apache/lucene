@@ -1128,8 +1128,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         RandomIndexWriter w = new RandomIndexWriter(random(), dir, newIndexWriterConfig())) {
       Document doc = new Document();
       doc.add(new StringField("text", "value", Field.Store.NO));
-      addRandomVectorField(
-          doc, "vector", randomVectorEncoding(), atLeast(2), randomSimilarity());
+      addRandomVectorField(doc, "vector", randomVectorEncoding(), atLeast(2), randomSimilarity());
       w.addDocument(doc);
       try (IndexReader reader = w.getReader()) {
         LeafReader leafReader = reader.leaves().get(0).reader();
