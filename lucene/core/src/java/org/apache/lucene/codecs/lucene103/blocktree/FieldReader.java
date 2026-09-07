@@ -17,6 +17,7 @@
 package org.apache.lucene.codecs.lucene103.blocktree;
 
 import java.io.IOException;
+import org.apache.lucene.codecs.lucene103.blocktree.art.ARTReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.Terms;
@@ -83,8 +84,8 @@ public final class FieldReader extends Terms {
     this.indexIn = indexIn;
   }
 
-  private TrieReader newReader() throws IOException {
-    return new TrieReader(indexIn.slice("trie index", indexStart, indexEnd - indexStart), rootFP);
+  private ARTReader newReader() throws IOException {
+    return new ARTReader(indexIn.slice("art index", indexStart, indexEnd - indexStart), rootFP);
   }
 
   @Override

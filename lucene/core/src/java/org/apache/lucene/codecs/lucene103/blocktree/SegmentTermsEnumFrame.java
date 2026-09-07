@@ -19,6 +19,7 @@ package org.apache.lucene.codecs.lucene103.blocktree;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.codecs.BlockTermState;
+import org.apache.lucene.codecs.lucene103.blocktree.art.Node;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.TermsEnum.SeekStatus;
@@ -35,7 +36,7 @@ final class SegmentTermsEnumFrame {
   boolean hasTermsOrig;
   boolean isFloor;
 
-  TrieReader.Node node;
+  Node node;
 
   // static boolean DEBUG = BlockTreeTermsWriter.DEBUG;
 
