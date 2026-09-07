@@ -37,7 +37,7 @@ public interface QueryTimeListener {
       MatcherFactory<T> factory, QueryTimeListener listener) {
     return searcher -> {
       CandidateMatcher<T> matcher = factory.createMatcher(searcher);
-      return new CandidateMatcher<T>(searcher) {
+      return new CandidateMatcher<>(searcher) {
         @Override
         public void matchQuery(String queryId, Query matchQuery, Map<String, String> metadata)
             throws IOException {

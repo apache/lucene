@@ -700,11 +700,11 @@ public class TestAutomaton extends LuceneTestCase {
     // If you concat empty automaton to anything the result should still be empty:
     Automaton a = Operations.concatenate(List.of(Automata.makeEmpty(), Automata.makeString("foo")));
     AutomatonTestUtil.assertMinimalDFA(a);
-    assertEquals(new HashSet<IntsRef>(), TestOperations.getFiniteStrings(a));
+    assertEquals(new HashSet<>(), TestOperations.getFiniteStrings(a));
 
     a = Operations.concatenate(List.of(Automata.makeString("foo"), Automata.makeEmpty()));
     AutomatonTestUtil.assertMinimalDFA(a);
-    assertEquals(new HashSet<IntsRef>(), TestOperations.getFiniteStrings(a));
+    assertEquals(new HashSet<>(), TestOperations.getFiniteStrings(a));
   }
 
   public void testSeemsNonEmptyButIsNot1() throws Exception {

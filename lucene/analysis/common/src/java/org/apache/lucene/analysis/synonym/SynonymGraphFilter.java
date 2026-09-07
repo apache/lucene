@@ -118,7 +118,7 @@ public final class SynonymGraphFilter extends TokenFilter {
   private int lookaheadNextWrite;
 
   private RollingBuffer<BufferedInputToken> lookahead =
-      new RollingBuffer<BufferedInputToken>() {
+      new RollingBuffer<>() {
         @Override
         protected BufferedInputToken newInstance() {
           return new BufferedInputToken();

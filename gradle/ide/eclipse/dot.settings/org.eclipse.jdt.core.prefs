@@ -3,6 +3,8 @@ eclipse.preferences.version=1
 org.eclipse.jdt.core.compiler.codegen.targetPlatform=@eclipseJavaVersion@
 org.eclipse.jdt.core.compiler.compliance=@eclipseJavaVersion@
 org.eclipse.jdt.core.compiler.source=@eclipseJavaVersion@
+# this turns off split package checks, which gradle-api jar contains. https://github.com/gradle/gradle/issues/19577
+org.eclipse.jdt.core.compiler.ignoreUnnamedModuleForSplitPackage=enabled
 # Note: all compiler flags are defined in ECJ linter configuration
 @ecj-lint-config@
 org.eclipse.jdt.core.formatter.align_type_members_on_columns=false

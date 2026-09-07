@@ -29,8 +29,7 @@ public class TestICUNormalizer2CharFilterFactory extends BaseTokenStreamTestCase
   /** Test nfkc_cf defaults */
   public void testDefaults() throws Exception {
     Reader reader = new StringReader("This is a Ｔｅｓｔ");
-    ICUNormalizer2CharFilterFactory factory =
-        new ICUNormalizer2CharFilterFactory(new HashMap<String, String>());
+    ICUNormalizer2CharFilterFactory factory = new ICUNormalizer2CharFilterFactory(new HashMap<>());
     reader = factory.create(reader);
     TokenStream stream = whitespaceMockTokenizer(reader);
     assertTokenStreamContents(stream, new String[] {"this", "is", "a", "test"});

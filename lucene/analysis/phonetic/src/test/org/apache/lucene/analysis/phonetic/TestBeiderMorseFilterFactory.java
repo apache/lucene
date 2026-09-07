@@ -24,7 +24,7 @@ import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 /** Simple tests for {@link BeiderMorseFilterFactory} */
 public class TestBeiderMorseFilterFactory extends BaseTokenStreamTestCase {
   public void testBasics() throws Exception {
-    BeiderMorseFilterFactory factory = new BeiderMorseFilterFactory(new HashMap<String, String>());
+    BeiderMorseFilterFactory factory = new BeiderMorseFilterFactory(new HashMap<>());
     TokenStream ts = factory.create(whitespaceMockTokenizer("Weinberg"));
     assertTokenStreamContents(
         ts,

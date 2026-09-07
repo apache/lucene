@@ -191,7 +191,7 @@ final class DisjunctionMatchesIterator implements MatchesIterator {
 
   private DisjunctionMatchesIterator(List<MatchesIterator> matches) throws IOException {
     queue =
-        new PriorityQueue<MatchesIterator>(matches.size()) {
+        new PriorityQueue<>(matches.size()) {
           @Override
           protected boolean lessThan(MatchesIterator a, MatchesIterator b) {
             if (a.startPosition() == -1 && b.startPosition() == -1) {

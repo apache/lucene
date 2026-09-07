@@ -54,7 +54,7 @@ public class TestAllFilesHaveCodecHeader extends LuceneTestCase {
       }
     }
     riw.close();
-    checkHeaders(dir, new HashMap<String, String>());
+    checkHeaders(dir, new HashMap<>());
     dir.close();
   }
 

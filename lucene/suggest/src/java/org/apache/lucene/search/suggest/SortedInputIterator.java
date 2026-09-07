@@ -141,7 +141,7 @@ public class SortedInputIterator implements InputIterator {
 
   /** Sortes by BytesRef (ascending) then cost (ascending). */
   private final Comparator<BytesRef> tieBreakByCostComparator =
-      new Comparator<BytesRef>() {
+      new Comparator<>() {
 
         private final BytesRef leftScratch = new BytesRef();
         private final BytesRef rightScratch = new BytesRef();

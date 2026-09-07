@@ -180,7 +180,8 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
         graphs,
         ordMaps,
         maxOrd,
-        initializedNodes);
+        initializedNodes,
+        abortCheck);
   }
 
   protected final int[][] getNewOrdMapping(

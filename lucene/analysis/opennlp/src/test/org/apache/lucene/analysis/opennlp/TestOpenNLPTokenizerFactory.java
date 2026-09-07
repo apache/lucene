@@ -111,7 +111,7 @@ public class TestOpenNLPTokenizerFactory extends BaseTokenStreamTestCase {
   @Test
   public void testClose() throws IOException {
     Map<String, String> args =
-        new HashMap<String, String>() {
+        new HashMap<>() {
           {
             put("sentenceModel", "en-test-sent.bin");
             put("tokenizerModel", "en-test-tokenizer.bin");

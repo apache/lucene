@@ -125,7 +125,7 @@ public class TestTopGroups extends LuceneTestCase {
               : createEmptyGroupDocs(redGroupValue, new Object[] {redAntSize});
 
       shard1TopGroups =
-          new TopGroups<String>(
+          new TopGroups<>(
               sort.getSort() /* groupSort */,
               sort.getSort() /* withinGroupSort */,
               group1.scoreDocs().length + group2.scoreDocs().length /* totalHitCount */,
@@ -159,7 +159,7 @@ public class TestTopGroups extends LuceneTestCase {
               : createEmptyGroupDocs(redGroupValue, new Object[] {redSquirrelSize});
 
       shard2TopGroups =
-          new TopGroups<String>(
+          new TopGroups<>(
               sort.getSort() /* groupSort */,
               sort.getSort() /* withinGroupSort */,
               group1.scoreDocs().length + group2.scoreDocs().length /* totalHitCount */,
@@ -226,7 +226,7 @@ public class TestTopGroups extends LuceneTestCase {
 
   private static GroupDocs<String> createEmptyGroupDocs(
       String groupValue, Object[] groupSortValues) {
-    return new GroupDocs<String>(
+    return new GroupDocs<>(
         Float.NaN /* score */,
         Float.NaN /* maxScore */,
         new TotalHits(0, TotalHits.Relation.EQUAL_TO),
@@ -237,7 +237,7 @@ public class TestTopGroups extends LuceneTestCase {
 
   private static GroupDocs<String> createSingletonGroupDocs(
       String groupValue, Object[] groupSortValues, int docId, float docScore, int shardIndex) {
-    return new GroupDocs<String>(
+    return new GroupDocs<>(
         Float.NaN /* score */,
         docScore /* maxScore */,
         new TotalHits(1, TotalHits.Relation.EQUAL_TO),

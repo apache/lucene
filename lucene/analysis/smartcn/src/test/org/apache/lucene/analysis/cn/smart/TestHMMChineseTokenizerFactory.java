@@ -29,7 +29,7 @@ public class TestHMMChineseTokenizerFactory extends BaseTokenStreamTestCase {
   /** Test showing the behavior */
   public void testSimple() throws Exception {
     Reader reader = new StringReader("我购买了道具和服装。");
-    TokenizerFactory factory = new HMMChineseTokenizerFactory(new HashMap<String, String>());
+    TokenizerFactory factory = new HMMChineseTokenizerFactory(new HashMap<>());
     Tokenizer tokenizer = factory.create(newAttributeFactory());
     tokenizer.setReader(reader);
     // TODO: fix smart chinese to not emit punctuation tokens

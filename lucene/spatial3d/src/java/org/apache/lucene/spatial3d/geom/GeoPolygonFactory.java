@@ -1325,7 +1325,7 @@ public class GeoPolygonFactory {
     }
 
     // Create the list of points
-    final List<GeoPoint> points = new ArrayList<GeoPoint>(edgeBuffer.size());
+    final List<GeoPoint> points = new ArrayList<>(edgeBuffer.size());
     final BitSet internalEdges = new BitSet(edgeBuffer.size() - 1);
 
     // System.out.println("Concave polygon points:");
@@ -1568,7 +1568,7 @@ public class GeoPolygonFactory {
     // edge.  If the first edge start point is the same as the last edge end point, it's a
     // degenerate case and we want to just clean out the edge buffer entirely.
 
-    final List<GeoPoint> points = new ArrayList<GeoPoint>(includedEdges.size() + 1);
+    final List<GeoPoint> points = new ArrayList<>(includedEdges.size() + 1);
     final BitSet internalEdges = new BitSet(includedEdges.size());
     final boolean returnIsInternal;
 
@@ -1612,7 +1612,7 @@ public class GeoPolygonFactory {
             "Two adjacent edge planes are effectively parallel despite filtering; give up on tiling");
       }
       // Build point list and edge list
-      final List<Edge> edges = new ArrayList<Edge>(includedEdges.size());
+      final List<Edge> edges = new ArrayList<>(includedEdges.size());
       returnIsInternal = true;
 
       // Now look for completely planar points.  This too is a degeneracy condition that we should

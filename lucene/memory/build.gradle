@@ -16,7 +16,7 @@
  */
 
 
-apply plugin: 'java-library'
+
 
 description = 'Single-document in-memory index implementation'
 

@@ -142,7 +142,7 @@ public class TestGeoPolygon extends LuceneTestCase {
     List<GeoPolygonFactory.PolygonDescription> shapes;
 
     // Points go counterclockwise, so
-    points = new ArrayList<GeoPoint>();
+    points = new ArrayList<>();
     points.add(new GeoPoint(PlanetModel.SPHERE, -0.1, -0.5));
     points.add(new GeoPoint(PlanetModel.SPHERE, 0.0, -0.6));
     points.add(new GeoPoint(PlanetModel.SPHERE, 0.1, -0.5));
@@ -163,7 +163,7 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(!c.isWithin(gp));
 
     // Now, go clockwise
-    points = new ArrayList<GeoPoint>();
+    points = new ArrayList<>();
     points.add(new GeoPoint(PlanetModel.SPHERE, 0.0, -0.4));
     points.add(new GeoPoint(PlanetModel.SPHERE, 0.1, -0.5));
     points.add(new GeoPoint(PlanetModel.SPHERE, 0.0, -0.6));
@@ -192,7 +192,7 @@ public class TestGeoPolygon extends LuceneTestCase {
     XYZBounds xyzBounds;
     XYZSolid xyzSolid;
 
-    points = new ArrayList<GeoPoint>();
+    points = new ArrayList<>();
     points.add(new GeoPoint(PlanetModel.SPHERE, 0.0, -0.4));
     points.add(new GeoPoint(PlanetModel.SPHERE, 0.1, -0.5));
     points.add(new GeoPoint(PlanetModel.SPHERE, 0.0, -0.6));
@@ -284,7 +284,7 @@ public class TestGeoPolygon extends LuceneTestCase {
     List<GeoPoint> points;
     List<GeoPolygonFactory.PolygonDescription> shapes;
 
-    points = new ArrayList<GeoPoint>();
+    points = new ArrayList<>();
     points.add(new GeoPoint(PlanetModel.SPHERE, 0.0, -0.4));
     points.add(new GeoPoint(PlanetModel.SPHERE, 0.1, -0.5));
     points.add(new GeoPoint(PlanetModel.SPHERE, 0.0, -0.6));
@@ -356,7 +356,7 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertFalse(c.isWithin(gp));
 
     // Next bunch of small polygon points
-    points = new ArrayList<GeoPoint>();
+    points = new ArrayList<>();
     points.add(new GeoPoint(PlanetModel.SPHERE, 0.0, -0.4));
     points.add(new GeoPoint(PlanetModel.SPHERE, 0.1, -0.5));
     points.add(new GeoPoint(PlanetModel.SPHERE, 0.01, -0.6));
@@ -447,7 +447,7 @@ public class TestGeoPolygon extends LuceneTestCase {
     GeoArea area;
 
     // BKD failure
-    points = new ArrayList<GeoPoint>();
+    points = new ArrayList<>();
     points.add(new GeoPoint(PlanetModel.WGS84, -0.36716183577912814, 1.4836349969188696));
     points.add(new GeoPoint(PlanetModel.WGS84, 0.7846038240742979, -0.02743348424931823));
     points.add(new GeoPoint(PlanetModel.WGS84, -0.7376479402362607, -0.5072961758807019));
@@ -470,7 +470,7 @@ public class TestGeoPolygon extends LuceneTestCase {
             xyzb.getMaximumZ());
     assertTrue(area.isWithin(point));
 
-    points = new ArrayList<GeoPoint>();
+    points = new ArrayList<>();
     points.add(new GeoPoint(PlanetModel.SPHERE, 0.0, -0.4));
     points.add(new GeoPoint(PlanetModel.SPHERE, 0.1, -0.5));
     points.add(new GeoPoint(PlanetModel.SPHERE, 0.0, -0.6));
@@ -756,7 +756,7 @@ public class TestGeoPolygon extends LuceneTestCase {
         0,
         1,
         new SidedPlane(p1, p3, p2),
-        new ArrayList<GeoPolygon>(),
+        new ArrayList<>(),
         null);
 
     assertFalse(mutableBoolean.value);
@@ -782,8 +782,7 @@ public class TestGeoPolygon extends LuceneTestCase {
 
     final List<GeoPolygonFactory.PolygonDescription> shapeList = new ArrayList<>();
     final GeoPolygonFactory.PolygonDescription desc =
-        new GeoPolygonFactory.PolygonDescription(
-            points, new ArrayList<GeoPolygonFactory.PolygonDescription>());
+        new GeoPolygonFactory.PolygonDescription(points, new ArrayList<>());
 
     shapeList.add(desc);
 

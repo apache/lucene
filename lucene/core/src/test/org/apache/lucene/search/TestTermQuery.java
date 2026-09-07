@@ -184,7 +184,7 @@ public class TestTermQuery extends LuceneTestCase {
     Similarity existingSimilarity = searcher.getSimilarity();
 
     for (ScoreMode scoreMode : ScoreMode.values()) {
-      final AtomicReference<ScoreMode> scoreModeInWeight = new AtomicReference<ScoreMode>();
+      final AtomicReference<ScoreMode> scoreModeInWeight = new AtomicReference<>();
       final AtomicBoolean scorerCalled = new AtomicBoolean();
       searcher.setSimilarity(
           new Similarity() { // Wrapping existing similarity for testing

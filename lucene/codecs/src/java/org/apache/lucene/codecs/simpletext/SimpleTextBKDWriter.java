@@ -520,7 +520,7 @@ final class SimpleTextBKDWriter implements Closeable {
       writeLeafBlockDocs(out, leafDocs, 0, leafCount);
 
       final IntFunction<BytesRef> packedValues =
-          new IntFunction<BytesRef>() {
+          new IntFunction<>() {
             final BytesRef scratch = new BytesRef();
 
             {
@@ -1008,7 +1008,7 @@ final class SimpleTextBKDWriter implements Closeable {
 
       // Write the full values:
       IntFunction<BytesRef> packedValues =
-          new IntFunction<BytesRef>() {
+          new IntFunction<>() {
             @Override
             public BytesRef apply(int i) {
               reader.getValue(from + i, scratchBytesRef1);
@@ -1189,7 +1189,7 @@ final class SimpleTextBKDWriter implements Closeable {
 
       // Write the full values:
       IntFunction<BytesRef> packedValues =
-          new IntFunction<BytesRef>() {
+          new IntFunction<>() {
             final BytesRef scratch = new BytesRef();
 
             {

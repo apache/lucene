@@ -50,7 +50,7 @@ class ScorerUtil {
     // If we recurse infinitely, we find out that the cost of a msm query is the sum of the
     // costs of the num_scorers - minShouldMatch + 1 least costly scorers
     final PriorityQueue<Long> pq =
-        new PriorityQueue<Long>(numScorers - minShouldMatch + 1) {
+        new PriorityQueue<>(numScorers - minShouldMatch + 1) {
           @Override
           protected boolean lessThan(Long a, Long b) {
             return a > b;

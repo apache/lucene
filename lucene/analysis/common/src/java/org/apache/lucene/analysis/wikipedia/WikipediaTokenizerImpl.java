@@ -898,7 +898,7 @@ class WikipediaTokenizerImpl {
           case 1:
             {
               numWikiTokensSeen = 0;
-              positionInc = 1; /* Break so we don't hit fall-through warning: */
+              positionInc = 1;
               break;
             }
           // fall through
@@ -917,7 +917,7 @@ class WikipediaTokenizerImpl {
               numWikiTokensSeen = 0;
               positionInc = 1;
               currentTokType = EXTERNAL_LINK_URL;
-              yybegin(EXTERNAL_LINK_STATE); /* Break so we don't hit fall-through warning: */
+              yybegin(EXTERNAL_LINK_STATE);
               break;
             }
           // fall through
@@ -933,7 +933,7 @@ class WikipediaTokenizerImpl {
             break;
           case 5:
             {
-              positionInc = 1; /* Break so we don't hit fall-through warning: */
+              positionInc = 1;
               break;
             }
           // fall through
@@ -959,7 +959,6 @@ class WikipediaTokenizerImpl {
             break;
           case 8:
             {
-              /* Break so we don't hit fall-through warning: */
               break; /* ignore */
             }
           // fall through
@@ -985,7 +984,7 @@ class WikipediaTokenizerImpl {
             {
               numLinkToks = 0;
               positionInc = 0;
-              yybegin(YYINITIAL); /* Break so we don't hit fall-through warning: */
+              yybegin(YYINITIAL);
               break;
             }
           // fall through
@@ -994,7 +993,7 @@ class WikipediaTokenizerImpl {
           case 11:
             {
               currentTokType = BOLD;
-              yybegin(THREE_SINGLE_QUOTES_STATE); /* Break so we don't hit fall-through warning: */
+              yybegin(THREE_SINGLE_QUOTES_STATE);
               break;
             }
           // fall through
@@ -1014,7 +1013,7 @@ class WikipediaTokenizerImpl {
             {
               currentTokType = EXTERNAL_LINK;
               numWikiTokensSeen = 0;
-              yybegin(EXTERNAL_LINK_STATE); /* Break so we don't hit fall-through warning: */
+              yybegin(EXTERNAL_LINK_STATE);
               break;
             }
           // fall through
@@ -1043,7 +1042,7 @@ class WikipediaTokenizerImpl {
             {
               currentTokType = SUB_HEADING;
               numWikiTokensSeen = 0;
-              yybegin(STRING); /* Break so we don't hit fall-through warning: */
+              yybegin(STRING);
               break;
             }
           // fall through
@@ -1060,7 +1059,6 @@ class WikipediaTokenizerImpl {
             break;
           case 18:
             {
-              /* Break so we don't hit fall-through warning: */
               break; /* ignore STRING */
             }
           // fall through
@@ -1080,7 +1078,7 @@ class WikipediaTokenizerImpl {
               numBalanced = 0;
               numWikiTokensSeen = 0;
               currentTokType = EXTERNAL_LINK;
-              yybegin(EXTERNAL_LINK_STATE); /* Break so we don't hit fall-through warning: */
+              yybegin(EXTERNAL_LINK_STATE);
               break;
             }
           // fall through
@@ -1103,7 +1101,7 @@ class WikipediaTokenizerImpl {
                 yybegin(TWO_SINGLE_QUOTES_STATE);
               } else {
                 numBalanced = 0;
-              } /* Break so we don't hit fall-through warning: */
+              }
               break;
             }
           // fall through
@@ -1113,7 +1111,7 @@ class WikipediaTokenizerImpl {
             {
               numWikiTokensSeen = 0;
               positionInc = 1;
-              yybegin(DOUBLE_EQUALS_STATE); /* Break so we don't hit fall-through warning: */
+              yybegin(DOUBLE_EQUALS_STATE);
               break;
             }
           // fall through
@@ -1124,7 +1122,7 @@ class WikipediaTokenizerImpl {
               numWikiTokensSeen = 0;
               positionInc = 1;
               currentTokType = INTERNAL_LINK;
-              yybegin(INTERNAL_LINK_STATE); /* Break so we don't hit fall-through warning: */
+              yybegin(INTERNAL_LINK_STATE);
               break;
             }
           // fall through
@@ -1135,7 +1133,7 @@ class WikipediaTokenizerImpl {
               numWikiTokensSeen = 0;
               positionInc = 1;
               currentTokType = CITATION;
-              yybegin(DOUBLE_BRACE_STATE); /* Break so we don't hit fall-through warning: */
+              yybegin(DOUBLE_BRACE_STATE);
               break;
             }
           // fall through
@@ -1143,7 +1141,7 @@ class WikipediaTokenizerImpl {
             break;
           case 26:
             {
-              yybegin(YYINITIAL); /* Break so we don't hit fall-through warning: */
+              yybegin(YYINITIAL);
               break;
             }
           // fall through
@@ -1152,7 +1150,7 @@ class WikipediaTokenizerImpl {
           case 27:
             {
               numLinkToks = 0;
-              yybegin(YYINITIAL); /* Break so we don't hit fall-through warning: */
+              yybegin(YYINITIAL);
               break;
             }
           // fall through
@@ -1162,7 +1160,7 @@ class WikipediaTokenizerImpl {
             {
               currentTokType = INTERNAL_LINK;
               numWikiTokensSeen = 0;
-              yybegin(INTERNAL_LINK_STATE); /* Break so we don't hit fall-through warning: */
+              yybegin(INTERNAL_LINK_STATE);
               break;
             }
           // fall through
@@ -1172,7 +1170,7 @@ class WikipediaTokenizerImpl {
             {
               currentTokType = INTERNAL_LINK;
               numWikiTokensSeen = 0;
-              yybegin(INTERNAL_LINK_STATE); /* Break so we don't hit fall-through warning: */
+              yybegin(INTERNAL_LINK_STATE);
               break;
             }
           // fall through
@@ -1180,7 +1178,7 @@ class WikipediaTokenizerImpl {
             break;
           case 30:
             {
-              yybegin(YYINITIAL); /* Break so we don't hit fall-through warning: */
+              yybegin(YYINITIAL);
               break;
             }
           // fall through
@@ -1190,7 +1188,7 @@ class WikipediaTokenizerImpl {
             {
               numBalanced = 0;
               currentTokType = ALPHANUM;
-              yybegin(YYINITIAL); /* Break so we don't hit fall-through warning: */
+              yybegin(YYINITIAL);
               break; /*end italics*/
             }
           // fall through
@@ -1201,7 +1199,7 @@ class WikipediaTokenizerImpl {
               numBalanced = 0;
               numWikiTokensSeen = 0;
               currentTokType = INTERNAL_LINK;
-              yybegin(INTERNAL_LINK_STATE); /* Break so we don't hit fall-through warning: */
+              yybegin(INTERNAL_LINK_STATE);
               break;
             }
           // fall through
@@ -1242,7 +1240,7 @@ class WikipediaTokenizerImpl {
           case 37:
             {
               currentTokType = BOLD_ITALICS;
-              yybegin(FIVE_SINGLE_QUOTES_STATE); /* Break so we don't hit fall-through warning: */
+              yybegin(FIVE_SINGLE_QUOTES_STATE);
               break;
             }
           // fall through
@@ -1252,7 +1250,7 @@ class WikipediaTokenizerImpl {
             {
               numBalanced = 0;
               currentTokType = ALPHANUM;
-              yybegin(YYINITIAL); /* Break so we don't hit fall-through warning: */
+              yybegin(YYINITIAL);
               break; /*end bold*/
             }
           // fall through
@@ -1262,7 +1260,7 @@ class WikipediaTokenizerImpl {
             {
               numBalanced = 0;
               currentTokType = ALPHANUM;
-              yybegin(YYINITIAL); /* Break so we don't hit fall-through warning: */
+              yybegin(YYINITIAL);
               break; /*end sub header*/
             }
           // fall through
@@ -1288,7 +1286,7 @@ class WikipediaTokenizerImpl {
             {
               numBalanced = 0;
               currentTokType = ALPHANUM;
-              yybegin(YYINITIAL); /* Break so we don't hit fall-through warning: */
+              yybegin(YYINITIAL);
               break; /*end bold italics*/
             }
           // fall through
@@ -1309,7 +1307,7 @@ class WikipediaTokenizerImpl {
               numWikiTokensSeen = 0;
               positionInc = 1;
               currentTokType = CATEGORY;
-              yybegin(CATEGORY_STATE); /* Break so we don't hit fall-through warning: */
+              yybegin(CATEGORY_STATE);
               break;
             }
           // fall through
@@ -1319,7 +1317,7 @@ class WikipediaTokenizerImpl {
             {
               currentTokType = CATEGORY;
               numWikiTokensSeen = 0;
-              yybegin(CATEGORY_STATE); /* Break so we don't hit fall-through warning: */
+              yybegin(CATEGORY_STATE);
               break;
             }
           // fall through
@@ -1330,7 +1328,7 @@ class WikipediaTokenizerImpl {
               numBalanced = 0;
               numWikiTokensSeen = 0;
               currentTokType = CATEGORY;
-              yybegin(CATEGORY_STATE); /* Break so we don't hit fall-through warning: */
+              yybegin(CATEGORY_STATE);
               break;
             }
           // fall through

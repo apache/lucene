@@ -43,7 +43,7 @@ public class HighlightsMatch extends QueryMatch {
 
   public static final MatcherFactory<HighlightsMatch> MATCHER =
       searcher ->
-          new CandidateMatcher<HighlightsMatch>(searcher) {
+          new CandidateMatcher<>(searcher) {
 
             @Override
             public void matchQuery(String queryId, Query matchQuery, Map<String, String> metadata)

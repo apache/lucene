@@ -651,7 +651,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
         }
       }
       disjunction =
-          new PriorityQueue<PostingsEnumAndOrd>(size) {
+          new PriorityQueue<>(size) {
             @Override
             protected boolean lessThan(PostingsEnumAndOrd a, PostingsEnumAndOrd b) {
               return a.postings.docID() < b.postings.docID();

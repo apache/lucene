@@ -125,9 +125,9 @@ public class BooleanQuery2ModifierNodeProcessor implements QueryNodeProcessor {
     QueryNode parent = node.getParent();
     if (node instanceof BooleanQueryNode) {
       if (parent instanceof BooleanQueryNode) {
-        node.setTag(TAG_REMOVE, Boolean.TRUE); // no precedence
+        node.setTag(TAG_REMOVE, true); // no precedence
       } else {
-        node.setTag(TAG_BOOLEAN_ROOT, Boolean.TRUE);
+        node.setTag(TAG_BOOLEAN_ROOT, true);
       }
     } else if (parent instanceof BooleanQueryNode) {
       if ((parent instanceof AndQueryNode) || (usingAnd && isDefaultBooleanQueryNode(parent))) {

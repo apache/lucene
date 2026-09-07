@@ -273,7 +273,7 @@ public final class CheckIndexDialogFactory implements DialogOpener.DialogFactory
           Executors.newFixedThreadPool(1, new NamedThreadFactory("check-index-dialog-check"));
 
       SwingWorker<CheckIndex.Status, Void> task =
-          new SwingWorker<CheckIndex.Status, Void>() {
+          new SwingWorker<>() {
 
             @Override
             protected CheckIndex.Status doInBackground() {
@@ -351,7 +351,7 @@ public final class CheckIndexDialogFactory implements DialogOpener.DialogFactory
           Executors.newFixedThreadPool(1, new NamedThreadFactory("check-index-dialog-repair"));
 
       SwingWorker<CheckIndex.Status, Void> task =
-          new SwingWorker<CheckIndex.Status, Void>() {
+          new SwingWorker<>() {
 
             @Override
             protected CheckIndex.Status doInBackground() {

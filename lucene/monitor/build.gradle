@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-apply plugin: 'java-library'
+
 
 description = 'Reverse-search implementation for monitoring and classification'
 

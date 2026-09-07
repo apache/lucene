@@ -25,6 +25,7 @@ import time
 import traceback
 import urllib.error
 import urllib.request
+from pathlib import Path
 from textwrap import dedent
 
 # Example: Checking out Revision e441a99009a557f82ea17ee9f9c3e9b89c75cee6 (refs/remotes/origin/master)
@@ -59,19 +60,19 @@ lastFailureCode = 0
 gitCheckoutSucceeded = False
 
 description = dedent("""\
-                     Must be run from a Lucene/Solr git workspace. Downloads the Jenkins
-                     log pointed to by the given URL, parses it for Git revision and failed
-                     Lucene/Solr tests, checks out the Git revision in the local workspace,
-                     groups the failed tests by module, then runs
-                     'ant test -Dtest.dups=%d -Dtests.class="*.test1[|*.test2[...]]" ...'
-                     in each module of interest, failing at the end if any of the runs fails.
-                     To control the maximum number of concurrent JVMs used for each module's
-                     test run, set 'tests.jvms', e.g. in ~/lucene.build.properties
-                     """)
+  Must be run from a Lucene/Solr git workspace. Downloads the Jenkins
+  log pointed to by the given URL, parses it for Git revision and failed
+  Lucene/Solr tests, checks out the Git revision in the local workspace,
+  groups the failed tests by module, then runs
+  'ant test -Dtest.dups=%d -Dtests.class="*.test1[|*.test2[...]]" ...'
+  in each module of interest, failing at the end if any of the runs fails.
+  To control the maximum number of concurrent JVMs used for each module's
+  test run, set 'tests.jvms', e.g. in ~/lucene.build.properties
+  """)
 defaultIters = 5
 
 
-def readConfig():
+def readConfig() -> argparse.Namespace:
   parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=description)
   parser.add_argument("url", metavar="URL", help="Points to the Jenkins log to parse")
   parser.add_argument("--no-git", dest="useGit", action="store_false", default=True, help='Do not run "git" at all')
@@ -79,7 +80,7 @@ def readConfig():
   return parser.parse_args()
 
 
-def runOutput(cmd: str):
+def runOutput(cmd: str) -> str:
   print("[repro] %s" % cmd)
   try:
     return subprocess.check_output(cmd.split(" "), universal_newlines=True).strip()
@@ -88,14 +89,19 @@ def runOutput(cmd: str):
 
 
 # Remembers non-zero exit code in lastFailureCode unless rememberFailure==False
-def run(cmd: str, rememberFailure: bool = True):
+def run(cmd: str, rememberFailure: bool = True) -> int:
   global lastFailureCode
   print("[repro] %s" % cmd)
-  code = os.system(cmd)
+  code = os.system(cmd)  # ty:ignore[deprecated]
   if code != 0 and rememberFailure:
     print("\n[repro] Setting last failure code to %d\n" % code)
     lastFailureCode = code
   return code
+
+
+antOptions: str
+branchFromLog: str | None
+revisionFromLog: str | None
 
 
 def fetchAndParseJenkinsLog(url: str, numRetries: int) -> dict[str, str]:
@@ -151,7 +157,7 @@ def fetchAndParseJenkinsLog(url: str, numRetries: int) -> dict[str, str]:
   return tests
 
 
-def prepareWorkspace(useGit: bool, gitRef: str | None):
+def prepareWorkspace(useGit: bool, gitRef: str | None) -> None:
   global gitCheckoutSucceeded
   if useGit:
     code = run("git fetch")
@@ -177,7 +183,7 @@ def prepareWorkspace(useGit: bool, gitRef: str | None):
     raise RuntimeError('ERROR: "ant clean" failed.  See above.')
 
 
-def groupTestsByModule(tests: dict[str, str]):
+def groupTestsByModule(tests: dict[str, str]) -> dict[str, set[str]]:
   modules: dict[str, set[str]] = {}
   for dir, _, files in os.walk("."):
     for file in files:
@@ -199,7 +205,7 @@ def groupTestsByModule(tests: dict[str, str]):
   return modules
 
 
-def runTests(testIters: int, modules: dict[str, set[str]], tests: dict[str, str]):
+def runTests(testIters: int, modules: dict[str, set[str]], tests: dict[str, str]) -> None:
   cwd = os.getcwd()
   testCmdline = 'ant test-nocompile -Dtests.dups=%d -Dtests.maxfailures=%d -Dtests.class="%s" -Dtests.showOutput=onerror %s %s'
   for module in modules:
@@ -217,7 +223,7 @@ def runTests(testIters: int, modules: dict[str, set[str]], tests: dict[str, str]
       os.chdir(cwd)
 
 
-def printAndMoveReports(testIters: int, newSubDir: str, location: str):
+def printAndMoveReports(testIters: int, newSubDir: str, location: str) -> dict[str, int]:
   failures: dict[str, int] = {}
   for start in ("lucene/build", "solr/build"):
     for dir, _, files in os.walk(start):
@@ -236,15 +242,15 @@ def printAndMoveReports(testIters: int, newSubDir: str, location: str):
                 break
           # have to play nice with 'ant clean'...
           newDirPath = os.path.join("repro-reports", newSubDir, dir)
-          os.makedirs(newDirPath, exist_ok=True)
-          os.rename(filePath, os.path.join(newDirPath, file))
+          Path(newDirPath).mkdir(exist_ok=True, parents=True)
+          _ = Path(filePath).rename(target=os.path.join(newDirPath, file))
   print("[repro] Failures%s:" % location)
   for testcase in sorted(failures, key=lambda t: (failures[t], t)):  # sort by failure count, then by testcase
     print("[repro]   %d/%d failed: %s" % (failures[testcase], testIters, testcase))
   return failures
 
 
-def getLocalGitBranch():
+def getLocalGitBranch() -> str:
   origGitBranch = runOutput("git rev-parse --abbrev-ref HEAD")
   if origGitBranch == "HEAD":  # In detached HEAD state
     origGitBranch = runOutput("git rev-parse HEAD")  # Use the SHA when not on a branch
@@ -252,7 +258,7 @@ def getLocalGitBranch():
   return origGitBranch
 
 
-def main():
+def main() -> None:
   config = readConfig()
   tests = fetchAndParseJenkinsLog(config.url, numRetries=2)
   localGitBranch = None

@@ -48,7 +48,7 @@ final class SegmentDocValues {
     SegmentReadState srs =
         new SegmentReadState(dvDir, si.info, infos, IOContext.DEFAULT, segmentSuffix);
     DocValuesFormat dvFormat = si.info.getCodec().docValuesFormat();
-    return new RefCount<DocValuesProducer>(dvFormat.fieldsProducer(srs)) {
+    return new RefCount<>(dvFormat.fieldsProducer(srs)) {
       @SuppressWarnings("synthetic-access")
       @Override
       protected void release() throws IOException {

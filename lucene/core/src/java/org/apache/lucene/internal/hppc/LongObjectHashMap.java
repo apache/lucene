@@ -447,7 +447,7 @@ public class LongObjectHashMap<VType>
     private int slot;
 
     public EntryIterator() {
-      cursor = new LongObjectCursor<VType>();
+      cursor = new LongObjectCursor<>();
       int seed = nextIterationSeed();
       increment = iterationIncrement(seed);
       slot = seed & mask;

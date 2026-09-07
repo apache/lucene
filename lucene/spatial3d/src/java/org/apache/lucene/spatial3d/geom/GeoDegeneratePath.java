@@ -35,7 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
 class GeoDegeneratePath extends GeoBasePath {
 
   /** The original list of path points */
-  protected final List<GeoPoint> points = new ArrayList<GeoPoint>();
+  protected final List<GeoPoint> points = new ArrayList<>();
 
   /** A list of SegmentEndpoints */
   protected List<SegmentEndpoint> endPoints;

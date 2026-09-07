@@ -66,7 +66,7 @@ public final class TestRuleMarkFailure implements TestRule {
 
   /** Expand from multi-exception wrappers. */
   private static List<Throwable> expandFromMultiple(Throwable t) {
-    return expandFromMultiple(t, new ArrayList<Throwable>());
+    return expandFromMultiple(t, new ArrayList<>());
   }
 
   /** Internal recursive routine. */

@@ -459,7 +459,7 @@ public class CharObjectHashMap<VType>
     private int slot;
 
     public EntryIterator() {
-      cursor = new CharObjectCursor<VType>();
+      cursor = new CharObjectCursor<>();
       int seed = nextIterationSeed();
       increment = iterationIncrement(seed);
       slot = seed & mask;

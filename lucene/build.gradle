@@ -16,7 +16,3 @@
  */
 
 description = 'Parent project for Apache Lucene Core'
-
-subprojects {
-  group "org.apache.lucene"
-}

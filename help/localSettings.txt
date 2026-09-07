@@ -1,8 +1,0 @@
-Local developer settings
-========================
-
-The first invocation of any task in Lucene's gradle build will generate
-and save a project-local 'gradle.properties' file from a template,
-with some default settings which you can modify.
-
-See your 'gradle.properties' file for more details of those settings.

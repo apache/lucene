@@ -592,7 +592,7 @@ public class MultiPhraseQuery extends Query {
     public UnionFullPostingsEnum(List<PostingsEnum> subs) {
       super(subs);
       this.posQueue =
-          new PriorityQueue<PostingsAndPosition>(subs.size()) {
+          new PriorityQueue<>(subs.size()) {
             @Override
             protected boolean lessThan(PostingsAndPosition a, PostingsAndPosition b) {
               return a.pos < b.pos;

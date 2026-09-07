@@ -235,7 +235,7 @@ public class PhraseHelper {
 
     // for each SpanQuery, grab it's Spans and put it into a PriorityQueue
     PriorityQueue<Spans> spansPriorityQueue =
-        new PriorityQueue<Spans>(spanQueries.size()) {
+        new PriorityQueue<>(spanQueries.size()) {
           @Override
           protected boolean lessThan(Spans a, Spans b) {
             return a.startPosition() <= b.startPosition();

@@ -744,7 +744,6 @@ class ClassicTokenizerImpl {
         switch (zzAction < 0 ? zzAction : ZZ_ACTION[zzAction]) {
           case 1:
             {
-              /* Break so we don't hit fall-through warning: */
               break; /* ignore */
             }
           // fall through

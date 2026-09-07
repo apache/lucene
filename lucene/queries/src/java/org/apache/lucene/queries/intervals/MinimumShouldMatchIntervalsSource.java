@@ -183,14 +183,14 @@ class MinimumShouldMatchIntervalsSource extends IntervalsSource {
       this.onMatch = onMatch;
 
       this.proximityQueue =
-          new PriorityQueue<IntervalIterator>(minShouldMatch) {
+          new PriorityQueue<>(minShouldMatch) {
             @Override
             protected boolean lessThan(IntervalIterator a, IntervalIterator b) {
               return a.start() < b.start() || (a.start() == b.start() && a.end() >= b.end());
             }
           };
       this.backgroundQueue =
-          new PriorityQueue<IntervalIterator>(subs.size()) {
+          new PriorityQueue<>(subs.size()) {
             @Override
             protected boolean lessThan(IntervalIterator a, IntervalIterator b) {
               return a.end() < b.end() || (a.end() == b.end() && a.start() >= b.start());

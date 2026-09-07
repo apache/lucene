@@ -13,17 +13,20 @@ export PYTHONDONTWRITEBYTECODE=true
 # don't self-check, don't ask questions
 PIP_INSTALL_ARGS=--disable-pip-version-check --no-input --upgrade
 
+# override to specific python executable if you need
+PYTHON?=python3
+
 # venv with dependencies in the standard location
 VENV=${PWD}/.venv
 
 # don't behave strangely if these files exist
-.PHONY: lint format reformat autofix ruff ruff-fix pyright env clean
+.PHONY: lint format reformat autofix ruff ruff-fix ty env clean smoke-test
 
 # list of directories we check
 SOURCES=$(wildcard *.py)
 
 # check formatting, linting, and types
-lint: format ruff pyright
+lint: format ruff ty
 
 # check all formatting
 format: env
@@ -44,7 +47,7 @@ autofix: ruff-fix reformat
 
 # lints sources
 ruff: env
-	# validate sources with ruff linter
+	# validate sources with ruff linter: if this fails, try "make autofix".
 	$(VENV)/bin/ruff check $(SOURCES)
 
 # fixes (safe) issues that are autofixable such as deprecated/renamed APIs
@@ -53,17 +56,26 @@ ruff-fix: env
 	$(VENV)/bin/ruff check --fix $(SOURCES)
 
 # checks types
-pyright: env
-	# type-check sources with basedpyright
-	$(VENV)/bin/basedpyright $(SOURCES)
+ty: env
+	# type-check sources with ty
+	$(VENV)/bin/ty check $(SOURCES)
+
+# runs smoketester against a release
+smoke-test: env
+	# ensure that you provided URL so that we know what to test
+	# run this command like: make smoke-test URL=https://dist.apache.org/...
+	test -n "$(URL)"
+	$(VENV)/bin/python smokeTestRelease.py $(URL)
 
 # rebuild venv if dependencies change
 env: $(VENV)/bin/activate
-$(VENV)/bin/activate: requirements.txt
+$(VENV)/bin/activate: requirements.txt Makefile
 	# remove any existing venv
 	rm -rf $(VENV)
-	# create new venv
-	python3 -m venv $(VENV)
+	# check that python meets minimum version requirements
+	$(PYTHON) -c "import sys; assert sys.version_info[0] == 3 and sys.version_info[1] >= 12, 'UPGRADE PYTHON'"
+	# create virtual environment
+	$(PYTHON) -m venv $(VENV)
 	# install dependencies into venv
 	$(VENV)/bin/pip install $(PIP_INSTALL_ARGS) -r requirements.txt
 	# adjust timestamp for safety

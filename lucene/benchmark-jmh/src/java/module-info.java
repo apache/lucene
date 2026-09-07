@@ -16,6 +16,9 @@
  */
 
 /** Lucene JMH benchmarks. */
+
+// jmh.core is not modularized and causes a warning. Suppressing it until it is modularized.
+@SuppressWarnings("requires-automatic")
 module org.apache.lucene.benchmark.jmh {
   requires jmh.core;
   requires jdk.unsupported;

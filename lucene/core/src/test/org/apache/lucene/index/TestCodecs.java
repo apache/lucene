@@ -606,7 +606,7 @@ public class TestCodecs extends LuceneTestCase {
 
     @Override
     public Iterator<String> iterator() {
-      return new Iterator<String>() {
+      return new Iterator<>() {
         int upto = -1;
 
         @Override

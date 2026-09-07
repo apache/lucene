@@ -160,7 +160,7 @@ abstract class DocValuesFieldUpdates implements Accountable {
     }
 
     PriorityQueue<Iterator> queue =
-        new PriorityQueue<Iterator>(subs.length) {
+        new PriorityQueue<>(subs.length) {
           @Override
           protected boolean lessThan(Iterator a, Iterator b) {
             // sort by smaller docID

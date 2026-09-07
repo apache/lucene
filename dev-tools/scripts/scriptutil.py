@@ -22,12 +22,13 @@ import time
 import urllib.request
 from collections.abc import Callable
 from enum import Enum
+from pathlib import Path
 from re import Match, Pattern
 from typing import Self, override
 
 
 class Version:
-  def __init__(self, major: int, minor: int, bugfix: int, prerelease: int):
+  def __init__(self, major: int, minor: int, bugfix: int, prerelease: int) -> None:
     super().__init__()
     self.major = major
     self.minor = minor
@@ -38,7 +39,7 @@ class Version:
     self.constant = "LUCENE_%d_%d_%d" % (self.major, self.minor, self.bugfix)
 
   @classmethod
-  def parse(cls, value: str):
+  def parse(cls, value: str) -> "Version":
     match = re.search(r"(\d+)\.(\d+).(\d+)(.1|.2)?", value)
     if match is None:
       raise argparse.ArgumentTypeError("Version argument must be of format x.y.z(.1|.2)?")
@@ -47,10 +48,10 @@ class Version:
     return Version(*parts)
 
   @override
-  def __str__(self):
+  def __str__(self) -> str:
     return self.dot
 
-  def make_previous_matcher(self, prefix: str = "", suffix: str = "", sep: str = "\\."):
+  def make_previous_matcher(self, prefix: str = "", suffix: str = "", sep: str = "\\.") -> Pattern:
     if self.is_bugfix_release():
       pattern = "%s%s%s%s%d" % (self.major, sep, self.minor, sep, self.bugfix - 1)
     elif self.is_minor_release():
@@ -60,30 +61,30 @@ class Version:
 
     return re.compile(prefix + "(" + pattern + ")" + suffix)
 
-  def is_bugfix_release(self):
+  def is_bugfix_release(self) -> bool:
     return self.bugfix != 0
 
-  def is_minor_release(self):
+  def is_minor_release(self) -> bool:
     return self.bugfix == 0 and self.minor != 0
 
-  def is_major_release(self):
+  def is_major_release(self) -> bool:
     return self.bugfix == 0 and self.minor == 0
 
-  def on_or_after(self, other: Self):
+  def on_or_after(self, other: Self) -> bool:
     return self.major > other.major or (
       self.major == other.major and (self.minor > other.minor or (self.minor == other.minor and (self.bugfix > other.bugfix or (self.bugfix == other.bugfix and self.prerelease >= other.prerelease))))
     )
 
-  def gt(self, other: Self):
+  def gt(self, other: Self) -> bool:
     return self.major > other.major or (self.major == other.major and self.minor > other.minor) or (self.major == other.major and self.minor == other.minor and self.bugfix > other.bugfix)
 
-  def is_back_compat_with(self, other: Self):
+  def is_back_compat_with(self, other: Self) -> bool:
     if not self.on_or_after(other):
       raise Exception("Back compat check disallowed for newer version: %s < %s" % (self, other))
     return other.major + 1 >= self.major
 
 
-def run(cmd: str, cwd: str | None = None):
+def run(cmd: str, cwd: str | None = None) -> str:
   try:
     output = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT, cwd=cwd)
   except subprocess.CalledProcessError as e:
@@ -92,7 +93,7 @@ def run(cmd: str, cwd: str | None = None):
   return output.decode("utf-8")
 
 
-def update_file(filename: str, line_re: Pattern[str], edit: Callable[[list[str], Match[str], str], bool | None], append: Callable[[list[str], bool], bool] | None = None):
+def update_file(filename: str, line_re: Pattern[str], edit: Callable[[list[str], Match[str], str], bool | None], append: Callable[[list[str], bool], bool] | None = None) -> bool:
   infile = open(filename)
   buffer: list[str] = []
 
@@ -122,7 +123,7 @@ class BranchType(Enum):
   release = 3
 
 
-def find_branch_type():
+def find_branch_type() -> BranchType:
   output = subprocess.check_output("git status", shell=True)
   for line in output.split(b"\n"):
     if line.startswith(b"On branch "):
@@ -140,7 +141,7 @@ def find_branch_type():
   raise Exception("Cannot run %s on feature branch" % sys.argv[0].rsplit("/", 1)[-1])
 
 
-def download(name: str, urlString: str, tmpDir: str, quiet: bool = False, force_clean: bool = True):
+def download(name: str, urlString: str, tmpDir: str, quiet: bool = False, force_clean: bool = True) -> None:
   if not quiet:
     print("Downloading %s" % urlString)
   startTime = time.time()
@@ -163,7 +164,7 @@ def download(name: str, urlString: str, tmpDir: str, quiet: bool = False, force_
     print("    %.1f MB in %.2f sec (%.1f MB/sec)" % (sizeMB, t, sizeMB / t))
 
 
-def attemptDownload(urlString: str, fileName: str):
+def attemptDownload(urlString: str, fileName: str) -> None:
   fIn = urllib.request.urlopen(urlString)
   fOut = open(fileName, "wb")
   success = False
@@ -183,15 +184,13 @@ def attemptDownload(urlString: str, fileName: str):
       os.remove(fileName)
 
 
-version_prop_re = re.compile(r'baseVersion\s*=\s*([\'"])(.*)\1')
-
-
-def find_current_version():
+def find_current_version() -> str:
+  version_prop_re = re.compile(r"version\.base=(.*)")
   script_path = os.path.dirname(os.path.realpath(__file__))
-  top_level_dir = os.path.join(os.path.abspath("%s/" % script_path), os.path.pardir, os.path.pardir)
-  match = version_prop_re.search(open("%s/build.gradle" % top_level_dir).read())
+  top_level_dir = os.path.join(Path("%s/" % script_path).resolve(), os.path.pardir, os.path.pardir)
+  match = version_prop_re.search(open("%s/build-options.properties" % top_level_dir).read())
   assert match
-  return match.group(2).strip()
+  return match.group(1).strip()
 
 
 if __name__ == "__main__":

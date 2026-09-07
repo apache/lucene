@@ -782,7 +782,7 @@ public class AnalyzingSuggester extends Lookup {
 
       Util.TopNSearcher<Pair<Long, BytesRef>> searcher;
       searcher =
-          new Util.TopNSearcher<Pair<Long, BytesRef>>(
+          new Util.TopNSearcher<>(
               fst, num - results.size(), num * maxAnalyzedPathsForOneInput, weightComparator) {
             private final Set<BytesRef> seen = new HashSet<>();
 
@@ -917,7 +917,7 @@ public class AnalyzingSuggester extends Lookup {
   }
 
   static final Comparator<Pair<Long, BytesRef>> weightComparator =
-      new Comparator<Pair<Long, BytesRef>>() {
+      new Comparator<>() {
         @Override
         public int compare(Pair<Long, BytesRef> left, Pair<Long, BytesRef> right) {
           return left.output1.compareTo(right.output1);

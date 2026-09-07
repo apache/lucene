@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-apply plugin: 'java-library'
+
 
 description = 'Index-time and Query-time joins for normalized content'
 

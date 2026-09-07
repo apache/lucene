@@ -41,7 +41,7 @@ public final class Multiset<T> extends AbstractCollection<T> {
   @Override
   public Iterator<T> iterator() {
     final Iterator<Map.Entry<T, Integer>> mapIterator = map.entrySet().iterator();
-    return new Iterator<T>() {
+    return new Iterator<>() {
 
       T current;
       int remaining;

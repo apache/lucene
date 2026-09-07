@@ -66,6 +66,11 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
 
     this.vectorUtilSupport = new PanamaVectorUtilSupport();
 
+    logIncubatorSetup();
+  }
+
+  @SuppressForbidden(reason = "We log at info level here, it's fine.")
+  private void logIncubatorSetup() {
     var log = Logger.getLogger(getClass().getName());
     log.info(
         String.format(

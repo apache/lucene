@@ -208,7 +208,7 @@ public final class OptimizeIndexDialogFactory implements DialogOpener.DialogFact
           Executors.newFixedThreadPool(1, new NamedThreadFactory("optimize-index-dialog"));
 
       SwingWorker<Void, Void> task =
-          new SwingWorker<Void, Void>() {
+          new SwingWorker<>() {
 
             @Override
             protected Void doInBackground() {

@@ -1,0 +1,14 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: java-license
+language: java
+rule:
+  # detect a license for non-legal purposes (e.g. style)
+  # make this more sophisticated as needed
+  kind: block_comment
+  # must be top-level
+  inside:
+    kind: program
+  any:
+    - regex: Unless required by applicable law
+    - regex: FITNESS FOR A PARTICULAR PURPOSE

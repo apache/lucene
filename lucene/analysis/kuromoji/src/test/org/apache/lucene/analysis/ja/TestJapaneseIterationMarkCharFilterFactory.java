@@ -33,7 +33,7 @@ public class TestJapaneseIterationMarkCharFilterFactory extends BaseTokenStreamT
   public void testIterationMarksWithKeywordTokenizer() throws IOException {
     final String text = "時々馬鹿々々しいところゞゝゝミスヾ";
     JapaneseIterationMarkCharFilterFactory filterFactory =
-        new JapaneseIterationMarkCharFilterFactory(new HashMap<String, String>());
+        new JapaneseIterationMarkCharFilterFactory(new HashMap<>());
     Reader filter = filterFactory.create(new StringReader(text));
     TokenStream tokenStream = new MockTokenizer(MockTokenizer.KEYWORD, false);
     ((Tokenizer) tokenStream).setReader(filter);
@@ -41,12 +41,11 @@ public class TestJapaneseIterationMarkCharFilterFactory extends BaseTokenStreamT
   }
 
   public void testIterationMarksWithJapaneseTokenizer() throws IOException {
-    JapaneseTokenizerFactory tokenizerFactory =
-        new JapaneseTokenizerFactory(new HashMap<String, String>());
+    JapaneseTokenizerFactory tokenizerFactory = new JapaneseTokenizerFactory(new HashMap<>());
     tokenizerFactory.inform(new StringMockResourceLoader(""));
 
     JapaneseIterationMarkCharFilterFactory filterFactory =
-        new JapaneseIterationMarkCharFilterFactory(new HashMap<String, String>());
+        new JapaneseIterationMarkCharFilterFactory(new HashMap<>());
     Reader filter = filterFactory.create(new StringReader("時々馬鹿々々しいところゞゝゝミスヾ"));
     TokenStream tokenStream = tokenizerFactory.create(newAttributeFactory());
     ((Tokenizer) tokenStream).setReader(filter);
@@ -54,8 +53,7 @@ public class TestJapaneseIterationMarkCharFilterFactory extends BaseTokenStreamT
   }
 
   public void testKanjiOnlyIterationMarksWithJapaneseTokenizer() throws IOException {
-    JapaneseTokenizerFactory tokenizerFactory =
-        new JapaneseTokenizerFactory(new HashMap<String, String>());
+    JapaneseTokenizerFactory tokenizerFactory = new JapaneseTokenizerFactory(new HashMap<>());
     tokenizerFactory.inform(new StringMockResourceLoader(""));
 
     Map<String, String> filterArgs = new HashMap<>();
@@ -72,8 +70,7 @@ public class TestJapaneseIterationMarkCharFilterFactory extends BaseTokenStreamT
   }
 
   public void testKanaOnlyIterationMarksWithJapaneseTokenizer() throws IOException {
-    JapaneseTokenizerFactory tokenizerFactory =
-        new JapaneseTokenizerFactory(new HashMap<String, String>());
+    JapaneseTokenizerFactory tokenizerFactory = new JapaneseTokenizerFactory(new HashMap<>());
     tokenizerFactory.inform(new StringMockResourceLoader(""));
 
     Map<String, String> filterArgs = new HashMap<>();

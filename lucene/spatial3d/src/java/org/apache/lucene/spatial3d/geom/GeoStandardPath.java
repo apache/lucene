@@ -44,7 +44,7 @@ class GeoStandardPath extends GeoBasePath {
   protected final double cosAngle;
 
   /** The original list of path points */
-  protected final List<GeoPoint> points = new ArrayList<GeoPoint>();
+  protected final List<GeoPoint> points = new ArrayList<>();
 
   /** The b-tree of PathComponents */
   protected PathComponent rootComponent;
