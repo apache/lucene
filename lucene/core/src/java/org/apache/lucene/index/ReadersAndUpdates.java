@@ -174,7 +174,9 @@ final class ReadersAndUpdates {
 
     fieldUpdates.add(update);
 
-    if (isMerging) {
+    // With overlays enabled the merge carry-over reconstructs updates from disk, so we skip the
+    // in-heap buffer entirely; otherwise buffer a copy for the running merge to carry over.
+    if (isMerging && config.getMaxDocValuesOverlays() == 0) {
       fieldUpdates = mergingDVUpdates.get(update.field);
       if (fieldUpdates == null) {
         fieldUpdates = new ArrayList<>();
@@ -182,6 +184,18 @@ final class ReadersAndUpdates {
       }
       fieldUpdates.add(update);
     }
+  }
+
+  /**
+   * Copies of the currently-pending (resolved but not yet written) doc-values updates, keyed by
+   * field. Returning copies lets the merge carry-over read them without holding this monitor.
+   */
+  synchronized Map<String, List<DocValuesFieldUpdates>> getPendingDVUpdatesSnapshot() {
+    Map<String, List<DocValuesFieldUpdates>> copy = new HashMap<>();
+    for (Map.Entry<String, List<DocValuesFieldUpdates>> ent : pendingDVUpdates.entrySet()) {
+      copy.put(ent.getKey(), new ArrayList<>(ent.getValue()));
+    }
+    return copy;
   }
 
   public synchronized long getNumDVUpdates() {
@@ -1015,14 +1029,17 @@ final class ReadersAndUpdates {
     // We must carry over any still-pending DV updates because they were not
     // successfully written, e.g. because there was a hole in the delGens,
     // or they arrived after we wrote all DVs for merge but before we set
-    // isMerging here:
-    for (Map.Entry<String, List<DocValuesFieldUpdates>> ent : pendingDVUpdates.entrySet()) {
-      List<DocValuesFieldUpdates> mergingUpdates = mergingDVUpdates.get(ent.getKey());
-      if (mergingUpdates == null) {
-        mergingUpdates = new ArrayList<>();
-        mergingDVUpdates.put(ent.getKey(), mergingUpdates);
+    // isMerging here. With overlays enabled the carry-over reads pending updates from disk at merge
+    // commit instead, so we skip seeding the in-heap buffer:
+    if (config.getMaxDocValuesOverlays() == 0) {
+      for (Map.Entry<String, List<DocValuesFieldUpdates>> ent : pendingDVUpdates.entrySet()) {
+        List<DocValuesFieldUpdates> mergingUpdates = mergingDVUpdates.get(ent.getKey());
+        if (mergingUpdates == null) {
+          mergingUpdates = new ArrayList<>();
+          mergingDVUpdates.put(ent.getKey(), mergingUpdates);
+        }
+        mergingUpdates.addAll(ent.getValue());
       }
-      mergingUpdates.addAll(ent.getValue());
     }
 
     SegmentReader reader = getReader(context);
