@@ -220,8 +220,9 @@ public final class ByteBuffersDataInput extends DataInput
       while (len > 0) {
         ByteBuffer block = blocks[blockIndex(absPos)];
         int blockPosition = blockOffset(absPos);
-        int chunk = Math.min(len, block.capacity() - blockPosition);
-        if (chunk == 0) {
+        // Use block's limit to bound the read as the last block may only be partially filled.
+        int chunk = Math.min(len, block.limit() - blockPosition);
+        if (chunk <= 0) {
           throw new EOFException();
         }
 
