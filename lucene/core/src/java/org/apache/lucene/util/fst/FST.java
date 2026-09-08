@@ -420,6 +420,13 @@ public final class FST<T> implements Accountable {
     this(metadata, new OnHeapFSTStore(DEFAULT_MAX_BLOCK_BITS, in, metadata.numBytes));
   }
 
+  /**
+   * Load a previously saved FST with a DataInput for metadata using a {@link DirectBufferFSTStore}.
+   */
+  public static <T> FST<T> loadDirect(FSTMetadata<T> metadata, DataInput in) throws IOException {
+    return fromFSTReader(metadata, new DirectBufferFSTStore(in, metadata.numBytes));
+  }
+
   /** Create the FST with a metadata object and a FSTReader. */
   FST(FSTMetadata<T> metadata, FSTReader fstReader) {
     assert fstReader != null;
