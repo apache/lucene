@@ -263,7 +263,9 @@ public class OptimizedScalarQuantizer {
       float[] centroid) {
     int nSteps = (1 << bits) - 1;
     double step = (upperInterval - lowerInterval) / nSteps;
-    for (int h = 0; h < quantized.length; h++) {
+    // The quantized input may hold rounded-up dimensions for packed encodings; the output length
+    // defines how many are real.
+    for (int h = 0; h < dequantized.length; h++) {
       double xi = (double) (quantized[h] & 0xFF) * step + lowerInterval;
       dequantized[h] = (float) (xi + centroid[h]);
     }
@@ -293,7 +295,9 @@ public class OptimizedScalarQuantizer {
       float[] centroid) {
     int nSteps = (1 << bits) - 1;
     double step = (upperInterval - lowerInterval) / nSteps;
-    for (int h = 0; h < quantized.length; h++) {
+    // The quantized input may hold rounded-up dimensions for packed encodings; the output length
+    // defines how many are real.
+    for (int h = 0; h < dequantized.length; h++) {
       double xi = (double) (quantized[h] & 0xFF) * step + lowerInterval;
       dequantized[h] = Float.floatToFloat16((float) (xi + centroid[h]));
     }
