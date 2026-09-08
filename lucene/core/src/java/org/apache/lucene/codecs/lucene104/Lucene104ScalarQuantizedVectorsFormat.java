@@ -44,6 +44,10 @@ import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncod
  *       quantized vectors in the index.
  *   <li>Transforming the half-byte quantized query vectors in such a way that the comparison with
  *       single bit vectors can be done with bit arithmetic.
+ *   <li>Data blind mode: vectors are quantized without centering and float vectors are discarded.
+ *       This reduces disk space requirements and makes merges faster since the vectors never need
+ *       to be re-quantized, but also produces less accurate distance estimates and is less flexible
+ *       if the writer changes.
  * </ul>
  *
  * A previous work related to improvements over regular LVQ is <a
@@ -91,12 +95,8 @@ import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncod
  *   <li>The sparse vector information, if required, mapping vector ordinal to doc ID
  * </ul>
  *
- * <p>There are two metadata versions. Version 0 (written when {@code enableCentering} is true)
- * always stores the centroid and its square magnitude. Version 1 (written when {@code
- * enableCentering} is false, i.e. data-blind mode) omits both and a zero centroid is substituted at
- * read time. In data-blind mode no full-precision float vectors are written; merges between
- * data-blind segments require a matching {@link ScalarEncoding}, since re-quantization would need
- * float vectors that were never stored.
+ * <p>{@code enableCentering} manifests in the version: when true we write verison 0 and when false
+ * we write version 1.
  *
  * @lucene.experimental
  */
