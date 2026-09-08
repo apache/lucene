@@ -24,6 +24,7 @@ import static org.hamcrest.Matchers.oneOf;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -46,6 +47,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -684,6 +686,179 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
         }
       }
     }
+  }
+
+  /**
+   * Merging a data-blind (quantized-only) segment together with a segment that still stores raw
+   * floats must pass the data-blind segment's already-quantized bytes straight through, rather than
+   * dequantizing and re-quantizing them (which would only add loss).
+   */
+  public void testDataBlindMixedMergeKeepsQuantizedBytes() throws Exception {
+    assertDataBlindMixedMergeKeepsQuantizedBytes(false);
+  }
+
+  /**
+   * fp16 counterpart of {@link #testDataBlindMixedMergeKeepsQuantizedBytes}.
+   */
+  public void testDataBlindFloat16MixedMergeKeepsQuantizedBytes() throws Exception {
+    assertDataBlindMixedMergeKeepsQuantizedBytes(true);
+  }
+
+  private void assertDataBlindMixedMergeKeepsQuantizedBytes(boolean float16Data) throws Exception {
+    String fieldName = "field";
+    int numVectorsPerSegment = random().nextInt(4, 50);
+    int dims = float16Data ? 2 * random().nextInt(2, 33) : random().nextInt(4, 65);
+    VectorSimilarityFunction similarityFunction = randomSimilarity();
+    try (Directory dir = newDirectory()) {
+      // One segment with no raw floats (data-blind) and one written by the centered writer (keeps
+      // raw floats). Segment-name order between the two writes is not asserted.
+      try (IndexWriter w =
+          new IndexWriter(
+              dir,
+              newIndexWriterConfig()
+                  .setMergePolicy(NoMergePolicy.INSTANCE)
+                  .setUseCompoundFile(false)
+                  .setCodec(dataBlindCodec()))) {
+        addVectorDocs(w, fieldName, dims, similarityFunction, numVectorsPerSegment, float16Data);
+        w.commit();
+      }
+      try (IndexWriter w =
+          new IndexWriter(
+              dir,
+              newIndexWriterConfig()
+                  .setMergePolicy(NoMergePolicy.INSTANCE)
+                  .setUseCompoundFile(false)
+                  .setCodec(
+                      TestUtil.alwaysKnnVectorsFormat(
+                          new Lucene104ScalarQuantizedVectorsFormat(encoding, true))))) {
+        addVectorDocs(w, fieldName, dims, similarityFunction, numVectorsPerSegment, float16Data);
+        w.commit();
+      }
+      // Capture the data-blind segment's stored quantized bytes and corrective terms.
+      List<byte[]> sourceQuantized = new ArrayList<>();
+      List<OptimizedScalarQuantizer.QuantizationResult> sourceCorrections = new ArrayList<>();
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        // Exactly one leaf must be data-blind (no raw floats); the other keeps raw floats.
+        boolean foundDataBlindLeaf = false;
+        for (LeafReaderContext leaf : reader.leaves()) {
+          Lucene104ScalarQuantizedVectorsReader vectorsReader =
+              (Lucene104ScalarQuantizedVectorsReader)
+                  ((CodecReader) leaf.reader())
+                      .getVectorReader()
+                      .unwrapReaderForField(fieldName);
+          boolean hasRaw =
+              float16Data
+                  ? vectorsReader.hasRawFloat16Vectors(fieldName)
+                  : vectorsReader.hasRawFloatVectors(fieldName);
+          if (hasRaw == false) {
+            foundDataBlindLeaf = true;
+            captureQuantized(
+                vectorsReader.getQuantizedVectorValues(fieldName), sourceQuantized, sourceCorrections);
+          }
+        }
+        assertTrue("expected one data-blind segment", foundDataBlindLeaf);
+      }
+      assertEquals(numVectorsPerSegment, sourceQuantized.size());
+      // Merge both segments through a data-blind writer.
+      try (IndexWriter w =
+          new IndexWriter(
+              dir,
+              newIndexWriterConfig()
+                  .setMergeScheduler(new SerialMergeScheduler())
+                  .setCodec(dataBlindCodec()))) {
+        w.forceMerge(1);
+        try (DirectoryReader reader = DirectoryReader.open(w)) {
+          assertEquals(1, reader.leaves().size());
+          Lucene104ScalarQuantizedVectorsReader vectorsReader =
+              (Lucene104ScalarQuantizedVectorsReader)
+                  ((CodecReader) getOnlyLeafReader(reader))
+                      .getVectorReader()
+                      .unwrapReaderForField(fieldName);
+          QuantizedByteVectorValues qvv = vectorsReader.getQuantizedVectorValues(fieldName);
+          assertEquals(2 * numVectorsPerSegment, qvv.size());
+          List<byte[]> mergedVectors = new ArrayList<>();
+          List<OptimizedScalarQuantizer.QuantizationResult> mergedCorrections = new ArrayList<>();
+          captureQuantized(qvv, mergedVectors, mergedCorrections);
+          // The data-blind segment's vectors must appear contiguously and untouched (the pass
+          // through preserves byte and correction terms exactly; re-quantizing them would not).
+          // The merged block position is not assertable, so accept either a leading or trailing
+          // block.
+          boolean leading =
+              quantizedBlockEquals(
+                  sourceQuantized, sourceCorrections, mergedVectors, mergedCorrections, 0);
+          boolean trailing =
+              quantizedBlockEquals(
+                  sourceQuantized,
+                  sourceCorrections,
+                  mergedVectors,
+                  mergedCorrections,
+                  numVectorsPerSegment);
+          assertTrue(
+              "data-blind quantized bytes must be passed through untouched", leading || trailing);
+        }
+      }
+    }
+  }
+
+  private void addVectorDocs(
+      IndexWriter w,
+      String field,
+      int dims,
+      VectorSimilarityFunction similarity,
+      int count,
+      boolean float16Data)
+      throws IOException {
+    if (float16Data) {
+      addFloat16VectorDocs(w, field, dims, similarity, count);
+    } else {
+      addFloatVectorDocs(w, field, dims, similarity, count);
+    }
+  }
+
+  private static void captureQuantized(
+      QuantizedByteVectorValues qvv,
+      List<byte[]> vectors,
+      List<OptimizedScalarQuantizer.QuantizationResult> corrections)
+      throws IOException {
+    KnnVectorValues.DocIndexIterator it = qvv.iterator();
+    for (int doc = it.nextDoc(); doc != NO_MORE_DOCS; doc = it.nextDoc()) {
+      vectors.add(qvv.vectorValue(it.index()).clone());
+      corrections.add(qvv.getCorrectiveTerms(it.index()));
+    }
+  }
+
+  private static boolean quantizedBlockEquals(
+      List<byte[]> expectedVectors,
+      List<OptimizedScalarQuantizer.QuantizationResult> expectedCorrections,
+      List<byte[]> actualVectors,
+      List<OptimizedScalarQuantizer.QuantizationResult> actualCorrections,
+      int offset) {
+    if (offset + expectedVectors.size() > actualVectors.size()) {
+      return false;
+    }
+    for (int i = 0; i < expectedVectors.size(); i++) {
+      if (Arrays.equals(expectedVectors.get(i), actualVectors.get(offset + i)) == false) {
+        return false;
+      }
+      var expected = expectedCorrections.get(i);
+      var actual = actualCorrections.get(offset + i);
+      if (Float.floatToIntBits(expected.lowerInterval())
+          != Float.floatToIntBits(actual.lowerInterval())) {
+        return false;
+      }
+      if (Float.floatToIntBits(expected.upperInterval())
+          != Float.floatToIntBits(actual.upperInterval())) {
+        return false;
+      }
+      if (Float.floatToIntBits(expected.additionalCorrection())
+          != Float.floatToIntBits(actual.additionalCorrection())) {
+        return false;
+      }
+      if (expected.quantizedComponentSum() != actual.quantizedComponentSum()) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /**

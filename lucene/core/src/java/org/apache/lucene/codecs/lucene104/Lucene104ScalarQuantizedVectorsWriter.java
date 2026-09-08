@@ -346,6 +346,24 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     return new QuantizedFloatVectorValues(vectorValues, quantizer, encoding, centroid);
   }
 
+  /**
+   * Returns a view that quantizes a single segment's float vectors against {@code centroid} using
+   * this writer's encoding, without consulting any quantized bytes the segment may already store.
+   */
+  private QuantizedFloatVectorValues quantizeFromFloats(
+      KnnVectorsReader reader, FieldInfo fieldInfo, float[] centroid) throws IOException {
+    OptimizedScalarQuantizer quantizer =
+        new OptimizedScalarQuantizer(fieldInfo.getVectorSimilarityFunction());
+    FloatVectorValues vectorValues =
+        fieldInfo.getVectorEncoding() == VectorEncoding.FLOAT16
+            ? new Float16AsFloatVectorValues(reader.getFloat16VectorValues(fieldInfo.name))
+            : reader.getFloatVectorValues(fieldInfo.name);
+    if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
+      vectorValues = new NormalizedFloatVectorValues(vectorValues);
+    }
+    return new QuantizedFloatVectorValues(vectorValues, quantizer, encoding, centroid);
+  }
+
   @Override
   public void mergeOneFlatVectorField(FieldInfo fieldInfo, MergeState mergeState)
       throws IOException {
@@ -390,20 +408,29 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   private void mergeOneFlatVectorFieldDataBlind(FieldInfo fieldInfo, MergeState mergeState)
       throws IOException {
     float[] zeroCentroid = new float[fieldInfo.getVectorDimension()];
-    // Classify each contributing segment as quantized-only or re-quantizable (has raw floats).
-    // Quantized-only segments must have a matching encoding; otherwise re-quantization from raw
-    // floats would be required, which is not possible when raw floats were never written.
-    boolean anyHasRawFloats = false;
+    // Build one merged view where, per contributing segment, either its existing quantized bytes
+    // are passed through or its float vectors are quantized fresh. Inputs already quantized to
+    // {@code encoding} against a zero centroid (data-blind segments) are copied directly; they are
+    // never dequantized and re-quantized, which would only add loss. Segments with raw floats are
+    // quantized fresh, as their stored bytes live in a different (centered) quantization space.
+    List<QuantizedByteVectorValuesSub> subs = new ArrayList<>();
     for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
       KnnVectorsReader reader = mergeState.knnVectorsReaders[i];
       if (reader == null) {
         continue;
       }
+      QuantizedByteVectorValues values;
       if (hasRawVectorValues(reader, fieldInfo)) {
-        anyHasRawFloats = true;
+        // Segment stored full-precision floats; quantize them against the zero centroid.
+        values = quantizeFromFloats(reader, fieldInfo, zeroCentroid);
       } else {
         QuantizedByteVectorValues qvv = getQuantizedVectorValues(reader, fieldInfo.name);
-        if (qvv != null && qvv.getScalarEncoding() != encoding) {
+        if (qvv == null || qvv.size() == 0) {
+          continue;
+        }
+        if (qvv.getScalarEncoding() != encoding) {
+          // Re-quantization from raw floats would be required, which is not possible when raw
+          // floats were never written.
           throw new IllegalStateException(
               "Cannot merge field \""
                   + fieldInfo.name
@@ -413,22 +440,23 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
                   + encoding
                   + ": re-quantization requires raw float vectors");
         }
+        float[] centroid = getCentroid(reader, fieldInfo.name);
+        if (centroid != null && isAllZero(centroid)) {
+          // Quantized-only segment whose bytes already match the output format (encoding and zero
+          // centroid): copy them directly.
+          values = qvv;
+        } else {
+          // Bytes were produced against a non-zero (or unknown) centroid, so they cannot be passed
+          // through into the zero-centroid output; re-quantize from floats.
+          values = quantizeFromFloats(reader, fieldInfo, zeroCentroid);
+        }
       }
+      subs.add(new QuantizedByteVectorValuesSub(mergeState.docMaps[i], values));
     }
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
-    DocsWithFieldSet docsWithField;
-    if (anyHasRawFloats) {
-      // At least one segment has raw floats; use the float path with zero centroid.
-      // Quantized-only segments serve reconstructed floats via getFloatVectorValues().
-      QuantizedByteVectorValues quantizedVectorValues =
-          mergedQuantizedVectorValues(fieldInfo, mergeState, zeroCentroid);
-      docsWithField = writeVectorData(vectorData, quantizedVectorValues);
-    } else {
-      // All segments are quantized-only with matching encoding: copy bytes directly.
-      MergedQuantizedByteVectorValues mergedQBVV =
-          MergedQuantizedByteVectorValues.merge(fieldInfo, mergeState, zeroCentroid, encoding);
-      docsWithField = writeVectorData(vectorData, mergedQBVV);
-    }
+    MergedQuantizedByteVectorValues mergedQBVV =
+        MergedQuantizedByteVectorValues.merge(mergeState, zeroCentroid, encoding, subs);
+    DocsWithFieldSet docsWithField = writeVectorData(vectorData, mergedQBVV);
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
     // centroidDp is 0 (zero centroid); the data-blind metadata omits it and the centroid.
     writeMeta(
@@ -1217,21 +1245,17 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       this.scalarEncoding = scalarEncoding;
     }
 
+    /**
+     * Merges the pre-built per-segment {@link QuantizedByteVectorValuesSub}s in doc order. Each sub
+     * contributes either a segment's stored quantized bytes (passed through untouched) or freshly
+     * quantized values; the caller decides which per segment.
+     */
     static MergedQuantizedByteVectorValues merge(
-        FieldInfo fieldInfo, MergeState mergeState, float[] centroid, ScalarEncoding encoding)
+        MergeState mergeState,
+        float[] centroid,
+        ScalarEncoding encoding,
+        List<QuantizedByteVectorValuesSub> subs)
         throws IOException {
-      List<QuantizedByteVectorValuesSub> subs = new ArrayList<>();
-      for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
-        KnnVectorsReader reader = mergeState.knnVectorsReaders[i];
-        if (reader == null) {
-          continue;
-        }
-        QuantizedByteVectorValues qbvv = getQuantizedVectorValues(reader, fieldInfo.name);
-        if (qbvv == null || qbvv.size() == 0) {
-          continue;
-        }
-        subs.add(new QuantizedByteVectorValuesSub(mergeState.docMaps[i], qbvv));
-      }
       return new MergedQuantizedByteVectorValues(subs, mergeState, centroid, encoding);
     }
 
