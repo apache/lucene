@@ -35,6 +35,7 @@ import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.InfoStream;
+import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.hnsw.HnswUtil.Component;
 
 /**
@@ -419,8 +420,21 @@ public class HnswGraphBuilder implements HnswBuilder {
      */
     NeighborArray neighbors = hnsw.getNeighbors(level, node);
     int maxConnOnLevel = level == 0 ? M * 2 : M;
-    boolean[] mask =
-        selectAndLinkDiverse(node, neighbors, candidates, maxConnOnLevel, scorer, isLinkRepair);
+    boolean[] mask;
+    if (isLinkRepair && hnswLock != null) {
+      // A repaired node is already discoverable, so lock its own array against a concurrent
+      // reciprocal write.
+      Lock selfLock = hnswLock.write(level, node);
+      try {
+        mask =
+            selectAndLinkDiverse(node, neighbors, candidates, maxConnOnLevel, scorer, isLinkRepair);
+      } finally {
+        selfLock.unlock();
+      }
+    } else {
+      mask =
+          selectAndLinkDiverse(node, neighbors, candidates, maxConnOnLevel, scorer, isLinkRepair);
+    }
 
     // Link the selected nodes to the new node, and the new node to the selected nodes (again
     // applying diversity heuristic)
@@ -677,42 +691,58 @@ public class HnswGraphBuilder implements HnswBuilder {
    *   <li>Add diverse neighbors using the HNSW heuristic selection algorithm
    * </ol>
    *
-   * <p>If a node has no neighbors at all, it cannot be repaired at this level and will rely on the
-   * rebalancing phase.
+   * <p>A node with no neighbors is instead connected from scratch via {@link #addConnections}.
    *
-   * @param disconnectedNodes list of node ordinals that need additional neighbors
+   * <p>When {@link #hnswLock} is set (concurrent repair) each node's existing neighbors are
+   * snapshot under its read lock, since another worker may be adding a reciprocal link into the
+   * same array.
+   *
+   * @param disconnectedNodes node ordinals that need additional neighbors
    * @param level the level at which to repair connections
    * @param scorer vector similarity scorer for distance calculations
    * @throws IOException if an I/O error occurs during search operations
    */
   void fixDisconnectedNodes(
-      List<Integer> disconnectedNodes, int level, UpdateableRandomVectorScorer scorer)
+      IntsRef disconnectedNodes, int level, UpdateableRandomVectorScorer scorer)
       throws IOException {
-    if (disconnectedNodes.isEmpty()) return;
-
     int beamWidth = beamCandidates.k();
     GraphBuilderKnnCollector candidates = new GraphBuilderKnnCollector(beamWidth);
     NeighborArray scratchArray = new NeighborArray(beamWidth, false);
 
-    for (int node : disconnectedNodes) {
+    for (int i = disconnectedNodes.offset;
+        i < disconnectedNodes.offset + disconnectedNodes.length;
+        i++) {
+      int node = disconnectedNodes.ints[i];
       maybeAbort();
       scorer.setScoringOrdinal(node);
-      NeighborArray existingNeighbors = hnsw.getNeighbors(level, node);
 
-      // Only repair if node has at least one neighbor to use as entry point
-      if (existingNeighbors.size() > 0) {
-        // Use all existing neighbors as entry points for search
-        int[] entryPoints = new int[existingNeighbors.size()];
-        System.arraycopy(existingNeighbors.nodes(), 0, entryPoints, 0, existingNeighbors.size());
+      int[] entryPoints;
+      if (hnswLock != null) {
+        Lock readLock = hnswLock.read(level, node);
+        try {
+          NeighborArray existingNeighbors = hnsw.getNeighbors(level, node);
+          int size = existingNeighbors.size();
+          entryPoints = new int[size];
+          System.arraycopy(existingNeighbors.nodes(), 0, entryPoints, 0, size);
+        } finally {
+          readLock.unlock();
+        }
+      } else {
+        NeighborArray existingNeighbors = hnsw.getNeighbors(level, node);
+        int size = existingNeighbors.size();
+        entryPoints = new int[size];
+        System.arraycopy(existingNeighbors.nodes(), 0, entryPoints, 0, size);
+      }
 
+      // Use all existing neighbors as entry points for search
+      if (entryPoints.length > 0) {
         // Search from entry points to find candidate neighbors
         graphSearcher.searchLevel(candidates, scorer, level, entryPoints, hnsw, null);
         popToScratch(candidates, scratchArray);
-
         // Add diverse neighbors using HNSW heuristic (prunes similar neighbors)
         addDiverseNeighbors(level, node, scratchArray, scorer, true);
       } else {
-        // Node has no nighbors, add connections from scratch
+        // Node has no neighbors, add connections from scratch
         addConnections(node, level, scorer);
       }
 
