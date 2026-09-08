@@ -139,6 +139,36 @@ public abstract class KnnVectorsReader implements Closeable {
   public void finishMerge() throws IOException {}
 
   /**
+   * Returns the number of indexed vectors for the given field in this segment.
+   *
+   * <p>This has the same meaning as {@code get*VectorValues(field).size()}: the number of vector
+   * ordinals stored for {@code fieldInfo} in this segment.
+   *
+   * <p>Standard vector formats read this from segment metadata without opening vector values. The
+   * default implementation opens vector values as a fallback; callers that need to avoid that I/O
+   * should use a reader that overrides this method.
+   *
+   * <p>Opening vector values may read index data from storage and prefetch into memory, especially
+   * for sparse fields. That cost is why this metadata-only path exists, analogous to how doc values
+   * expose counts through {@link org.apache.lucene.index.DocValuesSkipper#docCount()} rather than
+   * iterating values.
+   *
+   * @param fieldInfo the fieldInfo
+   * @return the number of indexed vectors for the field
+   * @throws IllegalArgumentException if the field is not vector-indexed in this segment
+   */
+  public int getVectorCount(FieldInfo fieldInfo) throws IOException {
+    if (fieldInfo.getVectorDimension() <= 0) {
+      throw new IllegalArgumentException("field=\"" + fieldInfo.name + "\" not found");
+    }
+    return switch (fieldInfo.getVectorEncoding()) {
+      case FLOAT32 -> getFloatVectorValues(fieldInfo.name).size();
+      case BYTE -> getByteVectorValues(fieldInfo.name).size();
+      case FLOAT16 -> getFloat16VectorValues(fieldInfo.name).size();
+    };
+  }
+
+  /**
    * Returns the desired size of off-heap memory for the given field. This size can be used to help
    * determine the memory requirements for optimal search performance, which can be greatly affected
    * by page faults when not enough memory is available.

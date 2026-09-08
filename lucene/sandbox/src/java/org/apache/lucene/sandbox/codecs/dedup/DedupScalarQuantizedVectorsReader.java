@@ -536,6 +536,15 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
         entry.quantizedBlock().quantizedDataSize());
   }
 
+  @Override
+  public int getVectorCount(FieldInfo fieldInfo) {
+    FieldEntry entry = fields.get(fieldInfo.name);
+    if (entry == null) {
+      throw new IllegalArgumentException("field=\"" + fieldInfo.name + "\" not found");
+    }
+    return entry.fieldInfo().vectorCount();
+  }
+
   // package-private for testing
   record FieldEntry(ReadFieldInfo fieldInfo, GroupInfo groupInfo, QuantizedBlock quantizedBlock) {
     private static final long SHALLOW_SIZE =

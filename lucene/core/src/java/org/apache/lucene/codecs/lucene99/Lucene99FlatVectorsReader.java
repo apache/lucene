@@ -196,8 +196,13 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    CodecUtil.checksumEntireFile(vectorData);
+  public int getVectorCount(FieldInfo fieldInfo) {
+    return getFieldEntryOrThrow(fieldInfo.name).size();
+  }
+
+  @Override
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+    CodecUtil.checksumEntireFile(vectorData, merge);
   }
 
   @Override

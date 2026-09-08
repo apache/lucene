@@ -599,6 +599,11 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
+      public int getVectorCount(FieldInfo fieldInfo) throws IOException {
+        return delegate.getVectorCount(fieldInfo);
+      }
+
+      @Override
       public void close() throws IOException {
         delegate.close();
       }

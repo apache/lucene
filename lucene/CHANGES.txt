@@ -23,6 +23,8 @@ API Changes
 * GITHUB#16385: Remove unused public methods in AllGroupHeadsCollector.
                 Update grouping package info to use CollectorManager instead of Collector. (Binlong Gao)
 
+* GITHUB#16647: Add KnnVectorsReader.getVectorCount to read vector counts from metadata (Chris Hegarty)
+
 New Features
 ---------------------
 

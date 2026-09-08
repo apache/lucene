@@ -71,6 +71,8 @@ import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.SerialMergeScheduler;
+import org.apache.lucene.index.SlowCodecReaderWrapper;
+import org.apache.lucene.index.SortingCodecReader;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorEncoding;
@@ -1017,6 +1019,113 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           assertEquals(fieldTotals[field], checksum, delta);
         }
       }
+    }
+  }
+
+  /**
+   * Verify {@link KnnVectorsReader#getVectorCount} matches opening vector values, without relying
+   * on the metadata-only path alone. Indexes both dense fields (vector on every doc) and sparse
+   * fields (vector on a small fraction of docs) in the same segment.
+   */
+  public void testVectorCount() throws Exception {
+    int numDocs = atLeast(200);
+    int numDenseFields = TestUtil.nextInt(random(), 1, 3);
+    int numSparseFields = TestUtil.nextInt(random(), 1, 3);
+    VectorSimilarityFunction[] denseSimilarityFunctions =
+        new VectorSimilarityFunction[numDenseFields];
+    VectorEncoding[] denseVectorEncodings = new VectorEncoding[numDenseFields];
+    int[] denseDims = new int[numDenseFields];
+    for (int i = 0; i < numDenseFields; i++) {
+      denseDims[i] = random().nextInt(20) + 1;
+      if (denseDims[i] % 2 != 0) {
+        denseDims[i]++;
+      }
+      denseSimilarityFunctions[i] = randomSimilarity();
+      denseVectorEncodings[i] = randomVectorEncoding();
+    }
+    VectorSimilarityFunction[] sparseSimilarityFunctions =
+        new VectorSimilarityFunction[numSparseFields];
+    VectorEncoding[] sparseVectorEncodings = new VectorEncoding[numSparseFields];
+    int[] sparseDims = new int[numSparseFields];
+    for (int i = 0; i < numSparseFields; i++) {
+      sparseDims[i] = random().nextInt(20) + 1;
+      if (sparseDims[i] % 2 != 0) {
+        sparseDims[i]++;
+      }
+      sparseSimilarityFunctions[i] = randomSimilarity();
+      sparseVectorEncodings[i] = randomVectorEncoding();
+    }
+    try (Directory dir = newDirectory();
+        RandomIndexWriter w = new RandomIndexWriter(random(), dir, newIndexWriterConfig())) {
+      for (int i = 0; i < numDocs; i++) {
+        Document doc = new Document();
+        doc.add(new NumericDocValuesField("sortkey", i));
+        for (int field = 0; field < numDenseFields; field++) {
+          addRandomVectorField(
+              doc,
+              "dense" + field,
+              denseVectorEncodings[field],
+              denseDims[field],
+              denseSimilarityFunctions[field]);
+        }
+        for (int field = 0; field < numSparseFields; field++) {
+          // ~1% of docs carry a vector, exercising the IndexedDISI sparse path
+          if (random().nextInt(100) == 17) {
+            addRandomVectorField(
+                doc,
+                "sparse" + field,
+                sparseVectorEncodings[field],
+                sparseDims[field],
+                sparseSimilarityFunctions[field]);
+          }
+        }
+        w.addDocument(doc);
+      }
+      if (random().nextBoolean()) {
+        w.forceMerge(1);
+      }
+      try (IndexReader reader = w.getReader()) {
+        Sort sort = new Sort(new SortField("sortkey", SortField.Type.INT));
+        for (LeafReaderContext ctx : reader.leaves()) {
+          CodecReader codecReader = (CodecReader) ctx.reader();
+          assertVectorCountMatchesVectorValuesSize(codecReader);
+          assertVectorCountMatchesVectorValuesSize(SlowCodecReaderWrapper.wrap(codecReader));
+          assertVectorCountMatchesVectorValuesSize(SortingCodecReader.wrap(codecReader, sort));
+        }
+      }
+    }
+  }
+
+  /** Non-vector fields must not be passed to {@link KnnVectorsReader#getVectorCount}. */
+  public void testGetVectorCountInvalidField() throws Exception {
+    try (Directory dir = newDirectory();
+        RandomIndexWriter w = new RandomIndexWriter(random(), dir, newIndexWriterConfig())) {
+      Document doc = new Document();
+      doc.add(new StringField("text", "value", Field.Store.NO));
+      addRandomVectorField(doc, "vector", randomVectorEncoding(), atLeast(2), randomSimilarity());
+      w.addDocument(doc);
+      try (IndexReader reader = w.getReader()) {
+        LeafReader leafReader = reader.leaves().get(0).reader();
+        FieldInfo textField = leafReader.getFieldInfos().fieldInfo("text");
+        KnnVectorsReader vectorsReader = ((CodecReader) leafReader).getVectorReader();
+        expectThrows(IllegalArgumentException.class, () -> vectorsReader.getVectorCount(textField));
+      }
+    }
+  }
+
+  private void addRandomVectorField(
+      Document doc,
+      String fieldName,
+      VectorEncoding encoding,
+      int dimension,
+      VectorSimilarityFunction similarityFunction) {
+    switch (encoding) {
+      case BYTE ->
+          doc.add(new KnnByteVectorField(fieldName, randomVector8(dimension), similarityFunction));
+      case FLOAT32 ->
+          doc.add(
+              new KnnFloatVectorField(
+                  fieldName, randomNormalizedVector(dimension), similarityFunction));
     }
   }
 
@@ -2258,9 +2367,50 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
 
   protected static int getNumVectors(KnnVectorsReader reader, FieldInfo fieldInfo)
       throws IOException {
+    return reader.getVectorCount(fieldInfo);
+  }
+
+  protected void assertVectorCountMatchesVectorValuesSize(LeafReader leafReader)
+      throws IOException {
+    if (leafReader instanceof CodecReader codecReader) {
+      assertVectorCountMatchesVectorValuesSize(codecReader);
+    }
+  }
+
+  protected void assertVectorCountMatchesVectorValuesSize(CodecReader codecReader)
+      throws IOException {
+    KnnVectorsReader vectorsReader = codecReader.getVectorReader();
+    for (FieldInfo fieldInfo : codecReader.getFieldInfos()) {
+      if (fieldInfo.getVectorDimension() <= 0) {
+        continue;
+      }
+      int expected = countVectorsFromValues(codecReader, fieldInfo);
+      assertEquals(
+          "wrapper vector count for field=" + fieldInfo.name,
+          expected,
+          vectorsReader.getVectorCount(fieldInfo));
+      assertEquals(
+          "format vector count for field=" + fieldInfo.name,
+          expected,
+          vectorsReader.unwrapReaderForField(fieldInfo.name).getVectorCount(fieldInfo));
+    }
+  }
+
+  private static int countVectorsFromValues(LeafReader leafReader, FieldInfo fieldInfo)
+      throws IOException {
     return switch (fieldInfo.getVectorEncoding()) {
-      case BYTE -> reader.getByteVectorValues(fieldInfo.getName()).size();
-      case FLOAT32 -> reader.getFloatVectorValues(fieldInfo.getName()).size();
+      case BYTE -> {
+        ByteVectorValues values = leafReader.getByteVectorValues(fieldInfo.name);
+        yield values != null ? values.size() : 0;
+      }
+      case FLOAT16 -> {
+        Float16VectorValues values = leafReader.getFloat16VectorValues(fieldInfo.name);
+        yield values != null ? values.size() : 0;
+      }
+      case FLOAT32 -> {
+        FloatVectorValues values = leafReader.getFloatVectorValues(fieldInfo.name);
+        yield values != null ? values.size() : 0;
+      }
     };
   }
 

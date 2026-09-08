@@ -156,6 +156,11 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
             }
 
             @Override
+            public int getVectorCount(FieldInfo fieldInfo) {
+              throw new UnsupportedOperationException();
+            }
+
+            @Override
             public void close() {}
           };
         }

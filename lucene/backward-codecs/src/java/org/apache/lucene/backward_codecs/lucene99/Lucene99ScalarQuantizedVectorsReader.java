@@ -23,6 +23,7 @@ import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVe
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.Objects;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
@@ -329,6 +330,17 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
     }
     var quant = Map.of(VECTOR_DATA_EXTENSION, fieldEntry.vectorDataLength());
     return KnnVectorsReader.mergeOffHeapByteSizeMaps(raw, quant);
+  }
+
+  @Override
+  public int getVectorCount(FieldInfo fieldInfo) throws IOException {
+    Objects.requireNonNull(fieldInfo);
+    FieldEntry fieldEntry = fields.get(fieldInfo.number);
+    if (fieldEntry == null) {
+      assert fieldInfo.getVectorEncoding() == VectorEncoding.BYTE;
+      return rawVectorsReader.getVectorCount(fieldInfo);
+    }
+    return fieldEntry.size();
   }
 
   private FieldEntry readField(IndexInput input, int versionMeta, FieldInfo info)

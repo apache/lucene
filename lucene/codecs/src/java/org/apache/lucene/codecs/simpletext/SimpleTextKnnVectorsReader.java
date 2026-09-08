@@ -288,6 +288,16 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   }
 
   @Override
+  public int getVectorCount(FieldInfo fieldInfo) {
+    Objects.requireNonNull(fieldInfo);
+    FieldEntry fieldEntry = fieldEntries.get(fieldInfo.number);
+    if (fieldEntry == null) {
+      throw new IllegalArgumentException("field=\"" + fieldInfo.name + "\" not found");
+    }
+    return fieldEntry.size();
+  }
+
+  @Override
   public void close() throws IOException {
     dataIn.close();
   }

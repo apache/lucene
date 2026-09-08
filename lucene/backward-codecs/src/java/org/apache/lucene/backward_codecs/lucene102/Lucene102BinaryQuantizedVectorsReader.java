@@ -306,6 +306,17 @@ public class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader
     return KnnVectorsReader.mergeOffHeapByteSizeMaps(raw, quant);
   }
 
+  @Override
+  public int getVectorCount(FieldInfo fieldInfo) throws IOException {
+    Objects.requireNonNull(fieldInfo);
+    FieldEntry fieldEntry = fields.get(fieldInfo.name);
+    if (fieldEntry == null) {
+      assert fieldInfo.getVectorEncoding() == VectorEncoding.BYTE;
+      return rawVectorsReader.getVectorCount(fieldInfo);
+    }
+    return fieldEntry.size();
+  }
+
   float[] getCentroid(String field) {
     FieldEntry fieldEntry = fields.get(field);
     if (fieldEntry != null) {
