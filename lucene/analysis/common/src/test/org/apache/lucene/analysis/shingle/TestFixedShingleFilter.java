@@ -20,6 +20,8 @@ package org.apache.lucene.analysis.shingle;
 import java.io.IOException;
 import java.util.Iterator;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.tests.analysis.CannedTokenStream;
 import org.apache.lucene.tests.analysis.Token;
@@ -291,5 +293,43 @@ public class TestFixedShingleFilter extends BaseTokenStreamTestCase {
     assertTokenStreamContents(new FixedShingleFilter(it.next(), 2), new String[] {"fuz foo"});
     assertTokenStreamContents(
         new FixedShingleFilter(it.next(), 2), new String[] {"fuz bar", "bar baz"});
+  }
+
+  public void testPositionIncrementAfterSkippedGraphToken() throws IOException {
+    // 2-gram shingle cannot be formed starting a "Wi-Fi", so the next branch
+    // starting at "Wi" should have a position increment of 1, not 0.
+    TokenStream ts =
+        new CannedTokenStream(
+            new Token("Secure", 0, 6),
+            new Token("Wi-Fi", 1, 7, 12, 2),
+            new Token("Wi", 0, 7, 9),
+            new Token("Fi", 1, 10, 12));
+
+    assertTokenStreamContents(
+        new FixedShingleFilter(ts, 2),
+        new String[] {"Secure Wi-Fi", "Secure Wi", "Wi Fi"},
+        new int[] {1, 0, 1});
+  }
+
+  public void testFirstShinglePositionIncrementAfterSkippedGraphToken() throws IOException {
+    // Special case of previous test: "Wi-Fi" is the first token in the input stream.
+    // So first output token is emitted from branch starting at "Wi" which should have a position
+    // increment of 1, not 0.
+    TokenStream ts =
+        new CannedTokenStream(
+            new Token("Wi-Fi", 1, 0, 5, 2), new Token("Wi", 0, 0, 2), new Token("Fi", 1, 3, 5));
+
+    try (FixedShingleFilter filter = new FixedShingleFilter(ts, 2)) {
+      CharTermAttribute termAtt = filter.addAttribute(CharTermAttribute.class);
+      PositionIncrementAttribute posIncAtt = filter.addAttribute(PositionIncrementAttribute.class);
+
+      filter.reset();
+      assertTrue(filter.incrementToken());
+      assertEquals("Wi Fi", termAtt.toString());
+      assertEquals(1, posIncAtt.getPositionIncrement());
+      assertFalse(filter.incrementToken());
+      filter.end();
+      assertEquals(1, posIncAtt.getPositionIncrement());
+    }
   }
 }

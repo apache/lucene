@@ -177,7 +177,8 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
     return vectorValue.length;
   }
 
-  static void packNibbles(byte[] unpacked, byte[] packed) {
+  /** Packs two 4-bit values per output byte: the upper half holds {@code unpacked[i]}. */
+  public static void packNibbles(byte[] unpacked, byte[] packed) {
     assert unpacked.length == packed.length * 2;
     for (int i = 0; i < packed.length; i++) {
       int x = unpacked[i] << 4 | unpacked[packed.length + i];
@@ -185,7 +186,8 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
     }
   }
 
-  static void unpackNibbles(byte[] packed, byte[] unpacked) {
+  /** Unpacks two 4-bit values per input byte, the reverse of {@link #packNibbles}. */
+  public static void unpackNibbles(byte[] packed, byte[] unpacked) {
     assert unpacked.length == packed.length * 2;
     for (int i = 0; i < packed.length; i++) {
       unpacked[i] = (byte) ((packed[i] >> 4) & 0x0F);
@@ -242,7 +244,7 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
   }
 
   /** Dense off-heap scalar quantized vector values */
-  static class DenseOffHeapVectorValues extends OffHeapScalarQuantizedVectorValues {
+  public static class DenseOffHeapVectorValues extends OffHeapScalarQuantizedVectorValues {
     DenseOffHeapVectorValues(
         int dimension,
         int size,
@@ -265,7 +267,8 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
           slice);
     }
 
-    DenseOffHeapVectorValues(
+    /** Creates dense off-heap scalar quantized vector values over the given slice. */
+    public DenseOffHeapVectorValues(
         boolean isQuerySide,
         int dimension,
         int size,
