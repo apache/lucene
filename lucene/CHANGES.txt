@@ -123,11 +123,6 @@ API Changes
 
 New Features
 ---------------------
-* GITHUB#16418: Incremental doc-values updates. A set-only doc-values update (NUMERIC or BINARY) is written as a sparse
-  "delta" overlay holding just the updated documents and layered over the base column at read time, instead of
-  rewriting the whole column, turning per-update write amplification from O(column) into O(updated docs). Enabled by
-  default; disable with IndexWriterConfig#setMaxDocValuesOverlays(0). (Jim Ferenczi)
-
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
   modern Hangul conjoining jamo before KoreanTokenizer. (Mingi Jeong)
 
@@ -145,6 +140,8 @@ New Features
 * GITHUB#15818: Add BM25 k3 query-term frequency saturation to BM25Similarity. (Sagar Upadhyaya)
 
 * GITHUB#16383: Add fp16 vector encoding support. (Pulkit Gupta)
+
+* GITHUB#16473: Add scalar quantization support in Fp16 vector encoding. (Pulkit Gupta)
 
 Improvements
 ---------------------
@@ -181,6 +178,9 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#16431: Add support for Block-Max WAND dynamic score skipping in FunctionScoreQuery
+  and DoubleValuesSource using DocValuesSkipper. (Rajat Jain)
+
 * GITHUB#16382: WildcardQuery.toAutomaton now collapses consecutive unescaped '*'
   wildcards into a single any-string automaton, avoiding a quadratic blow-up in
   automaton size for patterns with many repeated asterisks. (Vismay Tiwari)
@@ -212,8 +212,18 @@ Optimizations
 
 * GITHUB#12324: ELiminate redundant work in AbstractKnnVectorQuery.rewrite (Mike Sokolov)
 
+* GITHUB#16619: DirectIODirectory's slice() no longer performs a blocking direct read when
+  creating a slice; the first read resolves the deferred start position instead. (John Maurice)
+
 Bug Fixes
 ---------------------
+* GITHUB#16553: Fix stored-fields corruption when PerField#finish throws: the stored-fields frame
+  was left open, causing "Wrote N docs, finish called with numDocs=M" at flush. (Michael Marshall)
+
+* GITHUB#16552: Reconnect HNSW nodes whose out-degree decays across successive
+  merge-reuse generations, preventing progressive recall loss under low delete
+  rates. (Ethan Baker)
+
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
 
@@ -362,8 +372,15 @@ API Changes
 * GITHUB#16385: Remove unused public methods in AllGroupHeadsCollector.
                 Update grouping package info to use CollectorManager instead of Collector. (Binlong Gao)
 
+* GITHUB#16647: Add KnnVectorsReader.getVectorCount to read vector counts from metadata (Chris Hegarty)
+
 New Features
 ---------------------
+
+* GITHUB#16418: Incremental doc-values updates. A set-only doc-values update (NUMERIC or BINARY) is written as a sparse
+  "delta" overlay holding just the updated documents and layered over the base column at read time, instead of
+  rewriting the whole column, turning per-update write amplification from O(column) into O(updated docs). Enabled by
+  default; disable with IndexWriterConfig#setMaxDocValuesOverlays(0). (Jim Ferenczi)
 
 * GITHUB#16243: Add StableTflSimilarity, a similarity that estimates term rarity from term length
   and document length instead of corpus statistics such as document frequency. It also supports k3
@@ -373,9 +390,10 @@ New Features
   requiring the ICU analysis plugin. Uses a generated switch for fold exceptions with
   Character.toLowerCase() as the default fallback. (Robert Muir, Costin Leau)
 
-* GITHUB#15979: Add a sandboxed de-duplicating HNSW vector format (DedupHnswVectorsFormat) that stores
-  each distinct full-precision vector once, shared across all documents and fields that reference it.
-  (Kaival Parikh)
+* GITHUB#15979, GITHUB#16506: Add sandboxed de-duplicating HNSW vector formats (DedupHnswVectorsFormat,
+  DedupHnswScalarQuantizedVectorsFormat) that store each distinct full-precision and quantized vector
+  once, shared across all documents and fields that reference it. Quantization is data-blind (assumes
+  vectors are centered at zero) for effective de-duplication across fields. (Kaival Parikh)
 
 * GITHUB#16484: Add SpanMultiTermQueryWrapper.FrequentTermsSpanBooleanQueryRewrite.  It's a rewrite method that
   translates each term into a SpanTermQuery within a {@link SpanOrQuery}, but retains only the most frequent terms so it
@@ -471,8 +489,20 @@ Optimizations
   LatLonDocValuesQuery, XYDocValuesPointInGeometryQuery, and
   SortedNumericDocValuesSetQuery. (Costin Leau)
 
+* GITHUB#16297: Use LongHashSet for sparse ordinal sets in DocValuesRangeIterator so memory
+  scales with matching terms instead of segment cardinality. (Costin Leau)
+
 Bug Fixes
 ---------------------
+
+* GITHUB#16620: Make HNSW merges abortable during graph initialization and repair, so that the
+  copy, repair and rebalance phases of an initialized graph build can be promptly aborted when the
+  surrounding merge is cancelled. (Tanguy Leroux)
+
+* GITHUB#16565: IndexWriter#updateBinaryDocValue now rejects updating a field that is part of the
+  index sort, matching IndexWriter#updateNumericDocValue. (Jim Ferenczi)
+
+* GITHUB#16546: Prevent RangeBulkScorer from passing empty ranges to LeafCollector. (jxy)
 
 * GITHUB#16450: Fix DocValuesRangeIterator.docIDRunEnd() returning incorrect run boundaries,
   causing bulk-scoring to skip or mis-score documents in range and ordinal set queries.
@@ -518,6 +548,8 @@ Bug Fixes
 
 * GITHUB#16452: Fix over-allocation in MemoryAccountingBitsetCollectorManager.Result#bitSet, which
   is now sized to highestMatchedDoc + 1 instead of the full searched range. (Sasilekha R)
+
+* GITHUB#16577: Fix incorrect position increment generated by FixedShingleFilter. (Kishor Kharbas)
 
 Other
 ---------------------

@@ -109,10 +109,10 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
 
   /**
    * Default maximum number of sparse doc-values overlays a field keeps before they are folded into
-   * one: {@code 16}. {@code 0} disables the feature (classic full-column rewrite); higher values
+   * one: {@code 8}. {@code 0} disables the feature (classic full-column rewrite); higher values
    * lower write amplification but keep more overlays (hence more files) live to merge at read time.
    */
-  public static final int DEFAULT_MAX_DOC_VALUES_OVERLAYS = 16;
+  public static final int DEFAULT_MAX_DOC_VALUES_OVERLAYS = 8;
 
   // indicates whether this config instance is already attached to a writer.
   // not final so that it can be cloned properly.

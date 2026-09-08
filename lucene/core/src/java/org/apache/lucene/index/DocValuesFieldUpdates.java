@@ -238,8 +238,8 @@ abstract class DocValuesFieldUpdates implements Accountable {
   protected PagedMutable docs;
   protected int size;
   // true once any doc's value was reset (removed); such a buffer cannot take the sparse incremental
-  // path. Protected so
-  // subclasses that override reset() (e.g. NumericDocValuesFieldUpdates) can set it too.
+  // path. Protected so subclasses that override reset() (e.g. NumericDocValuesFieldUpdates) can set
+  // it too.
   protected boolean anyReset;
 
   protected DocValuesFieldUpdates(int maxDoc, long delGen, String field, DocValuesType type) {

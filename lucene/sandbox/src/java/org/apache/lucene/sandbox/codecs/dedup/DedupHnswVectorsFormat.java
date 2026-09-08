@@ -219,16 +219,12 @@ public final class DedupHnswVectorsFormat extends KnnVectorsFormat {
   @Override
   public String toString() {
     return NAME
-        + "(name="
-        + NAME
-        + ", maxConn="
+        + "(maxConn="
         + maxConn
         + ", beamWidth="
         + beamWidth
         + ", tinySegmentsThreshold="
         + tinySegmentsThreshold
-        + ", flatVectorFormat="
-        + FORMAT
         + ")";
   }
 }
