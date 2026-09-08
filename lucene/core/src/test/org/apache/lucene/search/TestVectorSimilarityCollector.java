@@ -49,6 +49,33 @@ public class TestVectorSimilarityCollector extends LuceneTestCase {
     assertArrayEquals(new float[] {0.5f, 0.6f, 0.9f, 0.7f, 0.8f}, resultScores, 1e-3f);
   }
 
+  @Deprecated
+  public void testLegacyResultCollection() {
+    float resultSimilarity = 0.5f;
+
+    LegacyVectorSimilarityCollector collector =
+        new LegacyVectorSimilarityCollector(resultSimilarity, DEFAULT_DECAY, Integer.MAX_VALUE);
+
+    int[] nodes = {1, 5, 10, 4, 8, 3, 2, 6, 7, 9};
+    float[] scores = {0.1f, 0.2f, 0.3f, 0.5f, 0.2f, 0.6f, 0.9f, 0.3f, 0.7f, 0.8f};
+
+    for (int i = 0; i < nodes.length; i++) {
+      collector.collect(nodes[i], scores[i]);
+    }
+
+    ScoreDoc[] scoreDocs = collector.topDocs().scoreDocs;
+    int[] resultNodes = new int[scoreDocs.length];
+    float[] resultScores = new float[scoreDocs.length];
+    for (int i = 0; i < scoreDocs.length; i++) {
+      resultNodes[i] = scoreDocs[i].doc;
+      resultScores[i] = scoreDocs[i].score;
+    }
+
+    // All nodes above resultSimilarity appear in order of collection
+    assertArrayEquals(new int[] {4, 3, 2, 7, 9}, resultNodes);
+    assertArrayEquals(new float[] {0.5f, 0.6f, 0.9f, 0.7f, 0.8f}, resultScores, 1e-3f);
+  }
+
   public void testDefaultConstructorUsesDefaultStrategy() {
     VectorSimilarityCollector collector =
         new VectorSimilarityCollector(0.5f, DEFAULT_DECAY, Integer.MAX_VALUE);

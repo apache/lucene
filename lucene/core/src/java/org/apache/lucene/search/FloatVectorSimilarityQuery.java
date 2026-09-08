@@ -53,15 +53,15 @@ public class FloatVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
    *     differs from {@link Hnsw#DEFAULT}, which uses a threshold of 60. The underlying format may
    *     not support all strategies and is free to ignore the requested strategy.
    */
-  public FloatVectorSimilarityQuery(
+  public static FloatVectorSimilarityQuery createNew(
       String field,
       float[] target,
       float resultSimilarity,
       float decay,
       Query filter,
       KnnSearchStrategy searchStrategy) {
-    super(field, resultSimilarity, decay, filter, searchStrategy);
-    this.target = VectorUtil.checkFinite(Objects.requireNonNull(target, "target"));
+    return new FloatVectorSimilarityQuery(
+        field, target, resultSimilarity, decay, filter, searchStrategy);
   }
 
   /**
@@ -76,9 +76,9 @@ public class FloatVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
    * @param decay decay factor for graph traversal buffer.
    * @param filter a filter applied before the vector search.
    */
-  public FloatVectorSimilarityQuery(
+  public static FloatVectorSimilarityQuery createNew(
       String field, float[] target, float resultSimilarity, float decay, Query filter) {
-    this(field, target, resultSimilarity, decay, filter, DEFAULT_STRATEGY);
+    return createNew(field, target, resultSimilarity, decay, filter, DEFAULT_STRATEGY);
   }
 
   /**
@@ -91,9 +91,9 @@ public class FloatVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
    * @param resultSimilarity similarity score for result collection.
    * @param filter a filter applied before the vector search.
    */
-  public FloatVectorSimilarityQuery(
+  public static FloatVectorSimilarityQuery createNew(
       String field, float[] target, float resultSimilarity, Query filter) {
-    this(field, target, resultSimilarity, DEFAULT_DECAY, filter);
+    return createNew(field, target, resultSimilarity, DEFAULT_DECAY, filter);
   }
 
   /**
@@ -104,8 +104,53 @@ public class FloatVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
    * @param target the target of the search.
    * @param resultSimilarity similarity score for result collection.
    */
-  public FloatVectorSimilarityQuery(String field, float[] target, float resultSimilarity) {
-    this(field, target, resultSimilarity, null);
+  public static FloatVectorSimilarityQuery createNew(
+      String field, float[] target, float resultSimilarity) {
+    return createNew(field, target, resultSimilarity, null);
+  }
+
+  /**
+   * Search for all (approximate) float vectors above a similarity threshold using {@link
+   * VectorSimilarityCollector}, with a caller-supplied {@link KnnSearchStrategy}. If a filter is
+   * applied, it traverses as many nodes as the cost of the filter, and then falls back to exact
+   * search if results are incomplete.
+   *
+   * @param field a field that has been indexed as a {@link KnnFloatVectorField}.
+   * @param target the target of the search.
+   * @param traversalSimilarity decay factor for graph traversal buffer.
+   * @param resultSimilarity similarity score for result collection.
+   * @param filter a filter applied before the vector search.
+   * @deprecated This function creates a query with the same behavior as Lucene 10.4, use {@link
+   *     #createNew(String, float[], float, float, Query, KnnSearchStrategy)} for a more performant
+   *     version.
+   */
+  @Deprecated
+  public static FloatVectorSimilarityQuery createLegacy(
+      String field,
+      float[] target,
+      float traversalSimilarity,
+      float resultSimilarity,
+      Query filter) {
+    return new FloatVectorSimilarityQuery(
+        field, target, resultSimilarity, 0f, filter, DEFAULT_STRATEGY) {
+      @Override
+      protected KnnCollectorManager getKnnCollectorManager() {
+        return (visitedLimit, _, _) ->
+            new LegacyVectorSimilarityCollector(
+                traversalSimilarity, resultSimilarity, visitedLimit);
+      }
+    };
+  }
+
+  FloatVectorSimilarityQuery(
+      String field,
+      float[] target,
+      float resultSimilarity,
+      float decay,
+      Query filter,
+      KnnSearchStrategy searchStrategy) {
+    super(field, resultSimilarity, decay, filter, searchStrategy);
+    this.target = VectorUtil.checkFinite(Objects.requireNonNull(target, "target"));
   }
 
   @Override

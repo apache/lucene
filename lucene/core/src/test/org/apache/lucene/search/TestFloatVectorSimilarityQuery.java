@@ -61,7 +61,13 @@ public class TestFloatVectorSimilarityQuery
   @Override
   FloatVectorSimilarityQuery getVectorQuery(
       String field, float[] vector, float resultSimilarity, float decay, Query filter) {
-    return new FloatVectorSimilarityQuery(field, vector, resultSimilarity, decay, filter);
+    return FloatVectorSimilarityQuery.createNew(
+        field,
+        vector,
+        resultSimilarity,
+        decay,
+        filter,
+        AbstractVectorSimilarityQuery.DEFAULT_STRATEGY);
   }
 
   @Override
@@ -72,14 +78,20 @@ public class TestFloatVectorSimilarityQuery
       float decay,
       Query filter,
       KnnSearchStrategy searchStrategy) {
-    return new FloatVectorSimilarityQuery(
+    return FloatVectorSimilarityQuery.createNew(
         field, vector, resultSimilarity, decay, filter, searchStrategy);
   }
 
   @Override
   FloatVectorSimilarityQuery getThrowingVectorQuery(
       String field, float[] vector, float resultSimilarity, float decay, Query filter) {
-    return new FloatVectorSimilarityQuery(field, vector, resultSimilarity, decay, filter) {
+    return new FloatVectorSimilarityQuery(
+        field,
+        vector,
+        resultSimilarity,
+        decay,
+        filter,
+        AbstractVectorSimilarityQuery.DEFAULT_STRATEGY) {
       @Override
       VectorScorer createVectorScorer(LeafReaderContext context) {
         throw new UnsupportedOperationException();
