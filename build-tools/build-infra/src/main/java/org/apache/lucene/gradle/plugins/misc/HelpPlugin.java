@@ -28,37 +28,37 @@ import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.tasks.StopExecutionException;
 
-/** Configures "helpXyz" tasks which display plain text files under 'help' folder. */
+/** Configures "helpXyz" tasks which display markdown files under 'help' folder as plain text. */
 public class HelpPlugin extends LuceneGradlePlugin {
   record HelpFile(String name, String path, String description) {}
 
   private static final List<HelpFile> helpFiles =
       List.of(
-          new HelpFile("Workflow", "help/workflow.txt", "Typical workflow commands."),
-          new HelpFile("Tests", "help/tests.txt", "Tests, filtering, beasting, etc."),
-          new HelpFile("Precommit", "help/precommit.txt", "Precommit checks."),
-          new HelpFile("Formatting", "help/formatting.txt", "Code formatting conventions."),
-          new HelpFile("Jvms", "help/jvms.txt", "Using alternative or EA JVM toolchains."),
+          new HelpFile("Workflow", "help/workflow.md", "Typical workflow commands."),
+          new HelpFile("Tests", "help/tests.md", "Tests, filtering, beasting, etc."),
+          new HelpFile("Precommit", "help/precommit.md", "Precommit checks."),
+          new HelpFile("Formatting", "help/formatting.md", "Code formatting conventions."),
+          new HelpFile("Jvms", "help/jvms.md", "Using alternative or EA JVM toolchains."),
           new HelpFile(
-              "Deps", "help/dependencies.txt", "Declaring, inspecting and excluding dependencies."),
+              "Deps", "help/dependencies.md", "Declaring, inspecting and excluding dependencies."),
           new HelpFile(
               "ForbiddenApis",
-              "help/forbiddenApis.txt",
+              "help/forbiddenApis.md",
               "How to add/apply rules for forbidden APIs."),
           new HelpFile(
               "LocalSettings",
-              "help/localSettings.txt",
+              "help/localSettings.md",
               "Local settings, overrides and build performance tweaks."),
           new HelpFile(
               "Regeneration",
-              "help/regeneration.txt",
+              "help/regeneration.md",
               "How to refresh generated and derived resources."),
-          new HelpFile("Jmh", "help/jmh.txt", "JMH micro-benchmarks."),
-          new HelpFile("Git", "help/git.txt", "Git assistance and guides."),
-          new HelpFile("IDEs", "help/IDEs.txt", "IDE support."),
+          new HelpFile("Jmh", "help/jmh.md", "JMH micro-benchmarks."),
+          new HelpFile("Git", "help/git.md", "Git assistance and guides."),
+          new HelpFile("IDEs", "help/IDEs.md", "IDE support."),
           new HelpFile(
               "Publishing",
-              "help/publishing.txt",
+              "help/publishing.md",
               "Maven and other artifact publishing, signing, etc."));
 
   @Override
@@ -77,7 +77,7 @@ public class HelpPlugin extends LuceneGradlePlugin {
             task.doFirst(
                 _ -> {
                   try {
-                    println("\n" + Files.readString(helpFilePath));
+                    println("\n" + MarkdownToText.render(Files.readString(helpFilePath)));
                   } catch (IOException e) {
                     throw new UncheckedIOException(e);
                   }
@@ -115,7 +115,6 @@ public class HelpPlugin extends LuceneGradlePlugin {
                   });
             });
 
-    // ensure all help files exist.
     // Make sure all help files exist.
     var helpDir = getProjectRootPath(rootProject).resolve("help");
     var allHelpFilesExist =
@@ -140,8 +139,8 @@ public class HelpPlugin extends LuceneGradlePlugin {
                           helpFiles.stream().map(v -> v.path).collect(Collectors.toSet());
                       if (!existing.equals(expected)) {
                         throw new GradleException(
-                            "help/*.txt help files are not consistent with the descriptions"
-                                + "in the "
+                            "help/*.md help files are not consistent with the descriptions"
+                                + " in the "
                                 + getClass().getName());
                       }
                     } catch (IOException e) {

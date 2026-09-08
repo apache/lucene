@@ -270,7 +270,6 @@ final class ReaderPool implements Closeable {
         any |=
             rld.writeFieldUpdates(
                 directory, fieldNumbers, completedDelGenSupplier.getAsLong(), infoStream);
-        rld.setIsMerging();
       }
     }
     return any;
