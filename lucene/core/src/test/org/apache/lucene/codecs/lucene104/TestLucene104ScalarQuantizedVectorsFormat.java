@@ -678,7 +678,9 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
           IndexSearcher searcher = new IndexSearcher(reader);
           TopDocs td =
               searcher.search(new KnnFloatVectorQuery(fieldName, randomVector(dims), k), k);
-          assertEquals(k, td.totalHits.value());
+          // The index holds exactly 2 * numVectorsPerSegment vectors; when k exceeds that, the
+          // query can only return the vectors that exist.
+          assertEquals(Math.min(k, 2 * numVectorsPerSegment), td.totalHits.value());
         }
       }
     }
@@ -818,7 +820,9 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
           TopDocs td =
               new IndexSearcher(reader)
                   .search(new KnnFloatVectorQuery(fieldName, randomVector(dims), k), k);
-          assertEquals(k, td.totalHits.value());
+          // The index holds exactly 2 * numVectorsPerSegment vectors; when k exceeds that, the
+          // query can only return the vectors that exist.
+          assertEquals(Math.min(k, 2 * numVectorsPerSegment), td.totalHits.value());
         }
       }
     }
