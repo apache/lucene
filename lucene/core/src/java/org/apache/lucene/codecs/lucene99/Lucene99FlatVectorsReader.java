@@ -201,8 +201,8 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   }
 
   @Override
-  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
-    CodecUtil.checksumEntireFile(vectorData, merge);
+  public void checkIntegrity() throws IOException {
+    CodecUtil.checksumEntireFile(vectorData);
   }
 
   @Override

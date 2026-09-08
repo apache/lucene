@@ -2392,8 +2392,16 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       assertEquals(
           "format vector count for field=" + fieldInfo.name,
           expected,
-          vectorsReader.unwrapReaderForField(fieldInfo.name).getVectorCount(fieldInfo));
+          getFieldVectorReader(vectorsReader, fieldInfo).getVectorCount(fieldInfo));
     }
+  }
+
+  private static KnnVectorsReader getFieldVectorReader(
+      KnnVectorsReader vectorsReader, FieldInfo fieldInfo) {
+    if (vectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader fieldsReader) {
+      return fieldsReader.getFieldReader(fieldInfo.name);
+    }
+    return vectorsReader;
   }
 
   private static int countVectorsFromValues(LeafReader leafReader, FieldInfo fieldInfo)
@@ -2401,10 +2409,6 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     return switch (fieldInfo.getVectorEncoding()) {
       case BYTE -> {
         ByteVectorValues values = leafReader.getByteVectorValues(fieldInfo.name);
-        yield values != null ? values.size() : 0;
-      }
-      case FLOAT16 -> {
-        Float16VectorValues values = leafReader.getFloat16VectorValues(fieldInfo.name);
         yield values != null ? values.size() : 0;
       }
       case FLOAT32 -> {

@@ -164,7 +164,6 @@ public abstract class KnnVectorsReader implements Closeable {
     return switch (fieldInfo.getVectorEncoding()) {
       case FLOAT32 -> getFloatVectorValues(fieldInfo.name).size();
       case BYTE -> getByteVectorValues(fieldInfo.name).size();
-      case FLOAT16 -> getFloat16VectorValues(fieldInfo.name).size();
     };
   }
 

@@ -209,7 +209,9 @@ public final class SlowCodecReaderWrapper {
         SegmentReader segmentReader = unwrapSegmentReader(reader);
         if (segmentReader != null) {
           var vectorsReader = segmentReader.getVectorReader();
-          vectorsReader = vectorsReader.unwrapReaderForField(fieldInfo.name);
+          if (vectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader fieldsReader) {
+            vectorsReader = fieldsReader.getFieldReader(fieldInfo.name);
+          }
           return vectorsReader.getVectorCount(fieldInfo);
         }
         return super.getVectorCount(fieldInfo);
