@@ -44,7 +44,11 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.internal.hppc.LongArrayList;
+import org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.FieldOrdToGroupOrd;
+import org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.FieldOrdToGroupOrdArrayList;
+import org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.FieldOrdToGroupOrdMappedArrayList;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -416,6 +420,17 @@ public class TestDedupFlatVectorsFormat extends LuceneTestCase {
         assertArrayEquals(shared, values.vectorValue(0), 0f);
       }
     }
+  }
+
+  /** Tests specific to on-heap versions of the field ord -> group ord mapping. */
+  public void testOnHeapFieldOrdToGroupOrd() {
+    FieldOrdToGroupOrd arrayBacked = new FieldOrdToGroupOrdArrayList(new IntArrayList());
+    expectThrows(UnsupportedOperationException.class, arrayBacked::copy); // not meant for copying.
+
+    FieldOrdToGroupOrd mappedArrayBacked =
+        new FieldOrdToGroupOrdMappedArrayList(new int[0], new IntArrayList());
+    expectThrows(
+        UnsupportedOperationException.class, mappedArrayBacked::copy); // not meant for copying.
   }
 
   /** Number of distinct vectors physically stored for a field's group. */

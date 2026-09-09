@@ -1,0 +1,62 @@
+# Local gradle settings
+
+The first invocation of any task in Lucene's gradle build will generate and save a project-local `gradle.properties`
+file from a template, with some default gradle JVM settings, which you can modify to your needs.
+
+See your `gradle.properties` file for more details of those settings.
+
+## Build options
+
+There are also various options that the Lucene build uses, which can affect how tests are run or enable additional
+features (for example enable code coverage or profiling).
+
+To see the current values of all these options, run:
+
+```bash
+./gradlew allOptions
+```
+
+this prints all build options for all modules. You can print all options for a single module too, for example:
+
+```bash
+./gradlew -p lucene/core buildOptions
+```
+
+The output of both tasks shows the options, their current values and their current value's "source". All build option
+values can be overridden by, in order of priority:
+
+- cli parameters to gradlew (system properties): `-DoptionKey=value`
+- cli parameters to gradlew (gradle properties): `-PoptionKey=value`
+- env variables: `optionKey=value ./gradlew ...`
+- property file (local for you, non-versioned!): `build-options.local.properties`
+- property file (versioned): `build-options.properties`
+
+If you'd like to tweak some of the build options permanently, use the `build-options.local.properties` file. For
+temporary overrides, use cli parameters (preferably gradle parameters `-Pxyz=value`).
+
+## Intranet mirrors for gradle (wrapper and distribution)
+
+Lucene's `gradlew` scripts download `gradle-wrapper.jar` (from GitHub) and the gradle distribution (from
+services.gradle.org) on first use. If these hosts are not reachable, you can point to mirrors using environment
+variables (both are optional and may contain a `${gradleVersion}` placeholder, replaced with the current gradle's
+version read from `gradle/wrapper/gradle-wrapper.properties`). For example:
+
+```bash
+LUCENE_GRADLE_WRAPPER_URL=https://mirror.example.com/gradle/${gradleVersion}/gradle-wrapper.jar
+LUCENE_GRADLE_DISTRIBUTION_URL=https://mirror.example.com/gradle/gradle-${gradleVersion}-bin.zip
+```
+
+If any of these variables are set, `gradlew` will download `gradle-wrapper.jar` into `gradle/wrapper/` (the jar must
+match the checksum in `gradle-wrapper.jar.sha256`) and installs the distribution (which must match
+`distributionSha256Sum` in `gradle-wrapper.properties`) into the gradle user home (`GRADLE_USER_HOME` or `~/.gradle`)
+at the location the gradle wrapper expects for the "official" distribution.
+
+Local URLs work too, for example:
+
+```bash
+LUCENE_GRADLE_DISTRIBUTION_URL=file:///path/to/gradle-9.7.1-bin.zip
+```
+
+Setting `LUCENE_GRADLE_VERIFY_CHECKSUMS=false` disables checksum verification in these bootstrap steps. Use this only if
+you trust the origin of the jar and the mirror URLs. This setting is refused (`gradlew` fails) if the `CI` environment
+variable is set.

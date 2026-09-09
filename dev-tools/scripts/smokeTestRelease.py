@@ -605,6 +605,7 @@ def verifyUnpacked(java: Any, artifact: str, unpackPath: str, gitRevision: str, 
   ]
   if isSrc:
     expected_src_root_files = [
+      "AI_POLICY.md",
       "build.gradle",
       "build-options.properties",
       "build-tools",
@@ -616,6 +617,7 @@ def verifyUnpacked(java: Any, artifact: str, unpackPath: str, gitRevision: str, 
       "gradlew.bat",
       "help",
       "lucene",
+      "SECURITY.md",
       "settings.gradle",
       "versions.lock",
     ]
