@@ -40,6 +40,7 @@ import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
+import org.apache.lucene.internal.hppc.ReadOnlyIntObjectMap;
 import org.apache.lucene.util.IOUtils;
 
 /**
@@ -257,7 +258,7 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
 
   private static class FieldsReader extends DocValuesProducer {
 
-    private final IntObjectHashMap<DocValuesProducer> fields = new IntObjectHashMap<>();
+    private final ReadOnlyIntObjectMap<DocValuesProducer> fields;
     private final Map<String, DocValuesProducer> formats = new HashMap<>();
 
     // clone for merge
@@ -271,14 +272,17 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
       }
 
       // Then rebuild fields:
+      IntObjectHashMap<DocValuesProducer> fields = new IntObjectHashMap<>(other.fields.size());
       for (IntObjectHashMap.IntObjectCursor<DocValuesProducer> ent : other.fields) {
         DocValuesProducer producer = oldToNew.get(ent.value);
         assert producer != null;
         fields.put(ent.key, producer);
       }
+      this.fields = ReadOnlyIntObjectMap.wrap(fields);
     }
 
     public FieldsReader(final SegmentReadState readState) throws IOException {
+      IntObjectHashMap<DocValuesProducer> fields = new IntObjectHashMap<>();
 
       // Init each unique format:
       try {
@@ -306,6 +310,7 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
             }
           }
         }
+        this.fields = ReadOnlyIntObjectMap.wrap(fields);
       } catch (Throwable t) {
         IOUtils.closeWhileSuppressingExceptions(t, formats.values());
         throw t;

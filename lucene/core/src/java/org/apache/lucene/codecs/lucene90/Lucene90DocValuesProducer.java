@@ -44,6 +44,7 @@ import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.TermsEnum.SeekStatus;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
+import org.apache.lucene.internal.hppc.ReadOnlyIntObjectMap;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ChecksumIndexInput;
@@ -61,11 +62,11 @@ import org.apache.lucene.util.packed.DirectReader;
 
 /** reader for {@link Lucene90DocValuesFormat} */
 final class Lucene90DocValuesProducer extends DocValuesProducer {
-  private final IntObjectHashMap<NumericEntry> numerics;
-  private final IntObjectHashMap<BinaryEntry> binaries;
-  private final IntObjectHashMap<SortedEntry> sorted;
-  private final IntObjectHashMap<SortedSetEntry> sortedSets;
-  private final IntObjectHashMap<SortedNumericEntry> sortedNumerics;
+  private final ReadOnlyIntObjectMap<NumericEntry> numerics;
+  private final ReadOnlyIntObjectMap<BinaryEntry> binaries;
+  private final ReadOnlyIntObjectMap<SortedEntry> sorted;
+  private final ReadOnlyIntObjectMap<SortedSetEntry> sortedSets;
+  private final ReadOnlyIntObjectMap<SortedNumericEntry> sortedNumerics;
   private final IntObjectHashMap<DocValuesSkipperEntry> skippers;
   private final IndexInput data;
   private final IndexInput skipIndexData;
@@ -86,11 +87,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     String metaName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, metaExtension);
     this.maxDoc = state.segmentInfo.maxDoc();
-    numerics = new IntObjectHashMap<>();
-    binaries = new IntObjectHashMap<>();
-    sorted = new IntObjectHashMap<>();
-    sortedSets = new IntObjectHashMap<>();
-    sortedNumerics = new IntObjectHashMap<>();
+    IntObjectHashMap<NumericEntry> numerics = new IntObjectHashMap<>();
+    IntObjectHashMap<BinaryEntry> binaries = new IntObjectHashMap<>();
+    IntObjectHashMap<SortedEntry> sorted = new IntObjectHashMap<>();
+    IntObjectHashMap<SortedSetEntry> sortedSets = new IntObjectHashMap<>();
+    IntObjectHashMap<SortedNumericEntry> sortedNumerics = new IntObjectHashMap<>();
     skippers = new IntObjectHashMap<>();
     merging = false;
 
@@ -108,10 +109,10 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
                 state.segmentInfo.getId(),
                 state.segmentSuffix);
 
-        readFields(in, state.fieldInfos);
+        readFields(in, state.fieldInfos, numerics, binaries, sorted, sortedSets, sortedNumerics);
 
         if (version < Lucene90DocValuesFormat.VERSION_SKIPPER_MAX_VALUE_COUNT) {
-          inferMaxValueCounts(state.fieldInfos);
+          inferMaxValueCounts(state.fieldInfos, sortedNumerics, sortedSets);
         }
 
       } catch (Throwable exception) {
@@ -120,6 +121,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         CodecUtil.checkFooter(in, priorE);
       }
     }
+    this.numerics = ReadOnlyIntObjectMap.wrap(numerics);
+    this.binaries = ReadOnlyIntObjectMap.wrap(binaries);
+    this.sorted = ReadOnlyIntObjectMap.wrap(sorted);
+    this.sortedSets = ReadOnlyIntObjectMap.wrap(sortedSets);
+    this.sortedNumerics = ReadOnlyIntObjectMap.wrap(sortedNumerics);
 
     String dataName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, dataExtension);
@@ -182,11 +188,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
   // Used for cloning
   private Lucene90DocValuesProducer(
-      IntObjectHashMap<NumericEntry> numerics,
-      IntObjectHashMap<BinaryEntry> binaries,
-      IntObjectHashMap<SortedEntry> sorted,
-      IntObjectHashMap<SortedSetEntry> sortedSets,
-      IntObjectHashMap<SortedNumericEntry> sortedNumerics,
+      ReadOnlyIntObjectMap<NumericEntry> numerics,
+      ReadOnlyIntObjectMap<BinaryEntry> binaries,
+      ReadOnlyIntObjectMap<SortedEntry> sorted,
+      ReadOnlyIntObjectMap<SortedSetEntry> sortedSets,
+      ReadOnlyIntObjectMap<SortedNumericEntry> sortedNumerics,
       IntObjectHashMap<DocValuesSkipperEntry> skippers,
       IndexInput data,
       IndexInput skipIndexData,
@@ -222,7 +228,10 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         true);
   }
 
-  private void inferMaxValueCounts(FieldInfos fieldInfos) {
+  private void inferMaxValueCounts(
+      FieldInfos fieldInfos,
+      IntObjectHashMap<SortedNumericEntry> sortedNumerics,
+      IntObjectHashMap<SortedSetEntry> sortedSets) {
     for (var cursor : skippers) {
       DocValuesSkipperEntry entry = cursor.value;
       if (entry.maxValueCount == -1 && entry.docCount != 0) {
@@ -271,7 +280,15 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     }
   }
 
-  private void readFields(IndexInput meta, FieldInfos infos) throws IOException {
+  private void readFields(
+      IndexInput meta,
+      FieldInfos infos,
+      IntObjectHashMap<NumericEntry> numerics,
+      IntObjectHashMap<BinaryEntry> binaries,
+      IntObjectHashMap<SortedEntry> sorted,
+      IntObjectHashMap<SortedSetEntry> sortedSets,
+      IntObjectHashMap<SortedNumericEntry> sortedNumerics)
+      throws IOException {
     for (int fieldNumber = meta.readInt(); fieldNumber != -1; fieldNumber = meta.readInt()) {
       FieldInfo info = infos.fieldInfo(fieldNumber);
       if (info == null) {
