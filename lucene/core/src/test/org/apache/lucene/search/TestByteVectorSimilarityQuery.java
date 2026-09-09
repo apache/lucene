@@ -78,13 +78,7 @@ public class TestByteVectorSimilarityQuery
   @Override
   ByteVectorSimilarityQuery getThrowingVectorQuery(
       String field, byte[] vector, float resultSimilarity, float decay, Query filter) {
-    return new ByteVectorSimilarityQuery.Adaptive(
-        field,
-        vector,
-        resultSimilarity,
-        decay,
-        filter,
-        AbstractVectorSimilarityQuery.DEFAULT_STRATEGY) {
+    return new ByteVectorSimilarityQuery.Adaptive(field, vector, resultSimilarity, decay, filter) {
       @Override
       VectorScorer createVectorScorer(LeafReaderContext context) {
         throw new UnsupportedOperationException();

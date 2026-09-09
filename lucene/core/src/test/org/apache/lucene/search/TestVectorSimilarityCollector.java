@@ -50,7 +50,7 @@ public class TestVectorSimilarityCollector extends LuceneTestCase {
   }
 
   @Deprecated
-  public void testLegacyResultCollection() {
+  public void testExplicitResultCollection() {
     float resultSimilarity = 0.5f;
 
     ExplicitVectorSimilarityCollector collector =
