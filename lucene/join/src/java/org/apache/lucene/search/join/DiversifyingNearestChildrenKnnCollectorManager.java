@@ -18,9 +18,11 @@
 package org.apache.lucene.search.join;
 
 import java.io.IOException;
+import java.util.Set;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.search.QueryReadHint;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.util.BitSet;
@@ -35,6 +37,10 @@ public class DiversifyingNearestChildrenKnnCollectorManager implements KnnCollec
   private final int k;
   // filter identifying the parent documents.
   private final BitSetProducer parentsFilter;
+  // Read hints carried from the IndexSearcher, surfaced to codec readers via
+  // KnnCollector#readHints() (e.g. QueryAccessHint.POINT prefetch in Lucene99HnswVectorsReader).
+  // Empty (the default) means no hint and no extra allocation.
+  private final Set<QueryReadHint> readHints;
 
   /**
    * Constructor
@@ -46,6 +52,7 @@ public class DiversifyingNearestChildrenKnnCollectorManager implements KnnCollec
       int k, BitSetProducer parentsFilter, IndexSearcher indexSearcher) {
     this.k = k;
     this.parentsFilter = parentsFilter;
+    this.readHints = indexSearcher == null ? Set.of() : indexSearcher.getReadHints();
   }
 
   /**
@@ -62,8 +69,9 @@ public class DiversifyingNearestChildrenKnnCollectorManager implements KnnCollec
     if (parentBitSet == null) {
       return null;
     }
-    return new DiversifyingNearestChildrenKnnCollector(
-        k, visitedLimit, searchStrategy, parentBitSet);
+    return KnnCollector.withReadHints(
+        new DiversifyingNearestChildrenKnnCollector(k, visitedLimit, searchStrategy, parentBitSet),
+        readHints);
   }
 
   @Override
@@ -74,8 +82,9 @@ public class DiversifyingNearestChildrenKnnCollectorManager implements KnnCollec
     if (parentBitSet == null) {
       return null;
     }
-    return new DiversifyingNearestChildrenKnnCollector(
-        k, visitedLimit, searchStrategy, parentBitSet);
+    return KnnCollector.withReadHints(
+        new DiversifyingNearestChildrenKnnCollector(k, visitedLimit, searchStrategy, parentBitSet),
+        readHints);
   }
 
   @Override

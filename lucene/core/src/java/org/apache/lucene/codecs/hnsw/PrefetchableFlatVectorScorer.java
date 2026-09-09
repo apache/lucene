@@ -50,6 +50,20 @@ public class PrefetchableFlatVectorScorer implements FlatVectorsScorer {
     this.flatVectorsScorer = flatVectorsScorer;
   }
 
+  /**
+   * Wrap {@code base} so {@link RandomVectorScorer#bulkScore} prefetches the batch's vectors before
+   * scoring, when {@code base} exposes its {@link KnnVectorValues}; otherwise return it unchanged.
+   * The prefetch is purely advisory: it never changes scores or doc mapping, and is itself a no-op
+   * when the values do not override {@link KnnVectorValues#prefetch} or the pages are resident.
+   *
+   * @lucene.experimental
+   */
+  public static RandomVectorScorer wrapWithPrefetch(RandomVectorScorer base) {
+    return base instanceof RandomVectorScorer.AbstractRandomVectorScorer arvs
+        ? new PrefetchableRandomVectorScorer(arvs)
+        : base;
+  }
+
   @Override
   public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues)

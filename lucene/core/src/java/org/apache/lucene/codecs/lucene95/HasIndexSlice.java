@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.codecs.lucene95;
 
+import java.io.IOException;
 import org.apache.lucene.store.IndexInput;
 
 /**
@@ -26,4 +27,31 @@ public interface HasIndexSlice {
 
   /** Returns an IndexInput from which to read this instance's values, or null if not available. */
   IndexInput getSlice();
+
+  /**
+   * Shared helper for off-heap vector value implementations that store fixed-size records on a
+   * slice: issue a read-ahead {@link IndexInput#prefetch} for each of the given vector ordinals.
+   *
+   * <p>Zero or one ordinal is intentionally left to fault in on the immediately-following read,
+   * since prefetching a record that is about to be read offers no overlap.
+   *
+   * @param slice the slice the records live on (one record every {@code byteSize} bytes); a {@code
+   *     null} slice (e.g. an empty values instance) is tolerated and prefetches nothing
+   * @param byteSize the on-disk size of one record
+   * @param ordsToPrefetch ordinals to prefetch (only the first {@code numOrds} are used)
+   * @param numOrds number of valid entries in {@code ordsToPrefetch}
+   */
+  static void prefetchOrdinals(IndexInput slice, int byteSize, int[] ordsToPrefetch, int numOrds)
+      throws IOException {
+    // n <= 1 also covers the empty (n == 0) and null-ordinals cases; nothing is prefetched when
+    // there is no slice or at most one record (which faults in on the immediately-following read).
+    final int n = (ordsToPrefetch == null) ? 0 : Math.min(numOrds, ordsToPrefetch.length);
+    if (slice == null || n <= 1) {
+      return;
+    }
+    for (int i = 0; i < n; i++) {
+      final long offset = (long) ordsToPrefetch[i] * byteSize;
+      slice.prefetch(offset, byteSize);
+    }
+  }
 }

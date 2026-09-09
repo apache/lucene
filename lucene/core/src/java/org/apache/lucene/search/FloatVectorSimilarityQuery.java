@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
@@ -62,6 +63,30 @@ public class FloatVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
       KnnSearchStrategy searchStrategy) {
     super(field, resultSimilarity, decay, filter, searchStrategy);
     this.target = VectorUtil.checkFinite(Objects.requireNonNull(target, "target"));
+  }
+
+  private FloatVectorSimilarityQuery(
+      String field,
+      float[] target,
+      float resultSimilarity,
+      float decay,
+      Query filter,
+      KnnSearchStrategy searchStrategy,
+      Set<QueryReadHint> readHints) {
+    super(field, resultSimilarity, decay, filter, searchStrategy, readHints);
+    this.target = VectorUtil.checkFinite(Objects.requireNonNull(target, "target"));
+  }
+
+  /**
+   * Return a copy of this query that advertises the given {@link QueryReadHint}s. Unlike {@link
+   * IndexSearcher#setReadHints} (searcher-wide), these ride on the query itself and override the
+   * searcher's, so one shared {@link IndexSearcher} can run hinted and un-hinted queries at once.
+   *
+   * @lucene.experimental
+   */
+  public FloatVectorSimilarityQuery withReadHints(Set<QueryReadHint> readHints) {
+    return new FloatVectorSimilarityQuery(
+        field, target, resultSimilarity, decay, filter, searchStrategy, readHints);
   }
 
   /**
