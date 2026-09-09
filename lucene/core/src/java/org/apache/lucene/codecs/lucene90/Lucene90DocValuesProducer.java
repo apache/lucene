@@ -69,7 +69,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
   private final IntObjectHashMap<DocValuesSkipperEntry> skippers;
   private final IndexInput data;
   private final IndexInput skipIndexData;
-  // Sparse-field presence (IndexedDISI) file. Null for pre-VERSION_DISI_EXTENSIBLE_FILE segments,
+  // Sparse-field presence (IndexedDISI) file. Null for pre-VERSION_DISI_SEPARATE_FILE segments,
   // which still keep the IndexedDISI in .dvd.
   private final IndexInput disiData;
   private final int maxDoc;
@@ -184,18 +184,18 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       this.skipIndexData = null;
     }
 
-    if (version >= Lucene90DocValuesFormat.VERSION_DISI_EXTENSIBLE_FILE) {
+    if (version >= Lucene90DocValuesFormat.VERSION_DISI_SEPARATE_FILE) {
       IndexInput disiIn = null;
       try {
         String disiName =
             IndexFileNames.segmentFileName(
                 state.segmentInfo.name, state.segmentSuffix, disiExtension);
-        disiIn = state.directory.openInput(disiName, state.context.withHints(FileTypeHint.DATA));
+        disiIn = state.directory.openInput(disiName, state.context.withHints(FileTypeHint.INDEX));
         final int disiVersion =
             CodecUtil.checkIndexHeader(
                 disiIn,
                 disiCodec,
-                Lucene90DocValuesFormat.VERSION_DISI_EXTENSIBLE_FILE,
+                Lucene90DocValuesFormat.VERSION_DISI_SEPARATE_FILE,
                 Lucene90DocValuesFormat.VERSION_CURRENT,
                 state.segmentInfo.getId(),
                 state.segmentSuffix);
@@ -262,13 +262,9 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
   /**
    * Builds a sparse field's {@link IndexedDISI}.
    *
-   * <p>Since {@link Lucene90DocValuesFormat#VERSION_DISI_EXTENSIBLE_FILE} the bytes live in {@code
-   * .dvp} as {@code [1B type tag][vlong length][payload]} entries. This scans that region, skips
-   * unknown tags by their length, and decodes the {@link Lucene90DocValuesFormat#DISI_TYPE_INDEXED}
-   * payload {@code [short jumpTableEntryCount][byte denseRankPower][IndexedDISI bytes]}.
-   *
-   * <p>For older segments the bytes are inline in {@code .dvd} and {@code jumpTableEntryCount} /
-   * {@code denseRankPower} were read from the metadata.
+   * <p>Since {@link Lucene90DocValuesFormat#VERSION_DISI_SEPARATE_FILE} the bytes live in the
+   * {@code .dvp} file; for older segments they are inline in {@code .dvd}. The offset, length and
+   * shape are read from the metadata in both cases.
    */
   private IndexedDISI newIndexedDISI(
       long docsWithFieldOffset,
@@ -277,35 +273,14 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       byte denseRankPower,
       long numValues)
       throws IOException {
-    if (disiData == null) {
-      return new IndexedDISI(
-          data,
-          docsWithFieldOffset,
-          docsWithFieldLength,
-          jumpTableEntryCount,
-          denseRankPower,
-          numValues);
-    }
-    final long regionEnd = docsWithFieldOffset + docsWithFieldLength;
-    final IndexInput entries = disiData.clone();
-    entries.seek(docsWithFieldOffset);
-    while (entries.getFilePointer() < regionEnd) {
-      final byte type = entries.readByte();
-      final long entryLength = entries.readVLong();
-      final long payloadStart = entries.getFilePointer();
-      if (type == Lucene90DocValuesFormat.DISI_TYPE_INDEXED) {
-        final short jump = entries.readShort();
-        final byte rank = entries.readByte();
-        final long blobOffset = entries.getFilePointer();
-        final long blobLength = payloadStart + entryLength - blobOffset;
-        return new IndexedDISI(disiData, blobOffset, blobLength, jump, rank, numValues);
-      }
-      // Unknown tag: skip by stored length.
-      entries.seek(payloadStart + entryLength);
-    }
-    throw new CorruptIndexException(
-        "Missing " + Lucene90DocValuesFormat.DISI_TYPE_INDEXED + " entry in presence file",
-        disiData);
+    final IndexInput in = disiData != null ? disiData : data;
+    return new IndexedDISI(
+        in,
+        docsWithFieldOffset,
+        docsWithFieldLength,
+        jumpTableEntryCount,
+        denseRankPower,
+        numValues);
   }
 
   private void inferMaxValueCounts(FieldInfos fieldInfos) {
@@ -410,12 +385,8 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
   private void readNumeric(IndexInput meta, NumericEntry entry) throws IOException {
     entry.docsWithFieldOffset = meta.readLong();
     entry.docsWithFieldLength = meta.readLong();
-    if (version < Lucene90DocValuesFormat.VERSION_DISI_EXTENSIBLE_FILE) {
-      // Pre-.dvp: IndexedDISI shape and bytes live inline in .dvd.
-      entry.jumpTableEntryCount = meta.readShort();
-      entry.denseRankPower = meta.readByte();
-    }
-    // Otherwise these are read lazily from the .dvp entry.
+    entry.jumpTableEntryCount = meta.readShort();
+    entry.denseRankPower = meta.readByte();
     entry.numValues = meta.readLong();
     int tableSize = meta.readInt();
     if (tableSize > 256) {
@@ -446,12 +417,8 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     entry.dataLength = meta.readLong();
     entry.docsWithFieldOffset = meta.readLong();
     entry.docsWithFieldLength = meta.readLong();
-    if (version < Lucene90DocValuesFormat.VERSION_DISI_EXTENSIBLE_FILE) {
-      // Pre-.dvp: IndexedDISI shape and bytes live inline in .dvd.
-      entry.jumpTableEntryCount = meta.readShort();
-      entry.denseRankPower = meta.readByte();
-    }
-    // Otherwise these are read lazily from the .dvp entry.
+    entry.jumpTableEntryCount = meta.readShort();
+    entry.denseRankPower = meta.readByte();
     entry.numDocsWithField = meta.readInt();
     entry.minLength = meta.readInt();
     entry.maxLength = meta.readInt();
@@ -2545,6 +2512,9 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     CodecUtil.checksumEntireFile(data, merge);
     if (skipIndexData != null) {
       CodecUtil.checksumEntireFile(skipIndexData, merge);
+    }
+    if (disiData != null) {
+      CodecUtil.checksumEntireFile(disiData, merge);
     }
   }
 
