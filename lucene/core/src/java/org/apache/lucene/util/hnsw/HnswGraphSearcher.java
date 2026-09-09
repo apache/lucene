@@ -145,8 +145,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
         // We can only use PathSeer search if we know the maxConn
         && graph.maxConn() != HnswGraph.UNKNOWN_MAX_CONN
         && filteredDocCount > 0) {
-      innerSearcher =
-          PathSeerHnswGraphSearcher.create(knnCollector.k(), graph, filteredDocCount);
+      innerSearcher = PathSeerHnswGraphSearcher.create(knnCollector.k(), graph, filteredDocCount);
     } else if (acceptOrds != null
         // We can only use filtered search if we know the maxConn
         && graph.maxConn() != HnswGraph.UNKNOWN_MAX_CONN

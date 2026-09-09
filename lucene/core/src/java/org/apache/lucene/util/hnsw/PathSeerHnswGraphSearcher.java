@@ -38,9 +38,7 @@ public final class PathSeerHnswGraphSearcher extends HnswGraphSearcher {
   private final int resultHeapFullAt;
 
   private PathSeerHnswGraphSearcher(
-      NeighborQueue candidates,
-      org.apache.lucene.util.BitSet visited,
-      int resultHeapFullAt) {
+      NeighborQueue candidates, org.apache.lucene.util.BitSet visited, int resultHeapFullAt) {
     super(candidates, visited);
     this.resultHeapFullAt = resultHeapFullAt;
   }
