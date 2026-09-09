@@ -45,7 +45,7 @@ import java.util.regex.Pattern;
  *
  * <p>Ensure this class has no dependencies outside of standard java libraries as it's used direct
  */
-public class WrapperDownloader {
+public class GradleWrapperDownloader {
   /**
    * Copied to keep the class isolated from any other classes.
    *
@@ -60,13 +60,13 @@ public class WrapperDownloader {
 
   public static void main(String[] args) {
     if (args.length != 1) {
-      System.err.println("Usage: java WrapperDownloader.java <destination>");
+      System.err.println("Usage: java GradleWrapperDownloader.java <destination>");
       System.exit(2);
     }
 
     try {
       checkVersion();
-      new WrapperDownloader().run(Paths.get(args[0]));
+      new GradleWrapperDownloader().run(Paths.get(args[0]));
     } catch (Exception e) {
       System.err.println("ERROR: " + e.getMessage());
       System.exit(3);
@@ -105,7 +105,7 @@ public class WrapperDownloader {
                       }
                     }
 
-                    Logger.getLogger(WrapperDownloader.class.getName())
+                    Logger.getLogger(GradleWrapperDownloader.class.getName())
                         .warning(
                             "Something is wrong with the checksum file. Regenerate with "
                                 + "'sha256sum -b gradle-wrapper.jar > gradle-wrapper.jar.sha256'");
