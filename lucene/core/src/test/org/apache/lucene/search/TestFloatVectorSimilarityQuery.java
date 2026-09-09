@@ -61,7 +61,7 @@ public class TestFloatVectorSimilarityQuery
   @Override
   FloatVectorSimilarityQuery getVectorQuery(
       String field, float[] vector, float resultSimilarity, float decay, Query filter) {
-    return FloatVectorSimilarityQuery.createNew(
+    return new FloatVectorSimilarityQuery.Adaptive(
         field,
         vector,
         resultSimilarity,
@@ -78,14 +78,14 @@ public class TestFloatVectorSimilarityQuery
       float decay,
       Query filter,
       KnnSearchStrategy searchStrategy) {
-    return FloatVectorSimilarityQuery.createNew(
+    return new FloatVectorSimilarityQuery.Adaptive(
         field, vector, resultSimilarity, decay, filter, searchStrategy);
   }
 
   @Override
   FloatVectorSimilarityQuery getThrowingVectorQuery(
       String field, float[] vector, float resultSimilarity, float decay, Query filter) {
-    return new FloatVectorSimilarityQuery(
+    return new FloatVectorSimilarityQuery.Adaptive(
         field,
         vector,
         resultSimilarity,

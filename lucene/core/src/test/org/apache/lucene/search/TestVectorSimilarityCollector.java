@@ -53,8 +53,8 @@ public class TestVectorSimilarityCollector extends LuceneTestCase {
   public void testLegacyResultCollection() {
     float resultSimilarity = 0.5f;
 
-    LegacyVectorSimilarityCollector collector =
-        new LegacyVectorSimilarityCollector(resultSimilarity, DEFAULT_DECAY, Integer.MAX_VALUE);
+    ExplicitVectorSimilarityCollector collector =
+        new ExplicitVectorSimilarityCollector(resultSimilarity, DEFAULT_DECAY, Integer.MAX_VALUE);
 
     int[] nodes = {1, 5, 10, 4, 8, 3, 2, 6, 7, 9};
     float[] scores = {0.1f, 0.2f, 0.3f, 0.5f, 0.2f, 0.6f, 0.9f, 0.3f, 0.7f, 0.8f};

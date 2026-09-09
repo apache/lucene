@@ -35,113 +35,158 @@ import org.apache.lucene.search.knn.KnnSearchStrategy.Hnsw;
 public class ByteVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
   private final byte[] target;
 
-  /**
-   * Search for all (approximate) byte vectors above a similarity threshold using {@link
-   * VectorSimilarityCollector}, with a caller-supplied {@link KnnSearchStrategy}. If a filter is
-   * applied, it traverses as many nodes as the cost of the filter, and then falls back to exact
-   * search if results are incomplete.
-   *
-   * @param field a field that has been indexed as a {@link KnnByteVectorField}.
-   * @param target the target of the search.
-   * @param resultSimilarity similarity score for result collection.
-   * @param decay decay factor for graph traversal buffer.
-   * @param filter a filter applied before the vector search.
-   * @param searchStrategy the {@link KnnSearchStrategy} to use during graph search. If {@code
-   *     null}, this query's own default is used: an {@link Hnsw} with {@code
-   *     filteredSearchThreshold == 0}, which preserves this query's filter handling. Note this
-   *     differs from {@link Hnsw#DEFAULT}, which uses a threshold of 60. The underlying format may
-   *     not support all strategies and is free to ignore the requested strategy.
-   */
-  public static ByteVectorSimilarityQuery createNew(
-      String field,
-      byte[] target,
-      float resultSimilarity,
-      float decay,
-      Query filter,
-      KnnSearchStrategy searchStrategy) {
-    return new ByteVectorSimilarityQuery(
-        field, target, resultSimilarity, decay, filter, searchStrategy);
+  /** A {@link ByteVectorSimilarityQuery} with an adaptive threshold for graph traversal. */
+  public static class Adaptive extends ByteVectorSimilarityQuery {
+    /**
+     * Search for all (approximate) byte vectors above a similarity threshold using {@link
+     * VectorSimilarityCollector}, with a caller-supplied {@link KnnSearchStrategy}. If a filter is
+     * applied, it traverses as many nodes as the cost of the filter, and then falls back to exact
+     * search if results are incomplete.
+     *
+     * @param field a field that has been indexed as a {@link KnnByteVectorField}.
+     * @param target the target of the search.
+     * @param resultSimilarity similarity score for result collection.
+     * @param decay decay factor for graph traversal buffer.
+     * @param filter a filter applied before the vector search.
+     * @param searchStrategy the {@link KnnSearchStrategy} to use during graph search. If {@code
+     *     null}, this query's own default is used: an {@link Hnsw} with {@code
+     *     filteredSearchThreshold == 0}, which preserves this query's filter handling. Note this
+     *     differs from {@link Hnsw#DEFAULT}, which uses a threshold of 60. The underlying format
+     *     may not support all strategies and is free to ignore the requested strategy.
+     */
+    public Adaptive(
+        String field,
+        byte[] target,
+        float resultSimilarity,
+        float decay,
+        Query filter,
+        KnnSearchStrategy searchStrategy) {
+      super(field, target, resultSimilarity, decay, filter, searchStrategy);
+    }
+
+    /**
+     * Search for all (approximate) byte vectors above a similarity threshold using {@link
+     * VectorSimilarityCollector}, with the default {@link KnnSearchStrategy}. If a filter is
+     * applied, it traverses as many nodes as the cost of the filter, and then falls back to exact
+     * search if results are incomplete.
+     *
+     * @param field a field that has been indexed as a {@link KnnByteVectorField}.
+     * @param target the target of the search.
+     * @param resultSimilarity similarity score for result collection.
+     * @param decay decay factor for graph traversal buffer.
+     * @param filter a filter applied before the vector search.
+     */
+    public Adaptive(
+        String field, byte[] target, float resultSimilarity, float decay, Query filter) {
+      this(field, target, resultSimilarity, decay, filter, DEFAULT_STRATEGY);
+    }
+
+    /**
+     * Search for all (approximate) byte vectors above a similarity threshold using {@link
+     * VectorSimilarityCollector}. If a filter is applied, it traverses as many nodes as the cost of
+     * the filter, and then falls back to exact search if results are incomplete.
+     *
+     * @param field a field that has been indexed as a {@link KnnByteVectorField}.
+     * @param target the target of the search.
+     * @param resultSimilarity similarity score for result collection.
+     * @param filter a filter applied before the vector search.
+     */
+    public Adaptive(String field, byte[] target, float resultSimilarity, Query filter) {
+      this(field, target, resultSimilarity, DEFAULT_DECAY, filter);
+    }
+
+    /**
+     * Search for all (approximate) byte vectors above a similarity threshold using {@link
+     * VectorSimilarityCollector}.
+     *
+     * @param field a field that has been indexed as a {@link KnnByteVectorField}.
+     * @param target the target of the search.
+     * @param resultSimilarity similarity score for result collection.
+     */
+    public Adaptive(String field, byte[] target, float resultSimilarity) {
+      this(field, target, resultSimilarity, null);
+    }
   }
 
   /**
-   * Search for all (approximate) byte vectors above a similarity threshold using {@link
-   * VectorSimilarityCollector}, with the default {@link KnnSearchStrategy}. If a filter is applied,
-   * it traverses as many nodes as the cost of the filter, and then falls back to exact search if
-   * results are incomplete.
+   * A {@link ByteVectorSimilarityQuery} with an explicit threshold for graph traversal.
    *
-   * @param field a field that has been indexed as a {@link KnnByteVectorField}.
-   * @param target the target of the search.
-   * @param decay decay factor for graph traversal buffer.
-   * @param resultSimilarity similarity score for result collection.
-   * @param filter a filter applied before the vector search.
-   */
-  public static ByteVectorSimilarityQuery createNew(
-      String field, byte[] target, float resultSimilarity, float decay, Query filter) {
-    return createNew(field, target, resultSimilarity, decay, filter, DEFAULT_STRATEGY);
-  }
-
-  /**
-   * Search for all (approximate) byte vectors above a similarity threshold using {@link
-   * VectorSimilarityCollector}. If a filter is applied, it traverses as many nodes as the cost of
-   * the filter, and then falls back to exact search if results are incomplete.
-   *
-   * @param field a field that has been indexed as a {@link KnnByteVectorField}.
-   * @param target the target of the search.
-   * @param resultSimilarity similarity score for result collection.
-   * @param filter a filter applied before the vector search.
-   */
-  public static ByteVectorSimilarityQuery createNew(
-      String field, byte[] target, float resultSimilarity, Query filter) {
-    return createNew(field, target, resultSimilarity, DEFAULT_DECAY, filter);
-  }
-
-  /**
-   * Search for all (approximate) byte vectors above a similarity threshold using {@link
-   * VectorSimilarityCollector}.
-   *
-   * @param field a field that has been indexed as a {@link KnnByteVectorField}.
-   * @param target the target of the search.
-   * @param resultSimilarity similarity score for result collection.
-   */
-  public static ByteVectorSimilarityQuery createNew(
-      String field, byte[] target, float resultSimilarity) {
-    return createNew(field, target, resultSimilarity, null);
-  }
-
-  /**
-   * Search for all (approximate) byte vectors above a similarity threshold using {@link
-   * VectorSimilarityCollector}, with the default {@link KnnSearchStrategy}. If a filter is applied,
-   * it traverses as many nodes as the cost of the filter, and then falls back to exact search if
-   * results are incomplete.
-   *
-   * @param field a field that has been indexed as a {@link KnnByteVectorField}.
-   * @param target the target of the search.
-   * @param traversalSimilarity decay factor for graph traversal buffer.
-   * @param resultSimilarity similarity score for result collection.
-   * @param filter a filter applied before the vector search.
-   * @deprecated This function creates a query with the same behavior as Lucene 10.4, use {@link
-   *     #createNew(String, byte[], float, float, Query, KnnSearchStrategy)} for a more performant
-   *     version.
+   * @deprecated Use {@link Adaptive} for a more performant version.
    */
   @Deprecated
-  public static ByteVectorSimilarityQuery createLegacy(
-      String field,
-      byte[] target,
-      float traversalSimilarity,
-      float resultSimilarity,
-      Query filter) {
-    return new ByteVectorSimilarityQuery(
-        field, target, resultSimilarity, 0f, filter, DEFAULT_STRATEGY) {
-      @Override
-      protected KnnCollectorManager getKnnCollectorManager() {
-        return (visitedLimit, _, _) ->
-            new LegacyVectorSimilarityCollector(
-                traversalSimilarity, resultSimilarity, visitedLimit);
-      }
-    };
+  public static class Explicit extends ByteVectorSimilarityQuery {
+    private final float traversalSimilarity;
+
+    /**
+     * Search for all (approximate) byte vectors above a similarity threshold using {@link
+     * VectorSimilarityCollector}. If a filter is applied, it traverses as many nodes as the cost of
+     * the filter, and then falls back to exact search if results are incomplete.
+     *
+     * @param field a field that has been indexed as a {@link KnnByteVectorField}.
+     * @param target the target of the search.
+     * @param traversalSimilarity (lower) similarity score for graph traversal.
+     * @param resultSimilarity (higher) similarity score for result collection.
+     * @param filter a filter applied before the vector search.
+     */
+    public Explicit(
+        String field,
+        byte[] target,
+        float traversalSimilarity,
+        float resultSimilarity,
+        Query filter) {
+      super(field, target, resultSimilarity, 0f, filter, DEFAULT_STRATEGY);
+      this.traversalSimilarity = traversalSimilarity;
+    }
+
+    /**
+     * Search for all (approximate) byte vectors above a similarity threshold using {@link
+     * VectorSimilarityCollector}.
+     *
+     * @param field a field that has been indexed as a {@link KnnByteVectorField}.
+     * @param target the target of the search.
+     * @param traversalSimilarity (lower) similarity score for graph traversal.
+     * @param resultSimilarity (higher) similarity score for result collection.
+     */
+    public Explicit(
+        String field, byte[] target, float traversalSimilarity, float resultSimilarity) {
+      this(field, target, traversalSimilarity, resultSimilarity, null);
+    }
+
+    /**
+     * Search for all (approximate) byte vectors above a similarity threshold using {@link
+     * VectorSimilarityCollector}. If a filter is applied, it traverses as many nodes as the cost of
+     * the filter, and then falls back to exact search if results are incomplete.
+     *
+     * @param field a field that has been indexed as a {@link KnnByteVectorField}.
+     * @param target the target of the search.
+     * @param resultSimilarity similarity score for result collection.
+     * @param filter a filter applied before the vector search.
+     */
+    public Explicit(String field, byte[] target, float resultSimilarity, Query filter) {
+      this(field, target, resultSimilarity, resultSimilarity, filter);
+    }
+
+    /**
+     * Search for all (approximate) byte vectors above a similarity threshold using {@link
+     * VectorSimilarityCollector}.
+     *
+     * @param field a field that has been indexed as a {@link KnnByteVectorField}.
+     * @param target the target of the search.
+     * @param resultSimilarity similarity score for result collection.
+     */
+    public Explicit(String field, byte[] target, float resultSimilarity) {
+      this(field, target, resultSimilarity, resultSimilarity, null);
+    }
+
+    @Override
+    protected KnnCollectorManager getKnnCollectorManager() {
+      return (visitedLimit, _, _) ->
+          new ExplicitVectorSimilarityCollector(
+              traversalSimilarity, resultSimilarity, visitedLimit);
+    }
   }
 
-  ByteVectorSimilarityQuery(
+  private ByteVectorSimilarityQuery(
       String field,
       byte[] target,
       float resultSimilarity,

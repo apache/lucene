@@ -22,12 +22,11 @@ import java.util.List;
 /**
  * Perform a similarity-based graph search.
  *
- * @deprecated This is a copy of the collector used until Lucene 10.4, use {@link
- *     VectorSimilarityCollector} for a more performant version.
+ * @deprecated Use {@link VectorSimilarityCollector} for a more performant version.
  * @lucene.experimental
  */
 @Deprecated
-class LegacyVectorSimilarityCollector extends AbstractKnnCollector {
+class ExplicitVectorSimilarityCollector extends AbstractKnnCollector {
   private final float traversalSimilarity, resultSimilarity;
   private float maxSimilarity;
   private final List<ScoreDoc> scoreDocList;
@@ -41,7 +40,7 @@ class LegacyVectorSimilarityCollector extends AbstractKnnCollector {
    * @param resultSimilarity (higher) similarity score for result collection.
    * @param visitLimit limit on number of nodes to visit.
    */
-  public LegacyVectorSimilarityCollector(
+  public ExplicitVectorSimilarityCollector(
       float traversalSimilarity, float resultSimilarity, long visitLimit) {
     // TODO: add search strategy support
     super(1, visitLimit, AbstractVectorSimilarityQuery.DEFAULT_STRATEGY);
