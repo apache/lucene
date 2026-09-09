@@ -25,25 +25,32 @@ import org.apache.lucene.util.Bits;
 
 /**
  * A filter-aware HNSW graph searcher that operates in two phases without modifying the graph.
- * Before the candidate frontier first reaches {@code k}, accepted second-order neighbors are added
+ * Before the result heap reaches its effective capacity, accepted second-order neighbors are added
  * as expansion-zone candidates. In the second phase, when an expanded candidate is rejected by the
- * filter, rejected direct neighbors are skipped without scoring.
+ * filter, rejected direct neighbors are skipped without scoring. The effective capacity is the
+ * smaller of {@code k} and the filter cardinality.
  *
  * @lucene.experimental
  */
 public final class PathSeerHnswGraphSearcher extends HnswGraphSearcher {
   private int[] directNeighbors = new int[0];
   private int[] toScore = new int[0];
+  private final int resultHeapFullAt;
 
   private PathSeerHnswGraphSearcher(
-      NeighborQueue candidates, org.apache.lucene.util.BitSet visited) {
+      NeighborQueue candidates,
+      org.apache.lucene.util.BitSet visited,
+      int resultHeapFullAt) {
     super(candidates, visited);
+    this.resultHeapFullAt = resultHeapFullAt;
   }
 
   /** Creates a PathSeer searcher for the supplied graph. */
-  public static PathSeerHnswGraphSearcher create(int k, HnswGraph graph) {
+  public static PathSeerHnswGraphSearcher create(int k, HnswGraph graph, int filteredDocCount) {
     return new PathSeerHnswGraphSearcher(
-        new NeighborQueue(k, true), HnswGraphSearcher.createBitSet(k, getGraphSize(graph)));
+        new NeighborQueue(k, true),
+        HnswGraphSearcher.createBitSet(k, getGraphSize(graph)),
+        Math.min(k, filteredDocCount));
   }
 
   @Override
@@ -76,11 +83,11 @@ public final class PathSeerHnswGraphSearcher extends HnswGraphSearcher {
 
     float minAcceptedSimilarity = Math.nextUp(results.minCompetitiveSimilarity());
     boolean shouldExploreMinSim = true;
-    boolean candidateFrontierReachedK = false;
+    boolean resultHeapIsFull = false;
     final int maxSecondOrder = Math.max(1, graph.maxConn() * 2);
 
     while (candidates.size() > 0 && results.earlyTerminated() == false) {
-      candidateFrontierReachedK |= candidates.size() >= results.k();
+      resultHeapIsFull = results.numCollected() >= resultHeapFullAt;
       float topCandidateSimilarity = candidates.topScore();
       if (topCandidateSimilarity < minAcceptedSimilarity) {
         if (shouldExploreMinSim && Math.nextUp(topCandidateSimilarity) == minAcceptedSimilarity) {
@@ -92,7 +99,7 @@ public final class PathSeerHnswGraphSearcher extends HnswGraphSearcher {
 
       int topCandidateNode = candidates.pop();
       boolean shouldFilterRejectedNeighbors =
-          candidateFrontierReachedK && acceptOrds.get(topCandidateNode) == false;
+          resultHeapIsFull && acceptOrds.get(topCandidateNode) == false;
       graphSeek(graph, level, topCandidateNode);
       int directCount = 0;
       int neighbor;
@@ -104,17 +111,17 @@ public final class PathSeerHnswGraphSearcher extends HnswGraphSearcher {
       int scoreCount = 0;
       for (int i = 0; i < directCount; i++) {
         int direct = directNeighbors[i];
-        if (visited.getAndSet(direct)) {
+        if (shouldFilterRejectedNeighbors && acceptOrds.get(direct) == false) {
           continue;
         }
-        if (shouldFilterRejectedNeighbors && acceptOrds.get(direct) == false) {
+        if (visited.getAndSet(direct)) {
           continue;
         }
         toScore = ArrayUtil.grow(toScore, scoreCount + 1);
         toScore[scoreCount++] = direct;
       }
 
-      if (candidateFrontierReachedK == false) {
+      if (resultHeapIsFull == false) {
         int secondOrderExamined = 0;
         outer:
         for (int i = 0; i < directCount; i++) {
