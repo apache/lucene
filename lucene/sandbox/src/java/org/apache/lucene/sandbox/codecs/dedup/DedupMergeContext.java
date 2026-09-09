@@ -28,9 +28,11 @@ import java.nio.FloatBuffer;
 import java.nio.ShortBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocIDMerger;
@@ -86,7 +88,18 @@ final class DedupMergeContext implements Accountable {
             mergeState.segmentInfo.maxDoc()));
   }
 
-  void finish(IndexOutput meta, IndexOutput vectorData) throws IOException {
+  /**
+   * Merges each group's distinct vectors, followed by per-field metadata. When {@code quantizer} is
+   * non-null, a quantized copy of each applicable group is also written and its block location
+   * appended to the group metadata — copying records from source segments in this format, and
+   * re-reading a distinct vector through its handle to quantize it otherwise.
+   */
+  void finish(
+      IndexOutput meta,
+      IndexOutput vectorData,
+      IndexOutput quantizedVectorData,
+      DedupQuantizer quantizer)
+      throws IOException {
 
     // Evaluate compatible fields together for correct de-duplication
     Map<GroupKey, List<FieldData>> fieldGroups =
@@ -119,6 +132,27 @@ final class DedupMergeContext implements Accountable {
           new GroupInfo(
               groupOrd, dimension, encoding, groupNumVectors, vectorDataOffset, vectorDataSize);
       groupInfo.write(meta);
+
+      if (quantizer != null) {
+        if (mergeGroup instanceof FloatGroup floatGroup) {
+          Set<DedupQuantizer.Flavor> flavors = EnumSet.noneOf(DedupQuantizer.Flavor.class);
+          for (FieldData fieldData : entry.getValue()) {
+            flavors.add(
+                DedupQuantizer.Flavor.of(fieldData.fieldInfo.getVectorSimilarityFunction()));
+          }
+          quantizer.writeGroup(
+              meta,
+              quantizedVectorData,
+              encoding,
+              dimension,
+              groupNumVectors,
+              flavors,
+              ord -> floatGroup.get(ord).get(),
+              floatGroup::preQuantized);
+        } else {
+          DedupQuantizer.writeEmptyGroup(meta);
+        }
+      }
 
       groupOrds.put(groupKey, groupOrd);
       groupOrd++;
@@ -252,6 +286,22 @@ final class DedupMergeContext implements Accountable {
     @Override
     FloatVector vectorFrom(Sub<FloatVectorValues> sub) {
       return new FloatVector(sub.values, sub.iterator.index());
+    }
+
+    /**
+     * The already-quantized record of the distinct vector at a group ordinal, when its source
+     * segment is in this format (data-blind quantization is a pure function of the raw vector, so
+     * the record can be copied on merge instead of re-quantizing), or {@code null}.
+     */
+    DedupQuantizer.PreQuantized preQuantized(int ord) {
+      FloatVector handle = get(ord);
+      if (handle.values()
+          instanceof DedupScalarQuantizedVectorValues.RawAndQuantizedValues rawAndQuantized) {
+        DedupScalarQuantizedVectorValues.FieldValues quantized =
+            rawAndQuantized.getQuantizedValues();
+        return new DedupQuantizer.PreQuantized(quantized, quantized.flavor(), handle.ord());
+      }
+      return null;
     }
 
     @Override

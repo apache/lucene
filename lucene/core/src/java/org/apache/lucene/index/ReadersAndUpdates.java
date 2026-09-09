@@ -78,22 +78,9 @@ final class ReadersAndUpdates {
 
   private final LiveIndexWriterConfig config;
 
-  // Indicates whether this segment is currently being merged. While a segment
-  // is merging, all field updates are also registered in the
-  // mergingDVUpdates map. Also, calls to writeFieldUpdates merge the
-  // updates with mergingDVUpdates.
-  // That way, when the segment is done merging, IndexWriter can apply the
-  // updates on the merged segment too.
-  private boolean isMerging = false;
-
   // Holds resolved (to docIDs) doc values updates that have not yet been
   // written to the index
   private final Map<String, List<DocValuesFieldUpdates>> pendingDVUpdates = new HashMap<>();
-
-  // Holds resolved (to docIDs) doc values updates that were resolved while
-  // this segment was being merged; at the end of the merge we carry over
-  // these updates (remapping their docIDs) to the newly merged segment
-  private final Map<String, List<DocValuesFieldUpdates>> mergingDVUpdates = new HashMap<>();
 
   // Only set if there are doc values updates against this segment, and the index is sorted:
   Sorter.DocMap sortMap;
@@ -174,15 +161,6 @@ final class ReadersAndUpdates {
     ramBytesUsed.addAndGet(update.ramBytesUsed());
 
     fieldUpdates.add(update);
-
-    if (isMerging) {
-      fieldUpdates = mergingDVUpdates.get(update.field);
-      if (fieldUpdates == null) {
-        fieldUpdates = new ArrayList<>();
-        mergingDVUpdates.put(update.field, fieldUpdates);
-      }
-      fieldUpdates.add(update);
-    }
   }
 
   public synchronized long getNumDVUpdates() {
@@ -191,6 +169,19 @@ final class ReadersAndUpdates {
       count += updates.size();
     }
     return count;
+  }
+
+  /**
+   * Copies of the currently-pending (resolved but not yet written) doc-values updates, keyed by
+   * field. Returning copies lets the merge carry-over iterate them, and do its disk I/O, without
+   * holding this monitor; IndexWriter still coordinates the carry-over for correctness.
+   */
+  synchronized Map<String, List<DocValuesFieldUpdates>> getPendingDVUpdatesSnapshot() {
+    Map<String, List<DocValuesFieldUpdates>> copy = new HashMap<>();
+    for (Map.Entry<String, List<DocValuesFieldUpdates>> ent : pendingDVUpdates.entrySet()) {
+      copy.put(ent.getKey(), new ArrayList<>(ent.getValue()));
+    }
+    return copy;
   }
 
   /** Returns a {@link SegmentReader}. */
@@ -291,7 +282,6 @@ final class ReadersAndUpdates {
     // deletes onto the newly merged segment, so we can
     // discard them on the sub-readers:
     pendingDeletes.dropChanges();
-    dropMergingUpdates();
   }
 
   // Commit live docs (writes new _X_N.del files) and field updates (writes new
@@ -1000,36 +990,9 @@ final class ReadersAndUpdates {
     reader = createNewReaderWithLatestLiveDocs(reader);
   }
 
-  synchronized void setIsMerging() {
-    // This ensures any newly resolved doc value updates while we are merging are
-    // saved for re-applying after this segment is done merging:
-    if (isMerging == false) {
-      isMerging = true;
-      assert mergingDVUpdates.isEmpty();
-    }
-  }
-
-  synchronized boolean isMerging() {
-    return isMerging;
-  }
-
   /** Returns a reader for merge, with the latest doc values updates and deletions. */
   synchronized MergePolicy.MergeReader getReaderForMerge(
       IOContext context, IOConsumer<MergePolicy.MergeReader> readerConsumer) throws IOException {
-
-    // We must carry over any still-pending DV updates because they were not
-    // successfully written, e.g. because there was a hole in the delGens,
-    // or they arrived after we wrote all DVs for merge but before we set
-    // isMerging here:
-    for (Map.Entry<String, List<DocValuesFieldUpdates>> ent : pendingDVUpdates.entrySet()) {
-      List<DocValuesFieldUpdates> mergingUpdates = mergingDVUpdates.get(ent.getKey());
-      if (mergingUpdates == null) {
-        mergingUpdates = new ArrayList<>();
-        mergingDVUpdates.put(ent.getKey(), mergingUpdates);
-      }
-      mergingUpdates.addAll(ent.getValue());
-    }
-
     SegmentReader reader = getReader(context);
     if (pendingDeletes.needsRefresh(reader)
         || reader.getSegmentInfo().getDelGen() != pendingDeletes.info.getDelGen()) {
@@ -1042,22 +1005,6 @@ final class ReadersAndUpdates {
         new MergePolicy.MergeReader(reader, pendingDeletes.getHardLiveDocs());
     readerConsumer.accept(mergeReader);
     return mergeReader;
-  }
-
-  /**
-   * Drops all merging updates. Called from IndexWriter after this segment finished merging (whether
-   * successfully or not).
-   */
-  public synchronized void dropMergingUpdates() {
-    mergingDVUpdates.clear();
-    isMerging = false;
-  }
-
-  public synchronized Map<String, List<DocValuesFieldUpdates>> getMergingDVUpdates() {
-    // We must atomically (in single sync'd block) clear isMerging when we return the DV updates
-    // otherwise we can lose updates:
-    isMerging = false;
-    return mergingDVUpdates;
   }
 
   @Override
