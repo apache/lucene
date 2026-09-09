@@ -57,6 +57,7 @@ public class VectorUtilBenchmark {
   private byte[] halfBytesAPacked;
   private byte[] halfBytesB;
   private byte[] halfBytesBPacked;
+  private byte[] halfBytesUnpackDest;
   private byte[] int4QuantizedBit;
   private byte[] binaryQuantized;
   private byte[] int4QuantizedDibit;
@@ -101,6 +102,9 @@ public class VectorUtilBenchmark {
 
       halfBytesBPacked = new byte[(size + 1) >> 1];
       compressBytes(halfBytesB, halfBytesBPacked);
+
+      // destination for the unpack benchmarks
+      halfBytesUnpackDest = new byte[halfBytesAPacked.length * 2];
     }
 
     // random float arrays for float methods
@@ -285,6 +289,19 @@ public class VectorUtilBenchmark {
   @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public long int4DibitDotProductVector() {
     return VectorUtil.int4DibitDotProduct(int4QuantizedDibit, dibitQuantized);
+  }
+
+  @Benchmark
+  public byte[] binaryHalfByteUnpackScalar() {
+    VectorUtil.int4Unpack(halfBytesAPacked, halfBytesUnpackDest);
+    return halfBytesUnpackDest;
+  }
+
+  @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public byte[] binaryHalfByteUnpackVector() {
+    VectorUtil.int4Unpack(halfBytesAPacked, halfBytesUnpackDest);
+    return halfBytesUnpackDest;
   }
 
   @Benchmark
