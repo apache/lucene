@@ -105,8 +105,27 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
                 abortCheck);
       }
     }
+    CompletedNeighborEps epsHelper = null;
+    if (graphReaders.isEmpty() == false) {
+      // null bitset: parent mapping sets bits for every 0-delete reader, which would skip leftover
+      // inserts on the concurrent path
+      int[][] ordMaps = getNewOrdMapping(mergedVectorValues, null);
+      KnnVectorsReader[] readers = new KnnVectorsReader[graphReaders.size()];
+      for (int i = 0; i < graphReaders.size(); i++) {
+        readers[i] = graphReaders.get(i).reader();
+      }
+      epsHelper = new CompletedNeighborEps(maxOrd, ordMaps, readers, fieldInfo.name);
+      if (initializedNodes != null) {
+        int length = initializedNodes.length();
+        for (int n = initializedNodes.nextSetBit(0);
+            n != NO_MORE_DOCS;
+            n = n + 1 >= length ? NO_MORE_DOCS : initializedNodes.nextSetBit(n + 1)) {
+          epsHelper.markCompleted(n);
+        }
+      }
+    }
     return new HnswConcurrentMergeBuilder(
-        taskExecutor, numWorker, scorerSupplier, beamWidth, graph, initializedNodes);
+        taskExecutor, numWorker, scorerSupplier, beamWidth, graph, initializedNodes, epsHelper);
   }
 
   /**
