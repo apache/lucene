@@ -26,6 +26,7 @@ import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingT
 import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingTermVectorsWriter.VECTORS_INDEX_CODEC_NAME;
 import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingTermVectorsWriter.VECTORS_INDEX_EXTENSION;
 import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingTermVectorsWriter.VECTORS_META_EXTENSION;
+import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingTermVectorsWriter.VERSION_CHUNK_CHECKSUM;
 import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingTermVectorsWriter.VERSION_CURRENT;
 import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingTermVectorsWriter.VERSION_START;
 
@@ -35,6 +36,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.zip.CRC32C;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.codecs.compressing.CompressionMode;
@@ -356,6 +358,57 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     vectorsStream.prefetch(blockStartPointer, blockLength);
 
     prefetchedBlockIDCache[prefetchedBlockIDCacheIndex++ & PREFETCH_CACHE_MASK] = blockID;
+  }
+
+  /**
+   * Verifies the CRC32C that follows a chunk's compressed bytes, before anything decompresses them.
+   *
+   * <p>The chunk's length comes from the fields index rather than from the file, so a corrupt
+   * length cannot be used to read outside the chunk. Leaves the stream where it was found.
+   */
+  private void verifyCompressedChunk(int doc, int docBase, int chunkDocs) throws IOException {
+    final long compressedStart = vectorsStream.getFilePointer();
+    final long blockID = indexReader.getBlockID(doc);
+    final long blockEnd =
+        indexReader.getBlockStartPointer(blockID) + indexReader.getBlockLength(blockID);
+    final long compressedLength = blockEnd - Integer.BYTES - compressedStart;
+    if (compressedLength < 0) {
+      throw new CorruptIndexException(
+          "chunk shorter than its checksum: docBase="
+              + docBase
+              + ", chunkDocs="
+              + chunkDocs
+              + ", length="
+              + compressedLength,
+          vectorsStream);
+    }
+
+    final CRC32C crc = new CRC32C();
+    final byte[] scratch = new byte[8192];
+    long remaining = compressedLength;
+    while (remaining > 0) {
+      final int n = (int) Math.min(scratch.length, remaining);
+      vectorsStream.readBytes(scratch, 0, n);
+      crc.update(scratch, 0, n);
+      remaining -= n;
+    }
+    final int actual = (int) crc.getValue();
+    final int expected = vectorsStream.readInt();
+    if (actual != expected) {
+      throw new CorruptIndexException(
+          "chunk checksum mismatch: docBase="
+              + docBase
+              + ", chunkDocs="
+              + chunkDocs
+              + ", compressedLength="
+              + compressedLength
+              + ", expected="
+              + Integer.toHexString(expected)
+              + ", actual="
+              + Integer.toHexString(actual),
+          vectorsStream);
+    }
+    vectorsStream.seek(compressedStart);
   }
 
   @Override
@@ -699,6 +752,12 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
         termIndex += termCount;
       }
       assert termIndex == totalTerms : termIndex + " " + totalTerms;
+    }
+
+    if (version >= VERSION_CHUNK_CHECKSUM) {
+      // Verify the compressed bytes before the decompressor sees them, so that a corrupt chunk is
+      // reported as such rather than surfacing from inside the decompression routine.
+      verifyCompressedChunk(doc, docBase, chunkDocs);
     }
 
     // decompress data
