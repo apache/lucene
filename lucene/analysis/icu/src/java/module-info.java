@@ -30,7 +30,8 @@ module org.apache.lucene.analysis.icu {
       org.apache.lucene.core;
 
   provides org.apache.lucene.analysis.CharFilterFactory with
-      org.apache.lucene.analysis.icu.ICUNormalizer2CharFilterFactory;
+      org.apache.lucene.analysis.icu.ICUNormalizer2CharFilterFactory,
+      org.apache.lucene.analysis.icu.ICUTransform2CharFilterFactory;
   provides org.apache.lucene.analysis.TokenizerFactory with
       org.apache.lucene.analysis.icu.segmentation.ICUTokenizerFactory;
   provides org.apache.lucene.analysis.TokenFilterFactory with
