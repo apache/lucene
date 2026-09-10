@@ -555,6 +555,72 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
       } else if (merging) {
         // already decompressed
         documentInput = new ByteArrayDataInput(bytes.bytes, bytes.offset + offset, length);
+      } else if (sliced
+          && decompressor instanceof Lucene90SkippableDecompressor skippableDecompressor) {
+        fieldsStream.seek(startPointer);
+        final int firstLength = Math.min(length, chunkSize - offset);
+        final Lucene90DecompressingDataInput firstInput =
+            skippableDecompressor.decompressingDataInput(
+                fieldsStream, chunkSize, offset, firstLength);
+        documentInput =
+            new Lucene90DecompressingDataInput() {
+
+              Lucene90DecompressingDataInput input = firstInput;
+              int decompressed = firstLength;
+
+              void loadNextSlice() throws IOException {
+                if (decompressed == length) {
+                  throw new EOFException();
+                }
+                final int toDecompress = Math.min(length - decompressed, chunkSize);
+                input =
+                    skippableDecompressor.decompressingDataInput(
+                        fieldsStream, toDecompress, 0, toDecompress);
+                decompressed += toDecompress;
+              }
+
+              @Override
+              public byte readByte() throws IOException {
+                try {
+                  return input.readByte();
+                } catch (EOFException _) {
+                  loadNextSlice();
+                  return input.readByte();
+                }
+              }
+
+              @Override
+              public void readBytes(byte[] b, int offset, int len) throws IOException {
+                while (len > 0) {
+                  final int actualRead = input.readBytesUpTo(b, offset, len);
+                  if (actualRead == len) {
+                    return;
+                  }
+                  offset += actualRead;
+                  len -= actualRead;
+                  loadNextSlice();
+                }
+              }
+
+              @Override
+              public long skipBytesUpTo(long numBytes) throws IOException {
+                if (numBytes < 0) {
+                  throw new IllegalArgumentException("numBytes must be >= 0, got " + numBytes);
+                }
+                long skipped = 0;
+                while (skipped < numBytes) {
+                  final long actualSkipped = input.skipBytesUpTo(numBytes - skipped);
+                  skipped += actualSkipped;
+                  if (skipped == numBytes || decompressed == length) {
+                    return skipped;
+                  }
+
+                  // Load next slice to skip.
+                  loadNextSlice();
+                }
+                return skipped;
+              }
+            };
       } else if (sliced) {
         fieldsStream.seek(startPointer);
         decompressor.decompress(
