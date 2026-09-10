@@ -33,7 +33,7 @@ import org.apache.lucene.search.knn.KnnSearchStrategy.Hnsw;
  * @lucene.experimental
  */
 public class ByteVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
-  private final byte[] target;
+  protected final byte[] target;
 
   /** A {@link ByteVectorSimilarityQuery} with an adaptive threshold for graph traversal. */
   public static class Adaptive extends ByteVectorSimilarityQuery {
@@ -111,7 +111,8 @@ public class ByteVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
   /**
    * A {@link ByteVectorSimilarityQuery} with an explicit threshold for graph traversal.
    *
-   * @deprecated Use {@link Adaptive} for a more performant version.
+   * @deprecated Provided for backwards compatibility with {@link ByteVectorSimilarityQuery}, use
+   *     {@link Adaptive} for a more performant version.
    */
   @Deprecated
   public static class Explicit extends ByteVectorSimilarityQuery {
@@ -184,6 +185,32 @@ public class ByteVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
           new ExplicitVectorSimilarityCollector(
               traversalSimilarity, resultSimilarity, visitedLimit);
     }
+
+    @Override
+    public String toString(String field) {
+      return String.format(
+          Locale.ROOT,
+          "%s.%s[field=%s target=[%d...] traversalSimilarity=%f resultSimilarity=%f filter=%s]",
+          getClass().getEnclosingClass().getSimpleName(),
+          getClass().getSimpleName(),
+          field,
+          target[0],
+          traversalSimilarity,
+          resultSimilarity,
+          filter);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      return super.equals(o) && traversalSimilarity == ((Explicit) o).traversalSimilarity;
+    }
+
+    @Override
+    public int hashCode() {
+      int result = super.hashCode();
+      result = 31 * result + Float.hashCode(traversalSimilarity);
+      return result;
+    }
   }
 
   private ByteVectorSimilarityQuery(
@@ -223,7 +250,8 @@ public class ByteVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
   public String toString(String field) {
     return String.format(
         Locale.ROOT,
-        "%s[field=%s target=[%d...] resultSimilarity=%f decay=%f filter=%s]",
+        "%s.%s[field=%s target=[%d...] resultSimilarity=%f decay=%f filter=%s]",
+        getClass().getEnclosingClass().getSimpleName(),
         getClass().getSimpleName(),
         field,
         target[0],
