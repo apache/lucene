@@ -32,11 +32,11 @@ import org.apache.lucene.search.knn.KnnSearchStrategy.Hnsw;
  *
  * @lucene.experimental
  */
-public class ByteVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
-  protected final byte[] target;
+public abstract sealed class ByteVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
+  private final byte[] target;
 
   /** A {@link ByteVectorSimilarityQuery} with an adaptive threshold for graph traversal. */
-  public static class Adaptive extends ByteVectorSimilarityQuery {
+  public static non-sealed class Adaptive extends ByteVectorSimilarityQuery {
     /**
      * Search for all (approximate) byte vectors above a similarity threshold using {@link
      * VectorSimilarityCollector}, with a caller-supplied {@link KnnSearchStrategy}. If a filter is
@@ -106,16 +106,28 @@ public class ByteVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
     public Adaptive(String field, byte[] target, float resultSimilarity) {
       this(field, target, resultSimilarity, null);
     }
+
+    @Override
+    public String toString(String field) {
+      return String.format(
+          Locale.ROOT,
+          "ByteVectorSimilarityQuery.Adaptive[field=%s target=[%d...] resultSimilarity=%f decay=%f filter=%s]",
+          field,
+          super.target[0],
+          resultSimilarity,
+          decay,
+          filter);
+    }
   }
 
   /**
    * A {@link ByteVectorSimilarityQuery} with an explicit threshold for graph traversal.
    *
-   * @deprecated Provided for backwards compatibility with {@link ByteVectorSimilarityQuery}, use
-   *     {@link Adaptive} for a more performant version.
+   * @deprecated Equivalent to the {@link ByteVectorSimilarityQuery} constructors in Lucene 10.4 and
+   *     earlier, use {@link Adaptive} for a more performant version.
    */
   @Deprecated
-  public static class Explicit extends ByteVectorSimilarityQuery {
+  public static non-sealed class Explicit extends ByteVectorSimilarityQuery {
     private final float traversalSimilarity;
 
     /**
@@ -136,6 +148,9 @@ public class ByteVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
         float resultSimilarity,
         Query filter) {
       super(field, target, resultSimilarity, 0f, filter, DEFAULT_STRATEGY);
+      if (traversalSimilarity > resultSimilarity) {
+        throw new IllegalArgumentException("traversalSimilarity should be <= resultSimilarity");
+      }
       this.traversalSimilarity = traversalSimilarity;
     }
 
@@ -190,11 +205,9 @@ public class ByteVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
     public String toString(String field) {
       return String.format(
           Locale.ROOT,
-          "%s.%s[field=%s target=[%d...] traversalSimilarity=%f resultSimilarity=%f filter=%s]",
-          getClass().getEnclosingClass().getSimpleName(),
-          getClass().getSimpleName(),
+          "ByteVectorSimilarityQuery.Explicit[field=%s target=[%d...] traversalSimilarity=%f resultSimilarity=%f filter=%s]",
           field,
-          target[0],
+          super.target[0],
           traversalSimilarity,
           resultSimilarity,
           filter);
@@ -202,7 +215,8 @@ public class ByteVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
 
     @Override
     public boolean equals(Object o) {
-      return super.equals(o) && traversalSimilarity == ((Explicit) o).traversalSimilarity;
+      return super.equals(o)
+          && Float.compare(traversalSimilarity, ((Explicit) o).traversalSimilarity) == 0;
     }
 
     @Override
@@ -244,20 +258,6 @@ public class ByteVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
     KnnCollector collector = knnCollectorManager.newCollector(visitLimit, null, context);
     context.reader().searchNearestVectors(field, target, collector, acceptDocs);
     return collector.topDocs();
-  }
-
-  @Override
-  public String toString(String field) {
-    return String.format(
-        Locale.ROOT,
-        "%s.%s[field=%s target=[%d...] resultSimilarity=%f decay=%f filter=%s]",
-        getClass().getEnclosingClass().getSimpleName(),
-        getClass().getSimpleName(),
-        field,
-        target[0],
-        resultSimilarity,
-        decay,
-        filter);
   }
 
   @Override

@@ -578,11 +578,13 @@ Other
 API Changes
 ---------------------
 
-* GITHUB#16654: [Byte|Float]VectorSimilarityQuery switched from explicit to adaptive graph traversal in Lucene 10.5.0,
-  which changed query behavior while keeping constructor signatures unchanged, causing upgrade churn (like SOLR-18416)
-  or worse (silent change in behavior with lack of test coverage). Make constructors private to signal this change via
-  compilation errors, while exposing both old and new behaviors via new inner classes (Explicit and Adaptive). The
-  old behavior is marked @Deprecated, and will be removed in a future release. (Kaival Parikh)
+* GITHUB#16654: Public constructors of [Byte|Float]VectorSimilarityQuery are now private (binary-incompatible change).
+  Lucene 10.5.0 (GITHUB#15784) switched these queries from explicit to adaptive HNSW graph traversal but kept the
+  constructor signatures, so the two positional float arguments silently changed meaning from (traversalSimilarity,
+  resultSimilarity) to (resultSimilarity, decay). This turns that silent behavior change into a compilation error on
+  upgrade. Both behaviors are now exposed as nested classes: [Byte|Float]VectorSimilarityQuery.Explicit exposes the
+  Lucene 10.4 behavior and is deprecated, and [Byte|Float]VectorSimilarityQuery.Adaptive exposes the 10.5 behavior.
+  (Kaival Parikh, Chris Hostetter, Michael Sokolov)
 
 ======================= Lucene 10.5.1 =======================
 
