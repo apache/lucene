@@ -191,6 +191,8 @@ Bug Fixes
 
 * GITHUB#15939: Fix thread-safety issues with NFARunAutomaton. (Dimitris Rempapis)
 
+* GITHUB#16212: Fix concurrent modification in LRUQueryCache.cleanUp(). (Prithvi S)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
@@ -502,8 +504,6 @@ Optimizations
 
 Bug Fixes
 ---------------------
-* GITHUB#16212: Fix concurrent modification in LRUQueryCache.cleanUp(). (Prithvi S)
-
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
   HTML when an attribute value ends with an equals sign. (Seungmin123)
 
