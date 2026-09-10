@@ -21,7 +21,6 @@ import static org.apache.lucene.geo.GeoEncodingUtils.decodeLongitude;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.PriorityQueue;
 import org.apache.lucene.geo.Rectangle;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
@@ -29,6 +28,7 @@ import org.apache.lucene.index.PointValues.PointTree;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.PriorityQueue;
 import org.apache.lucene.util.SloppyMath;
 
 /** KNN search on top of 2D lat/lon indexed points. */
@@ -77,12 +77,29 @@ class NearestNeighbor {
     }
   }
 
+  private static class NearestHitQueue extends PriorityQueue<NearestHit> {
+    NearestHitQueue(int maxSize) {
+      super(
+          maxSize,
+          (a, b) -> {
+            // Keep the worst hit (highest distance) at the top so it can be evicted when a
+            // better hit arrives.
+            int cmp = Double.compare(a.distanceSortKey, b.distanceSortKey);
+            if (cmp != 0) {
+              return cmp > 0;
+            }
+            // tie-break by higher docID (higher docID = worse)
+            return a.docID > b.docID;
+          });
+    }
+  }
+
   private static class NearestVisitor implements IntersectVisitor {
 
     public int curDocBase;
     public Bits curLiveDocs;
     final int topN;
-    final PriorityQueue<NearestHit> hitQueue;
+    final NearestHitQueue hitQueue;
     final double pointLat;
     final double pointLon;
     private int setBottomCounter;
@@ -95,8 +112,7 @@ class NearestNeighbor {
     // second set of longitude ranges to check (for cross-dateline case)
     private double minLon2 = Double.POSITIVE_INFINITY;
 
-    public NearestVisitor(
-        PriorityQueue<NearestHit> hitQueue, int topN, double pointLat, double pointLon) {
+    public NearestVisitor(NearestHitQueue hitQueue, int topN, double pointLat, double pointLon) {
       this.hitQueue = hitQueue;
       this.topN = topN;
       this.pointLat = pointLat;
@@ -110,7 +126,7 @@ class NearestNeighbor {
 
     private void maybeUpdateBBox() {
       if (setBottomCounter < 1024 || (setBottomCounter & 0x3F) == 0x3F) {
-        NearestHit hit = hitQueue.peek();
+        NearestHit hit = hitQueue.top();
         Rectangle box =
             Rectangle.fromPointDistance(
                 pointLat, pointLon, SloppyMath.haversinMeters(hit.distanceSortKey));
@@ -164,15 +180,14 @@ class NearestNeighbor {
 
       if (hitQueue.size() == topN) {
         // queue already full
-        NearestHit hit = hitQueue.peek();
+        NearestHit hit = hitQueue.top();
         // System.out.println("      bottom distanceSortKey=" + hit.distanceSortKey);
         // we don't collect docs in order here, so we must also test the tie-break case ourselves:
         if (distanceSortKey < hit.distanceSortKey
             || (distanceSortKey == hit.distanceSortKey && fullDocID < hit.docID)) {
-          hitQueue.poll();
           hit.docID = fullDocID;
           hit.distanceSortKey = distanceSortKey;
-          hitQueue.offer(hit);
+          hitQueue.updateTop();
           // System.out.println("      ** keep2, now bottom=" + hit);
           maybeUpdateBBox();
         }
@@ -181,7 +196,7 @@ class NearestNeighbor {
         NearestHit hit = new NearestHit();
         hit.docID = fullDocID;
         hit.distanceSortKey = distanceSortKey;
-        hitQueue.offer(hit);
+        hitQueue.add(hit);
         // System.out.println("      ** keep1, now bottom=" + hit);
       }
     }
@@ -234,24 +249,12 @@ class NearestNeighbor {
 
     // System.out.println("NEAREST: readers=" + readers + " liveDocs=" + liveDocs + " pointLat=" +
     // pointLat + " pointLon=" + pointLon);
-    // Holds closest collected points seen so far:
-    // TODO: if we used lucene's PQ we could just updateTop instead of poll/offer:
-    final PriorityQueue<NearestHit> hitQueue =
-        new PriorityQueue<>(
-            n,
-            (a, b) -> {
-              // sort by opposite distanceSortKey natural order
-              int cmp = Double.compare(a.distanceSortKey, b.distanceSortKey);
-              if (cmp != 0) {
-                return -cmp;
-              }
 
-              // tie-break by higher docID:
-              return b.docID - a.docID;
-            });
+    // Holds closest collected points seen so far:
+    final NearestHitQueue hitQueue = new NearestHitQueue(n);
 
     // Holds all cells, sorted by closest to the point:
-    PriorityQueue<Cell> cellQueue = new PriorityQueue<>();
+    java.util.PriorityQueue<Cell> cellQueue = new java.util.PriorityQueue<>();
 
     NearestVisitor visitor = new NearestVisitor(hitQueue, n, pointLat, pointLon);
 
@@ -327,7 +330,7 @@ class NearestNeighbor {
     NearestHit[] hits = new NearestHit[hitQueue.size()];
     int downTo = hitQueue.size() - 1;
     while (hitQueue.size() != 0) {
-      hits[downTo] = hitQueue.poll();
+      hits[downTo] = hitQueue.pop();
       downTo--;
     }
 

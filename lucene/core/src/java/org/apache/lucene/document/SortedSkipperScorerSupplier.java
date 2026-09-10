@@ -17,7 +17,6 @@
 package org.apache.lucene.document;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.function.LongPredicate;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.search.BulkScorer;
@@ -97,20 +96,13 @@ abstract class SortedSkipperScorerSupplier extends ScorerSupplier {
       return emptyBulkScorer();
     }
     DocIdSetIterator iterator = DocIdSetIterator.range(range.minDocID(), range.maxDocID());
-    return new RangeBulkScorer(
-        new ConstantScoreScorer(score, scoreMode, iterator), range.minDocID(), range.maxDocID());
+    return new RangeBulkScorer(iterator, score, range.minDocID(), range.maxDocID());
   }
 
   @Override
-  public long cost() {
+  public long cost() throws IOException {
     if (skipperMinDocId == -1) {
-      try {
-        // Similar to PointValues, IOExceptions needs to be caught and rethrown as
-        // UncheckedIOException
-        computeSkipperDocIds();
-      } catch (IOException e) {
-        throw new UncheckedIOException(e);
-      }
+      computeSkipperDocIds();
     }
     if (skipperMaxDocIdExact) {
       return skipperMaxDocId - skipperMinDocId;

@@ -27,8 +27,11 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.MultiReader;
 import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher.LeafReaderContextPartition;
@@ -41,6 +44,7 @@ import org.apache.lucene.tests.search.CheckHits;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.IOUtils;
 
 public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
 
@@ -263,5 +267,85 @@ public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
             new Sort(
                 new SortField("c", SortField.Type.LONG),
                 new SortField("b", SortField.Type.STRING))));
+  }
+
+  /**
+   * GITHUB#14399: whether the search sort is a prefix of the index sort must be decided per
+   * segment. A single index has one index sort (IndexWriter enforces it), but a MultiReader can
+   * span indexes sorted differently: here the first index is sorted so the search sort IS a prefix
+   * (early termination is eligible) while the second is sorted the opposite way (it is NOT).
+   * Deciding once from the first leaf answers "yes" for both, which early-terminates the second
+   * leaf and drops the result that should rank first.
+   */
+  public void testMultiReaderWithDifferentIndexSorts() throws IOException {
+    final Sort ascSort = new Sort(new SortField("ndv", SortField.Type.LONG));
+
+    // Index A: sorted ndv ASC, many docs with a moderate value (50). Under an ASC search sort this
+    // leaf is prefix-sorted, so the collector decides "search sort is part of index sort" = true
+    // for it and calls disableSkipping().
+    Directory dirA = newDirectory();
+    IndexWriterConfig iwcA = newIndexWriterConfig().setIndexSort(ascSort);
+    try (RandomIndexWriter w = new RandomIndexWriter(random(), dirA, iwcA)) {
+      for (int i = 0; i < 20; i++) {
+        Document doc = new Document();
+        doc.add(new NumericDocValuesField("ndv", 50L));
+        w.addDocument(doc);
+      }
+      w.forceMerge(1);
+    }
+
+    // Index B: sorted ndv DESC (a DIFFERENT index sort). Its most competitive doc for an ASC search
+    // (value 1) is written LAST, so in docid order the leaf is [90, 90, ..., 1]. If leaf B is
+    // wrongly treated as prefix-sorted, collection terminates in docid order after the threshold
+    // and never reaches the trailing value 1 -- the true top result is dropped.
+    Directory dirB = newDirectory();
+    IndexWriterConfig iwcB =
+        newIndexWriterConfig()
+            .setIndexSort(new Sort(new SortField("ndv", SortField.Type.LONG, true)));
+    try (RandomIndexWriter w = new RandomIndexWriter(random(), dirB, iwcB)) {
+      for (int i = 0; i < 20; i++) {
+        Document doc = new Document();
+        doc.add(new NumericDocValuesField("ndv", 90L));
+        w.addDocument(doc);
+      }
+      Document winner = new Document();
+      winner.add(new NumericDocValuesField("ndv", 1L)); // the smallest value overall
+      w.addDocument(winner);
+      w.forceMerge(1);
+    }
+
+    DirectoryReader readerA = DirectoryReader.open(dirA);
+    DirectoryReader readerB = DirectoryReader.open(dirB);
+    // MultiReader with A first, so the first leaf is the ASC-sorted one (search sort is a prefix ->
+    // eligible for early termination); the B leaf is DESC-sorted (not a prefix).
+    MultiReader multiReader = new MultiReader(readerA, readerB);
+    try {
+      // Force both leaves into a single slice so one collector sees both the ASC-sorted and the
+      // DESC-sorted leaf.
+      IndexSearcher searcher =
+          new IndexSearcher(multiReader) {
+            @Override
+            protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
+              List<LeafReaderContextPartition> partitions = new ArrayList<>();
+              for (LeafReaderContext ctx : leaves) {
+                partitions.add(LeafReaderContextPartition.createForEntireSegment(ctx));
+              }
+              return new LeafSlice[] {new LeafSlice(partitions)};
+            }
+          };
+      // numHits=1, threshold=1: want the single smallest value overall, which is 1 (last docid of
+      // leaf B). Correct answer is 1; the bug drops it and returns 50 (from leaf A).
+      TopFieldCollectorManager manager = new TopFieldCollectorManager(ascSort, 1, null, 1);
+      TopFieldDocs td = searcher.search(new MatchAllDocsQuery(), manager);
+
+      assertEquals(1, td.scoreDocs.length);
+      long topValue = (long) ((FieldDoc) td.scoreDocs[0]).fields[0];
+      assertEquals("the smallest value (1, trailing docid of leaf B) must win", 1L, topValue);
+    } finally {
+      multiReader.close();
+      readerA.close();
+      readerB.close();
+      IOUtils.close(dirA, dirB);
+    }
   }
 }

@@ -97,7 +97,7 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
     }
 
     // 1. calculate offset and prefetch immediately
-    for (int i = 0; i < numOrds; i++) {
+    for (int i = 0; i < finalNumOrds; i++) {
       long offset = (long) ordsToPrefetch[i] * byteSize;
       slice.prefetch(offset, byteSize);
     }

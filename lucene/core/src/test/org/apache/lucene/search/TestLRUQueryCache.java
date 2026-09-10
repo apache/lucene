@@ -245,6 +245,105 @@ public class TestLRUQueryCache extends LuceneTestCase {
     }
   }
 
+  public void testCleanUpDoesNotRaceWithCacheInserts() throws Exception {
+    try (Directory dir = newDirectory();
+        RandomIndexWriter w = new RandomIndexWriter(random(), dir)) {
+      // Add a document so that queries actually match and get cached.
+      Document doc = new Document();
+      doc.add(new StringField("color", "red", Store.NO));
+      w.addDocument(doc);
+
+      try (DirectoryReader reader = w.getReader();
+          LRUQueryCache queryCache =
+              new LRUQueryCache(
+                  Integer.MAX_VALUE, Long.MAX_VALUE, _ -> true, Float.POSITIVE_INFINITY, 4, null)) {
+        IndexSearcher searcher = newSearcher(reader);
+        searcher.setQueryCache(queryCache);
+        searcher.setQueryCachingPolicy(ALWAYS_CACHE);
+
+        final int numIterations = 200;
+        final int numQueryThreads = 4;
+        final CountDownLatch startLatch = new CountDownLatch(1);
+        final CountDownLatch queryDoneLatch = new CountDownLatch(numQueryThreads);
+        final AtomicReference<Throwable> error = new AtomicReference<>();
+        final AtomicBoolean running = new AtomicBoolean(true);
+
+        // Query threads: repeatedly cache queries and mark some for cleanup.
+        // clearQuery() populates queriesToClean so that cleanUp() actually
+        // scans cache entries instead of taking the early-return path.
+        Thread[] queryThreads = new Thread[numQueryThreads];
+        for (int t = 0; t < numQueryThreads; t++) {
+          final int threadId = t;
+          queryThreads[t] =
+              new Thread("query-thread-" + threadId) {
+                @Override
+                public void run() {
+                  try {
+                    startLatch.await();
+                    for (int i = 0; i < numIterations; i++) {
+                      int queryId = threadId * numIterations + i;
+                      Query q = new TermQuery(new Term("color", "q" + queryId));
+                      searcher.count(q);
+                      if ((i & 3) == 0 && i > 0) {
+                        Query toClear =
+                            new TermQuery(new Term("color", "q" + (queryId - numQueryThreads)));
+                        queryCache.clearQuery(toClear);
+                      }
+                    }
+                  } catch (Throwable ex) {
+                    error.compareAndSet(null, ex);
+                  } finally {
+                    queryDoneLatch.countDown();
+                  }
+                }
+              };
+          queryThreads[t].start();
+        }
+
+        // Cleanup thread: hammer cleanUp() in a tight loop while query threads run.
+        Thread cleanupThread =
+            new Thread("cleanup-thread") {
+              @Override
+              public void run() {
+                try {
+                  startLatch.await();
+                  while (running.get()) {
+                    queryCache.cleanUp();
+                  }
+                } catch (Throwable ex) {
+                  error.compareAndSet(null, ex);
+                }
+              }
+            };
+        cleanupThread.start();
+
+        startLatch.countDown();
+        assertTrue(queryDoneLatch.await(60, TimeUnit.SECONDS));
+        running.set(false);
+        cleanupThread.join(5000);
+        assertFalse("cleanup thread should have stopped", cleanupThread.isAlive());
+
+        for (Thread thread : queryThreads) {
+          thread.join(5000);
+          assertFalse("query thread should have stopped", thread.isAlive());
+        }
+
+        Throwable ex = error.get();
+        if (ex != null) {
+          if (ex instanceof Exception) {
+            throw (Exception) ex;
+          } else if (ex instanceof Error) {
+            throw (Error) ex;
+          } else {
+            throw new RuntimeException(ex);
+          }
+        }
+
+        queryCache.assertConsistent();
+      }
+    }
+  }
+
   @SuppressForbidden(reason = "Thread sleep")
   public void testLRUEviction() throws Exception {
     Directory dir = newDirectory();
@@ -2125,7 +2224,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
     // due to thread contention
     IndexSearcher searcher = new AssertingIndexSearcher(random(), reader);
     searcher.setQueryCachingPolicy(ALWAYS_CACHE);
-    // 160 so that each parition(total 16 by default) can hold 10 keys at max.
+    // 160 so that each partition(total 16 by default) can hold 10 keys at max.
     LRUQueryCache cache =
         new LRUQueryCache(160, 10000, _ -> true, Float.POSITIVE_INFINITY, 1, null);
     searcher.setQueryCache(cache);
@@ -2669,9 +2768,11 @@ public class TestLRUQueryCache extends LuceneTestCase {
           }
         };
 
-    // Force exactly 1 segment so cache behavior is deterministic
+    // Force exactly 1 segment so cache behavior is deterministic.
+    // Use a non-randomized IndexWriterConfig to prevent randomized flush thresholds
+    // (e.g., tiny RAM buffer) from splitting 3 docs into multiple segments.
     Directory dir = newDirectory();
-    IndexWriterConfig iwc = newIndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE);
+    IndexWriterConfig iwc = new IndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE);
     IndexWriter iw = new IndexWriter(dir, iwc);
     Document doc = new Document();
     doc.add(new StringField("color", "red", Store.NO));

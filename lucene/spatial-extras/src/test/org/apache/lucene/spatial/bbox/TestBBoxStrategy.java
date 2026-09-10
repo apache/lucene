@@ -182,7 +182,7 @@ public class TestBBoxStrategy extends RandomSpatialOpStrategyTestCase {
   // OLD STATIC TESTS (worthless?)
 
   @Ignore("Overlaps not supported")
-  public void testBasicOperaions() throws IOException {
+  public void testBasicOperations() throws IOException {
     setupGeo();
     getAddAndVerifyIndexedDocuments(DATA_SIMPLE_BBOX);
 

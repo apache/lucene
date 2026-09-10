@@ -1,0 +1,32 @@
+# Precommit checks
+
+Precommit checks are run by CI on your pull request.
+
+Checks use the prek tool:
+
+- src: <https://github.com/j178/prek>
+- docs: <https://prek.j178.dev/>
+
+To run checks automatically before committing:
+
+```bash
+uvx prek
+```
+
+To install a precommit hook so this happens automatically:
+
+```bash
+uv tool install prek
+prek install --allow-missing-config
+```
+
+Please note: The `--allow-missing-config` option is only required if you intend to also work on older release
+branches that do not yet have support for prek.
+
+To exhaustively force-check all files (like CI does):
+
+```bash
+uvx prek --all-files
+```
+
+You need the uv package manager: <https://docs.astral.sh/uv/getting-started/installation/>

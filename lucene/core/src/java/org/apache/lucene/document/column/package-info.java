@@ -37,8 +37,16 @@
  *       org.apache.lucene.index.DocValuesType#SORTED SORTED}, and {@link
  *       org.apache.lucene.index.DocValuesType#SORTED_SET SORTED_SET} doc values, term inversion,
  *       multi-dimensional or arbitrary-width points, and stored binary or string fields.
+ *   <li>{@link org.apache.lucene.document.column.DictionaryColumn} — pre-defined term dictionary
+ *       plus per-doc ordinals for {@link org.apache.lucene.index.DocValuesType#SORTED SORTED} and
+ *       {@link org.apache.lucene.index.DocValuesType#SORTED_SET SORTED_SET} doc values, term
+ *       inversion, and stored binary or string fields.
  *   <li>{@link org.apache.lucene.document.column.VectorColumn} — KNN vectors (FLOAT32 or BYTE
  *       encoding); vector-only field type.
+ *   <li>{@link org.apache.lucene.document.column.TokenStreamColumn} — caller-supplied {@link
+ *       org.apache.lucene.analysis.TokenStream}s for term inversion (the columnar analogue of a
+ *       custom token stream on a {@link org.apache.lucene.document.Field}); inverted-index-only
+ *       field type.
  * </ul>
  *
  * <h2>Cursors</h2>

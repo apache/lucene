@@ -18,6 +18,7 @@ package org.apache.lucene.backward_codecs.lucene94;
 
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 
 public class TestLucene94HnswVectorsFormat extends BaseKnnVectorsFormatTestCase {
@@ -42,5 +43,10 @@ public class TestLucene94HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
   @Override
   protected boolean supportsFloatVectorFallback() {
     return false;
+  }
+
+  @Override
+  protected VectorEncoding randomVectorEncoding() {
+    return random().nextBoolean() ? VectorEncoding.BYTE : VectorEncoding.FLOAT32;
   }
 }

@@ -168,6 +168,10 @@ public class KnnByteVectorField extends Field {
       throw new IllegalArgumentException(
           "value length " + value.length + " must match field dimension " + type.vectorDimension());
     }
+    if (type.vectorSimilarityFunction() == VectorSimilarityFunction.COSINE
+        && VectorUtil.isZeroVector(value)) {
+      throw new IllegalArgumentException("zero vector not allowed with cosine similarity function");
+    }
     fieldsData = value;
   }
 }

@@ -425,9 +425,12 @@ public final class RamUsageEstimator {
 
   /**
    * Returns the size in bytes of the {@link Accountable} object, using its {@link
-   * Accountable#ramBytesUsed()} method.
+   * Accountable#ramBytesUsed()} method. Returns 0, if the {@link Accountable} object is null.
    */
   public static long sizeOf(Accountable accountable) {
+    if (accountable == null) {
+      return 0;
+    }
     return accountable.ramBytesUsed();
   }
 

@@ -96,7 +96,7 @@ public final class BPIndexReorderer extends AbstractBPReorderer {
   /** Block size for terms in the forward index */
   private static final int TERM_IDS_BLOCK_SIZE = 17;
 
-  /** Minimum problem size that will result in tasks being splitted. */
+  /** Minimum problem size that will result in tasks being split. */
   private static final int FORK_THRESHOLD = 8192;
 
   /** Minimum required document frequency for terms to be considered: 4,096. */

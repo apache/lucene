@@ -649,8 +649,6 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
     scorer.score(
         new LeafCollector() {
 
-          private int[] buffer = null;
-
           @Override
           public void setScorer(Scorable scorer) {}
 
@@ -665,15 +663,8 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
           }
 
           @Override
-          public void collect(DocIdStream stream) {
-            if (buffer == null) {
-              buffer = new int[128];
-            }
-            for (int c = stream.intoArray(buffer); c != 0; c = stream.intoArray(buffer)) {
-              for (int i = 0; i < c; ++i) {
-                builder.add(buffer[i]);
-              }
-            }
+          public void collect(DocIdStream stream) throws IOException {
+            stream.forEach(builder::add);
           }
         },
         null,
@@ -962,8 +953,13 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
     }
 
     // Package private for testing
-    Iterable<QueryCacheKey> keys() {
-      return cache.keySet();
+    Set<QueryCacheKey> keys() {
+      readLock.lock();
+      try {
+        return new HashSet<>(cache.keySet());
+      } finally {
+        readLock.unlock();
+      }
     }
 
     Map<QueryCacheKey, QueryMetadata> getUniqueCacheKeys() {

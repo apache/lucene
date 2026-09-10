@@ -25,7 +25,6 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
-import org.apache.lucene.search.BatchDocValuesRangeIterator;
 import org.apache.lucene.search.ConstantScoreScorerSupplier;
 import org.apache.lucene.search.ConstantScoreWeight;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -139,19 +138,17 @@ final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery 
         final NumericDocValues singleton = DocValues.unwrapSingleton(values);
         final DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
 
-        final SortField primarySortField;
         if (singleton != null) {
           if (skipper != null) {
-            if ((primarySortField = densePrimarySort(context.reader(), skipper)) != null) {
+            SortField primarySortField =
+                canUsePrimarySortShortcut(context.reader(), field, skipper);
+            if (primarySortField != null) {
               return getScorerSupplierFromDensePrimarySort(singleton, skipper, primarySortField);
             }
-            // Use batch iterator for bulk block evaluation via intoBitSet()
-            return ConstantScoreScorerSupplier.fromIterator(
-                new BatchDocValuesRangeIterator(singleton, skipper, lowerValue, upperValue),
-                score(),
-                scoreMode,
-                maxDoc);
           }
+          // A single two-phase iterator covers every density: its approximation rides the skipper
+          // (no over-scan), its intoBitSet bulk-evaluates dense blocks, and YES runs collect as
+          // ranges. The bulk scorer unwraps it and picks the right strategy from there.
           return ConstantScoreScorerSupplier.fromIterator(
               TwoPhaseIterator.asDocIdSetIterator(
                   DocValuesRangeIterator.forRange(singleton, skipper, lowerValue, upperValue)),
@@ -168,7 +165,7 @@ final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery 
       }
 
       @Override
-      public int count(LeafReaderContext context) throws IOException {
+      public int count(LeafReaderContext context) {
         int maxDoc = context.reader().maxDoc();
         int cnt = docCountIgnoringDeletes(context);
         if (cnt == maxDoc) {
@@ -182,7 +179,7 @@ final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery 
        * # docs within the query range ignoring any deleted documents
        * -1 if # docs cannot be determined efficiently
        */
-      private int docCountIgnoringDeletes(LeafReaderContext context) throws IOException {
+      private int docCountIgnoringDeletes(LeafReaderContext context) {
         final DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
         if (skipper != null) {
           if (skipper.minValue() > upperValue || skipper.maxValue() < lowerValue) {
@@ -229,16 +226,23 @@ final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery 
     };
   }
 
-  private SortField densePrimarySort(LeafReader reader, DocValuesSkipper skipper) {
+  /**
+   * Returns the primary sort field if it is safe to use the {@link SortedSkipperScorerSupplier}
+   * range shortcuts for this query, or {@code null} if the shortcut cannot be applied.
+   *
+   * <p>The shortcuts ({@code skipperMinDocId=0} and {@code skipperMaxDocId=docCount}) assume that
+   * docs without a value do not appear within or before the matching doc-ID range. This requires
+   * that the field is dense (every doc has a value, {@code docCount == reader.maxDoc()}).
+   */
+  private static SortField canUsePrimarySortShortcut(
+      LeafReader reader, String field, DocValuesSkipper skipper) {
+    SortField sf = Sort.getPrimarySortField(reader);
+    if (sf == null || sf.getField().equals(field) == false) {
+      return null;
+    }
     if (skipper.docCount() != reader.maxDoc()) {
       return null;
     }
-    final Sort indexSort = reader.getMetaData().sort();
-    if (indexSort == null
-        || indexSort.getSort().length == 0
-        || indexSort.getSort()[0].getField().equals(field) == false) {
-      return null;
-    }
-    return indexSort.getSort()[0];
+    return sf;
   }
 }

@@ -27,14 +27,21 @@ public class TestSkipBlockRangeIterator extends BaseDocValuesSkipperTests {
     SkipBlockRangeIterator it = new SkipBlockRangeIterator(skipper, 10, 20);
 
     assertEquals(0, it.nextDoc());
+    // Level-1 block [0,127] is dense and in range: docIDRunEnd expands
     assertEquals(128, it.docIDRunEnd());
     assertEquals(100, it.advance(100));
     assertEquals(512, it.advance(300));
-    assertEquals(513, it.docIDRunEnd());
+    assertEquals(SkipBlockRangeIterator.Match.MAYBE, it.getMatch());
+    assertEquals(576, it.docIDRunEnd());
+    // Block [1024,1087] is dense YES, but level-1 [1024,1151] is sparse: can't expand
+    assertEquals(1024, it.advance(1024));
+    assertEquals(1088, it.docIDRunEnd());
     assertEquals(1100, it.advance(1100));
-    assertEquals(1101, it.docIDRunEnd());
+    assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, it.getMatch());
+    assertEquals(1152, it.docIDRunEnd());
     assertEquals(1536, it.advance(1500));
-    assertEquals(1537, it.docIDRunEnd());
+    assertEquals(SkipBlockRangeIterator.Match.MAYBE, it.getMatch());
+    assertEquals(1600, it.docIDRunEnd());
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.advance(2050));
   }
 
@@ -49,5 +56,11 @@ public class TestSkipBlockRangeIterator extends BaseDocValuesSkipperTests {
     expected.set(0, 640);
 
     assertEquals(expected, bitSet);
+  }
+
+  public void testCost() {
+    DocValuesSkipper skipper = docValuesSkipper(1, 30, random().nextBoolean());
+    SkipBlockRangeIterator it = new SkipBlockRangeIterator(skipper, 1, 30);
+    assertEquals(DENSE_END + (MAX_DOC - DENSE_END) / 2, it.cost());
   }
 }

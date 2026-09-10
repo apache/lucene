@@ -377,7 +377,7 @@ public class TestWikipediaTokenizer extends BaseTokenStreamTestCase {
     untoks.add(WikipediaTokenizer.ITALICS);
     String test =
         "[[Category:a b c d]] [[Category:e f g]] [[link here]] [[link there]] ''italics here'' something ''more italics'' [[Category:h   i   j]]";
-    // should output all the indivual tokens plus the untokenized tokens as well.  Untokenized
+    // should output all the individual tokens plus the untokenized tokens as well.  Untokenized
     // tokens
     WikipediaTokenizer tf =
         new WikipediaTokenizer(newAttributeFactory(), WikipediaTokenizer.BOTH, untoks);

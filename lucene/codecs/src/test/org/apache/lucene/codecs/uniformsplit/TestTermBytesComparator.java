@@ -24,6 +24,7 @@ import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.PostingsReaderBase;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.ImpactsEnum;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.TermsEnum;
@@ -181,7 +182,7 @@ public class TestTermBytesComparator extends LuceneTestCase {
       }
 
       @Override
-      public void checkIntegrity() {}
+      public void checkIntegrity(MergePolicy.OneMerge merge) {}
 
       @Override
       public void close() {}

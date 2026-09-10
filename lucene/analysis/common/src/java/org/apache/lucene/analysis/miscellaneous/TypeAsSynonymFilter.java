@@ -29,7 +29,7 @@ import org.apache.lucene.util.AttributeSource;
 
 /**
  * Adds the {@link TypeAttribute#type()} as a synonym, i.e. another token at the same position,
- * optionally with a specified prefix prepended, optionally transfering flags, and optionally
+ * optionally with a specified prefix prepended, optionally transferring flags, and optionally
  * ignoring some types. See {@link TypeAsSynonymFilterFactory} for full details.
  */
 public final class TypeAsSynonymFilter extends TokenFilter {

@@ -40,7 +40,7 @@ public class TestMergedVectorValues extends LuceneTestCase {
     MergeState state =
         new MergeState(
             null, null, null, null, null, null, null, null, null, null, null, null, null, null,
-            null, false);
+            null, false, null);
 
     // Run the test
     ByteVectorValues values =
@@ -68,7 +68,7 @@ public class TestMergedVectorValues extends LuceneTestCase {
     MergeState state =
         new MergeState(
             null, null, null, null, null, null, null, null, null, null, null, null, null, null,
-            null, false);
+            null, false, null);
 
     // Run the test
     FloatVectorValues values =

@@ -169,6 +169,7 @@ module org.apache.lucene.analysis.common {
       org.apache.lucene.analysis.commongrams.CommonGramsQueryFilterFactory,
       org.apache.lucene.analysis.compound.DictionaryCompoundWordTokenFilterFactory,
       org.apache.lucene.analysis.compound.HyphenationCompoundWordTokenFilterFactory,
+      org.apache.lucene.analysis.core.CaseFoldingFilterFactory,
       org.apache.lucene.analysis.core.DecimalDigitFilterFactory,
       org.apache.lucene.analysis.core.LowerCaseFilterFactory,
       org.apache.lucene.analysis.core.StopFilterFactory,

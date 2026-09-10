@@ -117,7 +117,7 @@
  * should be added to it one by one but not faster than 20 docs a minute, and, in parallel with
  * this, some N queries should be searched against that index, again, no more than 2 queries a
  * second. You can have the searches all share an index reader, or have them each open its own
- * reader and close it afterwords.
+ * reader and close it afterwards.
  *
  * <p>If the commands available for use in the algorithm do not meet your needs, you can add
  * commands by adding a new task under org.apache.lucene.benchmark.byTask.tasks - you should extend

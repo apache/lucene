@@ -482,6 +482,46 @@ public class TestDisjunctionMaxQuery extends LuceneTestCase {
     assertEquals(expected, rewritten);
   }
 
+  public void testRewriteAllMatchNoDocs() throws Exception {
+    // All disjuncts rewrite to MatchNoDocsQuery -> should return MatchNoDocsQuery
+    Query sub1 = new MatchNoDocsQuery("test1");
+    Query sub2 = new MatchNoDocsQuery("test2");
+    DisjunctionMaxQuery q = new DisjunctionMaxQuery(Arrays.asList(sub1, sub2), 0.0f);
+    Query rewritten = s.rewrite(q);
+    assertEquals(MatchNoDocsQuery.INSTANCE, rewritten);
+  }
+
+  public void testRewriteSingleSurvivor() throws Exception {
+    // One disjunct rewrites to MatchNoDocsQuery, other matches -> should return the matching one
+    Query sub = tq("hed", "albino");
+    DisjunctionMaxQuery q =
+        new DisjunctionMaxQuery(Arrays.asList(sub, new MatchNoDocsQuery("test")), 0.0f);
+    Query rewritten = s.rewrite(q);
+    assertEquals(sub, rewritten);
+  }
+
+  public void testRewriteFilterMatchNoDocs() throws Exception {
+    // Mixed: some MatchNoDocsQuery, some real queries -> should filter out MatchNoDocsQuery
+    Query sub1 = tq("hed", "albino");
+    Query sub2 = tq("hed", "elephant");
+    DisjunctionMaxQuery q =
+        new DisjunctionMaxQuery(Arrays.asList(sub1, sub2, new MatchNoDocsQuery("test")), 0.0f);
+    Query rewritten = s.rewrite(q);
+    DisjunctionMaxQuery expected = new DisjunctionMaxQuery(Arrays.asList(sub1, sub2), 0.0f);
+    assertEquals(expected, rewritten);
+  }
+
+  public void testRewriteFilterMatchNoDocsWithTieBreaker() throws Exception {
+    // Verify tie breaker multiplier is preserved when filtering MatchNoDocsQuery
+    Query sub1 = tq("hed", "albino");
+    Query sub2 = tq("hed", "elephant");
+    DisjunctionMaxQuery q =
+        new DisjunctionMaxQuery(Arrays.asList(sub1, sub2, new MatchNoDocsQuery("test")), 0.1f);
+    Query rewritten = s.rewrite(q);
+    DisjunctionMaxQuery expected = new DisjunctionMaxQuery(Arrays.asList(sub1, sub2), 0.1f);
+    assertEquals(expected, rewritten);
+  }
+
   public void testDisjunctOrderAndEquals() throws Exception {
     // the order that disjuncts are provided in should not matter for equals() comparisons
     Query sub1 = tq("hed", "albino");

@@ -130,7 +130,7 @@ final class HistogramCollector implements Collector {
   }
 
   /**
-   * Naive implementation of a histogram {@link LeafCollector}, which iterates all maches and looks
+   * Naive implementation of a histogram {@link LeafCollector}, which iterates all matches and looks
    * up the value to determine the corresponding bucket.
    */
   private static class HistogramNaiveLeafCollector implements LeafCollector {
@@ -172,7 +172,7 @@ final class HistogramCollector implements Collector {
   }
 
   /**
-   * Naive implementation of a histogram {@link LeafCollector}, which iterates all maches and looks
+   * Naive implementation of a histogram {@link LeafCollector}, which iterates all matches and looks
    * up the value to determine the corresponding bucket.
    */
   private static class HistogramNaiveSingleValuedLeafCollector implements LeafCollector {

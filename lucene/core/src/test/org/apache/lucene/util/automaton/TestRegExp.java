@@ -206,7 +206,7 @@ public class TestRegExp extends LuceneTestCase {
             "(" + replacementPart + "|d" + randomDocValue(replacementPart.length(), false) + ")");
         break;
       case 1:
-        // OR with non-existant value
+        // OR with non-existent value
         result.append("(" + replacementPart + "|doesnotexist)");
         break;
       case 2:

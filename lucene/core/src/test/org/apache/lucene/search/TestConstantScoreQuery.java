@@ -17,6 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.Arrays;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.DirectoryReader;
@@ -28,6 +29,8 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
 
 /**
  * This class only tests some basic functionality in CSQ, the main parts are mostly tested by
@@ -141,6 +144,119 @@ public class TestConstantScoreQuery extends LuceneTestCase {
     reader.close();
     w.close();
     dir.close();
+  }
+
+  public void testConstantBulkScorerForwardsDocIdStream() throws IOException {
+    FixedBitSet docs = new FixedBitSet(8);
+    docs.set(1);
+    docs.set(3);
+    int[] collected = new int[2];
+    int[] count = new int[1];
+
+    BulkScorer scorer =
+        new ConstantScoreQuery.ConstantBulkScorer(
+            new BulkScorer() {
+              @Override
+              public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
+                  throws IOException {
+                collector.setScorer(scorable());
+                collector.collect(new BitSetDocIdStream(docs, 0));
+                return DocIdSetIterator.NO_MORE_DOCS;
+              }
+
+              @Override
+              public long cost() {
+                return 2;
+              }
+            },
+            null,
+            2f);
+
+    assertEquals(
+        DocIdSetIterator.NO_MORE_DOCS,
+        scorer.score(
+            new LeafCollector() {
+              @Override
+              public void setScorer(Scorable scorer) throws IOException {
+                assertEquals(2f, scorer.score(), 0f);
+              }
+
+              @Override
+              public void collect(int doc) {
+                fail("ConstantBulkScorer should preserve DocIdStream collection");
+              }
+
+              @Override
+              public void collect(DocIdStream stream) throws IOException {
+                int[] buffer = new int[collected.length];
+                for (int size = stream.intoArray(buffer);
+                    size != 0;
+                    size = stream.intoArray(buffer)) {
+                  System.arraycopy(buffer, 0, collected, count[0], size);
+                  count[0] += size;
+                }
+              }
+            },
+            null,
+            0,
+            8));
+    assertArrayEquals(new int[] {1, 3}, Arrays.copyOf(collected, count[0]));
+  }
+
+  public void testConstantBulkScorerForwardsCollectRange() throws IOException {
+    BulkScorer scorer =
+        new ConstantScoreQuery.ConstantBulkScorer(
+            new BulkScorer() {
+              @Override
+              public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
+                  throws IOException {
+                collector.setScorer(scorable());
+                collector.collectRange(2, 5);
+                return DocIdSetIterator.NO_MORE_DOCS;
+              }
+
+              @Override
+              public long cost() {
+                return 3;
+              }
+            },
+            null,
+            2f);
+
+    int[] range = new int[2];
+    assertEquals(
+        DocIdSetIterator.NO_MORE_DOCS,
+        scorer.score(
+            new LeafCollector() {
+              @Override
+              public void setScorer(Scorable scorer) throws IOException {
+                assertEquals(2f, scorer.score(), 0f);
+              }
+
+              @Override
+              public void collect(int doc) {
+                fail("ConstantBulkScorer should preserve range collection");
+              }
+
+              @Override
+              public void collectRange(int min, int max) {
+                range[0] = min;
+                range[1] = max;
+              }
+            },
+            null,
+            0,
+            8));
+    assertArrayEquals(new int[] {2, 5}, range);
+  }
+
+  private static Scorable scorable() {
+    return new Scorable() {
+      @Override
+      public float score() {
+        return 1f;
+      }
+    };
   }
 
   public void testRewriteBubblesUpMatchNoDocsQuery() throws IOException {

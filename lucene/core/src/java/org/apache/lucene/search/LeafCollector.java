@@ -94,6 +94,11 @@ public interface LeafCollector {
    * <p>The default implementation calls {@link #collect(DocIdStream)} on a {@link DocIdStream} that
    * matches the given range.
    *
+   * <p>The position of the {@link Scorable} set via {@link #setScorer} is undefined within this
+   * method. Overrides must not call {@link Scorable#score()}, and if the {@link Scorable} is a
+   * {@link Scorer}, must not assume {@link Scorer#docID()} corresponds to any document being
+   * collected. Use {@link #collect(int)} if per-document scores are needed.
+   *
    * @see #collect(int)
    */
   default void collectRange(int min, int max) throws IOException {
@@ -116,6 +121,11 @@ public interface LeafCollector {
    *
    * <p>It is legal for callers to mix calls to {@link #collect(DocIdStream)} and {@link
    * #collect(int)}.
+   *
+   * <p>The position of the {@link Scorable} set via {@link #setScorer} is undefined within this
+   * method. Overrides must not call {@link Scorable#score()}, and if the {@link Scorable} is a
+   * {@link Scorer}, must not assume {@link Scorer#docID()} corresponds to any document being
+   * collected. Use {@link #collect(int)} if per-document scores are needed.
    *
    * <p>The default implementation calls {@code stream.forEach(this::collect)}.
    */

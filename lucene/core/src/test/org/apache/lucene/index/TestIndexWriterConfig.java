@@ -153,7 +153,7 @@ public class TestIndexWriterConfig extends LuceneTestCase {
     for (Method m : IndexWriterConfig.class.getDeclaredMethods()) {
       if (m.getName().startsWith("get") && !Modifier.isStatic(m.getModifiers())) {
         assertEquals(
-            "method " + m.getName() + " not overrided by IndexWriterConfig",
+            "method " + m.getName() + " not overridden by IndexWriterConfig",
             IndexWriterConfig.class,
             m.getDeclaringClass());
         assertTrue(

@@ -466,7 +466,7 @@ public class TestOperations extends LuceneTestCase {
 
     int iters = atLeast(100);
     for (int iter = 0; iter < iters; iter++) {
-      // sameLangage requires a deterministic automaton
+      // sameLanguage requires a deterministic automaton
       Automaton expected =
           Operations.determinize(AutomatonTestUtil.randomAutomaton(random()), Integer.MAX_VALUE);
       Automaton actual = Operations.mergeAcceptStatesWithNoTransition(expected);

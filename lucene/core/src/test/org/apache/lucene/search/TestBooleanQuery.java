@@ -928,7 +928,7 @@ public class TestBooleanQuery extends LuceneTestCase {
             .add(new TermQuery(new Term("string", "abc")), Occur.MUST_NOT)
             .build();
     weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1f);
-    // count of the first MUST_NOT clause is unknown, though the second MUST_NOT clause matche one
+    // count of the first MUST_NOT clause is unknown, though the second MUST_NOT clause matches one
     // doc, we can't figure out the number of
     // docs
     assertEquals(-1, weight.count(reader.leaves().get(0)));
@@ -949,7 +949,7 @@ public class TestBooleanQuery extends LuceneTestCase {
             .add(new TermQuery(new Term("string", "abc")), Occur.SHOULD)
             .build();
     weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1f);
-    // count of the first SHOULD clause is unknown, though the second SHOULD clause matche one doc,
+    // count of the first SHOULD clause is unknown, though the second SHOULD clause matches one doc,
     // we can't figure out the number of
     // docs
     assertEquals(-1, weight.count(reader.leaves().get(0)));
@@ -1395,7 +1395,7 @@ public class TestBooleanQuery extends LuceneTestCase {
     bqBuilder.add(new TermQuery(d), Occur.MUST_NOT);
     bqBuilder.add(new TermQuery(d), Occur.MUST_NOT);
     BooleanQuery bq = bqBuilder.build();
-    // should and must are not dedupliacated
+    // should and must are not deduplicated
     assertEquals(2, bq.getClauses(Occur.SHOULD).size());
     assertEquals(2, bq.getClauses(Occur.MUST).size());
     // filter and must not are deduplicated

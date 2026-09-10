@@ -61,7 +61,7 @@ public class TestExtendableQueryParser extends TestQueryParser {
         });
   }
 
-  public void testExtFieldUnqoted() throws Exception {
+  public void testExtFieldUnquoted() throws Exception {
     for (int i = 0; i < DELIMITERS.length; i++) {
       Extensions ext = newExtensions(DELIMITERS[i]);
       ext.add("testExt", new ExtensionStub());

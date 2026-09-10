@@ -374,7 +374,7 @@ public class TestSnapshotDeletionPolicy extends LuceneTestCase {
     writer.deleteUnusedFiles();
     writer.close();
     assertFalse(
-        "segments file should not be found in dirctory: " + segFileName,
+        "segments file should not be found in directory: " + segFileName,
         slowFileExists(dir, segFileName));
     dir.close();
   }

@@ -381,7 +381,7 @@ public class StringValueFacetCounts extends Facets {
     if (initialized == false) {
       assert denseCounts == null && sparseCounts == null;
       // If the counters weren't initialized, we can assume the cardinality is low enough that
-      // dense counting will be preferrable:
+      // dense counting will be preferable:
       denseCounts = new int[cardinality];
       initialized = true;
     }

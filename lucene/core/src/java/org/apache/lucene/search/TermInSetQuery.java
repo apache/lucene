@@ -194,7 +194,7 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
       Automaton a = Automata.makeBinaryStringUnion(termData.iterator());
       return new ByteRunAutomaton(a, true);
     } catch (IOException e) {
-      // Shouldn't happen since termData.iterator() provides an interator implementation that
+      // Shouldn't happen since termData.iterator() provides an iterator implementation that
       // never throws:
       throw new UncheckedIOException(e);
     }

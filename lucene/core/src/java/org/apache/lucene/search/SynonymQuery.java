@@ -17,7 +17,6 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -388,12 +387,8 @@ public final class SynonymQuery extends Query {
         }
 
         @Override
-        public long cost() {
-          try {
-            init();
-          } catch (IOException e) {
-            throw new UncheckedIOException(e);
-          }
+        public long cost() throws IOException {
+          init();
           return cost;
         }
       };

@@ -54,4 +54,15 @@ public abstract class BinaryColumn extends Column {
 
   /** Returns a fresh tuple cursor starting at the beginning of the batch. */
   public abstract ObjectTupleCursor<BytesRef> tuples();
+
+  /**
+   * Returns a fresh values cursor iterating dense binary values for doc-ids {@code [0, numDocs)}.
+   * Must be overridden when {@link Column#density()} is {@link Column.Density#DENSE DENSE}; the
+   * default implementation throws {@link UnsupportedOperationException} and is never called for
+   * {@link Column.Density#SPARSE SPARSE} columns.
+   */
+  public BytesRefValuesCursor values() {
+    throw new UnsupportedOperationException(
+        "values() requires density() == DENSE for column \"" + name() + "\"");
+  }
 }

@@ -38,6 +38,7 @@ import org.apache.lucene.codecs.PostingsReaderBase;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.store.ByteArrayDataInput;
@@ -269,12 +270,12 @@ public class UniformSplitTermsReader extends FieldsProducer {
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
     // term dictionary
-    CodecUtil.checksumEntireFile(blockInput);
+    CodecUtil.checksumEntireFile(blockInput, merge);
 
     // postings
-    postingsReader.checkIntegrity();
+    postingsReader.checkIntegrity(merge);
   }
 
   @Override

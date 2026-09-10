@@ -336,7 +336,7 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
     // empty (partially) the queue until seeing all pps advanced for resolving collisions
     int n = 0;
     // TODO would be good if we can avoid calling cardinality() in each iteration!
-    int numBits = bits.length(); // larges bit we set
+    int numBits = bits.length(); // largest bit we set
     while (bits.cardinality() > 0) {
       PhrasePositions pp2 = pq.pop();
       rptStack[n++] = pp2;

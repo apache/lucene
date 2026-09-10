@@ -122,6 +122,37 @@ public class TestVectorUtil extends LuceneTestCase {
     expectThrows(IllegalArgumentException.class, () -> VectorUtil.l2normalize(v));
   }
 
+  public void testCheckFiniteFloat16() {
+    // finite vector passes and returns the same array
+    short[] finite = {
+      Float.floatToFloat16(-1.5f),
+      Float.floatToFloat16(0f),
+      Float.floatToFloat16(3.25f),
+      (short) 0x7BFF, // largest finite float16 (65504)
+      (short) 0xFBFF // most negative finite float16 (-65504)
+    };
+    assertSame(finite, VectorUtil.checkFiniteFloat16(finite));
+
+    // +Infinity
+    IllegalArgumentException e =
+        expectThrows(
+            IllegalArgumentException.class,
+            () ->
+                VectorUtil.checkFiniteFloat16(
+                    new short[] {Float.floatToFloat16(1f), (short) 0x7C00}));
+    assertTrue(e.getMessage(), e.getMessage().contains("non-finite float16 value at vector[1]"));
+
+    // -Infinity
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> VectorUtil.checkFiniteFloat16(new short[] {(short) 0xFC00}));
+
+    // NaN (any non-zero mantissa with all exponent bits set)
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> VectorUtil.checkFiniteFloat16(new short[] {(short) 0x7E00}));
+  }
+
   public void testNormalizeToUnitInterval() {
     for (int i = 0; i < 100; i++) {
       // Generates a float in the range [-1.0, 1.0)
@@ -486,6 +517,16 @@ public class TestVectorUtil extends LuceneTestCase {
     }
   }
 
+  public void testInt4DibitDotProductInvariants() {
+    int iterations = atLeast(10);
+    for (int i = 0; i < iterations; i++) {
+      int size = randomIntBetween(random(), 1, 10);
+      var d = new byte[size];
+      var q = new byte[size * 2 - 1];
+      expectThrows(IllegalArgumentException.class, () -> VectorUtil.int4DibitDotProduct(q, d));
+    }
+  }
+
   static final VectorizationProvider defaultedProvider =
       BaseVectorizationTestCase.defaultProvider();
   static final VectorizationProvider defOrPanamaProvider =
@@ -587,6 +628,81 @@ public class TestVectorUtil extends LuceneTestCase {
     return res;
   }
 
+  public void testBasicInt4DibitDotProduct() {
+    testBasicInt4DibitDotProductImpl(VectorUtil::int4DibitDotProduct);
+    testBasicInt4DibitDotProductImpl(defaultedProvider.getVectorUtilSupport()::int4DibitDotProduct);
+    testBasicInt4DibitDotProductImpl(
+        defOrPanamaProvider.getVectorUtilSupport()::int4DibitDotProduct);
+  }
+
+  interface Int4DibitDotProduct {
+    long apply(byte[] q, byte[] d);
+  }
+
+  void testBasicInt4DibitDotProductImpl(Int4DibitDotProduct int4DibitDotProductFunc) {
+    // q is 4 stripes, d is 2 stripes (lower bits first, then upper bits)
+    assertEquals(45L, int4DibitDotProductFunc.apply(new byte[] {1, 1, 1, 1}, new byte[] {1, 1}));
+    assertEquals(90L, int4DibitDotProductFunc.apply(new byte[] {3, 3, 3, 3}, new byte[] {3, 3}));
+    assertEquals(1L, int4DibitDotProductFunc.apply(new byte[] {1, 2, 4, 8}, new byte[] {1, 0}));
+
+    // Multi-stripe deterministic cases (stripe sizes 2 and 3)
+    assertEquals(
+        90L,
+        int4DibitDotProductFunc.apply(
+            new byte[] {1, 2, 1, 2, 1, 2, 1, 2}, new byte[] {1, 2, 1, 2}));
+    assertEquals(
+        180L,
+        int4DibitDotProductFunc.apply(
+            new byte[] {1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3}, new byte[] {1, 2, 3, 1, 2, 3}));
+  }
+
+  public void testInt4DibitDotProduct() {
+    testInt4DibitDotProductImpl(VectorUtil::int4DibitDotProduct);
+    testInt4DibitDotProductImpl(defaultedProvider.getVectorUtilSupport()::int4DibitDotProduct);
+    testInt4DibitDotProductImpl(defOrPanamaProvider.getVectorUtilSupport()::int4DibitDotProduct);
+  }
+
+  void testInt4DibitDotProductImpl(Int4DibitDotProduct int4DibitDotProductFunc) {
+    int iterations = atLeast(50);
+    for (int i = 0; i < iterations; i++) {
+      int size = random().nextInt(5000);
+      var d = new byte[size];
+      var q = new byte[size * 2];
+      random().nextBytes(d);
+      random().nextBytes(q);
+      assertEquals(scalarInt4DibitDotProduct(q, d), int4DibitDotProductFunc.apply(q, d));
+
+      Arrays.fill(d, Byte.MAX_VALUE);
+      Arrays.fill(q, Byte.MAX_VALUE);
+      assertEquals(scalarInt4DibitDotProduct(q, d), int4DibitDotProductFunc.apply(q, d));
+
+      Arrays.fill(d, Byte.MIN_VALUE);
+      Arrays.fill(q, Byte.MIN_VALUE);
+      assertEquals(scalarInt4DibitDotProduct(q, d), int4DibitDotProductFunc.apply(q, d));
+    }
+  }
+
+  // Independent reference: int4 query (4 bit-plane stripes) dot dibit doc (2 bit-plane stripes).
+  // value = sum over query plane i and doc plane j of popcount(q_i AND d_j) << (i + j).
+  static long scalarInt4DibitDotProduct(byte[] q, byte[] d) {
+    int stripeSize = d.length / 2;
+    long res = 0;
+    for (int i = 0; i < 4; i++) {
+      for (int j = 0; j < 2; j++) {
+        res += ((long) dibitPopcount(q, i * stripeSize, d, j * stripeSize, stripeSize)) << (i + j);
+      }
+    }
+    return res;
+  }
+
+  static int dibitPopcount(byte[] a, int aOffset, byte[] b, int bOffset, int length) {
+    int res = 0;
+    for (int k = 0; k < length; k++) {
+      res += Integer.bitCount((a[aOffset + k] & b[bOffset + k]) & 0xFF);
+    }
+    return res;
+  }
+
   public static int popcount(byte[] a, int aOffset, byte[] b, int length) {
     int res = 0;
     for (int j = 0; j < length; j++) {
@@ -598,5 +714,34 @@ public class TestVectorUtil extends LuceneTestCase {
       }
     }
     return res;
+  }
+
+  public void testInt4Unpack() {
+    // Cover lengths below, at, and above a vector register, plus odd lengths that force the
+    // scalar tail of the vectorized implementation to run.
+    for (int packedLen : new int[] {0, 1, 2, 3, 7, 8, 15, 16, 17, 31, 32, 33, 63, 64, 2048}) {
+      byte[] packed = new byte[packedLen];
+      random().nextBytes(packed);
+      byte[] actual = new byte[packedLen * 2];
+      VectorUtil.int4Unpack(packed, actual);
+
+      // reference: the original scalar loop this replaced
+      byte[] expected = new byte[packedLen * 2];
+      for (int i = 0; i < packedLen; i++) {
+        expected[i] = (byte) ((packed[i] >> 4) & 0x0F);
+        expected[packedLen + i] = (byte) (packed[i] & 0x0F);
+      }
+      assertArrayEquals("packedLen=" + packedLen, expected, actual);
+
+      // every output nibble must be in [0,15]
+      for (byte b : actual) {
+        assertTrue("value out of uint4 range: " + b, b >= 0 && b <= 15);
+      }
+    }
+  }
+
+  public void testInt4UnpackRejectsBadLength() {
+    expectThrows(
+        IllegalArgumentException.class, () -> VectorUtil.int4Unpack(new byte[4], new byte[7]));
   }
 }

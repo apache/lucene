@@ -1296,7 +1296,7 @@ public abstract class BaseTokenStreamTestCase extends LuceneTestCase {
     ts.end();
     ts.close();
 
-    // verify reusing is "reproducable" and also get the normal tokenstream sanity checks
+    // verify reusing is "reproducible" and also get the normal tokenstream sanity checks
     if (!tokens.isEmpty()) {
 
       // KWTokenizer (for example) can produce a token

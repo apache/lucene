@@ -236,10 +236,10 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
 
   @Override
   public long ramBytesUsed() {
-    long total = SHALLOW_RAM_BYTES_USED;
+    long total = SHALLOW_RAM_BYTES_USED + flatVectorWriter.ramBytesUsed();
     for (FieldWriter<?> field : fields) {
       // the field tracks the delegate field usage
-      total += field.ramBytesUsed();
+      total += field.ownRamBytesUsed();
     }
     return total;
   }
@@ -419,12 +419,15 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   public IORunnable mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
     flatVectorWriter.mergeOneFlatVectorField(fieldInfo, mergeState);
     return () -> {
+      // Bail out before the potentially heavy graph build if the merge was already aborted
+      mergeState.checkAborted();
       // Lazily finish flat writer and open a reader for the written segment
       ensureFlatReaderOpen();
       // Get the vector values and scorer supplier from the written segment
       KnnVectorValues vectorValues =
           switch (fieldInfo.getVectorEncoding()) {
             case BYTE -> flatVectorsReader.getByteVectorValues(fieldInfo.name);
+            case FLOAT16 -> flatVectorsReader.getFloat16VectorValues(fieldInfo.name);
             case FLOAT32 -> flatVectorsReader.getFloatVectorValues(fieldInfo.name);
           };
       int totalVectorCount = vectorValues == null ? 0 : vectorValues.size();
@@ -473,7 +476,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
             mergeState.intraMergeTaskExecutor == null
                 ? null
                 : new TaskExecutor(mergeState.intraMergeTaskExecutor),
-            numMergeWorkers);
+            numMergeWorkers,
+            mergeState::checkAborted);
     for (int i = 0; i < mergeState.liveDocs.length; i++) {
       if (hasVectorValues(mergeState.fieldInfos[i], fieldInfo.name)) {
         merger.addReader(
@@ -626,10 +630,11 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       FieldInfo fieldInfo,
       RandomVectorScorerSupplier scorerSupplier,
       TaskExecutor parallelMergeTaskExecutor,
-      int numParallelMergeWorkers) {
+      int numParallelMergeWorkers,
+      IORunnable abortCheck) {
     if (mergeExec != null) {
       return new ConcurrentHnswMerger(
-          fieldInfo, scorerSupplier, M, beamWidth, mergeExec, numMergeWorkers);
+          fieldInfo, scorerSupplier, M, beamWidth, mergeExec, numMergeWorkers, abortCheck);
     }
     if (parallelMergeTaskExecutor != null && numParallelMergeWorkers > 1) {
       return new ConcurrentHnswMerger(
@@ -638,9 +643,10 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
           M,
           beamWidth,
           parallelMergeTaskExecutor,
-          numParallelMergeWorkers);
+          numParallelMergeWorkers,
+          abortCheck);
     }
-    return new IncrementalHnswGraphMerger(fieldInfo, scorerSupplier, M, beamWidth);
+    return new IncrementalHnswGraphMerger(fieldInfo, scorerSupplier, M, beamWidth, abortCheck);
   }
 
   @Override
@@ -700,6 +706,15 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
             new FieldWriter<>(
                 scorer,
                 (FlatFieldVectorsWriter<byte[]>) flatFieldVectorsWriter,
+                fieldInfo,
+                M,
+                beamWidth,
+                infoStream,
+                tinySegmentsThreshold);
+        case FLOAT16 ->
+            new FieldWriter<>(
+                scorer,
+                (FlatFieldVectorsWriter<short[]>) flatFieldVectorsWriter,
                 fieldInfo,
                 M,
                 beamWidth,
@@ -800,13 +815,17 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       }
     }
 
-    @Override
-    public long ramBytesUsed() {
-      long total = SHALLOW_SIZE + flatFieldVectorsWriter.ramBytesUsed();
+    private long ownRamBytesUsed() {
+      long total = SHALLOW_SIZE;
       if (hnswGraphBuilder != null) {
         total += hnswGraphBuilder.getGraph().ramBytesUsed();
       }
       return total;
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      return ownRamBytesUsed() + flatFieldVectorsWriter.ramBytesUsed();
     }
   }
 }

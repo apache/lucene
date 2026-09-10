@@ -65,7 +65,7 @@ public abstract class VectorizationProvider {
 
   private static final String UPPER_JAVA_FEATURE_VERSION_SYSPROP =
       "org.apache.lucene.vectorization.upperJavaFeatureVersion";
-  private static final int DEFAULT_UPPER_JAVA_FEATURE_VERSION = 25;
+  private static final int DEFAULT_UPPER_JAVA_FEATURE_VERSION = 27;
 
   private static int getUpperJavaFeatureVersion() {
     int runtimeVersion = DEFAULT_UPPER_JAVA_FEATURE_VERSION;
@@ -136,18 +136,12 @@ public abstract class VectorizationProvider {
   // visible for tests
   static VectorizationProvider lookup(boolean testMode) {
     final int runtimeVersion = Runtime.version().feature();
-    assert runtimeVersion >= 21;
+    assert runtimeVersion >= 25;
     if (runtimeVersion <= UPPER_JAVA_FEATURE_VERSION) {
       // only use vector module with Hotspot VM
       if (!Constants.IS_HOTSPOT_VM) {
         LOG.warning(
             "Java runtime is not using Hotspot VM; Java vector incubator API can't be enabled.");
-        return new DefaultVectorizationProvider();
-      }
-      // don't use vector module with JVMCI (it does not work)
-      if (Constants.IS_JVMCI_VM) {
-        LOG.warning(
-            "Java runtime is using JVMCI Compiler; Java vector incubator API can't be enabled.");
         return new DefaultVectorizationProvider();
       }
       // is the incubator module present and readable (JVM providers may to exclude them or it is

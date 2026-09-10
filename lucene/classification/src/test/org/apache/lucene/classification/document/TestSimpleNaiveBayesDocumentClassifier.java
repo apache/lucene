@@ -120,7 +120,7 @@ public class TestSimpleNaiveBayesDocumentClassifier
               categoryFieldName,
               field2analyzer,
               new String[] {textFieldName, titleFieldName + "^100", authorFieldName}),
-          getBatmanAmbiguosDocument(),
+          getBatmanAmbiguousDocument(),
           BATMAN_RESULT);
       // considering without boost wrong classification will appear
       checkCorrectDocumentClassification(
@@ -130,7 +130,7 @@ public class TestSimpleNaiveBayesDocumentClassifier
               categoryFieldName,
               field2analyzer,
               new String[] {textFieldName, titleFieldName, authorFieldName}),
-          getBatmanAmbiguosDocument(),
+          getBatmanAmbiguousDocument(),
           VIDEOGAME_ANALYZED_RESULT);
     } finally {
       IOUtils.close(indexReader);

@@ -898,7 +898,7 @@ public class TestCodecs extends LuceneTestCase {
           }
 
           @Override
-          public void checkIntegrity() throws IOException {}
+          public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {}
         };
     boolean success = false;
     try {

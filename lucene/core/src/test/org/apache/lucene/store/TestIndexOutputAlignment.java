@@ -50,18 +50,18 @@ public class TestIndexOutputAlignment extends LuceneTestCase {
   }
 
   public void testInvalidAlignments() {
-    assertInvalidAligment(0);
-    assertInvalidAligment(-1);
-    assertInvalidAligment(-2);
-    assertInvalidAligment(6);
-    assertInvalidAligment(43);
-    assertInvalidAligment(Integer.MIN_VALUE);
+    assertInvalidAlignment(0);
+    assertInvalidAlignment(-1);
+    assertInvalidAlignment(-2);
+    assertInvalidAlignment(6);
+    assertInvalidAlignment(43);
+    assertInvalidAlignment(Integer.MIN_VALUE);
 
     assertThrows(IllegalArgumentException.class, () -> IndexOutput.alignOffset(-1L, 1));
     assertThrows(ArithmeticException.class, () -> IndexOutput.alignOffset(Long.MAX_VALUE, 2));
   }
 
-  private static void assertInvalidAligment(int size) {
+  private static void assertInvalidAlignment(int size) {
     assertThrows(IllegalArgumentException.class, () -> IndexOutput.alignOffset(1L, size));
   }
 

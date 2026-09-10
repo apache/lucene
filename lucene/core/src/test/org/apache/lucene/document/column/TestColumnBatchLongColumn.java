@@ -1178,7 +1178,7 @@ public class TestColumnBatchLongColumn extends LuceneTestCase {
   }
 
   /**
-   * Dense long batch larger than {@code POINTS_BUFFER_LONG_VALUES} (128) so the chunked encoding
+   * Dense long batch larger than {@code POINTS_BUFFER_LONG_VALUES} (512) so the chunked encoding
    * loop in {@code PointValuesWriter#addDense1DLongValues} runs more than once.
    */
   public void testDensePointsLongLargeBatch() throws IOException {
@@ -1189,7 +1189,7 @@ public class TestColumnBatchLongColumn extends LuceneTestCase {
     type.setDimensions(1, Long.BYTES);
     type.freeze();
 
-    final int n = 350; // > 2 * 128 chunks
+    final int n = 1100; // > 2 * 512 chunks
     long[] values = new long[n];
     for (int i = 0; i < n; i++) {
       values[i] = i * 1_000_000L - 100L; // mix of negative and positive
@@ -1201,8 +1201,8 @@ public class TestColumnBatchLongColumn extends LuceneTestCase {
     assertEquals(n, searcher.count(LongPoint.newRangeQuery("v", Long.MIN_VALUE, Long.MAX_VALUE)));
     assertEquals(1, searcher.count(LongPoint.newExactQuery("v", values[0])));
     assertEquals(1, searcher.count(LongPoint.newExactQuery("v", values[n - 1])));
-    assertEquals(1, searcher.count(LongPoint.newExactQuery("v", values[127]))); // chunk boundary
-    assertEquals(1, searcher.count(LongPoint.newExactQuery("v", values[128])));
+    assertEquals(1, searcher.count(LongPoint.newExactQuery("v", values[511]))); // chunk boundary
+    assertEquals(1, searcher.count(LongPoint.newExactQuery("v", values[512])));
     assertEquals(0, searcher.count(LongPoint.newExactQuery("v", -1L)));
     assertEquals(n, searcher.count(LongPoint.newRangeQuery("v", values[0], values[n - 1])));
 

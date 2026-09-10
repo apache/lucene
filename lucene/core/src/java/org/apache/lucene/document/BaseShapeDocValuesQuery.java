@@ -106,7 +106,7 @@ abstract class BaseShapeDocValuesQuery extends SpatialQuery {
     return result;
   }
 
-  /** compute the cost of the query; overrideable */
+  /** compute the cost of the query; overridable */
   protected float matchCost() {
     // multiply comparisons (estimated 60) by number of terms (averaged at 100)
     // todo: revisit

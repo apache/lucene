@@ -77,12 +77,12 @@ abstract class GlobalOrdinalsWithScoreCollector implements Collector {
   }
 
   public float score(int globalOrdinal) {
-    return scores.getScore(globalOrdinal);
+    return (float) scores.getScore(globalOrdinal);
   }
 
-  protected abstract void doScore(int globalOrd, float existingScore, float newScore);
+  protected abstract void doScore(int globalOrd, double existingScore, double newScore);
 
-  protected abstract float unset();
+  protected abstract double unset();
 
   @Override
   public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
@@ -116,8 +116,8 @@ abstract class GlobalOrdinalsWithScoreCollector implements Collector {
       if (docTermOrds.advanceExact(doc)) {
         final int globalOrd = (int) segmentOrdToGlobalOrdLookup.get(docTermOrds.ordValue());
         collectedOrds.set(globalOrd);
-        float existingScore = scores.getScore(globalOrd);
-        float newScore = scorer.score();
+        double existingScore = scores.getScore(globalOrd);
+        double newScore = scorer.score();
         doScore(globalOrd, existingScore, newScore);
         if (occurrences != null) {
           occurrences.increment(globalOrd);
@@ -145,8 +145,8 @@ abstract class GlobalOrdinalsWithScoreCollector implements Collector {
       if (docTermOrds.advanceExact(doc)) {
         int segmentOrd = docTermOrds.ordValue();
         collectedOrds.set(segmentOrd);
-        float existingScore = scores.getScore(segmentOrd);
-        float newScore = scorer.score();
+        double existingScore = scores.getScore(segmentOrd);
+        double newScore = scorer.score();
         doScore(segmentOrd, existingScore, newScore);
         if (occurrences != null) {
           occurrences.increment(segmentOrd);
@@ -167,13 +167,13 @@ abstract class GlobalOrdinalsWithScoreCollector implements Collector {
     }
 
     @Override
-    protected void doScore(int globalOrd, float existingScore, float newScore) {
+    protected void doScore(int globalOrd, double existingScore, double newScore) {
       scores.setScore(globalOrd, Math.min(existingScore, newScore));
     }
 
     @Override
-    protected float unset() {
-      return Float.POSITIVE_INFINITY;
+    protected double unset() {
+      return Double.POSITIVE_INFINITY;
     }
   }
 
@@ -184,13 +184,13 @@ abstract class GlobalOrdinalsWithScoreCollector implements Collector {
     }
 
     @Override
-    protected void doScore(int globalOrd, float existingScore, float newScore) {
+    protected void doScore(int globalOrd, double existingScore, double newScore) {
       scores.setScore(globalOrd, Math.max(existingScore, newScore));
     }
 
     @Override
-    protected float unset() {
-      return Float.NEGATIVE_INFINITY;
+    protected double unset() {
+      return Double.NEGATIVE_INFINITY;
     }
   }
 
@@ -201,13 +201,13 @@ abstract class GlobalOrdinalsWithScoreCollector implements Collector {
     }
 
     @Override
-    protected void doScore(int globalOrd, float existingScore, float newScore) {
+    protected void doScore(int globalOrd, double existingScore, double newScore) {
       scores.setScore(globalOrd, existingScore + newScore);
     }
 
     @Override
-    protected float unset() {
-      return 0f;
+    protected double unset() {
+      return 0d;
     }
   }
 
@@ -218,18 +218,18 @@ abstract class GlobalOrdinalsWithScoreCollector implements Collector {
     }
 
     @Override
-    protected void doScore(int globalOrd, float existingScore, float newScore) {
+    protected void doScore(int globalOrd, double existingScore, double newScore) {
       scores.setScore(globalOrd, existingScore + newScore);
     }
 
     @Override
     public float score(int globalOrdinal) {
-      return scores.getScore(globalOrdinal) / occurrences.getOccurrence(globalOrdinal);
+      return (float) (scores.getScore(globalOrdinal) / occurrences.getOccurrence(globalOrdinal));
     }
 
     @Override
-    protected float unset() {
-      return 0f;
+    protected double unset() {
+      return 0d;
     }
   }
 
@@ -276,7 +276,7 @@ abstract class GlobalOrdinalsWithScoreCollector implements Collector {
     }
 
     @Override
-    protected void doScore(int globalOrd, float existingScore, float newScore) {}
+    protected void doScore(int globalOrd, double existingScore, double newScore) {}
 
     @Override
     public float score(int globalOrdinal) {
@@ -284,8 +284,8 @@ abstract class GlobalOrdinalsWithScoreCollector implements Collector {
     }
 
     @Override
-    protected float unset() {
-      return 0f;
+    protected double unset() {
+      return 0d;
     }
 
     @Override
@@ -309,33 +309,35 @@ abstract class GlobalOrdinalsWithScoreCollector implements Collector {
 
   static final class Scores {
 
-    final float[][] blocks;
-    final float unset;
+    // Accumulated in double precision because float addition isn't associative, so summing the
+    // same per-document scores in a different order may round to a different float.
+    final double[][] blocks;
+    final double unset;
 
-    private Scores(long valueCount, float unset) {
+    private Scores(long valueCount, double unset) {
       long blockSize = valueCount + arraySize - 1;
-      blocks = new float[(int) ((blockSize) / arraySize)][];
+      blocks = new double[(int) ((blockSize) / arraySize)][];
       this.unset = unset;
     }
 
-    public void setScore(int globalOrdinal, float score) {
+    public void setScore(int globalOrdinal, double score) {
       int block = globalOrdinal / arraySize;
       int offset = globalOrdinal % arraySize;
-      float[] scores = blocks[block];
+      double[] scores = blocks[block];
       if (scores == null) {
-        blocks[block] = scores = new float[arraySize];
-        if (unset != 0f) {
+        blocks[block] = scores = new double[arraySize];
+        if (unset != 0d) {
           Arrays.fill(scores, unset);
         }
       }
       scores[offset] = score;
     }
 
-    public float getScore(int globalOrdinal) {
+    public double getScore(int globalOrdinal) {
       int block = globalOrdinal / arraySize;
       int offset = globalOrdinal % arraySize;
-      float[] scores = blocks[block];
-      float score;
+      double[] scores = blocks[block];
+      double score;
       if (scores != null) {
         score = scores[offset];
       } else {

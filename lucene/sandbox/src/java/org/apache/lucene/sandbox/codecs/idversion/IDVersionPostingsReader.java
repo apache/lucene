@@ -22,6 +22,7 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.PostingsReaderBase;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.ImpactsEnum;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.store.DataInput;
@@ -99,7 +100,7 @@ final class IDVersionPostingsReader extends PostingsReaderBase {
   }
 
   @Override
-  public void checkIntegrity() throws IOException {}
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {}
 
   @Override
   public String toString() {

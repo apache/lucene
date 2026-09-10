@@ -97,7 +97,7 @@ class NormValuesWriter {
           }
 
           @Override
-          public void checkIntegrity() {}
+          public void checkIntegrity(MergePolicy.OneMerge merge) {}
 
           @Override
           public void close() {}

@@ -34,13 +34,16 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.RamUsageTester;
 import org.apache.lucene.tests.util.Rethrow;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.Operations;
+import org.apache.lucene.util.automaton.RegExp;
 
 public class TestAutomatonQuery extends LuceneTestCase {
   private Directory directory;
@@ -251,5 +254,69 @@ public class TestAutomatonQuery extends LuceneTestCase {
     }
     Collections.sort(terms);
     new AutomatonQuery(new Term("foo", "bar"), Automata.makeStringUnion(terms));
+  }
+
+  public void testRamBytesUsedDoesNotDoubleCountSharedDeterministicAutomaton() {
+    // Same shape as PrefixQuery: an already-deterministic binary automaton passed with
+    // isBinary=true. CompiledAutomaton keeps a reference to the same Automaton instance
+    // via runAutomaton.automaton; naively summing automaton + compiled would double-count.
+    Automaton prefix = PrefixQuery.toAutomaton(new BytesRef("prefix"));
+    AutomatonQuery q = new AutomatonQuery(new Term(FN, "prefix"), prefix, true);
+    assertSame(prefix, q.getCompiled().automaton);
+    assertRamBytesExcludesSharedAutomaton(q, prefix);
+  }
+
+  public void testRamBytesUsedDoesNotDoubleCountSharedNfaAutomaton() {
+    // isBinary=true with a non-deterministic input drives CompiledAutomaton down the NFA
+    // path, where nfaRunAutomaton wraps the same Automaton instance.
+    Automaton nfa = new Automaton();
+    int start = nfa.createState();
+    int a1 = nfa.createState();
+    int a2 = nfa.createState();
+    nfa.setAccept(a1, true);
+    nfa.setAccept(a2, true);
+    nfa.addTransition(start, a1, 'a', 'a');
+    nfa.addTransition(start, a2, 'a', 'a');
+    nfa.finishState();
+    assertFalse(nfa.isDeterministic());
+
+    AutomatonQuery q = new AutomatonQuery(new Term(FN, "nfa"), nfa, true);
+    assertNull(q.getCompiled().automaton);
+    assertTrue(q.getCompiled().sharesAutomaton(nfa));
+    assertRamBytesExcludesSharedAutomaton(q, nfa);
+  }
+
+  public void testRamBytesUsedIsBinaryFalseCountsOuterAutomaton() {
+    // isBinary=false path: CompiledAutomaton converts to UTF-8 internally, so the outer
+    // automaton and compiled hold distinct Automaton instances. Both must be counted --
+    // this test guards against a future refactor accidentally dropping the outer bytes.
+    Automaton a =
+        Operations.determinize(new RegExp("abc.*").toAutomaton(), DEFAULT_DETERMINIZE_WORK_LIMIT);
+    AutomatonQuery q = new AutomatonQuery(new Term(FN, "regex"), a);
+    assertFalse(q.getCompiled().sharesAutomaton(a));
+    long reported = q.ramBytesUsed();
+    assertTrue(
+        "outer automaton must still contribute on the isBinary=false path",
+        reported >= a.ramBytesUsed());
+    long actual = RamUsageTester.ramUsed(q);
+    assertEquals((double) actual, (double) reported, (double) actual * 0.10);
+  }
+
+  // Asserts that ramBytesUsed() does not include the shared Automaton twice.
+  // Reported bytes must equal (shallow AutomatonQuery + term + compiled), i.e., the
+  // shared automaton is accounted for only once (via compiled). If the bug were
+  // present, reported would be inflated by exactly sharedAutomaton.ramBytesUsed().
+  private static void assertRamBytesExcludesSharedAutomaton(
+      AutomatonQuery q, Automaton sharedAutomaton) {
+    long expected =
+        RamUsageEstimator.shallowSizeOfInstance(AutomatonQuery.class)
+            + q.term.ramBytesUsed()
+            + q.getCompiled().ramBytesUsed();
+    assertEquals(
+        "shared Automaton must not be counted twice (would over-report by "
+            + sharedAutomaton.ramBytesUsed()
+            + " bytes)",
+        expected,
+        q.ramBytesUsed());
   }
 }

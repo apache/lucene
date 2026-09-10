@@ -1227,14 +1227,14 @@ public class TestFSTs extends LuceneTestCase {
     FST<Long> loadedFST = new FST<>(FST.readMetadata(in, outputs), in);
 
     // now save the FST again, this time to different DataOutput for meta
-    ByteArrayOutputStream metdataOS = new ByteArrayOutputStream();
-    OutputStreamDataOutput metaOut = new OutputStreamDataOutput(metdataOS);
+    ByteArrayOutputStream metadataOS = new ByteArrayOutputStream();
+    OutputStreamDataOutput metaOut = new OutputStreamDataOutput(metadataOS);
     ByteArrayOutputStream dataOS = new ByteArrayOutputStream();
     OutputStreamDataOutput dataOut = new OutputStreamDataOutput(dataOS);
     loadedFST.save(metaOut, dataOut);
 
     // finally load it again
-    ByteArrayDataInput metaIn = new ByteArrayDataInput(metdataOS.toByteArray());
+    ByteArrayDataInput metaIn = new ByteArrayDataInput(metadataOS.toByteArray());
     ByteArrayDataInput dataIn = new ByteArrayDataInput(dataOS.toByteArray());
     loadedFST = new FST<>(FST.readMetadata(metaIn, outputs), dataIn);
 
@@ -1466,7 +1466,7 @@ public class TestFSTs extends LuceneTestCase {
     final Random random = random();
     int numWords = atLeast(1000);
 
-    final TreeMap<String, Long> slowCompletor = new TreeMap<>();
+    final TreeMap<String, Long> slowCompleter = new TreeMap<>();
     final TreeSet<String> allPrefixes = new TreeSet<>();
 
     final PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
@@ -1478,16 +1478,16 @@ public class TestFSTs extends LuceneTestCase {
       String s;
       do {
         s = TestUtil.randomSimpleString(random);
-      } while (slowCompletor.containsKey(s));
+      } while (slowCompleter.containsKey(s));
 
       for (int j = 1; j < s.length(); j++) {
         allPrefixes.add(s.substring(0, j));
       }
       int weight = TestUtil.nextInt(random, 1, 100); // weights 1..100
-      slowCompletor.put(s, (long) weight);
+      slowCompleter.put(s, (long) weight);
     }
 
-    for (Map.Entry<String, Long> e : slowCompletor.entrySet()) {
+    for (Map.Entry<String, Long> e : slowCompleter.entrySet()) {
       // System.out.println("add: " + e);
       fstCompiler.add(Util.toIntsRef(newBytesRef(e.getKey()), scratch), e.getValue());
     }
@@ -1520,11 +1520,11 @@ public class TestFSTs extends LuceneTestCase {
           Util.shortestPaths(fst, arc, fst.outputs.getNoOutput(), minLongComparator, topN, true);
       assertTrue(r.isComplete);
 
-      // 2. go thru whole treemap (slowCompletor) and check it's actually the best suggestion
+      // 2. go thru whole treemap (slowCompleter) and check it's actually the best suggestion
       final List<Result<Long>> matches = new ArrayList<>();
 
-      // TODO: could be faster... but it's slowCompletor for a reason
-      for (Map.Entry<String, Long> e : slowCompletor.entrySet()) {
+      // TODO: could be faster... but it's slowCompleter for a reason
+      for (Map.Entry<String, Long> e : slowCompleter.entrySet()) {
         if (e.getKey().startsWith(prefix)) {
           // System.out.println("  consider " + e.getKey());
           matches.add(
@@ -1580,7 +1580,7 @@ public class TestFSTs extends LuceneTestCase {
   public void testShortestPathsWFSTRandom() throws Exception {
     int numWords = atLeast(1000);
 
-    final TreeMap<String, TwoLongs> slowCompletor = new TreeMap<>();
+    final TreeMap<String, TwoLongs> slowCompleter = new TreeMap<>();
     final TreeSet<String> allPrefixes = new TreeSet<>();
 
     PairOutputs<Long, Long> outputs =
@@ -1597,17 +1597,17 @@ public class TestFSTs extends LuceneTestCase {
       String s;
       do {
         s = TestUtil.randomSimpleString(random);
-      } while (slowCompletor.containsKey(s));
+      } while (slowCompleter.containsKey(s));
 
       for (int j = 1; j < s.length(); j++) {
         allPrefixes.add(s.substring(0, j));
       }
       int weight = TestUtil.nextInt(random, 1, 100); // weights 1..100
       int output = TestUtil.nextInt(random, 0, 500); // outputs 0..500
-      slowCompletor.put(s, new TwoLongs(weight, output));
+      slowCompleter.put(s, new TwoLongs(weight, output));
     }
 
-    for (Map.Entry<String, TwoLongs> e : slowCompletor.entrySet()) {
+    for (Map.Entry<String, TwoLongs> e : slowCompleter.entrySet()) {
       // System.out.println("add: " + e);
       long weight = e.getValue().a;
       long output = e.getValue().b;
@@ -1644,11 +1644,11 @@ public class TestFSTs extends LuceneTestCase {
           Util.shortestPaths(
               fst, arc, fst.outputs.getNoOutput(), minPairWeightComparator, topN, true);
       assertTrue(r.isComplete);
-      // 2. go thru whole treemap (slowCompletor) and check it's actually the best suggestion
+      // 2. go thru whole treemap (slowCompleter) and check it's actually the best suggestion
       final List<Result<Pair<Long, Long>>> matches = new ArrayList<>();
 
-      // TODO: could be faster... but it's slowCompletor for a reason
-      for (Map.Entry<String, TwoLongs> e : slowCompletor.entrySet()) {
+      // TODO: could be faster... but it's slowCompleter for a reason
+      for (Map.Entry<String, TwoLongs> e : slowCompleter.entrySet()) {
         if (e.getKey().startsWith(prefix)) {
           // System.out.println("  consider " + e.getKey());
           matches.add(

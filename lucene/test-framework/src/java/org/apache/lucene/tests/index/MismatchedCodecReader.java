@@ -28,6 +28,7 @@ import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.FilterCodecReader;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
@@ -93,8 +94,8 @@ public class MismatchedCodecReader extends FilterCodecReader {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
-      in.checkIntegrity();
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+      in.checkIntegrity(merge);
     }
 
     @Override
@@ -161,13 +162,13 @@ public class MismatchedCodecReader extends FilterCodecReader {
     }
 
     @Override
-    public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
+    public DocValuesSkipper getSkipper(FieldInfo field) {
       return in.getSkipper(remapFieldInfo(field));
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
-      in.checkIntegrity();
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+      in.checkIntegrity(merge);
     }
   }
 
@@ -209,8 +210,8 @@ public class MismatchedCodecReader extends FilterCodecReader {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
-      in.checkIntegrity();
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+      in.checkIntegrity(merge);
     }
   }
 }

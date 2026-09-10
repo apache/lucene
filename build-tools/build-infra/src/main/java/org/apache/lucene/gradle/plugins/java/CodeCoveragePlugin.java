@@ -17,6 +17,7 @@
 package org.apache.lucene.gradle.plugins.java;
 
 import java.io.File;
+import java.util.Map;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
 import org.barfuin.gradle.jacocolog.JacocoLogPlugin;
 import org.gradle.api.Project;
@@ -66,7 +67,9 @@ public class CodeCoveragePlugin extends LuceneGradlePlugin {
             .forEach(
                 p -> {
                   if (p.file("src/test").exists()) {
-                    project.getDependencies().add("jacocoAggregation", p);
+                    var dependencies = project.getDependencies();
+                    dependencies.add(
+                        "jacocoAggregation", dependencies.project(Map.of("path", p.getPath())));
                   }
                 });
 
