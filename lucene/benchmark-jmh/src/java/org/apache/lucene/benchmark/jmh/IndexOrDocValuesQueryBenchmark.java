@@ -19,9 +19,7 @@ package org.apache.lucene.benchmark.jmh;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Comparator;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Stream;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KeywordField;
@@ -39,6 +37,7 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.MMapDirectory;
+import org.apache.lucene.util.IOUtils;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -54,8 +53,8 @@ import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 
 /**
- * Benchmarks the points-vs-DV decision in IndexOrDocValuesQuery (LUCENE-7897 penalty). The 8x
- * penalty predates DocValuesSkipper (2017). With block-level skipping, DV is competitive.
+ * Benchmarks the points-vs-DV decision in IndexOrDocValuesQuery. Monotonic timestamps are close to
+ * a best case for BKD, so these results are conservative for DV relative to real workloads.
  */
 @State(Scope.Thread)
 @BenchmarkMode(Mode.Throughput)
@@ -102,17 +101,8 @@ public class IndexOrDocValuesQueryBenchmark {
 
     Query range80 = LongField.newRangeQuery("timestamp", 0, docCount * 4L / 5);
 
-    // 10% lead + 80% range. 8x→points, 4x/2x→DV.
     crossover10Query = buildConjunction(range80, 10, numBuckets);
-
-    // 20% lead + 80% range. 8x/4x→points, 2x→DV.
-    // indexCost=800K, leadCost=200K. 8x: 100K<=200K→pts. 4x: 200K<=200K→pts. 2x: 400K>200K→DV.
     crossover20Query = buildConjunction(range80, 20, numBuckets);
-
-    // 30% lead + 80% range. 8x/4x/2x→points.
-    // indexCost=800K, leadCost=300K. 2x: 400K>300K→DV. So 2x still DV here.
-    // Actually 2x threshold = 400K > 300K → DV. Need 1x for points: 800K > 300K → DV.
-    // So 30% lead is still DV at 2x. This tests DV with more docs to check.
     crossover30Query = buildConjunction(range80, 30, numBuckets);
 
     // DV favorable: 1% lead + 80% range. Both 8x and 4x choose DV.
@@ -150,9 +140,7 @@ public class IndexOrDocValuesQueryBenchmark {
   public void tearDown() throws Exception {
     reader.close();
     dir.close();
-    try (Stream<Path> walk = Files.walk(path)) {
-      walk.sorted(Comparator.reverseOrder()).forEach(p -> p.toFile().delete());
-    }
+    IOUtils.rm(path);
   }
 
   @Benchmark
