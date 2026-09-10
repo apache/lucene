@@ -326,6 +326,9 @@ Bug Fixes
   node count, so a graph with deletions could be kept as the base over a larger deletion-free graph,
   depending on the order in which readers were added. (Lantao Jin)
 
+* GITHUB#16139: Fix IBSimilarity with DistributionSPL producing negative scores due to
+  floating-point rounding errors. (Prithvi S)
+
 Build
 ---------------------
 
