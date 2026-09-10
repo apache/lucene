@@ -108,4 +108,28 @@ public abstract class FlatVectorsReader extends KnnVectorsReader implements Acco
   public FlatVectorsReader getMergeInstance() throws IOException {
     return this;
   }
+
+  /**
+   * Optionally reads the raw float32 vectors for {@code ords} as one batch, which lets a store that
+   * can service scattered reads concurrently (for example a file opened with direct I/O) fetch a
+   * whole candidate shortlist without visiting one vector at a time. Used by the full-precision KNN
+   * rerank path, where the shortlist is known up front.
+   *
+   * <p>The default implementation returns {@code false}, meaning this reader has no batch support
+   * and the caller should read vectors individually.
+   *
+   * @param field the field to read
+   * @param ords vector ordinals to read, one per vector
+   * @param count number of ordinals to read (may be less than {@code ords.length})
+   * @param out receives the vectors back to back: vector {@code i} occupies {@code out[i * dim]} to
+   *     {@code out[i * dim + dim - 1]}, where {@code dim} is the field's dimension. Must have
+   *     length at least {@code count * dim}.
+   * @return true if the vectors were read into {@code out}, false if this reader cannot batch-read
+   *     them (nothing is written to {@code out} in that case)
+   * @lucene.experimental
+   */
+  public boolean readRawVectors(String field, int[] ords, int count, float[] out)
+      throws IOException {
+    return false;
+  }
 }

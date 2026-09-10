@@ -123,6 +123,10 @@ API Changes
 
 New Features
 ---------------------
+* GITHUB#16656: Add FlatVectorsReader.readRawVectors and ParallelVectorReadable to batch-read a
+  full-precision KNN rerank shortlist, plus SelectiveDirectIODirectory (misc) serving .vec with
+  O_DIRECT and 4KB-aligned FLOAT32 vector data, for rerank on larger-than-RAM indexes. (Ankur Goel)
+
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
   modern Hangul conjoining jamo before KoreanTokenizer. (Mingi Jeong)
 

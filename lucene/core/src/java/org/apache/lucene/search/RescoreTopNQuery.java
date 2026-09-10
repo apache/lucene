@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.util.ArrayUtil;
 
 /**
  * A Query that re-scores another Query with a {@link DoubleValuesSource} function and cut-off the
@@ -70,15 +71,32 @@ public class RescoreTopNQuery extends Query {
       }
       DoubleValues rescores = rewrittenValueSource.getValues(leaf, getDoubleValues(innerScorer));
       DocIdSetIterator iterator = innerScorer.iterator();
-      while (iterator.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-        int docId = iterator.docID();
-        if (rescores.advanceExact(docId)) {
-          double v = rescores.doubleValue();
-          queue.insertWithOverflow(new ScoreDoc(leaf.docBase + docId, (float) v));
-        } else {
-          queue.insertWithOverflow(new ScoreDoc(leaf.docBase + docId, 0f));
+      if (rewrittenValueSource instanceof FullPrecisionFloatVectorSimilarityValuesSource vsrc) {
+        int[] docs = new int[64];
+        int count = 0;
+        for (int docId = iterator.nextDoc();
+            docId != DocIdSetIterator.NO_MORE_DOCS;
+            docId = iterator.nextDoc()) {
+          if (count == docs.length) docs = ArrayUtil.grow(docs);
+          docs[count++] = docId;
         }
-        originalCount++;
+        // Fast path: read the shortlist raw vectors via O_DIRECT (uncached, parallel) and score
+        // directly; fall back to the cached per-doc path when O_DIRECT is unavailable.
+        float[] directScores = vsrc.directIoScores(leaf, docs, count);
+        if (directScores != null) {
+          for (int j = 0; j < count; j++) {
+            queue.insertWithOverflow(new ScoreDoc(leaf.docBase + docs[j], directScores[j]));
+            originalCount++;
+          }
+        } else {
+          for (int j = 0; j < count; j++) {
+            originalCount += insertRescored(rescores, queue, leaf.docBase, docs[j]);
+          }
+        }
+      } else {
+        while (iterator.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+          originalCount += insertRescored(rescores, queue, leaf.docBase, iterator.docID());
+        }
       }
     }
     int i = 0;
@@ -89,6 +107,16 @@ public class RescoreTopNQuery extends Query {
     TopDocs topDocs =
         new TopDocs(new TotalHits(originalCount, TotalHits.Relation.EQUAL_TO), scoreDocs);
     return DocAndScoreQuery.createDocAndScoreQuery(reader, topDocs, 0);
+  }
+
+  private static int insertRescored(DoubleValues rescores, HitQueue queue, int docBase, int docId)
+      throws IOException {
+    if (rescores.advanceExact(docId)) {
+      queue.insertWithOverflow(new ScoreDoc(docBase + docId, (float) rescores.doubleValue()));
+    } else {
+      queue.insertWithOverflow(new ScoreDoc(docBase + docId, 0f));
+    }
+    return 1;
   }
 
   private DoubleValues getDoubleValues(Scorer innerScorer) {
