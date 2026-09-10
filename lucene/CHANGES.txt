@@ -257,6 +257,8 @@ Bug Fixes
 
 * GITHUB#15939: Fix thread-safety issues with NFARunAutomaton. (Dimitris Rempapis)
 
+* GITHUB#16212: Fix concurrent modification in LRUQueryCache.cleanUp(). (Prithvi S)
+
 * GITHUB#16278: Refactor NativeFSLockFactory lock acquisition to cleanly separate locking and file system logic. (Bharathi-Kanna)
 
 * GITHUB#16303: Add suppressed exception details when lock acquisition fails in NativeFSLockFactory. (Bharathi-Kanna)
