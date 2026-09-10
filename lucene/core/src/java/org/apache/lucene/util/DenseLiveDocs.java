@@ -145,8 +145,11 @@ public final class DenseLiveDocs implements LiveDocs {
    * window, and for a {@code w} of a few thousand bits {@link FixedBitSet#cardinality} costs about
    * as much as the mask itself.
    *
-   * @throws IllegalArgumentException if a bit of {@code bitSet} at or beyond {@code maxDoc -
-   *     offset} is set
+   * <p>Same structure as {@link FixedBitSet#applyMask}, bounded on {@code maxDoc} rather than
+   * {@code liveDocs.length()} when the backing bit set is padded.
+   *
+   * @throws IllegalArgumentException unless every set bit of {@code bitSet} at index {@code i}
+   *     satisfies {@code offset + i < maxDoc}
    */
   @Override
   public void applyMask(FixedBitSet bitSet, int offset) {

@@ -714,14 +714,18 @@ public class SparseFixedBitSet extends BitSet {
   }
 
   /**
-   * And-not {@code length} bits starting at {@code sourceFrom} from {@code source} into {@code
-   * dest} starting at {@code destFrom}: bits of {@code dest} whose corresponding bit is set in
-   * {@code source} get cleared, other bits of {@code dest} are left untouched. Only {@code dest} is
-   * modified.
+   * Clears bits of {@code dest} wherever {@code source} has a set bit, for {@code length} aligned
+   * indices starting at {@code sourceFrom} in {@code source} and {@code destFrom} in {@code dest}:
+   * for each {@code j} in {@code [0, length)}, {@code dest.clear(destFrom + j)} is performed when
+   * {@code source.get(sourceFrom + j)} is set; other bits of {@code dest} are unchanged. Only
+   * {@code dest} is modified.
    *
-   * <p>Only the longs of {@code source} that are not zero are visited, one word operation each, so
-   * the cost is bounded by {@code length / 64} and does not depend on how many bits {@code dest}
-   * has set.
+   * <p>Only non-zero longs of {@code source} overlapping the range are visited, so cost is bounded
+   * by {@code length / 64} and does not depend on how many bits of {@code dest} are set. This is
+   * the AND-NOT counterpart of {@link FixedBitSet#andRange}.
+   *
+   * @throws IndexOutOfBoundsException if {@code sourceFrom + length} exceeds {@code
+   *     source.length()} or {@code destFrom + length} exceeds {@code dest.length()}
    */
   public static void andNotRange(
       SparseFixedBitSet source, int sourceFrom, FixedBitSet dest, int destFrom, int length) {

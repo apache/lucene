@@ -138,8 +138,8 @@ public final class SparseLiveDocs implements LiveDocs {
    * window, so its cost is bounded by the size of the window and does not depend on how many bits
    * are set in the destination.
    *
-   * @throws IllegalArgumentException if a bit of {@code bitSet} at or beyond {@code maxDoc -
-   *     offset} is set
+   * @throws IllegalArgumentException unless every set bit of {@code bitSet} at index {@code i}
+   *     satisfies {@code offset + i < maxDoc}
    */
   @Override
   public void applyMask(FixedBitSet bitSet, int offset) {
