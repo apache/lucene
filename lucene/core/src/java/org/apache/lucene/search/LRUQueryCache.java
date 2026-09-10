@@ -1210,17 +1210,18 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
 
     IndexReader.CacheKey cacheKey;
     Query query;
+    private final int hash;
 
     QueryCacheKey(IndexReader.CacheKey cacheKey, Query query) {
       this.cacheKey = cacheKey;
       this.query = query;
+      int res = System.identityHashCode(cacheKey);
+      this.hash = 31 * res + query.hashCode();
     }
 
     @Override
     public int hashCode() {
-      int res = System.identityHashCode(cacheKey);
-      res = 31 * res + System.identityHashCode(query);
-      return res;
+      return hash;
     }
 
     @Override

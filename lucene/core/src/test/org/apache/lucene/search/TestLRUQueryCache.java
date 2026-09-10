@@ -2748,6 +2748,55 @@ public class TestLRUQueryCache extends LuceneTestCase {
     queryCache.close();
   }
 
+  // A re-query with a fresh-but-value-equal Query instance must hit the cache: QueryCacheKey's
+  // hashCode must be derived from query.hashCode() to stay consistent with its value-based
+  // equals().
+  public void testReQueryWithEqualButDistinctQueryInstanceHits() throws IOException {
+    try (Directory dir = newDirectory();
+        RandomIndexWriter w = new RandomIndexWriter(random(), dir)) {
+      Document doc = new Document();
+      doc.add(new StringField("color", "red", Store.NO));
+      w.addDocument(doc);
+      w.forceMerge(1);
+      try (IndexReader reader = w.getReader()) {
+        // single segment, so the reader core cache key is stable across the two queries
+        assertEquals(1, reader.leaves().size());
+        final IndexSearcher searcher = newSearcher(reader);
+
+        final AtomicLong hitCount = new AtomicLong();
+        final AtomicLong missCount = new AtomicLong();
+        final LRUQueryCache queryCache =
+            new LRUQueryCache(1000000, 10000000, _ -> true, Float.POSITIVE_INFINITY) {
+              @Override
+              protected void onHit(Object readerCoreKey, Query query) {
+                super.onHit(readerCoreKey, query);
+                hitCount.incrementAndGet();
+              }
+
+              @Override
+              protected void onMiss(Object readerCoreKey, Query query) {
+                super.onMiss(readerCoreKey, query);
+                missCount.incrementAndGet();
+              }
+            };
+        searcher.setQueryCache(queryCache);
+        searcher.setQueryCachingPolicy(ALWAYS_CACHE);
+
+        // First request caches the doc-id set for this (segment, query).
+        searcher.search(new ConstantScoreQuery(new TermQuery(new Term("color", "red"))), 1);
+        assertEquals(0, hitCount.longValue());
+        assertEquals(1, missCount.longValue());
+
+        // Second request uses a distinct-but-value-equal Query instance. It must hit.
+        searcher.search(new ConstantScoreQuery(new TermQuery(new Term("color", "red"))), 1);
+        assertEquals(1, hitCount.longValue());
+        assertEquals(1, missCount.longValue());
+
+        queryCache.close();
+      }
+    }
+  }
+
   public static class DefaultCleanUpThreadFactory implements ThreadFactory {
     private final String namePrefix;
 
