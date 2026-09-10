@@ -72,6 +72,10 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   private static final VectorSpecies<Short> SHORT_SPECIES;
   private static final VectorSpecies<Byte> BYTE_SPECIES_128 = ByteVector.SPECIES_128;
   private static final VectorSpecies<Byte> BYTE_SPECIES_256 = ByteVector.SPECIES_256;
+  // full register needed, no widening
+  private static final VectorSpecies<Byte> BYTE_SPECIES_FULL =
+      ByteVector.SPECIES_MAX.withShape(
+          VectorShape.forBitSize(PanamaVectorConstants.PREFERRED_VECTOR_BITSIZE));
 
   static final int VECTOR_BITSIZE;
 
@@ -582,6 +586,24 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
               .reduceLanes(ADD);
     }
     return sum;
+  }
+
+  @Override
+  public void int4Unpack(byte[] packed, byte[] unpacked) {
+    final int len = packed.length;
+    final int bound = BYTE_SPECIES_FULL.loopBound(len);
+    int i = 0;
+    for (; i < bound; i += BYTE_SPECIES_FULL.length()) {
+      ByteVector v = ByteVector.fromArray(BYTE_SPECIES_FULL, packed, i);
+      // LSHR is a logical shift within the byte lane, so the high nibble needs no mask.
+      v.lanewise(LSHR, 4).intoArray(unpacked, i);
+      v.lanewise(VectorOperators.AND, (byte) 0x0F).intoArray(unpacked, len + i);
+    }
+    // scalar tail
+    for (; i < len; i++) {
+      unpacked[i] = (byte) ((packed[i] >> 4) & 0x0F);
+      unpacked[len + i] = (byte) (packed[i] & 0x0F);
+    }
   }
 
   @Override
