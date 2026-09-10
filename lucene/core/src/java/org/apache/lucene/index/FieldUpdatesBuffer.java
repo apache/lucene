@@ -61,11 +61,15 @@ final class FieldUpdatesBuffer {
   private long maxNumeric = Long.MIN_VALUE;
   private long minNumeric = Long.MAX_VALUE;
   private String[] fields;
+  // the actual doc-values type of the updated field. A SORTED_NUMERIC update sets a single long
+  // value per doc, identical to a numeric update, so it shares the numeric buffering path but keeps
+  // its own type so the write/read side can apply the singleton wrapping.
+  private final DocValuesType type;
   private final boolean isNumeric;
   private boolean finished = false;
 
   private FieldUpdatesBuffer(
-      Counter bytesUsed, DocValuesUpdate initialValue, int docUpTo, boolean isNumeric) {
+      Counter bytesUsed, DocValuesUpdate initialValue, int docUpTo, DocValuesType type) {
     this.bytesUsed = bytesUsed;
     this.bytesUsed.addAndGet(SELF_SHALLOW_SIZE);
     termValues = new BytesRefArray(bytesUsed);
@@ -77,7 +81,9 @@ final class FieldUpdatesBuffer {
       hasValues = new FixedBitSet(1);
       bytesUsed.addAndGet(hasValues.ramBytesUsed());
     }
-    this.isNumeric = isNumeric;
+    this.type = type;
+    // NUMERIC and SORTED_NUMERIC updates both carry a single long, so they share the storage path.
+    this.isNumeric = type == DocValuesType.NUMERIC || type == DocValuesType.SORTED_NUMERIC;
     byteValues = isNumeric ? null : new BytesRefArray(bytesUsed);
   }
 
@@ -87,7 +93,8 @@ final class FieldUpdatesBuffer {
 
   FieldUpdatesBuffer(
       Counter bytesUsed, DocValuesUpdate.NumericDocValuesUpdate initialValue, int docUpTo) {
-    this(bytesUsed, initialValue, docUpTo, true);
+    // NUMERIC and SORTED_NUMERIC share this buffer; the update carries which one.
+    this(bytesUsed, initialValue, docUpTo, initialValue.type);
     if (initialValue.hasValue()) {
       numericValues = new long[] {initialValue.getValue()};
       maxNumeric = minNumeric = initialValue.getValue();
@@ -99,10 +106,14 @@ final class FieldUpdatesBuffer {
 
   FieldUpdatesBuffer(
       Counter bytesUsed, DocValuesUpdate.BinaryDocValuesUpdate initialValue, int docUpTo) {
-    this(bytesUsed, initialValue, docUpTo, false);
+    this(bytesUsed, initialValue, docUpTo, DocValuesType.BINARY);
     if (initialValue.hasValue()) {
       byteValues.append(initialValue.getValue());
     }
+  }
+
+  DocValuesType getType() {
+    return type;
   }
 
   long getMaxNumeric() {
