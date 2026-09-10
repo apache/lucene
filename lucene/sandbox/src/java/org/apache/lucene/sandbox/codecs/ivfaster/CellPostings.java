@@ -45,6 +45,12 @@ final class CellPostings extends DocIdSetIterator {
   private int pos;
   private int doc = -1;
 
+  /**
+   * Where this cell's coarse distances start in a session's distance array, for a scorer whose
+   * admission is a lookup; see {@code IVFasterKnnQuery}.
+   */
+  int distOffset;
+
   CellPostings(int[] slotDoc, int base, int rows) {
     this.slotDoc = slotDoc;
     this.base = base;
@@ -55,6 +61,11 @@ final class CellPostings extends DocIdSetIterator {
   /** The slot of the current doc; valid while {@link #docID()} is a real doc. */
   int slot() {
     return pos;
+  }
+
+  /** The current doc's row within the cell's run. */
+  int row() {
+    return pos - base;
   }
 
   @Override

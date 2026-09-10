@@ -60,7 +60,9 @@ import org.apache.lucene.index.SegmentWriteState;
  * doc order with the filter tested per document before any document is scored. The probe widens,
  * nearest cell first, until twice the shortlist's worth of accepted documents has been gathered,
  * and the best shortlist of those is reranked; a filter narrow enough that reranking every accepted
- * document reads fewer bytes than that walk would is reranked whole. See the reader.
+ * document reads fewer bytes than that walk would is reranked whole. See the reader. {@link
+ * IVFasterKnnQuery} exposes the same cells as a scorer, so the kNN clause can be conjoined
+ * doc-at-a-time with any other clause of a {@code BooleanQuery}.
  *
  * <h2>Scope limits</h2>
  *

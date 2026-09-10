@@ -531,7 +531,16 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
      */
     final java.lang.foreign.MemorySegment coarseSeg;
 
-    final DirectMonotonicReader postingOffsets;
+    /**
+     * Cell {@code c}'s slot run is {@code [cellStart[c], cellStart[c + 1])}: the persisted posting
+     * directory, decoded into heap at open.
+     *
+     * <p>In heap rather than read through {@code DirectMonotonicReader} per query for two reasons.
+     * It is one int per cell, so it is small. And on a directory whose inputs are not natively
+     * random-access, {@code randomAccessSlice} falls back to a stateful seek-then-read adapter that
+     * is not safe under concurrent queries; the codec reads it once here instead.
+     */
+    final int[] cellStart;
 
     /** Raw FP32 vectors in ordinal order, or {@code null} when {@code rawLength == 0}. */
     final RandomAccessInput raw;
@@ -608,13 +617,17 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
       codeTableSeg = segmentOf(codeTable, e.codeTableLength);
       coarseSeg = segmentOf(coarse, e.coarseLength);
       raw = e.rawLength > 0 ? data.randomAccessSlice(e.rawOffset, e.rawLength) : null;
-      postingOffsets =
-          e.postingOffsetsMeta == null
-              ? null
-              : DirectMonotonicReader.getInstance(
-                  e.postingOffsetsMeta,
-                  data.randomAccessSlice(
-                      e.postingOffsetsDataStart, data.length() - e.postingOffsetsDataStart));
+      cellStart = new int[e.nlist + 1];
+      if (e.postingOffsetsMeta != null) {
+        final DirectMonotonicReader postingOffsets =
+            DirectMonotonicReader.getInstance(
+                e.postingOffsetsMeta,
+                data.randomAccessSlice(
+                    e.postingOffsetsDataStart, data.length() - e.postingOffsetsDataStart));
+        for (int c = 0; c <= e.nlist; c++) {
+          cellStart[c] = (int) (postingOffsets.get(c) / Integer.BYTES);
+        }
+      }
       if (e.meanLength > 0) {
         mean = new float[e.dim];
         final RandomAccessInput m = data.randomAccessSlice(e.meanOffset, e.meanLength);
@@ -653,10 +666,10 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
       // The posting-list contract the filtered path reads a cell by; see CellPostings. Verified
       // here, where every slot is being read anyway, so a violation fails at open rather than as
       // a silently incomplete intersection.
-      if (postingOffsets != null) {
+      {
         for (int c = 0; c < e.nlist; c++) {
-          final int from = (int) (postingOffsets.get(c) / Integer.BYTES);
-          final int to = (int) (postingOffsets.get(c + 1) / Integer.BYTES);
+          final int from = cellStart[c];
+          final int to = cellStart[c + 1];
           for (int s = from + 1; s < to; s++) {
             if (slotDoc[s] <= slotDoc[s - 1]) {
               throw new CorruptIndexException(
@@ -1040,9 +1053,8 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
    * comparisons and no heap churn over the tens of thousands of candidates a probe set contains.
    *
    * <p>Under spill a document holds several slots, so this selects a POOL of slots that provably
-   * contains enough distinct documents and dedups within it; see the class javadoc. Cell bounds are
-   * decoded once up front, and consecutive cells share a bound, so a running {@code prev} saves one
-   * decode per cell when the probe set is ordered and costs nothing when it is not.
+   * contains enough distinct documents and dedups within it; see the class javadoc. Cell bounds
+   * come from the heap directory decoded at open; see {@code FieldViews.cellStart}.
    *
    * <p>THE ADMITTED ARRAY IS SIZED FOR EVERY CANDIDATE, even under streaming admission. A smaller
    * array with a drop-when-full guard is incorrect: candidates keep counting toward the admission
@@ -1275,9 +1287,7 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
    * Decodes the slot bounds of {@code n} cells into the scratch's {@code cellBase}/{@code
    * cellRows}, appending after the {@code from} cells already there, and hints every new run.
    *
-   * <p>Consecutive cells share a bound, so a running {@code prev} saves one decode per cell when
-   * the list is ordered and costs nothing when it is not. Empty cells and negative ids are skipped,
-   * so the returned count is of cells with rows.
+   * <p>Empty cells and negative ids are skipped, so the returned count is of cells with rows.
    *
    * <p>Every probed run is hinted before any of it is scanned, so cold faults overlap; see {@link
    * #PREFETCH}. Placed at the first point the ranges are known, which is what buys the overlap.
@@ -1289,22 +1299,17 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
     final int[] cellBase = sc.cellBase(from + n);
     final int[] cellRows = sc.cellRows(from + n);
     int nCells = from;
-    long prevEnd = -1;
-    int prevCell = Integer.MIN_VALUE;
     for (int i = 0; i < n; i++) {
       final int c = cells[i];
       if (c < 0) {
         continue;
       }
-      final long start = (c == prevCell + 1 && prevEnd >= 0) ? prevEnd : v.postingOffsets.get(c);
-      final long end = v.postingOffsets.get(c + 1);
-      prevEnd = end;
-      prevCell = c;
-      final int rows = (int) ((end - start) / Integer.BYTES);
+      final int start = v.cellStart[c];
+      final int rows = v.cellStart[c + 1] - start;
       if (rows == 0) {
         continue;
       }
-      cellBase[nCells] = (int) (start / Integer.BYTES);
+      cellBase[nCells] = start;
       cellRows[nCells] = rows;
       nCells++;
     }
@@ -2034,6 +2039,261 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
     void copyCoarse(int ord, byte[] dest, int destOff) throws IOException {
       final long off = (long) slotByOrd[ord] * entry.coarseBytes;
       views.coarse.readBytes(off, dest, destOff, entry.coarseBytes);
+    }
+  }
+
+  /** The default admission width of {@link IVFasterKnnQuery}: the coarse shortlist size. */
+  static int bruteN() {
+    return BRUTE_N;
+  }
+
+  /**
+   * Opens a per-query view of one field for {@link IVFasterKnnQuery}: the query quantized into both
+   * tiers, the cells selected for it, and scoring of one slot at a time.
+   *
+   * @param nprobe cells to select, or {@code 0} for the value persisted at write time
+   * @return the session, or {@code null} when the field is absent or empty
+   */
+  CellSession openCellSession(String field, float[] target, int nprobe) throws IOException {
+    final FieldEntry e = fields.get(field);
+    if (e == null || e.nlist == 0 || e.count == 0) {
+      return null;
+    }
+    final FieldViews v = viewsFor(field, e);
+    v.ensureSearchState();
+    final int dim = e.dim;
+    final float[] query = ArrayUtil.copyOfSubArray(target, 0, dim);
+    org.apache.lucene.util.VectorUtil.l2normalize(query);
+    final float[] rotated = new float[dim];
+    e.rotation.rotate(query, rotated);
+    final byte[] qCode = new byte[e.coarseBytes];
+    Nitrox2.encode(rotated, dim, qCode, 0);
+    final FineQuantizer.QueryState fine =
+        e.quantizer.prepareQuery(rotated, dim, v.mean, e.similarity);
+    final int probe = Math.min(nprobe > 0 ? nprobe : e.nprobe, e.nlist);
+    return new CellSession(e, v, rotated, qCode, fine, probe);
+  }
+
+  /**
+   * One query's cells and codes, for a scorer that walks them doc-at-a-time.
+   *
+   * <p>Everything here is what {@link #search} computes up front and then consumes in its own scan;
+   * a scorer consumes it one slot at a time instead, as the conjunction it sits in hands documents
+   * over.
+   */
+  final class CellSession {
+    private final FieldEntry e;
+    private final FieldViews v;
+    private final float[] rotated;
+    private final byte[] qCode;
+    private final FineQuantizer.QueryState fine;
+    private final int probe;
+    private int[] cells;
+
+    /** Per selected cell: slot base, rows, and where its distances start in {@link #dist}. */
+    private int[] cellBase;
+
+    private int[] cellRows;
+    private int[] distOffset;
+
+    /** Coarse distance of every row of every selected cell, in cell order; see {@link #prepare}. */
+    private int[] dist;
+
+    private int threshold;
+    private final HammingKernel hamming = HammingKernel.get();
+
+    /**
+     * The session's own clone of the data file, positioned by seek. A scorer is long-lived and
+     * interleaves with other readers of the same segment, so it does not share the field's stateful
+     * fallback slices.
+     */
+    private final IndexInput in;
+
+    private final byte[] coarseRec;
+    private final byte[][] record;
+    private final byte[] flat;
+    private final float[][] corrections = {new float[CodeRecord.CORRECTIONS]};
+    private final float[] score = new float[1];
+
+    private CellSession(
+        FieldEntry e,
+        FieldViews v,
+        float[] rotated,
+        byte[] qCode,
+        FineQuantizer.QueryState fine,
+        int probe) {
+      this.e = e;
+      this.v = v;
+      this.rotated = rotated;
+      this.qCode = qCode;
+      this.fine = fine;
+      this.probe = probe;
+      this.in = data.clone();
+      this.coarseRec = v.coarseSeg == null ? new byte[e.coarseBytes] : null;
+      this.record = e.wantsStrided ? null : new byte[][] {new byte[e.recordLen]};
+      this.flat = e.wantsStrided ? new byte[e.stagedStride] : null;
+    }
+
+    /** The configured probe width: {@code nprobe} clamped to the cell count. */
+    int probe() {
+      return probe;
+    }
+
+    int nlist() {
+      return e.nlist;
+    }
+
+    /** Slots in the segment, every spill copy counted; {@code slots / nlist} is a cell's width. */
+    long slots() {
+      return e.codeTableLength / e.recordLen;
+    }
+
+    /** The cardinality below which reranking every accepted document is the cheaper plan. */
+    int exactBound() {
+      return exactFilterBound(e);
+    }
+
+    int filteredTarget() {
+      return FILTERED_TARGET;
+    }
+
+    /** Slots per document: one plus the spill copies, the codec's pool multiplier. */
+    int fanout() {
+      return 1 + e.spillBits;
+    }
+
+    int maxProbe() {
+      return FILTERED_MAX_PROBE > 0 ? Math.min(FILTERED_MAX_PROBE, e.nlist) : e.nlist;
+    }
+
+    /** Documents with a vector in this field. */
+    int count() {
+      return e.count;
+    }
+
+    /**
+     * Selects the {@code n} nearest cells, Hamming-scores every row of their runs, and fixes the
+     * admission threshold at the coarse distance that admits {@code admitRows} rows (ties
+     * included), so that admission is a pure function of the document.
+     *
+     * <p>The scan is the codec's own coarse scan over the probed cells, run eagerly. A scorer
+     * cannot admit by a threshold that tightens as it goes, since a conjunction may skip through it
+     * in any order and a document's match must not depend on the path taken to reach it. Bulk over
+     * each run through the vector kernel, so the eager pass costs what the unfiltered scan pays for
+     * the same cells.
+     *
+     * <p>Without the quality prune when {@code n} exceeds the configured probe, since a wider probe
+     * was asked for on purpose.
+     *
+     * @return the number of selected cells
+     */
+    int prepare(int n, long admitRows) throws IOException {
+      if (cells != null) {
+        throw new IllegalStateException("already prepared");
+      }
+      final int want = Math.min(Math.max(1, n), e.nlist);
+      cells = selectCells(e, v, rotated, qCode, want, want <= probe);
+      cellBase = new int[cells.length];
+      cellRows = new int[cells.length];
+      distOffset = new int[cells.length];
+      int total = 0;
+      for (int i = 0; i < cells.length; i++) {
+        final int c = cells[i];
+        cellBase[i] = v.cellStart[c];
+        cellRows[i] = v.cellStart[c + 1] - cellBase[i];
+        distOffset[i] = total;
+        total += cellRows[i];
+      }
+      dist = new int[total];
+      final int histLen = (e.coarseBytes << 3) + 2;
+      final int[] hist = new int[histLen];
+      for (int i = 0; i < cells.length; i++) {
+        final int rows = cellRows[i];
+        if (rows == 0) {
+          continue;
+        }
+        final int off = distOffset[i];
+        if (v.coarseSeg != null) {
+          final int[] rowDist =
+              new int[org.apache.lucene.util.ArrayUtil.oversize(rows, Integer.BYTES)];
+          hamming.bulkDistances(
+              qCode, v.coarseSeg, (long) cellBase[i] * e.coarseBytes, e.coarseBytes, rows, rowDist);
+          System.arraycopy(rowDist, 0, dist, off, rows);
+        } else {
+          in.seek(e.coarseOffset + (long) cellBase[i] * e.coarseBytes);
+          for (int r = 0; r < rows; r++) {
+            in.readBytes(coarseRec, 0, e.coarseBytes);
+            dist[off + r] = org.apache.lucene.util.VectorUtil.xorBitCount(qCode, coarseRec);
+          }
+        }
+        for (int r = 0; r < rows; r++) {
+          hist[dist[off + r]]++;
+        }
+      }
+      // The cut: the smallest distance whose cumulative count reaches admitRows.
+      long below = 0;
+      int thr = 0;
+      while (thr < histLen - 1 && below + hist[thr] < admitRows) {
+        below += hist[thr];
+        thr++;
+      }
+      threshold = thr;
+      return cells.length;
+    }
+
+    /** Whether the row of a prepared cell passes the fixed coarse cut. */
+    boolean admitted(CellPostings cell) {
+      return dist[cell.distOffset + cell.row()] <= threshold;
+    }
+
+    /**
+     * Every document with a vector, in doc order, as a posting list whose "slot" is the ORDINAL;
+     * resolve it through {@link #ordToSlot} before scoring. The exact plan for a filter narrow
+     * enough that reranking everything it accepts beats walking cells.
+     */
+    CellPostings allDocs() {
+      return new CellPostings(v.ordToDoc, 0, v.ordToDoc.length);
+    }
+
+    int ordToSlot(int ord) {
+      return v.ordToSlot[ord];
+    }
+
+    /** The {@code i}-th prepared cell as a posting list, or null when it is empty. */
+    CellPostings postings(int i) {
+      if (cellRows[i] == 0) {
+        return null;
+      }
+      final CellPostings cell = new CellPostings(v.slotDoc, cellBase[i], cellRows[i]);
+      cell.distOffset = distOffset[i];
+      return cell;
+    }
+
+    /** Fine score of one slot, on the collector's similarity scale. */
+    float fineScore(int slot) throws IOException {
+      in.seek(e.codeTableOffset + (long) slot * e.recordLen);
+      if (flat != null) {
+        in.readBytes(flat, 0, e.recordLen);
+        for (int k = 0; k < CodeRecord.CORRECTIONS; k++) {
+          corrections[0][k] =
+              Float.intBitsToFloat(CodeRecord.readIntLE(flat, e.correctionBase + k * Float.BYTES));
+        }
+        fine.scoreBulkStrided(
+            flat, 1, e.stagedStride, CodeRecord.codeOffset(), corrections, score, null);
+      } else {
+        in.readBytes(record[0], 0, e.recordLen);
+        for (int k = 0; k < CodeRecord.CORRECTIONS; k++) {
+          corrections[0][k] =
+              Float.intBitsToFloat(
+                  CodeRecord.readIntLE(record[0], e.correctionBase + k * Float.BYTES));
+        }
+        fine.scoreBulk(record, 1, CodeRecord.codeOffset(), corrections, score);
+      }
+      return score[0];
+    }
+
+    int coarseBytes() {
+      return e.coarseBytes;
     }
   }
 
