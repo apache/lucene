@@ -85,44 +85,14 @@ final class DocPlanes {
   /**
    * Encodes every document's planes once, in parallel over document ranges.
    *
-   * <p>A merge takes a source segment's planes VERBATIM. The gathered vector for a merged document
-   * is a lossy fine-code reconstruction, so re-encoding would re-run the level decision on a value
-   * that has already lost precision and flip bits near a threshold; copying keeps a merged
-   * document's coarse code bit-identical, as the code-table copy does for the fine tier.
-   *
-   * <p>THE COARSE PLANE IS COPYABLE FROM ANY SEGMENT, not only the fine donor. It is a pure
-   * function of the rotated vector and the coarse grid: {@link Nitrox2#packPlanes} takes no mean,
-   * and both the rotation ({@link IVFasterVectorsWriter#rotationSeed}) and the grid ({@link
-   * Nitrox2#CLIP_SIGMA}, {@link Nitrox2#PLANES}) are functions of {@code dim} and compile-time
-   * constants. A reader validates that grid at open, so any same-dim ivfaster segment that opened
-   * holds planes on this grid, and every merged document can donate its own plane whatever the
-   * fine-donor election decided. The coarse plane drives cell retention at query time, which is the
-   * tier the nprobe budget pays for.
-   *
-   * <p>PARALLEL OVER DOCUMENT RANGES, which needs no synchronization: {@code copyCoarse} only READS
-   * the shared mmap slice into a per-worker buffer, and every encode writes straight into this
-   * worker's own records of the shared output buffer, since the ranges are disjoint.
-   *
-   * <p>The per-worker buffer is sized from the ACTUAL plane count, because under a 1-bit sketch
-   * there is one plane and {@code 2*planeBytes} would read past the source's coarse record.
+   * <p>The in-heap source for clustering over arrays; the writer stages planes to a temp file
+   * instead ({@link StagedVectors}), which is why this holds no donor-copy path. Every encode
+   * writes straight into this worker's own records of the shared output buffer, since the ranges
+   * are disjoint.
    *
    * @param rotated rotated document vectors, indexed by document
-   * @param coarseSources coarse plane donors, indexed by the source id in {@code coarseSrc}; {@code
-   *     null} encodes everything
-   * @param coarseSrc per-document source id into {@code coarseSources}, or -1 to encode from {@code
-   *     rotated}; {@code null} encodes everything
-   * @param coarseOrd per-document ordinal within its source segment, or -1; {@code null} encodes
-   *     everything
    */
-  static DocPlanes encode(
-      float[][] rotated,
-      int count,
-      int dim,
-      IVFasterVectorsReader.DonorView[] coarseSources,
-      int[] coarseSrc,
-      int[] coarseOrd)
-      throws IOException {
-
+  static DocPlanes encode(float[][] rotated, int count, int dim) throws IOException {
     final int planeBytes = Nitrox2.planeBytes(dim);
     final int stride = strideFor(dim);
     final byte[] buffer = new byte[Math.multiplyExact(count, stride)];
@@ -133,18 +103,8 @@ final class DocPlanes {
     Parallel.overRange(
         count,
         (from, to) -> {
-          // Per-worker landing buffer for copied planes; see the javadoc.
-          final int coarseBytes = Nitrox2.PLANES * planeBytes;
-          final byte[] both = coarseSrc == null ? null : new byte[coarseBytes];
           for (int i = from; i < to; i++) {
-            final int base = i * stride;
-            final int src = coarseSrc == null ? -1 : coarseSrc[i];
-            if (src >= 0) {
-              coarseSources[src].copyCoarse(coarseOrd[i], both, 0);
-              System.arraycopy(both, 0, buffer, base, coarseBytes);
-              continue;
-            }
-            encodeInto(rotated[i], dim, buffer, base, planeBytes, clip, invStep);
+            encodeInto(rotated[i], dim, buffer, i * stride, planeBytes, clip, invStep);
           }
         });
     return new DocPlanes(buffer, stride, planeBytes, count);

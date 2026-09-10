@@ -537,16 +537,25 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
     final RandomAccessInput raw;
 
     final float[] mean;
-    final float[][] centroidVectors;
-    final CentroidGraph graph;
+
+    // ---- search-only state, built on the first query; see ensureSearchState ----
+
+    private final FieldEntry entry;
+    private final IndexInput data;
+    private volatile boolean searchReady;
+    float[][] centroidVectors;
+    CentroidGraph graph;
 
     /**
-     * The centroid tier, rebuilt at open over the persisted centroids.
+     * The centroid tier, rebuilt over the persisted centroids on the first query.
      *
-     * <p>Encoding the centroids is {@code O(nlist * dim)} once per field per open, which buys every
-     * cell comparison a fine-tier score in place of a float dot.
+     * <p>Encoding the centroids is {@code O(nlist * dim)} once per field, which buys every cell
+     * comparison a fine-tier score in place of a float dot.
      */
-    final CentroidCodes codes;
+    CentroidCodes codes;
+
+    /** The identity {@code 0..nlist-1}, the candidate list for ranking every cell at once. */
+    int[] allCells;
 
     /** Vector ordinal -> primary code-table slot, in document order. Read once, at open. */
     final int[] ordToSlot;
@@ -565,11 +574,9 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
      */
     final int[] slotDoc;
 
-    /** The identity {@code 0..nlist-1}, the candidate list for ranking every cell at once. */
-    final int[] allCells;
-
     /**
-     * Opens every view for one field, and reads at open what a query would otherwise rebuild.
+     * Opens every view for one field, and reads at open what both a query and a merge need; what
+     * only a query needs waits for the first query, see {@link #ensureSearchState}.
      *
      * <p>Cell membership is resolved through the {@code postingOffsets} directory alone: slots are
      * in cell order, so cell {@code c} is the contiguous slot range {@code [postingOffsets.get(c),
@@ -589,10 +596,10 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
      * while a separate {@code int[]} at 4 B per slot is near-sequential over a small array. It is
      * rebuilt here rather than persisted, since it is one linear pass and no format change.
      *
-     * <p>The centroid matrix is small ({@code nlist x dim} floats) and every query needs it, so it
-     * is read into heap once. {@link CentroidCodes} is built after it, since that constructor
-     * encodes eagerly, and it is given the field's configured fine quantizer so centroid reranking
-     * is symmetric with document reranking.
+     * <p>The centroid matrix, its {@link CentroidCodes} (given the field's configured fine
+     * quantizer so centroid reranking is symmetric with document reranking) and the centroid graph
+     * are query-only, and are what a merge would otherwise pay for once per source segment; see
+     * {@link #centroids()}.
      */
     FieldViews(FieldEntry e, IndexInput data) throws IOException {
       centroids = data.randomAccessSlice(e.centroidsOffset, e.centroidsLength);
@@ -666,24 +673,59 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
               "vector ordinals are not in ascending doc-id order at ordinal " + i, data);
         }
       }
-      allCells = new int[e.nlist];
-      for (int c = 0; c < e.nlist; c++) {
-        allCells[c] = c;
-      }
-      graph =
-          e.graphLength > 0
-              ? CentroidGraph.read(
-                  data.randomAccessSlice(e.graphOffset, e.graphLength), e.dim, e.graphLength)
-              : null;
-      centroidVectors = new float[e.nlist][];
-      for (int c = 0; c < e.nlist; c++) {
-        centroidVectors[c] = new float[e.dim];
-        for (int d = 0; d < e.dim; d++) {
-          centroidVectors[c][d] =
-              Float.intBitsToFloat(centroids.readInt(((long) c * e.dim + d) * Float.BYTES));
+      this.entry = e;
+      this.data = data;
+    }
+
+    /**
+     * The centroid matrix, read into heap on first use.
+     *
+     * <p>Small ({@code nlist x dim} floats) and needed by every query, but NOT by a merge that only
+     * copies this segment's records, and a merge opens every source segment: at {@code nlist =
+     * 8000, dim = 1024} the matrix, its codes and its graph are some 50 MB per segment, which
+     * across fifty flush segments is more heap than the merge itself needs.
+     */
+    synchronized float[][] centroids() throws IOException {
+      if (centroidVectors == null) {
+        final FieldEntry e = entry;
+        final float[][] m = new float[e.nlist][];
+        for (int c = 0; c < e.nlist; c++) {
+          m[c] = new float[e.dim];
+          for (int d = 0; d < e.dim; d++) {
+            m[c][d] = Float.intBitsToFloat(centroids.readInt(((long) c * e.dim + d) * Float.BYTES));
+          }
         }
+        centroidVectors = m;
       }
-      codes = new CentroidCodes(centroidVectors, e.dim, e.similarity, e.quantizer);
+      return centroidVectors;
+    }
+
+    /**
+     * Builds what only a query reads (the centroid matrix, its fine codes, the centroid graph) on
+     * the first query, so that opening a segment to merge it costs its ordinal map alone.
+     */
+    void ensureSearchState() throws IOException {
+      if (searchReady) {
+        return;
+      }
+      synchronized (this) {
+        if (searchReady) {
+          return;
+        }
+        final FieldEntry e = entry;
+        final float[][] m = centroids();
+        allCells = new int[e.nlist];
+        for (int c = 0; c < e.nlist; c++) {
+          allCells[c] = c;
+        }
+        graph =
+            e.graphLength > 0
+                ? CentroidGraph.read(
+                    data.randomAccessSlice(e.graphOffset, e.graphLength), e.dim, e.graphLength)
+                : null;
+        codes = new CentroidCodes(m, e.dim, e.similarity, e.quantizer);
+        searchReady = true;
+      }
     }
   }
 
@@ -720,6 +762,7 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
       return;
     }
     final FieldViews v = viewsFor(field, e);
+    v.ensureSearchState();
     final int dim = e.dim;
 
     // 1. Normalize and rotate.
@@ -1829,42 +1872,21 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
     /** Cell each ordinal's primary slot lives in. */
     private final int[] cellByOrd;
 
+    /**
+     * The persisted ordinal map IS the primary-slot-by-ordinal table, in doc order, so the view
+     * costs one int read per ordinal for the cell and no scan or sort of the code table.
+     */
     private DonorView(FieldEntry entry, FieldViews views) throws IOException {
       this.entry = entry;
       this.views = views;
       this.scratchRecord = new byte[entry.recordLen];
-      final int[] slots = new int[entry.count];
-      final int[] cells = new int[entry.count];
-      final int[] docs = new int[entry.count];
-      int n = 0;
-      for (int c = 0; c < entry.nlist && n < entry.count; c++) {
-        final long start = views.postingOffsets.get(c);
-        final long end = views.postingOffsets.get(c + 1);
-        final int rows = (int) ((end - start) / Integer.BYTES);
-        final int slotBase = (int) (start / Integer.BYTES);
-        for (int r = 0; r < rows && n < entry.count; r++) {
-          final int slot = slotBase + r;
-          final long off = (long) slot * entry.recordLen;
-          // Only the PRIMARY copy, or ordinals would depend on cell layout.
-          if (views.codeTable.readInt(off + entry.primaryCellOffset) == c) {
-            docs[n] = views.codeTable.readInt(off + entry.docIdOffset);
-            slots[n] = slot;
-            cells[n] = c;
-            n++;
-          }
-        }
-      }
-      // Ordinal order is document order, matching getFloatVectorValues.
-      final Integer[] order = new Integer[n];
-      for (int i = 0; i < n; i++) {
-        order[i] = i;
-      }
-      java.util.Arrays.sort(order, (a, b) -> Integer.compare(docs[a], docs[b]));
-      this.slotByOrd = new int[n];
+      this.slotByOrd = views.ordToSlot;
+      final int n = entry.count;
       this.cellByOrd = new int[n];
-      for (int i = 0; i < n; i++) {
-        slotByOrd[i] = slots[order[i]];
-        cellByOrd[i] = cells[order[i]];
+      for (int ord = 0; ord < n; ord++) {
+        cellByOrd[ord] =
+            views.codeTable.readInt(
+                (long) slotByOrd[ord] * entry.recordLen + entry.primaryCellOffset);
       }
     }
 
@@ -1908,8 +1930,8 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
     }
 
     /** This segment's centroids, as the merged segment's Lloyd seed. */
-    float[][] centroids() {
-      return views.centroidVectors;
+    float[][] centroids() throws IOException {
+      return views.centroids();
     }
 
     /**
@@ -1932,10 +1954,16 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
      * lost precision, flipping near-threshold bits.
      */
     void copyRecord(int ord, int newDocId, int newPrimaryCell, byte[] dest) throws IOException {
-      final long off = (long) views.ordToSlot[ord] * entry.recordLen;
-      views.codeTable.readBytes(off, dest, 0, entry.recordLen);
-      CodeRecord.writeIntLE(dest, entry.docIdOffset, newDocId);
-      CodeRecord.writeIntLE(dest, entry.primaryCellOffset, newPrimaryCell);
+      copyRecordAt(ord, newDocId, newPrimaryCell, dest, 0);
+    }
+
+    /** As {@link #copyRecord}, into {@code dest} at {@code destOff}. */
+    void copyRecordAt(int ord, int newDocId, int newPrimaryCell, byte[] dest, int destOff)
+        throws IOException {
+      final long off = (long) slotByOrd[ord] * entry.recordLen;
+      views.codeTable.readBytes(off, dest, destOff, entry.recordLen);
+      CodeRecord.writeIntLE(dest, destOff + entry.docIdOffset, newDocId);
+      CodeRecord.writeIntLE(dest, destOff + entry.primaryCellOffset, newPrimaryCell);
     }
 
     /**

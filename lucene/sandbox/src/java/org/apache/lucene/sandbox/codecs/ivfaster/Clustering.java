@@ -258,7 +258,34 @@ final class Clustering {
      * MOVE the document and spill to COPY it. Answering them separately costs a second full route
      * of the corpus, at a wider shortlist.
      */
-    int[][] cells;
+    int[] cells;
+
+    /** Stride of {@link #cells}: {@code 1 + spillBits}, the most cells a document can hold. */
+    int cellStride;
+
+    /**
+     * Per-cell fixed-point sums of member vectors, and member counts, as maintained incrementally
+     * through the loop; see {@link Clustering#FIX}. Exposed for the test that checks them against a
+     * recompute.
+     */
+    long[] sums;
+
+    int[] members;
+
+    /** How many cells document {@code i} is written into, primary first. */
+    int cellCount(int i) {
+      final int base = i * cellStride;
+      int n = 0;
+      while (n < cellStride && cells[base + n] >= 0) {
+        n++;
+      }
+      return n;
+    }
+
+    /** The {@code k}-th cell of document {@code i}; {@code k == 0} is its primary. */
+    int cell(int i, int k) {
+      return cells[i * cellStride + k];
+    }
   }
 
   /**
@@ -352,7 +379,8 @@ final class Clustering {
    * the fine tier, so fine centroid codes would be per-iteration work with no consumer.
    *
    * <p>LLOYD RUNS OVER THE FULL CORPUS. Subsampling exists to avoid a full assignment pass per
-   * iteration, and the Reaper removes that cost instead, so these are full-corpus means.
+   * iteration, and the Reaper removes that cost instead, so these are full-corpus means, kept as
+   * incremental sums so the mean update itself touches no document; see {@link #FIX}.
    *
    * <p>TWO SLACK ACCUMULATORS, both per document rather than per cell, since a skipped document
    * keeps stale {@code d1}/{@code d2} and a stale gap compared against fresh movement is not a
@@ -410,16 +438,65 @@ final class Clustering {
       float soarLambda,
       DocPlanes planesOrNull)
       throws IOException {
-
-    // Effectively final, so the parallel bodies below can capture it.
     final DocPlanes planes =
-        planesOrNull != null
-            ? planesOrNull
-            : DocPlanes.encode(vectors, count, dim, null, null, null);
+        planesOrNull != null ? planesOrNull : DocPlanes.encode(vectors, count, dim);
+    return cluster(
+        new HeapVectorSource(vectors, count, dim, planes),
+        nlist,
+        maxIters,
+        sim,
+        seed,
+        seedAssignment,
+        spillBits,
+        soarLambda);
+  }
+
+  /**
+   * Fixed-point scale for the per-cell sums: {@code 2^30}, so a unit vector's coordinate fits an
+   * int and a cell of up to {@code 2^31} members sums within a long.
+   *
+   * <p>INTEGER SUMS, so the mean is exact and independent of the order documents were added in. The
+   * sums are maintained incrementally, by every worker thread as it routes, and a float accumulator
+   * would make the centroids depend on the thread schedule; the index is required to be a
+   * deterministic function of its input.
+   */
+  static final long FIX = 1L << 30;
+
+  /** {@code x} on the {@link #FIX} grid. */
+  static long fixed(float x) {
+    return Math.round((double) x * FIX);
+  }
+
+  /**
+   * Clusters the source into {@code nlist} cells, and chooses each document's spill cells.
+   *
+   * <p>THE CORPUS IS NEVER HELD. Every pass walks ordinals upward through a per-thread {@link
+   * VectorSource.Cursor}, so a file-backed source streams, and what stays in heap per document is
+   * its cell, its two routing distances, its runner-up, its two slack accumulators and its chosen
+   * cells: a few dozen bytes, whatever the dimension.
+   *
+   * <p>THE MEAN IS A SUM, and a sum is additive, so it is maintained where the vector is already in
+   * hand: {@link #routeAll} adds every document to its cell, and {@link #reap} moves a document's
+   * contribution when its cell changes. The centroid update then reads the sums alone, {@code
+   * O(nlist * dim)} with no document access, in place of a pass that gathered every cell's members.
+   * The sums are fixed-point integers so that they are exact; see {@link #FIX}.
+   */
+  static Result cluster(
+      VectorSource src,
+      int nlist,
+      int maxIters,
+      VectorSimilarityFunction sim,
+      float[][] seed,
+      int[] seedAssignment,
+      int spillBits,
+      float soarLambda)
+      throws IOException {
+
+    final int count = src.count();
+    final int dim = src.dim();
     final Result result = new Result();
 
-    float[][] centroids =
-        seed != null ? copyOf(seed, dim) : sampleCentroids(vectors, count, dim, nlist);
+    float[][] centroids = seed != null ? copyOf(seed, dim) : sampleCentroids(src, nlist);
     if (centroids.length != nlist) {
       throw new IllegalArgumentException(
           "seed has "
@@ -440,10 +517,18 @@ final class Clustering {
     final int[] cell2 = new int[count];
     final float[] movement = new float[nlist];
 
+    // The incremental sums; see the javadoc and FIX.
+    final long sumsLen = (long) nlist * dim;
+    if (sumsLen > org.apache.lucene.util.ArrayUtil.MAX_ARRAY_LENGTH) {
+      throw new IllegalArgumentException(
+          "nlist * dim = " + sumsLen + " exceeds the per-cell sum table; lower nlist");
+    }
+    final Sums sums = new Sums(nlist, dim);
+
     // Pass 1: route every document whose cell is not already known.
     final boolean trace = Parallel.TRACE;
     long tr = trace ? System.nanoTime() : 0L;
-    routeAll(vectors, count, dim, codes, assignment, d1, d2, cell2, seedAssignment, nlist, planes);
+    routeAll(src, codes, assignment, d1, d2, cell2, seedAssignment, nlist, sums);
     if (trace) {
       IvfDiag.err("[ivfaster-cluster] routeAll %.3f s%n", (System.nanoTime() - tr) / 1e9);
     }
@@ -452,8 +537,10 @@ final class Clustering {
     final float[] docSlack = new float[count];
     // Max-over-all-cells slack per document; see the javadoc.
     final float[] docMaxSlack = new float[count];
-    // Spill is chosen by the FINAL reap pass, after the loop; see the javadoc.
-    final int[][] cells = new int[count][];
+    // Spill is chosen by the FINAL reap pass, after the loop; see the javadoc. Flat, -1 padded.
+    final int cellStride = 1 + spillBits;
+    final int[] cells = new int[Math.multiplyExact(count, cellStride)];
+    java.util.Arrays.fill(cells, -1);
     // The convergence threshold, in documents; see CONVERGE_FRACTION.
     final int convergeAt = (int) (CONVERGE_FRACTION * count);
     int reaped = count;
@@ -464,7 +551,7 @@ final class Clustering {
     boolean spillChosen = false;
     for (int it = 0; it < maxIters; it++) {
       final long tIter = trace ? System.nanoTime() : 0L;
-      recomputeCentroids(vectors, count, dim, nlist, assignment, centroids, movement);
+      updateCentroids(sums, nlist, dim, centroids, movement);
       final long tMean = trace ? System.nanoTime() : 0L;
       codes.encodeAll();
       final long tEnc = trace ? System.nanoTime() : 0L;
@@ -477,16 +564,13 @@ final class Clustering {
       }
       // When the BACKSTOP is what ends the loop, that is known in advance, so spill folds into this
       // pass exactly as it did before convergence existed, and the corpus is routed once rather
-      // than
-      // twice. Only an EARLY exit needs its own pass, since convergence is read off the count this
-      // very pass returns. Non-final passes stay PLAIN, so the counts the threshold reads are
+      // than twice. Only an EARLY exit needs its own pass, since convergence is read off the count
+      // this very pass returns. Non-final passes stay PLAIN, so the counts the threshold reads are
       // comparable across iterations; see the javadoc.
       final boolean lastAllowed = it == maxIters - 1;
       final Pass pass =
           reap(
-              vectors,
-              count,
-              dim,
+              src,
               codes,
               assignment,
               d1,
@@ -495,11 +579,12 @@ final class Clustering {
               docSlack,
               docMaxSlack,
               lastAllowed ? cells : null,
+              cellStride,
               spillBits,
               soarLambda,
               centroids,
               sim,
-              planes);
+              sums);
       reaped = pass.reaped;
       changed = pass.changed;
       iterations = it + 1;
@@ -541,13 +626,9 @@ final class Clustering {
             moving++;
           }
         }
-        // Empty cells: those with no members this iteration, which recomputeCentroids left frozen.
-        final int[] members = new int[nlist];
-        for (int i = 0; i < count; i++) {
-          members[assignment[i]]++;
-        }
+        // Empty cells: those with no members this iteration, which updateCentroids left frozen.
         for (int c = 0; c < nlist; c++) {
-          if (members[c] == 0) {
+          if (sums.members[c] == 0) {
             empty++;
           }
         }
@@ -572,17 +653,13 @@ final class Clustering {
     }
 
     // The spill pass, at the SAME centroids the loop left; see the javadoc. Runs ONLY after an
-    // early
-    // exit: a backstop-bound loop chose spill on its last pass, and repeating it here would route
-    // the
-    // whole corpus a second time for an answer already in hand.
+    // early exit: a backstop-bound loop chose spill on its last pass, and repeating it here would
+    // route the whole corpus a second time for an answer already in hand.
     final long tSpill = trace ? System.nanoTime() : 0L;
     if (spillChosen == false) {
       reaped =
           reap(
-                  vectors,
-                  count,
-                  dim,
+                  src,
                   codes,
                   assignment,
                   d1,
@@ -591,11 +668,12 @@ final class Clustering {
                   docSlack,
                   docMaxSlack,
                   cells,
+                  cellStride,
                   spillBits,
                   soarLambda,
                   centroids,
                   sim,
-                  planes)
+                  sums)
               .reaped;
     }
     if (trace) {
@@ -617,9 +695,12 @@ final class Clustering {
           count,
           (lo, hi) -> {
             int local = 0;
-            for (int i = lo; i < hi; i++) {
-              if (codes.nearestExact(vectors[i]) != assignment[i]) {
-                local++;
+            try (VectorSource.Cursor cur = src.cursor()) {
+              for (int i = lo; i < hi; i++) {
+                cur.load(i);
+                if (codes.nearestExact(cur.vector()) != assignment[i]) {
+                  local++;
+                }
               }
             }
             moved.addAndGet(local);
@@ -637,12 +718,65 @@ final class Clustering {
     result.converged = converged;
     // Documents the final reap skipped cannot spill; see the javadoc.
     for (int i = 0; i < count; i++) {
-      if (cells[i] == null) {
-        cells[i] = new int[] {assignment[i]};
+      if (cells[i * cellStride] < 0) {
+        cells[i * cellStride] = assignment[i];
       }
     }
     result.cells = cells;
+    result.cellStride = cellStride;
+    result.sums = sums.sums;
+    result.members = sums.members;
     return result;
+  }
+
+  /**
+   * The per-cell fixed-point sums and member counts, with striped locks so that every worker thread
+   * can add and subtract a document's vector as it routes.
+   *
+   * <p>Striped rather than per-thread partials: a partial is {@code nlist x dim} longs per thread,
+   * which does not fit at high {@code nlist}, while an add under a stripe lock is one {@code
+   * dim}-length loop against a routing cost of {@code nlist} Hamming rows and tens of exact dots,
+   * so contention is negligible.
+   */
+  private static final class Sums {
+    final long[] sums;
+    final int[] members;
+    final int dim;
+    private final Object[] locks;
+
+    Sums(int nlist, int dim) {
+      this.sums = new long[nlist * dim];
+      this.members = new int[nlist];
+      this.dim = dim;
+      this.locks = new Object[Math.min(1024, Integer.highestOneBit(Math.max(1, nlist)) << 1)];
+      for (int i = 0; i < locks.length; i++) {
+        locks[i] = new Object();
+      }
+    }
+
+    void add(int cell, float[] v) {
+      apply(cell, v, 1);
+    }
+
+    void remove(int cell, float[] v) {
+      apply(cell, v, -1);
+    }
+
+    private void apply(int cell, float[] v, int sign) {
+      final int base = cell * dim;
+      synchronized (locks[cell & (locks.length - 1)]) {
+        if (sign > 0) {
+          for (int d = 0; d < dim; d++) {
+            sums[base + d] += fixed(v[d]);
+          }
+        } else {
+          for (int d = 0; d < dim; d++) {
+            sums[base + d] -= fixed(v[d]);
+          }
+        }
+        members[cell] += sign;
+      }
+    }
   }
 
   /**
@@ -656,9 +790,7 @@ final class Clustering {
    * safe direction.
    */
   private static void routeAll(
-      float[][] vectors,
-      int count,
-      int dim,
+      VectorSource src,
       CentroidCodes codes,
       int[] assignment,
       float[] d1,
@@ -666,32 +798,39 @@ final class Clustering {
       int[] cell2,
       int[] seedAssignment,
       int nlist,
-      DocPlanes planes)
+      Sums sums)
       throws IOException {
+    final int dim = src.dim();
     final int shortlist = shortlistFor(2, codes.nlist());
     Parallel.overRange(
-        count,
+        src.count(),
         (lo, hi) -> {
           final CentroidCodes.Scratch scratch =
               new CentroidCodes.Scratch(dim, codes.nlist(), shortlist);
           final CentroidCodes.Routing routing = new CentroidCodes.Routing(2);
-          for (int i = lo; i < hi; i++) {
-            final int carried = seedAssignment == null ? -1 : seedAssignment[i];
-            if (carried >= 0 && carried < nlist) {
-              assignment[i] = carried;
-              d1[i] = codes.exactDistance(vectors[i], carried);
-              // Runner-up unknown, so treat it as adjacent; see the javadoc.
-              d2[i] = d1[i];
-              cell2[i] = -1;
-              continue;
+          try (VectorSource.Cursor cur = src.cursor()) {
+            for (int i = lo; i < hi; i++) {
+              cur.load(i);
+              final float[] vector = cur.vector();
+              final int carried = seedAssignment == null ? -1 : seedAssignment[i];
+              if (carried >= 0 && carried < nlist) {
+                assignment[i] = carried;
+                d1[i] = codes.exactDistance(vector, carried);
+                // Runner-up unknown, so treat it as adjacent; see the javadoc.
+                d2[i] = d1[i];
+                cell2[i] = -1;
+              } else {
+                // Packed code straight into the kernel's query array.
+                cur.coarseInto(scratch.qCode);
+                codes.routePacked(vector, shortlist, 2, routing, scratch);
+                assignment[i] = routing.count > 0 ? routing.cells[0] : 0;
+                d1[i] = routing.d1;
+                d2[i] = routing.d2;
+                cell2[i] = routing.cell2;
+              }
+              // The vector is in hand, so its cell's sum takes it now; see FIX.
+              sums.add(assignment[i], vector);
             }
-            // Packed code straight into the kernel's query array.
-            planes.copyInto(i, scratch.qCode);
-            codes.routePacked(vectors[i], shortlist, 2, routing, scratch);
-            assignment[i] = routing.count > 0 ? routing.cells[0] : 0;
-            d1[i] = routing.d1;
-            d2[i] = routing.d2;
-            cell2[i] = routing.cell2;
           }
         });
   }
@@ -781,9 +920,7 @@ final class Clustering {
    * @return what the pass did: documents re-routed, and how many of those changed cell
    */
   private static Pass reap(
-      float[][] vectors,
-      int count,
-      int dim,
+      VectorSource src,
       CentroidCodes codes,
       int[] assignment,
       float[] d1,
@@ -791,14 +928,16 @@ final class Clustering {
       int[] cell2,
       float[] docSlack,
       float[] docMaxSlack,
-      int[][] cells,
+      int[] cells,
+      int cellStride,
       int spillBits,
       float soarLambda,
       float[][] centroids,
       VectorSimilarityFunction sim,
-      DocPlanes planes)
+      Sums sums)
       throws IOException {
 
+    final int dim = src.dim();
     final boolean withSpill = cells != null && spillBits > 0;
     // SOAR needs a complementary direction to choose from, so the final pass carries a wider keep.
     final int keep = withSpill ? 1 + spillBits : 2;
@@ -810,7 +949,7 @@ final class Clustering {
         new java.util.concurrent.atomic.AtomicInteger();
 
     Parallel.overRange(
-        count,
+        src.count(),
         (lo, hi) -> {
           final CentroidCodes.Scratch scratch =
               new CentroidCodes.Scratch(dim, codes.nlist(), shortlist);
@@ -820,84 +959,97 @@ final class Clustering {
           final int[] cands = withSpill ? new int[1 + keep] : null;
           int local = 0;
           int localChanged = 0;
-          for (int i = lo; i < hi; i++) {
-            // The per-pair movement bound; see the javadoc.
-            final float slack = docSlack[i];
-            final float gap = d2[i] - d1[i];
-            boolean couldFlip =
-                gap <= slack || CentroidCodes.withinMargin(d1[i], d2[i], REAP_MARGIN);
-            if (couldFlip == false && withSpill) {
-              // Final pass: the widened bound a FRESH margin test needs; see the javadoc.
-              final float s = docMaxSlack[i];
-              couldFlip = gap <= (MARGIN - 1f) * Math.abs(d1[i]) + s * (2f + MARGIN);
-            }
-            if (couldFlip == false) {
-              continue;
-            }
-            planes.copyInto(i, scratch.qCode);
-            codes.routePacked(vectors[i], shortlist, keep, routing, scratch);
+          try (VectorSource.Cursor cur = src.cursor()) {
+            for (int i = lo; i < hi; i++) {
+              // The per-pair movement bound; see the javadoc. Heap scalars only: a document that
+              // fails it is never read.
+              final float slack = docSlack[i];
+              final float gap = d2[i] - d1[i];
+              boolean couldFlip =
+                  gap <= slack || CentroidCodes.withinMargin(d1[i], d2[i], REAP_MARGIN);
+              if (couldFlip == false && withSpill) {
+                // Final pass: the widened bound a FRESH margin test needs; see the javadoc.
+                final float s = docMaxSlack[i];
+                couldFlip = gap <= (MARGIN - 1f) * Math.abs(d1[i]) + s * (2f + MARGIN);
+              }
+              if (couldFlip == false) {
+                continue;
+              }
+              cur.load(i);
+              final float[] vector = cur.vector();
+              cur.coarseInto(scratch.qCode);
+              codes.routePacked(vector, shortlist, keep, routing, scratch);
 
-            // Defend the incumbent against a coarse-shortlist miss; see the javadoc.
-            final int incumbent = assignment[i];
-            final float incumbentDist = codes.exactDistance(vectors[i], incumbent);
-            // Ties go to the ROUTE, which is what keeps the guard to its narrow case. The common
-            // outcome is the route CONFIRMING the incumbent, where routing.d1 and incumbentDist are
-            // the same dot and compare equal; taking the incumbent branch there would record
-            // cell2 == assignment and a zero gap, so every confirmed document would be reaped again
-            // on every later iteration and the loop would never converge.
-            final boolean routeWins = routing.count > 0 && routing.d1 <= incumbentDist;
-            int[] spillCands = routing.cells;
-            int spillCount = routing.count;
-            float bestDist;
-            float runnerUpDist;
-            if (routeWins) {
-              if (routing.cells[0] != incumbent) {
-                localChanged++;
+              // Defend the incumbent against a coarse-shortlist miss; see the javadoc.
+              final int incumbent = assignment[i];
+              final float incumbentDist = codes.exactDistance(vector, incumbent);
+              // Ties go to the ROUTE, which is what keeps the guard to its narrow case. The common
+              // outcome is the route CONFIRMING the incumbent, where routing.d1 and incumbentDist
+              // are the same dot and compare equal; taking the incumbent branch there would record
+              // cell2 == assignment and a zero gap, so every confirmed document would be reaped
+              // again on every later iteration and the loop would never converge.
+              final boolean routeWins = routing.count > 0 && routing.d1 <= incumbentDist;
+              int[] spillCands = routing.cells;
+              int spillCount = routing.count;
+              float bestDist;
+              float runnerUpDist;
+              if (routeWins) {
+                if (routing.cells[0] != incumbent) {
+                  localChanged++;
+                  // Move the document's contribution with it; see FIX.
+                  sums.remove(incumbent, vector);
+                  sums.add(routing.cells[0], vector);
+                }
+                assignment[i] = routing.cells[0];
+                bestDist = routing.d1;
+                runnerUpDist = routing.d2;
+                cell2[i] = routing.cell2;
+              } else {
+                // The incumbent was outside the shortlist, so the shortlist's best IS the
+                // runner-up.
+                bestDist = incumbentDist;
+                runnerUpDist = routing.count > 0 ? routing.d1 : Float.MAX_VALUE;
+                cell2[i] = routing.count > 0 ? routing.cells[0] : -1;
+                if (withSpill) {
+                  // Spill requires candidates[0] to be the primary, which the route's list is not.
+                  cands[0] = incumbent;
+                  System.arraycopy(routing.cells, 0, cands, 1, routing.count);
+                  spillCands = cands;
+                  spillCount = routing.count + 1;
+                }
               }
-              assignment[i] = routing.cells[0];
-              bestDist = routing.d1;
-              runnerUpDist = routing.d2;
-              cell2[i] = routing.cell2;
-            } else {
-              // The incumbent was outside the shortlist, so the shortlist's best IS the runner-up.
-              bestDist = incumbentDist;
-              runnerUpDist = routing.count > 0 ? routing.d1 : Float.MAX_VALUE;
-              cell2[i] = routing.count > 0 ? routing.cells[0] : -1;
+              d1[i] = bestDist;
+              d2[i] = runnerUpDist;
+              // Re-measured, so both accumulators are spent.
+              docSlack[i] = 0f;
+              docMaxSlack[i] = 0f;
               if (withSpill) {
-                // Spill requires candidates[0] to be the primary, which the route's list is not.
-                cands[0] = incumbent;
-                System.arraycopy(routing.cells, 0, cands, 1, routing.count);
-                spillCands = cands;
-                spillCount = routing.count + 1;
+                // FRESH d1/d2, straight from the route above, which is why spill belongs here.
+                final int kept =
+                    Spill.select(
+                        vector,
+                        centroids,
+                        dim,
+                        spillCands,
+                        spillCount,
+                        bestDist,
+                        runnerUpDist,
+                        spillBits,
+                        soarLambda,
+                        MARGIN,
+                        sim,
+                        chosen);
+                final int base = i * cellStride;
+                System.arraycopy(chosen, 0, cells, base, kept);
+                for (int k = kept; k < cellStride; k++) {
+                  cells[base + k] = -1;
+                }
+              } else if (cells != null) {
+                // spillBits == 0: one cell per document, and no candidate list needed.
+                cells[i * cellStride] = assignment[i];
               }
+              local++;
             }
-            d1[i] = bestDist;
-            d2[i] = runnerUpDist;
-            // Re-measured, so both accumulators are spent.
-            docSlack[i] = 0f;
-            docMaxSlack[i] = 0f;
-            if (withSpill) {
-              // FRESH d1/d2, straight from the route above, which is why spill belongs here.
-              final int kept =
-                  Spill.select(
-                      vectors[i],
-                      centroids,
-                      dim,
-                      spillCands,
-                      spillCount,
-                      bestDist,
-                      runnerUpDist,
-                      spillBits,
-                      soarLambda,
-                      MARGIN,
-                      sim,
-                      chosen);
-              cells[i] = java.util.Arrays.copyOf(chosen, kept);
-            } else if (cells != null) {
-              // spillBits == 0: one cell per document, and no candidate list needed.
-              cells[i] = new int[] {assignment[i]};
-            }
-            local++;
           }
           reaped.addAndGet(local);
           changed.addAndGet(localChanged);
@@ -909,12 +1061,11 @@ final class Clustering {
   }
 
   /**
-   * Recomputes each centroid as the mean of its members, recording how far each moved.
+   * Moves each centroid to the normalized mean of its members, read off the incremental sums,
+   * recording how far each moved.
    *
-   * <p>Parallel over CELLS rather than documents, using a counting sort into cell order, so each
-   * worker owns its cells outright and writes centroid accumulators without synchronization.
-   * Parallel over documents would need per-thread {@code nlist x dim} partials, which do not fit at
-   * high {@code nlist}.
+   * <p>{@code O(nlist * dim)} and no document is touched: the sums were maintained as documents
+   * were routed; see {@link #FIX}. Parallel over cells, each of which one worker owns outright.
    *
    * <p>An empty cell keeps its previous position rather than being reseeded. Reseeding would
    * renumber cells between iterations, and cell ids are what documents are assigned to.
@@ -927,61 +1078,27 @@ final class Clustering {
    * members)} maximizes {@code sum dot(v, c)} over the unit sphere, which is the objective routing
    * ranks by. That is what makes this step monotone; see the class javadoc.
    */
-  private static void recomputeCentroids(
-      float[][] vectors,
-      int count,
-      int dim,
-      int nlist,
-      int[] assignment,
-      float[][] centroids,
-      float[] movement)
-      throws IOException {
-
-    // Counting sort documents into cell order, so each cell's members are one contiguous run.
-    final int[] cellStart = new int[nlist + 1];
-    for (int i = 0; i < count; i++) {
-      cellStart[assignment[i] + 1]++;
-    }
-    for (int c = 0; c < nlist; c++) {
-      cellStart[c + 1] += cellStart[c];
-    }
-    final int[] byCell = new int[count];
-    final int[] cursor = new int[nlist];
-    for (int i = 0; i < count; i++) {
-      final int c = assignment[i];
-      byCell[cellStart[c] + cursor[c]++] = i;
-    }
-
-    Parallel.overCells(
+  private static void updateCentroids(
+      Sums sums, int nlist, int dim, float[][] centroids, float[] movement) throws IOException {
+    final long[] table = sums.sums;
+    final int[] members = sums.members;
+    Parallel.overRange(
         nlist,
-        count,
-        cellStart,
         (from, to) -> {
-          final double[] acc = new double[dim];
-          float[] prev = new float[dim];
+          final float[] prev = new float[dim];
           for (int c = from; c < to; c++) {
-            final int start = cellStart[c];
-            final int end = cellStart[c + 1];
+            final int n = members[c];
             final float[] cent = centroids[c];
-            if (start == end) {
+            if (n == 0) {
               movement[c] = 0f;
               continue;
             }
-            java.util.Arrays.fill(acc, 0.0);
-            for (int s = start; s < end; s++) {
-              final float[] v = vectors[byCell[s]];
-              for (int d = 0; d < dim; d++) {
-                acc[d] += v[d];
-              }
-            }
-            final double inv = 1.0 / (end - start);
             // Keep the OLD position to measure movement against; see the javadoc.
-            if (prev.length < dim) {
-              prev = new float[dim];
-            }
             System.arraycopy(cent, 0, prev, 0, dim);
+            final double inv = 1.0 / ((double) n * FIX);
+            final int base = c * dim;
             for (int d = 0; d < dim; d++) {
-              cent[d] = (float) (acc[d] * inv);
+              cent[d] = (float) (table[base + d] * inv);
             }
             // Every similarity; see normalize() and the javadoc above.
             normalize(cent);
@@ -1006,14 +1123,19 @@ final class Clustering {
    * documents. They hold empty cells and keep their position, which preserves the invariant that
    * every segment has exactly {@code nlist} centroids.
    */
-  private static float[][] sampleCentroids(float[][] vectors, int count, int dim, int nlist) {
+  private static float[][] sampleCentroids(VectorSource src, int nlist) throws IOException {
+    final int count = src.count();
+    final int dim = src.dim();
     final int[] pick = reservoirSample(count, Math.min(nlist, count));
     final float[][] centroids = new float[nlist][];
-    for (int c = 0; c < nlist; c++) {
-      final int src = pick.length == 0 ? -1 : pick[c % pick.length];
-      centroids[c] = new float[dim];
-      if (src >= 0) {
-        System.arraycopy(vectors[src], 0, centroids[c], 0, dim);
+    try (VectorSource.Cursor cur = src.cursor()) {
+      for (int c = 0; c < nlist; c++) {
+        final int ord = pick.length == 0 ? -1 : pick[c % pick.length];
+        centroids[c] = new float[dim];
+        if (ord >= 0) {
+          cur.load(ord);
+          System.arraycopy(cur.vector(), 0, centroids[c], 0, dim);
+        }
       }
     }
     return centroids;

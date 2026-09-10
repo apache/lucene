@@ -44,7 +44,7 @@ public class TestDocPlanes extends LuceneTestCase {
       for (int i = 0; i < count; i++) {
         vectors[i] = randomVector(dim);
       }
-      final DocPlanes planes = DocPlanes.encode(vectors, count, dim, null, null, null);
+      final DocPlanes planes = DocPlanes.encode(vectors, count, dim);
       final int cb = Nitrox2.bytesPerVector(dim);
       final byte[] exp = new byte[cb];
       final byte[] got = new byte[cb];
@@ -81,7 +81,7 @@ public class TestDocPlanes extends LuceneTestCase {
     for (int i = 0; i < count; i++) {
       vectors[i] = randomVector(dim);
     }
-    final DocPlanes planes = DocPlanes.encode(vectors, count, dim, null, null, null);
+    final DocPlanes planes = DocPlanes.encode(vectors, count, dim);
     final int cb = Nitrox2.bytesPerVector(dim);
     final byte[] code = new byte[cb];
     final byte[] buf = planes.buffer();
@@ -100,7 +100,7 @@ public class TestDocPlanes extends LuceneTestCase {
   public void testSingleDocument() throws IOException {
     final int dim = 128;
     final float[][] v = {randomVector(dim)};
-    final DocPlanes planes = DocPlanes.encode(v, 1, dim, null, null, null);
+    final DocPlanes planes = DocPlanes.encode(v, 1, dim);
     assertEquals(1, planes.count());
     final int cb = Nitrox2.bytesPerVector(dim);
     final byte[] exp = new byte[cb];
@@ -125,7 +125,7 @@ public class TestDocPlanes extends LuceneTestCase {
     for (int i = 0; i < count; i++) {
       vectors[i] = randomVector(dim);
     }
-    final DocPlanes planes = DocPlanes.encode(vectors, count, dim, null, null, null);
+    final DocPlanes planes = DocPlanes.encode(vectors, count, dim);
     final int cb = Nitrox2.bytesPerVector(dim);
     final byte[] exp = new byte[cb];
     final byte[] got = new byte[cb];

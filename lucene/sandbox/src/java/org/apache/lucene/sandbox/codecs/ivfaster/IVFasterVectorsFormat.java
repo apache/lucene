@@ -76,10 +76,14 @@ import org.apache.lucene.index.SegmentWriteState;
  * (see the reader's {@code PREFETCH}), which is what makes it the one safe to leave on. Behaviour
  * on an index larger than the page cache is untested.
  *
- * <p>Indexing buffers the field's float vectors in heap, because the Lloyd mean needs them. The
- * coarse scan that opens every routing pass reads the packed planes alone, {@code 1/16} of that;
- * the exact stage that ranks the resulting shortlist reads the float vectors. Merging reconstructs
- * float vectors and needs comparable heap.
+ * <p>INDEXING DOES NOT HOLD THE CORPUS IN HEAP. A flush drains its buffered vectors, and a merge
+ * its sources' records, into a staged temp file of fine codes and coarse planes in doc order;
+ * clustering streams that file through per-thread cursors, keeps a few dozen bytes per document
+ * plus the centroids and their incremental sums, and emission gathers records out of the file in
+ * cell order. So the heap a build needs is {@code O(count)} at a few dozen bytes per document plus
+ * {@code O(nlist * dim)}, never {@code count * dim * 4}, and the file is read sequentially on every
+ * clustering pass; only the emission gather is a permutation of it, and that is hinted a block
+ * ahead. See the writer and {@code StagedVectors}.
  *
  * <p>float32 vectors only. Full-precision storage is optional and takes two forms. A {@code null}
  * fine tier makes FP32 the fine tier: the code is the rotated vector at {@code 4*dim} bytes, and

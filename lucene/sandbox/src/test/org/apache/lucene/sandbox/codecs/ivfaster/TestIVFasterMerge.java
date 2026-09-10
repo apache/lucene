@@ -371,6 +371,57 @@ public class TestIVFasterMerge extends LuceneTestCase {
     }
   }
 
+  /**
+   * With full precision kept, the raw section must hold the caller's exact floats for EVERY
+   * document after a merge, the donor's included: a merge stages raw floats beside the codes rather
+   * than writing the donor's lossy reconstruction.
+   */
+  public void testKeepFullPrecisionSurvivesMerge() throws Exception {
+    final int dim = 32;
+    final int perSegment = 250;
+    final float[][] all = clusteredCorpus(2 * perSegment, 5, dim);
+    final Codec codec =
+        TestUtil.alwaysKnnVectorsFormat(
+            new IVFasterVectorsFormat(
+                8,
+                8,
+                IVFasterVectorsFormat.DEFAULT_SPILL_BITS,
+                IVFasterVectorsFormat.DEFAULT_SOAR_LAMBDA,
+                IVFasterVectorsFormat.DEFAULT_LLOYD_ITERS,
+                IVFasterVectorsFormat.CoarseTier.NITROX2,
+                IVFasterVectorsFormat.FineTier.INT8,
+                true));
+    try (Directory dir = newDirectory()) {
+      final IndexWriterConfig cfg =
+          new IndexWriterConfig().setCodec(codec).setMaxBufferedDocs(Integer.MAX_VALUE);
+      try (IndexWriter w = new IndexWriter(dir, cfg)) {
+        for (int i = 0; i < 2 * perSegment; i++) {
+          w.addDocument(doc(i, all[i], dim));
+          if (i == perSegment - 1) {
+            w.commit();
+          }
+        }
+        w.forceMerge(1);
+      }
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        assertEquals(1, reader.leaves().size());
+        final var leaf = reader.leaves().get(0).reader();
+        final var values = leaf.getFloatVectorValues(FIELD);
+        final var it = values.iterator();
+        int seen = 0;
+        for (int doc = it.nextDoc();
+            doc != org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+            doc = it.nextDoc()) {
+          final int id = Integer.parseInt(leaf.storedFields().document(doc).get("id"));
+          assertArrayEquals(
+              "exact floats of id " + id, all[id], values.vectorValue(it.index()), 0f);
+          seen++;
+        }
+        assertEquals(2 * perSegment, seen);
+      }
+    }
+  }
+
   private Document doc(int id, float[] vector, int dim) {
     final Document d = new Document();
     d.add(new KnnFloatVectorField(FIELD, vector, VectorSimilarityFunction.EUCLIDEAN));

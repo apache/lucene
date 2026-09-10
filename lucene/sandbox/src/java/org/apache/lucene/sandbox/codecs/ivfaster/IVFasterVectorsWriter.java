@@ -30,6 +30,7 @@ import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.index.DocIDMerger;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
@@ -54,10 +55,10 @@ import org.apache.lucene.util.packed.DirectMonotonicWriter;
  * Writes the ivfaster index: clusters the field's vectors, then emits the data sections and the
  * per-field metadata record.
  *
- * <p>See {@link IVFasterVectorsFormat} for the architecture and the in-RAM scope limit. The field's
- * float vectors are buffered in heap because the Lloyd mean reads them, as does the exact stage
- * that ranks each routing shortlist. The coarse scan that opens every routing pass reads the packed
- * 2-bit planes.
+ * <p>See {@link IVFasterVectorsFormat} for the architecture. THE CORPUS IS NEVER HELD IN HEAP: a
+ * flush drains its buffered vectors into a staged temp file, a merge stages its sources' records
+ * into one, and clustering streams that file through per-thread cursors while keeping a few dozen
+ * bytes per document; see {@link StagedVectors} and {@link Clustering}.
  *
  * @lucene.experimental
  */
@@ -79,6 +80,12 @@ final class IVFasterVectorsWriter extends KnnVectorsWriter {
 
   private final IndexOutput meta;
   private final IndexOutput data;
+
+  /** Where the staging temp files live; see {@link StagedVectors}. */
+  private final org.apache.lucene.store.Directory directory;
+
+  private final String segmentName;
+  private final org.apache.lucene.store.IOContext context;
   private final Map<String, BufferedField> fields = new HashMap<>();
   private final List<BufferedField> ordered = new ArrayList<>();
   private boolean finished;
@@ -124,6 +131,9 @@ final class IVFasterVectorsWriter extends KnnVectorsWriter {
     this.lloydIters = lloydIters;
     this.fineTier = fineTier;
     this.keepFullPrecision = keepFullPrecision;
+    this.directory = state.directory;
+    this.segmentName = state.segmentInfo.name;
+    this.context = state.context;
 
     IndexOutput m = null;
     IndexOutput d = null;
@@ -169,22 +179,119 @@ final class IVFasterVectorsWriter extends KnnVectorsWriter {
   public void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException {
     for (BufferedField f : ordered) {
       f.applySort(sortMap);
-      // Flush: original-space vectors and no source segment, so every plane is encoded fresh.
-      writeField(
-          f.fieldInfo,
-          f.vectors,
-          f.docIds,
-          f.size,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null);
+      writeFlushedField(f);
+      f.release();
     }
+  }
+
+  /**
+   * Stages a flushed field's buffered vectors, in doc order, and writes the field from the staged
+   * records.
+   *
+   * <p>The buffer is the one copy of the corpus this writer ever holds in heap, and IndexWriter
+   * bounded it. Each chunk's floats are dropped as soon as the chunk is staged, so the buffer
+   * drains as the temp file fills, and clustering then runs over the file; see {@link
+   * StagedVectors}.
+   *
+   * <p>An index sort is the one case the buffer is not already in doc order; the permutation is
+   * applied by reading through {@code order} rather than by reordering the buffer.
+   */
+  private void writeFlushedField(BufferedField f) throws IOException {
+    final FieldInfo fieldInfo = f.fieldInfo;
+    final int dim = fieldInfo.getVectorDimension();
+    final VectorSimilarityFunction sim = fieldInfo.getVectorSimilarityFunction();
+    final FineQuantizer quantizer = fineQuantizer();
+    final int count = f.size;
+    if (count == 0) {
+      writeEmptyField(fieldInfo, dim, sim, quantizer);
+      return;
+    }
+    long t = traceStart();
+    final int[] order = isAscending(f.docIds, count) ? null : docOrder(f.docIds, count);
+    final HadamardRotation rotation = HadamardRotation.create(dim, rotationSeed(dim));
+    // The document mean, when the tier centres: one pass before any code is derived from it.
+    final float[] docMean =
+        quantizer.needsMean() ? meanOfRotated(f.vectors, count, dim, rotation) : null;
+    final StagedVectors.Builder b =
+        StagedVectors.begin(
+            directory, segmentName, context, dim, quantizer, docMean, keepFullPrecision);
+    final StagedVectors staged;
+    try {
+      final int chunkOrds = Math.min(count, StagedVectors.CHUNK_ORDS);
+      final byte[] chunk = b.chunk(chunkOrds);
+      final float[] raw = b.rawChunk(chunkOrds);
+      final int stride = b.stride;
+      final float[][] vectors = f.vectors;
+      final int[] docIds = f.docIds;
+      for (int start = 0; start < count; start += chunkOrds) {
+        final int n = Math.min(chunkOrds, count - start);
+        final int base = start;
+        Parallel.overRange(
+            n,
+            (lo, hi) -> {
+              final float[] unit = new float[dim];
+              final float[] rot = new float[dim];
+              final StagedVectors.Builder.EncodeScratch sc = b.encodeScratch();
+              for (int j = lo; j < hi; j++) {
+                final int i = order == null ? base + j : order[base + j];
+                final float[] v = vectors[i];
+                // Normalized for every similarity, then rotated; see the writeField javadoc.
+                System.arraycopy(v, 0, unit, 0, dim);
+                VectorUtil.l2normalize(unit);
+                rotation.rotate(unit, rot);
+                b.encodeInto(rot, docIds[i], chunk, j * stride, sc);
+                if (raw != null) {
+                  // The caller's exact input, for the inert full-precision section.
+                  System.arraycopy(v, 0, raw, j * dim, dim);
+                }
+              }
+            });
+        b.writeChunk(chunk, raw, n);
+        // Drain the buffer behind the chunk just staged.
+        for (int j = 0; j < n; j++) {
+          vectors[order == null ? base + j : order[base + j]] = null;
+        }
+      }
+      staged = b.finish();
+    } catch (Throwable e) {
+      b.abort();
+      throw e;
+    }
+    traceStage("stage", count, t);
+    try (staged) {
+      writeField(fieldInfo, staged, null, null, docMean);
+    }
+  }
+
+  /** The mean of the normalized, rotated vectors; only a centring fine tier needs it. */
+  private static float[] meanOfRotated(
+      float[][] vectors, int count, int dim, HadamardRotation rotation) throws IOException {
+    final double[] acc = new double[dim];
+    Parallel.overRange(
+        count,
+        (lo, hi) -> {
+          final double[] local = new double[dim];
+          final float[] unit = new float[dim];
+          final float[] rot = new float[dim];
+          for (int i = lo; i < hi; i++) {
+            System.arraycopy(vectors[i], 0, unit, 0, dim);
+            VectorUtil.l2normalize(unit);
+            rotation.rotate(unit, rot);
+            for (int d = 0; d < dim; d++) {
+              local[d] += rot[d];
+            }
+          }
+          synchronized (acc) {
+            for (int d = 0; d < dim; d++) {
+              acc[d] += local[d];
+            }
+          }
+        });
+    final float[] mean = new float[dim];
+    for (int d = 0; d < dim; d++) {
+      mean[d] = (float) (acc[d] / count);
+    }
+    return mean;
   }
 
   /**
@@ -204,29 +311,20 @@ final class IVFasterVectorsWriter extends KnnVectorsWriter {
    * validated that grid at open, so every same-dim same-rotation segment donates its own plane
    * whoever wins the fine election.
    *
-   * <h2>Gather</h2>
+   * <h2>Staging</h2>
    *
-   * <p>Vectors are needed for the Lloyd mean regardless; the donor buys keeping their cell, so no
-   * re-routing, and copying rather than re-encoding their codes.
-   *
-   * <p>TWO PASSES, because reading the vectors is the expensive half and the half that
-   * parallelizes. Pass 1 records only WHERE each live vector is, an ordinal-map lookup with no
-   * decode; pass 2 splits that list over cores for the decode (int8 reconstruct, plus an inverse
-   * FWHT for non-donors). Only the iterator walk is inherently sequential. Each worker takes its
-   * OWN {@link FloatVectorValues} per reader via {@code copy()}, the standard Lucene contract, so
-   * the shared state is the persisted ordinal map and the mmapped table read at absolute offsets.
+   * <p>The merged corpus is staged to a temp file in one walk of a {@link DocIDMerger}, which
+   * yields every live document in ascending merged doc id, index sort included. Each chunk of that
+   * walk is encoded in parallel: a donor document's fine record and coarse planes are copied
+   * verbatim, another ivfaster segment's document is decoded straight from its rotated int8 record
+   * (no FWHT round trip) and re-encoded, with its coarse planes copied verbatim, and any other
+   * source is read through {@link FloatVectorValues}, normalized and rotated. What stays in heap
+   * per document is its carried cell; the vectors live in the temp file, and clustering streams
+   * them from there. See {@link StagedVectors}.
    *
    * <p>The ordinal correspondence both tiers rely on: {@code DonorView} orders by ascending docId
    * and so does {@code getFloatVectorValues}, so {@code it.index()} is the source ordinal for
    * either.
-   *
-   * <p>THE DONOR'S VECTORS ARE GATHERED ALREADY-ROTATED, which skips a full FWHT round trip per
-   * document. Reading through {@link FloatVectorValues} returns ORIGINAL-space vectors, so it
-   * inverseRotates every document, and {@code writeField}'s first act is to normalize and rotate
-   * straight back. The cancellation is exact, since R is orthogonal and {@code R(R^T x / ||R^T x||)
-   * == x / ||x||}. These floats feed the Lloyd mean and the exact stage that ranks each routing
-   * shortlist; the coarse scan reads the copied planes. Centroids are in rotated space, so rotated
-   * space is what a merge wants.
    */
   @Override
   public IORunnable mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
@@ -276,24 +374,25 @@ final class IVFasterVectorsWriter extends KnnVectorsWriter {
       }
     }
 
-    // ---- GATHER ---- (two passes; see the javadoc)
-    final IntArrayList srcReader = new IntArrayList();
-    final IntArrayList srcOrd = new IntArrayList();
-    final IntArrayList docs = new IntArrayList();
-    // Carried cell per gathered document, or -1 to route it.
-    final IntArrayList carried = new IntArrayList();
-    // Donor ordinal per gathered document, or -1; the key to copying its FINE record verbatim.
-    final IntArrayList donorOrd = new IntArrayList();
-    // COARSE source reader index per gathered document, or -1 to encode, and the ordinal in it.
-    final IntArrayList coarseSrc = new IntArrayList();
-    final IntArrayList coarseOrd = new IntArrayList();
-
-    final boolean donorRotated = donor != null && donor.canReadRotated();
+    // ---- STAGING ---- (one DocIDMerger walk, encoded in chunks; see the javadoc)
+    final FineQuantizer quantizer = fineQuantizer();
+    // Stateless and a function of dim alone, so one instance serves every worker.
+    final HadamardRotation rotation = HadamardRotation.create(dim, rotationSeed(dim));
+    final float[] donorMean = donor == null ? null : donor.mean();
+    final float[] docMean;
+    if (quantizer.needsMean() == false) {
+      docMean = null;
+    } else if (donorMean != null) {
+      // Inherited, so copied codes stay on the grid they were packed against; see writeField.
+      docMean = donorMean;
+    } else {
+      docMean = mergedMean(fieldInfo, mergeState, dim, rotation);
+    }
 
     long t = traceStart();
-    // Per-reader values for the parallel pass to copy() from; null where a reader has no vectors.
     final FloatVectorValues[] readerValues =
         new FloatVectorValues[mergeState.knnVectorsReaders.length];
+    final List<MergeSub> subs = new ArrayList<>();
     for (int r = 0; r < mergeState.knnVectorsReaders.length; r++) {
       final var reader = mergeState.knnVectorsReaders[r];
       if (reader == null) {
@@ -304,126 +403,201 @@ final class IVFasterVectorsWriter extends KnnVectorsWriter {
         continue;
       }
       readerValues[r] = values;
-      final boolean isDonor = r == donorIndex;
-      final IVFasterVectorsReader.DonorView coarseView = coarseViews[r];
-      final org.apache.lucene.index.MergeState.DocMap docMap = mergeState.docMaps[r];
-      final KnnVectorValues.DocIndexIterator it = values.iterator();
-      for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
-        final int newDoc = docMap.get(doc);
-        if (newDoc == -1) {
-          continue; // deleted
-        }
-        final int ord = it.index();
-        srcReader.add(r);
-        srcOrd.add(ord);
-        docs.add(newDoc);
-        carried.add(isDonor ? donor.cellOf(ord) : -1);
-        donorOrd.add(isDonor ? ord : -1);
-        coarseSrc.add(coarseView != null ? r : -1);
-        coarseOrd.add(coarseView != null ? ord : -1);
-      }
+      subs.add(new MergeSub(mergeState.docMaps[r], values.iterator(), r));
     }
-    final int gatheredCount = docs.size();
-    t = traceStage("gatherIndex", gatheredCount, t);
+    final DocIDMerger<MergeSub> merger = DocIDMerger.of(subs, mergeState.needsIndexSort);
 
-    // Pass 2: read the vectors, one worker per range; see the javadoc.
-    final float[][] gathered = new float[gatheredCount][];
-    final int[] srcReaderA = srcReader.toArray();
-    final int[] srcOrdA = srcOrd.toArray();
-    final int nReaders = readerValues.length;
-    // Effectively final, so the worker body can capture them.
+    final IntArrayList carried = new IntArrayList();
+    final StagedVectors.Builder b =
+        StagedVectors.begin(
+            directory, segmentName, context, dim, quantizer, docMean, keepFullPrecision);
+    final StagedVectors staged;
     final IVFasterVectorsReader.DonorView donorFinal = donor;
     final int donorIndexFinal = donorIndex;
-    Parallel.overRange(
-        gatheredCount,
-        (from, to) -> {
-          // Lazily, because a worker's range usually spans one or two source segments.
-          final FloatVectorValues[] local = new FloatVectorValues[nReaders];
-          final byte[] donorRecord = donorRotated ? donorFinal.newRecordScratch() : null;
-          final float[] donorCorrections = new float[CodeRecord.CORRECTIONS];
-          for (int i = from; i < to; i++) {
-            final int r = srcReaderA[i];
-            final int ord = srcOrdA[i];
-            if (donorRotated && r == donorIndexFinal) {
-              final float[] v = new float[dim];
-              donorFinal.rotatedVector(ord, v, donorRecord, donorCorrections);
-              gathered[i] = v;
-              continue;
-            }
-            FloatVectorValues lv = local[r];
-            if (lv == null) {
-              lv = local[r] = readerValues[r].copy();
-            }
-            gathered[i] = ArrayUtil.copyOfSubArray(lv.vectorValue(ord), 0, dim);
+    try {
+      final int chunkOrds = StagedVectors.CHUNK_ORDS;
+      final byte[] chunk = b.chunk(chunkOrds);
+      final float[] raw = b.rawChunk(chunkOrds);
+      final int stride = b.stride;
+      final int[] chunkReader = new int[chunkOrds];
+      final int[] chunkOrd = new int[chunkOrds];
+      final int[] chunkDoc = new int[chunkOrds];
+      final int nReaders = readerValues.length;
+      boolean exhausted = false;
+      while (exhausted == false) {
+        int n = 0;
+        while (n < chunkOrds) {
+          final MergeSub sub = merger.next();
+          if (sub == null) {
+            // The merger must not be asked again once it has answered null.
+            exhausted = true;
+            break;
           }
-        });
-
+          chunkReader[n] = sub.reader;
+          chunkOrd[n] = sub.iterator.index();
+          chunkDoc[n] = sub.mappedDocID;
+          n++;
+        }
+        if (n == 0) {
+          break;
+        }
+        Parallel.overRange(
+            n,
+            (lo, hi) -> {
+              // Lazily, because a worker's range usually spans one or two source segments.
+              final FloatVectorValues[] local = new FloatVectorValues[nReaders];
+              final byte[][] recordScratch = new byte[nReaders][];
+              final float[] corrections = new float[CodeRecord.CORRECTIONS];
+              final float[] unit = new float[dim];
+              final float[] rot = new float[dim];
+              final StagedVectors.Builder.EncodeScratch sc = b.encodeScratch();
+              for (int j = lo; j < hi; j++) {
+                final int r = chunkReader[j];
+                final int ord = chunkOrd[j];
+                final int doc = chunkDoc[j];
+                final int off = j * stride;
+                final IVFasterVectorsReader.DonorView view = coarseViews[r];
+                if (r == donorIndexFinal) {
+                  // Fine and coarse VERBATIM; see DonorView.copyRecord.
+                  b.copyInto(donorFinal, ord, doc, chunk, off);
+                } else if (view != null && view.canReadRotated()) {
+                  // Rotated space straight from the record, then the same encode as a flush;
+                  // the coarse planes are copied, not re-derived; see DocPlanes.
+                  if (recordScratch[r] == null) {
+                    recordScratch[r] = view.newRecordScratch();
+                  }
+                  view.rotatedVector(ord, rot, recordScratch[r], corrections);
+                  b.encodeInto(rot, doc, chunk, off, sc);
+                  b.copyCoarseInto(view, ord, chunk, off);
+                } else {
+                  FloatVectorValues lv = local[r];
+                  if (lv == null) {
+                    lv = local[r] = readerValues[r].copy();
+                  }
+                  System.arraycopy(lv.vectorValue(ord), 0, unit, 0, dim);
+                  VectorUtil.l2normalize(unit);
+                  rotation.rotate(unit, rot);
+                  b.encodeInto(rot, doc, chunk, off, sc);
+                }
+                if (raw != null) {
+                  // Exact when the source kept precision, its reconstruction otherwise.
+                  FloatVectorValues lv = local[r];
+                  if (lv == null) {
+                    lv = local[r] = readerValues[r].copy();
+                  }
+                  System.arraycopy(lv.vectorValue(ord), 0, raw, j * dim, dim);
+                }
+              }
+            });
+        b.writeChunk(chunk, raw, n);
+        for (int j = 0; j < n; j++) {
+          carried.add(chunkReader[j] == donorIndex ? donor.cellOf(chunkOrd[j]) : -1);
+        }
+      }
+      staged = b.finish();
+    } catch (Throwable e) {
+      b.abort();
+      throw e;
+    }
     if (TRACE) {
       IvfDiag.err(
-          "[ivfaster-stage] merge readers=%d donorIndex=%d donorDocs=%d donorRotated=%b gathered=%d%n",
-          mergeState.knnVectorsReaders.length, donorIndex, donorDocs, donorRotated, gatheredCount);
+          "[ivfaster-stage] merge readers=%d donorIndex=%d donorDocs=%d staged=%d%n",
+          mergeState.knnVectorsReaders.length, donorIndex, donorDocs, staged.count());
     }
-    t = traceStage("gatherRead", gatheredCount, t);
-
-    // Which gathered vectors are ALREADY rotated, so writeField does not rotate them twice.
-    final boolean[] preRotated = new boolean[gatheredCount];
-    if (donorRotated) {
-      final int[] ords = donorOrd.toArray();
-      for (int i = 0; i < preRotated.length; i++) {
-        preRotated[i] = ords[i] >= 0;
-      }
+    traceStage("stage", staged.count(), t);
+    try (staged) {
+      writeField(
+          fieldInfo,
+          staged,
+          donor == null ? null : donor.centroids(),
+          donor == null ? null : carried.toArray(),
+          docMean);
     }
-
-    writeField(
-        fieldInfo,
-        gathered,
-        docs.toArray(),
-        gatheredCount,
-        donor == null ? null : donor.centroids(),
-        donor,
-        carried.toArray(),
-        donorOrd.toArray(),
-        donor == null ? null : donor.mean(),
-        preRotated,
-        coarseViews,
-        coarseSrc.toArray(),
-        coarseOrd.toArray());
     // No deferred phase: this writer emits everything for the field inline.
     return null;
   }
 
+  /** One source segment's live vectors, for the {@link DocIDMerger} walk. */
+  private static final class MergeSub extends DocIDMerger.Sub {
+    final KnnVectorValues.DocIndexIterator iterator;
+    final int reader;
+
+    MergeSub(MergeState.DocMap docMap, KnnVectorValues.DocIndexIterator iterator, int reader) {
+      super(docMap);
+      this.iterator = iterator;
+      this.reader = reader;
+    }
+
+    @Override
+    public int nextDoc() throws IOException {
+      return iterator.nextDoc();
+    }
+  }
+
   /**
-   * Clusters and writes one field.
+   * The mean of every source's normalized, rotated vectors, for a centring fine tier with no donor
+   * to inherit one from. A separate sequential pass, since encoding needs the mean before the first
+   * record; only an opt-in tier pays it.
+   */
+  private static float[] mergedMean(
+      FieldInfo fieldInfo, MergeState mergeState, int dim, HadamardRotation rotation)
+      throws IOException {
+    final double[] acc = new double[dim];
+    long n = 0;
+    final float[] unit = new float[dim];
+    final float[] rot = new float[dim];
+    for (int r = 0; r < mergeState.knnVectorsReaders.length; r++) {
+      final var reader = mergeState.knnVectorsReaders[r];
+      if (reader == null) {
+        continue;
+      }
+      final FloatVectorValues values = reader.getFloatVectorValues(fieldInfo.name);
+      if (values == null) {
+        continue;
+      }
+      final MergeState.DocMap docMap = mergeState.docMaps[r];
+      final KnnVectorValues.DocIndexIterator it = values.iterator();
+      for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
+        if (docMap.get(doc) == -1) {
+          continue;
+        }
+        System.arraycopy(values.vectorValue(it.index()), 0, unit, 0, dim);
+        VectorUtil.l2normalize(unit);
+        rotation.rotate(unit, rot);
+        for (int d = 0; d < dim; d++) {
+          acc[d] += rot[d];
+        }
+        n++;
+      }
+    }
+    final float[] mean = new float[dim];
+    for (int d = 0; d < dim; d++) {
+      mean[d] = (float) (acc[d] / Math.max(1, n));
+    }
+    return mean;
+  }
+
+  /**
+   * Clusters and writes one field from its staged records.
    *
+   * @param staged the field's documents, in ascending doc order, holding every code the sections
+   *     need; see {@link StagedVectors}
    * @param seed centroids to warm-start clustering from, or {@code null} to train fresh ones
-   * @param donor the segment donating those centroids, or {@code null}; its documents' codes are
-   *     copied verbatim instead of being re-encoded
    * @param carried per-document donor cell, or -1 to route; {@code null} when there is no donor
-   * @param donorOrd per-document donor vector ordinal, or -1; {@code null} when there is no donor
-   * @param donorMean the donor's persisted mean, INHERITED rather than recomputed so that copied
-   *     codes stay on the grid they were packed against; {@code null} on a fresh segment
-   * @param preRotated per-document flag marking vectors ALREADY in rotated, unit-length space
-   *     (donor documents read through {@code DonorView.rotatedVector}); {@code null} means none
-   *     are. Rotating a rotated vector yields a plausible vector in the wrong space and raises
-   *     nothing, so this is correctness-critical.
-   * @param coarseViews coarse plane sources indexed by {@code coarseSrc}, or {@code null}; broader
-   *     than {@code donor} because the coarse plane is encoding-independent, so any same-dim,
-   *     same-rotation segment donates it
-   * @param coarseSrc per-document index into {@code coarseViews}, or -1 to encode from the rotated
-   *     vector; {@code null} encodes everything
+   * @param docMean the mean the codes were centred on, or {@code null} for a tier that does not
+   *     centre. INHERITED from the donor at merge rather than recomputed, so that copied codes stay
+   *     on the grid they were packed against; see below
    *     <h2>Pipeline</h2>
-   *     <p>Normalize and rotate, cluster, then emit the sections. The rotation is the same in every
-   *     segment, derived from {@code dim} alone, so codes and centroids from different segments are
-   *     directly comparable at merge. The rotate pass is parallel over documents: {@link
-   *     HadamardRotation#rotate} is stateless, reading only final fields and writing only its
-   *     {@code out} argument, so one instance is safely shared across workers.
-   *     <p>NORMALIZED UNCONDITIONALLY, for every similarity. Once every vector is unit length,
+   *     <p>Cluster, then emit the sections by gathering records out of the staged file in cell
+   *     order. Every vector was normalized and rotated once, as it was staged: the rotation is the
+   *     same in every segment, derived from {@code dim} alone, so codes and centroids from
+   *     different segments are directly comparable at merge, and once every vector is unit length,
    *     squared Euclidean is an affine function of the dot product, so all four similarities rank
-   *     identically and every distance in this codec reduces to one dot: no per-similarity branch
-   *     in any inner loop, and no norms to store or recompute. The rotation is orthogonal, so it
-   *     preserves the unit length it is given. Centroids hold the same invariant, which {@code
-   *     Clustering#normalize} maintains for every similarity, so the reduction covers cell
-   *     selection as well as document scoring.
+   *     identically and every distance in this codec reduces to one dot. Centroids hold the same
+   *     invariant, which {@code Clustering#normalize} maintains for every similarity.
+   *     <p>NOTHING PROPORTIONAL TO {@code count * dim} IS IN HEAP. Clustering streams the staged
+   *     file through cursors and keeps a few dozen bytes per document; emission holds the slot map
+   *     and copies one record at a time. See {@link StagedVectors} for the budget.
    *     <p>ADOPTING A DONOR MEANS ADOPTING ITS CELL COUNT. A carried assignment is meaningful only
    *     because seed centroid {@code c} IS donor cell {@code c}, so the seed fixes the cell space
    *     and clustering into a different number of cells would leave carried ids pointing outside
@@ -431,16 +605,15 @@ final class IVFasterVectorsWriter extends KnnVectorsWriter {
    *     keeps the inherited value within a factor of two. Donor documents therefore start from
    *     their carried cell, and only the other segments' documents are routed from scratch; the
    *     Reaper corrects any donor document the refined centroids moved away from.
-   *     <p>Coarse planes are packed ONCE for the whole build: clustering routes from them, and the
-   *     coarse section is written straight out of the same buffer, so there is exactly one
-   *     derivation of every document's code.
+   *     <p>Coarse planes are packed ONCE for the whole build, into the staged record: clustering
+   *     routes from them, and the coarse section is copied out of the same bytes, so there is
+   *     exactly one derivation of every document's code.
    *     <h2>Section invariants</h2>
    *     <p>THE DOCUMENT MEAN MUST BE SEGMENT-INDEPENDENT, because merge copies codes VERBATIM: the
    *     donor's codes were packed against the donor's mean, so decoding them against a freshly
    *     averaged one would score copied documents on a grid they were never quantized to, silently
    *     and compounding per merge. A merge INHERITS the donor's mean as it inherits the cell count,
-   *     and a fresh segment computes it once. It is computed before the code table, since encode
-   *     derives its grid from the mean and must derive it exactly as the query side will.
+   *     and a fresh segment computes it once, before any code is derived.
    *     <p>SLOTS ARE GROUPED BY CELL unconditionally, whether or not the field spills, because
    *     every fast path depends on a probed cell's records being one contiguous run. Under spill a
    *     document occupies one slot per chosen cell, and its record is emitted once per slot,
@@ -450,9 +623,9 @@ final class IVFasterVectorsWriter extends KnnVectorsWriter {
    *     IVFasterVectorsFormat#DEFAULT_SPILL_BITS}.
    *     <p>WITHIN A CELL, SLOTS ARE IN ASCENDING DOC-ID ORDER, so a cell is a posting list: the
    *     reader walks the probed cells as a disjunction of sorted iterators and intersects them with
-   *     a filter's {@code DocIdSetIterator} before any document is scored. The writer establishes
-   *     the order by making vector index ascend with doc id (step 0), which also keeps the ordinal
-   *     map below in doc order under an index sort.
+   *     a filter's {@code DocIdSetIterator} before any document is scored. Staged ordinals ascend
+   *     by doc id (verified as they are staged) and the slot fill walks ordinals upward, so the
+   *     order holds by construction and is checked here.
    *     <p>THE POSTING DIRECTORY IS OFFSETS ONLY. Cell {@code c} is the contiguous slot range
    *     {@code [postingOffsets[c], postingOffsets[c+1])}, so the slot ordinals themselves are the
    *     ascending integers that range already names. Offsets are BYTE offsets ({@code slot *
@@ -462,97 +635,34 @@ final class IVFasterVectorsWriter extends KnnVectorsWriter {
    *     only the table would have to scan and sort to recover it, inside {@code
    *     getFloatVectorValues}, which Lucene calls once per query.
    *     <p>The RAW FP32 section is inert: read only by {@code getFloatVectorValues}, and so by
-   *     merge, which gathers every document through it. It is stored in VECTOR-ORDINAL order, so
-   *     {@code getFloatVectorValues(ord)} maps straight to {@code raw[ord]}, and it holds the
-   *     caller's exact input, since the normalize and rotate step copies into scratch. Zero-length
-   *     when off, which the reader reads as "reconstruct from the fine code".
-   * @param coarseOrd per-document ordinal within its coarse source, or -1; {@code null} encodes
-   *     everything
+   *     merge. It is stored in VECTOR-ORDINAL order, so {@code getFloatVectorValues(ord)} maps
+   *     straight to {@code raw[ord]}, and it holds the caller's exact input, staged beside the
+   *     codes and copied here by concatenation. Zero-length when off, which the reader reads as
+   *     "reconstruct from the fine code".
    */
   private void writeField(
-      FieldInfo fieldInfo,
-      float[][] vectorsIn,
-      int[] docIdsIn,
-      int count,
-      float[][] seed,
-      IVFasterVectorsReader.DonorView donor,
-      int[] carriedIn,
-      int[] donorOrdIn,
-      float[] donorMean,
-      boolean[] preRotatedIn,
-      IVFasterVectorsReader.DonorView[] coarseViews,
-      int[] coarseSrcIn,
-      int[] coarseOrdIn)
+      FieldInfo fieldInfo, StagedVectors staged, float[][] seed, int[] carried, float[] docMean)
       throws IOException {
 
     final int dim = fieldInfo.getVectorDimension();
     final VectorSimilarityFunction sim = fieldInfo.getVectorSimilarityFunction();
-    final FineQuantizer quantizer = fineQuantizer();
-
+    final FineQuantizer quantizer = staged.quantizer();
+    final int count = staged.count();
     if (count == 0) {
       writeEmptyField(fieldInfo, dim, sim, quantizer);
       return;
     }
 
-    // 0. Canonical order: vector index i ascends with docId; see the javadoc. Only an index sort
-    // delivers documents out of order, so the common path allocates nothing here.
-    final int[] order = isAscending(docIdsIn, count) ? null : docOrder(docIdsIn, count);
-    final float[][] vectors = order == null ? vectorsIn : permute(vectorsIn, order);
-    final int[] docIds = order == null ? docIdsIn : permute(docIdsIn, order);
-    final int[] carried = order == null ? carriedIn : permute(carriedIn, order);
-    final int[] donorOrd = order == null ? donorOrdIn : permute(donorOrdIn, order);
-    final int[] coarseSrc = order == null ? coarseSrcIn : permute(coarseSrcIn, order);
-    final int[] coarseOrd = order == null ? coarseOrdIn : permute(coarseOrdIn, order);
-    final boolean[] preRotated = order == null ? preRotatedIn : permute(preRotatedIn, order);
-
-    // 1. Normalize and rotate, in parallel over documents.
+    // 1. Cluster: exhaustive routing, Lloyd iterations, the Reaper. A seed fixes the cell space.
     long t = traceStart();
-    final HadamardRotation rotation = HadamardRotation.create(dim, rotationSeed(dim));
-    final float[][] rotated = new float[count][];
-    Parallel.overRange(
-        count,
-        (from, to) -> {
-          final float[] v = new float[dim];
-          for (int i = from; i < to; i++) {
-            if (preRotated != null && preRotated[i]) {
-              // Already rotated and unit length; rotating again would change space silently.
-              rotated[i] = vectors[i];
-              continue;
-            }
-            System.arraycopy(vectors[i], 0, v, 0, dim);
-            VectorUtil.l2normalize(v);
-            rotated[i] = new float[dim];
-            // Reads `v` and writes only rotated[i], which this worker owns.
-            rotation.rotate(v, rotated[i]);
-          }
-        });
-
-    // 2. Cluster: exhaustive routing, Lloyd iterations, the Reaper. A seed fixes the cell space.
     final int nlistActual = seed != null ? seed.length : Math.min(nlist, Math.max(1, count));
-    final int[] seedAssignment = seed != null ? carried : null;
-    t = traceStage("rotate", count, t);
-    final DocPlanes planes =
-        DocPlanes.encode(rotated, count, dim, coarseViews, coarseSrc, coarseOrd);
-    t = traceStage("docPlanes", count, t);
     final Clustering.Result cl =
         Clustering.cluster(
-            rotated,
-            count,
-            dim,
-            nlistActual,
-            lloydIters,
-            sim,
-            seed,
-            seedAssignment,
-            spillBits,
-            soarLambda,
-            planes);
+            staged, nlistActual, lloydIters, sim, seed, carried, spillBits, soarLambda);
     t = traceStage("cluster", nlistActual, t);
-
-    // Coarse-retention audit; see Clustering.EXACT_PLACEMENT_AUDIT.
-    if (Clustering.EXACT_PLACEMENT_AUDIT && count > 0) {
+    if (TRACE && Clustering.EXACT_PLACEMENT_AUDIT) {
       IvfDiag.err(
-          "[ivfaster] field=%s count=%d nlist=%d primariesMisplaced=%d (%.4f)%n",
+          "[ivfaster-audit] field=%s docs=%d nlist=%d primariesMoved=%d (%.3f%%)%n",
           fieldInfo.name,
           count,
           nlistActual,
@@ -560,18 +670,20 @@ final class IVFasterVectorsWriter extends KnnVectorsWriter {
           (double) cl.primariesMoved / count);
     }
 
-    // 3. Spill fan-out came from clustering, as the Reaper's other output.
-    final int[][] cellsPerDoc = cl.cells;
+    // 2. Spill fan-out came from clustering, as the Reaper's other output.
+    final int cellStride = cl.cellStride;
+    final int[] cells = cl.cells;
     int totalSlots = 0;
     for (int i = 0; i < count; i++) {
-      totalSlots += cellsPerDoc[i].length;
+      totalSlots += cl.cellCount(i);
     }
 
-    // 4. Cell-order layout; see the javadoc.
+    // 3. Cell-order layout; see the javadoc.
     final int[] cellStart = new int[nlistActual + 1];
     for (int i = 0; i < count; i++) {
-      for (int c : cellsPerDoc[i]) {
-        cellStart[c + 1]++;
+      final int n = cl.cellCount(i);
+      for (int k = 0; k < n; k++) {
+        cellStart[cells[i * cellStride + k] + 1]++;
       }
     }
     for (int c = 0; c < nlistActual; c++) {
@@ -581,17 +693,19 @@ final class IVFasterVectorsWriter extends KnnVectorsWriter {
     {
       final int[] cursor = new int[nlistActual];
       for (int i = 0; i < count; i++) {
-        for (int c : cellsPerDoc[i]) {
+        final int n = cl.cellCount(i);
+        for (int k = 0; k < n; k++) {
+          final int c = cells[i * cellStride + k];
           slotDoc[cellStart[c] + cursor[c]++] = i;
         }
       }
     }
-    // WITHIN A CELL, SLOTS ASCEND BY DOC ID: the fill above walks i upward and step 0 made i
-    // ascend with docId, and a document holds at most one slot per cell. Enforced rather than
-    // assumed, since the reader treats a cell as a posting list.
+    // WITHIN A CELL, SLOTS ASCEND BY DOC ID; see the javadoc. Ordinal order is doc order, so the
+    // check is on ordinals. Enforced rather than assumed, since the reader treats a cell as a
+    // posting list.
     for (int c = 0; c < nlistActual; c++) {
       for (int s = cellStart[c] + 1; s < cellStart[c + 1]; s++) {
-        if (docIds[slotDoc[s]] <= docIds[slotDoc[s - 1]]) {
+        if (slotDoc[s] <= slotDoc[s - 1]) {
           throw new IllegalStateException(
               "cell " + c + " is not in ascending doc-id order at slot " + s);
         }
@@ -600,7 +714,8 @@ final class IVFasterVectorsWriter extends KnnVectorsWriter {
 
     // ---- sections ----
     final int codeBytes = quantizer.codeBytes(dim);
-    final int recordLen = CodeRecord.length(codeBytes);
+    final int recordLen = staged.recordLen();
+    final int coarseBytes = staged.coarseBytes();
 
     // S1. centroid float matrix
     final long centroidsOffset = data.getFilePointer();
@@ -611,24 +726,7 @@ final class IVFasterVectorsWriter extends KnnVectorsWriter {
     }
     final long centroidsLength = data.getFilePointer() - centroidsOffset;
 
-    // S2. Document mean, when the fine tier centres its codes; inherited at merge, see the javadoc.
-    final float[] docMean;
-    if (quantizer.needsMean() == false) {
-      docMean = null;
-    } else if (donorMean != null) {
-      docMean = donorMean;
-    } else {
-      docMean = new float[dim];
-      for (int i = 0; i < count; i++) {
-        for (int d = 0; d < dim; d++) {
-          docMean[d] += rotated[i][d];
-        }
-      }
-      for (int d = 0; d < dim; d++) {
-        docMean[d] /= count;
-      }
-    }
-
+    // S2. Document mean, when the fine tier centres its codes; see the javadoc.
     final long meanOffset = data.getFilePointer();
     long meanLength = 0;
     if (docMean != null) {
@@ -638,62 +736,43 @@ final class IVFasterVectorsWriter extends KnnVectorsWriter {
       meanLength = data.getFilePointer() - meanOffset;
     }
 
-    // S3. code table, in cell order: [code][docId][primaryCell][4 correction floats]
+    // S3. code table, in cell order: [code][docId][primaryCell][4 correction floats]. Each record
+    // is gathered from the staged file by ordinal, with the next block hinted ahead of the copy.
     final long codeTableOffset = data.getFilePointer();
     {
-      // Donor records are COPIED, everyone else's encoded; see DonorView.copyRecord.
-      final byte[][] records = new byte[count][];
-      Parallel.overRange(
-          count,
-          (from, to) -> {
-            final byte[] code = new byte[codeBytes];
-            final float[] corrections = new float[4];
-            // Centred for ENCODING only, so this must never write back into `rotated`.
-            final float[] centred = docMean == null ? null : new float[dim];
-            for (int i = from; i < to; i++) {
-              records[i] = new byte[recordLen];
-              if (donorOrd != null && donorOrd[i] >= 0) {
-                donor.copyRecord(donorOrd[i], docIds[i], cellsPerDoc[i][0], records[i]);
-                continue;
-              }
-              float[] toEncode = rotated[i];
-              if (docMean != null) {
-                for (int d = 0; d < dim; d++) {
-                  centred[d] = rotated[i][d] - docMean[d];
-                }
-                toEncode = centred;
-              }
-              quantizer.encode(toEncode, dim, docMean, code, corrections);
-              System.arraycopy(code, 0, records[i], CodeRecord.codeOffset(), codeBytes);
-              CodeRecord.writeIntLE(records[i], CodeRecord.docIdOffset(codeBytes), docIds[i]);
-              CodeRecord.writeIntLE(
-                  records[i], CodeRecord.primaryCellOffset(codeBytes), cellsPerDoc[i][0]);
-              for (int k = 0; k < CodeRecord.CORRECTIONS; k++) {
-                CodeRecord.writeIntLE(
-                    records[i],
-                    CodeRecord.correctionOffset(codeBytes, k),
-                    Float.floatToIntBits(corrections[k]));
-              }
-            }
-          });
+      final byte[] rec = new byte[recordLen];
+      final int primaryOff = CodeRecord.primaryCellOffset(codeBytes);
       for (int s = 0; s < totalSlots; s++) {
+        if ((s & (GATHER_AHEAD - 1)) == 0) {
+          final int end = Math.min(totalSlots, s + GATHER_AHEAD);
+          for (int p = s; p < end; p++) {
+            staged.prefetch(slotDoc[p]);
+          }
+        }
         final int i = slotDoc[s];
+        staged.copyRecord(i, rec);
         // Every copy names the PRIMARY cell; see the javadoc.
-        CodeRecord.writeIntLE(
-            records[i], CodeRecord.primaryCellOffset(codeBytes), cellsPerDoc[i][0]);
-        data.writeBytes(records[i], 0, recordLen);
+        CodeRecord.writeIntLE(rec, primaryOff, cells[i * cellStride]);
+        data.writeBytes(rec, 0, recordLen);
       }
     }
     final long codeTableLength = data.getFilePointer() - codeTableOffset;
     t = traceStage("codeTable", totalSlots, t);
 
-    // S4. Coarse codes, one record per slot, in slot order; a sequential copy of the packed
-    // payload.
-    final byte[] planeBuf = planes.buffer();
-    final int coarseBytes = Nitrox2.bytesPerVector(dim);
+    // S4. Coarse codes, one record per slot, in slot order, gathered the same way.
     final long coarseOffset = data.getFilePointer();
-    for (int s = 0; s < totalSlots; s++) {
-      data.writeBytes(planeBuf, planes.offset(slotDoc[s]), coarseBytes);
+    {
+      final byte[] planes = new byte[coarseBytes];
+      for (int s = 0; s < totalSlots; s++) {
+        if ((s & (GATHER_AHEAD - 1)) == 0) {
+          final int end = Math.min(totalSlots, s + GATHER_AHEAD);
+          for (int p = s; p < end; p++) {
+            staged.prefetch(slotDoc[p]);
+          }
+        }
+        staged.copyCoarse(slotDoc[s], planes);
+        data.writeBytes(planes, 0, coarseBytes);
+      }
     }
     final long coarseLength = data.getFilePointer() - coarseOffset;
     t = traceStage("coarseSection", totalSlots, t);
@@ -724,7 +803,7 @@ final class IVFasterVectorsWriter extends KnnVectorsWriter {
       for (int c = 0; c < nlistActual; c++) {
         for (int s = cellStart[c]; s < cellStart[c + 1]; s++) {
           final int i = slotDoc[s];
-          if (cellsPerDoc[i][0] == c) {
+          if (cells[i * cellStride] == c) {
             primarySlot[i] = s;
           }
         }
@@ -735,15 +814,10 @@ final class IVFasterVectorsWriter extends KnnVectorsWriter {
     }
     final long ordToSlotLength = data.getFilePointer() - ordToSlotOffset;
 
-    // S8. Full-precision vectors, in VECTOR-ORDINAL order; see the javadoc.
+    // S8. Full-precision vectors, in VECTOR-ORDINAL order, by concatenation; see the javadoc.
     final long rawOffset = data.getFilePointer();
-    if (keepFullPrecision) {
-      for (int i = 0; i < count; i++) {
-        final float[] vec = vectors[i];
-        for (int d = 0; d < dim; d++) {
-          data.writeInt(Float.floatToIntBits(vec[d]));
-        }
-      }
+    if (staged.rawLength() > 0) {
+      data.copyBytes(staged.rawInput(), staged.rawLength());
     }
     final long rawLength = data.getFilePointer() - rawOffset;
 
@@ -770,6 +844,13 @@ final class IVFasterVectorsWriter extends KnnVectorsWriter {
     writeMeta(fieldInfo, dim, sim, quantizer, nlistActual, count, sec);
     traceStage("tailSections", count, t);
   }
+
+  /**
+   * Records hinted ahead of the emission gather, a power of two. The gather reads staged records in
+   * cell order, which is a permutation of the file, so each block's ordinals are hinted before any
+   * of them is copied and the faults of a cold temp file overlap.
+   */
+  private static final int GATHER_AHEAD = 256;
 
   /** A field with no vectors still needs a meta record, so the reader can report zero results. */
   private void writeEmptyField(
@@ -916,36 +997,6 @@ final class IVFasterVectorsWriter extends KnnVectorsWriter {
     return order;
   }
 
-  private static float[][] permute(float[][] a, int[] order) {
-    final float[][] out = new float[order.length][];
-    for (int i = 0; i < order.length; i++) {
-      out[i] = a[order[i]];
-    }
-    return out;
-  }
-
-  private static int[] permute(int[] a, int[] order) {
-    if (a == null) {
-      return null;
-    }
-    final int[] out = new int[order.length];
-    for (int i = 0; i < order.length; i++) {
-      out[i] = a[order[i]];
-    }
-    return out;
-  }
-
-  private static boolean[] permute(boolean[] a, int[] order) {
-    if (a == null) {
-      return null;
-    }
-    final boolean[] out = new boolean[order.length];
-    for (int i = 0; i < order.length; i++) {
-      out[i] = a[order[i]];
-    }
-    return out;
-  }
-
   /**
    * The fine tier to encode with, from the format's configured {@link
    * IVFasterVectorsFormat.FineTier}.
@@ -1064,14 +1115,28 @@ final class IVFasterVectorsWriter extends KnnVectorsWriter {
       }
     }
 
+    /**
+     * The buffer's retained size, which is the writer's whole heap footprint for this field: flush
+     * stages the buffer to a temp file and drains it as it goes, so there is no transient peak
+     * beyond it for IndexWriter's RAM accounting to miss.
+     */
     @Override
     public long ramBytesUsed() {
       if (size == 0) {
         return 0;
       }
-      return RamUsageEstimator.NUM_BYTES_OBJECT_REF * (long) vectors.length
-          + (long) size * (RamUsageEstimator.NUM_BYTES_ARRAY_HEADER + (long) dim * Float.BYTES)
-          + (long) docIds.length * Integer.BYTES;
+      return RamUsageEstimator.shallowSizeOf(vectors)
+          + (long) size
+              * RamUsageEstimator.alignObjectSize(
+                  RamUsageEstimator.NUM_BYTES_ARRAY_HEADER + (long) dim * Float.BYTES)
+          + RamUsageEstimator.sizeOf(docIds);
+    }
+
+    /** Drops the buffer once the field is written, so {@link #ramBytesUsed} reads zero. */
+    void release() {
+      vectors = null;
+      docIds = null;
+      size = 0;
     }
   }
 }

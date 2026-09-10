@@ -151,7 +151,7 @@ public class TestClustering extends LuceneTestCase {
         }
         if (CentroidCodes.withinMargin(best, second, Clustering.MARGIN)) {
           shouldSpill++;
-          if (r.cells[i].length < 2) {
+          if (r.cellCount(i) < 2) {
             missed++;
           }
         }
@@ -196,8 +196,10 @@ public class TestClustering extends LuceneTestCase {
               spillBits,
               1.0f);
       for (int i = 0; i < count; i++) {
-        final int[] cells = r.cells[i];
-        assertNotNull("document " + i + " must have cells at spillBits=" + spillBits, cells);
+        final int[] cells = new int[r.cellCount(i)];
+        for (int k = 0; k < cells.length; k++) {
+          cells[k] = r.cell(i, k);
+        }
         assertTrue("at least the primary", cells.length >= 1);
         assertTrue(
             "spill cap exceeded at spillBits=" + spillBits + ": " + cells.length,
@@ -266,6 +268,112 @@ public class TestClustering extends LuceneTestCase {
     for (int c = 0; c < nlist; c++) {
       assertArrayEquals(
           "centroid " + c + " must be identical", r1.centroids[c], r2.centroids[c], 0f);
+    }
+  }
+
+  /**
+   * The centroids are read off sums maintained INCREMENTALLY as documents route and move. Those
+   * sums must equal, exactly, a recompute from the final assignments: they are fixed-point
+   * integers, so equality is bitwise and independent of the thread schedule that produced them.
+   */
+  public void testIncrementalSumsEqualRecompute() throws IOException {
+    final int count = 2500;
+    final int nlist = 32;
+    final float[][] vectors = clusteredCorpus(count, nlist, DIM);
+    final Clustering.Result r =
+        Clustering.cluster(vectors, count, DIM, nlist, 4, VectorSimilarityFunction.EUCLIDEAN, null);
+    final long[] expect = new long[nlist * DIM];
+    final int[] members = new int[nlist];
+    for (int i = 0; i < count; i++) {
+      final int c = r.assignment[i];
+      members[c]++;
+      for (int d = 0; d < DIM; d++) {
+        expect[c * DIM + d] += Clustering.fixed(vectors[i][d]);
+      }
+    }
+    assertArrayEquals("member counts", members, r.members);
+    assertArrayEquals("fixed-point sums", expect, r.sums);
+  }
+
+  /**
+   * Clustering over a staged temp file must produce EXACTLY what clustering over the same vectors
+   * in heap produces. With the FP32 fine tier the staged record is the vector verbatim, so the two
+   * sources hand the loop identical floats and identical coarse codes, and everything downstream is
+   * deterministic.
+   *
+   * <p>The corpus is generated on the fly and never held whole while staging, which is the shape
+   * the writer relies on for a segment larger than heap.
+   */
+  public void testStagedSourceMatchesHeapSource() throws IOException {
+    final int count = 20_000;
+    final int dim = 48;
+    final int nlist = 64;
+    final long seed = random().nextLong();
+    try (org.apache.lucene.store.Directory dir = newDirectory()) {
+      final StagedVectors.Builder b =
+          StagedVectors.begin(
+              dir,
+              "_c",
+              org.apache.lucene.store.IOContext.DEFAULT,
+              dim,
+              new Fp32Quantizer(),
+              null,
+              false);
+      final int chunkOrds = 1024;
+      final byte[] chunk = b.chunk(chunkOrds);
+      final StagedVectors.Builder.EncodeScratch sc = b.encodeScratch();
+      final java.util.Random gen = new java.util.Random(seed);
+      final float[] v = new float[dim];
+      for (int start = 0; start < count; start += chunkOrds) {
+        final int n = Math.min(chunkOrds, count - start);
+        for (int j = 0; j < n; j++) {
+          nextUnit(gen, v);
+          b.encodeInto(v, start + j, chunk, j * b.stride, sc);
+        }
+        b.writeChunk(chunk, null, n);
+      }
+      final Clustering.Result staged;
+      try (StagedVectors src = b.finish()) {
+        staged =
+            Clustering.cluster(
+                src, nlist, 3, VectorSimilarityFunction.DOT_PRODUCT, null, null, 2, 1.0f);
+      }
+      // The reference: the same vectors, regenerated, clustered from heap.
+      final java.util.Random again = new java.util.Random(seed);
+      final float[][] vectors = new float[count][];
+      for (int i = 0; i < count; i++) {
+        vectors[i] = new float[dim];
+        nextUnit(again, vectors[i]);
+      }
+      final Clustering.Result heap =
+          Clustering.cluster(
+              vectors,
+              count,
+              dim,
+              nlist,
+              3,
+              VectorSimilarityFunction.DOT_PRODUCT,
+              null,
+              null,
+              2,
+              1.0f);
+      assertArrayEquals("assignments", heap.assignment, staged.assignment);
+      assertArrayEquals("cells", heap.cells, staged.cells);
+      for (int c = 0; c < nlist; c++) {
+        assertArrayEquals("centroid " + c, heap.centroids[c], staged.centroids[c], 0f);
+      }
+    }
+  }
+
+  private static void nextUnit(java.util.Random gen, float[] v) {
+    double norm = 0;
+    for (int d = 0; d < v.length; d++) {
+      v[d] = (float) gen.nextGaussian();
+      norm += (double) v[d] * v[d];
+    }
+    norm = Math.sqrt(norm);
+    for (int d = 0; d < v.length; d++) {
+      v[d] /= (float) norm;
     }
   }
 
