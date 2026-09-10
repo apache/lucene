@@ -159,19 +159,6 @@ public class KnnJoinSetMergeBenchmark {
     }
     root = Files.createTempDirectory("knnJoinSetMergeBenchmark");
     frozenIndex = root.resolve("frozen");
-    System.out.println(
-        "trial setup segmentType="
-            + segmentType
-            + " numSegments="
-            + numSegments
-            + " vectorsPerSegment="
-            + vectorsPerSegment
-            + " dim="
-            + dim
-            + " beamWidth="
-            + beamWidth
-            + " mergerType="
-            + mergerType);
     buildIndex(frozenIndex);
   }
 
@@ -225,30 +212,6 @@ public class KnnJoinSetMergeBenchmark {
                 + " fanIn="
                 + stats.fanIn);
       }
-      System.out.println(
-          "segmentType="
-              + segmentType
-              + " mergerType="
-              + mergerType
-              + " numSegments="
-              + numSegments
-              + " vectorsPerSegment="
-              + vectorsPerSegment
-              + " dim="
-              + dim
-              + " maxDoc="
-              + maxDoc
-              + " numDocs="
-              + numDocs
-              + " merges="
-              + stats.mergeCount.get()
-              + " fanIn="
-              + stats.fanIn
-              + " leftover="
-              + segments);
-      System.out.println(
-          String.format(
-              Locale.ROOT, "recall@10=%.4f queries=%d k=%d", recall, RECALL_QUERIES, RECALL_K));
       return checksum;
     } finally {
       IOUtils.rm(runPath);
@@ -337,9 +300,6 @@ public class KnnJoinSetMergeBenchmark {
         fillUnitVector(random, vec);
         vecField.setVectorValue(vec.clone());
         w.addDocument(doc);
-        if ((i + 1) % vectorsPerSegment == 0) {
-          System.out.println("flushed seg " + ((i + 1) / vectorsPerSegment) + "/" + numSegments);
-        }
       }
       if ("dirty".equals(segmentType)) {
         applyDeletes(w);
@@ -353,13 +313,6 @@ public class KnnJoinSetMergeBenchmark {
         throw new IllegalStateException(
             "expected " + numSegments + " frozen leaves, got " + frozenLeaves);
       }
-      System.out.println(
-          "frozen leaves="
-              + frozenLeaves
-              + " maxDoc="
-              + reader.maxDoc()
-              + " numDocs="
-              + reader.numDocs());
     }
   }
 
@@ -522,7 +475,7 @@ public class KnnJoinSetMergeBenchmark {
 
     @Override
     public void message(String component, String message) {
-      System.out.println("HNSW: " + message);
+      // enabled but silent — forces HNSW merge to compute and log counters
     }
 
     @Override

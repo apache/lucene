@@ -497,6 +497,9 @@ Optimizations
 * GITHUB#16631: Vectorize the uint4 nibble unpack used by Lucene104ScalarQuantizedVectorsFormat
   via VectorUtilSupport, vectors are now unpacked with the Panama Vector API. (Jakub Slowinski)
 
+* GITHUB#16664: Speed up concurrent HNSW merge by using source-graph entry points for reduced-beam
+  insertion. (Costin Leau)
+
 Bug Fixes
 ---------------------
 
