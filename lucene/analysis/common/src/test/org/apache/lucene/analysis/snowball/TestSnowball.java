@@ -18,8 +18,10 @@ package org.apache.lucene.analysis.snowball;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.StringReader;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
@@ -141,5 +143,124 @@ public class TestSnowball extends BaseTokenStreamTestCase {
         };
     checkRandomData(random(), a, 20 * RANDOM_MULTIPLIER);
     a.close();
+  }
+
+  public void testCacheProducesSameOutput() throws Exception {
+    String input = "he abhorred accents running acknowledging internationalization";
+
+    List<String> uncached = stemAll(input, 0);
+    List<String> cached = stemAll(input, 1024);
+
+    assertEquals(uncached, cached);
+  }
+
+  public void testCacheDisabled() throws Exception {
+    Analyzer a =
+        new Analyzer() {
+          @Override
+          protected TokenStreamComponents createComponents(String fieldName) {
+            Tokenizer tokenizer = new MockTokenizer();
+            return new TokenStreamComponents(
+                tokenizer, new SnowballFilter(tokenizer, "English", 0));
+          }
+        };
+
+    assertAnalyzesTo(a, "he abhorred accents", new String[] {"he", "abhor", "accent"});
+    a.close();
+  }
+
+  public void testLongTokensBypassCache() throws Exception {
+    String input = "acknowledging internationalization";
+
+    List<String> uncached = stemAll(input, 0);
+    List<String> cached = stemAll(input, 1024);
+
+    assertEquals(uncached, cached);
+    assertEquals(2, cached.size());
+  }
+
+  public void testCacheAccumulatesAcrossReset() throws Exception {
+    String input = "he abhorred accents";
+    String[] expected = new String[] {"he", "abhor", "accent"};
+
+    Analyzer a =
+        new Analyzer() {
+          @Override
+          protected TokenStreamComponents createComponents(String fieldName) {
+            Tokenizer tokenizer = new MockTokenizer();
+            return new TokenStreamComponents(
+                tokenizer, new SnowballFilter(tokenizer, "English", 1024));
+          }
+        };
+
+    assertAnalyzesTo(a, input, expected);
+    assertAnalyzesTo(a, input, expected);
+    a.close();
+  }
+
+  public void testCacheActuallyHits() throws Exception {
+    int[] stemCallCount = {0};
+    org.tartarus.snowball.ext.EnglishStemmer countingStemmer =
+        new org.tartarus.snowball.ext.EnglishStemmer() {
+          @Override
+          public boolean stem() {
+            stemCallCount[0]++;
+            return super.stem();
+          }
+        };
+
+    Analyzer a =
+        new Analyzer() {
+          @Override
+          protected TokenStreamComponents createComponents(String fieldName) {
+            Tokenizer tokenizer = new MockTokenizer();
+            return new TokenStreamComponents(
+                tokenizer, new SnowballFilter(tokenizer, countingStemmer, 1024));
+          }
+        };
+
+    try (TokenStream ts = a.tokenStream("field", new StringReader("running jumping"))) {
+      ts.reset();
+      while (ts.incrementToken()) {}
+      ts.end();
+    }
+    assertEquals(2, stemCallCount[0]);
+
+    try (TokenStream ts = a.tokenStream("field", new StringReader("running jumping"))) {
+      CharTermAttribute termAtt = ts.addAttribute(CharTermAttribute.class);
+      ts.reset();
+      List<String> stems = new ArrayList<>();
+      while (ts.incrementToken()) {
+        stems.add(termAtt.toString());
+      }
+      ts.end();
+      assertEquals(List.of("run", "jump"), stems);
+    }
+    assertEquals("Cache should prevent additional stem() calls", 2, stemCallCount[0]);
+
+    a.close();
+  }
+
+  private List<String> stemAll(String input, int cacheSize) throws IOException {
+    List<String> result = new ArrayList<>();
+    Analyzer a =
+        new Analyzer() {
+          @Override
+          protected TokenStreamComponents createComponents(String fieldName) {
+            Tokenizer tokenizer = new MockTokenizer();
+            return new TokenStreamComponents(
+                tokenizer, new SnowballFilter(tokenizer, "English", cacheSize));
+          }
+        };
+    try (TokenStream ts = a.tokenStream("field", new StringReader(input))) {
+      CharTermAttribute termAtt = ts.addAttribute(CharTermAttribute.class);
+      ts.reset();
+      while (ts.incrementToken()) {
+        result.add(termAtt.toString());
+      }
+      ts.end();
+    }
+    a.close();
+    return result;
   }
 }
