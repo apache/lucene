@@ -330,7 +330,7 @@ public abstract class SpanWeight extends Weight {
             void collectInnerTerms() throws IOException {
               termCollector.reset();
               spans.collect(termCollector);
-              Arrays.sort(innerTerms, 0, innerTermCount, Comparator.comparing(a -> a.position));
+              Arrays.sort(innerTerms, 0, innerTermCount, Comparator.comparingInt(a -> a.position));
             }
           };
         });

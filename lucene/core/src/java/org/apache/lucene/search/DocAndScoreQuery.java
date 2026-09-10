@@ -25,9 +25,16 @@ import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.ReaderUtil;
 
 /** A query that wraps precomputed documents and scores */
 class DocAndScoreQuery extends Query {
+
+  /** Optional hook to explain why a doc is missing. Returns null for the generic message. */
+  @FunctionalInterface
+  interface NoMatchExplainer {
+    Explanation explain(LeafReaderContext context, int doc, int topN) throws IOException;
+  }
 
   private final int[] docs;
   private final float[] scores;
@@ -36,6 +43,8 @@ class DocAndScoreQuery extends Query {
   private final long visited;
   private final Object contextIdentity;
   private final int reentryCount;
+  // Only used in explain(). Omitted from equals()/hashCode().
+  private final NoMatchExplainer noMatchExplainer;
 
   /**
    * Constructor
@@ -60,6 +69,18 @@ class DocAndScoreQuery extends Query {
       long visited,
       Object contextIdentity,
       int reentryCount) {
+    this(docs, scores, maxScore, segmentStarts, visited, contextIdentity, reentryCount, null);
+  }
+
+  DocAndScoreQuery(
+      int[] docs,
+      float[] scores,
+      float maxScore,
+      int[] segmentStarts,
+      long visited,
+      Object contextIdentity,
+      int reentryCount,
+      NoMatchExplainer noMatchExplainer) {
     this.docs = docs;
     this.scores = scores;
     this.maxScore = maxScore;
@@ -67,9 +88,15 @@ class DocAndScoreQuery extends Query {
     this.visited = visited;
     this.contextIdentity = contextIdentity;
     this.reentryCount = reentryCount;
+    this.noMatchExplainer = noMatchExplainer;
   }
 
   static Query createDocAndScoreQuery(IndexReader reader, TopDocs topK, int reentryCount) {
+    return createDocAndScoreQuery(reader, topK, reentryCount, null);
+  }
+
+  static Query createDocAndScoreQuery(
+      IndexReader reader, TopDocs topK, int reentryCount, NoMatchExplainer noMatchExplainer) {
     int len = topK.scoreDocs.length;
     assert len > 0;
     float maxScore = topK.scoreDocs[0].score;
@@ -88,7 +115,8 @@ class DocAndScoreQuery extends Query {
         segmentStarts,
         topK.totalHits.value(),
         reader.getContext().id(),
-        reentryCount);
+        reentryCount,
+        noMatchExplainer);
   }
 
   static int[] findSegmentStarts(List<LeafReaderContext> leaves, int[] docs) {
@@ -121,12 +149,21 @@ class DocAndScoreQuery extends Query {
     }
     return new Weight(this) {
       @Override
-      public Explanation explain(LeafReaderContext context, int doc) {
+      public Explanation explain(LeafReaderContext context, int doc) throws IOException {
         int found = Arrays.binarySearch(docs, doc + context.docBase);
         if (found < 0) {
-          return Explanation.noMatch("not in top " + docs.length + " docs");
+          // Defer to the originating query for a richer reason, but only when this leaf belongs
+          // to the reader this query was built against.
+          if (noMatchExplainer != null
+              && ReaderUtil.getTopLevelContext(context).id() == contextIdentity) {
+            Explanation enriched = noMatchExplainer.explain(context, doc, docs.length);
+            if (enriched != null) {
+              return enriched;
+            }
+          }
+          return Explanation.noMatch("Not in top " + docs.length + " doc(s)");
         }
-        return Explanation.match(scores[found] * boost, "within top " + docs.length + " docs");
+        return Explanation.match(scores[found] * boost, "Within top " + docs.length + " doc(s)");
       }
 
       @Override
@@ -218,7 +255,7 @@ class DocAndScoreQuery extends Query {
 
   @Override
   public String toString(String field) {
-    return "DocAndScoreQuery[" + docs[0] + ",...][" + scores[0] + ",...]," + maxScore;
+    return "DocAndScoreQuery[" + docs.length + " doc(s), maxScore=" + maxScore + "]";
   }
 
   @Override

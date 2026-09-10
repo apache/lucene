@@ -44,7 +44,7 @@ import org.apache.lucene.util.quantization.ScalarQuantizer;
  *
  * <p>Usage: This class is used for read-only indexes where full-precision float vectors have been
  * dropped from the index to save storage space. Full-precision vectors can be removed from an index
- * using a method as implemnted in {@code
+ * using a method as implemented in {@code
  * TestLucene99ScalarQuantizedVectorsFormat.simulateEmptyRawVectors()}.
  *
  * @lucene.internal

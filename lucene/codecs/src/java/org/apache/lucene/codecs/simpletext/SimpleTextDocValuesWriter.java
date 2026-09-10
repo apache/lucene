@@ -20,7 +20,9 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import org.apache.lucene.codecs.DocValuesConsumer;
@@ -60,6 +62,17 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
   // used for sorted bytes
   static final BytesRef NUMVALUES = new BytesRef("  numvalues ");
   static final BytesRef ORDPATTERN = new BytesRef("  ordpattern ");
+  // used for skip data
+  static final BytesRef SKIP_DATA = new BytesRef("  skipdata");
+  static final BytesRef SKIP_INTERVAL = new BytesRef("    interval");
+  static final BytesRef SKIP_MIN_DOC_ID = new BytesRef("      minDocID ");
+  static final BytesRef SKIP_MAX_DOC_ID = new BytesRef("      maxDocID ");
+  static final BytesRef SKIP_MIN_VALUE = new BytesRef("      minValue ");
+  static final BytesRef SKIP_MAX_VALUE = new BytesRef("      maxValue ");
+  static final BytesRef SKIP_DOC_COUNT = new BytesRef("      docCount ");
+  static final BytesRef SKIP_END = new BytesRef("  skipend");
+
+  static final int SKIP_INTERVAL_SIZE = 8;
 
   IndexOutput data;
   final BytesRefBuilder scratch = new BytesRefBuilder();
@@ -91,16 +104,50 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
     assert field.getDocValuesType() == DocValuesType.NUMERIC || field.hasNorms();
     writeFieldEntry(field, DocValuesType.NUMERIC);
 
-    // first pass to find min/max
+    // first pass to find min/max and accumulate skip intervals
     long minValue = Long.MAX_VALUE;
     long maxValue = Long.MIN_VALUE;
     NumericDocValues values = valuesProducer.getNumeric(field);
     int numValues = 0;
+    List<SkipInterval> skipIntervals = new ArrayList<>();
+    int intervalDocCount = 0;
+    int intervalMinDocID = -1;
+    int intervalMaxDocID = -1;
+    long intervalMinValue = Long.MAX_VALUE;
+    long intervalMaxValue = Long.MIN_VALUE;
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
       long v = values.longValue();
       minValue = Math.min(minValue, v);
       maxValue = Math.max(maxValue, v);
       numValues++;
+      if (intervalDocCount == 0) {
+        intervalMinDocID = doc;
+      }
+      intervalMaxDocID = doc;
+      intervalMinValue = Math.min(intervalMinValue, v);
+      intervalMaxValue = Math.max(intervalMaxValue, v);
+      intervalDocCount++;
+      if (intervalDocCount == SKIP_INTERVAL_SIZE) {
+        skipIntervals.add(
+            new SkipInterval(
+                intervalMinDocID,
+                intervalMaxDocID,
+                intervalMinValue,
+                intervalMaxValue,
+                intervalDocCount));
+        intervalDocCount = 0;
+        intervalMinValue = Long.MAX_VALUE;
+        intervalMaxValue = Long.MIN_VALUE;
+      }
+    }
+    if (intervalDocCount > 0) {
+      skipIntervals.add(
+          new SkipInterval(
+              intervalMinDocID,
+              intervalMaxDocID,
+              intervalMinValue,
+              intervalMaxValue,
+              intervalDocCount));
     }
 
     // write absolute min and max for skipper
@@ -178,6 +225,8 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
     }
 
     assert numDocs == numDocsWritten : "numDocs=" + numDocs + " numDocsWritten=" + numDocsWritten;
+
+    writeSkipData(skipIntervals);
   }
 
   @Override
@@ -274,10 +323,46 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
     writeFieldEntry(field, DocValuesType.SORTED);
 
     int docCount = 0;
+    List<SkipInterval> skipIntervals = new ArrayList<>();
+    int intervalDocCount = 0;
+    int intervalMinDocID = -1;
+    int intervalMaxDocID = -1;
+    long intervalMinValue = Long.MAX_VALUE;
+    long intervalMaxValue = Long.MIN_VALUE;
     SortedDocValues values = valuesProducer.getSorted(field);
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
       ++docCount;
+      int ord = values.ordValue();
+      if (intervalDocCount == 0) {
+        intervalMinDocID = doc;
+      }
+      intervalMaxDocID = doc;
+      intervalMinValue = Math.min(intervalMinValue, ord);
+      intervalMaxValue = Math.max(intervalMaxValue, ord);
+      intervalDocCount++;
+      if (intervalDocCount == SKIP_INTERVAL_SIZE) {
+        skipIntervals.add(
+            new SkipInterval(
+                intervalMinDocID,
+                intervalMaxDocID,
+                intervalMinValue,
+                intervalMaxValue,
+                intervalDocCount));
+        intervalDocCount = 0;
+        intervalMinValue = Long.MAX_VALUE;
+        intervalMaxValue = Long.MIN_VALUE;
+      }
     }
+    if (intervalDocCount > 0) {
+      skipIntervals.add(
+          new SkipInterval(
+              intervalMinDocID,
+              intervalMaxDocID,
+              intervalMinValue,
+              intervalMaxValue,
+              intervalDocCount));
+    }
+
     SimpleTextUtil.write(data, DOCCOUNT);
     SimpleTextUtil.write(data, Integer.toString(docCount), scratch);
     SimpleTextUtil.writeNewline(data);
@@ -368,6 +453,8 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
       SimpleTextUtil.write(data, ordEncoder.format(ord + 1L), scratch);
       SimpleTextUtil.writeNewline(data);
     }
+
+    writeSkipData(skipIntervals);
   }
 
   @Override
@@ -380,15 +467,49 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
     long minValue = Long.MAX_VALUE;
     long maxValue = Long.MIN_VALUE;
     int maxValueCount = 0;
+    List<SkipInterval> skipIntervals = new ArrayList<>();
+    int intervalDocCount = 0;
+    int intervalMinDocID = -1;
+    int intervalMaxDocID = -1;
+    long intervalMinValue = Long.MAX_VALUE;
+    long intervalMaxValue = Long.MIN_VALUE;
     SortedNumericDocValues values = valuesProducer.getSortedNumeric(field);
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
       int valueCount = values.docValueCount();
       maxValueCount = Math.max(maxValueCount, valueCount);
+      if (intervalDocCount == 0) {
+        intervalMinDocID = doc;
+      }
+      intervalMaxDocID = doc;
       for (int i = 0; i < valueCount; ++i) {
         long v = values.nextValue();
         minValue = Math.min(minValue, v);
         maxValue = Math.max(maxValue, v);
+        intervalMinValue = Math.min(intervalMinValue, v);
+        intervalMaxValue = Math.max(intervalMaxValue, v);
       }
+      intervalDocCount++;
+      if (intervalDocCount == SKIP_INTERVAL_SIZE) {
+        skipIntervals.add(
+            new SkipInterval(
+                intervalMinDocID,
+                intervalMaxDocID,
+                intervalMinValue,
+                intervalMaxValue,
+                intervalDocCount));
+        intervalDocCount = 0;
+        intervalMinValue = Long.MAX_VALUE;
+        intervalMaxValue = Long.MIN_VALUE;
+      }
+    }
+    if (intervalDocCount > 0) {
+      skipIntervals.add(
+          new SkipInterval(
+              intervalMinDocID,
+              intervalMaxDocID,
+              intervalMinValue,
+              intervalMaxValue,
+              intervalDocCount));
     }
 
     // write absolute min and max for skipper
@@ -466,6 +587,8 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
           }
         },
         maxValueCount);
+
+    writeSkipData(skipIntervals);
   }
 
   @Override
@@ -477,11 +600,50 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
 
     int docCount = 0;
     int maxValueCount = 0;
+    List<SkipInterval> skipIntervals = new ArrayList<>();
+    int intervalDocCount = 0;
+    int intervalMinDocID = -1;
+    int intervalMaxDocID = -1;
+    long intervalMinValue = Long.MAX_VALUE;
+    long intervalMaxValue = Long.MIN_VALUE;
     SortedSetDocValues values = valuesProducer.getSortedSet(field);
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
       ++docCount;
-      maxValueCount = Math.max(maxValueCount, values.docValueCount());
+      int valueCount = values.docValueCount();
+      maxValueCount = Math.max(maxValueCount, valueCount);
+      if (intervalDocCount == 0) {
+        intervalMinDocID = doc;
+      }
+      intervalMaxDocID = doc;
+      for (int i = 0; i < valueCount; i++) {
+        long ord = values.nextOrd();
+        intervalMinValue = Math.min(intervalMinValue, ord);
+        intervalMaxValue = Math.max(intervalMaxValue, ord);
+      }
+      intervalDocCount++;
+      if (intervalDocCount == SKIP_INTERVAL_SIZE) {
+        skipIntervals.add(
+            new SkipInterval(
+                intervalMinDocID,
+                intervalMaxDocID,
+                intervalMinValue,
+                intervalMaxValue,
+                intervalDocCount));
+        intervalDocCount = 0;
+        intervalMinValue = Long.MAX_VALUE;
+        intervalMaxValue = Long.MIN_VALUE;
+      }
     }
+    if (intervalDocCount > 0) {
+      skipIntervals.add(
+          new SkipInterval(
+              intervalMinDocID,
+              intervalMaxDocID,
+              intervalMinValue,
+              intervalMaxValue,
+              intervalDocCount));
+    }
+
     SimpleTextUtil.write(data, DOCCOUNT);
     SimpleTextUtil.write(data, Integer.toString(docCount), scratch);
     SimpleTextUtil.writeNewline(data);
@@ -532,7 +694,7 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
         if (sb2.length() > 0) {
           sb2.append(",");
         }
-        sb2.append(Long.toString(values.nextOrd()));
+        sb2.append(values.nextOrd());
       }
       maxOrdListLength = Math.max(maxOrdListLength, sb2.length());
     }
@@ -586,7 +748,7 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
           if (sb2.length() > 0) {
             sb2.append(",");
           }
-          sb2.append(Long.toString(values.nextOrd()));
+          sb2.append(values.nextOrd());
         }
       }
       // now pad to fit: these are numbers so spaces work well. reader calls trim()
@@ -597,6 +759,36 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
       SimpleTextUtil.write(data, sb2.toString(), scratch);
       SimpleTextUtil.writeNewline(data);
     }
+
+    writeSkipData(skipIntervals);
+  }
+
+  record SkipInterval(int minDocID, int maxDocID, long minValue, long maxValue, int docCount) {}
+
+  private void writeSkipData(List<SkipInterval> intervals) throws IOException {
+    SimpleTextUtil.write(data, SKIP_DATA);
+    SimpleTextUtil.writeNewline(data);
+    for (SkipInterval interval : intervals) {
+      SimpleTextUtil.write(data, SKIP_INTERVAL);
+      SimpleTextUtil.writeNewline(data);
+      SimpleTextUtil.write(data, SKIP_MIN_DOC_ID);
+      SimpleTextUtil.write(data, Integer.toString(interval.minDocID), scratch);
+      SimpleTextUtil.writeNewline(data);
+      SimpleTextUtil.write(data, SKIP_MAX_DOC_ID);
+      SimpleTextUtil.write(data, Integer.toString(interval.maxDocID), scratch);
+      SimpleTextUtil.writeNewline(data);
+      SimpleTextUtil.write(data, SKIP_MIN_VALUE);
+      SimpleTextUtil.write(data, Long.toString(interval.minValue), scratch);
+      SimpleTextUtil.writeNewline(data);
+      SimpleTextUtil.write(data, SKIP_MAX_VALUE);
+      SimpleTextUtil.write(data, Long.toString(interval.maxValue), scratch);
+      SimpleTextUtil.writeNewline(data);
+      SimpleTextUtil.write(data, SKIP_DOC_COUNT);
+      SimpleTextUtil.write(data, Integer.toString(interval.docCount), scratch);
+      SimpleTextUtil.writeNewline(data);
+    }
+    SimpleTextUtil.write(data, SKIP_END);
+    SimpleTextUtil.writeNewline(data);
   }
 
   /** write the header for this field */

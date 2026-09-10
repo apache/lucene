@@ -80,6 +80,20 @@ public abstract class DataInput implements Cloneable {
   }
 
   /**
+   * Reads a specified number of shorts into an array at the specified offset.
+   *
+   * @param values the array to read shorts into
+   * @param offset the offset in the array to start storing shorts
+   * @param len the number of shorts to read
+   */
+  public void readShorts(short[] values, int offset, int len) throws IOException {
+    Objects.checkFromIndexSize(offset, len, values.length);
+    for (int i = 0; i < len; i++) {
+      values[offset + i] = readShort();
+    }
+  }
+
+  /**
    * Reads four bytes and returns an int (LE byte order).
    *
    * @see DataOutput#writeInt(int)

@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.util.FixedBitSet;
 
 public class TestDocValuesRangeIterator extends BaseDocValuesSkipperTests {
 
@@ -271,23 +272,51 @@ public class TestDocValuesRangeIterator extends BaseDocValuesSkipperTests {
     DocValuesRangeIterator iter = createIterator(true);
     SkipBlockRangeIterator approx = (SkipBlockRangeIterator) iter.approximation();
 
-    // MAYBE blocks cannot guarantee all docs match, so docIdRunEnd = doc + 1
+    // MAYBE block, no match: docIDRunEnd returns docID to signal an empty run.
     approx.advance(512);
     assertEquals(SkipBlockRangeIterator.Match.MAYBE, approx.getMatch());
-    assertEquals(513, iter.docIDRunEnd());
+    assertFalse(iter.matches());
+    assertEquals(512, iter.docIDRunEnd());
 
-    approx.advance(800);
+    // MAYBE block, match: docIDRunEnd returns docID to signal an empty run.
+    approx.advance(514);
     assertEquals(SkipBlockRangeIterator.Match.MAYBE, approx.getMatch());
-    assertEquals(801, iter.docIDRunEnd());
+    assertTrue(iter.matches());
+    assertEquals(514, iter.docIDRunEnd());
   }
 
   public void testDocIdRunEndYesIfPresentBlock() throws IOException {
     DocValuesRangeIterator iter = createIterator(true);
     SkipBlockRangeIterator approx = (SkipBlockRangeIterator) iter.approximation();
 
-    // YES_IF_PRESENT blocks have gaps, so docIdRunEnd = doc + 1
+    // YES_IF_PRESENT block, match: docIDRunEnd returns docID to signal an empty run.
     approx.advance(1088);
     assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, approx.getMatch());
+    assertTrue(iter.matches());
+    assertEquals(1088, iter.docIDRunEnd());
+
+    // YES_IF_PRESENT block, no match: docIDRunEnd returns docID to signal an empty run.
+    approx.advance(1089);
+    assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, approx.getMatch());
+    assertFalse(iter.matches());
     assertEquals(1089, iter.docIDRunEnd());
+  }
+
+  public void testIntoBitSetAfterMatchesOnSparseRegion() throws IOException {
+    DocValuesRangeIterator iter = createIterator(true);
+    SkipBlockRangeIterator approx = (SkipBlockRangeIterator) iter.approximation();
+    // Doc 1537 is in the sparse region, in a block with mixed values -> MAYBE
+    approx.advance(1537);
+    assertEquals(SkipBlockRangeIterator.Match.MAYBE, approx.getMatch());
+    assertFalse(iter.matches());
+    FixedBitSet bitSet = new FixedBitSet(2048);
+    iter.intoBitSet(2048, bitSet, 0);
+    FixedBitSet expected = new FixedBitSet(2048);
+    for (int doc = 1537; doc < 2048; doc++) {
+      if (docHasValue(doc) && valueInRange(doc)) {
+        expected.set(doc);
+      }
+    }
+    assertEquals(expected, bitSet);
   }
 }

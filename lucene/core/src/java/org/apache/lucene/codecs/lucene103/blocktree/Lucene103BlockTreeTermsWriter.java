@@ -775,18 +775,18 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
 
           assert StringHelper.startsWith(term.termBytes, prefix) : term + " prefix=" + prefix;
           BlockTermState state = term.state;
-          final int suffix = term.termBytes.length - prefixLength;
+          final int suffixLength = term.termBytes.length - prefixLength;
           // if (DEBUG2) {
-          //  BytesRef suffixBytes = new BytesRef(suffix);
-          //  System.arraycopy(term.termBytes, prefixLength, suffixBytes.bytes, 0, suffix);
-          //  suffixBytes.length = suffix;
-          //  System.out.println("    write term suffix=" +
+          //  BytesRef suffixBytes = new BytesRef(suffixLength);
+          //  System.arraycopy(term.termBytes, prefixLength, suffixBytes.bytes, 0, suffixLength);
+          //  suffixBytes.length = suffixLength;
+          //  System.out.println("    write term suffixLength=" +
           // ToStringUtils.bytesRefToString(suffixBytes));
           // }
 
-          // For leaf block we write suffix straight
-          suffixLengthsWriter.writeVInt(suffix);
-          suffixWriter.append(term.termBytes, prefixLength, suffix);
+          // For leaf block we write suffixLength straight
+          suffixLengthsWriter.writeVInt(suffixLength);
+          suffixWriter.append(term.termBytes, prefixLength, suffixLength);
           assert floorLeadLabel == -1 || (term.termBytes[prefixLength] & 0xff) >= floorLeadLabel;
 
           // Write term stats, to separate byte[] blob:
@@ -809,12 +809,12 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
 
             assert StringHelper.startsWith(term.termBytes, prefix) : term + " prefix=" + prefix;
             BlockTermState state = term.state;
-            final int suffix = term.termBytes.length - prefixLength;
+            final int suffixLength = term.termBytes.length - prefixLength;
             // if (DEBUG2) {
-            //  BytesRef suffixBytes = new BytesRef(suffix);
-            //  System.arraycopy(term.termBytes, prefixLength, suffixBytes.bytes, 0, suffix);
-            //  suffixBytes.length = suffix;
-            //  System.out.println("      write term suffix=" +
+            //  BytesRef suffixBytes = new BytesRef(suffixLength);
+            //  System.arraycopy(term.termBytes, prefixLength, suffixBytes.bytes, 0, suffixLength);
+            //  suffixBytes.length = suffixLength;
+            //  System.out.println("      write term suffixLength=" +
             // ToStringUtils.bytesRefToString(suffixBytes));
             // }
 
@@ -823,8 +823,8 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
             // it's a prefix term.  Terms cannot be larger than ~32 KB
             // so we won't run out of bits:
 
-            suffixLengthsWriter.writeVInt(suffix << 1);
-            suffixWriter.append(term.termBytes, prefixLength, suffix);
+            suffixLengthsWriter.writeVInt(suffixLength << 1);
+            suffixWriter.append(term.termBytes, prefixLength, suffixLength);
 
             // Write term stats, to separate byte[] blob:
             statsWriter.add(state.docFreq, state.totalTermFreq);
@@ -843,21 +843,22 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
           } else {
             PendingBlock block = (PendingBlock) ent;
             assert StringHelper.startsWith(block.prefix, prefix);
-            final int suffix = block.prefix.length - prefixLength;
+            final int suffixLength = block.prefix.length - prefixLength;
             assert StringHelper.startsWith(block.prefix, prefix);
 
-            assert suffix > 0;
+            assert suffixLength > 0;
 
             // For non-leaf block we borrow 1 bit to record
             // if entry is term or sub-block:f
-            suffixLengthsWriter.writeVInt((suffix << 1) | 1);
-            suffixWriter.append(block.prefix.bytes, prefixLength, suffix);
+            suffixLengthsWriter.writeVInt((suffixLength << 1) | 1);
+            suffixWriter.append(block.prefix.bytes, prefixLength, suffixLength);
 
             // if (DEBUG2) {
-            //  BytesRef suffixBytes = new BytesRef(suffix);
-            //  System.arraycopy(block.prefix.bytes, prefixLength, suffixBytes.bytes, 0, suffix);
-            //  suffixBytes.length = suffix;
-            //  System.out.println("      write sub-block suffix=" +
+            //  BytesRef suffixBytes = new BytesRef(suffixLength);
+            //  System.arraycopy(block.prefix.bytes, prefixLength, suffixBytes.bytes, 0,
+            // suffixLength);
+            //  suffixBytes.length = suffixLength;
+            //  System.out.println("      write sub-block suffixLength=" +
             // ToStringUtils.bytesRefToString(suffixBytes) + " subFP=" + block.fp + " subCode=" +
             // (startFP-block.fp) + " floor=" + block.isFloor);
             // }

@@ -173,7 +173,7 @@ public class FieldPhraseList {
       if (existWpi.isOffsetOverlap(wpi)) {
         // WeightedPhraseInfo.addIfNoOverlap() dumps the second part of, for example, hyphenated
         // words (social-economics).
-        // The result is that all informations in TermInfo are lost and not available for further
+        // The result is that all information in TermInfo are lost and not available for further
         // operations.
         existWpi.getTermsInfos().addAll(wpi.getTermsInfos());
         existWpi.boost += wpi.getBoost(); // Accumulate boost

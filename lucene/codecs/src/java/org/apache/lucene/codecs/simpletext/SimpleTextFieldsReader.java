@@ -42,6 +42,7 @@ import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SlowImpactsEnum;
@@ -769,7 +770,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
     }
 
     @Override
-    public long getSumDocFreq() throws IOException {
+    public long getSumDocFreq() {
       return sumDocFreq;
     }
 
@@ -844,5 +845,5 @@ class SimpleTextFieldsReader extends FieldsProducer {
   }
 
   @Override
-  public void checkIntegrity() throws IOException {}
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {}
 }

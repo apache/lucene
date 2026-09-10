@@ -130,6 +130,32 @@ public class TestDocIdSetIterator extends LuceneTestCase {
     }
   }
 
+  public void testIntoArray() throws Exception {
+    DocIdSetIterator disi = DocIdSetIterator.range(5, 20);
+    assertEquals(5, disi.nextDoc());
+
+    // Stops when the array is full and leaves the iterator on the first doc that was not copied.
+    int[] docs = new int[4];
+    assertEquals(4, disi.intoArray(20, docs));
+    assertArrayEquals(new int[] {5, 6, 7, 8}, docs);
+    assertEquals(9, disi.docID());
+
+    // Stops on upTo, which is exclusive.
+    assertEquals(2, disi.intoArray(11, docs));
+    assertEquals(9, docs[0]);
+    assertEquals(10, docs[1]);
+    assertEquals(11, disi.docID());
+
+    // No doc left below upTo.
+    assertEquals(0, disi.intoArray(11, docs));
+    assertEquals(11, disi.docID());
+
+    docs = new int[16];
+    assertEquals(9, disi.intoArray(NO_MORE_DOCS, docs));
+    assertEquals(NO_MORE_DOCS, disi.docID());
+    assertEquals(0, disi.intoArray(NO_MORE_DOCS, docs));
+  }
+
   public void testDocIDRunEndAll() throws IOException {
     DocIdSetIterator it = DocIdSetIterator.all(13);
     assertEquals(0, it.nextDoc());

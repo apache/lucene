@@ -159,7 +159,7 @@ public class TestKoreanTokenizer extends BaseTokenStreamTestCase {
         new POS.Tag[] {POS.Tag.NNG, POS.Tag.NNG, POS.Tag.JKG, POS.Tag.NNB});
   }
 
-  public void testPartOfSpeechs() throws IOException {
+  public void testPartOfSpeech() throws IOException {
     assertAnalyzesTo(
         analyzer,
         "화학 이외의 것",
@@ -175,7 +175,7 @@ public class TestKoreanTokenizer extends BaseTokenStreamTestCase {
         new POS.Tag[] {POS.Tag.NNG, POS.Tag.NNG, POS.Tag.JKG, POS.Tag.NNB});
   }
 
-  public void testPartOfSpeechsWithPunc() throws IOException {
+  public void testPartOfSpeechWithPunc() throws IOException {
     assertAnalyzesTo(
         analyzerWithPunctuation,
         "화학 이외의 것!",
@@ -221,7 +221,7 @@ public class TestKoreanTokenizer extends BaseTokenStreamTestCase {
         new int[] {1, 1, 1, 1});
   }
 
-  public void testPartOfSpeechsWithCompound() throws IOException {
+  public void testPartOfSpeechWithCompound() throws IOException {
     assertAnalyzesTo(
         analyzer,
         "가락지나물은 한국, 중국, 일본",
@@ -297,7 +297,7 @@ public class TestKoreanTokenizer extends BaseTokenStreamTestCase {
         });
   }
 
-  public void testPartOfSpeechsWithInflects() throws IOException {
+  public void testPartOfSpeechWithInflects() throws IOException {
     assertAnalyzesTo(
         analyzer, "감싸여", new String[] {"감싸여"}, new int[] {0}, new int[] {3}, new int[] {1});
 

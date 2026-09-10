@@ -25,7 +25,7 @@ import org.apache.lucene.queries.function.docvalues.BoolDocValues;
 import org.apache.lucene.search.IndexSearcher;
 
 /**
- * {@link BoolFunction} implementation which applies an extendible boolean function to the values of
+ * {@link BoolFunction} implementation which applies an extendable boolean function to the values of
  * a single wrapped {@link ValueSource}.
  *
  * <p>Functions this can be used for include whether a field has a value or not, or inverting the

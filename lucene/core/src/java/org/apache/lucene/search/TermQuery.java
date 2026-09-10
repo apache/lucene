@@ -17,7 +17,6 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.Objects;
 import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.LeafReader;
@@ -177,13 +176,9 @@ public class TermQuery extends Query {
         }
 
         @Override
-        public long cost() {
-          try {
-            TermsEnum te = getTermsEnum();
-            return te == null ? 0 : te.docFreq();
-          } catch (IOException e) {
-            throw new UncheckedIOException(e);
-          }
+        public long cost() throws IOException {
+          TermsEnum te = getTermsEnum();
+          return te == null ? 0 : te.docFreq();
         }
 
         @Override

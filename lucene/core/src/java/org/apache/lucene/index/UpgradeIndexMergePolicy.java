@@ -30,7 +30,7 @@ import org.apache.lucene.util.Version;
  * only upgrading segments that are created by previous Lucene versions. forceMerge does no longer
  * really merge; it is just used to &quot;forceMerge&quot; older segment versions away.
  *
- * <p>In general one would use {@link IndexUpgrader}, but for a fully customizeable upgrade, you can
+ * <p>In general one would use {@link IndexUpgrader}, but for a fully customizable upgrade, you can
  * use this like any other {@code MergePolicy} and call {@link IndexWriter#forceMerge(int)}:
  *
  * <pre><code class="language-java">

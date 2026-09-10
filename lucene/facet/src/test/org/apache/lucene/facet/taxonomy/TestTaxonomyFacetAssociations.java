@@ -386,7 +386,7 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
    * Make sure we can test both int and float assocs in one index, as long as we send each to a
    * different field.
    */
-  public void testIntAndFloatAssocation() throws Exception {
+  public void testIntAndFloatAssociation() throws Exception {
     IndexSearcher searcher = newSearcher(reader);
     FacetsCollector fc =
         searcher.search(new TermQuery(new Term("match", "yes")), new FacetsCollectorManager());

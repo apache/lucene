@@ -70,7 +70,7 @@ final class SortingTermVectorsConsumer extends TermVectorsConsumer {
               .termVectorsFormat()
               .vectorsWriter(state.directory, state.segmentInfo, state.context);
       try {
-        reader.checkIntegrity();
+        reader.checkIntegrity(null);
         for (int docID = 0; docID < state.segmentInfo.maxDoc(); docID++) {
           Fields vectors = reader.get(sortMap == null ? docID : sortMap.newToOld(docID));
           writeTermVectors(writer, vectors, state.fieldInfos);

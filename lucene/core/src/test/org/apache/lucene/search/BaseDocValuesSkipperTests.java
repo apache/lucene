@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.tests.index.AssertingLeafReader.AssertingNumericDocValues;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public abstract class BaseDocValuesSkipperTests extends LuceneTestCase {
@@ -28,70 +29,89 @@ public abstract class BaseDocValuesSkipperTests extends LuceneTestCase {
   // both in the same level-1 block [1024,1151] — exercising the docIDRunEnd density check.
   static final int DENSE_END = 1088;
 
+  /** Number of docs in the fake segment; docs at or beyond this bound do not exist. */
+  static final int MAX_DOC = 2048;
+
+  /**
+   * Single definition of the fake field's data shape: the first doc that has a value and is greater
+   * than or equal to {@code target}, or {@link DocIdSetIterator#NO_MORE_DOCS}. Pure function, does
+   * not touch iteration state.
+   */
+  private static int firstDocWithValueOnOrAfter(int target) {
+    if (target >= MAX_DOC) {
+      return DocIdSetIterator.NO_MORE_DOCS;
+    } else if (target < DENSE_END) {
+      return target;
+    } else {
+      // sparse: round up to even
+      int d = target + (target & 1);
+      return d >= MAX_DOC ? DocIdSetIterator.NO_MORE_DOCS : d;
+    }
+  }
+
   /**
    * Fake numeric doc values: value pattern repeats every 1024 docs (d%1024 in [0,128) matches,
    * [128,256) is above queryMax, [256,512) is below queryMin, [512,1024) is a mix). Docs 0 through
    * {@link #DENSE_END}-1 are dense (all have values); docs from {@link #DENSE_END} onward are
    * sparse (only even docs have a value).
+   *
+   * <p>The returned instance is wrapped in {@link AssertingNumericDocValues}, which enforces the
+   * forward-only iteration contracts like real sparse implementations rely on.
    */
   protected static NumericDocValues docValues(long queryMin, long queryMax) {
-    return new NumericDocValues() {
+    NumericDocValues values =
+        new NumericDocValues() {
 
-      int doc = -1;
+          int doc = -1;
 
-      @Override
-      public boolean advanceExact(int target) throws IOException {
-        int advanced = advance(target);
-        return advanced == target;
-      }
+          @Override
+          public boolean advanceExact(int target) throws IOException {
+            // Per the advanceExact contract, position on target whether or not it has a value
+            // (the asserting wrapper checks this).
+            doc = target;
+            return firstDocWithValueOnOrAfter(target) == target;
+          }
 
-      @Override
-      public int docID() {
-        return doc;
-      }
+          @Override
+          public int docID() {
+            return doc;
+          }
 
-      @Override
-      public int nextDoc() throws IOException {
-        return advance(doc + 1);
-      }
+          @Override
+          public int nextDoc() throws IOException {
+            return advance(doc + 1);
+          }
 
-      @Override
-      public int advance(int target) throws IOException {
-        if (target >= 2048) {
-          return doc = DocIdSetIterator.NO_MORE_DOCS;
-        } else if (target < DENSE_END) {
-          return doc = target;
-        } else {
-          // sparse: round up to even
-          int d = target + (target & 1);
-          return doc = (d >= 2048) ? DocIdSetIterator.NO_MORE_DOCS : d;
-        }
-      }
+          @Override
+          public int advance(int target) throws IOException {
+            return doc = firstDocWithValueOnOrAfter(target);
+          }
 
-      @Override
-      public long longValue() throws IOException {
-        int d = doc % 1024;
-        if (d < 128) {
-          return (queryMin + queryMax) >> 1;
-        } else if (d < 256) {
-          return queryMax + 1;
-        } else if (d < 512) {
-          return queryMin - 1;
-        } else {
-          return switch ((d / 2) % 3) {
-            case 0 -> queryMin - 1;
-            case 1 -> queryMax + 1;
-            case 2 -> (queryMin + queryMax) >> 1;
-            default -> throw new AssertionError();
-          };
-        }
-      }
+          @Override
+          public long longValue() throws IOException {
+            int d = doc % 1024;
+            if (d < 128) {
+              return (queryMin + queryMax) >> 1;
+            } else if (d < 256) {
+              return queryMax + 1;
+            } else if (d < 512) {
+              return queryMin - 1;
+            } else {
+              return switch ((d / 2) % 3) {
+                case 0 -> queryMin - 1;
+                case 1 -> queryMax + 1;
+                case 2 -> (queryMin + queryMax) >> 1;
+                default -> throw new AssertionError();
+              };
+            }
+          }
 
-      @Override
-      public long cost() {
-        return 42;
-      }
-    };
+          @Override
+          public long cost() {
+            return 42;
+          }
+        };
+    return new AssertingNumericDocValues(values, MAX_DOC);
   }
 
   /**
@@ -123,7 +143,7 @@ public abstract class BaseDocValuesSkipperTests extends LuceneTestCase {
         // the level is the log2 of the interval
         if (doc < 0) {
           return -1;
-        } else if (doc >= 2048) {
+        } else if (doc >= MAX_DOC) {
           return DocIdSetIterator.NO_MORE_DOCS;
         } else {
           int mask = (1 << rangeLog) - 1;
@@ -173,7 +193,7 @@ public abstract class BaseDocValuesSkipperTests extends LuceneTestCase {
         int rangeLog = 9 - numLevels() + level;
         int blockSize = 1 << rangeLog;
         int minDoc = minDocID(level);
-        if (minDoc < 0 || minDoc >= 2048) {
+        if (minDoc < 0 || minDoc >= MAX_DOC) {
           return 0;
         }
         if (minDoc >= DENSE_END) {
@@ -197,7 +217,7 @@ public abstract class BaseDocValuesSkipperTests extends LuceneTestCase {
 
       @Override
       public int docCount() {
-        return DENSE_END + (2048 - DENSE_END) / 2; // 1088 + 480 = 1568
+        return DENSE_END + (MAX_DOC - DENSE_END) / 2; // 1088 + 480 = 1568
       }
 
       @Override

@@ -174,7 +174,7 @@ public class CheckHits {
    *
    * @param query the query to test
    * @param searcher the searcher to test the query against
-   * @param defaultFieldName used for displaing the query in assertion messages
+   * @param defaultFieldName used for displaying the query in assertion messages
    * @param results a list of documentIds that must match the query
    * @see #checkHitCollector
    */
@@ -310,7 +310,7 @@ public class CheckHits {
    *
    * @param query the query to test
    * @param searcher the searcher to test the query against
-   * @param defaultFieldName used for displaing the query in assertion messages
+   * @param defaultFieldName used for displaying the query in assertion messages
    * @see ExplanationAsserter
    * @see #checkExplanations(Query, String, IndexSearcher, boolean) for a "deep" testing of the
    *     explanation details.
@@ -326,7 +326,7 @@ public class CheckHits {
    *
    * @param query the query to test
    * @param searcher the searcher to test the query against
-   * @param defaultFieldName used for displaing the query in assertion messages
+   * @param defaultFieldName used for displaying the query in assertion messages
    * @param deep indicates whether a deep comparison of sub-Explanation details should be executed
    * @see ExplanationAsserter
    */

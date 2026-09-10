@@ -85,7 +85,7 @@ public class TestSpanWithinQuery extends LuceneTestCase {
 
   public void testHashcodeEquals() {
     SpanQuery q1 = spanQuery("field", "one", "two");
-    SpanQuery q2 = spanQuery("field", "one", "thre");
+    SpanQuery q2 = spanQuery("field", "one", "three");
     SpanQuery q3 = spanQuery("field", "one", "two");
     SpanQuery q4 = spanQuery("field", "one", "four");
 

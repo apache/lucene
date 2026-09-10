@@ -393,7 +393,7 @@ public class DateRangePrefixTree extends NumberRangePrefixTree {
     if (calPrecField == -1) return "*";
     try {
       StringBuilder builder = new StringBuilder("yyyy-MM-dd'T'HH:mm:ss.SSS".length()); // typical
-      int year = cal.get(Calendar.YEAR); // within the era (thus always positve).  >= 1.
+      int year = cal.get(Calendar.YEAR); // within the era (thus always positive).  >= 1.
       if (cal.get(Calendar.ERA) == 0) { // BC
         year -= 1; // 1BC should be "0000", so shift by one
         if (year > 0) {
@@ -493,34 +493,34 @@ public class DateRangePrefixTree extends NumberRangePrefixTree {
       offset += 3;
       if (lastOffset < offset) return cal;
       // day:
-      checkDelimeter(str, offset - 1, '-');
+      checkDelimiter(str, offset - 1, '-');
 
       parsedVal = parseAndCheck(str, offset, 1, 31);
       cal.set(Calendar.DAY_OF_MONTH, parsedVal);
       offset += 3;
       if (lastOffset < offset) return cal;
-      checkDelimeter(str, offset - 1, 'T');
+      checkDelimiter(str, offset - 1, 'T');
       // hour:
 
       parsedVal = parseAndCheck(str, offset, 0, 24);
       cal.set(Calendar.HOUR_OF_DAY, parsedVal);
       offset += 3;
       if (lastOffset < offset) return cal;
-      checkDelimeter(str, offset - 1, ':');
+      checkDelimiter(str, offset - 1, ':');
       // minute:
 
       parsedVal = parseAndCheck(str, offset, 0, 59);
       cal.set(Calendar.MINUTE, parsedVal);
       offset += 3;
       if (lastOffset < offset) return cal;
-      checkDelimeter(str, offset - 1, ':');
+      checkDelimiter(str, offset - 1, ':');
       // second:
 
       parsedVal = parseAndCheck(str, offset, 0, 59);
       cal.set(Calendar.SECOND, parsedVal);
       offset += 3;
       if (lastOffset < offset) return cal;
-      checkDelimeter(str, offset - 1, '.');
+      checkDelimiter(str, offset - 1, '.');
       // ms:
 
       int maxOffset = lastOffset - offset; // assume remaining is all digits to compute milliseconds
@@ -538,10 +538,10 @@ public class DateRangePrefixTree extends NumberRangePrefixTree {
     }
   }
 
-  private void checkDelimeter(String str, int offset, char delim) {
+  private void checkDelimiter(String str, int offset, char delim) {
     if (str.charAt(offset) != delim) {
       throw new IllegalArgumentException(
-          "Invalid delimeter: '" + str.charAt(offset) + "', expecting '" + delim + "'");
+          "Invalid delimiter: '" + str.charAt(offset) + "', expecting '" + delim + "'");
     }
   }
 

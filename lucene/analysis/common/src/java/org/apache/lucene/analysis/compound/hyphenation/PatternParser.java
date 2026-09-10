@@ -126,8 +126,8 @@ public class PatternParser extends DefaultHandler {
     }
     if (space) {
       // chars.delete(0,i);
-      for (int countr = i; countr < chars.length(); countr++) {
-        chars.setCharAt(countr - i, chars.charAt(countr));
+      for (int counter = i; counter < chars.length(); counter++) {
+        chars.setCharAt(counter - i, chars.charAt(counter));
       }
       chars.setLength(chars.length() - i);
       if (token.length() > 0) {
@@ -145,8 +145,8 @@ public class PatternParser extends DefaultHandler {
     }
     token.append(chars, 0, i);
     // chars.delete(0,i);
-    for (int countr = i; countr < chars.length(); countr++) {
-      chars.setCharAt(countr - i, chars.charAt(countr));
+    for (int counter = i; counter < chars.length(); counter++) {
+      chars.setCharAt(counter - i, chars.charAt(counter));
     }
     chars.setLength(chars.length() - i);
     if (space) {

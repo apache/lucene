@@ -17,6 +17,10 @@
 package org.apache.lucene.queries.spans;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexReader;
@@ -28,6 +32,7 @@ import org.apache.lucene.search.PrefixQuery;
 import org.apache.lucene.search.RegexpQuery;
 import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
@@ -169,32 +174,32 @@ public class TestSpanMultiTermQueryWrapper extends LuceneTestCase {
     FuzzyQuery fuzzyNoSuch = new FuzzyQuery(new Term("field", "noSuch"), 1, 0, 1, false);
     SpanQuery spanNoSuch = new SpanMultiTermQueryWrapper<>(fuzzyNoSuch);
     SpanQuery term = new SpanTermQuery(new Term("field", "brown"));
-    SpanOrQuery near = new SpanOrQuery(new SpanQuery[] {term, spanNoSuch});
+    SpanOrQuery near = new SpanOrQuery(term, spanNoSuch);
     assertEquals(1, searcher.count(near));
 
     // flip
-    near = new SpanOrQuery(new SpanQuery[] {spanNoSuch, term});
+    near = new SpanOrQuery(spanNoSuch, term);
     assertEquals(1, searcher.count(near));
 
     WildcardQuery wcNoSuch = new WildcardQuery(new Term("field", "noSuch*"));
     SpanQuery spanWCNoSuch = new SpanMultiTermQueryWrapper<>(wcNoSuch);
-    near = new SpanOrQuery(new SpanQuery[] {term, spanWCNoSuch});
+    near = new SpanOrQuery(term, spanWCNoSuch);
     assertEquals(1, searcher.count(near));
 
     RegexpQuery rgxNoSuch = new RegexpQuery(new Term("field", "noSuch"));
     SpanQuery spanRgxNoSuch = new SpanMultiTermQueryWrapper<>(rgxNoSuch);
-    near = new SpanOrQuery(new SpanQuery[] {term, spanRgxNoSuch});
+    near = new SpanOrQuery(term, spanRgxNoSuch);
     assertEquals(1, searcher.count(near));
 
     PrefixQuery prfxNoSuch = new PrefixQuery(new Term("field", "noSuch"));
     SpanQuery spanPrfxNoSuch = new SpanMultiTermQueryWrapper<>(prfxNoSuch);
-    near = new SpanOrQuery(new SpanQuery[] {term, spanPrfxNoSuch});
+    near = new SpanOrQuery(term, spanPrfxNoSuch);
     assertEquals(1, searcher.count(near));
 
-    near = new SpanOrQuery(new SpanQuery[] {spanPrfxNoSuch});
+    near = new SpanOrQuery(spanPrfxNoSuch);
     assertEquals(0, searcher.count(near));
 
-    near = new SpanOrQuery(new SpanQuery[] {spanPrfxNoSuch, spanPrfxNoSuch});
+    near = new SpanOrQuery(spanPrfxNoSuch, spanPrfxNoSuch);
     assertEquals(0, searcher.count(near));
   }
 
@@ -236,5 +241,53 @@ public class TestSpanMultiTermQueryWrapper extends LuceneTestCase {
           }
         });
     assertEquals(pqHash, pq.hashCode());
+  }
+
+  /** Test is inspired by the patch submitted in LUCENE-6513 GITHUB#7571. */
+  public void testFrequentTermsRewrite() throws Exception {
+    Directory dir = newDirectory();
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir, new MockAnalyzer(random()));
+
+    // term8 and term54 occur in every document; termN (odd) accumulates so that lower odd N are
+    // more frequent than higher odd N; termN (even) occurs in a single document only.
+    StringBuilder terms = new StringBuilder(" term1");
+    for (int i = 0; i < 300; i++) {
+      Document doc = new Document();
+      String value = "term8 term54";
+      if (i % 2 == 0) {
+        value += " term" + i;
+      } else {
+        terms.append(" term").append(i);
+        value += terms.toString();
+      }
+      doc.add(newTextField("field", value, Field.Store.NO));
+      writer.addDocument(doc);
+    }
+    IndexReader r = writer.getReader();
+    writer.close();
+    IndexSearcher s = newSearcher(r);
+
+    final int size = 8;
+    MultiTermQuery wildcardQuery = new WildcardQuery(new Term("field", "term*"));
+    SpanMultiTermQueryWrapper.FrequentTermsSpanBooleanQueryRewrite rewrite =
+        new SpanMultiTermQueryWrapper.FrequentTermsSpanBooleanQueryRewrite(
+            size, SpanMultiTermQueryWrapper.FrequentTermsSpanBooleanQueryRewrite.DF_THEN_TTF_ORDER);
+    SpanOrQuery query = (SpanOrQuery) rewrite.rewrite(s, wildcardQuery);
+
+    List<SpanQuery> clauses = Arrays.asList(query.getClauses());
+    assertEquals(size, clauses.size());
+
+    Set<String> actual = new HashSet<>();
+    for (SpanQuery clause : clauses) {
+      actual.add(clause.toString("field"));
+    }
+    Set<String> expected =
+        new HashSet<>(
+            Arrays.asList(
+                "term8", "term54", "term1", "term3", "term5", "term7", "term9", "term11"));
+    assertEquals(expected, actual);
+
+    r.close();
+    dir.close();
   }
 }

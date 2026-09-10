@@ -121,7 +121,7 @@ public final class MLTPaneProvider implements MLTTabOperator {
 
     JPanel minTermFreq = new JPanel(new FlowLayout(FlowLayout.LEADING));
     minTermFreq.setOpaque(false);
-    minTermFreq.add(new JLabel(MessageUtils.getLocalizedMessage("serach_mlt.label.min_term_freq")));
+    minTermFreq.add(new JLabel(MessageUtils.getLocalizedMessage("search_mlt.label.min_term_freq")));
     minTermFreqFTF.setColumns(5);
     minTermFreqFTF.setValue(config.getMinTermFreq());
     minTermFreq.add(minTermFreqFTF);
@@ -197,7 +197,7 @@ public final class MLTPaneProvider implements MLTTabOperator {
         .getColumnModel()
         .getColumn(MLTFieldsTableModel.Column.SELECT.getIndex())
         .setMaxWidth(MLTFieldsTableModel.Column.SELECT.getColumnWidth());
-    fieldsTable.getModel().addTableModelListener(listeners::tableDataChenged);
+    fieldsTable.getModel().addTableModelListener(listeners::tableDataChanged);
   }
 
   @Override
@@ -232,7 +232,7 @@ public final class MLTPaneProvider implements MLTTabOperator {
       }
     }
 
-    void tableDataChenged(TableModelEvent e) {
+    void tableDataChanged(TableModelEvent e) {
       int row = e.getFirstRow();
       int col = e.getColumn();
       if (col == MLTFieldsTableModel.Column.SELECT.getIndex()) {

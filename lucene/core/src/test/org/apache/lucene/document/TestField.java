@@ -32,6 +32,7 @@ import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.KnnFloat16VectorQuery;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
@@ -808,6 +809,54 @@ public class TestField extends LuceneTestCase {
             IllegalArgumentException.class,
             () -> nanField.setVectorValue(new float[] {1, 2, Float.NaN, 4, 5}));
     assertTrue(nanError.getMessage().contains("non-finite"));
+  }
+
+  public void testKnnFloat16FieldNonFinite() {
+    short one = Float.floatToFloat16(1f);
+    short two = Float.floatToFloat16(2f);
+    short[] finite = {one, two, Float.floatToFloat16(3f)};
+
+    // constructor rejects a non-finite (+Infinity) component
+    IllegalArgumentException ctorError =
+        expectThrows(
+            IllegalArgumentException.class,
+            () ->
+                new KnnFloat16VectorField(
+                    "knnF16",
+                    new short[] {one, (short) 0x7C00, two}, // 0x7C00 = +Infinity
+                    VectorSimilarityFunction.EUCLIDEAN));
+    assertTrue(ctorError.getMessage(), ctorError.getMessage().contains("non-finite"));
+
+    // constructing with a finite vector succeeds
+    KnnFloat16VectorField field =
+        new KnnFloat16VectorField("knnF16", finite, VectorSimilarityFunction.EUCLIDEAN);
+
+    // setVectorValue rejects NaN (0x7E00)
+    IllegalArgumentException nanError =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> field.setVectorValue(new short[] {one, (short) 0x7E00, two}));
+    assertTrue(nanError.getMessage(), nanError.getMessage().contains("non-finite"));
+
+    // setVectorValue with a finite vector succeeds
+    field.setVectorValue(new short[] {two, one, Float.floatToFloat16(4f)});
+  }
+
+  public void testKnnFloat16QueryNonFinite() {
+    short one = Float.floatToFloat16(1f);
+
+    // null target
+    expectThrows(NullPointerException.class, () -> new KnnFloat16VectorQuery("f", null, 1));
+
+    // -Infinity (0xFC00) target
+    IllegalArgumentException infError =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> new KnnFloat16VectorQuery("f", new short[] {one, (short) 0xFC00}, 1));
+    assertTrue(infError.getMessage(), infError.getMessage().contains("non-finite"));
+
+    // finite target constructs fine
+    new KnnFloat16VectorQuery("f", new short[] {one, Float.floatToFloat16(2f)}, 1);
   }
 
   private void trySetByteValue(Field f) {

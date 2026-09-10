@@ -141,9 +141,9 @@ public class PKIndexSplitter {
       final int maxDoc = in.maxDoc();
       final FixedBitSet bits = new FixedBitSet(maxDoc);
       // ignore livedocs here, as we filter them later:
-      final Scorer preverveScorer = preserveWeight.scorer(context);
-      if (preverveScorer != null) {
-        bits.or(preverveScorer.iterator());
+      final Scorer preserveScorer = preserveWeight.scorer(context);
+      if (preserveScorer != null) {
+        bits.or(preserveScorer.iterator());
       }
       if (negateFilter) {
         bits.flip(0, maxDoc);

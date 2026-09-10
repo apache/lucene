@@ -28,6 +28,7 @@ import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
@@ -293,7 +294,7 @@ public class AssertingDocValuesFormat extends DocValuesFormat {
     }
 
     @Override
-    public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
+    public DocValuesSkipper getSkipper(FieldInfo field) {
       assert fieldInfos.fieldInfo(field.name).number == field.number;
       assert field.docValuesSkipIndexType() != DocValuesSkipIndexType.NONE;
       DocValuesSkipper skipper = in.getSkipper(field);
@@ -308,8 +309,8 @@ public class AssertingDocValuesFormat extends DocValuesFormat {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
-      in.checkIntegrity();
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+      in.checkIntegrity(merge);
     }
 
     @Override

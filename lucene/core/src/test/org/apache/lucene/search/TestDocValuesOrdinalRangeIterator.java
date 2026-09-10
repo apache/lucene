@@ -134,7 +134,12 @@ public class TestDocValuesOrdinalRangeIterator extends BaseDocValuesSkipperTests
 
       @Override
       public boolean advanceExact(int target) {
-        throw new UnsupportedOperationException();
+        if (docHasValue(target)) {
+          doc = target;
+          return true;
+        }
+        doc = target;
+        return false;
       }
 
       @Override
@@ -247,17 +252,31 @@ public class TestDocValuesOrdinalRangeIterator extends BaseDocValuesSkipperTests
     approx.advance(64);
     assertEquals(128, iter.docIDRunEnd());
 
+    // MAYBE block, no match: docIDRunEnd returns docID to signal an empty run.
     approx.advance(512);
-    assertEquals(513, iter.docIDRunEnd());
+    assertFalse(iter.matches());
+    assertEquals(512, iter.docIDRunEnd());
+
+    // MAYBE block, match: docIDRunEnd returns docID to signal an empty run.
+    approx.advance(514);
+    assertTrue(iter.matches());
+    assertEquals(514, iter.docIDRunEnd());
 
     // YES block in second repetition (dense up to DENSE_END=1088)
     approx.advance(1024);
     assertEquals(SkipBlockRangeIterator.Match.YES, approx.getMatch());
     assertEquals(1088, iter.docIDRunEnd());
 
-    // YES_IF_PRESENT block
+    // YES_IF_PRESENT block, match: docIDRunEnd returns docID to signal an empty run.
     approx.advance(1088);
     assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, approx.getMatch());
+    assertTrue(iter.matches());
+    assertEquals(1088, iter.docIDRunEnd());
+
+    // YES_IF_PRESENT block, no match: docIDRunEnd returns docID to signal an empty run.
+    approx.advance(1089);
+    assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, approx.getMatch());
+    assertFalse(iter.matches());
     assertEquals(1089, iter.docIDRunEnd());
   }
 
@@ -349,7 +368,12 @@ public class TestDocValuesOrdinalRangeIterator extends BaseDocValuesSkipperTests
 
       @Override
       public boolean advanceExact(int target) {
-        throw new UnsupportedOperationException();
+        if (docHasValue(target)) {
+          doc = target;
+          return true;
+        }
+        doc = target;
+        return false;
       }
 
       @Override
@@ -521,18 +545,33 @@ public class TestDocValuesOrdinalRangeIterator extends BaseDocValuesSkipperTests
     approx.advance(64);
     assertEquals(128, iter.docIDRunEnd());
 
+    // MAYBE block, match: docIDRunEnd returns docID to signal an empty run.
     approx.advance(512);
     assertEquals(SkipBlockRangeIterator.Match.MAYBE, approx.getMatch());
-    assertEquals(513, iter.docIDRunEnd());
+    assertTrue(iter.matches());
+    assertEquals(512, iter.docIDRunEnd());
+
+    // MAYBE block, no match: docIDRunEnd returns docID to signal an empty run.
+    approx.advance(516);
+    assertEquals(SkipBlockRangeIterator.Match.MAYBE, approx.getMatch());
+    assertFalse(iter.matches());
+    assertEquals(516, iter.docIDRunEnd());
 
     // YES block in second repetition (dense up to DENSE_END=1088)
     approx.advance(1024);
     assertEquals(SkipBlockRangeIterator.Match.YES, approx.getMatch());
     assertEquals(1088, iter.docIDRunEnd());
 
-    // YES_IF_PRESENT block
+    // YES_IF_PRESENT block, match: docIDRunEnd returns docID to signal an empty run.
     approx.advance(1088);
     assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, approx.getMatch());
+    assertTrue(iter.matches());
+    assertEquals(1088, iter.docIDRunEnd());
+
+    // YES_IF_PRESENT block, no match: docIDRunEnd returns docID to signal an empty run.
+    approx.advance(1089);
+    assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, approx.getMatch());
+    assertFalse(iter.matches());
     assertEquals(1089, iter.docIDRunEnd());
   }
 

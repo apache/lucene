@@ -83,7 +83,9 @@ public class RenderJavadocPlugin extends LuceneGradlePlugin {
         getProjectRootPath(project).resolve("gradle/documentation/render-javadoc").toFile();
 
     var missingdocletConfiguration = project.getConfigurations().create("missingdoclet");
-    project.getDependencies().add("missingdoclet", project.project(":build-tools:missing-doclet"));
+    var dependencies = project.getDependencies();
+    dependencies.add(
+        "missingdoclet", dependencies.project(Map.of("path", ":build-tools:missing-doclet")));
 
     TaskContainer tasks = project.getTasks();
     var renderJavadoc =
@@ -688,7 +690,7 @@ public class RenderJavadocPlugin extends LuceneGradlePlugin {
      * <ul>
      *   <li>find all (enabled) tasks from the subgraph of tasks this task depends on (with same
      *       name)
-     *   <li>sort these tasks, ordering the 'core' first, then lexigraphically by path
+     *   <li>sort these tasks, ordering the 'core' first, then lexicographically by path
      *   <li>for each task, get the output dir to create relative or absolute link.
      * </ul>
      */

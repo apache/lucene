@@ -54,25 +54,6 @@ valid:
   - |
     /* notjavadoc @author */
 ---
-id: nocommit-comment
-invalid:
-  - |
-    // nocommit: fix this
-  - |
-    /* nocommit: fix this */
-valid:
-  - boolean nocommit = false;
----
-id: tood-comment
-invalid:
-  - |
-    // TOOD: fix this
-  - |
-    /* TOOD: fix this */
-valid:
-  - |
-    var foo = "TOOD: whatever";
----
 id: missing-spi-block-tag
 invalid:
   - |

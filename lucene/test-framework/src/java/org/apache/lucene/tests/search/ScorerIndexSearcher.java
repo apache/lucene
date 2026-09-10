@@ -76,7 +76,7 @@ public class ScorerIndexSearcher extends IndexSearcher {
               }
 
               @Override
-              public long cost() {
+              public long cost() throws IOException {
                 return in.cost();
               }
             };

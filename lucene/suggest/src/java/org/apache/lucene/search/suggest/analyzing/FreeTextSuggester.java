@@ -479,7 +479,7 @@ public class FreeTextSuggester extends Lookup {
       }
 
       // Carefully fill last tokens with _ tokens;
-      // ShingleFilter appraently won't emit "only hole"
+      // ShingleFilter apparently won't emit "only hole"
       // tokens:
       int endPosInc = posIncAtt.getPositionIncrement();
 

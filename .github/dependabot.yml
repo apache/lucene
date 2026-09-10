@@ -11,18 +11,16 @@ updates:
     commit-message:
       prefix: ci
     labels: [dependencies, skip-changelog]
-    cooldown:
-      default-days: 7
-
-  # python dependencies in /dev-tools/scripts
-  - package-ecosystem: pip
-    directory: /dev-tools/scripts/
-    open-pull-requests-limit: 25
-    schedule:
-      interval: monthly
-    commit-message:
-      prefix: build(deps)
-    labels: [dependencies, skip-changelog]
+    groups:
+      # codeql init/analyze must match exactly: validate each others versions
+      codeql:
+        patterns:
+          - github/codeql-action/*
+      # group patch/minor updates, typically no breaking changes
+      actions:
+        update-types:
+          - patch
+          - minor
     cooldown:
       default-days: 7
 
@@ -35,6 +33,12 @@ updates:
     commit-message:
       prefix: build(deps)
     labels: [dependencies, skip-changelog]
+    groups:
+      # group patch/minor updates, typically no breaking changes
+      python:
+        update-types:
+          - patch
+          - minor
     cooldown:
       default-days: 7
 
@@ -47,5 +51,16 @@ updates:
     commit-message:
       prefix: deps(java)
     labels: [dependencies, skip-changelog]
+    ignore:
+      # s2-geometry 1.0.1 added guava as a runtime (compile-scope) dependency,
+      # which we don't want to pull into spatial-extras (GH#16638).
+      - dependency-name: io.sgr:s2-geometry-library-java
+        versions: ["1.0.1"]
+    groups:
+      # group patch/minor updates, typically no breaking changes
+      java:
+        update-types:
+          - patch
+          - minor
     cooldown:
       default-days: 7

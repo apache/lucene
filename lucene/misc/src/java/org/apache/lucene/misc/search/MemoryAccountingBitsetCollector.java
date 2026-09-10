@@ -34,6 +34,12 @@ public class MemoryAccountingBitsetCollector extends SimpleCollector {
 
   int minDocBase = Integer.MAX_VALUE;
   int maxDocEnd = 0;
+  // Highest bit index set in bitSet, or -1 if no doc has been collected. Docs are collected in
+  // strictly ascending order: within a leaf by the Collector contract, and across leaves for a
+  // given collector because IndexSearcher sorts partitions within a slice by docBase and rejects
+  // multiple partitions of the same leaf sharing a slice. So this is simply the position written
+  // by the most recent collect() call.
+  int highestSetBit = -1;
 
   public MemoryAccountingBitsetCollector(CollectorMemoryTracker tracker) {
     this.tracker = tracker;
@@ -57,7 +63,14 @@ public class MemoryAccountingBitsetCollector extends SimpleCollector {
 
   @Override
   public void collect(int doc) {
-    bitSet.set(docBase - minDocBase + doc);
+    int local = docBase - minDocBase + doc;
+    assert local > highestSetBit
+        : "collect() must receive docs in strictly ascending order; got local="
+            + local
+            + " after highestSetBit="
+            + highestSetBit;
+    bitSet.set(local);
+    highestSetBit = local;
   }
 
   @Override
@@ -69,7 +82,7 @@ public class MemoryAccountingBitsetCollector extends SimpleCollector {
     return minDocBase;
   }
 
-  int getMaxDocEnd() {
-    return maxDocEnd;
+  int getHighestSetBit() {
+    return highestSetBit;
   }
 }

@@ -110,7 +110,7 @@ public class TestPositionIncrement extends LuceneTestCase {
     hits = searcher.search(q, 1000).scoreDocs;
     assertEquals(0, hits.length);
 
-    // same as previous, just specify positions explicitely.
+    // same as previous, just specify positions explicitly.
     builder = new PhraseQuery.Builder();
     builder.add(new Term("field", "1"), 0);
     builder.add(new Term("field", "2"), 1);
@@ -151,7 +151,7 @@ public class TestPositionIncrement extends LuceneTestCase {
     hits = searcher.search(q, 1000).scoreDocs;
     assertEquals(0, hits.length);
 
-    // multi-phrase query should succed for non existing searched term
+    // multi-phrase query should succeed for non existing searched term
     // because there exist another searched terms in the same searched position.
     MultiPhraseQuery.Builder mqb = new MultiPhraseQuery.Builder();
     mqb.add(new Term[] {new Term("field", "3"), new Term("field", "9")}, 0);

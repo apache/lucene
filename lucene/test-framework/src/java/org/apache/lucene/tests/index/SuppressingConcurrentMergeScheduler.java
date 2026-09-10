@@ -22,15 +22,15 @@ import org.apache.lucene.index.ConcurrentMergeScheduler;
 public abstract class SuppressingConcurrentMergeScheduler extends ConcurrentMergeScheduler {
   @Override
   protected void handleMergeException(Throwable exc) {
-    while (true) {
-      if (isOK(exc)) {
+    // Suppress if any exception in the cause chain is OK. Rethrow the original otherwise.
+    Throwable cause = exc;
+    while (cause != null) {
+      if (isOK(cause)) {
         return;
       }
-      exc = exc.getCause();
-      if (exc == null) {
-        super.handleMergeException(exc);
-      }
+      cause = cause.getCause();
     }
+    super.handleMergeException(exc);
   }
 
   protected abstract boolean isOK(Throwable t);

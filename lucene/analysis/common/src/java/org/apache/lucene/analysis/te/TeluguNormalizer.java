@@ -86,7 +86,7 @@ class TeluguNormalizer {
         case '\u0C4B': // ో
           s[i] = '\u0C4A'; // ొ
           break;
-        // decomposed dipthong (ె + ౖ) -> precomposed diphthong vowel sign (ై)
+        // decomposed diphthong (ె + ౖ) -> precomposed diphthong vowel sign (ై)
         case '\u0C46':
           if (i + 1 < len && s[i + 1] == '\u0C56') {
             s[i] = '\u0C48';

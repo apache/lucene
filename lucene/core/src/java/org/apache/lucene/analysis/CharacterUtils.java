@@ -18,6 +18,7 @@ package org.apache.lucene.analysis;
 
 import java.io.IOException;
 import java.io.Reader;
+import org.apache.lucene.util.UnicodeUtil;
 
 /**
  * Utility class to write tokenizers or token filters.
@@ -53,10 +54,43 @@ public final class CharacterUtils {
   public static void toLowerCase(final char[] buffer, final int offset, final int limit) {
     assert buffer.length >= limit;
     assert 0 <= offset && offset <= buffer.length;
-    for (int i = offset; i < limit; ) {
-      i +=
-          Character.toChars(
-              Character.toLowerCase(Character.codePointAt(buffer, i, limit)), buffer, i);
+    for (int i = offset; i < limit; i++) {
+      char c = buffer[i];
+      if (c > 127) { // non-ASCII: switch to full Unicode path from here onward
+        while (i < limit) {
+          i +=
+              Character.toChars(
+                  Character.toLowerCase(Character.codePointAt(buffer, i, limit)), buffer, i);
+        }
+        return;
+      } else if (c >= 'A' && c <= 'Z') {
+        buffer[i] = (char) (c | 32); // set bit 5 to lowercase ASCII
+      }
+    }
+  }
+
+  /**
+   * Applies Unicode simple case folding to each codepoint starting at the given offset.
+   *
+   * @param buffer the char buffer to fold
+   * @param offset the offset to start at
+   * @param limit the max char in the buffer to fold
+   */
+  public static void simpleCaseFold(final char[] buffer, final int offset, final int limit) {
+    assert buffer.length >= limit;
+    assert 0 <= offset && offset <= buffer.length;
+    for (int i = offset; i < limit; i++) {
+      char c = buffer[i];
+      if (c > 127) { // non-ASCII: switch to full Unicode path from here onward
+        while (i < limit) {
+          i +=
+              Character.toChars(
+                  UnicodeUtil.foldCase(Character.codePointAt(buffer, i, limit)), buffer, i);
+        }
+        return;
+      } else if (c >= 'A' && c <= 'Z') {
+        buffer[i] = (char) (c | 32); // set bit 5 to lowercase ASCII
+      }
     }
   }
 

@@ -57,7 +57,7 @@ public final class CommonGramsQueryFilter extends TokenFilter {
   private boolean exhausted;
 
   /**
-   * Constructs a new CommonGramsQueryFilter based on the provided CommomGramsFilter
+   * Constructs a new CommonGramsQueryFilter based on the provided CommonGramsFilter
    *
    * @param input CommonGramsFilter the QueryFilter will use
    */

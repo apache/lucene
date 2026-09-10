@@ -64,7 +64,6 @@ public class WildcardQuery extends AutomatonQuery {
    *
    * @lucene.internal
    */
-  @SuppressWarnings("fallthrough")
   public static Automaton toAutomaton(Term wildcardquery) {
     List<Automaton> automata = new ArrayList<>();
 
@@ -74,22 +73,26 @@ public class WildcardQuery extends AutomatonQuery {
       final int c = wildcardText.codePointAt(i);
       int length = Character.charCount(c);
       switch (c) {
-        case WILDCARD_STRING:
-          automata.add(Automata.makeAnyString());
-          break;
-        case WILDCARD_CHAR:
-          automata.add(Automata.makeAnyChar());
-          break;
-        case WILDCARD_ESCAPE:
-          // add the next codepoint instead, if it exists
+        case WILDCARD_STRING -> {
+          // Collapse consecutive '*' ("**" is equivalent to "*"): only append an
+          // any-string automaton when the previous segment isn't already one.
+          if (automata.isEmpty() || Operations.isTotal(automata.getLast()) == false) {
+            automata.add(Automata.makeAnyString());
+          }
+        }
+        case WILDCARD_CHAR -> automata.add(Automata.makeAnyChar());
+        case WILDCARD_ESCAPE -> {
+          // add the escaped codepoint as a literal if it exists; a trailing
+          // '\' is parsed leniently as a literal '\'
           if (i + length < wildcardText.length()) {
             final int nextChar = wildcardText.codePointAt(i + length);
             length += Character.charCount(nextChar);
             automata.add(Automata.makeChar(nextChar));
-            break;
-          } // else fallthru, lenient parsing with a trailing \
-        default:
-          automata.add(Automata.makeChar(c));
+          } else {
+            automata.add(Automata.makeChar(c));
+          }
+        }
+        default -> automata.add(Automata.makeChar(c));
       }
       i += length;
     }

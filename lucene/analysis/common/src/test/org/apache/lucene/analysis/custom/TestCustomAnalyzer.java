@@ -552,7 +552,7 @@ public class TestCustomAnalyzer extends BaseTokenStreamTestCase {
     assertEquals(new BytesRef("a b e"), analyzer.normalize("dummy", "À B é"));
   }
 
-  public void testNormalizationWithMultiplCharFilters() throws IOException {
+  public void testNormalizationWithMultipleCharFilters() throws IOException {
     CustomAnalyzer analyzer =
         CustomAnalyzer.builder()
             // none of these components are multi-term aware so they should not be applied

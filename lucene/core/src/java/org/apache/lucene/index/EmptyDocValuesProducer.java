@@ -57,7 +57,7 @@ public abstract class EmptyDocValuesProducer extends DocValuesProducer {
   }
 
   @Override
-  public void checkIntegrity() {
+  public void checkIntegrity(MergePolicy.OneMerge merge) {
     throw new UnsupportedOperationException();
   }
 

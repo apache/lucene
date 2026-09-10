@@ -1122,4 +1122,252 @@ public class TestDocValuesQueries extends LuceneTestCaseJupiter {
     reader.close();
     dir.close();
   }
+
+  /**
+   * Verifies that SortedNumericDocValuesRangeQuery can use a secondary sort field to accelerate
+   * querying if the primary sort field is single-valued and therefore a no-op
+   */
+  @Test
+  public void testSortedNumericRangeQueryOptimizesWithConstantPrimary(Random random)
+      throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec(random));
+    config.setIndexSort(
+        new Sort(
+            new SortField("primary", SortField.Type.LONG), // constant → no-op
+            new SortField("secondary", SortField.Type.LONG))); // varying → effective primary
+    IndexWriter iw = new IndexWriter(dir, config);
+    for (int i = 0; i < 10; i++) {
+      Document doc = new Document();
+      doc.add(NumericDocValuesField.indexedField("primary", 42)); // constant, skip index present
+      doc.add(NumericDocValuesField.indexedField("secondary", i)); // varying
+      iw.addDocument(doc);
+    }
+    iw.forceMerge(1);
+    iw.close();
+    DirectoryReader reader = DirectoryReader.open(dir);
+    IndexSearcher searcher = new IndexSearcher(reader);
+
+    // primary has a constant value, so getPrimarySortField skips it and returns "secondary".
+    // The query on "secondary" should therefore use SortedSkipperScorerSupplier,
+    // which yields a plain range iterator with no two-phase iterator.
+    Query query = SortedNumericDocValuesField.newSlowRangeQuery("secondary", 3, 7);
+    Weight weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
+    Scorer scorer = weight.scorer(reader.leaves().get(0));
+    assertNotNull(scorer);
+    assertNull(
+        "SortedSkipperScorerSupplier should be used when primary sort is a no-op",
+        scorer.twoPhaseIterator());
+
+    reader.close();
+    dir.close();
+  }
+
+  /**
+   * Verifies that SortedNumericDocValuesRangeQuery can use a secondary sort field to accelerate
+   * querying if the primary sort field is empty and therefore a no-op
+   */
+  @Test
+  public void testSortedNumericRangeQueryOptimizesWithEmptyPrimary(Random random)
+      throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec(random));
+    config.setIndexSort(
+        new Sort(
+            new SortField("primary", SortField.Type.LONG), // empty → no-op
+            new SortField("secondary", SortField.Type.LONG))); // varying → effective primary
+    IndexWriter iw = new IndexWriter(dir, config);
+    for (int i = 0; i < 10; i++) {
+      Document doc = new Document();
+      // nothing added for the primary sort field
+      doc.add(NumericDocValuesField.indexedField("secondary", i)); // varying
+      iw.addDocument(doc);
+    }
+    iw.forceMerge(1);
+    iw.close();
+    DirectoryReader reader = DirectoryReader.open(dir);
+    IndexSearcher searcher = new IndexSearcher(reader);
+
+    // primary has a constant value, so getPrimarySortField skips it and returns "secondary".
+    // The query on "secondary" should therefore use SortedSkipperScorerSupplier,
+    // which yields a plain range iterator with no two-phase iterator.
+    Query query = SortedNumericDocValuesField.newSlowRangeQuery("secondary", 3, 7);
+    Weight weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
+    Scorer scorer = weight.scorer(reader.leaves().get(0));
+    assertNotNull(scorer);
+    assertNull(
+        "SortedSkipperScorerSupplier should be used when primary sort is a no-op",
+        scorer.twoPhaseIterator());
+
+    reader.close();
+    dir.close();
+  }
+
+  /**
+   * Verifies that SortedNumericDocValuesRangeQuery does not use a secondary sort field to
+   * accelerate querying if the primary sort field is a genuine sort field.
+   */
+  @Test
+  public void testSortedNumericRangeQueryDoesNotOptimizeWithActivePrimary(Random random)
+      throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec(random));
+    config.setIndexSort(
+        new Sort(
+            new SortField("primary", SortField.Type.LONG), // multiple values → effective primary
+            new SortField("secondary", SortField.Type.LONG)));
+    IndexWriter iw = new IndexWriter(dir, config);
+    for (int i = 0; i < 10; i++) {
+      Document doc = new Document();
+      doc.add(NumericDocValuesField.indexedField("primary", i)); // varying
+      doc.add(NumericDocValuesField.indexedField("secondary", i)); // varying
+      iw.addDocument(doc);
+    }
+    iw.forceMerge(1);
+    iw.close();
+    DirectoryReader reader = DirectoryReader.open(dir);
+    IndexSearcher searcher = new IndexSearcher(reader);
+
+    // primary is active, so getPrimarySortField returns "primary", not "secondary".
+    // The query on "secondary" must fall back to the TwoPhaseIterator path.
+    Query query = SortedNumericDocValuesField.newSlowRangeQuery("secondary", 3, 7);
+    Weight weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
+    Scorer scorer = weight.scorer(reader.leaves().get(0));
+    assertNotNull(scorer);
+    assertNotNull(
+        "TwoPhaseIterator fallback should be used when secondary is not the effective primary",
+        scorer.twoPhaseIterator());
+
+    reader.close();
+    dir.close();
+  }
+
+  /**
+   * Verifies that SortedSetDocValuesRangeQuery can use a secondary sort field to accelerate
+   * querying if the primary sort field is single-valued and therefore a no-op
+   */
+  @Test
+  public void testSortedSetRangeQueryOptimizesWithConstantPrimary(Random random)
+      throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec(random));
+    config.setIndexSort(
+        new Sort(
+            new SortField("primary", SortField.Type.STRING), // constant → no-op
+            new SortField("secondary", SortField.Type.STRING))); // varying → effective primary
+    IndexWriter iw = new IndexWriter(dir, config);
+    for (int i = 0; i < 10; i++) {
+      Document doc = new Document();
+      doc.add(SortedDocValuesField.indexedField("primary", newBytesRef("constant")));
+      doc.add(
+          SortedDocValuesField.indexedField(
+              "secondary", newBytesRef(String.format(Locale.ROOT, "%03d", i))));
+      iw.addDocument(doc);
+    }
+    iw.forceMerge(1);
+    iw.close();
+    DirectoryReader reader = DirectoryReader.open(dir);
+    IndexSearcher searcher = new IndexSearcher(reader);
+
+    // primary has a constant ordinal, so getPrimarySortField skips it and returns "secondary".
+    // The query on "secondary" should therefore use SortedSkipperScorerSupplier,
+    // which yields a plain range iterator with no two-phase iterator.
+    Query query =
+        SortedSetDocValuesField.newSlowRangeQuery(
+            "secondary", newBytesRef("003"), newBytesRef("007"), true, true);
+    Weight weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
+    Scorer scorer = weight.scorer(reader.leaves().get(0));
+    assertNotNull(scorer);
+    assertNull(
+        "SortedSkipperScorerSupplier should be used when primary sort is a no-op",
+        scorer.twoPhaseIterator());
+
+    reader.close();
+    dir.close();
+  }
+
+  /**
+   * Verifies that SortedSetDocValuesRangeQuery can use a secondary sort field to accelerate
+   * querying if the primary sort field is empty and therefore a no-op
+   */
+  @Test
+  public void testSortedSetRangeQueryOptimizesWithEmptyPrimary(Random random) throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec(random));
+    config.setIndexSort(
+        new Sort(
+            new SortField("primary", SortField.Type.STRING), // constant → no-op
+            new SortField("secondary", SortField.Type.STRING))); // varying → effective primary
+    IndexWriter iw = new IndexWriter(dir, config);
+    for (int i = 0; i < 10; i++) {
+      Document doc = new Document();
+      // no values added for primary field
+      doc.add(
+          SortedDocValuesField.indexedField(
+              "secondary", newBytesRef(String.format(Locale.ROOT, "%03d", i))));
+      iw.addDocument(doc);
+    }
+    iw.forceMerge(1);
+    iw.close();
+    DirectoryReader reader = DirectoryReader.open(dir);
+    IndexSearcher searcher = new IndexSearcher(reader);
+
+    // primary has a constant ordinal, so getPrimarySortField skips it and returns "secondary".
+    // The query on "secondary" should therefore use SortedSkipperScorerSupplier,
+    // which yields a plain range iterator with no two-phase iterator.
+    Query query =
+        SortedSetDocValuesField.newSlowRangeQuery(
+            "secondary", newBytesRef("003"), newBytesRef("007"), true, true);
+    Weight weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
+    Scorer scorer = weight.scorer(reader.leaves().get(0));
+    assertNotNull(scorer);
+    assertNull(
+        "SortedSkipperScorerSupplier should be used when primary sort is a no-op",
+        scorer.twoPhaseIterator());
+
+    reader.close();
+    dir.close();
+  }
+
+  /**
+   * Verifies that SortedSetDocValuesRangeQuery does not use a secondary sort field to accelerate
+   * querying if the primary sort field is a genuine sort field.
+   */
+  @Test
+  public void testSortedSetRangeQueryDoesNotOptimizeWithActivePrimary(Random random)
+      throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec(random));
+    config.setIndexSort(
+        new Sort(
+            new SortField("primary", SortField.Type.STRING), // multiple values → effective primary
+            new SortField("secondary", SortField.Type.STRING)));
+    IndexWriter iw = new IndexWriter(dir, config);
+    for (int i = 0; i < 10; i++) {
+      String val = String.format(Locale.ROOT, "%03d", i);
+      Document doc = new Document();
+      doc.add(SortedDocValuesField.indexedField("primary", newBytesRef(val))); // varying
+      doc.add(SortedDocValuesField.indexedField("secondary", newBytesRef(val))); // varying
+      iw.addDocument(doc);
+    }
+    iw.forceMerge(1);
+    iw.close();
+    DirectoryReader reader = DirectoryReader.open(dir);
+    IndexSearcher searcher = new IndexSearcher(reader);
+
+    // primary is active, so getPrimarySortField returns "primary", not "secondary".
+    // The query on "secondary" must fall back to the TwoPhaseIterator path.
+    Query query =
+        SortedSetDocValuesField.newSlowRangeQuery(
+            "secondary", newBytesRef("003"), newBytesRef("007"), true, true);
+    Weight weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
+    Scorer scorer = weight.scorer(reader.leaves().get(0));
+    assertNotNull(scorer);
+    assertNotNull(
+        "TwoPhaseIterator fallback should be used when secondary is not the effective primary",
+        scorer.twoPhaseIterator());
+
+    reader.close();
+    dir.close();
+  }
 }

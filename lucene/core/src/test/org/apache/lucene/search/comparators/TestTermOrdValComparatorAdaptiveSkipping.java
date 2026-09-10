@@ -48,6 +48,7 @@ import org.apache.lucene.util.BytesRef;
  * preserves correctness across data distributions, and that it disables skipping when the skip
  * index is ineffective.
  */
+@LuceneTestCase.SuppressCodecs("SimpleText")
 public class TestTermOrdValComparatorAdaptiveSkipping extends LuceneTestCase {
 
   private static final String SORT_FIELD_SKIP = "sort.skip";
