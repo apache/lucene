@@ -1113,7 +1113,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
           assertEquals(1, reader.leaves().size());
           LeafReader r = getOnlyLeafReader(reader);
           assertEquals(2 * numVectorsPerSegment, r.getFloat16VectorValues(fieldName).size());
-          int k = random().nextInt(5, 15);
+          int k = random().nextInt(5, Math.min(15, 2 * numVectorsPerSegment + 1));
           TopDocs td =
               new IndexSearcher(reader)
                   .search(
