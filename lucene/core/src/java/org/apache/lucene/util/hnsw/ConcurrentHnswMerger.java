@@ -93,7 +93,7 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
                 initReader,
                 initDocMap,
                 initGraphSize,
-                mergedVectorValues,
+                mergedVectorValues.copy(),
                 initializedNodes);
         graph =
             InitializedHnswGraphBuilder.initGraph(
@@ -108,8 +108,9 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
     CompletedNeighborEps epsHelper = null;
     if (graphReaders.isEmpty() == false) {
       // null bitset: parent mapping sets bits for every 0-delete reader, which would skip leftover
-      // inserts on the concurrent path
-      int[][] ordMaps = getNewOrdMapping(mergedVectorValues, null);
+      // inserts on the concurrent path. copy(): sparse OffHeap values share one IndexedDISI;
+      // iterator() is not restartable after the base-graph mapping above.
+      int[][] ordMaps = getNewOrdMapping(mergedVectorValues.copy(), null);
       KnnVectorsReader[] readers = new KnnVectorsReader[graphReaders.size()];
       for (int i = 0; i < graphReaders.size(); i++) {
         readers[i] = graphReaders.get(i).reader();

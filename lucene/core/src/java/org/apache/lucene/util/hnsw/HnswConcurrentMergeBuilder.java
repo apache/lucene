@@ -46,7 +46,6 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
   private final TaskExecutor taskExecutor;
   private final ConcurrentMergeWorker[] workers;
   private final HnswLock hnswLock;
-  private final CompletedNeighborEps epsHelper;
   private InfoStream infoStream = InfoStream.getDefault();
   private boolean frozen;
 
@@ -71,7 +70,6 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
       CompletedNeighborEps epsHelper)
       throws IOException {
     this.taskExecutor = taskExecutor;
-    this.epsHelper = epsHelper;
     AtomicInteger workProgress = new AtomicInteger(0);
     workers = new ConcurrentMergeWorker[numWorker];
     hnswLock = new HnswLock();
