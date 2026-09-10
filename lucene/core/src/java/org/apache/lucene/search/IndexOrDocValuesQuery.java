@@ -174,8 +174,10 @@ public final class IndexOrDocValuesQuery extends Query {
             // At equal costs, doc values tend to be worse than points since they
             // still need to perform one comparison per document while points can
             // do much better than that given how values are organized. So we give
-            // an arbitrary 8x penalty to doc values.
-            final long threshold = cost() >>> 3;
+            // a 6x penalty to doc values. (Reduced from 8x: DocValuesSkipper
+            // enables block-level skipping that makes DV competitive with points
+            // for selective leads in conjunctions.)
+            final long threshold = cost() / 6;
             if (threshold <= leadCost) {
               return indexScorerSupplier.get(leadCost);
             } else {
