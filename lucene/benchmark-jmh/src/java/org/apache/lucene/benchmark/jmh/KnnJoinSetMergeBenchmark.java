@@ -21,7 +21,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -211,6 +210,9 @@ public class KnnJoinSetMergeBenchmark {
                 + stats.mergeCount.get()
                 + " fanIn="
                 + stats.fanIn);
+      }
+      if (recall < 0) {
+        throw new IllegalStateException("negative recall");
       }
       return checksum;
     } finally {
