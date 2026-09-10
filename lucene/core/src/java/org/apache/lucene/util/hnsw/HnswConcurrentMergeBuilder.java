@@ -57,10 +57,25 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
       OnHeapHnswGraph hnsw,
       BitSet initializedNodes)
       throws IOException {
+    this(taskExecutor, numWorker, scorerSupplier, beamWidth, hnsw, initializedNodes, null);
+  }
+
+  HnswConcurrentMergeBuilder(
+      TaskExecutor taskExecutor,
+      int numWorker,
+      RandomVectorScorerSupplier scorerSupplier,
+      int beamWidth,
+      OnHeapHnswGraph hnsw,
+      BitSet initializedNodes,
+      CompletedNeighborEps epsHelper)
+      throws IOException {
     this.taskExecutor = taskExecutor;
     AtomicInteger workProgress = new AtomicInteger(0);
     workers = new ConcurrentMergeWorker[numWorker];
     hnswLock = new HnswLock();
+    if (epsHelper != null) {
+      epsHelper.bind(hnsw, hnswLock);
+    }
     for (int i = 0; i < numWorker; i++) {
       workers[i] =
           new ConcurrentMergeWorker(
@@ -70,7 +85,8 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
               hnsw,
               hnswLock,
               initializedNodes,
-              workProgress);
+              workProgress,
+              epsHelper);
     }
   }
 
@@ -177,6 +193,8 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     private final AtomicInteger workProgress;
 
     private final BitSet initializedNodes;
+    private final CompletedNeighborEps epsHelper;
+    private final HnswGraph[] sourceGraphs;
     private int batchSize = DEFAULT_BATCH_SIZE;
 
     private ConcurrentMergeWorker(
@@ -186,7 +204,8 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
         OnHeapHnswGraph hnsw,
         HnswLock hnswLock,
         BitSet initializedNodes,
-        AtomicInteger workProgress)
+        AtomicInteger workProgress,
+        CompletedNeighborEps epsHelper)
         throws IOException {
       super(
           scorerSupplier,
@@ -198,6 +217,8 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
               new NeighborQueue(beamWidth, true), hnswLock, new FixedBitSet(hnsw.maxNodeId() + 1)));
       this.workProgress = workProgress;
       this.initializedNodes = initializedNodes;
+      this.epsHelper = epsHelper;
+      this.sourceGraphs = epsHelper == null ? null : epsHelper.newSourceGraphs();
     }
 
     /**
@@ -231,7 +252,26 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
       if (initializedNodes != null && initializedNodes.get(node)) {
         return;
       }
-      super.addGraphNode(node);
+      IntHashSet eps = epsHelper == null ? null : epsHelper.getEps(node, sourceGraphs);
+      if (eps != null && eps.size() > 0) {
+        super.addGraphNode(node, eps);
+      } else {
+        super.addGraphNode(node);
+      }
+      if (epsHelper != null) {
+        epsHelper.markCompleted(node);
+      }
+    }
+
+    @Override
+    public void addGraphNode(int node, IntHashSet eps) throws IOException {
+      if (initializedNodes != null && initializedNodes.get(node)) {
+        return;
+      }
+      super.addGraphNode(node, eps);
+      if (epsHelper != null) {
+        epsHelper.markCompleted(node);
+      }
     }
   }
 
