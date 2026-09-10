@@ -45,6 +45,7 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.IntroSorter;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
@@ -447,6 +448,11 @@ final class IVFasterVectorsWriter extends KnnVectorsWriter {
    *     every copy, which is how the reader tells a primary from a spill. That per-slot emission of
    *     both the code table and the coarse planes is the dominant term in index size; see {@link
    *     IVFasterVectorsFormat#DEFAULT_SPILL_BITS}.
+   *     <p>WITHIN A CELL, SLOTS ARE IN ASCENDING DOC-ID ORDER, so a cell is a posting list: the
+   *     reader walks the probed cells as a disjunction of sorted iterators and intersects them with
+   *     a filter's {@code DocIdSetIterator} before any document is scored. The writer establishes
+   *     the order by making vector index ascend with doc id (step 0), which also keeps the ordinal
+   *     map below in doc order under an index sort.
    *     <p>THE POSTING DIRECTORY IS OFFSETS ONLY. Cell {@code c} is the contiguous slot range
    *     {@code [postingOffsets[c], postingOffsets[c+1])}, so the slot ordinals themselves are the
    *     ascending integers that range already names. Offsets are BYTE offsets ({@code slot *
@@ -465,18 +471,18 @@ final class IVFasterVectorsWriter extends KnnVectorsWriter {
    */
   private void writeField(
       FieldInfo fieldInfo,
-      float[][] vectors,
-      int[] docIds,
+      float[][] vectorsIn,
+      int[] docIdsIn,
       int count,
       float[][] seed,
       IVFasterVectorsReader.DonorView donor,
-      int[] carried,
-      int[] donorOrd,
+      int[] carriedIn,
+      int[] donorOrdIn,
       float[] donorMean,
-      boolean[] preRotated,
+      boolean[] preRotatedIn,
       IVFasterVectorsReader.DonorView[] coarseViews,
-      int[] coarseSrc,
-      int[] coarseOrd)
+      int[] coarseSrcIn,
+      int[] coarseOrdIn)
       throws IOException {
 
     final int dim = fieldInfo.getVectorDimension();
@@ -487,6 +493,17 @@ final class IVFasterVectorsWriter extends KnnVectorsWriter {
       writeEmptyField(fieldInfo, dim, sim, quantizer);
       return;
     }
+
+    // 0. Canonical order: vector index i ascends with docId; see the javadoc. Only an index sort
+    // delivers documents out of order, so the common path allocates nothing here.
+    final int[] order = isAscending(docIdsIn, count) ? null : docOrder(docIdsIn, count);
+    final float[][] vectors = order == null ? vectorsIn : permute(vectorsIn, order);
+    final int[] docIds = order == null ? docIdsIn : permute(docIdsIn, order);
+    final int[] carried = order == null ? carriedIn : permute(carriedIn, order);
+    final int[] donorOrd = order == null ? donorOrdIn : permute(donorOrdIn, order);
+    final int[] coarseSrc = order == null ? coarseSrcIn : permute(coarseSrcIn, order);
+    final int[] coarseOrd = order == null ? coarseOrdIn : permute(coarseOrdIn, order);
+    final boolean[] preRotated = order == null ? preRotatedIn : permute(preRotatedIn, order);
 
     // 1. Normalize and rotate, in parallel over documents.
     long t = traceStart();
@@ -566,6 +583,17 @@ final class IVFasterVectorsWriter extends KnnVectorsWriter {
       for (int i = 0; i < count; i++) {
         for (int c : cellsPerDoc[i]) {
           slotDoc[cellStart[c] + cursor[c]++] = i;
+        }
+      }
+    }
+    // WITHIN A CELL, SLOTS ASCEND BY DOC ID: the fill above walks i upward and step 0 made i
+    // ascend with docId, and a document holds at most one slot per cell. Enforced rather than
+    // assumed, since the reader treats a cell as a posting list.
+    for (int c = 0; c < nlistActual; c++) {
+      for (int s = cellStart[c] + 1; s < cellStart[c + 1]; s++) {
+        if (docIds[slotDoc[s]] <= docIds[slotDoc[s - 1]]) {
+          throw new IllegalStateException(
+              "cell " + c + " is not in ascending doc-id order at slot " + s);
         }
       }
     }
@@ -850,6 +878,74 @@ final class IVFasterVectorsWriter extends KnnVectorsWriter {
     }
   }
 
+  private static boolean isAscending(int[] docIds, int count) {
+    for (int i = 1; i < count; i++) {
+      if (docIds[i] <= docIds[i - 1]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /** Vector indices in ascending doc-id order. */
+  private static int[] docOrder(int[] docIds, int count) {
+    final int[] order = new int[count];
+    for (int i = 0; i < count; i++) {
+      order[i] = i;
+    }
+    new IntroSorter() {
+      int pivot;
+
+      @Override
+      protected void swap(int i, int j) {
+        final int t = order[i];
+        order[i] = order[j];
+        order[j] = t;
+      }
+
+      @Override
+      protected void setPivot(int i) {
+        pivot = docIds[order[i]];
+      }
+
+      @Override
+      protected int comparePivot(int j) {
+        return Integer.compare(pivot, docIds[order[j]]);
+      }
+    }.sort(0, count);
+    return order;
+  }
+
+  private static float[][] permute(float[][] a, int[] order) {
+    final float[][] out = new float[order.length][];
+    for (int i = 0; i < order.length; i++) {
+      out[i] = a[order[i]];
+    }
+    return out;
+  }
+
+  private static int[] permute(int[] a, int[] order) {
+    if (a == null) {
+      return null;
+    }
+    final int[] out = new int[order.length];
+    for (int i = 0; i < order.length; i++) {
+      out[i] = a[order[i]];
+    }
+    return out;
+  }
+
+  private static boolean[] permute(boolean[] a, int[] order) {
+    if (a == null) {
+      return null;
+    }
+    final boolean[] out = new boolean[order.length];
+    for (int i = 0; i < order.length; i++) {
+      out[i] = a[order[i]];
+    }
+    return out;
+  }
+
   /**
    * The fine tier to encode with, from the format's configured {@link
    * IVFasterVectorsFormat.FineTier}.
@@ -952,7 +1048,13 @@ final class IVFasterVectorsWriter extends KnnVectorsWriter {
       return ArrayUtil.copyOfSubArray(value, 0, dim);
     }
 
-    /** Rewrites doc ids through an index sort, keeping them ascending. */
+    /**
+     * Rewrites doc ids through an index sort.
+     *
+     * <p>The ids are no longer ascending afterwards; {@code writeField} restores ascending order
+     * before anything depends on it, since both the ordinal map and the per-cell slot order are
+     * contracts on doc order.
+     */
     void applySort(Sorter.DocMap sortMap) {
       if (sortMap == null) {
         return;
@@ -960,7 +1062,6 @@ final class IVFasterVectorsWriter extends KnnVectorsWriter {
       for (int i = 0; i < size; i++) {
         docIds[i] = sortMap.oldToNew(docIds[i]);
       }
-      // Cell order makes vector order irrelevant, but the doc ids must be the NEW ones.
     }
 
     @Override

@@ -208,21 +208,27 @@ final class CentroidCodes {
       }
       return;
     }
-    if (rankScratch == null) {
-      rankScratch = new VerifyScratch();
+    final RankScratch rs = rankScratch.get();
+    if (rs.state == null || rs.state.reset(vector, fineMean) == false) {
+      rs.state = prepareFine(vector);
     }
-    if (rankState == null || rankState.reset(vector, fineMean) == false) {
-      rankState = prepareFine(vector);
-    }
-    verifyFine(rankState, cands, count, rankScratch);
+    verifyFine(rs.state, cands, count, rs.scratch);
     for (int i = 0; i < count; i++) {
       // The state reports raw dots, so the distance is their negation.
-      out[i] = -rankScratch.scores[i];
+      out[i] = -rs.scratch.scores[i];
     }
   }
 
-  private VerifyScratch rankScratch;
-  private FineQuantizer.QueryState rankState;
+  /**
+   * Per-thread state for {@link #rankCandidates}: the instance is shared by every search thread of
+   * a reader, and both the query state and the verify buffers are written per call.
+   */
+  private static final class RankScratch {
+    final VerifyScratch scratch = new VerifyScratch();
+    FineQuantizer.QueryState state;
+  }
+
+  private final ThreadLocal<RankScratch> rankScratch = ThreadLocal.withInitial(RankScratch::new);
 
   /**
    * Per-query state for the fine tier, reusable across every candidate of one scan.

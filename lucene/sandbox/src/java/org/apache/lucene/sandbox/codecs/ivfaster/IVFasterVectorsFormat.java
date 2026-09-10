@@ -53,6 +53,15 @@ import org.apache.lucene.index.SegmentWriteState;
  *       re-scanned, on a bound that provably contains every document that changes.
  * </ol>
  *
+ * <h2>Filtered search</h2>
+ *
+ * <p>A filter is resolved before the coarse scan and consumed doc-at-a-time. Every cell's slots are
+ * in ascending doc-id order, so a probed cell is a posting list, and each probed run is walked in
+ * doc order with the filter tested per document before any document is scored. The probe widens,
+ * nearest cell first, until twice the shortlist's worth of accepted documents has been gathered,
+ * and the best shortlist of those is reranked; a filter narrow enough that reranking every accepted
+ * document reads fewer bytes than that walk would is reranked whole. See the reader.
+ *
  * <h2>Scope limits</h2>
  *
  * <p>PAGE-CACHE RESIDENT IS THE TUNED CASE, and the layout admits a colder one. The scan reads the
@@ -91,7 +100,16 @@ public final class IVFasterVectorsFormat extends KnnVectorsFormat {
   public static final String NAME = "IVFasterVectorsFormat";
 
   static final int VERSION_START = 0;
-  static final int VERSION_CURRENT = VERSION_START;
+
+  /**
+   * Within a cell, slots are in ascending document-id order, so the reader can walk a cell as a
+   * posting list and intersect it with a filter's {@code DocIdSetIterator}. The reader verifies the
+   * invariant at open for every version, since a segment written before it is unsorted only under
+   * an index sort, where its ordinal map was already broken.
+   */
+  static final int VERSION_DOC_SORTED_CELLS = 1;
+
+  static final int VERSION_CURRENT = VERSION_DOC_SORTED_CELLS;
 
   static final String META_CODEC_NAME = NAME + "Meta";
   static final String DATA_CODEC_NAME = NAME + "Data";

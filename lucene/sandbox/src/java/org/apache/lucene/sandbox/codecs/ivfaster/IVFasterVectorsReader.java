@@ -24,6 +24,7 @@ import static org.apache.lucene.sandbox.codecs.ivfaster.IVFasterVectorsFormat.VE
 import static org.apache.lucene.sandbox.codecs.ivfaster.IVFasterVectorsFormat.VERSION_START;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
@@ -38,13 +39,16 @@ import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.AcceptDocs;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.NumericUtils;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 /**
@@ -63,6 +67,26 @@ import org.apache.lucene.util.packed.DirectMonotonicReader;
  *       sort.
  *   <li>Rerank the shortlist with the fine tier and collect.
  * </ol>
+ *
+ * <h2>Filters are resolved first, doc-at-a-time</h2>
+ *
+ * <p>A filtered query never post-filters a shortlist. The filter is resolved BEFORE the coarse scan
+ * and consumed doc-at-a-time: every probed cell is a posting list ({@link CellPostings}, its slots
+ * ascending by doc id), each probed run is walked in doc order with the filter's bit set tested per
+ * document, and only the surviving slots are Hamming-scored, so a filter that admits one document
+ * in a thousand costs one coarse distance per admitted document rather than per slot, and the
+ * shortlist is drawn from filter-accepted documents alone. See {@link #filteredScanAndRerank} for
+ * why the cells lead the intersection rather than the filter.
+ *
+ * <p>NPROBE IS DYNAMIC under a filter. Cells are consumed nearest-first in growing batches until
+ * {@link #FILTERED_TARGET} distinct accepted documents have been scored, or every cell has been
+ * probed, so a selective filter widens the probe instead of starving the shortlist. A filter whose
+ * whole accepted set is no larger than the shortlist ({@link #EXACT_FILTER_COST}) skips cell
+ * selection entirely and reranks every accepted document.
+ *
+ * <p>Live docs alone are NOT a filter in this sense: deletions are bounded by merging and cannot
+ * starve the pool, so an unfiltered query on a segment with deletions keeps the bulk scan and drops
+ * deleted documents at the dedup, the way it always has.
  *
  * <h2>Dedup inside the selection</h2>
  *
@@ -86,6 +110,58 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
    * targeted.
    */
   private static final int BRUTE_N = Integer.getInteger("ivfaster.bruteN", 700);
+
+  /**
+   * Filtered queries: distinct filter-accepted documents the coarse scan gathers before cell
+   * selection stops; see the class javadoc.
+   *
+   * <p>Defaults to TWICE {@link #BRUTE_N}. The unfiltered scan hands the fine tier the best {@code
+   * bruteN} of every slot in a fixed {@code nprobe} cells, a selection from a pool several times
+   * that size. The filtered walk gathers accepted documents until it has this many and reranks the
+   * best {@code bruteN} of them, so a target of exactly {@code bruteN} would rerank everything it
+   * gathered with no selection at all. Twice the shortlist restores a selection and reaches
+   * further: on a 1M x 1024-d segment at 5% selectivity it lifted recall from 0.866 to 0.926 for
+   * 2.6 ms to 4.4 ms of CPU per query, and at 50% and above it changed nothing, since the first
+   * round of cells already exceeds it.
+   */
+  private static final int FILTERED_TARGET =
+      Integer.getInteger("ivfaster.filteredTarget", 2 * BRUTE_N);
+
+  /**
+   * Cap on cells probed by a filtered query; {@code 0} means every cell. A latency bound for a
+   * filter so selective that the target is unreachable, at the cost of the recall the unprobed
+   * cells held.
+   */
+  private static final int FILTERED_MAX_PROBE = Integer.getInteger("ivfaster.filteredMaxProbe", 0);
+
+  /**
+   * Floor on the filter cardinality at or below which every accepted document is fine-reranked
+   * directly, with no cell selection and no coarse scan; see {@link #exactFilterBound}.
+   *
+   * <p>Defaults to {@link #BRUTE_N}: below it the accepted set is no larger than the shortlist the
+   * fine tier would score anyway, so probing cells to find a subset of it could only lose recall.
+   */
+  private static final int EXACT_FILTER_COST =
+      Integer.getInteger("ivfaster.exactFilterCost", BRUTE_N);
+
+  /**
+   * The cardinality up to which reranking every accepted document reads FEWER BYTES than walking
+   * cells to find {@link #FILTERED_TARGET} of them would, so the exact path is chosen on cost as
+   * well as on the floor.
+   *
+   * <p>A filter accepting {@code cost} of the segment lands about {@code cost / nlist} documents in
+   * each cell, so reaching the target takes {@code target * nlist / cost} cells, each a run of
+   * {@code slots / nlist} coarse codes: {@code target * slots * coarseBytes / cost} bytes of coarse
+   * scan, over cells a selective filter drives past the warm working set. Reranking everything
+   * instead reads {@code cost * recordLen} bytes. The two are equal at {@code cost = sqrt(target *
+   * slots * coarseBytes / recordLen)}, about 25K documents on a 1M-document 1024-d segment with
+   * three spill copies; below that the exact path is both cheaper and complete.
+   */
+  private static int exactFilterBound(FieldEntry e) {
+    final double slots = (double) e.codeTableLength / e.recordLen;
+    final double parity = Math.sqrt(FILTERED_TARGET * slots * e.coarseBytes / e.recordLen);
+    return (int) Math.max(EXACT_FILTER_COST, Math.min(Integer.MAX_VALUE, parity));
+  }
 
   /**
    * Diagnostic: select cells by exact scan of the centroid matrix rather than the graph.
@@ -489,6 +565,9 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
      */
     final int[] slotDoc;
 
+    /** The identity {@code 0..nlist-1}, the candidate list for ranking every cell at once. */
+    final int[] allCells;
+
     /**
      * Opens every view for one field, and reads at open what a query would otherwise rebuild.
      *
@@ -564,6 +643,33 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
           }
         }
       }
+      // The posting-list contract the filtered path reads a cell by; see CellPostings. Verified
+      // here, where every slot is being read anyway, so a violation fails at open rather than as
+      // a silently incomplete intersection.
+      if (postingOffsets != null) {
+        for (int c = 0; c < e.nlist; c++) {
+          final int from = (int) (postingOffsets.get(c) / Integer.BYTES);
+          final int to = (int) (postingOffsets.get(c + 1) / Integer.BYTES);
+          for (int s = from + 1; s < to; s++) {
+            if (slotDoc[s] <= slotDoc[s - 1]) {
+              throw new CorruptIndexException(
+                  "cell " + c + " is not in ascending doc-id order at slot " + s, data);
+            }
+          }
+        }
+      }
+      // Ordinal order is doc order: the sparse iterator and the exact filtered path both rely on
+      // it, so an index-sorted segment written without the writer's canonical order is refused.
+      for (int i = 1; i < e.count; i++) {
+        if (ordToDoc[i] <= ordToDoc[i - 1]) {
+          throw new CorruptIndexException(
+              "vector ordinals are not in ascending doc-id order at ordinal " + i, data);
+        }
+      }
+      allCells = new int[e.nlist];
+      for (int c = 0; c < e.nlist; c++) {
+        allCells[c] = c;
+      }
       graph =
           e.graphLength > 0
               ? CentroidGraph.read(
@@ -602,6 +708,9 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
    *
    * <p>The scan reaches the shortlist by random access, which is its shape: a scattered set of
    * slots rather than a sequential walk.
+   *
+   * <p>A query filter is resolved before any cell is chosen and walked doc-at-a-time; see the class
+   * javadoc and {@link #filteredScanAndRerank}. Live docs alone stay on the bulk scan.
    */
   @Override
   public void search(String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
@@ -625,13 +734,26 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
     final FineQuantizer.QueryState fine =
         e.quantizer.prepareQuery(rotated, dim, v.mean, e.similarity);
 
-    // 3. Select cells.
-    final int probe = Math.min(NPROBE_OVERRIDE > 0 ? NPROBE_OVERRIDE : e.nprobe, e.nlist);
-    final int[] selected = selectCells(e, v, rotated, qCode, probe);
-
-    // 4 + 5. Coarse-scan the selected cells, then rerank the shortlist.
+    // 3. Resolve the filter BEFORE selecting cells; see the class javadoc. A BitSet is a query
+    // filter, which AbstractKnnVectorQuery has already materialized; anything else is live docs.
     final Bits accept = acceptDocs == null ? null : acceptDocs.bits();
-    scanAndRerank(e, v, qCode, fine, selected, knnCollector, accept);
+    final int probe = Math.min(NPROBE_OVERRIDE > 0 ? NPROBE_OVERRIDE : e.nprobe, e.nlist);
+    if (accept instanceof BitSet == false) {
+      // 4 + 5. Coarse-scan the selected cells, then rerank the shortlist.
+      final int[] selected = selectCells(e, v, rotated, qCode, probe, true);
+      scanAndRerank(e, v, qCode, fine, selected, knnCollector, accept);
+      return;
+    }
+    // Cardinality first: AcceptDocs forbids cost() after iterator().
+    final int cost = acceptDocs.cost();
+    if (cost <= exactFilterBound(e)) {
+      exactFilterQueries.incrementAndGet();
+      rerankFilteredDocs(e, v, fine, acceptDocs.iterator(), knnCollector);
+      return;
+    }
+    // No quality prune on the initial selection: the walk below widens on its own terms.
+    final int[] initial = selectCells(e, v, rotated, qCode, probe, false);
+    filteredScanAndRerank(e, v, rotated, qCode, fine, initial, (BitSet) accept, knnCollector);
   }
 
   /**
@@ -718,7 +840,8 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
    * for its beam. The coarse code is a WEAK ranker, so the prefix stays several times {@code
    * probe}: it drops the hopeless tail without letting coarse pick the cells.
    */
-  private int[] selectCells(FieldEntry e, FieldViews v, float[] rotated, byte[] qCode, int probe) {
+  private int[] selectCells(
+      FieldEntry e, FieldViews v, float[] rotated, byte[] qCode, int probe, boolean applyMargin) {
     if (v.graph != null && FLAT_SELECT == false) {
       final int ef = Math.max(CentroidGraph.MIN_EF, probe * CentroidGraph.EF_MULTIPLIER);
       final ScanScratch scan = SCAN_SCRATCH.get();
@@ -731,7 +854,7 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
               ? got
               : Math.min(got, Math.max(VERIFY_MIN, probe * VERIFY_MULTIPLIER));
       final int kept = verifyCap < got ? narrowByCoarse(candidates, candDist, got, verifyCap) : got;
-      return rerankCells(e, v, rotated, candidates, kept, probe);
+      return rerankCells(e, v, rotated, candidates, kept, probe, applyMargin);
     }
     flatSelects.incrementAndGet();
     // Exact scan: a max-heap of the best `probe` cells, keyed on distance.
@@ -808,7 +931,13 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
    * more negative than {@code d1} and reject everything including ties.
    */
   private int[] rerankCells(
-      FieldEntry e, FieldViews v, float[] rotated, int[] candidates, int got, int probe) {
+      FieldEntry e,
+      FieldViews v,
+      float[] rotated,
+      int[] candidates,
+      int got,
+      int probe,
+      boolean applyMargin) {
     final float[] dist = new float[got];
     final int[] order = new int[got];
     if (Boolean.getBoolean("ivfaster.reportEngagement")) {
@@ -841,8 +970,9 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
     }
 
     int keep = prefix;
-    // ADAPTIVE NPROBE; see the javadoc and NPROBE_MARGIN.
-    if (NPROBE_MARGIN != 1.0f && keep > 1) {
+    // ADAPTIVE NPROBE; see the javadoc and NPROBE_MARGIN. Off under a filter, whose walk decides
+    // its own width from what the filter admits.
+    if (applyMargin && NPROBE_MARGIN != 1.0f && keep > 1) {
       final float d1 = dist[order[0]];
       final float bound = d1 * NPROBE_MARGIN;
       int k = 1;
@@ -893,19 +1023,11 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
    * {@code need} at or before it.
    *
    * <p>The pool is then distance-ordered by counting sort, so the dedup keeps the BEST copy of each
-   * document. That sort is bounded by the cut rather than by the whole distance range, since every
-   * pooled document is at or below it and higher buckets are empty, and the prefix accumulate is a
-   * scalar dependent loop that does not vectorize.
+   * document; see {@link #cutAndOrderPool}. The shortlist is staged and scored by {@link
+   * #rerankAndCollect}.
    *
-   * <p>THE RERANK IS BULK, so the fine tier's per-query setup is shared across the shortlist. Two
-   * staging layouts, chosen by what the tier's kernel consumes: the bytes read are identical and
-   * only the destination differs. FLAT is one constant-stride buffer, which a kernel scores in one
-   * call; ROWS is {@code byte[][]} for record-direct kernels, where staging flat would add a second
-   * copy.
-   *
-   * <p>Staging and scoring are BLOCKED, so an early stop skips STAGING and not merely scoring,
-   * since staging copies the records and dominates the arithmetic. Blocks stay large because the
-   * rerank is one kernel call per block.
+   * <p>{@code liveDocs} is the segment's live-doc bits or null, applied at the dedup. A query
+   * filter never reaches this method; see {@link #filteredScanAndRerank}.
    */
   private void scanAndRerank(
       FieldEntry e,
@@ -914,7 +1036,7 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
       FineQuantizer.QueryState fine,
       int[] selected,
       KnnCollector collector,
-      Bits acceptDocs)
+      Bits liveDocs)
       throws IOException {
 
     final HammingKernel hamming = HammingKernel.get();
@@ -927,52 +1049,21 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
     final int fanout = 1 + e.spillBits;
     final int poolTarget = BRUTE_N * fanout;
 
-    // Cell bounds decoded once; see the javadoc.
-    final int sel = selected.length;
-    final int[] cellBase = sc.cellBase(sel);
-    final int[] cellRows = sc.cellRows(sel);
-    int nCells = 0;
+    // Cell bounds decoded once, and every run hinted; see resolveCells.
+    final int nCells = resolveCells(e, v, selected, selected.length, sc, 0);
+    final int[] cellBase = sc.cellBase;
+    final int[] cellRows = sc.cellRows;
     int totalCandidates = 0;
     int maxRows = 0;
-    {
-      long prevEnd = -1;
-      int prevCell = Integer.MIN_VALUE;
-      for (int i = 0; i < sel; i++) {
-        final int c = selected[i];
-        if (c < 0) {
-          continue;
-        }
-        final long start = (c == prevCell + 1 && prevEnd >= 0) ? prevEnd : v.postingOffsets.get(c);
-        final long end = v.postingOffsets.get(c + 1);
-        prevEnd = end;
-        prevCell = c;
-        final int rows = (int) ((end - start) / Integer.BYTES);
-        if (rows == 0) {
-          continue;
-        }
-        cellBase[nCells] = (int) (start / Integer.BYTES);
-        cellRows[nCells] = rows;
-        nCells++;
-        totalCandidates += rows;
-        if (rows > maxRows) {
-          maxRows = rows;
-        }
+    for (int ci = 0; ci < nCells; ci++) {
+      final int rows = cellRows[ci];
+      totalCandidates += rows;
+      if (rows > maxRows) {
+        maxRows = rows;
       }
     }
     if (totalCandidates == 0) {
       return;
-    }
-
-    // Hint every probed run before scanning any of it, so cold faults overlap; see PREFETCH. Placed
-    // at the first point the ranges are known, which is what buys the overlap.
-    if (PREFETCH) {
-      final int recordLen = e.recordLen;
-      for (int ci = 0; ci < nCells; ci++) {
-        final long slotBase = cellBase[ci];
-        final int rows = cellRows[ci];
-        v.coarse.prefetch(slotBase * coarseBytes, (long) rows * coarseBytes);
-        v.codeTable.prefetch(slotBase * recordLen, (long) rows * recordLen);
-      }
     }
 
     // Opt-in instrumentation; see COUNT_SCAN.
@@ -1125,6 +1216,82 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
 
     // The final cut over the histogram, distinct from the admission threshold; see the javadoc.
     final int need = Math.min(poolTarget, totalCandidates);
+    final int poolN = cutAndOrderPool(sc, packed, m, hist, histLen, need);
+
+    // Keep the first BRUTE_N distinct documents in distance order.
+    final int candCap = Math.min(BRUTE_N, poolN);
+    final int[] cands = sc.cands(candCap);
+    final int n = keepDistinctInOrder(sc.ordered, poolN, candCap, cands, v.slotDoc, liveDocs, sc);
+    if (n == 0) {
+      return;
+    }
+    rerankAndCollect(e, v, fine, cands, n, collector);
+  }
+
+  /**
+   * Decodes the slot bounds of {@code n} cells into the scratch's {@code cellBase}/{@code
+   * cellRows}, appending after the {@code from} cells already there, and hints every new run.
+   *
+   * <p>Consecutive cells share a bound, so a running {@code prev} saves one decode per cell when
+   * the list is ordered and costs nothing when it is not. Empty cells and negative ids are skipped,
+   * so the returned count is of cells with rows.
+   *
+   * <p>Every probed run is hinted before any of it is scanned, so cold faults overlap; see {@link
+   * #PREFETCH}. Placed at the first point the ranges are known, which is what buys the overlap.
+   *
+   * @return the total cell count after appending
+   */
+  private static int resolveCells(
+      FieldEntry e, FieldViews v, int[] cells, int n, ScanScratch sc, int from) throws IOException {
+    final int[] cellBase = sc.cellBase(from + n);
+    final int[] cellRows = sc.cellRows(from + n);
+    int nCells = from;
+    long prevEnd = -1;
+    int prevCell = Integer.MIN_VALUE;
+    for (int i = 0; i < n; i++) {
+      final int c = cells[i];
+      if (c < 0) {
+        continue;
+      }
+      final long start = (c == prevCell + 1 && prevEnd >= 0) ? prevEnd : v.postingOffsets.get(c);
+      final long end = v.postingOffsets.get(c + 1);
+      prevEnd = end;
+      prevCell = c;
+      final int rows = (int) ((end - start) / Integer.BYTES);
+      if (rows == 0) {
+        continue;
+      }
+      cellBase[nCells] = (int) (start / Integer.BYTES);
+      cellRows[nCells] = rows;
+      nCells++;
+    }
+    if (PREFETCH) {
+      final int coarseBytes = e.coarseBytes;
+      final int recordLen = e.recordLen;
+      for (int ci = from; ci < nCells; ci++) {
+        final long slotBase = cellBase[ci];
+        final int rows = cellRows[ci];
+        v.coarse.prefetch(slotBase * coarseBytes, (long) rows * coarseBytes);
+        v.codeTable.prefetch(slotBase * recordLen, (long) rows * recordLen);
+      }
+    }
+    return nCells;
+  }
+
+  /**
+   * Cuts the admitted slots to the {@code need} nearest by coarse distance and leaves them
+   * distance-ordered in the scratch's {@code ordered}.
+   *
+   * <p>The cut is taken over the histogram AFTER the scan, distinct from the admission threshold
+   * that tightened during it; see {@link #scanAndRerank}. Everything strictly under the cut is
+   * taken, then ties up to {@code need}, so rerank cost is fixed. The pool is then distance-ordered
+   * by counting sort bounded by the cut, since every pooled slot is at or below it and higher
+   * buckets are empty, so the dedup that follows keeps the BEST copy of a document.
+   *
+   * @return the pool size
+   */
+  private static int cutAndOrderPool(
+      ScanScratch sc, long[] packed, int m, int[] hist, int histLen, int need) {
     int below = 0;
     int selThr = 0;
     while (selThr < histLen && below + hist[selThr] < need) {
@@ -1133,7 +1300,6 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
     }
     final long thrKey = (long) selThr << 32;
 
-    // Everything strictly under the cut, then ties up to `need`, so rerank cost is fixed.
     final long[] pool = sc.pool(need);
     int poolN = 0;
     for (int i = 0; i < m && poolN < need; i++) {
@@ -1147,7 +1313,6 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
       }
     }
 
-    // Distance-order the pool by counting sort, bounded by the cut; see the javadoc.
     final int prefixLen = selThr + 1;
     final int[] prefix = sc.prefix(prefixLen + 1);
     for (int i = 0; i < poolN; i++) {
@@ -1163,16 +1328,36 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
     for (int i = 0; i < poolN; i++) {
       ordered[prefix[(int) (pool[i] >>> 32)]++] = pool[i];
     }
+    return poolN;
+  }
 
-    // Keep the first BRUTE_N distinct documents in distance order.
-    final int candCap = Math.min(BRUTE_N, poolN);
-    final int[] cands = sc.cands(candCap);
-    final int n = keepDistinctInOrder(ordered, poolN, candCap, cands, v.slotDoc, acceptDocs, sc);
-    if (n == 0) {
-      return;
-    }
-
-    // Bulk rerank, in one of two staging layouts; see the javadoc.
+  /**
+   * Stages and fine-scores {@code n} slots, collecting every score, and reports {@code n} visited.
+   *
+   * <p>THE RERANK IS BULK, so the fine tier's per-query setup is shared across the shortlist. Two
+   * staging layouts, chosen by what the tier's kernel consumes: the bytes read are identical and
+   * only the destination differs. FLAT is one constant-stride buffer, which a kernel scores in one
+   * call; ROWS is {@code byte[][]} for record-direct kernels, where staging flat would add a second
+   * copy.
+   *
+   * <p>Staging and scoring are BLOCKED, so an early stop skips STAGING and not merely scoring,
+   * since staging copies the records and dominates the arithmetic. Blocks stay large because the
+   * rerank is one kernel call per block.
+   *
+   * <p>The visited count is the number of DISTINCT DOCUMENTS fine-scored, on every path. {@code
+   * AbstractKnnVectorQuery} falls back to an exact search once visited reaches the filter's
+   * cardinality plus one, so counting slots scanned or cells probed, which a selective filter
+   * drives far past its cardinality, would turn every such query into a brute-force one.
+   */
+  private void rerankAndCollect(
+      FieldEntry e,
+      FieldViews v,
+      FineQuantizer.QueryState fine,
+      int[] cands,
+      int n,
+      KnnCollector collector)
+      throws IOException {
+    final ScanScratch sc = SCAN_SCRATCH.get();
     final float[][] corrections = sc.corrections(n);
     final int[] docIds = sc.docIds;
     final float[] scores = sc.scores;
@@ -1232,8 +1417,7 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
    * Keeps the first {@code keep} DISTINCT document ids from a distance-ordered pool of slots.
    *
    * <p>Open-addressed set over document ids, sized to the keep target rather than the pool, since
-   * only kept documents are ever inserted. Ids are dense and sequential, so they are scrambled
-   * before masking or they clump into consecutive buckets.
+   * only kept documents are ever inserted; see {@link #insertDistinct}.
    *
    * <p>The table is GENERATION-STAMPED and reused per thread: each entry carries the query
    * generation it was written in, so emptiness is "wrong generation" rather than a sentinel, which
@@ -1252,8 +1436,32 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
       int keep,
       int[] out,
       int[] slotDoc,
-      Bits acceptDocs,
+      Bits liveDocs,
       ScanScratch sc) {
+    final int cap = dedupCapacity(keep);
+    final int mask = cap - 1;
+    final int[] keys = sc.dedupKeys(cap);
+    final int[] gens = sc.dedupGens(cap);
+    final int stamp = sc.nextDedupGen();
+    int n = 0;
+    for (int i = 0; i < poolSize && n < keep; i++) {
+      final int slot = (int) pool[i];
+      // The hottest scalar read on the query path; see FieldViews.slotDoc.
+      final int docId = slotDoc[slot];
+      if (liveDocs != null && liveDocs.get(docId) == false) {
+        continue;
+      }
+      if (insertDistinct(docId, keys, gens, stamp, mask)) {
+        out[n++] = slot;
+      }
+    }
+    return n;
+  }
+
+  /**
+   * Dedup table size for {@code keep} distinct documents: a power of two at least four times it.
+   */
+  private static int dedupCapacity(int keep) {
     final long capL = (long) Integer.highestOneBit(Math.max(16, keep)) << 2;
     if (capL <= 0 || capL > ArrayUtil.MAX_ARRAY_LENGTH) {
       throw new IllegalStateException(
@@ -1263,40 +1471,295 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
               + capL
               + " entries. Lower -Divfaster.bruteN.");
     }
-    final int cap = (int) capL;
-    final int mask = cap - 1;
-    final int[] keys = sc.dedupKeys(cap);
-    final int[] gens = sc.dedupGens(cap);
-    if (++sc.dedupGen == 0) {
-      java.util.Arrays.fill(gens, 0);
-      sc.dedupGen = 1;
-    }
-    final int stamp = sc.dedupGen;
-    int n = 0;
-    for (int i = 0; i < poolSize && n < keep; i++) {
-      final int slot = (int) pool[i];
-      // The hottest scalar read on the query path; see FieldViews.slotDoc.
-      final int docId = slotDoc[slot];
-      if (acceptDocs != null && acceptDocs.get(docId) == false) {
-        continue;
+    return (int) capL;
+  }
+
+  /**
+   * Inserts {@code docId} into the generation-stamped open-addressed table; false if present.
+   *
+   * <p>Ids are dense and sequential, so they are scrambled before masking or they clump into
+   * consecutive buckets.
+   */
+  private static boolean insertDistinct(int docId, int[] keys, int[] gens, int stamp, int mask) {
+    int h = (docId * 0x9E3779B9) >>> 1 & mask;
+    while (gens[h] == stamp) {
+      if (keys[h] == docId) {
+        return false;
       }
-      int h = (docId * 0x9E3779B9) >>> 1 & mask;
-      boolean dup = false;
-      while (gens[h] == stamp) {
-        if (keys[h] == docId) {
-          dup = true;
-          break;
+      h = (h + 1) & mask;
+    }
+    gens[h] = stamp;
+    keys[h] = docId;
+    return true;
+  }
+
+  /**
+   * The filtered query path: walks the filter doc-at-a-time against the probed cells, widening the
+   * probe until enough accepted documents are in hand, then reranks the shortlist.
+   *
+   * <p>Cells arrive in rounds from a {@link CellRanker}, nearest-first, each round twice the size
+   * of the last. THE CELLS LEAD: each probed run is walked in slot order and the filter's bit set
+   * is tested per document, the way {@code BitSetConjunctionDISI} consumes a bit set that is the
+   * costlier clause of a conjunction. The filter is always a materialized bit set on this path,
+   * since {@code AbstractKnnVectorQuery} builds it before the codec runs. Letting the filter lead
+   * instead, advancing a disjunction of the cells to each accepted document, was measured and
+   * rejected: a cell's members are scattered over the whole doc-id space, so nearly every such
+   * advance is a heap update that finds nothing, and its cost scales with the filter's cardinality.
+   * Walking the runs costs a few nanoseconds per row, and dynamic nprobe ties the rows probed to
+   * the filter's cardinality, so a bit test per row is cheaper wherever the walk runs at all; where
+   * a filter is sparse enough for the other order to win, the exact path is cheaper still.
+   *
+   * <p>A document reached through several probed cells is scored once per copy; the copies carry
+   * the same code and the same distance, so the dedup at the cut keeps one, and the pool multiplier
+   * the unfiltered path uses covers the duplicates.
+   *
+   * <p>The survivor's distance is one single-row Hamming; the bulk kernel over a whole run would
+   * score rows the filter rejects. The bit test itself stays a plain {@code BitSet.get}: a
+   * gather-and-compress filter kernel and a branchless scalar variant were both measured against it
+   * on a 1M x 1024-d segment and were slower on the machine at hand (5% selectivity: 2.9 ms and 2.5
+   * ms of CPU per query against 2.4 ms), since the branch predicts well at either end of the
+   * density range and NEON scalarizes the gather.
+   *
+   * <p>Admission is the same streaming histogram threshold the unfiltered scan uses, carried across
+   * rounds, so the pool never holds more than it needs. The round loop stops once {@link
+   * #FILTERED_TARGET} distinct documents have been scored, when the ranker has served every cell,
+   * or at {@link #FILTERED_MAX_PROBE}. Distinct documents are counted through the same stamped
+   * table the dedup uses, and only until the target is reached.
+   */
+  private void filteredScanAndRerank(
+      FieldEntry e,
+      FieldViews v,
+      float[] rotated,
+      byte[] qCode,
+      FineQuantizer.QueryState fine,
+      int[] initial,
+      BitSet bits,
+      KnnCollector collector)
+      throws IOException {
+    final HammingKernel hamming = HammingKernel.get();
+    final int coarseBytes = e.coarseBytes;
+    final int histLen = (coarseBytes << 3) + 2;
+    final ScanScratch sc = SCAN_SCRATCH.get();
+    final int[] hist = sc.hist(histLen);
+    final int fanout = 1 + e.spillBits;
+    final int poolTarget = BRUTE_N * fanout;
+    final int maxProbe = FILTERED_MAX_PROBE > 0 ? Math.min(FILTERED_MAX_PROBE, e.nlist) : e.nlist;
+    final CellRanker ranker = new CellRanker(e, v, rotated, initial, sc);
+    final java.lang.foreign.MemorySegment coarseSeg = v.coarseSeg;
+    final byte[] rec = coarseSeg == null ? new byte[coarseBytes] : null;
+
+    // Distinct accepted documents, counted only up to the target; see the javadoc.
+    final int dedupCap = dedupCapacity(FILTERED_TARGET);
+    final int dedupMask = dedupCap - 1;
+    final int[] keys = sc.dedupKeys(dedupCap);
+    final int[] gens = sc.dedupGens(dedupCap);
+    final int stamp = sc.nextDedupGen();
+
+    int nCells = 0;
+    int m = 0;
+    int thr = histLen - 1;
+    int admitted = 0;
+    int distinct = 0;
+    long survivors = 0;
+    int probed = 0;
+    int rounds = 0;
+    int batch = Math.max(1, initial.length);
+    final int[] slotDoc = v.slotDoc;
+    while (probed < maxProbe) {
+      final int want = Math.min(batch, maxProbe - probed);
+      final int[] batchCells = sc.batchCells(want);
+      final int n = ranker.next(want, batchCells);
+      if (n == 0) {
+        break;
+      }
+      probed += n;
+      rounds++;
+      final int first = nCells;
+      nCells = resolveCells(e, v, batchCells, n, sc, nCells);
+      final int[] cellBase = sc.cellBase;
+      final int[] cellRows = sc.cellRows;
+      int roundRows = 0;
+      for (int ci = first; ci < nCells; ci++) {
+        roundRows += cellRows[ci];
+      }
+      if (roundRows > 0) {
+        // Sized for every slot this round could admit; see scanAndRerank on why not smaller.
+        final long[] packed = sc.packedGrow(m + roundRows);
+        for (int ci = first; ci < nCells; ci++) {
+          final int base = cellBase[ci];
+          final int end = base + cellRows[ci];
+          // Cells lead: the run is walked in slot order and the bit set is tested per document.
+          for (int slot = base; slot < end; slot++) {
+            final int doc = slotDoc[slot];
+            if (bits.get(doc) == false) {
+              continue;
+            }
+            final int dist;
+            if (coarseSeg != null) {
+              dist = hamming.distance(qCode, coarseSeg, (long) slot * coarseBytes, coarseBytes);
+            } else {
+              v.coarse.readBytes((long) slot * coarseBytes, rec, 0, coarseBytes);
+              dist = org.apache.lucene.util.VectorUtil.xorBitCount(qCode, rec);
+            }
+            survivors++;
+            if (distinct < FILTERED_TARGET && insertDistinct(doc, keys, gens, stamp, dedupMask)) {
+              distinct++;
+            }
+            if (dist > thr) {
+              continue;
+            }
+            hist[dist]++;
+            packed[m++] = ((long) dist << 32) | slot;
+            admitted++;
+            if (admitted > poolTarget) {
+              while (thr > 0 && admitted - hist[thr] >= poolTarget) {
+                admitted -= hist[thr];
+                thr--;
+              }
+            }
+          }
         }
-        h = (h + 1) & mask;
       }
-      if (dup) {
+      if (distinct >= FILTERED_TARGET || ranker.exhausted()) {
+        break;
+      }
+      batch = Math.min(batch << 1, maxProbe - probed);
+    }
+
+    if (COUNT_SCAN) {
+      scannedDocs.addAndGet(survivors);
+      scanQueries.incrementAndGet();
+      probedCells.addAndGet(nCells);
+      filteredRounds.addAndGet(rounds);
+      filteredQueries.incrementAndGet();
+    }
+    if (m == 0) {
+      return;
+    }
+    final int need = (int) Math.min(poolTarget, survivors);
+    final int poolN = cutAndOrderPool(sc, sc.packed, m, hist, histLen, need);
+    final int candCap = Math.min(BRUTE_N, poolN);
+    final int[] cands = sc.cands(candCap);
+    // Every pooled slot passed the filter, so only the dedup remains.
+    final int n = keepDistinctInOrder(sc.ordered, poolN, candCap, cands, v.slotDoc, null, sc);
+    if (n == 0) {
+      return;
+    }
+    rerankAndCollect(e, v, fine, cands, n, collector);
+  }
+
+  /**
+   * Serves cells nearest-first, without bound: the graph's selection, then every other cell.
+   *
+   * <p>The first {@code initial.length} cells are the descent's exact-reranked prefix, the same
+   * cells an unfiltered query probes. Past them the ranker scores EVERY centroid once through the
+   * fine tier ({@code O(nlist * dim)} int8 work, a fraction of one probed cell's scan) and serves
+   * the rest in distance order, skipping cells already served. The descent's visited set cannot
+   * supply these, since it holds only a few times {@code ef} nodes.
+   *
+   * <p>Served cells are stamped in a generation-marked array rather than a cleared one, so a query
+   * pays nothing per cell it never reaches.
+   */
+  private static final class CellRanker {
+    private final FieldEntry e;
+    private final FieldViews v;
+    private final float[] rotated;
+    private final int[] initial;
+    private final ScanScratch sc;
+    private final int[] probedGen;
+    private final int gen;
+    private int served;
+    private boolean ranked;
+    private int allPos;
+
+    CellRanker(FieldEntry e, FieldViews v, float[] rotated, int[] initial, ScanScratch sc) {
+      this.e = e;
+      this.v = v;
+      this.rotated = rotated;
+      this.initial = initial;
+      this.sc = sc;
+      this.probedGen = sc.probedGen(e.nlist);
+      this.gen = sc.nextProbeGen();
+    }
+
+    /** Fills up to {@code want} unserved cells into {@code out}, nearest-first. */
+    int next(int want, int[] out) {
+      int n = 0;
+      while (n < want && served < initial.length) {
+        final int c = initial[served++];
+        if (c < 0 || probedGen[c] == gen) {
+          continue;
+        }
+        probedGen[c] = gen;
+        out[n++] = c;
+      }
+      if (n < want) {
+        if (ranked == false) {
+          rankAll();
+        }
+        final long[] keys = sc.allKeys;
+        while (n < want && allPos < e.nlist) {
+          final int c = (int) keys[allPos++];
+          if (probedGen[c] == gen) {
+            continue;
+          }
+          probedGen[c] = gen;
+          out[n++] = c;
+        }
+      }
+      return n;
+    }
+
+    boolean exhausted() {
+      return served >= initial.length && ranked && allPos >= e.nlist;
+    }
+
+    private void rankAll() {
+      ranked = true;
+      final int nlist = e.nlist;
+      final float[] dist = sc.allDist(nlist);
+      v.codes.rankCandidates(rotated, v.allCells, nlist, dist);
+      final long[] keys = sc.allKeys(nlist);
+      for (int c = 0; c < nlist; c++) {
+        keys[c] = ((long) NumericUtils.floatToSortableInt(dist[c]) << 32) | c;
+      }
+      Arrays.sort(keys, 0, nlist);
+    }
+  }
+
+  /**
+   * The degenerate filter: every accepted document is fine-reranked, with no cell selection.
+   *
+   * <p>Ordinals are in doc order, verified at open, so each accepted document resolves to its
+   * primary slot by one binary search over {@code ordToDoc}; a miss is a document without a vector
+   * in this field. Deleted documents are already excluded by {@link AcceptDocs}.
+   */
+  private void rerankFilteredDocs(
+      FieldEntry e,
+      FieldViews v,
+      FineQuantizer.QueryState fine,
+      DocIdSetIterator filter,
+      KnnCollector collector)
+      throws IOException {
+    final ScanScratch sc = SCAN_SCRATCH.get();
+    final int[] ordToDoc = v.ordToDoc;
+    final int[] ordToSlot = v.ordToSlot;
+    int[] cands = sc.cands(64);
+    int n = 0;
+    for (int doc = filter.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = filter.nextDoc()) {
+      final int ord = Arrays.binarySearch(ordToDoc, doc);
+      if (ord < 0) {
         continue;
       }
-      gens[h] = stamp;
-      keys[h] = docId;
-      out[n++] = slot;
+      if (n == cands.length) {
+        cands = sc.growCands(n + 1);
+      }
+      cands[n++] = ordToSlot[ord];
     }
-    return n;
+    if (n == 0) {
+      return;
+    }
+    rerankAndCollect(e, v, fine, cands, n, collector);
   }
 
   /**
@@ -1612,6 +2075,12 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
               + (probedCells.get() / q)
               + " centroidsVerified/query="
               + (verifiedCentroids.get() / Math.max(1, verifyQueries.get()))
+              + " filteredQueries="
+              + filteredQueries.get()
+              + " rounds/filteredQuery="
+              + (filteredRounds.get() / Math.max(1, filteredQueries.get()))
+              + " exactFilterQueries="
+              + exactFilterQueries.get()
               + (MEASURE_SPILL
                   ? " uniqueDocs/query="
                       + (uniqueDocs.get() / q)
@@ -1675,6 +2144,84 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
     /** Query generation stamping {@link #dedupGens}; see keepDistinctInOrder. */
     int dedupGen;
 
+    /** Cells served to the current filtered query, stamped by {@link #probeGen}; see CellRanker. */
+    int[] probedGen = new int[0];
+
+    int probeGen;
+
+    /** Every cell's exact distance, and the same keyed for sorting; see CellRanker.rankAll. */
+    float[] allDist = new float[0];
+
+    long[] allKeys = new long[0];
+
+    /** The cells of one filtered round. */
+    int[] batchCells = new int[0];
+
+    /**
+     * The next dedup stamp. Re-zeroed on wraparound, and never 0, so a freshly grown table (all
+     * zero) reads as empty.
+     */
+    int nextDedupGen() {
+      if (++dedupGen == 0) {
+        Arrays.fill(dedupGens, 0);
+        dedupGen = 1;
+      }
+      return dedupGen;
+    }
+
+    /** As {@link #nextDedupGen}, for {@link #probedGen}. */
+    int nextProbeGen() {
+      if (++probeGen == 0) {
+        Arrays.fill(probedGen, 0);
+        probeGen = 1;
+      }
+      return probeGen;
+    }
+
+    int[] probedGen(int n) {
+      if (probedGen.length < n) {
+        probedGen = new int[n];
+      }
+      return probedGen;
+    }
+
+    float[] allDist(int n) {
+      if (allDist.length < n) {
+        allDist = new float[n];
+      }
+      return allDist;
+    }
+
+    long[] allKeys(int n) {
+      if (allKeys.length < n) {
+        allKeys = new long[n];
+      }
+      return allKeys;
+    }
+
+    int[] batchCells(int n) {
+      if (batchCells.length < n) {
+        batchCells = new int[ArrayUtil.oversize(n, Integer.BYTES)];
+      }
+      return batchCells;
+    }
+
+    /** Grows {@link #packed} PRESERVING its contents, for a scan that admits across rounds. */
+    long[] packedGrow(int n) {
+      if (packed.length < n) {
+        packed = ArrayUtil.grow(packed, n);
+      }
+      return packed;
+    }
+
+    /** Grows {@link #cands} preserving its contents. */
+    int[] growCands(int n) {
+      if (cands.length < n) {
+        cands = ArrayUtil.grow(cands, n);
+      }
+      return cands;
+    }
+
     /**
      * The dedup table's keys, reused across queries.
      *
@@ -1695,10 +2242,13 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
       return dedupGens;
     }
 
-    /** Per-probed-cell slot base, decoded once per query; see the hoist in scanAndRerank. */
+    /**
+     * Per-probed-cell slot base, decoded once per query; see resolveCells. Grown PRESERVING its
+     * contents, since a filtered query appends a round at a time.
+     */
     int[] cellBase(int n) {
       if (cellBase.length < n) {
-        cellBase = new int[ArrayUtil.oversize(n, Integer.BYTES)];
+        cellBase = ArrayUtil.grow(cellBase, n);
       }
       return cellBase;
     }
@@ -1706,7 +2256,7 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
     /** Per-probed-cell row count, paired with {@link #cellBase}. */
     int[] cellRows(int n) {
       if (cellRows.length < n) {
-        cellRows = new int[ArrayUtil.oversize(n, Integer.BYTES)];
+        cellRows = ArrayUtil.grow(cellRows, n);
       }
       return cellRows;
     }
@@ -1927,6 +2477,17 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
   static final java.util.concurrent.atomic.AtomicLong probedCells =
       new java.util.concurrent.atomic.AtomicLong();
 
+  /** Filtered queries that walked cells, and the rounds they took; see filteredScanAndRerank. */
+  static final java.util.concurrent.atomic.AtomicLong filteredQueries =
+      new java.util.concurrent.atomic.AtomicLong();
+
+  static final java.util.concurrent.atomic.AtomicLong filteredRounds =
+      new java.util.concurrent.atomic.AtomicLong();
+
+  /** Filtered queries whose accepted set was reranked whole; see EXACT_FILTER_COST. */
+  static final java.util.concurrent.atomic.AtomicLong exactFilterQueries =
+      new java.util.concurrent.atomic.AtomicLong();
+
   /**
    * Approximate float vectors decoded from the fine codes, in DOCUMENT order.
    *
@@ -2018,6 +2579,30 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
     public org.apache.lucene.index.KnnVectorValues.DocIndexIterator iterator() {
       // Doc ids are not contiguous, so the iterator maps through ordToDoc.
       return createSparseIterator();
+    }
+
+    /**
+     * The scorer {@code AbstractKnnVectorQuery}'s EXACT search runs on: a filter no wider than
+     * {@code k}, or a fallback from the approximate search. Scores the stored vector, exact when
+     * full precision was kept and the fine-code reconstruction otherwise, with the field's
+     * similarity in the original space.
+     */
+    @Override
+    public org.apache.lucene.search.VectorScorer scorer(float[] target) throws IOException {
+      final ReconstructedFloatVectorValues values = (ReconstructedFloatVectorValues) copy();
+      final org.apache.lucene.index.KnnVectorValues.DocIndexIterator it = values.iterator();
+      final VectorSimilarityFunction similarity = entry.similarity;
+      return new org.apache.lucene.search.VectorScorer() {
+        @Override
+        public float score() throws IOException {
+          return similarity.compare(target, values.vectorValue(it.index()));
+        }
+
+        @Override
+        public DocIdSetIterator iterator() {
+          return it;
+        }
+      };
     }
   }
 }
