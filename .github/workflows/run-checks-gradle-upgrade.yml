@@ -62,7 +62,7 @@ jobs:
   gradleMirrorCheck:
     name: "Check gradle bootstrap from an intranet mirror (LUCENE_GRADLE_*_URL)."
     timeout-minutes: 30
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
