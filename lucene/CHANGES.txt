@@ -925,7 +925,7 @@ Bug Fixes
 
 * GITHUB#16139: Fix IBSimilarity with DistributionSPL producing negative scores due to
   floating-point rounding errors. (Prithvi S)
-  
+
 * GITHUB#16098: Validate zero vectors in setVectorValue() for cosine similarity fields. (Prithvi S)
 
 * GITHUB#16046: Fix double-counting of underlying Automaton in CompiledAutomaton#ramBytesUsed. (Eugene Rizhkov)
