@@ -194,7 +194,7 @@ public class FilteredKnnVectorQueryBenchmark {
 
   @TearDown(Level.Trial)
   public void teardown() throws IOException {
-    IOUtils.close(queryCache, reader, dir);
+    IOUtils.close(reader, dir);
     IOUtils.rm(tmpDir);
   }
 
