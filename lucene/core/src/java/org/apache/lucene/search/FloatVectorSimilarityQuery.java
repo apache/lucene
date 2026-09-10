@@ -121,8 +121,8 @@ public class FloatVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
 
     /**
      * Search for all (approximate) float vectors above a similarity threshold using {@link
-     * VectorSimilarityCollector}. If a filter is applied, it traverses as many nodes as the cost of
-     * the filter, and then falls back to exact search if results are incomplete.
+     * ExplicitVectorSimilarityCollector}. If a filter is applied, it traverses as many nodes as the
+     * cost of the filter, and then falls back to exact search if results are incomplete.
      *
      * @param field a field that has been indexed as a {@link KnnFloatVectorField}.
      * @param target the target of the search.
@@ -142,7 +142,7 @@ public class FloatVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
 
     /**
      * Search for all (approximate) float vectors above a similarity threshold using {@link
-     * VectorSimilarityCollector}.
+     * ExplicitVectorSimilarityCollector}.
      *
      * @param field a field that has been indexed as a {@link KnnFloatVectorField}.
      * @param target the target of the search.
@@ -156,8 +156,8 @@ public class FloatVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
 
     /**
      * Search for all (approximate) float vectors above a similarity threshold using {@link
-     * VectorSimilarityCollector}. If a filter is applied, it traverses as many nodes as the cost of
-     * the filter, and then falls back to exact search if results are incomplete.
+     * ExplicitVectorSimilarityCollector}. If a filter is applied, it traverses as many nodes as the
+     * cost of the filter, and then falls back to exact search if results are incomplete.
      *
      * @param field a field that has been indexed as a {@link KnnFloatVectorField}.
      * @param target the target of the search.
@@ -170,7 +170,7 @@ public class FloatVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
 
     /**
      * Search for all (approximate) float vectors above a similarity threshold using {@link
-     * VectorSimilarityCollector}.
+     * ExplicitVectorSimilarityCollector}.
      *
      * @param field a field that has been indexed as a {@link KnnFloatVectorField}.
      * @param target the target of the search.
