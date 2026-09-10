@@ -21,6 +21,7 @@ jobs:
 
     strategy:
       matrix:
+        # works on x86 only
         os: [ ubuntu-latest ]
         java: [ '25' ]
         faiss-version: [ '1.11.0' ]

@@ -69,7 +69,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ ubuntu-latest ]
+        os: [ ubuntu-24.04-arm ]
         java: [ '25' ]
 
     runs-on: ${{ matrix.os }}
