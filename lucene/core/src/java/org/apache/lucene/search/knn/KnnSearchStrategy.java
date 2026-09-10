@@ -100,6 +100,21 @@ public abstract class KnnSearchStrategy {
   }
 
   /**
+   * PathSeer is a workload-adaptive strategy for filtered HNSW search. It operates on existing HNSW
+   * indexes and does not require a specialized index format.
+   *
+   * @lucene.experimental
+   */
+  public static final class PathSeer extends Hnsw {
+    public static final PathSeer INSTANCE = new PathSeer();
+
+    private PathSeer() {
+      // PathSeer does not require the filter search threshold.
+      super(0);
+    }
+  }
+
+  /**
    * A strategy for kNN search that uses a set of entry points to start the search
    *
    * @lucene.experimental
