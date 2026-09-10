@@ -697,9 +697,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
     assertDataBlindMixedMergeKeepsQuantizedBytes(false);
   }
 
-  /**
-   * fp16 counterpart of {@link #testDataBlindMixedMergeKeepsQuantizedBytes}.
-   */
+  /** fp16 counterpart of {@link #testDataBlindMixedMergeKeepsQuantizedBytes}. */
   public void testDataBlindFloat16MixedMergeKeepsQuantizedBytes() throws Exception {
     assertDataBlindMixedMergeKeepsQuantizedBytes(true);
   }
@@ -743,9 +741,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
         for (LeafReaderContext leaf : reader.leaves()) {
           Lucene104ScalarQuantizedVectorsReader vectorsReader =
               (Lucene104ScalarQuantizedVectorsReader)
-                  ((CodecReader) leaf.reader())
-                      .getVectorReader()
-                      .unwrapReaderForField(fieldName);
+                  ((CodecReader) leaf.reader()).getVectorReader().unwrapReaderForField(fieldName);
           boolean hasRaw =
               float16Data
                   ? vectorsReader.hasRawFloat16Vectors(fieldName)
@@ -753,7 +749,9 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
           if (hasRaw == false) {
             foundDataBlindLeaf = true;
             captureQuantized(
-                vectorsReader.getQuantizedVectorValues(fieldName), sourceQuantized, sourceCorrections);
+                vectorsReader.getQuantizedVectorValues(fieldName),
+                sourceQuantized,
+                sourceCorrections);
           }
         }
         assertTrue("expected one data-blind segment", foundDataBlindLeaf);

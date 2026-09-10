@@ -95,7 +95,7 @@ import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncod
  *   <li>The sparse vector information, if required, mapping vector ordinal to doc ID
  * </ul>
  *
- * <p>{@code enableCentering} manifests in the version: when true we write verison 0 and when false
+ * <p>{@code enableCentering} manifests in the version: when true we write version 0 and when false
  * we write version 1.
  *
  * @lucene.experimental
