@@ -23,6 +23,8 @@ import java.util.zip.Inflater;
 import org.apache.lucene.codecs.compressing.CompressionMode;
 import org.apache.lucene.codecs.compressing.Compressor;
 import org.apache.lucene.codecs.compressing.Decompressor;
+import org.apache.lucene.codecs.lucene90.compressing.Lucene90DecompressingDataInput;
+import org.apache.lucene.codecs.lucene90.compressing.Lucene90SkippableDecompressor;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.DataInput;
@@ -65,7 +67,8 @@ public final class DeflateWithPresetDictCompressionMode extends CompressionMode 
     return "BEST_COMPRESSION";
   }
 
-  private static final class DeflateWithPresetDictDecompressor extends Decompressor {
+  private static final class DeflateWithPresetDictDecompressor extends Decompressor
+      implements Lucene90SkippableDecompressor {
 
     byte[] compressed;
 
@@ -73,11 +76,12 @@ public final class DeflateWithPresetDictCompressionMode extends CompressionMode 
       compressed = new byte[0];
     }
 
-    private void doDecompress(DataInput in, Inflater decompressor, BytesRef bytes)
+    private int doDecompress(
+        DataInput in, Inflater decompressor, byte[] bytes, int offset, int length)
         throws IOException {
       final int compressedLength = in.readVInt();
       if (compressedLength == 0) {
-        return;
+        return 0;
       }
       // pad with extra "dummy byte": see javadocs for using Inflater(true)
       // we do it for compliance, but it's unnecessary for years in zlib.
@@ -88,9 +92,9 @@ public final class DeflateWithPresetDictCompressionMode extends CompressionMode 
 
       // extra "dummy byte"
       decompressor.setInput(compressed, 0, paddedLength);
+      final int decompressedLength;
       try {
-        bytes.length +=
-            decompressor.inflate(bytes.bytes, bytes.length, bytes.bytes.length - bytes.length);
+        decompressedLength = decompressor.inflate(bytes, offset, length);
       } catch (DataFormatException e) {
         throw new IOException(e);
       }
@@ -102,6 +106,14 @@ public final class DeflateWithPresetDictCompressionMode extends CompressionMode 
                 + decompressor.needsDictionary(),
             in);
       }
+      return decompressedLength;
+    }
+
+    private void doDecompress(DataInput in, Inflater decompressor, BytesRef bytes)
+        throws IOException {
+      bytes.length +=
+          doDecompress(
+              in, decompressor, bytes.bytes, bytes.length, bytes.bytes.length - bytes.length);
     }
 
     @Override
@@ -151,6 +163,185 @@ public final class DeflateWithPresetDictCompressionMode extends CompressionMode 
       } finally {
         decompressor.end();
       }
+    }
+
+    @Override
+    public Lucene90DecompressingDataInput decompressingDataInput(
+        DataInput in, int originalLength, int offset, int length) throws IOException {
+      assert offset + length <= originalLength;
+
+      // TODO: more simple way to handle this case?
+      if (length == 0) {
+        return new Lucene90DecompressingDataInput() {
+          @Override
+          public byte readByte() throws IOException {
+            throw new java.io.EOFException();
+          }
+
+          @Override
+          public void readBytes(byte[] b, int offset, int len) throws IOException {
+            if (len != 0) {
+              throw new java.io.EOFException();
+            }
+          }
+
+          @Override
+          public long skipBytesUpTo(long numBytes) {
+            return 0;
+          }
+        };
+      }
+
+      final int dictLength = in.readVInt();
+      final int blockLength = in.readVInt();
+      final byte[] dictionary = new byte[dictLength];
+      Inflater decompressor = new Inflater(true);
+      try {
+        final int decompressedDictLength =
+            doDecompress(in, decompressor, dictionary, 0, dictLength);
+        if (dictLength != decompressedDictLength) {
+          throw new CorruptIndexException("Unexpected dict length", in);
+        }
+      } finally {
+        decompressor.end();
+      }
+
+      final int endOffset = offset + length;
+      final BytesRef bytes = new BytesRef();
+      bytes.offset = bytes.length = 0;
+
+      int offsetInBlock = dictLength;
+      int offsetInBytesRef = offset;
+      if (offset < dictLength) {
+        bytes.bytes = ArrayUtil.growNoCopy(bytes.bytes, dictLength);
+        System.arraycopy(dictionary, 0, bytes.bytes, 0, dictLength);
+        bytes.length = dictLength;
+      } else {
+        offsetInBytesRef -= dictLength;
+        while (offsetInBlock + blockLength < offset) {
+          final int compressedLength = in.readVInt();
+          in.skipBytes(compressedLength);
+          offsetInBlock += blockLength;
+          offsetInBytesRef -= blockLength;
+        }
+      }
+
+      final int startOffsetInBlock = offsetInBlock;
+      final int startOffsetInBytesRef = offsetInBytesRef;
+
+      // This dataInput skip sub-blocks within a slice.
+      Lucene90DecompressingDataInput dataInput =
+          new Lucene90DecompressingDataInput() {
+
+            int offsetInBlock = startOffsetInBlock;
+
+            private void decompressSubBlock() throws IOException {
+              if (bytes.length != 0 || offsetInBlock >= endOffset) {
+                return;
+              }
+              final int blockBytes = Math.min(blockLength, originalLength - offsetInBlock);
+              final int bytesToExpose = Math.min(blockBytes, endOffset - offsetInBlock);
+              assert bytesToExpose > 0;
+              bytes.bytes = ArrayUtil.growNoCopy(bytes.bytes, blockBytes);
+              bytes.offset = bytes.length = 0;
+              Inflater decompressor = new Inflater(true);
+              try {
+                decompressor.setDictionary(dictionary, 0, dictLength);
+                final int decompressedLength =
+                    doDecompress(in, decompressor, bytes.bytes, 0, blockBytes);
+                if (decompressedLength != blockBytes) {
+                  throw new CorruptIndexException("Unexpected block length", in);
+                }
+                bytes.length = bytesToExpose;
+              } finally {
+                decompressor.end();
+              }
+              offsetInBlock += blockBytes;
+            }
+
+            @Override
+            public byte readByte() throws IOException {
+              if (bytes.length == 0) {
+                decompressSubBlock();
+              }
+              if (bytes.length == 0) {
+                throw new java.io.EOFException();
+              }
+              bytes.length--;
+              return bytes.bytes[bytes.offset++];
+            }
+
+            @Override
+            public int readBytesUpTo(byte[] b, int offset, int len) throws IOException {
+              int read = 0;
+              while (len > bytes.length) {
+                System.arraycopy(bytes.bytes, bytes.offset, b, offset, bytes.length);
+                read += bytes.length;
+                len -= bytes.length;
+                offset += bytes.length;
+                bytes.offset += bytes.length;
+                bytes.length = 0;
+                decompressSubBlock();
+                if (bytes.length == 0) {
+                  return read;
+                }
+              }
+              System.arraycopy(bytes.bytes, bytes.offset, b, offset, len);
+              bytes.offset += len;
+              bytes.length -= len;
+              read += len;
+              return read;
+            }
+
+            @Override
+            public long skipBytesUpTo(long numBytes) throws IOException {
+              if (numBytes < 0) {
+                throw new IllegalArgumentException("numBytes must be >= 0, got " + numBytes);
+              }
+              if (numBytes <= bytes.length) {
+                bytes.offset += numBytes;
+                bytes.length -= numBytes;
+                return numBytes;
+              }
+
+              long skipped = bytes.length;
+              bytes.offset += bytes.length;
+              bytes.length = 0;
+
+              while (skipped < numBytes && offsetInBlock < endOffset) {
+                final int currentBlockLength = Math.min(blockLength, endOffset - offsetInBlock);
+                if (currentBlockLength <= 0) {
+                  break;
+                }
+                final long remaining = numBytes - skipped;
+                if (currentBlockLength <= remaining) {
+                  // Skip the entire block without decompressing it.
+                  final int compressedLength = in.readVInt();
+                  in.skipBytes(compressedLength);
+                  //                  System.out.println(
+                  //                      "skip compressed block: "
+                  //                          + 0
+                  //                          + ", original length: "
+                  //                          + currentBlockLength
+                  //                          + ", compressed length: "
+                  //                          + compressedLength);
+                  offsetInBlock += currentBlockLength;
+                  skipped += currentBlockLength;
+                } else {
+                  // Skip finished, decompress current sub block.
+                  decompressSubBlock();
+                  final int bytesToSkip = Math.toIntExact(remaining);
+                  bytes.offset += bytesToSkip;
+                  bytes.length -= bytesToSkip;
+                  skipped += bytesToSkip;
+                }
+              }
+
+              return skipped;
+            }
+          };
+      dataInput.skipBytes(startOffsetInBytesRef);
+      return dataInput;
     }
 
     @Override
