@@ -220,6 +220,10 @@ Bug Fixes
 * GITHUB#16553: Fix stored-fields corruption when PerField#finish throws: the stored-fields frame
   was left open, causing "Wrote N docs, finish called with numDocs=M" at flush. (Michael Marshall)
 
+* GITHUB#16573: SortedNumericDocValuesRangeQuery.rewrite no longer consults PointValues
+  stats, which can disagree with doc-values encoding for float/double fields.
+  (Burak KALAYCI)
+
 * GITHUB#16552: Reconnect HNSW nodes whose out-degree decays across successive
   merge-reuse generations, preventing progressive recall loss under low delete
   rates. (Ethan Baker)
