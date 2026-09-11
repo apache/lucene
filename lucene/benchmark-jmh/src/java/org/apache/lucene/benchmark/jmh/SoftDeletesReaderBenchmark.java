@@ -32,6 +32,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.IOUtils;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -78,9 +79,7 @@ public class SoftDeletesReaderBenchmark {
     dir = MMapDirectory.open(tempDir);
 
     IndexWriterConfig config =
-        new IndexWriterConfig()
-            .setSoftDeletesField(SOFT_DELETE_FIELD)
-            .setRAMBufferSizeMB(256);
+        new IndexWriterConfig().setSoftDeletesField(SOFT_DELETE_FIELD).setRAMBufferSizeMB(256);
     try (IndexWriter w = new IndexWriter(dir, config)) {
       for (int i = 0; i < numDocs; i++) {
         Document doc = new Document();
@@ -114,16 +113,12 @@ public class SoftDeletesReaderBenchmark {
   public void tearDown() throws Exception {
     baseReader.close();
     dir.close();
-    for (var f : tempDir.toFile().listFiles()) {
-      f.delete();
-    }
-    tempDir.toFile().delete();
+    IOUtils.rm(tempDir);
   }
 
   @Benchmark
   public int wrapSoftDeletes() throws IOException {
-    DirectoryReader wrapped =
-        new SoftDeletesDirectoryReaderWrapper(baseReader, SOFT_DELETE_FIELD);
+    DirectoryReader wrapped = new SoftDeletesDirectoryReaderWrapper(baseReader, SOFT_DELETE_FIELD);
     int count = 0;
     for (LeafReaderContext ctx : wrapped.leaves()) {
       Bits liveDocs = ctx.reader().getLiveDocs();

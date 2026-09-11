@@ -150,10 +150,7 @@ public final class SparseLiveDocs implements LiveDocs {
     result.set(0, maxDoc);
     for (int del = deletedDocs.nextSetBit(0);
         del != DocIdSetIterator.NO_MORE_DOCS;
-        del =
-            del + 1 >= maxDoc
-                ? DocIdSetIterator.NO_MORE_DOCS
-                : deletedDocs.nextSetBit(del + 1)) {
+        del = del + 1 >= maxDoc ? DocIdSetIterator.NO_MORE_DOCS : deletedDocs.nextSetBit(del + 1)) {
       result.clear(del);
     }
     return result;
