@@ -36,6 +36,8 @@ import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 
@@ -116,7 +118,11 @@ public final class IVFasterKnnQuery extends Query {
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         final IVFasterVectorsReader reader = ivfasterReader(context.reader());
         if (reader == null) {
-          return null;
+          // No reachable cell structure; see ivfasterReader. Degrade to the leaf's own kNN search,
+          // which returns the same top-k a KnnFloatVectorQuery would, so this clause yields CORRECT
+          // documents and merely loses the leapfrog. Silently yielding none is not an option: it is
+          // indistinguishable from "no document matches" to everything downstream.
+          return fallbackSupplier(context, boost);
         }
         final IVFasterVectorsReader.CellSession session =
             reader.openCellSession(field, target, nprobe);
@@ -161,9 +167,104 @@ public final class IVFasterKnnQuery extends Query {
   }
 
   /**
+   * The leaf's own kNN search, exposed as a scorer over the documents it returned.
+   *
+   * <p>WHY THIS EXISTS. This query reaches into the codec for its cells, and some leaves do not
+   * expose one -- a {@code ParallelLeafReader} is not a {@code FilterLeafReader}, so it cannot be
+   * unwrapped to a {@code CodecReader}. On those leaves there is nothing to leapfrog, but there is
+   * still a right answer, and {@code searchNearestVectors} is a {@code LeafReader} method that
+   * wrappers delegate.
+   *
+   * <p>WHAT IS LOST. The documents are chosen BEFORE the conjunction runs, so a filter beside this
+   * clause becomes a post-filter on this leaf and recall degrades the way post-filtering does. That
+   * is strictly better than the alternative it replaces, which was matching nothing at all.
+   */
+  private ScorerSupplier fallbackSupplier(LeafReaderContext context, float boost)
+      throws IOException {
+    final int k = Math.max(1, admit);
+    final TopKnnCollector collector = new TopKnnCollector(k, Integer.MAX_VALUE, null);
+    context.reader().searchNearestVectors(field, target, collector, null);
+    final TopDocs td = collector.topDocs();
+    if (td.scoreDocs.length == 0) {
+      return null;
+    }
+    // Ascending doc order is the iterator contract; searchNearestVectors returns by score.
+    final int n = td.scoreDocs.length;
+    final int[] docs = new int[n];
+    final float[] scores = new float[n];
+    final Integer[] order = new Integer[n];
+    for (int i = 0; i < n; i++) {
+      order[i] = i;
+    }
+    java.util.Arrays.sort(
+        order, (x, y) -> Integer.compare(td.scoreDocs[x].doc, td.scoreDocs[y].doc));
+    for (int i = 0; i < n; i++) {
+      docs[i] = td.scoreDocs[order[i]].doc;
+      scores[i] = td.scoreDocs[order[i]].score * boost;
+    }
+    return new ScorerSupplier() {
+      @Override
+      public Scorer get(long leadCost) {
+        return new Scorer() {
+          private int i = -1;
+
+          private final DocIdSetIterator it =
+              new DocIdSetIterator() {
+                @Override
+                public int docID() {
+                  return i < 0 ? -1 : (i >= n ? NO_MORE_DOCS : docs[i]);
+                }
+
+                @Override
+                public int nextDoc() {
+                  return ++i >= n ? NO_MORE_DOCS : docs[i];
+                }
+
+                @Override
+                public int advance(int target) {
+                  while (++i < n && docs[i] < target) {}
+                  return i >= n ? NO_MORE_DOCS : docs[i];
+                }
+
+                @Override
+                public long cost() {
+                  return n;
+                }
+              };
+
+          @Override
+          public DocIdSetIterator iterator() {
+            return it;
+          }
+
+          @Override
+          public int docID() {
+            return it.docID();
+          }
+
+          @Override
+          public float score() {
+            return scores[i];
+          }
+
+          @Override
+          public float getMaxScore(int upTo) {
+            return Float.MAX_VALUE;
+          }
+        };
+      }
+
+      @Override
+      public long cost() {
+        return n;
+      }
+    };
+  }
+
+  /**
    * The ivfaster reader behind {@code leaf} for this field; null when the leaf has no such vector
-   * field or is not a segment (no matches); an error when the field exists but another format wrote
-   * it.
+   * field or exposes no reachable codec (the caller then falls back; see {@link
+   * #fallbackSupplier}); an error when the field exists but another format wrote it.
    */
   private IVFasterVectorsReader ivfasterReader(LeafReader leaf) {
     final var info = leaf.getFieldInfos().fieldInfo(field);
@@ -180,7 +281,14 @@ public final class IVFasterKnnQuery extends Query {
       throw new IllegalStateException(
           "field '" + field + "' is not an ivfaster vector field in " + leaf);
     }
-    // Not a segment (a synthetic or composite leaf): nothing to walk.
+    // A leaf whose codec is not reachable: a ParallelLeafReader, or any other wrapper that is not a
+    // FilterLeafReader and so cannot be unwrapped to a CodecReader. There are no cells to walk
+    // here,
+    // and returning null would make this clause silently match NOTHING -- which is what it used to
+    // do, and is why TestIVFasterKnnQuery.testAgreesWithKnnFloatVectorQuery returned agreement 0.0
+    // on any seed where the test framework wrapped the reader that way. The caller falls back to
+    // the
+    // standard LeafReader kNN API instead, which wrappers do delegate; see scorerSupplier.
     return null;
   }
 
