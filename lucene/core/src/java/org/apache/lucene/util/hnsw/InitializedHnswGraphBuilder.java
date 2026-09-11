@@ -20,17 +20,15 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
 import java.util.SplittableRandom;
 import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.IORunnable;
+import org.apache.lucene.util.IntsRef;
+import org.apache.lucene.util.IntsRefBuilder;
 
 /**
  * This creates a graph builder that is initialized with the provided HnswGraph. This is useful for
@@ -91,6 +89,9 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
 
   // Tracks if the graph has deletes
   private boolean hasDeletes = false;
+
+  /** Seeds the rebalance promotions, kept separate from the level-assignment stream. */
+  private final long seed;
 
   /**
    * Creates an initialized HNSW graph builder from an existing graph.
@@ -229,6 +230,60 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
       throws IOException {
     super(scorerSupplier, beamWidth, seed, initializedGraph);
     this.initializedNodes = initializedNodes;
+    this.seed = seed;
+  }
+
+  /**
+   * Prunes deleted nodes and edges from the initializer graph without repairing or rebalancing it,
+   * returning the pruned graph plus the state a caller needs to run those phases itself.
+   *
+   * @param scorerSupplier provides vector similarity scoring for graph operations
+   * @param beamWidth the search beam width for graph construction
+   * @param initializerGraph the source graph to prune
+   * @param newOrdMap maps old ordinals to new ordinals; -1 indicates deleted documents
+   * @param totalNumberOfVectors the total number of vectors in the merged graph
+   * @param abortCheck optional check invoked during pruning; may be null
+   * @return the pruned graph and its deferred repair/rebalance state
+   * @throws IOException if an I/O error occurs while pruning
+   */
+  static PrunedGraph pruneGraph(
+      RandomVectorScorerSupplier scorerSupplier,
+      int beamWidth,
+      HnswGraph initializerGraph,
+      int[] newOrdMap,
+      int totalNumberOfVectors,
+      IORunnable abortCheck)
+      throws IOException {
+    InitializedHnswGraphBuilder builder =
+        new InitializedHnswGraphBuilder(
+            scorerSupplier,
+            beamWidth,
+            randSeed,
+            new OnHeapHnswGraph(initializerGraph.maxConn(), totalNumberOfVectors),
+            null);
+    if (abortCheck != null) {
+      builder.setAbortCheck(abortCheck);
+    }
+    IntsRef[] disconnectedNodesByLevel =
+        builder.copyAndPruneGraphStructure(initializerGraph, newOrdMap);
+    return new PrunedGraph(builder, disconnectedNodesByLevel, builder.hasDeletes);
+  }
+
+  /**
+   * A pruned graph and the state needed to repair and rebalance it, as produced by {@link
+   * #pruneGraph}. Repair and rebalance are deferred so a caller can parallelize the repair phase;
+   * the builder is retained because the serial rebalance runs on it.
+   */
+  record PrunedGraph(
+      InitializedHnswGraphBuilder builder, IntsRef[] disconnectedNodesByLevel, boolean hasDeletes) {
+
+    OnHeapHnswGraph graph() {
+      return builder.getGraph();
+    }
+
+    int numLevels() {
+      return disconnectedNodesByLevel.length;
+    }
   }
 
   /**
@@ -248,8 +303,7 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
   private void initializeFromGraph(HnswGraph initializerGraph, int[] newOrdMap) throws IOException {
     hasDeletes = false;
     // Phase 1: Copy structure and identify nodes that lost too many neighbors
-    Map<Integer, List<Integer>> disconnectedNodesByLevel =
-        copyGraphStructure(initializerGraph, newOrdMap);
+    IntsRef[] disconnectedNodesByLevel = copyAndPruneGraphStructure(initializerGraph, newOrdMap);
 
     // Repair graph if it has deletes
     if (hasDeletes) {
@@ -262,8 +316,8 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
   }
 
   /**
-   * Copies the graph structure from the initializer graph, applying ordinal remapping and
-   * identifying nodes that have lost neighbors.
+   * Copies the surviving graph structure while pruning deleted nodes and edges and applying ordinal
+   * remapping.
    *
    * <p>Deleted neighbors show up as -1 in newOrdMap and are dropped. A node that loses any this way
    * is flagged for repair when it crosses one of the two thresholds ({@link
@@ -278,18 +332,19 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
    *
    * @param initializerGraph the source graph to copy from
    * @param newOrdMap maps old ordinals to new ordinals; -1 indicates deleted documents
-   * @return map of level to list of disconnected node ordinals at that level
+   * @return disconnected node ordinals by level; a null entry means no nodes need repair at that
+   *     level
    * @throws IOException if an I/O error occurs during graph traversal
    */
-  private Map<Integer, List<Integer>> copyGraphStructure(
-      HnswGraph initializerGraph, int[] newOrdMap) throws IOException {
+  private IntsRef[] copyAndPruneGraphStructure(HnswGraph initializerGraph, int[] newOrdMap)
+      throws IOException {
     int numLevels = initializerGraph.numLevels();
     levelToNodes = new IntArrayList[numLevels];
-    Map<Integer, List<Integer>> disconnectedNodesByLevel = new HashMap<>(numLevels);
+    IntsRef[] disconnectedNodesByLevel = new IntsRef[numLevels];
 
     for (int level = numLevels - 1; level >= 0; level--) {
       levelToNodes[level] = new IntArrayList();
-      List<Integer> disconnectedNodes = new ArrayList<>();
+      IntsRefBuilder disconnectedNodes = null;
       HnswGraph.NodesIterator it = initializerGraph.getNodesOnLevel(level);
 
       while (it.hasNext()) {
@@ -329,10 +384,15 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
         if (newNeighbors.size() < oldNeighbourCount * DISCONNECTED_NODE_FACTOR
             || (newNeighbors.size() < oldNeighbourCount
                 && newNeighbors.size() < maxConnOnLevel * CUMULATIVE_DEGREE_FLOOR_FACTOR)) {
-          disconnectedNodes.add(newOrd);
+          if (disconnectedNodes == null) {
+            disconnectedNodes = new IntsRefBuilder();
+          }
+          disconnectedNodes.append(newOrd);
         }
       }
-      disconnectedNodesByLevel.put(level, disconnectedNodes);
+      if (disconnectedNodes != null) {
+        disconnectedNodesByLevel[level] = disconnectedNodes.get();
+      }
     }
     return disconnectedNodesByLevel;
   }
@@ -341,71 +401,18 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
    * Repairs disconnected nodes at all levels by finding additional neighbors to restore
    * connectivity.
    *
-   * @param disconnectedNodesByLevel map of level to disconnected nodes at that level
+   * @param disconnectedNodesByLevel disconnected node ordinals by level; a null entry means no
+   *     nodes need repair at that level
    * @param numLevels total number of levels in the graph hierarchy
    * @throws IOException if an I/O error occurs during repair operations
    */
-  private void repairDisconnectedNodes(
-      Map<Integer, List<Integer>> disconnectedNodesByLevel, int numLevels) throws IOException {
-    for (int level = numLevels - 1; level >= 0; level--) {
-      fixDisconnectedNodes(disconnectedNodesByLevel.get(level), level, scorer);
-    }
-  }
-
-  /**
-   * Fixes disconnected nodes at a specific level by performing graph searches from their existing
-   * neighbors to find additional connections.
-   *
-   * <p>For each disconnected node:
-   *
-   * <ol>
-   *   <li>Use existing neighbors as entry points for graph search
-   *   <li>Search the level to find candidate neighbors
-   *   <li>Add diverse neighbors using the HNSW heuristic selection algorithm
-   * </ol>
-   *
-   * <p>If a node has no neighbors at all, it cannot be repaired at this level and will rely on the
-   * rebalancing phase.
-   *
-   * @param disconnectedNodes list of node ordinals that need additional neighbors
-   * @param level the level at which to repair connections
-   * @param scorer vector similarity scorer for distance calculations
-   * @throws IOException if an I/O error occurs during search operations
-   */
-  private void fixDisconnectedNodes(
-      List<Integer> disconnectedNodes, int level, UpdateableRandomVectorScorer scorer)
+  private void repairDisconnectedNodes(IntsRef[] disconnectedNodesByLevel, int numLevels)
       throws IOException {
-    if (disconnectedNodes.isEmpty()) return;
-
-    int beamWidth = beamCandidates.k();
-    GraphBuilderKnnCollector candidates = new GraphBuilderKnnCollector(beamWidth);
-    NeighborArray scratchArray = new NeighborArray(beamWidth, false);
-
-    for (int node : disconnectedNodes) {
-      maybeAbort();
-      scorer.setScoringOrdinal(node);
-      NeighborArray existingNeighbors = hnsw.getNeighbors(level, node);
-
-      // Only repair if node has at least one neighbor to use as entry point
-      if (existingNeighbors.size() > 0) {
-        // Use all existing neighbors as entry points for search
-        int[] entryPoints = new int[existingNeighbors.size()];
-        System.arraycopy(existingNeighbors.nodes(), 0, entryPoints, 0, existingNeighbors.size());
-
-        // Search from entry points to find candidate neighbors
-        graphSearcher.searchLevel(candidates, scorer, level, entryPoints, hnsw, null);
-        popToScratch(candidates, scratchArray);
-
-        // Add diverse neighbors using HNSW heuristic (prunes similar neighbors)
-        addDiverseNeighbors(level, node, scratchArray, scorer, true);
-      } else {
-        // Node has no nighbors, add connections from scratch
-        addConnections(node, level, scorer);
+    for (int level = numLevels - 1; level >= 0; level--) {
+      IntsRef disconnectedNodes = disconnectedNodesByLevel[level];
+      if (disconnectedNodes != null) {
+        fixDisconnectedNodes(disconnectedNodes, level, scorer);
       }
-
-      // Clear for next iteration
-      scratchArray.clear();
-      candidates.clear();
     }
   }
 
@@ -425,8 +432,8 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
    *
    * @throws IOException if an I/O error occurs during node promotion
    */
-  private void rebalanceGraph() throws IOException {
-    SplittableRandom random = new SplittableRandom();
+  void rebalanceGraph() throws IOException {
+    SplittableRandom random = new SplittableRandom(seed);
     int size = hnsw.size();
     double invMaxConn = 1.0 / M;
 
@@ -475,46 +482,6 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
         }
       }
     }
-  }
-
-  /**
-   * Adds connections for an existing node at a specific level in the graph hierarchy.
-   *
-   * <p>The process involves:
-   *
-   * <ol>
-   *   <li>Navigate down from the top level to find the closest node at the target level
-   *   <li>Perform a full search at the target level to find neighbors
-   *   <li>Add diverse neighbors using the HNSW heuristic selection
-   * </ol>
-   *
-   * @param node the node ordinal to add connections for
-   * @param targetLevel the level to add connections at
-   * @param scorer vector similarity scorer for distance calculations
-   * @throws IOException if an I/O error occurs during search or neighbor addition
-   */
-  private void addConnections(int node, int targetLevel, UpdateableRandomVectorScorer scorer)
-      throws IOException {
-
-    int beamWidth = beamCandidates.k();
-    GraphBuilderKnnCollector candidates = new GraphBuilderKnnCollector(beamWidth);
-    int[] eps = {hnsw.entryNode()};
-
-    // Navigate down from top to target level, greedily moving toward the new node
-    for (int level = hnsw.numLevels() - 1; level > targetLevel; level--) {
-      graphSearcher.searchLevel(candidates, scorer, level, eps, hnsw, null);
-      eps[0] = candidates.popNode();
-      candidates.clear();
-    }
-
-    // Perform full search at target level to find neighbors
-    graphSearcher.searchLevel(candidates, scorer, targetLevel, eps, hnsw, null);
-
-    NeighborArray scratchArray = new NeighborArray(beamWidth, false);
-    popToScratch(candidates, scratchArray);
-
-    // Add diverse neighbors and establish bidirectional connections
-    addDiverseNeighbors(targetLevel, node, scratchArray, scorer, true);
   }
 
   @Override
