@@ -292,13 +292,13 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
                 if (currentBlockLength <= remaining) {
                   // Skip the entire block without decompressing it.
                   in.skipBytes(compressedLengths[numBlocksConsumed]);
-                  System.out.println(
-                      "skip compressed block: "
-                          + numBlocksConsumed
-                          + ", original length: "
-                          + currentBlockLength
-                          + ", compressed length: "
-                          + compressedLengths[numBlocksConsumed]);
+                  //                  System.out.println(
+                  //                      "skip compressed block: "
+                  //                          + numBlocksConsumed
+                  //                          + ", original length: "
+                  //                          + currentBlockLength
+                  //                          + ", compressed length: "
+                  //                          + compressedLengths[numBlocksConsumed]);
                   offsetInBlock += currentBlockLength;
                   numBlocksConsumed++;
                   skipped += currentBlockLength;

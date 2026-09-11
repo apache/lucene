@@ -285,7 +285,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   }
 
   private static void skipField(DataInput in, int bits) throws IOException {
-    System.out.println("skipField: bits=" + Integer.toHexString(bits));
+    //    System.out.println("skipField: bits=" + Integer.toHexString(bits));
     switch (bits & TYPE_MASK) {
       case BYTE_ARR:
       case STRING:
@@ -564,10 +564,11 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
               skippableDecompressor.decompressingDataInput(
                   fieldsStream, chunkSize, offset, firstLength);
 
-          // This dataInput iterate slices and skip them by slice input.
+          // This dataInput iterate slices and skip them by current slice's dataInput.
           documentInput =
               new Lucene90DecompressingDataInput() {
 
+                // Current slice's dateInput.
                 Lucene90DecompressingDataInput input = firstInput;
                 int decompressed = firstLength;
 
@@ -612,7 +613,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
                   }
                   long skipped = 0;
                   while (skipped < numBytes) {
-                    // Use slice input to skip sub-blocks.
+                    // Use current slice's dataInput to skip sub-blocks.
                     final long actualSkipped = input.skipBytesUpTo(numBytes - skipped);
                     skipped += actualSkipped;
                     if (skipped == numBytes || decompressed == length) {
