@@ -22,6 +22,7 @@ import static org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectors
 import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.util.RamUsageEstimator.shallowSizeOfInstance;
+import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.transposeHalfByte;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -29,9 +30,11 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.IntPredicate;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
+import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.Mode;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
@@ -49,11 +52,14 @@ import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.internal.hppc.FloatArrayList;
 import org.apache.lucene.search.VectorScorer;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.VectorUtil;
+import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
@@ -365,16 +371,38 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   }
 
   @Override
-  public void mergeOneFlatVectorField(FieldInfo fieldInfo, MergeState mergeState)
+  public final void mergeOneFlatVectorField(FieldInfo fieldInfo, MergeState mergeState)
+      throws IOException {
+    mergeOneFlatVectorField(fieldInfo, mergeState, null);
+  }
+
+  /**
+   * {@inheritDoc}
+   *
+   * <p>HNSW merges call this overload. Subclasses that customize merging must override this method
+   * because {@link #mergeOneFlatVectorField(FieldInfo, MergeState)} is final.
+   *
+   * <p>Only {@link Mode#CENTERED} prepares data. The data-blind modes return {@code null} and use
+   * the reader fallback for the graph build.
+   */
+  @Override
+  public MergeScorerData mergeOneFlatVectorFieldForMergeScorer(
+      FieldInfo fieldInfo, MergeState mergeState, IntPredicate needsMergeScorer)
+      throws IOException {
+    return mergeOneFlatVectorField(fieldInfo, mergeState, needsMergeScorer);
+  }
+
+  private MergeScorerData mergeOneFlatVectorField(
+      FieldInfo fieldInfo, MergeState mergeState, IntPredicate needsMergeScorer)
       throws IOException {
     if (fieldInfo.getVectorEncoding().isFloatingPoint() == false) {
       rawVectorDelegate.mergeOneFlatVectorField(fieldInfo, mergeState);
-      return;
+      return null;
     }
-    switch (mode) {
+    return switch (mode) {
       case CENTERED -> {
         failIfFloatVectorsMissing(fieldInfo, mergeState);
-        mergeOneFlatVectorFieldCentered(fieldInfo, mergeState);
+        yield mergeOneFlatVectorFieldCentered(fieldInfo, mergeState, needsMergeScorer);
       }
       case DATA_BLIND_WITH_FLOATS -> {
         // The output segment stores full-precision floats, so every contributing segment must
@@ -382,9 +410,13 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
         failIfFloatVectorsMissing(fieldInfo, mergeState);
         rawVectorDelegate.mergeOneFlatVectorField(fieldInfo, mergeState);
         mergeOneFlatVectorFieldDataBlind(fieldInfo, mergeState);
+        yield null;
       }
-      case DATA_BLIND_WITHOUT_FLOATS -> mergeOneFlatVectorFieldDataBlind(fieldInfo, mergeState);
-    }
+      case DATA_BLIND_WITHOUT_FLOATS -> {
+        mergeOneFlatVectorFieldDataBlind(fieldInfo, mergeState);
+        yield null;
+      }
+    };
   }
 
   /**
@@ -416,7 +448,8 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     }
   }
 
-  private void mergeOneFlatVectorFieldCentered(FieldInfo fieldInfo, MergeState mergeState)
+  private MergeScorerData mergeOneFlatVectorFieldCentered(
+      FieldInfo fieldInfo, MergeState mergeState, IntPredicate needsMergeScorer)
       throws IOException {
     // Don't need access to the random vectors, we can just use the merged
     rawVectorDelegate.mergeOneFlatVectorField(fieldInfo, mergeState);
@@ -426,21 +459,172 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       segmentWriteState.infoStream.message(
           QUANTIZED_VECTOR_COMPONENT, "Vectors' count:" + vectorCount);
     }
-    QuantizedByteVectorValues quantizedVectorValues =
-        mergedQuantizedVectorValues(fieldInfo, mergeState, mergedCentroid);
+    // Only asymmetric encodings have query-side records, and only FLOAT32 fields score graphs with
+    // them. FLOAT16 fields use fp16 vectors. The predicate sees vectorCount before deletions, so it
+    // can request data even when the merged field is too small to build a graph.
+    boolean prepareQueryData =
+        needsMergeScorer != null
+            && encoding.isAsymmetric()
+            && fieldInfo.getVectorEncoding() == VectorEncoding.FLOAT32
+            && needsMergeScorer.test(vectorCount);
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
-    DocsWithFieldSet docsWithField = writeVectorData(vectorData, quantizedVectorValues);
-    long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
-    float centroidDp =
-        docsWithField.cardinality() > 0 ? VectorUtil.dotProduct(mergedCentroid, mergedCentroid) : 0;
-    writeMeta(
+    DocsWithFieldSet docsWithField;
+    MergeScorerData mergeScorerData = null;
+    if (prepareQueryData) {
+      docsWithField = new DocsWithFieldSet();
+      mergeScorerData =
+          writeVectorAndQueryData(fieldInfo, mergeState, mergedCentroid, docsWithField);
+    } else {
+      QuantizedByteVectorValues quantizedVectorValues =
+          mergedQuantizedVectorValues(fieldInfo, mergeState, mergedCentroid);
+      docsWithField = writeVectorData(vectorData, quantizedVectorValues);
+    }
+    boolean success = false;
+    try {
+      long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
+      float centroidDp =
+          docsWithField.cardinality() > 0
+              ? VectorUtil.dotProduct(mergedCentroid, mergedCentroid)
+              : 0;
+      writeMeta(
+          fieldInfo,
+          segmentWriteState.segmentInfo.maxDoc(),
+          vectorDataOffset,
+          vectorDataLength,
+          mergedCentroid,
+          centroidDp,
+          docsWithField);
+      success = true;
+      return mergeScorerData;
+    } finally {
+      // Delete the records on failure because their handle has not been returned.
+      if (success == false && mergeScorerData != null) {
+        mergeScorerData.close();
+      }
+    }
+  }
+
+  /**
+   * Writes merged index-side and query-side records in one pass. Index-side records go to the
+   * quantized vector data file, while query-side records go to a temporary file owned by the
+   * returned handle.
+   *
+   * <p>{@link OptimizedScalarQuantizer#multiScalarQuantize} centers each vector once and quantizes
+   * it at both bit widths.
+   *
+   * @param docsWithField filled with the documents that were written
+   */
+  private MergeScorerData writeVectorAndQueryData(
+      FieldInfo fieldInfo, MergeState mergeState, float[] centroid, DocsWithFieldSet docsWithField)
+      throws IOException {
+    assert encoding.isAsymmetric();
+    OptimizedScalarQuantizer quantizer =
+        new OptimizedScalarQuantizer(fieldInfo.getVectorSimilarityFunction());
+    FloatVectorValues vectorValues = mergedFloatVectorValues(fieldInfo, mergeState);
+    int discretizedDims = encoding.getDiscreteDimensions(vectorValues.dimension());
+    byte[] indexQuantized = new byte[discretizedDims];
+    byte[] queryQuantized = new byte[discretizedDims];
+    byte[] indexPacked =
+        switch (encoding) {
+          case UNSIGNED_BYTE, SEVEN_BIT -> indexQuantized;
+          case PACKED_NIBBLE, SINGLE_BIT_QUERY_NIBBLE, DIBIT_QUERY_NIBBLE ->
+              new byte[encoding.getDocPackedLength(discretizedDims)];
+        };
+    byte[] queryPacked = new byte[encoding.getQueryPackedLength(discretizedDims)];
+    byte[] bits = new byte[] {encoding.getBits(), encoding.getQueryBits()};
+    byte[][] destinations = new byte[][] {indexQuantized, queryQuantized};
+    String queryDataName = null;
+    try (IndexOutput queryData =
+        segmentWriteState.directory.createTempOutput(
+            segmentWriteState.segmentInfo.name, "queries", segmentWriteState.context)) {
+      queryDataName = queryData.getName();
+      KnnVectorValues.DocIndexIterator iterator = vectorValues.iterator();
+      for (int docV = iterator.nextDoc(); docV != NO_MORE_DOCS; docV = iterator.nextDoc()) {
+        OptimizedScalarQuantizer.QuantizationResult[] corrections =
+            quantizer.multiScalarQuantize(
+                vectorValues.vectorValue(iterator.index()), destinations, bits, centroid);
+        // the index side, packed as QuantizedFloatVectorValues packs it
+        packIndexRecord(encoding, indexQuantized, indexPacked);
+        vectorData.writeBytes(indexPacked, indexPacked.length);
+        writeCorrections(vectorData, corrections[0]);
+        // the query side, packed as Lucene104ScalarQuantizedVectorsReader packs it
+        transposeHalfByte(queryQuantized, queryPacked);
+        queryData.writeBytes(queryPacked, queryPacked.length);
+        writeCorrections(queryData, corrections[1]);
+        docsWithField.add(docV);
+      }
+      CodecUtil.writeFooter(queryData);
+    } catch (Throwable t) {
+      if (queryDataName != null) {
+        IOUtils.deleteFilesSuppressingExceptions(t, segmentWriteState.directory, queryDataName);
+      }
+      throw t;
+    }
+    return new PreparedQueryData(
+        segmentWriteState.directory,
+        segmentWriteState.context,
         fieldInfo,
-        segmentWriteState.segmentInfo.maxDoc(),
-        vectorDataOffset,
-        vectorDataLength,
-        mergedCentroid,
-        centroidDp,
-        docsWithField);
+        (Lucene104ScalarQuantizedVectorScorer) vectorsScorer,
+        queryDataName);
+  }
+
+  /** Owns one field's temporary query-side records until its graph scorer takes them over. */
+  private static final class PreparedQueryData implements MergeScorerData {
+    private final Directory directory;
+    private final IOContext context;
+    private final FieldInfo fieldInfo;
+    private final Lucene104ScalarQuantizedVectorScorer vectorScorer;
+    private final String fileName;
+    private boolean spent;
+
+    PreparedQueryData(
+        Directory directory,
+        IOContext context,
+        FieldInfo fieldInfo,
+        Lucene104ScalarQuantizedVectorScorer vectorScorer,
+        String fileName) {
+      this.directory = directory;
+      this.context = context;
+      this.fieldInfo = fieldInfo;
+      this.vectorScorer = vectorScorer;
+      this.fileName = fileName;
+    }
+
+    @Override
+    public CloseableRandomVectorScorerSupplier scorerSupplier(FlatVectorsReader mergedReader)
+        throws IOException {
+      if (spent) {
+        throw new IllegalStateException("already consumed or closed: " + fileName);
+      }
+      spent = true;
+      boolean handedOver = false;
+      try {
+        QuantizedByteVectorValues indexVectors =
+            mergedReader instanceof Lucene104ScalarQuantizedVectorsReader quantizedReader
+                ? quantizedReader.getQuantizedVectorValues(fieldInfo.name)
+                : null;
+        if (indexVectors == null) {
+          // Accept only this format's reader type. A wrapper around that reader must use the
+          // fallback, even over the correct segment.
+          return null;
+        }
+        handedOver = true;
+        return Lucene104ScalarQuantizedVectorsReader.mergeScorerSupplier(
+            fieldInfo, indexVectors, vectorScorer, directory, context, fileName);
+      } finally {
+        if (handedOver == false) {
+          IOUtils.deleteFilesIgnoringExceptions(directory, fileName);
+        }
+      }
+    }
+
+    @Override
+    public void close() {
+      if (spent == false) {
+        spent = true;
+        IOUtils.deleteFilesIgnoringExceptions(directory, fileName);
+      }
+    }
   }
 
   private void mergeOneFlatVectorFieldDataBlind(FieldInfo fieldInfo, MergeState mergeState)
@@ -541,6 +725,8 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
 
   @Override
   public void close() throws IOException {
+    // Query-side records are deliberately not released here: this writer is closed before the
+    // caller can open the reader a merge scorer needs, so every handle it handed out is pending.
     IOUtils.close(meta, vectorData, rawVectorDelegate);
   }
 
