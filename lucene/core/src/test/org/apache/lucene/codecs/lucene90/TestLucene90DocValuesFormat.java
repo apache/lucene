@@ -433,6 +433,68 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
     dir.close();
   }
 
+  public void testSparseDISIStoredInSeparateFile() throws Exception {
+    // A .dvp always gets a header + footer, so just checking it exists proves nothing. Instead
+    // compare a sparse field against a dense-only baseline: only the sparse one should write an
+    // IndexedDISI, so its .dvp must be bigger.
+    final int numDocs = 512;
+
+    // Dense baseline: no IndexedDISI, so .dvp is just header + footer.
+    final long denseDvpBytes;
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig conf =
+          new IndexWriterConfig(new MockAnalyzer(random()))
+              .setMergeScheduler(new SerialMergeScheduler())
+              .setUseCompoundFile(false); // keep .dvp visible in the listing
+      try (IndexWriter writer = new IndexWriter(dir, conf)) {
+        for (int i = 0; i < numDocs; i++) {
+          Document doc = new Document();
+          doc.add(new NumericDocValuesField("dv", i)); // every doc -> dense
+          writer.addDocument(doc);
+        }
+        writer.forceMerge(1);
+      }
+      denseDvpBytes = totalBytes(dir, Lucene90DocValuesFormat.DISI_EXTENSION);
+      assertTrue("a segment with doc values should always have a .dvp", denseDvpBytes > 0);
+    }
+
+    // Sparse field: only some docs have a value, so we expect an IndexedDISI in .dvp.
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig conf =
+          new IndexWriterConfig(new MockAnalyzer(random()))
+              .setMergeScheduler(new SerialMergeScheduler())
+              .setUseCompoundFile(false);
+      try (IndexWriter writer = new IndexWriter(dir, conf)) {
+        for (int i = 0; i < numDocs; i++) {
+          Document doc = new Document();
+          if (i % 2 == 0) { // only even docs -> sparse
+            doc.add(new NumericDocValuesField("dv", i));
+          }
+          writer.addDocument(doc);
+        }
+        writer.forceMerge(1);
+      }
+      final long sparseDvpBytes = totalBytes(dir, Lucene90DocValuesFormat.DISI_EXTENSION);
+      assertTrue(
+          "sparse IndexedDISI should live in .dvp (sparse="
+              + sparseDvpBytes
+              + "B, dense="
+              + denseDvpBytes
+              + "B)",
+          sparseDvpBytes > denseDvpBytes);
+    }
+  }
+
+  private static long totalBytes(Directory dir, String extension) throws IOException {
+    long total = 0;
+    for (String file : dir.listAll()) {
+      if (file.endsWith("." + extension)) {
+        total += dir.fileLength(file);
+      }
+    }
+    return total;
+  }
+
   private void doTestSparseDocValuesVsStoredFields() throws Exception {
     final long[] values = new long[TestUtil.nextInt(random(), 1, 500)];
     for (int i = 0; i < values.length; ++i) {

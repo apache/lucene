@@ -64,7 +64,7 @@ import org.apache.lucene.util.packed.DirectWriter;
 /** writer for {@link Lucene90DocValuesFormat} */
 final class Lucene90DocValuesConsumer extends DocValuesConsumer {
 
-  IndexOutput data, meta, skipIndex;
+  IndexOutput data, meta, skipIndex, disiData;
   final int maxDoc;
   private byte[] termsDictBuffer;
   private final int skipIndexIntervalSize;
@@ -78,7 +78,9 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
       String metaCodec,
       String metaExtension,
       String skipIndexCodec,
-      String skipIndexExtension)
+      String skipIndexExtension,
+      String disiCodec,
+      String disiExtension)
       throws IOException {
     this.termsDictBuffer = new byte[1 << 14];
     boolean success = false;
@@ -113,6 +115,16 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
           Lucene90DocValuesFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
+      String disiName =
+          IndexFileNames.segmentFileName(
+              state.segmentInfo.name, state.segmentSuffix, disiExtension);
+      disiData = state.directory.createOutput(disiName, state.context);
+      CodecUtil.writeIndexHeader(
+          disiData,
+          disiCodec,
+          Lucene90DocValuesFormat.VERSION_CURRENT,
+          state.segmentInfo.getId(),
+          state.segmentSuffix);
       maxDoc = state.segmentInfo.maxDoc();
       this.skipIndexIntervalSize = skipIndexIntervalSize;
       success = true;
@@ -137,15 +149,32 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
       if (skipIndex != null) {
         CodecUtil.writeFooter(skipIndex);
       }
+      if (disiData != null) {
+        CodecUtil.writeFooter(disiData); // write checksum
+      }
       success = true;
     } finally {
       if (success) {
-        IOUtils.close(data, meta, skipIndex);
+        IOUtils.close(data, meta, skipIndex, disiData);
       } else {
-        IOUtils.closeWhileHandlingException(data, meta, skipIndex);
+        IOUtils.closeWhileHandlingException(data, meta, skipIndex, disiData);
       }
-      meta = data = skipIndex = null;
+      meta = data = skipIndex = disiData = null;
     }
+  }
+
+  /**
+   * Writes a sparse field's {@link IndexedDISI} to the {@code .dvp} file and records its offset,
+   * length and shape in the metadata.
+   */
+  private void writeDISI(DocIdSetIterator values) throws IOException {
+    final long offset = disiData.getFilePointer();
+    meta.writeLong(offset); // docsWithFieldOffset (into .dvp)
+    final short jumpTableEntryCount =
+        IndexedDISI.writeBitSet(values, disiData, IndexedDISI.DEFAULT_DENSE_RANK_POWER);
+    meta.writeLong(disiData.getFilePointer() - offset); // docsWithFieldLength (region in .dvp)
+    meta.writeShort(jumpTableEntryCount);
+    meta.writeByte(IndexedDISI.DEFAULT_DENSE_RANK_POWER);
   }
 
   @Override
@@ -444,15 +473,9 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
       meta.writeLong(0L); // docsWithFieldLength
       meta.writeShort((short) -1); // jumpTableEntryCount
       meta.writeByte((byte) -1); // denseRankPower
-    } else { // meta[data.offset, data.length]: IndexedDISI structure for documents with values
-      long offset = data.getFilePointer();
-      meta.writeLong(offset); // docsWithFieldOffset
+    } else { // meta[disi.offset, disi.length]: IndexedDISI region in .dvp for documents with values
       values = valuesProducer.getSortedNumeric(field);
-      final short jumpTableEntryCount =
-          IndexedDISI.writeBitSet(values, data, IndexedDISI.DEFAULT_DENSE_RANK_POWER);
-      meta.writeLong(data.getFilePointer() - offset); // docsWithFieldLength
-      meta.writeShort(jumpTableEntryCount);
-      meta.writeByte(IndexedDISI.DEFAULT_DENSE_RANK_POWER);
+      writeDISI(values);
     }
 
     meta.writeLong(numValues);
@@ -637,14 +660,8 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
       meta.writeShort((short) -1); // jumpTableEntryCount
       meta.writeByte((byte) -1); // denseRankPower
     } else {
-      long offset = data.getFilePointer();
-      meta.writeLong(offset); // docsWithFieldOffset
       values = valuesProducer.getBinary(field);
-      final short jumpTableEntryCount =
-          IndexedDISI.writeBitSet(values, data, IndexedDISI.DEFAULT_DENSE_RANK_POWER);
-      meta.writeLong(data.getFilePointer() - offset); // docsWithFieldLength
-      meta.writeShort(jumpTableEntryCount);
-      meta.writeByte(IndexedDISI.DEFAULT_DENSE_RANK_POWER);
+      writeDISI(values);
     }
 
     meta.writeInt(numDocsWithField);
