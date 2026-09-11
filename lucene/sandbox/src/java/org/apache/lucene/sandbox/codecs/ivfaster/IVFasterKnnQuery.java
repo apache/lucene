@@ -81,17 +81,97 @@ public final class IVFasterKnnQuery extends Query {
   private final boolean adaptive;
 
   /**
-   * How filter rarity scales the probe: {@code probe * rarity^k}; see {@code CellScorer.create}.
-   *
-   * <p>MEASURED, AND GEOMETRY-DEPENDENT. 0.383 is a least-squares fit over selectivity 5-50% on a
-   * 1M segment at {@code nlist=1000} with {@code spillBits=1}, where a cell holds about a thousand
-   * documents. At a much larger {@code nlist} a cell holds a handful instead, and the exponent that
-   * preserves recall will differ, which is why this is a property rather than a constant. Uniform
-   * random accept sets only: a filter correlated with the query breaks the premise that rarity
-   * alone predicts how much further the probe must reach.
+   * The {@code k} in {@code probe * rarity^k} is a function of how many documents a cell holds, not
+   * a constant; these are the coefficients of {@code k = intercept + slope * ln(docs per cell)}. See
+   * {@link #rarityExponent} for what was measured and {@code CellScorer.create} for the use.
    */
-  private static final double FILTER_RARITY_EXPONENT =
-      Double.parseDouble(System.getProperty("ivfaster.filterRarityExponent", "0.383"));
+  private static final double FILTER_RARITY_INTERCEPT =
+      Double.parseDouble(System.getProperty("ivfaster.filterRarityIntercept", "0.7185"));
+
+  private static final double FILTER_RARITY_SLOPE =
+      Double.parseDouble(System.getProperty("ivfaster.filterRaritySlope", "-0.0578"));
+
+  /**
+   * Clamps on the fitted exponent. The floor exists because the fit is linear in a logarithm and so
+   * eventually crosses zero and goes negative, which would mean NARROWING the probe when a filter is
+   * applied — never right. The ceiling bounds the cost of a bad rarity estimate: at 5% selectivity
+   * {@code 20^0.5} is already a 4.5x probe.
+   */
+  private static final double FILTER_RARITY_MIN =
+      Double.parseDouble(System.getProperty("ivfaster.filterRarityMin", "0.15"));
+
+  private static final double FILTER_RARITY_MAX =
+      Double.parseDouble(System.getProperty("ivfaster.filterRarityMax", "0.50"));
+
+  /**
+   * Pins the exponent, bypassing the {@link #rarityExponent} model; {@code <= 0} uses the model. For
+   * sweeps that need to hold {@code k} fixed while something else varies.
+   */
+  private static final double FILTER_RARITY_EXPONENT_OVERRIDE =
+      Double.parseDouble(System.getProperty("ivfaster.filterRarityExponent", "0"));
+
+  /**
+   * How far the probe must widen per unit of filter rarity, given how many documents a cell holds.
+   *
+   * <p>MEASURED. For each configuration below, the {@code nprobe} reaching recall 0.95 was swept
+   * unfiltered and then at selectivity 5/10/25/50% against the brute-force top-k of the accepted
+   * set, and {@code k} taken as the log-log slope of the ratio against rarity:
+   *
+   * <pre>
+   *   docs/cell    configuration          measured k    fitted
+   *         125    1M,  nlist=8000             0.415     0.440
+   *        1000    1M,  nlist=1000             0.382     0.319
+   *        3163    10M, nlist=3162             0.246     0.253
+   *        4000    1M,  nlist=250              0.209     0.239
+   * </pre>
+   *
+   * <p>IT IS DOCS PER CELL, NOT {@code nlist}. Those two cannot be separated on the
+   * {@code nlist = sqrt(ndoc)} diagonal, where they are the same number, so the two 1M rows were
+   * measured OFF the diagonal to move them in opposite directions. Regressing on
+   * {@code ln(docs/cell)} gives R^2 0.82; on {@code ln(nlist)}, 0.02. The mechanism is that a larger
+   * cell yields more accepted documents per probed cell at a given selectivity, so the filter starves
+   * the shortlist less and less widening is needed.
+   *
+   * <p>The {@code 1M/nlist=250} row was HELD OUT and predicted before being measured, as an
+   * out-of-sample test of exactly that substitution: at 1M documents but 4000 per cell it came in at
+   * 0.209, next to the 10M value of 0.246 and nowhere near the 0.382 of 1M at 1000 per cell. So
+   * {@code ndoc} is not what matters. The model's error there was +0.057; a constant fitted at
+   * {@code nlist=1000} would have been off by +0.173.
+   *
+   * <p>WHAT THIS IS NOT. Four points and R^2 0.82 is a serviceable local approximation, not a law.
+   * Two specific weaknesses:
+   *
+   * <ul>
+   *   <li>THE SHAPE IS NOT LOG-LINEAR. Slopes between consecutive points steepen monotonically
+   *       (-0.016, -0.118, -0.158), so {@code k} falls faster than this line at large docs/cell and
+   *       the line over-predicts out there. Over-predicting {@code k} over-probes, which costs
+   *       latency rather than recall, and {@link #FILTER_RARITY_MIN} bounds it.
+   *   <li>The worst residual, -0.062, is at {@code 1M/nlist=1000} — the configuration the 1M
+   *       benchmarks actually run — where this returns 0.319 against a locally measured 0.382, so it
+   *       under-probes about 15% there. A pinned exponent is better at that one point and much worse
+   *       everywhere else.
+   * </ul>
+   *
+   * <p>It is fitted at ONE recall target (0.95), on ONE corpus, at {@code spillBits=1}, and — most
+   * restrictive — for UNIFORM RANDOM accept sets. A filter correlated with position in the embedding
+   * space breaks the premise that rarity alone predicts reach: an accept set concentrated in a few
+   * cells needs far less widening than this returns, and an adversarially spread one needs more.
+   *
+   * <p>Finally, {@code rarity} itself comes from {@code leadCost}, and a CONJUNCTION's cost is the
+   * MINIMUM over its clauses rather than their product. A filter built from {@code m} clauses whose
+   * intersection has selectivity {@code s} therefore looks like selectivity {@code s^(1/m)} from
+   * here, and the probe widens by {@code rarity^(k/m)} instead of {@code rarity^k}. This
+   * under-probes, and it under-probes exactly on the multi-predicate filters that are most common in
+   * practice. Nothing here corrects for it.
+   */
+  static double rarityExponent(long docsPerCell) {
+    if (FILTER_RARITY_EXPONENT_OVERRIDE > 0) {
+      return FILTER_RARITY_EXPONENT_OVERRIDE;
+    }
+    final double k =
+        FILTER_RARITY_INTERCEPT + FILTER_RARITY_SLOPE * Math.log(Math.max(2, docsPerCell));
+    return Math.min(FILTER_RARITY_MAX, Math.max(FILTER_RARITY_MIN, k));
+  }
 
   /**
    * @param field the ivfaster vector field
@@ -376,18 +456,18 @@ public final class IVFasterKnnQuery extends Query {
           // never grew. The configured probe is the tuned operating point; rarity says how much
           // further it has to reach to hold the same recall.
           //
-          // The exponent is measured, not assumed. Sweeping nprobe to hold recall 0.95 on
-          // 1M/nlist=1000/spillBits=1 gives multipliers 1.41x / 1.70x / 2.42x / 3.09x at
-          // selectivity 50 / 25 / 10 / 5%, i.e. rarity^0.383 with three of the four points inside
-          // 0.376-0.384. Linear in rarity would ask for 20x where 3.09x holds; sqrt would ask
-          // 4.47x.
+          // The exponent is measured, not assumed, and it depends on how many documents a cell holds
+          // -- see rarityExponent. Sweeping nprobe to hold recall 0.95 on 1M/nlist=1000/spillBits=1
+          // gives multipliers 1.41x / 1.70x / 2.42x / 3.09x at selectivity 50 / 25 / 10 / 5%. Linear
+          // in rarity would ask for 20x where 3.09x holds; sqrt would ask 4.47x.
+          final double k = rarityExponent(Math.max(1, session.count() / session.nlist()));
           probe =
               (int)
                   Math.max(
                       probe,
                       Math.min(
                           session.maxProbe(),
-                          (long) Math.ceil(probe * Math.pow(rarity, FILTER_RARITY_EXPONENT))));
+                          (long) Math.ceil(probe * Math.pow(rarity, k))));
           admitRows = (long) Math.ceil(admitRows * rarity);
         }
         final int n = session.prepare(probe, admitRows);
