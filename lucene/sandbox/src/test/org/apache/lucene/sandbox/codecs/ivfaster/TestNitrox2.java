@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.sandbox.codecs.ivfaster;
 
+import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.VectorUtil;
 
@@ -28,6 +29,7 @@ import org.apache.lucene.util.VectorUtil;
  * order swap or a non-unary code, the scan ranks on something that is not a distance, and the
  * failure reads as a broken tier.
  */
+@ThreadLeakFilters(defaultFilters = true, filters = IvfasterBuildThreadsFilter.class)
 public class TestNitrox2 extends LuceneTestCase {
 
   /** Dimensions worth covering: the production width, a non-power-of-two, and a sub-byte tail. */

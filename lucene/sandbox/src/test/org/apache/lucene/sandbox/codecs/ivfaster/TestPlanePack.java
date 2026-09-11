@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.sandbox.codecs.ivfaster;
 
+import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 /**
@@ -27,6 +28,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
  * scalar to scalar passes while proving nothing), and the threshold form must agree with the
  * arithmetic it replaced everywhere except within a ULP of a bucket boundary.
  */
+@ThreadLeakFilters(defaultFilters = true, filters = IvfasterBuildThreadsFilter.class)
 public class TestPlanePack extends LuceneTestCase {
 
   /** The old arithmetic form, kept here as the reference the rewrite is compared against. */

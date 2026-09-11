@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.sandbox.codecs.ivfaster;
 
+import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 import java.io.IOException;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
@@ -28,6 +29,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
  * the on-disk index disagree about a document's code, with no error anywhere), and that the record
  * stride keeps every document's code cache-line aligned.
  */
+@ThreadLeakFilters(defaultFilters = true, filters = IvfasterBuildThreadsFilter.class)
 public class TestDocPlanes extends LuceneTestCase {
 
   /**

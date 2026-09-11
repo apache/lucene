@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.sandbox.codecs.ivfaster;
 
+import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -35,6 +36,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
  *       scan would, so that the descent's approximation is one the exact rerank repairs.
  * </ul>
  */
+@ThreadLeakFilters(defaultFilters = true, filters = IvfasterBuildThreadsFilter.class)
 public class TestCentroidGraph extends LuceneTestCase {
 
   private static final int DIM = 64;

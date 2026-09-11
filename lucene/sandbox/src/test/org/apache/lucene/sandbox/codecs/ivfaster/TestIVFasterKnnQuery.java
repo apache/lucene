@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.sandbox.codecs.ivfaster;
 
+import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
@@ -46,6 +47,7 @@ import org.apache.lucene.tests.util.TestUtil;
  * The kNN clause as a scorer: its documents arrive in doc order, so it conjoins with any other
  * clause, and the fine tier is paid only for documents the whole conjunction agrees on.
  */
+@ThreadLeakFilters(defaultFilters = true, filters = IvfasterBuildThreadsFilter.class)
 public class TestIVFasterKnnQuery extends LuceneTestCase {
 
   private static final String FIELD = "vector";

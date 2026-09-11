@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.sandbox.codecs.ivfaster;
 
+import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 import java.io.IOException;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -30,6 +31,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
  * rather than close. Otherwise documents land in the wrong cell silently, which shows up much later
  * as a recall shortfall that is hard to attribute back to here.
  */
+@ThreadLeakFilters(defaultFilters = true, filters = IvfasterBuildThreadsFilter.class)
 public class TestClustering extends LuceneTestCase {
 
   private static final int DIM = 64;

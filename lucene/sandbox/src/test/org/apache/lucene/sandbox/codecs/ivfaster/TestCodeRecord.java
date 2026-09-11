@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.sandbox.codecs.ivfaster;
 
+import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 /**
@@ -26,6 +27,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
  * a change to the header size or the correction count would reintroduce the straddle that this
  * layout exists to remove, with no symptom other than slower scattered reads.
  */
+@ThreadLeakFilters(defaultFilters = true, filters = IvfasterBuildThreadsFilter.class)
 public class TestCodeRecord extends LuceneTestCase {
 
   /** Every record length must be a whole number of cache lines, so record N starts on a line. */

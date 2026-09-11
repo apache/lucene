@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.sandbox.codecs.ivfaster;
 
+import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
@@ -58,6 +59,7 @@ import org.apache.lucene.tests.util.TestUtil;
  * against a brute-force top-k over the SAME accepted set, since a filtered query that returns
  * plausible accepted documents rather than the nearest ones throws nothing.
  */
+@ThreadLeakFilters(defaultFilters = true, filters = IvfasterBuildThreadsFilter.class)
 public class TestIVFasterFiltered extends LuceneTestCase {
 
   private static final String FIELD = "vector";

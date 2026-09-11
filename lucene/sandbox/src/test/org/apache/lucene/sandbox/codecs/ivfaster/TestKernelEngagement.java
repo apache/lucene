@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.sandbox.codecs.ivfaster;
 
+import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 import java.lang.foreign.MemorySegment;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
@@ -44,6 +45,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
  *       kernel that is subtly wrong is worse than a slow one.
  * </ol>
  */
+@ThreadLeakFilters(defaultFilters = true, filters = IvfasterBuildThreadsFilter.class)
 public class TestKernelEngagement extends LuceneTestCase {
 
   /**
@@ -146,7 +148,7 @@ public class TestKernelEngagement extends LuceneTestCase {
       // return the right numbers, and pass every assertion below having run no SIMD at all. That
       // is the silent fallback this class exists to catch, so the specialized widths assert the
       // counter moved and the others assert it did not.
-      final boolean specialized = isSpecializedArrayWidth(len);
+      final boolean specialized = isSpecializedKernelWidth(len);
       final long rowsBefore = PanamaHammingKernel.contiguousArrayRows.get();
 
       int[] fromArray = new int[rows];
@@ -201,10 +203,18 @@ public class TestKernelEngagement extends LuceneTestCase {
   }
 
   /**
-   * Whether {@code len} is one of the widths {@code bulkDistancesFromArray} specializes, derived
-   * from the kernel's ACTUAL vector width so this tracks the platform instead of assuming 256-bit.
+   * Whether {@code len} is one of the widths the heap-array kernels specialize, derived from the
+   * kernel's ACTUAL vector width rather than assuming one.
+   *
+   * <p>WHY THIS IS NOT A CONSTANT. Both {@code bulkDistancesAtBytes} and {@code
+   * bulkDistancesFromArray} specialize {@code 4*STEP} and {@code 8*STEP}, where {@code STEP} is the
+   * preferred byte-vector width, and defer to the scalar loop at every other length. So which dims
+   * engage SIMD is a property of the HOST: the 1024-dim coarse code is 256 bytes, which is 8*STEP
+   * on a 256-bit machine and 4*STEP on a 512-bit one, but 16*STEP on a 128-bit one — where
+   * deferring is correct behaviour, not a failure. Asserting engagement against a hardcoded dim
+   * therefore fails on 128-bit hosts for no real reason.
    */
-  private static boolean isSpecializedArrayWidth(int len) {
+  private static boolean isSpecializedKernelWidth(int len) {
     final HammingKernel k = HammingKernel.get();
     if (k instanceof PanamaHammingKernel == false) {
       return false;
@@ -249,10 +259,11 @@ public class TestKernelEngagement extends LuceneTestCase {
       int[] out = new int[rows];
       final long before = PanamaHammingKernel.strided2Rows.get();
       vector.bulkDistancesAtBytes(qCode, nodes, offsets, coarseBytes, rows, out);
-      if (dim == 1024) {
-        // ENGAGEMENT rather than parity, since the scalar default is bit-identical.
+      if (vector instanceof PanamaHammingKernel && isSpecializedKernelWidth(coarseBytes)) {
+        // ENGAGEMENT rather than parity, since the scalar default is bit-identical. Gated on the
+        // width actually being specialized on THIS host; see isSpecializedKernelWidth.
         assertEquals(
-            "strided heap branch must engage at dim=1024",
+            "strided heap branch must engage at dim=" + dim + " (coarseBytes=" + coarseBytes + ")",
             before + rows,
             PanamaHammingKernel.strided2Rows.get());
       }

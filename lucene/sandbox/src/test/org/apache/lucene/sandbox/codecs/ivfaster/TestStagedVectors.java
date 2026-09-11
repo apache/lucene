@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.sandbox.codecs.ivfaster;
 
+import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,6 +30,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
  * The staged corpus: what goes into the temp file comes back out, by cursor and by gather, and the
  * files are gone afterwards.
  */
+@ThreadLeakFilters(defaultFilters = true, filters = IvfasterBuildThreadsFilter.class)
 public class TestStagedVectors extends LuceneTestCase {
 
   public void testRoundTrip() throws Exception {

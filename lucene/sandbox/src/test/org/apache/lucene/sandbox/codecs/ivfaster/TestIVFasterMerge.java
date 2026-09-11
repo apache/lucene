@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.sandbox.codecs.ivfaster;
 
+import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -55,6 +56,7 @@ import org.apache.lucene.tests.util.TestUtil;
  *       merging repeatedly and requiring recall to hold.
  * </ol>
  */
+@ThreadLeakFilters(defaultFilters = true, filters = IvfasterBuildThreadsFilter.class)
 public class TestIVFasterMerge extends LuceneTestCase {
 
   private static final String FIELD = "vector";

@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.sandbox.codecs.ivfaster;
 
+import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
@@ -48,6 +49,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
  * uniform case as a documented lower bound rather than pretending it does not exist. Getting this
  * backwards would either understate the design (a 0.735 that looks alarming) or overstate it.
  */
+@ThreadLeakFilters(defaultFilters = true, filters = IvfasterBuildThreadsFilter.class)
 public class TestCentroidCodes extends LuceneTestCase {
 
   private static final int DIM = 256;

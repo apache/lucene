@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.sandbox.codecs.ivfaster;
 
+import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
@@ -44,6 +45,7 @@ import org.apache.lucene.tests.util.TestUtil;
  * but wrong neighbours is what a section-offset or slot-order mistake actually looks like, since
  * nothing throws.
  */
+@ThreadLeakFilters(defaultFilters = true, filters = IvfasterBuildThreadsFilter.class)
 public class TestIVFasterRoundTrip extends LuceneTestCase {
 
   private static final String FIELD = "vector";

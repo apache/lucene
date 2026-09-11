@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.sandbox.codecs.ivfaster;
 
+import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
@@ -28,6 +29,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
  * computed signed dot. If it drifts, every score shifts by a data-dependent amount, which is
  * invisible except as a recall change.
  */
+@ThreadLeakFilters(defaultFilters = true, filters = IvfasterBuildThreadsFilter.class)
 public class TestInt8Quantizer extends LuceneTestCase {
 
   private static final int DIM = 1024;

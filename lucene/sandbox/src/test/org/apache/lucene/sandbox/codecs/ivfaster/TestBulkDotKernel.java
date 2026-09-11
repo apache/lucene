@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.sandbox.codecs.ivfaster;
 
+import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 import java.util.Arrays;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.VectorUtil;
@@ -38,6 +39,7 @@ import org.apache.lucene.util.VectorUtil;
  * exactly the mistake worth catching: an off-by-stride or a dropped tail reads neighbouring bytes
  * and still returns a plausible number.
  */
+@ThreadLeakFilters(defaultFilters = true, filters = IvfasterBuildThreadsFilter.class)
 public class TestBulkDotKernel extends LuceneTestCase {
 
   private static BulkDotKernel[] kernels() {
