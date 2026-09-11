@@ -34,6 +34,7 @@ import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
+import org.apache.lucene.index.DocIDMerger;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.Float16VectorValues;
@@ -47,6 +48,7 @@ import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.internal.hppc.FloatArrayList;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.VectorUtil;
@@ -67,6 +69,8 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   private final List<FieldWriter<?>> fields = new ArrayList<>();
   private final IndexOutput meta, vectorData;
   private final ScalarEncoding encoding;
+  private final boolean enableCentering;
+  private final int version;
   private final FlatVectorsWriter rawVectorDelegate;
   private boolean finished;
 
@@ -74,11 +78,17 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   public Lucene104ScalarQuantizedVectorsWriter(
       SegmentWriteState state,
       ScalarEncoding encoding,
+      boolean enableCentering,
       FlatVectorsWriter rawVectorDelegate,
       Lucene104ScalarQuantizedVectorScorer vectorsScorer)
       throws IOException {
     super(vectorsScorer);
     this.encoding = encoding;
+    this.enableCentering = enableCentering;
+    this.version =
+        enableCentering
+            ? Lucene104ScalarQuantizedVectorsFormat.VERSION_START
+            : Lucene104ScalarQuantizedVectorsFormat.VERSION_DATA_BLIND;
     this.segmentWriteState = state;
     String metaFileName =
         IndexFileNames.segmentFileName(
@@ -99,13 +109,13 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       CodecUtil.writeIndexHeader(
           meta,
           Lucene104ScalarQuantizedVectorsFormat.META_CODEC_NAME,
-          Lucene104ScalarQuantizedVectorsFormat.VERSION_CURRENT,
+          version,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       CodecUtil.writeIndexHeader(
           vectorData,
           Lucene104ScalarQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
-          Lucene104ScalarQuantizedVectorsFormat.VERSION_CURRENT,
+          version,
           state.segmentInfo.getId(),
           state.segmentSuffix);
     } catch (Throwable t) {
@@ -116,13 +126,25 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
 
   @Override
   public FlatFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
-    FlatFieldVectorsWriter<?> rawVectorDelegate = this.rawVectorDelegate.addField(fieldInfo);
-    if (fieldInfo.getVectorEncoding().isFloatingPoint()) {
-      FieldWriter<?> fieldWriter = FieldWriter.create(fieldInfo, rawVectorDelegate);
+    if (fieldInfo.getVectorEncoding().isFloatingPoint() && enableCentering == false) {
+      // Data-blind mode: keep vectors in memory only and never write full-precision float vectors.
+      FlatFieldVectorsWriter<?> storage =
+          switch (fieldInfo.getVectorEncoding()) {
+            case FLOAT32 -> new InMemoryFloatFieldWriter(fieldInfo);
+            case FLOAT16 -> new InMemoryFloat16FieldWriter(fieldInfo);
+            case BYTE -> throw new UnsupportedOperationException("Byte Vectors aren't supported");
+          };
+      FieldWriter<?> fieldWriter = FieldWriter.create(fieldInfo, storage, false);
       fields.add(fieldWriter);
       return fieldWriter;
     }
-    return rawVectorDelegate;
+    FlatFieldVectorsWriter<?> storage = this.rawVectorDelegate.addField(fieldInfo);
+    if (fieldInfo.getVectorEncoding().isFloatingPoint()) {
+      FieldWriter<?> fieldWriter = FieldWriter.create(fieldInfo, storage, enableCentering);
+      fields.add(fieldWriter);
+      return fieldWriter;
+    }
+    return storage;
   }
 
   @Override
@@ -277,12 +299,16 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     meta.writeVInt(count);
     if (count > 0) {
       meta.writeVInt(encoding.getWireNumber());
-      final ByteBuffer buffer =
-          ByteBuffer.allocate(field.getVectorDimension() * Float.BYTES)
-              .order(ByteOrder.LITTLE_ENDIAN);
-      buffer.asFloatBuffer().put(clusterCenter);
-      meta.writeBytes(buffer.array(), buffer.array().length);
-      meta.writeInt(Float.floatToIntBits(centroidDp));
+      if (version == Lucene104ScalarQuantizedVectorsFormat.VERSION_START) {
+        final ByteBuffer buffer =
+            ByteBuffer.allocate(field.getVectorDimension() * Float.BYTES)
+                .order(ByteOrder.LITTLE_ENDIAN);
+        buffer.asFloatBuffer().put(clusterCenter);
+        meta.writeBytes(buffer.array(), buffer.array().length);
+        meta.writeInt(Float.floatToIntBits(centroidDp));
+      }
+      // Data-blind (version 1): the centroid and centroidDP are omitted; a zero centroid is
+      // substituted at read time.
     }
     OrdToDocDISIReaderConfiguration.writeStoredMeta(
         DIRECT_MONOTONIC_BLOCK_SHIFT, meta, vectorData, count, maxDoc, docsWithField);
@@ -320,36 +346,126 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     return new QuantizedFloatVectorValues(vectorValues, quantizer, encoding, centroid);
   }
 
+  /**
+   * Returns a view that quantizes a single segment's float vectors against {@code centroid} using
+   * this writer's encoding, without consulting any quantized bytes the segment may already store.
+   */
+  private QuantizedFloatVectorValues quantizeFromFloats(
+      KnnVectorsReader reader, FieldInfo fieldInfo, float[] centroid) throws IOException {
+    OptimizedScalarQuantizer quantizer =
+        new OptimizedScalarQuantizer(fieldInfo.getVectorSimilarityFunction());
+    FloatVectorValues vectorValues =
+        fieldInfo.getVectorEncoding() == VectorEncoding.FLOAT16
+            ? new Float16AsFloatVectorValues(reader.getFloat16VectorValues(fieldInfo.name))
+            : reader.getFloatVectorValues(fieldInfo.name);
+    if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
+      vectorValues = new NormalizedFloatVectorValues(vectorValues);
+    }
+    return new QuantizedFloatVectorValues(vectorValues, quantizer, encoding, centroid);
+  }
+
   @Override
   public void mergeOneFlatVectorField(FieldInfo fieldInfo, MergeState mergeState)
       throws IOException {
-    // Don't need access to the random vectors, we can just use the merged
-    rawVectorDelegate.mergeOneFlatVectorField(fieldInfo, mergeState);
     if (fieldInfo.getVectorEncoding().isFloatingPoint() == false) {
+      rawVectorDelegate.mergeOneFlatVectorField(fieldInfo, mergeState);
       return;
     }
-    final float[] centroid;
+    if (enableCentering) {
+      mergeOneFlatVectorFieldCentered(fieldInfo, mergeState);
+    } else {
+      mergeOneFlatVectorFieldDataBlind(fieldInfo, mergeState);
+    }
+  }
+
+  private void mergeOneFlatVectorFieldCentered(FieldInfo fieldInfo, MergeState mergeState)
+      throws IOException {
+    // Don't need access to the random vectors, we can just use the merged
+    rawVectorDelegate.mergeOneFlatVectorField(fieldInfo, mergeState);
     final float[] mergedCentroid = new float[fieldInfo.getVectorDimension()];
     int vectorCount = mergeAndRecalculateCentroids(mergeState, fieldInfo, mergedCentroid);
-    centroid = mergedCentroid;
     if (segmentWriteState.infoStream.isEnabled(QUANTIZED_VECTOR_COMPONENT)) {
       segmentWriteState.infoStream.message(
           QUANTIZED_VECTOR_COMPONENT, "Vectors' count:" + vectorCount);
     }
     QuantizedByteVectorValues quantizedVectorValues =
-        mergedQuantizedVectorValues(fieldInfo, mergeState, centroid);
+        mergedQuantizedVectorValues(fieldInfo, mergeState, mergedCentroid);
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
     DocsWithFieldSet docsWithField = writeVectorData(vectorData, quantizedVectorValues);
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
     float centroidDp =
-        docsWithField.cardinality() > 0 ? VectorUtil.dotProduct(centroid, centroid) : 0;
+        docsWithField.cardinality() > 0 ? VectorUtil.dotProduct(mergedCentroid, mergedCentroid) : 0;
     writeMeta(
         fieldInfo,
         segmentWriteState.segmentInfo.maxDoc(),
         vectorDataOffset,
         vectorDataLength,
-        centroid,
+        mergedCentroid,
         centroidDp,
+        docsWithField);
+  }
+
+  private void mergeOneFlatVectorFieldDataBlind(FieldInfo fieldInfo, MergeState mergeState)
+      throws IOException {
+    float[] zeroCentroid = new float[fieldInfo.getVectorDimension()];
+    // Build one merged view where, per contributing segment, either its existing quantized bytes
+    // are passed through or its float vectors are quantized fresh. Inputs already quantized to
+    // {@code encoding} against a zero centroid (data-blind segments) are copied directly; they are
+    // never dequantized and re-quantized, which would only add loss. Segments with raw floats are
+    // quantized fresh, as their stored bytes live in a different (centered) quantization space.
+    List<QuantizedByteVectorValuesSub> subs = new ArrayList<>();
+    for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
+      KnnVectorsReader reader = mergeState.knnVectorsReaders[i];
+      if (reader == null) {
+        continue;
+      }
+      QuantizedByteVectorValues values;
+      if (hasRawVectorValues(reader, fieldInfo)) {
+        // Segment stored full-precision floats; quantize them against the zero centroid.
+        values = quantizeFromFloats(reader, fieldInfo, zeroCentroid);
+      } else {
+        QuantizedByteVectorValues qvv = getQuantizedVectorValues(reader, fieldInfo.name);
+        if (qvv == null || qvv.size() == 0) {
+          continue;
+        }
+        if (qvv.getScalarEncoding() != encoding) {
+          // Re-quantization from raw floats would be required, which is not possible when raw
+          // floats were never written.
+          throw new IllegalStateException(
+              "Cannot merge field \""
+                  + fieldInfo.name
+                  + "\" from data-blind segment with encoding "
+                  + qvv.getScalarEncoding()
+                  + " into data-blind format with encoding "
+                  + encoding
+                  + ": re-quantization requires raw float vectors");
+        }
+        float[] centroid = getCentroid(reader, fieldInfo.name);
+        if (centroid != null && isAllZero(centroid)) {
+          // Quantized-only segment whose bytes already match the output format (encoding and zero
+          // centroid): copy them directly.
+          values = qvv;
+        } else {
+          // Bytes were produced against a non-zero (or unknown) centroid, so they cannot be passed
+          // through into the zero-centroid output; re-quantize from floats.
+          values = quantizeFromFloats(reader, fieldInfo, zeroCentroid);
+        }
+      }
+      subs.add(new QuantizedByteVectorValuesSub(mergeState.docMaps[i], values));
+    }
+    long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
+    MergedQuantizedByteVectorValues mergedQBVV =
+        MergedQuantizedByteVectorValues.merge(mergeState, zeroCentroid, encoding, subs);
+    DocsWithFieldSet docsWithField = writeVectorData(vectorData, mergedQBVV);
+    long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
+    // centroidDp is 0 (zero centroid); the data-blind metadata omits it and the centroid.
+    writeMeta(
+        fieldInfo,
+        segmentWriteState.segmentInfo.maxDoc(),
+        vectorDataOffset,
+        vectorDataLength,
+        zeroCentroid,
+        0f,
         docsWithField);
   }
 
@@ -420,6 +536,44 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     return null;
   }
 
+  static QuantizedByteVectorValues getQuantizedVectorValues(
+      KnnVectorsReader vectorsReader, String fieldName) throws IOException {
+    vectorsReader = vectorsReader.unwrapReaderForField(fieldName);
+    if (vectorsReader instanceof Lucene104ScalarQuantizedVectorsReader reader) {
+      return reader.getQuantizedVectorValues(fieldName);
+    }
+    return null;
+  }
+
+  /**
+   * Returns whether the segment stores full-precision vectors for this field, or null when the
+   * field is absent or byte-encoded. Data-blind segments report {@code false} since only quantized
+   * bytes were written.
+   */
+  private static boolean hasRawVectorValues(KnnVectorsReader vectorsReader, FieldInfo fieldInfo)
+      throws IOException {
+    vectorsReader = vectorsReader.unwrapReaderForField(fieldInfo.name);
+    if (vectorsReader instanceof Lucene104ScalarQuantizedVectorsReader reader) {
+      return switch (fieldInfo.getVectorEncoding()) {
+        case FLOAT32 -> reader.hasRawFloatVectors(fieldInfo.name);
+        case FLOAT16 -> reader.hasRawFloat16Vectors(fieldInfo.name);
+        case BYTE -> false;
+      };
+    }
+    // Foreign format: assume full-precision vectors are available when the reader serves them.
+    return switch (fieldInfo.getVectorEncoding()) {
+      case FLOAT32 -> {
+        FloatVectorValues values = vectorsReader.getFloatVectorValues(fieldInfo.name);
+        yield values != null && values.size() > 0;
+      }
+      case FLOAT16 -> {
+        Float16VectorValues values = vectorsReader.getFloat16VectorValues(fieldInfo.name);
+        yield values != null && values.size() > 0;
+      }
+      case BYTE -> false;
+    };
+  }
+
   /**
    * Returns the reader's floating-point vectors viewed as fp32, inflating fp16 on read, or null
    * when the field is absent from this reader or is byte-encoded.
@@ -456,8 +610,10 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       float[] centroid = getCentroid(knnVectorsReader, fieldInfo.name);
       totalVectorCount += vectorCount;
       // If there aren't centroids, or previously clustered with more than one cluster
-      // or if there are deleted docs, we must recalculate the centroid
-      if (centroid == null || mergeState.liveDocs[i] != null) {
+      // or if there are deleted docs, we must recalculate the centroid. An all-zero centroid
+      // indicates a data-blind segment (no centering was done); it can't be combined with the
+      // others, so recompute from the (possibly dequantized) vectors.
+      if (centroid == null || isAllZero(centroid) || mergeState.liveDocs[i] != null) {
         recalculate = true;
         break;
       }
@@ -503,6 +659,15 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     return count;
   }
 
+  private static boolean isAllZero(float[] values) {
+    for (float value : values) {
+      if (value != 0f) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   private static int accumulateCentroid(
       KnnVectorsReader reader, FieldInfo fieldInfo, float[] centroid) throws IOException {
     FloatVectorValues vectorValues = floatingPointVectorValues(reader, fieldInfo);
@@ -524,16 +689,19 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   @Override
   public long ramBytesUsed() {
     long total = SHALLOW_RAM_BYTES_USED;
-    // The rawVectorDelegate tracks all vector data for both byte and float32 fields.
-    // For byte vector fields (which bypass our FieldWriter), this is the only accounting.
-    // For float32 fields, this covers the flat vector data; our FieldWriter adds the
-    // quantization-specific overhead (magnitudes, dimensionSums) on top.
+    // The rawVectorDelegate tracks all vector data for byte and float fields that were
+    // written through it. For data-blind fields (held only in memory), it accounts for
+    // nothing, so those are tracked via field.ramBytesUsed() instead.
     total += rawVectorDelegate.ramBytesUsed();
     for (FieldWriter<?> field : fields) {
-      // quantizationOverheadBytesUsed() intentionally excludes flatFieldVectorsWriter
-      // because rawVectorDelegate.ramBytesUsed() already accounts for all flat vector
-      // data at the writer level. Calling field.ramBytesUsed() here would double-count.
-      total += field.quantizationOverheadBytesUsed();
+      if (field.enableCentering) {
+        // quantizationOverheadBytesUsed() intentionally excludes flatFieldVectorsWriter
+        // because rawVectorDelegate.ramBytesUsed() already accounts for all flat vector
+        // data at the writer level. Calling field.ramBytesUsed() here would double-count.
+        total += field.quantizationOverheadBytesUsed();
+      } else {
+        total += field.ramBytesUsed();
+      }
     }
     return total;
   }
@@ -547,24 +715,36 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     private final FloatArrayList magnitudes = new FloatArrayList();
     protected final int dim;
 
-    FieldWriter(FieldInfo fieldInfo, FlatFieldVectorsWriter<T> flatFieldVectorsWriter) {
+    protected final boolean enableCentering;
+
+    FieldWriter(
+        FieldInfo fieldInfo,
+        FlatFieldVectorsWriter<T> flatFieldVectorsWriter,
+        boolean enableCentering) {
       this.fieldInfo = fieldInfo;
       this.flatFieldVectorsWriter = flatFieldVectorsWriter;
+      this.enableCentering = enableCentering;
       this.dim = fieldInfo.getVectorDimension();
-      this.dimensionSums = new float[dim];
+      this.dimensionSums = enableCentering ? new float[dim] : null;
     }
 
     @SuppressWarnings("unchecked")
     static FieldWriter<?> create(
-        FieldInfo fieldInfo, FlatFieldVectorsWriter<?> flatFieldVectorsWriter) {
+        FieldInfo fieldInfo,
+        FlatFieldVectorsWriter<?> flatFieldVectorsWriter,
+        boolean enableCentering) {
       return switch (fieldInfo.getVectorEncoding()) {
         case BYTE -> throw new UnsupportedOperationException("Byte Vectors aren't supported");
         case FLOAT32 ->
             new Float32FieldWriter(
-                fieldInfo, (FlatFieldVectorsWriter<float[]>) flatFieldVectorsWriter);
+                fieldInfo,
+                (FlatFieldVectorsWriter<float[]>) flatFieldVectorsWriter,
+                enableCentering);
         case FLOAT16 ->
             new Float16FieldWriter(
-                fieldInfo, (FlatFieldVectorsWriter<short[]>) flatFieldVectorsWriter);
+                fieldInfo,
+                (FlatFieldVectorsWriter<short[]>) flatFieldVectorsWriter,
+                enableCentering);
       };
     }
 
@@ -588,6 +768,10 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       if (finished) {
         return;
       }
+      if (flatFieldVectorsWriter.isFinished() == false) {
+        // In-memory writers are not flushed through the raw delegate, so finish them here.
+        flatFieldVectorsWriter.finish();
+      }
       assert flatFieldVectorsWriter.isFinished();
       finished = true;
     }
@@ -605,17 +789,19 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
 
     /**
      * Adds {@code vector} to the centroid sums, unit-scaled when COSINE, and caches its magnitude
-     * for {@link #scaleToUnitLength}.
+     * for {@link #scaleToUnitLength}. In data-blind mode the centroid sums are not accumulated.
      */
     protected final void accumulate(float[] vector) {
       if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
         float dp = VectorUtil.dotProduct(vector, vector);
         float divisor = (float) Math.sqrt(dp);
         magnitudes.add(divisor);
-        for (int i = 0; i < vector.length; i++) {
-          dimensionSums[i] += (vector[i] / divisor);
+        if (enableCentering) {
+          for (int i = 0; i < vector.length; i++) {
+            dimensionSums[i] += (vector[i] / divisor);
+          }
         }
-      } else {
+      } else if (enableCentering) {
         for (int i = 0; i < vector.length; i++) {
           dimensionSums[i] += vector[i];
         }
@@ -624,9 +810,13 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
 
     /**
      * Returns the mean of the accumulated vectors, unit-length for COSINE, used as the quantization
-     * centroid. All zeroes when no vectors were added.
+     * centroid. All zeroes when no vectors were added, or when centering is disabled (data-blind
+     * mode).
      */
     protected final float[] computeCentroid() {
+      if (enableCentering == false) {
+        return new float[dim];
+      }
       float[] centroid = new float[dim];
       int vectorCount = getVectors().size();
       if (vectorCount > 0) {
@@ -659,7 +849,9 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     long quantizationOverheadBytesUsed() {
       long size = SHALLOW_SIZE;
       size += magnitudes.ramBytesUsed();
-      size += RamUsageEstimator.sizeOf(dimensionSums);
+      if (dimensionSums != null) {
+        size += RamUsageEstimator.sizeOf(dimensionSums);
+      }
       return size;
     }
 
@@ -675,8 +867,10 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     private final float[] normalized;
 
     Float32FieldWriter(
-        FieldInfo fieldInfo, FlatFieldVectorsWriter<float[]> flatFieldVectorsWriter) {
-      super(fieldInfo, flatFieldVectorsWriter);
+        FieldInfo fieldInfo,
+        FlatFieldVectorsWriter<float[]> flatFieldVectorsWriter,
+        boolean enableCentering) {
+      super(fieldInfo, flatFieldVectorsWriter, enableCentering);
       this.normalized = new float[dim];
     }
 
@@ -706,8 +900,10 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     private final float[] inflated;
 
     Float16FieldWriter(
-        FieldInfo fieldInfo, FlatFieldVectorsWriter<short[]> flatFieldVectorsWriter) {
-      super(fieldInfo, flatFieldVectorsWriter);
+        FieldInfo fieldInfo,
+        FlatFieldVectorsWriter<short[]> flatFieldVectorsWriter,
+        boolean enableCentering) {
+      super(fieldInfo, flatFieldVectorsWriter, enableCentering);
       this.inflated = new float[dim];
     }
 
@@ -737,6 +933,148 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     @Override
     long quantizationOverheadBytesUsed() {
       return super.quantizationOverheadBytesUsed() + RamUsageEstimator.sizeOf(inflated);
+    }
+  }
+
+  /** In-memory storage for fp32 vectors used in data-blind mode; nothing is written to disk. */
+  private static class InMemoryFloatFieldWriter extends FlatFieldVectorsWriter<float[]> {
+    private static final long SHALLOW_SIZE = shallowSizeOfInstance(InMemoryFloatFieldWriter.class);
+    private final FieldInfo fieldInfo;
+    private final List<float[]> vectors = new ArrayList<>();
+    private final DocsWithFieldSet docsWithField = new DocsWithFieldSet();
+    private boolean finished;
+    private int lastDocID = -1;
+
+    InMemoryFloatFieldWriter(FieldInfo fieldInfo) {
+      this.fieldInfo = fieldInfo;
+    }
+
+    @Override
+    public void addValue(int docID, float[] vectorValue) throws IOException {
+      if (finished) {
+        throw new IllegalStateException("already finished, cannot add more values");
+      }
+      if (docID == lastDocID) {
+        throw new IllegalArgumentException(
+            "VectorValuesField \""
+                + fieldInfo.name
+                + "\" appears more than once in this document (only one value is allowed per field)");
+      }
+      assert docID > lastDocID;
+      vectors.add(copyValue(vectorValue));
+      docsWithField.add(docID);
+      lastDocID = docID;
+    }
+
+    @Override
+    public float[] copyValue(float[] vectorValue) {
+      return ArrayUtil.copyOfSubArray(vectorValue, 0, fieldInfo.getVectorDimension());
+    }
+
+    @Override
+    public List<float[]> getVectors() {
+      return vectors;
+    }
+
+    @Override
+    public DocsWithFieldSet getDocsWithFieldSet() {
+      return docsWithField;
+    }
+
+    @Override
+    public void finish() {
+      finished = true;
+    }
+
+    @Override
+    public boolean isFinished() {
+      return finished;
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      long size = SHALLOW_SIZE;
+      if (vectors.isEmpty()) {
+        return size;
+      }
+      return size
+          + docsWithField.ramBytesUsed()
+          + (long) vectors.size()
+              * (RamUsageEstimator.NUM_BYTES_OBJECT_REF + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER)
+          + (long) vectors.size() * fieldInfo.getVectorDimension() * Float.BYTES;
+    }
+  }
+
+  /**
+   * In-memory storage for fp16 vectors used in data-blind mode; nothing is written to disk. Vectors
+   * are kept as fp16 so HNSW wrappers can read them back as {@link Float16VectorValues}.
+   */
+  private static class InMemoryFloat16FieldWriter extends FlatFieldVectorsWriter<short[]> {
+    private static final long SHALLOW_SIZE =
+        shallowSizeOfInstance(InMemoryFloat16FieldWriter.class);
+    private final FieldInfo fieldInfo;
+    private final List<short[]> vectors = new ArrayList<>();
+    private final DocsWithFieldSet docsWithField = new DocsWithFieldSet();
+    private boolean finished;
+    private int lastDocID = -1;
+
+    InMemoryFloat16FieldWriter(FieldInfo fieldInfo) {
+      this.fieldInfo = fieldInfo;
+    }
+
+    @Override
+    public void addValue(int docID, short[] vectorValue) throws IOException {
+      if (finished) {
+        throw new IllegalStateException("already finished, cannot add more values");
+      }
+      if (docID == lastDocID) {
+        throw new IllegalArgumentException(
+            "VectorValuesField \""
+                + fieldInfo.name
+                + "\" appears more than once in this document (only one value is allowed per field)");
+      }
+      assert docID > lastDocID;
+      vectors.add(copyValue(vectorValue));
+      docsWithField.add(docID);
+      lastDocID = docID;
+    }
+
+    @Override
+    public short[] copyValue(short[] vectorValue) {
+      return ArrayUtil.copyOfSubArray(vectorValue, 0, fieldInfo.getVectorDimension());
+    }
+
+    @Override
+    public List<short[]> getVectors() {
+      return vectors;
+    }
+
+    @Override
+    public DocsWithFieldSet getDocsWithFieldSet() {
+      return docsWithField;
+    }
+
+    @Override
+    public void finish() {
+      finished = true;
+    }
+
+    @Override
+    public boolean isFinished() {
+      return finished;
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      long size = SHALLOW_SIZE;
+      if (vectors.isEmpty()) {
+        return size;
+      }
+      return size
+          + docsWithField.ramBytesUsed()
+          + (long) vectors.size()
+              * (RamUsageEstimator.NUM_BYTES_OBJECT_REF + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER)
+          + (long) vectors.size() * fieldInfo.getVectorDimension() * Short.BYTES;
     }
   }
 
@@ -857,6 +1195,173 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     @Override
     public int ordToDoc(int ord) {
       return values.ordToDoc(ord);
+    }
+  }
+
+  private static final class QuantizedByteVectorValuesSub extends DocIDMerger.Sub {
+    final QuantizedByteVectorValues values;
+    final KnnVectorValues.DocIndexIterator iterator;
+
+    QuantizedByteVectorValuesSub(MergeState.DocMap docMap, QuantizedByteVectorValues values) {
+      super(docMap);
+      this.values = values;
+      this.iterator = values.iterator();
+      assert iterator.docID() == -1;
+    }
+
+    @Override
+    public int nextDoc() throws IOException {
+      return iterator.nextDoc();
+    }
+  }
+
+  /** Merged view of {@link QuantizedByteVectorValues} from multiple segments. */
+  static final class MergedQuantizedByteVectorValues extends QuantizedByteVectorValues {
+    private final List<QuantizedByteVectorValuesSub> subs;
+    private final DocIDMerger<QuantizedByteVectorValuesSub> docIdMerger;
+    private final int size;
+    private final float[] centroid;
+    private final float centroidDP;
+    private final ScalarEncoding scalarEncoding;
+    private int docId = -1;
+    private int lastOrd = -1;
+    private QuantizedByteVectorValuesSub current;
+
+    private MergedQuantizedByteVectorValues(
+        List<QuantizedByteVectorValuesSub> subs,
+        MergeState mergeState,
+        float[] centroid,
+        ScalarEncoding scalarEncoding)
+        throws IOException {
+      this.subs = subs;
+      this.docIdMerger = DocIDMerger.of(subs, mergeState.needsIndexSort);
+      int totalSize = 0;
+      for (QuantizedByteVectorValuesSub sub : subs) {
+        totalSize += sub.values.size();
+      }
+      this.size = totalSize;
+      this.centroid = centroid;
+      this.centroidDP = VectorUtil.dotProduct(centroid, centroid);
+      this.scalarEncoding = scalarEncoding;
+    }
+
+    /**
+     * Merges the pre-built per-segment {@link QuantizedByteVectorValuesSub}s in doc order. Each sub
+     * contributes either a segment's stored quantized bytes (passed through untouched) or freshly
+     * quantized values; the caller decides which per segment.
+     */
+    static MergedQuantizedByteVectorValues merge(
+        MergeState mergeState,
+        float[] centroid,
+        ScalarEncoding encoding,
+        List<QuantizedByteVectorValuesSub> subs)
+        throws IOException {
+      return new MergedQuantizedByteVectorValues(subs, mergeState, centroid, encoding);
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      return new DocIndexIterator() {
+        private int index = -1;
+
+        @Override
+        public int docID() {
+          return docId;
+        }
+
+        @Override
+        public int index() {
+          return index;
+        }
+
+        @Override
+        public int nextDoc() throws IOException {
+          current = docIdMerger.next();
+          if (current == null) {
+            docId = NO_MORE_DOCS;
+            index = NO_MORE_DOCS;
+          } else {
+            docId = current.mappedDocID;
+            ++lastOrd;
+            ++index;
+          }
+          return docId;
+        }
+
+        @Override
+        public int advance(int target) {
+          throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public long cost() {
+          return size;
+        }
+      };
+    }
+
+    @Override
+    public byte[] vectorValue(int ord) throws IOException {
+      if (ord != lastOrd) {
+        throw new IllegalStateException(
+            "only supports forward iteration: ord=" + ord + ", lastOrd=" + lastOrd);
+      }
+      return current.values.vectorValue(current.iterator.index());
+    }
+
+    @Override
+    public OptimizedScalarQuantizer.QuantizationResult getCorrectiveTerms(int ord)
+        throws IOException {
+      if (ord != lastOrd) {
+        throw new IllegalStateException(
+            "only supports forward iteration: ord=" + ord + ", lastOrd=" + lastOrd);
+      }
+      return current.values.getCorrectiveTerms(current.iterator.index());
+    }
+
+    @Override
+    public int dimension() {
+      return subs.isEmpty() ? 0 : subs.get(0).values.dimension();
+    }
+
+    @Override
+    public int size() {
+      return size;
+    }
+
+    @Override
+    public int ordToDoc(int ord) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public ScalarEncoding getScalarEncoding() {
+      return scalarEncoding;
+    }
+
+    @Override
+    public float[] getCentroid() {
+      return centroid;
+    }
+
+    @Override
+    public float getCentroidDP() {
+      return centroidDP;
+    }
+
+    @Override
+    public OptimizedScalarQuantizer getQuantizer() {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public VectorScorer scorer(float[] target) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public QuantizedByteVectorValues copy() {
+      throw new UnsupportedOperationException();
     }
   }
 

@@ -44,6 +44,10 @@ import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncod
  *       quantized vectors in the index.
  *   <li>Transforming the half-byte quantized query vectors in such a way that the comparison with
  *       single bit vectors can be done with bit arithmetic.
+ *   <li>Data blind mode: vectors are quantized without centering and float vectors are discarded.
+ *       This reduces disk space requirements and makes merges faster since the vectors never need
+ *       to be re-quantized, but also produces less accurate distance estimates and is less flexible
+ *       if the writer changes.
  * </ul>
  *
  * A previous work related to improvements over regular LVQ is <a
@@ -85,10 +89,14 @@ import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncod
  *   <li><b>vlong</b> the length of the vector data in the .veq file
  *   <li><b>vint</b> the number of vectors
  *   <li><b>vint</b> the wire number for ScalarEncoding
- *   <li><b>[float]</b> the centroid
- *   <li><b>float</b> the centroid square magnitude
+ *   <li><b>[float]</b> the centroid (omitted when the metadata version indicates data-blind mode)
+ *   <li><b>float</b> the centroid square magnitude (omitted when the metadata version indicates
+ *       data-blind mode)
  *   <li>The sparse vector information, if required, mapping vector ordinal to doc ID
  * </ul>
+ *
+ * <p>{@code enableCentering} manifests in the version: when true we write version 0 and when false
+ * we write version 1.
  *
  * @lucene.experimental
  */
@@ -97,7 +105,11 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   public static final String NAME = "Lucene104ScalarQuantizedVectorsFormat";
 
   static final int VERSION_START = 0;
-  static final int VERSION_CURRENT = VERSION_START;
+
+  /** Version written when centering is disabled (data-blind mode). */
+  static final int VERSION_DATA_BLIND = 1;
+
+  static final int VERSION_CURRENT = VERSION_DATA_BLIND;
   static final String META_CODEC_NAME = "Lucene104ScalarQuantizedVectorsFormatMeta";
   static final String VECTOR_DATA_CODEC_NAME = "Lucene104ScalarQuantizedVectorsFormatData";
   static final String META_EXTENSION = "vemq";
@@ -111,22 +123,37 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
       new Lucene104ScalarQuantizedVectorScorer(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
   private final ScalarEncoding encoding;
+  private final boolean enableCentering;
 
-  /** Creates a new instance with UNSIGNED_BYTE encoding. */
+  /** Creates a new instance with UNSIGNED_BYTE encoding and centering enabled. */
   public Lucene104ScalarQuantizedVectorsFormat() {
     this(ScalarEncoding.UNSIGNED_BYTE);
   }
 
-  /** Creates a new instance with the chosen quantization encoding. */
+  /** Creates a new instance with the chosen quantization encoding and centering enabled. */
   public Lucene104ScalarQuantizedVectorsFormat(ScalarEncoding encoding) {
+    this(encoding, true);
+  }
+
+  /**
+   * Creates a new instance with the chosen quantization encoding and centering setting.
+   *
+   * <p>When {@code enableCentering} is {@code false} (data-blind mode), no centroid is computed,
+   * the centroid is omitted from the segment metadata, and no full-precision float vectors are
+   * written. This reduces vector storage costs by 4x or more but reduces quantization accuracy,
+   * particularly at lower bit rates. Data-blind segments must be merged with a format of matching
+   * {@link ScalarEncoding}; see the class description.
+   */
+  public Lucene104ScalarQuantizedVectorsFormat(ScalarEncoding encoding, boolean enableCentering) {
     super(NAME);
     this.encoding = encoding;
+    this.enableCentering = enableCentering;
   }
 
   @Override
   public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
     return new Lucene104ScalarQuantizedVectorsWriter(
-        state, encoding, rawVectorFormat.fieldsWriter(state), scorer);
+        state, encoding, enableCentering, rawVectorFormat.fieldsWriter(state), scorer);
   }
 
   @Override
@@ -146,6 +173,8 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
         + NAME
         + ", encoding="
         + encoding
+        + ", enableCentering="
+        + enableCentering
         + ", flatVectorScorer="
         + scorer
         + ", rawVectorFormat="
