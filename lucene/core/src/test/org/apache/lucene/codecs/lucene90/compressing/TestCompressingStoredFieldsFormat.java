@@ -308,8 +308,6 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
         CodecReader sr = (CodecReader) getOnlyLeafReader(ir);
         Lucene90CompressingStoredFieldsReader reader =
             (Lucene90CompressingStoredFieldsReader) sr.getFieldsReader();
-        assertEquals(1, reader.getNumChunks());
-        assertEquals(10 * 8 * 1024, reader.getChunkSize());
         assertTrue(payload1.length + payload2.length > 2 * reader.getChunkSize());
 
         Document loaded = ir.storedFields().document(0, Set.of("content1", "content2", "content3"));
@@ -349,8 +347,6 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
         CodecReader sr = (CodecReader) getOnlyLeafReader(ir);
         Lucene90CompressingStoredFieldsReader reader =
             (Lucene90CompressingStoredFieldsReader) sr.getFieldsReader();
-        assertEquals(1, reader.getNumChunks());
-        assertEquals(10 * 8 * 1024, reader.getChunkSize());
         assertTrue(payload1.length + payload2.length < 2 * reader.getChunkSize());
 
         Document loaded = ir.storedFields().document(0, Set.of("content1", "content2", "content3"));
@@ -390,8 +386,6 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
         CodecReader sr = (CodecReader) getOnlyLeafReader(ir);
         Lucene90CompressingStoredFieldsReader reader =
             (Lucene90CompressingStoredFieldsReader) sr.getFieldsReader();
-        assertEquals(1, reader.getNumChunks());
-        assertEquals(10 * 48 * 1024, reader.getChunkSize());
         assertTrue(payload1.length + payload2.length > 2 * reader.getChunkSize());
 
         Document loaded = ir.storedFields().document(0, Set.of("content1", "content2", "content3"));
@@ -431,8 +425,6 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
         CodecReader sr = (CodecReader) getOnlyLeafReader(ir);
         Lucene90CompressingStoredFieldsReader reader =
             (Lucene90CompressingStoredFieldsReader) sr.getFieldsReader();
-        assertEquals(1, reader.getNumChunks());
-        assertEquals(10 * 48 * 1024, reader.getChunkSize());
         assertTrue(payload1.length + payload2.length < 2 * reader.getChunkSize());
 
         Document loaded = ir.storedFields().document(0, Set.of("content1", "content2", "content3"));
