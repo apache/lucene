@@ -279,7 +279,7 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
     dir.close();
   }
 
-  public void testReadFieldAcrossSlices() throws IOException {
+  public void testSkipLZ4WitSlicedChunk() throws IOException {
     byte[] payload1 = new byte[atLeast(1 << 18)];
     for (int i = 0; i < payload1.length; i++) {
       payload1[i] = (byte) i;
@@ -310,6 +310,47 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
         assertEquals(1, reader.getNumChunks());
         assertEquals(10 * 8 * 1024, reader.getChunkSize());
         assertTrue(payload1.length + payload2.length > 2 * reader.getChunkSize());
+
+        Document loaded = ir.storedFields().document(0, Set.of("content1", "content2", "content3"));
+        assertEquals(3, loaded.getFields().size());
+        assertEquals("content1", loaded.get("content1"));
+        assertEquals("content2", loaded.get("content2"));
+        assertEquals("content3", loaded.get("content3"));
+      }
+    }
+  }
+
+  public void testSkipLZ4WithUnslicedChunk() throws IOException {
+    byte[] payload1 = new byte[TestUtil.nextInt(random(), 1 << 14, 1 << 15)];
+    for (int i = 0; i < payload1.length; i++) {
+      payload1[i] = (byte) i;
+    }
+
+    byte[] payload2 = new byte[TestUtil.nextInt(random(), 1 << 14, 1 << 15)];
+    for (int i = 0; i < payload2.length; i++) {
+      payload2[i] = (byte) i;
+    }
+
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwConf = newIndexWriterConfig(new MockAnalyzer(random()));
+      iwConf.setCodec(TestUtil.getDefaultCodec());
+      try (IndexWriter iw = new IndexWriter(dir, iwConf)) {
+        Document doc = new Document();
+        doc.add(new StoredField("content1", "content1"));
+        doc.add(new StoredField("payload1", payload1));
+        doc.add(new StoredField("content2", "content2"));
+        doc.add(new StoredField("payload2", payload2));
+        doc.add(new StoredField("content3", "content3"));
+        iw.addDocument(doc);
+      }
+
+      try (DirectoryReader ir = DirectoryReader.open(dir)) {
+        CodecReader sr = (CodecReader) getOnlyLeafReader(ir);
+        Lucene90CompressingStoredFieldsReader reader =
+            (Lucene90CompressingStoredFieldsReader) sr.getFieldsReader();
+        assertEquals(1, reader.getNumChunks());
+        assertEquals(10 * 8 * 1024, reader.getChunkSize());
+        assertTrue(payload1.length + payload2.length < 2 * reader.getChunkSize());
 
         Document loaded = ir.storedFields().document(0, Set.of("content1", "content2", "content3"));
         assertEquals(3, loaded.getFields().size());

@@ -29,6 +29,8 @@ public interface Lucene90SkippableDecompressor {
   /**
    * Decompress bytes that were stored between offsets {@code offset} and {@code offset + length} in
    * the original stream into a skippable {@link DataInput}.
+   *
+   * <p>With this {@link DataInput}, you can skip compressed blocks without decompressing them.
    */
   Lucene90DecompressingDataInput decompressingDataInput(
       DataInput in, int originalLength, int offset, int length) throws IOException;
