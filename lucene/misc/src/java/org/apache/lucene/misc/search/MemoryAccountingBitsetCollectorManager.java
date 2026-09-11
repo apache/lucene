@@ -24,9 +24,9 @@ import org.apache.lucene.util.FixedBitSet;
 /**
  * CollectorManager for MemoryAccountingBitsetCollector that supports concurrent search.
  *
- * <p>Creates multiple collectors for concurrent execution; each collector only allocates a bitset
- * for the slices it processes, and {@link #reduce} merges them into a single {@link Result} sized
- * to the highest matched document across all collectors.
+ * <p>Creates multiple collectors for concurrent execution; each collector allocates a bitset only
+ * when it sees at least one match, and {@link #reduce} merges them into a single {@link Result}
+ * sized to the highest matched document across all collectors.
  */
 public class MemoryAccountingBitsetCollectorManager
     implements CollectorManager<
@@ -56,10 +56,8 @@ public class MemoryAccountingBitsetCollectorManager
 
   @Override
   public Result reduce(Collection<MemoryAccountingBitsetCollector> collectors) {
-    // Size the result to just cover the highest matched doc across all collectors. Each
-    // collector's maxDocEnd is inflated by doSetNextReader to the full leaf regardless of what
-    // actually matches, so keying off it can significantly over-allocate on selective queries or
-    // narrow intra-segment slices; use the actual high-water mark tracked at collect time.
+    // Size the result to just cover the highest matched doc across all collectors, using the
+    // high-water mark each collector tracked at collect time.
     int resultSize = 0;
     for (MemoryAccountingBitsetCollector collector : collectors) {
       int last = collector.getHighestSetBit();
@@ -75,8 +73,15 @@ public class MemoryAccountingBitsetCollectorManager
     tracker.updateBytes(result.ramBytesUsed());
 
     for (MemoryAccountingBitsetCollector collector : collectors) {
-      int last = collector.getHighestSetBit();
-      if (last >= 0) {
+      // collector.bitSet is null iff the collector saw no doc — skip empty collectors so this
+      // path is safe under intra-segment concurrency where many partition-workers may have no
+      // matches and therefore no allocated bitset (see MemoryAccountingBitsetCollector#bitSet).
+      if (collector.bitSet != null) {
+        int last = collector.getHighestSetBit();
+        // Lock in the invariant (bitSet != null) ⇒ (highestSetBit >= 0). If a future change
+        // ever allocates bitSet eagerly, orRange would otherwise silently no-op with length=0.
+        assert last >= 0
+            : "bitSet is non-null but highestSetBit=-1; invariant broken in MemoryAccountingBitsetCollector";
         FixedBitSet.orRange(collector.bitSet, 0, result, collector.getMinDocBase(), last + 1);
       }
     }

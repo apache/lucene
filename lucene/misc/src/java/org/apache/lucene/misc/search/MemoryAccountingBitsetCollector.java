@@ -28,37 +28,31 @@ import org.apache.lucene.util.FixedBitSet;
 public class MemoryAccountingBitsetCollector extends SimpleCollector {
 
   final CollectorMemoryTracker tracker;
-  FixedBitSet bitSet = new FixedBitSet(0);
-  int length = 0;
-  int docBase = 0;
 
+  /**
+   * Backing bitset for matched docs. Lazily allocated on the first {@link #collect(int)} and stays
+   * {@code null} for collectors that see no matches. Package-private callers (in particular {@link
+   * MemoryAccountingBitsetCollectorManager#reduce}) MUST null-check before dereferencing. The
+   * invariant {@code (bitSet == null) == (highestSetBit == -1)} holds after construction.
+   */
+  FixedBitSet bitSet;
+
+  int docBase = 0;
   int minDocBase = Integer.MAX_VALUE;
-  int maxDocEnd = 0;
-  // Highest bit index set in bitSet, or -1 if no doc has been collected. Docs are collected in
-  // strictly ascending order: within a leaf by the Collector contract, and across leaves for a
-  // given collector because IndexSearcher sorts partitions within a slice by docBase and rejects
-  // multiple partitions of the same leaf sharing a slice. So this is simply the position written
-  // by the most recent collect() call.
+  // Highest bit set so far, or -1 if none. Docs arrive in ascending order (see collect()).
   int highestSetBit = -1;
 
   public MemoryAccountingBitsetCollector(CollectorMemoryTracker tracker) {
     this.tracker = tracker;
-    tracker.updateBytes(bitSet.ramBytesUsed());
   }
 
   @Override
   protected void doSetNextReader(LeafReaderContext context) throws IOException {
     docBase = context.docBase;
-    int docEnd = docBase + context.reader().maxDoc();
     minDocBase = Math.min(minDocBase, docBase);
-    maxDocEnd = Math.max(maxDocEnd, docEnd);
-    length = maxDocEnd - minDocBase;
-
-    FixedBitSet newBitSet = FixedBitSet.ensureCapacity(bitSet, length);
-    if (newBitSet != bitSet) {
-      tracker.updateBytes(newBitSet.ramBytesUsed() - bitSet.ramBytesUsed());
-      bitSet = newBitSet;
-    }
+    // The bitSet is grown lazily in collect() rather than pre-sized to the full leaf span, so
+    // leaves (and partitions under intra-segment concurrency) that see no matches contribute
+    // no allocation.
   }
 
   @Override
@@ -69,6 +63,19 @@ public class MemoryAccountingBitsetCollector extends SimpleCollector {
             + local
             + " after highestSetBit="
             + highestSetBit;
+    // Grow the bitset lazily rather than pre-sizing to the full leaf span.
+    if (bitSet == null) {
+      // FixedBitSet(N) takes a bit count; +1 sizes it to cover indices 0..local.
+      bitSet = new FixedBitSet(local + 1);
+      tracker.updateBytes(bitSet.ramBytesUsed());
+    } else {
+      // ensureCapacity's second arg is a max bit index (not a count).
+      FixedBitSet newBitSet = FixedBitSet.ensureCapacity(bitSet, local);
+      if (newBitSet != bitSet) {
+        tracker.updateBytes(newBitSet.ramBytesUsed() - bitSet.ramBytesUsed());
+        bitSet = newBitSet;
+      }
+    }
     bitSet.set(local);
     highestSetBit = local;
   }

@@ -215,6 +215,10 @@ Optimizations
 * GITHUB#16619: DirectIODirectory's slice() no longer performs a blocking direct read when
   creating a slice; the first read resolves the deferred start position instead. (John Maurice)
 
+* GITHUB#16663: MemoryAccountingBitsetCollector allocates its bitset lazily on the first match
+  instead of pre-sizing to the full leaf span, so any collector that sees no matches contributes no
+  allocation. Especially beneficial under intra-segment concurrency. (Sasilekha R)
+
 Bug Fixes
 ---------------------
 * GITHUB#16553: Fix stored-fields corruption when PerField#finish throws: the stored-fields frame
