@@ -51,6 +51,7 @@ import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.search.knn.TopKnnCollectorManager;
@@ -264,6 +265,23 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       // make sure we don't drop to exact search, even though the filter matches fewer than k docs
       Query kvq =
           getThrowingKnnVectorQuery("field", new float[] {0, 0}, 10, MatchAllDocsQuery.INSTANCE);
+      TopDocs topDocs = searcher.search(kvq, 3);
+      assertEquals(3, topDocs.totalHits.value());
+    }
+  }
+
+  public void testMatchAllFilterWrappedInBooleanQuery() throws IOException {
+    try (Directory indexStore =
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+        IndexReader reader = DirectoryReader.open(indexStore)) {
+      IndexSearcher searcher = newSearcher(reader);
+
+      // A BooleanQuery with a single FILTER=MatchAllDocs clause rewrites to
+      // BoostQuery(ConstantScoreQuery(MatchAllDocs), 0). isKnownToMatchAllDocs() should propagate
+      // through the wrappers so KNN takes the no-filter (HNSW) path rather than building a BitSet.
+      Query filter =
+          new BooleanQuery.Builder().add(MatchAllDocsQuery.INSTANCE, Occur.FILTER).build();
+      Query kvq = getThrowingKnnVectorQuery("field", new float[] {0, 0}, 10, filter);
       TopDocs topDocs = searcher.search(kvq, 3);
       assertEquals(3, topDocs.totalHits.value());
     }

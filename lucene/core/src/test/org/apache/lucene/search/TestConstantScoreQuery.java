@@ -265,4 +265,18 @@ public class TestConstantScoreQuery extends LuceneTestCase {
     Query query = new ConstantScoreQuery(MatchNoDocsQuery.INSTANCE);
     assertEquals(MatchNoDocsQuery.INSTANCE, searcher.rewrite(query));
   }
+
+  public void testIsKnownToMatchAllDocs() {
+    // MatchAllDocsQuery is match-all
+    assertTrue(new MatchAllDocsQuery().isKnownToMatchAllDocs());
+
+    // Wrappers delegate
+    assertTrue(new ConstantScoreQuery(new MatchAllDocsQuery()).isKnownToMatchAllDocs());
+    assertTrue(new BoostQuery(new MatchAllDocsQuery(), 2f).isKnownToMatchAllDocs());
+
+    // Non-match-all queries return false
+    assertFalse(new ConstantScoreQuery(new MatchNoDocsQuery()).isKnownToMatchAllDocs());
+    assertFalse(new MatchNoDocsQuery().isKnownToMatchAllDocs());
+    assertFalse(new TermQuery(new Term("f", "v")).isKnownToMatchAllDocs());
+  }
 }

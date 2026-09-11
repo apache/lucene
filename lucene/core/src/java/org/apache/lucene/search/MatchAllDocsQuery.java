@@ -36,6 +36,11 @@ public final class MatchAllDocsQuery extends Query {
   }
 
   @Override
+  public boolean isKnownToMatchAllDocs() {
+    return true;
+  }
+
+  @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) {
     return new ConstantScoreWeight(this, boost) {
       @Override

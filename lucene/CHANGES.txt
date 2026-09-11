@@ -178,6 +178,11 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#NNNNN: Add Query#isKnownToMatchAllDocs() to replace concrete MatchAllDocsQuery type
+  checks. ConstantScoreQuery and BoostQuery delegate the check to their wrapped queries, allowing
+  KnnVectorQuery, IndexOrDocValuesQuery, BooleanQuery, and IndexWriter to recognize wrapped
+  match-all queries. (Michael Marshall)
+
 * GITHUB#16431: Add support for Block-Max WAND dynamic score skipping in FunctionScoreQuery
   and DoubleValuesSource using DocValuesSkipper. (Rajat Jain)
 

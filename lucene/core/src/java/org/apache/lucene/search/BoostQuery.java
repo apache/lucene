@@ -54,6 +54,11 @@ public final class BoostQuery extends Query {
   }
 
   @Override
+  public boolean isKnownToMatchAllDocs() {
+    return query.isKnownToMatchAllDocs();
+  }
+
+  @Override
   public boolean equals(Object other) {
     return sameClassAs(other) && equalsTo(getClass().cast(other));
   }
