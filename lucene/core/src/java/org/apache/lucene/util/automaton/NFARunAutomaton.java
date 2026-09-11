@@ -113,6 +113,17 @@ public class NFARunAutomaton implements ByteRunnable, TransitionAccessor, Accoun
     return getDState(state).isAccept;
   }
 
+  /**
+   * Returns true if this state can accept all remaining suffixes from now on.
+   *
+   * @param state the state
+   * @return whether this state can accept all remaining suffixes.
+   */
+  @Override
+  public final boolean isMatchAllSuffix(int state) {
+    return false;
+  }
+
   @Override
   public int getSize() {
     synchronized (stateRegistryLock) {

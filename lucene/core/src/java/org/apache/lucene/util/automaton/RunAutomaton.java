@@ -30,6 +30,7 @@
 package org.apache.lucene.util.automaton;
 
 import java.util.Arrays;
+import java.util.Objects;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -47,6 +48,7 @@ public abstract class RunAutomaton implements Accountable {
   final int alphabetSize;
   final int size;
   final FixedBitSet accept;
+  final FixedBitSet matchAllSuffix;
   final int[] transitions; // delta(state,c) = transitions[state*points.length +
   // getCharClass(c)]
   final int[] points; // char interval start points
@@ -59,6 +61,17 @@ public abstract class RunAutomaton implements Accountable {
    * @throws IllegalArgumentException if the automaton is not deterministic
    */
   protected RunAutomaton(Automaton a, int alphabetSize) {
+    this(a, alphabetSize, false);
+  }
+
+  /**
+   * Constructs a new <code>RunAutomaton</code> from a deterministic <code>Automaton</code>.
+   *
+   * @param a an automaton
+   * @param computeMatchAllSuffix whether to compute states that can accept all remaining suffixes
+   * @throws IllegalArgumentException if the automaton is not deterministic
+   */
+  protected RunAutomaton(Automaton a, int alphabetSize, boolean computeMatchAllSuffix) {
     this.alphabetSize = alphabetSize;
     if (!a.isDeterministic()) {
       throw new IllegalArgumentException("Automaton must be deterministic");
@@ -67,12 +80,16 @@ public abstract class RunAutomaton implements Accountable {
     points = a.getStartPoints();
     size = Math.max(1, a.getNumStates());
     accept = new FixedBitSet(size);
+    matchAllSuffix = computeMatchAllSuffix ? new FixedBitSet(size) : null;
     transitions = new int[size * points.length];
     Arrays.fill(transitions, -1);
     Transition transition = new Transition();
     for (int n = 0; n < size; n++) {
       if (a.isAccept(n)) {
         accept.set(n);
+        if (matchAllSuffix != null && computeMatchAllSuffix(n)) {
+          matchAllSuffix.set(n);
+        }
       }
       transition.source = n;
       transition.transitionUpto = -1;
@@ -96,6 +113,25 @@ public abstract class RunAutomaton implements Accountable {
     }
   }
 
+  /** Returns true if this state can accept all remaining byte suffixes. */
+  private boolean computeMatchAllSuffix(int state) {
+    assert automaton.isAccept(state);
+    Transition transition = new Transition();
+    int numTransitions = automaton.getNumTransitions(state);
+    // Apply to PrefixQuery, TermRangeQuery, custom binary Automata.
+    if (numTransitions == 1) {
+      automaton.getTransition(state, 0, transition);
+      if (transition.dest == state && transition.min == 0 && transition.max == alphabetSize - 1) {
+        return true;
+      }
+    }
+
+    // TODO: Also recognize equivalent match-all-suffix states after UTF32ToUTF8 splits a
+    // match-any-codepoint transition into multiple UTF-8 byte transitions. e.g. those used by
+    // RegexpQuery and WildcardQuery.
+    return false;
+  }
+
   /** Returns a string representation of this automaton. */
   @Override
   public String toString() {
@@ -105,6 +141,7 @@ public abstract class RunAutomaton implements Accountable {
       b.append("state ").append(i);
       if (accept.get(i)) b.append(" [accept]:\n");
       else b.append(" [reject]:\n");
+      if (matchAllSuffix != null && matchAllSuffix.get(i)) b.append(" [matchAllSuffix]:\n");
       for (int j = 0; j < points.length; j++) {
         int k = transitions[i * points.length + j];
         if (k != -1) {
@@ -138,6 +175,22 @@ public abstract class RunAutomaton implements Accountable {
    */
   public final boolean isAccept(int state) {
     return accept.get(state);
+  }
+
+  /**
+   * Returns true if this state can accept all remaining suffixes from now on.
+   *
+   * @param state the state
+   * @return whether this state can accept all remaining suffixes.
+   */
+  public final boolean isMatchAllSuffix(int state) {
+    assert matchAllSuffix != null;
+    return matchAllSuffix.get(state);
+  }
+
+  /** Returns true if match-all-suffix state information was computed for this automaton. */
+  public final boolean hasMatchAllSuffixStates() {
+    return matchAllSuffix != null;
   }
 
   /**
@@ -198,6 +251,7 @@ public abstract class RunAutomaton implements Accountable {
     if (size != other.size) return false;
     if (!Arrays.equals(points, other.points)) return false;
     if (!accept.equals(other.accept)) return false;
+    if (!Objects.equals(matchAllSuffix, other.matchAllSuffix)) return false;
     if (!Arrays.equals(transitions, other.transitions)) return false;
     return true;
   }
@@ -206,6 +260,7 @@ public abstract class RunAutomaton implements Accountable {
   public long ramBytesUsed() {
     return BASE_RAM_BYTES
         + accept.ramBytesUsed()
+        + (matchAllSuffix == null ? 0 : matchAllSuffix.ramBytesUsed())
         + RamUsageEstimator.sizeOfObject(automaton)
         + RamUsageEstimator.sizeOfObject(classmap)
         + RamUsageEstimator.sizeOfObject(points)
