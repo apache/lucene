@@ -11,7 +11,7 @@ jobs:
     name: Prepare Backport Targets
     if: github.event.pull_request.merged == true
     timeout-minutes: 15
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     permissions:
       contents: read # Reads repository workflow script and remote branch refs.
       pull-requests: write # Adds comments/labels to the source pull request.
@@ -42,7 +42,7 @@ jobs:
     needs: prepare
     if: needs.prepare.outputs.has_targets == 'true' && needs.prepare.outputs.dry_run != 'true'
     timeout-minutes: 30
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     permissions:
       contents: write # Pushes generated backport branches.
       pull-requests: write # Creates backport pull requests and comments on failures.
@@ -95,7 +95,7 @@ jobs:
     needs: prepare
     if: needs.prepare.outputs.has_targets == 'true' && needs.prepare.outputs.dry_run == 'true'
     timeout-minutes: 5
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     permissions: {}
     steps:
       - name: Report dry-run targets
