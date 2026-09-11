@@ -130,6 +130,11 @@ public abstract class FilterCodecReader extends CodecReader {
     in.checkIntegrity();
   }
 
+  @Override
+  void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+    in.checkIntegrity(merge);
+  }
+
   /** Returns the wrapped {@link CodecReader}. */
   public CodecReader getDelegate() {
     return in;
