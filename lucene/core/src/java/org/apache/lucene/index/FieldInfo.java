@@ -236,6 +236,14 @@ public final class FieldInfo {
   }
 
   /**
+   * Attribute key used by {@code PreconditioningKnnVectorsFormat} to mark a field as rotated.
+   * Duplicated here (rather than referencing the codec class) to avoid a circular dependency
+   * between {@code org.apache.lucene.index} and {@code org.apache.lucene.codecs}. The value must
+   * match {@code PreconditioningKnnVectorsFormat.DELEGATE_FORMAT_KEY} exactly.
+   */
+  static final String ROTATION_MARKER_KEY = "PreconditioningKnnVectorsFormat_DelegateFormat";
+
+  /**
    * Verify that the provided FieldInfo has the same schema as this FieldInfo
    *
    * @param o – other FieldInfo whose schema is verified against this FieldInfo's schema

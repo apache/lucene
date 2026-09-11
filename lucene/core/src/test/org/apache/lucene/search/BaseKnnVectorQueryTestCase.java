@@ -1268,6 +1268,12 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       IndexWriterConfig iwc = newIndexWriterConfig(mockAnalyzer);
       KnnVectorsFormat format1 = randomVectorFormat(VectorEncoding.FLOAT32);
       KnnVectorsFormat format2 = randomVectorFormat(VectorEncoding.FLOAT32);
+      // PreconditioningKnnVectorsFormat's no-arg SPI constructor is read-only; skip combinations
+      // where it would be used for writing.
+      assumeFalse(
+          "PreconditioningKnnVectorsFormat (no-arg SPI ctor) cannot write",
+          "PreconditioningKnnVectorsFormat".equals(format1.getName())
+              || "PreconditioningKnnVectorsFormat".equals(format2.getName()));
       iwc.setCodec(TestUtil.alwaysKnnVectorsFormat(format1));
 
       try (IndexWriter iwriter = new IndexWriter(directory, iwc)) {
