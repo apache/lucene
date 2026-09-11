@@ -253,6 +253,9 @@ values producing better recall using more graph exploration. This gives a better
 in most cases, while still providing a knob for advanced users to tune quality and performance if needed (using the
 `decay` factor).
 
+For Lucene 10.4 behavior, use `[Byte|Float]VectorSimilarityQuery.Explicit` (deprecated, and will be removed in a future
+release). For Lucene 10.5 behavior, use `[Byte|Float]VectorSimilarityQuery.Adaptive`.
+
 ## Migration from Lucene 9.x to Lucene 10.0
 
 ### DataInput#readVLong() may now read negative vlongs

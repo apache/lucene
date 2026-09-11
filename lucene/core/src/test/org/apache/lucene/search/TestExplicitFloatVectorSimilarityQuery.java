@@ -20,12 +20,12 @@ import java.util.Arrays;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.util.TestVectorUtil;
 import org.junit.Before;
 
-public class TestFloatVectorSimilarityQuery
-    extends BaseVectorSimilarityQueryTestCase<
+@Deprecated
+public class TestExplicitFloatVectorSimilarityQuery
+    extends BaseExplicitVectorSimilarityQueryTestCase<
         float[], KnnFloatVectorField, FloatVectorSimilarityQuery> {
 
   @Before
@@ -60,26 +60,24 @@ public class TestFloatVectorSimilarityQuery
 
   @Override
   FloatVectorSimilarityQuery getVectorQuery(
-      String field, float[] vector, float resultSimilarity, float decay, Query filter) {
-    return new FloatVectorSimilarityQuery.Adaptive(field, vector, resultSimilarity, decay, filter);
-  }
-
-  @Override
-  FloatVectorSimilarityQuery getVectorQuery(
       String field,
       float[] vector,
+      float traversalSimilarity,
       float resultSimilarity,
-      float decay,
-      Query filter,
-      KnnSearchStrategy searchStrategy) {
-    return new FloatVectorSimilarityQuery.Adaptive(
-        field, vector, resultSimilarity, decay, filter, searchStrategy);
+      Query filter) {
+    return new FloatVectorSimilarityQuery.Explicit(
+        field, vector, traversalSimilarity, resultSimilarity, filter);
   }
 
   @Override
   FloatVectorSimilarityQuery getThrowingVectorQuery(
-      String field, float[] vector, float resultSimilarity, float decay, Query filter) {
-    return new FloatVectorSimilarityQuery.Adaptive(field, vector, resultSimilarity, decay, filter) {
+      String field,
+      float[] vector,
+      float traversalSimilarity,
+      float resultSimilarity,
+      Query filter) {
+    return new FloatVectorSimilarityQuery.Explicit(
+        field, vector, traversalSimilarity, resultSimilarity, filter) {
       @Override
       VectorScorer createVectorScorer(LeafReaderContext context) {
         throw new UnsupportedOperationException();

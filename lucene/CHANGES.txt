@@ -588,6 +588,19 @@ Other
 
 * GITHUB#16516: Simplify array copy by ArrayUtil.copyOfSubArray() in grouping package (Binlong Gao)
 
+======================= Lucene 10.5.2 =======================
+
+API Changes
+---------------------
+
+* GITHUB#16654: Public constructors of [Byte|Float]VectorSimilarityQuery are now private (binary-incompatible change).
+  Lucene 10.5.0 (GITHUB#15784) switched these queries from explicit to adaptive HNSW graph traversal but kept the
+  constructor signatures, so the two positional float arguments silently changed meaning from (traversalSimilarity,
+  resultSimilarity) to (resultSimilarity, decay). This turns that silent behavior change into a compilation error on
+  upgrade. Both behaviors are now exposed as nested classes: [Byte|Float]VectorSimilarityQuery.Explicit exposes the
+  Lucene 10.4 behavior and is deprecated, and [Byte|Float]VectorSimilarityQuery.Adaptive exposes the 10.5 behavior.
+  (Kaival Parikh, Chris Hostetter, Michael Sokolov)
+
 ======================= Lucene 10.5.1 =======================
 
 Bug Fixes

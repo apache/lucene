@@ -17,16 +17,16 @@
 package org.apache.lucene.search;
 
 import java.util.Arrays;
-import org.apache.lucene.document.KnnFloatVectorField;
+import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.util.TestVectorUtil;
 import org.junit.Before;
 
-public class TestFloatVectorSimilarityQuery
-    extends BaseVectorSimilarityQueryTestCase<
-        float[], KnnFloatVectorField, FloatVectorSimilarityQuery> {
+@Deprecated
+public class TestExplicitByteVectorSimilarityQuery
+    extends BaseExplicitVectorSimilarityQueryTestCase<
+        byte[], KnnByteVectorField, ByteVectorSimilarityQuery> {
 
   @Before
   public void setup() {
@@ -38,48 +38,45 @@ public class TestFloatVectorSimilarityQuery
   }
 
   @Override
-  float[] getRandomVector(int dim) {
-    return TestVectorUtil.randomVector(dim);
+  byte[] getRandomVector(int dim) {
+    return TestVectorUtil.randomVectorBytes(dim);
   }
 
   @Override
-  float compare(float[] vector1, float[] vector2) {
+  float compare(byte[] vector1, byte[] vector2) {
     return function.compare(vector1, vector2);
   }
 
   @Override
-  boolean checkEquals(float[] vector1, float[] vector2) {
+  boolean checkEquals(byte[] vector1, byte[] vector2) {
     return Arrays.equals(vector1, vector2);
   }
 
   @Override
-  KnnFloatVectorField getVectorField(
-      String name, float[] vector, VectorSimilarityFunction function) {
-    return new KnnFloatVectorField(name, vector, function);
+  KnnByteVectorField getVectorField(String name, byte[] vector, VectorSimilarityFunction function) {
+    return new KnnByteVectorField(name, vector, function);
   }
 
   @Override
-  FloatVectorSimilarityQuery getVectorQuery(
-      String field, float[] vector, float resultSimilarity, float decay, Query filter) {
-    return new FloatVectorSimilarityQuery.Adaptive(field, vector, resultSimilarity, decay, filter);
-  }
-
-  @Override
-  FloatVectorSimilarityQuery getVectorQuery(
+  ByteVectorSimilarityQuery getVectorQuery(
       String field,
-      float[] vector,
+      byte[] vector,
+      float traversalSimilarity,
       float resultSimilarity,
-      float decay,
-      Query filter,
-      KnnSearchStrategy searchStrategy) {
-    return new FloatVectorSimilarityQuery.Adaptive(
-        field, vector, resultSimilarity, decay, filter, searchStrategy);
+      Query filter) {
+    return new ByteVectorSimilarityQuery.Explicit(
+        field, vector, traversalSimilarity, resultSimilarity, filter);
   }
 
   @Override
-  FloatVectorSimilarityQuery getThrowingVectorQuery(
-      String field, float[] vector, float resultSimilarity, float decay, Query filter) {
-    return new FloatVectorSimilarityQuery.Adaptive(field, vector, resultSimilarity, decay, filter) {
+  ByteVectorSimilarityQuery getThrowingVectorQuery(
+      String field,
+      byte[] vector,
+      float traversalSimilarity,
+      float resultSimilarity,
+      Query filter) {
+    return new ByteVectorSimilarityQuery.Explicit(
+        field, vector, traversalSimilarity, resultSimilarity, filter) {
       @Override
       VectorScorer createVectorScorer(LeafReaderContext context) {
         throw new UnsupportedOperationException();
