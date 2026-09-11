@@ -950,8 +950,7 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
     // every (segment, query) entry for a given query lands in this partition, so this map sees all
     // of them. It canonicalizes queries to a single shared instance and reference-counts how many
     // cache entries use each one, so the query object is accounted exactly once. Any mutation
-    // operations
-    // happen under the write lock.
+    // operations happen under the write lock.
     private final Map<Query, QueryRef> uniqueQueries;
 
     LRUQueryCachePartition(int maxSize, long maxRamBytesUsed) {
