@@ -44,4 +44,6 @@ public abstract class Decompressor implements Cloneable {
 
   @Override
   public abstract Decompressor clone();
+
+  public void reset() {}
 }
