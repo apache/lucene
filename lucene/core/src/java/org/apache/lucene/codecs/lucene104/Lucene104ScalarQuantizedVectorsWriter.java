@@ -907,46 +907,4 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       return new Float16AsFloatVectorValues(values.copy());
     }
   }
-
-  static final class NormalizedFloatVectorValues extends FloatVectorValues {
-    private final FloatVectorValues values;
-    private final float[] normalizedVector;
-
-    NormalizedFloatVectorValues(FloatVectorValues values) {
-      this.values = values;
-      this.normalizedVector = new float[values.dimension()];
-    }
-
-    @Override
-    public int dimension() {
-      return values.dimension();
-    }
-
-    @Override
-    public int size() {
-      return values.size();
-    }
-
-    @Override
-    public int ordToDoc(int ord) {
-      return values.ordToDoc(ord);
-    }
-
-    @Override
-    public float[] vectorValue(int ord) throws IOException {
-      System.arraycopy(values.vectorValue(ord), 0, normalizedVector, 0, normalizedVector.length);
-      VectorUtil.l2normalize(normalizedVector);
-      return normalizedVector;
-    }
-
-    @Override
-    public DocIndexIterator iterator() {
-      return values.iterator();
-    }
-
-    @Override
-    public NormalizedFloatVectorValues copy() throws IOException {
-      return new NormalizedFloatVectorValues(values.copy());
-    }
-  }
 }

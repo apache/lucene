@@ -566,6 +566,11 @@ Bug Fixes
 * GITHUB#16139: Fix IBSimilarity with DistributionSPL producing negative scores due to
   floating-point rounding errors. (Prithvi S)
 
+* GITHUB#16665: Fix Lucene104HnswScalarQuantizedVectorsFormat merges with an asymmetric encoding
+  and COSINE similarity: the merge scorer's query side was quantized from un-normalized vectors
+  while the index side was normalized, so the merge trips an assertion and otherwise builds the
+  graph from wrong scores. (John Maurice)
+
 Build
 ---------------------
 
