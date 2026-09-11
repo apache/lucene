@@ -217,6 +217,10 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#16625: Close the reader pool before the deleter removes files on rollback, so that
+  uncommitted segment files are not deleted while pooled readers still hold them open.
+  (Jean Pierre Mandujano)
+
 * GITHUB#16553: Fix stored-fields corruption when PerField#finish throws: the stored-fields frame
   was left open, causing "Wrote N docs, finish called with numDocs=M" at flush. (Michael Marshall)
 
