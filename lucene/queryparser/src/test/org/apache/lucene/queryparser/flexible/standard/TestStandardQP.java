@@ -25,8 +25,10 @@ import org.apache.lucene.queryparser.flexible.standard.config.StandardQueryConfi
 import org.apache.lucene.queryparser.util.QueryParserTestBase;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.MultiTermQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.TermRangeQuery;
 import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenizer;
@@ -114,6 +116,51 @@ public class TestStandardQP extends QueryParserTestBase {
   }
 
   @Override
+  public void testRange() throws Exception {
+    assertQueryEquals("[ a TO z]", null, "[a TO z]");
+    assertQueryEquals("[ a TO z}", null, "[a TO z}");
+    assertQueryEquals("{ a TO z]", null, "{a TO z]");
+
+    assertEquals(
+        MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE,
+        ((TermRangeQuery) getQuery("[ a TO z]")).getRewriteMethod());
+
+    CommonQueryParserConfiguration qp =
+        getParserConfig(new MockAnalyzer(random(), MockTokenizer.SIMPLE, true));
+
+    qp.setMultiTermRewriteMethod(MultiTermQuery.SCORING_BOOLEAN_REWRITE);
+    assertEquals(
+        MultiTermQuery.SCORING_BOOLEAN_REWRITE,
+        ((TermRangeQuery) getQuery("[ a TO z]", qp)).getRewriteMethod());
+
+    // test open ranges
+    assertQueryEquals("[ a TO * ]", null, "[a TO *]");
+    assertQueryEquals("[ * TO z ]", null, "[* TO z]");
+    assertQueryEquals("[ * TO * ]", null, "[* TO *]");
+
+    // mixing exclude and include bounds
+    assertQueryEquals("{ a TO z ]", null, "{a TO z]");
+    assertQueryEquals("[ a TO z }", null, "[a TO z}");
+    assertQueryEquals("{ a TO * ]", null, "{a TO *]");
+    assertQueryEquals("[ * TO z }", null, "[* TO z}");
+
+    assertQueryEquals("[ a TO z ]", null, "[a TO z]");
+    assertQueryEquals("{ a TO z}", null, "{a TO z}");
+    assertQueryEquals("{ a TO z }", null, "{a TO z}");
+    assertQueryEquals("{ a TO z }^2.0", null, "({a TO z})^2.0");
+    assertQueryEquals("[ a TO z] OR bar", null, "[a TO z] bar");
+    assertQueryEquals("[ a TO z] AND bar", null, "+[a TO z] +bar");
+
+    // 2 differences with QueryParserTestBase
+    assertQueryEquals("( bar blar { a TO z}) ", null, "bar blar {a TO z}");
+    assertQueryEquals("gack ( bar blar { a TO z}) ", null, "gack (bar blar {a TO z})");
+
+    assertQueryEquals("[* TO Z]", null, "[* TO z]");
+    assertQueryEquals("[A TO *]", null, "[a TO *]");
+    assertQueryEquals("[* TO *]", null, "[* TO *]");
+  }
+
+  @Override
   public void testRangeWithPhrase() throws Exception {
     // StandardSyntaxParser does not differentiate between a term and a
     // one-term-phrase in a range query.
@@ -190,5 +237,14 @@ public class TestStandardQP extends QueryParserTestBase {
     CommonQueryParserConfiguration cqpc = getParserConfig(qpAnalyzer);
     setDefaultOperatorAND(cqpc);
     assertQueryEquals(cqpc, "field", "term phrase term", "+term +(+phrase1 +phrase2) +term");
+  }
+
+  @Override
+  public void testSimpleDAO() throws Exception {
+    assertQueryEqualsDOA("term term term", null, "+term +term +term");
+    assertQueryEqualsDOA("term +term term", null, "+term +term +term");
+    assertQueryEqualsDOA("term term +term", null, "+term +term +term");
+    assertQueryEqualsDOA("term +term +term", null, "+term +term +term");
+    assertQueryEqualsDOA("-term term term", null, "-term +term +term");
   }
 }
