@@ -421,8 +421,9 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
     assert key instanceof BoostQuery == false;
     assert key instanceof ConstantScoreQuery == false;
     final IndexReader.CacheKey readerKey = cacheHelper.getKey();
-    QueryCacheKey queryCacheKey = new QueryCacheKey(readerKey, key);
-    int partitionNumber = getPartitionNumber(queryCacheKey);
+    final int queryHash = key.hashCode();
+    QueryCacheKey queryCacheKey = new QueryCacheKey(readerKey, key, queryHash);
+    int partitionNumber = queryHash & (this.numberOfPartitions - 1);
     return this.lruQueryCachePartition[partitionNumber].get(queryCacheKey, key, cacheHelper);
   }
 
@@ -430,10 +431,12 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
     assert query instanceof BoostQuery == false;
     assert query instanceof ConstantScoreQuery == false;
     final IndexReader.CacheKey key = cacheHelper.getKey();
-    QueryCacheKey queryCacheKey = new QueryCacheKey(key, query);
-    int partitionNumber = getPartitionNumber(queryCacheKey);
+    // This saves computing the hash twice for the cache lookup and the routing.
+    final int queryHash = query.hashCode();
+    QueryCacheKey queryCacheKey = new QueryCacheKey(key, query, queryHash);
+    int partitionNumber = queryHash & (this.numberOfPartitions - 1);
     this.lruQueryCachePartition[partitionNumber].putIfAbsent(
-        queryCacheKey, query, cacheHelper, cached);
+        queryCacheKey, query, queryHash, cacheHelper, cached);
   }
 
   /** Remove all cache entries for the given core cache key. */
@@ -459,10 +462,12 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
     onClear();
   }
 
-  private static long getRamBytesUsed(Query query) {
+  // Deep RAM cost of the query object itself. This is accounted once per distinct query in a
+  // partition (see LRUQueryCachePartition#uniqueQueries), not once per (segment, query) cache
+  // entry, because a query cached across N segments is a single shared Query instance on the heap.
+  private static long queryRamBytesUsed(Query query) {
     // Here 32 represents a rough shallow size for a query object
-    long queryRamBytesUsed = RamUsageEstimator.sizeOf(query, 32);
-    return LINKED_HASHTABLE_RAM_BYTES_PER_ENTRY + queryRamBytesUsed;
+    return RamUsageEstimator.sizeOf(query, 32);
   }
 
   // pkg-private for testing
@@ -501,6 +506,11 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
         }
         for (CacheAndCount cached : this.lruQueryCachePartition[i].cache.values()) {
           recomputedRamBytesUsed += cached.ramBytesUsed();
+        }
+        // Query objects are accounted once per distinct query, not per entry.
+        for (LRUQueryCachePartition.QueryRef ref :
+            this.lruQueryCachePartition[i].uniqueQueries.values()) {
+          recomputedRamBytesUsed += ref.queryBytes;
         }
         if (recomputedRamBytesUsed != this.lruQueryCachePartition[i].ramBytesUsed) {
           throw new AssertionError(
@@ -936,6 +946,13 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
     private volatile long cacheSize;
     private final Map<QueryCacheKey, LRUQueryCache.CacheAndCount> cache;
 
+    // Distinct queries held by this partition, keyed by value. Because routing is by query alone,
+    // every (segment, query) entry for a given query lands in this partition, so this map sees all
+    // of them. It canonicalizes queries to a single shared instance and reference-counts how many
+    // cache entries use each one, so the query object is accounted exactly once. Any mutation
+    // operations happen under the write lock.
+    private final Map<Query, QueryRef> uniqueQueries;
+
     LRUQueryCachePartition(int maxSize, long maxRamBytesUsed) {
       ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
       writeLock = lock.writeLock();
@@ -945,7 +962,58 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
       this.maxSize = maxSize;
       this.maxRamBytesUsed = maxRamBytesUsed;
       cache = new HashMap<>();
+      uniqueQueries = new HashMap<>();
       this.ramBytesUsed = 0;
+    }
+
+    /**
+     * Canonical instance of a query held by this partition, plus a reference count of the cache
+     * entries (one per segment) that use it and the RAM cost of the query object.
+     */
+    private static final class QueryRef {
+      final Query canonical;
+      final long queryBytes;
+      int refCount;
+
+      QueryRef(Query canonical, long queryBytes) {
+        this.canonical = canonical;
+        this.queryBytes = queryBytes;
+      }
+    }
+
+    /**
+     * Resolve {@code query} to this partition's canonical instance for that value, incrementing its
+     * reference count (creating the entry on the first reference). Does not touch {@link
+     * #ramBytesUsed}; callers add the query bytes to it on the first reference (when the returned
+     * ref's count is 1). Must be called under the write lock. Returns the {@link QueryRef}.
+     */
+    private QueryRef acquireQuery(Query query) {
+      assert writeLock.isHeldByCurrentThread();
+      QueryRef ref = uniqueQueries.get(query);
+      if (ref == null) {
+        ref = new QueryRef(query, queryRamBytesUsed(query));
+        uniqueQueries.put(query, ref);
+      }
+      ref.refCount++;
+      return ref;
+    }
+
+    /**
+     * Drop one reference to {@code query}'s canonical instance. On the last reference (1 -&gt; 0)
+     * the query is removed and its query bytes are returned so the caller can subtract them from
+     * {@link #ramBytesUsed}; otherwise returns 0. Must be called under the write lock.
+     */
+    private long releaseQuery(Query query) {
+      assert writeLock.isHeldByCurrentThread();
+      QueryRef ref = uniqueQueries.get(query);
+      if (ref == null) {
+        return 0;
+      }
+      if (--ref.refCount == 0) {
+        uniqueQueries.remove(query);
+        return ref.queryBytes;
+      }
+      return 0;
     }
 
     void setMaxSize(int maxSize) {
@@ -1017,32 +1085,46 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
     void putIfAbsent(
         QueryCacheKey queryCacheKey,
         Query query,
+        int queryHash,
         IndexReader.CacheHelper cacheHelper,
         LRUQueryCache.CacheAndCount cached) {
       assert query instanceof BoostQuery == false;
       assert query instanceof ConstantScoreQuery == false;
 
-      // Pre-calculate values outside lock
-      long ramBytes = queryCacheKey.ramBytesUsed();
+      // Pre-calculate values outside lock. perEntryBytes is the query-independent per-entry
+      // overhead; the query object is accounted separately, once per distinct query.
+      long perEntryBytes = queryCacheKey.ramBytesUsed();
       IndexReader.CacheKey cacheKey = cacheHelper.getKey();
       long cachedValueBytesUsed = HASHTABLE_RAM_BYTES_PER_ENTRY + cached.ramBytesUsed();
 
       writeLock.lock();
       try {
-        // Use putIfAbsent return value to determine if insertion actually happened
-        LRUQueryCache.CacheAndCount existing = cache.putIfAbsent(queryCacheKey, cached);
-        if (existing != null) {
-          // Entry already exists, no work needed
+        // Entry already cached: skip canonicalization and the reference count.
+        if (cache.containsKey(queryCacheKey)) {
           return;
         }
 
-        // Only execute side effects when insertion actually occurred
-        QueryMetadata metadata = new QueryMetadata(queryCacheKey.query, ramBytes);
-        uniqueCacheKeys.putIfAbsent(queryCacheKey, metadata);
-        onQueryCache(queryCacheKey, ramBytes);
+        // Absent: canonicalize the query to this partition's shared instance and store the entry
+        // under it, so every segment's entry for this query references a single Query object. We
+        // only acquire a reference on this path, so there is nothing to undo.
+        QueryRef ref = acquireQuery(query);
+        boolean firstReference = ref.refCount == 1;
+        Query canonical = ref.canonical;
+        QueryCacheKey key =
+            canonical == queryCacheKey.query
+                ? queryCacheKey
+                : new QueryCacheKey(cacheKey, canonical, queryHash);
+
+        cache.put(key, cached);
+
+        // Account the query object only on the first entry that references it in this partition.
+        long queryBytes = perEntryBytes + (firstReference ? ref.queryBytes : 0);
+        QueryMetadata metadata = new QueryMetadata(canonical, perEntryBytes);
+        uniqueCacheKeys.putIfAbsent(key, metadata);
+        onQueryCache(key, queryBytes);
         onDocIdSetCache(cacheKey, cachedValueBytesUsed);
         LRUQueryCache.this.onCacheEntryInserted(
-            cacheKey, queryCacheKey.query, ramBytes + cachedValueBytesUsed);
+            cacheKey, canonical, queryBytes + cachedValueBytesUsed);
         evictIfNecessary();
       } finally {
         writeLock.unlock();
@@ -1065,11 +1147,12 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
     }
 
     /**
-     * Remove a cache entry. If {@code knownQueryBytes} is non-negative, it is used as the query RAM
-     * cost (for cases where the uniqueCacheKeys entry was already removed externally, e.g. during
-     * eviction). Otherwise the query bytes are looked up from uniqueCacheKeys.
+     * Remove a cache entry. {@code knownPerEntryBytes} &gt;= 0 means the caller already removed the
+     * {@code uniqueCacheKeys} entry (e.g. eviction) and passes its per-entry overhead; otherwise it
+     * is removed here. The query's reference count is dropped, and the query bytes are subtracted
+     * from {@link #ramBytesUsed} when its last entry goes.
      */
-    private void remove(QueryCacheKey queryCacheKey, long knownQueryBytes) {
+    private void remove(QueryCacheKey queryCacheKey, long knownPerEntryBytes) {
       writeLock.lock();
       try {
         CacheAndCount cacheAndCount = cache.remove(queryCacheKey);
@@ -1078,16 +1161,23 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
           docIdSetBytes = HASHTABLE_RAM_BYTES_PER_ENTRY + cacheAndCount.ramBytesUsed();
           onDocIdSetEviction(queryCacheKey.cacheKey, 1, docIdSetBytes);
         }
-        long queryBytes = 0;
-        if (knownQueryBytes >= 0) {
-          // Query bytes already accounted for by caller (e.g. evictIfNecessary)
-          queryBytes = knownQueryBytes;
+        long perEntryBytes;
+        boolean tracked;
+        if (knownPerEntryBytes >= 0) {
+          perEntryBytes = knownPerEntryBytes;
+          tracked = true;
         } else {
           QueryMetadata queryMetadata = uniqueCacheKeys.remove(queryCacheKey);
-          if (queryMetadata != null && queryMetadata.query != null) {
-            queryBytes = queryMetadata.queryRamBytesUsed;
-            onQueryEviction(queryCacheKey, queryBytes);
-          }
+          tracked = queryMetadata != null && queryMetadata.query != null;
+          perEntryBytes = tracked ? queryMetadata.queryRamBytesUsed : 0;
+        }
+        long queryBytes = 0;
+        if (tracked) {
+          // Drop this entry's reference to the query; reclaim the query bytes on the last
+          // reference.
+          long releasedQueryBytes = releaseQuery(queryCacheKey.query);
+          queryBytes = perEntryBytes + releasedQueryBytes;
+          onQueryEviction(queryCacheKey, queryBytes);
         }
         if (cacheAndCount != null || queryBytes > 0) {
           LRUQueryCache.this.onCacheEntryEvicted(
@@ -1105,6 +1195,7 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
         // Note that this also clears the uniqueCacheKeys map since mostRecentlyUsedCacheKeys is the
         // uniqueCacheKeys.keySet view:
         mostRecentlyUsedCacheKeys.clear();
+        uniqueQueries.clear();
         onClear();
       } finally {
         writeLock.unlock();
@@ -1151,7 +1242,6 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
                     + entry.getKey()
                     + "]");
           }
-          onQueryEviction(entry.getKey(), entry.getValue().queryRamBytesUsed);
           remove(entry.getKey(), entry.getValue().queryRamBytesUsed);
         } while (iterator.hasNext() && requiresEviction());
       }
@@ -1177,7 +1267,15 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
   }
 
   public int getPartitionNumber(QueryCacheKey queryCacheKey) {
-    return queryCacheKey.hashCode() & (this.numberOfPartitions - 1);
+    return getPartitionNumber(queryCacheKey.query);
+  }
+
+  // Route to a partition by the query alone (not the segment), so that every (segment, query) entry
+  // for a given query lands in the same partition. This lets each partition maintain a complete,
+  // cache-wide view of the queries it holds (see uniqueQueries), which is what makes per-partition
+  // query canonicalization and count-once RAM accounting correct.
+  private int getPartitionNumber(Query query) {
+    return query.hashCode() & (this.numberOfPartitions - 1);
   }
 
   /** Cache of doc ids with a count. */
@@ -1215,17 +1313,23 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
 
     IndexReader.CacheKey cacheKey;
     Query query;
+    private final int hash;
 
     QueryCacheKey(IndexReader.CacheKey cacheKey, Query query) {
+      this(cacheKey, query, query.hashCode());
+    }
+
+    // Variant that reuses an already-computed query.hashCode() to avoid recomputing it (query
+    // hashing, e.g. murmur over term bytes, is a hot cost on get/putIfAbsent).
+    QueryCacheKey(IndexReader.CacheKey cacheKey, Query query, int queryHash) {
       this.cacheKey = cacheKey;
       this.query = query;
+      this.hash = 31 * System.identityHashCode(cacheKey) + queryHash;
     }
 
     @Override
     public int hashCode() {
-      int res = System.identityHashCode(cacheKey);
-      res = 31 * res + System.identityHashCode(query);
-      return res;
+      return hash;
     }
 
     @Override
@@ -1240,7 +1344,9 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
 
     @Override
     public long ramBytesUsed() {
-      return BASE_RAM_BYTES_USED + getRamBytesUsed(query);
+      // Per-entry overhead only: the QueryCacheKey object plus its slot in the uniqueCacheKeys
+      // LinkedHashMap. The query object is accounted separately, once per distinct query.
+      return BASE_RAM_BYTES_USED + LINKED_HASHTABLE_RAM_BYTES_PER_ENTRY;
     }
   }
 
