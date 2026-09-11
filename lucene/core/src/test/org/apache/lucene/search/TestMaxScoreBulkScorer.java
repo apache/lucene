@@ -1179,12 +1179,31 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
       }
       w.addDocument(doc);
     }
-    w.deleteDocuments(
-        new Term("id", "20"), new Term("id", "21"), new Term("id", "4101"), new Term("id", "4102"));
-    w.close();
+    w.commit();
 
+    // Test without-delete paths
     DirectoryReader reader = DirectoryReader.open(dir);
-    assertEquals(9996, reader.numDocs());
+    assertEquals(10000, reader.numDocs());
+    assertDenseScorersUseBitSet(reader, 500);
+
+    // Test with-delete paths
+    w.deleteDocuments(
+        // first window
+        new Term("id", "20"), new Term("id", "21"),
+        // another window
+        new Term("id", "4101"), new Term("id", "4102"));
+    w.commit();
+    DirectoryReader newReader = DirectoryReader.openIfChanged(reader);
+    reader.close();
+    assertEquals(9996, newReader.numDocs());
+    assertDenseScorersUseBitSet(newReader, 498);
+    newReader.close();
+    w.close();
+    dir.close();
+  }
+
+  private void assertDenseScorersUseBitSet(DirectoryReader reader, int expectedCollectedDocs)
+      throws IOException {
     IndexSearcher searcher = new IndexSearcher(reader);
     searcher.setQueryCache(null);
 
@@ -1251,11 +1270,8 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
             + " advance="
             + advanceCalls[0],
         intoBitSetCalls[0] > 0);
-    assertEquals(498, collectedDocs[0]);
+    assertEquals(expectedCollectedDocs, collectedDocs[0]);
     assertEquals(collectedDocs[0], scoredDocs[0]);
-
-    reader.close();
-    dir.close();
   }
 
   /**
