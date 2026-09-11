@@ -115,24 +115,49 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
    * Filtered queries: distinct filter-accepted documents the coarse scan gathers before cell
    * selection stops; see the class javadoc.
    *
-   * <p>Defaults to TWICE {@link #BRUTE_N}. The unfiltered scan hands the fine tier the best {@code
-   * bruteN} of every slot in a fixed {@code nprobe} cells, a selection from a pool several times
-   * that size. The filtered walk gathers accepted documents until it has this many and reranks the
-   * best {@code bruteN} of them, so a target of exactly {@code bruteN} would rerank everything it
-   * gathered with no selection at all. Twice the shortlist restores a selection and reaches
-   * further: on a 1M x 1024-d segment at 5% selectivity it lifted recall from 0.866 to 0.926 for
-   * 2.6 ms to 4.4 ms of CPU per query, and at 50% and above it changed nothing, since the first
-   * round of cells already exceeds it.
+   * <p>Defaults to {@link #BRUTE_N}, so the walk stops as soon as it can fill the shortlist.
+   *
+   * <p>IT USED TO DEFAULT TO TWICE THAT, on the reasoning that reranking exactly what was gathered
+   * leaves the coarse ranking with nothing to select, and on a measurement that twice the shortlist
+   * lifted 5%-selectivity recall from 0.866 to 0.926. But that measurement held {@code nprobe}
+   * fixed, and raising this target is only an indirect way of buying more cells: measured at
+   * MATCHED RECALL on a 1M x 1024-d segment, 700 against 1400 against 2800 is a wash, inside
+   * run-to-run noise at every recall point (5%: 1.070 / 1.078 / 1.091 ms at recall ~0.915, 1.243 /
+   * 1.237 / 1.267 ms at 0.936; 10%: 1.338 / 1.339 / 1.372 ms at 0.936). Buying the cells directly
+   * with {@code nprobe} costs the same and is one dial instead of two, so the smaller target is the
+   * default and the extra rerank work is not spent.
+   *
+   * <p>COUPLED TO {@link #exactFilterBound}, which scales as its square root, so halving this also
+   * narrows the band of filters that skip cell selection entirely by about 1.4x.
    */
-  private static final int FILTERED_TARGET =
-      Integer.getInteger("ivfaster.filteredTarget", 2 * BRUTE_N);
+  private static final int FILTERED_TARGET = Integer.getInteger("ivfaster.filteredTarget", BRUTE_N);
 
   /**
-   * Cap on cells probed by a filtered query; {@code 0} means every cell. A latency bound for a
-   * filter so selective that the target is unreachable, at the cost of the recall the unprobed
-   * cells held.
+   * ABSOLUTE cap on cells probed by a filtered query; {@code 0} defers to {@link
+   * #FILTERED_PROBE_MULTIPLIER}. Set it to bound a filtered query in cells regardless of the {@code
+   * nprobe} it was asked for.
    */
   private static final int FILTERED_MAX_PROBE = Integer.getInteger("ivfaster.filteredMaxProbe", 0);
+
+  /**
+   * RELATIVE cap on cells probed by a filtered query, as a multiple of the query's own {@code
+   * nprobe}; {@code 0} means every cell. Ignored when {@link #FILTERED_MAX_PROBE} is set.
+   *
+   * <p>WHY RELATIVE. The widening loop stops on {@link #FILTERED_TARGET}, and a filter selective
+   * enough that the target is unreachable walked to the absolute ceiling instead, which was every
+   * cell in the field. That makes the worst-case filtered query cost a full scan of the partition
+   * and makes it unbounded in {@code nlist} — at {@code nlist = 65535} a query asking for 32 cells
+   * could be served 65535. Tying the ceiling to what the caller asked for keeps the bound
+   * proportional to the query's own budget, so the same setting means the same thing at every
+   * {@code nlist}.
+   *
+   * <p>The cost of the bound is the recall held by the cells it declines to probe. Filters
+   * selective enough to reach this ceiling are largely already served by the exact path (see {@link
+   * #exactFilterBound}), which reranks the whole accepted set and never walks cells at all, so the
+   * band this actually binds on is narrow.
+   */
+  private static final int FILTERED_PROBE_MULTIPLIER =
+      Integer.getInteger("ivfaster.filteredProbeMultiplier", 8);
 
   /**
    * Floor on the filter cardinality at or below which every accepted document is fine-reranked
@@ -161,6 +186,34 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
     final double slots = (double) e.codeTableLength / e.recordLen;
     final double parity = Math.sqrt(FILTERED_TARGET * slots * e.coarseBytes / e.recordLen);
     return (int) Math.max(EXACT_FILTER_COST, Math.min(Integer.MAX_VALUE, parity));
+  }
+
+  /**
+   * Cells a filtered query may probe before the widening loop must stop, for a query that asked for
+   * {@code probe} of them.
+   *
+   * <p>{@link #FILTERED_MAX_PROBE} wins when set, since an absolute bound is an explicit
+   * instruction about this field. Otherwise the bound is {@link #FILTERED_PROBE_MULTIPLIER} times
+   * the query's own probe, and {@code 0} for either means the whole field.
+   *
+   * <p>ON THE MULTIPLIER PATH the result is never more than {@code nlist} and never less than
+   * {@code probe}, so it can decline to WIDEN but cannot retract cells the caller asked for. THE
+   * ABSOLUTE OVERRIDE DELIBERATELY CAN: {@link #FILTERED_MAX_PROBE} is documented to bound a
+   * filtered query regardless of the {@code nprobe} it was asked for, so setting it below {@code
+   * nprobe} does cut the base probe, and the recall that costs is the point of setting it.
+   *
+   * <p>Widened in long arithmetic: {@code probe} is caller-supplied and the multiplier is a system
+   * property, so the product overflows int for large enough values of either.
+   */
+  private static int filteredMaxProbe(FieldEntry e, int probe) {
+    if (FILTERED_MAX_PROBE > 0) {
+      return Math.min(FILTERED_MAX_PROBE, e.nlist);
+    }
+    if (FILTERED_PROBE_MULTIPLIER <= 0) {
+      return e.nlist;
+    }
+    final long widened = (long) Math.max(1, probe) * FILTERED_PROBE_MULTIPLIER;
+    return (int) Math.min(e.nlist, Math.max(widened, Math.min(probe, e.nlist)));
   }
 
   /**
@@ -526,10 +579,33 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
      * Vector API, which bounds-checks once per load rather than per int, so there is no per-int
      * guard here to remove; the per-int cost is in the dedup, see {@link #codeTableSeg}.
      *
-     * <p>Null when the directory cannot supply a mapping, which is the per-row-read fallback the
-     * scan already handles.
+     * <p>Null when the directory cannot supply a mapping for the WHOLE section, which for an {@code
+     * MMapDirectory} means any index whose data file crosses a chunk boundary; see {@link
+     * #coarseAccess} for what the scan falls back to then.
      */
     final java.lang.foreign.MemorySegment coarseSeg;
+
+    /**
+     * The coarse section as a source of per-run mappings, for when {@link #coarseSeg} is null.
+     *
+     * <p>WHY THIS EXISTS. {@code MemorySegmentAccessInput.segmentSliceOrNull} can only return a
+     * segment for a range that lies within ONE mmap chunk, and {@code
+     * MMapDirectory.DEFAULT_MAX_CHUNK_SIZE} is 16 GiB, so on any index whose data file exceeds that
+     * the whole-section request fails and {@link #coarseSeg} is null. Asking per PROBED RUN instead
+     * almost always succeeds: a run is one cell, {@code rows * coarseBytes}, which is some 150 KB
+     * at ten million documents, so only a run that happens to straddle a chunk boundary misses —
+     * one cell in the index, not all of them.
+     *
+     * <p>This matters because the difference is not a bounds check. With a segment the scan runs
+     * {@link HammingKernel#bulkDistances} over the run; without one it reads each slot's code into
+     * heap and calls the scalar {@code VectorUtil.xorBitCount}, measured at 3.4x the per-slot cost
+     * on a ten-million-document index. A silent 3.4x that engages purely on index size is worse
+     * than a slow path, since nothing in the recall or the API reports it.
+     *
+     * <p>Null only when the directory is not memory-mapped at all, where the scalar path is the
+     * only path.
+     */
+    final org.apache.lucene.store.MemorySegmentAccessInput coarseAccess;
 
     /**
      * Cell {@code c}'s slot run is {@code [cellStart[c], cellStart[c + 1])}: the persisted posting
@@ -616,6 +692,8 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
       coarse = data.randomAccessSlice(e.coarseOffset, e.coarseLength);
       codeTableSeg = segmentOf(codeTable, e.codeTableLength);
       coarseSeg = segmentOf(coarse, e.coarseLength);
+      coarseAccess =
+          coarse instanceof org.apache.lucene.store.MemorySegmentAccessInput msai ? msai : null;
       raw = e.rawLength > 0 ? data.randomAccessSlice(e.rawOffset, e.rawLength) : null;
       cellStart = new int[e.nlist + 1];
       if (e.postingOffsetsMeta != null) {
@@ -688,6 +766,63 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
       }
       this.entry = e;
       this.data = data;
+    }
+
+    /**
+     * A REBASED mapping of one run of {@code rows} consecutive slots' coarse codes, for when {@link
+     * #coarseSeg} is null; the run starts at offset 0. Null when no mapping covers the run.
+     *
+     * <p>ONLY FOR THE NO-WHOLE-SECTION CASE. Where {@link #coarseSeg} exists a caller must pass the
+     * ABSOLUTE offset into it and not come here, because slicing would allocate a segment per
+     * probed cell on a path that otherwise allocates nothing. See {@link #coarseAccess} for why the
+     * case this serves exists at all.
+     *
+     * <p>One slice per RUN, not per slot, so once per probed cell — and only on indexes big enough
+     * that the alternative is the scalar per-slot read this exists to avoid.
+     */
+    java.lang.foreign.MemorySegment coarseRun(int slotBase, int rows, int coarseBytes) {
+      if (coarseAccess == null) {
+        return null;
+      }
+      try {
+        return coarseAccess.segmentSliceOrNull(
+            (long) slotBase * coarseBytes, (long) rows * coarseBytes);
+      } catch (IOException _) {
+        return null;
+      }
+    }
+
+    /**
+     * Hamming distance from {@code qCode} to each of {@code rows} consecutive slots' coarse codes,
+     * into {@code out[0..rows)}, through the kernel over a mapping of the run.
+     *
+     * <p>Returns false, having written nothing, when no mapping covers the run and the caller must
+     * read the codes itself. Returns true for an EMPTY run, which also writes nothing, so true
+     * means "the run is scored" rather than "out was touched". The read is left to the caller
+     * rather than done here because callers do not share an input: a long-lived scorer reads
+     * through its own clone of the data file, since {@code randomAccessSlice} on a directory that
+     * is not natively random-access is a stateful seek-then-read adapter that two concurrent
+     * readers cannot share.
+     *
+     * @return whether the run was scored
+     */
+    boolean coarseDistances(
+        HammingKernel hamming, byte[] qCode, int slotBase, int rows, int coarseBytes, int[] out) {
+      if (rows == 0) {
+        return true;
+      }
+      if (coarseSeg != null) {
+        // Offset into the whole section, so no per-cell slice is allocated.
+        hamming.bulkDistances(
+            qCode, coarseSeg, (long) slotBase * coarseBytes, coarseBytes, rows, out);
+        return true;
+      }
+      final java.lang.foreign.MemorySegment run = coarseRun(slotBase, rows, coarseBytes);
+      if (run == null) {
+        return false;
+      }
+      hamming.bulkDistances(qCode, run, 0L, coarseBytes, rows, out);
+      return true;
     }
 
     /**
@@ -1153,8 +1288,8 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
     int thr = histLen - 1;
     int admitted = 0;
 
-    // Resolved at open, not here: see FieldViews.coarseSeg.
-    final java.lang.foreign.MemorySegment coarseSeg = v.coarseSeg;
+    // Read once per scan, not per slot: see FieldViews.coarseDistances.
+    final byte[] coarseRec = sc.coarseRec(coarseBytes);
     int[] rowDist = sc.rowDist;
     int[] filterIdx = sc.filterIdx;
 
@@ -1170,15 +1305,11 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
       // Cell-order layout: this cell's slots are one contiguous run, so one sequential block.
       final int slotBase = cellBase[ci];
       final int rows = cellRows[ci];
-      if (coarseSeg != null) {
-        hamming.bulkDistances(
-            qCode, coarseSeg, (long) slotBase * coarseBytes, coarseBytes, rows, rowDist);
-      } else {
-        // No memory-mapped view: fall back to per-row reads of the whole code.
-        final byte[] rec = new byte[coarseBytes];
+      if (v.coarseDistances(hamming, qCode, slotBase, rows, coarseBytes, rowDist) == false) {
+        // No mapping covers this run: fall back to per-row reads of the whole code.
         for (int r = 0; r < rows; r++) {
-          v.coarse.readBytes((long) (slotBase + r) * coarseBytes, rec, 0, coarseBytes);
-          rowDist[r] = org.apache.lucene.util.VectorUtil.xorBitCount(qCode, rec);
+          v.coarse.readBytes((long) (slotBase + r) * coarseBytes, coarseRec, 0, coarseBytes);
+          rowDist[r] = org.apache.lucene.util.VectorUtil.xorBitCount(qCode, coarseRec);
         }
       }
       // The mode branch is OUTSIDE the row loop; see the javadoc.
@@ -1591,10 +1722,10 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
     final int[] hist = sc.hist(histLen);
     final int fanout = 1 + e.spillBits;
     final int poolTarget = BRUTE_N * fanout;
-    final int maxProbe = FILTERED_MAX_PROBE > 0 ? Math.min(FILTERED_MAX_PROBE, e.nlist) : e.nlist;
+    // Relative to what this query asked for, not to nlist; see filteredMaxProbe.
+    final int maxProbe = filteredMaxProbe(e, initial.length);
     final CellRanker ranker = new CellRanker(e, v, rotated, initial, sc);
-    final java.lang.foreign.MemorySegment coarseSeg = v.coarseSeg;
-    final byte[] rec = coarseSeg == null ? new byte[coarseBytes] : null;
+    final byte[] rec = sc.coarseRec(coarseBytes);
 
     // Distinct accepted documents, counted only up to the target; see the javadoc.
     final int dedupCap = dedupCapacity(FILTERED_TARGET);
@@ -1636,6 +1767,12 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
         for (int ci = first; ci < nCells; ci++) {
           final int base = cellBase[ci];
           final int end = base + cellRows[ci];
+          // One mapping per cell, hoisted out of the slot loop. The whole-section mapping is used
+          // in place with an absolute base so it allocates nothing; only its absence pays for a
+          // per-run slice. Null for neither means the scan below reads each code into heap instead.
+          final java.lang.foreign.MemorySegment run =
+              v.coarseSeg != null ? v.coarseSeg : v.coarseRun(base, cellRows[ci], coarseBytes);
+          final long runBase = v.coarseSeg != null ? (long) base * coarseBytes : 0L;
           // Cells lead: the run is walked in slot order and the bit set is tested per document.
           for (int slot = base; slot < end; slot++) {
             final int doc = slotDoc[slot];
@@ -1643,8 +1780,10 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
               continue;
             }
             final int dist;
-            if (coarseSeg != null) {
-              dist = hamming.distance(qCode, coarseSeg, (long) slot * coarseBytes, coarseBytes);
+            if (run != null) {
+              dist =
+                  hamming.distance(
+                      qCode, run, runBase + (long) (slot - base) * coarseBytes, coarseBytes);
             } else {
               v.coarse.readBytes((long) slot * coarseBytes, rec, 0, coarseBytes);
               dist = org.apache.lucene.util.VectorUtil.xorBitCount(qCode, rec);
@@ -2129,7 +2268,9 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
       this.fine = fine;
       this.probe = probe;
       this.in = data.clone();
-      this.coarseRec = v.coarseSeg == null ? new byte[e.coarseBytes] : null;
+      // Unconditional: whether the coarse scan needs it is now decided per RUN, not at open, so
+      // there is no state here that can tell. One code's worth of bytes, once per session.
+      this.coarseRec = new byte[e.coarseBytes];
       this.record = e.wantsStrided ? null : new byte[][] {new byte[e.recordLen]};
       this.flat = e.wantsStrided ? new byte[e.stagedStride] : null;
     }
@@ -2162,8 +2303,9 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
       return 1 + e.spillBits;
     }
 
+    /** Relative to this session's configured probe; see {@link #filteredMaxProbe}. */
     int maxProbe() {
-      return FILTERED_MAX_PROBE > 0 ? Math.min(FILTERED_MAX_PROBE, e.nlist) : e.nlist;
+      return filteredMaxProbe(e, probe);
     }
 
     /** Documents with a vector in this field. */
@@ -2207,25 +2349,29 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
       dist = new int[total];
       final int histLen = (e.coarseBytes << 3) + 2;
       final int[] hist = new int[histLen];
+      // Sized once from the widest cell, since the kernel writes from index 0 and the run is then
+      // copied to its place in dist.
+      int widest = 0;
+      for (int i = 0; i < cells.length; i++) {
+        widest = Math.max(widest, cellRows[i]);
+      }
+      final int[] rowDist =
+          new int[org.apache.lucene.util.ArrayUtil.oversize(widest, Integer.BYTES)];
       for (int i = 0; i < cells.length; i++) {
         final int rows = cellRows[i];
         if (rows == 0) {
           continue;
         }
         final int off = distOffset[i];
-        if (v.coarseSeg != null) {
-          final int[] rowDist =
-              new int[org.apache.lucene.util.ArrayUtil.oversize(rows, Integer.BYTES)];
-          hamming.bulkDistances(
-              qCode, v.coarseSeg, (long) cellBase[i] * e.coarseBytes, e.coarseBytes, rows, rowDist);
-          System.arraycopy(rowDist, 0, dist, off, rows);
-        } else {
+        if (v.coarseDistances(hamming, qCode, cellBase[i], rows, e.coarseBytes, rowDist) == false) {
+          // Through this session's OWN clone, not the field's shared slice; see the `in` field.
           in.seek(e.coarseOffset + (long) cellBase[i] * e.coarseBytes);
           for (int r = 0; r < rows; r++) {
             in.readBytes(coarseRec, 0, e.coarseBytes);
-            dist[off + r] = org.apache.lucene.util.VectorUtil.xorBitCount(qCode, coarseRec);
+            rowDist[r] = org.apache.lucene.util.VectorUtil.xorBitCount(qCode, coarseRec);
           }
         }
+        System.arraycopy(rowDist, 0, dist, off, rows);
         for (int r = 0; r < rows; r++) {
           hist[dist[off + r]]++;
         }
@@ -2415,6 +2561,13 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
      */
     int[] filterIdx = new int[0];
 
+    /**
+     * One coarse code, for the scan's fallback when {@link FieldViews#coarseDistances} reports that
+     * no mapping covers a run. Reused rather than allocated per cell, since the read it feeds is
+     * per SLOT.
+     */
+    byte[] coarseRec = new byte[0];
+
     byte[][] records = new byte[0][];
     byte[] flat = new byte[0];
 
@@ -2596,6 +2749,14 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
         cands = new int[ArrayUtil.oversize(n, Integer.BYTES)];
       }
       return cands;
+    }
+
+    /** Exactly {@code n} bytes, since {@code VectorUtil.xorBitCount} requires equal lengths. */
+    byte[] coarseRec(int n) {
+      if (coarseRec.length != n) {
+        coarseRec = new byte[n];
+      }
+      return coarseRec;
     }
 
     /**

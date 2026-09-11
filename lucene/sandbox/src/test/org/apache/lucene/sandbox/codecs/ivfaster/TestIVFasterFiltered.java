@@ -114,6 +114,44 @@ public class TestIVFasterFiltered extends LuceneTestCase {
   }
 
   /**
+   * The band where the walk MUST widen: a filter too wide for the exact path, but too narrow for
+   * the first round of cells to reach the gather target on its own.
+   *
+   * <p>WHY THIS BAND HAS ITS OWN TEST. Most selectivities never exercise widening at all. A filter
+   * below {@code exactFilterBound} skips cell selection entirely and reranks everything it accepts;
+   * a filter dense enough that one round of {@code nprobe} cells already holds the target stops
+   * after that round. Only in between does the doubling loop run, which makes it the only band
+   * where the probe ceiling — {@code ivfaster.filteredProbeMultiplier} times the query's own {@code
+   * nprobe} — can change an answer. A ceiling set too tight shows up here and nowhere else, as
+   * recall, with nothing thrown.
+   *
+   * <p>{@code nprobe = 4} over 128 cells puts the first round far short of the target at 10%
+   * selectivity, and 10% of 20K documents is comfortably above the exact-path threshold, so this
+   * query widens by construction.
+   */
+  public void testWideningBandRecall() throws Exception {
+    final int dim = 16;
+    final int count = 20_000;
+    final int nlist = 128;
+    final int k = 10;
+    final double sel = 0.10;
+    final int accepted = (int) Math.ceil(sel * count);
+    final float[][] vectors = clusteredCorpus(count, 24, dim);
+    try (Directory dir = newDirectory()) {
+      index(dir, vectors, cfg(codec(nlist, 4, 1)));
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        final IndexSearcher searcher = new IndexSearcher(reader);
+        final Query filter = IntPoint.newRangeQuery(SEL, 0, accepted - 1);
+        final double recall = recall(searcher, vectors, i -> i < accepted, filter, k, 20, k);
+        if (VERBOSE) {
+          System.out.println("widening band: accepted " + accepted + " recall " + recall);
+        }
+        assertTrue("widening-band recall " + recall, recall >= 0.9);
+      }
+    }
+  }
+
+  /**
    * A filter at most {@code bruteN} wide is reranked whole, so the result must be the exact
    * brute-force top-k over the accepted set: nothing was left unprobed.
    */

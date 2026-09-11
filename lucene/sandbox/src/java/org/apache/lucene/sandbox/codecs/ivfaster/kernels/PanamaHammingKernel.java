@@ -169,6 +169,17 @@ final class PanamaHammingKernel implements HammingKernel {
       new java.util.concurrent.atomic.AtomicLong();
 
   /**
+   * Rows scored through the CONTIGUOUS heap-array branches, so a test can prove they engaged.
+   *
+   * <p>Parity alone cannot: the specialized branches defer to the interface's scalar loop at any
+   * other length, so a broken width test would fall through, still return the right numbers, and
+   * pass a parity assertion while running no SIMD at all. That is the failure this class exists to
+   * catch; see its javadoc.
+   */
+  static final java.util.concurrent.atomic.AtomicLong contiguousArrayRows =
+      new java.util.concurrent.atomic.AtomicLong();
+
+  /**
    * Loads {@code STEP} bytes of a heap-resident row as long lanes.
    *
    * <p>The reinterpret is kept here, unlike in {@link #docVecNative}: {@code fromArray} on a {@code
@@ -176,6 +187,127 @@ final class PanamaHammingKernel implements HammingKernel {
    */
   private static LongVector rowVec(byte[] a, int off) {
     return ByteVector.fromArray(B_SPECIES, a, off).reinterpretAsLongs();
+  }
+
+  /**
+   * Contiguous-run form over a {@code byte[]}, for the build path's centroid ranking; see {@link
+   * HammingKernel#bulkDistancesFromArray}.
+   *
+   * <p>Every load on this path is {@link #rowVec}, i.e. {@code fromArray}. The point of the
+   * override is that the caller's codes never become a heap {@code MemorySegment}: {@code
+   * docVecHeap} would make each load a {@code ScopedMemoryAccess} call rather than an intrinsified
+   * vector load. That cost is real but only before C2 compiles the loop — measured warm it is 9.4
+   * ns/row against 8.7 for this form, so this override is worth ~6-12%, not the 4x an unwarmed
+   * profile suggests.
+   *
+   * <p>Specialized at the production width ({@code 8 * STEP}, which is {@code dim / 4} for the
+   * 1024-dim nitrox2 coarse code at 256-bit) and at {@code 4 * STEP}; any other length defers to
+   * the interface's scalar loop, which is correct everywhere.
+   *
+   * <p>KEPT TINY, with each loop in its own method, for the reason {@link #bulkDistances}
+   * documents: two full loop bodies inline here would bury the production loop and cost it register
+   * allocation. Do NOT fold them back in.
+   */
+  @Override
+  public void bulkDistancesFromArray(
+      byte[] q, byte[] codes, int off, int len, int rows, int[] out) {
+    if (len == 8 * STEP) {
+      bulk8FromArray(q, codes, off, len, rows, out);
+      contiguousArrayRows.addAndGet(rows);
+      return;
+    }
+    if (len == 4 * STEP) {
+      bulk4FromArray(q, codes, off, len, rows, out);
+      contiguousArrayRows.addAndGet(rows);
+      return;
+    }
+    HammingKernel.super.bulkDistancesFromArray(q, codes, off, len, rows, out);
+  }
+
+  /** Eight vectors per row, the 1024-dim production shape at 256-bit; see the caller. */
+  private static void bulk8FromArray(
+      byte[] q, byte[] codes, int off, int len, int rows, int[] out) {
+    final LongVector a0 = rowVec(q, 0);
+    final LongVector a1 = rowVec(q, STEP);
+    final LongVector a2 = rowVec(q, 2 * STEP);
+    final LongVector a3 = rowVec(q, 3 * STEP);
+    final LongVector a4 = rowVec(q, 4 * STEP);
+    final LongVector a5 = rowVec(q, 5 * STEP);
+    final LongVector a6 = rowVec(q, 6 * STEP);
+    final LongVector a7 = rowVec(q, 7 * STEP);
+    for (int r = 0; r < rows; r++) {
+      final int b = off + r * len;
+      final LongVector s0 =
+          a0.lanewise(VectorOperators.XOR, rowVec(codes, b)).lanewise(VectorOperators.BIT_COUNT);
+      final LongVector s1 =
+          a1.lanewise(VectorOperators.XOR, rowVec(codes, b + STEP))
+              .lanewise(VectorOperators.BIT_COUNT);
+      final LongVector s2 =
+          a2.lanewise(VectorOperators.XOR, rowVec(codes, b + 2 * STEP))
+              .lanewise(VectorOperators.BIT_COUNT);
+      final LongVector s3 =
+          a3.lanewise(VectorOperators.XOR, rowVec(codes, b + 3 * STEP))
+              .lanewise(VectorOperators.BIT_COUNT);
+      final LongVector s4 =
+          a4.lanewise(VectorOperators.XOR, rowVec(codes, b + 4 * STEP))
+              .lanewise(VectorOperators.BIT_COUNT);
+      final LongVector s5 =
+          a5.lanewise(VectorOperators.XOR, rowVec(codes, b + 5 * STEP))
+              .lanewise(VectorOperators.BIT_COUNT);
+      final LongVector s6 =
+          a6.lanewise(VectorOperators.XOR, rowVec(codes, b + 6 * STEP))
+              .lanewise(VectorOperators.BIT_COUNT);
+      final LongVector s7 =
+          a7.lanewise(VectorOperators.XOR, rowVec(codes, b + 7 * STEP))
+              .lanewise(VectorOperators.BIT_COUNT);
+      out[r] =
+          (int)
+              s0.add(s1)
+                  .add(s2.add(s3))
+                  .add(s4.add(s5).add(s6.add(s7)))
+                  .reduceLanes(VectorOperators.ADD);
+    }
+  }
+
+  /** Four vectors per row, which covers a 512-bit machine at the same dim; see the caller. */
+  private static void bulk4FromArray(
+      byte[] q, byte[] codes, int off, int len, int rows, int[] out) {
+    final LongVector a0 = rowVec(q, 0);
+    final LongVector a1 = rowVec(q, STEP);
+    final LongVector a2 = rowVec(q, 2 * STEP);
+    final LongVector a3 = rowVec(q, 3 * STEP);
+    for (int r = 0; r < rows; r++) {
+      final int b = off + r * len;
+      final LongVector s0 =
+          a0.lanewise(VectorOperators.XOR, rowVec(codes, b)).lanewise(VectorOperators.BIT_COUNT);
+      final LongVector s1 =
+          a1.lanewise(VectorOperators.XOR, rowVec(codes, b + STEP))
+              .lanewise(VectorOperators.BIT_COUNT);
+      final LongVector s2 =
+          a2.lanewise(VectorOperators.XOR, rowVec(codes, b + 2 * STEP))
+              .lanewise(VectorOperators.BIT_COUNT);
+      final LongVector s3 =
+          a3.lanewise(VectorOperators.XOR, rowVec(codes, b + 3 * STEP))
+              .lanewise(VectorOperators.BIT_COUNT);
+      out[r] = (int) s0.add(s1).add(s2.add(s3)).reduceLanes(VectorOperators.ADD);
+    }
+  }
+
+  /** Single-code form over a {@code byte[]}; see {@link HammingKernel#distanceFromArray}. */
+  @Override
+  public int distanceFromArray(byte[] q, byte[] codes, int off, int len) {
+    if (len % STEP != 0) {
+      return HammingKernel.super.distanceFromArray(q, codes, off, len);
+    }
+    LongVector acc = LongVector.zero(L_SPECIES);
+    for (int i = 0; i < len; i += STEP) {
+      acc =
+          acc.add(
+              rowVec(q, i)
+                  .lanewise(VectorOperators.XOR, rowVec(codes, off + i))
+                  .lanewise(VectorOperators.BIT_COUNT));
+    }
+    return (int) acc.reduceLanes(VectorOperators.ADD);
   }
 
   private static final VectorSpecies<Byte> B_SPECIES =
@@ -214,22 +346,33 @@ final class PanamaHammingKernel implements HammingKernel {
    * against a per-lane iota, so the store is a single vector op rather than a scalar extraction
    * loop.
    */
+  @org.apache.lucene.util.SuppressForbidden(
+      reason =
+          "compress is gated on Constants.HAS_FAST_COMPRESS_MASK_CAST above; same"
+              + " containment as core's PanamaVectorUtilSupport.filterByScore")
   @Override
   public int filterAtMost(int[] rowDist, int from, int count, int thr, int[] outIdx) {
     final IntVector threshold = IntVector.broadcast(I_SPECIES, thr);
     int k = 0;
     int i = 0;
-    for (final int upper = count - I_LANES; i <= upper; i += I_LANES) {
-      final IntVector d = IntVector.fromArray(I_SPECIES, rowDist, from + i);
-      final VectorMask<Integer> keep = d.compare(VectorOperators.LE, threshold);
-      final int survivors = keep.trueCount();
-      if (survivors == 0) {
-        continue;
+    // COMPRESS IS ONLY FAST WITH SVE OR AVX2. Without them it falls back to a slow emulation, which
+    // would make this filter cost more than the scalar scan it replaces, so the whole vector loop
+    // is
+    // skipped and the tail below handles every row. Core gates its own compress the same way; see
+    // Constants.HAS_FAST_COMPRESS_MASK_CAST and PanamaVectorUtilSupport.
+    if (org.apache.lucene.util.Constants.HAS_FAST_COMPRESS_MASK_CAST) {
+      for (final int upper = count - I_LANES; i <= upper; i += I_LANES) {
+        final IntVector d = IntVector.fromArray(I_SPECIES, rowDist, from + i);
+        final VectorMask<Integer> keep = d.compare(VectorOperators.LE, threshold);
+        final int survivors = keep.trueCount();
+        if (survivors == 0) {
+          continue;
+        }
+        // Compressing the iota under `keep` packs surviving indices low; one store lands them.
+        final IntVector local = IOTA.add(i);
+        local.compress(keep).intoArray(outIdx, k);
+        k += survivors;
       }
-      // Compressing the iota under `keep` packs surviving indices low; one store lands them.
-      final IntVector local = IOTA.add(i);
-      local.compress(keep).intoArray(outIdx, k);
-      k += survivors;
     }
     // Scalar tail: the lanes that do not fill a full vector.
     for (; i < count; i++) {
@@ -396,22 +539,22 @@ final class PanamaHammingKernel implements HammingKernel {
           vq1.lanewise(VectorOperators.XOR, docVecNative(seg, base + STEP))
               .lanewise(VectorOperators.BIT_COUNT);
       LongVector p2 =
-          vq2.lanewise(VectorOperators.XOR, docVecNative(seg, base + 2 * STEP))
+          vq2.lanewise(VectorOperators.XOR, docVecNative(seg, base + 2L * STEP))
               .lanewise(VectorOperators.BIT_COUNT);
       LongVector p3 =
-          vq3.lanewise(VectorOperators.XOR, docVecNative(seg, base + 3 * STEP))
+          vq3.lanewise(VectorOperators.XOR, docVecNative(seg, base + 3L * STEP))
               .lanewise(VectorOperators.BIT_COUNT);
       LongVector p4 =
-          vq4.lanewise(VectorOperators.XOR, docVecNative(seg, base + 4 * STEP))
+          vq4.lanewise(VectorOperators.XOR, docVecNative(seg, base + 4L * STEP))
               .lanewise(VectorOperators.BIT_COUNT);
       LongVector p5 =
-          vq5.lanewise(VectorOperators.XOR, docVecNative(seg, base + 5 * STEP))
+          vq5.lanewise(VectorOperators.XOR, docVecNative(seg, base + 5L * STEP))
               .lanewise(VectorOperators.BIT_COUNT);
       LongVector p6 =
-          vq6.lanewise(VectorOperators.XOR, docVecNative(seg, base + 6 * STEP))
+          vq6.lanewise(VectorOperators.XOR, docVecNative(seg, base + 6L * STEP))
               .lanewise(VectorOperators.BIT_COUNT);
       LongVector p7 =
-          vq7.lanewise(VectorOperators.XOR, docVecNative(seg, base + 7 * STEP))
+          vq7.lanewise(VectorOperators.XOR, docVecNative(seg, base + 7L * STEP))
               .lanewise(VectorOperators.BIT_COUNT);
       out[r] =
           (int)
@@ -442,22 +585,22 @@ final class PanamaHammingKernel implements HammingKernel {
           vq1.lanewise(VectorOperators.XOR, docVecHeap(seg, base + STEP))
               .lanewise(VectorOperators.BIT_COUNT);
       LongVector p2 =
-          vq2.lanewise(VectorOperators.XOR, docVecHeap(seg, base + 2 * STEP))
+          vq2.lanewise(VectorOperators.XOR, docVecHeap(seg, base + 2L * STEP))
               .lanewise(VectorOperators.BIT_COUNT);
       LongVector p3 =
-          vq3.lanewise(VectorOperators.XOR, docVecHeap(seg, base + 3 * STEP))
+          vq3.lanewise(VectorOperators.XOR, docVecHeap(seg, base + 3L * STEP))
               .lanewise(VectorOperators.BIT_COUNT);
       LongVector p4 =
-          vq4.lanewise(VectorOperators.XOR, docVecHeap(seg, base + 4 * STEP))
+          vq4.lanewise(VectorOperators.XOR, docVecHeap(seg, base + 4L * STEP))
               .lanewise(VectorOperators.BIT_COUNT);
       LongVector p5 =
-          vq5.lanewise(VectorOperators.XOR, docVecHeap(seg, base + 5 * STEP))
+          vq5.lanewise(VectorOperators.XOR, docVecHeap(seg, base + 5L * STEP))
               .lanewise(VectorOperators.BIT_COUNT);
       LongVector p6 =
-          vq6.lanewise(VectorOperators.XOR, docVecHeap(seg, base + 6 * STEP))
+          vq6.lanewise(VectorOperators.XOR, docVecHeap(seg, base + 6L * STEP))
               .lanewise(VectorOperators.BIT_COUNT);
       LongVector p7 =
-          vq7.lanewise(VectorOperators.XOR, docVecHeap(seg, base + 7 * STEP))
+          vq7.lanewise(VectorOperators.XOR, docVecHeap(seg, base + 7L * STEP))
               .lanewise(VectorOperators.BIT_COUNT);
       out[r] =
           (int)
@@ -487,10 +630,10 @@ final class PanamaHammingKernel implements HammingKernel {
           vq1.lanewise(VectorOperators.XOR, docVecNative(seg, base + STEP))
               .lanewise(VectorOperators.BIT_COUNT);
       LongVector p2 =
-          vq2.lanewise(VectorOperators.XOR, docVecNative(seg, base + 2 * STEP))
+          vq2.lanewise(VectorOperators.XOR, docVecNative(seg, base + 2L * STEP))
               .lanewise(VectorOperators.BIT_COUNT);
       LongVector p3 =
-          vq3.lanewise(VectorOperators.XOR, docVecNative(seg, base + 3 * STEP))
+          vq3.lanewise(VectorOperators.XOR, docVecNative(seg, base + 3L * STEP))
               .lanewise(VectorOperators.BIT_COUNT);
       out[r] = (int) p0.add(p1).add(p2.add(p3)).reduceLanes(VectorOperators.ADD);
     }
@@ -512,10 +655,10 @@ final class PanamaHammingKernel implements HammingKernel {
           vq1.lanewise(VectorOperators.XOR, docVecHeap(seg, base + STEP))
               .lanewise(VectorOperators.BIT_COUNT);
       LongVector p2 =
-          vq2.lanewise(VectorOperators.XOR, docVecHeap(seg, base + 2 * STEP))
+          vq2.lanewise(VectorOperators.XOR, docVecHeap(seg, base + 2L * STEP))
               .lanewise(VectorOperators.BIT_COUNT);
       LongVector p3 =
-          vq3.lanewise(VectorOperators.XOR, docVecHeap(seg, base + 3 * STEP))
+          vq3.lanewise(VectorOperators.XOR, docVecHeap(seg, base + 3L * STEP))
               .lanewise(VectorOperators.BIT_COUNT);
       out[r] = (int) p0.add(p1).add(p2.add(p3)).reduceLanes(VectorOperators.ADD);
     }

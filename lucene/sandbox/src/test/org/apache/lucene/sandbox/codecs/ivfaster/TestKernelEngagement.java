@@ -112,6 +112,108 @@ public class TestKernelEngagement extends LuceneTestCase {
   }
 
   /**
+   * The CONTIGUOUS HEAP-ARRAY path, which is what document routing runs at BUILD time.
+   *
+   * <p>Same shape as {@link #testConcatenatedCoarseHammingIsSumOfPlanes}, over a {@code byte[]}
+   * instead of a {@code MemorySegment}. It is a separate method rather than a wider operand set
+   * because the array form exists precisely so that the codes never become a heap {@code
+   * MemorySegment}: a Vector API load from one is not intrinsified until C2 compiles the loop,
+   * worth ~6-12% on this kernel once warm. Asserting the two forms agree is what lets the segment
+   * version be swapped out for it.
+   *
+   * <p>Checked three ways at every width: against the scalar reference, against {@link
+   * HammingKernel#bulkDistances} over a segment holding the SAME bytes, and against the sum of the
+   * two independent plane distances.
+   */
+  public void testContiguousHeapArrayHammingMatchesSegmentAndScalar() {
+    HammingKernel vector = HammingKernel.get();
+    HammingKernel scalar = new HammingKernel.Scalar();
+    for (int dim : DIMS) {
+      final int planeBytes = dim / 8;
+      final int len = 2 * planeBytes;
+      final int rows = 13;
+      // A non-zero start offset: routing scans a TILE beginning partway into the code table, so an
+      // implementation that ignored the offset would pass at 0 and misrank everywhere else.
+      final int off = 3 * len;
+      byte[] qHi = randomBytes(planeBytes);
+      byte[] qLo = randomBytes(planeBytes);
+      byte[] qCode = concat(qHi, qLo);
+      byte[] codes = randomBytes(off + rows * len);
+      MemorySegment seg = segmentOf(codes);
+
+      // Engagement, not just parity: the override defers to the interface's SCALAR loop at any
+      // length that is not 8*STEP or 4*STEP, so a broken width test would fall through, still
+      // return the right numbers, and pass every assertion below having run no SIMD at all. That
+      // is the silent fallback this class exists to catch, so the specialized widths assert the
+      // counter moved and the others assert it did not.
+      final boolean specialized = isSpecializedArrayWidth(len);
+      final long rowsBefore = PanamaHammingKernel.contiguousArrayRows.get();
+
+      int[] fromArray = new int[rows];
+      vector.bulkDistancesFromArray(qCode, codes, off, len, rows, fromArray);
+
+      if (vector instanceof PanamaHammingKernel) {
+        final long scored = PanamaHammingKernel.contiguousArrayRows.get() - rowsBefore;
+        if (specialized) {
+          assertEquals(
+              "len="
+                  + len
+                  + " is a specialized width at dim="
+                  + dim
+                  + ", so the vector branch"
+                  + " must have scored every row rather than deferring to the scalar loop",
+              rows,
+              scored);
+        } else {
+          assertEquals(
+              "len="
+                  + len
+                  + " is not a specialized width at dim="
+                  + dim
+                  + ", so no row should"
+                  + " have gone through a vector branch",
+              0L,
+              scored);
+        }
+      }
+
+      int[] fromSegment = new int[rows];
+      vector.bulkDistances(qCode, seg, off, len, rows, fromSegment);
+
+      int[] scalarArray = new int[rows];
+      scalar.bulkDistancesFromArray(qCode, codes, off, len, rows, scalarArray);
+
+      for (int r = 0; r < rows; r++) {
+        final int base = off + r * len;
+        final int planes =
+            scalar.distance(qHi, seg, base, planeBytes)
+                + scalar.distance(qLo, seg, base + planeBytes, planeBytes);
+        assertEquals("array vs planes, row " + r + " dim=" + dim, planes, fromArray[r]);
+        assertEquals("array vs segment, row " + r + " dim=" + dim, fromSegment[r], fromArray[r]);
+        assertEquals("array vs scalar, row " + r + " dim=" + dim, scalarArray[r], fromArray[r]);
+        // The single-code form must agree with the bulk form row for row.
+        assertEquals(
+            "distanceFromArray, row " + r + " dim=" + dim,
+            fromArray[r],
+            vector.distanceFromArray(qCode, codes, base, len));
+      }
+    }
+  }
+
+  /**
+   * Whether {@code len} is one of the widths {@code bulkDistancesFromArray} specializes, derived
+   * from the kernel's ACTUAL vector width so this tracks the platform instead of assuming 256-bit.
+   */
+  private static boolean isSpecializedArrayWidth(int len) {
+    final HammingKernel k = HammingKernel.get();
+    if (k instanceof PanamaHammingKernel == false) {
+      return false;
+    }
+    final int step = k.vectorBits() / 8;
+    return len == 8 * step || len == 4 * step;
+  }
+
+  /**
    * The STRIDED heap-array path, which is what the centroid graph's descent runs.
    *
    * <p>Three things are only checked here. The rows are NOT contiguous and are visited out of

@@ -124,7 +124,7 @@ final class Fp32Quantizer implements FineQuantizer {
     State(float[] rotated, int dim, VectorSimilarityFunction sim) {
       this.dim = dim;
       this.sim = sim;
-      this.q = java.util.Arrays.copyOf(rotated, dim);
+      this.q = org.apache.lucene.util.ArrayUtil.copyOfSubArray(rotated, 0, dim);
       this.scratch = new float[dim];
       double sq = 0;
       for (int d = 0; d < dim; d++) {

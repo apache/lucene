@@ -106,6 +106,54 @@ interface HammingKernel {
   }
 
   /**
+   * {@link #bulkDistances} for codes that live in a {@code byte[]}: {@code rows} CONSECUTIVE codes
+   * of {@code len} bytes starting at {@code codes[off]}, into {@code out[0..rows)}.
+   *
+   * <p>WHY THIS EXISTS RATHER THAN WRAPPING THE ARRAY. {@code MemorySegment.ofArray} produces a
+   * HEAP segment, and a Vector API load from a heap segment cannot take the intrinsified path — it
+   * goes through {@code ScopedMemoryAccess} and a per-element loop, which costs more than the
+   * vector width buys. Passing the array means the load is {@code ByteVector.fromArray}, which is
+   * intrinsified. The same reasoning as {@link #bulkDistancesAtBytes}; this is the contiguous-run
+   * form, for a caller ranking a range of centroids rather than a graph fan-out.
+   *
+   * <p>Bit-identical to {@link #bulkDistances} over a segment holding the same bytes: a popcount is
+   * a sum over independent words, so the result depends only on the bytes, not on how a load groups
+   * them into lanes.
+   *
+   * <p>The default implementation is the per-row scalar loop, so a kernel that does not specialize
+   * stays correct.
+   *
+   * @param off byte offset of the FIRST code within {@code codes}
+   * @param len bytes per code
+   * @param out must have length >= {@code rows}
+   */
+  default void bulkDistancesFromArray(
+      byte[] q, byte[] codes, int off, int len, int rows, int[] out) {
+    for (int r = 0; r < rows; r++) {
+      final int base = off + r * len;
+      int d = 0;
+      for (int i = 0; i < len; i++) {
+        d += Integer.bitCount((codes[base + i] ^ q[i]) & 0xFF);
+      }
+      out[r] = d;
+    }
+  }
+
+  /**
+   * {@link #distance} for ONE code living in a {@code byte[]}, at {@code codes[off]}.
+   *
+   * <p>Exists for the same reason as {@link #bulkDistancesFromArray}: a heap {@code MemorySegment}
+   * wrapper would deoptimize the load.
+   */
+  default int distanceFromArray(byte[] q, byte[] codes, int off, int len) {
+    int d = 0;
+    for (int i = 0; i < len; i++) {
+      d += Integer.bitCount((codes[off + i] ^ q[i]) & 0xFF);
+    }
+    return d;
+  }
+
+  /**
    * ADMISSION FILTER for the streaming coarse select. Scans {@code count} distances starting at
    * {@code rowDist[from]} and appends, to {@code outIdx} starting at 0, the LOCAL index {@code i}
    * (relative to {@code from}, i.e. {@code 0..count}) of every row with {@code rowDist[from + i] <=

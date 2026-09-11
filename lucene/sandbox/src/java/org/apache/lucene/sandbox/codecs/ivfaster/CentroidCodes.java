@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.sandbox.codecs.ivfaster;
 
-import java.lang.foreign.MemorySegment;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.VectorUtil;
 
@@ -111,9 +110,6 @@ final class CentroidCodes {
   /** Whether {@link #fine} scores centred vectors, so the centroid mean is maintained. */
   private final boolean needsFineMean;
 
-  /** Segment view of the coarse code table, for the Hamming kernel, which reads segments. */
-  private final MemorySegment coarseSeg;
-
   private final HammingKernel hamming = HammingKernel.get();
 
   /**
@@ -130,7 +126,6 @@ final class CentroidCodes {
     this.planeBytes = Nitrox2.planeBytes(dim);
     this.coarseBytes = Nitrox2.bytesPerVector(dim);
     this.coarse = new byte[nlist * coarseBytes];
-    this.coarseSeg = MemorySegment.ofArray(coarse);
     this.fine = fine;
     this.useFine = fine != null && fine.supports(dim);
     this.needsFineMean = useFine && fine.needsMean();
@@ -482,8 +477,10 @@ final class CentroidCodes {
    * Hamming over each centroid's whole {@code coarseBytes} record. See {@link #coarse}.
    */
   private void hammingTile(Scratch scratch, int base, int rows) {
-    final long off = (long) base * coarseBytes;
-    hamming.bulkDistances(scratch.qCode, coarseSeg, off, coarseBytes, rows, scratch.coarseDist);
+    // The ARRAY form, not a MemorySegment wrapper: this is the build path's hot loop, and a Vector
+    // API load from a heap segment is not intrinsified. See HammingKernel.bulkDistancesFromArray.
+    hamming.bulkDistancesFromArray(
+        scratch.qCode, coarse, base * coarseBytes, coarseBytes, rows, scratch.coarseDist);
   }
 
   /**

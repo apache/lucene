@@ -25,3 +25,29 @@ dependencies {
   moduleApi project(':lucene:facet')
   moduleTestImplementation project(':lucene:test-framework')
 }
+
+// The ivfaster codec's SIMD kernels reference jdk.incubator.vector through a `requires static` edge
+// (see src/java/module-info.java), so the module is NOT on the compile classpath forbidden-apis
+// resolves against, and scanning PanamaHammingKernel fails outright with
+// "ClassNotFoundException: jdk.incubator.vector.VectorSpecies" rather than reporting a violation.
+//
+// Same remedy lucene:core already uses for its own Panama sources: hand forbidden-apis the stub API
+// jar that ExtractJdkApis generates, which carries jdk/incubator/vector/* signatures and nothing
+// else. This only lets the scanner RESOLVE those classes; it does not exempt anything from the
+// checks, so every forbidden-apis signature still applies to this module.
+// The same add-then-suppress dance lucene:core does for its MR-JAR vector sources: the stub jar's
+// Vector signatures reference jdk.internal.vm.vector.VectorSupport$Vector, which the jdk-nonportable
+// rule flags, and forbidden-apis will only suppress a signature it has also been given.
+// See https://github.com/policeman-tools/forbidden-apis/issues/267
+def jdkApiJar = project(':lucene:core').file('src/generated/jdk/jdk25-api.jar')
+def vectorExclusions = ['jdk.internal.vm.vector.VectorSupport$Vector']
+def incubatorVectorSignatures =
+    rootProject.file('gradle/validation/forbidden-apis/non-standard/incubator-vector.txt')
+
+tasks.withType(de.thetaphi.forbiddenapis.gradle.CheckForbiddenApis).configureEach {
+  classpath += files(jdkApiJar)
+  signatures.addAll(vectorExclusions)
+  signaturesWithSeveritySuppress.addAll(vectorExclusions)
+  // The incubator's own trap list, so this module is held to the same bar as core's vector code.
+  signaturesFiles = signaturesFiles.plus(files(incubatorVectorSignatures))
+}

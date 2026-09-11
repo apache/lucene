@@ -17,7 +17,6 @@
 package org.apache.lucene.sandbox.codecs.ivfaster;
 
 import java.io.IOException;
-import java.lang.foreign.MemorySegment;
 import java.util.Random;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.RandomAccessInput;
@@ -145,7 +144,6 @@ final class CentroidGraph {
   /** The interleaved node records, {@code nlist * stride} bytes. */
   private final byte[] nodes;
 
-  private final MemorySegment nodesSeg;
   private final HammingKernel hamming = HammingKernel.get();
 
   /**
@@ -175,7 +173,6 @@ final class CentroidGraph {
     this.stride = stride;
     this.entry = entry;
     this.nodes = nodes;
-    this.nodesSeg = MemorySegment.ofArray(nodes);
     final int n = nlist;
     this.visitedScratch = ThreadLocal.withInitial(() -> new int[n]);
   }
@@ -377,7 +374,7 @@ final class CentroidGraph {
     if (a.length >= M) {
       return a;
     }
-    final int[] out = java.util.Arrays.copyOf(a, a.length + 1);
+    final int[] out = org.apache.lucene.util.ArrayUtil.growExact(a, a.length + 1);
     out[a.length] = v;
     return out;
   }
@@ -552,7 +549,9 @@ final class CentroidGraph {
         }
       }
     }
-    return nKept == kept.length ? kept : java.util.Arrays.copyOf(kept, nKept);
+    return nKept == kept.length
+        ? kept
+        : org.apache.lucene.util.ArrayUtil.copyOfSubArray(kept, 0, nKept);
   }
 
   /**
@@ -573,7 +572,7 @@ final class CentroidGraph {
       }
     }
     if (cur.length < M) {
-      final int[] out = java.util.Arrays.copyOf(cur, cur.length + 1);
+      final int[] out = org.apache.lucene.util.ArrayUtil.growExact(cur, cur.length + 1);
       out[cur.length] = node;
       return out;
     }
@@ -752,8 +751,10 @@ final class CentroidGraph {
 
   /** Coarse distance from the query code to one node's payload. */
   private int coarseDistance(byte[] qCode, int node) {
-    final long base = (long) node * stride;
-    return hamming.distance(qCode, nodesSeg, base, coarseBytes);
+    // int, not long: the payload is a byte[], so any reachable offset fits an int by construction.
+    final int base = node * stride;
+    // Array form, not a heap MemorySegment; see HammingKernel.distanceFromArray.
+    return hamming.distanceFromArray(qCode, nodes, base, coarseBytes);
   }
 
   // ---- persistence ----
