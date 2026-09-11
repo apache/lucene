@@ -29,27 +29,40 @@ import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
+import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.SegmentReader;
+import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.SameThreadExecutorService;
 import org.apache.lucene.util.VectorUtil;
+import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
+import org.apache.lucene.util.hnsw.RandomVectorScorer;
+import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
+import org.apache.lucene.util.quantization.QuantizedVectorsReader;
 import org.junit.Before;
 
 public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
@@ -103,6 +116,97 @@ public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVector
             "Lucene99MemorySegmentFlatVectorsScorer",
             "Lucene99MemorySegmentFlatVectorsScorer");
     assertThat(customCodec.knnVectorsFormat().toString(), is(oneOf(defaultScorer, memSegScorer)));
+  }
+
+  /**
+   * A merge that builds a graph over an asymmetric encoding quantizes the merged vectors again for
+   * the query side of the merge scorer. For COSINE those vectors must be normalized first, like the
+   * index side was and like a search-time query is, so the merge scorer must score a pair exactly
+   * like the search-time scorer does for the same vector. The base test case only feeds unit
+   * vectors, for which the two agree by accident; this uses vectors that are not.
+   */
+  public void testMergeCosineWithNonUnitVectors() throws Exception {
+    for (ScalarEncoding asymmetric : ScalarEncoding.values()) {
+      if (asymmetric.isAsymmetric() == false) {
+        continue;
+      }
+      // a threshold of 0 makes every merge build a graph, so the merge scorer is always requested
+      KnnVectorsFormat graphFormat =
+          new Lucene104HnswScalarQuantizedVectorsFormat(
+              asymmetric,
+              Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
+              Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH,
+              1,
+              null,
+              0);
+      IndexWriterConfig config =
+          newIndexWriterConfig()
+              .setCodec(TestUtil.alwaysKnnVectorsFormat(graphFormat))
+              .setMergePolicy(newLogMergePolicy());
+      int dim = random().nextInt(8, 64);
+      int numDocs = atLeast(50);
+      float[][] vectors = new float[numDocs][];
+      try (Directory dir = newDirectory();
+          IndexWriter w = new IndexWriter(dir, config)) {
+        for (int i = 0; i < numDocs; i++) {
+          float[] vector = randomVector(dim);
+          // scale away from the unit sphere
+          float scale = random().nextFloat(2f, 10f);
+          for (int j = 0; j < dim; j++) {
+            vector[j] *= scale;
+          }
+          vectors[i] = vector;
+          Document doc = new Document();
+          doc.add(new KnnFloatVectorField("f", vector, VectorSimilarityFunction.COSINE));
+          w.addDocument(doc);
+          if (i == numDocs / 2) {
+            w.commit(); // two segments, so the merge has something to merge
+          }
+        }
+        w.commit();
+        w.forceMerge(1);
+        try (IndexReader reader = DirectoryReader.open(w)) {
+          LeafReader r = getOnlyLeafReader(reader);
+          SegmentReader segmentReader = (SegmentReader) FilterLeafReader.unwrap(r);
+          FieldInfo fieldInfo = r.getFieldInfos().fieldInfo("f");
+          Lucene99HnswVectorsReader hnswReader =
+              (Lucene99HnswVectorsReader) segmentReader.getVectorReader().unwrapReaderForField("f");
+          FlatVectorsReader flatReader = hnswReader.getFlatVectorsReader();
+          QuantizedVectorsReader quantizedReader = (QuantizedVectorsReader) flatReader;
+          SegmentWriteState writeState =
+              new SegmentWriteState(
+                  InfoStream.getDefault(),
+                  dir,
+                  segmentReader.getSegmentInfo().info,
+                  r.getFieldInfos(),
+                  null,
+                  IOContext.DEFAULT);
+          KnnVectorValues quantizedValues = quantizedReader.getQuantizedVectorValues("f");
+          FlatVectorsScorer searchScorer = flatReader.getFlatVectorScorer("f");
+          try (CloseableRandomVectorScorerSupplier mergeScorers =
+              quantizedReader.getRandomVectorScorerSupplierForMerge(fieldInfo, writeState)) {
+            FloatVectorValues rawValues = r.getFloatVectorValues("f");
+            UpdateableRandomVectorScorer mergeScorer = mergeScorers.scorer();
+            for (int i = 0; i < 5; i++) {
+              int queryOrd = random().nextInt(numDocs);
+              int targetOrd = random().nextInt(numDocs);
+              // the search-time scorer normalizes a COSINE query before quantizing it
+              RandomVectorScorer expected =
+                  searchScorer.getRandomVectorScorer(
+                      VectorSimilarityFunction.COSINE,
+                      quantizedValues,
+                      rawValues.vectorValue(queryOrd));
+              mergeScorer.setScoringOrdinal(queryOrd);
+              assertEquals(
+                  "encoding " + asymmetric + " query ord " + queryOrd + " target ord " + targetOrd,
+                  expected.score(targetOrd),
+                  mergeScorer.score(targetOrd),
+                  1e-5f);
+            }
+          }
+        }
+      }
+    }
   }
 
   public void testSingleVectorCase() throws Exception {
