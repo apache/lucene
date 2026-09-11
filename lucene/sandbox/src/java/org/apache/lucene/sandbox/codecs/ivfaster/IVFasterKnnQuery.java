@@ -81,6 +81,19 @@ public final class IVFasterKnnQuery extends Query {
   private final boolean adaptive;
 
   /**
+   * How filter rarity scales the probe: {@code probe * rarity^k}; see {@code CellScorer.create}.
+   *
+   * <p>MEASURED, AND GEOMETRY-DEPENDENT. 0.383 is a least-squares fit over selectivity 5-50% on a
+   * 1M segment at {@code nlist=1000} with {@code spillBits=1}, where a cell holds about a thousand
+   * documents. At a much larger {@code nlist} a cell holds a handful instead, and the exponent that
+   * preserves recall will differ, which is why this is a property rather than a constant. Uniform
+   * random accept sets only: a filter correlated with the query breaks the premise that rarity
+   * alone predicts how much further the probe must reach.
+   */
+  private static final double FILTER_RARITY_EXPONENT =
+      Double.parseDouble(System.getProperty("ivfaster.filterRarityExponent", "0.383"));
+
+  /**
    * @param field the ivfaster vector field
    * @param target the query vector, copied
    * @param nprobe cells to probe per segment, or {@code 0} for the value the segment was written
@@ -131,17 +144,30 @@ public final class IVFasterKnnQuery extends Query {
         }
         // What the configured probe would walk, before any cell is chosen; the conjunction reads
         // it to decide which clause leads.
-        final long ownCost = Math.max(1, session.slots() * session.probe() / session.nlist());
+        // EVERY DOCUMENT WITH A VECTOR, not what the probe would walk.
+        //
+        // A conjunction elects its CHEAPEST clause to lead and hands every other clause that
+        // clause's cardinality as leadCost. Advertising the probe's walk instead -- which is SMALL
+        // exactly when nprobe is small -- made this clause win the election at any selectivity
+        // above
+        // roughly nprobe * slots / nlist, and a winner is told its OWN cost, so it could never see
+        // how selective the filter beside it was. Measured at 1M/nlist=1000, that put filtered
+        // recall at 0.688 where the acceptDocs path reached 0.898, and made recall jump 0.451 ->
+        // 0.929 on nothing but a probe change, because the election flipped.
+        //
+        // This clause also SHOULD never lead: per document it pays a coarse Hamming test and, on a
+        // match, an int8 rerank, so it wants to be driven by something sparser.
+        final long fieldCost = Math.max(1, session.count());
         return new ScorerSupplier() {
           @Override
           public Scorer get(long leadCost) throws IOException {
             return CellScorer.create(
-                session, ownCost, adaptive ? leadCost : Long.MAX_VALUE, admit, boost);
+                session, fieldCost, adaptive ? leadCost : Long.MAX_VALUE, admit, boost);
           }
 
           @Override
           public long cost() {
-            return ownCost;
+            return fieldCost;
           }
         };
       }
@@ -323,14 +349,14 @@ public final class IVFasterKnnQuery extends Query {
 
     static Scorer create(
         IVFasterVectorsReader.CellSession session,
-        long ownCost,
+        long fieldCost,
         long leadCost,
         int admit,
         float boost)
         throws IOException {
       final List<DisiWrapper> wrappers = new ArrayList<>();
       final boolean exact;
-      if (leadCost < ownCost && leadCost <= session.exactBound()) {
+      if (leadCost < fieldCost && leadCost <= session.exactBound()) {
         exact = true;
         wrappers.add(new CellPostings.Wrapper(session.allDocs()));
       } else {
@@ -338,14 +364,31 @@ public final class IVFasterKnnQuery extends Query {
         int probe = session.probe();
         // The codec's pool: admit slots for every copy a document may hold, then dedup to admit.
         long admitRows = (long) admit * session.fanout();
-        if (leadCost < ownCost) {
-          final double widen = (double) session.count() / Math.max(1, leadCost);
-          final long needed =
-              (long)
-                  Math.ceil(
-                      session.filteredTarget() * session.nlist() / (double) Math.max(1, leadCost));
-          probe = (int) Math.max(probe, Math.min(session.maxProbe(), needed));
-          admitRows = (long) Math.ceil(admitRows * widen);
+        // A leading clause sparser than the field is a filter, and its rarity is how much wider
+        // this
+        // probe has to reach. Compared against the FIELD, not against this probe's own walk: the
+        // question is whether a filter is restricting, which has nothing to do with nprobe.
+        if (leadCost < fieldCost) {
+          final double rarity = (double) fieldCost / Math.max(1, leadCost);
+          // SCALE THE PROBE, do not re-derive it from a document count. The previous formula asked
+          // "how many cells hold filteredTarget accepted documents" and answered 7 at 10%
+          // selectivity, where 32 was already needed UNFILTERED -- so it never bound and the probe
+          // never grew. The configured probe is the tuned operating point; rarity says how much
+          // further it has to reach to hold the same recall.
+          //
+          // The exponent is measured, not assumed. Sweeping nprobe to hold recall 0.95 on
+          // 1M/nlist=1000/spillBits=1 gives multipliers 1.41x / 1.70x / 2.42x / 3.09x at
+          // selectivity 50 / 25 / 10 / 5%, i.e. rarity^0.383 with three of the four points inside
+          // 0.376-0.384. Linear in rarity would ask for 20x where 3.09x holds; sqrt would ask
+          // 4.47x.
+          probe =
+              (int)
+                  Math.max(
+                      probe,
+                      Math.min(
+                          session.maxProbe(),
+                          (long) Math.ceil(probe * Math.pow(rarity, FILTER_RARITY_EXPONENT))));
+          admitRows = (long) Math.ceil(admitRows * rarity);
         }
         final int n = session.prepare(probe, admitRows);
         for (int i = 0; i < n; i++) {
