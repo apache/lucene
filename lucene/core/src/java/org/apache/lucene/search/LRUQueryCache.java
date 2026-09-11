@@ -953,8 +953,13 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
     }
 
     // Package private for testing
-    Iterable<QueryCacheKey> keys() {
-      return cache.keySet();
+    Set<QueryCacheKey> keys() {
+      readLock.lock();
+      try {
+        return new HashSet<>(cache.keySet());
+      } finally {
+        readLock.unlock();
+      }
     }
 
     Map<QueryCacheKey, QueryMetadata> getUniqueCacheKeys() {
