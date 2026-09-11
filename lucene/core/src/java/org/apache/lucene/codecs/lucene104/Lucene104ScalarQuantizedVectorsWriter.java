@@ -18,10 +18,10 @@ package org.apache.lucene.codecs.lucene104;
 
 import static org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
 import static org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_COMPONENT;
+import static org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.writeCorrections;
 import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.util.RamUsageEstimator.shallowSizeOfInstance;
-import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.transposeHalfByte;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -208,17 +208,9 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       OptimizedScalarQuantizer.QuantizationResult corrections =
           scalarQuantizer.scalarQuantize(
               fieldData.floatVectorValue(i), scratch, encoding.getBits(), clusterCenter);
-      switch (encoding) {
-        case PACKED_NIBBLE -> OffHeapScalarQuantizedVectorValues.packNibbles(scratch, vector);
-        case SINGLE_BIT_QUERY_NIBBLE -> OptimizedScalarQuantizer.packAsBinary(scratch, vector);
-        case DIBIT_QUERY_NIBBLE -> OptimizedScalarQuantizer.transposeDibit(scratch, vector);
-        case UNSIGNED_BYTE, SEVEN_BIT -> {}
-      }
+      packIndexRecord(encoding, scratch, vector);
       vectorData.writeBytes(vector, vector.length);
-      vectorData.writeInt(Float.floatToIntBits(corrections.lowerInterval()));
-      vectorData.writeInt(Float.floatToIntBits(corrections.upperInterval()));
-      vectorData.writeInt(Float.floatToIntBits(corrections.additionalCorrection()));
-      vectorData.writeInt(corrections.quantizedComponentSum());
+      writeCorrections(vectorData, corrections);
     }
   }
 
@@ -269,17 +261,9 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       OptimizedScalarQuantizer.QuantizationResult corrections =
           scalarQuantizer.scalarQuantize(
               fieldData.floatVectorValue(ordinal), scratch, encoding.getBits(), clusterCenter);
-      switch (encoding) {
-        case PACKED_NIBBLE -> OffHeapScalarQuantizedVectorValues.packNibbles(scratch, vector);
-        case SINGLE_BIT_QUERY_NIBBLE -> OptimizedScalarQuantizer.packAsBinary(scratch, vector);
-        case DIBIT_QUERY_NIBBLE -> OptimizedScalarQuantizer.transposeDibit(scratch, vector);
-        case UNSIGNED_BYTE, SEVEN_BIT -> {}
-      }
+      packIndexRecord(encoding, scratch, vector);
       vectorData.writeBytes(vector, vector.length);
-      vectorData.writeInt(Float.floatToIntBits(corrections.lowerInterval()));
-      vectorData.writeInt(Float.floatToIntBits(corrections.upperInterval()));
-      vectorData.writeInt(Float.floatToIntBits(corrections.additionalCorrection()));
-      vectorData.writeInt(corrections.quantizedComponentSum());
+      writeCorrections(vectorData, corrections);
     }
   }
 
@@ -337,10 +321,12 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     }
   }
 
-  private QuantizedByteVectorValues mergedQuantizedVectorValues(
-      FieldInfo fieldInfo, MergeState mergeState, float[] centroid) throws IOException {
-    OptimizedScalarQuantizer quantizer =
-        new OptimizedScalarQuantizer(fieldInfo.getVectorSimilarityFunction());
+  /**
+   * The merged float vectors of the field, as the quantizer sees them: inflated from fp16 if need
+   * be, and normalized for COSINE.
+   */
+  private FloatVectorValues mergedFloatVectorValues(FieldInfo fieldInfo, MergeState mergeState)
+      throws IOException {
     FloatVectorValues vectorValues =
         fieldInfo.getVectorEncoding() == VectorEncoding.FLOAT16
             ? new Float16AsFloatVectorValues(
@@ -349,7 +335,15 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
       vectorValues = new NormalizedFloatVectorValues(vectorValues);
     }
-    return new QuantizedFloatVectorValues(vectorValues, quantizer, encoding, centroid);
+    return vectorValues;
+  }
+
+  private QuantizedByteVectorValues mergedQuantizedVectorValues(
+      FieldInfo fieldInfo, MergeState mergeState, float[] centroid) throws IOException {
+    OptimizedScalarQuantizer quantizer =
+        new OptimizedScalarQuantizer(fieldInfo.getVectorSimilarityFunction());
+    return new QuantizedFloatVectorValues(
+        mergedFloatVectorValues(fieldInfo, mergeState), quantizer, encoding, centroid);
   }
 
   /**
@@ -521,50 +515,28 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       // write vector
       byte[] binaryValue = quantizedByteVectorValues.vectorValue(iterator.index());
       output.writeBytes(binaryValue, binaryValue.length);
-      OptimizedScalarQuantizer.QuantizationResult corrections =
-          quantizedByteVectorValues.getCorrectiveTerms(iterator.index());
-      output.writeInt(Float.floatToIntBits(corrections.lowerInterval()));
-      output.writeInt(Float.floatToIntBits(corrections.upperInterval()));
-      output.writeInt(Float.floatToIntBits(corrections.additionalCorrection()));
-      output.writeInt(corrections.quantizedComponentSum());
+      writeCorrections(output, quantizedByteVectorValues.getCorrectiveTerms(iterator.index()));
       docsWithField.add(docV);
     }
     return docsWithField;
   }
 
-  static DocsWithFieldSet writeBinarizedQueryData(
-      QuantizedByteVectorValues quantizedByteVectorValues,
-      ScalarEncoding encoding,
-      IndexOutput binarizedQueryData,
-      FloatVectorValues floatVectorValues,
-      OptimizedScalarQuantizer binaryQuantizer)
-      throws IOException {
-    if (encoding.isAsymmetric() == false) {
-      throw new IllegalArgumentException("encoding and queryEncoding must be different");
+  /**
+   * Packs a quantized index-side record from {@code scratch} into {@code dest}. {@link
+   * ScalarEncoding#UNSIGNED_BYTE} and {@link ScalarEncoding#SEVEN_BIT} write the quantized bytes as
+   * they are, so for them this is a copy, and callers that pass the same array for both save it.
+   */
+  private static void packIndexRecord(ScalarEncoding encoding, byte[] scratch, byte[] dest) {
+    switch (encoding) {
+      case PACKED_NIBBLE -> OffHeapScalarQuantizedVectorValues.packNibbles(scratch, dest);
+      case SINGLE_BIT_QUERY_NIBBLE -> OptimizedScalarQuantizer.packAsBinary(scratch, dest);
+      case DIBIT_QUERY_NIBBLE -> OptimizedScalarQuantizer.transposeDibit(scratch, dest);
+      case UNSIGNED_BYTE, SEVEN_BIT -> {
+        if (dest != scratch) {
+          System.arraycopy(scratch, 0, dest, 0, scratch.length);
+        }
+      }
     }
-    DocsWithFieldSet docsWithField = new DocsWithFieldSet();
-    int discretizedDims = encoding.getDiscreteDimensions(floatVectorValues.dimension());
-    byte[] quantizationScratch = new byte[discretizedDims];
-    byte[] toQuery = new byte[encoding.getQueryPackedLength(discretizedDims)];
-    KnnVectorValues.DocIndexIterator iterator = floatVectorValues.iterator();
-    for (int docV = iterator.nextDoc(); docV != NO_MORE_DOCS; docV = iterator.nextDoc()) {
-      // write index vector
-      OptimizedScalarQuantizer.QuantizationResult r =
-          binaryQuantizer.scalarQuantize(
-              floatVectorValues.vectorValue(iterator.index()),
-              quantizationScratch,
-              encoding.getQueryBits(),
-              quantizedByteVectorValues.getCentroid());
-      docsWithField.add(docV);
-      // pack and store the 4bit query vector
-      transposeHalfByte(quantizationScratch, toQuery);
-      binarizedQueryData.writeBytes(toQuery, toQuery.length);
-      binarizedQueryData.writeInt(Float.floatToIntBits(r.lowerInterval()));
-      binarizedQueryData.writeInt(Float.floatToIntBits(r.upperInterval()));
-      binarizedQueryData.writeInt(Float.floatToIntBits(r.additionalCorrection()));
-      binarizedQueryData.writeInt(r.quantizedComponentSum());
-    }
-    return docsWithField;
   }
 
   @Override
@@ -1177,12 +1149,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       corrections =
           quantizer.scalarQuantize(
               values.vectorValue(ord), quantized, encoding.getBits(), centroid);
-      switch (encoding) {
-        case PACKED_NIBBLE -> OffHeapScalarQuantizedVectorValues.packNibbles(quantized, packed);
-        case SINGLE_BIT_QUERY_NIBBLE -> OptimizedScalarQuantizer.packAsBinary(quantized, packed);
-        case DIBIT_QUERY_NIBBLE -> OptimizedScalarQuantizer.transposeDibit(quantized, packed);
-        case UNSIGNED_BYTE, SEVEN_BIT -> {}
-      }
+      packIndexRecord(encoding, quantized, packed);
     }
 
     @Override

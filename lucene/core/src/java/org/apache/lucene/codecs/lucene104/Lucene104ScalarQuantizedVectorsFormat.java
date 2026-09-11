@@ -24,6 +24,8 @@ import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
 
 /**
@@ -122,6 +124,19 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   static final String META_EXTENSION = "vemq";
   static final String VECTOR_DATA_EXTENSION = "veq";
   static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
+
+  /**
+   * Writes the corrective terms that follow a quantized record. Index-side records and query-side
+   * records share this layout, so this is the one definition of it.
+   */
+  static void writeCorrections(
+      IndexOutput output, OptimizedScalarQuantizer.QuantizationResult corrections)
+      throws IOException {
+    output.writeInt(Float.floatToIntBits(corrections.lowerInterval()));
+    output.writeInt(Float.floatToIntBits(corrections.upperInterval()));
+    output.writeInt(Float.floatToIntBits(corrections.additionalCorrection()));
+    output.writeInt(corrections.quantizedComponentSum());
+  }
 
   private static final FlatVectorsFormat rawVectorFormat =
       new Lucene99FlatVectorsFormat(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
