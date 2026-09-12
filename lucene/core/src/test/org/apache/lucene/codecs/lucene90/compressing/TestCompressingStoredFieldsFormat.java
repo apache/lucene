@@ -36,6 +36,7 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.codecs.compressing.CompressingCodec;
 import org.apache.lucene.tests.index.BaseStoredFieldsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.BytesRef;
 
 public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTestCase {
 
@@ -49,6 +50,15 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
       return CompressingCodec.randomInstance(random());
     } else {
       return CompressingCodec.reasonableInstance(random());
+    }
+  }
+
+  private static void assertStoredBytesEquals(byte[] expected, Document doc, String field) {
+    BytesRef actual = doc.getBinaryValue(field);
+    assertNotNull(actual);
+    assertEquals(expected.length, actual.length);
+    for (int i = 0; i < expected.length; i++) {
+      assertEquals(expected[i], actual.bytes[actual.offset + i]);
     }
   }
 
@@ -315,6 +325,11 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
         assertEquals("content1", loaded.get("content1"));
         assertEquals("content2", loaded.get("content2"));
         assertEquals("content3", loaded.get("content3"));
+
+        loaded = ir.storedFields().document(0, Set.of("payload1", "payload2"));
+        assertEquals(2, loaded.getFields().size());
+        assertStoredBytesEquals(payload1, loaded, "payload1");
+        assertStoredBytesEquals(payload2, loaded, "payload2");
       }
     }
   }
@@ -354,6 +369,11 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
         assertEquals("content1", loaded.get("content1"));
         assertEquals("content2", loaded.get("content2"));
         assertEquals("content3", loaded.get("content3"));
+
+        loaded = ir.storedFields().document(0, Set.of("payload1", "payload2"));
+        assertEquals(2, loaded.getFields().size());
+        assertStoredBytesEquals(payload1, loaded, "payload1");
+        assertStoredBytesEquals(payload2, loaded, "payload2");
       }
     }
   }
@@ -393,6 +413,11 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
         assertEquals("content1", loaded.get("content1"));
         assertEquals("content2", loaded.get("content2"));
         assertEquals("content3", loaded.get("content3"));
+
+        loaded = ir.storedFields().document(0, Set.of("payload1", "payload2"));
+        assertEquals(2, loaded.getFields().size());
+        assertStoredBytesEquals(payload1, loaded, "payload1");
+        assertStoredBytesEquals(payload2, loaded, "payload2");
       }
     }
   }
@@ -432,6 +457,11 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
         assertEquals("content1", loaded.get("content1"));
         assertEquals("content2", loaded.get("content2"));
         assertEquals("content3", loaded.get("content3"));
+
+        loaded = ir.storedFields().document(0, Set.of("payload1", "payload2"));
+        assertEquals(2, loaded.getFields().size());
+        assertStoredBytesEquals(payload1, loaded, "payload1");
+        assertStoredBytesEquals(payload2, loaded, "payload2");
       }
     }
   }
