@@ -50,6 +50,7 @@ import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IOContext.FileOpenHint;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.ParallelVectorReadable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
@@ -207,6 +208,29 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     // Update the read advice since vectors are guaranteed to be accessed sequentially for merge
     vectorData.updateIOContext(dataContext.withHints(DataAccessHint.SEQUENTIAL));
     return this;
+  }
+
+  /**
+   * Batch-reads the shortlist straight out of the vector data file when the store can service
+   * scattered reads as one batch, which is what makes a larger-than-RAM rerank practical: with the
+   * {@code .vec} file opened O_DIRECT these reads bypass the page cache and read-ahead, so they
+   * neither pull in unwanted blocks nor evict the hot HNSW graph and quantized codes.
+   */
+  @Override
+  public boolean readRawVectors(String field, int[] ords, int count, float[] out)
+      throws IOException {
+    FieldEntry fe = getFieldEntryOrThrow(field);
+    if (vectorData instanceof ParallelVectorReadable batch
+        && fe.vectorEncoding == VectorEncoding.FLOAT32) {
+      final int dim = fe.dimension;
+      long[] positions = new long[count];
+      for (int i = 0; i < count; i++) {
+        positions[i] = fe.vectorDataOffset + (long) ords[i] * dim * Float.BYTES;
+      }
+      batch.readVectors(positions, dim, count, out);
+      return true;
+    }
+    return false;
   }
 
   private FieldEntry getFieldEntryOrThrow(String field) {

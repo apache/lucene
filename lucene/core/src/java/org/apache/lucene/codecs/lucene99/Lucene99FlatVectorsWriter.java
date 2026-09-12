@@ -184,7 +184,11 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
         switch (encoding) {
           case BYTE -> Float.BYTES;
           case FLOAT16 -> Float.BYTES;
-          case FLOAT32 -> 64; // optimal alignment for Arm Neoverse machines.
+          // Page-align FLOAT32 vector data to 4KB so O_DIRECT rerank reads (see
+          // org.apache.lucene.store.ParallelVectorReadable) fetch one 4KB block per vector instead
+          // of straddling two. Padding is transparent to readers (the vector-data offset is stored
+          // in metadata), so this is not a format change. (Was 64 = Arm Neoverse cache-line.)
+          case FLOAT32 -> 4096;
         });
   }
 

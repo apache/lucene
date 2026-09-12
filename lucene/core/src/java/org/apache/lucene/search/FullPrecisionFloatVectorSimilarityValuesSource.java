@@ -20,6 +20,10 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
+import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
+import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
@@ -117,6 +121,60 @@ public class FullPrecisionFloatVectorSimilarityValuesSource extends DoubleValues
         return doc >= iterator.docID() && (iterator.docID() == doc || iterator.advance(doc) == doc);
       }
     };
+  }
+
+  /**
+   * Scores the candidate shortlist by batch-reading its raw fp32 vectors, which lets a store that
+   * supports it (for example a {@code .vec} file opened with direct I/O) fetch the whole shortlist
+   * at once instead of one vector at a time. Returns per-candidate scores aligned with {@code
+   * docs}, or null when the reader cannot batch-read them, in which case the caller falls back to
+   * visiting vectors individually.
+   */
+  public float[] directIoScores(LeafReaderContext ctx, int[] docs, int count) throws IOException {
+    if (count == 0 || !(ctx.reader() instanceof CodecReader codecReader)) {
+      return null;
+    }
+    KnnVectorsReader kr = codecReader.getVectorReader();
+    if (kr != null) {
+      kr = kr.unwrapReaderForField(fieldName);
+    }
+    // An HNSW reader keeps the raw vectors in its flat delegate; a flat reader holds them itself.
+    final FlatVectorsReader flatReader;
+    if (kr instanceof Lucene99HnswVectorsReader hnsw) {
+      flatReader = hnsw.getFlatVectorsReader();
+    } else if (kr instanceof FlatVectorsReader fr) {
+      flatReader = fr;
+    } else {
+      return null;
+    }
+    FloatVectorValues values = ctx.reader().getFloatVectorValues(fieldName);
+    if (values == null || values.dimension() != queryVector.length) {
+      return null;
+    }
+    final int dim = queryVector.length;
+    KnnVectorValues.DocIndexIterator it = values.iterator();
+    int[] ords = new int[count];
+    for (int i = 0; i < count; i++) {
+      if (it.advance(docs[i]) != docs[i]) {
+        return null;
+      }
+      ords[i] = it.index();
+    }
+    float[] vectors = new float[count * dim];
+    if (flatReader.readRawVectors(fieldName, ords, count, vectors) == false) {
+      return null;
+    }
+    VectorSimilarityFunction fn =
+        vectorSimilarityFunction != null
+            ? vectorSimilarityFunction
+            : ctx.reader().getFieldInfos().fieldInfo(fieldName).getVectorSimilarityFunction();
+    float[] scores = new float[count];
+    float[] vector = new float[dim];
+    for (int i = 0; i < count; i++) {
+      System.arraycopy(vectors, i * dim, vector, 0, dim);
+      scores[i] = fn.compare(queryVector, vector);
+    }
+    return scores;
   }
 
   @Override

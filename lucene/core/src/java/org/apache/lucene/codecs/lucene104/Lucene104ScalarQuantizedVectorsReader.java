@@ -381,6 +381,13 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     IOUtils.close(quantizedVectorData, rawVectorsReader);
   }
 
+  /** Raw float32 vectors live in the delegate reader, so batch reads go straight to it. */
+  @Override
+  public boolean readRawVectors(String field, int[] ords, int count, float[] out)
+      throws IOException {
+    return rawVectorsReader.readRawVectors(field, ords, count, out);
+  }
+
   @Override
   public long ramBytesUsed() {
     long size = SHALLOW_SIZE;
