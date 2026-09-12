@@ -79,10 +79,12 @@ import org.apache.lucene.util.packed.DirectMonotonicReader;
  * why the cells lead the intersection rather than the filter.
  *
  * <p>NPROBE IS DYNAMIC under a filter. Cells are consumed nearest-first in growing batches until
- * {@link #FILTERED_TARGET} distinct accepted documents have been scored, or every cell has been
- * probed, so a selective filter widens the probe instead of starving the shortlist. A filter whose
- * whole accepted set is no larger than the shortlist ({@link #EXACT_FILTER_COST}) skips cell
- * selection entirely and reranks every accepted document.
+ * the probe has reached {@link #rarityProbe} cells — the configured {@code nprobe} scaled by the
+ * accept set's measured rarity — and at least {@link #FILTERED_TARGET} distinct accepted documents
+ * have been scored, or every cell has been probed. The CELL target is what holds recall: a filter
+ * thins cells without moving them, so a gather target alone is met by the first round and never
+ * widens anything. A filter whose whole accepted set is no larger than the shortlist ({@link
+ * #EXACT_FILTER_COST}) skips cell selection entirely and reranks every accepted document.
  *
  * <p>Live docs alone are NOT a filter in this sense: deletions are bounded by merging and cannot
  * starve the pool, so an unfiltered query on a segment with deletions keeps the bulk scan and drops
@@ -186,6 +188,131 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
     final double slots = (double) e.codeTableLength / e.recordLen;
     final double parity = Math.sqrt(FILTERED_TARGET * slots * e.coarseBytes / e.recordLen);
     return (int) Math.max(EXACT_FILTER_COST, Math.min(Integer.MAX_VALUE, parity));
+  }
+
+  /**
+   * The {@code k} in {@code probe * rarity^k} is a function of how many documents a cell holds, not
+   * a constant; these are the coefficients of {@code k = intercept + slope * ln(docs per cell)}.
+   * See {@link #rarityExponent}.
+   */
+  private static final double FILTER_RARITY_INTERCEPT =
+      Double.parseDouble(System.getProperty("ivfaster.filterRarityIntercept", "0.7185"));
+
+  private static final double FILTER_RARITY_SLOPE =
+      Double.parseDouble(System.getProperty("ivfaster.filterRaritySlope", "-0.0578"));
+
+  /**
+   * Clamps on the fitted exponent. The floor exists because the fit is linear in a logarithm and so
+   * eventually crosses zero and goes negative, which would mean NARROWING the probe when a filter
+   * is applied — never right. The ceiling bounds the cost of a bad rarity estimate: at 5%
+   * selectivity {@code 20^0.5} is already a 4.5x probe.
+   */
+  private static final double FILTER_RARITY_MIN =
+      Double.parseDouble(System.getProperty("ivfaster.filterRarityMin", "0.15"));
+
+  private static final double FILTER_RARITY_MAX =
+      Double.parseDouble(System.getProperty("ivfaster.filterRarityMax", "0.50"));
+
+  /**
+   * Pins the exponent, bypassing the {@link #rarityExponent} model; {@code <= 0} uses the model.
+   * For sweeps that need to hold {@code k} fixed while something else varies.
+   */
+  private static final double FILTER_RARITY_EXPONENT_OVERRIDE =
+      Double.parseDouble(System.getProperty("ivfaster.filterRarityExponent", "0"));
+
+  /**
+   * How far the probe must widen per unit of filter rarity, given how many documents a cell holds.
+   *
+   * <p>MEASURED. For each configuration below, the {@code nprobe} reaching recall 0.95 was swept
+   * unfiltered and then at selectivity 5/10/25/50% against the brute-force top-k of the accepted
+   * set, and {@code k} taken as the log-log slope of the ratio against rarity:
+   *
+   * <pre>
+   *   docs/cell    configuration          measured k    fitted
+   *         125    1M,  nlist=8000             0.415     0.440
+   *        1000    1M,  nlist=1000             0.382     0.319
+   *        3163    10M, nlist=3162             0.246     0.253
+   *        4000    1M,  nlist=250              0.209     0.239
+   * </pre>
+   *
+   * <p>IT IS DOCS PER CELL, NOT {@code nlist}. Those two cannot be separated on the {@code nlist =
+   * sqrt(ndoc)} diagonal, where they are the same number, so the two 1M rows were measured OFF the
+   * diagonal to move them in opposite directions. Regressing on {@code ln(docs/cell)} gives R^2
+   * 0.82; on {@code ln(nlist)}, 0.02. The mechanism is that a larger cell yields more accepted
+   * documents per probed cell at a given selectivity, so the filter starves the shortlist less and
+   * less widening is needed.
+   *
+   * <p>The {@code 1M/nlist=250} row was HELD OUT and predicted before being measured, as an
+   * out-of-sample test of exactly that substitution: at 1M documents but 4000 per cell it came in
+   * at 0.209, next to the 10M value of 0.246 and nowhere near the 0.382 of 1M at 1000 per cell. So
+   * {@code ndoc} is not what matters. The model's error there was +0.057; a constant fitted at
+   * {@code nlist=1000} would have been off by +0.173.
+   *
+   * <p>WHAT THIS IS NOT. Four points and R^2 0.82 is a serviceable local approximation, not a law.
+   * Two specific weaknesses:
+   *
+   * <ul>
+   *   <li>THE SHAPE IS NOT LOG-LINEAR. Slopes between consecutive points steepen monotonically
+   *       (-0.016, -0.118, -0.158), so {@code k} falls faster than this line at large docs/cell and
+   *       the line over-predicts out there. Over-predicting {@code k} over-probes, which costs
+   *       latency rather than recall, and {@link #FILTER_RARITY_MIN} bounds it.
+   *   <li>The worst residual, -0.062, is at {@code 1M/nlist=1000} — the configuration the 1M
+   *       benchmarks actually run — where this returns 0.319 against a locally measured 0.382, so
+   *       it under-probes about 15% there. A pinned exponent is better at that one point and much
+   *       worse everywhere else.
+   * </ul>
+   *
+   * <p>It is fitted at ONE recall target (0.95), on ONE corpus, at {@code spillBits=1}, and — most
+   * restrictive — for UNIFORM RANDOM accept sets. A filter correlated with position in the
+   * embedding space breaks the premise that rarity alone predicts reach: an accept set concentrated
+   * in a few cells needs far less widening than this returns, and an adversarially spread one needs
+   * more.
+   *
+   * <p>WHERE THE TWO CALLERS DIFFER, AND IT MATTERS. On this path rarity comes from {@link
+   * #rarityProbe}, which reads the MATERIALIZED accept set's cardinality, so it is exact and
+   * indifferent to how the filter was spelled. {@code IVFasterKnnQuery} instead infers it from
+   * {@code leadCost}, and a CONJUNCTION's cost is the MINIMUM over its clauses rather than their
+   * product — so an {@code m}-clause filter of true selectivity {@code s} looks like {@code
+   * s^(1/m)} there and under-probes. Measured: four clauses at 5% selectivity cost that path 24
+   * recall points, while this path was unaffected.
+   */
+  static double rarityExponent(long docsPerCell) {
+    if (FILTER_RARITY_EXPONENT_OVERRIDE > 0) {
+      return FILTER_RARITY_EXPONENT_OVERRIDE;
+    }
+    final double k =
+        FILTER_RARITY_INTERCEPT + FILTER_RARITY_SLOPE * Math.log(Math.max(2, docsPerCell));
+    return Math.min(FILTER_RARITY_MAX, Math.max(FILTER_RARITY_MIN, k));
+  }
+
+  /**
+   * Cells the filtered walk should reach before it may stop: the configured probe scaled by filter
+   * rarity, {@code probe * (count/accepted)^k}.
+   *
+   * <p>WHY THIS REPLACED A DOCUMENT COUNT. The walk used to stop as soon as it had scored {@link
+   * #FILTERED_TARGET} distinct accepted documents, and at every selectivity from 5% up the FIRST
+   * round already satisfied that — engagement counters showed {@code rounds=1} and {@code
+   * cellsProbed=nprobe}, i.e. it never widened at all, and recall settled wherever an unwidened
+   * probe happened to land (0.864 at 5% selectivity, against 0.95 unfiltered). A gather target
+   * cannot drive widening because a filter removes documents from cells without moving the cells:
+   * one round holds plenty of accepted documents while the true accepted neighbours sit in cells
+   * further out. Recall is set by how far the probe REACHES, so the target has to be in cells.
+   *
+   * <p>The document count survives as a FLOOR rather than a stop: a filter sparse enough to leave
+   * the shortlist starved keeps widening past this even when the cell target is met.
+   *
+   * <p>Rarity here is exact — {@code accepted} is the cardinality of a materialized bit set, not an
+   * estimate off {@code cost()} — so this is immune to the conjunction underestimate described in
+   * {@link #rarityExponent}.
+   */
+  private static int rarityProbe(FieldEntry e, int probe, int accepted) {
+    if (accepted <= 0 || accepted >= e.count) {
+      return Math.min(probe, e.nlist);
+    }
+    final double rarity = (double) e.count / accepted;
+    final double k = rarityExponent(Math.max(1, e.count / e.nlist));
+    final long widened = (long) Math.ceil(Math.max(1, probe) * Math.pow(rarity, k));
+    return (int) Math.min(e.nlist, Math.max(widened, Math.min(probe, e.nlist)));
   }
 
   /**
@@ -944,7 +1071,16 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
     }
     // No quality prune on the initial selection: the walk below widens on its own terms.
     final int[] initial = selectCells(e, v, rotated, qCode, probe, false);
-    filteredScanAndRerank(e, v, rotated, qCode, fine, initial, (BitSet) accept, knnCollector);
+    filteredScanAndRerank(
+        e,
+        v,
+        rotated,
+        qCode,
+        fine,
+        initial,
+        (BitSet) accept,
+        rarityProbe(e, probe, cost),
+        knnCollector);
   }
 
   /**
@@ -1700,10 +1836,11 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
    * density range and NEON scalarizes the gather.
    *
    * <p>Admission is the same streaming histogram threshold the unfiltered scan uses, carried across
-   * rounds, so the pool never holds more than it needs. The round loop stops once {@link
-   * #FILTERED_TARGET} distinct documents have been scored, when the ranker has served every cell,
-   * or at {@link #FILTERED_MAX_PROBE}. Distinct documents are counted through the same stamped
-   * table the dedup uses, and only until the target is reached.
+   * rounds, so the pool never holds more than it needs. The round loop stops once the probe has
+   * reached {@code targetProbe} cells AND {@link #FILTERED_TARGET} distinct documents have been
+   * scored, when the ranker has served every cell, or at {@link #FILTERED_MAX_PROBE}. Distinct
+   * documents are counted through the same stamped table the dedup uses, and only until the target
+   * is reached — they are a floor on the walk, not what ends it; see {@link #rarityProbe}.
    */
   private void filteredScanAndRerank(
       FieldEntry e,
@@ -1713,6 +1850,7 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
       FineQuantizer.QueryState fine,
       int[] initial,
       BitSet bits,
+      int targetProbe,
       KnnCollector collector)
       throws IOException {
     final HammingKernel hamming = HammingKernel.get();
@@ -1722,8 +1860,9 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
     final int[] hist = sc.hist(histLen);
     final int fanout = 1 + e.spillBits;
     final int poolTarget = BRUTE_N * fanout;
-    // Relative to what this query asked for, not to nlist; see filteredMaxProbe.
-    final int maxProbe = filteredMaxProbe(e, initial.length);
+    // Relative to what this query asked for, not to nlist; see filteredMaxProbe. Never below the
+    // rarity-sized target, or the multiplier would silently clip the widening the filter calls for.
+    final int maxProbe = Math.max(filteredMaxProbe(e, initial.length), targetProbe);
     final CellRanker ranker = new CellRanker(e, v, rotated, initial, sc);
     final byte[] rec = sc.coarseRec(coarseBytes);
 
@@ -1807,7 +1946,9 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
           }
         }
       }
-      if (distinct >= FILTERED_TARGET || ranker.exhausted()) {
+      // Cells first, documents as a floor: reach the rarity-sized probe, and only then let the
+      // gather target end the walk. See rarityProbe for why a document count alone never widened.
+      if (ranker.exhausted() || (probed >= targetProbe && distinct >= FILTERED_TARGET)) {
         break;
       }
       batch = Math.min(batch << 1, maxProbe - probed);

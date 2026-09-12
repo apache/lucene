@@ -26,6 +26,8 @@ import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.DisiWrapper;
 import org.apache.lucene.search.DisjunctionDISIApproximation;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -80,98 +82,8 @@ public final class IVFasterKnnQuery extends Query {
   private final int admit;
   private final boolean adaptive;
 
-  /**
-   * The {@code k} in {@code probe * rarity^k} is a function of how many documents a cell holds, not
-   * a constant; these are the coefficients of {@code k = intercept + slope * ln(docs per cell)}. See
-   * {@link #rarityExponent} for what was measured and {@code CellScorer.create} for the use.
-   */
-  private static final double FILTER_RARITY_INTERCEPT =
-      Double.parseDouble(System.getProperty("ivfaster.filterRarityIntercept", "0.7185"));
-
-  private static final double FILTER_RARITY_SLOPE =
-      Double.parseDouble(System.getProperty("ivfaster.filterRaritySlope", "-0.0578"));
-
-  /**
-   * Clamps on the fitted exponent. The floor exists because the fit is linear in a logarithm and so
-   * eventually crosses zero and goes negative, which would mean NARROWING the probe when a filter is
-   * applied — never right. The ceiling bounds the cost of a bad rarity estimate: at 5% selectivity
-   * {@code 20^0.5} is already a 4.5x probe.
-   */
-  private static final double FILTER_RARITY_MIN =
-      Double.parseDouble(System.getProperty("ivfaster.filterRarityMin", "0.15"));
-
-  private static final double FILTER_RARITY_MAX =
-      Double.parseDouble(System.getProperty("ivfaster.filterRarityMax", "0.50"));
-
-  /**
-   * Pins the exponent, bypassing the {@link #rarityExponent} model; {@code <= 0} uses the model. For
-   * sweeps that need to hold {@code k} fixed while something else varies.
-   */
-  private static final double FILTER_RARITY_EXPONENT_OVERRIDE =
-      Double.parseDouble(System.getProperty("ivfaster.filterRarityExponent", "0"));
-
-  /**
-   * How far the probe must widen per unit of filter rarity, given how many documents a cell holds.
-   *
-   * <p>MEASURED. For each configuration below, the {@code nprobe} reaching recall 0.95 was swept
-   * unfiltered and then at selectivity 5/10/25/50% against the brute-force top-k of the accepted
-   * set, and {@code k} taken as the log-log slope of the ratio against rarity:
-   *
-   * <pre>
-   *   docs/cell    configuration          measured k    fitted
-   *         125    1M,  nlist=8000             0.415     0.440
-   *        1000    1M,  nlist=1000             0.382     0.319
-   *        3163    10M, nlist=3162             0.246     0.253
-   *        4000    1M,  nlist=250              0.209     0.239
-   * </pre>
-   *
-   * <p>IT IS DOCS PER CELL, NOT {@code nlist}. Those two cannot be separated on the
-   * {@code nlist = sqrt(ndoc)} diagonal, where they are the same number, so the two 1M rows were
-   * measured OFF the diagonal to move them in opposite directions. Regressing on
-   * {@code ln(docs/cell)} gives R^2 0.82; on {@code ln(nlist)}, 0.02. The mechanism is that a larger
-   * cell yields more accepted documents per probed cell at a given selectivity, so the filter starves
-   * the shortlist less and less widening is needed.
-   *
-   * <p>The {@code 1M/nlist=250} row was HELD OUT and predicted before being measured, as an
-   * out-of-sample test of exactly that substitution: at 1M documents but 4000 per cell it came in at
-   * 0.209, next to the 10M value of 0.246 and nowhere near the 0.382 of 1M at 1000 per cell. So
-   * {@code ndoc} is not what matters. The model's error there was +0.057; a constant fitted at
-   * {@code nlist=1000} would have been off by +0.173.
-   *
-   * <p>WHAT THIS IS NOT. Four points and R^2 0.82 is a serviceable local approximation, not a law.
-   * Two specific weaknesses:
-   *
-   * <ul>
-   *   <li>THE SHAPE IS NOT LOG-LINEAR. Slopes between consecutive points steepen monotonically
-   *       (-0.016, -0.118, -0.158), so {@code k} falls faster than this line at large docs/cell and
-   *       the line over-predicts out there. Over-predicting {@code k} over-probes, which costs
-   *       latency rather than recall, and {@link #FILTER_RARITY_MIN} bounds it.
-   *   <li>The worst residual, -0.062, is at {@code 1M/nlist=1000} — the configuration the 1M
-   *       benchmarks actually run — where this returns 0.319 against a locally measured 0.382, so it
-   *       under-probes about 15% there. A pinned exponent is better at that one point and much worse
-   *       everywhere else.
-   * </ul>
-   *
-   * <p>It is fitted at ONE recall target (0.95), on ONE corpus, at {@code spillBits=1}, and — most
-   * restrictive — for UNIFORM RANDOM accept sets. A filter correlated with position in the embedding
-   * space breaks the premise that rarity alone predicts reach: an accept set concentrated in a few
-   * cells needs far less widening than this returns, and an adversarially spread one needs more.
-   *
-   * <p>Finally, {@code rarity} itself comes from {@code leadCost}, and a CONJUNCTION's cost is the
-   * MINIMUM over its clauses rather than their product. A filter built from {@code m} clauses whose
-   * intersection has selectivity {@code s} therefore looks like selectivity {@code s^(1/m)} from
-   * here, and the probe widens by {@code rarity^(k/m)} instead of {@code rarity^k}. This
-   * under-probes, and it under-probes exactly on the multi-predicate filters that are most common in
-   * practice. Nothing here corrects for it.
-   */
-  static double rarityExponent(long docsPerCell) {
-    if (FILTER_RARITY_EXPONENT_OVERRIDE > 0) {
-      return FILTER_RARITY_EXPONENT_OVERRIDE;
-    }
-    final double k =
-        FILTER_RARITY_INTERCEPT + FILTER_RARITY_SLOPE * Math.log(Math.max(2, docsPerCell));
-    return Math.min(FILTER_RARITY_MAX, Math.max(FILTER_RARITY_MIN, k));
-  }
+  /** Sizing only; never consulted for matching. See the six-argument constructor. */
+  private final Query filterForSizing;
 
   /**
    * @param field the ivfaster vector field
@@ -185,6 +97,35 @@ public final class IVFasterKnnQuery extends Query {
    *     do not expect, so a query meant to be checked by them must be non-adaptive.
    */
   public IVFasterKnnQuery(String field, float[] target, int nprobe, int admit, boolean adaptive) {
+    this(field, target, nprobe, admit, adaptive, null);
+  }
+
+  /**
+   * As above, plus the conjunction this clause will sit beside, FOR SIZING ONLY.
+   *
+   * <p>WHY THE FILTER HAS TO BE HANDED OVER. Probe width is chosen from filter rarity, and without
+   * this argument the only evidence available is {@code leadCost} — which a conjunction reports as
+   * the MINIMUM of its clause costs, never their product. {@code min} is an upper bound on the size
+   * of the intersection, so it always UNDER-states rarity and therefore always under-probes;
+   * measured, a four-clause filter of true selectivity 5% cost 24 recall points that way. Lucene's
+   * own {@code KnnFloatVectorQuery} takes its filter for the same reason: a clause cannot see its
+   * siblings, so a query that needs to plan against a filter must be given it.
+   *
+   * <p>SIZING ONLY — this does not change what matches. Pass the same {@code Query} that is also
+   * the {@code FILTER} clause of the enclosing {@code BooleanQuery}; the conjunction still does the
+   * matching and the leapfrog is untouched. Passing something else only mis-sizes the probe, it
+   * cannot produce a wrong document.
+   *
+   * @param filterForSizing the conjunction beside this clause, or {@code null} to size from {@code
+   *     leadCost} alone
+   */
+  public IVFasterKnnQuery(
+      String field,
+      float[] target,
+      int nprobe,
+      int admit,
+      boolean adaptive,
+      Query filterForSizing) {
     this.field = Objects.requireNonNull(field, "field");
     this.target = Objects.requireNonNull(target, "target").clone();
     if (nprobe < 0) {
@@ -196,12 +137,31 @@ public final class IVFasterKnnQuery extends Query {
     this.nprobe = nprobe;
     this.admit = admit == 0 ? IVFasterVectorsReader.bruteN() : admit;
     this.adaptive = adaptive;
+    this.filterForSizing = filterForSizing;
   }
 
   /** As above, adaptive, with the segment's persisted {@code nprobe} and the codec's width. */
   public IVFasterKnnQuery(String field, float[] target) {
     this(field, target, 0, 0, true);
   }
+
+  /**
+   * Correction applied to the independence estimate of a conjunction's selectivity; {@code 1.0} IS
+   * the independence assumption and is the default.
+   *
+   * <p>Independence is what clause costs can support on their own: {@code cost()} exposes only the
+   * MARGINAL cardinality of each clause, and no set of marginals determines the size of an
+   * intersection. Ordering the clauses by selectivity — which a conjunction already does — gives
+   * the order to combine them in, not the conditionals; {@code P(B|A)} has to be observed, not
+   * derived.
+   *
+   * <p>WHICH WAY IT IS WRONG MATTERS. Positively correlated clauses intersect MORE than
+   * independence predicts, so the estimate over-states rarity and over-probes: latency, not recall.
+   * Negatively correlated clauses — {@code color=red AND family=blue} — intersect less, so it
+   * under-probes and loses recall. Set this below 1.0 for a workload known to chain that way.
+   */
+  private static final double FILTER_CONJUNCTION_CORRECTOR =
+      Double.parseDouble(System.getProperty("ivfaster.filterConjunctionCorrector", "1.0"));
 
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
@@ -238,11 +198,21 @@ public final class IVFasterKnnQuery extends Query {
         // This clause also SHOULD never lead: per document it pays a coarse Hamming test and, on a
         // match, an int8 rerank, so it wants to be driven by something sparser.
         final long fieldCost = Math.max(1, session.count());
+        // Independence estimate of the conjunction's size, when the filter was handed over. -1 when
+        // it was not, or when the query is not a pure conjunction.
+        final long conjunctionCost = conjunctionCost(searcher, context);
         return new ScorerSupplier() {
           @Override
           public Scorer get(long leadCost) throws IOException {
+            // NEVER LESS SELECTIVE THAN leadCost: a conjunction cannot admit more documents than
+            // its
+            // smallest clause, so min() bounds the estimate from above. That makes this change
+            // one-directional -- it can only make the filter look rarer than before, i.e. probe at
+            // least as widely -- so it cannot regress recall relative to leadCost alone.
+            final long effective =
+                conjunctionCost < 0 ? leadCost : Math.min(leadCost, conjunctionCost);
             return CellScorer.create(
-                session, fieldCost, adaptive ? leadCost : Long.MAX_VALUE, admit, boost);
+                session, fieldCost, adaptive ? effective : Long.MAX_VALUE, admit, boost);
           }
 
           @Override
@@ -270,6 +240,74 @@ public final class IVFasterKnnQuery extends Query {
         return false;
       }
     };
+  }
+
+  /**
+   * Estimated size of {@link #filterForSizing}'s intersection on this leaf, or {@code -1} if it
+   * cannot be estimated.
+   *
+   * <p>Clauses are flattened out of nested pure conjunctions and their MARGINAL costs multiplied as
+   * independent probabilities, then scaled by {@link #FILTER_CONJUNCTION_CORRECTOR}. A query
+   * carrying {@code SHOULD} or {@code MUST_NOT} is not a conjunction and is left to report its own
+   * cost, since a disjunction's cost is a sum and multiplying it would be nonsense.
+   *
+   * <p>Cost only — no iterator is pulled, so this walks no postings and reads no documents. It is
+   * the same {@code cost()} the conjunction itself uses to order clauses.
+   */
+  private long conjunctionCost(IndexSearcher searcher, LeafReaderContext context)
+      throws IOException {
+    if (filterForSizing == null) {
+      return -1;
+    }
+    final List<Query> clauses = new ArrayList<>();
+    if (flattenConjunction(filterForSizing, clauses) == false || clauses.isEmpty()) {
+      return -1;
+    }
+    final int maxDoc = context.reader().maxDoc();
+    if (maxDoc <= 0) {
+      return -1;
+    }
+    double selectivity = 1.0;
+    for (Query clause : clauses) {
+      final Weight w =
+          searcher.createWeight(searcher.rewrite(clause), ScoreMode.COMPLETE_NO_SCORES, 1f);
+      final ScorerSupplier ss = w.scorerSupplier(context);
+      if (ss == null) {
+        return 0; // a clause matches nothing on this leaf, so the conjunction does too
+      }
+      selectivity *= Math.min(1.0, (double) ss.cost() / maxDoc);
+      if (selectivity <= 0) {
+        return 0;
+      }
+    }
+    selectivity *= FILTER_CONJUNCTION_CORRECTOR;
+    final long est = (long) Math.ceil(selectivity * maxDoc);
+    return Math.max(1, Math.min(maxDoc, est));
+  }
+
+  /**
+   * Collects the conjunctive clauses of {@code q} into {@code out}, returning false if {@code q} is
+   * not a pure conjunction.
+   */
+  private static boolean flattenConjunction(Query q, List<Query> out) {
+    if (q instanceof BooleanQuery bq) {
+      if (bq.getMinimumNumberShouldMatch() > 0) {
+        return false;
+      }
+      for (BooleanClause c : bq.clauses()) {
+        if (c.occur() != BooleanClause.Occur.FILTER && c.occur() != BooleanClause.Occur.MUST) {
+          return false;
+        }
+      }
+      for (BooleanClause c : bq.clauses()) {
+        if (flattenConjunction(c.query(), out) == false) {
+          return false;
+        }
+      }
+      return true;
+    }
+    out.add(q);
+    return true;
   }
 
   /**
@@ -456,18 +494,19 @@ public final class IVFasterKnnQuery extends Query {
           // never grew. The configured probe is the tuned operating point; rarity says how much
           // further it has to reach to hold the same recall.
           //
-          // The exponent is measured, not assumed, and it depends on how many documents a cell holds
+          // The exponent is measured, not assumed, and it depends on how many documents a cell
+          // holds
           // -- see rarityExponent. Sweeping nprobe to hold recall 0.95 on 1M/nlist=1000/spillBits=1
-          // gives multipliers 1.41x / 1.70x / 2.42x / 3.09x at selectivity 50 / 25 / 10 / 5%. Linear
+          // gives multipliers 1.41x / 1.70x / 2.42x / 3.09x at selectivity 50 / 25 / 10 / 5%.
+          // Linear
           // in rarity would ask for 20x where 3.09x holds; sqrt would ask 4.47x.
-          final double k = rarityExponent(Math.max(1, session.count() / session.nlist()));
+          final double k =
+              IVFasterVectorsReader.rarityExponent(Math.max(1, session.count() / session.nlist()));
           probe =
               (int)
                   Math.max(
                       probe,
-                      Math.min(
-                          session.maxProbe(),
-                          (long) Math.ceil(probe * Math.pow(rarity, k))));
+                      Math.min(session.maxProbe(), (long) Math.ceil(probe * Math.pow(rarity, k))));
           admitRows = (long) Math.ceil(admitRows * rarity);
         }
         final int n = session.prepare(probe, admitRows);
@@ -583,11 +622,15 @@ public final class IVFasterKnnQuery extends Query {
         && Arrays.equals(target, o.target)
         && nprobe == o.nprobe
         && admit == o.admit
-        && adaptive == o.adaptive;
+        && adaptive == o.adaptive
+        // Sizing-only, but it changes the probe and therefore the matches, so two queries differing
+        // only here are not interchangeable and must not share a cache entry.
+        && Objects.equals(filterForSizing, o.filterForSizing);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(classHash(), field, Arrays.hashCode(target), nprobe, admit, adaptive);
+    return Objects.hash(
+        classHash(), field, Arrays.hashCode(target), nprobe, admit, adaptive, filterForSizing);
   }
 }
