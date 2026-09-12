@@ -275,6 +275,7 @@ public final class DeflateWithPresetDictCompressionMode extends CompressionMode 
             public int readBytesUpTo(byte[] b, int offset, int len) throws IOException {
               int read = 0;
               while (len > bytes.length) {
+                // TODO: can we decompress into b directly, without copy by bytes?
                 System.arraycopy(bytes.bytes, bytes.offset, b, offset, bytes.length);
                 read += bytes.length;
                 len -= bytes.length;
