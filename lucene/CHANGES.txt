@@ -123,6 +123,13 @@ API Changes
 
 New Features
 ---------------------
+* GITHUB#16567: Add IVFasterVectorsFormat to the sandbox: an IVF float-vector codec whose clustering
+  runs in the segment lifecycle (Lloyd iterations at flush and merge, warm-started from the largest
+  incoming segment), with a 2-bit coarse tier scored by XOR+popcount and an int8 fine tier. Filters
+  are resolved before the coarse scan and walked doc-at-a-time against the probed cells, with the
+  probe widening until the shortlist is full; indexing stages the corpus to a temp file and streams
+  it, so a build never holds the vectors in heap. (Rikhil Konduru)
+
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
   modern Hangul conjoining jamo before KoreanTokenizer. (Mingi Jeong)
 
