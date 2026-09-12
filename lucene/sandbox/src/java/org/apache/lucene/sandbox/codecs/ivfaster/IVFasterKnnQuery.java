@@ -85,6 +85,49 @@ public final class IVFasterKnnQuery extends Query {
   /** Sizing only; never consulted for matching. See the six-argument constructor. */
   private final Query filterForSizing;
 
+  /** Optional pairwise dependence between filter clauses; see {@link ClauseDependence}. */
+  private final ClauseDependence dependence;
+
+  /**
+   * Pairwise dependence between two filter clauses, consulted in the order a conjunction resolves
+   * them. {@code null} means INDEPENDENT, which is the default for every pair.
+   *
+   * <p>WHY PAIRWISE, AND WHY A SLOT PER LEVEL. The exact selectivity of a conjunction is the chain
+   * rule over its resolution order, {@code P(A1) * P(A2|A1) * P(A3|A1^A2) * ...}. That order is
+   * known before the walk — {@code ConjunctionDISI} tim-sorts clauses by {@code cost()} so the
+   * sparsest leads — which is what keeps this a chain of {@code m} terms rather than a lattice of
+   * {@code 2^m} conditionals. Truncating each conditional to its pairwise interactions with the
+   * ALREADY-RESOLVED prefix turns the chain into a dynamic program over {@code m*(m-1)/2} slots: at
+   * level {@code i}, one slot per earlier clause {@code j}.
+   *
+   * <p>Returning {@code null} costs nothing and contributes a factor of exactly 1, so a caller only
+   * populates the pairs it actually knows about and everything else stays independent. Populating
+   * nothing reproduces the independence product exactly.
+   *
+   * <p>WHAT THIS CANNOT CAPTURE. Three-way and higher structure. Two predicates can be pairwise
+   * independent and jointly determined ({@code C = A xor B}), and no pairwise slot sees that. It is
+   * a second-order approximation, deliberately.
+   *
+   * <p>When this is supplied it is used INSTEAD of sampling the chain, on the assumption that a
+   * caller with schema knowledge knows better than a bounded sample. Supply nothing to have the
+   * chain measured instead; see {@code conjunctionCost}.
+   *
+   * @lucene.experimental
+   */
+  public interface ClauseDependence {
+    /**
+     * The lift {@code P(a|b) / P(a)}, or {@code null} if {@code a} and {@code b} are independent.
+     *
+     * <p>Greater than 1 means the two co-occur more than chance (the conjunction is LESS selective
+     * than independence predicts); below 1 means they exclude each other. {@code 0} would assert
+     * the two never co-occur, and is clamped away from an empty conjunction by the caller.
+     *
+     * @param a the clause being conditioned, at level {@code i} of the resolution order
+     * @param b an earlier clause in that order
+     */
+    Double lift(Query a, Query b);
+  }
+
   /**
    * @param field the ivfaster vector field
    * @param target the query vector, copied
@@ -138,6 +181,25 @@ public final class IVFasterKnnQuery extends Query {
     this.admit = admit == 0 ? IVFasterVectorsReader.bruteN() : admit;
     this.adaptive = adaptive;
     this.filterForSizing = filterForSizing;
+    this.dependence = null;
+  }
+
+  private IVFasterKnnQuery(IVFasterKnnQuery from, ClauseDependence dependence) {
+    this.field = from.field;
+    this.target = from.target;
+    this.nprobe = from.nprobe;
+    this.admit = from.admit;
+    this.adaptive = from.adaptive;
+    this.filterForSizing = from.filterForSizing;
+    this.dependence = dependence;
+  }
+
+  /**
+   * A copy that resolves conjunction selectivity through {@code dependence} instead of sampling the
+   * chain; see {@link ClauseDependence}. Only meaningful alongside a {@code filterForSizing}.
+   */
+  public IVFasterKnnQuery withClauseDependence(ClauseDependence dependence) {
+    return new IVFasterKnnQuery(this, dependence);
   }
 
   /** As above, adaptive, with the segment's persisted {@code nprobe} and the codec's width. */
@@ -243,16 +305,47 @@ public final class IVFasterKnnQuery extends Query {
   }
 
   /**
+   * Documents sampled from the leading clause when measuring a conjunction's true selectivity;
+   * {@code 0} disables sampling and falls back to the independence product.
+   *
+   * <p>Bounded and small on purpose: this is paid before the walk, per segment, so it has to be
+   * negligible next to a kNN query. 2048 samples over a conjunction of a few clauses is a few
+   * thousand {@code advance} calls.
+   */
+  private static final int FILTER_CHAIN_SAMPLES =
+      Integer.getInteger("ivfaster.filterChainSamples", 2048);
+
+  /**
    * Estimated size of {@link #filterForSizing}'s intersection on this leaf, or {@code -1} if it
    * cannot be estimated.
    *
-   * <p>Clauses are flattened out of nested pure conjunctions and their MARGINAL costs multiplied as
-   * independent probabilities, then scaled by {@link #FILTER_CONJUNCTION_CORRECTOR}. A query
-   * carrying {@code SHOULD} or {@code MUST_NOT} is not a conjunction and is left to report its own
-   * cost, since a disjunction's cost is a sum and multiplying it would be nonsense.
+   * <p>A query carrying {@code SHOULD} or {@code MUST_NOT} is not a conjunction and is left to
+   * report its own cost, since a disjunction's cost is a sum and multiplying it would be nonsense.
    *
-   * <p>Cost only — no iterator is pulled, so this walks no postings and reads no documents. It is
-   * the same {@code cost()} the conjunction itself uses to order clauses.
+   * <p>MEASURED BY CHAIN, NOT ASSUMED. A conjunction resolves its clauses in a KNOWN order — {@code
+   * ConjunctionDISI} tim-sorts them by {@code cost()} so the sparsest leads — and that ordering is
+   * what makes the exact answer cheap to reach. By the chain rule
+   *
+   * <pre>  |A1 ^ ... ^ Am| / N  =  P(A1) * P(A2|A1) * P(A3|A1^A2) * ...</pre>
+   *
+   * which is EXACT and, because the order is fixed, is {@code m} terms rather than the {@code 2^m}
+   * of a general lattice of conditionals. For sizing a probe the chain also TELESCOPES: the only
+   * number needed is the final intersection, so measuring the leading clause's pass rate through
+   * all the remaining clauses collapses every conditional into one quantity, {@code |intersection|
+   * ~= passRate * leadCost}. One pass, no independence assumption.
+   *
+   * <p>Only the pass rate is sampled, never the whole conjunction — resolving it exactly would cost
+   * what materializing the filter costs, which is the {@code acceptDocs} path, so an exact
+   * conditional chain here would defeat the reason for walking doc-at-a-time at all.
+   *
+   * <p>THE SAMPLE IS STRIDED ACROSS THE DOC SPACE rather than taken from the front. Accept sets are
+   * routinely correlated with doc id — documents arrive in time order and filters select on recency
+   * — so sampling the first {@code n} matches of the leading clause would estimate the wrong
+   * region. Stride costs nothing extra: {@code advance} is forward-only either way.
+   *
+   * <p>Falls back to multiplying the clauses' MARGINAL costs as independent probabilities when
+   * sampling is disabled or the leading clause yields nothing to sample, scaled in both cases by
+   * {@link #FILTER_CONJUNCTION_CORRECTOR}.
    */
   private long conjunctionCost(IndexSearcher searcher, LeafReaderContext context)
       throws IOException {
@@ -267,7 +360,7 @@ public final class IVFasterKnnQuery extends Query {
     if (maxDoc <= 0) {
       return -1;
     }
-    double selectivity = 1.0;
+    final List<ScorerSupplier> suppliers = new ArrayList<>(clauses.size());
     for (Query clause : clauses) {
       final Weight w =
           searcher.createWeight(searcher.rewrite(clause), ScoreMode.COMPLETE_NO_SCORES, 1f);
@@ -275,6 +368,19 @@ public final class IVFasterKnnQuery extends Query {
       if (ss == null) {
         return 0; // a clause matches nothing on this leaf, so the conjunction does too
       }
+      suppliers.add(ss);
+    }
+    if (dependence != null && suppliers.size() > 1) {
+      return analyticChain(clauses, suppliers, maxDoc);
+    }
+    if (FILTER_CHAIN_SAMPLES > 0 && suppliers.size() > 1) {
+      final long sampled = sampleChain(suppliers, maxDoc);
+      if (sampled >= 0) {
+        return Math.max(1, Math.min(maxDoc, sampled));
+      }
+    }
+    double selectivity = 1.0;
+    for (ScorerSupplier ss : suppliers) {
       selectivity *= Math.min(1.0, (double) ss.cost() / maxDoc);
       if (selectivity <= 0) {
         return 0;
@@ -283,6 +389,135 @@ public final class IVFasterKnnQuery extends Query {
     selectivity *= FILTER_CONJUNCTION_CORRECTOR;
     final long est = (long) Math.ceil(selectivity * maxDoc);
     return Math.max(1, Math.min(maxDoc, est));
+  }
+
+  /**
+   * The conditional chain evaluated ANALYTICALLY from {@link ClauseDependence}, rather than
+   * measured.
+   *
+   * <p>Clauses are visited in the resolution order a conjunction will use — ascending {@code
+   * cost()}, the same order {@code ConjunctionDISI} sorts into — so the slot consulted at level
+   * {@code i} is always against a clause that resolves BEFORE it. That ordering is the whole reason
+   * this is a linear walk with {@code m*(m-1)/2} lookups instead of a search over subsets.
+   *
+   * <p>Each level contributes its own marginal times the lift of every earlier clause on it; a
+   * {@code null} slot contributes 1, so an empty {@link ClauseDependence} is exactly the
+   * independence product.
+   *
+   * <p>Clamped at both ends: never larger than the smallest clause (a conjunction cannot admit more
+   * than its sparsest member) and never zero, since a mis-specified lift of 0 should mis-size the
+   * probe rather than assert the conjunction is empty.
+   */
+  private long analyticChain(List<Query> clauses, List<ScorerSupplier> suppliers, int maxDoc)
+      throws IOException {
+    // cost() is declared to throw, so read every one before sorting rather than inside a
+    // comparator.
+    final long[] costs = new long[suppliers.size()];
+    final Integer[] order = new Integer[suppliers.size()];
+    for (int i = 0; i < costs.length; i++) {
+      costs[i] = suppliers.get(i).cost();
+      order[i] = i;
+    }
+    Arrays.sort(order, (x, y) -> Long.compare(costs[x], costs[y]));
+    double selectivity = 1.0;
+    long smallest = Long.MAX_VALUE;
+    for (int i = 0; i < order.length; i++) {
+      final int ci = order[i];
+      final long cost = costs[ci];
+      smallest = Math.min(smallest, cost);
+      double factor = Math.min(1.0, (double) cost / maxDoc);
+      for (int j = 0; j < i; j++) {
+        final Double lift = dependence.lift(clauses.get(ci), clauses.get(order[j]));
+        if (lift != null) {
+          factor *= lift;
+        }
+      }
+      selectivity *= factor;
+    }
+    selectivity *= FILTER_CONJUNCTION_CORRECTOR;
+    final long est = (long) Math.ceil(selectivity * maxDoc);
+    return Math.max(1, Math.min(Math.min(maxDoc, smallest), est));
+  }
+
+  /**
+   * The telescoped conditional chain: how many documents the conjunction admits, estimated as the
+   * leading clause's cardinality times its measured pass rate through every other clause. Returns
+   * {@code -1} if it could not sample, so the caller falls back.
+   *
+   * <p>The leading clause is the sparsest, chosen the same way {@code ConjunctionDISI} chooses it,
+   * so the pass rate being measured is {@code P(A2 ^ ... ^ Am | A1)} — the product of every
+   * conditional in the chain after the first, in one quantity.
+   *
+   * <p>Iterators are pulled from FRESH suppliers used for nothing else. The conjunction that
+   * actually runs the query builds its own from the same weights, so consuming these cannot disturb
+   * it.
+   *
+   * <p>Sample positions stride the doc space uniformly instead of taking a prefix; see {@link
+   * #conjunctionCost}. Both the stride walk and the verification advance forward only, which is the
+   * one thing {@link DocIdSetIterator} guarantees.
+   */
+  private static long sampleChain(List<ScorerSupplier> suppliers, int maxDoc) throws IOException {
+    ScorerSupplier leadSupplier = suppliers.get(0);
+    for (ScorerSupplier ss : suppliers) {
+      if (ss.cost() < leadSupplier.cost()) {
+        leadSupplier = ss;
+      }
+    }
+    final long leadCost = Math.max(1, leadSupplier.cost());
+    final DocIdSetIterator lead = leadSupplier.get(Long.MAX_VALUE).iterator();
+    final List<DocIdSetIterator> rest = new ArrayList<>(suppliers.size() - 1);
+    for (ScorerSupplier ss : suppliers) {
+      if (ss != leadSupplier) {
+        rest.add(ss.get(Long.MAX_VALUE).iterator());
+      }
+    }
+    if (rest.isEmpty()) {
+      return -1;
+    }
+    // Stride so the samples span the segment. Anchors are doc ids, not match ordinals, because the
+    // lead's matches are not uniformly distributed and it is the doc space that must be covered.
+    final int wanted = Math.min(FILTER_CHAIN_SAMPLES, maxDoc);
+    final int stride = Math.max(1, maxDoc / wanted);
+    int examined = 0;
+    int survived = 0;
+    int anchor = 0;
+    while (examined < wanted && anchor < maxDoc) {
+      int doc = lead.docID() >= anchor ? lead.docID() : lead.advance(anchor);
+      if (doc == DocIdSetIterator.NO_MORE_DOCS) {
+        break;
+      }
+      examined++;
+      boolean all = true;
+      for (DocIdSetIterator it : rest) {
+        // Forward-only: a clause already past this doc cannot contain it.
+        if (it.docID() > doc) {
+          all = false;
+          break;
+        }
+        if (it.docID() < doc && it.advance(doc) != doc) {
+          all = false;
+          break;
+        }
+        if (it.docID() != doc) {
+          all = false;
+          break;
+        }
+      }
+      if (all) {
+        survived++;
+      }
+      anchor = Math.max(doc + 1, anchor + stride);
+    }
+    if (examined == 0) {
+      return -1;
+    }
+    // A clause that fell behind the stride cannot be advanced back, so a run of misses caused by
+    // exhausting `rest` looks the same as genuine non-agreement. Guard the degenerate case where
+    // nothing agreed at all: report one document rather than zero, since the conjunction's true
+    // size
+    // is unknown, not empty.
+    final double passRate = (double) survived / examined;
+    return Math.max(1, (long) Math.ceil(passRate * leadCost * FILTER_CONJUNCTION_CORRECTOR));
   }
 
   /**
@@ -625,12 +860,20 @@ public final class IVFasterKnnQuery extends Query {
         && adaptive == o.adaptive
         // Sizing-only, but it changes the probe and therefore the matches, so two queries differing
         // only here are not interchangeable and must not share a cache entry.
-        && Objects.equals(filterForSizing, o.filterForSizing);
+        && Objects.equals(filterForSizing, o.filterForSizing)
+        && Objects.equals(dependence, o.dependence);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        classHash(), field, Arrays.hashCode(target), nprobe, admit, adaptive, filterForSizing);
+        classHash(),
+        field,
+        Arrays.hashCode(target),
+        nprobe,
+        admit,
+        adaptive,
+        filterForSizing,
+        dependence);
   }
 }

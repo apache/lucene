@@ -183,6 +183,115 @@ public class TestIVFasterKnnQuery extends LuceneTestCase {
     Query of(float[] q);
   }
 
+  /**
+   * ANTI-CORRELATED CLAUSES are the case a product of marginals gets wrong. Two clauses each match
+   * about half the corpus but their intersection is tiny, so multiplying their marginals
+   * over-states the intersection several-fold, the probe is sized too narrow, and recall falls.
+   * Both remedies are asserted here: measuring the chain, and declaring the dependence through a
+   * pairwise slot.
+   */
+  public void testAntiCorrelatedConjunctionKeepsRecall() throws Exception {
+    final int dim = 16;
+    final int count = 8000;
+    final int nlist = 32;
+    final float[][] vectors = clusteredCorpus(count, 10, dim);
+    try (Directory dir = newDirectory()) {
+      index(dir, vectors, codec(nlist, 2));
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        final IndexSearcher searcher = newSearcher(reader);
+        // Low half AND (top decile of the low half): both clauses are broad, the conjunction is
+        // 10%.
+        final int half = count / 2;
+        final int accepted = count / 10;
+        final Query a = IntPoint.newRangeQuery(SEL, 0, half - 1);
+        final Query b =
+            new BooleanQuery.Builder()
+                .add(IntPoint.newRangeQuery(SEL, 0, accepted - 1), BooleanClause.Occur.SHOULD)
+                .add(IntPoint.newRangeQuery(SEL, half, count - 1), BooleanClause.Occur.SHOULD)
+                .build();
+        final Query filter =
+            new BooleanQuery.Builder()
+                .add(a, BooleanClause.Occur.FILTER)
+                .add(b, BooleanClause.Occur.FILTER)
+                .build();
+        final IntPredicate inFilter = i -> i < accepted;
+
+        final double measured =
+            recall(
+                searcher,
+                vectors,
+                inFilter,
+                q ->
+                    new BooleanQuery.Builder()
+                        .add(
+                            new IVFasterKnnQuery(FIELD, q, 2, 0, true, filter),
+                            BooleanClause.Occur.MUST)
+                        .add(filter, BooleanClause.Occur.FILTER)
+                        .build(),
+                10,
+                20);
+        assertTrue("measured-chain recall " + measured, measured >= 0.8);
+
+        // The same thing declared rather than measured: b excludes most of a, so the lift is well
+        // below 1. Any null slot would mean independent, which is what this asserts is not needed.
+        final double declared =
+            recall(
+                searcher,
+                vectors,
+                inFilter,
+                q -> {
+                  final Query knn =
+                      new IVFasterKnnQuery(FIELD, q, 2, 0, true, filter)
+                          .withClauseDependence((_, _) -> 0.2);
+                  return new BooleanQuery.Builder()
+                      .add(knn, BooleanClause.Occur.MUST)
+                      .add(filter, BooleanClause.Occur.FILTER)
+                      .build();
+                },
+                10,
+                20);
+        assertTrue("declared-dependence recall " + declared, declared >= 0.8);
+      }
+    }
+  }
+
+  /** An all-null {@code ClauseDependence} must be exactly the independence product. */
+  public void testNullDependenceSlotsMeanIndependent() throws Exception {
+    final int dim = 16;
+    final int count = 4000;
+    final int nlist = 16;
+    final float[][] vectors = clusteredCorpus(count, 6, dim);
+    try (Directory dir = newDirectory()) {
+      index(dir, vectors, codec(nlist, 4));
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        final IndexSearcher searcher = newSearcher(reader);
+        final Query filter =
+            new BooleanQuery.Builder()
+                .add(IntPoint.newRangeQuery(SEL, 0, count / 2), BooleanClause.Occur.FILTER)
+                .add(IntPoint.newRangeQuery(SEL, count / 4, count - 1), BooleanClause.Occur.FILTER)
+                .build();
+        final float[] q = vectors[0];
+        final Query nulls =
+            new BooleanQuery.Builder()
+                .add(
+                    new IVFasterKnnQuery(FIELD, q, 4, 0, true, filter)
+                        .withClauseDependence((_, _) -> null),
+                    BooleanClause.Occur.MUST)
+                .add(filter, BooleanClause.Occur.FILTER)
+                .build();
+        final Query ones =
+            new BooleanQuery.Builder()
+                .add(
+                    new IVFasterKnnQuery(FIELD, q, 4, 0, true, filter)
+                        .withClauseDependence((_, _) -> 1.0),
+                    BooleanClause.Occur.MUST)
+                .add(filter, BooleanClause.Occur.FILTER)
+                .build();
+        assertEquals(ids(searcher, ones, 10), ids(searcher, nulls, 10));
+      }
+    }
+  }
+
   private void index(Directory dir, float[][] vectors, Codec codec) throws IOException {
     final IndexWriterConfig cfg =
         new IndexWriterConfig().setCodec(codec).setMaxBufferedDocs(Integer.MAX_VALUE);
