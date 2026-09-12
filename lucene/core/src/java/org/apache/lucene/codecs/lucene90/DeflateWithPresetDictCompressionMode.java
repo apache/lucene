@@ -244,6 +244,8 @@ public final class DeflateWithPresetDictCompressionMode extends CompressionMode 
               assert bytesToExpose > 0;
               bytes.bytes = ArrayUtil.growNoCopy(bytes.bytes, blockBytes);
               bytes.offset = bytes.length = 0;
+              // TODO: Reuse Inflater across sub-blocks, or even across slices. ensure to call
+              // end().
               Inflater decompressor = new Inflater(true);
               try {
                 decompressor.setDictionary(dictionary, 0, dictLength);
