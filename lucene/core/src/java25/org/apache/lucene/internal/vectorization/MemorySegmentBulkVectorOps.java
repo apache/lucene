@@ -54,7 +54,8 @@ public final class MemorySegmentBulkVectorOps {
         long d3,
         long d4,
         int elementCount) {
-      dotProductBulkImpl(dataSeg, scores, q, -1L, d1, d2, d3, d4, elementCount);
+      // Delegate directly to our new Panama SIMD engine
+      PanamaVectorUtilSupport.dotProductBulk(dataSeg, scores, q, d1, d2, d3, d4, elementCount);
     }
 
     public void dotProductBulk(
