@@ -196,7 +196,7 @@ public abstract sealed class ByteVectorSimilarityQuery extends AbstractVectorSim
 
     @Override
     protected KnnCollectorManager getKnnCollectorManager() {
-      return (visitedLimit, _, _) ->
+      return (visitedLimit, strategy, context) ->
           new ExplicitVectorSimilarityCollector(
               traversalSimilarity, resultSimilarity, visitedLimit);
     }
