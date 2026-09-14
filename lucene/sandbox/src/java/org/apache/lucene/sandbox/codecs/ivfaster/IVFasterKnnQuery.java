@@ -28,8 +28,6 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.DisiWrapper;
-import org.apache.lucene.search.DisjunctionDISIApproximation;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
@@ -50,15 +48,22 @@ import org.apache.lucene.search.Weight;
  * <p>{@code KnnFloatVectorQuery} runs its search during rewrite and becomes a fixed set of doc ids,
  * so it can only receive a filter the query builder resolved for it up front. This query instead
  * exposes the codec's structure directly: per segment it selects the {@code nprobe} nearest cells
- * the way a search does, and its scorer's iterator is the DISJUNCTION of those cells' posting lists
- * ({@link CellPostings}), in doc order. Inside a conjunction the sparser clause leads, and the
- * cells are advanced to whatever it yields.
+ * the way a search does, Hamming-scores their runs in bulk, and its scorer's iterator is the set of
+ * documents the coarse cut ADMITS, in doc order. Inside a conjunction the sparser clause leads, and
+ * that set is advanced to whatever it yields.
  *
- * <p>Scoring is two-phase, so the expensive tier is paid only for documents every clause agrees on.
- * {@code matches()} is COARSE ADMISSION against a cut fixed when the scorer is built: the probed
- * runs are Hamming-scored in bulk and the cut is the coarse distance that admits {@code admit}
- * rows, the same histogram cut the codec's own scan takes. {@code score()} is the fine tier, one
- * record read and one int8 dot, computed only for documents the whole conjunction yields.
+ * <p>ONE ITERATOR, NOT A DISJUNCTION OVER THE CELLS. The cells are already doc-sorted posting lists
+ * ({@link CellPostings}) and unioning them is the obvious construction, but a rarity-widened probe
+ * makes it dozens of sub-iterators, and Lucene's disjunction then rescans whatever does not fit in
+ * its heap on every advance — 62% of query samples at one filter clause, 74% at four. Since the
+ * admission cut is FIXED before the walk (below), the union can be built once, in the same pass
+ * that applies the cut, and walked as a bit set; see {@code CellSession#admittedDocs}.
+ *
+ * <p>Admission is therefore not a scoring phase: the cut is the coarse distance that admits {@code
+ * admit} rows, the same histogram cut the codec's own scan takes, and it is applied when the scorer
+ * is built rather than per document. There is no {@link TwoPhaseIterator}, because every document
+ * the iterator yields already matches. {@code score()} is the fine tier — one record read and one
+ * int8 dot — computed only for documents the whole conjunction yields.
  *
  * <p>THE PROBE IS SIZED UP FRONT FROM THE LEADING CLAUSE. A scorer emits documents in ascending
  * order, so cells cannot be added once the walk has passed their first documents, and the codec's
@@ -287,12 +292,11 @@ public final class IVFasterKnnQuery extends Query {
       @Override
       public Explanation explain(LeafReaderContext context, int doc) throws IOException {
         final Scorer scorer = scorer(context);
-        if (scorer != null) {
-          final TwoPhaseIterator tp = scorer.twoPhaseIterator();
-          if (tp.approximation().advance(doc) == doc && tp.matches()) {
-            return Explanation.match(
-                scorer.score(), "ivfaster fine score of doc " + doc + " in field " + field);
-          }
+        // Straight off the iterator: this scorer has no verification phase, since admission is
+        // decided before the walk begins; see AdmittedScorer.
+        if (scorer != null && scorer.iterator().advance(doc) == doc) {
+          return Explanation.match(
+              scorer.score(), "ivfaster fine score of doc " + doc + " in field " + field);
         }
         return Explanation.noMatch("not in a probed cell, or not admitted by the coarse tier");
       }
@@ -672,7 +676,8 @@ public final class IVFasterKnnQuery extends Query {
   }
 
   /**
-   * The cells' union, coarse-admitted two-phase, fine-scored on demand.
+   * The documents the probe admits, fine-scored on demand; the sizing that decides which and how
+   * many lives in {@link #create}.
    *
    * <p>THE PROBE IS SIZED FROM {@code leadCost}. A conjunction hands the scorer the cost of the
    * clause that will lead it, which is the filter's cardinality when a filter is sparser than this
@@ -688,16 +693,14 @@ public final class IVFasterKnnQuery extends Query {
    *
    * <p>Admission is a FIXED cut computed when the scorer is built, never a threshold that tightens
    * as documents stream by: a conjunction may skip through this scorer in any order, and a
-   * document's match must not depend on the path taken to reach it.
+   * document's match must not depend on the path taken to reach it. That is also what lets the
+   * admitted documents be materialized as a set instead of verified one at a time; see the two
+   * subclasses, which differ only in what they iterate and where a document's slot comes from.
    */
-  private static final class CellScorer extends Scorer {
-    private final IVFasterVectorsReader.CellSession session;
-    private final DisjunctionDISIApproximation cells;
-    private final DocIdSetIterator iterator;
-    private final TwoPhaseIterator twoPhase;
+  private abstract static class CellScorer extends Scorer {
+    final IVFasterVectorsReader.CellSession session;
     private final float boost;
     private int scoredDoc = -1;
-    private int slot;
     private float score;
 
     static Scorer create(
@@ -707,121 +710,126 @@ public final class IVFasterKnnQuery extends Query {
         int admit,
         float boost)
         throws IOException {
-      final List<DisiWrapper> wrappers = new ArrayList<>();
-      final boolean exact;
       if (leadCost < fieldCost && leadCost <= session.exactBound()) {
-        exact = true;
-        wrappers.add(new CellPostings.Wrapper(session.allDocs()));
-      } else {
-        exact = false;
-        int probe = session.probe();
-        // The codec's pool: admit slots for every copy a document may hold, then dedup to admit.
-        long admitRows = (long) admit * session.fanout();
-        // A leading clause sparser than the field is a filter, and its rarity is how much wider
-        // this
-        // probe has to reach. Compared against the FIELD, not against this probe's own walk: the
-        // question is whether a filter is restricting, which has nothing to do with nprobe.
-        if (leadCost < fieldCost) {
-          final double rarity = (double) fieldCost / Math.max(1, leadCost);
-          // SCALE THE PROBE, do not re-derive it from a document count. The previous formula asked
-          // "how many cells hold filteredTarget accepted documents" and answered 7 at 10%
-          // selectivity, where 32 was already needed UNFILTERED -- so it never bound and the probe
-          // never grew. The configured probe is the tuned operating point; rarity says how much
-          // further it has to reach to hold the same recall.
-          //
-          // The exponent is measured, not assumed, and it depends on how many documents a cell
-          // holds
-          // -- see rarityExponent. Sweeping nprobe to hold recall 0.95 on 1M/nlist=1000/spillBits=1
-          // gives multipliers 1.41x / 1.70x / 2.42x / 3.09x at selectivity 50 / 25 / 10 / 5%.
-          // Linear
-          // in rarity would ask for 20x where 3.09x holds; sqrt would ask 4.47x.
-          final double k =
-              IVFasterVectorsReader.rarityExponent(Math.max(1, session.count() / session.nlist()));
-          probe =
-              (int)
-                  Math.max(
-                      probe,
-                      Math.min(session.maxProbe(), (long) Math.ceil(probe * Math.pow(rarity, k))));
-          admitRows = (long) Math.ceil(admitRows * rarity);
-        }
-        final int n = session.prepare(probe, admitRows);
-        for (int i = 0; i < n; i++) {
-          final CellPostings cell = session.postings(i);
-          if (cell != null) {
-            wrappers.add(new CellPostings.Wrapper(cell));
-          }
-        }
+        return new ExactScorer(session, session.allDocs(), boost);
       }
-      if (wrappers.isEmpty()) {
+      int probe = session.probe();
+      // The codec's pool: admit slots for every copy a document may hold, then dedup to admit.
+      long admitRows = (long) admit * session.fanout();
+      // A leading clause sparser than the field is a filter, and its rarity is how much wider this
+      // probe has to reach. Compared against the FIELD, not against this probe's own walk: the
+      // question is whether a filter is restricting, which has nothing to do with nprobe.
+      if (leadCost < fieldCost) {
+        final double rarity = (double) fieldCost / Math.max(1, leadCost);
+        // SCALE THE PROBE, do not re-derive it from a document count. The previous formula asked
+        // "how many cells hold filteredTarget accepted documents" and answered 7 at 10%
+        // selectivity, where 32 was already needed UNFILTERED -- so it never bound and the probe
+        // never grew. The configured probe is the tuned operating point; rarity says how much
+        // further it has to reach to hold the same recall.
+        //
+        // The exponent is measured, not assumed, and it depends on how many documents a cell holds
+        // -- see rarityExponent. Sweeping nprobe to hold recall 0.95 on 1M/nlist=1000/spillBits=1
+        // gives multipliers 1.41x / 1.70x / 2.42x / 3.09x at selectivity 50 / 25 / 10 / 5%. Linear
+        // in rarity would ask for 20x where 3.09x holds; sqrt would ask 4.47x.
+        final double k =
+            IVFasterVectorsReader.rarityExponent(Math.max(1, session.count() / session.nlist()));
+        probe =
+            (int)
+                Math.max(
+                    probe,
+                    Math.min(session.maxProbe(), (long) Math.ceil(probe * Math.pow(rarity, k))));
+        admitRows = (long) Math.ceil(admitRows * rarity);
+      }
+      // Nothing admitted is not "no cells": an empty probed region matches no document, and a
+      // scorer that yields none is exactly what the conjunction should get.
+      if (session.prepare(probe, admitRows) == 0) {
         return null;
       }
-      return new CellScorer(session, wrappers, exact, leadCost, boost);
+      return new AdmittedScorer(session, session.admittedDocs(), boost);
     }
 
-    private CellScorer(
-        IVFasterVectorsReader.CellSession session,
-        List<DisiWrapper> wrappers,
-        boolean exact,
-        long leadCost,
-        float boost) {
+    CellScorer(IVFasterVectorsReader.CellSession session, float boost) {
       this.session = session;
-      this.cells = DisjunctionDISIApproximation.of(wrappers, leadCost);
       this.boost = boost;
-      final int matchCost = exact ? 0 : session.coarseBytes();
-      this.twoPhase =
-          new TwoPhaseIterator(cells) {
-            @Override
-            public boolean matches() {
-              // Every copy of a document carries the same code; the first is enough.
-              final CellPostings cell = ((CellPostings.Wrapper) cells.topList()).cell;
-              if (exact) {
-                // The "slot" of the all-docs list is an ordinal.
-                slot = session.ordToSlot(cell.slot());
-                return true;
-              }
-              if (session.admitted(cell) == false) {
-                return false;
-              }
-              slot = cell.slot();
-              return true;
-            }
+    }
 
-            @Override
-            public float matchCost() {
-              return matchCost;
-            }
-          };
-      this.iterator = TwoPhaseIterator.asDocIdSetIterator(twoPhase);
+    /** The slot to fine-score the current document from. */
+    abstract int slot();
+
+    @Override
+    public final int docID() {
+      return iterator().docID();
     }
 
     @Override
-    public int docID() {
-      return cells.docID();
-    }
-
-    @Override
-    public DocIdSetIterator iterator() {
-      return iterator;
-    }
-
-    @Override
-    public TwoPhaseIterator twoPhaseIterator() {
-      return twoPhase;
-    }
-
-    @Override
-    public float score() throws IOException {
-      final int doc = cells.docID();
+    public final float score() throws IOException {
+      final int doc = docID();
       if (doc != scoredDoc) {
-        score = boost * session.fineScore(slot);
+        score = boost * session.fineScore(slot());
         scoredDoc = doc;
       }
       return score;
     }
 
     @Override
-    public float getMaxScore(int upTo) {
+    public final float getMaxScore(int upTo) {
       return Float.POSITIVE_INFINITY;
+    }
+  }
+
+  /**
+   * The widened-probe plan: the documents {@code prepare} admitted, as one iterator.
+   *
+   * <p>NO VERIFICATION PHASE, so no {@link TwoPhaseIterator}. Admission was applied when the cut
+   * was fixed, so every document this iterator yields matches, and there is nothing a second phase
+   * could test. What that removes is not just the {@code matches()} call: it removes the
+   * disjunction the approximation used to be — a heap over the probed cells plus a linear rescan of
+   * whatever did not fit in it, per {@code advance} — which the profile put at 62% of query samples
+   * with one filter clause and 74% with four. See {@code CellSession#admittedDocs}.
+   */
+  private static final class AdmittedScorer extends CellScorer {
+    private final DocIdSetIterator docs;
+
+    AdmittedScorer(IVFasterVectorsReader.CellSession session, DocIdSetIterator docs, float boost) {
+      super(session, boost);
+      this.docs = docs;
+    }
+
+    @Override
+    public DocIdSetIterator iterator() {
+      return docs;
+    }
+
+    @Override
+    int slot() {
+      return session.slotForDoc(docs.docID());
+    }
+  }
+
+  /**
+   * The exact plan: every document with a vector, in doc order, fine-scored as the conjunction
+   * reaches it. For a filter narrow enough that reranking all it accepts reads fewer bytes than the
+   * cells would; see {@code CellSession#exactBound}.
+   *
+   * <p>Also without a verification phase: this approximation admits everything on purpose, so a
+   * second phase would only ever return true. The posting list's "slot" is an ordinal here.
+   */
+  private static final class ExactScorer extends CellScorer {
+    private final CellPostings docs;
+
+    ExactScorer(IVFasterVectorsReader.CellSession session, CellPostings docs, float boost) {
+      super(session, boost);
+      this.docs = docs;
+    }
+
+    @Override
+    public DocIdSetIterator iterator() {
+      return docs;
+    }
+
+    @Override
+    int slot() {
+      return session.ordToSlot(docs.slot());
     }
   }
 

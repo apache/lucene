@@ -47,6 +47,7 @@ import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NumericUtils;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
@@ -442,6 +443,43 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
       Float.parseFloat(System.getProperty("ivfaster.nprobeMargin", "0.75"));
 
   /**
+   * The quality margin applied to a WIDENED doc-at-a-time selection; {@code 1.0} disables the
+   * prune, which is what this path did unconditionally before the knob existed.
+   *
+   * <p>WHY THIS IS A SEPARATE KNOB AND NOT {@link #NPROBE_MARGIN}. The doc-at-a-time scorer pays
+   * the full coarse scan of every probed cell up front, because its admission cut has to be a pure
+   * function of the document (see {@code CellSession#prepare}), so a filter cannot prune rows the
+   * way {@link #filteredScanAndRerank} does and cost is set by CELLS ALONE. That makes the tail of
+   * a rarity-widened probe the most expensive thing this path does, and the only mechanism that can
+   * cut it on quality rather than on count is this prune.
+   *
+   * <p>IT FIGHTS THE WIDENING, ON PURPOSE. {@link #rarityProbe} widens because a filter removes the
+   * near neighbours and pushes the accepted ones outward; the prune drops cells that are far in
+   * absolute quality. Both cannot be right at once, so this is a knob and not a default.
+   *
+   * <p>MEASURED, AND IT BUYS NOTHING HERE. On 1M/nlist=1000/spillBits=1 at 5% selectivity, where
+   * the probe widens 32 -> 84 cells: {@code 0.5}, {@code 0.6} and {@code 0.75} all keep every one
+   * of the 84 (7.01 / 7.06 / 7.08 ms at recall 0.948), because the margin is a retention fraction
+   * and SMALLER KEEPS MORE — the band only begins to bite at {@code 0.85}, which cuts 84 to 75 for
+   * 6.38 ms at recall 0.943. Note what that means for the unfiltered default of {@link
+   * #NPROBE_MARGIN}: the centroid distances of the nearest hundred cells sit inside a 25% band of
+   * each other on this corpus, so {@code 0.75} prunes nothing at this operating point either.
+   *
+   * <p>And where it does bite it is not a better trade than simply widening less. Pinning {@link
+   * #FILTER_RARITY_EXPONENT_OVERRIDE} to 0.25 gives 68 cells, recall 0.934, 5.69 ms; interpolating
+   * that arm to recall 0.943 lands at about 6.5 ms against the prune's 6.38. The two frontiers are
+   * the same line, so the prune is a per-query spelling of a smaller exponent and not an additional
+   * source of speed. It is left OFF, and the doc-at-a-time path's cost is attacked where the
+   * profile says it lives — the disjunction over probed cells, 62% of samples at one clause and 74%
+   * at four, against 19% and 12% for the eager coarse scan this prune would shrink.
+   *
+   * <p>Unwidened doc-at-a-time selections keep using {@link #NPROBE_MARGIN}, unchanged: there is no
+   * widening there to fight.
+   */
+  private static final float DAAT_MARGIN =
+      Float.parseFloat(System.getProperty("ivfaster.daatMargin", "1.0"));
+
+  /**
    * Rebind the mmap'd coarse and code segments to the GLOBAL (always-alive) scope at open, so the
    * per-load session-liveness check ({@code MemorySessionImpl.checkValidStateRaw}) folds away.
    * Every {@code LongVector.fromMemorySegment} in the coarse scan otherwise re-validates a segment
@@ -787,6 +825,19 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
     final int[] slotDoc;
 
     /**
+     * Whether {@code ordToDoc} is the identity, so a document id can be used as an ordinal
+     * directly.
+     *
+     * <p>True exactly when every document in the segment has a vector in this field, which is the
+     * ordinary case. Ordinals are ascending and DISTINCT (verified at open), so the whole map is
+     * the identity as soon as its last entry is {@code count - 1}: {@code count} strictly
+     * increasing values in {@code [0, count-1]} leave no room for a gap. That makes this an O(1)
+     * test rather than a scan, and it turns the doc-to-ordinal lookup on the scoring path from a
+     * bisect over a multi-megabyte column into an array index; see {@code CellSession#slotForDoc}.
+     */
+    final boolean denseOrds;
+
+    /**
      * Opens every view for one field, and reads at open what both a query and a merge need; what
      * only a query needs waits for the first query, see {@link #ensureSearchState}.
      *
@@ -891,6 +942,9 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
               "vector ordinals are not in ascending doc-id order at ordinal " + i, data);
         }
       }
+      // Sound only BECAUSE of the check just above: ascending and distinct is what makes the last
+      // entry decide the whole map. See denseOrds.
+      denseOrds = e.count > 0 && ordToDoc[e.count - 1] == e.count - 1;
       this.entry = e;
       this.data = data;
     }
@@ -1058,7 +1112,7 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
     final int probe = Math.min(NPROBE_OVERRIDE > 0 ? NPROBE_OVERRIDE : e.nprobe, e.nlist);
     if (accept instanceof BitSet == false) {
       // 4 + 5. Coarse-scan the selected cells, then rerank the shortlist.
-      final int[] selected = selectCells(e, v, rotated, qCode, probe, true);
+      final int[] selected = selectCells(e, v, rotated, qCode, probe, NPROBE_MARGIN);
       scanAndRerank(e, v, qCode, fine, selected, knnCollector, accept);
       return;
     }
@@ -1070,7 +1124,7 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
       return;
     }
     // No quality prune on the initial selection: the walk below widens on its own terms.
-    final int[] initial = selectCells(e, v, rotated, qCode, probe, false);
+    final int[] initial = selectCells(e, v, rotated, qCode, probe, 1.0f);
     filteredScanAndRerank(
         e,
         v,
@@ -1168,7 +1222,7 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
    * probe}: it drops the hopeless tail without letting coarse pick the cells.
    */
   private int[] selectCells(
-      FieldEntry e, FieldViews v, float[] rotated, byte[] qCode, int probe, boolean applyMargin) {
+      FieldEntry e, FieldViews v, float[] rotated, byte[] qCode, int probe, float margin) {
     if (v.graph != null && FLAT_SELECT == false) {
       final int ef = Math.max(CentroidGraph.MIN_EF, probe * CentroidGraph.EF_MULTIPLIER);
       final ScanScratch scan = SCAN_SCRATCH.get();
@@ -1181,7 +1235,7 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
               ? got
               : Math.min(got, Math.max(VERIFY_MIN, probe * VERIFY_MULTIPLIER));
       final int kept = verifyCap < got ? narrowByCoarse(candidates, candDist, got, verifyCap) : got;
-      return rerankCells(e, v, rotated, candidates, kept, probe, applyMargin);
+      return rerankCells(e, v, rotated, candidates, kept, probe, margin);
     }
     flatSelects.incrementAndGet();
     // Exact scan: a max-heap of the best `probe` cells, keyed on distance.
@@ -1264,7 +1318,7 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
       int[] candidates,
       int got,
       int probe,
-      boolean applyMargin) {
+      float margin) {
     final float[] dist = new float[got];
     final int[] order = new int[got];
     if (Boolean.getBoolean("ivfaster.reportEngagement")) {
@@ -1299,9 +1353,9 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
     int keep = prefix;
     // ADAPTIVE NPROBE; see the javadoc and NPROBE_MARGIN. Off under a filter, whose walk decides
     // its own width from what the filter admits.
-    if (applyMargin && NPROBE_MARGIN != 1.0f && keep > 1) {
+    if (margin != 1.0f && keep > 1) {
       final float d1 = dist[order[0]];
-      final float bound = d1 * NPROBE_MARGIN;
+      final float bound = d1 * margin;
       int k = 1;
       while (k < keep && dist[order[k]] <= bound) {
         k++;
@@ -2370,16 +2424,30 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
     private final int probe;
     private int[] cells;
 
-    /** Per selected cell: slot base, rows, and where its distances start in {@link #dist}. */
-    private int[] cellBase;
+    /**
+     * The documents the coarse cut admits, as ONE set over the whole probed region.
+     *
+     * <p>WHY A BIT SET AND NOT A DISJUNCTION OVER THE CELLS. The cells are contiguous doc-sorted
+     * slot runs, so each is already a posting list and handing the scorer a disjunction of them is
+     * the obvious shape — it was the first one, and it is where the time went. {@code
+     * DisjunctionDISIApproximation} keeps sub-iterators in a heap only while {@code Σ min(cost,
+     * leadCost) <= 1.5 * leadCost} and checks the rest LINEARLY on every {@code advance}, so a
+     * rarity-widened probe of 84 cells against a 50K-document filter left some 37 of them rescanned
+     * per advance, 50K times per query, on top of a heap update per cell that had to move. Profiled
+     * at 62% of query samples with one filter clause and 74% with four, against 12-19% for the
+     * coarse scan itself.
+     *
+     * <p>None of that work is inherent: admission is already a FIXED cut by the time it matters
+     * (see {@link #prepare}), so the union can be materialized once, in the pass that applies the
+     * cut, and iterated as a word scan with no heap, no per-advance rescan, and no duplicate copies
+     * to collapse. The set also reports its true cardinality, which is what the enclosing
+     * conjunction reads to decide which clause leads — a disjunction reported the SLOT COUNT of the
+     * whole probed region, several times larger, which is how a four-clause filter came to lead
+     * with the cells.
+     */
+    private FixedBitSet admittedDocs;
 
-    private int[] cellRows;
-    private int[] distOffset;
-
-    /** Coarse distance of every row of every selected cell, in cell order; see {@link #prepare}. */
-    private int[] dist;
-
-    private int threshold;
+    private int admittedCount;
     private final HammingKernel hamming = HammingKernel.get();
 
     /**
@@ -2455,9 +2523,9 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
     }
 
     /**
-     * Selects the {@code n} nearest cells, Hamming-scores every row of their runs, and fixes the
+     * Selects the {@code n} nearest cells, Hamming-scores every row of their runs, fixes the
      * admission threshold at the coarse distance that admits {@code admitRows} rows (ties
-     * included), so that admission is a pure function of the document.
+     * included), and collects the documents that pass it into {@link #admittedDocs}.
      *
      * <p>The scan is the codec's own coarse scan over the probed cells, run eagerly. A scorer
      * cannot admit by a threshold that tightens as it goes, since a conjunction may skip through it
@@ -2465,20 +2533,34 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
      * each run through the vector kernel, so the eager pass costs what the unfiltered scan pays for
      * the same cells.
      *
-     * <p>Without the quality prune when {@code n} exceeds the configured probe, since a wider probe
-     * was asked for on purpose.
+     * <p>THE CUT IS APPLIED HERE, not per document later, which is the whole point: once admission
+     * is fixed there is nothing left for a per-document check to decide, so the scorer needs no
+     * verification phase and no per-cell structure to look a row up in — just the set of documents.
+     * Two passes over the distances, since the threshold is not known until every row has been
+     * scored: the first histograms, the second selects. The second pass is over {@code dist} in
+     * memory, not over the coarse codes again.
      *
-     * @return the number of selected cells
+     * <p>{@code dist} is dropped before returning. It is the largest allocation on this path — one
+     * int per row of every probed cell, 525 KB at 84 cells of 1560 rows — and a scorer outlives the
+     * pass that needs it by the whole length of the query.
+     *
+     * <p>Without the quality prune when {@code n} exceeds the configured probe, since a wider probe
+     * was asked for on purpose — unless {@link #DAAT_MARGIN} says otherwise, which is the one knob
+     * that can trim a widened probe's tail on quality rather than on count.
+     *
+     * @return the number of documents admitted
      */
     int prepare(int n, long admitRows) throws IOException {
       if (cells != null) {
         throw new IllegalStateException("already prepared");
       }
       final int want = Math.min(Math.max(1, n), e.nlist);
-      cells = selectCells(e, v, rotated, qCode, want, want <= probe);
-      cellBase = new int[cells.length];
-      cellRows = new int[cells.length];
-      distOffset = new int[cells.length];
+      // The prune's own margin when this probe was widened; see DAAT_MARGIN. Unwidened, the
+      // unfiltered margin applies unchanged.
+      cells = selectCells(e, v, rotated, qCode, want, want <= probe ? NPROBE_MARGIN : DAAT_MARGIN);
+      final int[] cellBase = new int[cells.length];
+      final int[] cellRows = new int[cells.length];
+      final int[] distOffset = new int[cells.length];
       int total = 0;
       for (int i = 0; i < cells.length; i++) {
         final int c = cells[i];
@@ -2487,7 +2569,7 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
         distOffset[i] = total;
         total += cellRows[i];
       }
-      dist = new int[total];
+      final int[] dist = new int[total];
       final int histLen = (e.coarseBytes << 3) + 2;
       final int[] hist = new int[histLen];
       // Sized once from the widest cell, since the kernel writes from index 0 and the run is then
@@ -2524,13 +2606,82 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
         below += hist[thr];
         thr++;
       }
-      threshold = thr;
-      return cells.length;
+      final int threshold = thr;
+      // Sized to the largest doc id that has a vector in this field, not to the segment's maxDoc,
+      // which is not visible here; ordToDoc is ascending, verified at open.
+      final int maxDoc = v.ordToDoc.length == 0 ? 0 : v.ordToDoc[v.ordToDoc.length - 1] + 1;
+      final FixedBitSet admitted = new FixedBitSet(maxDoc);
+      final int[] slotDoc = v.slotDoc;
+      int distinct = 0;
+      for (int i = 0; i < cells.length; i++) {
+        final int base = cellBase[i];
+        final int off = distOffset[i];
+        final int rows = cellRows[i];
+        for (int r = 0; r < rows; r++) {
+          if (dist[off + r] > threshold) {
+            continue;
+          }
+          // Spill puts several slots of one document in several cells, all carrying the same code
+          // and
+          // therefore the same distance, so this is where the copies collapse: getAndSet reports
+          // whether this document is new.
+          if (admitted.getAndSet(slotDoc[base + r]) == false) {
+            distinct++;
+          }
+        }
+      }
+      admittedDocs = admitted;
+      admittedCount = distinct;
+      // Opt-in instrumentation; see COUNT_SCAN. The rows counted are what the eager coarse pass
+      // above actually scored, which on this path is every row of every selected cell -- the number
+      // the prune exists to cut, and not inferable from nprobe once widening and DAAT_MARGIN both
+      // move it.
+      if (COUNT_SCAN) {
+        scannedDocs.addAndGet(total);
+        scanQueries.incrementAndGet();
+        probedCells.addAndGet(cells.length);
+        filteredQueries.incrementAndGet();
+      }
+      return distinct;
     }
 
-    /** Whether the row of a prepared cell passes the fixed coarse cut. */
-    boolean admitted(CellPostings cell) {
-      return dist[cell.distOffset + cell.row()] <= threshold;
+    /**
+     * The documents this query's probe admits, in doc order; see {@link #admittedDocs}. Valid after
+     * {@link #prepare}.
+     */
+    DocIdSetIterator admittedDocs() {
+      return new org.apache.lucene.util.BitSetIterator(admittedDocs, admittedCount);
+    }
+
+    /**
+     * The slot to fine-score an admitted document from: its PRIMARY slot, found in the ascending
+     * {@code ordToDoc} exactly as {@link #rerankFilteredDocs} finds it.
+     *
+     * <p>Any copy of a document would do — the copies hold the same code — so there is no need to
+     * carry the slot that a particular cell happened to reach it through, and therefore no need for
+     * the cells to survive {@link #prepare} at all. Returns {@code -1} for a document without a
+     * vector in this field, which an admitted document never is.
+     *
+     * <p>NO SEARCH AT ALL WHEN EVERY DOCUMENT HAS A VECTOR, which is the ordinary case for a vector
+     * index and is decided in O(1): ordinals are ascending and distinct, so a last ordinal equal to
+     * {@code length - 1} means {@code ordToDoc[i] == i} everywhere and the ordinal IS the document.
+     * See {@code FieldViews#denseOrds}.
+     *
+     * <p>WHY THE SPARSE BRANCH IS A PLAIN BISECT. The walk is monotone, so galloping from the last
+     * hit looks like the obvious improvement. It was tried and measured a WASH — 5.7% of query
+     * samples against 4.9%, latency inside noise — because consecutive scored documents sit about a
+     * thousand ordinals apart on this path, and ten doubling probes plus a bisect of the window
+     * they bracket costs the same nineteen dependent loads that bisecting the whole column does.
+     * The cost is the random access, not the search strategy, so the only fix that pays is not
+     * searching.
+     */
+    int slotForDoc(int doc) {
+      if (v.denseOrds) {
+        return v.ordToSlot[doc];
+      }
+      final int ord = Arrays.binarySearch(v.ordToDoc, doc);
+      assert ord >= 0 : "doc " + doc + " was admitted but has no vector in this field";
+      return ord < 0 ? -1 : v.ordToSlot[ord];
     }
 
     /**
@@ -2546,18 +2697,11 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
       return v.ordToSlot[ord];
     }
 
-    /** The {@code i}-th prepared cell as a posting list, or null when it is empty. */
-    CellPostings postings(int i) {
-      if (cellRows[i] == 0) {
-        return null;
-      }
-      final CellPostings cell = new CellPostings(v.slotDoc, cellBase[i], cellRows[i]);
-      cell.distOffset = distOffset[i];
-      return cell;
-    }
-
     /** Fine score of one slot, on the collector's similarity scale. */
     float fineScore(int slot) throws IOException {
+      if (COUNT_FINE_SCORES) {
+        daatFineScores.incrementAndGet();
+      }
       in.seek(e.codeTableOffset + (long) slot * e.recordLen);
       if (flat != null) {
         in.readBytes(flat, 0, e.recordLen);
@@ -2656,6 +2800,8 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
               + (filteredRounds.get() / Math.max(1, filteredQueries.get()))
               + " exactFilterQueries="
               + exactFilterQueries.get()
+              + " daatFineScores/query="
+              + (daatFineScores.get() / q)
               + (MEASURE_SPILL
                   ? " uniqueDocs/query="
                       + (uniqueDocs.get() / q)
@@ -3073,6 +3219,24 @@ final class IVFasterVectorsReader extends KnnVectorsReader {
 
   static final java.util.concurrent.atomic.AtomicLong filteredRounds =
       new java.util.concurrent.atomic.AtomicLong();
+
+  /**
+   * Documents fine-scored ONE AT A TIME by {@code CellSession#fineScore}, summed over queries.
+   *
+   * <p>Worth its own counter because this is the doc-at-a-time path's only unbatched kernel call:
+   * every other fine score in the codec goes through {@link #rerankAndCollect} in blocks, and the
+   * difference between those two is a whole term in the latency of a filtered query.
+   *
+   * <p>ITS OWN GATE, not {@link #COUNT_SCAN}, because it is one atomic per SCORED DOCUMENT where
+   * the others are three or four per QUERY. At a thousand-odd fine scores per filtered query that
+   * is the difference between instrumentation a latency sweep can leave on and instrumentation that
+   * changes the number being swept.
+   */
+  static final java.util.concurrent.atomic.AtomicLong daatFineScores =
+      new java.util.concurrent.atomic.AtomicLong();
+
+  /** See {@link #daatFineScores}: per-document, so it is opt-in on its own. */
+  private static final boolean COUNT_FINE_SCORES = Boolean.getBoolean("ivfaster.countFineScores");
 
   /** Filtered queries whose accepted set was reranked whole; see EXACT_FILTER_COST. */
   static final java.util.concurrent.atomic.AtomicLong exactFilterQueries =

@@ -19,6 +19,8 @@ package org.apache.lucene.sandbox.codecs.ivfaster;
 import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.IntPredicate;
 import org.apache.lucene.codecs.Codec;
@@ -30,14 +32,20 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -173,6 +181,80 @@ public class TestIVFasterKnnQuery extends LuceneTestCase {
         assertNotEquals(query, new IVFasterKnnQuery(FIELD, q, 4, 0, true));
         // A field the segment does not have matches nothing rather than failing.
         assertEquals(0, searcher.search(new IVFasterKnnQuery("nope", q), 5).scoreDocs.length);
+      }
+    }
+  }
+
+  /**
+   * A DOCUMENT'S MATCH AND SCORE MUST NOT DEPEND ON THE PATH TAKEN TO REACH IT. The scorer sits in
+   * a conjunction that skips through it in whatever strides the leading clause dictates, so the
+   * same scorer walked with {@code nextDoc} and walked with random {@code advance} jumps has to
+   * yield the same documents with the same scores. That is the invariant the fixed admission cut
+   * exists to provide, and it is what makes the admitted documents materializable as a set.
+   *
+   * <p>Asserted here because the shape this replaced could not state it: admission used to be a
+   * per-document lookup against whichever cell of a disjunction happened to be named as reaching
+   * the document, so it was a property of the traversal and not of the document, and nothing
+   * checked that the two agreed.
+   */
+  public void testMatchesAreIndependentOfTraversal() throws Exception {
+    final int dim = 16;
+    final int count = 4000;
+    final int nlist = 16;
+    final float[][] vectors = clusteredCorpus(count, 6, dim);
+    try (Directory dir = newDirectory()) {
+      index(dir, vectors, codec(nlist, 4));
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        final IndexSearcher searcher = newSearcher(reader);
+        for (int t = 0; t < 5; t++) {
+          final float[] q = vectors[random().nextInt(count)];
+          // Non-adaptive, so both walks below are sized identically and only the PATH differs.
+          final IVFasterKnnQuery query = new IVFasterKnnQuery(FIELD, q, 4, 0, false);
+          final Weight weight =
+              searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE, 1f);
+          for (LeafReaderContext ctx : searcher.getIndexReader().leaves()) {
+            final ScorerSupplier one = weight.scorerSupplier(ctx);
+            final ScorerSupplier other = weight.scorerSupplier(ctx);
+            if (one == null || other == null) {
+              assertNull(one);
+              assertNull(other);
+              continue;
+            }
+            // Straight walk.
+            final Map<Integer, Float> streamed = new LinkedHashMap<>();
+            final Scorer s = one.get(Long.MAX_VALUE);
+            for (int doc = s.iterator().nextDoc();
+                doc != DocIdSetIterator.NO_MORE_DOCS;
+                doc = s.iterator().nextDoc()) {
+              streamed.put(doc, s.score());
+            }
+            // The same scorer reached by jumps, which must find exactly the documents above that
+            // fall on or after each target, and score them identically.
+            final Scorer j = other.get(Long.MAX_VALUE);
+            final DocIdSetIterator it = j.iterator();
+            int target = 0;
+            int seen = 0;
+            while (target < ctx.reader().maxDoc()) {
+              final int doc = it.advance(target);
+              if (doc == DocIdSetIterator.NO_MORE_DOCS) {
+                break;
+              }
+              assertTrue(
+                  "advance(" + target + ") landed on unmatched doc " + doc,
+                  streamed.containsKey(doc));
+              assertEquals(
+                  "score of doc " + doc + " depends on how it was reached",
+                  streamed.get(doc),
+                  j.score(),
+                  0f);
+              seen++;
+              // A stride that sometimes lands on a match and sometimes skips several.
+              target = doc + 1 + random().nextInt(8);
+            }
+            assertTrue(
+                "jumped walk found nothing of " + streamed.size(), seen > 0 || streamed.isEmpty());
+          }
+        }
       }
     }
   }

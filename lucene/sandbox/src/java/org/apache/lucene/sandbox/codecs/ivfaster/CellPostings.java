@@ -16,10 +16,7 @@
  */
 package org.apache.lucene.sandbox.codecs.ivfaster;
 
-import org.apache.lucene.search.ConstantScoreScorer;
-import org.apache.lucene.search.DisiWrapper;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.ScoreMode;
 
 /**
  * One cell of an ivfaster segment as a posting list: the doc ids of its slot run, ascending.
@@ -33,9 +30,12 @@ import org.apache.lucene.search.ScoreMode;
  * the intersection and skips far ahead costs {@code O(log gap)} per call rather than a linear walk,
  * while a filter that lands on nearly every slot stays {@code O(1)} amortised.
  *
- * <p>A document occupies at most one slot per cell, so ids never repeat within one instance. They
- * do repeat ACROSS cells under spill, which the disjunction over probed cells collapses: every copy
- * carries the same coarse code, so one copy is enough to score.
+ * <p>A document occupies at most one slot per cell, so ids never repeat within one instance.
+ *
+ * <p>USED FOR ONE LIST AT A TIME. A scorer over several cells does NOT hold one of these per cell
+ * and union them — that disjunction was measured as the dominant cost of a filtered doc-at-a-time
+ * query, and {@code CellSession#admittedDocs} replaced it with a single materialized set. What is
+ * left for this class is the whole-field list of the exact plan, where there is exactly one run.
  */
 final class CellPostings extends DocIdSetIterator {
 
@@ -44,12 +44,6 @@ final class CellPostings extends DocIdSetIterator {
   private final int end;
   private int pos;
   private int doc = -1;
-
-  /**
-   * Where this cell's coarse distances start in a session's distance array, for a scorer whose
-   * admission is a lookup; see {@code IVFasterKnnQuery}.
-   */
-  int distOffset;
 
   CellPostings(int[] slotDoc, int base, int rows) {
     this.slotDoc = slotDoc;
@@ -61,11 +55,6 @@ final class CellPostings extends DocIdSetIterator {
   /** The slot of the current doc; valid while {@link #docID()} is a real doc. */
   int slot() {
     return pos;
-  }
-
-  /** The current doc's row within the cell's run. */
-  int row() {
-    return pos - base;
   }
 
   @Override
@@ -127,18 +116,5 @@ final class CellPostings extends DocIdSetIterator {
   @Override
   public long cost() {
     return end - base;
-  }
-
-  /**
-   * A {@link DisiWrapper} that keeps the cell it wraps, so the disjunction's {@code topList()}
-   * hands back the slot to score without unwrapping the scorer.
-   */
-  static final class Wrapper extends DisiWrapper {
-    final CellPostings cell;
-
-    Wrapper(CellPostings cell) {
-      super(new ConstantScoreScorer(0f, ScoreMode.COMPLETE_NO_SCORES, cell), false);
-      this.cell = cell;
-    }
   }
 }
