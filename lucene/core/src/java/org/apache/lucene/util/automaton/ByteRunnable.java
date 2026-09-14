@@ -38,6 +38,14 @@ public interface ByteRunnable {
   boolean isAccept(int state);
 
   /**
+   * Returns true if this state can accept all remaining suffixes from now on.
+   *
+   * @param state the state
+   * @return whether this state can accept all remaining suffixes.
+   */
+  boolean isMatchAllSuffix(int state);
+
+  /**
    * Returns number of states this automaton has, note this may not be an accurate number in case of
    * NFA
    *
