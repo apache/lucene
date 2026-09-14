@@ -220,10 +220,6 @@ Bug Fixes
 * GITHUB#16553: Fix stored-fields corruption when PerField#finish throws: the stored-fields frame
   was left open, causing "Wrote N docs, finish called with numDocs=M" at flush. (Michael Marshall)
 
-* GITHUB#16552: Reconnect HNSW nodes whose out-degree decays across successive
-  merge-reuse generations, preventing progressive recall loss under low delete
-  rates. (Ethan Baker)
-
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
 
@@ -600,6 +596,13 @@ API Changes
   upgrade. Both behaviors are now exposed as nested classes: [Byte|Float]VectorSimilarityQuery.Explicit exposes the
   Lucene 10.4 behavior and is deprecated, and [Byte|Float]VectorSimilarityQuery.Adaptive exposes the 10.5 behavior.
   (Kaival Parikh, Chris Hostetter, Michael Sokolov)
+
+Bug Fixes
+---------------------
+
+* GITHUB#16552: Reconnect HNSW nodes whose out-degree decays across successive
+  merge-reuse generations, preventing progressive recall loss under low delete
+  rates. (Ethan Baker)
 
 ======================= Lucene 10.5.1 =======================
 
