@@ -226,6 +226,20 @@ public abstract class DataOutput {
   }
 
   /**
+   * Writes an array of longs.
+   *
+   * @param values the longs to write
+   * @param offset the offset in the long array
+   * @param length the number of longs to write
+   * @see DataInput#readLongs(long[], int, int)
+   */
+  public void writeLongs(long[] values, int offset, int length) throws IOException {
+    for (int i = 0; i < length; i++) {
+      writeLong(values[offset + i]);
+    }
+  }
+
+  /**
    * Writes an long in a variable-length format. Writes between one and nine bytes. Smaller values
    * take fewer bytes. Negative numbers are not supported.
    *
