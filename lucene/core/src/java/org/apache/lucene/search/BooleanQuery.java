@@ -369,6 +369,18 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       if (mustNotClauses.stream().anyMatch(p.or(clauseSets.get(Occur.FILTER)::contains))) {
         return new MatchNoDocsQuery("FILTER or MUST clause also in MUST_NOT");
       }
+      for (Query q : clauseSets.get(Occur.MUST)) {
+        Query unwrapped = q;
+        if (q instanceof BoostQuery boostQuery) {
+          unwrapped = boostQuery.getQuery();
+        }
+        if (unwrapped instanceof ConstantScoreQuery csq) {
+          unwrapped = csq.getQuery();
+        }
+        if (unwrapped != q && mustNotClauses.contains(unwrapped)) {
+          return new MatchNoDocsQuery("MUST clause also in MUST_NOT");
+        }
+      }
       if (mustNotClauses.contains(MatchAllDocsQuery.INSTANCE)) {
         return new MatchNoDocsQuery("MUST_NOT clause is MatchAllDocsQuery");
       }
