@@ -9,6 +9,10 @@ on:
 
 permissions: {}
 
+# do not need to run more than one of these at a time
+concurrency:
+  group: ${{ github.workflow }}
+
 env:
   DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
 
