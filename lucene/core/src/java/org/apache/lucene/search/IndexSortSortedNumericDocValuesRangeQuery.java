@@ -133,8 +133,13 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
     }
 
     Query rewrittenFallback = fallbackQuery.rewrite(indexSearcher);
-    if (rewrittenFallback.getClass() == MatchAllDocsQuery.class) {
-      return MatchAllDocsQuery.INSTANCE;
+    // This query matches the same documents as its fallback, so if the fallback simplifies to a
+    // terminal query - match-all, match-none, or field-exists (e.g. a range covering every value of
+    // a sparse field) - the index-sort optimization adds nothing and we return it directly.
+    if (rewrittenFallback.getClass() == MatchAllDocsQuery.class
+        || rewrittenFallback.getClass() == MatchNoDocsQuery.class
+        || rewrittenFallback.getClass() == FieldExistsQuery.class) {
+      return rewrittenFallback;
     }
     if (rewrittenFallback == fallbackQuery) {
       return this;
