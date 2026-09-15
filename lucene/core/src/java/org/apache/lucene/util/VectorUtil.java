@@ -93,6 +93,34 @@ public final class VectorUtil {
   }
 
   /**
+   * Calculates the dot product of a query vector against a batch of document vectors.
+   *
+   * @param query The query vector
+   * @param docs Array of document vectors to score against
+   * @param results Pre-allocated array where the resulting scores will be written
+   * @throws IllegalArgumentException if the query dimensions do not match the document dimensions,
+   *     or if the results array is incorrectly sized.
+   */
+  public static void dotProductBulk(float[] query, float[][] docs, float[] results) {
+    if (docs.length != results.length) {
+      throw new IllegalArgumentException(
+          "results array length ("
+              + results.length
+              + ") must match docs array length ("
+              + docs.length
+              + ")");
+    }
+    if (docs.length == 0) {
+      return;
+    }
+    if (query.length != docs[0].length) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + query.length + "!=" + docs[0].length);
+    }
+    IMPL.dotProductBulk(query, docs, results);
+  }
+
+  /**
    * Returns the cosine similarity between the two vectors.
    *
    * @throws IllegalArgumentException if the vectors' dimensions differ.
