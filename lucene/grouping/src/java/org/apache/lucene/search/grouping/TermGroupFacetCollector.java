@@ -34,7 +34,9 @@ import org.apache.lucene.util.UnicodeUtil;
  * indexed terms from DocValues.
  *
  * @lucene.experimental
+ * @deprecated Use {@code TermGroupFacetCollectorManager} instead, which supports concurrent search.
  */
+@Deprecated
 public abstract class TermGroupFacetCollector extends GroupFacetCollector {
 
   final List<GroupedFacetHit> groupedFacetHits;
@@ -54,7 +56,9 @@ public abstract class TermGroupFacetCollector extends GroupFacetCollector {
    *     which should roughly match the total number of expected unique groups. Be aware that the
    *     heap usage is 4 bytes * initialSize.
    * @return <code>TermGroupFacetCollector</code> implementation
+   * @deprecated Use {@code TermGroupFacetCollectorManager} instead.
    */
+  @Deprecated
   public static TermGroupFacetCollector createTermGroupFacetCollector(
       String groupField,
       String facetField,
