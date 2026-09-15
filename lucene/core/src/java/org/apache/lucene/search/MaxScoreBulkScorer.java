@@ -235,9 +235,9 @@ final class MaxScoreBulkScorer extends BulkScorer {
       }
       if (filter.doc < innerWindowMax) {
         if (filter.twoPhaseView != null) {
-          filter.twoPhaseView.intoBitSet(innerWindowMax, filterMatches, innerWindowMin);
+          filter.twoPhaseView.intoBitSet(innerWindowMax, filterMatchesBits.bits, innerWindowMin);
         } else {
-          filter.approximation.intoBitSet(innerWindowMax, filterMatches, innerWindowMin);
+          filter.approximation.intoBitSet(innerWindowMax, filterMatchesBits.bits, innerWindowMin);
         }
         filter.doc = filter.approximation.docID();
       }

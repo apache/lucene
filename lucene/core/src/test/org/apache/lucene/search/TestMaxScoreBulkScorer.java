@@ -1523,6 +1523,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
 
               @Override
               public void collect(int doc) {
+                assertTrue(doc % 20 == 1);
                 collectedDocs[0]++;
               }
             },
