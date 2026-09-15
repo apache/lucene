@@ -26,6 +26,10 @@ import org.apache.lucene.tests.util.TestUtil;
 
 public class TestLiveDocs extends LuceneTestCase {
 
+  private static final double[] DELETE_RATES = {0, 0.001, 0.01, 0.05, 0.2, 0.5, 1.0};
+  private static final double[] CANDIDATE_RATES = {0, 0.001, 0.01, 0.5, 1.0};
+  private static final int[] WINDOWS = {64, 128, 1024, 2048, 4096};
+
   public void testSparseLiveDocsBasic() {
     // GIVEN
     final int maxDoc = 1000;
@@ -595,5 +599,228 @@ public class TestLiveDocs extends LuceneTestCase {
     assertEquals(maxDoc - 2, denseLive.size());
     assertEquals(1, sparseLive.get(0).intValue());
     assertEquals(maxDoc - 2, sparseLive.get(sparseLive.size() - 1).intValue());
+  }
+
+  public void testApplyMaskMatchesDefault() {
+    final int iters = atLeast(100);
+    for (int iter = 0; iter < iters; iter++) {
+      // GIVEN
+      final int maxDoc = TestUtil.nextInt(random(), 1, 20000);
+      final double deleteRate = DELETE_RATES[random().nextInt(DELETE_RATES.length)];
+      final double candidateRate = CANDIDATE_RATES[random().nextInt(CANDIDATE_RATES.length)];
+      FixedBitSet deleted = randomBitSet(maxDoc, deleteRate);
+      FixedBitSet candidates = randomBitSet(maxDoc, candidateRate);
+
+      for (LiveDocs liveDocs : liveDocsViews(maxDoc, deleted, 0)) {
+        FixedBitSet expected = candidates.clone();
+        FixedBitSet actual = candidates.clone();
+
+        // WHEN
+        defaultApplyMask(liveDocs).applyMask(expected, 0);
+        liveDocs.applyMask(actual, 0);
+
+        // THEN
+        assertEquals(liveDocs.toString(), expected, actual);
+      }
+    }
+  }
+
+  public void testApplyMaskWindowedOffsets() {
+    final int iters = atLeast(20);
+    for (int iter = 0; iter < iters; iter++) {
+      // GIVEN
+      final int maxDoc = TestUtil.nextInt(random(), 1, 20000);
+      final double deleteRate = DELETE_RATES[random().nextInt(DELETE_RATES.length)];
+      FixedBitSet deleted = randomBitSet(maxDoc, deleteRate);
+
+      for (LiveDocs liveDocs : liveDocsViews(maxDoc, deleted, 0)) {
+        for (int window : WINDOWS) {
+          for (int offset : windowOffsets(maxDoc, window)) {
+            FixedBitSet expected = fullWindow(window, maxDoc, offset);
+            FixedBitSet actual = expected.clone();
+
+            // WHEN
+            defaultApplyMask(liveDocs).applyMask(expected, offset);
+            liveDocs.applyMask(actual, offset);
+
+            // THEN
+            assertEquals(liveDocs + " window=" + window + ", offset=" + offset, expected, actual);
+          }
+        }
+      }
+    }
+  }
+
+  public void testApplyMaskTailWindow() {
+    final int window = 1024;
+    for (int maxDoc : new int[] {63, 64, 65, 1023, 1024, 1025, 4095, 4096, 4097}) {
+      // GIVEN
+      FixedBitSet deleted = randomBitSet(maxDoc, 0.2);
+      final int offset = maxDoc - (maxDoc % window);
+
+      for (LiveDocs liveDocs : liveDocsViews(maxDoc, deleted, 0)) {
+        FixedBitSet expected = fullWindow(window, maxDoc, offset);
+        FixedBitSet actual = expected.clone();
+
+        // WHEN
+        defaultApplyMask(liveDocs).applyMask(expected, offset);
+        liveDocs.applyMask(actual, offset);
+
+        // THEN
+        assertEquals(liveDocs + " maxDoc=" + maxDoc, expected, actual);
+        int liveInTail = 0;
+        for (int doc = offset; doc < Math.min(maxDoc, offset + window); doc++) {
+          if (liveDocs.get(doc)) {
+            liveInTail++;
+          }
+        }
+        assertEquals(
+            "live docs in the tail window of " + liveDocs, liveInTail, actual.cardinality());
+      }
+    }
+  }
+
+  public void testApplyMaskNeverSetsBits() {
+    final int iters = atLeast(20);
+    for (int iter = 0; iter < iters; iter++) {
+      // GIVEN
+      final int maxDoc = TestUtil.nextInt(random(), 1, 20000);
+      final double deleteRate = DELETE_RATES[random().nextInt(DELETE_RATES.length)];
+      final double candidateRate = CANDIDATE_RATES[random().nextInt(CANDIDATE_RATES.length)];
+      FixedBitSet deleted = randomBitSet(maxDoc, deleteRate);
+      FixedBitSet before = randomBitSet(maxDoc, candidateRate);
+
+      for (LiveDocs liveDocs : liveDocsViews(maxDoc, deleted, 0)) {
+        FixedBitSet after = before.clone();
+
+        // WHEN
+        liveDocs.applyMask(after, 0);
+
+        // THEN
+        assertEquals(
+            "applyMask must only clear bits on " + liveDocs,
+            0,
+            FixedBitSet.andNotCount(after, before));
+      }
+    }
+  }
+
+  public void testApplyMaskThrowsOnBitsBeyondLiveDocs() {
+    // GIVEN
+    final int maxDoc = 1000;
+    FixedBitSet deleted = randomBitSet(maxDoc, 0.2);
+
+    for (LiveDocs liveDocs : liveDocsViews(maxDoc, deleted, 0)) {
+      FixedBitSet bitSet = new FixedBitSet(maxDoc + 64);
+      bitSet.set(maxDoc);
+
+      // WHEN
+      IllegalArgumentException e =
+          expectThrows(IllegalArgumentException.class, () -> liveDocs.applyMask(bitSet, 0));
+
+      // THEN
+      assertEquals("Some bits are set beyond the end of live docs", e.getMessage());
+    }
+
+    // The default implementation does not throw when the backing bit set extends beyond maxDoc, so
+    // it silently reads bits that are not part of the Bits instance. The overrides are stricter on
+    // purpose: this is what FixedBitSet#applyMask has always done.
+    for (LiveDocs liveDocs : liveDocsViews(maxDoc, deleted, 64)) {
+      FixedBitSet bitSet = new FixedBitSet(maxDoc + 64);
+      bitSet.set(maxDoc);
+      defaultApplyMask(liveDocs).applyMask(bitSet, 0);
+    }
+  }
+
+  public void testApplyMaskOffsetBeyondMaxDoc() {
+    // GIVEN
+    final int maxDoc = 1000;
+    final int offset = maxDoc + TestUtil.nextInt(random(), 1, 4096);
+    FixedBitSet deleted = randomBitSet(maxDoc, 0.2);
+
+    for (LiveDocs liveDocs : liveDocsViews(maxDoc, deleted, 0)) {
+      FixedBitSet empty = new FixedBitSet(2048);
+      FixedBitSet nonEmpty = new FixedBitSet(2048);
+      nonEmpty.set(0);
+
+      // WHEN
+      liveDocs.applyMask(empty, offset);
+      IllegalArgumentException e =
+          expectThrows(IllegalArgumentException.class, () -> liveDocs.applyMask(nonEmpty, offset));
+
+      // THEN
+      assertEquals("no bits may be set on " + liveDocs, 0, empty.cardinality());
+      assertEquals("Some bits are set beyond the end of live docs", e.getMessage());
+    }
+  }
+
+  /**
+   * Wraps a {@link Bits} instance so that {@link Bits#applyMask} resolves to the default
+   * implementation, which is the specification that overrides must match.
+   */
+  private static Bits defaultApplyMask(Bits in) {
+    return new Bits() {
+      @Override
+      public boolean get(int index) {
+        return in.get(index);
+      }
+
+      @Override
+      public int length() {
+        return in.length();
+      }
+    };
+  }
+
+  /** Returns a sparse and a dense view of the same deleted docs, over the same maxDoc. */
+  private static List<LiveDocs> liveDocsViews(int maxDoc, FixedBitSet deleted, int padding) {
+    SparseFixedBitSet sparseSet = new SparseFixedBitSet(maxDoc + padding);
+    FixedBitSet fixedSet = new FixedBitSet(maxDoc + padding);
+    fixedSet.set(0, maxDoc);
+    for (int doc = deleted.nextSetBit(0);
+        doc != DocIdSetIterator.NO_MORE_DOCS;
+        doc = doc + 1 >= maxDoc ? DocIdSetIterator.NO_MORE_DOCS : deleted.nextSetBit(doc + 1)) {
+      sparseSet.set(doc);
+      fixedSet.clear(doc);
+    }
+    return List.of(
+        SparseLiveDocs.builder(sparseSet, maxDoc).build(),
+        DenseLiveDocs.builder(fixedSet, maxDoc).build());
+  }
+
+  private static FixedBitSet randomBitSet(int length, double setRate) {
+    FixedBitSet bitSet = new FixedBitSet(length);
+    for (int i = 0; i < length; i++) {
+      if (random().nextDouble() < setRate) {
+        bitSet.set(i);
+      }
+    }
+    return bitSet;
+  }
+
+  /** A fully set window of the given size, with the bits beyond maxDoc cleared. */
+  private static FixedBitSet fullWindow(int window, int maxDoc, int offset) {
+    FixedBitSet bitSet = new FixedBitSet(window);
+    bitSet.set(0, window);
+    int live = Math.min(window, maxDoc - offset);
+    if (live < window) {
+      bitSet.clear(Math.max(0, live), window);
+    }
+    return bitSet;
+  }
+
+  /** Aligned offsets sweeping the whole segment, plus a few offsets that are not word aligned. */
+  private static List<Integer> windowOffsets(int maxDoc, int window) {
+    List<Integer> offsets = new ArrayList<>();
+    for (int offset = 0; offset <= maxDoc; offset += window) {
+      offsets.add(offset);
+    }
+    for (int i = 0; i < 3; i++) {
+      int offset = TestUtil.nextInt(random(), 0, maxDoc);
+      if ((offset & 0x3F) != 0) {
+        offsets.add(offset);
+      }
+    }
+    return offsets;
   }
 }
