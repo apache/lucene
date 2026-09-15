@@ -296,7 +296,8 @@ public class HnswGraphBuilder implements HnswBuilder {
    * @param eps0 If specified, we will use it as the entry points of search on level 0, is useful
    *     when you have some prior knowledge, e.g. in {@link MergingHnswGraphBuilder}
    */
-  private void addGraphNodeInternal(int node, UpdateableRandomVectorScorer scorer, IntHashSet eps0)
+  private void addGraphNodeInternal(
+      int node, UpdateableRandomVectorScorer scorer, IntHashSet eps0, IntHashSet leftoverC)
       throws IOException {
     if (frozen) {
       throw new IllegalStateException("Graph builder is already frozen");
@@ -353,6 +354,10 @@ public class HnswGraphBuilder implements HnswBuilder {
         eps = candidates.popUntilNearestKNodes();
         scratchPerLevel[i] = new NeighborArray(Math.max(candidates.k(), M + 1), false);
         popToScratch(candidates, scratchPerLevel[i]);
+        if (level == 0 && leftoverC != null && leftoverC.size() > 0) {
+          scratchPerLevel[i] =
+              unionLeftoverIntoScratch(scratchPerLevel[i], leftoverC, node, scorer);
+        }
       }
 
       // then do connections from bottom up
@@ -391,13 +396,18 @@ public class HnswGraphBuilder implements HnswBuilder {
   @Override
   public void addGraphNode(int node) throws IOException {
     scorer.setScoringOrdinal(node);
-    addGraphNodeInternal(node, scorer, null);
+    addGraphNodeInternal(node, scorer, null, null);
   }
 
   @Override
   public void addGraphNode(int node, IntHashSet eps0) throws IOException {
     scorer.setScoringOrdinal(node);
-    addGraphNodeInternal(node, scorer, eps0);
+    addGraphNodeInternal(node, scorer, eps0, null);
+  }
+
+  void addGraphNode(int node, IntHashSet eps0, IntHashSet leftoverC) throws IOException {
+    scorer.setScoringOrdinal(node);
+    addGraphNodeInternal(node, scorer, eps0, leftoverC);
   }
 
   private void printGraphBuildStatus(int node, long startNs) {
@@ -419,8 +429,22 @@ public class HnswGraphBuilder implements HnswBuilder {
      */
     NeighborArray neighbors = hnsw.getNeighbors(level, node);
     int maxConnOnLevel = level == 0 ? M * 2 : M;
-    boolean[] mask =
-        selectAndLinkDiverse(node, neighbors, candidates, maxConnOnLevel, scorer, isLinkRepair);
+    Lock selfLock = null;
+    if (hnswLock != null) {
+      selfLock = hnswLock.write(level, node);
+    }
+    boolean repair = isLinkRepair;
+    boolean[] mask;
+    try {
+      if (neighbors.size() > 0) {
+        repair = true;
+      }
+      mask = selectAndLinkDiverse(node, neighbors, candidates, maxConnOnLevel, scorer, repair);
+    } finally {
+      if (selfLock != null) {
+        selfLock.unlock();
+      }
+    }
 
     // Link the selected nodes to the new node, and the new node to the selected nodes (again
     // applying diversity heuristic)
@@ -441,18 +465,13 @@ public class HnswGraphBuilder implements HnswBuilder {
               candidates.getScores(i),
               nbr,
               scorer,
-              isLinkRepair);
+              true);
         } finally {
           lock.unlock();
         }
       } else {
         updateNeighbor(
-            hnsw.getNeighbors(level, nbr),
-            node,
-            candidates.getScores(i),
-            nbr,
-            scorer,
-            isLinkRepair);
+            hnsw.getNeighbors(level, nbr), node, candidates.getScores(i), nbr, scorer, repair);
       }
     }
   }
@@ -496,13 +515,27 @@ public class HnswGraphBuilder implements HnswBuilder {
       if (node == cNode) {
         continue;
       }
+      if (isLinkRepair) {
+        boolean alreadyNeighbor = false;
+        int[] nodes = neighbors.nodes();
+        int n = neighbors.size();
+        for (int j = 0; j < n; j++) {
+          if (nodes[j] == cNode) {
+            alreadyNeighbor = true;
+            break;
+          }
+        }
+        if (alreadyNeighbor) {
+          mask[i] = true;
+          continue;
+        }
+      }
       float cScore = candidates.getScores(i);
       assert cNode <= hnsw.maxNodeId();
       scorer.setScoringOrdinal(cNode);
       if (diversityCheck(cScore, neighbors, scorer)) {
         mask[i] = true;
-        // here we don't need to lock, because there's no incoming link so no others is able to
-        // discover this node such that no others will modify this neighbor array as well
+        // Pre-added leftover L0 may already hold incoming links; addInOrder is single-owner only.
         if (isLinkRepair) {
           neighbors.addOutOfOrder(cNode, cScore);
         } else {
@@ -511,6 +544,49 @@ public class HnswGraphBuilder implements HnswBuilder {
       }
     }
     return mask;
+  }
+
+  private NeighborArray unionLeftoverIntoScratch(
+      NeighborArray scratch, IntHashSet leftoverC, int node, UpdateableRandomVectorScorer scorer)
+      throws IOException {
+    int extra = leftoverC.size();
+    NeighborArray dest = scratch;
+    if (scratch.size() + extra > scratch.maxSize()) {
+      dest = new NeighborArray(scratch.size() + extra, false);
+      int n = scratch.size();
+      int[] nodes = scratch.nodes();
+      for (int i = 0; i < n; i++) {
+        dest.addInOrder(nodes[i], scratch.getScores(i));
+      }
+    }
+    scorer.setScoringOrdinal(node);
+    int existingSize = dest.size();
+    int[] existing = dest.nodes();
+    int[] leftoverOrds = leftoverC.toArray();
+    for (int ord : leftoverOrds) {
+      if (ord == node) {
+        continue;
+      }
+      if (hnsw.nodeExistAtLevel(0, ord) == false) {
+        continue;
+      }
+      boolean dup = false;
+      for (int i = 0; i < existingSize; i++) {
+        if (existing[i] == ord) {
+          dup = true;
+          break;
+        }
+      }
+      if (dup) {
+        continue;
+      }
+      dest.addOutOfOrder(ord, scorer.score(ord));
+    }
+    if (dest.size() > existingSize) {
+      dest.sort(scorer);
+    }
+    scorer.setScoringOrdinal(node);
+    return dest;
   }
 
   static void popToScratch(GraphBuilderKnnCollector candidates, NeighborArray scratch) {

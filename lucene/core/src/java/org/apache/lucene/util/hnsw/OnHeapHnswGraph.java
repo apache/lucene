@@ -152,13 +152,18 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
       graph = ArrayUtil.grow(graph, node + 1);
     }
 
-    assert graph[node] == null || graph[node].length >= level
-        : "node must be inserted from the top level: ";
     if (graph[node] == null) {
       graph[node] = new NeighborArray[level + 1];
       size.incrementAndGet();
     } else if (graph[node].length <= level) {
+      // Leftover-C merge pre-adds L0, then insert assigns upper levels.
       graph[node] = ArrayUtil.growExact(graph[node], level + 1);
+    }
+
+    // Keep incoming leftover edges; a later insert must not replace a live array.
+    if (graph[node][level] != null) {
+      maxNodeId.accumulateAndGet(node, Math::max);
+      return;
     }
 
     graph[node][level] =

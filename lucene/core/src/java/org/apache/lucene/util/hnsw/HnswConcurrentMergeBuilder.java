@@ -46,6 +46,9 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
   private final TaskExecutor taskExecutor;
   private final ConcurrentMergeWorker[] workers;
   private final HnswLock hnswLock;
+  private final CompletedNeighborEps epsHelper;
+  private final OnHeapHnswGraph hnsw;
+  private final BitSet initializedNodes;
   private InfoStream infoStream = InfoStream.getDefault();
   private boolean frozen;
 
@@ -70,6 +73,9 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
       CompletedNeighborEps epsHelper)
       throws IOException {
     this.taskExecutor = taskExecutor;
+    this.epsHelper = epsHelper;
+    this.hnsw = hnsw;
+    this.initializedNodes = initializedNodes;
     AtomicInteger workProgress = new AtomicInteger(0);
     workers = new ConcurrentMergeWorker[numWorker];
     hnswLock = new HnswLock();
@@ -105,6 +111,10 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     for (ConcurrentMergeWorker worker : workers) {
       worker.setMergeStartTimeNs(mergeStartTimeNs);
       worker.setCumulativeWorkTimeNs(cumulativeWorkTimeNs);
+      worker.workTimeNs = cumulativeWorkTimeNs;
+    }
+    if (epsHelper != null) {
+      preAddLeftoverL0();
     }
     List<Callable<Void>> futures = new ArrayList<>();
     for (int i = 0; i < workers.length; i++) {
@@ -116,6 +126,9 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
           });
     }
     taskExecutor.invokeAll(futures);
+    if (epsHelper != null) {
+      workers[0].insertHoles(maxOrd);
+    }
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
       double wallClockMs = (System.nanoTime() - mergeStartTimeNs) / 1_000_000.0;
       double totalWorkerMs = cumulativeWorkTimeNs.get() / 1_000_000.0;
@@ -129,6 +142,9 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
               wallClockMs,
               totalWorkerMs,
               effectiveConcurrency));
+      if (epsHelper != null) {
+        infoStream.message(HNSW_COMPONENT, epsHelper.formatStats());
+      }
     }
     return getCompletedGraph();
   }
@@ -177,6 +193,17 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     return workers[0].getGraph();
   }
 
+  private void preAddLeftoverL0() {
+    int n = epsHelper.leftoverWorkCount();
+    for (int i = 0; i < n; i++) {
+      int node = epsHelper.mergedOrd(epsHelper.leftoverGraphIdx(i), epsHelper.leftoverSourceOrd(i));
+      if (initializedNodes != null && initializedNodes.get(node)) {
+        continue;
+      }
+      hnsw.addNode(0, node);
+    }
+  }
+
   /* test only for now */
   void setBatchSize(int newSize) {
     for (ConcurrentMergeWorker worker : workers) {
@@ -196,6 +223,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     private final CompletedNeighborEps epsHelper;
     private final HnswGraph[] sourceGraphs;
     private int batchSize = DEFAULT_BATCH_SIZE;
+    private AtomicLong workTimeNs;
 
     private ConcurrentMergeWorker(
         RandomVectorScorerSupplier scorerSupplier,
@@ -221,29 +249,93 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
       this.sourceGraphs = epsHelper == null ? null : epsHelper.newSourceGraphs();
     }
 
-    /**
-     * This method first try to "reserve" part of work by calling {@link #getStartPos(int)} and then
-     * calling {@link #addVectors(int, int)} to actually add the nodes to the graph. By doing this
-     * we are able to dynamically allocate the work to multiple workers and try to make all of them
-     * finishing around the same time.
-     */
     private void run(int maxOrd) throws IOException {
-      int start = getStartPos(maxOrd);
+      int workCount = epsHelper == null ? maxOrd : epsHelper.leftoverWorkCount();
+      int start = getStartPos(workCount);
       int end;
       while (start != -1) {
-        end = Math.min(maxOrd, start + batchSize);
-        addVectors(start, end);
-        start = getStartPos(maxOrd);
+        end = Math.min(workCount, start + batchSize);
+        if (epsHelper == null) {
+          addVectors(start, end);
+        } else {
+          addLeftoverWork(start, end);
+        }
+        start = getStartPos(workCount);
       }
     }
 
     /** Reserve the work by atomically increment the {@link #workProgress} */
-    private int getStartPos(int maxOrd) {
+    private int getStartPos(int workCount) {
       int start = workProgress.getAndAdd(batchSize);
-      if (start < maxOrd) {
+      if (start < workCount) {
         return start;
       } else {
         return -1;
+      }
+    }
+
+    private void addLeftoverWork(int startIdx, int endIdx) throws IOException {
+      long startNs = System.nanoTime();
+      for (int i = startIdx; i < endIdx; i++) {
+        int graphIdx = epsHelper.leftoverGraphIdx(i);
+        int sourceOrd = epsHelper.leftoverSourceOrd(i);
+        addLeftoverNode(graphIdx, sourceOrd);
+      }
+      long chunkedElapsedNs = System.nanoTime() - startNs;
+      if (workTimeNs != null) {
+        workTimeNs.addAndGet(chunkedElapsedNs);
+      }
+      if (infoStream.isEnabled(HNSW_COMPONENT)) {
+        infoStream.message(
+            HNSW_COMPONENT,
+            String.format(
+                Locale.ROOT,
+                "addVectors [%d %d): %d vectors in %.2f ms",
+                startIdx,
+                endIdx,
+                endIdx - startIdx,
+                chunkedElapsedNs / 1_000_000.0));
+      }
+    }
+
+    private void addLeftoverNode(int graphIdx, int sourceOrd) throws IOException {
+      int node = epsHelper.mergedOrd(graphIdx, sourceOrd);
+      if (initializedNodes != null && initializedNodes.get(node)) {
+        return;
+      }
+      if (epsHelper.isJoinSet(graphIdx, sourceOrd)) {
+        super.addGraphNode(node);
+        epsHelper.markFullBeam(node);
+        epsHelper.recordFullBeam();
+      } else if (epsHelper.hasFullBeamAnchor(graphIdx, sourceOrd, sourceGraphs)) {
+        IntHashSet eps = epsHelper.getEps(graphIdx, sourceOrd, sourceGraphs);
+        IntHashSet leftoverC =
+            epsHelper.collectLeftoverNeighbors(graphIdx, sourceOrd, sourceGraphs);
+        epsHelper.recordCheap();
+        super.addGraphNode(node, eps, leftoverC);
+      } else {
+        super.addGraphNode(node);
+        epsHelper.markFullBeam(node);
+        epsHelper.recordFullBeam();
+      }
+      epsHelper.markCompleted(node);
+    }
+
+    private void insertHoles(int maxOrd) throws IOException {
+      long startNs = System.nanoTime();
+      for (int node = 0; node < maxOrd; node++) {
+        if (initializedNodes != null && initializedNodes.get(node)) {
+          continue;
+        }
+        if (epsHelper.isCompleted(node)) {
+          continue;
+        }
+        super.addGraphNode(node);
+        epsHelper.markCompleted(node);
+      }
+      long elapsedNs = System.nanoTime() - startNs;
+      if (workTimeNs != null) {
+        workTimeNs.addAndGet(elapsedNs);
       }
     }
 
@@ -252,12 +344,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
       if (initializedNodes != null && initializedNodes.get(node)) {
         return;
       }
-      IntHashSet eps = epsHelper == null ? null : epsHelper.getEps(node, sourceGraphs);
-      if (eps != null && eps.size() > 0) {
-        super.addGraphNode(node, eps);
-      } else {
-        super.addGraphNode(node);
-      }
+      super.addGraphNode(node);
       if (epsHelper != null) {
         epsHelper.markCompleted(node);
       }

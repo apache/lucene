@@ -27,6 +27,20 @@ import org.apache.lucene.tests.util.LuceneTestCase;
  */
 public class TestOnHeapHnswGraph extends LuceneTestCase {
 
+  public void testAddNodeDoesNotClobberExistingLevel() {
+    OnHeapHnswGraph graph = new OnHeapHnswGraph(8, 10);
+    graph.addNode(0, 3);
+    graph.getNeighbors(0, 3).addInOrder(1, 1f);
+    graph.getNeighbors(0, 3).addInOrder(2, 0.5f);
+    graph.addNode(0, 3);
+    assertEquals(2, graph.getNeighbors(0, 3).size());
+    assertEquals(1, graph.getNeighbors(0, 3).nodes()[0]);
+    graph.addNode(2, 3);
+    assertEquals(2, graph.getNeighbors(0, 3).size());
+    assertNotNull(graph.getNeighbors(2, 3));
+    assertEquals(0, graph.getNeighbors(2, 3).size());
+  }
+
   /* assert exception will be thrown when we add out of bound node to a fixed size graph */
   public void testNoGrowth() {
     OnHeapHnswGraph graph = new OnHeapHnswGraph(10, 100);

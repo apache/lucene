@@ -20,6 +20,8 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Locale;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.concurrent.locks.Lock;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -30,41 +32,104 @@ import org.apache.lucene.util.FixedBitSet;
 /**
  * Worker-time entry points from completed same-segment neighbors during concurrent HNSW merge.
  *
- * <p>Join-set ords are not pre-marked. Only nodes already copied into the base graph ({@code
- * initializedNodes}) and nodes that have finished {@code addGraphNode} are completed.
+ * <p>Work identity is leftover {@code (graphIdx, sourceOrd)}. Join-set source ords are not
+ * pre-marked completed. Cheap-path gate {@code F} is separate from the eps cloud: 2-hop and
+ * copied-base nodes are not anchors. Leftover join-set ords are always full-beam; the 1-hop ∩ F
+ * gate applies only to leftover rest.
  */
 final class CompletedNeighborEps {
 
-  private final int[] sourceGraphIndex;
-  private final int[] sourceOrdinal;
+  static final int MIN_ANCHORS = 1;
+
+  private final int maxOrd;
   private final KnnVectorsReader[] readers;
   private final String fieldName;
   private final int[][] ordMaps;
   // FixedBitSet is not concurrent; workers mark/read completed ords in parallel.
   private final AtomicLongArray completed;
+  // Nodes inserted with full beam (set F). Gate ≠ eps cloud: only leftover L0 1-hop in F count.
+  private final AtomicLongArray fullBeamInserted;
+  private final AtomicLong leftoverNodes = new AtomicLong();
+  private final AtomicLong cheapInserts = new AtomicLong();
+  private final IntHashSet[] joinSets;
+  private final int[] leftoverGraphIdx;
+  private final int[] leftoverSourceOrd;
+  private final int joinSetWorkCount;
 
   private OnHeapHnswGraph outputGraph;
   private HnswLock hnswLock;
 
-  CompletedNeighborEps(int maxOrd, int[][] ordMaps, KnnVectorsReader[] readers, String fieldName) {
+  CompletedNeighborEps(int maxOrd, int[][] ordMaps, KnnVectorsReader[] readers, String fieldName)
+      throws IOException {
+    this.maxOrd = maxOrd;
     this.ordMaps = ordMaps;
     this.readers = readers;
     this.fieldName = fieldName;
-    this.sourceGraphIndex = new int[maxOrd];
-    this.sourceOrdinal = new int[maxOrd];
-    Arrays.fill(sourceGraphIndex, -1);
-    Arrays.fill(sourceOrdinal, -1);
-    for (int i = 0; i < ordMaps.length; i++) {
-      int[] ordMap = ordMaps[i];
+    int words = FixedBitSet.bits2words(maxOrd);
+    this.completed = new AtomicLongArray(words);
+    this.fullBeamInserted = new AtomicLongArray(words);
+    HnswGraph[] sources = newSourceGraphs();
+    this.joinSets = new IntHashSet[readers.length];
+    int[][] joinNodes = new int[readers.length][];
+    boolean[] skipGraph = new boolean[readers.length];
+    int jCount = 0;
+    int restCount = 0;
+    for (int g = 0; g < readers.length; g++) {
+      HnswGraph source = sources[g];
+      int[] ordMap = ordMaps[g];
+      if (source == null || source.size() == 0) {
+        joinSets[g] = new IntHashSet();
+        joinNodes[g] = new int[0];
+        skipGraph[g] = true;
+        continue;
+      }
+      IntHashSet join = UpdateGraphsUtils.computeJoinSet(source);
+      joinSets[g] = join;
+      int[] nodes = join.toArray();
+      Arrays.sort(nodes);
+      joinNodes[g] = nodes;
+      for (int sourceOrd : nodes) {
+        if (sourceOrd >= 0 && sourceOrd < ordMap.length && ordMap[sourceOrd] != -1) {
+          jCount++;
+        }
+      }
       for (int sourceOrd = 0; sourceOrd < ordMap.length; sourceOrd++) {
-        int mergedOrd = ordMap[sourceOrd];
-        if (mergedOrd != -1) {
-          sourceGraphIndex[mergedOrd] = i;
-          sourceOrdinal[mergedOrd] = sourceOrd;
+        if (ordMap[sourceOrd] != -1 && join.contains(sourceOrd) == false) {
+          restCount++;
         }
       }
     }
-    this.completed = new AtomicLongArray(FixedBitSet.bits2words(maxOrd));
+    this.joinSetWorkCount = jCount;
+    this.leftoverGraphIdx = new int[jCount + restCount];
+    this.leftoverSourceOrd = new int[jCount + restCount];
+    int w = 0;
+    for (int g = 0; g < readers.length; g++) {
+      int[] ordMap = ordMaps[g];
+      for (int sourceOrd : joinNodes[g]) {
+        if (sourceOrd >= 0 && sourceOrd < ordMap.length && ordMap[sourceOrd] != -1) {
+          leftoverGraphIdx[w] = g;
+          leftoverSourceOrd[w] = sourceOrd;
+          w++;
+        }
+      }
+    }
+    for (int g = 0; g < readers.length; g++) {
+      if (skipGraph[g]) {
+        continue;
+      }
+      IntHashSet join = joinSets[g];
+      int[] ordMap = ordMaps[g];
+      for (int sourceOrd = 0; sourceOrd < ordMap.length; sourceOrd++) {
+        if (ordMap[sourceOrd] != -1 && join.contains(sourceOrd) == false) {
+          leftoverGraphIdx[w] = g;
+          leftoverSourceOrd[w] = sourceOrd;
+          w++;
+        }
+      }
+    }
+    if (w != leftoverGraphIdx.length) {
+      throw new IllegalStateException("leftover work size " + w + " != " + leftoverGraphIdx.length);
+    }
   }
 
   void bind(OnHeapHnswGraph graph, HnswLock lock) {
@@ -80,19 +145,38 @@ final class CompletedNeighborEps {
     return graphs;
   }
 
-  IntHashSet getEps(int mergedOrd, HnswGraph[] threadPrivateGraphs) throws IOException {
-    if (mergedOrd < 0 || mergedOrd >= sourceGraphIndex.length) {
+  int leftoverWorkCount() {
+    return leftoverGraphIdx.length;
+  }
+
+  int leftoverGraphIdx(int i) {
+    return leftoverGraphIdx[i];
+  }
+
+  int leftoverSourceOrd(int i) {
+    return leftoverSourceOrd[i];
+  }
+
+  int joinSetWorkCount() {
+    return joinSetWorkCount;
+  }
+
+  int mergedOrd(int graphIdx, int sourceOrd) {
+    return ordMaps[graphIdx][sourceOrd];
+  }
+
+  IntHashSet getEps(int graphIdx, int sourceOrd, HnswGraph[] threadPrivateGraphs)
+      throws IOException {
+    if (graphIdx < 0 || graphIdx >= ordMaps.length) {
       return null;
     }
-    int graphIdx = sourceGraphIndex[mergedOrd];
-    if (graphIdx < 0) {
+    int[] ordMap = ordMaps[graphIdx];
+    if (sourceOrd < 0 || sourceOrd >= ordMap.length || ordMap[sourceOrd] == -1) {
       return null;
     }
     if (outputGraph == null) {
       throw new IllegalStateException("bind must be called before getEps");
     }
-    int sourceOrd = sourceOrdinal[mergedOrd];
-    int[] ordMap = ordMaps[graphIdx];
     HnswGraph source = threadPrivateGraphs[graphIdx];
     source.seek(0, sourceOrd);
     IntHashSet eps = new IntHashSet();
@@ -126,28 +210,142 @@ final class CompletedNeighborEps {
     return eps;
   }
 
+  IntHashSet collectLeftoverNeighbors(int graphIdx, int sourceOrd, HnswGraph[] threadPrivateGraphs)
+      throws IOException {
+    if (graphIdx < 0 || graphIdx >= ordMaps.length) {
+      return null;
+    }
+    int[] ordMap = ordMaps[graphIdx];
+    if (sourceOrd < 0 || sourceOrd >= ordMap.length || ordMap[sourceOrd] == -1) {
+      return null;
+    }
+    HnswGraph source = threadPrivateGraphs[graphIdx];
+    source.seek(0, sourceOrd);
+    IntHashSet leftover = new IntHashSet();
+    for (int v = source.nextNeighbor(); v != NO_MORE_DOCS; v = source.nextNeighbor()) {
+      if (v < 0 || v >= ordMap.length) {
+        continue;
+      }
+      int mergedV = ordMap[v];
+      if (mergedV == -1) {
+        continue;
+      }
+      leftover.add(mergedV);
+    }
+    return leftover;
+  }
+
   void markCompleted(int node) {
-    if (node < 0 || node >= sourceGraphIndex.length) {
+    setBit(completed, node);
+  }
+
+  boolean isCompleted(int node) {
+    return bitIsSet(completed, node);
+  }
+
+  void markFullBeam(int node) {
+    setBit(fullBeamInserted, node);
+  }
+
+  void recordCheap() {
+    leftoverNodes.incrementAndGet();
+    cheapInserts.incrementAndGet();
+  }
+
+  void recordFullBeam() {
+    leftoverNodes.incrementAndGet();
+  }
+
+  int fullBeamCardinality() {
+    int n = 0;
+    for (int i = 0; i < fullBeamInserted.length(); i++) {
+      n += Long.bitCount(fullBeamInserted.get(i));
+    }
+    return n;
+  }
+
+  String formatStats() {
+    long leftover = leftoverNodes.get();
+    long cheap = cheapInserts.get();
+    double cheapPct = leftover == 0 ? 0.0 : 100.0 * cheap / leftover;
+    return String.format(
+        Locale.ROOT,
+        "leftover=%d cheap=%d (%.1f%%) |F|=%d",
+        leftover,
+        cheap,
+        cheapPct,
+        fullBeamCardinality());
+  }
+
+  boolean isFullBeam(int node) {
+    return bitIsSet(fullBeamInserted, node);
+  }
+
+  boolean isJoinSet(int graphIdx, int sourceOrd) {
+    if (graphIdx < 0 || graphIdx >= joinSets.length) {
+      return false;
+    }
+    return joinSets[graphIdx].contains(sourceOrd);
+  }
+
+  boolean hasFullBeamAnchor(int graphIdx, int sourceOrd, HnswGraph[] threadPrivateGraphs)
+      throws IOException {
+    return leftoverFullBeamOneHopCount(graphIdx, sourceOrd, threadPrivateGraphs) >= MIN_ANCHORS;
+  }
+
+  int leftoverFullBeamOneHopCount(int graphIdx, int sourceOrd, HnswGraph[] threadPrivateGraphs)
+      throws IOException {
+    if (graphIdx < 0 || graphIdx >= ordMaps.length) {
+      return 0;
+    }
+    int[] ordMap = ordMaps[graphIdx];
+    if (sourceOrd < 0 || sourceOrd >= ordMap.length || ordMap[sourceOrd] == -1) {
+      return 0;
+    }
+    HnswGraph source = threadPrivateGraphs[graphIdx];
+    source.seek(0, sourceOrd);
+    int anchors = 0;
+    for (int v = source.nextNeighbor(); v != NO_MORE_DOCS; v = source.nextNeighbor()) {
+      if (v < 0 || v >= ordMap.length) {
+        continue;
+      }
+      int mergedV = ordMap[v];
+      if (mergedV == -1) {
+        continue;
+      }
+      if (isCompleted(mergedV) == false) {
+        continue;
+      }
+      if (isFullBeam(mergedV) == false) {
+        continue;
+      }
+      anchors++;
+    }
+    return anchors;
+  }
+
+  private void setBit(AtomicLongArray bits, int node) {
+    if (node < 0 || node >= maxOrd) {
       return;
     }
     int word = node >> 6;
     long bit = 1L << node;
     while (true) {
-      long current = completed.get(word);
+      long current = bits.get(word);
       if ((current & bit) != 0) {
         return;
       }
-      if (completed.compareAndSet(word, current, current | bit)) {
+      if (bits.compareAndSet(word, current, current | bit)) {
         return;
       }
     }
   }
 
-  boolean isCompleted(int node) {
-    if (node < 0 || node >= sourceGraphIndex.length) {
+  private boolean bitIsSet(AtomicLongArray bits, int node) {
+    if (node < 0 || node >= maxOrd) {
       return false;
     }
-    long word = completed.get(node >> 6);
+    long word = bits.get(node >> 6);
     return (word & (1L << node)) != 0;
   }
 }
