@@ -2,7 +2,7 @@
 # It uses the `actions/labeler` GitHub Action to achieve the same.
 #
 # The workflow is triggered on the `pull_request_target` event which ensures workflow is only run from the master branch.
-# The job `labeler` runs on `ubuntu-latest` and has permissions to read contents and write pull requests.
+# The job `labeler` has permissions to read contents and write pull requests.
 #
 # For more information on the `actions/labeler` GitHub Action, refer to https://github.com/actions/labeler
 
@@ -25,7 +25,7 @@ jobs:
       contents: read # likely not needed for public repository
       pull-requests: write # manipulate existing labels
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     timeout-minutes: 15
 
     steps:
