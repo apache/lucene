@@ -319,6 +319,11 @@ public abstract class PointRangeQuery extends Query {
                 return new BitSetIterator(result, cost[0]);
               }
 
+              if (cost != -1 && numDims == 1) {
+                // A 1D range has at most two crossing leaves, so its estimate is accurate enough
+                // to choose the builder representation up front.
+                result.expectMore(cost);
+              }
               values.intersect(visitor);
               return result.build().iterator();
             }
