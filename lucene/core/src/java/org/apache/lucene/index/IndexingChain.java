@@ -659,11 +659,14 @@ final class IndexingChain implements Accountable {
       }
     } finally {
       if (hasHitAbortingException == false) {
-        // Finish each indexed field name seen in the document:
-        for (int i = 0; i < indexedFieldCount; i++) {
-          fields[i].finish(docID);
+        try {
+          // Finish each indexed field name seen in the document:
+          for (int i = 0; i < indexedFieldCount; i++) {
+            fields[i].finish(docID);
+          }
+        } finally {
+          finishStoredFields();
         }
-        finishStoredFields();
         // TODO: for broken docs, optimize termsHash.finishDocument
         try {
           termsHash.finishDocument(docID);
@@ -918,11 +921,14 @@ final class IndexingChain implements Accountable {
         }
       } finally {
         if (hasHitAbortingException == false) {
-          for (int i = 0; i < indexedFieldCount; i++) {
-            fields[i].finish(segDocID);
-          }
-          if (hasStored) {
-            finishStoredFields();
+          try {
+            for (int i = 0; i < indexedFieldCount; i++) {
+              fields[i].finish(segDocID);
+            }
+          } finally {
+            if (hasStored) {
+              finishStoredFields();
+            }
           }
           if (hasInverted) {
             try {

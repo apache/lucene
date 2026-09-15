@@ -23,7 +23,7 @@ import java.util.Objects;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.search.ConstantScoreScorer;
+import org.apache.lucene.search.ConstantScoreScorerSupplier;
 import org.apache.lucene.search.ConstantScoreWeight;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
@@ -135,8 +135,11 @@ abstract class BinaryRangeFieldRangeQuery extends Query {
               }
             };
 
-        final var scorer = new ConstantScoreScorer(score(), scoreMode, iterator);
-        return new DefaultScorerSupplier(scorer);
+        return ConstantScoreScorerSupplier.fromIterator(
+            TwoPhaseIterator.asDocIdSetIterator(iterator),
+            score(),
+            scoreMode,
+            context.reader().maxDoc());
       }
 
       @Override

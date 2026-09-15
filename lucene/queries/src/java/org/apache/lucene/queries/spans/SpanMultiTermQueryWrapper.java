@@ -18,6 +18,7 @@ package org.apache.lucene.queries.spans;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.index.Term;
@@ -30,6 +31,7 @@ import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.ScoringRewrite;
 import org.apache.lucene.search.TopTermsRewrite;
+import org.apache.lucene.util.PriorityQueue;
 
 /**
  * Wraps any {@link MultiTermQuery} as a {@link SpanQuery}, so it can be nested within other
@@ -60,7 +62,6 @@ public class SpanMultiTermQueryWrapper<Q extends MultiTermQuery> extends SpanQue
    *
    * @param query Query to wrap.
    */
-  @SuppressWarnings({"rawtypes", "unchecked"})
   public SpanMultiTermQueryWrapper(Q query) {
     this.query = Objects.requireNonNull(query);
     this.rewriteMethod = selectRewriteMethod(query);
@@ -250,6 +251,116 @@ public class SpanMultiTermQueryWrapper<Q extends MultiTermQuery> extends SpanQue
       if (getClass() != obj.getClass()) return false;
       final TopTermsSpanBooleanQueryRewrite other = (TopTermsSpanBooleanQueryRewrite) obj;
       return delegate.equals(other.delegate);
+    }
+  }
+
+  /**
+   * A rewrite method that translates each term into a SpanTermQuery within a {@link SpanOrQuery},
+   * but retains only the most frequent terms so it will not overflow the boolean max clause count.
+   *
+   * <p>Unlike {@link TopTermsSpanBooleanQueryRewrite}, which keeps the top terms by boost, this
+   * method ranks terms by their index statistics &mdash; document frequency, optionally breaking
+   * ties by total term frequency &mdash; and keeps the {@code maxSize} most frequent ones.
+   *
+   * @see #setRewriteMethod
+   */
+  public static final class FrequentTermsSpanBooleanQueryRewrite extends SpanRewriteMethod {
+    /*
+    This is built on ScoringRewrite rather than TopTermsRewrite because TopTermsRewrite caps terms while collecting
+    them per segment, which requires a ranking key that is stable across segments (such as boost). Document and total
+    term frequencies are only per-segment during collection, so instead ScoringRewrite first collects every matching
+    term — aggregating TermStates across all segments — and this rewrite then retains the maxSize most frequent using
+    those aggregated statistics.
+    */
+
+    /** A collected term paired with its {@link TermStates}, used for ranking. */
+    public static final class ScoreTerm {
+      public final Term term;
+      public final TermStates termState;
+
+      public ScoreTerm(Term term, TermStates termState) {
+        this.term = term;
+        this.termState = termState;
+      }
+    }
+
+    /** Ranks terms by document frequency; the least frequent term is dropped first. */
+    public static final Comparator<ScoreTerm> DF_ORDER =
+        Comparator.comparingInt(st -> st.termState.docFreq());
+
+    /** Ranks terms by document frequency, breaking ties by total term frequency. */
+    public static final Comparator<ScoreTerm> DF_THEN_TTF_ORDER =
+        Comparator.comparingInt((ScoreTerm st) -> st.termState.docFreq())
+            .thenComparingLong(st -> st.termState.totalTermFreq());
+
+    private final int maxSize;
+    private final Comparator<ScoreTerm> order;
+    private final ScoringRewrite<PriorityQueue<ScoreTerm>> delegate;
+
+    /** Create a rewrite that keeps at most {@code maxSize} terms, ranked by {@link #DF_ORDER}. */
+    public FrequentTermsSpanBooleanQueryRewrite(int maxSize) {
+      this(maxSize, DF_ORDER);
+    }
+
+    /** Create a rewrite that keeps at most {@code maxSize} terms, ranked by {@code order}. */
+    public FrequentTermsSpanBooleanQueryRewrite(int maxSize, Comparator<ScoreTerm> order) {
+      this.maxSize = maxSize;
+      this.order = order;
+      this.delegate =
+          new ScoringRewrite<>() {
+            @Override
+            protected PriorityQueue<ScoreTerm> getTopLevelBuilder() {
+              return PriorityQueue.usingComparator(maxSize, order);
+            }
+
+            @Override
+            protected Query build(PriorityQueue<ScoreTerm> builder) {
+              SpanQuery[] result = new SpanQuery[builder.size()];
+              for (int pos = 0; pos < result.length; pos++) {
+                ScoreTerm st = builder.pop();
+                result[pos] = new SpanTermQuery(st.term, st.termState);
+              }
+              return new SpanOrQuery(result);
+            }
+
+            @Override
+            protected void checkMaxClauseCount(int count) {
+              // no-op: the priority queue already bounds the number of retained terms
+            }
+
+            @Override
+            protected void addClause(
+                PriorityQueue<ScoreTerm> topLevel,
+                Term term,
+                int docCount,
+                float boost,
+                TermStates states) {
+              topLevel.insertWithOverflow(new ScoreTerm(term, states));
+            }
+          };
+    }
+
+    /** Returns the maximum number of terms retained by this rewrite. */
+    public int getMaxSize() {
+      return maxSize;
+    }
+
+    @Override
+    public SpanQuery rewrite(IndexSearcher indexSearcher, MultiTermQuery query) throws IOException {
+      return (SpanQuery) delegate.rewrite(indexSearcher, query);
+    }
+
+    @Override
+    public int hashCode() {
+      return 31 * (31 + maxSize) + order.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (this == obj) return true;
+      if (obj == null || getClass() != obj.getClass()) return false;
+      final FrequentTermsSpanBooleanQueryRewrite other = (FrequentTermsSpanBooleanQueryRewrite) obj;
+      return maxSize == other.maxSize && order.equals(other.order);
     }
   }
 }

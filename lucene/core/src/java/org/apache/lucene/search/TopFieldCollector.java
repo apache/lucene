@@ -45,20 +45,18 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
 
     final LeafFieldComparator comparator;
     final int reverseMul;
+    // Whether the search sort is a prefix of this segment's index sort (decided per segment).
+    final boolean searchSortPartOfIndexSort;
     Scorable scorer;
     boolean collectedAllCompetitiveHits = false;
 
     TopFieldLeafCollector(FieldValueHitQueue<Entry> queue, Sort sort, LeafReaderContext context)
         throws IOException {
-      // as all segments are sorted in the same way, enough to check only the 1st segment for
-      // indexSort
-      if (searchSortPartOfIndexSort == null) {
-        final Sort indexSort = context.reader().getMetaData().sort();
-        searchSortPartOfIndexSort = canEarlyTerminate(sort, indexSort);
-        if (searchSortPartOfIndexSort) {
-          firstComparator.disableSkipping();
-        }
-      }
+      // Whether the search sort is a prefix of the index sort is decided per segment: a MultiReader
+      // may combine segments with different index sorts, so this cannot be cached across leaves
+      // (GITHUB#14399).
+      final Sort indexSort = context.reader().getMetaData().sort();
+      searchSortPartOfIndexSort = canEarlyTerminate(sort, indexSort);
       LeafFieldComparator[] comparators = queue.getComparators(context);
       int[] reverseMuls = queue.getReverseMul();
       if (comparators.length == 1) {
@@ -67,6 +65,12 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
       } else {
         this.reverseMul = 1;
         this.comparator = new MultiLeafFieldComparator(comparators, reverseMuls);
+      }
+      if (searchSortPartOfIndexSort) {
+        // Early termination handles this segment; skipping work in the comparator is redundant.
+        for (LeafFieldComparator comparator : comparators) {
+          comparator.disableSkipping();
+        }
       }
     }
 
@@ -303,8 +307,6 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
   final int totalHitsThreshold;
   final FieldComparator<?> firstComparator;
   final boolean canSetMinScore;
-
-  Boolean searchSortPartOfIndexSort = null; // shows if Search Sort if a part of the Index Sort
 
   // an accumulator that maintains the maximum of the segment's minimum competitive scores
   final MaxScoreAccumulator minScoreAcc;

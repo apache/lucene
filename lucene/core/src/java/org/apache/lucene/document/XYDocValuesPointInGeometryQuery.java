@@ -25,7 +25,7 @@ import org.apache.lucene.geo.XYGeometry;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedNumericDocValues;
-import org.apache.lucene.search.ConstantScoreScorer;
+import org.apache.lucene.search.ConstantScoreScorerSupplier;
 import org.apache.lucene.search.ConstantScoreWeight;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
@@ -130,8 +130,11 @@ public class XYDocValuesPointInGeometryQuery extends Query {
                 return 1000f; // TODO: what should it be?
               }
             };
-        final var scorer = new ConstantScoreScorer(boost, scoreMode, iterator);
-        return new DefaultScorerSupplier(scorer);
+        return ConstantScoreScorerSupplier.fromIterator(
+            TwoPhaseIterator.asDocIdSetIterator(iterator),
+            boost,
+            scoreMode,
+            context.reader().maxDoc());
       }
 
       @Override

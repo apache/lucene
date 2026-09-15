@@ -48,6 +48,19 @@ called `LuceneTestCaseParent` but you should reference them either
 without an explicit type or via the type of the parent class
 for your test framework. The parent class may be removed in the future.
 
+### Directory#copyFrom is now abstract (GITHUB#16530)
+
+`Directory#copyFrom` no longer has a default implementation, so classes that extend
+`Directory` directly must now implement it. Subclasses of `BaseDirectory` inherit the
+standard implementation, which routes the copy through `createOutput`; it is also
+available to subclasses as the protected final helper `Directory#copyThroughCreateOutput`.
+
+`FilterDirectory#copyFrom` no longer delegates to the wrapped directory's `copyFrom`.
+It instead routes through `createOutput`, so filter directories that override
+`createOutput` for per-file bookkeeping now see copied files as well. Filter directories
+that relied on the wrapped directory's optimized copy should override `copyFrom` and
+delegate explicitly, as `HardlinkCopyDirectoryWrapper` does.
+
 ### Relaxed Index Upgrade Policy (GITHUB#13797)
 
 Starting with Lucene 11.0.0, the index upgrade policy has been relaxed to allow safe upgrades across multiple major version numbers without reindexing when no format breaks occur.
@@ -239,6 +252,9 @@ of nodes traversed but not collected, with a provided factor. The decay factor s
 values producing better recall using more graph exploration. This gives a better recall v/s latency tradeoff than before
 in most cases, while still providing a knob for advanced users to tune quality and performance if needed (using the
 `decay` factor).
+
+For Lucene 10.4 behavior, use `[Byte|Float]VectorSimilarityQuery.Explicit` (deprecated, and will be removed in a future
+release). For Lucene 10.5 behavior, use `[Byte|Float]VectorSimilarityQuery.Adaptive`.
 
 ## Migration from Lucene 9.x to Lucene 10.0
 

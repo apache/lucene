@@ -47,13 +47,15 @@
  * </ul>
  *
  * <p>The implementation is two-pass: the first pass ({@link
- * org.apache.lucene.search.grouping.FirstPassGroupingCollector}) gathers the top groups, and the
- * second pass ({@link org.apache.lucene.search.grouping.SecondPassGroupingCollector}) gathers
- * documents within those groups. If the search is costly to run you may want to use the {@link
- * org.apache.lucene.search.CachingCollector} class, which caches hits and can (quickly) replay them
- * for the second pass. This way you only run the query once, but you pay a RAM cost to (briefly)
- * hold all hits. Results are returned as a {@link org.apache.lucene.search.grouping.TopGroups}
- * instance.
+ * org.apache.lucene.search.grouping.FirstPassGroupingCollectorManager}) gathers the top groups, and
+ * the second pass ({@link org.apache.lucene.search.grouping.TopGroupsCollectorManager}) gathers
+ * documents within those groups. Both passes use {@link org.apache.lucene.search.CollectorManager}
+ * to support concurrent (parallel) collection across segments. If the search is costly to run you
+ * may want to use the {@link org.apache.lucene.search.CachingCollectorManager} class, which wraps
+ * the first-pass manager and caches all collected documents (and optionally scores) per segment
+ * slice so they can be replayed into the second-pass manager without re-running the query. This way
+ * you only run the query once, but you pay a RAM cost to (briefly) hold all hits. Results are
+ * returned as a {@link org.apache.lucene.search.grouping.TopGroups} instance.
  *
  * <p>Groups are defined by {@link org.apache.lucene.search.grouping.GroupSelector} implementations:
  *
@@ -81,7 +83,6 @@
  * <pre><code class="language-java">
  *   GroupingSearch groupingSearch = new GroupingSearch("author");
  *   groupingSearch.setGroupSort(groupSort);
- *   groupingSearch.setFillSortFields(fillFields);
  *
  *   if (useCache) {
  *     // Sets cache in MB
@@ -101,17 +102,15 @@
  *   }
  * </code></pre>
  *
- * <p>To use the single-pass <code>BlockGroupingCollector</code>, first, at indexing time, you must
- * ensure all docs in each group are added as a block, and you have some way to find the last
- * document of each group. One simple way to do this is to add a marker binary field:
+ * <p>To use the single-pass <code>BlockGroupingCollectorManager</code>, first, at indexing time,
+ * you must ensure all docs in each group are added as a block, and you have some way to find the
+ * last document of each group. One simple way to do this is to add a marker binary field:
  *
  * <pre><code class="language-java">
  *   // Create Documents from your source:
  *   List&lt;Document&gt; oneGroup = ...;
  *
- *   Field groupEndField = new Field("groupEnd", "x", Field.Store.NO, Field.Index.NOT_ANALYZED);
- *   groupEndField.setIndexOptions(IndexOptions.DOCS_ONLY);
- *   groupEndField.setOmitNorms(true);
+ *   Field groupEndField = new StringField("groupEnd", "x", Field.Store.NO);
  *   oneGroup.get(oneGroup.size()-1).add(groupEndField);
  *
  *   // You can also use writer.updateDocuments(); just be sure you
@@ -125,9 +124,18 @@
  *
  * <pre><code class="language-java">
  *   Query groupEndDocs = new TermQuery(new Term("groupEnd", "x"));
- *   BlockGroupingCollector c = new BlockGroupingCollector(groupSort, groupOffset+topNGroups, needsScores, groupEndDocs);
- *   s.search(new TermQuery(new Term("content", searchTerm)), c);
- *   TopGroups groupsResult = c.getTopGroups(withinGroupSort, groupOffset, docOffset, docOffset+docsPerGroup, fillFields);
+ *   Weight lastDocPerGroup = indexSearcher.createWeight(
+ *       indexSearcher.rewrite(groupEndDocs), ScoreMode.COMPLETE_NO_SCORES, 1);
+ *   BlockGroupingCollectorManager&lt;BytesRef&gt; manager = new BlockGroupingCollectorManager&lt;&gt;(
+ *       groupSort,
+ *       groupOffset,
+ *       topNGroups,
+ *       needsScores,
+ *       lastDocPerGroup,
+ *       withinGroupSort,
+ *       docOffset,
+ *       docsPerGroup);
+ *   TopGroups groupsResult = indexSearcher.search(new TermQuery(new Term("content", searchTerm)), manager);
  *
  *   // Render groupsResult...
  * </code></pre>
@@ -138,7 +146,7 @@
  *   // Per search:
  *   GroupingSearch groupingSearch = new GroupingSearch(groupEndDocs);
  *   groupingSearch.setGroupSort(groupSort);
- *   groupingSearch.setIncludeScores(needsScores);
+ *   groupingSearch.setIncludeMaxScore(needsScores);
  *   TermQuery query = new TermQuery(new Term("content", searchTerm));
  *   TopGroups groupsResult = groupingSearch.search(indexSearcher, query, groupOffset, groupLimit);
  *
@@ -149,22 +157,24 @@
  * so if you need to present this value you'll have to separately retrieve it (for example using
  * stored fields, <code>FieldCache</code>, etc.).
  *
- * <p>Another collector is the <code>AllGroupHeadsCollector</code> that can be used to retrieve all
- * most relevant documents per group. Also known as group heads. This can be useful in situations
- * when one wants to compute group based facets / statistics on the complete query result. The
- * collector can be executed during the first or second phase. This collector can also be used with
- * the <code>GroupingSearch</code> convenience utility, but when if one only wants to compute the
- * most relevant documents per group it is better to just use the collector as done here below.
+ * <p>Another collector manager is the <code>AllGroupHeadsCollectorManager</code> that can be used
+ * to retrieve all most relevant documents per group. Also known as group heads. This can be useful
+ * in situations when one wants to compute group based facets / statistics on the complete query
+ * result. The manager supports concurrent collection and can also be used with the <code>
+ * GroupingSearch</code> convenience utility, but when one only wants to compute the most relevant
+ * documents per group it is better to just use the manager directly as done here below.
  *
  * <pre><code class="language-java">
- *   TermGroupSelector grouper = new TermGroupSelector(groupField);
- *   AllGroupHeadsCollector c = AllGroupHeadsCollector.newCollector(grouper, sortWithinGroup);
- *   s.search(new TermQuery(new Term("content", searchTerm)), c);
+ *   AllGroupHeadsCollectorManager&lt;BytesRef&gt; manager =
+ *       new AllGroupHeadsCollectorManager&lt;&gt;(
+ *           () -&gt; new TermGroupSelector(groupField), sortWithinGroup);
+ *   AllGroupHeadsCollectorManager.GroupHeadsResult result =
+ *       indexSearcher.search(new TermQuery(new Term("content", searchTerm)), manager);
  *   // Return all group heads as int array
- *   int[] groupHeadsArray = c.retrieveGroupHeads()
+ *   int[] groupHeadsArray = result.retrieveGroupHeads();
  *   // Return all group heads as FixedBitSet.
- *   int maxDoc = s.maxDoc();
- *   FixedBitSet groupHeadsBitSet = c.retrieveGroupHeads(maxDoc)
+ *   int maxDoc = indexSearcher.getIndexReader().maxDoc();
+ *   Bits groupHeadsBitSet = result.retrieveGroupHeads(maxDoc);
  * </code></pre>
  */
 package org.apache.lucene.search.grouping;

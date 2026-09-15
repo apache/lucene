@@ -96,6 +96,7 @@ public class CheckLicensesPlugin extends LuceneGradlePlugin {
                 ".gitignore",
                 ".lift.toml",
                 ".pre-commit-config.yml",
+                ".ruff.toml",
                 ".rumdl.toml",
                 ".typos.toml",
                 ".vscode/**",
@@ -104,7 +105,7 @@ public class CheckLicensesPlugin extends LuceneGradlePlugin {
                 "build-options.properties",
                 "dev-tools/**",
                 "gradle/**",
-                "help/*.txt",
+                "help/*.md",
                 "lucene/licenses/*",
                 "versions.lock",
 

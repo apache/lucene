@@ -11,7 +11,7 @@ jobs:
     name: Prepare Backport Targets
     if: github.event.pull_request.merged == true
     timeout-minutes: 15
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     permissions:
       contents: read # Reads repository workflow script and remote branch refs.
       pull-requests: write # Adds comments/labels to the source pull request.
@@ -22,7 +22,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -42,7 +42,7 @@ jobs:
     needs: prepare
     if: needs.prepare.outputs.has_targets == 'true' && needs.prepare.outputs.dry_run != 'true'
     timeout-minutes: 30
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     permissions:
       contents: write # Pushes generated backport branches.
       pull-requests: write # Creates backport pull requests and comments on failures.
@@ -53,7 +53,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -95,7 +95,7 @@ jobs:
     needs: prepare
     if: needs.prepare.outputs.has_targets == 'true' && needs.prepare.outputs.dry_run == 'true'
     timeout-minutes: 5
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     permissions: {}
     steps:
       - name: Report dry-run targets

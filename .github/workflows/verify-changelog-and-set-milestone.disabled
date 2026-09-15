@@ -9,7 +9,7 @@ jobs:
   changelog-verifier-and-milestone-setter:
     name: Verify Change Log Entry and Set Milestone
     timeout-minutes: 15
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     permissions:
       pull-requests: write # edits PR milestones, adds comments
 

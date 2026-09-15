@@ -138,7 +138,7 @@ public class TestBooleanScorerSupplier extends LuceneTestCase {
     }
   }
 
-  public void testConjunctionCost() {
+  public void testConjunctionCost() throws IOException {
     Map<Occur, Collection<ScorerSupplier>> subs = new EnumMap<>(Occur.class);
     for (Occur occur : Occur.values()) {
       subs.put(occur, new ArrayList<>());

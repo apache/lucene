@@ -572,11 +572,10 @@ public final class JoinUtil {
         break;
       case None:
         if (min <= 1 && max == Integer.MAX_VALUE) {
-          GlobalOrdinalsCollector globalOrdinalsCollector =
-              new GlobalOrdinalsCollector(joinField, ordinalMap, valueCount);
-          searcher.search(rewrittenFromQuery, globalOrdinalsCollector);
           return new GlobalOrdinalsQuery(
-              globalOrdinalsCollector.getCollectorOrdinals(),
+              searcher.search(
+                  rewrittenFromQuery,
+                  new GlobalOrdinalsCollectorManager(joinField, ordinalMap, valueCount)),
               joinField,
               ordinalMap,
               rewrittenToQuery,

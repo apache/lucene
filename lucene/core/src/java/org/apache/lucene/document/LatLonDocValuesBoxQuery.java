@@ -22,7 +22,7 @@ import org.apache.lucene.geo.GeoUtils;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedNumericDocValues;
-import org.apache.lucene.search.ConstantScoreScorer;
+import org.apache.lucene.search.ConstantScoreScorerSupplier;
 import org.apache.lucene.search.ConstantScoreWeight;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
@@ -153,8 +153,11 @@ final class LatLonDocValuesBoxQuery extends Query {
                 return 5; // 5 comparisons
               }
             };
-        final var scorer = new ConstantScoreScorer(boost, scoreMode, iterator);
-        return new DefaultScorerSupplier(scorer);
+        return ConstantScoreScorerSupplier.fromIterator(
+            TwoPhaseIterator.asDocIdSetIterator(iterator),
+            boost,
+            scoreMode,
+            context.reader().maxDoc());
       }
 
       @Override

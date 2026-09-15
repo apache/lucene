@@ -494,11 +494,11 @@ def writeDecode(bpv, f):
 if __name__ == "__main__":
     f = open(OUTPUT_FILE, "w")
     f.write(HEADER)
-    for primitive_size in PRIMITIVE_SIZE:
-        f.write(
-            "  private static final long[] MASKS%d = new long[%d];\n"
-            % (primitive_size, primitive_size)
-        )
+    f.writelines(
+        "  private static final long[] MASKS%d = new long[%d];\n"
+        % (primitive_size, primitive_size)
+        for primitive_size in PRIMITIVE_SIZE
+    )
     f.write("\n")
     f.write("  static {\n")
     for primitive_size in PRIMITIVE_SIZE:
