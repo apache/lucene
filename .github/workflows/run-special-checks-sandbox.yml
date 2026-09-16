@@ -14,6 +14,11 @@ on:
 
 permissions: {}
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  # speed up feedback on pull request builds by cancelling outdated builds
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
+
 jobs:
   faiss-tests:
     name: tests for the Faiss codec (v${{ matrix.faiss-version }} with JDK ${{ matrix.java }} on ${{ matrix.os }})
