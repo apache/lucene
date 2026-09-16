@@ -97,6 +97,15 @@ public class FieldType implements IndexableFieldType {
   }
 
   /**
+   * Returns the frozen FieldTypes's state.
+   *
+   * @return <code>true</code> if this FieldType is frozen against future modifications.
+   */
+  public boolean isFrozen() {
+    return frozen;
+  }
+
+  /**
    * {@inheritDoc}
    *
    * <p>The default is <code>false</code>.

@@ -112,11 +112,10 @@ public class FieldInfos implements Iterable<FieldInfo> {
 
       hasTermVectors |= info.hasTermVectors();
       hasPostings |= info.getIndexOptions() != IndexOptions.NONE;
-      hasProx |= info.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+      hasProx |= info.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
       hasFreq |= info.getIndexOptions() != IndexOptions.DOCS;
       hasOffsets |=
-          info.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
-              >= 0;
+          info.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
       hasNorms |= info.hasNorms();
       hasDocValues |= info.getDocValuesType() != DocValuesType.NONE;
       hasPayloads |= info.hasPayloads();

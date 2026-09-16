@@ -17,7 +17,7 @@
 <span class="dtd_comment">        &lt;/ul&gt;</span>
 <span class="dtd_comment">    &lt;/li&gt;</span>
 <span class="dtd_comment">    &lt;li&gt;To provide a shorthand way of expressing query logic which echos the logical tree structure of query objects more closely than reading procedural Java query construction code&lt;/li&gt;</span>
-<span class="dtd_comment">    &lt;li&gt;To bridge the growing gap between Lucene query/filtering functionality and the set of functionality accessible throught the standard Lucene QueryParser syntax&lt;/li&gt;</span>
+<span class="dtd_comment">    &lt;li&gt;To bridge the growing gap between Lucene query/filtering functionality and the set of functionality accessible through the standard Lucene QueryParser syntax&lt;/li&gt;</span>
 <span class="dtd_comment">    &lt;li&gt;To provide a simply extensible syntax that does not require complex parser skills such as knowledge of JavaCC syntax&lt;/li&gt;</span>
 <span class="dtd_comment">    &lt;/ol&gt;</span>
 <span class="dtd_comment">    </span>
@@ -75,7 +75,7 @@
 <span class="dtd_tag_symbols">&lt;!</span><span class="dtd_tag_name">ENTITY</span><span class="dtd_plain"> % </span><span class="dtd_attribute_name">filters</span><span class="dtd_plain"> </span><span class="dtd_attribute_value">&quot;%coreFilters;%extendedFilters1;&quot;</span><span class="dtd_plain"> </span><span class="dtd_tag_symbols">&gt;</span>
 
 <span class="dtd_comment">&lt;!--</span>
-<span class="dtd_comment">    BooleanQuerys implement Boolean logic which controls how multiple Clauses should be interpreted.</span>
+<span class="dtd_comment">    BooleanQuery implements Boolean logic which controls how multiple Clauses should be interpreted.</span>
 <span class="dtd_comment">    Some clauses may represent optional Query criteria while others represent mandatory criteria.   </span>
 <span class="dtd_comment">    </span><span class="dtd_dtddoc_tag">@example</span><span class="dtd_comment"> </span>
 <span class="dtd_comment">            &lt;em&gt;Find articles about banks, preferably talking about mergers but nothing to do with &quot;sumitomo&quot;&lt;/em&gt;</span>
@@ -424,7 +424,7 @@
 <span class="dtd_comment">&lt;!-- Controls if matching terms  have to appear in the order listed or can be reversed --&gt;</span>
 <span class="dtd_tag_symbols">&lt;!</span><span class="dtd_tag_name">ATTLIST</span><span class="dtd_plain"> </span><span class="dtd_attribute_name">SpanNear</span><span class="dtd_plain"> </span><span class="dtd_attribute_name">inOrder</span><span class="dtd_plain"> (</span><span class="dtd_attribute_name">true</span><span class="dtd_plain"> | </span><span class="dtd_attribute_name">false</span><span class="dtd_plain">) </span><span class="dtd_attribute_value">&quot;true&quot;</span><span class="dtd_tag_symbols">&gt;</span>
 
-<span class="dtd_comment">&lt;!-- Looks for a SpanQuery match occuring near the beginning of a document</span>
+<span class="dtd_comment">&lt;!-- Looks for a SpanQuery match occurring near the beginning of a document</span>
 <span class="dtd_comment">    </span>
 <span class="dtd_comment">    </span><span class="dtd_dtddoc_tag">@example</span><span class="dtd_comment"> </span>
 <span class="dtd_comment">            &lt;em&gt;Find letters where the first 50 words talk about a resignation:&lt;/em&gt;</span>

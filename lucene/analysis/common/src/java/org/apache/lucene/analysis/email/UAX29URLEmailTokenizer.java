@@ -143,7 +143,7 @@ public final class UAX29URLEmailTokenizer extends Tokenizer {
   private final TypeAttribute typeAtt = addAttribute(TypeAttribute.class);
 
   @Override
-  public final boolean incrementToken() throws IOException {
+  public boolean incrementToken() throws IOException {
     clearAttributes();
     skippedPositions = 0;
 
@@ -169,7 +169,7 @@ public final class UAX29URLEmailTokenizer extends Tokenizer {
   }
 
   @Override
-  public final void end() throws IOException {
+  public void end() throws IOException {
     super.end();
     // set final offset
     int finalOffset = correctOffset(scanner.yychar() + scanner.yylength());

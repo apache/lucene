@@ -885,6 +885,6 @@ public class TestJapaneseTokenizer extends BaseTokenStreamTestCase {
     outputs.add("あ");
     outputs.add("手紙");
 
-    assertAnalyzesTo(analyzer, text, outputs.toArray(new String[0]));
+    assertAnalyzesTo(analyzer, text, outputs.toArray(String[]::new));
   }
 }

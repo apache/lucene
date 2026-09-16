@@ -50,7 +50,7 @@ public abstract class CachingCollector extends FilterCollector {
     float score;
 
     @Override
-    public final float score() {
+    public float score() {
       return score;
     }
   }
@@ -329,7 +329,8 @@ public abstract class CachingCollector extends FilterCollector {
         : new NoScoreCachingCollector(other, maxDocsToCache);
   }
 
-  private boolean cached;
+  // visible for other threads in concurrent search mode
+  private volatile boolean cached;
 
   private CachingCollector(Collector in) {
     super(in);

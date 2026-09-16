@@ -51,7 +51,7 @@ public abstract class ScorerSupplier {
    *
    * @see DocIdSetIterator#cost
    */
-  public abstract long cost();
+  public abstract long cost() throws IOException;
 
   /**
    * Inform this {@link ScorerSupplier} that its returned scorers produce scores that get passed to

@@ -649,7 +649,7 @@ public class TestUnifiedHighlighterTermIntervals extends UnifiedHighlighterTestB
     ir.close();
   }
 
-  /** Make sure highlighter we can customize how emtpy highlight is returned. */
+  /** Make sure highlighter we can customize how empty highlight is returned. */
   public void testCustomEmptyHighlights() throws Exception {
     indexAnalyzer.setPositionIncrementGap(10);
     RandomIndexWriter iw = newIndexOrderPreservingWriter();

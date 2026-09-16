@@ -77,8 +77,8 @@ public abstract class Tokenizer extends TokenStream {
    * @see CharFilter#correctOffset
    */
   protected final int correctOffset(int currentOff) {
-    return (input instanceof CharFilter)
-        ? ((CharFilter) input).correctOffset(currentOff)
+    return (input instanceof CharFilter charFilter)
+        ? charFilter.correctOffset(currentOff)
         : currentOff;
   }
 

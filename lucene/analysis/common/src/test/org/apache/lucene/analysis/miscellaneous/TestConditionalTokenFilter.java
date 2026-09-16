@@ -323,7 +323,8 @@ public class TestConditionalTokenFilter extends BaseTokenStreamTestCase {
         new SkipMatchingFilter(
             stream,
             in -> {
-              TruncateTokenFilter truncateFilter = new TruncateTokenFilter(in, 2);
+              TruncateTokenFilter truncateFilter =
+                  TruncateTokenFilter.truncateAfterCodePoints(in, 2);
               return new AssertingLowerCaseFilter(truncateFilter);
             },
             ".*o.*");

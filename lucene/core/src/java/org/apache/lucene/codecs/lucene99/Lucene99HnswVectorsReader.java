@@ -32,9 +32,12 @@ import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
@@ -54,12 +57,13 @@ import org.apache.lucene.util.GroupVIntUtil;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.OrdinalTranslatedKnnCollector;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
-import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.BaseQuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.QuantizedVectorsReader;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
@@ -145,6 +149,10 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   @Override
   public void finishMerge() throws IOException {
     flatVectorsReader.finishMerge();
+  }
+
+  public FlatVectorsReader getFlatVectorsReader() {
+    return flatVectorsReader;
   }
 
   private static IndexInput openDataInput(
@@ -260,9 +268,9 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    flatVectorsReader.checkIntegrity();
-    CodecUtil.checksumEntireFile(vectorIndex);
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+    flatVectorsReader.checkIntegrity(merge);
+    CodecUtil.checksumEntireFile(vectorIndex, merge);
   }
 
   @Override
@@ -273,6 +281,11 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   @Override
   public ByteVectorValues getByteVectorValues(String field) throws IOException {
     return flatVectorsReader.getByteVectorValues(field);
+  }
+
+  @Override
+  public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+    return flatVectorsReader.getFloat16VectorValues(field);
   }
 
   private FieldEntry getFieldEntryOrThrow(String field) {
@@ -313,6 +326,17 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   public void search(String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.BYTE);
+    search(
+        fieldEntry,
+        knnCollector,
+        acceptDocs,
+        () -> flatVectorsReader.getRandomVectorScorer(field, target));
+  }
+
+  @Override
+  public void search(String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
+    final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.FLOAT16);
     search(
         fieldEntry,
         knnCollector,
@@ -414,22 +438,36 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   }
 
   @Override
+  public int getVectorCount(FieldInfo fieldInfo) {
+    return getFieldEntryOrThrow(fieldInfo.name).size();
+  }
+
+  @Override
   public void close() throws IOException {
     IOUtils.close(flatVectorsReader, vectorIndex);
   }
 
   @Override
-  public QuantizedByteVectorValues getQuantizedVectorValues(String field) throws IOException {
-    if (flatVectorsReader instanceof QuantizedVectorsReader) {
-      return ((QuantizedVectorsReader) flatVectorsReader).getQuantizedVectorValues(field);
+  public BaseQuantizedByteVectorValues getQuantizedVectorValues(String field) throws IOException {
+    if (flatVectorsReader instanceof QuantizedVectorsReader qvr) {
+      return qvr.getQuantizedVectorValues(field);
     }
     return null;
   }
 
   @Override
   public ScalarQuantizer getQuantizationState(String field) {
-    if (flatVectorsReader instanceof QuantizedVectorsReader) {
-      return ((QuantizedVectorsReader) flatVectorsReader).getQuantizationState(field);
+    if (flatVectorsReader instanceof QuantizedVectorsReader qvr) {
+      return qvr.getQuantizationState(field);
+    }
+    return null;
+  }
+
+  @Override
+  public CloseableRandomVectorScorerSupplier getRandomVectorScorerSupplierForMerge(
+      FieldInfo fieldInfo, SegmentWriteState segmentWriteState) throws IOException {
+    if (flatVectorsReader instanceof QuantizedVectorsReader qvr) {
+      return qvr.getRandomVectorScorerSupplierForMerge(fieldInfo, segmentWriteState);
     }
     return null;
   }
@@ -561,15 +599,17 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       arcCount = dataIn.readVInt();
       assert arcCount <= currentNeighborsBuffer.length : "too many neighbors: " + arcCount;
       if (arcCount > 0) {
+        int sum = 0;
         if (version >= VERSION_GROUPVARINT) {
           GroupVIntUtil.readGroupVInts(dataIn, currentNeighborsBuffer, arcCount);
-          for (int i = 1; i < arcCount; i++) {
-            currentNeighborsBuffer[i] = currentNeighborsBuffer[i - 1] + currentNeighborsBuffer[i];
+          for (int i = 0; i < arcCount; i++) {
+            sum += currentNeighborsBuffer[i];
+            currentNeighborsBuffer[i] = sum;
           }
         } else {
-          currentNeighborsBuffer[0] = dataIn.readVInt();
-          for (int i = 1; i < arcCount; i++) {
-            currentNeighborsBuffer[i] = currentNeighborsBuffer[i - 1] + dataIn.readVInt();
+          for (int i = 0; i < arcCount; i++) {
+            sum += dataIn.readVInt();
+            currentNeighborsBuffer[i] = sum;
           }
         }
       }

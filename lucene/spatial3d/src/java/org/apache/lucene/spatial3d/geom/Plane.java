@@ -3366,10 +3366,9 @@ public class Plane extends Vector {
     if (!super.equals(o)) {
       return false;
     }
-    if (!(o instanceof Plane)) {
+    if (!(o instanceof Plane other)) {
       return false;
     }
-    Plane other = (Plane) o;
     return other.D == D;
   }
 

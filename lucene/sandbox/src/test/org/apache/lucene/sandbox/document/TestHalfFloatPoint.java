@@ -20,6 +20,7 @@ import java.util.Arrays;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.NumericFieldStats;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -242,6 +243,29 @@ public class TestHalfFloatPoint extends LuceneTestCase {
     assertEquals(
         Float.floatToIntBits(-0f), Float.floatToIntBits(HalfFloatPoint.nextUp(-Float.MIN_VALUE)));
     assertEquals(Float.floatToIntBits(0f), Float.floatToIntBits(HalfFloatPoint.nextUp(-0f)));
+  }
+
+  public void testNumericFieldStats() throws Exception {
+    Directory dir = newDirectory();
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+    Document doc1 = new Document();
+    doc1.add(new HalfFloatPoint("field", -2f));
+    writer.addDocument(doc1);
+    Document doc2 = new Document();
+    doc2.add(new HalfFloatPoint("field", 1.25f));
+    writer.addDocument(doc2);
+    Document doc3 = new Document();
+    doc3.add(new HalfFloatPoint("field", 100f));
+    writer.addDocument(doc3);
+    IndexReader reader = writer.getReader();
+    NumericFieldStats.Stats stats = NumericFieldStats.getStats(reader, "field");
+    assertNotNull(stats);
+    assertTrue(stats.min() < 0);
+    assertTrue(stats.max() > 0);
+    assertEquals(3, stats.docCount());
+    reader.close();
+    writer.close();
+    dir.close();
   }
 
   public void testNextDown() {

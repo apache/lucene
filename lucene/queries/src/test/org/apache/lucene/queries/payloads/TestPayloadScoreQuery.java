@@ -33,10 +33,10 @@ import org.apache.lucene.queries.spans.SpanNearQuery;
 import org.apache.lucene.queries.spans.SpanOrQuery;
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.queries.spans.SpanTermQuery;
-import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.Explanation;
+import org.apache.lucene.search.FieldStats;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.TermStats;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
@@ -49,7 +49,6 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Test;
 
 public class TestPayloadScoreQuery extends LuceneTestCase {
 
@@ -94,7 +93,6 @@ public class TestPayloadScoreQuery extends LuceneTestCase {
     QueryUtils.check(random(), psq, searcher);
   }
 
-  @Test
   public void testTermQuery() throws IOException {
 
     SpanTermQuery q = new SpanTermQuery(new Term("field", "eighteen"));
@@ -106,7 +104,6 @@ public class TestPayloadScoreQuery extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testOrQuery() throws IOException {
 
     SpanOrQuery q =
@@ -125,7 +122,6 @@ public class TestPayloadScoreQuery extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testNearQuery() throws IOException {
 
     //   2     4
@@ -152,7 +148,6 @@ public class TestPayloadScoreQuery extends LuceneTestCase {
 
   // TODO: incredibly slow
   @Nightly
-  @Test
   public void testNestedNearQuery() throws Exception {
 
     // (one OR hundred) NEAR (twenty two) ~ 1
@@ -212,7 +207,6 @@ public class TestPayloadScoreQuery extends LuceneTestCase {
 
   // TODO: incredibly slow
   @Nightly
-  @Test
   public void testSpanContainingQuery() throws Exception {
 
     // twenty WITHIN ((one OR hundred) NEAR two)~2
@@ -235,7 +229,6 @@ public class TestPayloadScoreQuery extends LuceneTestCase {
     checkQuery(q, new MinPayloadFunction(), new int[] {222, 122}, new float[] {4.0f, 2.0f});
   }
 
-  @Test
   public void testEquality() {
     SpanQuery sq1 = new SpanTermQuery(new Term("field", "one"));
     SpanQuery sq2 = new SpanTermQuery(new Term("field", "two"));
@@ -367,13 +360,12 @@ public class TestPayloadScoreQuery extends LuceneTestCase {
 
     // idf used for phrase queries
     @Override
-    public Explanation idfExplain(
-        CollectionStatistics collectionStats, TermStatistics[] termStats) {
+    public Explanation idfExplain(FieldStats fieldStats, TermStats[] termStats) {
       return Explanation.match(1.0f, "Inexplicable");
     }
 
     @Override
-    public Explanation idfExplain(CollectionStatistics collectionStats, TermStatistics termStats) {
+    public Explanation idfExplain(FieldStats fieldStats, TermStats termStats) {
       return Explanation.match(1.0f, "Inexplicable");
     }
   }

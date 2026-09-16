@@ -37,7 +37,6 @@ import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
-import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LongBitSet;
@@ -195,59 +194,26 @@ public class SortedSetDocValuesMultiRangeQuery extends Query {
         List<OrdRange> ordRanges = new ArrayList<>();
         createOrdRanges(values, ordRanges);
         if (ordRanges.isEmpty()) {
-          return empty();
+          return new ConstantScoreScorer(score(), scoreMode, DocIdSetIterator.empty());
         }
-        LongBitSet matchingOrdsShifted = null;
         long minOrd = ordRanges.getFirst().lower, maxOrd = ordRanges.getLast().upper;
 
         DocValuesSkipper skipper = context.reader().getDocValuesSkipper(fieldName);
-
-        if (skipper != null && (minOrd > skipper.maxValue() || maxOrd < skipper.minValue())) {
-          return empty();
+        if (ordRanges.size() == 1) {
+          return new ConstantScoreScorer(
+              score(),
+              scoreMode,
+              DocValuesRangeIterator.forOrdinalRange(values, skipper, minOrd, maxOrd));
         }
 
-        if (ordRanges.size() > 1) {
-          matchingOrdsShifted = new LongBitSet(maxOrd + 1 - minOrd);
-          for (OrdRange range : ordRanges) {
-            matchingOrdsShifted.set(
-                range.lower - minOrd, range.upper - minOrd + 1); // up is exclusive
-          }
+        LongBitSet matchingOrds = new LongBitSet(maxOrd + 1);
+        for (OrdRange ordRange : ordRanges) {
+          matchingOrds.set(ordRange.lower, ordRange.upper + 1);
         }
-        TwoPhaseIterator iterator;
-        LongBitSet finalMatchingOrdsShifted = matchingOrdsShifted;
-        iterator =
-            new TwoPhaseIterator(values) {
-              // TODO unwrap singleton?
-              @Override
-              public boolean matches() throws IOException {
-                for (int i = 0; i < values.docValueCount(); i++) {
-                  long ord = values.nextOrd();
-                  if (ord >= minOrd && ord <= maxOrd) {
-                    if (finalMatchingOrdsShifted == null // singleton
-                        || finalMatchingOrdsShifted.get(ord - minOrd)) {
-                      return true;
-                    }
-                  }
-                }
-                return false;
-              }
-
-              @Override
-              public float matchCost() {
-                return 2; // 2 comparisons
-              }
-            };
-        //                        }
-        if (skipper != null) {
-          iterator =
-              new DocValuesRangeIterator(
-                  iterator, skipper, minOrd, maxOrd, matchingOrdsShifted != null);
-        }
-        return new ConstantScoreScorer(score(), scoreMode, iterator);
-      }
-
-      protected ConstantScoreScorer empty() {
-        return new ConstantScoreScorer(score(), scoreMode, DocIdSetIterator.empty());
+        return new ConstantScoreScorer(
+            score(),
+            scoreMode,
+            DocValuesRangeIterator.forOrdinalSet(values, skipper, minOrd, maxOrd, matchingOrds));
       }
 
       @Override

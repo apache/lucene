@@ -103,9 +103,9 @@ public class DeltaBaseTermStateSerializer implements Accountable {
       throws IOException {
     IndexOptions indexOptions = fieldInfo.getIndexOptions();
     boolean hasFreqs = indexOptions != IndexOptions.DOCS;
-    boolean hasPositions = indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+    boolean hasPositions = indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
     boolean hasOffsets =
-        indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) >= 0;
+        indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
     boolean hasPayloads = fieldInfo.hasPayloads();
 
     IntBlockTermState intTermState = (IntBlockTermState) termState;
@@ -160,7 +160,7 @@ public class DeltaBaseTermStateSerializer implements Accountable {
       throws IOException {
     IndexOptions indexOptions = fieldInfo.getIndexOptions();
     boolean hasFreqs = indexOptions != IndexOptions.DOCS;
-    boolean hasPositions = indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+    boolean hasPositions = indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
 
     IntBlockTermState intTermState =
         reuse != null ? reset((IntBlockTermState) reuse) : new IntBlockTermState();
@@ -179,7 +179,7 @@ public class DeltaBaseTermStateSerializer implements Accountable {
     if (hasPositions) {
       intTermState.posStartFP = basePosStartFP + termStatesInput.readVLong();
       boolean hasOffsets =
-          indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) >= 0;
+          indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
       if (hasOffsets || fieldInfo.hasPayloads()) {
         intTermState.payStartFP = basePayStartFP + termStatesInput.readVLong();
       }

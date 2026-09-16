@@ -24,7 +24,7 @@ class Geo3DUtil {
   /** How many degrees in a radian */
   static final double DEGREES_PER_RADIAN = 180.0 / Math.PI;
 
-  /** Converts degress to radians */
+  /** Converts degrees to radians */
   static double fromDegrees(final double degrees) {
     return degrees * RADIANS_PER_DEGREE;
   }

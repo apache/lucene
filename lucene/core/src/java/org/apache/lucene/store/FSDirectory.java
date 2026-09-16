@@ -369,8 +369,11 @@ public abstract class FSDirectory extends BaseDirectory {
 
   final class FSIndexOutput extends OutputStreamIndexOutput {
     /**
-     * The maximum chunk size is 8192 bytes, because file channel mallocs a native buffer outside of
-     * stack if the write buffer size is larger.
+     * We set the chunk size to 8192 bytes as the maximum I/O unit. Under the hood, {@link
+     * java.nio.channels.FileChannel#write} with a heap ByteBuffer allocates a thread-local
+     * temporary direct ByteBuffer and copies data into it before issuing the native write. Capping
+     * the chunk size prevents bloating that native buffer, which is cached per-thread and reused
+     * across writes.
      */
     static final int CHUNK_SIZE = 8192;
 

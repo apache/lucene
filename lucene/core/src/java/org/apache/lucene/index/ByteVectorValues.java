@@ -102,7 +102,7 @@ public abstract class ByteVectorValues extends KnnVectorValues {
    *
    * @param vectors the list of byte arrays
    * @param dim the dimension of the vectors
-   * @return a {@link ByteVectorValues} instancec
+   * @return a {@link ByteVectorValues} instance
    */
   public static ByteVectorValues fromBytes(List<byte[]> vectors, int dim) {
     return new ByteVectorValues() {

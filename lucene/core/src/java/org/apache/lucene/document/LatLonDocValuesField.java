@@ -249,9 +249,7 @@ public class LatLonDocValuesField extends Field {
       String field, ShapeField.QueryRelation queryRelation, LatLonGeometry... latLonGeometries) {
     if (queryRelation == ShapeField.QueryRelation.INTERSECTS
         && latLonGeometries.length == 1
-        && latLonGeometries[0] instanceof Rectangle) {
-      LatLonGeometry geometry = latLonGeometries[0];
-      Rectangle rect = (Rectangle) geometry;
+        && latLonGeometries[0] instanceof Rectangle rect) {
       return newSlowBoxQuery(field, rect.minLat, rect.maxLat, rect.minLon, rect.maxLon);
     }
     if (queryRelation == ShapeField.QueryRelation.CONTAINS) {

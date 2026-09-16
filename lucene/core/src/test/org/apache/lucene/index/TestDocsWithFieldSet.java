@@ -60,6 +60,56 @@ public class TestDocsWithFieldSet extends LuceneTestCase {
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.nextDoc());
   }
 
+  public void testAddRange() throws IOException {
+    DocsWithFieldSet set = new DocsWithFieldSet();
+    set.addRange(0, 5);
+    assertEquals(5, set.cardinality());
+    DocIdSetIterator it = set.iterator();
+    for (int i = 0; i < 5; i++) {
+      assertEquals(i, it.nextDoc());
+    }
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.nextDoc());
+
+    set.addRange(10, 13);
+    assertEquals(8, set.cardinality());
+    it = set.iterator();
+    for (int i = 0; i < 5; i++) {
+      assertEquals(i, it.nextDoc());
+    }
+    for (int i = 10; i < 13; i++) {
+      assertEquals(i, it.nextDoc());
+    }
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.nextDoc());
+  }
+
+  /** Empty ranges must be no-ops and must not regress lastDocId. */
+  public void testAddRangeEmpty() throws IOException {
+    DocsWithFieldSet set = new DocsWithFieldSet();
+    set.addRange(0, 0);
+    assertEquals(0, set.cardinality());
+
+    set.addRange(0, 5);
+    assertEquals(5, set.cardinality());
+
+    // Empty range starting past lastDocId must not regress state, and a subsequent add must still
+    // be ordered relative to the original lastDocId (4), not the empty range's nominal end.
+    set.addRange(10, 10);
+    assertEquals(5, set.cardinality());
+    set.add(5);
+    assertEquals(6, set.cardinality());
+
+    DocIdSetIterator it = set.iterator();
+    for (int i = 0; i < 6; i++) {
+      assertEquals(i, it.nextDoc());
+    }
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.nextDoc());
+  }
+
+  public void testAddRangeRejectsInverted() {
+    DocsWithFieldSet set = new DocsWithFieldSet();
+    expectThrows(IllegalArgumentException.class, () -> set.addRange(5, 3));
+  }
+
   public void testDenseThenSparse() throws IOException {
     int denseCount = random().nextInt(10000);
     int nextDoc = denseCount + random().nextInt(10000);

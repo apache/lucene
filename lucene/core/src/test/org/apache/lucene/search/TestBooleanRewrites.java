@@ -32,6 +32,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.MultiReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
+import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.RandomApproximationQuery;
@@ -1095,6 +1096,75 @@ public class TestBooleanRewrites extends LuceneTestCase {
             .setMinimumNumberShouldMatch(2)
             .build();
     assertEquals(MatchNoDocsQuery.INSTANCE, searcher.rewrite(query));
+  }
+
+  public void testDeduplicateShouldClausesWithK3Saturation() throws IOException {
+    IndexSearcher searcher = newSearcher(new MultiReader());
+    searcher.setSimilarity(new BM25Similarity(1.2f, 0.75f, true, 8f));
+
+    // 3 duplicate unweighted SHOULD clauses: similarity applies k3 saturation
+    Query query =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("foo", "bar")), Occur.SHOULD)
+            .add(new TermQuery(new Term("foo", "bar")), Occur.SHOULD)
+            .add(new TermQuery(new Term("foo", "bar")), Occur.SHOULD)
+            .build();
+    float expectedWeight = ((8f + 1f) * 3f) / (8f + 3f); // 27/11 ≈ 2.4545
+    Query expected = new BoostQuery(new TermQuery(new Term("foo", "bar")), expectedWeight);
+    assertEquals(expected, searcher.rewrite(query));
+  }
+
+  public void testDeduplicateMustClausesWithK3Saturation() throws IOException {
+    IndexSearcher searcher = newSearcher(new MultiReader());
+    searcher.setSimilarity(new BM25Similarity(1.2f, 0.75f, true, 7f));
+
+    // 2 duplicate unweighted MUST clauses
+    Query query =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("foo", "bar")), Occur.MUST)
+            .add(new TermQuery(new Term("foo", "bar")), Occur.MUST)
+            .add(new TermQuery(new Term("foo", "quux")), Occur.MUST)
+            .build();
+    float expectedWeight = ((7f + 1f) * 2f) / (7f + 2f); // 16/9 ≈ 1.7778
+    Query expected =
+        new BooleanQuery.Builder()
+            .add(new BoostQuery(new TermQuery(new Term("foo", "bar")), expectedWeight), Occur.MUST)
+            .add(new TermQuery(new Term("foo", "quux")), Occur.MUST)
+            .build();
+    assertEquals(expected, searcher.rewrite(query));
+  }
+
+  public void testDeduplicateWithExplicitBoostsFallsBackToLinearSum() throws IOException {
+    IndexSearcher searcher = newSearcher(new MultiReader());
+    searcher.setSimilarity(new BM25Similarity(1.2f, 0.75f, true, 8f));
+
+    // Explicit boosts: should fall back to linear sum (3.0), not k3 saturation
+    Query query =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("foo", "bar")), Occur.SHOULD)
+            .add(new BoostQuery(new TermQuery(new Term("foo", "bar")), 2), Occur.SHOULD)
+            .add(new TermQuery(new Term("foo", "quux")), Occur.SHOULD)
+            .build();
+    Query expected =
+        new BooleanQuery.Builder()
+            .add(new BoostQuery(new TermQuery(new Term("foo", "bar")), 3), Occur.SHOULD)
+            .add(new TermQuery(new Term("foo", "quux")), Occur.SHOULD)
+            .build();
+    assertEquals(expected, searcher.rewrite(query));
+  }
+
+  public void testDefaultSimilarityPreservesLinearDedup() throws IOException {
+    // Default similarity: computeQueryTermWeight returns qtf linearly
+    IndexSearcher searcher = newSearcher(new MultiReader());
+
+    Query query =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("foo", "bar")), Occur.SHOULD)
+            .add(new TermQuery(new Term("foo", "bar")), Occur.SHOULD)
+            .add(new TermQuery(new Term("foo", "bar")), Occur.SHOULD)
+            .build();
+    Query expected = new BoostQuery(new TermQuery(new Term("foo", "bar")), 3);
+    assertEquals(expected, searcher.rewrite(query));
   }
 
   // Test query to count number of rewrites for its lifetime.

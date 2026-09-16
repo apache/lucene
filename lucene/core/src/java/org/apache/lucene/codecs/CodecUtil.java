@@ -22,6 +22,7 @@ import java.util.Arrays;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.IndexFormatTooNewException;
 import org.apache.lucene.index.IndexFormatTooOldException;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.store.BufferedChecksumIndexInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
@@ -598,25 +599,61 @@ public final class CodecUtil {
   }
 
   /**
+   * Number of bytes between consecutive merge abort checks during {@link
+   * #checksumEntireFile(IndexInput, MergePolicy.OneMerge)}. Files smaller than this are checksummed
+   * in one shot without checking for abort.
+   */
+  private static final long ABORT_CHECK_INTERVAL = 1024 * 1024;
+
+  /**
    * Clones the provided input, reads all bytes from the file, and calls {@link #checkFooter}
    *
    * <p>Note that this method may be slow, as it must process the entire file. If you just need to
    * extract the checksum value, call {@link #retrieveChecksum}.
    */
   public static long checksumEntireFile(IndexInput input) throws IOException {
+    return checksumEntireFile(input, null, Long.MAX_VALUE);
+  }
+
+  /**
+   * Like {@link #checksumEntireFile(IndexInput)}, but periodically checks whether the provided
+   * merge has been aborted. This avoids spending a long time checksumming a large file when the
+   * merge has already been cancelled.
+   *
+   * @param input the index input to checksum
+   * @param merge the merge to check for abort, or {@code null} to behave like {@link
+   *     #checksumEntireFile(IndexInput)}
+   * @throws MergePolicy.MergeAbortedException if the merge is aborted during checksumming
+   */
+  public static long checksumEntireFile(IndexInput input, MergePolicy.OneMerge merge)
+      throws IOException {
+    return checksumEntireFile(input, merge, ABORT_CHECK_INTERVAL);
+  }
+
+  static long checksumEntireFile(
+      IndexInput input, MergePolicy.OneMerge merge, long abortCheckInterval) throws IOException {
     IndexInput clone = input.clone();
     clone.seek(0);
     ChecksumIndexInput in = new BufferedChecksumIndexInput(clone);
     assert in.getFilePointer() == 0;
-    if (in.length() < footerLength()) {
+    final long len = in.length();
+    if (len < footerLength()) {
       throw new CorruptIndexException(
           "misplaced codec footer (file truncated?): length="
-              + in.length()
+              + len
               + " but footerLength=="
               + footerLength(),
           input);
     }
-    in.seek(in.length() - footerLength());
+    final long target = len - footerLength();
+    if (merge == null || target <= abortCheckInterval) {
+      in.seek(target);
+    } else {
+      while (in.getFilePointer() < target) {
+        in.seek(Math.min(in.getFilePointer() + abortCheckInterval, target));
+        merge.checkAborted();
+      }
+    }
     return checkFooter(in);
   }
 

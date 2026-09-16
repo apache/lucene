@@ -88,8 +88,7 @@ public class DoubleConstValueSource extends ConstNumberSource {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof DoubleConstValueSource)) return false;
-    DoubleConstValueSource other = (DoubleConstValueSource) o;
+    if (!(o instanceof DoubleConstValueSource other)) return false;
     return this.constant == other.constant;
   }
 

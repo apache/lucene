@@ -1,0 +1,10 @@
+[lint]
+ignore = [
+  "B023",    # Function definition does not bind loop variable
+  "EXE001",  # Shebang is present but file is not executable
+  "RUF059",  # Unpacked variable is never used
+  "RUF046",  # Value being cast to `int` is already an integer
+  "SIM102",  # Use a single `if` statement instead of nested `if` statements
+  "SIM115",  # Use a context manager for opening files
+  "UP031",   # use format specifiers instead of percent format
+]

@@ -29,11 +29,9 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.QueryUtils;
-import org.apache.lucene.util.automaton.Operations;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Test;
 
 public class TestMultiTermConstantScore extends TestBaseRangeFilter {
 
@@ -114,10 +112,9 @@ public class TestMultiTermConstantScore extends TestBaseRangeFilter {
 
   /** macro for readability */
   public static Query cswcq(Term wild, MultiTermQuery.RewriteMethod method) {
-    return new WildcardQuery(wild, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT, method);
+    return new WildcardQuery(wild, method);
   }
 
-  @Test
   public void testBasics() throws IOException {
     for (MultiTermQuery.RewriteMethod rw : CONSTANT_SCORE_REWRITES) {
       QueryUtils.check(csrq("data", "1", "6", T, T, rw));
@@ -134,7 +131,6 @@ public class TestMultiTermConstantScore extends TestBaseRangeFilter {
     }
   }
 
-  @Test
   public void testEqualScores() throws IOException {
     // NOTE: uses index build in *this* setUp
 
@@ -178,7 +174,6 @@ public class TestMultiTermConstantScore extends TestBaseRangeFilter {
     }
   }
 
-  @Test // Test for LUCENE-5245: Empty MTQ rewrites should have a consistent norm, so always need to
   // return a CSQ!
   public void testEqualScoresWhenNoHits() throws IOException {
     // NOTE: uses index build in *this* setUp
@@ -230,7 +225,6 @@ public class TestMultiTermConstantScore extends TestBaseRangeFilter {
     }
   }
 
-  @Test
   public void testBooleanOrderUnAffected() throws IOException {
     // NOTE: uses index build in *this* setUp
 
@@ -262,7 +256,6 @@ public class TestMultiTermConstantScore extends TestBaseRangeFilter {
     }
   }
 
-  @Test
   public void testRangeQueryId() throws IOException {
     // NOTE: uses index build in *super* setUp
 
@@ -355,7 +348,6 @@ public class TestMultiTermConstantScore extends TestBaseRangeFilter {
     }
   }
 
-  @Test
   public void testRangeQueryRand() throws IOException {
     // NOTE: uses index build in *super* setUp
 

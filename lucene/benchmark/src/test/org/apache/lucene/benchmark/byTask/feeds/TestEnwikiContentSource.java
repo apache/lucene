@@ -24,7 +24,6 @@ import java.text.ParseException;
 import java.util.Properties;
 import org.apache.lucene.benchmark.byTask.utils.Config;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 public class TestEnwikiContentSource extends LuceneTestCase {
 
@@ -99,7 +98,6 @@ public class TestEnwikiContentSource extends LuceneTestCase {
           + "    </revision>\r\n"
           + "  </page>\r\n";
 
-  @Test
   public void testOneDocument() throws Exception {
     String docs = "<mediawiki>\r\n" + PAGE1 + "</mediawiki>";
 
@@ -128,7 +126,6 @@ public class TestEnwikiContentSource extends LuceneTestCase {
     return source;
   }
 
-  @Test
   public void testTwoDocuments() throws Exception {
     String docs = "<mediawiki>\r\n" + PAGE1 + PAGE2 + "</mediawiki>";
 
@@ -143,7 +140,6 @@ public class TestEnwikiContentSource extends LuceneTestCase {
     assertNoMoreDataException(source);
   }
 
-  @Test
   public void testForever() throws Exception {
     String docs = "<mediawiki>\r\n" + PAGE1 + PAGE2 + "</mediawiki>";
 

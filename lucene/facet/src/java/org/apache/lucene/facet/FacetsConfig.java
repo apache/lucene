@@ -622,6 +622,6 @@ public class FacetsConfig {
     }
     parts.add(new String(buffer, 0, upto));
     assert !lastEscape;
-    return parts.toArray(new String[0]);
+    return parts.toArray(String[]::new);
   }
 }

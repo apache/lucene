@@ -19,11 +19,9 @@ package org.apache.lucene.facet.taxonomy.writercache;
 
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
-import org.junit.Test;
 
 public class TestLruTaxonomyWriterCache extends FacetTestCase {
 
-  @Test
   public void testDefaultLRUTypeIsCollisionSafe() {
     // These labels are clearly different, but have identical longHashCodes.
     // Note that these labels are clearly contrived. We did encounter

@@ -42,8 +42,7 @@ public final class MultiTerms extends Terms {
    * @param subSlices A parallel array (matching {@code subs}) describing the sub-reader slices.
    * @lucene.internal
    */
-  public MultiTerms(Terms[] subs, ReaderSlice[] subSlices)
-      throws IOException { // TODO make private?
+  public MultiTerms(Terms[] subs, ReaderSlice[] subSlices) { // TODO make private?
     this.subs = subs;
     this.subSlices = subSlices;
 
@@ -201,7 +200,7 @@ public final class MultiTerms extends Terms {
   }
 
   @Override
-  public long getSumTotalTermFreq() throws IOException {
+  public long getSumTotalTermFreq() {
     long sum = 0;
     for (Terms terms : subs) {
       final long v = terms.getSumTotalTermFreq();
@@ -212,7 +211,7 @@ public final class MultiTerms extends Terms {
   }
 
   @Override
-  public long getSumDocFreq() throws IOException {
+  public long getSumDocFreq() {
     long sum = 0;
     for (Terms terms : subs) {
       final long v = terms.getSumDocFreq();
@@ -223,7 +222,7 @@ public final class MultiTerms extends Terms {
   }
 
   @Override
-  public int getDocCount() throws IOException {
+  public int getDocCount() {
     int sum = 0;
     for (Terms terms : subs) {
       final int v = terms.getDocCount();

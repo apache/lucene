@@ -25,7 +25,6 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
-import org.apache.lucene.util.automaton.Operations;
 
 /** Query that matches wildcards */
 public class SrndTruncQuery extends SimpleTerm {
@@ -34,11 +33,7 @@ public class SrndTruncQuery extends SimpleTerm {
     this.truncated = truncated;
     compiled =
         new CompiledAutomaton(
-            WildcardQuery.toAutomaton(
-                new Term(null, truncated), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT),
-            false,
-            true,
-            true);
+            WildcardQuery.toAutomaton(new Term(null, truncated)), false, true, true);
   }
 
   private final String truncated;

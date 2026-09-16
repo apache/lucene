@@ -54,7 +54,7 @@ final class TermVectorFilteredLeafReader extends FilterLeafReader {
   }
 
   @Override
-  public Terms terms(String field) throws IOException {
+  public Terms terms(String field) {
     if (!field.equals(fieldFilter)) {
       return super.terms(field); // proceed like normal for fields we're not interested in
     }

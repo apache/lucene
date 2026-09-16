@@ -277,7 +277,7 @@ public class TestPrecedenceQueryParser extends LuceneTestCase {
   }
 
   public void testNumber() throws Exception {
-    // The numbers go away because SimpleAnalzyer ignores them
+    // The numbers go away because SimpleAnalyzer ignores them
     assertMatchNoDocsQuery("3", null);
     assertQueryEquals("term 1.0 1 2", null, "term");
     assertQueryEquals("term term1 term2", null, "term term term");
@@ -317,7 +317,7 @@ public class TestPrecedenceQueryParser extends LuceneTestCase {
 
     /*
      * Tests to see that wild card terms are (or are not) properly lower-cased
-     * with propery parser configuration
+     * with parser configuration
      */
     // First prefix queries:
     // by default, convert to lowercase:

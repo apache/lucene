@@ -18,13 +18,11 @@ package org.apache.lucene.classification.document;
 
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.junit.Test;
 
 /** Tests for {@link org.apache.lucene.classification.SimpleNaiveBayesClassifier} */
 public class TestSimpleNaiveBayesDocumentClassifier
     extends DocumentClassificationTestBase<BytesRef> {
 
-  @Test
   public void testBasicDocumentClassification() throws Exception {
     try {
       checkCorrectDocumentClassification(
@@ -61,7 +59,6 @@ public class TestSimpleNaiveBayesDocumentClassifier
     }
   }
 
-  @Test
   public void testBasicDocumentClassificationScore() throws Exception {
     try {
       double score1 =
@@ -114,7 +111,6 @@ public class TestSimpleNaiveBayesDocumentClassifier
     }
   }
 
-  @Test
   public void testBoostedDocumentClassification() throws Exception {
     try {
       checkCorrectDocumentClassification(
@@ -124,7 +120,7 @@ public class TestSimpleNaiveBayesDocumentClassifier
               categoryFieldName,
               field2analyzer,
               new String[] {textFieldName, titleFieldName + "^100", authorFieldName}),
-          getBatmanAmbiguosDocument(),
+          getBatmanAmbiguousDocument(),
           BATMAN_RESULT);
       // considering without boost wrong classification will appear
       checkCorrectDocumentClassification(
@@ -134,7 +130,7 @@ public class TestSimpleNaiveBayesDocumentClassifier
               categoryFieldName,
               field2analyzer,
               new String[] {textFieldName, titleFieldName, authorFieldName}),
-          getBatmanAmbiguosDocument(),
+          getBatmanAmbiguousDocument(),
           VIDEOGAME_ANALYZED_RESULT);
     } finally {
       IOUtils.close(indexReader);

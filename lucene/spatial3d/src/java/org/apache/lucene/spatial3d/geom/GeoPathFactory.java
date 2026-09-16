@@ -57,6 +57,6 @@ public class GeoPathFactory {
       }
     }
     noIdenticalPoints.add(pathPoints[pathPoints.length - 1]);
-    return noIdenticalPoints.toArray(new GeoPoint[noIdenticalPoints.size()]);
+    return noIdenticalPoints.toArray(GeoPoint[]::new);
   }
 }

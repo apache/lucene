@@ -30,6 +30,7 @@ import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ConfigurationContainer;
 import org.gradle.api.attributes.LibraryElements;
+import org.gradle.api.attributes.Usage;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.FileSystemLocation;
 import org.gradle.api.provider.Provider;
@@ -117,12 +118,13 @@ public class ModularPathsExtension implements Cloneable, Iterable<Configuration>
 
     // We have to ensure configurations are using assembled resources and classes (jar variant) as a
     // single module can't be expanded into multiple folders.
+    var objects = project.getObjects();
     Consumer<Configuration> ensureJarVariant =
         (Configuration c) ->
             c.getAttributes()
                 .attribute(
                     LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE,
-                    project.getObjects().named(LibraryElements.class, LibraryElements.JAR));
+                    objects.named(LibraryElements.class, LibraryElements.JAR));
 
     // Set up compilation/runtime classpath configurations to prefer JAR variant as well.
     ensureJarVariant.accept(
@@ -156,6 +158,13 @@ public class ModularPathsExtension implements Cloneable, Iterable<Configuration>
     this.runtimeModulePathConfiguration =
         createResolvableModuleConfiguration.apply(sourceSet.getRuntimeClasspathConfigurationName());
     this.runtimeModulePathConfiguration.extendsFrom(moduleRuntimeOnly, moduleImplementation);
+
+    compileModulePathConfiguration
+        .getAttributes()
+        .attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage.class, Usage.JAVA_API));
+    runtimeModulePathConfiguration
+        .getAttributes()
+        .attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage.class, Usage.JAVA_RUNTIME));
   }
 
   /**
@@ -236,6 +245,9 @@ public class ModularPathsExtension implements Cloneable, Iterable<Configuration>
         return List.of();
       }
 
+      // we use custom module path assembly. This unfortunately causes
+      // the module-path to be emitted twice in compiler arguments;
+      // see gradle bug https://github.com/gradle/gradle/issues/19492.
       List<String> extraArgs = new ArrayList<>();
       extraArgs.add("--module-path");
       extraArgs.add(joinPaths(modulePath));

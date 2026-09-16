@@ -101,7 +101,7 @@ public class TestClassicAnalyzer extends BaseTokenStreamTestCase {
 
   public void testApostrophes() throws Exception {
     // internal apostrophes: O'Reilly, you're, O'Reilly's
-    // possessives are actually removed by StardardFilter, not the tokenizer
+    // possessives are actually removed by StandardFilter, not the tokenizer
     assertAnalyzesTo(a, "O'Reilly", new String[] {"o'reilly"});
     assertAnalyzesTo(a, "you're", new String[] {"you're"});
     assertAnalyzesTo(a, "she's", new String[] {"she"});

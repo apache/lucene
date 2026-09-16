@@ -65,7 +65,7 @@ public class TestFrenchMinimalStemFilter extends BaseTokenStreamTestCase {
     checkOneTerm(analyzer, "baron", "baron");
   }
 
-  public void testIntergerWithLastCharactersEqual() throws IOException {
+  public void testIntegerWithLastCharactersEqual() throws IOException {
     // Trailing repeated char elision :
     checkOneTerm(analyzer, "1234555", "1234555");
     // Repeated char within numbers with more than 6 characters :

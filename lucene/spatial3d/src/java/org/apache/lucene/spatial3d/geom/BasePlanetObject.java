@@ -55,9 +55,9 @@ public abstract class BasePlanetObject implements PlanetObject {
 
   @Override
   public boolean equals(final Object o) {
-    if (!(o instanceof BasePlanetObject)) {
+    if (!(o instanceof BasePlanetObject other)) {
       return false;
     }
-    return planetModel.equals(((BasePlanetObject) o).planetModel);
+    return planetModel.equals(other.planetModel);
   }
 }

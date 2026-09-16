@@ -239,7 +239,7 @@ public class SynonymMap {
       final byte[] spare = new byte[5];
 
       Set<CharsRef> keys = workingSet.keySet();
-      CharsRef[] sortedKeys = keys.toArray(new CharsRef[keys.size()]);
+      CharsRef[] sortedKeys = keys.toArray(CharsRef[]::new);
       Arrays.sort(sortedKeys, CharsRef.getUTF16SortedAsUTF8Comparator());
 
       final IntsRefBuilder scratchIntsRef = new IntsRefBuilder();

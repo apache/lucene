@@ -16,7 +16,8 @@
  */
 package org.apache.lucene.analysis.hunspell;
 
-enum WordCase {
+/** Case pattern of a word. */
+public enum WordCase {
   /** e.g. WORD */
   UPPER,
 

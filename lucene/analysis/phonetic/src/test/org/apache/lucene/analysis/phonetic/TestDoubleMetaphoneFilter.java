@@ -51,13 +51,13 @@ public class TestDoubleMetaphoneFilter extends BaseTokenStreamTestCase {
     assertTokenStreamContents(filter, new String[] {"ANTRNXNL"});
   }
 
-  public void testNonConvertableStringsWithInject() throws Exception {
+  public void testNonConvertibleStringsWithInject() throws Exception {
     TokenStream stream = whitespaceMockTokenizer("12345 #$%@#^%&");
     TokenStream filter = new DoubleMetaphoneFilter(stream, 8, true);
     assertTokenStreamContents(filter, new String[] {"12345", "#$%@#^%&"});
   }
 
-  public void testNonConvertableStringsWithoutInject() throws Exception {
+  public void testNonConvertibleStringsWithoutInject() throws Exception {
     TokenStream stream = whitespaceMockTokenizer("12345 #$%@#^%&");
     TokenStream filter = new DoubleMetaphoneFilter(stream, 8, false);
     assertTokenStreamContents(filter, new String[] {"12345", "#$%@#^%&"});

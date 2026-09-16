@@ -93,11 +93,11 @@ public class ReutersQueryMaker extends AbstractQueryMaker {
 
         Object query = qs.get(i);
         Query q = null;
-        if (query instanceof String) {
-          q = qp.parse((String) query);
+        if (query instanceof String s) {
+          q = qp.parse(s);
 
-        } else if (query instanceof Query) {
-          q = (Query) query;
+        } else if (query instanceof Query qq) {
+          q = qq;
 
         } else {
           System.err.println("Unsupported Query Type: " + query);
@@ -112,7 +112,7 @@ public class ReutersQueryMaker extends AbstractQueryMaker {
       }
     }
 
-    return queries.toArray(new Query[0]);
+    return queries.toArray(Query[]::new);
   }
 
   @Override

@@ -91,8 +91,7 @@ public class BasicQueryFactory {
    */
   @Override
   public boolean equals(Object obj) {
-    if (!(obj instanceof BasicQueryFactory)) return false;
-    BasicQueryFactory other = (BasicQueryFactory) obj;
+    if (!(obj instanceof BasicQueryFactory other)) return false;
     return atMax() == other.atMax();
   }
 }

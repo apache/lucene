@@ -20,7 +20,6 @@ import org.apache.lucene.queryparser.surround.parser.QueryParser;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 /** */
 public class TestSrndQuery extends LuceneTestCase {
@@ -34,7 +33,6 @@ public class TestSrndQuery extends LuceneTestCase {
     QueryUtils.checkEqual(lq1, lq2);
   }
 
-  @Test
   public void testHashEquals() throws Exception {
     // grab some sample queries from Test02Boolean and Test03Distance and
     // check there hashes and equals

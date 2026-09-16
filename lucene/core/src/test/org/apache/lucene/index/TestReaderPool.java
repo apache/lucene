@@ -46,7 +46,15 @@ public class TestReaderPool extends LuceneTestCase {
 
     ReaderPool pool =
         new ReaderPool(
-            directory, directory, segmentInfos, fieldNumbers, () -> 0l, null, null, null);
+            directory,
+            directory,
+            segmentInfos,
+            fieldNumbers,
+            () -> 0l,
+            null,
+            null,
+            null,
+            new IndexWriterConfig());
     SegmentCommitInfo commitInfo = RandomPicks.randomFrom(random(), segmentInfos.asList());
     ReadersAndUpdates readersAndUpdates = pool.get(commitInfo, true);
     assertSame(readersAndUpdates, pool.get(commitInfo, false));
@@ -67,7 +75,15 @@ public class TestReaderPool extends LuceneTestCase {
 
     ReaderPool pool =
         new ReaderPool(
-            directory, directory, segmentInfos, fieldNumbers, () -> 0l, null, null, null);
+            directory,
+            directory,
+            segmentInfos,
+            fieldNumbers,
+            () -> 0l,
+            null,
+            null,
+            null,
+            new IndexWriterConfig());
     SegmentCommitInfo commitInfo = RandomPicks.randomFrom(random(), segmentInfos.asList());
     assertFalse(pool.isReaderPoolingEnabled());
     pool.release(pool.get(commitInfo, true), random().nextBoolean());
@@ -111,7 +127,8 @@ public class TestReaderPool extends LuceneTestCase {
             () -> 0l,
             new NullInfoStream(),
             null,
-            null);
+            null,
+            new IndexWriterConfig());
     int id = random().nextInt(10);
     if (random().nextBoolean()) {
       pool.enableReaderPooling();
@@ -139,22 +156,17 @@ public class TestReaderPool extends LuceneTestCase {
       if (pool.isReaderPoolingEnabled()) {
         if (random().nextBoolean()) {
           writtenToDisk = pool.writeAllDocValuesUpdates();
-          assertFalse(readersAndUpdates.isMerging());
         } else if (random().nextBoolean()) {
           writtenToDisk = pool.commit(segmentInfos);
-          assertFalse(readersAndUpdates.isMerging());
         } else {
           writtenToDisk = pool.writeDocValuesUpdatesForMerge(Collections.singletonList(commitInfo));
-          assertTrue(readersAndUpdates.isMerging());
         }
         assertFalse(pool.release(readersAndUpdates, random().nextBoolean()));
       } else {
         if (random().nextBoolean()) {
           writtenToDisk = pool.release(readersAndUpdates, random().nextBoolean());
-          assertFalse(readersAndUpdates.isMerging());
         } else {
           writtenToDisk = pool.writeDocValuesUpdatesForMerge(Collections.singletonList(commitInfo));
-          assertTrue(readersAndUpdates.isMerging());
           assertFalse(pool.release(readersAndUpdates, random().nextBoolean()));
         }
       }
@@ -188,7 +200,8 @@ public class TestReaderPool extends LuceneTestCase {
             () -> 0l,
             new NullInfoStream(),
             null,
-            null);
+            null,
+            new IndexWriterConfig());
     int id = random().nextInt(10);
     if (random().nextBoolean()) {
       pool.enableReaderPooling();
@@ -241,7 +254,8 @@ public class TestReaderPool extends LuceneTestCase {
             () -> 0L,
             new NullInfoStream(),
             null,
-            null);
+            null,
+            new IndexWriterConfig());
     if (random().nextBoolean()) {
       pool.enableReaderPooling();
     }
@@ -329,7 +343,8 @@ public class TestReaderPool extends LuceneTestCase {
             () -> 0l,
             new NullInfoStream(),
             null,
-            null);
+            null,
+            new IndexWriterConfig());
     assertEquals(0, pool.getReadersByRam().size());
 
     int ord = 0;

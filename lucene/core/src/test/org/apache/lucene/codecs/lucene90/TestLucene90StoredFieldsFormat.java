@@ -66,9 +66,10 @@ public class TestLucene90StoredFieldsFormat extends BaseStoredFieldsFormatTestCa
     }
 
     @Override
-    public void prefetch(long offset, long length) throws IOException {
+    public boolean prefetch(long offset, long length) throws IOException {
       in.prefetch(offset, length);
       counter.incrementAndGet();
+      return true;
     }
 
     @Override

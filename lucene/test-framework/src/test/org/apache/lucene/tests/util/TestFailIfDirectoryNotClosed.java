@@ -18,7 +18,7 @@ package org.apache.lucene.tests.util;
 
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import org.apache.lucene.store.Directory;
-import org.junit.Assert;
+import org.assertj.core.api.Assertions;
 import org.junit.Test;
 import org.junit.runner.JUnitCore;
 import org.junit.runner.Result;
@@ -41,7 +41,10 @@ public class TestFailIfDirectoryNotClosed extends WithNestedTests {
     RandomizedTest.assumeTrue(
         "Ignoring nested test, very likely zombie threads present.", r.getIgnoreCount() == 0);
     assertFailureCount(1, r);
-    Assert.assertTrue(
-        r.getFailures().get(0).toString().contains("Resource in scope SUITE failed to close"));
+    Assertions.assertThat(r.getFailures())
+        .anyMatch(
+            failure -> {
+              return failure.toString().contains(AssertDirectoryClosed.MSG_PREFIX);
+            });
   }
 }

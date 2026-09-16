@@ -197,7 +197,9 @@ public abstract class DocIDMerger<T extends DocIDMerger.Sub> {
         } else {
           current = queue.pop();
         }
-      } else if (queue.size() > 0) {
+      } else {
+        // queue cannot be empty here: if it were, queueMinDocID == NO_MORE_DOCS, and any valid
+        // nextDoc would satisfy nextDoc < queueMinDocID, taking the fast path above
         assert queueMinDocID == queue.top().mappedDocID;
         assert nextDoc > queueMinDocID;
         T newCurrent = queue.top();

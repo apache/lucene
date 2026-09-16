@@ -70,7 +70,7 @@
  *   <li>OpaqueQueryNode - Used as for part of the query that can be parsed by other parsers.
  *       schema/value
  *   <li>PrefixWildcardQueryNode - non-phrase wildcard query
- *   <li>QuotedFieldQUeryNode - regular phrase node
+ *   <li>QuotedFieldQueryNode - regular phrase node
  *   <li>WildcardQueryNode - non-phrase wildcard query
  * </ul>
  *

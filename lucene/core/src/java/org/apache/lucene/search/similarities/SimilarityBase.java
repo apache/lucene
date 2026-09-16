@@ -18,9 +18,9 @@ package org.apache.lucene.search.similarities;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.Explanation;
-import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.FieldStats;
+import org.apache.lucene.search.TermStats;
 import org.apache.lucene.util.SmallFloat;
 
 /**
@@ -52,12 +52,11 @@ public abstract class SimilarityBase extends Similarity {
   }
 
   @Override
-  public final SimScorer scorer(
-      float boost, CollectionStatistics collectionStats, TermStatistics... termStats) {
+  public final SimScorer scorer(float boost, FieldStats fieldStats, TermStats... termStats) {
     SimScorer[] weights = new SimScorer[termStats.length];
     for (int i = 0; i < termStats.length; i++) {
-      BasicStats stats = newStats(collectionStats.field(), boost);
-      fillBasicStats(stats, collectionStats, termStats[i]);
+      BasicStats stats = newStats(fieldStats.field(), boost);
+      fillBasicStats(stats, fieldStats, termStats[i]);
       weights[i] = new BasicSimScorer(stats);
     }
     if (weights.length == 1) {
@@ -76,17 +75,15 @@ public abstract class SimilarityBase extends Similarity {
    * Fills all member fields defined in {@code BasicStats} in {@code stats}. Subclasses can override
    * this method to fill additional stats.
    */
-  protected void fillBasicStats(
-      BasicStats stats, CollectionStatistics collectionStats, TermStatistics termStats) {
+  protected void fillBasicStats(BasicStats stats, FieldStats fieldStats, TermStats termStats) {
     // TODO: validate this for real, somewhere else
-    assert termStats.totalTermFreq() <= collectionStats.sumTotalTermFreq();
-    assert termStats.docFreq() <= collectionStats.sumDocFreq();
+    assert termStats.totalTermFreq() <= fieldStats.sumTotalTermFreq();
+    assert termStats.docFreq() <= fieldStats.sumDocFreq();
 
     // TODO: add sumDocFreq for field (numberOfFieldPostings)
-    stats.setNumberOfDocuments(collectionStats.docCount());
-    stats.setNumberOfFieldTokens(collectionStats.sumTotalTermFreq());
-    stats.setAvgFieldLength(
-        collectionStats.sumTotalTermFreq() / (double) collectionStats.docCount());
+    stats.setNumberOfDocuments(fieldStats.docCount());
+    stats.setNumberOfFieldTokens(fieldStats.sumTotalTermFreq());
+    stats.setAvgFieldLength(fieldStats.sumTotalTermFreq() / (double) fieldStats.docCount());
     stats.setDocFreq(termStats.docFreq());
     stats.setTotalTermFreq(termStats.totalTermFreq());
   }

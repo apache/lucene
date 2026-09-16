@@ -32,6 +32,7 @@ import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.KnnFloat16VectorQuery;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
@@ -732,6 +733,130 @@ public class TestField extends LuceneTestCase {
         expectThrows(IOException.class, () -> floatValues.vectorValue(1));
       }
     }
+  }
+
+  public void testKnnFieldZeroVectors() throws Exception {
+    float[] v = new float[5];
+    IllegalArgumentException zeroError =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> new KnnFloatVectorField("knnFloats", v, VectorSimilarityFunction.COSINE));
+    assertTrue(zeroError.getMessage().contains("zero vector not allowed"));
+
+    FieldType fieldType = KnnFloatVectorField.createFieldType(5, VectorSimilarityFunction.COSINE);
+    zeroError =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> new KnnFloatVectorField("knnFloats", v, fieldType));
+    assertTrue(zeroError.getMessage().contains("zero vector not allowed"));
+
+    byte[] bv = new byte[5];
+    zeroError =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> new KnnByteVectorField("knnBytes", bv, VectorSimilarityFunction.COSINE));
+    assertTrue(zeroError.getMessage().contains("zero vector not allowed"));
+
+    FieldType byteFieldType =
+        KnnByteVectorField.createFieldType(5, VectorSimilarityFunction.COSINE);
+    zeroError =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> new KnnByteVectorField("knnBytes", bv, byteFieldType));
+    assertTrue(zeroError.getMessage().contains("zero vector not allowed"));
+  }
+
+  public void testKnnFieldSetVectorValueZeroVectors() throws Exception {
+    // Float vector field: setVectorValue with zero vector on COSINE field should fail
+    KnnFloatVectorField floatField =
+        new KnnFloatVectorField(
+            "knnFloats", new float[] {1, 2, 3, 4, 5}, VectorSimilarityFunction.COSINE);
+    IllegalArgumentException zeroError =
+        expectThrows(IllegalArgumentException.class, () -> floatField.setVectorValue(new float[5]));
+    assertTrue(zeroError.getMessage().contains("zero vector not allowed"));
+
+    // Non-zero setVectorValue should succeed
+    floatField.setVectorValue(new float[] {5, 4, 3, 2, 1});
+
+    // Byte vector field: setVectorValue with zero vector on COSINE field should fail
+    KnnByteVectorField byteField =
+        new KnnByteVectorField(
+            "knnBytes", new byte[] {1, 2, 3, 4, 5}, VectorSimilarityFunction.COSINE);
+    zeroError =
+        expectThrows(IllegalArgumentException.class, () -> byteField.setVectorValue(new byte[5]));
+    assertTrue(zeroError.getMessage().contains("zero vector not allowed"));
+
+    // Non-zero setVectorValue should succeed
+    byteField.setVectorValue(new byte[] {5, 4, 3, 2, 1});
+
+    // EUCLIDEAN fields should allow zero vectors via setVectorValue
+    KnnFloatVectorField euclideanFloatField =
+        new KnnFloatVectorField(
+            "knnFloatsEuc", new float[] {1, 2, 3, 4, 5}, VectorSimilarityFunction.EUCLIDEAN);
+    euclideanFloatField.setVectorValue(new float[5]);
+
+    KnnByteVectorField euclideanByteField =
+        new KnnByteVectorField(
+            "knnBytesEuc", new byte[] {1, 2, 3, 4, 5}, VectorSimilarityFunction.EUCLIDEAN);
+    euclideanByteField.setVectorValue(new byte[5]);
+
+    // Float vector field: setVectorValue with NaN should fail
+    KnnFloatVectorField nanField =
+        new KnnFloatVectorField(
+            "knnFloatsNaN", new float[] {1, 2, 3, 4, 5}, VectorSimilarityFunction.EUCLIDEAN);
+    IllegalArgumentException nanError =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> nanField.setVectorValue(new float[] {1, 2, Float.NaN, 4, 5}));
+    assertTrue(nanError.getMessage().contains("non-finite"));
+  }
+
+  public void testKnnFloat16FieldNonFinite() {
+    short one = Float.floatToFloat16(1f);
+    short two = Float.floatToFloat16(2f);
+    short[] finite = {one, two, Float.floatToFloat16(3f)};
+
+    // constructor rejects a non-finite (+Infinity) component
+    IllegalArgumentException ctorError =
+        expectThrows(
+            IllegalArgumentException.class,
+            () ->
+                new KnnFloat16VectorField(
+                    "knnF16",
+                    new short[] {one, (short) 0x7C00, two}, // 0x7C00 = +Infinity
+                    VectorSimilarityFunction.EUCLIDEAN));
+    assertTrue(ctorError.getMessage(), ctorError.getMessage().contains("non-finite"));
+
+    // constructing with a finite vector succeeds
+    KnnFloat16VectorField field =
+        new KnnFloat16VectorField("knnF16", finite, VectorSimilarityFunction.EUCLIDEAN);
+
+    // setVectorValue rejects NaN (0x7E00)
+    IllegalArgumentException nanError =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> field.setVectorValue(new short[] {one, (short) 0x7E00, two}));
+    assertTrue(nanError.getMessage(), nanError.getMessage().contains("non-finite"));
+
+    // setVectorValue with a finite vector succeeds
+    field.setVectorValue(new short[] {two, one, Float.floatToFloat16(4f)});
+  }
+
+  public void testKnnFloat16QueryNonFinite() {
+    short one = Float.floatToFloat16(1f);
+
+    // null target
+    expectThrows(NullPointerException.class, () -> new KnnFloat16VectorQuery("f", null, 1));
+
+    // -Infinity (0xFC00) target
+    IllegalArgumentException infError =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> new KnnFloat16VectorQuery("f", new short[] {one, (short) 0xFC00}, 1));
+    assertTrue(infError.getMessage(), infError.getMessage().contains("non-finite"));
+
+    // finite target constructs fine
+    new KnnFloat16VectorQuery("f", new short[] {one, Float.floatToFloat16(2f)}, 1);
   }
 
   private void trySetByteValue(Field f) {

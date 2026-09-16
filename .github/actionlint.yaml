@@ -5,7 +5,8 @@ self-hosted-runner:
 # Configuration variables in array of strings defined in your repository or
 # organization. `null` means disabling configuration variables check.
 # Empty array means no configuration variable is allowed.
-config-variables: []
+config-variables:
+  - BACKPORT_DRY_RUN
 
 # Configuration for file paths. The keys are glob patterns to match to file
 # paths relative to the repository root. The values are the configurations for

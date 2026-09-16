@@ -321,7 +321,7 @@ public abstract class RSLPStemmerBase {
           }
         }
       }
-      if (line.endsWith(";")) return rules.toArray(new Rule[rules.size()]);
+      if (line.endsWith(";")) return rules.toArray(Rule[]::new);
     }
     return null;
   }

@@ -57,7 +57,7 @@ class Geo3DUtil {
     return Math.nextDown((x + 1) * planetModel.DECODE);
   }
 
-  /** Converts degress to radians */
+  /** Converts degrees to radians */
   static double fromDegrees(final double degrees) {
     return degrees * RADIANS_PER_DEGREE;
   }

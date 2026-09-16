@@ -276,7 +276,7 @@ public class TestSoftDeletesRetentionMergePolicy extends LuceneTestCase {
     IOUtils.close(reader, writer, dir);
   }
 
-  /** tests soft deletes that carry over deleted documents on merge for history rentention. */
+  /** tests soft deletes that carry over deleted documents on merge for history retention. */
   public void testSoftDeleteWithRetention() throws IOException, InterruptedException {
     AtomicInteger seqIds = new AtomicInteger(0);
     Directory dir = newDirectory();

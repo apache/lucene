@@ -38,7 +38,6 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CharsRefBuilder;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Test;
 
 public class TestContextSuggestField extends LuceneTestCase {
 
@@ -54,7 +53,6 @@ public class TestContextSuggestField extends LuceneTestCase {
     dir.close();
   }
 
-  @Test
   public void testEmptySuggestion() throws Exception {
     IllegalArgumentException expected =
         expectThrows(
@@ -65,7 +63,6 @@ public class TestContextSuggestField extends LuceneTestCase {
     assertTrue(expected.getMessage().contains("value"));
   }
 
-  @Test
   public void testReservedChars() throws Exception {
     CharsRefBuilder charsRefBuilder = new CharsRefBuilder();
     charsRefBuilder.append("sugg");
@@ -105,7 +102,6 @@ public class TestContextSuggestField extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testTokenStream() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     ContextSuggestField field =
@@ -159,7 +155,6 @@ public class TestContextSuggestField extends LuceneTestCase {
         null);
   }
 
-  @Test
   public void testMixedSuggestFields() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     Document document = new Document();
@@ -180,7 +175,6 @@ public class TestContextSuggestField extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testWithSuggestFields() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =
@@ -230,7 +224,6 @@ public class TestContextSuggestField extends LuceneTestCase {
     iw.close();
   }
 
-  @Test
   public void testCompletionAnalyzer() throws Exception {
     CompletionAnalyzer completionAnalyzer =
         new CompletionAnalyzer(new StandardAnalyzer(), true, true);

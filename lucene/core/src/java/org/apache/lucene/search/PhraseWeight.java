@@ -75,7 +75,7 @@ public abstract class PhraseWeight extends Weight {
     if (matcher == null || matcher.approximation().advance(doc) != doc) {
       return Explanation.noMatch("no matching terms");
     }
-    matcher.reset();
+    matcher.resetPositions();
     if (matcher.nextMatch() == false) {
       return Explanation.noMatch("no matching phrase");
     }
@@ -111,7 +111,7 @@ public abstract class PhraseWeight extends Weight {
           if (matcher == null || matcher.approximation().advance(doc) != doc) {
             return null;
           }
-          matcher.reset();
+          matcher.resetPositions();
           if (matcher.nextMatch() == false) {
             return null;
           }

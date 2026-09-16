@@ -168,6 +168,7 @@ final class NumericDocValuesFieldUpdates extends DocValuesFieldUpdates {
 
     @Override
     synchronized void reset(int doc) {
+      anyReset = true;
       bitSet.set(doc);
       this.hasAtLeastOneValue = true;
       if (hasNoValue == null) {

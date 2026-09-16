@@ -18,8 +18,8 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import org.apache.lucene.store.Directory;
@@ -27,7 +27,6 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.Version;
-import org.junit.Test;
 
 public class TestOneMergeWrappingMergePolicy extends LuceneTestCase {
 
@@ -80,7 +79,6 @@ public class TestOneMergeWrappingMergePolicy extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testSegmentsAreWrapped() throws IOException {
     try (final Directory dir = newDirectory()) {
       // first create random merge specs
@@ -139,7 +137,7 @@ public class TestOneMergeWrappingMergePolicy extends LuceneTestCase {
                     .getBytes(StandardCharsets.US_ASCII),
                 Collections.emptyMap(), // attributes
                 null /* indexSort */);
-        final List<SegmentCommitInfo> segments = new LinkedList<>();
+        final List<SegmentCommitInfo> segments = new ArrayList<>();
         segments.add(new SegmentCommitInfo(si, 0, 0, 0, 0, 0, StringHelper.randomId()));
         ms.add(new MergePolicy.OneMerge(segments));
       }

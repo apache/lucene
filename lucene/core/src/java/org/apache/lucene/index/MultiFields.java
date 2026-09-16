@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.index;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -58,7 +57,7 @@ public final class MultiFields extends Fields {
   }
 
   @Override
-  public Terms terms(String field) throws IOException {
+  public Terms terms(String field) {
     Terms result = terms.get(field);
     if (result != null) return result;
 

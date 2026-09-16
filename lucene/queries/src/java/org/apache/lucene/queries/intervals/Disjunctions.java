@@ -88,7 +88,7 @@ final class Disjunctions {
     }
     List<IntervalsSource> split = new ArrayList<>();
     if (singletons.size() > 0) {
-      split.add(Intervals.or(singletons.toArray(new IntervalsSource[0])));
+      split.add(Intervals.or(singletons.toArray(IntervalsSource[]::new)));
     }
     split.addAll(nonSingletons);
     return split;

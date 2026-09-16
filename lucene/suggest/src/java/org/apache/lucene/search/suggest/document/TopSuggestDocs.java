@@ -74,11 +74,10 @@ public class TopSuggestDocs extends TopDocs {
 
     @Override
     public boolean equals(Object other) {
-      if (other instanceof SuggestScoreDoc == false) {
-        return false;
-      } else {
-        return key.equals(((SuggestScoreDoc) other).key);
+      if (other instanceof SuggestScoreDoc ssd) {
+        return key.equals(ssd.key);
       }
+      return false;
     }
 
     @Override

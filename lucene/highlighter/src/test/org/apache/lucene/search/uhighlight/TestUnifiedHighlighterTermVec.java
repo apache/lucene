@@ -43,7 +43,6 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.tests.index.RandomIndexWriter;
-import org.junit.Test;
 
 /**
  * Tests highlighting for matters *expressly* relating to term vectors.
@@ -205,7 +204,6 @@ public class TestUnifiedHighlighterTermVec extends UnifiedHighlighterTestBase {
     }
   }
 
-  @Test
   public void testUserFailedToIndexOffsets() throws IOException {
     FieldType fieldType = new FieldType(tvType); // note: it's indexed too
     fieldType.setStoreTermVectorPositions(random().nextBoolean());

@@ -144,7 +144,7 @@ public class RAFDirectory extends FSDirectory {
     }
 
     @Override
-    public final long length() {
+    public long length() {
       return end - off;
     }
 

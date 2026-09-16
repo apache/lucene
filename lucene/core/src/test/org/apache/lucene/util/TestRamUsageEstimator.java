@@ -150,6 +150,11 @@ public class TestRamUsageEstimator extends LuceneTestCase {
     assertEquals((double) actual, (double) estimated, (double) actual * errorFactor);
   }
 
+  public void testAccountable() {
+    assertEquals(0L, RamUsageEstimator.sizeOf((Accountable) null));
+    assertEquals(1L, RamUsageEstimator.sizeOf(new DummyAccountable()));
+  }
+
   public void testCollection() {
     List<Object> list = new ArrayList<>();
     list.add(1234L);
@@ -251,5 +256,12 @@ public class TestRamUsageEstimator extends LuceneTestCase {
 
   private static class HolderSubclass2 extends Holder {
     // empty, only inherits all fields -> size should be identical to superclass
+  }
+
+  private static class DummyAccountable implements Accountable {
+    @Override
+    public long ramBytesUsed() {
+      return 1L;
+    }
   }
 }

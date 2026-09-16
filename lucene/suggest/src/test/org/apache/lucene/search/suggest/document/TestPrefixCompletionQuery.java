@@ -46,7 +46,6 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Test;
 
 public class TestPrefixCompletionQuery extends LuceneTestCase {
 
@@ -142,7 +141,6 @@ public class TestPrefixCompletionQuery extends LuceneTestCase {
     iw.close();
   }
 
-  @Test
   public void testEmptyPrefixQuery() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =

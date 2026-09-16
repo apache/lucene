@@ -38,6 +38,7 @@ import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
@@ -233,12 +234,11 @@ public final class Lucene104PostingsReader extends PostingsReaderBase {
       termState.singletonDocID += BitUtil.zigZagDecode(l >>> 1);
     }
 
-    if (fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0) {
+    if (fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS)) {
       termState.posStartFP += in.readVLong();
       if (fieldInfo
-                  .getIndexOptions()
-                  .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
-              >= 0
+              .getIndexOptions()
+              .subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
           || fieldInfo.hasPayloads()) {
         termState.payStartFP += in.readVLong();
       }
@@ -409,10 +409,9 @@ public final class Lucene104PostingsReader extends PostingsReaderBase {
     public BlockPostingsEnum(FieldInfo fieldInfo, int flags, boolean needsImpacts)
         throws IOException {
       options = fieldInfo.getIndexOptions();
-      indexHasFreq = options.compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
-      indexHasPos = options.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
-      indexHasOffsets =
-          options.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) >= 0;
+      indexHasFreq = options.subsumes(IndexOptions.DOCS_AND_FREQS);
+      indexHasPos = options.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
+      indexHasOffsets = options.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
       indexHasPayloads = fieldInfo.hasPayloads();
       indexHasOffsetsOrPayloads = indexHasOffsets || indexHasPayloads;
 
@@ -603,7 +602,7 @@ public final class Lucene104PostingsReader extends PostingsReaderBase {
         int numLongs;
         if (bitsPerValue == 0) {
           // 0 is used to record that all 256 docs in the block are consecutive
-          numLongs = BLOCK_SIZE / Long.SIZE; // 2
+          numLongs = BLOCK_SIZE / Long.SIZE; // 4
           docBitSet.set(0, BLOCK_SIZE);
         } else {
           numLongs = -bitsPerValue;
@@ -1471,15 +1470,15 @@ public final class Lucene104PostingsReader extends PostingsReaderBase {
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
     if (docIn != null) {
-      CodecUtil.checksumEntireFile(docIn);
+      CodecUtil.checksumEntireFile(docIn, merge);
     }
     if (posIn != null) {
-      CodecUtil.checksumEntireFile(posIn);
+      CodecUtil.checksumEntireFile(posIn, merge);
     }
     if (payIn != null) {
-      CodecUtil.checksumEntireFile(payIn);
+      CodecUtil.checksumEntireFile(payIn, merge);
     }
   }
 

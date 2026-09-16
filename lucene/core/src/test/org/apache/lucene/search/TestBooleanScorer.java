@@ -27,8 +27,12 @@ import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.document.TextField;
+import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
@@ -37,7 +41,9 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.BitDocIdSet;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
 
 public class TestBooleanScorer extends LuceneTestCase {
   private static final String FIELD = "category";
@@ -189,11 +195,11 @@ public class TestBooleanScorer extends LuceneTestCase {
             .add(new TermQuery(new Term("missing_field", "baz")), Occur.SHOULD) // missing term
             .build();
 
-    // no scores -> term scorer
+    // no scores -> constant-score term scorer
     Weight weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE_NO_SCORES, 1);
     ScorerSupplier ss = weight.scorerSupplier(ctx);
     BulkScorer scorer = ((BooleanScorerSupplier) ss).booleanScorer();
-    assertThat(scorer, instanceOf(DefaultBulkScorer.class)); // term scorer
+    assertThat(scorer, instanceOf(ConstantScoreBulkScorer.class)); // term scorer
 
     // scores -> term scorer too
     query =
@@ -209,6 +215,547 @@ public class TestBooleanScorer extends LuceneTestCase {
     w.close();
     reader.close();
     dir.close();
+  }
+
+  public void testConstantScoreScorerSupplierUsesIntoBitSet() throws IOException {
+    int[] docs = {1, 2, 4097, 5000, 8195};
+    CountingDocIdSetIterator iterator = new CountingDocIdSetIterator(docs);
+
+    FixedBitSet liveDocs = new FixedBitSet(9000);
+    liveDocs.set(0, 9000);
+    liveDocs.clear(2);
+    liveDocs.clear(4097);
+    liveDocs.clear(5000);
+
+    int[] collected = new int[docs.length];
+    int[] count = new int[1];
+    LeafCollector collector =
+        new LeafCollector() {
+          @Override
+          public void setScorer(Scorable scorer) {}
+
+          @Override
+          public void collect(int doc) {
+            fail("ConstantScoreBulkScorer should collect via DocIdStream");
+          }
+
+          @Override
+          public void collect(DocIdStream stream) throws IOException {
+            int[] buffer = new int[docs.length];
+            for (int size = stream.intoArray(buffer); size != 0; size = stream.intoArray(buffer)) {
+              System.arraycopy(buffer, 0, collected, count[0], size);
+              count[0] += size;
+            }
+          }
+        };
+
+    BulkScorer bulkScorer =
+        ConstantScoreScorerSupplier.fromIterator(iterator, 1f, ScoreMode.COMPLETE_NO_SCORES, 9000)
+            .bulkScorer();
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, bulkScorer.score(collector, liveDocs, 0, 9000));
+    assertArrayEquals(new int[] {1, 8195}, Arrays.copyOf(collected, count[0]));
+    assertEquals(3, iterator.intoBitSetCalls);
+  }
+
+  public void testCachedFilterOptionalConjunctionUsesConstantScoreBulkScorerDocIdStream()
+      throws IOException {
+    int maxDoc = 500_000;
+    int expectedHitCount = 10_000;
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig());
+    for (int doc = 0; doc < maxDoc; ++doc) {
+      Document document = new Document();
+      document.add(new StringField("filter", "yes", Store.NO));
+      if (doc % 50 == 1) {
+        document.add(new StringField("optional", doc % 100 == 1 ? "a" : "b", Store.NO));
+      }
+      w.addDocument(document);
+    }
+    w.forceMerge(1);
+    IndexReader reader = DirectoryReader.open(w);
+    w.close();
+
+    Query filterQuery = new TermQuery(new Term("filter", "yes"));
+    Query query =
+        new BooleanQuery.Builder()
+            .add(filterQuery, Occur.FILTER)
+            .add(new TermQuery(new Term("optional", "a")), Occur.SHOULD)
+            .add(new TermQuery(new Term("optional", "b")), Occur.SHOULD)
+            .setMinimumNumberShouldMatch(1)
+            .build();
+
+    IndexSearcher searcher = new IndexSearcher(reader);
+    LRUQueryCache queryCache =
+        new LRUQueryCache(16, 1 << 25, context -> context.reader() != null, 1f);
+    searcher.setQueryCache(queryCache);
+    searcher.setQueryCachingPolicy(
+        new QueryCachingPolicy() {
+          @Override
+          public void onUse(Query query) {}
+
+          @Override
+          public boolean shouldCache(Query query) {
+            return filterQuery.equals(query);
+          }
+        });
+
+    LeafReaderContext context = reader.leaves().get(0);
+    Weight filterWeight =
+        searcher.createWeight(searcher.rewrite(filterQuery), ScoreMode.COMPLETE_NO_SCORES, 1f);
+    ScorerSupplier filterScorerSupplier = filterWeight.scorerSupplier(context);
+    assertNotNull(filterScorerSupplier);
+    filterScorerSupplier.get(Long.MAX_VALUE).iterator().nextDoc();
+    assertEquals(1, queryCache.getCacheSize());
+
+    Weight weight =
+        searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE_NO_SCORES, 1f);
+    Scorer scorer = weight.scorerSupplier(context).get(Long.MAX_VALUE);
+    assertThat(scorer, instanceOf(ConjunctionScorer.class));
+    DocIdSetIterator iterator = scorer.iterator();
+    assertTrue(iterator.cost() >= Math.ceilDiv(maxDoc, 512));
+    assertNull(TwoPhaseIterator.unwrap(iterator));
+
+    BulkScorer bulkScorer = weight.bulkScorer(context);
+    assertThat(bulkScorer, instanceOf(ConstantScoreBulkScorer.class));
+
+    int[] collected = new int[expectedHitCount];
+    int[] count = new int[1];
+    int[] streamCount = new int[1];
+    LeafCollector collector =
+        new LeafCollector() {
+          @Override
+          public void setScorer(Scorable scorer) {}
+
+          @Override
+          public void collect(int doc) {
+            fail("Cached filtered optional conjunction should collect via ConstantScoreBulkScorer");
+          }
+
+          @Override
+          public void collect(DocIdStream stream) throws IOException {
+            streamCount[0]++;
+            int[] buffer = new int[32];
+            for (int size = stream.intoArray(buffer); size != 0; size = stream.intoArray(buffer)) {
+              System.arraycopy(buffer, 0, collected, count[0], size);
+              count[0] += size;
+            }
+          }
+        };
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, bulkScorer.score(collector, null, 0, maxDoc));
+    assertTrue(streamCount[0] > 0);
+    assertEquals(expectedHitCount, count[0]);
+    for (int i = 0; i < count[0]; ++i) {
+      assertEquals(1 + i * 50, collected[i]);
+    }
+
+    reader.close();
+    dir.close();
+  }
+
+  public void testCachedFilterTwoPhaseOptionalConjunctionUsesConstantScoreBulkScorer()
+      throws IOException {
+    int maxDoc = 500_000;
+    int expectedHitCount = 10_000;
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig());
+    for (int doc = 0; doc < maxDoc; ++doc) {
+      Document document = new Document();
+      document.add(new StringField("filter", "yes", Store.NO));
+      if (doc % 50 == 1) {
+        // Phrase queries expose a TwoPhaseIterator, so the optional disjunction below is two-phase.
+        document.add(
+            new TextField("optional", doc % 100 == 1 ? "quick brown" : "lazy dog", Store.NO));
+      }
+      w.addDocument(document);
+    }
+    w.forceMerge(1);
+    IndexReader reader = DirectoryReader.open(w);
+    w.close();
+
+    Query filterQuery = new TermQuery(new Term("filter", "yes"));
+    Query query =
+        new BooleanQuery.Builder()
+            .add(filterQuery, Occur.FILTER)
+            .add(new PhraseQuery("optional", "quick", "brown"), Occur.SHOULD)
+            .add(new PhraseQuery("optional", "lazy", "dog"), Occur.SHOULD)
+            .setMinimumNumberShouldMatch(1)
+            .build();
+
+    IndexSearcher searcher = new IndexSearcher(reader);
+    LRUQueryCache queryCache =
+        new LRUQueryCache(16, 1 << 25, context -> context.reader() != null, 1f);
+    searcher.setQueryCache(queryCache);
+    searcher.setQueryCachingPolicy(
+        new QueryCachingPolicy() {
+          @Override
+          public void onUse(Query query) {}
+
+          @Override
+          public boolean shouldCache(Query query) {
+            return filterQuery.equals(query);
+          }
+        });
+
+    LeafReaderContext context = reader.leaves().get(0);
+    Weight filterWeight =
+        searcher.createWeight(searcher.rewrite(filterQuery), ScoreMode.COMPLETE_NO_SCORES, 1f);
+    ScorerSupplier filterScorerSupplier = filterWeight.scorerSupplier(context);
+    assertNotNull(filterScorerSupplier);
+    filterScorerSupplier.get(Long.MAX_VALUE).iterator().nextDoc();
+    assertEquals(1, queryCache.getCacheSize());
+
+    Weight weight =
+        searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE_NO_SCORES, 1f);
+    Scorer scorer = weight.scorerSupplier(context).get(Long.MAX_VALUE);
+    // The optional phrase disjunction makes the conjunction two-phase.
+    assertNotNull(TwoPhaseIterator.unwrap(scorer.iterator()));
+
+    BulkScorer bulkScorer = weight.bulkScorer(context);
+    assertThat(bulkScorer, instanceOf(ConstantScoreBulkScorer.class));
+
+    int[] collected = new int[expectedHitCount];
+    int[] count = new int[1];
+    LeafCollector collector =
+        new LeafCollector() {
+          @Override
+          public void setScorer(Scorable scorer) {}
+
+          @Override
+          public void collect(int doc) {
+            collected[count[0]++] = doc;
+          }
+
+          @Override
+          public void collect(DocIdStream stream) throws IOException {
+            int[] buffer = new int[32];
+            for (int size = stream.intoArray(buffer); size != 0; size = stream.intoArray(buffer)) {
+              System.arraycopy(buffer, 0, collected, count[0], size);
+              count[0] += size;
+            }
+          }
+        };
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, bulkScorer.score(collector, null, 0, maxDoc));
+    assertEquals(expectedHitCount, count[0]);
+    for (int i = 0; i < count[0]; ++i) {
+      assertEquals(1 + i * 50, collected[i]);
+    }
+
+    reader.close();
+    dir.close();
+  }
+
+  public void testFilterLeafCollectorPreservesCollectIntForDocIdStream() throws IOException {
+    FixedBitSet docs = new FixedBitSet(8);
+    docs.set(1);
+    docs.set(3);
+
+    int[] collected = new int[2];
+    int[] count = new int[1];
+    LeafCollector collector =
+        new FilterLeafCollector(
+            new LeafCollector() {
+              @Override
+              public void setScorer(Scorable scorer) {}
+
+              @Override
+              public void collect(int doc) {
+                fail("Wrapped collector should not receive batch docs directly");
+              }
+            }) {
+          @Override
+          public void setScorer(Scorable scorer) {}
+
+          @Override
+          public void collect(int doc) {
+            collected[count[0]++] = doc;
+          }
+        };
+
+    collector.collect(new BitSetDocIdStream(docs, 0));
+    assertEquals(2, count[0]);
+    assertArrayEquals(new int[] {1, 3}, collected);
+  }
+
+  public void testFilterLeafCollectorPreservesCollectIntForRange() throws IOException {
+    int[] collected = new int[3];
+    int[] count = new int[1];
+    LeafCollector collector =
+        new FilterLeafCollector(
+            new LeafCollector() {
+              @Override
+              public void setScorer(Scorable scorer) {}
+
+              @Override
+              public void collect(int doc) {
+                fail("Wrapped collector should not receive range docs directly");
+              }
+            }) {
+          @Override
+          public void setScorer(Scorable scorer) {}
+
+          @Override
+          public void collect(int doc) {
+            collected[count[0]++] = doc;
+          }
+        };
+
+    collector.collectRange(2, 5);
+    assertEquals(3, count[0]);
+    assertArrayEquals(new int[] {2, 3, 4}, collected);
+  }
+
+  public void testDefaultBulkScorerKeepsNoScoreConjunctionOnPerDocPath() throws IOException {
+    int[] docs = new int[20];
+    for (int i = 0; i < docs.length; ++i) {
+      docs[i] = 1 + i * 100;
+    }
+    CountingDocIdSetIterator lead = new CountingDocIdSetIterator(docs);
+    FixedBitSet filter = new FixedBitSet(9000);
+    filter.set(0, 9000);
+    Scorer leadScorer = new ConstantScoreScorer(0f, ScoreMode.COMPLETE_NO_SCORES, lead);
+    Scorer filterScorer =
+        new ConstantScoreScorer(
+            0f, ScoreMode.COMPLETE_NO_SCORES, new BitDocIdSet(filter).iterator());
+    Scorer scorer =
+        new ConjunctionScorer(
+            Arrays.asList(leadScorer, filterScorer), java.util.Collections.emptyList());
+
+    int[] collected = new int[docs.length];
+    int[] count = new int[1];
+    LeafCollector collector =
+        new LeafCollector() {
+          @Override
+          public void setScorer(Scorable scorer) {}
+
+          @Override
+          public void collect(int doc) {
+            collected[count[0]++] = doc;
+          }
+
+          @Override
+          public void collect(DocIdStream stream) {
+            fail("DefaultBulkScorer should not special-case no-score conjunctions");
+          }
+        };
+
+    BulkScorer bulkScorer = new DefaultBulkScorer(scorer);
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, bulkScorer.score(collector, null, 0, 9000));
+    assertArrayEquals(docs, Arrays.copyOf(collected, count[0]));
+    assertEquals(0, lead.intoBitSetCalls);
+  }
+
+  public void testDefaultBulkScorerSkipsIntoBitSetForSparseNoScoreConjunction() throws IOException {
+    int[] docs = {1, 2, 4097, 8195};
+    CountingDocIdSetIterator lead = new CountingDocIdSetIterator(docs);
+    FixedBitSet filter = new FixedBitSet(9000);
+    filter.set(0, 9000);
+    filter.clear(1);
+    filter.clear(4097);
+    Scorer leadScorer = new ConstantScoreScorer(0f, ScoreMode.COMPLETE_NO_SCORES, lead);
+    Scorer filterScorer =
+        new ConstantScoreScorer(
+            0f, ScoreMode.COMPLETE_NO_SCORES, new BitDocIdSet(filter).iterator());
+    Scorer scorer =
+        new ConjunctionScorer(
+            Arrays.asList(leadScorer, filterScorer), java.util.Collections.emptyList());
+
+    int[] collected = new int[2];
+    int[] count = new int[1];
+    LeafCollector collector =
+        new LeafCollector() {
+          @Override
+          public void setScorer(Scorable scorer) {}
+
+          @Override
+          public void collect(int doc) {
+            collected[count[0]++] = doc;
+          }
+
+          @Override
+          public void collect(DocIdStream stream) {
+            fail("Sparse conjunctions should stay on the per-doc path");
+          }
+        };
+
+    BulkScorer bulkScorer = new DefaultBulkScorer(scorer);
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, bulkScorer.score(collector, null, 0, 9000));
+    assertArrayEquals(new int[] {2, 8195}, Arrays.copyOf(collected, count[0]));
+    assertEquals(0, lead.intoBitSetCalls);
+  }
+
+  public void testDefaultBulkScorerSkipsIntoBitSetForNonBitSetConjunction() throws IOException {
+    int[] docs = new int[20];
+    for (int i = 0; i < docs.length; ++i) {
+      docs[i] = 1 + i * 100;
+    }
+    CountingDocIdSetIterator lead = new CountingDocIdSetIterator(docs);
+    CountingDocIdSetIterator other = new CountingDocIdSetIterator(docs);
+    Scorer leadScorer = new ConstantScoreScorer(0f, ScoreMode.COMPLETE_NO_SCORES, lead);
+    Scorer otherScorer = new ConstantScoreScorer(0f, ScoreMode.COMPLETE_NO_SCORES, other);
+    Scorer scorer =
+        new ConjunctionScorer(
+            Arrays.asList(leadScorer, otherScorer), java.util.Collections.emptyList());
+
+    int[] collected = new int[docs.length];
+    int[] count = new int[1];
+    LeafCollector collector =
+        new LeafCollector() {
+          @Override
+          public void setScorer(Scorable scorer) {}
+
+          @Override
+          public void collect(int doc) {
+            collected[count[0]++] = doc;
+          }
+
+          @Override
+          public void collect(DocIdStream stream) {
+            fail("Non-bitset conjunctions should stay on the per-doc path");
+          }
+        };
+
+    BulkScorer bulkScorer = new DefaultBulkScorer(scorer);
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, bulkScorer.score(collector, null, 0, 9000));
+    assertArrayEquals(docs, Arrays.copyOf(collected, count[0]));
+    assertEquals(0, lead.intoBitSetCalls);
+    assertEquals(0, other.intoBitSetCalls);
+  }
+
+  public void testConstantScoreBulkScorerRejectsScoreModeThatNeedsScores() {
+    expectThrows(
+        IllegalArgumentException.class,
+        () ->
+            new ConstantScoreBulkScorer(
+                1f, ScoreMode.COMPLETE, new CountingDocIdSetIterator(new int[] {1})));
+  }
+
+  public void testConstantScoreScorerSupplierBulkCollectsTwoPhaseWithMatcher() throws IOException {
+    int[] docs = {1, 2, 3};
+    CountingDocIdSetIterator approximation = new CountingDocIdSetIterator(docs);
+    DocIdSetIterator iterator =
+        TwoPhaseIterator.asDocIdSetIterator(
+            new TwoPhaseIterator(approximation) {
+              @Override
+              public boolean matches() {
+                return approximation.docID() != 2;
+              }
+
+              @Override
+              public float matchCost() {
+                return 1f;
+              }
+            });
+
+    int[] collected = new int[docs.length];
+    int[] count = new int[1];
+    LeafCollector collector =
+        new LeafCollector() {
+          @Override
+          public void setScorer(Scorable scorer) {}
+
+          @Override
+          public void collect(int doc) {
+            collected[count[0]++] = doc;
+          }
+
+          @Override
+          public void collect(DocIdStream stream) throws IOException {
+            stream.forEach(doc -> collected[count[0]++] = doc);
+          }
+        };
+
+    // A no-score two-phase iterator is bulk-collected through ConstantScoreBulkScorer; its matcher
+    // is preserved because TwoPhaseIterator#intoBitSet confirms matches() while loading the window.
+    BulkScorer bulkScorer =
+        ConstantScoreScorerSupplier.fromIterator(iterator, 1f, ScoreMode.COMPLETE_NO_SCORES, 9000)
+            .bulkScorer();
+    assertThat(bulkScorer, instanceOf(ConstantScoreBulkScorer.class));
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, bulkScorer.score(collector, null, 0, 9000));
+    // doc 2 is excluded by matches(), so the matcher is honored even via the bulk path.
+    assertArrayEquals(new int[] {1, 3}, Arrays.copyOf(collected, count[0]));
+    // Confirmation runs through matches(), not the approximation's own bulk intoBitSet.
+    assertEquals(0, approximation.intoBitSetCalls);
+  }
+
+  public void testDefaultBulkScorerDoesNotUseDocIdStreamForTopScores() throws IOException {
+    assertDefaultBulkScorerDoesNotUseDocIdStreamForScores(ScoreMode.TOP_SCORES);
+  }
+
+  public void testDefaultBulkScorerDoesNotUseDocIdStreamWhenScoresAreNeeded() throws IOException {
+    assertDefaultBulkScorerDoesNotUseDocIdStreamForScores(ScoreMode.COMPLETE);
+  }
+
+  private static void assertDefaultBulkScorerDoesNotUseDocIdStreamForScores(ScoreMode scoreMode)
+      throws IOException {
+    int[] docs = {1, 2, 4097};
+    CountingDocIdSetIterator iterator = new CountingDocIdSetIterator(docs);
+    Scorer scorer = new ConstantScoreScorer(1f, scoreMode, iterator);
+
+    int[] collected = new int[docs.length];
+    int[] count = new int[1];
+    LeafCollector collector =
+        new LeafCollector() {
+          @Override
+          public void setScorer(Scorable scorer) {}
+
+          @Override
+          public void collect(int doc) {
+            collected[count[0]++] = doc;
+          }
+
+          @Override
+          public void collect(DocIdStream stream) {
+            fail("ScoreMode " + scoreMode + " must preserve per-doc collection");
+          }
+        };
+
+    BulkScorer bulkScorer = new DefaultBulkScorer(scorer);
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, bulkScorer.score(collector, null, 0, 9000));
+    assertArrayEquals(docs, Arrays.copyOf(collected, count[0]));
+    assertEquals(0, iterator.intoBitSetCalls);
+  }
+
+  private static class CountingDocIdSetIterator extends DocIdSetIterator {
+    private final int[] docs;
+    private int index = -1;
+    private int doc = -1;
+    private int intoBitSetCalls;
+
+    CountingDocIdSetIterator(int[] docs) {
+      this.docs = docs;
+    }
+
+    @Override
+    public int docID() {
+      return doc;
+    }
+
+    @Override
+    public int nextDoc() {
+      if (++index == docs.length) {
+        return doc = NO_MORE_DOCS;
+      }
+      return doc = docs[index];
+    }
+
+    @Override
+    public int advance(int target) {
+      while (doc < target) {
+        nextDoc();
+      }
+      return doc;
+    }
+
+    @Override
+    public long cost() {
+      return docs.length;
+    }
+
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      ++intoBitSetCalls;
+      super.intoBitSet(upTo, bitSet, offset);
+    }
   }
 
   public void testOptimizeProhibitedClauses() throws IOException {
@@ -435,6 +982,56 @@ public class TestBooleanScorer extends LuceneTestCase {
         new TopScoreDocCollectorManager(3, null, totalHitsThreshold);
     TopDocs topDocs = searcher.search(builder.build(), topScoreDocCollectorManager);
     assertEquals(totalHitsThreshold + 1, topDocs.totalHits.value());
+
+    reader.close();
+    w.close();
+    dir.close();
+  }
+
+  /**
+   * Make sure a SHOULD-only BooleanQuery with TOP_SCORES and minShouldMatch > 1 is dispatched to
+   * WandScorer
+   */
+  public void testTopScoresWithMinShouldMatchFallsBackToWand() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    for (int i = 0; i < 100; i++) {
+      Document doc = new Document();
+      doc.add(new StringField("foo", "bar", Store.NO));
+      doc.add(new StringField("foo", "baz", Store.NO));
+      doc.add(new StringField("foo", "qux", Store.NO));
+      w.addDocument(doc);
+    }
+    IndexReader reader = w.getReader();
+    IndexSearcher searcher = new IndexSearcher(reader);
+    searcher.setQueryCache(null); // so that weights are not wrapped
+    final LeafReaderContext ctx = reader.leaves().get(0);
+
+    Query query =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("foo", "bar")), Occur.SHOULD)
+            .add(new TermQuery(new Term("foo", "baz")), Occur.SHOULD)
+            .add(new TermQuery(new Term("foo", "qux")), Occur.SHOULD)
+            .setMinimumNumberShouldMatch(2)
+            .build();
+
+    Weight weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1);
+    ScorerSupplier ss = weight.scorerSupplier(ctx);
+    assertNull(
+        "TOP_SCORES + minShouldMatch > 1 must skip BooleanScorer and fall back to BS2/WAND",
+        ((BooleanScorerSupplier) ss).booleanScorer());
+
+    // Sanity: bulkScorer() itself returns a non-null BS2 (DefaultBulkScorer
+    // wrapping WANDScorer).
+    assertTrue(ss.bulkScorer() instanceof DefaultBulkScorer);
+
+    // Non-TOP_SCORES with minShouldMatch > 1 still uses BooleanScorer when
+    // matches are dense.
+    weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE, 1);
+    ss = weight.scorerSupplier(ctx);
+    assertTrue(
+        "COMPLETE + minShouldMatch > 1 (dense) should still use BooleanScorer",
+        ((BooleanScorerSupplier) ss).booleanScorer() instanceof BooleanScorer);
 
     reader.close();
     w.close();

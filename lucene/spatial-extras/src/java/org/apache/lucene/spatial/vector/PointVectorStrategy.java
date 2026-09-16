@@ -153,7 +153,7 @@ public class PointVectorStrategy extends SpatialStrategy {
 
   @Override
   public Field[] createIndexableFields(Shape shape) {
-    if (shape instanceof Point) return createIndexableFields((Point) shape);
+    if (shape instanceof Point point) return createIndexableFields(point);
     throw new UnsupportedOperationException("Can only index Point, not " + shape);
   }
 

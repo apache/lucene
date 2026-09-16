@@ -41,7 +41,7 @@ public class MappedMultiFields extends FilterFields {
   }
 
   @Override
-  public Terms terms(String field) throws IOException {
+  public Terms terms(String field) {
     MultiTerms terms = (MultiTerms) in.terms(field);
     if (terms == null) {
       return null;
@@ -77,17 +77,17 @@ public class MappedMultiFields extends FilterFields {
     }
 
     @Override
-    public long getSumTotalTermFreq() throws IOException {
+    public long getSumTotalTermFreq() {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public long getSumDocFreq() throws IOException {
+    public long getSumDocFreq() {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public int getDocCount() throws IOException {
+    public int getDocCount() {
       throw new UnsupportedOperationException();
     }
   }

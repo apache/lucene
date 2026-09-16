@@ -60,29 +60,36 @@ final class PosixNativeAccess extends NativeAccess {
   }
 
   static {
-    final Linker linker = Linker.nativeLinker();
-    final SymbolLookup stdlib = linker.defaultLookup();
     MethodHandle adviseHandle = null;
     int pagesize = -1;
     PosixNativeAccess instance = null;
-    try {
-      adviseHandle = lookupMadvise(linker, stdlib);
-      pagesize = (int) lookupGetPageSize(linker, stdlib).invokeExact();
-      instance = new PosixNativeAccess();
-    } catch (UnsupportedOperationException uoe) {
-      LOG.warning(uoe.getMessage());
-    } catch (IllegalCallerException _) {
-      LOG.warning(
-          String.format(
-              Locale.ENGLISH,
-              "Lucene has no access to native functions. To enable access to native functions, "
-                  + "pass the following on command line: --enable-native-access=%s",
-              Optional.ofNullable(PosixNativeAccess.class.getModule().getName())
-                  .orElse("ALL-UNNAMED")));
-    } catch (RuntimeException | Error e) {
-      throw e;
-    } catch (Throwable e) {
-      throw new AssertionError(e);
+    if (ValueLayout.ADDRESS.byteSize() == Long.BYTES) {
+      // we only support 64 bits at the moment
+      try {
+        final Linker linker = Linker.nativeLinker();
+        final SymbolLookup stdlib = linker.defaultLookup();
+        adviseHandle = lookupMadvise(linker, stdlib);
+        pagesize = (int) lookupGetPageSize(linker, stdlib).invokeExact();
+        instance = new PosixNativeAccess();
+      } catch (UnsupportedOperationException uoe) {
+        LOG.warning("Cannot initialize native function bindings: " + uoe.getMessage());
+      } catch (IllegalCallerException _) {
+        LOG.warning(
+            String.format(
+                Locale.ENGLISH,
+                "Lucene has no access to native functions. To enable access to native functions, "
+                    + "pass the following on command line: --enable-native-access=%s",
+                Optional.ofNullable(PosixNativeAccess.class.getModule().getName())
+                    .orElse("ALL-UNNAMED")));
+      } catch (RuntimeException re) {
+        LOG.warning(
+            "Cannot initialize native function bindings (linker is incompatible): "
+                + re.toString());
+      } catch (Error e) {
+        throw e;
+      } catch (Throwable e) {
+        throw new AssertionError(e);
+      }
     }
     MH$posix_madvise = adviseHandle;
     PAGE_SIZE = pagesize;

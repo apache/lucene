@@ -26,7 +26,7 @@ import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
-import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.BaseQuantizedByteVectorValues;
 
 public class Lucene99MemorySegmentFlatVectorsScorer implements FlatVectorsScorer {
 
@@ -43,8 +43,9 @@ public class Lucene99MemorySegmentFlatVectorsScorer implements FlatVectorsScorer
   public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
       VectorSimilarityFunction similarityType, KnnVectorValues vectorValues) throws IOException {
     return switch (vectorValues.getEncoding()) {
-      case FLOAT32 -> getFloatScoringSupplier((FloatVectorValues) vectorValues, similarityType);
       case BYTE -> getByteScorerSupplier((ByteVectorValues) vectorValues, similarityType);
+      case FLOAT16 -> delegate.getRandomVectorScorerSupplier(similarityType, vectorValues);
+      case FLOAT32 -> getFloatScoringSupplier((FloatVectorValues) vectorValues, similarityType);
     };
   }
 
@@ -65,7 +66,7 @@ public class Lucene99MemorySegmentFlatVectorsScorer implements FlatVectorsScorer
   private RandomVectorScorerSupplier getByteScorerSupplier(
       ByteVectorValues vectorValues, VectorSimilarityFunction similarityType) throws IOException {
     // a quantized values here is a wrapping or delegation issue
-    assert !(vectorValues instanceof QuantizedByteVectorValues);
+    assert !(vectorValues instanceof BaseQuantizedByteVectorValues);
     // currently only supports binary vectors
     if (vectorValues instanceof ByteVectorValues bvv
         && bvv instanceof HasIndexSlice byteVectorValues
@@ -100,11 +101,18 @@ public class Lucene99MemorySegmentFlatVectorsScorer implements FlatVectorsScorer
 
   @Override
   public RandomVectorScorer getRandomVectorScorer(
+      VectorSimilarityFunction similarityType, KnnVectorValues vectorValues, short[] target)
+      throws IOException {
+    return delegate.getRandomVectorScorer(similarityType, vectorValues, target);
+  }
+
+  @Override
+  public RandomVectorScorer getRandomVectorScorer(
       VectorSimilarityFunction similarityType, KnnVectorValues vectorValues, byte[] queryVector)
       throws IOException {
     FlatVectorsScorer.checkDimensions(queryVector.length, vectorValues.dimension());
     // a quantized values here is a wrapping or delegation issue
-    assert !(vectorValues instanceof QuantizedByteVectorValues);
+    assert !(vectorValues instanceof BaseQuantizedByteVectorValues);
     if (vectorValues instanceof ByteVectorValues bvv
         && bvv instanceof HasIndexSlice byteVectorValues
         && byteVectorValues.getSlice() != null) {

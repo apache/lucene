@@ -27,7 +27,6 @@ public class TestWord2VecSynonymFilterFactory extends BaseTokenStreamFactoryTest
   public static final String FACTORY_NAME = "Word2VecSynonym";
   private static final String WORD2VEC_MODEL_FILE = "word2vec-model.zip";
 
-  @Test
   public void testInform() throws Exception {
     ResourceLoader loader = new ClasspathResourceLoader(getClass());
     assertTrue("loader is null and it shouldn't be", loader != null);

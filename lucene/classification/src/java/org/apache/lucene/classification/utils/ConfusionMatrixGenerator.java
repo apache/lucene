@@ -58,7 +58,7 @@ public class ConfusionMatrixGenerator {
    *     Classifier}
    * @return a {@link
    *     org.apache.lucene.classification.utils.ConfusionMatrixGenerator.ConfusionMatrix}
-   * @throws IOException if problems occurr while reading the index or using the classifier
+   * @throws IOException if problems occur while reading the index or using the classifier
    */
   public static <T> ConfusionMatrix getConfusionMatrix(
       IndexReader reader,
@@ -111,8 +111,8 @@ public class ConfusionMatrixGenerator {
                 if (assignedClass != null) {
                   counter++;
                   String classified =
-                      assignedClass instanceof BytesRef
-                          ? ((BytesRef) assignedClass).utf8ToString()
+                      assignedClass instanceof BytesRef bytesRef
+                          ? bytesRef.utf8ToString()
                           : assignedClass.toString();
 
                   String correctAnswer;

@@ -17,11 +17,9 @@
 package org.apache.lucene.spatial3d.geom;
 
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 public class TestXYZSolid extends LuceneTestCase {
 
-  @Test
   public void testNonDegenerateRelationships() {
     XYZSolid s;
     GeoShape shape;
@@ -60,7 +58,6 @@ public class TestXYZSolid extends LuceneTestCase {
     assertEquals(GeoArea.DISJOINT, s.getRelationship(shape));
   }
 
-  @Test
   public void testDegenerateRelationships() {
     GeoArea solid;
     GeoShape shape;
@@ -217,7 +214,6 @@ public class TestXYZSolid extends LuceneTestCase {
 
   }
 
-  @Test
   public void testLUCENE8457() {
     GeoShape shape =
         GeoBBoxFactory.makeGeoBBox(

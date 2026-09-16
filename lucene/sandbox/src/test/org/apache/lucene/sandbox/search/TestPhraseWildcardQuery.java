@@ -560,7 +560,7 @@ public class TestPhraseWildcardQuery extends LuceneTestCase {
         }
       }
     }
-    return expansions.toArray(new Term[0]);
+    return expansions.toArray(Term[]::new);
   }
 
   protected static boolean equals(ScoreDoc result1, ScoreDoc result2) {

@@ -38,6 +38,7 @@ import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.SkipBlockRangeIterator;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.PriorityQueue;
 
 /**
@@ -196,7 +197,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
     return val1.compareTo(val2);
   }
 
-  private class TermOrdValLeafComparator implements LeafFieldComparator {
+  class TermOrdValLeafComparator implements LeafFieldComparator {
 
     /* Current reader's doc ord/values. */
     final SortedDocValues termsIndex;
@@ -213,7 +214,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
     /** Which ordinal to use for a missing value. */
     final int missingOrd;
 
-    private final CompetitiveState competitiveState;
+    private CompetitiveState competitiveState;
 
     private final boolean dense;
 
@@ -275,14 +276,20 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
           enableSkipping = false;
         }
       }
-      if (enableSkipping && terms != null) {
-        competitiveState =
-            new PostingsBasedCompetitiveState(context, field, dense, values.termsEnum());
-      } else if (enableSkipping && skipper != null) {
-        competitiveState = new SkipperBasedCompetitiveState(context, skipper);
+
+      if (enableSkipping) {
+        if (terms != null) {
+          competitiveState =
+              new PostingsBasedCompetitiveState(context, field, dense, values.termsEnum());
+        } else if (skipper != null) {
+          competitiveState = new SkipperBasedCompetitiveState(context, skipper);
+        } else {
+          competitiveState = new EmptyCompetitiveState(context);
+        }
       } else {
         competitiveState = null;
       }
+
       updateCompetitiveIterator();
     }
 
@@ -290,8 +297,10 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
       if (dense || topValue != null) {
         return true;
       } else if (reverse == sortMissingLast) {
-        // Missing values are always competitive, we can never skip
-        return false;
+        // Missing values sort best here, so they stay competitive for as long as the queue is not
+        // full of them. With no tie breaker they stop competing once it is, so skipping is still
+        // worth enabling; updateCompetitiveIterator decides when it can actually start.
+        return singleSort;
       } else {
         return true;
       }
@@ -427,6 +436,13 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
           }
         } else if (sortMissingLast || dense) {
           minOrd = 0;
+        } else if (bottomValue == null && singleSort) {
+          // The worst entry in the queue is itself a missing value and there is no tie breaker, so
+          // another missing value can no longer compete: missing values are no longer competitive.
+          // (bottomValue==null is stronger than bottomOrd==missingOrd, which can also be produced
+          // by
+          // a real value that maps before ord 0 in this segment.)
+          minOrd = 0;
         } else {
           // Missing values are still competitive.
           minOrd = -1;
@@ -485,8 +501,22 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
     }
 
     @Override
+    public void disableSkipping() {
+      // Drop the competitive iterator so this segment is scanned without skipping; the collector
+      // will terminate early on its own because the search sort is a prefix of this segment's sort.
+      competitiveState = null;
+    }
+
+    @Override
     public DocIdSetIterator competitiveIterator() {
       return competitiveState != null ? competitiveState.iterator : null;
+    }
+
+    // package-private for testing
+    boolean isSkippingDisabled() {
+      // index-based competitive iterators are never disabled
+      return competitiveState instanceof SkipperBasedCompetitiveState skipperState
+          && skipperState.state == SkipperBasedCompetitiveState.State.DISABLED;
     }
   }
 
@@ -501,6 +531,18 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
     }
 
     abstract void update(int minOrd, int maxOrd) throws IOException;
+  }
+
+  private static class EmptyCompetitiveState extends CompetitiveState {
+
+    EmptyCompetitiveState(LeafReaderContext context) {
+      super(context);
+    }
+
+    @Override
+    void update(int minOrd, int maxOrd) throws IOException {
+      iterator.update(DocIdSetIterator.empty());
+    }
   }
 
   private class PostingsBasedCompetitiveState extends CompetitiveState {
@@ -625,17 +667,115 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
   }
 
   private static class SkipperBasedCompetitiveState extends CompetitiveState {
+
+    private static final int WARMUP_BOUNDARY_CROSSINGS = 16;
+
+    private enum State {
+      WARMING,
+      ACTIVE,
+      DISABLED
+    }
+
     private final DocValuesSkipper skipper;
+    private final int maxDoc;
+    private int prevMinOrd = Integer.MIN_VALUE;
+    private int prevMaxOrd = Integer.MIN_VALUE;
+    private State state = State.WARMING;
 
     SkipperBasedCompetitiveState(LeafReaderContext context, DocValuesSkipper skipper) {
       super(context);
       this.skipper = skipper;
-      this.iterator.update(DocIdSetIterator.all(context.reader().maxDoc()));
+      this.maxDoc = context.reader().maxDoc();
+      this.iterator.update(DocIdSetIterator.all(maxDoc));
     }
 
     @Override
     public void update(int minOrd, int maxOrd) {
-      iterator.update(new SkipBlockRangeIterator(skipper, minOrd, maxOrd));
+      if (state == State.DISABLED) {
+        return;
+      }
+      if (minOrd == prevMinOrd && maxOrd == prevMaxOrd) {
+        return;
+      }
+      prevMinOrd = minOrd;
+      prevMaxOrd = maxOrd;
+      iterator.update(
+          new AdaptiveSkipIterator(new SkipBlockRangeIterator(skipper, minOrd, maxOrd)));
+    }
+
+    /**
+     * Wraps a {@link SkipBlockRangeIterator} and monitors whether skipping is effective. Tracks
+     * block boundary crossings using the skipper's level-0 block end so that within-block advances
+     * (which always return target) do not dilute the signal. After {@link
+     * #WARMUP_BOUNDARY_CROSSINGS} boundary crossings with no effective skip observed, the wrapper
+     * disables itself and becomes a trivial pass-through iterator. If any boundary crossing
+     * produces an effective skip, the wrapper stops monitoring and continues using the skip
+     * iterator permanently.
+     */
+    private class AdaptiveSkipIterator extends AbstractDocIdSetIterator {
+      private final SkipBlockRangeIterator in;
+      private int blockEndDoc = -1;
+      private int boundaryCrossings;
+
+      AdaptiveSkipIterator(SkipBlockRangeIterator in) {
+        this.in = in;
+      }
+
+      @Override
+      public int nextDoc() throws IOException {
+        return advance(doc + 1);
+      }
+
+      @Override
+      public int advance(int target) throws IOException {
+        return doc =
+            switch (state) {
+              case DISABLED -> target;
+              case ACTIVE -> in.advance(target);
+              case WARMING -> {
+                int result = in.advance(target);
+                if (target > blockEndDoc) {
+                  blockEndDoc = skipper.maxDocID(0);
+                  boundaryCrossings++;
+                  if (result > target) {
+                    // skipping has happened, so switch to permanently active skipping
+                    state = State.ACTIVE;
+                  } else if (boundaryCrossings >= WARMUP_BOUNDARY_CROSSINGS) {
+                    // we've crossed a number of block boundaries without any skipping
+                    // happening, so it's not helping.  Switch to no skipping to avoid
+                    // overhead.
+                    state = State.DISABLED;
+                    iterator.update(DocIdSetIterator.all(maxDoc));
+                  }
+                }
+                yield result;
+              }
+            };
+      }
+
+      @Override
+      public long cost() {
+        return in.cost();
+      }
+
+      @Override
+      public int docIDRunEnd() throws IOException {
+        if (state == State.DISABLED) {
+          return NO_MORE_DOCS;
+        }
+        return in.docIDRunEnd();
+      }
+
+      @Override
+      public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+        if (state == State.DISABLED) {
+          bitSet.set(doc - offset, upTo - offset);
+          doc = upTo;
+          return;
+        }
+        in.intoBitSet(upTo, bitSet, offset);
+        doc = in.docID();
+      }
     }
   }
 }

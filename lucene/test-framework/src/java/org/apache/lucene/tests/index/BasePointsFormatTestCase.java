@@ -328,7 +328,7 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
       }
     }
 
-    byte[][][] docValuesArray = docValues.toArray(new byte[docValues.size()][][]);
+    byte[][][] docValuesArray = docValues.toArray(byte[][][]::new);
     int[] docIDsArray = new int[docIDs.size()];
     for (int i = 0; i < docIDsArray.length; i++) {
       docIDsArray[i] = docIDs.get(i);
@@ -1153,7 +1153,7 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
     w.addDocument(doc);
     w.close();
 
-    // Different field number assigments:
+    // Different field number assignments:
     Directory dir2 = newDirectory();
     w = new RandomIndexWriter(random(), dir2);
     doc = new Document();
@@ -1194,7 +1194,7 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
           if (VERBOSE) {
             System.out.println("TEST: now use addIndexes(CodecReader[]) to switch writers");
           }
-          saveW.addIndexes(subs.toArray(new CodecReader[subs.size()]));
+          saveW.addIndexes(subs.toArray(CodecReader[]::new));
         } else {
           if (VERBOSE) {
             System.out.println(
@@ -1375,27 +1375,27 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
       }
 
       @Override
-      public byte[] getMinPackedValue() throws IOException {
+      public byte[] getMinPackedValue() {
         throw new UnsupportedOperationException();
       }
 
       @Override
-      public byte[] getMaxPackedValue() throws IOException {
+      public byte[] getMaxPackedValue() {
         throw new UnsupportedOperationException();
       }
 
       @Override
-      public int getNumDimensions() throws IOException {
+      public int getNumDimensions() {
         throw new UnsupportedOperationException();
       }
 
       @Override
-      public int getNumIndexDimensions() throws IOException {
+      public int getNumIndexDimensions() {
         throw new UnsupportedOperationException();
       }
 
       @Override
-      public int getBytesPerDimension() throws IOException {
+      public int getBytesPerDimension() {
         throw new UnsupportedOperationException();
       }
 

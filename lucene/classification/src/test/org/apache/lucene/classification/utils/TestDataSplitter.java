@@ -36,7 +36,6 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Test;
 
 /** Testcase for {@link org.apache.lucene.classification.utils.DatasetSplitter} */
 @LuceneTestCase.SuppressCodecs("SimpleText")
@@ -88,12 +87,10 @@ public class TestDataSplitter extends LuceneTestCase {
     super.tearDown();
   }
 
-  @Test
   public void testSplitOnAllFields() throws Exception {
     assertSplit(originalIndex, 0.1, 0.1);
   }
 
-  @Test
   public void testSplitOnSomeFields() throws Exception {
     assertSplit(originalIndex, 0.2, 0.35, idFieldName, textFieldName);
   }

@@ -132,7 +132,7 @@ public class TestStemmerOverrideFilter extends BaseTokenStreamTestCase {
     tokenizer.setReader(new StringReader(input.toString()));
     TokenStream stream =
         new PorterStemFilter(new StemmerOverrideFilter(tokenizer, builder.build()));
-    assertTokenStreamContents(stream, output.toArray(new String[0]));
+    assertTokenStreamContents(stream, output.toArray(String[]::new));
   }
 
   public void testRandomRealisticKeyword() throws IOException {

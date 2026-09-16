@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.search.suggest.fst;
 
-import com.carrotsearch.randomizedtesting.RandomizedContext;
 import com.carrotsearch.randomizedtesting.generators.RandomBytes;
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
@@ -29,10 +28,8 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefIterator;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.OfflineSorter;
-import org.junit.Test;
 
 public class TestBytesRefSorters extends LuceneTestCase {
-  @Test
   public void testExternalRefSorter() throws Exception {
     Directory tempDir = newDirectory();
     ExternalRefSorter s = new ExternalRefSorter(new OfflineSorter(tempDir, "temp"));
@@ -40,7 +37,6 @@ public class TestBytesRefSorters extends LuceneTestCase {
     IOUtils.close(s, tempDir);
   }
 
-  @Test
   public void testExternalRefSortersIteratorIsCloseable() throws Exception {
     try (Directory tempDir = newDirectory();
         ExternalRefSorter s = new ExternalRefSorter(new OfflineSorter(tempDir, "temp"))) {
@@ -56,7 +52,6 @@ public class TestBytesRefSorters extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testInMemorySorter() throws Exception {
     check(new InMemorySorter(Comparator.naturalOrder()));
   }
@@ -86,7 +81,7 @@ public class TestBytesRefSorters extends LuceneTestCase {
   }
 
   private void appendRandomSequences(BytesRefSorter sorter) throws IOException {
-    Random rnd = new Random(RandomizedContext.current().getRandom().nextLong());
+    Random rnd = LuceneTestCase.nonAssertingRandom(LuceneTestCase.random());
     for (int i = 0; i < RandomNumbers.randomIntBetween(rnd, 10, 100); i++) {
       sorter.add(new BytesRef(RandomBytes.randomBytesOfLengthBetween(rnd, 1, 256)));
     }

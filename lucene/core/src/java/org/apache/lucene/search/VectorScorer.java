@@ -50,8 +50,8 @@ public interface VectorScorer {
    * docs. The iterator of this instance of VectorScorer should be used and iterated in conjunction
    * with the provided matchingDocs iterator to score only the documents that are present in both
    * iterators. If the provided matchingDocs iterator is null, then all documents should be scored.
-   * Additionally, if the iterators are unpositioned (docID() == -1), this method should position
-   * them to the first document.
+   * Additionally, if the iterators are unpositioned (docID() == -1), the first call to {@link
+   * Bulk#nextDocsAndScores} should position them to the first document.
    *
    * @param matchingDocs Optional filter to iterate over the documents to score
    * @return a {@link Bulk} scorer
@@ -63,11 +63,11 @@ public interface VectorScorer {
         matchingDocs == null
             ? iterator()
             : ConjunctionUtils.createConjunction(List.of(matchingDocs, iterator()), List.of());
-    if (iterator.docID() == -1) {
-      iterator.nextDoc();
-    }
     return (upTo, liveDocs, buffer) -> {
       assert upTo > 0;
+      if (iterator.docID() == -1) {
+        iterator.nextDoc();
+      }
       buffer.growNoCopy(DEFAULT_BULK_BATCH_SIZE);
       int size = 0;
       float maxScore = Float.NEGATIVE_INFINITY;

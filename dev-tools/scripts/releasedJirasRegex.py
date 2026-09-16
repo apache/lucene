@@ -32,7 +32,7 @@ from scriptutil import Version
 # does not find Bugzilla bugs or JIRAs not mentioned at the beginning of
 # bullets or numbered entries.
 #
-def print_released_jiras_regex(version: str, filename: str):
+def print_released_jiras_regex(version: str, filename: str) -> None:
   release_boundary_re = re.compile(r"\s*====*\s+(.*)\s+===")
   version_re = re.compile(r"%s(?:$|[^-])" % version)
   bullet_re = re.compile(r"\s*(?:[-*]|\d+\.(?=(?:\s|(?:LUCENE)-)))(.*)")
@@ -74,14 +74,14 @@ def print_released_jiras_regex(version: str, filename: str):
   print()
 
 
-def read_config():
+def read_config() -> argparse.Namespace:
   parser = argparse.ArgumentParser(description="Prints a regex matching JIRAs fixed in the given version by parsing the given CHANGES.txt file")
   parser.add_argument("version", type=Version.parse, help="Version of the form X.Y.Z")
   parser.add_argument("changes", help="CHANGES.txt file to parse")
   return parser.parse_args()
 
 
-def main():
+def main() -> None:
   config = read_config()
   print_released_jiras_regex(config.version, config.changes)
 

@@ -63,6 +63,6 @@ public class SimpleQueryMaker extends AbstractQueryMaker {
     qq.add(qp.parse("\"synthetic text\"~3"));
     qq.add(qp.parse("zoom*"));
     qq.add(qp.parse("synth*"));
-    return qq.toArray(new Query[0]);
+    return qq.toArray(Query[]::new);
   }
 }

@@ -267,7 +267,7 @@ final class WANDScorer extends Scorer {
   }
 
   @Override
-  public final Collection<ChildScorable> getChildren() throws IOException {
+  public Collection<ChildScorable> getChildren() throws IOException {
     List<ChildScorable> matchingChildren = new ArrayList<>();
     advanceAllTail();
     for (DisiWrapper s = lead; s != null; s = s.next) {
@@ -566,17 +566,18 @@ final class WANDScorer extends Scorer {
 
   @Override
   public int advanceShallow(int target) throws IOException {
-    // Propagate to improve score bounds
+    // Propagate to sub-scorers. Scorers past target constrain the boundary to docID - 1.
+    int newUpTo = DocIdSetIterator.NO_MORE_DOCS;
     for (Scorer scorer : allScorers) {
-      if (scorer.docID() < target) {
-        scorer.advanceShallow(target);
+      // Use <= instead of < so we still propagate and use the block boundary when already at
+      // target.
+      if (scorer.docID() <= target) {
+        newUpTo = Math.min(newUpTo, scorer.advanceShallow(target));
+      } else if (scorer.docID() != DocIdSetIterator.NO_MORE_DOCS) {
+        newUpTo = Math.min(newUpTo, scorer.docID() - 1);
       }
     }
-    if (target <= upTo) {
-      return upTo;
-    }
-    // TODO: implement
-    return DocIdSetIterator.NO_MORE_DOCS;
+    return newUpTo;
   }
 
   @Override

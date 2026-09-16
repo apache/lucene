@@ -124,7 +124,11 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
    */
   private static class NodeIdCachingHeap {
     private final int maxSize;
-    private ParentChildScore[] heapNodes;
+
+    // Parallel primitive arrays; index 0 is unused (heap is 1-based).
+    private int[] childNodes;
+    private int[] parentNodes;
+    private float[] scores;
     private int size = 0;
 
     // Used to keep track of nodeId -> positionInHeap. This way when new scores are added for a
@@ -143,33 +147,43 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
       // NOTE: we add +1 because all access to heap is 1-based not 0-based.  heap[0] is unused.
       heapSize = maxSize + 1;
       this.maxSize = maxSize;
+      this.childNodes = new int[heapSize];
+      this.parentNodes = new int[heapSize];
+      this.scores = new float[heapSize];
       this.nodeIdHeapIndex = new IntIntHashMap(maxSize);
-      this.heapNodes = new ParentChildScore[heapSize];
     }
 
     public final int topNode() {
-      return heapNodes[1].child;
+      return childNodes[1];
     }
 
     public final float topScore() {
-      return heapNodes[1].score;
+      return scores[1];
+    }
+
+    private void growArrays() {
+      childNodes = ArrayUtil.grow(childNodes);
+      parentNodes = ArrayUtil.grow(parentNodes);
+      scores = ArrayUtil.grow(scores);
     }
 
     private void pushIn(int nodeId, int parentId, float score) {
       size++;
-      if (size == heapNodes.length) {
-        heapNodes = ArrayUtil.grow(heapNodes, (size * 3 + 1) / 2);
+      if (size == childNodes.length) {
+        growArrays();
       }
-      heapNodes[size] = new ParentChildScore(nodeId, parentId, score);
+      childNodes[size] = nodeId;
+      parentNodes[size] = parentId;
+      scores[size] = score;
       upHeap(size);
     }
 
     private void updateElement(int heapIndex, int nodeId, int parentId, float score) {
-      ParentChildScore oldValue = heapNodes[heapIndex];
-      assert oldValue.parent == parentId
-          : "attempted to update heap element value but with a different node id";
-      float oldScore = heapNodes[heapIndex].score;
-      heapNodes[heapIndex] = new ParentChildScore(nodeId, parentId, score);
+      assert parentNodes[heapIndex] == parentId
+          : "attempted to update heap element value but with a different parent id";
+      float oldScore = scores[heapIndex];
+      childNodes[heapIndex] = nodeId;
+      scores[heapIndex] = score;
       // Since we are a min heap, if the new value is less, we need to make sure to bubble it up
       if (score < oldScore) {
         upHeap(heapIndex);
@@ -191,20 +205,22 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
       if (closed) {
         throw new IllegalStateException();
       }
-      int index = nodeIdHeapIndex.indexOf(parentNode);
-      if (index >= 0) {
-        int previousNodeIndex = nodeIdHeapIndex.indexGet(index);
-        if (heapNodes[previousNodeIndex].score < score) {
-          updateElement(previousNodeIndex, node, parentNode, score);
+      // Fast reject: heap is full and the new score cannot beat the current minimum.
+      // All stored scores are >= scores[1] (min-heap property), so no existing-parent
+      // update is possible either. Skip the hash map lookup entirely.
+      if (size >= maxSize && (score < scores[1] || (score == scores[1] && node > childNodes[1]))) {
+        return false;
+      }
+      int cursor = nodeIdHeapIndex.indexOf(parentNode);
+      if (cursor >= 0) {
+        int existingIndex = nodeIdHeapIndex.indexGet(cursor);
+        if (scores[existingIndex] < score) {
+          updateElement(existingIndex, node, parentNode, score);
           return true;
         }
         return false;
       }
       if (size >= maxSize) {
-        if (score < heapNodes[1].score
-            || (score == heapNodes[1].score && node > heapNodes[1].child)) {
-          return false;
-        }
         updateTop(node, parentNode, score);
         return true;
       }
@@ -215,17 +231,21 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
     private void popToDrain() {
       closed = true;
       if (size > 0) {
-        heapNodes[1] = heapNodes[size]; // move last to first
+        childNodes[1] = childNodes[size]; // move last to first
+        parentNodes[1] = parentNodes[size];
+        scores[1] = scores[size];
         size--;
-        downHeapWithoutCacheUpdate(1); // adjust heap
+        downHeapWithoutIndexUpdate(1); // adjust heap
       } else {
         throw new IllegalStateException("The heap is empty");
       }
     }
 
     private void updateTop(int nodeId, int parentId, float score) {
-      nodeIdHeapIndex.remove(heapNodes[1].parent);
-      heapNodes[1] = new ParentChildScore(nodeId, parentId, score);
+      nodeIdHeapIndex.remove(parentNodes[1]);
+      childNodes[1] = nodeId;
+      parentNodes[1] = parentId;
+      scores[1] = score;
       downHeap(1);
     }
 
@@ -234,75 +254,89 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
       return size;
     }
 
+    /**
+     * Returns true if the element at heap position {@code k} should be evicted before the element
+     * at position {@code j} (i.e. a is "less than" b in the min-heap ordering). Lower score loses
+     * first; ties are broken by higher child id losing first.
+     */
+    private boolean isLessThan(float scoreK, int childIdK, float scoreJ, int childIdJ) {
+      if (scoreK != scoreJ) return scoreK < scoreJ;
+      return childIdK > childIdJ;
+    }
+
     private void upHeap(int origPos) {
       int i = origPos;
-      ParentChildScore bottomNode = heapNodes[i];
+      int savedChild = childNodes[i];
+      int savedParent = parentNodes[i];
+      float savedScore = scores[i];
       int j = i >>> 1;
-      while (j > 0 && bottomNode.compareTo(heapNodes[j]) < 0) {
-        heapNodes[i] = heapNodes[j];
-        nodeIdHeapIndex.put(heapNodes[i].parent, i);
+      while (j > 0 && isLessThan(savedScore, savedChild, scores[j], childNodes[j])) {
+        childNodes[i] = childNodes[j];
+        parentNodes[i] = parentNodes[j];
+        scores[i] = scores[j];
+        nodeIdHeapIndex.put(parentNodes[i], i);
         i = j;
         j = j >>> 1;
       }
-      nodeIdHeapIndex.put(bottomNode.parent, i);
-      heapNodes[i] = bottomNode;
+      nodeIdHeapIndex.put(savedParent, i);
+      childNodes[i] = savedChild;
+      parentNodes[i] = savedParent;
+      scores[i] = savedScore;
     }
 
     private int downHeap(int i) {
-      ParentChildScore node = heapNodes[i];
-      int j = i << 1; // find smaller child
+      int savedChild = childNodes[i];
+      int savedParent = parentNodes[i];
+      float savedScore = scores[i];
+      int j = i << 1; // left child
       int k = j + 1;
-      if (k <= size && heapNodes[k].compareTo(heapNodes[j]) < 0) {
+      if (k <= size && isLessThan(scores[k], childNodes[k], scores[j], childNodes[j])) {
         j = k;
       }
-      while (j <= size && heapNodes[j].compareTo(node) < 0) {
-        heapNodes[i] = heapNodes[j];
-        nodeIdHeapIndex.put(heapNodes[i].parent, i);
+      while (j <= size && isLessThan(scores[j], childNodes[j], savedScore, savedChild)) {
+        childNodes[i] = childNodes[j];
+        parentNodes[i] = parentNodes[j];
+        scores[i] = scores[j];
+        nodeIdHeapIndex.put(parentNodes[i], i);
         i = j;
         j = i << 1;
         k = j + 1;
-        if (k <= size && heapNodes[k].compareTo(heapNodes[j]) < 0) {
+        if (k <= size && isLessThan(scores[k], childNodes[k], scores[j], childNodes[j])) {
           j = k;
         }
       }
-      nodeIdHeapIndex.put(node.parent, i);
-      heapNodes[i] = node; // install saved value
+      nodeIdHeapIndex.put(savedParent, i);
+      childNodes[i] = savedChild;
+      parentNodes[i] = savedParent;
+      scores[i] = savedScore;
       return i;
     }
 
-    private int downHeapWithoutCacheUpdate(int i) {
-      ParentChildScore node = heapNodes[i];
-      int j = i << 1; // find smaller child
+    // Used only during popToDrain: the index map is never read again after closed=true,
+    // so we skip the map updates for speed.
+    private void downHeapWithoutIndexUpdate(int i) {
+      int savedChild = childNodes[i];
+      int savedParent = parentNodes[i];
+      float savedScore = scores[i];
+      int j = i << 1; // left child
       int k = j + 1;
-      if (k <= size && heapNodes[k].compareTo(heapNodes[j]) < 0) {
+      if (k <= size && isLessThan(scores[k], childNodes[k], scores[j], childNodes[j])) {
         j = k;
       }
-      while (j <= size && heapNodes[j].compareTo(node) < 0) {
-        heapNodes[i] = heapNodes[j];
+      while (j <= size && isLessThan(scores[j], childNodes[j], savedScore, savedChild)) {
+        childNodes[i] = childNodes[j];
+        parentNodes[i] = parentNodes[j];
+        scores[i] = scores[j];
         i = j;
         j = i << 1;
         k = j + 1;
-        if (k <= size && heapNodes[k].compareTo(heapNodes[j]) < 0) {
+        if (k <= size && isLessThan(scores[k], childNodes[k], scores[j], childNodes[j])) {
           j = k;
         }
       }
-      heapNodes[i] = node; // install saved value
-      return i;
-    }
-  }
-
-  /** Keeps track of child node, parent node, and the stored score. */
-  private record ParentChildScore(int child, int parent, float score)
-      implements Comparable<ParentChildScore> {
-
-    @Override
-    public int compareTo(ParentChildScore o) {
-      int fc = Float.compare(score, o.score);
-      if (fc == 0) {
-        // lower numbers are the tiebreakers, lower ids are preferred.
-        return Integer.compare(o.child, child);
-      }
-      return fc;
+      childNodes[i] = savedChild;
+      parentNodes[i] = savedParent;
+      scores[i] = savedScore;
     }
   }
 }

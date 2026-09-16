@@ -19,13 +19,11 @@ package org.apache.lucene.spatial3d.geom;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomFloat;
 
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 /** Test basic GeoPoint functionality. */
 public class TestGeoPoint extends LuceneTestCase {
   static final double DEGREES_TO_RADIANS = Math.PI / 180;
 
-  @Test
   public void testConversion() {
     testPointRoundTrip(PlanetModel.SPHERE, 90 * DEGREES_TO_RADIANS, 0, 1e-6);
     testPointRoundTrip(PlanetModel.SPHERE, -90 * DEGREES_TO_RADIANS, 0, 1e-6);
@@ -56,7 +54,6 @@ public class TestGeoPoint extends LuceneTestCase {
     assertEquals(0, dist, epsilon);
   }
 
-  @Test
   public void testSurfaceDistance() {
     final int times = atLeast(100);
     for (int i = 0; i < times; i++) {
@@ -99,7 +96,6 @@ public class TestGeoPoint extends LuceneTestCase {
         1e-6);
   }
 
-  @Test
   public void testBisection() {
     final int times = atLeast(100);
     for (int i = 0; i < times; i++) {
@@ -118,8 +114,11 @@ public class TestGeoPoint extends LuceneTestCase {
     }
   }
 
-  @Test(expected = IllegalArgumentException.class)
   public void testBadLatLon() {
-    new GeoPoint(PlanetModel.SPHERE, 50.0, 32.2);
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new GeoPoint(PlanetModel.SPHERE, 50.0, 32.2);
+        });
   }
 }

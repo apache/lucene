@@ -65,7 +65,7 @@ public final class SetOnce<T> implements Cloneable {
   }
 
   /** Sets the given object. If the object has already been set, an exception is thrown. */
-  public final void set(T obj) {
+  public void set(T obj) {
     if (!trySet(obj)) {
       throw new AlreadySetException();
     }
@@ -76,12 +76,12 @@ public final class SetOnce<T> implements Cloneable {
    *
    * @return true if object was set successfully, false otherwise
    */
-  public final boolean trySet(T obj) {
+  public boolean trySet(T obj) {
     return set.compareAndSet(null, new Wrapper<>(obj));
   }
 
   /** Returns the object set by {@link #set(Object)}. */
-  public final T get() {
+  public T get() {
     Wrapper<T> wrapper = set.get();
     return wrapper == null ? null : wrapper.object;
   }

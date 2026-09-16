@@ -30,6 +30,7 @@ import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
+import org.apache.lucene.util.IORunnable;
 
 /**
  * This creates a graph builder that is initialized with the provided HnswGraph. This is useful for
@@ -46,10 +47,11 @@ import org.apache.lucene.util.BitSet;
  *   <li>Allows incremental addition of new nodes while preserving initialized nodes
  * </ul>
  *
- * <p><b>Disconnected Node Detection:</b> A node is considered disconnected if it retains less than
- * {@link #DISCONNECTED_NODE_FACTOR} of its original neighbor count from the source graph. This
- * typically occurs when many of the node's neighbors were deleted documents that couldn't be
- * remapped.
+ * <p><b>Disconnected Node Detection:</b> A node that lost neighbors this merge is flagged for
+ * repair if it either kept less than {@link #DISCONNECTED_NODE_FACTOR} of its neighbors from the
+ * source graph, or fell below {@link #CUMULATIVE_DEGREE_FLOOR_FACTOR} of the level's connection
+ * budget. The first catches a large loss in a single merge; the second catches slow decay across
+ * many merges.
  *
  * @lucene.experimental
  */
@@ -78,6 +80,15 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
    */
   private final double DISCONNECTED_NODE_FACTOR = 0.85;
 
+  /**
+   * The cumulative disconnection threshold. A node is disconnected when its out-degree falls below
+   * this fraction of the level's connection budget ({@code M} on upper levels, {@code 2*M} at level
+   * 0). Because the budget is fixed, the check holds a node to the same target on every merge, so
+   * it catches out-degree that drifts down gradually across many merges rather than in a single
+   * one.
+   */
+  private final double CUMULATIVE_DEGREE_FLOOR_FACTOR = 0.5;
+
   // Tracks if the graph has deletes
   private boolean hasDeletes = false;
 
@@ -98,6 +109,10 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
    *     tracking)
    * @param totalNumberOfVectors the total number of vectors in the merged graph (used for
    *     pre-allocation)
+   * @param abortCheck optional check polled during graph construction, i.e. while copying,
+   *     repairing and rebalancing the initializer graph and before each node insertion; may throw
+   *     {@link org.apache.lucene.index.MergePolicy.MergeAbortedException} to abort the build when
+   *     the surrounding merge has been aborted, or null
    * @return a new builder initialized with the provided graph structure
    * @throws IOException if an I/O error occurs during graph initialization
    */
@@ -108,7 +123,8 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
       HnswGraph initializerGraph,
       int[] newOrdMap,
       BitSet initializedNodes,
-      int totalNumberOfVectors)
+      int totalNumberOfVectors,
+      IORunnable abortCheck)
       throws IOException {
 
     InitializedHnswGraphBuilder builder =
@@ -119,8 +135,35 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
             new OnHeapHnswGraph(initializerGraph.maxConn(), totalNumberOfVectors),
             initializedNodes);
 
+    if (abortCheck != null) {
+      builder.setAbortCheck(abortCheck);
+    }
     builder.initializeFromGraph(initializerGraph, newOrdMap);
     return builder;
+  }
+
+  /**
+   * Same as {@link #fromGraph(RandomVectorScorerSupplier, int, long, HnswGraph, int[], BitSet, int,
+   * IORunnable)} but without an abort check.
+   */
+  public static InitializedHnswGraphBuilder fromGraph(
+      RandomVectorScorerSupplier scorerSupplier,
+      int beamWidth,
+      long seed,
+      HnswGraph initializerGraph,
+      int[] newOrdMap,
+      BitSet initializedNodes,
+      int totalNumberOfVectors)
+      throws IOException {
+    return fromGraph(
+        scorerSupplier,
+        beamWidth,
+        seed,
+        initializerGraph,
+        newOrdMap,
+        initializedNodes,
+        totalNumberOfVectors,
+        null);
   }
 
   /**
@@ -133,6 +176,10 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
    * @param totalNumberOfVectors the total number of vectors in the merged graph
    * @param beamWidth the search beam width for graph construction
    * @param scorerSupplier provides vector similarity scoring
+   * @param abortCheck optional check polled during graph construction, i.e. while copying,
+   *     repairing and rebalancing the initializer graph and before each node insertion; may throw
+   *     {@link org.apache.lucene.index.MergePolicy.MergeAbortedException} to abort the build when
+   *     the surrounding merge has been aborted, or null
    * @return a fully initialized on-heap HNSW graph
    * @throws IOException if an I/O error occurs during graph initialization
    */
@@ -141,7 +188,8 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
       int[] newOrdMap,
       int totalNumberOfVectors,
       int beamWidth,
-      RandomVectorScorerSupplier scorerSupplier)
+      RandomVectorScorerSupplier scorerSupplier,
+      IORunnable abortCheck)
       throws IOException {
 
     InitializedHnswGraphBuilder builder =
@@ -152,8 +200,24 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
             initializerGraph,
             newOrdMap,
             null,
-            totalNumberOfVectors);
+            totalNumberOfVectors,
+            abortCheck);
     return builder.getGraph();
+  }
+
+  /**
+   * Same as {@link #initGraph(HnswGraph, int[], int, int, RandomVectorScorerSupplier, IORunnable)}
+   * but without an abort check.
+   */
+  public static OnHeapHnswGraph initGraph(
+      HnswGraph initializerGraph,
+      int[] newOrdMap,
+      int totalNumberOfVectors,
+      int beamWidth,
+      RandomVectorScorerSupplier scorerSupplier)
+      throws IOException {
+    return initGraph(
+        initializerGraph, newOrdMap, totalNumberOfVectors, beamWidth, scorerSupplier, null);
   }
 
   private InitializedHnswGraphBuilder(
@@ -201,13 +265,16 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
    * Copies the graph structure from the initializer graph, applying ordinal remapping and
    * identifying nodes that have lost neighbors.
    *
-   * <p>A node is considered disconnected if it retains less than {@link #DISCONNECTED_NODE_FACTOR}
-   * of its original neighbors. This happens when many neighbors were deleted documents that
-   * couldn't be remapped (indicated by -1 in newOrdMap).
+   * <p>Deleted neighbors show up as -1 in newOrdMap and are dropped. A node that loses any this way
+   * is flagged for repair when it crosses one of the two thresholds ({@link
+   * #DISCONNECTED_NODE_FACTOR} and {@link #CUMULATIVE_DEGREE_FLOOR_FACTOR}); flagged nodes are
+   * repaired afterwards.
    *
-   * <p><b>Example:</b> With DISCONNECTED_NODE_FACTOR = 0.9, if a node had 20 neighbors in the
-   * source graph but only 17 remain after remapping (17/20 = 0.85 < 0.9), it's marked as
-   * disconnected and will be repaired.
+   * <p><b>Example:</b> at level 0 with {@code M=16} (budget {@code 2*M = 32}), a node that kept 16
+   * of 20 neighbors is flagged by the per-merge check ({@code 16/20 = 0.8 <
+   * DISCONNECTED_NODE_FACTOR = 0.85}); a node that has drifted to 15 neighbors is flagged by the
+   * cumulative check ({@code 15 < 32 * CUMULATIVE_DEGREE_FLOOR_FACTOR = 16}) even if it lost only
+   * one this merge.
    *
    * @param initializerGraph the source graph to copy from
    * @param newOrdMap maps old ordinals to new ordinals; -1 indicates deleted documents
@@ -226,6 +293,7 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
       HnswGraph.NodesIterator it = initializerGraph.getNodesOnLevel(level);
 
       while (it.hasNext()) {
+        maybeAbort();
         int oldOrd = it.nextInt();
         int newOrd = newOrdMap[oldOrd];
 
@@ -256,8 +324,11 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
           }
         }
 
-        // Mark as disconnected if node lost more than the acceptable threshold of neighbors
-        if (newNeighbors.size() < oldNeighbourCount * DISCONNECTED_NODE_FACTOR) {
+        // Flag a node that lost neighbors and crossed either disconnection threshold.
+        int maxConnOnLevel = newNeighbors.maxSize() - 1; // M on upper levels, 2*M on level 0
+        if (newNeighbors.size() < oldNeighbourCount * DISCONNECTED_NODE_FACTOR
+            || (newNeighbors.size() < oldNeighbourCount
+                && newNeighbors.size() < maxConnOnLevel * CUMULATIVE_DEGREE_FLOOR_FACTOR)) {
           disconnectedNodes.add(newOrd);
         }
       }
@@ -311,6 +382,7 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
     NeighborArray scratchArray = new NeighborArray(beamWidth, false);
 
     for (int node : disconnectedNodes) {
+      maybeAbort();
       scorer.setScoringOrdinal(node);
       NeighborArray existingNeighbors = hnsw.getNeighbors(level, node);
 
@@ -386,6 +458,7 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
 
         // Promote with probability 1/M, matching HNSW's level assignment distribution
         if (random.nextDouble() < invMaxConn && !hnsw.nodeExistAtLevel(level, node)) {
+          maybeAbort();
           scorer.setScoringOrdinal(node);
           hnsw.addNode(level, node);
 

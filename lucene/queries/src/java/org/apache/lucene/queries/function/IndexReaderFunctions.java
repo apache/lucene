@@ -172,8 +172,7 @@ public final class IndexReaderFunctions {
     @Override
     public boolean equals(Object o) {
       if (this == o) return true;
-      if (!(o instanceof NoCacheConstantLongValuesSource)) return false;
-      NoCacheConstantLongValuesSource that = (NoCacheConstantLongValuesSource) o;
+      if (!(o instanceof NoCacheConstantLongValuesSource that)) return false;
       return value == that.value && Objects.equals(parent, that.parent);
     }
 
@@ -393,8 +392,7 @@ public final class IndexReaderFunctions {
     @Override
     public boolean equals(Object o) {
       if (this == o) return true;
-      if (!(o instanceof NoCacheConstantDoubleValuesSource)) return false;
-      NoCacheConstantDoubleValuesSource that = (NoCacheConstantDoubleValuesSource) o;
+      if (!(o instanceof NoCacheConstantDoubleValuesSource that)) return false;
       return Double.compare(that.value, value) == 0 && Objects.equals(parent, that.parent);
     }
 

@@ -197,14 +197,14 @@ final class DocumentsWriterDeleteQueue implements Accountable, Closeable {
 
   void tryApplyGlobalSlice() {
     if (globalBufferLock.tryLock()) {
-      ensureOpen();
-      /*
-       * The global buffer must be locked but we don't need to update them if
-       * there is an update going on right now. It is sufficient to apply the
-       * deletes that have been added after the current in-flight global slices
-       * tail the next time we can get the lock!
-       */
       try {
+        ensureOpen();
+        /*
+         * The global buffer must be locked but we don't need to update them if
+         * there is an update going on right now. It is sufficient to apply the
+         * deletes that have been added after the current in-flight global slices
+         * tail the next time we can get the lock!
+         */
         if (updateSliceNoSeqNo(globalSlice)) {
           globalSlice.apply(globalBufferedUpdates, BufferedUpdates.MAX_INT);
         }

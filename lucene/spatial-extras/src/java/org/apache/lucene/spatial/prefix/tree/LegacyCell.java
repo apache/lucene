@@ -133,8 +133,8 @@ public abstract class LegacyCell implements CellCanPrune {
   @Override
   public CellIterator getNextLevelCells(Shape shapeFilter) {
     assert getLevel() < getGrid().getMaxLevels();
-    if (shapeFilter instanceof Point) {
-      LegacyCell cell = getSubCell((Point) shapeFilter);
+    if (shapeFilter instanceof Point point) {
+      LegacyCell cell = getSubCell(point);
       cell.shapeRel = SpatialRelation.CONTAINS;
       return new SingletonCellIterator(cell);
     } else {

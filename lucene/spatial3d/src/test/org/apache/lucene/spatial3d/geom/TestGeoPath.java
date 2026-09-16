@@ -17,11 +17,9 @@
 package org.apache.lucene.spatial3d.geom;
 
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 public class TestGeoPath extends LuceneTestCase {
 
-  @Test
   public void testPathDistance() {
     // Start with a really simple case
     GeoStandardPath p;
@@ -74,7 +72,6 @@ public class TestGeoPath extends LuceneTestCase {
     assertEquals(0.0 + 0.05, p.computeDistance(DistanceStyle.ARC, gp), 0.000001);
   }
 
-  @Test
   public void test11956() {
     // Geo3D:GeoStandardPath: {planetmodel=PlanetModel.SPHERE, width=1.1344640137963142(65.0),
     //  points={[[lat=-1.289777264488089, lon=3.0020962766211765([X=-0.2746408902222561,
@@ -124,7 +121,6 @@ public class TestGeoPath extends LuceneTestCase {
     // assertTrue(bounds.isWithin(gp));
   }
 
-  @Test
   public void testPathPointWithin() {
     // Tests whether we can properly detect whether a point is within a path or not
     GeoStandardPath p;
@@ -174,7 +170,6 @@ public class TestGeoPath extends LuceneTestCase {
     assertFalse(p.isWithin(gp));
   }
 
-  @Test
   public void testGetRelationship() {
     GeoArea rect;
     GeoStandardPath p;
@@ -228,7 +223,6 @@ public class TestGeoPath extends LuceneTestCase {
     assertEquals(GeoArea.DISJOINT, rect.getRelationship(p));
   }
 
-  @Test
   public void testPathBounds() {
     GeoStandardPath c;
     LatLonBounds b;
@@ -332,7 +326,6 @@ public class TestGeoPath extends LuceneTestCase {
     assertEquals(0.3999999, b.getMaxLatitude(), 0.000001);
   }
 
-  @Test
   public void testCoLinear() {
     // p1: (12,-90), p2: (11, -55), (129, -90)
     GeoStandardPath p = new GeoStandardPath(PlanetModel.SPHERE, 0.1);
@@ -342,7 +335,6 @@ public class TestGeoPath extends LuceneTestCase {
     p.done(); // at least test this doesn't bomb like it used too -- LUCENE-6520
   }
 
-  @Test
   public void testFailure1() {
     /*
     GeoStandardPath: {planetmodel=PlanetModel.WGS84, width=1.117010721276371(64.0), points={[
@@ -384,7 +376,6 @@ public class TestGeoPath extends LuceneTestCase {
     assertTrue(solid.isWithin(point));
   }
 
-  @Test
   public void testInterpolation() {
     final double lat = 52.51607;
     final double lon = 13.37698;
@@ -435,7 +426,6 @@ public class TestGeoPath extends LuceneTestCase {
 
   }
 
-  @Test
   public void testInterpolation2() {
     final double lat = 52.5665;
     final double lon = 13.3076;
@@ -481,7 +471,6 @@ public class TestGeoPath extends LuceneTestCase {
     assertEquals(oldFormulaDistance, distance, 1e-12);
   }
 
-  @Test
   public void testIdenticalPoints() {
     PlanetModel planetModel = PlanetModel.WGS84;
     GeoPoint point1 = new GeoPoint(planetModel, 1.5707963267948963, -2.4818290647609542E-148);
@@ -504,7 +493,6 @@ public class TestGeoPath extends LuceneTestCase {
     path = GeoPathFactory.makeGeoPath(planetModel, 0.5, new GeoPoint[] {point4, point5, point6});
   }
 
-  @Test
   public void testLUCENE8696() {
     GeoPoint[] points = new GeoPoint[4];
     points[0] = new GeoPoint(PlanetModel.WGS84, 2.4457272005608357E-47, 0.017453291479645996);

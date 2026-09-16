@@ -20,10 +20,12 @@ package org.apache.lucene.expressions.js;
 import static org.apache.lucene.expressions.js.ExpressionMath.haversinKilometers;
 
 import java.util.Random;
-import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCaseJupiter;
+import org.junit.jupiter.api.Test;
 
-public class TestExpressionMath extends LuceneTestCase {
+public class TestExpressionMath extends LuceneTestCaseJupiter {
 
+  @Test
   public void testHaversin() {
     assertTrue(Double.isNaN(haversinKilometers(1, 1, 1, Double.NaN)));
     assertTrue(Double.isNaN(haversinKilometers(1, 1, Double.NaN, 1)));

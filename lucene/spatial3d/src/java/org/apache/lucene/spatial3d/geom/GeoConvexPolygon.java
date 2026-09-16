@@ -539,10 +539,9 @@ class GeoConvexPolygon extends GeoBasePolygon {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof GeoConvexPolygon)) {
+    if (!(o instanceof GeoConvexPolygon other)) {
       return false;
     }
-    final GeoConvexPolygon other = (GeoConvexPolygon) o;
     if (!super.equals(other)) {
       return false;
     }

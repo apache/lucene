@@ -181,8 +181,7 @@ public class CreateIndexTask extends PerfTask {
             "unable to instantiate class '" + mergePolicy + "' as merge policy", e);
       }
       iwConf.getCodec().compoundFormat().setShouldUseCompoundFile(isCompound);
-      if (iwConf.getMergePolicy() instanceof LogMergePolicy) {
-        LogMergePolicy logMergePolicy = (LogMergePolicy) iwConf.getMergePolicy();
+      if (iwConf.getMergePolicy() instanceof LogMergePolicy logMergePolicy) {
         logMergePolicy.setMergeFactor(
             config.get("merge.factor", OpenIndexTask.DEFAULT_MERGE_PFACTOR));
       }

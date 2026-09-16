@@ -149,5 +149,15 @@ public class OutputStreamIndexOutput extends IndexOutput {
         this.count = count + 1;
       }
     }
+
+    @Override
+    public void write(byte[] b, int off, int len) throws IOException {
+      if (len > buf.length - count) {
+        super.write(b, off, len);
+      } else {
+        System.arraycopy(b, off, buf, count, len);
+        count += len;
+      }
+    }
   }
 }

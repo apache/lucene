@@ -57,7 +57,7 @@ public final class FieldFilterLeafReader extends FilterLeafReader {
         filteredInfos.add(fi);
       }
     }
-    fieldInfos = new FieldInfos(filteredInfos.toArray(new FieldInfo[filteredInfos.size()]));
+    fieldInfos = new FieldInfos(filteredInfos.toArray(FieldInfo[]::new));
   }
 
   boolean hasField(String field) {
@@ -80,7 +80,7 @@ public final class FieldFilterLeafReader extends FilterLeafReader {
           return null;
         }
         f = new FieldFilterFields(f);
-        // we need to check for emptyness, so we can return
+        // we need to check for emptiness, so we can return
         // null:
         return f.iterator().hasNext() ? f : null;
       }
@@ -137,7 +137,7 @@ public final class FieldFilterLeafReader extends FilterLeafReader {
   }
 
   @Override
-  public Terms terms(String field) throws IOException {
+  public Terms terms(String field) {
     return hasField(field) ? super.terms(field) : null;
   }
 
@@ -198,7 +198,7 @@ public final class FieldFilterLeafReader extends FilterLeafReader {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       return hasField(field) ? super.terms(field) : null;
     }
   }

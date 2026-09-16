@@ -100,6 +100,18 @@ public abstract class DocValuesSkipper {
   public abstract int docCount();
 
   /**
+   * Return the global maximum number of values that any single document has for the field. Returns
+   * {@code -1} if the exact value is unavailable (e.g., the segment was written by an older codec
+   * that did not persist this metadata and it could not be inferred from other metadata).
+   *
+   * <p>This returns {@code 0} if {@link #docCount()} is {@code 0}. A field is known to be
+   * single-valued if this method returns {@code 1}.
+   */
+  public int maxValueCount() {
+    return docCount() == 0 ? 0 : -1;
+  }
+
+  /**
    * Advance this skipper so that all levels intersects the range given by {@code minValue} and
    * {@code maxValue}. If there are no intersecting levels, the skipper is exhausted.
    */
@@ -130,7 +142,7 @@ public abstract class DocValuesSkipper {
    * @param reader the index reader to be queried
    * @param field the field to retrieve values for
    */
-  public static long globalMinValue(IndexReader reader, String field) throws IOException {
+  public static long globalMinValue(IndexReader reader, String field) {
     long minValue = Long.MAX_VALUE;
     for (LeafReaderContext ctx : reader.leaves()) {
       if (ctx.reader().getFieldInfos().fieldInfo(field) == null) {
@@ -154,7 +166,7 @@ public abstract class DocValuesSkipper {
    * @param reader the index reader to be queried
    * @param field the field to retrieve values for
    */
-  public static long globalMaxValue(IndexReader reader, String field) throws IOException {
+  public static long globalMaxValue(IndexReader reader, String field) {
     long maxValue = Long.MIN_VALUE;
     for (LeafReaderContext ctx : reader.leaves()) {
       if (ctx.reader().getFieldInfos().fieldInfo(field) == null) {
@@ -177,7 +189,7 @@ public abstract class DocValuesSkipper {
    * @param reader the index reader to be queried
    * @param field the field to retrieve values for
    */
-  public static int globalDocCount(IndexReader reader, String field) throws IOException {
+  public static int globalDocCount(IndexReader reader, String field) {
     int docCount = 0;
     for (LeafReaderContext ctx : reader.leaves()) {
       DocValuesSkipper skipper = ctx.reader().getDocValuesSkipper(field);

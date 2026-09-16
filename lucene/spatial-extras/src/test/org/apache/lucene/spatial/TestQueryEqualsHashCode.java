@@ -30,7 +30,6 @@ import org.apache.lucene.spatial.query.SpatialOperation;
 import org.apache.lucene.spatial.serialized.SerializedDVStrategy;
 import org.apache.lucene.spatial.vector.PointVectorStrategy;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 import org.locationtech.spatial4j.context.SpatialContext;
 import org.locationtech.spatial4j.shape.Shape;
 
@@ -40,7 +39,6 @@ public class TestQueryEqualsHashCode extends LuceneTestCase {
 
   private SpatialOperation predicate;
 
-  @Test
   public void testEqualsHashCode() {
 
     switch (random().nextInt(4)) { // 0-3

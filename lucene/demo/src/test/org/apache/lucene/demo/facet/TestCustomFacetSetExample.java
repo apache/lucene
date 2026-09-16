@@ -19,11 +19,9 @@ package org.apache.lucene.demo.facet;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 public class TestCustomFacetSetExample extends LuceneTestCase {
 
-  @Test
   public void testExactMatching() throws Exception {
     FacetResult result = new CustomFacetSetExample().runExactMatching();
 
@@ -36,7 +34,6 @@ public class TestCustomFacetSetExample extends LuceneTestCase {
     assertEquals(new LabelAndValue("July 2022 (120f)", 2), result.labelValues[1]);
   }
 
-  @Test
   public void testExactMatchingWithFastMatchQuery() throws Exception {
     FacetResult result = new CustomFacetSetExample().runExactMatchingWithFastMatchQuery();
 
@@ -49,7 +46,6 @@ public class TestCustomFacetSetExample extends LuceneTestCase {
     assertEquals(new LabelAndValue("July 2022 (120f)", 2), result.labelValues[1]);
   }
 
-  @Test
   public void testRangeMatching() throws Exception {
     FacetResult result = new CustomFacetSetExample().runRangeMatching();
 
@@ -61,7 +57,6 @@ public class TestCustomFacetSetExample extends LuceneTestCase {
     assertEquals(new LabelAndValue("Eighty to Hundred Degrees", 4), result.labelValues[0]);
   }
 
-  @Test
   public void testCustomRangeMatching() throws Exception {
     FacetResult result = new CustomFacetSetExample().runCustomRangeMatching();
 

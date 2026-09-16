@@ -53,7 +53,6 @@ public final class BytesRefHash implements Accountable {
   // This mask is used to extract the high bits from a hashcode
   private int highMask;
   private int count;
-  private int lastCount = -1;
 
   /**
    * The <code>ids</code> array serves a dual purpose:
@@ -153,7 +152,7 @@ public final class BytesRefHash implements Accountable {
   /**
    * Populates and returns a {@link BytesRef} with the bytes for the given bytesID.
    *
-   * <p>Note: the given bytesID must be a positive integer less than the current size ({@link
+   * <p>Note: the given bytesID must be a non-negative integer less than the current size ({@link
    * #size()})
    *
    * @param bytesID the id
@@ -178,19 +177,13 @@ public final class BytesRefHash implements Accountable {
    */
   public int[] compact() {
     assert bytesStart != null : "bytesStart is null - not initialized";
-    int upto = 0;
-    for (int i = 0; i < hashSize; i++) {
-      if (ids[i] != -1) {
-        ids[upto] = ids[i] & hashMask;
-        if (upto < i) {
-          ids[i] = -1;
-        }
-        upto++;
-      }
-    }
 
-    assert upto == count;
-    lastCount = count;
+    // id is the sequence number when bytes added to the pool
+    for (int i = 0; i < count; i++) {
+      ids[i] = i;
+    }
+    Arrays.fill(ids, count, hashSize, -1);
+
     return ids;
   }
 
@@ -298,28 +291,20 @@ public final class BytesRefHash implements Accountable {
 
   /** Clears the {@link BytesRef} which maps to the given {@link BytesRef} */
   public void clear(boolean resetPool) {
-    lastCount = count;
-    count = 0;
     if (resetPool) {
       pool.reset();
     }
     bytesStart = bytesStartArray.clear();
-    if (lastCount != -1 && shrink(lastCount)) {
-      // shrink clears the hash entries
-      return;
+    final boolean shrunk = shrink(count);
+    count = 0;
+    if (shrunk == false) {
+      // shrink already cleared the hash entries; otherwise clear them here
+      Arrays.fill(ids, -1);
     }
-    Arrays.fill(ids, -1);
   }
 
   public void clear() {
     clear(true);
-  }
-
-  /** Closes the BytesRefHash and releases all internally used memory */
-  public void close() {
-    clear(true);
-    ids = null;
-    bytesUsed.addAndGet(Integer.BYTES * (long) -hashSize);
   }
 
   /**
@@ -333,7 +318,7 @@ public final class BytesRefHash implements Accountable {
    *     ByteBlockPool#BYTE_BLOCK_SIZE}
    */
   public int add(BytesRef bytes) {
-    assert bytesStart != null : "Bytesstart is null - not initialized";
+    assert bytesStart != null : "bytesStart is null - not initialized";
     final int hashcode = doHash(bytes.bytes, bytes.offset, bytes.length);
     // final position
     final int hashPos = findHash(bytes, hashcode);
@@ -400,7 +385,7 @@ public final class BytesRefHash implements Accountable {
    * textStart) in TermsHashPerField.
    */
   public int addByPoolOffset(int offset) {
-    assert bytesStart != null : "Bytesstart is null - not initialized";
+    assert bytesStart != null : "bytesStart is null - not initialized";
     // final position
     int code = offset;
     int hashPos = offset & hashMask;
@@ -432,46 +417,41 @@ public final class BytesRefHash implements Accountable {
     return -(e + 1);
   }
 
-  /**
-   * Called when hash is too small ({@code > 50%} occupied) or too large ({@code < 20%} occupied).
-   */
+  /** Called when hash reaches {@code 50%} occupancy. */
   private void rehash(final int newSize, boolean hashOnData) {
     final int newMask = newSize - 1;
     final int newHighMask = ~newMask;
-    bytesUsed.addAndGet(Integer.BYTES * (long) newSize);
-    final int[] newHash = new int[newSize];
-    Arrays.fill(newHash, -1);
-    for (int i = 0; i < hashSize; i++) {
-      int e0 = ids[i];
-      if (e0 != -1) {
-        e0 &= hashMask;
-        final int hashcode;
-        int code;
-        if (hashOnData) {
-          hashcode = code = pool.hash(bytesStart[e0]);
-        } else {
-          code = bytesStart[e0];
-          hashcode = 0;
-        }
+    bytesUsed.addAndGet(Integer.BYTES * (long) (newSize - ids.length));
 
-        int hashPos = code & newMask;
-        assert hashPos >= 0;
+    ids = new int[newSize];
+    Arrays.fill(ids, -1);
 
-        // Conflict; use linear probe to find an open slot
-        // (see LUCENE-5604):
-        while (newHash[hashPos] != -1) {
-          code++;
-          hashPos = code & newMask;
-        }
-
-        newHash[hashPos] = e0 | (hashcode & newHighMask);
+    // rebuild ids from terms in pool pointed by bytesStart
+    for (int id = 0; id < count; id++) {
+      final int hashcode;
+      int code;
+      if (hashOnData) {
+        hashcode = code = pool.hash(bytesStart[id]);
+      } else {
+        code = bytesStart[id];
+        hashcode = 0;
       }
+
+      int hashPos = code & newMask;
+      assert hashPos >= 0;
+
+      // Conflict; use linear probe to find an open slot
+      // (see LUCENE-5604):
+      while (ids[hashPos] != -1) {
+        code++;
+        hashPos = code & newMask;
+      }
+
+      ids[hashPos] = id | (hashcode & newHighMask);
     }
 
     hashMask = newMask;
     highMask = newHighMask;
-    bytesUsed.addAndGet(Integer.BYTES * (long) -ids.length);
-    ids = newHash;
     hashSize = newSize;
     hashHalfSize = newSize / 2;
   }
@@ -568,9 +548,6 @@ public final class BytesRefHash implements Accountable {
    * instance.
    */
   public static class DirectBytesStartArray extends BytesStartArray {
-    // TODO: can't we just merge this w/
-    // TrackingDirectBytesStartArray...?  Just add a ctor
-    // that makes a private bytesUsed?
 
     protected final int initSize;
     private int[] bytesStart;

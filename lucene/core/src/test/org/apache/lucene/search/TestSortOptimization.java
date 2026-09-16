@@ -25,6 +25,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.BiFunction;
+import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FloatDocValuesField;
@@ -49,6 +51,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
@@ -730,7 +733,7 @@ public class TestSortOptimization extends LuceneTestCase {
    * Test that sorting on _doc works correctly. This test goes through
    * DefaultBulkSorter::scoreRange, where scorerIterator is BitSetIterator. As a conjunction of this
    * BitSetIterator with DocComparator's iterator, we get BitSetConjunctionDISI.
-   * BitSetConjuctionDISI advances based on the DocComparator's iterator, and doesn't consider that
+   * BitSetConjunctionDISI advances based on the DocComparator's iterator, and doesn't consider that
    * its BitSetIterator may have advanced passed a certain doc.
    */
   public void testDocSort() throws IOException {
@@ -991,6 +994,76 @@ public class TestSortOptimization extends LuceneTestCase {
     dir.close();
   }
 
+  public void testPointsPrunesOnSegmentEntry() throws IOException {
+    testPrunesOnSegmentEntry(
+        TestUtil.getDefaultCodec(),
+        2048,
+        (field, value) ->
+            List.of(new LongPoint(field, value), new NumericDocValuesField(field, value)));
+  }
+
+  public void testDVSkipperPrunesOnSegmentEntry() throws IOException {
+    testPrunesOnSegmentEntry(
+        TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(16)),
+        16,
+        (field, value) -> List.of(NumericDocValuesField.indexedField(field, value)));
+  }
+
+  /**
+   * Test that CompetitiveDISIBuilder enables pruning from the very start of a subsequent segment.
+   */
+  private void testPrunesOnSegmentEntry(
+      Codec codec, int blockSize, BiFunction<String, Integer, List<IndexableField>> fieldsBuilder)
+      throws IOException {
+    final Directory dir = newDirectory();
+    IndexWriterConfig config =
+        new IndexWriterConfig().setCodec(codec).setMergePolicy(NoMergePolicy.INSTANCE);
+    final IndexWriter writer = new IndexWriter(dir, config);
+
+    final int numHits = 5;
+    final int docsInFirstSegment = numHits * 2;
+    for (int i = 0; i < docsInFirstSegment; i++) {
+      final Document doc = new Document();
+      fieldsBuilder.apply("my_field", i).forEach(doc::add);
+      writer.addDocument(doc);
+    }
+    writer.flush();
+
+    // Many non-competitive values followed by one block of competitive values, so that pruning
+    // must be established on segment entry to skip the non-competitive docs.
+    final int nonCompetitiveBlocks = 20;
+    final int docsInNonCompetitiveBlocks = nonCompetitiveBlocks * blockSize;
+    for (int i = 0; i < docsInNonCompetitiveBlocks; i++) {
+      final Document doc = new Document();
+      fieldsBuilder.apply("my_field", 1000 + i).forEach(doc::add);
+      writer.addDocument(doc);
+    }
+    for (int i = 0; i < blockSize; i++) {
+      final Document doc = new Document();
+      fieldsBuilder.apply("my_field", i).forEach(doc::add);
+      writer.addDocument(doc);
+    }
+    writer.flush();
+
+    final DirectoryReader reader = DirectoryReader.open(writer);
+    writer.close();
+    assertEquals(2, reader.leaves().size());
+
+    final SortField sortField = new SortField("my_field", SortField.Type.LONG);
+    IndexSearcher searcher = new IndexSearcher(reader);
+    TopFieldDocs topDocs =
+        searcher.search(
+            MatchAllDocsQuery.INSTANCE,
+            new TopFieldCollectorManager(new Sort(sortField), numHits, 1));
+
+    assertEquals(numHits, topDocs.scoreDocs.length);
+    final int totalDocs = docsInFirstSegment + docsInNonCompetitiveBlocks + blockSize;
+    assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), totalDocs);
+
+    reader.close();
+    dir.close();
+  }
+
   private void assertNonCompetitiveHitsAreSkipped(long collectedHits, long numDocs) {
     if (collectedHits >= numDocs) {
       fail(
@@ -1067,6 +1140,219 @@ public class TestSortOptimization extends LuceneTestCase {
     final DirectoryReader reader = DirectoryReader.open(writer);
     writer.close();
     doTestStringSortOptimization(reader);
+    reader.close();
+    dir.close();
+  }
+
+  public void testStringSortOptimizationFieldMissingInSegmentBasedPostings() throws IOException {
+    testStringSortOptimizationFieldMissingInSegment(
+        (field, value) -> new KeywordField(field, value, Field.Store.NO));
+  }
+
+  public void testStringSortOptimizationFieldMissingInSegmentBasedDVSkipper() throws IOException {
+    testStringSortOptimizationFieldMissingInSegment(SortedDocValuesField::indexedField);
+  }
+
+  /**
+   * Test that when a segment doesn't contain the sort field at all (fieldInfo == null), the
+   * optimization still works. All docs in such a segment have missing values, and when missing
+   * values are non-competitive the entire segment should be skippable.
+   */
+  private void testStringSortOptimizationFieldMissingInSegment(
+      BiFunction<String, BytesRef, IndexableField> fieldsBuilder) throws IOException {
+    final Directory dir = newDirectory();
+    // Use NoMergePolicy to ensure we have deterministic segment geometry
+    final IndexWriter writer =
+        new IndexWriter(dir, new IndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE));
+
+    // First segment: a small number of docs with the keyword field, enough to fill the top-N queue.
+    final int docsWithField = 20;
+    for (int i = 0; i < docsWithField; i++) {
+      final Document doc = new Document();
+      doc.add(fieldsBuilder.apply("my_field", new BytesRef(Integer.toString(i))));
+      writer.addDocument(doc);
+    }
+    writer.flush();
+
+    // Second segment: many docs WITHOUT the keyword field. The field doesn't exist in this
+    // segment's FieldInfos at all, so every doc has a missing value for the sort field.
+    final int docsWithoutField = atLeast(10000);
+    for (int i = 0; i < docsWithoutField; i++) {
+      writer.addDocument(new Document());
+    }
+
+    final DirectoryReader reader = DirectoryReader.open(writer);
+    writer.close();
+
+    final int numDocs = docsWithField + docsWithoutField;
+    final int numHits = 5;
+
+    { // ascending sort with missing-last: once the queue fills from the first segment,
+      // all docs in the second segment have non-competitive missing values and should be skipped
+      SortField sortField =
+          KeywordField.newSortField(
+              "my_field", false, SortedSetSelector.Type.MIN, SortField.STRING_LAST);
+      Sort sort = new Sort(sortField);
+      TopDocs topDocs = assertSearchHits(reader, sort, numHits, null);
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), numDocs);
+    }
+
+    { // descending sort with missing-last
+      SortField sortField =
+          KeywordField.newSortField(
+              "my_field", true, SortedSetSelector.Type.MIN, SortField.STRING_LAST);
+      Sort sort = new Sort(sortField);
+      TopDocs topDocs = assertSearchHits(reader, sort, numHits, null);
+
+      sortField.setOptimizeSortWithIndexedData(false);
+      sort = new Sort(sortField);
+      TopDocs unpruned = assertSearchHits(reader, sort, numHits, null);
+
+      CheckHits.checkEqual(MatchAllDocsQuery.INSTANCE, topDocs.scoreDocs, unpruned.scoreDocs);
+    }
+
+    { // descending sort with missing-first: once the queue fills from the first segment,
+      // all docs in the second segment have non-competitive missing values and should be skipped
+      SortField sortField =
+          KeywordField.newSortField(
+              "my_field", true, SortedSetSelector.Type.MIN, SortField.STRING_FIRST);
+      Sort sort = new Sort(sortField);
+      TopDocs topDocs = assertSearchHits(reader, sort, numHits, null);
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), numDocs);
+    }
+
+    { // ascending sort with missing-first
+      SortField sortField =
+          KeywordField.newSortField(
+              "my_field", false, SortedSetSelector.Type.MIN, SortField.STRING_FIRST);
+      Sort sort = new Sort(sortField);
+      TopDocs topDocs = assertSearchHits(reader, sort, numHits, null);
+
+      sortField.setOptimizeSortWithIndexedData(false);
+      sort = new Sort(sortField);
+      TopDocs unpruned = assertSearchHits(reader, sort, numHits, null);
+
+      CheckHits.checkEqual(MatchAllDocsQuery.INSTANCE, topDocs.scoreDocs, unpruned.scoreDocs);
+    }
+
+    reader.close();
+    dir.close();
+  }
+
+  /**
+   * GITHUB#12370: when the sort field is missing from the whole index (not just one segment) and
+   * the sort has no tie breaker, all documents tie on the missing value, so once the top-N queue is
+   * full the remaining documents are non-competitive and must be skipped rather than fully
+   * collected.
+   */
+  public void testStringSortOptimizationFieldMissingInWholeIndex() throws IOException {
+    final Directory dir = newDirectory();
+    final IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
+
+    // None of the documents index the sort field, so it is absent from every segment's FieldInfos.
+    final int numDocs = atLeast(10000);
+    for (int i = 0; i < numDocs; i++) {
+      final Document doc = new Document();
+      doc.add(new StringField("other", Integer.toString(i), Field.Store.NO));
+      writer.addDocument(doc);
+    }
+
+    final DirectoryReader reader = DirectoryReader.open(writer);
+    writer.close();
+
+    final int numHits = 5;
+
+    { // ascending, sort-missing-first (the default for SortedSetSortField): missing is the best
+      // value, but with no tie breaker a second missing value can never displace one already in the
+      // queue, so the tail should be skipped.
+      SortField sortField = new SortedSetSortField("field_does_not_exist", false);
+      TopDocs topDocs = assertSearchHits(reader, new Sort(sortField), numHits, null);
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), numDocs);
+    }
+
+    { // descending, sort-missing-first
+      SortField sortField = new SortedSetSortField("field_does_not_exist", true);
+      TopDocs topDocs = assertSearchHits(reader, new Sort(sortField), numHits, null);
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), numDocs);
+    }
+
+    reader.close();
+    dir.close();
+  }
+
+  /**
+   * GITHUB#12370: every document carries the SAME single value for the sort field, so with no tie
+   * breaker they all compare equal and the tail is non-competitive once the queue is full, exactly
+   * as when the field is missing from every segment.
+   */
+  public void testStringSortOptimizationSingleValueInWholeIndex() throws IOException {
+    final Directory dir = newDirectory();
+    final IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
+
+    final int numDocs = atLeast(10000);
+    for (int i = 0; i < numDocs; i++) {
+      final Document doc = new Document();
+      doc.add(new SortedDocValuesField("field", new BytesRef("the only value")));
+      doc.add(new StringField("field", "the only value", Field.Store.NO));
+      doc.add(new StringField("other", Integer.toString(i), Field.Store.NO));
+      writer.addDocument(doc);
+    }
+
+    final DirectoryReader reader = DirectoryReader.open(writer);
+    writer.close();
+
+    final int numHits = 5;
+
+    { // ascending
+      SortField sortField = new SortField("field", SortField.Type.STRING, false);
+      TopDocs topDocs = assertSearchHits(reader, new Sort(sortField), numHits, null);
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), numDocs);
+    }
+
+    { // descending
+      SortField sortField = new SortField("field", SortField.Type.STRING, true);
+      TopDocs topDocs = assertSearchHits(reader, new Sort(sortField), numHits, null);
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), numDocs);
+    }
+
+    reader.close();
+    dir.close();
+  }
+
+  /**
+   * GITHUB#12370, the remaining case: the sort field DOES exist and some documents have a value,
+   * but with sort-missing-first the top-N queue fills entirely with missing values. With no tie
+   * breaker a further missing value cannot displace one already in the queue, so the tail must be
+   * skipped.
+   */
+  public void testStringSortOptimizationQueueAllMissingSortMissingFirst() throws IOException {
+    final Directory dir = newDirectory();
+    final IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
+
+    // Most documents lack the sort field, a few carry a value, so the field is present in
+    // FieldInfos but not dense -- unlike the missing-from-the-whole-index case above.
+    final int numDocs = atLeast(10000);
+    for (int i = 0; i < numDocs; i++) {
+      final Document doc = new Document();
+      if (i % 1000 == 0) {
+        doc.add(new SortedDocValuesField("field", new BytesRef("value" + i)));
+        doc.add(new StringField("field", "value" + i, Field.Store.NO));
+      }
+      doc.add(new StringField("other", Integer.toString(i), Field.Store.NO));
+      writer.addDocument(doc);
+    }
+
+    final DirectoryReader reader = DirectoryReader.open(writer);
+    writer.close();
+
+    final int numHits = 5;
+
+    // sortMissingFirst ascending: missing sorts best, so the queue is all-missing once full.
+    SortField sortField =
+        new SortField("field", SortField.Type.STRING, false, SortField.STRING_FIRST);
+    TopDocs topDocs = assertSearchHits(reader, new Sort(sortField), numHits, null);
+    assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), numDocs);
+
     reader.close();
     dir.close();
   }
@@ -1293,12 +1579,12 @@ public class TestSortOptimization extends LuceneTestCase {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       return null;
     }
 
     @Override
-    public PointValues getPointValues(String field) throws IOException {
+    public PointValues getPointValues(String field) {
       return null;
     }
 

@@ -42,8 +42,8 @@ public class FilterIndexInput extends IndexInput {
    * returns it
    */
   public static IndexInput unwrap(IndexInput in) {
-    while (in instanceof FilterIndexInput) {
-      in = ((FilterIndexInput) in).in;
+    while (in instanceof FilterIndexInput fii) {
+      in = fii.in;
     }
     return in;
   }
@@ -53,8 +53,8 @@ public class FilterIndexInput extends IndexInput {
    * instance and returns it
    */
   public static IndexInput unwrapOnlyTest(IndexInput in) {
-    while (in instanceof FilterIndexInput && TEST_FILTER_INPUTS.contains(in.getClass())) {
-      in = ((FilterIndexInput) in).in;
+    while (in instanceof FilterIndexInput fii && TEST_FILTER_INPUTS.contains(in.getClass())) {
+      in = fii.in;
     }
     return in;
   }

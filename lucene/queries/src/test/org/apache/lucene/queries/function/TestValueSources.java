@@ -488,7 +488,7 @@ public class TestValueSources extends LuceneTestCase {
     assertNoneExist(vs);
   }
 
-  public void testQueryWrapedFuncWrapedQuery() throws Exception {
+  public void testQueryWrappedFuncWrappedQuery() throws Exception {
     ValueSource vs = new QueryValueSource(new FunctionQuery(new ConstValueSource(2f)), 0f);
     assertHits(new FunctionQuery(vs), new float[] {2f, 2f});
     assertAllExist(vs);
@@ -512,7 +512,7 @@ public class TestValueSources extends LuceneTestCase {
       assertHits(new FunctionQuery(vs), new float[] {42F, 1.4054651F});
 
       // valuesource should exist only for things matching the term query
-      // sanity check via quick & dirty wrapper arround tf
+      // sanity check via quick & dirty wrapper around tf
       ValueSource expected =
           new MultiFloatFunction(
               new ValueSource[] {
@@ -689,7 +689,7 @@ public class TestValueSources extends LuceneTestCase {
     assertAllExist(vs);
   }
 
-  public void testMultiFunctionHelperEquivilence() throws IOException {
+  public void testMultiFunctionHelperEquivalence() throws IOException {
     // the 2 arg versions of these methods should return the exact same results as
     // the multi arg versions with a 2 element array
 
@@ -714,7 +714,7 @@ public class TestValueSources extends LuceneTestCase {
     assertFalse(MultiFunction.anyExists(1, NONE, NONE));
     assertFalse(MultiFunction.anyExists(1, new FunctionValues[] {NONE, NONE}));
 
-    // iterate all permutations and verify equivilence
+    // iterate all permutations and verify equivalence
     for (FunctionValues firstArg : new FunctionValues[] {ALL, NONE}) {
       for (FunctionValues secondArg : new FunctionValues[] {ALL, NONE}) {
         assertEquals(
@@ -726,8 +726,8 @@ public class TestValueSources extends LuceneTestCase {
             MultiFunction.anyExists(1, firstArg, secondArg),
             MultiFunction.anyExists(1, new FunctionValues[] {firstArg, secondArg}));
 
-        // future proof against posibility of someone "optimizing" the array method
-        // if .length==2 ... redundent third arg should give same results as well...
+        // future proof against possibility of someone "optimizing" the array method
+        // if .length==2 ... redundant third arg should give same results as well...
         assertEquals(
             "allExists(" + firstArg + "," + secondArg + "," + secondArg + ")",
             MultiFunction.allExists(1, firstArg, secondArg),

@@ -114,10 +114,10 @@ public class SpanNearClauseFactory { // FIXME: rename to SpanClauseFactory
 
   public void addSpanQuery(Query q) {
     if (q.getClass() == MatchNoDocsQuery.class) return;
-    if (!(q instanceof SpanQuery))
+    if (!(q instanceof SpanQuery sq))
       throw new AssertionError("Expected SpanQuery: " + q.toString(getFieldName()));
     float boost = 1f;
-    addSpanQueryWeighted((SpanQuery) q, boost);
+    addSpanQueryWeighted(sq, boost);
   }
 
   public SpanQuery makeSpanClause() {

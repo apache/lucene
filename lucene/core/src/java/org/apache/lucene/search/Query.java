@@ -71,7 +71,7 @@ public abstract class Query {
 
   /**
    * Expert: called to re-write queries into primitive queries. For example, a PrefixQuery will be
-   * rewritten into a BooleanQuery that consists of TermQuerys.
+   * rewritten into a BooleanQuery that consists of TermQuery instances.
    *
    * <p>Callers are expected to call <code>rewrite</code> multiple times if necessary, until the
    * rewritten query is the same as the original query.

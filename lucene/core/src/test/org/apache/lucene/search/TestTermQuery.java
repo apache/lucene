@@ -194,10 +194,9 @@ public class TestTermQuery extends LuceneTestCase {
             }
 
             @Override
-            public SimScorer scorer(
-                float boost, CollectionStatistics collectionStats, TermStatistics... termStats) {
+            public SimScorer scorer(float boost, FieldStats fieldStats, TermStats... termStats) {
               scorerCalled.set(true);
-              return existingSimilarity.scorer(boost, collectionStats, termStats);
+              return existingSimilarity.scorer(boost, fieldStats, termStats);
             }
           });
       TermQuery termQuery =
@@ -247,7 +246,7 @@ public class TestTermQuery extends LuceneTestCase {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       Terms terms = super.terms(field);
       return terms == null
           ? null

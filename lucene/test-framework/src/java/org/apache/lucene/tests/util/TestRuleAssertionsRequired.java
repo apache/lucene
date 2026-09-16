@@ -27,30 +27,29 @@ public class TestRuleAssertionsRequired implements TestRule {
     return new Statement() {
       @Override
       public void evaluate() throws Throwable {
-        try {
-          // Make sure -ea matches -Dtests.asserts, to catch accidental mis-use:
-          var assertsEnabled = LuceneTestCase.class.desiredAssertionStatus();
-          if (assertsEnabled != LuceneTestCase.TEST_ASSERTS_ENABLED) {
-            String msg = "Assertions mismatch: ";
-            if (assertsEnabled) {
-              msg += "-ea was specified";
-            } else {
-              msg += "-ea was not specified";
-            }
-            if (LuceneTestCase.TEST_ASSERTS_ENABLED) {
-              msg += " but -Dtests.asserts=true";
-            } else {
-              msg += " but -Dtests.asserts=false";
-            }
-            System.err.println(msg);
-            throw new Exception(msg);
-          }
-        } catch (AssertionError _) {
-          // Ok, enabled.
-        }
-
+        checkAssertionStatus();
         base.evaluate();
       }
     };
+  }
+
+  // Make sure -ea matches -Dtests.asserts, to catch accidental mis-use:
+  static void checkAssertionStatus() throws Exception {
+    var assertsEnabled = LuceneTestCase.class.desiredAssertionStatus();
+    if (assertsEnabled != LuceneTestCase.TEST_ASSERTS_ENABLED) {
+      String msg = "Assertions mismatch: ";
+      if (assertsEnabled) {
+        msg += "-ea was specified";
+      } else {
+        msg += "-ea was not specified";
+      }
+      if (LuceneTestCase.TEST_ASSERTS_ENABLED) {
+        msg += " but -Dtests.asserts=true";
+      } else {
+        msg += " but -Dtests.asserts=false";
+      }
+      System.err.println(msg);
+      throw new Exception(msg);
+    }
   }
 }

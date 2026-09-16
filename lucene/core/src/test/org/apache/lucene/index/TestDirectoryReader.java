@@ -695,7 +695,7 @@ public class TestDirectoryReader extends LuceneTestCase {
               tp1.docID(),
               tp2.docID());
           assertEquals(
-              "Different term frequence in postinglist of term " + enum1.term() + ".",
+              "Different term frequencies in postinglist of term " + enum1.term() + ".",
               tp1.freq(),
               tp2.freq());
           for (int i = 0; i < tp1.freq(); i++) {

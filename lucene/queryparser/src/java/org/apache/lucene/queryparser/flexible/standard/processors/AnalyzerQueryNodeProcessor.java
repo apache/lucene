@@ -19,7 +19,6 @@ package org.apache.lucene.queryparser.flexible.standard.processors;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CachingTokenFilter;
@@ -187,7 +186,7 @@ public class AnalyzerQueryNodeProcessor extends QueryNodeProcessorImpl {
 
             if (positionCount == 1) {
               // simple case: only one position, with synonyms
-              LinkedList<QueryNode> children = new LinkedList<>();
+              List<QueryNode> children = new ArrayList<>();
 
               for (int i = 0; i < numTokens; i++) {
                 String term = null;

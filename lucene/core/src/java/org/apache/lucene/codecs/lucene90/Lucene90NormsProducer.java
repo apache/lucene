@@ -27,6 +27,7 @@ import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
@@ -345,8 +346,9 @@ final class Lucene90NormsProducer extends NormsProducer implements Cloneable {
       }
 
       @Override
-      public void prefetch(long offset, long length) throws IOException {
+      public boolean prefetch(long offset, long length) throws IOException {
         // Not delegating to the wrapped instance on purpose. This is only used for merging.
+        return false;
       }
     };
   }
@@ -499,8 +501,8 @@ final class Lucene90NormsProducer extends NormsProducer implements Cloneable {
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    CodecUtil.checksumEntireFile(data);
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+    CodecUtil.checksumEntireFile(data, merge);
   }
 
   @Override

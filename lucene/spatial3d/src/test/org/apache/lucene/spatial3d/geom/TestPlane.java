@@ -17,12 +17,10 @@
 package org.apache.lucene.spatial3d.geom;
 
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 /** Test basic plane functionality. */
 public class TestPlane extends LuceneTestCase {
 
-  @Test
   public void testIdenticalPlanes() {
     final GeoPoint p = new GeoPoint(PlanetModel.SPHERE, 0.123, -0.456);
     final Plane plane1 = new Plane(p, 0.0);
@@ -38,7 +36,6 @@ public class TestPlane extends LuceneTestCase {
     assertTrue(p1.isNumericallyIdentical(p2));
   }
 
-  @Test
   public void testIdenticalVector() {
     final Vector v1 = new Vector(1, 0, 0);
     final Vector v2 = new Vector(1, 0, 0);
@@ -47,7 +44,6 @@ public class TestPlane extends LuceneTestCase {
     assertFalse(v1.isNumericallyIdentical(v3));
   }
 
-  @Test
   public void testInterpolation() {
     // [X=0.35168818443386646, Y=-0.19637966197066342, Z=0.9152870857244183],
     // [X=0.5003343189532654, Y=0.522128543226148, Z=0.6906861469771293],
@@ -68,7 +64,6 @@ public class TestPlane extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testFindArcPoints() {
     // Create two points
     final GeoPoint p1 = new GeoPoint(PlanetModel.WGS84, 0.123, -0.456);

@@ -31,13 +31,13 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.MultiReader;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.CollectorManager;
+import org.apache.lucene.search.FieldStats;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.TermStats;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopScoreDocCollector;
 import org.apache.lucene.search.TopScoreDocCollectorManager;
@@ -586,13 +586,12 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
     }
 
     @Override
-    public SimScorer scorer(
-        float boost, CollectionStatistics collectionStats, TermStatistics... termStats) {
-      return new BM25Similarity().scorer(boost, collectionStats, termStats);
+    public SimScorer scorer(float boost, FieldStats fieldStats, TermStats... termStats) {
+      return new BM25Similarity().scorer(boost, fieldStats, termStats);
     }
   }
 
-  public void testOverrideCollectionStatistics() throws IOException {
+  public void testOverrideFieldStats() throws IOException {
     Directory dir = newDirectory();
     IndexWriterConfig iwc = new IndexWriterConfig();
     Similarity similarity = randomCompatibleSimilarity();
@@ -639,8 +638,8 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
     IndexSearcher searcher =
         new IndexSearcher(reader) {
           @Override
-          public CollectionStatistics collectionStatistics(String field) throws IOException {
-            CollectionStatistics shardStatistics = super.collectionStatistics(field);
+          public FieldStats fieldStats(String field) throws IOException {
+            FieldStats shardStatistics = super.fieldStats(field);
             int extraSumTotalTermFreq;
             if (field.equals("a")) {
               extraSumTotalTermFreq = extraSumTotalTermFreqA;
@@ -651,7 +650,7 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
             } else {
               throw new AssertionError("should never be called");
             }
-            return new CollectionStatistics(
+            return new FieldStats(
                 field,
                 shardStatistics.maxDoc() + extraMaxDoc,
                 shardStatistics.docCount() + extraDocCount,

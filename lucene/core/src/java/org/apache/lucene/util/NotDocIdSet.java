@@ -78,6 +78,13 @@ public final class NotDocIdSet extends DocIdSet {
       }
 
       @Override
+      public int docIDRunEnd() {
+        assert doc != NO_MORE_DOCS;
+        assert nextSkippedDoc > doc;
+        return Math.min(nextSkippedDoc, maxDoc);
+      }
+
+      @Override
       public long cost() {
         // even if there are few docs in this set, iterating over all documents
         // costs O(maxDoc) in all cases

@@ -50,9 +50,11 @@ class NotContainingIntervalsSource extends DifferenceIntervalsSource {
 
   @Override
   public boolean equals(Object other) {
-    if (other instanceof NotContainingIntervalsSource == false) return false;
-    NotContainingIntervalsSource o = (NotContainingIntervalsSource) other;
-    return Objects.equals(this.minuend, o.minuend) && Objects.equals(this.subtrahend, o.subtrahend);
+    if (other instanceof NotContainingIntervalsSource o) {
+      return Objects.equals(this.minuend, o.minuend)
+          && Objects.equals(this.subtrahend, o.subtrahend);
+    }
+    return false;
   }
 
   @Override

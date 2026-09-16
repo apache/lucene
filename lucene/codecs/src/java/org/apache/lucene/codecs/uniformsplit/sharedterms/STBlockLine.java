@@ -154,8 +154,8 @@ public class STBlockLine extends BlockLine {
         int readFieldId = termStatesInput.readVInt();
         if (!isFieldInList && readFieldId > fieldId) {
           // As the list of fieldIds is sorted we can return early if we find fieldId greater than
-          // the seeked one.
-          // But if we found the seeked one, we have to read all the list to get to the term state
+          // the seek()ed one.
+          // But if we found the seek()ed one, we have to read all the list to get to the term state
           // part afterward (there is no jump offset).
           return null;
         }

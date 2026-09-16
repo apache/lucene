@@ -30,7 +30,7 @@ final class ConcurrentApproximatePriorityQueue<T> {
   static final int MIN_CONCURRENCY = 1;
   static final int MAX_CONCURRENCY = 256;
 
-  private static final int getConcurrency() {
+  private static int getConcurrency() {
     int coreCount = Runtime.getRuntime().availableProcessors();
     // Aim for ~4 entries per slot when indexing with one thread per CPU core. The trade-off is
     // that if we set the concurrency too high then we'll completely lose the bias towards larger

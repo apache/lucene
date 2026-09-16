@@ -289,7 +289,7 @@ public class SandboxFacetsExample {
               dimension,
               new String[0],
               dimensionValue,
-              labelsAndValues.toArray(new LabelAndValue[0]),
+              labelsAndValues.toArray(LabelAndValue[]::new),
               labelsAndValues.size()));
     }
 
@@ -338,7 +338,7 @@ public class SandboxFacetsExample {
 
     results.add(
         new FacetResult(
-            "Price", new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0));
+            "Price", new String[0], 0, labelsAndValues.toArray(LabelAndValue[]::new), 0));
 
     System.out.println("Computed counts");
     IOUtils.close(indexReader);
@@ -382,7 +382,7 @@ public class SandboxFacetsExample {
 
     results.add(
         new FacetResult(
-            "Price", new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0));
+            "Price", new String[0], 0, labelsAndValues.toArray(LabelAndValue[]::new), 0));
 
     System.out.println("Computed counts");
     IOUtils.close(indexReader);
@@ -454,7 +454,7 @@ public class SandboxFacetsExample {
     }
     results.add(
         new FacetResult(
-            "Price", new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0));
+            "Price", new String[0], 0, labelsAndValues.toArray(LabelAndValue[]::new), 0));
 
     // note: previous ordinal iterator was exhausted
     recordedOrds = longAggregationsFacetRecorder.recordedOrds();
@@ -472,7 +472,7 @@ public class SandboxFacetsExample {
     }
     results.add(
         new FacetResult(
-            "Price", new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0));
+            "Price", new String[0], 0, labelsAndValues.toArray(LabelAndValue[]::new), 0));
 
     return results;
   }
@@ -549,7 +549,7 @@ public class SandboxFacetsExample {
               dimension,
               new String[0],
               dimensionValue,
-              labelsAndValues.toArray(new LabelAndValue[0]),
+              labelsAndValues.toArray(LabelAndValue[]::new),
               labelsAndValues.size()));
     }
 
@@ -618,7 +618,7 @@ public class SandboxFacetsExample {
         dimension,
         new String[0],
         dimensionValue,
-        labelsAndValues.toArray(new LabelAndValue[0]),
+        labelsAndValues.toArray(LabelAndValue[]::new),
         labelsAndValues.size());
   }
 
@@ -692,7 +692,7 @@ public class SandboxFacetsExample {
             "Author",
             new String[0],
             dimensionValue,
-            labelsAndValues.toArray(new LabelAndValue[0]),
+            labelsAndValues.toArray(LabelAndValue[]::new),
             labelsAndValues.size()));
 
     //// (5) Same process, but for Publish Date drill sideways dimension
@@ -724,7 +724,7 @@ public class SandboxFacetsExample {
             "Publish Date",
             new String[0],
             dimensionValue,
-            labelsAndValues.toArray(new LabelAndValue[0]),
+            labelsAndValues.toArray(LabelAndValue[]::new),
             labelsAndValues.size()));
 
     IOUtils.close(indexReader, taxoReader);

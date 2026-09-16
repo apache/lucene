@@ -465,7 +465,7 @@ public class TestMappingCharFilter extends BaseTokenStreamTestCase {
           }
         }
 
-        // Finish mappping offsets
+        // Finish mapping offsets
         while (actualInputOffsets.size() < actualBuilder.length()) {
           actualInputOffsets.add(mapFilter.correctOffset(actualInputOffsets.size()));
         }

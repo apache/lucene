@@ -162,10 +162,9 @@ class GeoDegenerateLongitudeSlice extends GeoBaseBBox {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof GeoDegenerateLongitudeSlice)) {
+    if (!(o instanceof GeoDegenerateLongitudeSlice other)) {
       return false;
     }
-    GeoDegenerateLongitudeSlice other = (GeoDegenerateLongitudeSlice) o;
     return super.equals(other) && other.longitude == longitude;
   }
 

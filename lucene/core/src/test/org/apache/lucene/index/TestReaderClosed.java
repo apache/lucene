@@ -48,7 +48,7 @@ public class TestReaderClosed extends LuceneTestCase {
     Field field = newStringField("field", "", Field.Store.NO);
     doc.add(field);
 
-    // we generate aweful prefixes: good for testing.
+    // we generate awful prefixes: good for testing.
     // but for preflex codec, the test can be very slow, so use less iterations.
     int num = atLeast(10);
     for (int i = 0; i < num; i++) {

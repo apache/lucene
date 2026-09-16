@@ -115,7 +115,7 @@ final class IDVersionPostingsWriter extends PushPostingsWriterBase {
     }
     lastPosition = position;
     if (payload == null) {
-      throw new IllegalArgumentException("token doens't have a payload");
+      throw new IllegalArgumentException("token doesn't have a payload");
     }
     if (payload.length != 8) {
       throw new IllegalArgumentException("payload.length != 8 (got " + payload.length + ")");

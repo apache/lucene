@@ -21,7 +21,6 @@ import static org.apache.lucene.search.TopDocsCollector.EMPTY_TOPDOCS;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.index.LeafReaderContext;
@@ -48,6 +47,9 @@ public final class LargeNumHitsTopDocsCollector implements Collector {
   int totalHits;
 
   public LargeNumHitsTopDocsCollector(int requestedHitCount) {
+    if (requestedHitCount <= 0) {
+      throw new IllegalArgumentException("requestedHitCount must be > 0");
+    }
     this.requestedHitCount = requestedHitCount;
     this.totalHits = 0;
   }
@@ -111,10 +113,14 @@ public final class LargeNumHitsTopDocsCollector implements Collector {
 
   /** Returns the top docs that were collected by this collector. */
   public TopDocs topDocs(int howMany) {
-
-    if (howMany <= 0 || howMany > totalHits) {
-      throw new IllegalArgumentException("Incorrect number of hits requested");
+    if (howMany < 0) {
+      throw new IllegalArgumentException(
+          "Number of hits requested must not be negative but value was " + howMany);
     }
+    if (howMany == 0) {
+      return EMPTY_TOPDOCS;
+    }
+    howMany = Math.min(howMany, totalHits);
 
     ScoreDoc[] results = new ScoreDoc[howMany];
 
@@ -139,11 +145,10 @@ public final class LargeNumHitsTopDocsCollector implements Collector {
 
     // Total number of hits collected were less than requestedHitCount
     assert totalHits <= requestedHitCount;
-    Collections.sort(
-        hits,
-        Comparator.comparing((ScoreDoc scoreDoc) -> scoreDoc.score)
+    hits.sort(
+        Comparator.comparingDouble((ScoreDoc scoreDoc) -> scoreDoc.score)
             .reversed()
-            .thenComparing(scoreDoc -> scoreDoc.doc));
+            .thenComparingInt(scoreDoc -> scoreDoc.doc));
 
     for (int i = 0; i < howMany; i++) {
       results[i] = hits.get(i);

@@ -872,10 +872,9 @@ public class PlanetModel implements SerializableObject {
 
   @Override
   public boolean equals(final Object o) {
-    if (!(o instanceof PlanetModel)) {
+    if (!(o instanceof PlanetModel other)) {
       return false;
     }
-    final PlanetModel other = (PlanetModel) o;
     return a == other.a && b == other.b;
   }
 

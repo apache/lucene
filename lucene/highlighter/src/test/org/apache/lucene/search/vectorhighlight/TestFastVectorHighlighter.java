@@ -505,7 +505,7 @@ public class TestFastVectorHighlighter extends LuceneTestCase {
 
     // Phrases and tokens inside one another are joined
     matchedFieldsTestCase(
-        "cats wow", "<b>cats w</b>ow", clause("field", "cats"), clause("field_tripples", "s w"));
+        "cats wow", "<b>cats w</b>ow", clause("field", "cats"), clause("field_triples", "s w"));
 
     // Everything works pretty well even if you don't require a field match
     matchedFieldsTestCase(
@@ -768,7 +768,7 @@ public class TestFastVectorHighlighter extends LuceneTestCase {
 
   public void testPhrasesSpanningFieldValues() throws IOException {
     Directory dir = newDirectory();
-    // positionIncrementGap is 0 so the pharse is found across multiple field
+    // positionIncrementGap is 0 so the phrase is found across multiple field
     // values.
     IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
     FieldType type = new FieldType(TextField.TYPE_STORED);
@@ -867,7 +867,7 @@ public class TestFastVectorHighlighter extends LuceneTestCase {
         new Field(
             "field_super_exact", fieldValue, matched)); // Whitespace tokenized without toLower
     doc.add(new Field("field_characters", fieldValue, matched)); // Each letter is a token
-    doc.add(new Field("field_tripples", fieldValue, matched)); // Every three letters is a token
+    doc.add(new Field("field_triples", fieldValue, matched)); // Every three letters is a token
     doc.add(
         new Field(
             "field_sliced",
@@ -894,7 +894,7 @@ public class TestFastVectorHighlighter extends LuceneTestCase {
         "field_characters",
         new MockAnalyzer(random(), new CharacterRunAutomaton(new RegExp(".").toAutomaton()), true));
     fieldAnalyzers.put(
-        "field_tripples",
+        "field_triples",
         new MockAnalyzer(
             random(), new CharacterRunAutomaton(new RegExp("...").toAutomaton()), true));
     fieldAnalyzers.put("field_sliced", fieldAnalyzers.get("field"));
@@ -933,7 +933,7 @@ public class TestFastVectorHighlighter extends LuceneTestCase {
       matchedFields.add("field_exact");
       matchedFields.add("field_super_exact");
       matchedFields.add("field_characters");
-      matchedFields.add("field_tripples");
+      matchedFields.add("field_triples");
       matchedFields.add("field_sliced");
       matchedFields.add("field_der_red");
       bestFragments =

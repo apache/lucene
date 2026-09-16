@@ -1043,7 +1043,7 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
                   "dim" + i,
                   new String[0],
                   totCount,
-                  labelValues.toArray(new LabelAndValue[0]),
+                  labelValues.toArray(LabelAndValue[]::new),
                   labelValues.size()));
         }
       }

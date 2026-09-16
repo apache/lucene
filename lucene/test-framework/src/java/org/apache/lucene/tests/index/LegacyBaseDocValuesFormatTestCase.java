@@ -1544,6 +1544,9 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
       int id = random().nextInt(numDocs);
       writer.deleteDocuments(new Term("id", Integer.toString(id)));
     }
+
+    writer.commit();
+
     try (DirectoryReader reader = maybeWrapWithMergingReader(DirectoryReader.open(dir))) {
       TestUtil.checkReader(reader);
       compareStoredFieldWithSortedNumericsDV(reader, "stored", "dv");
@@ -2445,7 +2448,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
       final int length = TestUtil.nextInt(random(), minLength, maxLength);
       valueSet.add(TestUtil.randomSimpleString(random(), length));
     }
-    String[] uniqueValues = valueSet.toArray(new String[0]);
+    String[] uniqueValues = valueSet.toArray(String[]::new);
 
     // index some docs
     if (VERBOSE) {

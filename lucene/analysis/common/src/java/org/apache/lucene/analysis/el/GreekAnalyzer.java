@@ -50,7 +50,7 @@ public final class GreekAnalyzer extends StopwordAnalyzerBase {
    *
    * @return a set of default Greek-stopwords
    */
-  public static final CharArraySet getDefaultStopSet() {
+  public static CharArraySet getDefaultStopSet() {
     return DefaultSetHolder.DEFAULT_SET;
   }
 

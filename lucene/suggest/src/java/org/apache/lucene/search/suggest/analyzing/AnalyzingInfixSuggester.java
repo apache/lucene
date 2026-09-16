@@ -156,7 +156,7 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
   /** Default boolean clause option for multiple terms matching (all terms required). */
   public static final boolean DEFAULT_ALL_TERMS_REQUIRED = true;
 
-  /** Default higlighting option. */
+  /** Default highlighting option. */
   public static final boolean DEFAULT_HIGHLIGHT = true;
 
   /** Default option to close the IndexWriter once the index has been built. */

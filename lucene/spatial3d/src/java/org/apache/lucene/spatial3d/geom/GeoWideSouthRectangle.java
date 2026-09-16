@@ -264,10 +264,9 @@ class GeoWideSouthRectangle extends GeoBaseBBox {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof GeoWideSouthRectangle)) {
+    if (!(o instanceof GeoWideSouthRectangle other)) {
       return false;
     }
-    GeoWideSouthRectangle other = (GeoWideSouthRectangle) o;
     return super.equals(o) && other.ULHC.equals(ULHC) && other.URHC.equals(URHC);
   }
 

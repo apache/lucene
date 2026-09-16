@@ -31,6 +31,11 @@ import org.apache.lucene.util.FixedBitSet;
  */
 public final class DisjunctionDISIApproximation extends AbstractDocIdSetIterator {
 
+  // Doc ID window that a single #intoArray call loads at a time. It matches
+  // MaxScoreBulkScorer#INNER_WINDOW_SIZE and DenseConjunctionBulkScorer#WINDOW_SIZE so that a
+  // single window covers a full scoring window, with a bit set that stays cache-resident.
+  private static final int WINDOW_SIZE = 4096;
+
   public static DisjunctionDISIApproximation of(
       Collection<? extends DisiWrapper> subIterators, long leadCost) {
 
@@ -44,6 +49,7 @@ public final class DisjunctionDISIApproximation extends AbstractDocIdSetIterator
   private final long cost;
   private DisiWrapper leadTop;
   private int minOtherDoc;
+  private FixedBitSet window; // lazily allocated by #intoArray
 
   public DisjunctionDISIApproximation(
       Collection<? extends DisiWrapper> subIterators, long leadCost) {
@@ -161,6 +167,32 @@ public final class DisjunctionDISIApproximation extends AbstractDocIdSetIterator
     doc = Math.min(leadTop.doc, minOtherDoc);
   }
 
+  @Override
+  public int intoArray(int upTo, int[] docs) throws IOException {
+    assert docs.length > 0;
+    // Loading a window of doc IDs through #intoBitSet performs one bulk load and one heap update
+    // per sub-iterator, while advancing one doc at a time performs a heap update per matching doc.
+    // The current doc always falls into the first window, so the loop below normally runs a single
+    // iteration. It only guards against a window that yields no doc, which callers would read as
+    // "no doc left below upTo".
+    int windowSize = Math.min(docs.length, WINDOW_SIZE);
+    while (doc < upTo) {
+      if (window == null) {
+        window = new FixedBitSet(WINDOW_SIZE);
+      } else {
+        window.clear();
+      }
+      int windowMin = doc;
+      int windowMax = (int) Math.min(upTo, (long) windowMin + windowSize);
+      intoBitSet(windowMax, window, windowMin);
+      int size = window.intoArray(0, windowMax - windowMin, windowMin, docs);
+      if (size != 0) {
+        return size;
+      }
+    }
+    return 0;
+  }
+
   /** Return the linked list of iterators positioned on the current doc. */
   public DisiWrapper topList() {
     if (leadTop.doc < minOtherDoc) {
@@ -187,12 +219,15 @@ public final class DisjunctionDISIApproximation extends AbstractDocIdSetIterator
 
   @Override
   public int docIDRunEnd() throws IOException {
-    // We're only looking at the "top" clauses. In theory, we may be able to find longer runs if
-    // other clauses have overlapping runs with the runs of the top clauses, but does it actually
-    // happen in practice and would it buy much?
+    // Trade off longer run detection for a cheaper per-doc call: only inspect heap-led clauses
+    // that are already positioned on the current doc. Other iterators may be coincident with the
+    // current doc and have longer runs, or be the only clauses on the current doc, but scanning
+    // them here would cost O(N) on every call.
     int maxDocIDRunEnd = super.docIDRunEnd();
-    for (DisiWrapper w = topList(); w != null; w = w.next) {
-      maxDocIDRunEnd = Math.max(maxDocIDRunEnd, w.approximation.docIDRunEnd());
+    if (leadTop.doc == doc) {
+      for (DisiWrapper w = leadIterators.topList(); w != null; w = w.next) {
+        maxDocIDRunEnd = Math.max(maxDocIDRunEnd, w.approximation.docIDRunEnd());
+      }
     }
     return maxDocIDRunEnd;
   }

@@ -147,7 +147,7 @@ public final class XYPolygon extends XYGeometry {
     return holes[i];
   }
 
-  /** Returns the winding order (CW, COLINEAR, CCW) for the polygon shell */
+  /** Returns the winding order (CW, COLLINEAR, CCW) for the polygon shell */
   public GeoUtils.WindingOrder getWindingOrder() {
     return this.windingOrder;
   }

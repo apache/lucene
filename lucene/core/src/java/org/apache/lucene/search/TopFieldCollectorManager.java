@@ -17,9 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 
 /**
  * Create a TopFieldCollectorManager which uses a shared hit counter to maintain number of hits and
@@ -34,7 +32,6 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
   private final FieldDoc after;
   private final int totalHitsThreshold;
   private final MaxScoreAccumulator minScoreAcc;
-  private final List<TopFieldCollector> collectors;
 
   /**
    * Creates a new {@link TopFieldCollectorManager} from the given arguments.
@@ -61,8 +58,12 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
   }
 
   /**
-   * Creates a new {@link TopFieldCollectorManager} from the given arguments, with thread-safe
-   * internal states.
+   * Creates a new {@link TopFieldCollectorManager} from the given arguments.
+   *
+   * <p>Thread safety is guaranteed for the shared internal states (hit counting, minimum score
+   * propagation) across collectors created by {@link #newCollector()}. Note that {@link
+   * #newCollector()} itself is designed to be called from a single thread; {@link IndexSearcher}
+   * handles this by calling it sequentially before parallel slice execution.
    *
    * <p><b>NOTE</b>: The instances returned by this method pre-allocate a full array of length
    * <code>numHits</code>.
@@ -111,12 +112,10 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
     this.after = after;
     this.totalHitsThreshold = totalHitsThreshold;
     this.minScoreAcc = totalHitsThreshold != Integer.MAX_VALUE ? new MaxScoreAccumulator() : null;
-    this.collectors = new ArrayList<>();
   }
 
   /**
-   * Creates a new {@link TopFieldCollectorManager} from the given arguments, with thread-safe
-   * internal states.
+   * Creates a new {@link TopFieldCollectorManager} from the given arguments.
    *
    * <p><b>NOTE</b>: The instances returned by this method pre-allocate a full array of length
    * <code>numHits</code>.
@@ -168,7 +167,6 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
               sort, queue, after, numHits, totalHitsThreshold, minScoreAcc);
     }
 
-    collectors.add(collector);
     return collector;
   }
 
@@ -180,9 +178,5 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
       topDocs[i++] = collector.topDocs();
     }
     return TopDocs.merge(sort, 0, numHits, topDocs);
-  }
-
-  public List<TopFieldCollector> getCollectors() {
-    return collectors;
   }
 }

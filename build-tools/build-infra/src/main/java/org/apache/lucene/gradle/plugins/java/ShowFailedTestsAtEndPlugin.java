@@ -104,7 +104,14 @@ public class ShowFailedTestsAtEndPlugin extends LuceneGradlePlugin {
                         if (desc.getName().equals("classMethod")) {
                           qTestName = desc.getClassName();
                         } else {
-                          qTestName = desc.getClassName() + "." + desc.getName();
+                          // For junit5/jupiter, gradle support is very limited for now.
+                          // ideally, we should report the repro line using test metadata
+                          // (from within the test). Or use uniqueid on the context that failed
+                          // to reproduce it.
+                          //
+                          // for now, just trim the trailing ().
+                          String name = desc.getName().replaceAll("\\(\\).*$", "");
+                          qTestName = desc.getClassName() + "." + name;
                         }
 
                         var randomizationParameters = "";
@@ -202,7 +209,7 @@ public class ShowFailedTestsAtEndPlugin extends LuceneGradlePlugin {
         LOGGER.error(
             "\nERROR: {} {} failed{}:\n\n{}",
             failedTests.size(),
-            failedTests.size() == 1 ? "test has" : failedTests.size() + " tests have",
+            failedTests.size() == 1 ? "test has" : "tests have",
             failedTests.size() > limit ? " (top " + limit + " shown)" : "",
             formatted);
       }

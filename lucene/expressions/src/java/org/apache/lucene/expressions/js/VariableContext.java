@@ -78,7 +78,7 @@ public class VariableContext {
         i = addMember(text, i + 1, contexts);
       }
     }
-    return contexts.toArray(new VariableContext[contexts.size()]);
+    return contexts.toArray(VariableContext[]::new);
   }
 
   // i points to start of member name

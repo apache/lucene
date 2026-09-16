@@ -304,8 +304,8 @@ public class TestDateRangePrefixTree extends LuceneTestCase {
                   })
               .getCause()
               .getMessage();
-      assertTrue(causeMessage + " has actual delimeter", causeMessage.contains("Z"));
-      assertTrue(causeMessage + " has expected delimeter", causeMessage.contains(":"));
+      assertTrue(causeMessage + " has actual delimiter", causeMessage.contains("Z"));
+      assertTrue(causeMessage + " has expected delimiter", causeMessage.contains(":"));
       assertFalse(causeMessage + " has no input", causeMessage.contains("2000-11-10"));
     }
     expectThrows(

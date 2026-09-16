@@ -18,11 +18,9 @@ package org.apache.lucene.benchmark.byTask.utils;
 
 import java.util.Properties;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 public class TestConfig extends LuceneTestCase {
 
-  @Test
   public void testAbsolutePathNamesWindows() throws Exception {
     Properties props = new Properties();
     props.setProperty("work.dir1", "c:\\temp");

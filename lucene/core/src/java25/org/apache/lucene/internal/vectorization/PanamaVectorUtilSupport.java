@@ -26,7 +26,7 @@ import static jdk.incubator.vector.VectorOperators.S2I;
 import static jdk.incubator.vector.VectorOperators.ZERO_EXTEND_B2I;
 import static jdk.incubator.vector.VectorOperators.ZERO_EXTEND_B2S;
 import static jdk.incubator.vector.VectorOperators.ZERO_EXTEND_S2I;
-import static org.apache.lucene.util.VectorUtil.EPSILON;
+import static org.apache.lucene.util.VectorUtil.isUnitVector;
 
 import java.lang.foreign.MemorySegment;
 import jdk.incubator.vector.ByteVector;
@@ -56,6 +56,9 @@ import org.apache.lucene.util.SuppressForbidden;
  */
 final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
+  // Delegate for float16 (short[]) operations until JDK 27 provides Float16Vector support
+  private static final DefaultVectorUtilSupport FLOAT16_DELEGATE = new DefaultVectorUtilSupport();
+
   // preferred vector sizes, which can be altered for testing
   private static final VectorSpecies<Float> FLOAT_SPECIES;
   private static final VectorSpecies<Double> DOUBLE_SPECIES =
@@ -69,6 +72,10 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   private static final VectorSpecies<Short> SHORT_SPECIES;
   private static final VectorSpecies<Byte> BYTE_SPECIES_128 = ByteVector.SPECIES_128;
   private static final VectorSpecies<Byte> BYTE_SPECIES_256 = ByteVector.SPECIES_256;
+  // full register needed, no widening
+  private static final VectorSpecies<Byte> BYTE_SPECIES_FULL =
+      ByteVector.SPECIES_MAX.withShape(
+          VectorShape.forBitSize(PanamaVectorConstants.PREFERRED_VECTOR_BITSIZE));
 
   static final int VECTOR_BITSIZE;
 
@@ -300,6 +307,23 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     return res1.add(res2).reduceLanes(ADD);
   }
 
+  // float16 (short[]) operations delegate to scalar implementation until JDK 27
+
+  @Override
+  public float dotProduct(short[] a, short[] b) {
+    return FLOAT16_DELEGATE.dotProduct(a, b);
+  }
+
+  @Override
+  public float cosine(short[] a, short[] b) {
+    return FLOAT16_DELEGATE.cosine(a, b);
+  }
+
+  @Override
+  public float squareDistance(short[] a, short[] b) {
+    return FLOAT16_DELEGATE.squareDistance(a, b);
+  }
+
   // Binary functions, these all follow a general pattern like this:
   //
   //   short intermediate = a * b;
@@ -490,17 +514,17 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
     static {
       if (VECTOR_BITSIZE >= 512) {
-        BYTE_SPECIES = ByteVector.SPECIES_256;
+        BYTE_SPECIES = ByteVector.SPECIES_512;
         SHORT_SPECIES = ShortVector.SPECIES_512;
-        CHUNK = 4096;
+        CHUNK = 8192;
       } else if (VECTOR_BITSIZE == 256) {
-        BYTE_SPECIES = ByteVector.SPECIES_128;
+        BYTE_SPECIES = ByteVector.SPECIES_256;
         SHORT_SPECIES = ShortVector.SPECIES_256;
-        CHUNK = 2048;
+        CHUNK = 4096;
       } else {
-        BYTE_SPECIES = ByteVector.SPECIES_64;
+        BYTE_SPECIES = ByteVector.SPECIES_128;
         SHORT_SPECIES = ShortVector.SPECIES_128;
-        CHUNK = 1024;
+        CHUNK = 2048;
       }
     }
   }
@@ -536,24 +560,50 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     int sum = 0;
     // iterate in chunks to ensure we don't overflow the short accumulator
     for (int i = 0; i < limit; i += Int4Constants.CHUNK) {
-      ShortVector acc = ShortVector.zero(Int4Constants.SHORT_SPECIES);
+      ShortVector acc0 = ShortVector.zero(Int4Constants.SHORT_SPECIES);
+      ShortVector acc1 = ShortVector.zero(Int4Constants.SHORT_SPECIES);
       int innerLimit = Math.min(limit - i, Int4Constants.CHUNK);
       for (int j = 0; j < innerLimit; j += Int4Constants.BYTE_SPECIES.length()) {
         // unpacked
         ByteVector vb8 = b.load(Int4Constants.BYTE_SPECIES, i + j);
-        Vector<Short> vb16 = vb8.convertShape(B2S, Int4Constants.SHORT_SPECIES, 0);
 
         // unpacked
         ByteVector va8 = a.load(Int4Constants.BYTE_SPECIES, i + j);
-        Vector<Short> va16 = va8.convertShape(B2S, Int4Constants.SHORT_SPECIES, 0);
 
-        acc = acc.add(vb16.mul(va16));
+        ShortVector prod16 = va8.mul(vb8).reinterpretAsShorts();
+        acc0 = acc0.add(prod16.lanewise(LSHR, 8));
+        acc1 = acc1.add(prod16.and((short) 0xFF));
       }
-      Vector<Integer> intAcc0 = acc.convert(S2I, 0);
-      Vector<Integer> intAcc1 = acc.convert(S2I, 1);
-      sum += intAcc0.add(intAcc1).reinterpretAsInts().reduceLanes(ADD);
+
+      IntVector intAcc0 = acc0.reinterpretAsInts();
+      IntVector intAcc1 = acc1.reinterpretAsInts();
+      sum +=
+          intAcc0
+              .and(0xFFFF)
+              .add(intAcc0.lanewise(LSHR, 16))
+              .add(intAcc1.and(0xFFFF))
+              .add(intAcc1.lanewise(LSHR, 16))
+              .reduceLanes(ADD);
     }
     return sum;
+  }
+
+  @Override
+  public void int4Unpack(byte[] packed, byte[] unpacked) {
+    final int len = packed.length;
+    final int bound = BYTE_SPECIES_FULL.loopBound(len);
+    int i = 0;
+    for (; i < bound; i += BYTE_SPECIES_FULL.length()) {
+      ByteVector v = ByteVector.fromArray(BYTE_SPECIES_FULL, packed, i);
+      // LSHR is a logical shift within the byte lane, so the high nibble needs no mask.
+      v.lanewise(LSHR, 4).intoArray(unpacked, i);
+      v.lanewise(VectorOperators.AND, (byte) 0x0F).intoArray(unpacked, len + i);
+    }
+    // scalar tail
+    for (; i < len; i++) {
+      unpacked[i] = (byte) ((packed[i] >> 4) & 0x0F);
+      unpacked[len + i] = (byte) (packed[i] & 0x0F);
+    }
   }
 
   @Override
@@ -597,24 +647,28 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
         // packed
         ByteVector vb8 = packed.load(Int4Constants.BYTE_SPECIES, i + j);
 
-        // upper
-        ByteVector va8 = unpacked.load(Int4Constants.BYTE_SPECIES, i + j + packed.length());
-        ByteVector prod8 = vb8.and((byte) 0x0F).mul(va8);
-        Vector<Short> prod16 = prod8.convertShape(ZERO_EXTEND_B2S, Int4Constants.SHORT_SPECIES, 0);
-        acc0 = acc0.add(prod16);
-
         // lower
         ByteVector vc8 = unpacked.load(Int4Constants.BYTE_SPECIES, i + j);
-        ByteVector prod8a = vb8.lanewise(LSHR, 4).mul(vc8);
-        Vector<Short> prod16a =
-            prod8a.convertShape(ZERO_EXTEND_B2S, Int4Constants.SHORT_SPECIES, 0);
-        acc1 = acc1.add(prod16a);
+
+        // upper
+        ByteVector va8 = unpacked.load(Int4Constants.BYTE_SPECIES, i + j + packed.length());
+
+        ShortVector prod16 = vb8.and((byte) 0x0F).mul(va8).reinterpretAsShorts();
+        acc0 = acc0.add(prod16.lanewise(LSHR, 8).add(prod16.and((short) 0xFF)));
+
+        ShortVector prod16a = vb8.lanewise(LSHR, 4).mul(vc8).reinterpretAsShorts();
+        acc1 = acc1.add(prod16a.lanewise(LSHR, 8).add(prod16a.and((short) 0xFF)));
       }
-      Vector<Integer> intAcc0 = acc0.convert(S2I, 0);
-      Vector<Integer> intAcc1 = acc0.convert(S2I, 1);
-      Vector<Integer> intAcc2 = acc1.convert(S2I, 0);
-      Vector<Integer> intAcc3 = acc1.convert(S2I, 1);
-      sum += intAcc0.add(intAcc1).add(intAcc2).add(intAcc3).reinterpretAsInts().reduceLanes(ADD);
+
+      IntVector intAcc0 = acc0.reinterpretAsInts();
+      IntVector intAcc1 = acc1.reinterpretAsInts();
+      sum +=
+          intAcc0
+              .and(0xFFFF)
+              .add(intAcc0.lanewise(LSHR, 16))
+              .add(intAcc1.and(0xFFFF))
+              .add(intAcc1.lanewise(LSHR, 16))
+              .reduceLanes(ADD);
     }
     return sum;
   }
@@ -660,21 +714,24 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
         var va8 = a.load(Int4Constants.BYTE_SPECIES, i + j);
 
         // upper
-        ByteVector prod8 = vb8.and((byte) 0x0F).mul(va8.and((byte) 0x0F));
-        Vector<Short> prod16 = prod8.convertShape(ZERO_EXTEND_B2S, Int4Constants.SHORT_SPECIES, 0);
-        acc0 = acc0.add(prod16);
+        ShortVector prod16 = vb8.and((byte) 0x0F).mul(va8.and((byte) 0x0F)).reinterpretAsShorts();
+        acc0 = acc0.add(prod16.lanewise(LSHR, 8).add(prod16.and((short) 0xFF)));
 
         // lower
-        ByteVector prod8a = vb8.lanewise(LSHR, 4).mul(va8.lanewise(LSHR, 4));
-        Vector<Short> prod16a =
-            prod8a.convertShape(ZERO_EXTEND_B2S, Int4Constants.SHORT_SPECIES, 0);
-        acc1 = acc1.add(prod16a);
+        ShortVector prod16a =
+            vb8.lanewise(LSHR, 4).mul(va8.lanewise(LSHR, 4)).reinterpretAsShorts();
+        acc1 = acc1.add(prod16a.lanewise(LSHR, 8).add(prod16a.and((short) 0xFF)));
       }
-      Vector<Integer> intAcc0 = acc0.convert(S2I, 0);
-      Vector<Integer> intAcc1 = acc0.convert(S2I, 1);
-      Vector<Integer> intAcc2 = acc1.convert(S2I, 0);
-      Vector<Integer> intAcc3 = acc1.convert(S2I, 1);
-      sum += intAcc0.add(intAcc1).add(intAcc2).add(intAcc3).reinterpretAsInts().reduceLanes(ADD);
+
+      IntVector intAcc0 = acc0.reinterpretAsInts();
+      IntVector intAcc1 = acc1.reinterpretAsInts();
+      sum +=
+          intAcc0
+              .and(0xFFFF)
+              .add(intAcc0.lanewise(LSHR, 16))
+              .add(intAcc1.and(0xFFFF))
+              .add(intAcc1.lanewise(LSHR, 16))
+              .reduceLanes(ADD);
     }
     return sum;
   }
@@ -946,7 +1003,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     int sum = 0;
     // iterate in chunks to ensure we don't overflow the short accumulator
     for (int i = 0; i < limit; i += Int4Constants.CHUNK) {
-      ShortVector acc = ShortVector.zero(Int4Constants.SHORT_SPECIES);
+      ShortVector acc0 = ShortVector.zero(Int4Constants.SHORT_SPECIES);
+      ShortVector acc1 = ShortVector.zero(Int4Constants.SHORT_SPECIES);
       int innerLimit = Math.min(limit - i, Int4Constants.CHUNK);
       for (int j = 0; j < innerLimit; j += Int4Constants.BYTE_SPECIES.length()) {
         // unpacked
@@ -954,13 +1012,22 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
         // unpacked
         var va8 = a.load(Int4Constants.BYTE_SPECIES, i + j);
 
-        ByteVector diff8 = vb8.sub(va8);
-        Vector<Short> diff16 = diff8.convertShape(B2S, Int4Constants.SHORT_SPECIES, 0);
-        acc = acc.add(diff16.mul(diff16));
+        ShortVector diff8 = vb8.sub(va8).abs().reinterpretAsShorts();
+        ShortVector diff16 = diff8.and((short) 0xFF);
+        acc0 = acc0.add(diff16.mul(diff16));
+        ShortVector diff16a = diff8.lanewise(LSHR, 8);
+        acc1 = acc1.add(diff16a.mul(diff16a));
       }
-      Vector<Integer> intAcc0 = acc.convert(S2I, 0);
-      Vector<Integer> intAcc1 = acc.convert(S2I, 1);
-      sum += intAcc0.add(intAcc1).reinterpretAsInts().reduceLanes(ADD);
+
+      IntVector intAcc0 = acc0.reinterpretAsInts();
+      IntVector intAcc1 = acc1.reinterpretAsInts();
+      sum +=
+          intAcc0
+              .and(0xFFFF)
+              .add(intAcc0.lanewise(LSHR, 16))
+              .add(intAcc1.and(0xFFFF))
+              .add(intAcc1.lanewise(LSHR, 16))
+              .reduceLanes(ADD);
     }
     return sum;
   }
@@ -1008,23 +1075,30 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
         // packed
         ByteVector vb8 = packed.load(Int4Constants.BYTE_SPECIES, i + j);
 
-        // upper
-        ByteVector va8 = unpacked.load(Int4Constants.BYTE_SPECIES, i + j + packed.length());
-        ByteVector diff8 = vb8.and((byte) 0x0F).sub(va8);
-        Vector<Short> diff16 = diff8.convertShape(B2S, Int4Constants.SHORT_SPECIES, 0);
-        acc0 = acc0.add(diff16.mul(diff16));
-
         // lower
         ByteVector vc8 = unpacked.load(Int4Constants.BYTE_SPECIES, i + j);
+
+        // upper
+        ByteVector va8 = unpacked.load(Int4Constants.BYTE_SPECIES, i + j + packed.length());
+
+        ByteVector diff8 = vb8.and((byte) 0x0F).sub(va8);
+        ShortVector prod16 = diff8.mul(diff8).reinterpretAsShorts();
+        acc0 = acc0.add(prod16.and((short) 0xFF).add(prod16.lanewise(LSHR, 8)));
+
         ByteVector diff8a = vb8.lanewise(LSHR, 4).sub(vc8);
-        Vector<Short> diff16a = diff8a.convertShape(B2S, Int4Constants.SHORT_SPECIES, 0);
-        acc1 = acc1.add(diff16a.mul(diff16a));
+        ShortVector prod16a = diff8a.mul(diff8a).reinterpretAsShorts();
+        acc1 = acc1.add(prod16a.and((short) 0xFF).add(prod16a.lanewise(LSHR, 8)));
       }
-      Vector<Integer> intAcc0 = acc0.convert(S2I, 0);
-      Vector<Integer> intAcc1 = acc0.convert(S2I, 1);
-      Vector<Integer> intAcc2 = acc1.convert(S2I, 0);
-      Vector<Integer> intAcc3 = acc1.convert(S2I, 1);
-      sum += intAcc0.add(intAcc1).add(intAcc2).add(intAcc3).reinterpretAsInts().reduceLanes(ADD);
+
+      IntVector intAcc0 = acc0.reinterpretAsInts();
+      IntVector intAcc1 = acc1.reinterpretAsInts();
+      sum +=
+          intAcc0
+              .and(0xFFFF)
+              .add(intAcc0.lanewise(LSHR, 16))
+              .add(intAcc1.and(0xFFFF))
+              .add(intAcc1.lanewise(LSHR, 16))
+              .reduceLanes(ADD);
     }
     return sum;
   }
@@ -1074,26 +1148,33 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
         // upper
         ByteVector diff8 = vb8.and((byte) 0x0F).sub(va8.and((byte) 0x0F));
-        Vector<Short> diff16 = diff8.convertShape(B2S, Int4Constants.SHORT_SPECIES, 0);
-        acc0 = acc0.add(diff16.mul(diff16));
+        ShortVector prod16 = diff8.mul(diff8).reinterpretAsShorts();
+        acc0 = acc0.add(prod16.and((short) 0xFF).add(prod16.lanewise(LSHR, 8)));
 
         // lower
         ByteVector diff8a = vb8.lanewise(LSHR, 4).sub(va8.lanewise(LSHR, 4));
-        Vector<Short> diff16a = diff8a.convertShape(B2S, Int4Constants.SHORT_SPECIES, 0);
-        acc1 = acc1.add(diff16a.mul(diff16a));
+        ShortVector prod16a = diff8a.mul(diff8a).reinterpretAsShorts();
+        acc1 = acc1.add(prod16a.and((short) 0xFF).add(prod16a.lanewise(LSHR, 8)));
       }
-      Vector<Integer> intAcc0 = acc0.convert(S2I, 0);
-      Vector<Integer> intAcc1 = acc0.convert(S2I, 1);
-      Vector<Integer> intAcc2 = acc1.convert(S2I, 0);
-      Vector<Integer> intAcc3 = acc1.convert(S2I, 1);
-      sum += intAcc0.add(intAcc1).add(intAcc2).add(intAcc3).reinterpretAsInts().reduceLanes(ADD);
+
+      IntVector intAcc0 = acc0.reinterpretAsInts();
+      IntVector intAcc1 = acc1.reinterpretAsInts();
+      sum +=
+          intAcc0
+              .and(0xFFFF)
+              .add(intAcc0.lanewise(LSHR, 16))
+              .add(intAcc1.and(0xFFFF))
+              .add(intAcc1.lanewise(LSHR, 16))
+              .reduceLanes(ADD);
     }
     return sum;
   }
 
-  // Experiments suggest that we need at least 8 lanes so that the overhead of going with the vector
-  // approach and counting trues on vector masks pays off.
-  private static final boolean ENABLE_FIND_NEXT_GEQ_VECTOR_OPTO = INT_SPECIES.length() >= 8;
+  // On x86 we need at least 8 lanes so the overhead of the vector approach plus counting trues on
+  // vector masks pays off. On aarch64 the vector path also beats the scalar fallback at 4 lanes
+  // (Graviton2 on NEON-128 and Graviton4 on 128-bit SVE2), so enable it there too.
+  private static final boolean ENABLE_FIND_NEXT_GEQ_VECTOR_OPTO =
+      INT_SPECIES.length() >= 8 || Constants.OS_ARCH.equals("aarch64");
 
   @Override
   public int findNextGEQ(int[] buffer, int target, int from, int to) {
@@ -1402,19 +1483,19 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public float[] l2normalize(float[] v, boolean throwOnZero) {
-    double l1norm = this.dotProduct(v, v);
-    if (l1norm == 0) {
+    double squaredNorm = this.dotProduct(v, v);
+    if (squaredNorm == 0) {
       if (throwOnZero) {
         throw new IllegalArgumentException("Cannot normalize a zero-length vector");
       } else {
         return v;
       }
     }
-    if (Math.abs(l1norm - 1.0d) <= EPSILON) {
+    if (isUnitVector(squaredNorm)) {
       return v;
     }
 
-    float invNorm = 1.0f / (float) Math.sqrt(l1norm);
+    float invNorm = 1.0f / (float) Math.sqrt(squaredNorm);
     int i = 0;
 
     // if the array size is large (> 2x platform vector size), it's worth the overhead to vectorize

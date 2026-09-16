@@ -147,10 +147,9 @@ class XdYdZSolid extends BaseXYZSolid {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof XdYdZSolid)) {
+    if (!(o instanceof XdYdZSolid other)) {
       return false;
     }
-    XdYdZSolid other = (XdYdZSolid) o;
     if (!super.equals(other) || surfacePoints.length != other.surfacePoints.length) {
       return false;
     }

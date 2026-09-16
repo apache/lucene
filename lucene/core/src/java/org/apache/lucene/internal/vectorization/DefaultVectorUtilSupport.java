@@ -17,7 +17,7 @@
 
 package org.apache.lucene.internal.vectorization;
 
-import static org.apache.lucene.util.VectorUtil.EPSILON;
+import static org.apache.lucene.util.VectorUtil.isUnitVector;
 
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.Constants;
@@ -65,6 +65,17 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
+  public float dotProduct(short[] a, short[] b) {
+    assert a.length == b.length : "Vector lengths must match";
+
+    float sum = 0f;
+    for (int i = 0; i < a.length; i++) {
+      sum = Float.float16ToFloat(a[i]) * Float.float16ToFloat(b[i]) + sum;
+    }
+    return sum;
+  }
+
+  @Override
   public float cosine(float[] a, float[] b) {
     float sum = 0.0f;
     float norm1 = 0.0f;
@@ -101,6 +112,22 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
       sum = fma(a[i], b[i], sum);
       norm1 = fma(a[i], a[i], norm1);
       norm2 = fma(b[i], b[i], norm2);
+    }
+    return (float) (sum / Math.sqrt((double) norm1 * (double) norm2));
+  }
+
+  @Override
+  public float cosine(short[] a, short[] b) {
+    float sum = 0.0f;
+    float norm1 = 0.0f;
+    float norm2 = 0.0f;
+
+    for (int i = 0; i < a.length; i++) {
+      float f1 = Float.float16ToFloat(a[i]);
+      float f2 = Float.float16ToFloat(b[i]);
+      sum = fma(f1, f2, sum);
+      norm1 = fma(f1, f1, norm1);
+      norm2 = fma(f2, f2, norm2);
     }
     return (float) (sum / Math.sqrt((double) norm1 * (double) norm2));
   }
@@ -146,6 +173,16 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
+  public float squareDistance(short[] a, short[] b) {
+    float res = 0f; // Accumulate in float32 for precision
+    for (int i = 0; i < a.length; i++) {
+      float diff = Float.float16ToFloat(a[i]) - Float.float16ToFloat(b[i]);
+      res += diff * diff;
+    }
+    return res;
+  }
+
+  @Override
   public int dotProduct(byte[] a, byte[] b) {
     int total = 0;
     for (int i = 0; i < a.length; i++) {
@@ -179,6 +216,14 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
       total += ((packedByte & 0xFF) >> 4) * unpacked1;
     }
     return total;
+  }
+
+  @Override
+  public void int4Unpack(byte[] packed, byte[] unpacked) {
+    for (int i = 0; i < packed.length; i++) {
+      unpacked[i] = (byte) ((packed[i] >> 4) & 0x0F);
+      unpacked[packed.length + i] = (byte) (packed[i] & 0x0F);
+    }
   }
 
   @Override
@@ -432,19 +477,20 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public float[] l2normalize(float[] v, boolean throwOnZero) {
-    double l1norm = this.dotProduct(v, v);
-    if (l1norm == 0) {
+    double squaredNorm = this.dotProduct(v, v);
+    if (squaredNorm == 0) {
       if (throwOnZero) {
         throw new IllegalArgumentException("Cannot normalize a zero-length vector");
       } else {
         return v;
       }
     }
-    if (Math.abs(l1norm - 1.0d) <= EPSILON) {
+    if (isUnitVector(squaredNorm)) {
       return v;
     }
+
     int dim = v.length;
-    double l2norm = Math.sqrt(l1norm);
+    double l2norm = Math.sqrt(squaredNorm);
     for (int i = 0; i < dim; i++) {
       v[i] /= (float) l2norm;
     }

@@ -27,12 +27,12 @@ import org.apache.lucene.index.FieldInvertState;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.Explanation;
+import org.apache.lucene.search.FieldStats;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.TermStats;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.similarities.SimilarityBase.BasicSimScorer;
 import org.apache.lucene.store.Directory;
@@ -187,7 +187,7 @@ public class TestSimilarityBase extends LuceneTestCase {
     return stats;
   }
 
-  private CollectionStatistics toCollectionStats(BasicStats stats) {
+  private FieldStats toFieldStats(BasicStats stats) {
     long sumTtf = stats.getNumberOfFieldTokens();
     long sumDf;
     if (sumTtf == -1) {
@@ -200,12 +200,11 @@ public class TestSimilarityBase extends LuceneTestCase {
     int docCount = Math.toIntExact(Math.min(sumDf, stats.getNumberOfDocuments()));
     int maxDoc = TestUtil.nextInt(random(), docCount, docCount + 10);
 
-    return new CollectionStatistics(stats.field, maxDoc, docCount, sumTtf, sumDf);
+    return new FieldStats(stats.field, maxDoc, docCount, sumTtf, sumDf);
   }
 
-  private TermStatistics toTermStats(BasicStats stats) {
-    return new TermStatistics(
-        new BytesRef("spoofyText"), stats.getDocFreq(), stats.getTotalTermFreq());
+  private TermStats toTermStats(BasicStats stats) {
+    return new TermStats(new BytesRef("spoofyText"), stats.getDocFreq(), stats.getTotalTermFreq());
   }
 
   /**
@@ -217,8 +216,7 @@ public class TestSimilarityBase extends LuceneTestCase {
     for (SimilarityBase sim : sims) {
       BasicStats realStats =
           ((BasicSimScorer)
-                  sim.scorer(
-                      (float) stats.getBoost(), toCollectionStats(stats), toTermStats(stats)))
+                  sim.scorer((float) stats.getBoost(), toFieldStats(stats), toTermStats(stats)))
               .stats;
       float score = (float) sim.score(realStats, freq, docLen);
       float explScore =
@@ -471,7 +469,7 @@ public class TestSimilarityBase extends LuceneTestCase {
     BasicStats stats = createStats();
     BasicStats realStats =
         ((BasicSimScorer)
-                sim.scorer((float) stats.getBoost(), toCollectionStats(stats), toTermStats(stats)))
+                sim.scorer((float) stats.getBoost(), toFieldStats(stats), toTermStats(stats)))
             .stats;
     float score = (float) sim.score(realStats, FREQ, DOC_LEN);
     assertEquals(sim.toString() + " score not correct.", gold, score, FLOAT_EPSILON);

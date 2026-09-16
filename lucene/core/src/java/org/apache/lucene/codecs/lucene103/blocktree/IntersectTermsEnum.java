@@ -107,7 +107,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     // Special pushFrame since it's the first one:
     final IntersectTermsEnumFrame f = stack[0];
     f.fp = f.fpOrig = trieReader.root.outputFp;
-    f.prefix = 0;
+    f.prefixLength = 0;
     f.setState(0);
     f.node = node;
     f.load(node);
@@ -169,7 +169,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     final IntersectTermsEnumFrame f = getFrame(currentFrame == null ? 0 : 1 + currentFrame.ord);
 
     f.fp = f.fpOrig = currentFrame.lastSubFP;
-    f.prefix = currentFrame.prefix + currentFrame.suffix;
+    f.prefixLength = currentFrame.prefixLength + currentFrame.suffixLength;
     f.setState(state);
 
     // Walk the node through the index -- we only
@@ -177,10 +177,10 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     // from the index and skip floor blocks when
     // possible:
     TrieReader.Node node = currentFrame.node;
-    int idx = currentFrame.prefix;
-    assert currentFrame.suffix > 0;
+    int idx = currentFrame.prefixLength;
+    assert currentFrame.suffixLength > 0;
 
-    while (idx < f.prefix) {
+    while (idx < f.prefixLength) {
       final int target = term.bytes[idx] & 0xff;
       // TODO: we could be more efficient for the next()
       // case by using current node as starting point,
@@ -228,7 +228,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
 
   private int getState() {
     int state = currentFrame.state;
-    for (int idx = 0; idx < currentFrame.suffix; idx++) {
+    for (int idx = 0; idx < currentFrame.suffixLength; idx++) {
       state =
           runAutomaton.step(
               state, currentFrame.suffixBytes[currentFrame.startBytePos + idx] & 0xff);
@@ -256,13 +256,13 @@ final class IntersectTermsEnum extends BaseTermsEnum {
         final int savePos = currentFrame.suffixesReader.getPosition();
         final int saveLengthPos = currentFrame.suffixLengthsReader.getPosition();
         final int saveStartBytePos = currentFrame.startBytePos;
-        final int saveSuffix = currentFrame.suffix;
+        final int saveSuffix = currentFrame.suffixLength;
         final long saveLastSubFP = currentFrame.lastSubFP;
         final int saveTermBlockOrd = currentFrame.termState.termBlockOrd;
 
         final boolean isSubBlock = currentFrame.next();
 
-        term.length = currentFrame.prefix + currentFrame.suffix;
+        term.length = currentFrame.prefixLength + currentFrame.suffixLength;
         if (term.bytes.length < term.length) {
           term.bytes = ArrayUtil.grow(term.bytes, term.length);
         }
@@ -270,8 +270,8 @@ final class IntersectTermsEnum extends BaseTermsEnum {
             currentFrame.suffixBytes,
             currentFrame.startBytePos,
             term.bytes,
-            currentFrame.prefix,
-            currentFrame.suffix);
+            currentFrame.prefixLength,
+            currentFrame.suffixLength);
 
         if (isSubBlock && StringHelper.startsWith(target, term)) {
           // Recurse
@@ -300,7 +300,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
             currentFrame.nextEnt = savNextEnt;
             currentFrame.lastSubFP = saveLastSubFP;
             currentFrame.startBytePos = saveStartBytePos;
-            currentFrame.suffix = saveSuffix;
+            currentFrame.suffixLength = saveSuffix;
             currentFrame.suffixesReader.setPosition(savePos);
             currentFrame.suffixLengthsReader.setPosition(saveLengthPos);
             currentFrame.termState.termBlockOrd = saveTermBlockOrd;
@@ -308,9 +308,9 @@ final class IntersectTermsEnum extends BaseTermsEnum {
                 currentFrame.suffixBytes,
                 currentFrame.startBytePos,
                 term.bytes,
-                currentFrame.prefix,
-                currentFrame.suffix);
-            term.length = currentFrame.prefix + currentFrame.suffix;
+                currentFrame.prefixLength,
+                currentFrame.suffixLength);
+            term.length = currentFrame.prefixLength + currentFrame.suffixLength;
             // If the last entry was a block we don't
             // need to bother recursing and pushing to
             // the last term under it because the first
@@ -386,7 +386,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
       // there is a term exactly matching a prefix in the index.  If we
       // could somehow re-org the code so we only checked this case immediately
       // after pushing a frame...
-      if (currentFrame.suffix != 0) {
+      if (currentFrame.suffixLength != 0) {
 
         final byte[] suffixBytes = currentFrame.suffixBytes;
 
@@ -444,7 +444,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
         }
 
         if (commonSuffix != null && !isSubBlock) {
-          final int termLen = currentFrame.prefix + currentFrame.suffix;
+          final int termLen = currentFrame.prefixLength + currentFrame.suffixLength;
           if (termLen < commonSuffix.length) {
             // No match
             isSubBlock = popPushNext();
@@ -453,7 +453,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
 
           final byte[] commonSuffixBytes = commonSuffix.bytes;
 
-          final int lenInPrefix = commonSuffix.length - currentFrame.suffix;
+          final int lenInPrefix = commonSuffix.length - currentFrame.suffixLength;
           assert commonSuffix.offset == 0;
           int suffixBytesPos;
           int commonSuffixBytesPos = 0;
@@ -463,9 +463,9 @@ final class IntersectTermsEnum extends BaseTermsEnum {
             // the suffix of the block prefix so we first
             // test whether the prefix part matches:
             final byte[] termBytes = term.bytes;
-            int termBytesPos = currentFrame.prefix - lenInPrefix;
+            int termBytesPos = currentFrame.prefixLength - lenInPrefix;
             assert termBytesPos >= 0;
-            final int termBytesPosEnd = currentFrame.prefix;
+            final int termBytesPosEnd = currentFrame.prefixLength;
             while (termBytesPos < termBytesPosEnd) {
               if (termBytes[termBytesPos++] != commonSuffixBytes[commonSuffixBytesPos++]) {
                 isSubBlock = popPushNext();
@@ -474,7 +474,8 @@ final class IntersectTermsEnum extends BaseTermsEnum {
             }
             suffixBytesPos = currentFrame.startBytePos;
           } else {
-            suffixBytesPos = currentFrame.startBytePos + currentFrame.suffix - commonSuffix.length;
+            suffixBytesPos =
+                currentFrame.startBytePos + currentFrame.suffixLength - commonSuffix.length;
           }
 
           // Test overlapping suffix part:
@@ -501,7 +502,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
         lastState = currentFrame.state;
         state = currentTransition.dest;
 
-        int end = currentFrame.startBytePos + currentFrame.suffix;
+        int end = currentFrame.startBytePos + currentFrame.suffixLength;
         for (int idx = currentFrame.startBytePos + 1; idx < end; idx++) {
           lastState = state;
           state = runAutomaton.step(state, suffixBytes[idx] & 0xff);
@@ -536,7 +537,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
   }
 
   private void copyTerm() {
-    final int len = currentFrame.prefix + currentFrame.suffix;
+    final int len = currentFrame.prefixLength + currentFrame.suffixLength;
     if (term.bytes.length < len) {
       term.bytes = ArrayUtil.grow(term.bytes, len);
     }
@@ -544,8 +545,8 @@ final class IntersectTermsEnum extends BaseTermsEnum {
         currentFrame.suffixBytes,
         currentFrame.startBytePos,
         term.bytes,
-        currentFrame.prefix,
-        currentFrame.suffix);
+        currentFrame.prefixLength,
+        currentFrame.suffixLength);
     term.length = len;
   }
 

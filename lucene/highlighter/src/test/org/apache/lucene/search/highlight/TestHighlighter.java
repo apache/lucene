@@ -97,7 +97,6 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.CharacterRunAutomaton;
-import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -1041,9 +1040,7 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
             numHighlights = 0;
             WildcardQuery wildcardQuery =
                 new WildcardQuery(
-                    new Term(FIELD_NAME, "k?nnedy"),
-                    Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
-                    MultiTermQuery.SCORING_BOOLEAN_REWRITE);
+                    new Term(FIELD_NAME, "k?nnedy"), MultiTermQuery.SCORING_BOOLEAN_REWRITE);
             doSearching(wildcardQuery);
             doStandardHighlights(analyzer, searcher, hits, query, TestHighlighter.this);
             assertTrue(
@@ -1064,9 +1061,7 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
             numHighlights = 0;
             WildcardQuery wildcardQuery =
                 new WildcardQuery(
-                    new Term(FIELD_NAME, "k*dy"),
-                    Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
-                    MultiTermQuery.SCORING_BOOLEAN_REWRITE);
+                    new Term(FIELD_NAME, "k*dy"), MultiTermQuery.SCORING_BOOLEAN_REWRITE);
             doSearching(wildcardQuery);
             doStandardHighlights(analyzer, searcher, hits, query, TestHighlighter.this);
             assertTrue(
@@ -1116,9 +1111,7 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
 
     query =
         new WildcardQuery(
-            new Term(FIELD_NAME, "ken*"),
-            Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
-            MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE);
+            new Term(FIELD_NAME, "ken*"), MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE);
     searcher = newSearcher(reader);
     // can't rewrite ConstantScore if you want to highlight it -
     // it rewrites to ConstantScoreQuery which cannot be highlighted

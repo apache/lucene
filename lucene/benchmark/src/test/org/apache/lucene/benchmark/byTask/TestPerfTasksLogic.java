@@ -683,7 +683,7 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
     TaxonomyReader taxoReader = runData.getTaxonomyReader();
     assertNotNull("taxo reader was not opened", taxoReader);
     assertTrue(
-        "nothing was added to the taxnomy (expecting root and at least one addtional category)",
+        "nothing was added to the taxonomy (expecting root and at least one additional category)",
         taxoReader.getSize() > 1);
     taxoReader.close();
   }

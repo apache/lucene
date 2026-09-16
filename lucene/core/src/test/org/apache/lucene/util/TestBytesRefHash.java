@@ -32,7 +32,6 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRefHash.MaxBytesLengthExceededException;
 import org.junit.Before;
-import org.junit.Test;
 
 public class TestBytesRefHash extends LuceneTestCase {
 
@@ -332,7 +331,6 @@ public class TestBytesRefHash extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testLargeValue() {
     int[] sizes =
         new int[] {random().nextInt(5), ByteBlockPool.BYTE_BLOCK_SIZE - 33 + random().nextInt(31)};

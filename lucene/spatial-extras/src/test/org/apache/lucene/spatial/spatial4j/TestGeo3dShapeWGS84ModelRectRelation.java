@@ -45,7 +45,6 @@ public class TestGeo3dShapeWGS84ModelRectRelation extends ShapeRectRelationTestC
     ((Geo3dShapeFactory) ctx.getShapeFactory()).setCircleAccuracy(1e-12);
   }
 
-  @Test
   public void testFailure1() {
     final GeoBBox rect =
         GeoBBoxFactory.makeGeoBBox(
@@ -68,7 +67,6 @@ public class TestGeo3dShapeWGS84ModelRectRelation extends ShapeRectRelationTestC
     // assertFalse(GeoArea.DISJOINT == rect.getRelationship(bbox));
   }
 
-  @Test
   public void testFailure2() {
     final GeoBBox rect =
         GeoBBoxFactory.makeGeoBBox(
@@ -90,7 +88,6 @@ public class TestGeo3dShapeWGS84ModelRectRelation extends ShapeRectRelationTestC
     // assertFalse(GeoArea.DISJOINT == rect.getRelationship(bbox));
   }
 
-  @Test
   public void testFailure3() {
     /*
      * [junit4]   1> S-R Rel: {}, Shape {}, Rectangle {}    lap# {} [CONTAINS, Geo3dShape{planetmodel=PlanetModel: {xyScaling=1.0011188180710464, zScaling=0.9977622539852008}, shape=GeoPath: {planetmodel=PlanetModel: {xyScaling=1.0011188180710464, zScaling=0.9977622539852008}, width=1.53588974175501(87.99999999999999),

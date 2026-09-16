@@ -41,6 +41,7 @@ import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.store.BufferedChecksumIndexInput;
@@ -205,7 +206,7 @@ class SimpleTextPointsReader extends PointsReader {
   }
 
   @Override
-  public PointValues getValues(String fieldName) throws IOException {
+  public PointValues getValues(String fieldName) {
     FieldInfo fieldInfo = readState.fieldInfos.fieldInfo(fieldName);
     if (fieldInfo == null) {
       throw new IllegalArgumentException("field=\"" + fieldName + "\" is unrecognized");
@@ -217,7 +218,7 @@ class SimpleTextPointsReader extends PointsReader {
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
     BytesRefBuilder scratch = new BytesRefBuilder();
     IndexInput clone = dataIn.clone();
     clone.seek(0);

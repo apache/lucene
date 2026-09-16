@@ -47,7 +47,6 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.junit.Test;
 
 public class TestDocumentValueSourceDictionary extends LuceneTestCase {
 
@@ -58,7 +57,6 @@ public class TestDocumentValueSourceDictionary extends LuceneTestCase {
   static final String PAYLOAD_FIELD_NAME = "p1";
   static final String CONTEXTS_FIELD_NAME = "c1";
 
-  @Test
   public void testValueSourceEmptyReader() throws IOException {
     Directory dir = newDirectory();
     Analyzer analyzer = new MockAnalyzer(random());
@@ -81,7 +79,6 @@ public class TestDocumentValueSourceDictionary extends LuceneTestCase {
     IOUtils.close(ir, analyzer, dir);
   }
 
-  @Test
   public void testLongValuesSourceEmptyReader() throws IOException {
     Directory dir = newDirectory();
     Analyzer analyzer = new MockAnalyzer(random());
@@ -104,7 +101,6 @@ public class TestDocumentValueSourceDictionary extends LuceneTestCase {
     IOUtils.close(ir, analyzer, dir);
   }
 
-  @Test
   public void testValueSourceBasic() throws IOException {
     Directory dir = newDirectory();
     Analyzer analyzer = new MockAnalyzer(random());
@@ -204,7 +200,6 @@ public class TestDocumentValueSourceDictionary extends LuceneTestCase {
     };
   }
 
-  @Test
   public void testLongValuesSourceBasic() throws IOException {
     Directory dir = newDirectory();
     Analyzer analyzer = new MockAnalyzer(random());
@@ -240,7 +235,6 @@ public class TestDocumentValueSourceDictionary extends LuceneTestCase {
     IOUtils.close(ir, analyzer, dir);
   }
 
-  @Test
   public void testValueSourceWithContext() throws IOException {
     Directory dir = newDirectory();
     Analyzer analyzer = new MockAnalyzer(random());
@@ -281,7 +275,6 @@ public class TestDocumentValueSourceDictionary extends LuceneTestCase {
     IOUtils.close(ir, analyzer, dir);
   }
 
-  @Test
   public void testLongValuesSourceWithContext() throws IOException {
     Directory dir = newDirectory();
     Analyzer analyzer = new MockAnalyzer(random());
@@ -322,7 +315,6 @@ public class TestDocumentValueSourceDictionary extends LuceneTestCase {
     IOUtils.close(ir, analyzer, dir);
   }
 
-  @Test
   public void testValueSourceWithoutPayload() throws IOException {
     Directory dir = newDirectory();
     Analyzer analyzer = new MockAnalyzer(random());
@@ -354,7 +346,6 @@ public class TestDocumentValueSourceDictionary extends LuceneTestCase {
     IOUtils.close(ir, analyzer, dir);
   }
 
-  @Test
   public void testLongValuesSourceWithoutPayload() throws IOException {
     Directory dir = newDirectory();
     Analyzer analyzer = new MockAnalyzer(random());
@@ -386,7 +377,6 @@ public class TestDocumentValueSourceDictionary extends LuceneTestCase {
     IOUtils.close(ir, analyzer, dir);
   }
 
-  @Test
   public void testValueSourceWithDeletions() throws IOException {
     Directory dir = newDirectory();
     Analyzer analyzer = new MockAnalyzer(random());
@@ -441,7 +431,6 @@ public class TestDocumentValueSourceDictionary extends LuceneTestCase {
     IOUtils.close(ir, analyzer, dir);
   }
 
-  @Test
   public void testLongValuesSourceWithDeletions() throws IOException {
     Directory dir = newDirectory();
     Analyzer analyzer = new MockAnalyzer(random());
@@ -496,7 +485,6 @@ public class TestDocumentValueSourceDictionary extends LuceneTestCase {
     IOUtils.close(ir, analyzer, dir);
   }
 
-  @Test
   public void testWithValueSource() throws IOException {
     Directory dir = newDirectory();
     Analyzer analyzer = new MockAnalyzer(random());
@@ -528,7 +516,6 @@ public class TestDocumentValueSourceDictionary extends LuceneTestCase {
     IOUtils.close(ir, analyzer, dir);
   }
 
-  @Test
   public void testWithLongValuesSource() throws IOException {
     Directory dir = newDirectory();
     Analyzer analyzer = new MockAnalyzer(random());

@@ -85,8 +85,8 @@ public final class LongsRef implements Comparable<LongsRef>, Cloneable {
     if (other == null) {
       return false;
     }
-    if (other instanceof LongsRef) {
-      return this.longsEquals((LongsRef) other);
+    if (other instanceof LongsRef lr) {
+      return this.longsEquals(lr);
     }
     return false;
   }

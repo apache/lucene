@@ -19,7 +19,6 @@ package org.apache.lucene.analysis.miscellaneous;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.tests.analysis.MockTokenizer;
-import org.junit.Test;
 
 public class TestLimitTokenOffsetFilter extends BaseTokenStreamTestCase {
 
@@ -33,8 +32,11 @@ public class TestLimitTokenOffsetFilter extends BaseTokenStreamTestCase {
     }
   }
 
-  @Test(expected = IllegalArgumentException.class)
   public void testIllegalArguments() throws Exception {
-    new LimitTokenOffsetFilter(whitespaceMockTokenizer("A1 B2 C3 D4 E5 F6"), -1);
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new LimitTokenOffsetFilter(whitespaceMockTokenizer("A1 B2 C3 D4 E5 F6"), -1);
+        });
   }
 }

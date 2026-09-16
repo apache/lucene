@@ -21,7 +21,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 public class TestVectorizationProvider extends LuceneTestCase {
 
   public void testCallerOfGetter() {
-    expectThrows(UnsupportedOperationException.class, TestVectorizationProvider::illegalCaller);
+    expectThrows(IllegalCallerException.class, TestVectorizationProvider::illegalCaller);
   }
 
   private static void illegalCaller() {

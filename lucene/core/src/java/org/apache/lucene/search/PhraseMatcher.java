@@ -23,8 +23,8 @@ import java.io.IOException;
  * Base class for exact and sloppy phrase matching
  *
  * <p>To find matches on a document, first advance {@link #approximation} to the relevant document,
- * then call {@link #reset()}. Clients can then call {@link #nextMatch()} to iterate over the
- * matches
+ * then call {@link #resetPositions()}. Clients can then call {@link #nextMatch()} to iterate over
+ * the matches
  *
  * @lucene.internal
  */
@@ -42,11 +42,18 @@ public abstract class PhraseMatcher {
   /** Approximation that is aware of impacts. */
   abstract ImpactsDISI impactsApproximation();
 
-  /** An upper bound on the number of possible matches on this document */
+  /**
+   * An upper bound on the number of possible matches on this document.
+   *
+   * <p>This may be called before {@link #resetPositions()} to enable early termination of
+   * non-competitive documents in {@link ScoreMode#TOP_SCORES} mode, as long as the {@link
+   * #approximation()} has been advanced to the target document. Implementations must lazily load
+   * any required state (e.g. term frequencies) on first access per document.
+   */
   abstract float maxFreq() throws IOException;
 
-  /** Called after {@link #approximation} has been advanced */
-  public abstract void reset() throws IOException;
+  /** Called after {@link #approximation} has been advanced to load positions for matching. */
+  public abstract void resetPositions() throws IOException;
 
   /** Find the next match on the current document, returning {@code false} if there are none. */
   public abstract boolean nextMatch() throws IOException;

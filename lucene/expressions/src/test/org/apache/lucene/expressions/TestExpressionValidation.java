@@ -18,25 +18,28 @@ package org.apache.lucene.expressions;
 
 import org.apache.lucene.expressions.js.JavascriptCompiler;
 import org.apache.lucene.search.DoubleValuesSource;
-import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCaseJupiter;
+import org.junit.jupiter.api.Test;
 
 /** Tests validation of bindings */
-public class TestExpressionValidation extends LuceneTestCase {
+public class TestExpressionValidation extends LuceneTestCaseJupiter {
 
+  @Test
   public void testValidExternals() throws Exception {
     SimpleBindings bindings = new SimpleBindings();
     bindings.add("valid0", DoubleValuesSource.fromIntField("valid0"));
     bindings.add("valid1", DoubleValuesSource.fromIntField("valid1"));
     bindings.add("valid2", DoubleValuesSource.fromIntField("valid2"));
     bindings.add("_score", DoubleValuesSource.SCORES);
-    bindings.add("valide0", JavascriptCompiler.compile("valid0 - valid1 + valid2 + _score"));
+    bindings.add("valid_e0", JavascriptCompiler.compile("valid0 - valid1 + valid2 + _score"));
     bindings.validate();
-    bindings.add("valide1", JavascriptCompiler.compile("valide0 + valid0"));
+    bindings.add("valid_e1", JavascriptCompiler.compile("valid_e0 + valid0"));
     bindings.validate();
-    bindings.add("valide2", JavascriptCompiler.compile("valide0 * valide1"));
+    bindings.add("valid_e2", JavascriptCompiler.compile("valid_e0 * valid_e1"));
     bindings.validate();
   }
 
+  @Test
   public void testInvalidExternal() throws Exception {
     SimpleBindings bindings = new SimpleBindings();
     bindings.add("valid", DoubleValuesSource.fromIntField("valid"));
@@ -50,6 +53,7 @@ public class TestExpressionValidation extends LuceneTestCase {
     assertTrue(expected.getMessage().contains("Invalid reference"));
   }
 
+  @Test
   public void testInvalidExternal2() throws Exception {
     SimpleBindings bindings = new SimpleBindings();
     bindings.add("valid", DoubleValuesSource.fromIntField("valid"));
@@ -63,6 +67,7 @@ public class TestExpressionValidation extends LuceneTestCase {
     assertTrue(expected.getMessage().contains("Invalid reference"));
   }
 
+  @Test
   public void testSelfRecursion() throws Exception {
     SimpleBindings bindings = new SimpleBindings();
     bindings.add("cycle0", JavascriptCompiler.compile("cycle0"));
@@ -75,6 +80,7 @@ public class TestExpressionValidation extends LuceneTestCase {
     assertTrue(expected.getMessage().contains("Cycle detected"));
   }
 
+  @Test
   public void testCoRecursion() throws Exception {
     SimpleBindings bindings = new SimpleBindings();
     bindings.add("cycle0", JavascriptCompiler.compile("cycle1"));
@@ -88,6 +94,7 @@ public class TestExpressionValidation extends LuceneTestCase {
     assertTrue(expected.getMessage().contains("Cycle detected"));
   }
 
+  @Test
   public void testCoRecursion2() throws Exception {
     SimpleBindings bindings = new SimpleBindings();
     bindings.add("cycle0", JavascriptCompiler.compile("cycle1"));
@@ -102,6 +109,7 @@ public class TestExpressionValidation extends LuceneTestCase {
     assertTrue(expected.getMessage().contains("Cycle detected"));
   }
 
+  @Test
   public void testCoRecursion3() throws Exception {
     SimpleBindings bindings = new SimpleBindings();
     bindings.add("cycle0", JavascriptCompiler.compile("100"));
@@ -116,6 +124,7 @@ public class TestExpressionValidation extends LuceneTestCase {
     assertTrue(expected.getMessage().contains("Cycle detected"));
   }
 
+  @Test
   public void testCoRecursion4() throws Exception {
     SimpleBindings bindings = new SimpleBindings();
     bindings.add("cycle0", JavascriptCompiler.compile("100"));

@@ -42,7 +42,7 @@ public class SpanOrBuilder extends SpanBuilderBase {
         clausesList.add(clause);
       }
     }
-    SpanQuery[] clauses = clausesList.toArray(new SpanQuery[clausesList.size()]);
+    SpanQuery[] clauses = clausesList.toArray(SpanQuery[]::new);
     return new SpanOrQuery(clauses);
   }
 }

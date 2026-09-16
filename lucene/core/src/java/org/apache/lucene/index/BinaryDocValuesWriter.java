@@ -28,6 +28,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefArray;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.Counter;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.PagedBytes;
 import org.apache.lucene.util.packed.PackedInts;
 import org.apache.lucene.util.packed.PackedLongValues;
@@ -51,6 +52,7 @@ class BinaryDocValuesWriter extends DocValuesWriter<BinaryDocValues> {
   private long bytesUsed;
   private int lastDocID = -1;
   private int maxLength = 0;
+  private boolean frozen;
 
   private PackedLongValues finalLengths;
 
@@ -102,11 +104,22 @@ class BinaryDocValuesWriter extends DocValuesWriter<BinaryDocValues> {
     bytesUsed = newBytesUsed;
   }
 
+  // Freezes the PagedBytes exactly once. getDocValues() may be called before flush() (e.g. when
+  // index sorting on this field reads the in-RAM values), so we cannot rely on flush() being the
+  // first to freeze.
+  private void freezeBytes() {
+    if (frozen == false) {
+      bytes.freeze(false);
+      frozen = true;
+    }
+  }
+
   @Override
   BinaryDocValues getDocValues() {
     if (finalLengths == null) {
       finalLengths = this.lengths.build();
     }
+    freezeBytes();
     return new BufferedBinaryDocValues(
         finalLengths, maxLength, bytes.getDataInput(), docsWithField.iterator());
   }
@@ -114,7 +127,7 @@ class BinaryDocValuesWriter extends DocValuesWriter<BinaryDocValues> {
   @Override
   public void flush(SegmentWriteState state, Sorter.DocMap sortMap, DocValuesConsumer dvConsumer)
       throws IOException {
-    bytes.freeze(false);
+    freezeBytes();
     if (finalLengths == null) {
       finalLengths = this.lengths.build();
     }
@@ -195,6 +208,16 @@ class BinaryDocValuesWriter extends DocValuesWriter<BinaryDocValues> {
     @Override
     public long cost() {
       return docsWithField.cost();
+    }
+
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      docsWithField.intoBitSet(upTo, bitSet, offset);
+    }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      return docsWithField.docIDRunEnd();
     }
 
     @Override

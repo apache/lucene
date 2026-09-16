@@ -339,14 +339,12 @@ public class SidedPlane extends Plane implements Membership {
     if (this == o) {
       return true;
     }
-    if (!(o instanceof SidedPlane)) {
+    if (!(o instanceof SidedPlane that)) {
       return false;
     }
     if (!super.equals(o)) {
       return false;
     }
-
-    SidedPlane that = (SidedPlane) o;
 
     return Double.compare(that.sigNum, sigNum) == 0;
   }

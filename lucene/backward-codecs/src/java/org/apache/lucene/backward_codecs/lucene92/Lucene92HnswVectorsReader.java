@@ -31,8 +31,10 @@ import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
@@ -211,9 +213,9 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    CodecUtil.checksumEntireFile(vectorData);
-    CodecUtil.checksumEntireFile(vectorIndex);
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+    CodecUtil.checksumEntireFile(vectorData, merge);
+    CodecUtil.checksumEntireFile(vectorIndex, merge);
   }
 
   private FieldEntry getFieldEntry(String field) {
@@ -232,6 +234,11 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
 
   @Override
   public ByteVectorValues getByteVectorValues(String field) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
     throw new UnsupportedOperationException();
   }
 
@@ -260,6 +267,12 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
     throw new UnsupportedOperationException();
   }
 
+  @Override
+  public void search(String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
+    throw new UnsupportedOperationException();
+  }
+
   private HnswGraph getGraph(FieldEntry entry) throws IOException {
     IndexInput bytesSlice =
         vectorIndex.slice("graph-data", entry.vectorIndexOffset, entry.vectorIndexLength);
@@ -272,6 +285,11 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
     var raw = Map.entry(VECTOR_DATA_EXTENSION, entry.vectorDataLength);
     var graph = Map.entry(VECTOR_INDEX_EXTENSION, entry.vectorIndexLength);
     return Map.ofEntries(raw, graph);
+  }
+
+  @Override
+  public int getVectorCount(FieldInfo fieldInfo) {
+    return getFieldEntry(fieldInfo.name).size();
   }
 
   @Override

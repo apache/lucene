@@ -54,7 +54,7 @@ public class CorruptingIndexOutput extends FilterIndexOutput {
   }
 
   protected void corruptFile() throws IOException {
-    // Now corrupt the specfied byte:
+    // Now corrupt the specified byte:
     String newTempName;
     try (IndexOutput tmpOut = dir.createTempOutput("tmp", "tmp", IOContext.DEFAULT);
         IndexInput in = dir.openInput(out.getName(), IOContext.DEFAULT)) {

@@ -17,11 +17,9 @@
 package org.apache.lucene.spatial3d.geom;
 
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 public class TestGeoConvexPolygon extends LuceneTestCase {
 
-  @Test
   public void testPolygonPointWithin() {
     GeoConvexPolygon c;
     GeoPoint gp;
@@ -62,7 +60,6 @@ public class TestGeoConvexPolygon extends LuceneTestCase {
     assertFalse(c.isWithin(gp));
   }
 
-  @Test
   public void testPolygonBounds() {
     GeoConvexPolygon c;
     LatLonBounds b;

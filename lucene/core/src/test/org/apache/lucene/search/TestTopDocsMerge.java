@@ -125,7 +125,7 @@ public class TestTopDocsMerge extends LuceneTestCase {
 
     // passing false here means TopDocs.merge uses the incoming ScoreDoc.shardIndex
     // that we already set, instead of the position of that TopDocs in the array:
-    TopDocs merge = TopDocs.merge(from, size, topDocs.toArray(new TopDocs[0]));
+    TopDocs merge = TopDocs.merge(from, size, topDocs.toArray(TopDocs[]::new));
 
     assertThat(merge.scoreDocs, not(emptyArray()));
     for (ScoreDoc scoreDoc : merge.scoreDocs) {
@@ -144,7 +144,7 @@ public class TestTopDocsMerge extends LuceneTestCase {
 
     // now ensure merge is stable even if we use our own shard IDs
     Collections.shuffle(topDocs, random());
-    TopDocs merge2 = TopDocs.merge(from, size, topDocs.toArray(new TopDocs[0]));
+    TopDocs merge2 = TopDocs.merge(from, size, topDocs.toArray(TopDocs[]::new));
     assertArrayEquals(merge.scoreDocs, merge2.scoreDocs);
   }
 

@@ -52,8 +52,8 @@ public class MorphosyntacticTagsAttributeImpl extends AttributeImpl
 
   @Override
   public boolean equals(Object other) {
-    if (other instanceof MorphosyntacticTagsAttribute) {
-      return equal(this.getTags(), ((MorphosyntacticTagsAttribute) other).getTags());
+    if (other instanceof MorphosyntacticTagsAttribute mta) {
+      return equal(this.getTags(), mta.getTags());
     }
     return false;
   }

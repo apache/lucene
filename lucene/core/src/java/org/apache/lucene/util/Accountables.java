@@ -19,6 +19,7 @@ package org.apache.lucene.util;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
@@ -93,11 +94,11 @@ public class Accountables {
    */
   public static Collection<Accountable> namedAccountables(
       String prefix, Map<?, ? extends Accountable> in) {
-    List<Accountable> resources = new ArrayList<>();
+    List<Accountable> resources = new ArrayList<>(in.size());
     for (Map.Entry<?, ? extends Accountable> kv : in.entrySet()) {
       resources.add(namedAccountable(prefix + " '" + kv.getKey() + "'", kv.getValue()));
     }
-    resources.sort((o1, o2) -> o1.toString().compareTo(o2.toString()));
+    resources.sort(Comparator.comparing(Object::toString));
     return Collections.unmodifiableList(resources);
   }
 

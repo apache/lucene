@@ -74,7 +74,7 @@ Improves on FuzzyQuery by rewarding all fuzzy variants of a term with the same I
 <!ATTLIST FuzzyLikeThisQuery boost CDATA "1.0">
 <!-- Limits the total number of terms selected from the provided text plus the selected "fuzzy" variants -->
 <!ATTLIST FuzzyLikeThisQuery maxNumTerms CDATA "50">
-<!-- Ignore "Term Frequency" - a boost factor which rewards multiple occurences of the same term in a document -->
+<!-- Ignore "Term Frequency" - a boost factor which rewards multiple occurrences of the same term in a document -->
 <!ATTLIST FuzzyLikeThisQuery ignoreTF (true|false) "false">
 <!-- A field used in a FuzzyLikeThisQuery -->
 <!ELEMENT Field (#PCDATA)>
@@ -186,7 +186,7 @@ Improves on FuzzyQuery by rewarding all fuzzy variants of a term with the same I
 <!ELEMENT DuplicateFilter EMPTY>
 <!-- fieldName must be defined here or is taken from the most immediate parent XML element that defines a "fieldName" attribute -->
 <!ATTLIST DuplicateFilter fieldName CDATA #IMPLIED>
-<!-- Determines if the first or last document occurence is the one to return when presented with duplicated field values -->
+<!-- Determines if the first or last document occurrence is the one to return when presented with duplicated field values -->
 <!ATTLIST DuplicateFilter keepMode (first | last) "first">
 <!-- Controls the choice of process used to produce the filter - "full" mode identifies only non-duplicate documents with the chosen field
   while "fast" mode may perform faster but will also mark documents <em>without</em> the field as valid. The former approach starts by

@@ -27,6 +27,7 @@ import org.apache.lucene.codecs.BufferingKnnVectorsWriter;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.KnnVectorValues;
@@ -175,6 +176,12 @@ public final class Lucene90HnswVectorsWriter extends BufferingKnnVectorsWriter {
   @Override
   protected void writeField(FieldInfo fieldInfo, ByteVectorValues byteVectorValues, int maxDoc) {
     throw new UnsupportedOperationException("byte vectors not supported in this version");
+  }
+
+  @Override
+  protected void writeField(
+      FieldInfo fieldInfo, Float16VectorValues float16VectorValues, int maxDoc) {
+    throw new UnsupportedOperationException("float16 vectors not supported in this version");
   }
 
   /**

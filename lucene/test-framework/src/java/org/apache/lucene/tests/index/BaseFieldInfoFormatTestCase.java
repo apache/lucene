@@ -300,7 +300,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
       if (fieldType.indexOptions() != IndexOptions.NONE) {
         storeTermVectors = fieldType.storeTermVectors();
         omitNorms = fieldType.omitNorms();
-        if (fieldType.indexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0) {
+        if (fieldType.indexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS)) {
           storePayloads = random().nextBoolean();
         }
       }
@@ -357,7 +357,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
 
       if (r.nextBoolean()) {
         type.setStoreTermVectors(true);
-        if (type.indexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0) {
+        if (type.indexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS)) {
           type.setStoreTermVectorPositions(r.nextBoolean());
           type.setStoreTermVectorOffsets(r.nextBoolean());
           if (type.storeTermVectorPositions()) {

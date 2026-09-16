@@ -63,7 +63,7 @@ public final class CachingTokenFilter extends TokenFilter {
 
   /** The first time called, it'll read and cache all tokens from the input. */
   @Override
-  public final boolean incrementToken() throws IOException {
+  public boolean incrementToken() throws IOException {
     if (cache == null) { // first-time
       // fill cache lazily
       cache = new ArrayList<>(64);
@@ -81,7 +81,7 @@ public final class CachingTokenFilter extends TokenFilter {
   }
 
   @Override
-  public final void end() {
+  public void end() {
     if (finalState != null) {
       restoreState(finalState);
     }

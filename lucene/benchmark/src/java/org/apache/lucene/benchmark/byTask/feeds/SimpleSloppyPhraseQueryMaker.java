@@ -39,7 +39,7 @@ public class SimpleSloppyPhraseQueryMaker extends SimpleQueryMaker {
     while (st.hasMoreTokens() && w.size() < 100) {
       w.add(st.nextToken());
     }
-    words = w.toArray(new String[0]);
+    words = w.toArray(String[]::new);
 
     // create queries (that would find stuff) with varying slops
     ArrayList<Query> queries = new ArrayList<>();
@@ -77,6 +77,6 @@ public class SimpleSloppyPhraseQueryMaker extends SimpleQueryMaker {
         }
       }
     }
-    return queries.toArray(new Query[0]);
+    return queries.toArray(Query[]::new);
   }
 }

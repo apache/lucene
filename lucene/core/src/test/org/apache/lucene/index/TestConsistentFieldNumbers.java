@@ -26,11 +26,9 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.FailOnNonBulkMergesInfoStream;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 public class TestConsistentFieldNumbers extends LuceneTestCase {
 
-  @Test
   public void testSameFieldNumbersAcrossSegments() throws Exception {
     for (int i = 0; i < 2; i++) {
       Directory dir = newDirectory();
@@ -96,7 +94,6 @@ public class TestConsistentFieldNumbers extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testAddIndexes() throws Exception {
     Directory dir1 = newDirectory();
     Directory dir2 = newDirectory();
@@ -256,7 +253,6 @@ public class TestConsistentFieldNumbers extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testManyFields() throws Exception {
     final int NUM_DOCS = atLeast(200);
     final int MAX_FIELDS = atLeast(50);

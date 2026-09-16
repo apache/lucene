@@ -23,7 +23,6 @@ import java.util.Objects;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.lucene104.Lucene104HnswScalarQuantizedVectorsFormat;
-import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -39,8 +38,8 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.TestVectorUtil;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
 import org.junit.Before;
-import org.junit.Test;
 
 public class TestFullPrecisionFloatVectorSimilarityValuesSource extends LuceneTestCase {
 
@@ -75,7 +74,7 @@ public class TestFullPrecisionFloatVectorSimilarityValuesSource extends LuceneTe
 
   private KnnVectorsFormat getKnnFormat(int bits) {
     return new Lucene104HnswScalarQuantizedVectorsFormat(
-        Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding.fromNumBits(bits),
+        ScalarEncoding.fromNumBits(bits),
         Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
         Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH,
         1,
@@ -84,7 +83,6 @@ public class TestFullPrecisionFloatVectorSimilarityValuesSource extends LuceneTe
 
   // TODO: incredibly slow
   @Nightly
-  @Test
   public void testFullPrecisionVectorSimilarityDVS() throws Exception {
     List<float[]> vectors = new ArrayList<>();
     int numVectors = atLeast(NUM_VECTORS);

@@ -123,7 +123,7 @@ public class ReutersContentSource extends ContentSource {
     int stride = threadIndex + docCountArr[threadIndex] * docCountArr.length;
     int inFileSize = inputFiles.size();
 
-    // Modulo Operator covers all three possible senarios i.e. 1. If inputFiles.size() < Num Of
+    // Modulo Operator covers all three possible scenarios i.e. 1. If inputFiles.size() < Num Of
     // Threads 2.inputFiles.size() == Num Of Threads 3.inputFiles.size() > Num Of Threads
     int fileIndex = stride % inFileSize;
     int iteration = stride / inFileSize;

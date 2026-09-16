@@ -26,14 +26,12 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
-import org.junit.Test;
 
 public class TestUnifiedHighlighterReanalysis extends UnifiedHighlighterTestBase {
   public TestUnifiedHighlighterReanalysis() {
     super(randomFieldType(random()));
   }
 
-  @Test
   public void testWithoutIndexSearcher() throws IOException {
     String text =
         "This is a test. Just a test highlighting without a searcher. Feel free to ignore.";
@@ -55,7 +53,6 @@ public class TestUnifiedHighlighterReanalysis extends UnifiedHighlighterTestBase
     assertEquals("Hello", highlighter.highlightWithoutSearcher("nonexistent", query, "Hello", 1));
   }
 
-  @Test
   public void testIndexSearcherNullness() throws IOException {
     String text =
         "This is a test. Just a test highlighting without a searcher. Feel free to ignore.";

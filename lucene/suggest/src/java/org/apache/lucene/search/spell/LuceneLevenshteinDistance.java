@@ -37,7 +37,7 @@ import org.apache.lucene.util.IntsRef;
  */
 public final class LuceneLevenshteinDistance implements StringDistance {
 
-  /** Creates a new comparator, mimicing the behavior of Lucene's internal edit distance. */
+  /** Creates a new comparator, mimicking the behavior of Lucene's internal edit distance. */
   public LuceneLevenshteinDistance() {}
 
   @Override

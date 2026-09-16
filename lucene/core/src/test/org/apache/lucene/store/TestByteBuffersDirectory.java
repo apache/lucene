@@ -30,7 +30,6 @@ import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.store.BaseDirectoryTestCase;
 import org.apache.lucene.tests.util.English;
-import org.junit.Test;
 
 public class TestByteBuffersDirectory extends BaseDirectoryTestCase {
   private Supplier<ByteBuffersDirectory> implSupplier;
@@ -44,7 +43,6 @@ public class TestByteBuffersDirectory extends BaseDirectoryTestCase {
     return implSupplier.get();
   }
 
-  @Test
   public void testBuildIndex() throws IOException {
     try (Directory dir = getDirectory(null);
         IndexWriter writer =

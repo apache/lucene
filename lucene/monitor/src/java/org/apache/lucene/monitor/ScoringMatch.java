@@ -63,9 +63,8 @@ public class ScoringMatch extends QueryMatch {
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    if (!(o instanceof ScoringMatch)) return false;
+    if (!(o instanceof ScoringMatch that)) return false;
     if (!super.equals(o)) return false;
-    ScoringMatch that = (ScoringMatch) o;
     return Float.compare(that.score, score) == 0;
   }
 

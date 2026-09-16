@@ -25,7 +25,6 @@ import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.custom.CustomAnalyzer;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.util.ClasspathResourceLoader;
-import org.junit.Test;
 
 /**
  * Tests the Tokenizer as well- the Tokenizer needs the OpenNLP model files, which this can load
@@ -63,7 +62,6 @@ public class TestOpenNLPTokenizerFactory extends BaseTokenStreamTestCase {
     "Sentence", "number", "1", "has", "6", "words", "."
   };
 
-  @Test
   public void testTokenizer() throws IOException {
     CustomAnalyzer analyzer =
         CustomAnalyzer.builder(new ClasspathResourceLoader(getClass()))
@@ -79,7 +77,6 @@ public class TestOpenNLPTokenizerFactory extends BaseTokenStreamTestCase {
     assertAnalyzesTo(analyzer, SENTENCE1, SENTENCE1_punc);
   }
 
-  @Test
   public void testTokenizerNoSentenceDetector() throws IOException {
     IllegalArgumentException expected =
         expectThrows(
@@ -93,7 +90,6 @@ public class TestOpenNLPTokenizerFactory extends BaseTokenStreamTestCase {
         expected.getMessage().contains("Configuration Error: missing parameter 'sentenceModel'"));
   }
 
-  @Test
   public void testTokenizerNoTokenizer() throws IOException {
     IllegalArgumentException expected =
         expectThrows(
@@ -108,7 +104,6 @@ public class TestOpenNLPTokenizerFactory extends BaseTokenStreamTestCase {
   }
 
   // test analyzer caching the tokenizer
-  @Test
   public void testClose() throws IOException {
     Map<String, String> args =
         new HashMap<>() {

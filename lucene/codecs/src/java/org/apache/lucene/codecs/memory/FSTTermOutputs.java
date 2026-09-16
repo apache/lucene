@@ -73,7 +73,7 @@ class FSTTermOutputs extends Outputs<FSTTermOutputs.TermData> {
 
     // NOTE: actually, FST nodes are seldom
     // identical when outputs on their arcs
-    // aren't NO_OUTPUTs.
+    // aren't NO_OUTPUT.
     @Override
     public int hashCode() {
       int hash = 0;
@@ -101,11 +101,11 @@ class FSTTermOutputs extends Outputs<FSTTermOutputs.TermData> {
     public boolean equals(Object other_) {
       if (other_ == this) {
         return true;
-      } else if (!(other_ instanceof FSTTermOutputs.TermData)) {
-        return false;
       }
-      TermData other = (TermData) other_;
-      return statsEqual(this, other) && bytesEqual(this, other);
+      if (other_ instanceof FSTTermOutputs.TermData other) {
+        return statsEqual(this, other) && bytesEqual(this, other);
+      }
+      return false;
     }
   }
 

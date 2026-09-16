@@ -24,12 +24,14 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.LongPoint;
+import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -411,24 +413,67 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     dir.close();
   }
 
-  public void testRewriteFallbackQuery() throws IOException {
+  public void testRewriteFallbackToMatchNone() throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     writer.addDocument(new Document());
     IndexReader reader = writer.getReader();
 
-    // Create an (unrealistic) fallback query that is sure to be rewritten.
+    // An empty BooleanQuery rewrites to a MatchNoDocsQuery; the wrapper matches the same docs as
+    // its
+    // fallback, so it collapses to that MatchNoDocsQuery instead of re-wrapping it.
     Query fallbackQuery = new BooleanQuery.Builder().build();
+    Query query = new IndexSortSortedNumericDocValuesRangeQuery("field", 1, 42, fallbackQuery);
+    assertEquals(new MatchNoDocsQuery(), query.rewrite(newSearcher(reader)));
+
+    writer.close();
+    reader.close();
+    dir.close();
+  }
+
+  public void testRewriteFallbackReWrapped() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+    writer.addDocument(new Document());
+    IndexReader reader = writer.getReader();
+
+    // A fallback that rewrites to a non-terminal query (BoostQuery with boost 1 unwraps to its
+    // inner query) keeps the index-sort wrapper, now wrapping the rewritten fallback.
+    TermQuery inner = new TermQuery(new Term("field", "x"));
+    Query fallbackQuery = new BoostQuery(inner, 1.0f);
     Query query = new IndexSortSortedNumericDocValuesRangeQuery("field", 1, 42, fallbackQuery);
 
     Query rewrittenQuery = query.rewrite(newSearcher(reader));
-    assertNotEquals(query, rewrittenQuery);
     MatcherAssert.assertThat(
         rewrittenQuery, instanceOf(IndexSortSortedNumericDocValuesRangeQuery.class));
+    assertEquals(
+        inner, ((IndexSortSortedNumericDocValuesRangeQuery) rewrittenQuery).getFallbackQuery());
 
-    IndexSortSortedNumericDocValuesRangeQuery rangeQuery =
-        (IndexSortSortedNumericDocValuesRangeQuery) rewrittenQuery;
-    assertEquals(MatchNoDocsQuery.INSTANCE, rangeQuery.getFallbackQuery());
+    writer.close();
+    reader.close();
+    dir.close();
+  }
+
+  public void testRewriteFallbackToFieldExists() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+    // Indexed (skip-indexed) sorted-numeric field on all docs but one, so the field is sparse and
+    // its values span [100, 108].
+    for (int i = 0; i < 10; i++) {
+      Document doc = new Document();
+      if (i != 5) {
+        doc.add(SortedNumericDocValuesField.indexedField("field", 100 + i));
+      }
+      writer.addDocument(doc);
+    }
+    IndexReader reader = writer.getReader();
+
+    // A range covering every value of the sparse field: the fallback rewrites to a
+    // FieldExistsQuery,
+    // which the index-sort query must return directly rather than re-wrapping.
+    Query fallbackQuery = SortedNumericDocValuesField.newSlowRangeQuery("field", 0, 250);
+    Query query = new IndexSortSortedNumericDocValuesRangeQuery("field", 0, 250, fallbackQuery);
+    assertEquals(new FieldExistsQuery("field"), query.rewrite(newSearcher(reader)));
 
     writer.close();
     reader.close();
@@ -851,6 +896,91 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     }
 
     writer.close();
+    reader.close();
+    dir.close();
+  }
+
+  /**
+   * Verifies that the binary-search optimization activates when the primary index sort field has a
+   * single constant value (detected as a no-op via its skip index), promoting the secondary field
+   * to effective primary and enabling direct doc-ID range iteration without a two-phase iterator.
+   */
+  public void testNoOpPrimarySort() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    Sort indexSort =
+        new Sort(
+            new SortField("field1", SortField.Type.LONG), // constant → no-op via skipper
+            new SortField("field2", SortField.Type.LONG)); // varying → effective primary
+    iwc.setIndexSort(indexSort);
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
+    for (int i = 0; i < 10; i++) {
+      Document doc = new Document();
+      doc.add(NumericDocValuesField.indexedField("field1", 42)); // constant; skip index present
+      doc.add(NumericDocValuesField.indexedField("field2", i)); // varying
+      iw.addDocument(doc);
+    }
+    iw.forceMerge(1);
+    DirectoryReader reader = iw.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+    iw.close();
+
+    // field1 has a single distinct value, so getPrimarySortField skips it and returns field2.
+    // The binary-search optimization should activate for the query on field2, producing a plain
+    // range iterator with no two-phase iterator.
+    Query fallback = SortedNumericDocValuesField.newSlowRangeQuery("field2", 3, 7);
+    Query query = new IndexSortSortedNumericDocValuesRangeQuery("field2", 3, 7, fallback);
+    Weight weight = query.createWeight(searcher, ScoreMode.TOP_SCORES, 1.0F);
+    for (LeafReaderContext context : searcher.getIndexReader().leaves()) {
+      Scorer scorer = weight.scorer(context);
+      assertNotNull(scorer);
+      assertNull(
+          "binary-search optimization should be active when primary sort is a no-op",
+          scorer.twoPhaseIterator());
+    }
+
+    reader.close();
+    dir.close();
+  }
+
+  /**
+   * Verifies that the binary-search optimization activates when the primary index sort field has no
+   * values in the segment at all (detected as a no-op via FieldInfos), promoting the secondary
+   * field to effective primary.
+   */
+  public void testMissingPrimarySort() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    Sort indexSort =
+        new Sort(
+            new SortField("field1", SortField.Type.LONG), // absent → no-op via FieldInfos check
+            new SortField("field2", SortField.Type.LONG)); // varying → effective primary
+    iwc.setIndexSort(indexSort);
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
+    for (int i = 0; i < 10; i++) {
+      Document doc = new Document();
+      // field1 intentionally absent: no FieldInfo in segment → detected as no-op
+      doc.add(NumericDocValuesField.indexedField("field2", i));
+      iw.addDocument(doc);
+    }
+    iw.forceMerge(1);
+    DirectoryReader reader = iw.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+    iw.close();
+
+    // field1 has no FieldInfo, so getPrimarySortField skips it and returns field2.
+    // The binary-search optimization should activate for the query on field2.
+    Query fallback = SortedNumericDocValuesField.newSlowRangeQuery("field2", 3, 7);
+    Query query = new IndexSortSortedNumericDocValuesRangeQuery("field2", 3, 7, fallback);
+    Weight weight = query.createWeight(searcher, ScoreMode.TOP_SCORES, 1.0F);
+    for (LeafReaderContext context : searcher.getIndexReader().leaves()) {
+      Scorer scorer = weight.scorer(context);
+      assertNotNull(scorer);
+      assertNull(
+          "binary-search optimization should be active when primary sort field has no values",
+          scorer.twoPhaseIterator());
+    }
+
     reader.close();
     dir.close();
   }

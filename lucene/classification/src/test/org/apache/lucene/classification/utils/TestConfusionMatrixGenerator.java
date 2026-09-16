@@ -31,12 +31,10 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.junit.Test;
 
 /** Tests for {@link ConfusionMatrixGenerator} */
 public class TestConfusionMatrixGenerator extends ClassificationTestBase<Object> {
 
-  @Test
   public void testGetConfusionMatrix() throws Exception {
     LeafReader reader = null;
     try {
@@ -86,7 +84,6 @@ public class TestConfusionMatrixGenerator extends ClassificationTestBase<Object>
     }
   }
 
-  @Test
   public void testGetConfusionMatrixWithSNB() throws Exception {
     LeafReader reader = null;
     try {
@@ -122,7 +119,6 @@ public class TestConfusionMatrixGenerator extends ClassificationTestBase<Object>
     assertTrue(f1Measure <= 1d);
   }
 
-  @Test
   public void testGetConfusionMatrixWithBM25NB() throws Exception {
     LeafReader reader = null;
     try {
@@ -139,7 +135,6 @@ public class TestConfusionMatrixGenerator extends ClassificationTestBase<Object>
     }
   }
 
-  @Test
   public void testGetConfusionMatrixWithCNB() throws Exception {
     LeafReader reader = null;
     try {
@@ -156,7 +151,6 @@ public class TestConfusionMatrixGenerator extends ClassificationTestBase<Object>
     }
   }
 
-  @Test
   public void testGetConfusionMatrixWithKNN() throws Exception {
     LeafReader reader = null;
     try {
@@ -174,7 +168,6 @@ public class TestConfusionMatrixGenerator extends ClassificationTestBase<Object>
     }
   }
 
-  @Test
   public void testGetConfusionMatrixWithFLTKNN() throws Exception {
     LeafReader reader = null;
     try {
@@ -192,7 +185,6 @@ public class TestConfusionMatrixGenerator extends ClassificationTestBase<Object>
     }
   }
 
-  @Test
   public void testGetConfusionMatrixWithBP() throws Exception {
     LeafReader reader = null;
     try {

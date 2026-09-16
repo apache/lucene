@@ -18,12 +18,10 @@ package org.apache.lucene.queryparser.flexible.core.util;
 
 import java.util.Locale;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 public class TestUnescapedCharSequence extends LuceneTestCase {
   private static final char[] wildcardChars = {'*', '?'};
 
-  @Test
   public void testToStringEscaped() {
     char[] chars = {'a', 'b', 'c', '\\', 'e'};
     boolean[] wasEscaped = {false, true, true, false, false};
@@ -33,7 +31,6 @@ public class TestUnescapedCharSequence extends LuceneTestCase {
     assertTrue(sequence.wasEscaped(1));
   }
 
-  @Test
   public void testToStringEscapedWithEnabledChars() {
     char[] chars = {'a', 'b', 'c', '?', '*'};
     boolean[] wasEscaped = {true, true, true, true, true};
@@ -41,13 +38,11 @@ public class TestUnescapedCharSequence extends LuceneTestCase {
     assertEquals("abc\\?\\*", sequence.toStringEscaped(wildcardChars));
   }
 
-  @Test
   public void testSubSequence() {
     UnescapedCharSequence sequence = new UnescapedCharSequence("abcdef");
     assertEquals("bc", sequence.subSequence(1, 3).toString());
   }
 
-  @Test
   public void testToLowerCase() {
     UnescapedCharSequence sequence = new UnescapedCharSequence("ABC");
     assertEquals(

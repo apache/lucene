@@ -40,6 +40,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NoMergePolicy;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.IndexSearcher;
@@ -52,7 +53,7 @@ import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.SameThreadExecutorService;
 import org.apache.lucene.util.VectorUtil;
-import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.LegacyQuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 import org.junit.Before;
 
@@ -277,8 +278,8 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
           knnVectorsReader = knnVectorsReader.unwrapReaderForField("f");
           if (knnVectorsReader instanceof Lucene99HnswVectorsReader hnswReader) {
             assertNotNull(hnswReader.getQuantizationState("f"));
-            QuantizedByteVectorValues quantizedByteVectorValues =
-                hnswReader.getQuantizedVectorValues("f");
+            LegacyQuantizedByteVectorValues quantizedByteVectorValues =
+                (LegacyQuantizedByteVectorValues) hnswReader.getQuantizedVectorValues("f");
             for (int ord = 0; ord < quantizedByteVectorValues.size(); ord++) {
               byte[] vector = quantizedByteVectorValues.vectorValue(ord);
               float offset = quantizedByteVectorValues.getScoreCorrectionConstant(ord);
@@ -373,5 +374,10 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
   @Override
   protected boolean supportsFloatVectorFallback() {
     return false;
+  }
+
+  @Override
+  protected VectorEncoding randomVectorEncoding() {
+    return random().nextBoolean() ? VectorEncoding.BYTE : VectorEncoding.FLOAT32;
   }
 }

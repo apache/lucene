@@ -24,10 +24,8 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.cjk.CJKWidthFilterFactory;
 import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
-import org.junit.Test;
 
 public class TestJapaneseCompletionFilterFactory extends BaseTokenStreamFactoryTestCase {
-  @Test
   public void testCompletion() throws IOException {
     JapaneseTokenizerFactory tokenizerFactory = new JapaneseTokenizerFactory(new HashMap<>());
     TokenStream tokenStream = tokenizerFactory.create();
@@ -41,7 +39,6 @@ public class TestJapaneseCompletionFilterFactory extends BaseTokenStreamFactoryT
   }
 
   /** Test that bogus arguments result in exception */
-  @Test
   public void testBogusArguments() throws Exception {
     IllegalArgumentException expected =
         expectThrows(

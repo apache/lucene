@@ -31,14 +31,12 @@ import org.apache.lucene.tests.util.LineFileDocs;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.junit.Test;
 
 public class TestRollingUpdates extends LuceneTestCase {
 
   // Just updates the same set of N docs over and over, to
   // stress out deletions
 
-  @Test
   public void testRollingUpdates() throws Exception {
     Random random = new Random(random().nextLong());
     final BaseDirectoryWrapper dir = newDirectory();

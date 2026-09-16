@@ -91,11 +91,11 @@ public class SubmissionReport {
     }
   }
 
-  private static final String padd = "                                    ";
+  private static final String padding = "                                    ";
 
   private String format(String s, int minLen) {
     s = (s == null ? "" : s);
     int n = Math.max(minLen, s.length());
-    return (s + padd).substring(0, n);
+    return (s + padding).substring(0, n);
   }
 }

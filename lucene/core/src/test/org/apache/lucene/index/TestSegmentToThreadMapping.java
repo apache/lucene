@@ -58,7 +58,7 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
       }
 
       @Override
-      public Terms terms(String field) throws IOException {
+      public Terms terms(String field) {
         return null;
       }
 
@@ -113,6 +113,11 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
       }
 
       @Override
+      public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+        return null;
+      }
+
+      @Override
       public ByteVectorValues getByteVectorValues(String field) {
         return null;
       }
@@ -120,6 +125,11 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
       @Override
       public void searchNearestVectors(
           String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {}
+
+      @Override
+      public void searchNearestVectors(
+          String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+          throws IOException {}
 
       @Override
       public void searchNearestVectors(
