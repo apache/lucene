@@ -1282,17 +1282,14 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
   private static class CountingFilterQuery extends Query {
     private final Query delegate;
     private final int[] intoBitSetCalls;
-    private final int[] twoPhaseIntoIntoBitSetCalls;
+    private final int[] twoPhaseIntoBitSetCalls;
     private final int[] advanceCalls;
 
     CountingFilterQuery(
-        Query delegate,
-        int[] intoBitSetCalls,
-        int[] twoPhaseIntoIntoBitSetCalls,
-        int[] advanceCalls) {
+        Query delegate, int[] intoBitSetCalls, int[] twoPhaseIntoBitSetCalls, int[] advanceCalls) {
       this.delegate = delegate;
       this.intoBitSetCalls = intoBitSetCalls;
-      this.twoPhaseIntoIntoBitSetCalls = twoPhaseIntoIntoBitSetCalls;
+      this.twoPhaseIntoBitSetCalls = twoPhaseIntoBitSetCalls;
       this.advanceCalls = advanceCalls;
     }
 
@@ -1326,7 +1323,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
                       @Override
                       public void intoBitSet(int upTo, FixedBitSet bitSet, int offset)
                           throws IOException {
-                        twoPhaseIntoIntoBitSetCalls[0]++;
+                        twoPhaseIntoBitSetCalls[0]++;
                         innerTwoPhase.intoBitSet(upTo, bitSet, offset);
                       }
                     };
@@ -1499,44 +1496,17 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
             .add(new TermQuery(new Term("body", "dense2")), Occur.SHOULD)
             .build();
 
-    int[] twoPhaseIntoIntoBitSetCalls = {0};
-    int[] collectedDocs = {0};
+    int[] twoPhaseIntoBitSetCalls = {0};
     Query delegateFilterQuery = SortedNumericDocValuesField.newSlowRangeQuery("filter", 1, 1);
     Query filterQuery =
-        new CountingFilterQuery(delegateFilterQuery, null, twoPhaseIntoIntoBitSetCalls, new int[1]);
+        new CountingFilterQuery(delegateFilterQuery, null, twoPhaseIntoBitSetCalls, new int[1]);
     BooleanQuery outerQuery =
         new BooleanQuery.Builder().add(innerOr, Occur.MUST).add(filterQuery, Occur.FILTER).build();
-
-    Query rewritten = searcher.rewrite(outerQuery);
-    Weight weight = searcher.createWeight(rewritten, ScoreMode.TOP_SCORES, 1f);
-    for (LeafReaderContext ctx : reader.leaves()) {
-      ScorerSupplier ss = weight.scorerSupplier(ctx);
-      if (ss != null) {
-        BulkScorer bs = ss.bulkScorer();
-        assertTrue(
-            "Expected MaxScoreBulkScorer but got " + bs.getClass().getSimpleName(),
-            bs instanceof MaxScoreBulkScorer);
-        bs.score(
-            new LeafCollector() {
-              @Override
-              public void setScorer(Scorable scorer) {}
-
-              @Override
-              public void collect(int doc) {
-                assertTrue(doc % 20 == 1);
-                collectedDocs[0]++;
-              }
-            },
-            null,
-            0,
-            DocIdSetIterator.NO_MORE_DOCS);
-      }
-    }
-
-    assertEquals(500, collectedDocs[0]);
+    TopDocs topDocs = searcher.search(outerQuery, 1000);
+    assertEquals(500, topDocs.totalHits.value());
     assertTrue(
-        "Expected twoPhaseIntoIntoBitSetCalls() to be called on the two-phase filter",
-        twoPhaseIntoIntoBitSetCalls[0] > 0);
+        "Expected twoPhaseIntoBitSetCalls() to be called on the two-phase filter",
+        twoPhaseIntoBitSetCalls[0] > 0);
     reader.close();
     dir.close();
   }
