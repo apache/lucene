@@ -29,7 +29,7 @@ import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
+import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
@@ -174,9 +174,7 @@ public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVector
           if (vectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader fieldsReader) {
             vectorsReader = fieldsReader.getFieldReader("f");
           }
-          Lucene99HnswVectorsReader hnswReader = (Lucene99HnswVectorsReader) vectorsReader;
-          FlatVectorsReader flatReader = hnswReader.getFlatVectorsReader();
-          QuantizedVectorsReader quantizedReader = (QuantizedVectorsReader) flatReader;
+          QuantizedVectorsReader quantizedReader = (QuantizedVectorsReader) vectorsReader;
           SegmentWriteState writeState =
               new SegmentWriteState(
                   InfoStream.getDefault(),
@@ -186,7 +184,9 @@ public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVector
                   null,
                   IOContext.DEFAULT);
           KnnVectorValues quantizedValues = quantizedReader.getQuantizedVectorValues("f");
-          FlatVectorsScorer searchScorer = flatReader.getFlatVectorScorer("f");
+          FlatVectorsScorer searchScorer =
+              new Lucene104ScalarQuantizedVectorScorer(
+                  FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
           try (CloseableRandomVectorScorerSupplier mergeScorers =
               quantizedReader.getRandomVectorScorerSupplierForMerge(fieldInfo, writeState)) {
             FloatVectorValues rawValues = r.getFloatVectorValues("f");
