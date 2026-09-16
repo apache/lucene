@@ -261,6 +261,30 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
         new int[] {1, 0, 0, 0, 0, 0});
   }
 
+  public void testTypeOnExtractedWord() throws Exception {
+    CharArraySet dict = makeDictionary("Schlüssel", "Kasten");
+
+    DictionaryCompoundWordTokenFilter tf =
+        new DictionaryCompoundWordTokenFilter(
+            whitespaceMockTokenizer("Schlüsselkasten"),
+            dict,
+            CompoundWordTokenFilterBase.DEFAULT_MIN_WORD_SIZE,
+            CompoundWordTokenFilterBase.DEFAULT_MIN_SUBWORD_SIZE,
+            CompoundWordTokenFilterBase.DEFAULT_MAX_SUBWORD_SIZE,
+            true);
+
+    String[] output = {"Schlüsselkasten", "Schlüssel", "kasten"};
+    assertTokenStreamContents(
+        tf,
+        output,
+        new int[] {0, 0, 0},
+        new int[] {15, 15, 15},
+        new String[] {"word", "compound", "compound"},
+        new int[] {1, 0, 0},
+        null,
+        null);
+  }
+
   public void testTokenEndingWithWordComponentOfMinimumLength() throws Exception {
     CharArraySet dict = makeDictionary("ab", "cd", "ef");
 
