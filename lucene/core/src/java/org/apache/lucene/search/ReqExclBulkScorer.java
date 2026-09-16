@@ -26,7 +26,6 @@ final class ReqExclBulkScorer extends BulkScorer {
   private final BulkScorer req;
   private final DocIdSetIterator exclApproximation;
   private final TwoPhaseIterator exclTwoPhase;
-  private final boolean useBitSetWindows;
   private WindowBits windowBits;
 
   ReqExclBulkScorer(BulkScorer req, Scorer excl) {
@@ -37,34 +36,22 @@ final class ReqExclBulkScorer extends BulkScorer {
     } else {
       this.exclApproximation = excl.iterator();
     }
-    this.useBitSetWindows = shouldUseBitSet(req, exclApproximation);
   }
 
   ReqExclBulkScorer(BulkScorer req, DocIdSetIterator excl) {
     this.req = req;
     this.exclTwoPhase = null;
     this.exclApproximation = excl;
-    this.useBitSetWindows = shouldUseBitSet(req, exclApproximation);
   }
 
   ReqExclBulkScorer(BulkScorer req, TwoPhaseIterator excl) {
     this.req = req;
     this.exclTwoPhase = excl;
     this.exclApproximation = excl.approximation();
-    this.useBitSetWindows = shouldUseBitSet(req, exclApproximation);
   }
 
   @Override
   public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
-    if (useBitSetWindows == false) {
-      return sparseScore(collector, acceptDocs, min, max);
-    } else {
-      return denseScore(collector, acceptDocs, min, max);
-    }
-  }
-
-  private int denseScore(LeafCollector collector, Bits acceptDocs, int min, int max)
-      throws IOException {
     if (windowBits == null) {
       windowBits = new WindowBits();
     }
@@ -108,45 +95,9 @@ final class ReqExclBulkScorer extends BulkScorer {
     return upTo;
   }
 
-  private int sparseScore(LeafCollector collector, Bits acceptDocs, int min, int max)
-      throws IOException {
-    int upTo = min;
-    int exclDoc = exclApproximation.docID();
-
-    while (upTo < max) {
-      if (exclDoc < upTo) {
-        exclDoc = exclApproximation.advance(upTo);
-      }
-      if (exclDoc == upTo) {
-        if (exclTwoPhase == null) {
-          // from upTo to docIdRunEnd() are excluded, so we scored up to docIdRunEnd()
-          upTo = Math.min(exclApproximation.docIDRunEnd(), max);
-        } else if (exclTwoPhase.matches()) {
-          // upTo is excluded (matches() just confirmed it), so skip the whole run of consecutive
-          // excluded docs at once, like the non-two-phase branch above. The default
-          // TwoPhaseIterator#docIDRunEnd() conservatively returns the current doc, so clamp to at
-          // least upTo+1 to guarantee progress when the run end is not overridden.
-          upTo = Math.max(upTo + 1, Math.min(exclTwoPhase.docIDRunEnd(), max));
-        }
-        exclDoc = exclApproximation.nextDoc();
-      } else {
-        upTo = req.score(collector, acceptDocs, upTo, Math.min(exclDoc, max));
-      }
-    }
-
-    if (upTo == max) {
-      upTo = req.score(collector, acceptDocs, upTo, upTo);
-    }
-    return upTo;
-  }
-
   @Override
   public long cost() {
     return req.cost();
-  }
-
-  private static boolean shouldUseBitSet(BulkScorer req, DocIdSetIterator excl) {
-    return excl.cost() >= (req.cost() >>> 7);
   }
 
   static final class WindowBits implements Bits {
