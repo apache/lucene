@@ -156,15 +156,24 @@ public class Lucene104HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat 
       int numMergeWorkers,
       ExecutorService mergeExec,
       int tinySegmentsThreshold) {
-    this(encoding, true, maxConn, beamWidth, numMergeWorkers, mergeExec, tinySegmentsThreshold);
+    this(
+        encoding,
+        Lucene104ScalarQuantizedVectorsFormat.Mode.CENTERED,
+        maxConn,
+        beamWidth,
+        numMergeWorkers,
+        mergeExec,
+        tinySegmentsThreshold);
   }
 
   /**
    * Constructs a format using the given graph construction parameters and scalar quantization.
    *
    * @param encoding the quantization encoding used to encode the vectors
-   * @param enableCentering if {@code false}, no centroid is computed and raw float vectors are not
-   *     written to disk (data-blind mode)
+   * @param mode the quantization {@link Lucene104ScalarQuantizedVectorsFormat.Mode}; by default
+   *     quantized vectors are centered on a mean vector in the segment. This behavior can be
+   *     disabled to trade merge cost for distance estimate accuracy. The mode can also disable
+   *     the write of original float vectors to reduce the size of the index.
    * @param maxConn the maximum number of connections to a node in the HNSW graph
    * @param beamWidth the size of the queue maintained during graph construction
    * @param numMergeWorkers number of workers (threads) that will be used when doing merge. If
@@ -175,14 +184,14 @@ public class Lucene104HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat 
    */
   public Lucene104HnswScalarQuantizedVectorsFormat(
       ScalarEncoding encoding,
-      boolean enableCentering,
+      Lucene104ScalarQuantizedVectorsFormat.Mode mode,
       int maxConn,
       int beamWidth,
       int numMergeWorkers,
       ExecutorService mergeExec,
       int tinySegmentsThreshold) {
     super(NAME);
-    flatVectorsFormat = new Lucene104ScalarQuantizedVectorsFormat(encoding, enableCentering);
+    flatVectorsFormat = new Lucene104ScalarQuantizedVectorsFormat(encoding, mode);
     if (maxConn <= 0 || maxConn > MAXIMUM_MAX_CONN) {
       throw new IllegalArgumentException(
           "maxConn must be positive and less than or equal to "

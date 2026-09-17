@@ -33,6 +33,7 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
+import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.Mode;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.index.DocIDMerger;
 import org.apache.lucene.index.DocsWithFieldSet;
@@ -69,7 +70,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   private final List<FieldWriter<?>> fields = new ArrayList<>();
   private final IndexOutput meta, vectorData;
   private final ScalarEncoding encoding;
-  private final boolean enableCentering;
+  private final Mode mode;
   private final int version;
   private final FlatVectorsWriter rawVectorDelegate;
   private boolean finished;
@@ -78,15 +79,15 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   public Lucene104ScalarQuantizedVectorsWriter(
       SegmentWriteState state,
       ScalarEncoding encoding,
-      boolean enableCentering,
+      Mode mode,
       FlatVectorsWriter rawVectorDelegate,
       Lucene104ScalarQuantizedVectorScorer vectorsScorer)
       throws IOException {
     super(vectorsScorer);
     this.encoding = encoding;
-    this.enableCentering = enableCentering;
+    this.mode = mode;
     this.version =
-        enableCentering
+        mode == Mode.CENTERED
             ? Lucene104ScalarQuantizedVectorsFormat.VERSION_START
             : Lucene104ScalarQuantizedVectorsFormat.VERSION_DATA_BLIND;
     this.segmentWriteState = state;
@@ -126,8 +127,9 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
 
   @Override
   public FlatFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
-    if (fieldInfo.getVectorEncoding().isFloatingPoint() && enableCentering == false) {
-      // Data-blind mode: keep vectors in memory only and never write full-precision float vectors.
+    if (fieldInfo.getVectorEncoding().isFloatingPoint() && mode == Mode.DATA_BLIND_WITHOUT_FLOATS) {
+      // Data-blind mode without floats: keep vectors in memory only and never write
+      // full-precision float vectors.
       FlatFieldVectorsWriter<?> storage =
           switch (fieldInfo.getVectorEncoding()) {
             case FLOAT32 -> new InMemoryFloatFieldWriter(fieldInfo);
@@ -140,7 +142,8 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     }
     FlatFieldVectorsWriter<?> storage = this.rawVectorDelegate.addField(fieldInfo);
     if (fieldInfo.getVectorEncoding().isFloatingPoint()) {
-      FieldWriter<?> fieldWriter = FieldWriter.create(fieldInfo, storage, enableCentering);
+      FieldWriter<?> fieldWriter =
+          FieldWriter.create(fieldInfo, storage, mode == Mode.CENTERED);
       fields.add(fieldWriter);
       return fieldWriter;
     }
@@ -306,9 +309,12 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
         buffer.asFloatBuffer().put(clusterCenter);
         meta.writeBytes(buffer.array(), buffer.array().length);
         meta.writeInt(Float.floatToIntBits(centroidDp));
+      } else {
+        // Data-blind (version 1): the centroid and centroidDP are omitted; a zero centroid is
+        // substituted at read time. The mode is written explicitly since both data-blind variants
+        // share this version.
+        meta.writeByte(mode.wireNumber());
       }
-      // Data-blind (version 1): the centroid and centroidDP are omitted; a zero centroid is
-      // substituted at read time.
     }
     OrdToDocDISIReaderConfiguration.writeStoredMeta(
         DIRECT_MONOTONIC_BLOCK_SHIFT, meta, vectorData, count, maxDoc, docsWithField);
@@ -371,10 +377,48 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       rawVectorDelegate.mergeOneFlatVectorField(fieldInfo, mergeState);
       return;
     }
-    if (enableCentering) {
-      mergeOneFlatVectorFieldCentered(fieldInfo, mergeState);
-    } else {
-      mergeOneFlatVectorFieldDataBlind(fieldInfo, mergeState);
+    switch (mode) {
+      case CENTERED -> {
+        failIfFloatVectorsMissing(fieldInfo, mergeState);
+        mergeOneFlatVectorFieldCentered(fieldInfo, mergeState);
+      }
+      case DATA_BLIND_WITH_FLOATS -> {
+        // The output segment stores full-precision floats, so every contributing segment must
+        // provide them; the quantized merge then re-quantizes them against the zero centroid.
+        failIfFloatVectorsMissing(fieldInfo, mergeState);
+        rawVectorDelegate.mergeOneFlatVectorField(fieldInfo, mergeState);
+        mergeOneFlatVectorFieldDataBlind(fieldInfo, mergeState);
+      }
+      case DATA_BLIND_WITHOUT_FLOATS -> mergeOneFlatVectorFieldDataBlind(fieldInfo, mergeState);
+    }
+  }
+
+  /**
+   * Fails the merge when the output mode stores full-precision float vectors ({@code mode} is
+   * {@link Mode#CENTERED} or {@link Mode#DATA_BLIND_WITH_FLOATS}) but a contributing segment cannot
+   * supply them, e.g. a segment written in {@link Mode#DATA_BLIND_WITHOUT_FLOATS}. Such segments
+   * can only offer dequantized (already-quantized) values in place of true full-precision vectors;
+   * this fails loudly rather than silently degrading quality.
+   */
+  private void failIfFloatVectorsMissing(FieldInfo fieldInfo, MergeState mergeState)
+      throws IOException {
+    for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
+      KnnVectorsReader reader = mergeState.knnVectorsReaders[i];
+      if (reader == null || hasRawVectorValues(reader, fieldInfo)) {
+        continue;
+      }
+      // Tolerate segments that have no vectors for the field at all; they contribute nothing.
+      FloatVectorValues values = floatingPointVectorValues(reader, fieldInfo);
+      if (values == null || values.size() == 0) {
+        continue;
+      }
+      throw new IllegalStateException(
+          "Cannot merge field \""
+              + fieldInfo.name
+              + "\" from a segment without full-precision float vectors into "
+              + mode
+              + " mode, which stores float vectors. The contributing segment was likely written"
+              + " in DATA_BLIND_WITHOUT_FLOATS mode and its vectors cannot be carried over.");
     }
   }
 
@@ -694,7 +738,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     // nothing, so those are tracked via field.ramBytesUsed() instead.
     total += rawVectorDelegate.ramBytesUsed();
     for (FieldWriter<?> field : fields) {
-      if (field.enableCentering) {
+      if (mode != Mode.DATA_BLIND_WITHOUT_FLOATS) {
         // quantizationOverheadBytesUsed() intentionally excludes flatFieldVectorsWriter
         // because rawVectorDelegate.ramBytesUsed() already accounts for all flat vector
         // data at the writer level. Calling field.ramBytesUsed() here would double-count.

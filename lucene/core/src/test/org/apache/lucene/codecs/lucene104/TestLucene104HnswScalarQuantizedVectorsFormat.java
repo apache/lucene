@@ -90,7 +90,7 @@ public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVector
         "Lucene104HnswScalarQuantizedVectorsFormat(name=Lucene104HnswScalarQuantizedVectorsFormat,"
             + " maxConn=10, beamWidth=20, tinySegmentsThreshold=100,"
             + " flatVectorFormat=Lucene104ScalarQuantizedVectorsFormat(name=Lucene104ScalarQuantizedVectorsFormat,"
-            + " encoding=UNSIGNED_BYTE, enableCentering=true,"
+            + " encoding=UNSIGNED_BYTE, mode=CENTERED,"
             + " flatVectorScorer=Lucene104ScalarQuantizedVectorScorer(nonQuantizedDelegate=%s()),"
             + " rawVectorFormat=Lucene99FlatVectorsFormat(vectorsScorer=%s())))";
 
@@ -215,7 +215,7 @@ public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVector
     KnnVectorsFormat dataBlind =
         new Lucene104HnswScalarQuantizedVectorsFormat(
             encoding,
-            false,
+            Lucene104ScalarQuantizedVectorsFormat.Mode.DATA_BLIND_WITHOUT_FLOATS,
             Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
             Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH,
             1,

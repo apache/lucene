@@ -34,6 +34,7 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.Mode;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloat16VectorField;
@@ -167,7 +168,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
         "Lucene104ScalarQuantizedVectorsFormat("
             + "name=Lucene104ScalarQuantizedVectorsFormat, "
             + "encoding=UNSIGNED_BYTE, "
-            + "enableCentering=true, "
+            + "mode=CENTERED, "
             + "flatVectorScorer=Lucene104ScalarQuantizedVectorScorer(nonQuantizedDelegate=%s()), "
             + "rawVectorFormat=Lucene99FlatVectorsFormat(vectorsScorer=%s()))";
     var defaultScorer =
@@ -592,7 +593,18 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
   /** Returns a codec that always uses the data-blind variant of this format. */
   private Codec dataBlindCodec() {
     return TestUtil.alwaysKnnVectorsFormat(
-        new Lucene104ScalarQuantizedVectorsFormat(encoding, false));
+        new Lucene104ScalarQuantizedVectorsFormat(
+            encoding, Lucene104ScalarQuantizedVectorsFormat.Mode.DATA_BLIND_WITHOUT_FLOATS));
+  }
+
+  /**
+   * Returns a codec that always uses the data-blind variant of this format that still stores
+   * full-precision float vectors.
+   */
+  private Codec dataBlindWithFloatsCodec() {
+    return TestUtil.alwaysKnnVectorsFormat(
+        new Lucene104ScalarQuantizedVectorsFormat(
+            encoding, Lucene104ScalarQuantizedVectorsFormat.Mode.DATA_BLIND_WITH_FLOATS));
   }
 
   public void testDataBlindSearchCorrectness() throws Exception {
@@ -728,7 +740,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
                   .setUseCompoundFile(false)
                   .setCodec(
                       TestUtil.alwaysKnnVectorsFormat(
-                          new Lucene104ScalarQuantizedVectorsFormat(encoding, true))))) {
+                          new Lucene104ScalarQuantizedVectorsFormat(encoding, Mode.CENTERED))))) {
         addVectorDocs(w, fieldName, dims, similarityFunction, numVectorsPerSegment, float16Data);
         w.commit();
       }
@@ -878,7 +890,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
                   .setCodec(
                       TestUtil.alwaysKnnVectorsFormat(
                           new Lucene104ScalarQuantizedVectorsFormat(
-                              ScalarEncoding.PACKED_NIBBLE, false))))) {
+                              ScalarEncoding.PACKED_NIBBLE, Mode.DATA_BLIND_WITHOUT_FLOATS))))) {
         addFloatVectorDocs(w, fieldName, dims, similarityFunction, numVectorsPerSegment);
       }
       // Second segment: data-blind with a different encoding (UNSIGNED_BYTE).
@@ -890,7 +902,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
                   .setCodec(
                       TestUtil.alwaysKnnVectorsFormat(
                           new Lucene104ScalarQuantizedVectorsFormat(
-                              ScalarEncoding.UNSIGNED_BYTE, false))))) {
+                              ScalarEncoding.UNSIGNED_BYTE, Mode.DATA_BLIND_WITHOUT_FLOATS))))) {
         addFloatVectorDocs(w, fieldName, dims, similarityFunction, numVectorsPerSegment);
       }
       // Merging the two data-blind segments must fail: re-quantization needs raw floats that were
@@ -903,7 +915,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
                   .setCodec(
                       TestUtil.alwaysKnnVectorsFormat(
                           new Lucene104ScalarQuantizedVectorsFormat(
-                              ScalarEncoding.UNSIGNED_BYTE, false))))) {
+                              ScalarEncoding.UNSIGNED_BYTE, Mode.DATA_BLIND_WITHOUT_FLOATS))))) {
         Throwable t =
             expectThrows(
                 Exception.class,
@@ -935,10 +947,13 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
                   .setUseCompoundFile(false)
                   .setCodec(
                       TestUtil.alwaysKnnVectorsFormat(
-                          new Lucene104ScalarQuantizedVectorsFormat(encoding, true))))) {
+                          new Lucene104ScalarQuantizedVectorsFormat(encoding, Mode.CENTERED))))) {
         addFloatVectorDocs(w, fieldName, dims, similarityFunction, numVectors);
       }
       assertEquals(Lucene104ScalarQuantizedVectorsFormat.VERSION_START, metaVersion(dir));
+      assertEquals(
+          Lucene104ScalarQuantizedVectorsFormat.Mode.CENTERED,
+          metaMode(dir)); // v0 metadata implies centered
     }
 
     try (Directory dir = newDirectory()) {
@@ -952,15 +967,31 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
         addFloatVectorDocs(w, fieldName, dims, similarityFunction, numVectors);
       }
       assertEquals(Lucene104ScalarQuantizedVectorsFormat.VERSION_DATA_BLIND, metaVersion(dir));
+      assertEquals(
+          Lucene104ScalarQuantizedVectorsFormat.Mode.DATA_BLIND_WITHOUT_FLOATS, metaMode(dir));
+    }
+
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter w =
+          new IndexWriter(
+              dir,
+              newIndexWriterConfig()
+                  .setMergePolicy(NoMergePolicy.INSTANCE)
+                  .setUseCompoundFile(false)
+                  .setCodec(dataBlindWithFloatsCodec()))) {
+        addFloatVectorDocs(w, fieldName, dims, similarityFunction, numVectors);
+      }
+      assertEquals(Lucene104ScalarQuantizedVectorsFormat.VERSION_DATA_BLIND, metaVersion(dir));
+      assertEquals(
+          Lucene104ScalarQuantizedVectorsFormat.Mode.DATA_BLIND_WITH_FLOATS, metaMode(dir));
     }
   }
 
   /**
-   * Merges data-blind segments through a centered writer (the read-side per-field default). This
-   * exercises the centroid recalculation fix: data-blind segments store a zero centroid that must
-   * not be combined with others.
+   * Merging data-blind segments (which stored no full-precision floats) through a writer that
+   * stores float vectors must fail: the output format expects floats the inputs cannot provide.
    */
-  public void testDataBlindSegmentsMergedByCenteredWriter() throws Exception {
+  public void testDataBlindSegmentsCannotMergeIntoCenteredWriter() throws Exception {
     String fieldName = "field";
     int numVectorsPerSegment = random().nextInt(1, 20);
     int dims = random().nextInt(4, 33);
@@ -984,12 +1015,104 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
                   .setMergeScheduler(new SerialMergeScheduler())
                   .setCodec(
                       TestUtil.alwaysKnnVectorsFormat(
-                          new Lucene104ScalarQuantizedVectorsFormat(encoding, true))))) {
+                          new Lucene104ScalarQuantizedVectorsFormat(encoding, Mode.CENTERED))))) {
+        Throwable t =
+            expectThrows(
+                Exception.class,
+                () -> {
+                  w.forceMerge(1);
+                });
+        assertTrue(
+            "expected missing-float-vectors message, got: " + t,
+            exceptionChainContains(t, "without full-precision float vectors"));
+      }
+    }
+  }
+
+  /**
+   * Data-blind mode with floats quantizes against a zero centroid but still writes full-precision
+   * float vectors, which must be readable and report a zero centroid.
+   */
+  public void testDataBlindWithFloatsKeepsRawFloatVectors() throws Exception {
+    String fieldName = "field";
+    int numVectors = random().nextInt(4, 50);
+    int dims = random().nextInt(4, 65);
+    VectorSimilarityFunction similarityFunction = randomSimilarity();
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter w =
+          new IndexWriter(
+              dir,
+              newIndexWriterConfig()
+                  .setMergePolicy(NoMergePolicy.INSTANCE)
+                  .setUseCompoundFile(false)
+                  .setCodec(dataBlindWithFloatsCodec()))) {
+        addFloatVectorDocs(w, fieldName, dims, similarityFunction, numVectors);
+      }
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        LeafReader r = getOnlyLeafReader(reader);
+        assertEquals(numVectors, r.getFloatVectorValues(fieldName).size());
+        Lucene104ScalarQuantizedVectorsReader vectorsReader =
+            (Lucene104ScalarQuantizedVectorsReader)
+                ((CodecReader) r).getVectorReader().unwrapReaderForField(fieldName);
+        assertTrue(vectorsReader.hasRawFloatVectors(fieldName));
+        assertZeroCentroid(vectorsReader.getCentroid(fieldName), dims);
+        assertEquals(
+            Lucene104ScalarQuantizedVectorsFormat.Mode.DATA_BLIND_WITH_FLOATS, metaMode(dir));
+      }
+    }
+  }
+
+  /** fp16 counterpart of {@link #testDataBlindWithFloatsKeepsRawFloatVectors}. */
+  public void testDataBlindWithFloatsKeepsRawFloat16Vectors() throws Exception {
+    String fieldName = "field";
+    int numVectors = random().nextInt(4, 50);
+    int dims = 2 * random().nextInt(2, 33);
+    VectorSimilarityFunction similarityFunction = randomSimilarity();
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter w =
+          new IndexWriter(
+              dir,
+              newIndexWriterConfig()
+                  .setMergePolicy(NoMergePolicy.INSTANCE)
+                  .setCodec(dataBlindWithFloatsCodec()))) {
+        addFloat16VectorDocs(w, fieldName, dims, similarityFunction, numVectors);
+      }
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        LeafReader r = getOnlyLeafReader(reader);
+        assertEquals(numVectors, r.getFloat16VectorValues(fieldName).size());
+        Lucene104ScalarQuantizedVectorsReader vectorsReader =
+            (Lucene104ScalarQuantizedVectorsReader)
+                ((CodecReader) r).getVectorReader().unwrapReaderForField(fieldName);
+        assertTrue(vectorsReader.hasRawFloat16Vectors(fieldName));
+        assertZeroCentroid(vectorsReader.getCentroid(fieldName), dims);
+      }
+    }
+  }
+
+  /** Data-blind-with-floats segments merge with the float vectors intact. */
+  public void testDataBlindWithFloatsMultiSegmentMerge() throws Exception {
+    String fieldName = "field";
+    int numVectorsPerSegment = random().nextInt(4, 30);
+    int dims = random().nextInt(4, 65);
+    VectorSimilarityFunction similarityFunction = randomSimilarity();
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter w =
+          new IndexWriter(dir, newIndexWriterConfig().setCodec(dataBlindWithFloatsCodec()))) {
+        for (int s = 0; s < 2; s++) {
+          addFloatVectorDocs(w, fieldName, dims, similarityFunction, numVectorsPerSegment);
+          w.commit();
+        }
         w.forceMerge(1);
         try (IndexReader reader = DirectoryReader.open(w)) {
+          assertEquals(1, reader.leaves().size());
           LeafReader r = getOnlyLeafReader(reader);
           assertEquals(2 * numVectorsPerSegment, r.getFloatVectorValues(fieldName).size());
-          int k = random().nextInt(1, 20);
+          Lucene104ScalarQuantizedVectorsReader vectorsReader =
+              (Lucene104ScalarQuantizedVectorsReader)
+                  ((CodecReader) r).getVectorReader().unwrapReaderForField(fieldName);
+          assertTrue(vectorsReader.hasRawFloatVectors(fieldName));
+          assertZeroCentroid(vectorsReader.getCentroid(fieldName), dims);
+          int k = random().nextInt(5, 20);
           TopDocs td =
               new IndexSearcher(reader)
                   .search(new KnnFloatVectorQuery(fieldName, randomVector(dims), k), k);
@@ -999,6 +1122,94 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
         }
       }
     }
+  }
+
+  /**
+   * Merging a data-blind (no-floats) segment through a data-blind-with-floats writer must fail: the
+   * output format expects floats the inputs cannot provide.
+   */
+  public void testDataBlindNoFloatsCannotMergeIntoDataBlindWithFloatsWriter() throws Exception {
+    String fieldName = "field";
+    int numVectorsPerSegment = 1 + random().nextInt(20);
+    int dims = random().nextInt(4, 33);
+    VectorSimilarityFunction similarityFunction = randomSimilarity();
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter w =
+          new IndexWriter(dir, newIndexWriterConfig().setCodec(dataBlindCodec()))) {
+        addFloatVectorDocs(w, fieldName, dims, similarityFunction, numVectorsPerSegment);
+        w.commit();
+      }
+      try (IndexWriter w =
+          new IndexWriter(dir, newIndexWriterConfig().setCodec(dataBlindCodec()))) {
+        addFloatVectorDocs(w, fieldName, dims, similarityFunction, numVectorsPerSegment);
+        w.commit();
+      }
+      try (IndexWriter w =
+          new IndexWriter(
+              dir,
+              newIndexWriterConfig()
+                  .setMergeScheduler(new SerialMergeScheduler())
+                  .setCodec(dataBlindWithFloatsCodec()))) {
+        Throwable t =
+            expectThrows(
+                Exception.class,
+                () -> {
+                  w.forceMerge(1);
+                });
+        assertTrue(
+            "expected missing-float-vectors message, got: " + t,
+            exceptionChainContains(t, "without full-precision float vectors"));
+      }
+    }
+  }
+
+  private static void assertZeroCentroid(float[] centroid, int dims) {
+    assertNotNull(centroid);
+    assertEquals(dims, centroid.length);
+    for (float v : centroid) {
+      assertEquals(0f, v, 0f);
+    }
+  }
+
+  /**
+   * Reads the {@link Lucene104ScalarQuantizedVectorsFormat.Mode} wire value from the metadata of
+   * the first field with vectors, or {@link Lucene104ScalarQuantizedVectorsFormat.Mode#CENTERED}
+   * for version 0 metadata which implies it.
+   */
+  private Lucene104ScalarQuantizedVectorsFormat.Mode metaMode(Directory dir) throws IOException {
+    for (String file : dir.listAll()) {
+      if (file.endsWith("." + Lucene104ScalarQuantizedVectorsFormat.META_EXTENSION)) {
+        try (IndexInput in = dir.openInput(file, IOContext.DEFAULT)) {
+          int version =
+              CodecUtil.checkHeader(
+                  in,
+                  Lucene104ScalarQuantizedVectorsFormat.META_CODEC_NAME,
+                  Lucene104ScalarQuantizedVectorsFormat.VERSION_START,
+                  Lucene104ScalarQuantizedVectorsFormat.VERSION_CURRENT);
+          // Consume the segment ID and suffix that checkHeader (unlike checkIndexHeader) leaves.
+          in.readBytes(new byte[16], 0, 16);
+          in.readString();
+          for (int fieldNumber = in.readInt(); fieldNumber != -1; fieldNumber = in.readInt()) {
+            in.readInt(); // vector encoding ordinal
+            in.readInt(); // similarity ordinal
+            int dimension = in.readVInt();
+            in.readVLong(); // vector data offset
+            in.readVLong(); // vector data length
+            int count = in.readVInt();
+            if (count > 0) {
+              in.readVInt(); // ScalarEncoding wire number
+              if (version == Lucene104ScalarQuantizedVectorsFormat.VERSION_START) {
+                in.readFloats(new float[dimension], 0, dimension);
+                in.readInt(); // centroidDP
+                return Lucene104ScalarQuantizedVectorsFormat.Mode.CENTERED;
+              }
+              return Lucene104ScalarQuantizedVectorsFormat.Mode.fromWireNumber(in.readByte());
+            }
+          }
+        }
+      }
+    }
+    throw new AssertionError("no metadata file found");
   }
 
   public void testDataBlindFloat16Search() throws Exception {
@@ -1139,7 +1350,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
                   .setCodec(
                       TestUtil.alwaysKnnVectorsFormat(
                           new Lucene104ScalarQuantizedVectorsFormat(
-                              ScalarEncoding.PACKED_NIBBLE, false))))) {
+                              ScalarEncoding.PACKED_NIBBLE, Mode.DATA_BLIND_WITHOUT_FLOATS))))) {
         addFloat16VectorDocs(w, fieldName, dims, similarityFunction, numVectorsPerSegment);
       }
       try (IndexWriter w =
@@ -1150,7 +1361,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
                   .setCodec(
                       TestUtil.alwaysKnnVectorsFormat(
                           new Lucene104ScalarQuantizedVectorsFormat(
-                              ScalarEncoding.UNSIGNED_BYTE, false))))) {
+                              ScalarEncoding.UNSIGNED_BYTE, Mode.DATA_BLIND_WITHOUT_FLOATS))))) {
         addFloat16VectorDocs(w, fieldName, dims, similarityFunction, numVectorsPerSegment);
       }
       try (IndexWriter w =
@@ -1161,7 +1372,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
                   .setCodec(
                       TestUtil.alwaysKnnVectorsFormat(
                           new Lucene104ScalarQuantizedVectorsFormat(
-                              ScalarEncoding.UNSIGNED_BYTE, false))))) {
+                              ScalarEncoding.UNSIGNED_BYTE, Mode.DATA_BLIND_WITHOUT_FLOATS))))) {
         Throwable t =
             expectThrows(
                 Exception.class,
