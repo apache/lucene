@@ -172,8 +172,8 @@ public class Lucene104HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat 
    * @param encoding the quantization encoding used to encode the vectors
    * @param mode the quantization {@link Lucene104ScalarQuantizedVectorsFormat.Mode}; by default
    *     quantized vectors are centered on a mean vector in the segment. This behavior can be
-   *     disabled to trade merge cost for distance estimate accuracy. The mode can also disable
-   *     the write of original float vectors to reduce the size of the index.
+   *     disabled to trade merge cost for distance estimate accuracy. The mode can also disable the
+   *     write of original float vectors to reduce the size of the index.
    * @param maxConn the maximum number of connections to a node in the HNSW graph
    * @param beamWidth the size of the queue maintained during graph construction
    * @param numMergeWorkers number of workers (threads) that will be used when doing merge. If

@@ -132,8 +132,8 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       // full-precision float vectors.
       FlatFieldVectorsWriter<?> storage =
           switch (fieldInfo.getVectorEncoding()) {
-            case FLOAT32 -> new InMemoryFloatFieldWriter(fieldInfo);
-            case FLOAT16 -> new InMemoryFloat16FieldWriter(fieldInfo);
+            case FLOAT32 -> new InMemoryFieldWriter<float[]>(fieldInfo, Float.BYTES);
+            case FLOAT16 -> new InMemoryFieldWriter<short[]>(fieldInfo, Short.BYTES);
             case BYTE -> throw new UnsupportedOperationException("Byte Vectors aren't supported");
           };
       FieldWriter<?> fieldWriter = FieldWriter.create(fieldInfo, storage, false);
@@ -142,8 +142,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     }
     FlatFieldVectorsWriter<?> storage = this.rawVectorDelegate.addField(fieldInfo);
     if (fieldInfo.getVectorEncoding().isFloatingPoint()) {
-      FieldWriter<?> fieldWriter =
-          FieldWriter.create(fieldInfo, storage, mode == Mode.CENTERED);
+      FieldWriter<?> fieldWriter = FieldWriter.create(fieldInfo, storage, mode == Mode.CENTERED);
       fields.add(fieldWriter);
       return fieldWriter;
     }
@@ -980,94 +979,27 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     }
   }
 
-  /** In-memory storage for fp32 vectors used in data-blind mode; nothing is written to disk. */
-  private static class InMemoryFloatFieldWriter extends FlatFieldVectorsWriter<float[]> {
-    private static final long SHALLOW_SIZE = shallowSizeOfInstance(InMemoryFloatFieldWriter.class);
-    private final FieldInfo fieldInfo;
-    private final List<float[]> vectors = new ArrayList<>();
-    private final DocsWithFieldSet docsWithField = new DocsWithFieldSet();
-    private boolean finished;
-    private int lastDocID = -1;
-
-    InMemoryFloatFieldWriter(FieldInfo fieldInfo) {
-      this.fieldInfo = fieldInfo;
-    }
-
-    @Override
-    public void addValue(int docID, float[] vectorValue) throws IOException {
-      if (finished) {
-        throw new IllegalStateException("already finished, cannot add more values");
-      }
-      if (docID == lastDocID) {
-        throw new IllegalArgumentException(
-            "VectorValuesField \""
-                + fieldInfo.name
-                + "\" appears more than once in this document (only one value is allowed per field)");
-      }
-      assert docID > lastDocID;
-      vectors.add(copyValue(vectorValue));
-      docsWithField.add(docID);
-      lastDocID = docID;
-    }
-
-    @Override
-    public float[] copyValue(float[] vectorValue) {
-      return ArrayUtil.copyOfSubArray(vectorValue, 0, fieldInfo.getVectorDimension());
-    }
-
-    @Override
-    public List<float[]> getVectors() {
-      return vectors;
-    }
-
-    @Override
-    public DocsWithFieldSet getDocsWithFieldSet() {
-      return docsWithField;
-    }
-
-    @Override
-    public void finish() {
-      finished = true;
-    }
-
-    @Override
-    public boolean isFinished() {
-      return finished;
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      long size = SHALLOW_SIZE;
-      if (vectors.isEmpty()) {
-        return size;
-      }
-      return size
-          + docsWithField.ramBytesUsed()
-          + (long) vectors.size()
-              * (RamUsageEstimator.NUM_BYTES_OBJECT_REF + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER)
-          + (long) vectors.size() * fieldInfo.getVectorDimension() * Float.BYTES;
-    }
-  }
-
   /**
-   * In-memory storage for fp16 vectors used in data-blind mode; nothing is written to disk. Vectors
-   * are kept as fp16 so HNSW wrappers can read them back as {@link Float16VectorValues}.
+   * In-memory storage for full-precision vectors used in data-blind mode; nothing is written to
+   * disk. fp16 vectors are kept as fp16 so HNSW wrappers can read them back as {@link
+   * Float16VectorValues}.
    */
-  private static class InMemoryFloat16FieldWriter extends FlatFieldVectorsWriter<short[]> {
-    private static final long SHALLOW_SIZE =
-        shallowSizeOfInstance(InMemoryFloat16FieldWriter.class);
+  private static class InMemoryFieldWriter<T> extends FlatFieldVectorsWriter<T> {
+    private static final long SHALLOW_SIZE = shallowSizeOfInstance(InMemoryFieldWriter.class);
     private final FieldInfo fieldInfo;
-    private final List<short[]> vectors = new ArrayList<>();
+    private final List<T> vectors = new ArrayList<>();
     private final DocsWithFieldSet docsWithField = new DocsWithFieldSet();
+    private final int bytesPerElement;
     private boolean finished;
     private int lastDocID = -1;
 
-    InMemoryFloat16FieldWriter(FieldInfo fieldInfo) {
+    InMemoryFieldWriter(FieldInfo fieldInfo, int bytesPerElement) {
       this.fieldInfo = fieldInfo;
+      this.bytesPerElement = bytesPerElement;
     }
 
     @Override
-    public void addValue(int docID, short[] vectorValue) throws IOException {
+    public void addValue(int docID, T vectorValue) throws IOException {
       if (finished) {
         throw new IllegalStateException("already finished, cannot add more values");
       }
@@ -1083,13 +1015,18 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       lastDocID = docID;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public short[] copyValue(short[] vectorValue) {
-      return ArrayUtil.copyOfSubArray(vectorValue, 0, fieldInfo.getVectorDimension());
+    public T copyValue(T vectorValue) {
+      int dim = fieldInfo.getVectorDimension();
+      return (T)
+          (vectorValue instanceof float[] f
+              ? ArrayUtil.copyOfSubArray(f, 0, dim)
+              : ArrayUtil.copyOfSubArray((short[]) vectorValue, 0, dim));
     }
 
     @Override
-    public List<short[]> getVectors() {
+    public List<T> getVectors() {
       return vectors;
     }
 
@@ -1118,7 +1055,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
           + docsWithField.ramBytesUsed()
           + (long) vectors.size()
               * (RamUsageEstimator.NUM_BYTES_OBJECT_REF + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER)
-          + (long) vectors.size() * fieldInfo.getVectorDimension() * Short.BYTES;
+          + (long) vectors.size() * fieldInfo.getVectorDimension() * bytesPerElement;
     }
   }
 

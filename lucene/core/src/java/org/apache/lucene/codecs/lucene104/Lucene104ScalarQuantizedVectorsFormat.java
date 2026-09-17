@@ -48,9 +48,9 @@ import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncod
  *       requirements and makes merges faster since the vectors never need to be re-quantized, but
  *       also produces less accurate distance estimates and is less flexible if the writer changes.
  *       Data blind mode comes in two variants: one that still stores the full-precision float
- *       vectors ({@link Mode#DATA_BLIND_WITH_FLOATS}), and one that discards them
- *       ({@link Mode#DATA_BLIND_WITHOUT_FLOATS}). Discarding the floats saves the most space and is
- *       what enables quantized-byte pass-through merges, but it removes the ability to rescore with
+ *       vectors ({@link Mode#DATA_BLIND_WITH_FLOATS}), and one that discards them ({@link
+ *       Mode#DATA_BLIND_WITHOUT_FLOATS}). Discarding the floats saves the most space and is what
+ *       enables quantized-byte pass-through merges, but it removes the ability to rescore with
  *       exact vectors or re-quantize to a different encoding.
  * </ul>
  *
