@@ -82,4 +82,13 @@ public interface LiveDocs extends Bits {
    * @return the number of deleted documents in this segment
    */
   int deletedCount();
+
+  /**
+   * Materializes this LiveDocs as a {@link FixedBitSet} where set bits represent live documents.
+   *
+   * <p>Used by {@link FixedBitSet#copyOf(Bits)} to avoid the per-bit generic loop.
+   *
+   * @return a new {@link FixedBitSet} with set bits for live documents
+   */
+  FixedBitSet toFixedBitSet();
 }
