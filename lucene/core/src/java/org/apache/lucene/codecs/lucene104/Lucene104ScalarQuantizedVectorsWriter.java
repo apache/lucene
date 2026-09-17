@@ -464,7 +464,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
         segmentWriteState.segmentInfo.maxDoc(),
         vectorDataOffset,
         vectorDataLength,
-        zeroCentroid,
+        null,
         0f,
         docsWithField);
   }
@@ -546,7 +546,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   }
 
   /**
-   * Returns whether the segment stores full-precision vectors for this field, or null when the
+   * Returns whether the segment stores full-precision vectors for this field, or false when the
    * field is absent or byte-encoded. Data-blind segments report {@code false} since only quantized
    * bytes were written.
    */
