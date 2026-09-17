@@ -450,6 +450,16 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     return null;
   }
 
+  /**
+   * Returns the {@link Mode} the segment was written with for this field, or null when the field is
+   * absent. Note that {@link Mode#CENTERED} is also the default for segments written before the
+   * mode was stored explicitly.
+   */
+  Mode getMode(String field) {
+    FieldEntry fieldEntry = fields.get(field);
+    return fieldEntry == null ? null : fieldEntry.mode;
+  }
+
   /** Returns whether full-precision fp32 vectors were written for this field. */
   boolean hasRawFloatVectors(String field) throws IOException {
     FieldEntry fi = fields.get(field);

@@ -483,14 +483,14 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
                   + encoding
                   + ": re-quantization requires raw float vectors");
         }
-        float[] centroid = getCentroid(reader, fieldInfo.name);
-        if (centroid != null && isAllZero(centroid)) {
+        Mode sourceMode = getMode(reader, fieldInfo.name);
+        if (sourceMode != null && sourceMode != Mode.CENTERED) {
           // Quantized-only segment whose bytes already match the output format (encoding and zero
           // centroid): copy them directly.
           values = qvv;
         } else {
-          // Bytes were produced against a non-zero (or unknown) centroid, so they cannot be passed
-          // through into the zero-centroid output; re-quantize from floats.
+          // Bytes were produced against a (possibly unknown) non-zero centroid, so they cannot be
+          // passed through into the zero-centroid output; re-quantize from floats.
           values = quantizeFromFloats(reader, fieldInfo, zeroCentroid);
         }
       }
@@ -579,6 +579,15 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     return null;
   }
 
+  /** Returns the mode the source segment was written with, or null for foreign readers. */
+  static Mode getMode(KnnVectorsReader vectorsReader, String fieldName) {
+    vectorsReader = vectorsReader.unwrapReaderForField(fieldName);
+    if (vectorsReader instanceof Lucene104ScalarQuantizedVectorsReader reader) {
+      return reader.getMode(fieldName);
+    }
+    return null;
+  }
+
   static QuantizedByteVectorValues getQuantizedVectorValues(
       KnnVectorsReader vectorsReader, String fieldName) throws IOException {
     vectorsReader = vectorsReader.unwrapReaderForField(fieldName);
@@ -653,10 +662,13 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       float[] centroid = getCentroid(knnVectorsReader, fieldInfo.name);
       totalVectorCount += vectorCount;
       // If there aren't centroids, or previously clustered with more than one cluster
-      // or if there are deleted docs, we must recalculate the centroid. An all-zero centroid
-      // indicates a data-blind segment (no centering was done); it can't be combined with the
-      // others, so recompute from the (possibly dequantized) vectors.
-      if (centroid == null || isAllZero(centroid) || mergeState.liveDocs[i] != null) {
+      // or if there are deleted docs, we must recalculate the centroid. A data-blind segment
+      // stores no centroid (its vectors were quantized against zero); it can't be combined with
+      // the others, so recompute from the (possibly dequantized) vectors.
+      Mode mode = getMode(knnVectorsReader, fieldInfo.name);
+      if (centroid == null
+          || (mode != null && mode != Mode.CENTERED)
+          || mergeState.liveDocs[i] != null) {
         recalculate = true;
         break;
       }
@@ -700,15 +712,6 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       VectorUtil.l2normalize(centroid);
     }
     return count;
-  }
-
-  private static boolean isAllZero(float[] values) {
-    for (float value : values) {
-      if (value != 0f) {
-        return false;
-      }
-    }
-    return true;
   }
 
   private static int accumulateCentroid(
