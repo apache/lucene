@@ -96,7 +96,9 @@ final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery 
     if (lowerValue > upperValue) {
       return MatchNoDocsQuery.INSTANCE;
     }
-    final Stats stats = NumericFieldStats.getStats(indexSearcher.getIndexReader(), field);
+    // PointValues for the same field name may use a different encoding than doc values
+    // (GITHUB#16573), so only skipper stats are safe for this rewrite.
+    final Stats stats = NumericFieldStats.getDocValuesStats(indexSearcher.getIndexReader(), field);
     if (stats != null) {
       if (lowerValue > stats.max() || upperValue < stats.min()) {
         return MatchNoDocsQuery.INSTANCE;
