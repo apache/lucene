@@ -30,6 +30,7 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Stream;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
@@ -59,6 +60,7 @@ import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.NoReuseHint;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -128,10 +130,15 @@ public class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader
               versionMeta,
               VECTOR_DATA_EXTENSION,
               Lucene102BinaryQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
-              // Quantized vectors are accessed randomly from their node ID stored in the HNSW
-              // graph.
+              // how these are read is up to whoever wraps this format
               state.context.withHints(
-                  FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM));
+                  Stream.of(
+                          FileTypeHint.DATA,
+                          FileDataHint.KNN_VECTORS,
+                          state.context.hints(DataAccessHint.class).findFirst().orElse(null),
+                          state.context.hints(NoReuseHint.class).findFirst().orElse(null))
+                      .filter(Objects::nonNull)
+                      .toArray(IOContext.FileOpenHint[]::new)));
     } catch (Throwable t) {
       IOUtils.closeWhileSuppressingExceptions(t, this);
       throw t;

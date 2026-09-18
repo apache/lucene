@@ -29,6 +29,9 @@ import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.store.DataAccessHint;
+import org.apache.lucene.store.FileDataHint;
+import org.apache.lucene.store.FileTypeHint;
 
 /**
  * A Faiss-based format to create and search vector indexes, using {@link FaissLibrary} to interact
@@ -104,7 +107,7 @@ public final class FaissKnnVectorsFormat extends KnnVectorsFormat {
 
   @Override
   public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new FaissKnnVectorsReader(state, rawVectorsFormat.fieldsReader(state));
+    return new FaissKnnVectorsReader(state, rawVectorsFormat.fieldsReader(randomAccess(state)));
   }
 
   @Override
@@ -116,5 +119,13 @@ public final class FaissKnnVectorsFormat extends KnnVectorsFormat {
   public String toString() {
     return String.format(
         Locale.ROOT, "%s(description=%s indexParams=%s)", NAME, description, indexParams);
+  }
+
+  /** These vectors are read at random. */
+  private static SegmentReadState randomAccess(SegmentReadState state) {
+    return new SegmentReadState(
+        state,
+        state.context.withHints(
+            FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM));
   }
 }

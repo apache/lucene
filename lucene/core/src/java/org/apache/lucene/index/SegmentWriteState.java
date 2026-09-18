@@ -113,6 +113,19 @@ public class SegmentWriteState {
     this.context = context;
   }
 
+  /** Create a shallow copy of {@link SegmentWriteState} with a new {@link IOContext}. */
+  public SegmentWriteState(SegmentWriteState state, IOContext context) {
+    infoStream = state.infoStream;
+    directory = state.directory;
+    segmentInfo = state.segmentInfo;
+    fieldInfos = state.fieldInfos;
+    this.context = context;
+    segmentSuffix = state.segmentSuffix;
+    segUpdates = state.segUpdates;
+    delCountOnFlush = state.delCountOnFlush;
+    liveDocs = state.liveDocs;
+  }
+
   /** Create a shallow copy of {@link SegmentWriteState} with a new segment suffix. */
   public SegmentWriteState(SegmentWriteState state, String segmentSuffix) {
     infoStream = state.infoStream;

@@ -33,6 +33,9 @@ import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.store.DataAccessHint;
+import org.apache.lucene.store.FileDataHint;
+import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.util.hnsw.HnswGraph;
 
 /**
@@ -137,7 +140,8 @@ public class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat {
 
   @Override
   public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new Lucene99HnswVectorsReader(state, flatVectorsFormat.fieldsReader(state));
+    return new Lucene99HnswVectorsReader(
+        state, flatVectorsFormat.fieldsReader(randomAccess(state)));
   }
 
   @Override
@@ -154,5 +158,13 @@ public class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat {
         + ", flatVectorFormat="
         + flatVectorsFormat
         + ")";
+  }
+
+  /** These vectors are read at random. */
+  private static SegmentReadState randomAccess(SegmentReadState state) {
+    return new SegmentReadState(
+        state,
+        state.context.withHints(
+            FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM));
   }
 }
