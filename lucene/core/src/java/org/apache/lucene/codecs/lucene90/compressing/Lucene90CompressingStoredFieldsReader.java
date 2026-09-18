@@ -35,12 +35,14 @@ import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingS
 import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingStoredFieldsWriter.STRING;
 import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingStoredFieldsWriter.TYPE_BITS;
 import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingStoredFieldsWriter.TYPE_MASK;
+import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingStoredFieldsWriter.VERSION_CHUNK_CHECKSUM;
 import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingStoredFieldsWriter.VERSION_CURRENT;
 import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingStoredFieldsWriter.VERSION_START;
 
 import java.io.EOFException;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.zip.CRC32C;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.compressing.CompressionMode;
@@ -423,6 +425,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     // the start pointer at which you can read the compressed documents
     private long startPointer;
 
+    private final byte[] chunkCrcScratch = new byte[8192];
     private final BytesRef spare;
     private final BytesRef bytes;
 
@@ -502,6 +505,12 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
 
       startPointer = fieldsStream.getFilePointer();
 
+      if (version >= VERSION_CHUNK_CHECKSUM) {
+        // Verify the compressed bytes before anything decompresses them. Leaves the stream where it
+        // was, so startPointer keeps its meaning.
+        verifyCompressedChunk(docID, startPointer);
+      }
+
       if (merging) {
         final int totalLength = Math.toIntExact(offsets[chunkDocs]);
         // decompress eagerly
@@ -524,6 +533,62 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
               fieldsStream);
         }
       }
+    }
+
+    /**
+     * Verifies the CRC32C that follows a chunk's compressed bytes, before anything decompresses
+     * them.
+     *
+     * <p>Without this, a corrupt byte inside a chunk surfaces as whatever the decompressor happens
+     * to do with it: an {@link ArrayIndexOutOfBoundsException} from LZ4, or no error at all and a
+     * different document than the one that was stored. The frame format of LZ4 specifies the same
+     * check over the same bytes, "before decoding", but Lucene implements the block format, which
+     * has no checksum of its own.
+     *
+     * <p>The chunk's length comes from the fields index rather than from the file, so a corrupt
+     * length cannot be used to read out of the chunk. Leaves the stream where it was found.
+     */
+    private void verifyCompressedChunk(int docID, long compressedStart) throws IOException {
+      final long blockID = indexReader.getBlockID(docID);
+      final long blockEnd =
+          indexReader.getBlockStartPointer(blockID) + indexReader.getBlockLength(blockID);
+      final long compressedLength = blockEnd - Integer.BYTES - compressedStart;
+      if (compressedLength < 0) {
+        throw new CorruptIndexException(
+            "chunk shorter than its checksum: docBase="
+                + docBase
+                + ", chunkDocs="
+                + chunkDocs
+                + ", length="
+                + compressedLength,
+            fieldsStream);
+      }
+
+      final CRC32C crc = new CRC32C();
+      long remaining = compressedLength;
+      while (remaining > 0) {
+        final int n = (int) Math.min(chunkCrcScratch.length, remaining);
+        fieldsStream.readBytes(chunkCrcScratch, 0, n);
+        crc.update(chunkCrcScratch, 0, n);
+        remaining -= n;
+      }
+      final int actual = (int) crc.getValue();
+      final int expected = fieldsStream.readInt();
+      if (actual != expected) {
+        throw new CorruptIndexException(
+            "chunk checksum mismatch: docBase="
+                + docBase
+                + ", chunkDocs="
+                + chunkDocs
+                + ", compressedLength="
+                + compressedLength
+                + ", expected="
+                + Integer.toHexString(expected)
+                + ", actual="
+                + Integer.toHexString(actual),
+            fieldsStream);
+      }
+      fieldsStream.seek(compressedStart);
     }
 
     /**
@@ -611,9 +676,13 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
             };
       } else {
         fieldsStream.seek(startPointer);
-        decompressor.decompress(fieldsStream, totalLength, offset, length, bytes);
-        assert bytes.length == length;
-        documentInput = new ByteArrayDataInput(bytes.bytes, bytes.offset, bytes.length);
+        // PROTOTYPE: decompress the WHOLE chunk so the per-chunk checksum can be verified, then
+        // hand
+        // out the requested document's slice. This is the cost the 2013 proposal did not discuss:
+        // on-demand reads currently decompress only the bytes they need, and a chunk-wide checksum
+        // forces the whole chunk. See PROTOTYPE-NOTES in the branch.
+        decompressor.decompress(fieldsStream, totalLength, 0, totalLength, bytes);
+        documentInput = new ByteArrayDataInput(bytes.bytes, bytes.offset + offset, length);
       }
 
       return new SerializedDocument(documentInput, length, numStoredFields);
