@@ -26,6 +26,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
@@ -188,11 +189,7 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
 
   /** Unpacks two 4-bit values per input byte, the reverse of {@link #packNibbles}. */
   public static void unpackNibbles(byte[] packed, byte[] unpacked) {
-    assert unpacked.length == packed.length * 2;
-    for (int i = 0; i < packed.length; i++) {
-      unpacked[i] = (byte) ((packed[i] >> 4) & 0x0F);
-      unpacked[packed.length + i] = (byte) (packed[i] & 0x0F);
-    }
+    VectorUtil.int4Unpack(packed, unpacked);
   }
 
   static OffHeapScalarQuantizedVectorValues load(

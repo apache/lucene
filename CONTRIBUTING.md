@@ -78,6 +78,8 @@ The instructions for running the benchmarks can be found in the luceneutil [READ
 The Lucene community is also interested in other implementations of these benchmark tasks.
 Feel free to share your findings (especially if your implementation performs better!) through the [Lucene mailing lists](https://lucene.apache.org/core/discussion.html) or open [PRs](https://github.com/mikemccand/luceneutil/pulls), [issues](https://github.com/mikemccand/luceneutil/issues) on the luceneutil project directly.
 
+A note on micro-benchmarks: one-off JMH benchmarks used to validate a change generally shouldn't be committed. Just drop the benchmark and its numbers in the PR description so reviewers can see the evidence. Only add benchmarks to the dedicated JMH [module](https://github.com/apache/lucene/tree/main/lucene/benchmark-jmh) if they have lasting value and can be reused in the future.
+
 ## Contributing your work
 
 You can open a pull request at <https://github.com/apache/lucene>.
@@ -104,6 +106,10 @@ Before creating your patch, you may want to get 'main' up to date with the lates
 
 You may want to add a CHANGES entry to [CHANGES.txt](./lucene/CHANGES.txt). A CHANGES entry should start with the issue or pull request number `GITHUB#XXX` that is followed by the description of the change and contributors' name. Please see the existing entries for reference.
 
+### Use of AI
+
+We require all use of AI in contributions to follow our [AI Policy](AI_POLICY.md).
+
 ## Stay involved
 
 Contributors should join the [Lucene mailing lists](https://lucene.apache.org/core/discussion.html). In particular, the commit list (to see changes as they are made), the dev list (to join discussions of changes) and the user list (to help others).
@@ -123,3 +129,9 @@ The rough criteria for picking your first issues are:
 ## Developer tips
 
 For more contribution guidelines and tips, see [DeveloperTips](https://cwiki.apache.org/confluence/display/LUCENE/DeveloperTips).
+
+## Security issues
+
+Please do not report suspected security vulnerabilities through public GitHub issues or pull requests. Follow the process described in [SECURITY.md](./SECURITY.md) instead. That document also explains what is in scope.
+
+If your findings are not in scope of a security issue, feel free to open a public pull request or public issue!

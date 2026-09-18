@@ -119,7 +119,9 @@ public class OptimizedScalarQuantizer {
   public QuantizationResult[] multiScalarQuantize(
       float[] vector, byte[][] destinations, byte[] bits, float[] centroid) {
     assert similarityFunction != COSINE || VectorUtil.isUnitVector(vector);
-    assert similarityFunction != COSINE || VectorUtil.isUnitVector(centroid);
+    assert similarityFunction != COSINE
+        || VectorUtil.isUnitVector(centroid)
+        || VectorUtil.dotProduct(centroid, centroid) == 0;
     assert bits.length == destinations.length;
     float[] intervalScratch = new float[2];
     double vecMean = 0;
@@ -187,7 +189,9 @@ public class OptimizedScalarQuantizer {
   public QuantizationResult scalarQuantize(
       float[] vector, byte[] destination, byte bits, float[] centroid) {
     assert similarityFunction != COSINE || VectorUtil.isUnitVector(vector);
-    assert similarityFunction != COSINE || VectorUtil.isUnitVector(centroid);
+    assert similarityFunction != COSINE
+        || VectorUtil.isUnitVector(centroid)
+        || VectorUtil.dotProduct(centroid, centroid) == 0;
     assert vector.length <= destination.length;
     assert bits > 0 && bits <= 8;
     float[] intervalScratch = new float[2];
@@ -259,7 +263,9 @@ public class OptimizedScalarQuantizer {
       float[] centroid) {
     int nSteps = (1 << bits) - 1;
     double step = (upperInterval - lowerInterval) / nSteps;
-    for (int h = 0; h < quantized.length; h++) {
+    // The quantized input may hold rounded-up dimensions for packed encodings; the output length
+    // defines how many are real.
+    for (int h = 0; h < dequantized.length; h++) {
       double xi = (double) (quantized[h] & 0xFF) * step + lowerInterval;
       dequantized[h] = (float) (xi + centroid[h]);
     }
@@ -289,7 +295,9 @@ public class OptimizedScalarQuantizer {
       float[] centroid) {
     int nSteps = (1 << bits) - 1;
     double step = (upperInterval - lowerInterval) / nSteps;
-    for (int h = 0; h < quantized.length; h++) {
+    // The quantized input may hold rounded-up dimensions for packed encodings; the output length
+    // defines how many are real.
+    for (int h = 0; h < dequantized.length; h++) {
       double xi = (double) (quantized[h] & 0xFF) * step + lowerInterval;
       dequantized[h] = Float.floatToFloat16((float) (xi + centroid[h]));
     }

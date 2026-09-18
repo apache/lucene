@@ -97,7 +97,12 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
                 initializedNodes);
         graph =
             InitializedHnswGraphBuilder.initGraph(
-                initializerGraph, oldToNewOrdinalMap, maxOrd, beamWidth, scorerSupplier);
+                initializerGraph,
+                oldToNewOrdinalMap,
+                maxOrd,
+                beamWidth,
+                scorerSupplier,
+                abortCheck);
       }
     }
     return new HnswConcurrentMergeBuilder(

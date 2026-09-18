@@ -9,6 +9,10 @@ on:
 
 permissions: {}
 
+# do not need to run more than one of these at a time
+concurrency:
+  group: ${{ github.workflow }}
+
 env:
   DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
 
@@ -17,7 +21,7 @@ jobs:
     name: Hunspell regression tests against latest dictionaries
     timeout-minutes: 15
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
 
     steps:
       - name: Checkout repository

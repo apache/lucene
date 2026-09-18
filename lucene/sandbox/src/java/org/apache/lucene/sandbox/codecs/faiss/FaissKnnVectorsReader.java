@@ -204,6 +204,11 @@ final class FaissKnnVectorsReader extends KnnVectorsReader {
   }
 
   @Override
+  public int getVectorCount(FieldInfo fieldInfo) throws IOException {
+    return rawVectorsReader.getVectorCount(fieldInfo);
+  }
+
+  @Override
   public void close() throws IOException {
     if (closed == false) {
       // Close all indexes

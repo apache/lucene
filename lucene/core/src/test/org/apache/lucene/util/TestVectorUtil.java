@@ -715,4 +715,33 @@ public class TestVectorUtil extends LuceneTestCase {
     }
     return res;
   }
+
+  public void testInt4Unpack() {
+    // Cover lengths below, at, and above a vector register, plus odd lengths that force the
+    // scalar tail of the vectorized implementation to run.
+    for (int packedLen : new int[] {0, 1, 2, 3, 7, 8, 15, 16, 17, 31, 32, 33, 63, 64, 2048}) {
+      byte[] packed = new byte[packedLen];
+      random().nextBytes(packed);
+      byte[] actual = new byte[packedLen * 2];
+      VectorUtil.int4Unpack(packed, actual);
+
+      // reference: the original scalar loop this replaced
+      byte[] expected = new byte[packedLen * 2];
+      for (int i = 0; i < packedLen; i++) {
+        expected[i] = (byte) ((packed[i] >> 4) & 0x0F);
+        expected[packedLen + i] = (byte) (packed[i] & 0x0F);
+      }
+      assertArrayEquals("packedLen=" + packedLen, expected, actual);
+
+      // every output nibble must be in [0,15]
+      for (byte b : actual) {
+        assertTrue("value out of uint4 range: " + b, b >= 0 && b <= 15);
+      }
+    }
+  }
+
+  public void testInt4UnpackRejectsBadLength() {
+    expectThrows(
+        IllegalArgumentException.class, () -> VectorUtil.int4Unpack(new byte[4], new byte[7]));
+  }
 }
