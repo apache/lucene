@@ -621,6 +621,14 @@ API Changes
   Lucene 10.4 behavior and is deprecated, and [Byte|Float]VectorSimilarityQuery.Adaptive exposes the 10.5 behavior.
   (Kaival Parikh, Chris Hostetter, Michael Sokolov)
 
+Bug Fixes
+---------------------
+
+* GITHUB#16665: Fix Lucene104HnswScalarQuantizedVectorsFormat merges with an asymmetric encoding
+  (1 and 2 bit quantization today) and COSINE similarity: the merge scorer's query side was
+  quantized from un-normalized vectors while the index side was normalized, so the merge trips an
+  assertion and otherwise builds the graph from wrong scores. (John Maurice)
+
 ======================= Lucene 10.5.1 =======================
 
 Bug Fixes
