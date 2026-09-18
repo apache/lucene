@@ -26,9 +26,9 @@ dependencies {
   moduleTestImplementation project(':lucene:test-framework')
 }
 
-// The ivfaster codec's SIMD kernels reference jdk.incubator.vector through a `requires static` edge
+// The ivfaster_evo codec's SIMD kernels reference jdk.incubator.vector through a `requires static` edge
 // (see src/java/module-info.java), so the module is NOT on the compile classpath forbidden-apis
-// resolves against, and scanning PanamaHammingKernel fails outright with
+// resolves against, and scanning VectorKernels.Panama fails outright with
 // "ClassNotFoundException: jdk.incubator.vector.VectorSpecies" rather than reporting a violation.
 //
 // Same remedy lucene:core already uses for its own Panama sources: hand forbidden-apis the stub API

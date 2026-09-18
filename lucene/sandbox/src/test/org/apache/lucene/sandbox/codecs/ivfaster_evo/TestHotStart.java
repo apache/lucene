@@ -30,6 +30,7 @@ import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.LogDocMergePolicy;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -221,6 +222,48 @@ public class TestHotStart extends LuceneTestCase {
             seed.centroids(),
             null);
         assertArrayEquals(original, seed.centroids()[0], 0f);
+      }
+    }
+  }
+
+  public void testHotStartNeverCrossesFields() throws Exception {
+    // Two fields that differ only by name, over disjoint regions. An inherited cell that ends up
+    // empty keeps its inherited position, so a seed taken from the wrong field would leave
+    // centroids stranded in the other field's region, after a flush and after a merge alike.
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter writer = new IndexWriter(dir, config(false))) {
+        for (int batch = 0; batch < 3; batch++) {
+          for (int i = 0; i < 40; i++) {
+            Document doc = new Document();
+            float jitter = random().nextFloat();
+            doc.add(new KnnFloatVectorField("near", new float[] {i + jitter, 1, 0}));
+            doc.add(new KnnFloatVectorField("far", new float[] {10_000 + i + jitter, 1, 0}));
+            writer.addDocument(doc);
+          }
+          writer.commit(); // later batches hot-start from this commit
+        }
+        assertMessage("field=near", "source=commit=");
+        assertMessage("field=far", "source=commit=");
+        assertFieldsStayApart(dir, 3);
+        writer.getConfig().setMergePolicy(new LogDocMergePolicy());
+        writer.forceMerge(1);
+        writer.commit();
+        assertMessage("field=near", "source=mergeInput=");
+        assertMessage("field=far", "source=mergeInput=");
+      }
+      assertFieldsStayApart(dir, 1);
+    }
+  }
+
+  private static void assertFieldsStayApart(Directory dir, int segments) throws Exception {
+    try (DirectoryReader reader = DirectoryReader.open(dir)) {
+      assertEquals(segments, reader.leaves().size());
+      for (var leaf : reader.leaves()) {
+        var vectors = ((CodecReader) leaf.reader()).getVectorReader();
+        var near = (IVFasterEvoVectorsReader) vectors.unwrapReaderForField("near");
+        var far = (IVFasterEvoVectorsReader) vectors.unwrapReaderForField("far");
+        for (float[] centroid : near.centroids("near")) assertTrue(centroid[0] < 100);
+        for (float[] centroid : far.centroids("far")) assertTrue(centroid[0] > 9_000);
       }
     }
   }
