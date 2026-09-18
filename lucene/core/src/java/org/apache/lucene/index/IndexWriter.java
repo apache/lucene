@@ -2621,6 +2621,11 @@ public class IndexWriter
 
         testPoint("rollback before checkpoint");
 
+        // Drop the pooled readers before the deleter removes files: they hold open
+        // the files of segments that are about to be deleted. Nothing is lost by
+        // dropping them, since a rollback saves no changes anyway.
+        readerPool.close();
+
         // Ask deleter to locate unreferenced files & remove
         // them ... only when we are not experiencing a tragedy, else
         // these methods throw ACE:
@@ -2631,8 +2636,6 @@ public class IndexWriter
         }
 
         lastCommitChangeCount = changeCount.get();
-        // Don't bother saving any changes in our segmentInfos
-        readerPool.close();
         // Must set closed while inside the same sync block where we call deleter.refresh, else
         // concurrent threads may try to sneak a flush in,
         // after we leave this sync block and before we enter the sync block in the finally clause
