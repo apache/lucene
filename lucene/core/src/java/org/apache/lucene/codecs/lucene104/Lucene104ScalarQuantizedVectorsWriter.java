@@ -35,6 +35,7 @@ import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.Mode;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.index.DocIDMerger;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
@@ -571,8 +572,21 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     IOUtils.close(meta, vectorData, rawVectorDelegate);
   }
 
-  static float[] getCentroid(KnnVectorsReader vectorsReader, String fieldName) {
+  /**
+   * Unwraps a merge-time reader down to the flat vectors reader. The per-field wrapper unwraps to
+   * the HNSW reader, which must additionally be unwrapped to reach the flat reader.
+   */
+  private static KnnVectorsReader unwrapToFlatReader(
+      KnnVectorsReader vectorsReader, String fieldName) {
     vectorsReader = vectorsReader.unwrapReaderForField(fieldName);
+    if (vectorsReader instanceof Lucene99HnswVectorsReader hnswReader) {
+      vectorsReader = hnswReader.getFlatVectorsReader().unwrapReaderForField(fieldName);
+    }
+    return vectorsReader;
+  }
+
+  static float[] getCentroid(KnnVectorsReader vectorsReader, String fieldName) {
+    vectorsReader = unwrapToFlatReader(vectorsReader, fieldName);
     if (vectorsReader instanceof Lucene104ScalarQuantizedVectorsReader reader) {
       return reader.getCentroid(fieldName);
     }
@@ -581,7 +595,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
 
   /** Returns the mode the source segment was written with, or null for foreign readers. */
   static Mode getMode(KnnVectorsReader vectorsReader, String fieldName) {
-    vectorsReader = vectorsReader.unwrapReaderForField(fieldName);
+    vectorsReader = unwrapToFlatReader(vectorsReader, fieldName);
     if (vectorsReader instanceof Lucene104ScalarQuantizedVectorsReader reader) {
       return reader.getMode(fieldName);
     }
@@ -590,7 +604,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
 
   static QuantizedByteVectorValues getQuantizedVectorValues(
       KnnVectorsReader vectorsReader, String fieldName) throws IOException {
-    vectorsReader = vectorsReader.unwrapReaderForField(fieldName);
+    vectorsReader = unwrapToFlatReader(vectorsReader, fieldName);
     if (vectorsReader instanceof Lucene104ScalarQuantizedVectorsReader reader) {
       return reader.getQuantizedVectorValues(fieldName);
     }
@@ -604,7 +618,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
    */
   private static boolean hasRawVectorValues(KnnVectorsReader vectorsReader, FieldInfo fieldInfo)
       throws IOException {
-    vectorsReader = vectorsReader.unwrapReaderForField(fieldInfo.name);
+    vectorsReader = unwrapToFlatReader(vectorsReader, fieldInfo.name);
     if (vectorsReader instanceof Lucene104ScalarQuantizedVectorsReader reader) {
       return switch (fieldInfo.getVectorEncoding()) {
         case FLOAT32 -> reader.hasRawFloatVectors(fieldInfo.name);
