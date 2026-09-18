@@ -28,6 +28,7 @@ import java.util.concurrent.ExecutorService;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.Mode;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsWriter;
@@ -173,7 +174,8 @@ public class Lucene104HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat 
    * @param mode the quantization {@link Lucene104ScalarQuantizedVectorsFormat.Mode}; by default
    *     quantized vectors are centered on a mean vector in the segment. This behavior can be
    *     disabled to trade merge cost for distance estimate accuracy. The mode can also disable the
-   *     write of original float vectors to reduce the size of the index.
+   *     write of original float vectors to reduce the size of the index with larger (4,7,8) bit
+   *     quantizations.
    * @param maxConn the maximum number of connections to a node in the HNSW graph
    * @param beamWidth the size of the queue maintained during graph construction
    * @param numMergeWorkers number of workers (threads) that will be used when doing merge. If
@@ -205,6 +207,10 @@ public class Lucene104HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat 
               + MAXIMUM_BEAM_WIDTH
               + "; beamWidth="
               + beamWidth);
+    }
+    if (mode == Mode.DATA_BLIND_WITHOUT_FLOATS && encoding.isAsymmetric()) {
+      throw new IllegalArgumentException(
+          "Float vector values must be kept to use an asymmetric vector encoding like " + encoding);
     }
     this.maxConn = maxConn;
     this.beamWidth = beamWidth;

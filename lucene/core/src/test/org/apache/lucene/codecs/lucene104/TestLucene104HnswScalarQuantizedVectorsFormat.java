@@ -277,6 +277,36 @@ public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVector
                 ScalarEncoding.UNSIGNED_BYTE, 20, 100, 1, new SameThreadExecutorService()));
   }
 
+  public void testDataBlindWithoutFloatsRejectsAsymmetricEncodings() {
+    for (ScalarEncoding encoding : ScalarEncoding.values()) {
+      if (encoding.isAsymmetric()) {
+        IllegalArgumentException e =
+            expectThrows(
+                IllegalArgumentException.class,
+                () ->
+                    new Lucene104HnswScalarQuantizedVectorsFormat(
+                        encoding,
+                        Lucene104ScalarQuantizedVectorsFormat.Mode.DATA_BLIND_WITHOUT_FLOATS,
+                        Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
+                        Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH,
+                        1,
+                        null,
+                        Lucene99HnswVectorsFormat.HNSW_GRAPH_THRESHOLD));
+        assertTrue(e.getMessage(), e.getMessage().contains(encoding.toString()));
+      } else {
+        assertNotNull(
+            new Lucene104HnswScalarQuantizedVectorsFormat(
+                encoding,
+                Lucene104ScalarQuantizedVectorsFormat.Mode.DATA_BLIND_WITHOUT_FLOATS,
+                Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
+                Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH,
+                1,
+                null,
+                Lucene99HnswVectorsFormat.HNSW_GRAPH_THRESHOLD));
+      }
+    }
+  }
+
   // Ensures that all expected vector similarity functions are translatable in the format.
   public void testVectorSimilarityFuncs() {
     // This does not necessarily have to be all similarity functions, but
@@ -316,9 +346,15 @@ public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVector
     int numVectors = random().nextInt(99, 500);
     int dims = random().nextInt(12, 65);
     VectorSimilarityFunction similarityFunction = randomSimilarity();
+    // asymmetric encodings are rejected with DATA_BLIND_WITHOUT_FLOATS, so restrict to symmetric
+    // ones; the encoding field may itself be asymmetric since it is chosen randomly in setUp
+    ScalarEncoding dataBlindEncoding = encoding;
+    while (dataBlindEncoding.isAsymmetric()) {
+      dataBlindEncoding = ScalarEncoding.values()[random().nextInt(ScalarEncoding.values().length)];
+    }
     KnnVectorsFormat dataBlind =
         new Lucene104HnswScalarQuantizedVectorsFormat(
-            encoding,
+            dataBlindEncoding,
             Lucene104ScalarQuantizedVectorsFormat.Mode.DATA_BLIND_WITHOUT_FLOATS,
             Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
             Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH,

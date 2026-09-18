@@ -145,6 +145,10 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
     /**
      * Vectors are quantized against a zero centroid (no centering) and full-precision float vectors
      * are discarded.
+     *
+     * <p>This setting may not be used with asymmetric {@code ScalarEncoding} types as there is not
+     * enough information to produce asymmetric "query" representations and graph quality would be
+     * significantly degraded.
      */
     DATA_BLIND_WITHOUT_FLOATS((byte) 2);
 
