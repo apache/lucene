@@ -4,6 +4,10 @@ on:
   pull_request:
     types: [closed]
 
+# Don't need concurrent builds for the same PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+
 permissions: {}
 
 jobs:
