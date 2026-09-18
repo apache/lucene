@@ -12,6 +12,10 @@ on:
 
 permissions: {}
 
+# don't want to mark PRs as stale concurrently
+concurrency:
+  group: ${{ github.workflow }}
+
 jobs:
   stale:
     name: Mark stale PRs

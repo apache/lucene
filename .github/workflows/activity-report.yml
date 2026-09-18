@@ -17,6 +17,10 @@ on:
         required: true
         default: "now"
 
+# do not need to run more than one of these at a time
+concurrency:
+  group: ${{ github.workflow }}
+
 jobs:
   generate:
     name: Project Activity

@@ -8,6 +8,10 @@ on:
 
 permissions: {}
 
+# publishes SARIF to github, only need one at a time
+concurrency:
+  group: ${{ github.workflow }}
+
 jobs:
   zizmor:
     name: Run zizmor
