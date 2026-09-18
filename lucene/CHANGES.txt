@@ -510,6 +510,8 @@ Optimizations
 * GITHUB#16582: Rewrite sorted-numeric doc-values range queries that cover every value of a field to a
   FieldExistsQuery, and collapse an IndexOrDocValuesQuery whose two sides rewrite equally. (Houston Putman)
 
+* GITHUB#1669: Use intoBitSet to speed up ReqExclBulkScorer with dense exclusions. (Ke Wei)
+
 Bug Fixes
 ---------------------
 
