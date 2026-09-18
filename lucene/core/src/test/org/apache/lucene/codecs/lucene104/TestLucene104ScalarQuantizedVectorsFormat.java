@@ -223,8 +223,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
           byte[] scratch = new byte[encoding.getDiscreteDimensions(dims)];
           byte[] expectedVector = new byte[encoding.getDocPackedLength(scratch.length)];
           if (similarityFunction == VectorSimilarityFunction.COSINE) {
-            vectorValues =
-                new Lucene104ScalarQuantizedVectorsWriter.NormalizedFloatVectorValues(vectorValues);
+            vectorValues = new NormalizedFloatVectorValues(vectorValues);
           }
           KnnVectorValues.DocIndexIterator docIndexIterator = vectorValues.iterator();
 
