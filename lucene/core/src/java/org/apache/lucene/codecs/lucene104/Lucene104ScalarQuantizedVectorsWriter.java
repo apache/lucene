@@ -134,7 +134,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
           switch (fieldInfo.getVectorEncoding()) {
             case FLOAT32 -> new InMemoryFieldWriter<float[]>(fieldInfo, Float.BYTES);
             case FLOAT16 -> new InMemoryFieldWriter<short[]>(fieldInfo, Short.BYTES);
-            case BYTE -> throw new UnsupportedOperationException("Byte Vectors aren't supported");
+            case BYTE -> throw new IllegalStateException("Byte Vectors aren't supported");
           };
       FieldWriter<?> fieldWriter = FieldWriter.create(fieldInfo, storage, false);
       fields.add(fieldWriter);
@@ -664,7 +664,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       // If there aren't centroids, or previously clustered with more than one cluster
       // or if there are deleted docs, we must recalculate the centroid. A data-blind segment
       // stores no centroid (its vectors were quantized against zero); it can't be combined with
-      // the others, so recompute from the (possibly dequantized) vectors.
+      // the others, so recompute from the vectors.
       Mode mode = getMode(knnVectorsReader, fieldInfo.name);
       if (centroid == null
           || (mode != null && mode != Mode.CENTERED)
