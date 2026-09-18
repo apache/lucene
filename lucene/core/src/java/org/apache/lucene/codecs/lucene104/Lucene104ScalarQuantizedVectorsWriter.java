@@ -340,7 +340,8 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       FieldInfo fieldInfo, MergeState mergeState, float[] centroid) throws IOException {
     OptimizedScalarQuantizer quantizer =
         new OptimizedScalarQuantizer(fieldInfo.getVectorSimilarityFunction());
-    FloatVectorValues vectorValues = MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
+    FloatVectorValues vectorValues =
+        MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
     if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
       vectorValues = new NormalizedFloatVectorValues(vectorValues);
     }
