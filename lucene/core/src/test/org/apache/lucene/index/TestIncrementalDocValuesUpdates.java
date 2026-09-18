@@ -50,6 +50,61 @@ public class TestIncrementalDocValuesUpdates extends LuceneTestCase {
     assertNumericField(reader, id, "val", expected);
   }
 
+  /**
+   * Exercises the shipping default overlay budget under heavy stacking and repeated folding, which
+   * neither {@link #newIndexWriterConfig} (small randomized budget) nor {@link #incrementalConfig}
+   * (low range) reaches. Every update is resolved to its own generation via a reader reopen so
+   * overlays stack up to the budget and fold, across two independent numeric fields, and every
+   * value must still read back correctly. Occasional force-merges keep the segment (and open file
+   * handle) count bounded so it also runs under the default open-handle limit.
+   */
+  public void testDefaultBudgetHeavyStackingAndFolding() throws Exception {
+    IndexWriterConfig conf =
+        new IndexWriterConfig(new MockAnalyzer(random()))
+            .setMaxDocValuesOverlays(IndexWriterConfig.DEFAULT_MAX_DOC_VALUES_OVERLAYS);
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, conf)) {
+      final int numDocs = atLeast(50);
+      Map<String, Long> expectedA = new HashMap<>();
+      Map<String, Long> expectedB = new HashMap<>();
+      for (int i = 0; i < numDocs; i++) {
+        Document d = new Document();
+        d.add(new StringField("id", "d" + i, StringField.Store.NO));
+        d.add(new NumericDocValuesField("a", i));
+        d.add(new NumericDocValuesField("b", -i));
+        expectedA.put("d" + i, (long) i);
+        expectedB.put("d" + i, (long) -i);
+        w.addDocument(d);
+      }
+      w.commit();
+      final int updates = atLeast(300);
+      for (int i = 0; i < updates; i++) {
+        String id = "d" + random().nextInt(numDocs);
+        long v = random().nextLong();
+        String field = random().nextBoolean() ? "a" : "b";
+        w.updateNumericDocValue(new Term("id", id), field, v);
+        (field.equals("a") ? expectedA : expectedB).put(id, v);
+        // Resolve each update into its own generation so overlays actually stack (and fold at the
+        // budget) rather than collapsing into a single batched write.
+        try (DirectoryReader r = DirectoryReader.open(w)) {
+          assertNotNull(r);
+        }
+        if (rarely()) {
+          // Keep the segment count (hence the open-handle count) bounded.
+          w.forceMerge(1 + random().nextInt(2));
+        }
+      }
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        for (Map.Entry<String, Long> e : expectedA.entrySet()) {
+          assertNumericField(reader, e.getKey(), "a", e.getValue());
+        }
+        for (Map.Entry<String, Long> e : expectedB.entrySet()) {
+          assertNumericField(reader, e.getKey(), "b", e.getValue());
+        }
+      }
+    }
+  }
+
   private static void assertNumericField(IndexReader reader, String id, String field, long expected)
       throws IOException {
     for (LeafReaderContext ctx : reader.leaves()) {
@@ -456,7 +511,7 @@ public class TestIncrementalDocValuesUpdates extends LuceneTestCase {
       w.updateNumericDocValue(new Term("id", "0"), "val", 2L); // writes a sparse overlay generation
       w.commit();
     }
-    // The commit records overlay generations, so its segments file is written at VERSION_11_0; a
+    // The commit records overlay generations, so its segments file is written at VERSION_10_6; a
     // reader that only understands up to VERSION_86 rejects it with IndexFormatTooNewException.
     assertOldReaderRejects(dir);
     // And the current reader sees the overlay round-tripped through the segments file.

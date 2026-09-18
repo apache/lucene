@@ -17,6 +17,10 @@ on:
         required: true
         default: "now"
 
+# do not need to run more than one of these at a time
+concurrency:
+  group: ${{ github.workflow }}
+
 jobs:
   generate:
     name: Project Activity
@@ -24,7 +28,7 @@ jobs:
     permissions:
       issues: read # inspects issues and reports on them
       pull-requests: read # inspects PRs and reports on them
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
 
     steps:
       - name: Checkout repository

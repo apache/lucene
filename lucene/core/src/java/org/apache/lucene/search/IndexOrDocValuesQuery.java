@@ -121,6 +121,16 @@ public final class IndexOrDocValuesQuery extends Query {
         || dvRewrite.getClass() == MatchNoDocsQuery.class) {
       return MatchNoDocsQuery.INSTANCE;
     }
+    if (dvRewrite.getClass() == FieldExistsQuery.class) {
+      return dvRewrite;
+    } else if (indexRewrite.getClass() == FieldExistsQuery.class) {
+      return indexRewrite;
+    }
+    // If both sides rewrite to the same query there is no longer a choice to make between an
+    // index-based and a doc-values-based execution, so drop the wrapper.
+    if (indexRewrite.equals(dvRewrite)) {
+      return indexRewrite;
+    }
     if (indexQuery != indexRewrite || dvQuery != dvRewrite) {
       return new IndexOrDocValuesQuery(indexRewrite, dvRewrite);
     }
