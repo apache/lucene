@@ -28,6 +28,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Stream;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
@@ -49,6 +51,7 @@ import org.apache.lucene.store.FileDataHint;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.NoReuseHint;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
@@ -198,9 +201,15 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, vectorDataExtension);
 
-    IOContext.FileOpenHint[] hints = {
-      FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM
-    };
+    // how these are read is up to whoever wraps this format
+    IOContext.FileOpenHint[] hints =
+        Stream.of(
+                FileTypeHint.DATA,
+                FileDataHint.KNN_VECTORS,
+                state.context.hints(DataAccessHint.class).findFirst().orElse(null),
+                state.context.hints(NoReuseHint.class).findFirst().orElse(null))
+            .filter(Objects::nonNull)
+            .toArray(IOContext.FileOpenHint[]::new);
     IOContext context = state.context.withHints(hints);
 
     IndexInput in = null;

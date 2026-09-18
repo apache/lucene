@@ -64,7 +64,12 @@ public interface IOContext {
 
   /** Returns an {@link IOContext} for merging with the specified {@link MergeInfo} */
   static IOContext merge(MergeInfo mergeInfo) {
+    return merge(mergeInfo, Set.of());
+  }
+
+  private static IOContext merge(MergeInfo mergeInfo, Set<FileOpenHint> hints) {
     Objects.requireNonNull(mergeInfo);
+    Set<FileOpenHint> copy = DefaultIOContext.checkOneHintPerType(hints);
     return new IOContext() {
       @Override
       public Context context() {
@@ -83,19 +88,24 @@ public interface IOContext {
 
       @Override
       public Set<FileOpenHint> hints() {
-        return Set.of();
+        return copy;
       }
 
       @Override
       public IOContext withHints(FileOpenHint... hints) {
-        return this;
+        return merge(mergeInfo, Set.of(hints));
       }
     };
   }
 
   /** Returns an {@link IOContext} for flushing with the specified {@link FlushInfo} */
   static IOContext flush(FlushInfo flushInfo) {
+    return flush(flushInfo, Set.of());
+  }
+
+  private static IOContext flush(FlushInfo flushInfo, Set<FileOpenHint> hints) {
     Objects.requireNonNull(flushInfo);
+    Set<FileOpenHint> copy = DefaultIOContext.checkOneHintPerType(hints);
     return new IOContext() {
       @Override
       public Context context() {
@@ -114,12 +124,12 @@ public interface IOContext {
 
       @Override
       public Set<FileOpenHint> hints() {
-        return Set.of();
+        return copy;
       }
 
       @Override
       public IOContext withHints(FileOpenHint... hints) {
-        return this;
+        return flush(flushInfo, Set.of(hints));
       }
     };
   }
@@ -142,8 +152,7 @@ public interface IOContext {
   }
 
   /**
-   * Returns an IOContext with the given hints, if it makes sense to do so for this specific
-   * context. Otherwise, returns this context.
+   * Returns an IOContext with the given hints.
    *
    * <p>The returned context has the same {@link #context()}, {@link #mergeInfo()}, and {@link
    * #flushInfo()} as this context.

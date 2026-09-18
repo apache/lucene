@@ -56,6 +56,7 @@ import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.NoReuseHint;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -90,9 +91,8 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
       FlatVectorsReader rawVectorsReader,
       Lucene104ScalarQuantizedVectorScorer vectorsScorer)
       throws IOException {
-    // Quantized vectors are accessed randomly from their node ID stored in the HNSW
-    // graph.
-    this(state, rawVectorsReader, vectorsScorer, DataAccessHint.RANDOM);
+    // how these are read is up to whoever wraps this format
+    this(state, rawVectorsReader, vectorsScorer, null);
   }
 
   public Lucene104ScalarQuantizedVectorsReader(
@@ -128,7 +128,11 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
       }
 
       final IOContext.FileOpenHint[] hints =
-          Stream.of(FileTypeHint.DATA, FileDataHint.KNN_VECTORS, accessHint)
+          Stream.of(
+                  FileTypeHint.DATA,
+                  FileDataHint.KNN_VECTORS,
+                  state.context.hints(DataAccessHint.class).findFirst().orElse(accessHint),
+                  state.context.hints(NoReuseHint.class).findFirst().orElse(null))
               .filter(Objects::nonNull)
               .toArray(IOContext.FileOpenHint[]::new);
       quantizedVectorData =
