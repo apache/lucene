@@ -31,6 +31,7 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
+import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.Mode;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
@@ -118,7 +119,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
                 Lucene104ScalarQuantizedVectorsFormat.VERSION_CURRENT,
                 state.segmentInfo.getId(),
                 state.segmentSuffix);
-        readFields(meta, state.fieldInfos);
+        readFields(meta, state.fieldInfos, versionMeta);
       } catch (Throwable exception) {
         priorE = exception;
       } finally {
@@ -142,13 +143,14 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     }
   }
 
-  private void readFields(ChecksumIndexInput meta, FieldInfos infos) throws IOException {
+  private void readFields(ChecksumIndexInput meta, FieldInfos infos, int version)
+      throws IOException {
     for (int fieldNumber = meta.readInt(); fieldNumber != -1; fieldNumber = meta.readInt()) {
       FieldInfo info = infos.fieldInfo(fieldNumber);
       if (info == null) {
         throw new CorruptIndexException("Invalid field number: " + fieldNumber, meta);
       }
-      FieldEntry fieldEntry = readField(meta, info);
+      FieldEntry fieldEntry = readField(meta, info, version);
       validateFieldEntry(info, fieldEntry);
       fields.put(info.name, fieldEntry);
     }
@@ -240,6 +242,22 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
               + fi.vectorEncoding
               + " expected: "
               + VectorEncoding.FLOAT32);
+    }
+
+    if (fi.storesFloatVectors() == false) {
+      // Data-blind mode without floats: full-precision float vectors were never stored. Reconstruct
+      // floats from the quantized data.
+      return OffHeapScalarQuantizedFloatVectorValues.load(
+          fi.ordToDocDISIReaderConfiguration,
+          fi.dimension,
+          fi.size,
+          fi.scalarEncoding,
+          fi.similarityFunction,
+          vectorScorer,
+          fi.centroid,
+          fi.vectorDataOffset,
+          fi.vectorDataLength,
+          quantizedVectorData);
     }
 
     FloatVectorValues rawFloatVectorValues = rawVectorsReader.getFloatVectorValues(field);
@@ -382,6 +400,26 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     return null;
   }
 
+  /**
+   * Returns the {@link Mode} the segment was written with for this field, or null when the field is
+   * absent. Note that {@link Mode#CENTERED} is also the default for segments written before the
+   * mode was stored explicitly.
+   */
+  Mode getMode(String field) {
+    FieldEntry fieldEntry = fields.get(field);
+    return fieldEntry == null ? null : fieldEntry.mode;
+  }
+
+  /** Returns whether full-precision fp32 vectors were written for this field. */
+  boolean hasRawFloatVectors(String field) throws IOException {
+    FieldEntry fi = fields.get(field);
+    if (fi == null || fi.storesFloatVectors() == false) {
+      return false;
+    }
+    FloatVectorValues raw = rawVectorsReader.getFloatVectorValues(field);
+    return raw != null && raw.size() > 0;
+  }
+
   private static IndexInput openDataInput(
       SegmentReadState state,
       int versionMeta,
@@ -419,7 +457,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     }
   }
 
-  private FieldEntry readField(IndexInput input, FieldInfo info) throws IOException {
+  private FieldEntry readField(IndexInput input, FieldInfo info, int version) throws IOException {
     VectorEncoding vectorEncoding = readVectorEncoding(input);
     VectorSimilarityFunction similarityFunction = readSimilarityFunction(input);
     if (similarityFunction != info.getVectorSimilarityFunction()) {
@@ -431,7 +469,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
               + " != "
               + info.getVectorSimilarityFunction());
     }
-    return FieldEntry.create(input, vectorEncoding, info.getVectorSimilarityFunction());
+    return FieldEntry.create(input, vectorEncoding, info.getVectorSimilarityFunction(), version);
   }
 
   @Override
@@ -589,14 +627,22 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
       long vectorDataLength,
       int size,
       ScalarEncoding scalarEncoding,
+      Mode mode,
       float[] centroid,
       float centroidDP,
-      OrdToDocDISIReaderConfiguration ordToDocDISIReaderConfiguration) {
+      OrdToDocDISIReaderConfiguration ordToDocDISIReaderConfiguration,
+      int version) {
+
+    /** Returns true when this segment stores full-precision float vectors for this field. */
+    boolean storesFloatVectors() {
+      return mode != Mode.DATA_BLIND_WITHOUT_FLOATS;
+    }
 
     static FieldEntry create(
         IndexInput input,
         VectorEncoding vectorEncoding,
-        VectorSimilarityFunction similarityFunction)
+        VectorSimilarityFunction similarityFunction,
+        int version)
         throws IOException {
       int dimension = input.readVInt();
       long vectorDataOffset = input.readVLong();
@@ -605,6 +651,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
       final float[] centroid;
       float centroidDP = 0;
       ScalarEncoding scalarEncoding = ScalarEncoding.UNSIGNED_BYTE;
+      Mode mode = Mode.CENTERED;
       if (size > 0) {
         int wireNumber = input.readVInt();
         scalarEncoding =
@@ -614,8 +661,15 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
                         new IllegalStateException(
                             "Could not get ScalarEncoding from wire number: " + wireNumber));
         centroid = new float[dimension];
-        input.readFloats(centroid, 0, dimension);
-        centroidDP = Float.intBitsToFloat(input.readInt());
+        if (version == Lucene104ScalarQuantizedVectorsFormat.VERSION_START) {
+          // Centered segments store the centroid and its square magnitude; the mode is implied.
+          input.readFloats(centroid, 0, dimension);
+          centroidDP = Float.intBitsToFloat(input.readInt());
+        } else {
+          // Data-blind segments omit both; the non-null all-zero centroid is substituted here.
+          // The mode is written explicitly since both data-blind variants share this version.
+          mode = Mode.fromWireNumber(input.readByte());
+        }
       } else {
         centroid = null;
       }
@@ -629,9 +683,11 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
           vectorDataLength,
           size,
           scalarEncoding,
+          mode,
           centroid,
           centroidDP,
-          conf);
+          conf,
+          version);
     }
   }
 
