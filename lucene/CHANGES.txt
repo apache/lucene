@@ -157,6 +157,8 @@ Optimizations
 * GITHUB#16582: Rewrite sorted-numeric doc-values range queries that cover every value of a field to a
   FieldExistsQuery, and collapse an IndexOrDocValuesQuery whose two sides rewrite equally. (Houston Putman)
 
+* GITHUB#16520: Support two-phase filters in MaxScoreBulkScorer bitset path. (Ke Wei)
+
 Bug Fixes
 ---------------------
 * GITHUB#16546: Prevent RangeBulkScorer from passing empty ranges to LeafCollector. (jxy)
