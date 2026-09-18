@@ -103,7 +103,7 @@ public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVector
         "Lucene104HnswScalarQuantizedVectorsFormat(name=Lucene104HnswScalarQuantizedVectorsFormat,"
             + " maxConn=10, beamWidth=20, tinySegmentsThreshold=100,"
             + " flatVectorFormat=Lucene104ScalarQuantizedVectorsFormat(name=Lucene104ScalarQuantizedVectorsFormat,"
-            + " encoding=UNSIGNED_BYTE,"
+            + " encoding=UNSIGNED_BYTE, mode=CENTERED,"
             + " flatVectorScorer=Lucene104ScalarQuantizedVectorScorer(nonQuantizedDelegate=%s()),"
             + " rawVectorFormat=Lucene99FlatVectorsFormat(vectorsScorer=%s())))";
 
@@ -277,6 +277,36 @@ public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVector
                 ScalarEncoding.UNSIGNED_BYTE, 20, 100, 1, new SameThreadExecutorService()));
   }
 
+  public void testDataBlindWithoutFloatsRejectsAsymmetricEncodings() {
+    for (ScalarEncoding encoding : ScalarEncoding.values()) {
+      if (encoding.isAsymmetric()) {
+        IllegalArgumentException e =
+            expectThrows(
+                IllegalArgumentException.class,
+                () ->
+                    new Lucene104HnswScalarQuantizedVectorsFormat(
+                        encoding,
+                        Lucene104ScalarQuantizedVectorsFormat.Mode.DATA_BLIND_WITHOUT_FLOATS,
+                        Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
+                        Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH,
+                        1,
+                        null,
+                        Lucene99HnswVectorsFormat.HNSW_GRAPH_THRESHOLD));
+        assertTrue(e.getMessage(), e.getMessage().contains(encoding.toString()));
+      } else {
+        assertNotNull(
+            new Lucene104HnswScalarQuantizedVectorsFormat(
+                encoding,
+                Lucene104ScalarQuantizedVectorsFormat.Mode.DATA_BLIND_WITHOUT_FLOATS,
+                Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
+                Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH,
+                1,
+                null,
+                Lucene99HnswVectorsFormat.HNSW_GRAPH_THRESHOLD));
+      }
+    }
+  }
+
   // Ensures that all expected vector similarity functions are translatable in the format.
   public void testVectorSimilarityFuncs() {
     // This does not necessarily have to be all similarity functions, but
@@ -306,6 +336,70 @@ public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVector
           long expected = encoding.getDocPackedLength(fieldInfo.getVectorDimension()) + corrections;
           assertEquals(expected, (long) offHeap.get("veq"));
           assertEquals(3, offHeap.size());
+        }
+      }
+    }
+  }
+
+  public void testDataBlindHnswSearch() throws Exception {
+    String fieldName = "field";
+    int numVectors = random().nextInt(99, 500);
+    int dims = random().nextInt(12, 65);
+    VectorSimilarityFunction similarityFunction = randomSimilarity();
+    // asymmetric encodings are rejected with DATA_BLIND_WITHOUT_FLOATS, so restrict to symmetric
+    // ones; the encoding field may itself be asymmetric since it is chosen randomly in setUp
+    ScalarEncoding dataBlindEncoding = encoding;
+    while (dataBlindEncoding.isAsymmetric()) {
+      dataBlindEncoding = ScalarEncoding.values()[random().nextInt(ScalarEncoding.values().length)];
+    }
+    KnnVectorsFormat dataBlind =
+        new Lucene104HnswScalarQuantizedVectorsFormat(
+            dataBlindEncoding,
+            Lucene104ScalarQuantizedVectorsFormat.Mode.DATA_BLIND_WITHOUT_FLOATS,
+            Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
+            Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH,
+            1,
+            null,
+            Lucene99HnswVectorsFormat.HNSW_GRAPH_THRESHOLD);
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter w =
+          new IndexWriter(
+              dir, newIndexWriterConfig().setCodec(TestUtil.alwaysKnnVectorsFormat(dataBlind)))) {
+        int k = random().nextInt(5, 30);
+        for (int i = 0; i < numVectors; i++) {
+          Document doc = new Document();
+          float[] vector = randomVector(dims);
+          if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT) {
+            vector = VectorUtil.l2normalize(vector);
+          }
+          doc.add(new KnnFloatVectorField(fieldName, vector, similarityFunction));
+          w.addDocument(doc);
+          if (i % 50 == 0) {
+            w.commit(); // create multiple segments to exercise the data-blind merge path
+          }
+        }
+        w.commit();
+        float[] query = randomVector(dims);
+        if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT) {
+          query = VectorUtil.l2normalize(query);
+        }
+        // Merge the data-blind segments into one, then read and search the single leaf.
+        w.forceMerge(1);
+        try (IndexReader reader = DirectoryReader.open(w)) {
+          LeafReader r = getOnlyLeafReader(reader);
+          FloatVectorValues vectorValues = r.getFloatVectorValues(fieldName);
+          // Data-blind segments expose a bare dequantizing view; no raw float vectors are present.
+          assertFalse(
+              vectorValues
+                  instanceof Lucene104ScalarQuantizedVectorsReader.ScalarQuantizedVectorValues);
+          TopDocs td =
+              r.searchNearestVectors(
+                  fieldName,
+                  query,
+                  k,
+                  AcceptDocs.fromLiveDocs(null, r.maxDoc()),
+                  Integer.MAX_VALUE);
+          assertEquals(k, td.scoreDocs.length);
         }
       }
     }
