@@ -20,11 +20,16 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
+import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
+import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.store.VectorBatch;
 
 /**
  * A {@link DoubleValuesSource} that computes vector similarity between a query vector and raw full
@@ -117,6 +122,102 @@ public class FullPrecisionFloatVectorSimilarityValuesSource extends DoubleValues
         return doc >= iterator.docID() && (iterator.docID() == doc || iterator.advance(doc) == doc);
       }
     };
+  }
+
+  /**
+   * One segment's shortlist: the vectors requested for it and, once the batch has run, the scores.
+   * Held between {@link #queueShortlist} and {@link #scores()} so a query can queue every segment
+   * before any read is issued.
+   */
+  final class Pending {
+    private final float[] vectors;
+    private final int dim;
+    private final int count;
+    private final VectorSimilarityFunction fn;
+
+    private Pending(float[] vectors, int dim, int count, VectorSimilarityFunction fn) {
+      this.vectors = vectors;
+      this.dim = dim;
+      this.count = count;
+      this.fn = fn;
+    }
+
+    /**
+     * Similarity of the query to each requested vector; valid only after the batch has executed.
+     */
+    float[] scores() {
+      float[] scores = new float[count];
+      float[] vector = new float[dim];
+      for (int i = 0; i < count; i++) {
+        System.arraycopy(vectors, i * dim, vector, 0, dim);
+        scores[i] = fn.compare(queryVector, vector);
+      }
+      return scores;
+    }
+  }
+
+  /**
+   * Opens a batch able to gather raw-vector reads across the segments of {@code ctx}'s index, or
+   * null when the store cannot serve them that way (in which case callers score vectors per
+   * document).
+   */
+  VectorBatch newVectorBatch(LeafReaderContext ctx) throws IOException {
+    FlatVectorsReader flatReader = rawVectorsReader(ctx);
+    return flatReader == null ? null : flatReader.newRawVectorBatch(fieldName);
+  }
+
+  /**
+   * Resolves this segment's shortlist to vector positions and queues its reads into {@code batch}.
+   * Nothing is read until {@link VectorBatch#execute()}. Returns null when this segment cannot be
+   * served from the batch.
+   */
+  Pending queueShortlist(LeafReaderContext ctx, int[] docs, int count, VectorBatch batch)
+      throws IOException {
+    if (count == 0) {
+      return null;
+    }
+    FlatVectorsReader flatReader = rawVectorsReader(ctx);
+    if (flatReader == null) {
+      return null;
+    }
+    FloatVectorValues values = ctx.reader().getFloatVectorValues(fieldName);
+    if (values == null || values.dimension() != queryVector.length) {
+      return null;
+    }
+    final int dim = queryVector.length;
+    KnnVectorValues.DocIndexIterator it = values.iterator();
+    int[] ords = new int[count];
+    for (int i = 0; i < count; i++) {
+      if (it.advance(docs[i]) != docs[i]) {
+        return null;
+      }
+      ords[i] = it.index();
+    }
+    float[] vectors = new float[count * dim];
+    if (flatReader.addRawVectors(fieldName, ords, count, vectors, batch) == false) {
+      return null;
+    }
+    VectorSimilarityFunction fn =
+        vectorSimilarityFunction != null
+            ? vectorSimilarityFunction
+            : ctx.reader().getFieldInfos().fieldInfo(fieldName).getVectorSimilarityFunction();
+    return new Pending(vectors, dim, count, fn);
+  }
+
+  /** The reader holding this field's raw float32 vectors, or null if there is none. */
+  private FlatVectorsReader rawVectorsReader(LeafReaderContext ctx) throws IOException {
+    if (!(ctx.reader() instanceof CodecReader codecReader)) {
+      return null;
+    }
+    KnnVectorsReader kr = codecReader.getVectorReader();
+    if (kr != null) {
+      kr = kr.unwrapReaderForField(fieldName);
+    }
+    // An HNSW reader keeps the raw vectors in its flat delegate; a flat reader holds them itself.
+    if (kr instanceof Lucene99HnswVectorsReader hnsw) {
+      return hnsw.getFlatVectorsReader();
+    }
+    return kr instanceof FlatVectorsReader fr ? fr : null;
   }
 
   @Override

@@ -50,6 +50,8 @@ import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IOContext.FileOpenHint;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.VectorBatch;
+import org.apache.lucene.store.VectorBatchCapable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
@@ -207,6 +209,57 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     // Update the read advice since vectors are guaranteed to be accessed sequentially for merge
     vectorData.updateIOContext(dataContext.withHints(DataAccessHint.SEQUENTIAL));
     return this;
+  }
+
+  /**
+   * Batch-reads the shortlist straight out of the vector data file when the store can service
+   * scattered reads as one batch, which is what makes a larger-than-RAM rerank practical: with the
+   * {@code .vec} file opened O_DIRECT these reads bypass the page cache and read-ahead, so they
+   * neither pull in unwanted blocks nor evict the hot HNSW graph and quantized codes.
+   */
+  @Override
+  public VectorBatch newRawVectorBatch(String field) throws IOException {
+    FieldEntry fe = batchableField(field);
+    return fe == null ? null : ((VectorBatchCapable) vectorData).newBatch();
+  }
+
+  @Override
+  public boolean addRawVectors(String field, int[] ords, int count, float[] out, VectorBatch batch)
+      throws IOException {
+    FieldEntry fe = batchableField(field);
+    if (fe == null) {
+      return false;
+    }
+    return batch.add(vectorData, positionsOf(fe, ords, count), fe.dimension, count, out);
+  }
+
+  /**
+   * The field entry when its vectors can be batch-read from this store, else null. A segment that
+   * holds no values for the field is simply not batchable — batching is an optional capability, so
+   * an absent field returns null here rather than throwing the way the read paths do.
+   */
+  private FieldEntry batchableField(String field) {
+    FieldInfo info = fieldInfos.fieldInfo(field);
+    if (info == null) {
+      return null;
+    }
+    FieldEntry fe = fields.get(info.number);
+    if (fe == null) {
+      return null;
+    }
+    return vectorData instanceof VectorBatchCapable && fe.vectorEncoding == VectorEncoding.FLOAT32
+        ? fe
+        : null;
+  }
+
+  /** Ordinals to positions within the vector data file; the layout stays private to the codec. */
+  private static long[] positionsOf(FieldEntry fe, int[] ords, int count) {
+    long[] positions = new long[count];
+    int stride = fe.dimension * Float.BYTES;
+    for (int i = 0; i < count; i++) {
+      positions[i] = fe.vectorDataOffset + (long) ords[i] * stride;
+    }
+    return positions;
   }
 
   private FieldEntry getFieldEntryOrThrow(String field) {

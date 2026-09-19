@@ -21,6 +21,7 @@ import java.io.IOException;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.store.VectorBatch;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 
@@ -107,5 +108,31 @@ public abstract class FlatVectorsReader extends KnnVectorsReader implements Acco
   @Override
   public FlatVectorsReader getMergeInstance() throws IOException {
     return this;
+  }
+
+  /**
+   * Opens a batch that can gather this reader's raw-vector reads together with those of sibling
+   * readers over the same store, or returns {@code null} when the store cannot do that. A KNN
+   * rerank shortlist is spread across every segment, so batching across readers is what turns one
+   * submission per segment into one submission per query.
+   *
+   * @lucene.experimental
+   */
+  public VectorBatch newRawVectorBatch(String field) throws IOException {
+    return null;
+  }
+
+  /**
+   * Queues the raw float32 vectors for {@code ords} into {@code batch} instead of reading them now;
+   * they are available in {@code out} once {@link VectorBatch#execute()} has run: vector {@code i}
+   * occupies {@code out[i * dim]} to {@code out[i * dim + dim - 1]}, where {@code dim} is the
+   * field's dimension.
+   *
+   * @return false if this reader cannot contribute to {@code batch}
+   * @lucene.experimental
+   */
+  public boolean addRawVectors(String field, int[] ords, int count, float[] out, VectorBatch batch)
+      throws IOException {
+    return false;
   }
 }
