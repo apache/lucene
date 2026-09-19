@@ -67,6 +67,15 @@ public class SegmentReadState {
     this.segmentSuffix = segmentSuffix;
   }
 
+  /** Create a {@code SegmentReadState} with a new {@link IOContext}. */
+  public SegmentReadState(SegmentReadState other, IOContext context) {
+    this.directory = other.directory;
+    this.segmentInfo = other.segmentInfo;
+    this.fieldInfos = other.fieldInfos;
+    this.context = context;
+    this.segmentSuffix = other.segmentSuffix;
+  }
+
   /** Create a {@code SegmentReadState}. */
   public SegmentReadState(SegmentReadState other, String newSegmentSuffix) {
     this.directory = other.directory;

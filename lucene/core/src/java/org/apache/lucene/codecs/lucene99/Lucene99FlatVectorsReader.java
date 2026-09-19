@@ -50,6 +50,7 @@ import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IOContext.FileOpenHint;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.NoReuseHint;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
@@ -72,7 +73,8 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
 
   public Lucene99FlatVectorsReader(SegmentReadState state, FlatVectorsScorer scorer)
       throws IOException {
-    this(state, scorer, DataAccessHint.RANDOM);
+    // how these are read is up to whoever wraps this format
+    this(state, scorer, null);
   }
 
   /**
@@ -80,7 +82,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
    *
    * @param state the segment read state
    * @param scorer the flat vectors scorer
-   * @param accessHint a data access hint, or null
+   * @param accessHint how to read the vectors when {@code state} does not already say, or null
    */
   public Lucene99FlatVectorsReader(
       SegmentReadState state, FlatVectorsScorer scorer, DataAccessHint accessHint)
@@ -89,7 +91,11 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     this.vectorScorer = scorer;
     this.fieldInfos = state.fieldInfos;
     FileOpenHint[] hints =
-        Stream.of(FileTypeHint.DATA, FileDataHint.KNN_VECTORS, accessHint)
+        Stream.of(
+                FileTypeHint.DATA,
+                FileDataHint.KNN_VECTORS,
+                state.context.hints(DataAccessHint.class).findFirst().orElse(accessHint),
+                state.context.hints(NoReuseHint.class).findFirst().orElse(null))
             .filter(Objects::nonNull)
             .toArray(FileOpenHint[]::new);
     dataContext = state.context.withHints(hints);

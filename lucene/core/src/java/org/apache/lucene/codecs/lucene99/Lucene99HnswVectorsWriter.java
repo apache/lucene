@@ -49,6 +49,10 @@ import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.TaskExecutor;
+import org.apache.lucene.store.DataAccessHint;
+import org.apache.lucene.store.FileDataHint;
+import org.apache.lucene.store.FileTypeHint;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.IOUtils;
@@ -436,7 +440,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
             && fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
           CloseableRandomVectorScorerSupplier scorerSupplier =
               quantizedVectorsReader.getRandomVectorScorerSupplierForMerge(
-                  fieldInfo, segmentWriteState);
+                  fieldInfo, new SegmentWriteState(segmentWriteState, graphBuildContext()));
           try {
             buildAndWriteGraph(
                 fieldInfo, mergeState, vectorValues, scorerSupplier, totalVectorCount);
@@ -496,6 +500,12 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         vectorIndexNodeOffsets);
   }
 
+  /** The graph build reads the vectors it scores at random. */
+  private IOContext graphBuildContext() {
+    return segmentWriteState.context.withHints(
+        FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM);
+  }
+
   private void ensureFlatReaderOpen() throws IOException {
     if (flatVectorsReader == null) {
       flatVectorWriter.finish();
@@ -506,7 +516,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
               segmentWriteState.directory,
               segmentWriteState.segmentInfo,
               segmentWriteState.fieldInfos,
-              segmentWriteState.context,
+              graphBuildContext(),
               segmentWriteState.segmentSuffix);
       flatVectorsReader = flatVectorsFormat.fieldsReader(readState);
     }

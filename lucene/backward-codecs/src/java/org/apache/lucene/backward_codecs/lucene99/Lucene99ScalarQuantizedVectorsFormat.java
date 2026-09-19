@@ -18,6 +18,7 @@
 package org.apache.lucene.backward_codecs.lucene99;
 
 import java.io.IOException;
+import java.util.stream.Stream;
 import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
@@ -26,6 +27,8 @@ import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.NoReuseHint;
 
 /**
  * Format supporting vector quantization, storage, and retrieval
@@ -150,6 +153,15 @@ public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   @Override
   public FlatVectorsReader fieldsReader(SegmentReadState state) throws IOException {
     return new Lucene99ScalarQuantizedVectorsReader(
-        state, rawVectorFormat.fieldsReader(state), flatVectorScorer);
+        state, rawVectorFormat.fieldsReader(rescoreOnly(state)), flatVectorScorer);
+  }
+
+  /** The raw vectors are only read back to rescore. */
+  private static SegmentReadState rescoreOnly(SegmentReadState state) {
+    IOContext.FileOpenHint[] hints =
+        Stream.concat(state.context.hints().stream(), Stream.of(NoReuseHint.INSTANCE))
+            .distinct()
+            .toArray(IOContext.FileOpenHint[]::new);
+    return new SegmentReadState(state, state.context.withHints(hints));
   }
 }
