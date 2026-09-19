@@ -599,7 +599,11 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
               fieldInfo.getVectorSimilarityFunction(), vectorValues);
       return CloseableRandomVectorScorerSupplier.create(supplier, vectorValues.size(), () -> {});
     }
-    FloatVectorValues floatVectorValues = getFloatVectorValues(fieldInfo.name);
+    FloatVectorValues floatVectorValues =
+        fieldInfo.getVectorEncoding() == VectorEncoding.FLOAT16
+            ? new Lucene104ScalarQuantizedVectorsWriter.Float16AsFloatVectorValues(
+                getFloat16VectorValues(fieldInfo.name))
+            : getFloatVectorValues(fieldInfo.name);
     if (fieldInfo.getVectorSimilarityFunction() == VectorSimilarityFunction.COSINE) {
       // the index side of this segment was quantized from normalized vectors, the query side must
       // be too
