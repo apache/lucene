@@ -54,7 +54,7 @@ public abstract class StoredFieldsReader extends StoredFields implements Cloneab
    *
    * <p>The default implementation returns {@code this}
    */
-  public StoredFieldsReader getMergeInstance() {
+  public StoredFieldsReader getMergeInstance() throws IOException {
     return this;
   }
 }

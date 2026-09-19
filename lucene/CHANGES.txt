@@ -178,6 +178,10 @@ Improvements
 
 Optimizations
 ---------------------
+
+* GITHUB#16684: Merges now open stored fields for themselves and state that they read the data file
+  sequentially, instead of reusing the mapping searches read at random. (Jim Ferenczi)
+
 * GITHUB#16431: Add support for Block-Max WAND dynamic score skipping in FunctionScoreQuery
   and DoubleValuesSource using DocValuesSkipper. (Rajat Jain)
 
