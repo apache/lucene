@@ -35,6 +35,11 @@ public class TestOffHeapVectorValues extends LuceneTestCase {
     OffHeapFloatVectorValues floatValues = createTestFloatVectorValues(floatIndexInput);
     floatValues.prefetch(new int[] {1, 2, 5}, 2);
     assertEquals(2, floatIndexInput.getPrefetchCount());
+
+    CountingIndexInput float16IndexInput = new CountingIndexInput();
+    OffHeapFloat16VectorValues float16Values = createTestFloat16VectorValues(float16IndexInput);
+    float16Values.prefetch(new int[] {1, 2, 5}, 2);
+    assertEquals(2, float16IndexInput.getPrefetchCount());
   }
 
   public void testPrefetchVectorValuesWithLessThanOneOrds() throws IOException {
@@ -51,6 +56,13 @@ public class TestOffHeapVectorValues extends LuceneTestCase {
     assertEquals(0, floatIndexInput.getPrefetchCount());
     floatValues.prefetch(new int[] {1}, 1);
     assertEquals(0, floatIndexInput.getPrefetchCount());
+
+    CountingIndexInput float16IndexInput = new CountingIndexInput();
+    OffHeapFloat16VectorValues float16Values = createTestFloat16VectorValues(float16IndexInput);
+    float16Values.prefetch(null, 0);
+    assertEquals(0, float16IndexInput.getPrefetchCount());
+    float16Values.prefetch(new int[] {1}, 1);
+    assertEquals(0, float16IndexInput.getPrefetchCount());
   }
 
   public void testPrefetchBoundedByArrayLength() throws IOException {
@@ -65,6 +77,11 @@ public class TestOffHeapVectorValues extends LuceneTestCase {
     OffHeapFloatVectorValues floatValues = createTestFloatVectorValues(floatIndexInput);
     floatValues.prefetch(new int[] {1, 2}, 5);
     assertEquals(2, floatIndexInput.getPrefetchCount());
+
+    CountingIndexInput float16IndexInput = new CountingIndexInput();
+    OffHeapFloat16VectorValues float16Values = createTestFloat16VectorValues(float16IndexInput);
+    float16Values.prefetch(new int[] {1, 2}, 5);
+    assertEquals(2, float16IndexInput.getPrefetchCount());
   }
 
   private OffHeapByteVectorValues createTestByteVectorValues(IndexInput indexInput)
@@ -77,6 +94,12 @@ public class TestOffHeapVectorValues extends LuceneTestCase {
       throws IOException {
     return new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
         100, 100, indexInput, 4, null, VectorSimilarityFunction.EUCLIDEAN);
+  }
+
+  private OffHeapFloat16VectorValues createTestFloat16VectorValues(IndexInput indexInput)
+      throws IOException {
+    return new OffHeapFloat16VectorValues.DenseOffHeapVectorValues(
+        100, 100, indexInput, 2, null, VectorSimilarityFunction.EUCLIDEAN);
   }
 
   private static final class CountingIndexInput extends IndexInput {
