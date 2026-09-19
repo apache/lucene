@@ -281,8 +281,8 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
         new int[] {15, 15, 15},
         new String[] {
           "word",
-          CompoundWordTokenFilterBase.TOKEN_TYPE_COMPOUND,
-          CompoundWordTokenFilterBase.TOKEN_TYPE_COMPOUND
+          CompoundWordTokenFilterBase.TOKEN_TYPE_SUBWORD,
+          CompoundWordTokenFilterBase.TOKEN_TYPE_SUBWORD
         },
         new int[] {1, 0, 0},
         null,
