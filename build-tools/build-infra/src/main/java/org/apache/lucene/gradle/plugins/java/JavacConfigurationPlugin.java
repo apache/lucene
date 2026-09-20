@@ -121,13 +121,14 @@ public class JavacConfigurationPlugin extends LuceneGradlePlugin {
               // support yet (the minimum supported compiler is Java 21).
               JavaVersion compilerVersion = altJvmExt.getCompilationJvmVersion().get();
               if (compilerVersion.compareTo(JavaVersion.VERSION_22) < 0) {
-                // These lint categories were only added in Java 22.
-                compilerArgs.removeAll(
-                    List.of("-Xlint:dangling-doc-comments", "-Xlint:restricted"));
+                // This lint category was only added in Java 22.
+                compilerArgs.remove("-Xlint:restricted");
               }
               if (compilerVersion.compareTo(JavaVersion.VERSION_23) < 0) {
-                // This lint category is not supported by Java 21's javac.
-                compilerArgs.removeAll(List.of("-Xlint:incubating", "-Xlint:-incubating"));
+                // These lint categories were only added in Java 23.
+                compilerArgs.removeAll(
+                    List.of(
+                        "-Xlint:dangling-doc-comments", "-Xlint:incubating", "-Xlint:-incubating"));
               }
               if (compilerVersion.compareTo(JavaVersion.VERSION_25) < 0) {
                 // This lint category was only added in Java 25.
