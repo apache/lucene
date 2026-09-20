@@ -56,6 +56,13 @@ public interface VectorUtilSupport {
   /** Returns the dot product computed over unsigned half-bytes, both compressed. */
   int int4DotProductBothPacked(byte[] a, byte[] b);
 
+  /**
+   * Unpacks a uint4 "packed" vector (two values per byte) into one value per byte: the high nibble
+   * of {@code packed[i]} lands at {@code unpacked[i]}, the low nibble at {@code
+   * unpacked[packed.length + i]}.
+   */
+  void int4Unpack(byte[] packed, byte[] unpacked);
+
   /** Returns the dot product computed as though the bytes were unsigned. */
   int uint8DotProduct(byte[] a, byte[] b);
 
