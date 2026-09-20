@@ -178,6 +178,11 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#16045: Optimize the Lucene90 compressing stored fields merge with a new hybrid
+  strategy: contiguous ranges of live docs are merged by bulk-copying whole compressed
+  chunks without decompression, while chunks that contain deleted docs are merged
+  doc-by-doc. (ethanyuxliu)
+
 * GITHUB#16431: Add support for Block-Max WAND dynamic score skipping in FunctionScoreQuery
   and DoubleValuesSource using DocValuesSkipper. (Rajat Jain)
 
