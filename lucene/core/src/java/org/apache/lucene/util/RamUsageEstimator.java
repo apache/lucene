@@ -19,7 +19,6 @@ package org.apache.lucene.util;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.security.AccessControlException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.text.DecimalFormat;
@@ -545,15 +544,7 @@ public final class RamUsageEstimator {
     // Walk type hierarchy
     for (; clazz != null; clazz = clazz.getSuperclass()) {
       final Class<?> target = clazz;
-      final Field[] fields;
-      try {
-        fields = doPrivileged((PrivilegedAction<Field[]>) target::getDeclaredFields);
-      } catch (
-          @SuppressWarnings("removal")
-          AccessControlException e) {
-        throw new RuntimeException("Can't access fields of class: " + target, e);
-      }
-
+      final Field[] fields = doPrivileged((PrivilegedAction<Field[]>) target::getDeclaredFields);
       for (Field f : fields) {
         if (!Modifier.isStatic(f.getModifiers())) {
           size = adjustForField(size, f);
