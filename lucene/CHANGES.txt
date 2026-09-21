@@ -278,6 +278,12 @@ API Changes
   Lucene 10.4 behavior and is deprecated, and [Byte|Float]VectorSimilarityQuery.Adaptive exposes the 10.5 behavior.
   (Kaival Parikh, Chris Hostetter, Michael Sokolov)
 
+* GITHUB#16573: Remove the NumericFieldStats API (added in 10.5.0 via GITHUB#15740, GITHUB#15817) and
+  revert SortedNumericDocValuesRangeQuery to no longer use it. The statistics it derived from points
+  and doc values could be incorrect if points and doc values are encoded differently, for example when
+  a float/double field is indexed with points and NumericDocValues, causing range queries to return
+  wrong results. (Chris Hostetter, Houston Putman)
+
 Bug Fixes
 ---------------------
 
