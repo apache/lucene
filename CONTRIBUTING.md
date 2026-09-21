@@ -106,6 +106,10 @@ Before creating your patch, you may want to get 'main' up to date with the lates
 
 You may want to add a CHANGES entry to [CHANGES.txt](./lucene/CHANGES.txt). A CHANGES entry should start with the issue or pull request number `GITHUB#XXX` that is followed by the description of the change and contributors' name. Please see the existing entries for reference.
 
+### Use of AI
+
+We require all use of AI in contributions to follow our [AI Policy](AI_POLICY.md).
+
 ## Stay involved
 
 Contributors should join the [Lucene mailing lists](https://lucene.apache.org/core/discussion.html). In particular, the commit list (to see changes as they are made), the dev list (to join discussions of changes) and the user list (to help others).

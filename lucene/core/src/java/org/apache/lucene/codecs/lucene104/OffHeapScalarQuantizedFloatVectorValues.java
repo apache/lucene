@@ -93,7 +93,7 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
     this.byteBuffer = ByteBuffer.allocate(docPackedLength);
     this.vectorValue = new float[dimension];
     this.byteValue = byteBuffer.array();
-    this.unpackedByteVectorValue = new byte[dimension];
+    this.unpackedByteVectorValue = new byte[encoding.getDiscreteDimensions(dimension)];
   }
 
   @Override

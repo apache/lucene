@@ -10,6 +10,10 @@ on:
 
 permissions: {}
 
+# do not need to run more than one of these at a time
+concurrency:
+  group: ${{ github.workflow }}
+
 jobs:
   smokeTestRelease:
     name: "Smoke test release on jdk ${{ matrix.java-version }}, ${{ matrix.os }}"
@@ -21,7 +25,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ ubuntu-latest ]
+        os: [ ubuntu-24.04-arm ]
         java-version: [ '25' ]
 
     runs-on: ${{ matrix.os }}

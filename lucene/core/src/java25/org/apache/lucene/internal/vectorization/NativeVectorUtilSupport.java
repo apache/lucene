@@ -433,6 +433,11 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
+  public void int4Unpack(byte[] packed, byte[] unpacked) {
+    delegateVectorUtilSupport.int4Unpack(packed, unpacked);
+  }
+
+  @Override
   public int uint8DotProduct(byte[] a, byte[] b) {
     return (uint8DotProduct$MH != null)
         ? uint8DotProduct(MemorySegment.ofArray(a), MemorySegment.ofArray(b))
