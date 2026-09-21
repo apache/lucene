@@ -201,8 +201,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
     VectorSimilarityFunction similarityFunction = randomSimilarity();
     KnnFloatVectorField knnField = new KnnFloatVectorField(fieldName, vector, similarityFunction);
     try (Directory dir = newDirectory()) {
-      try (IndexWriter w =
-          new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()))) {
+      try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         for (int i = 0; i < numVectors; i++) {
           Document doc = new Document();
           knnField.setVectorValue(randomVector(dims));
@@ -282,8 +281,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
         new KnnFloat16VectorField(
             fieldName, randomNormalizedFloat16Vector(dims), similarityFunction);
     try (Directory dir = newDirectory()) {
-      try (IndexWriter w =
-          new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()))) {
+      try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         for (int i = 0; i < numVectors; i++) {
           Document doc = new Document();
           knnField.setVectorValue(randomNormalizedFloat16Vector(dims));
@@ -650,25 +648,25 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
     VectorSimilarityFunction similarityFunction = randomSimilarity();
     try (Directory dir = newDirectory()) {
       try (IndexWriter w =
-          new IndexWriter(
-              dir,
-              newIndexWriterConfig()
-                  .setMergePolicy(newLogMergePolicy())
-                  .setCodec(dataBlindCodec()))) {
+          new IndexWriter(dir, newIndexWriterConfig().setCodec(dataBlindCodec()))) {
         for (int i = 0; i < numVectors; i++) {
           Document doc = new Document();
           doc.add(new KnnFloatVectorField(fieldName, randomVector(dims), similarityFunction));
           w.addDocument(doc);
         }
-        w.forceMerge(1);
       }
       try (IndexReader reader = DirectoryReader.open(dir)) {
-        LeafReader r = getOnlyLeafReader(reader);
-        FloatVectorValues vectorValues = r.getFloatVectorValues(fieldName);
-        assertEquals(numVectors, vectorValues.size());
-        assertFalse(
-            vectorValues
-                instanceof Lucene104ScalarQuantizedVectorsReader.ScalarQuantizedVectorValues);
+        int totalVectors = 0;
+        for (LeafReaderContext ctx : reader.leaves()) {
+          FloatVectorValues vectorValues = ctx.reader().getFloatVectorValues(fieldName);
+          if (vectorValues != null) {
+            totalVectors += vectorValues.size();
+            assertFalse(
+                vectorValues
+                    instanceof Lucene104ScalarQuantizedVectorsReader.ScalarQuantizedVectorValues);
+          }
+        }
+        assertEquals(numVectors, totalVectors);
       }
     }
   }
