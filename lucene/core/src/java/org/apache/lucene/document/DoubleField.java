@@ -142,14 +142,15 @@ public final class DoubleField extends Field {
    */
   public static Query newRangeQuery(String field, double lowerValue, double upperValue) {
     PointRangeQuery.checkArgs(field, lowerValue, upperValue);
-    long lowerSortable = NumericUtils.doubleToSortableLong(lowerValue);
-    long upperSortable = NumericUtils.doubleToSortableLong(upperValue);
     Query fallbackQuery =
         new IndexOrDocValuesQuery(
             DoublePoint.newRangeQuery(field, lowerValue, upperValue),
-            SortedNumericDocValuesField.newSlowRangeQuery(field, lowerSortable, upperSortable));
+            SortedNumericDocValuesField.newSlowRangeQuery(
+                field,
+                NumericUtils.doubleToSortableLong(lowerValue),
+                NumericUtils.doubleToSortableLong(upperValue)));
     return new IndexSortSortedNumericDocValuesRangeQuery(
-        field, lowerSortable, upperSortable, fallbackQuery);
+        field, lowerValue, upperValue, fallbackQuery);
   }
 
   /**

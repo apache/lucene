@@ -142,14 +142,15 @@ public final class FloatField extends Field {
    */
   public static Query newRangeQuery(String field, float lowerValue, float upperValue) {
     PointRangeQuery.checkArgs(field, lowerValue, upperValue);
-    long lowerSortable = NumericUtils.floatToSortableInt(lowerValue);
-    long upperSortable = NumericUtils.floatToSortableInt(upperValue);
     Query fallbackQuery =
         new IndexOrDocValuesQuery(
             FloatPoint.newRangeQuery(field, lowerValue, upperValue),
-            SortedNumericDocValuesField.newSlowRangeQuery(field, lowerSortable, upperSortable));
+            SortedNumericDocValuesField.newSlowRangeQuery(
+                field,
+                NumericUtils.floatToSortableInt(lowerValue),
+                NumericUtils.floatToSortableInt(upperValue)));
     return new IndexSortSortedNumericDocValuesRangeQuery(
-        field, lowerSortable, upperSortable, fallbackQuery);
+        field, lowerValue, upperValue, fallbackQuery);
   }
 
   /**

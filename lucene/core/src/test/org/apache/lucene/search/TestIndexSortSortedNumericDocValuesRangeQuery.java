@@ -733,20 +733,17 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
           double b = TestUtil.nextInt(random(), -110, 10010) + 0.5d;
           double min = Math.min(a, b);
           double max = Math.max(a, b);
-          long lowerBits;
-          long upperBits;
           Query oracle; // range over the parallel "pt" points field
+          Query q; // uses the float/double constructor, which converts to sortable longs
           if (isFloat) {
-            lowerBits = Float.floatToIntBits((float) min);
-            upperBits = Float.floatToIntBits((float) max);
             oracle = FloatPoint.newRangeQuery("pt", (float) min, (float) max);
+            q =
+                new IndexSortSortedNumericDocValuesRangeQuery(
+                    "dv", (float) min, (float) max, oracle);
           } else {
-            lowerBits = Double.doubleToLongBits(min);
-            upperBits = Double.doubleToLongBits(max);
             oracle = DoublePoint.newRangeQuery("pt", min, max);
+            q = new IndexSortSortedNumericDocValuesRangeQuery("dv", min, max, oracle);
           }
-          Query q =
-              new IndexSortSortedNumericDocValuesRangeQuery("dv", lowerBits, upperBits, oracle);
           assertSameHits(searcher, oracle, q, false);
           assertEquals(
               "count pointsOnDvField=" + pointsOnDvField,
@@ -1024,21 +1021,23 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
   }
 
   private Query createFloatQuery(String field, float lowerValue, float upperValue) {
-    long lowerSortable = NumericUtils.floatToSortableInt(lowerValue);
-    long upperSortable = NumericUtils.floatToSortableInt(upperValue);
     Query fallbackQuery =
-        SortedNumericDocValuesField.newSlowRangeQuery(field, lowerSortable, upperSortable);
+        SortedNumericDocValuesField.newSlowRangeQuery(
+            field,
+            NumericUtils.floatToSortableInt(lowerValue),
+            NumericUtils.floatToSortableInt(upperValue));
     return new IndexSortSortedNumericDocValuesRangeQuery(
-        field, lowerSortable, upperSortable, fallbackQuery);
+        field, lowerValue, upperValue, fallbackQuery);
   }
 
   private Query createDoubleQuery(String field, double lowerValue, double upperValue) {
-    long lowerSortable = NumericUtils.doubleToSortableLong(lowerValue);
-    long upperSortable = NumericUtils.doubleToSortableLong(upperValue);
     Query fallbackQuery =
-        SortedNumericDocValuesField.newSlowRangeQuery(field, lowerSortable, upperSortable);
+        SortedNumericDocValuesField.newSlowRangeQuery(
+            field,
+            NumericUtils.doubleToSortableLong(lowerValue),
+            NumericUtils.doubleToSortableLong(upperValue));
     return new IndexSortSortedNumericDocValuesRangeQuery(
-        field, lowerSortable, upperSortable, fallbackQuery);
+        field, lowerValue, upperValue, fallbackQuery);
   }
 
   public void testCountWithBkdAsc() throws Exception {
