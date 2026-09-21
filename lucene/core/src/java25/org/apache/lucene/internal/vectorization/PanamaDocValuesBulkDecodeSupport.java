@@ -57,6 +57,7 @@ final class PanamaDocValuesBulkDecodeSupport implements DocValuesBulkDecodeSuppo
 
   /** Number of long vectors produced from one input vector. */
   private static final int PARTS_8 = B_LANES / L_LANES; // 4
+
   private static final int PARTS_16 = S_LANES / L_LANES; // 4
   private static final int PARTS_32 = I_LANES / L_LANES; // 2
 
