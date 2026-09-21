@@ -56,6 +56,12 @@ New Features
   it is not possible to re-encode to a different quantization width or center vectors again.
   (Trevor McCulloch)
 
+* GITHUB#16580: Allow in-place updates of SORTED_NUMERIC doc-values via
+  IndexWriter#updateSortedNumericDocValue (and IndexWriter#updateDocValues with a single
+  SortedNumericDocValuesField). An update sets a single value per matched document; the field may be
+  single- or multi-valued. Single-valued columns reuse the numeric update path (including the
+  incremental delta overlay), and multi-valued columns are merged per-doc. (Houston Putman)
+
 Improvements
 ---------------------
 
