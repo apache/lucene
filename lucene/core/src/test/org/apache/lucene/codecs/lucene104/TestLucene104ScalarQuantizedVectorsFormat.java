@@ -375,9 +375,6 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
           new IndexWriter(
               dir,
               new IndexWriterConfig()
-                  .setMaxBufferedDocs(numVectors + 1)
-                  .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
-                  .setMergePolicy(NoMergePolicy.INSTANCE)
                   .setUseCompoundFile(false)
                   .setCodec(getCodecForFloatVectorFallbackTest()))) {
         for (int i = 0; i < numVectors; i++) {
@@ -385,6 +382,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
           doc.add(new KnnFloat16VectorField(vectorFieldName, vectors.get(i), similarityFunction));
           w.addDocument(doc);
         }
+        w.forceMerge(1);
       }
 
       // Drop the raw float16 vectors, leaving only the quantized data.
@@ -444,9 +442,6 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
           new IndexWriter(
               dir,
               new IndexWriterConfig()
-                  .setMaxBufferedDocs(numVectors + 1)
-                  .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
-                  .setMergePolicy(NoMergePolicy.INSTANCE)
                   .setUseCompoundFile(false)
                   .setCodec(getCodecForFloatVectorFallbackTest()))) {
         for (int i = 0; i < numVectors; i++) {
@@ -456,6 +451,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
                   vectorFieldName, randomNormalizedFloat16Vector(dim), similarityFunction));
           w.addDocument(doc);
         }
+        w.forceMerge(1);
       }
 
       // Scores while the raw float16 vectors are still present.
@@ -1082,12 +1078,10 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
           new IndexWriter(
               dir,
               newIndexWriterConfig()
-                  .setMaxBufferedDocs(numVectors + 1)
-                  .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
-                  .setMergePolicy(NoMergePolicy.INSTANCE)
                   .setUseCompoundFile(false)
                   .setCodec(dataBlindWithFloatsCodec()))) {
         addFloatVectorDocs(w, fieldName, dims, similarityFunction, numVectors);
+        w.forceMerge(1);
       }
       try (IndexReader reader = DirectoryReader.open(dir)) {
         LeafReader r = getOnlyLeafReader(reader);
@@ -1111,14 +1105,9 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
     VectorSimilarityFunction similarityFunction = randomSimilarity();
     try (Directory dir = newDirectory()) {
       try (IndexWriter w =
-          new IndexWriter(
-              dir,
-              newIndexWriterConfig()
-                  .setMaxBufferedDocs(numVectors + 1)
-                  .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
-                  .setMergePolicy(NoMergePolicy.INSTANCE)
-                  .setCodec(dataBlindWithFloatsCodec()))) {
+          new IndexWriter(dir, newIndexWriterConfig().setCodec(dataBlindWithFloatsCodec()))) {
         addFloat16VectorDocs(w, fieldName, dims, similarityFunction, numVectors);
+        w.forceMerge(1);
       }
       try (IndexReader reader = DirectoryReader.open(dir)) {
         LeafReader r = getOnlyLeafReader(reader);
@@ -1322,18 +1311,13 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
 
     try (Directory dir = newDirectory()) {
       try (IndexWriter w =
-          new IndexWriter(
-              dir,
-              newIndexWriterConfig()
-                  .setMaxBufferedDocs(numVectors + 1)
-                  .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
-                  .setMergePolicy(NoMergePolicy.INSTANCE)
-                  .setCodec(dataBlindCodec()))) {
+          new IndexWriter(dir, newIndexWriterConfig().setCodec(dataBlindCodec()))) {
         for (int i = 0; i < numVectors; i++) {
           Document doc = new Document();
           doc.add(new KnnFloat16VectorField(vectorFieldName, vectors.get(i), similarityFunction));
           w.addDocument(doc);
         }
+        w.forceMerge(1);
       }
 
       try (IndexReader reader = DirectoryReader.open(dir)) {
