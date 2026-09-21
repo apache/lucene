@@ -684,6 +684,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
       case INT -> fieldComparator.setTopValue((int) topValue);
       case FLOAT -> fieldComparator.setTopValue(NumericUtils.sortableIntToFloat((int) topValue));
       case DOUBLE -> fieldComparator.setTopValue(NumericUtils.sortableLongToDouble(topValue));
+      // $CASES-OMITTED$
       default -> fieldComparator.setTopValue(topValue); // LONG
     }
 
@@ -763,6 +764,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
       case DOUBLE ->
           NumericUtils.doubleToSortableLong(
               missingValue == null ? 0.0 : ((Number) missingValue).doubleValue());
+      // $CASES-OMITTED$
       default -> missingValue == null ? 0L : ((Number) missingValue).longValue();
     };
   }
@@ -777,6 +779,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
       case INT, FLOAT -> {
         return IntPoint.pack((int) comparableValue).bytes;
       }
+      // $CASES-OMITTED$
       default -> {
         return LongPoint.pack(comparableValue).bytes;
       }
