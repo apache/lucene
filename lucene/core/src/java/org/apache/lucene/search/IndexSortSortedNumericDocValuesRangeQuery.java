@@ -23,6 +23,8 @@ import java.util.Objects;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.DocValuesType;
+import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
@@ -34,6 +36,7 @@ import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.search.SortField.Type;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
+import org.apache.lucene.util.NumericUtils;
 
 /**
  * A range query that can take advantage of the fact that the index is sorted to speed up execution.
@@ -45,12 +48,32 @@ import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
  * <ul>
  *   <li>The index is sorted, and its primary sort is on the same field as the query.
  *   <li>The query field has either {@link SortedNumericDocValues} or {@link NumericDocValues}.
- *   <li>The sort field is of type {@code SortField.Type.LONG} or {@code SortField.Type.INT}.
+ *   <li>The sort field is of type {@code SortField.Type.LONG}, {@code SortField.Type.INT}, {@code
+ *       SortField.Type.FLOAT} or {@code SortField.Type.DOUBLE}.
  *   <li>The segments must have at most one field value per document (otherwise we cannot easily
  *       determine the matching document IDs through a binary search).
  * </ul>
  *
  * If any of these conditions isn't met, the search is delegated to {@code fallbackQuery}.
+ *
+ * <p>The {@code lowerValue}/{@code upperValue} bounds are expressed in the same {@code long} space
+ * as the field's stored doc values:
+ *
+ * <ul>
+ *   <li>For int/long fields, the raw value.
+ *   <li>For float/double fields backed by {@link SortedNumericDocValues} (e.g. {@code FloatField}),
+ *       the sortable encoding, exactly as passed to {@link
+ *       org.apache.lucene.document.SortedNumericDocValuesField#newSlowRangeQuery}: {@link
+ *       org.apache.lucene.util.NumericUtils#floatToSortableInt} / {@link
+ *       org.apache.lucene.util.NumericUtils#doubleToSortableLong}.
+ *   <li>For float/double fields backed by single-valued {@link NumericDocValues} (e.g. {@code
+ *       FloatDocValuesField}), the raw IEEE-754 bits, as passed to {@link
+ *       org.apache.lucene.document.NumericDocValuesField}: {@link Float#floatToIntBits} / {@link
+ *       Double#doubleToLongBits}.
+ * </ul>
+ *
+ * The concrete numeric type and doc-values type are discovered per-segment so the bounds, missing
+ * values, and points are all interpreted with the right encoding.
  *
  * <p>This fallback must be an equivalent range query -- it should produce the same documents and
  * give constant scores. As an example, an {@link IndexSortSortedNumericDocValuesRangeQuery} might
@@ -74,8 +97,8 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
    * Creates a new {@link IndexSortSortedNumericDocValuesRangeQuery}.
    *
    * @param field The field name.
-   * @param lowerValue The lower end of the range (inclusive).
-   * @param upperValue The upper end of the range (exclusive).
+   * @param lowerValue The lower end of the range (inclusive), in the field's doc-values long space.
+   * @param upperValue The upper end of the range (inclusive), in the field's doc-values long space.
    * @param fallbackQuery A query to fall back to if the optimization cannot be applied.
    */
   public IndexSortSortedNumericDocValuesRangeQuery(
@@ -176,38 +199,56 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
 
       @Override
       public int count(LeafReaderContext context) throws IOException {
-        if (context.reader().hasDeletions() == false) {
-          if (lowerValue > upperValue) {
-            return 0;
-          }
-          IteratorAndCount itAndCount = null;
-          LeafReader reader = context.reader();
-
-          // first use bkd optimization if possible
-          SortedNumericDocValues sortedNumericValues = DocValues.getSortedNumeric(reader, field);
-          NumericDocValues numericValues = DocValues.unwrapSingleton(sortedNumericValues);
-          PointValues pointValues = reader.getPointValues(field);
-          if (pointValues != null && pointValues.getDocCount() == reader.maxDoc()) {
-            itAndCount = getDocIdSetIteratorOrNullFromBkd(context, numericValues);
-          }
-          if (itAndCount != null && itAndCount.count != -1) {
-            return itAndCount.count;
-          }
-
-          // use index sort optimization if possible
+        LeafReader reader = context.reader();
+        if (reader.hasDeletions() == false) {
+          // The optimization requires the index to be sorted on this field with a supported type.
           SortField primarySortField = Sort.getPrimarySortField(reader);
           if (primarySortField != null && primarySortField.getField().equals(field)) {
             final SortField.Type sortFieldType = getSortFieldType(primarySortField);
-            // The index sort optimization is only supported for Type.INT and Type.LONG
-            if (sortFieldType == Type.INT || sortFieldType == Type.LONG) {
-              Object missingValue = primarySortField.getMissingValue();
-              final long missingLongValue =
-                  missingValue == null ? 0L : ((Number) missingValue).longValue();
+            if (isSupportedSortType(sortFieldType)) {
+              // Normalize the bounds into sortable-comparable-long space based on how this field
+              // stores its doc values (see #comparableValue).
+              final long comparableLower = comparableValue(lowerValue, reader, sortFieldType);
+              final long comparableUpper = comparableValue(upperValue, reader, sortFieldType);
+              if (comparableLower > comparableUpper) {
+                return 0;
+              }
+
+              SortedNumericDocValues sortedNumericValues =
+                  DocValues.getSortedNumeric(reader, field);
+              NumericDocValues numericValues = DocValues.unwrapSingleton(sortedNumericValues);
+              PointValues pointValues = reader.getPointValues(field);
+              IteratorAndCount itAndCount = null;
+
+              // first use bkd optimization if possible
+              if (pointValues != null && pointValues.getDocCount() == reader.maxDoc()) {
+                itAndCount =
+                    getDocIdSetIteratorOrNullFromBkd(
+                        context,
+                        numericValues,
+                        primarySortField,
+                        sortFieldType,
+                        comparableLower,
+                        comparableUpper);
+              }
+              if (itAndCount != null && itAndCount.count != -1) {
+                return itAndCount.count;
+              }
+
+              final long missingComparableValue =
+                  missingComparableValue(primarySortField.getMissingValue(), sortFieldType);
               // all documents have docValues or missing value falls outside the range
               if ((pointValues != null && pointValues.getDocCount() == reader.maxDoc())
-                  || (missingLongValue < lowerValue || missingLongValue > upperValue)) {
+                  || (missingComparableValue < comparableLower
+                      || missingComparableValue > comparableUpper)) {
                 itAndCount =
-                    getDocIdSetIterator(primarySortField, sortFieldType, context, numericValues);
+                    getDocIdSetIterator(
+                        primarySortField,
+                        sortFieldType,
+                        comparableLower,
+                        comparableUpper,
+                        context,
+                        numericValues);
               }
               if (itAndCount != null && itAndCount.count != -1) {
                 return itAndCount.count;
@@ -421,12 +462,13 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
   }
 
   private IteratorAndCount getDocIdSetIteratorOrNullFromBkd(
-      LeafReaderContext context, DocIdSetIterator delegate) throws IOException {
-    SortField primarySortField = Sort.getPrimarySortField(context.reader());
-    if (primarySortField == null || primarySortField.getField().equals(field) == false) {
-      return null;
-    }
-
+      LeafReaderContext context,
+      DocIdSetIterator delegate,
+      SortField primarySortField,
+      SortField.Type sortFieldType,
+      long comparableLower,
+      long comparableUpper)
+      throws IOException {
     final boolean reverse = primarySortField.getReverse();
 
     PointValues points = context.reader().getPointValues(field);
@@ -438,8 +480,10 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
       return null;
     }
 
-    if (points.getBytesPerDimension() != Long.BYTES
-        && points.getBytesPerDimension() != Integer.BYTES) {
+    // The point width must be consistent with the sort type so that the query bounds are packed the
+    // same way the values were indexed (float/int as 4 bytes, double/long as 8 bytes).
+    final int bytesPerDim = points.getBytesPerDimension();
+    if (bytesPerDim != bytesForSortType(sortFieldType)) {
       return null;
     }
 
@@ -447,16 +491,11 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
       return null;
     }
 
-    assert lowerValue <= upperValue;
-    byte[] queryLowerPoint;
-    byte[] queryUpperPoint;
-    if (points.getBytesPerDimension() == Integer.BYTES) {
-      queryLowerPoint = IntPoint.pack((int) lowerValue).bytes;
-      queryUpperPoint = IntPoint.pack((int) upperValue).bytes;
-    } else {
-      queryLowerPoint = LongPoint.pack(lowerValue).bytes;
-      queryUpperPoint = LongPoint.pack(upperValue).bytes;
-    }
+    assert comparableLower <= comparableUpper;
+    // Points always store values in sortable-bytes order, so the packed query bounds below (and the
+    // unsigned byte comparisons on them) work uniformly across all supported types.
+    byte[] queryLowerPoint = packComparableValue(comparableLower, sortFieldType);
+    byte[] queryUpperPoint = packComparableValue(comparableUpper, sortFieldType);
     if (matchNone(points, queryLowerPoint, queryUpperPoint)) {
       return IteratorAndCount.empty();
     }
@@ -508,26 +547,46 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
   }
 
   private IteratorAndCount getDocIdSetIteratorOrNull(LeafReaderContext context) throws IOException {
-    if (lowerValue > upperValue) {
+    LeafReader reader = context.reader();
+    // The optimization requires the index to be sorted on this field with a supported type.
+    SortField primarySortField = Sort.getPrimarySortField(reader);
+    if (primarySortField == null || primarySortField.getField().equals(field) == false) {
+      return null;
+    }
+    final SortField.Type sortFieldType = getSortFieldType(primarySortField);
+    if (isSupportedSortType(sortFieldType) == false) {
+      return null;
+    }
+
+    // Normalize the bounds into sortable-comparable-long space based on how this field stores its
+    // doc values (see #comparableValue).
+    final long comparableLower = comparableValue(lowerValue, reader, sortFieldType);
+    final long comparableUpper = comparableValue(upperValue, reader, sortFieldType);
+    if (comparableLower > comparableUpper) {
       return IteratorAndCount.empty();
     }
 
-    SortedNumericDocValues sortedNumericValues =
-        DocValues.getSortedNumeric(context.reader(), field);
+    SortedNumericDocValues sortedNumericValues = DocValues.getSortedNumeric(reader, field);
     NumericDocValues numericValues = DocValues.unwrapSingleton(sortedNumericValues);
     if (numericValues != null) {
-      IteratorAndCount itAndCount = getDocIdSetIteratorOrNullFromBkd(context, numericValues);
+      IteratorAndCount itAndCount =
+          getDocIdSetIteratorOrNullFromBkd(
+              context,
+              numericValues,
+              primarySortField,
+              sortFieldType,
+              comparableLower,
+              comparableUpper);
       if (itAndCount != null) {
         return itAndCount;
       }
-      SortField primarySortField = Sort.getPrimarySortField(context.reader());
-      if (primarySortField != null && primarySortField.getField().equals(field)) {
-        final SortField.Type sortFieldType = getSortFieldType(primarySortField);
-        // The index sort optimization is only supported for Type.INT and Type.LONG
-        if (sortFieldType == Type.INT || sortFieldType == Type.LONG) {
-          return getDocIdSetIterator(primarySortField, sortFieldType, context, numericValues);
-        }
-      }
+      return getDocIdSetIterator(
+          primarySortField,
+          sortFieldType,
+          comparableLower,
+          comparableUpper,
+          context,
+          numericValues);
     }
     return null;
   }
@@ -547,11 +606,13 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
   private IteratorAndCount getDocIdSetIterator(
       SortField sortField,
       SortField.Type sortFieldType,
+      long comparableLower,
+      long comparableUpper,
       LeafReaderContext context,
       DocIdSetIterator delegate)
       throws IOException {
-    long lower = sortField.getReverse() ? upperValue : lowerValue;
-    long upper = sortField.getReverse() ? lowerValue : upperValue;
+    long lower = sortField.getReverse() ? comparableUpper : comparableLower;
+    long upper = sortField.getReverse() ? comparableLower : comparableUpper;
     int maxDoc = context.reader().maxDoc();
 
     // Perform a binary search to find the first document with value >= lower.
@@ -596,10 +657,10 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
     Object missingValue = sortField.getMissingValue();
     LeafReader reader = context.reader();
     PointValues pointValues = reader.getPointValues(field);
-    final long missingLongValue = missingValue == null ? 0L : ((Number) missingValue).longValue();
+    final long missingComparableValue = missingComparableValue(missingValue, sortFieldType);
     // all documents have docValues or missing value falls outside the range
     if ((pointValues != null && pointValues.getDocCount() == reader.maxDoc())
-        || (missingLongValue < lowerValue || missingLongValue > upperValue)) {
+        || (missingComparableValue < comparableLower || missingComparableValue > comparableUpper)) {
       return IteratorAndCount.denseRange(firstDocIdInclusive, lastDocIdExclusive);
     } else {
       return IteratorAndCount.sparseRange(firstDocIdInclusive, lastDocIdExclusive, delegate);
@@ -617,11 +678,13 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
     @SuppressWarnings("unchecked")
     FieldComparator<Number> fieldComparator =
         (FieldComparator<Number>) sortField.getComparator(1, Pruning.NONE);
-    if (type == Type.INT) {
-      fieldComparator.setTopValue((int) topValue);
-    } else {
-      // Since we support only Type.INT and Type.LONG, assuming LONG for all other cases
-      fieldComparator.setTopValue(topValue);
+    // topValue is stored as a sortable comparable long; decode it to the sort field's real type so
+    // the comparator (which reads and decodes the doc values itself) compares against a like value.
+    switch (type) {
+      case INT -> fieldComparator.setTopValue((int) topValue);
+      case FLOAT -> fieldComparator.setTopValue(NumericUtils.sortableIntToFloat((int) topValue));
+      case DOUBLE -> fieldComparator.setTopValue(NumericUtils.sortableLongToDouble(topValue));
+      default -> fieldComparator.setTopValue(topValue); // LONG
     }
 
     LeafFieldComparator leafFieldComparator = fieldComparator.getLeafComparator(context);
@@ -639,6 +702,84 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
       return snsf.getNumericType();
     } else {
       return sortField.getType();
+    }
+  }
+
+  /** Whether the index-sort field type is a numeric type that this optimization supports. */
+  private static boolean isSupportedSortType(SortField.Type sortFieldType) {
+    return sortFieldType == Type.INT
+        || sortFieldType == Type.LONG
+        || sortFieldType == Type.FLOAT
+        || sortFieldType == Type.DOUBLE;
+  }
+
+  /** The point width (bytes per dimension) expected for a given numeric sort type. */
+  private static int bytesForSortType(SortField.Type sortFieldType) {
+    return (sortFieldType == Type.INT || sortFieldType == Type.FLOAT) ? Integer.BYTES : Long.BYTES;
+  }
+
+  /**
+   * Normalizes a bound (expressed in the field's doc-values long space) into the sortable
+   * comparable-long space used internally for ordering, point packing, and {@code setTopValue}
+   * decoding.
+   *
+   * <p>The encoding of a stored float/double depends on the doc-values type:
+   *
+   * <ul>
+   *   <li>{@link DocValuesType#SORTED_NUMERIC} fields (e.g. {@code FloatField}) already store the
+   *       sortable encoding ({@link NumericUtils#floatToSortableInt}/{@link
+   *       NumericUtils#doubleToSortableLong}), so the bound is used as-is.
+   *   <li>Single-valued {@link DocValuesType#NUMERIC} fields (e.g. {@code FloatDocValuesField})
+   *       store the raw IEEE-754 bits, which do not order correctly as signed longs, so the bound
+   *       is converted to sortable order here.
+   * </ul>
+   *
+   * <p>Integral (int/long) sorts store their raw value under both doc-values types, so the bound is
+   * returned unchanged.
+   */
+  private long comparableValue(long bound, LeafReader reader, SortField.Type sortFieldType) {
+    if (sortFieldType != Type.FLOAT && sortFieldType != Type.DOUBLE) {
+      return bound;
+    }
+    FieldInfo fieldInfo = reader.getFieldInfos().fieldInfo(field);
+    if (fieldInfo != null && fieldInfo.getDocValuesType() == DocValuesType.NUMERIC) {
+      return sortFieldType == Type.FLOAT
+          ? NumericUtils.sortableFloatBits((int) bound)
+          : NumericUtils.sortableDoubleBits(bound);
+    }
+    return bound;
+  }
+
+  /**
+   * Converts a sort field's missing value into the same doc-values comparable-long space used for
+   * the {@code lowerValue}/{@code upperValue} bounds, so it can be compared against them with
+   * signed long ordering.
+   */
+  private static long missingComparableValue(Object missingValue, SortField.Type sortFieldType) {
+    return switch (sortFieldType) {
+      case FLOAT ->
+          NumericUtils.floatToSortableInt(
+              missingValue == null ? 0.0f : ((Number) missingValue).floatValue());
+      case DOUBLE ->
+          NumericUtils.doubleToSortableLong(
+              missingValue == null ? 0.0 : ((Number) missingValue).doubleValue());
+      default -> missingValue == null ? 0L : ((Number) missingValue).longValue();
+    };
+  }
+
+  /**
+   * Packs a comparable-long bound into the point encoding used by the BKD tree. Float/double bounds
+   * are written as sortable bytes (matching {@code FloatPoint}/{@code DoublePoint}); integral
+   * bounds use {@code IntPoint}/{@code LongPoint} packing.
+   */
+  private static byte[] packComparableValue(long comparableValue, SortField.Type sortFieldType) {
+    switch (sortFieldType) {
+      case INT, FLOAT -> {
+        return IntPoint.pack((int) comparableValue).bytes;
+      }
+      default -> {
+        return LongPoint.pack(comparableValue).bytes;
+      }
     }
   }
 
