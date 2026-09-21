@@ -201,7 +201,8 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
     VectorSimilarityFunction similarityFunction = randomSimilarity();
     KnnFloatVectorField knnField = new KnnFloatVectorField(fieldName, vector, similarityFunction);
     try (Directory dir = newDirectory()) {
-      try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+      try (IndexWriter w =
+          new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()))) {
         for (int i = 0; i < numVectors; i++) {
           Document doc = new Document();
           knnField.setVectorValue(randomVector(dims));
@@ -281,7 +282,8 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
         new KnnFloat16VectorField(
             fieldName, randomNormalizedFloat16Vector(dims), similarityFunction);
     try (Directory dir = newDirectory()) {
-      try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+      try (IndexWriter w =
+          new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()))) {
         for (int i = 0; i < numVectors; i++) {
           Document doc = new Document();
           knnField.setVectorValue(randomNormalizedFloat16Vector(dims));
@@ -648,7 +650,11 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
     VectorSimilarityFunction similarityFunction = randomSimilarity();
     try (Directory dir = newDirectory()) {
       try (IndexWriter w =
-          new IndexWriter(dir, newIndexWriterConfig().setCodec(dataBlindCodec()))) {
+          new IndexWriter(
+              dir,
+              newIndexWriterConfig()
+                  .setMergePolicy(newLogMergePolicy())
+                  .setCodec(dataBlindCodec()))) {
         for (int i = 0; i < numVectors; i++) {
           Document doc = new Document();
           doc.add(new KnnFloatVectorField(fieldName, randomVector(dims), similarityFunction));
@@ -674,7 +680,11 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
     VectorSimilarityFunction similarityFunction = randomSimilarity();
     try (Directory dir = newDirectory()) {
       try (IndexWriter w =
-          new IndexWriter(dir, newIndexWriterConfig().setCodec(dataBlindCodec()))) {
+          new IndexWriter(
+              dir,
+              newIndexWriterConfig()
+                  .setMergePolicy(newLogMergePolicy())
+                  .setCodec(dataBlindCodec()))) {
         for (int s = 0; s < 2; s++) {
           for (int i = 0; i < numVectorsPerSegment; i++) {
             Document doc = new Document();
@@ -726,6 +736,8 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
           new IndexWriter(
               dir,
               newIndexWriterConfig()
+                  .setMaxBufferedDocs(numVectorsPerSegment + 1)
+                  .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
                   .setMergePolicy(NoMergePolicy.INSTANCE)
                   .setUseCompoundFile(false)
                   .setCodec(dataBlindCodec()))) {
@@ -736,6 +748,8 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
           new IndexWriter(
               dir,
               newIndexWriterConfig()
+                  .setMaxBufferedDocs(numVectorsPerSegment + 1)
+                  .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
                   .setMergePolicy(NoMergePolicy.INSTANCE)
                   .setUseCompoundFile(false)
                   .setCodec(
@@ -775,6 +789,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
               dir,
               newIndexWriterConfig()
                   .setMergeScheduler(new SerialMergeScheduler())
+                  .setMergePolicy(newLogMergePolicy())
                   .setCodec(dataBlindCodec()))) {
         w.forceMerge(1);
         try (DirectoryReader reader = DirectoryReader.open(w)) {
@@ -886,24 +901,30 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
           new IndexWriter(
               dir,
               newIndexWriterConfig()
+                  .setMaxBufferedDocs(numVectorsPerSegment + 1)
+                  .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
                   .setMergePolicy(NoMergePolicy.INSTANCE)
                   .setCodec(
                       TestUtil.alwaysKnnVectorsFormat(
                           new Lucene104ScalarQuantizedVectorsFormat(
                               ScalarEncoding.PACKED_NIBBLE, Mode.DATA_BLIND_WITHOUT_FLOATS))))) {
         addFloatVectorDocs(w, fieldName, dims, similarityFunction, numVectorsPerSegment);
+        w.commit();
       }
       // Second segment: data-blind with a different encoding (UNSIGNED_BYTE).
       try (IndexWriter w =
           new IndexWriter(
               dir,
               newIndexWriterConfig()
+                  .setMaxBufferedDocs(numVectorsPerSegment + 1)
+                  .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
                   .setMergePolicy(NoMergePolicy.INSTANCE)
                   .setCodec(
                       TestUtil.alwaysKnnVectorsFormat(
                           new Lucene104ScalarQuantizedVectorsFormat(
                               ScalarEncoding.UNSIGNED_BYTE, Mode.DATA_BLIND_WITHOUT_FLOATS))))) {
         addFloatVectorDocs(w, fieldName, dims, similarityFunction, numVectorsPerSegment);
+        w.commit();
       }
       // Merging the two data-blind segments must fail: re-quantization needs raw floats that were
       // never written.
@@ -912,6 +933,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
               dir,
               newIndexWriterConfig()
                   .setMergeScheduler(new SerialMergeScheduler())
+                  .setMergePolicy(newLogMergePolicy())
                   .setCodec(
                       TestUtil.alwaysKnnVectorsFormat(
                           new Lucene104ScalarQuantizedVectorsFormat(
@@ -943,6 +965,8 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
           new IndexWriter(
               dir,
               newIndexWriterConfig()
+                  .setMaxBufferedDocs(numVectors + 1)
+                  .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
                   .setMergePolicy(NoMergePolicy.INSTANCE)
                   .setUseCompoundFile(false)
                   .setCodec(
@@ -961,6 +985,8 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
           new IndexWriter(
               dir,
               newIndexWriterConfig()
+                  .setMaxBufferedDocs(numVectors + 1)
+                  .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
                   .setMergePolicy(NoMergePolicy.INSTANCE)
                   .setUseCompoundFile(false)
                   .setCodec(dataBlindCodec()))) {
@@ -976,6 +1002,8 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
           new IndexWriter(
               dir,
               newIndexWriterConfig()
+                  .setMaxBufferedDocs(numVectors + 1)
+                  .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
                   .setMergePolicy(NoMergePolicy.INSTANCE)
                   .setUseCompoundFile(false)
                   .setCodec(dataBlindWithFloatsCodec()))) {
@@ -998,12 +1026,24 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
     VectorSimilarityFunction similarityFunction = randomSimilarity();
     try (Directory dir = newDirectory()) {
       try (IndexWriter w =
-          new IndexWriter(dir, newIndexWriterConfig().setCodec(dataBlindCodec()))) {
+          new IndexWriter(
+              dir,
+              newIndexWriterConfig()
+                  .setMaxBufferedDocs(numVectorsPerSegment + 1)
+                  .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
+                  .setMergePolicy(NoMergePolicy.INSTANCE)
+                  .setCodec(dataBlindCodec()))) {
         addFloatVectorDocs(w, fieldName, dims, similarityFunction, numVectorsPerSegment);
         w.commit();
       }
       try (IndexWriter w =
-          new IndexWriter(dir, newIndexWriterConfig().setCodec(dataBlindCodec()))) {
+          new IndexWriter(
+              dir,
+              newIndexWriterConfig()
+                  .setMaxBufferedDocs(numVectorsPerSegment + 1)
+                  .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
+                  .setMergePolicy(NoMergePolicy.INSTANCE)
+                  .setCodec(dataBlindCodec()))) {
         addFloatVectorDocs(w, fieldName, dims, similarityFunction, numVectorsPerSegment);
         w.commit();
       }
@@ -1013,6 +1053,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
               dir,
               newIndexWriterConfig()
                   .setMergeScheduler(new SerialMergeScheduler())
+                  .setMergePolicy(newLogMergePolicy())
                   .setCodec(
                       TestUtil.alwaysKnnVectorsFormat(
                           new Lucene104ScalarQuantizedVectorsFormat(encoding, Mode.CENTERED))))) {
@@ -1101,7 +1142,11 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
     VectorSimilarityFunction similarityFunction = randomSimilarity();
     try (Directory dir = newDirectory()) {
       try (IndexWriter w =
-          new IndexWriter(dir, newIndexWriterConfig().setCodec(dataBlindWithFloatsCodec()))) {
+          new IndexWriter(
+              dir,
+              newIndexWriterConfig()
+                  .setMergePolicy(newLogMergePolicy())
+                  .setCodec(dataBlindWithFloatsCodec()))) {
         for (int s = 0; s < 2; s++) {
           addFloatVectorDocs(w, fieldName, dims, similarityFunction, numVectorsPerSegment);
           w.commit();
@@ -1139,12 +1184,24 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
     VectorSimilarityFunction similarityFunction = randomSimilarity();
     try (Directory dir = newDirectory()) {
       try (IndexWriter w =
-          new IndexWriter(dir, newIndexWriterConfig().setCodec(dataBlindCodec()))) {
+          new IndexWriter(
+              dir,
+              newIndexWriterConfig()
+                  .setMaxBufferedDocs(numVectorsPerSegment + 1)
+                  .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
+                  .setMergePolicy(NoMergePolicy.INSTANCE)
+                  .setCodec(dataBlindCodec()))) {
         addFloatVectorDocs(w, fieldName, dims, similarityFunction, numVectorsPerSegment);
         w.commit();
       }
       try (IndexWriter w =
-          new IndexWriter(dir, newIndexWriterConfig().setCodec(dataBlindCodec()))) {
+          new IndexWriter(
+              dir,
+              newIndexWriterConfig()
+                  .setMaxBufferedDocs(numVectorsPerSegment + 1)
+                  .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
+                  .setMergePolicy(NoMergePolicy.INSTANCE)
+                  .setCodec(dataBlindCodec()))) {
         addFloatVectorDocs(w, fieldName, dims, similarityFunction, numVectorsPerSegment);
         w.commit();
       }
@@ -1153,6 +1210,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
               dir,
               newIndexWriterConfig()
                   .setMergeScheduler(new SerialMergeScheduler())
+                  .setMergePolicy(newLogMergePolicy())
                   .setCodec(dataBlindWithFloatsCodec()))) {
         Throwable t =
             expectThrows(
@@ -1312,7 +1370,11 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
     VectorSimilarityFunction similarityFunction = randomSimilarity();
     try (Directory dir = newDirectory()) {
       try (IndexWriter w =
-          new IndexWriter(dir, newIndexWriterConfig().setCodec(dataBlindCodec()))) {
+          new IndexWriter(
+              dir,
+              newIndexWriterConfig()
+                  .setMergePolicy(newLogMergePolicy())
+                  .setCodec(dataBlindCodec()))) {
         for (int s = 0; s < 2; s++) {
           for (int i = 0; i < numVectorsPerSegment; i++) {
             Document doc = new Document();
@@ -1350,29 +1412,36 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
           new IndexWriter(
               dir,
               newIndexWriterConfig()
+                  .setMaxBufferedDocs(numVectorsPerSegment + 1)
+                  .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
                   .setMergePolicy(NoMergePolicy.INSTANCE)
                   .setCodec(
                       TestUtil.alwaysKnnVectorsFormat(
                           new Lucene104ScalarQuantizedVectorsFormat(
                               ScalarEncoding.PACKED_NIBBLE, Mode.DATA_BLIND_WITHOUT_FLOATS))))) {
         addFloat16VectorDocs(w, fieldName, dims, similarityFunction, numVectorsPerSegment);
+        w.commit();
       }
       try (IndexWriter w =
           new IndexWriter(
               dir,
               newIndexWriterConfig()
+                  .setMaxBufferedDocs(numVectorsPerSegment + 1)
+                  .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
                   .setMergePolicy(NoMergePolicy.INSTANCE)
                   .setCodec(
                       TestUtil.alwaysKnnVectorsFormat(
                           new Lucene104ScalarQuantizedVectorsFormat(
                               ScalarEncoding.UNSIGNED_BYTE, Mode.DATA_BLIND_WITHOUT_FLOATS))))) {
         addFloat16VectorDocs(w, fieldName, dims, similarityFunction, numVectorsPerSegment);
+        w.commit();
       }
       try (IndexWriter w =
           new IndexWriter(
               dir,
               newIndexWriterConfig()
                   .setMergeScheduler(new SerialMergeScheduler())
+                  .setMergePolicy(newLogMergePolicy())
                   .setCodec(
                       TestUtil.alwaysKnnVectorsFormat(
                           new Lucene104ScalarQuantizedVectorsFormat(
