@@ -17,6 +17,11 @@ on:
 
 permissions: {}
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  # speed up feedback on pull request builds by cancelling outdated builds
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
+
 env:
   DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
 
@@ -45,7 +50,7 @@ jobs:
           echo "::add-matcher::.github/problem-matchers/shellcheck-gcc.json"
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           version-file: dev-tools/pyproject.toml
           enable-cache: true
@@ -69,7 +74,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ ubuntu-latest ]
+        os: [ ubuntu-24.04-arm ]
         java: [ '25' ]
 
     runs-on: ${{ matrix.os }}
