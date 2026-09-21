@@ -25,6 +25,7 @@ import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.VERSIO
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.SIMILARITY_FUNCTIONS;
 import static org.apache.lucene.util.hnsw.HnswGraphSearcher.expectedVisitedNodes;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -429,12 +430,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         flatVectorWriter.mergeOneFlatVectorFieldForMergeScorer(
             fieldInfo, mergeState, this::buildsGraph);
     if (mergeScorerData != null) {
-      try {
-        preparedMergeScorers.add(mergeScorerData);
-      } catch (Throwable t) {
-        IOUtils.closeWhileSuppressingExceptions(t, mergeScorerData);
-        throw t;
-      }
+      preparedMergeScorers.add(mergeScorerData);
     }
     return () -> {
       // Bail out before the potentially heavy graph build if the merge was already aborted
@@ -686,16 +682,13 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
 
   @Override
   public void close() throws IOException {
-    try {
-      if (flatWriterClosed) {
-        IOUtils.close(meta, vectorIndex, flatVectorsReader);
-      } else {
-        IOUtils.close(meta, vectorIndex, flatVectorWriter, flatVectorsReader);
-      }
-    } finally {
-      // Release handles left by aborted merges, fields that built no graph after deletions, and
-      // fields skipped after another graph build failed.
-      IOUtils.closeWhileHandlingException(preparedMergeScorers);
+    // Release handles left by aborted merges, fields that built no graph after deletions, and
+    // fields skipped after another graph build failed.
+    Closeable handles = () -> IOUtils.close(preparedMergeScorers);
+    if (flatWriterClosed) {
+      IOUtils.close(meta, vectorIndex, flatVectorsReader, handles);
+    } else {
+      IOUtils.close(meta, vectorIndex, flatVectorWriter, flatVectorsReader, handles);
     }
   }
 

@@ -96,8 +96,9 @@ public abstract class FlatVectorsWriter extends KnnVectorsWriter {
 
   /**
    * Data prepared while merging a field for scoring its merged vectors. The caller must close it
-   * whether or not it obtains a supplier. A single merge thread uses each instance, so
-   * implementations need not be thread-safe.
+   * whether or not it obtains a supplier; closing releases only what {@link #scorerSupplier} did
+   * not hand over. A single merge thread uses each instance, so implementations need not be
+   * thread-safe.
    */
   public interface MergeScorerData extends Closeable {
 
@@ -119,12 +120,5 @@ public abstract class FlatVectorsWriter extends KnnVectorsWriter {
      */
     CloseableRandomVectorScorerSupplier scorerSupplier(FlatVectorsReader mergedReader)
         throws IOException;
-
-    /**
-     * Releases data not transferred by {@link #scorerSupplier}. This method is idempotent and must
-     * not throw, so cleanup during a failed merge does not replace the original exception.
-     */
-    @Override
-    void close();
   }
 }

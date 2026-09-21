@@ -373,7 +373,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   @Override
   public final void mergeOneFlatVectorField(FieldInfo fieldInfo, MergeState mergeState)
       throws IOException {
-    mergeOneFlatVectorField(fieldInfo, mergeState, null);
+    mergeOneFlatVectorField(fieldInfo, mergeState, _ -> false);
   }
 
   /**
@@ -463,8 +463,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     // them. FLOAT16 fields use fp16 vectors. The predicate sees vectorCount before deletions, so it
     // can request data even when the merged field is too small to build a graph.
     boolean prepareQueryData =
-        needsMergeScorer != null
-            && encoding.isAsymmetric()
+        encoding.isAsymmetric()
             && fieldInfo.getVectorEncoding() == VectorEncoding.FLOAT32
             && needsMergeScorer.test(vectorCount);
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
@@ -479,7 +478,6 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
           mergedQuantizedVectorValues(fieldInfo, mergeState, mergedCentroid);
       docsWithField = writeVectorData(vectorData, quantizedVectorValues);
     }
-    boolean success = false;
     try {
       long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
       float centroidDp =
@@ -494,13 +492,11 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
           mergedCentroid,
           centroidDp,
           docsWithField);
-      success = true;
       return mergeScorerData;
-    } finally {
-      // Delete the records on failure because their handle has not been returned.
-      if (success == false && mergeScorerData != null) {
-        mergeScorerData.close();
-      }
+    } catch (Throwable t) {
+      // The handle was never returned, so nobody else can release its records.
+      IOUtils.closeWhileSuppressingExceptions(t, mergeScorerData);
+      throw t;
     }
   }
 
