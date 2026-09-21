@@ -362,7 +362,9 @@ API Changes
 * GITHUB#16696: FlatVectorsWriter gains mergeOneFlatVectorFieldForMergeScorer and the
   FlatVectorsWriter.MergeScorerData handle it returns, so that a flat writer can prepare what a
   merge scorer over the merged vectors needs while it writes them. The default prepares nothing;
-  a writer that wraps another one should forward the new method too. (John Maurice)
+  a writer that wraps another one should forward the new method too.
+  Lucene104ScalarQuantizedVectorsWriter.mergeOneFlatVectorField(FieldInfo, MergeState) is now
+  final; subclasses that customize merging should override the new method instead. (John Maurice)
 
 * GITHUB#14399: Add a default LeafFieldComparator#disableSkipping method so document skipping can be
   disabled per segment. (Serhiy Bzhezytskyy)
