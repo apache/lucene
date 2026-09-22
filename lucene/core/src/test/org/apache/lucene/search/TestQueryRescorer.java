@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -397,6 +398,44 @@ public class TestQueryRescorer extends LuceneTestCase {
     dir.close();
   }
 
+  public void testTwoPhaseQueryOnlyChecksRescoreDocs() throws Exception {
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir, newIndexWriterConfig());
+    for (int i = 0; i < 8; i++) {
+      w.addDocument(new Document());
+    }
+    w.forceMerge(1);
+    IndexReader reader = w.getReader();
+    w.close();
+    assertEquals(1, reader.leaves().size());
+
+    AtomicInteger matchCount = new AtomicInteger();
+    Query query = new CountingTwoPhaseQuery(7, matchCount);
+    // Include a duplicate to ensure matches() is called at most once per positioned document.
+    TopDocs firstPassTopDocs =
+        new TopDocs(
+            new TotalHits(5, TotalHits.Relation.EQUAL_TO),
+            new ScoreDoc[] {
+              new ScoreDoc(0, 1f),
+              new ScoreDoc(0, 1f),
+              new ScoreDoc(2, 1f),
+              new ScoreDoc(4, 1f),
+              new ScoreDoc(7, 1f)
+            });
+
+    TopDocs rescored = QueryRescorer.rescore(newSearcher(reader), firstPassTopDocs, query, 1d, 5);
+
+    assertEquals(4, matchCount.get());
+    assertEquals(7, rescored.scoreDocs[0].doc);
+    assertEquals(11f, rescored.scoreDocs[0].score, 0f);
+    for (int i = 1; i < rescored.scoreDocs.length; i++) {
+      assertEquals(1f, rescored.scoreDocs[i].score, 0f);
+    }
+
+    reader.close();
+    dir.close();
+  }
+
   public void testRandom() throws Exception {
     Directory dir = newDirectory();
     int numDocs = atLeast(1000);
@@ -478,6 +517,102 @@ public class TestQueryRescorer extends LuceneTestCase {
 
     r.close();
     dir.close();
+  }
+
+  /** Exposes all documents as an approximation and confirms only {@code matchingDoc}. */
+  private static class CountingTwoPhaseQuery extends Query {
+    private final int matchingDoc;
+    private final AtomicInteger matchCount;
+
+    CountingTwoPhaseQuery(int matchingDoc, AtomicInteger matchCount) {
+      this.matchingDoc = matchingDoc;
+      this.matchCount = matchCount;
+    }
+
+    @Override
+    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) {
+      return new Weight(this) {
+        @Override
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) {
+          DocIdSetIterator approximation = DocIdSetIterator.all(context.reader().maxDoc());
+          TwoPhaseIterator twoPhase =
+              new TwoPhaseIterator(approximation) {
+                @Override
+                public boolean matches() {
+                  matchCount.incrementAndGet();
+                  return approximation.docID() == matchingDoc;
+                }
+
+                @Override
+                public float matchCost() {
+                  return 1f;
+                }
+              };
+          Scorer scorer =
+              new Scorer() {
+                @Override
+                public int docID() {
+                  return approximation.docID();
+                }
+
+                @Override
+                public DocIdSetIterator iterator() {
+                  return TwoPhaseIterator.asDocIdSetIterator(twoPhase);
+                }
+
+                @Override
+                public TwoPhaseIterator twoPhaseIterator() {
+                  return twoPhase;
+                }
+
+                @Override
+                public float score() {
+                  assert docID() == matchingDoc;
+                  return 10f;
+                }
+
+                @Override
+                public float getMaxScore(int upTo) {
+                  return 10f;
+                }
+              };
+          return new DefaultScorerSupplier(scorer);
+        }
+
+        @Override
+        public Explanation explain(LeafReaderContext context, int doc) {
+          if (doc == matchingDoc) {
+            return Explanation.match(10f, "matching document");
+          }
+          return Explanation.noMatch("not the matching document");
+        }
+
+        @Override
+        public boolean isCacheable(LeafReaderContext ctx) {
+          return false;
+        }
+      };
+    }
+
+    @Override
+    public String toString(String field) {
+      return "CountingTwoPhaseQuery(" + matchingDoc + ")";
+    }
+
+    @Override
+    public void visit(QueryVisitor visitor) {
+      visitor.visitLeaf(this);
+    }
+
+    @Override
+    public boolean equals(Object other) {
+      return sameClassAs(other) && matchingDoc == ((CountingTwoPhaseQuery) other).matchingDoc;
+    }
+
+    @Override
+    public int hashCode() {
+      return 31 * classHash() + matchingDoc;
+    }
   }
 
   /** Just assigns score == idToNum[doc("id")] for each doc. */
