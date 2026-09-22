@@ -93,7 +93,7 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
                 initReader,
                 initDocMap,
                 initGraphSize,
-                mergedVectorValues,
+                mergedVectorValues.copy(),
                 initializedNodes);
         graph =
             InitializedHnswGraphBuilder.initGraph(
@@ -105,8 +105,43 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
                 abortCheck);
       }
     }
+    CompletedNeighborEps epsHelper = null;
+    GraphReader copiedBase = initializedNodes != null ? largestGraphReader : null;
+    int leftoverCount = 0;
+    for (int i = 0; i < graphReaders.size(); i++) {
+      if (graphReaders.get(i) != copiedBase) {
+        leftoverCount++;
+      }
+    }
+    if (leftoverCount > 0) {
+      // null bitset: parent mapping sets bits for every 0-delete reader, which would skip leftover
+      // inserts on the concurrent path. copy(): sparse OffHeap values share one IndexedDISI;
+      // iterator() is not restartable after the base-graph mapping above. Do not mutate
+      // graphReaders: skip the copied largest in the leftover arrays instead.
+      int[][] allOrdMaps = getNewOrdMapping(mergedVectorValues.copy(), null);
+      KnnVectorsReader[] readers = new KnnVectorsReader[leftoverCount];
+      int[][] ordMaps = new int[leftoverCount][];
+      int w = 0;
+      for (int i = 0; i < graphReaders.size(); i++) {
+        if (graphReaders.get(i) == copiedBase) {
+          continue;
+        }
+        readers[w] = graphReaders.get(i).reader();
+        ordMaps[w] = allOrdMaps[i];
+        w++;
+      }
+      epsHelper = new CompletedNeighborEps(maxOrd, ordMaps, readers, fieldInfo.name);
+      if (initializedNodes != null) {
+        int length = initializedNodes.length();
+        for (int n = initializedNodes.nextSetBit(0);
+            n != NO_MORE_DOCS;
+            n = n + 1 >= length ? NO_MORE_DOCS : initializedNodes.nextSetBit(n + 1)) {
+          epsHelper.markCompleted(n);
+        }
+      }
+    }
     return new HnswConcurrentMergeBuilder(
-        taskExecutor, numWorker, scorerSupplier, beamWidth, graph, initializedNodes);
+        taskExecutor, numWorker, scorerSupplier, beamWidth, graph, initializedNodes, epsHelper);
   }
 
   /**

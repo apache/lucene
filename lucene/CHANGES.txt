@@ -524,6 +524,9 @@ Optimizations
 
 * GITHUB#16520: Support two-phase filters in MaxScoreBulkScorer bitset path. (Ke Wei)
 
+* GITHUB#16664: Speed up concurrent HNSW merge by using source-graph entry points for reduced-beam
+  insertion. (Costin Leau)
+
 Bug Fixes
 ---------------------
 
