@@ -84,4 +84,9 @@ public class SegmentReadState {
     this.context = other.context;
     this.segmentSuffix = newSegmentSuffix;
   }
+
+  /** Returns a copy of this state whose context carries the given hints in place of its own. */
+  public SegmentReadState withHints(IOContext.FileOpenHint... hints) {
+    return new SegmentReadState(this, context.withHints(hints));
+  }
 }

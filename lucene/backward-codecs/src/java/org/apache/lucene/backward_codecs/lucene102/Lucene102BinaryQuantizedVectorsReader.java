@@ -30,7 +30,6 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Stream;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
@@ -54,13 +53,11 @@ import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.ChecksumIndexInput;
-import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.FileDataHint;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.store.NoReuseHint;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -131,14 +128,7 @@ public class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader
               VECTOR_DATA_EXTENSION,
               Lucene102BinaryQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
               // how these are read is up to whoever wraps this format
-              state.context.withHints(
-                  Stream.of(
-                          FileTypeHint.DATA,
-                          FileDataHint.KNN_VECTORS,
-                          state.context.hints(DataAccessHint.class).findFirst().orElse(null),
-                          state.context.hints(NoReuseHint.class).findFirst().orElse(null))
-                      .filter(Objects::nonNull)
-                      .toArray(IOContext.FileOpenHint[]::new)));
+              state.context.union(FileTypeHint.DATA, FileDataHint.KNN_VECTORS));
     } catch (Throwable t) {
       IOUtils.closeWhileSuppressingExceptions(t, this);
       throw t;

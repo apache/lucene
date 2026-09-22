@@ -107,7 +107,10 @@ public final class FaissKnnVectorsFormat extends KnnVectorsFormat {
 
   @Override
   public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new FaissKnnVectorsReader(state, rawVectorsFormat.fieldsReader(randomAccess(state)));
+    return new FaissKnnVectorsReader(
+        state,
+        rawVectorsFormat.fieldsReader(
+            state.withHints(FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM)));
   }
 
   @Override
@@ -119,13 +122,5 @@ public final class FaissKnnVectorsFormat extends KnnVectorsFormat {
   public String toString() {
     return String.format(
         Locale.ROOT, "%s(description=%s indexParams=%s)", NAME, description, indexParams);
-  }
-
-  /** These vectors are read at random. */
-  private static SegmentReadState randomAccess(SegmentReadState state) {
-    return new SegmentReadState(
-        state,
-        state.context.withHints(
-            FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM));
   }
 }

@@ -16,7 +16,10 @@
  */
 package org.apache.lucene.store;
 
-/** A hint that reads of the file do not come back to the same parts of it. */
+/**
+ * A hint that reads of the file do not come back to the same parts of it. A writer sets it for a
+ * file that is read that way once written.
+ */
 public enum NoReuseHint implements IOContext.FileOpenHint {
   INSTANCE
 }

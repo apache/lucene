@@ -22,8 +22,6 @@ import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVe
 
 import java.io.IOException;
 import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Stream;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
@@ -48,9 +46,7 @@ import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.FileDataHint;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
-import org.apache.lucene.store.IOContext.FileOpenHint;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.NoReuseHint;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
@@ -90,15 +86,9 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     int versionMeta = readMetadata(state);
     this.vectorScorer = scorer;
     this.fieldInfos = state.fieldInfos;
-    FileOpenHint[] hints =
-        Stream.of(
-                FileTypeHint.DATA,
-                FileDataHint.KNN_VECTORS,
-                state.context.hints(DataAccessHint.class).findFirst().orElse(accessHint),
-                state.context.hints(NoReuseHint.class).findFirst().orElse(null))
-            .filter(Objects::nonNull)
-            .toArray(FileOpenHint[]::new);
-    dataContext = state.context.withHints(hints);
+
+    dataContext =
+        state.context.union(FileTypeHint.DATA, FileDataHint.KNN_VECTORS).coalesce(accessHint);
     try {
       vectorData =
           openDataInput(

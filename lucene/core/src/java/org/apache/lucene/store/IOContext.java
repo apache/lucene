@@ -18,6 +18,7 @@ package org.apache.lucene.store;
 
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -160,4 +161,30 @@ public interface IOContext {
    * <p>This instance is immutable and unaffected by this method call.
    */
   IOContext withHints(FileOpenHint... hints);
+
+  /**
+   * Returns an IOContext with the given hints added to the ones it already has. A hint it already
+   * has is added once.
+   *
+   * @throws IllegalArgumentException if that would give it two different hints of the same type
+   */
+  default IOContext union(FileOpenHint... hints) {
+    return withHints(
+        Stream.concat(hints().stream(), Stream.of(hints)).distinct().toArray(FileOpenHint[]::new));
+  }
+
+  /**
+   * Returns an IOContext with each of the given hints added, skipping any whose type it already
+   * has, so a hint it was opened with wins over the one offered here. A {@code null} offers nothing
+   * for its type.
+   */
+  default IOContext coalesce(FileOpenHint... hints) {
+    Set<Class<? extends FileOpenHint>> present =
+        hints().stream().map(FileOpenHint::getClass).collect(Collectors.toSet());
+    return union(
+        Stream.of(hints)
+            .filter(Objects::nonNull)
+            .filter(hint -> present.contains(hint.getClass()) == false)
+            .toArray(FileOpenHint[]::new));
+  }
 }

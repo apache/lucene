@@ -28,8 +28,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Stream;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
@@ -50,13 +48,11 @@ import org.apache.lucene.sandbox.codecs.dedup.DedupScalarQuantizedVectorValues.R
 import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.GroupInfo;
 import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.ReadFieldInfo;
 import org.apache.lucene.store.ChecksumIndexInput;
-import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.FileDataHint;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.store.NoReuseHint;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.VectorUtil;
@@ -278,15 +274,7 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
             state.segmentInfo.name, state.segmentSuffix, vectorDataExtension);
 
     // how these are read is up to whoever wraps this format
-    IOContext.FileOpenHint[] hints =
-        Stream.of(
-                FileTypeHint.DATA,
-                FileDataHint.KNN_VECTORS,
-                state.context.hints(DataAccessHint.class).findFirst().orElse(null),
-                state.context.hints(NoReuseHint.class).findFirst().orElse(null))
-            .filter(Objects::nonNull)
-            .toArray(IOContext.FileOpenHint[]::new);
-    IOContext context = state.context.withHints(hints);
+    IOContext context = state.context.union(FileTypeHint.DATA, FileDataHint.KNN_VECTORS);
 
     IndexInput in = null;
     boolean success = false;

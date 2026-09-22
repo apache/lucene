@@ -246,7 +246,9 @@ public class Lucene104HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat 
   @Override
   public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
     return new Lucene99HnswVectorsReader(
-        state, flatVectorsFormat.fieldsReader(randomAccess(state)));
+        state,
+        flatVectorsFormat.fieldsReader(
+            state.withHints(FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM)));
   }
 
   @Override
@@ -265,13 +267,5 @@ public class Lucene104HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat 
         + ", flatVectorFormat="
         + flatVectorsFormat
         + ")";
-  }
-
-  /** These vectors are read at random. */
-  private static SegmentReadState randomAccess(SegmentReadState state) {
-    return new SegmentReadState(
-        state,
-        state.context.withHints(
-            FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM));
   }
 }

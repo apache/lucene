@@ -54,7 +54,6 @@ import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.FileDataHint;
 import org.apache.lucene.store.FileTypeHint;
-import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.IOUtils;
@@ -489,7 +488,9 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     if (flatVectorsReader instanceof QuantizedVectorsReader quantizedVectorsReader
         && fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
       return quantizedVectorsReader.getRandomVectorScorerSupplierForMerge(
-          fieldInfo, new SegmentWriteState(segmentWriteState, graphBuildContext()));
+          fieldInfo,
+          segmentWriteState.withHints(
+              FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM));
     }
     return null;
   }
@@ -531,12 +532,6 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         vectorIndexNodeOffsets);
   }
 
-  /** The graph build reads the vectors it scores at random. */
-  private IOContext graphBuildContext() {
-    return segmentWriteState.context.withHints(
-        FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM);
-  }
-
   private void ensureFlatReaderOpen() throws IOException {
     if (flatVectorsReader == null) {
       flatVectorWriter.finish();
@@ -547,7 +542,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
               segmentWriteState.directory,
               segmentWriteState.segmentInfo,
               segmentWriteState.fieldInfos,
-              graphBuildContext(),
+              segmentWriteState.context.union(
+                  FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM),
               segmentWriteState.segmentSuffix);
       flatVectorsReader = flatVectorsFormat.fieldsReader(readState);
     }

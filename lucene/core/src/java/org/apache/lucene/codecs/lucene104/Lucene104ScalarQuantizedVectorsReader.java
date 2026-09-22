@@ -26,7 +26,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Stream;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
@@ -58,7 +57,6 @@ import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.store.NoReuseHint;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -129,21 +127,16 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
         CodecUtil.checkFooter(meta, priorE);
       }
 
-      final IOContext.FileOpenHint[] hints =
-          Stream.of(
-                  FileTypeHint.DATA,
-                  FileDataHint.KNN_VECTORS,
-                  state.context.hints(DataAccessHint.class).findFirst().orElse(accessHint),
-                  state.context.hints(NoReuseHint.class).findFirst().orElse(null))
-              .filter(Objects::nonNull)
-              .toArray(IOContext.FileOpenHint[]::new);
       quantizedVectorData =
           openDataInput(
               state,
               versionMeta,
               VECTOR_DATA_EXTENSION,
               Lucene104ScalarQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
-              state.context.withHints(hints));
+              state
+                  .context
+                  .union(FileTypeHint.DATA, FileDataHint.KNN_VECTORS)
+                  .coalesce(accessHint));
     } catch (Throwable t) {
       IOUtils.closeWhileSuppressingExceptions(t, this);
       throw t;

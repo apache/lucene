@@ -157,4 +157,9 @@ public class SegmentWriteState {
     }
     return true;
   }
+
+  /** Returns a copy of this state whose context carries the given hints in place of its own. */
+  public SegmentWriteState withHints(IOContext.FileOpenHint... hints) {
+    return new SegmentWriteState(this, context.withHints(hints));
+  }
 }

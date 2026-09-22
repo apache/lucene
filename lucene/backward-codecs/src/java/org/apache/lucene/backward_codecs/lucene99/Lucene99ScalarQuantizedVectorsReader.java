@@ -24,7 +24,6 @@ import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVe
 import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Stream;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
@@ -45,12 +44,10 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.ChecksumIndexInput;
-import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.FileDataHint;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.NoReuseHint;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
@@ -113,14 +110,7 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
               Lucene99ScalarQuantizedVectorsFormat.VECTOR_DATA_EXTENSION,
               Lucene99ScalarQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
               // how these are read is up to whoever wraps this format
-              state.context.withHints(
-                  Stream.of(
-                          FileTypeHint.DATA,
-                          FileDataHint.KNN_VECTORS,
-                          state.context.hints(DataAccessHint.class).findFirst().orElse(null),
-                          state.context.hints(NoReuseHint.class).findFirst().orElse(null))
-                      .filter(Objects::nonNull)
-                      .toArray(IOContext.FileOpenHint[]::new)));
+              state.context.union(FileTypeHint.DATA, FileDataHint.KNN_VECTORS));
     } catch (Throwable t) {
       IOUtils.closeWhileSuppressingExceptions(t, this);
       throw t;

@@ -211,7 +211,10 @@ public final class DedupHnswVectorsFormat extends KnnVectorsFormat {
 
   @Override
   public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new Lucene99HnswVectorsReader(state, FORMAT.fieldsReader(randomAccess(state)));
+    return new Lucene99HnswVectorsReader(
+        state,
+        FORMAT.fieldsReader(
+            state.withHints(FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM)));
   }
 
   @Override
@@ -229,13 +232,5 @@ public final class DedupHnswVectorsFormat extends KnnVectorsFormat {
         + ", tinySegmentsThreshold="
         + tinySegmentsThreshold
         + ")";
-  }
-
-  /** These vectors are read at random. */
-  private static SegmentReadState randomAccess(SegmentReadState state) {
-    return new SegmentReadState(
-        state,
-        state.context.withHints(
-            FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM));
   }
 }

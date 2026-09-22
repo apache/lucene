@@ -42,6 +42,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.NoReuseHint;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
@@ -135,7 +136,8 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
 
       fieldsStream =
           directory.createOutput(
-              IndexFileNames.segmentFileName(segment, segmentSuffix, FIELDS_EXTENSION), context);
+              IndexFileNames.segmentFileName(segment, segmentSuffix, FIELDS_EXTENSION),
+              context.union(NoReuseHint.INSTANCE));
       CodecUtil.writeIndexHeader(
           fieldsStream, formatName, VERSION_CURRENT, si.getId(), segmentSuffix);
       assert CodecUtil.indexHeaderLength(formatName, segmentSuffix)
