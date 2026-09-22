@@ -33,8 +33,9 @@ import java.util.function.IntFunction;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.DoubleDocValuesField;
+import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.LongField;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
@@ -980,12 +981,12 @@ public class TestDocValuesQueries extends LuceneTestCaseJupiter {
             searcher.rewrite(
                 SortedNumericDocValuesField.newSlowRangeQuery("super_sparse", 250, 350)),
             instanceOf(MatchNoDocsQuery.class));
-        assertThat(
-            searcher
-                .rewrite(SortedNumericDocValuesField.newSlowRangeQuery("super_sparse", 174, 174))
-                .getClass()
-                .toString(),
-            containsString("SortedNumericDocValuesRangeQuery"));
+        // A range that covers the field's only value but not every doc rewrites to a
+        // FieldExistsQuery (super_sparse has a value on a single doc).
+        assertEquals(
+            new FieldExistsQuery("super_sparse"),
+            searcher.rewrite(
+                SortedNumericDocValuesField.newSlowRangeQuery("super_sparse", 174, 174)));
         assertThat(
             searcher
                 .rewrite(SortedNumericDocValuesField.newSlowRangeQuery("with_index", 0, 150))
@@ -1004,39 +1005,76 @@ public class TestDocValuesQueries extends LuceneTestCaseJupiter {
                 .getClass()
                 .toString(),
             containsString("SortedNumericDocValuesRangeQuery"));
-        assertThat(
-            searcher
-                .rewrite(SortedNumericDocValuesField.newSlowRangeQuery("sparse", 0, 250))
-                .getClass()
-                .toString(),
-            containsString("SortedNumericDocValuesRangeQuery"));
+        // A range that covers every value of a sparse field (a value on all but one doc) rewrites
+        // to a FieldExistsQuery rather than staying a range query.
+        assertEquals(
+            new FieldExistsQuery("sparse"),
+            searcher.rewrite(SortedNumericDocValuesField.newSlowRangeQuery("sparse", 0, 250)));
       }
     }
   }
 
   @Test
-  public void testRewriteWorksWithPointsButNoSkipIndex(Random random) throws IOException {
-    try (Directory dir = newDirectory()) {
-      try (RandomIndexWriter iw = new RandomIndexWriter(random, dir)) {
-        for (int i = 0; i < 100; i++) {
-          final Document doc = new Document();
-          doc.add(new LongField("field", 100 + i, Field.Store.NO));
-          iw.addDocument(doc);
-        }
-        iw.commit();
-        try (IndexReader reader = iw.getReader()) {
-          final IndexSearcher searcher = new IndexSearcher(reader);
-          // Query range [0, 50] is entirely below field range [100, 199]
-          Query query = SortedNumericDocValuesField.newSlowRangeQuery("field", 0, 50);
-          Query rewritten = searcher.rewrite(query);
-          assertThat(rewritten, instanceOf(MatchNoDocsQuery.class));
+  public void testDocValueQueryWhenFieldNameIsAlsoUsedForPoints(Random random) throws IOException {
+    // GITHUB#16573: a field name used for both DoublePoint and (sorted-)numeric doc values must not
+    // let a point-stats-based range rewrite drop matching docs. Each exact-value query must find
+    // its
+    // one document, whether the doc-values were written as raw double bits (as Solr does) or via
+    // DoubleDocValuesField (as Lucene does), and whether or not the query is wrapped in an
+    // IndexOrDocValuesQuery.
+    final String solrField = "solr_p_d_dv";
+    final String luceneField = "lucene_p_d_dv";
+    final List<Double> values =
+        List.of(
+            Double.MIN_VALUE,
+            Double.MAX_VALUE,
+            Double.NEGATIVE_INFINITY,
+            Double.POSITIVE_INFINITY,
+            -1D * Double.MIN_VALUE,
+            -1D * Double.MAX_VALUE);
+    try (Directory dir = newDirectory();
+        RandomIndexWriter iw = new RandomIndexWriter(random, dir)) {
+      for (double val : values) {
+        Document doc = new Document();
+        doc.add(new DoublePoint(solrField, val));
+        doc.add(new NumericDocValuesField(solrField, Double.doubleToLongBits(val)));
+        iw.addDocument(doc);
 
-          // Query range [0, 250] covers entire field range [100, 199]
-          // and all docs have a value
-          query = SortedNumericDocValuesField.newSlowRangeQuery("field", 0, 250);
-          rewritten = searcher.rewrite(query);
-          assertThat(rewritten, instanceOf(MatchAllDocsQuery.class));
+        doc = new Document();
+        doc.add(new DoublePoint(luceneField, val));
+        doc.add(new DoubleDocValuesField(luceneField, val));
+        iw.addDocument(doc);
+      }
+      iw.commit();
+      iw.forceMerge(1);
+      try (IndexReader reader = iw.getReader()) {
+        assertEquals(1, reader.leaves().size());
+        final IndexSearcher searcher = newSearcher(reader, false);
+        final List<String> errors = new ArrayList<>();
+        for (double val : values) {
+          final long solrBits = Double.doubleToLongBits(val);
+          final long luceneBits = Double.doubleToRawLongBits(val);
+          for (Query q :
+              List.of(
+                  SortedNumericDocValuesField.newSlowRangeQuery(
+                      luceneField, luceneBits, luceneBits),
+                  SortedNumericDocValuesField.newSlowRangeQuery(solrField, solrBits, solrBits),
+                  // wrapping in IndexOrDocValuesQuery must not change the result
+                  new IndexOrDocValuesQuery(
+                      DoublePoint.newRangeQuery(luceneField, val, val),
+                      SortedNumericDocValuesField.newSlowRangeQuery(
+                          luceneField, luceneBits, luceneBits)),
+                  new IndexOrDocValuesQuery(
+                      DoublePoint.newRangeQuery(solrField, val, val),
+                      SortedNumericDocValuesField.newSlowRangeQuery(
+                          solrField, solrBits, solrBits)))) {
+            TotalHits h = searcher.search(q, 99999).totalHits;
+            if (1 != h.value()) {
+              errors.add(q + " => " + h);
+            }
+          }
         }
+        assertEquals(List.of(), errors);
       }
     }
   }

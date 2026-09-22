@@ -49,6 +49,41 @@ public class TestVectorSimilarityCollector extends LuceneTestCase {
     assertArrayEquals(new float[] {0.5f, 0.6f, 0.9f, 0.7f, 0.8f}, resultScores, 1e-3f);
   }
 
+  @Deprecated
+  public void testExplicitResultCollection() {
+    float traversalSimilarity = 0.3f, resultSimilarity = 0.5f;
+
+    ExplicitVectorSimilarityCollector collector =
+        new ExplicitVectorSimilarityCollector(
+            traversalSimilarity, resultSimilarity, Integer.MAX_VALUE);
+    int[] nodes = {1, 5, 10, 4, 8, 3, 2, 6, 7, 9};
+    float[] scores = {0.1f, 0.2f, 0.3f, 0.5f, 0.2f, 0.6f, 0.9f, 0.3f, 0.7f, 0.8f};
+
+    float[] minCompetitiveSimilarities = new float[nodes.length];
+    for (int i = 0; i < nodes.length; i++) {
+      collector.collect(nodes[i], scores[i]);
+      minCompetitiveSimilarities[i] = collector.minCompetitiveSimilarity();
+    }
+
+    ScoreDoc[] scoreDocs = collector.topDocs().scoreDocs;
+    int[] resultNodes = new int[scoreDocs.length];
+    float[] resultScores = new float[scoreDocs.length];
+    for (int i = 0; i < scoreDocs.length; i++) {
+      resultNodes[i] = scoreDocs[i].doc;
+      resultScores[i] = scoreDocs[i].score;
+    }
+
+    // All nodes above resultSimilarity appear in order of collection
+    assertArrayEquals(new int[] {4, 3, 2, 7, 9}, resultNodes);
+    assertArrayEquals(new float[] {0.5f, 0.6f, 0.9f, 0.7f, 0.8f}, resultScores, 1e-3f);
+
+    // Min competitive similarity is minimum of traversalSimilarity or best result encountered
+    assertArrayEquals(
+        new float[] {0.1f, 0.2f, 0.3f, 0.3f, 0.3f, 0.3f, 0.3f, 0.3f, 0.3f, 0.3f},
+        minCompetitiveSimilarities,
+        1e-3f);
+  }
+
   public void testDefaultConstructorUsesDefaultStrategy() {
     VectorSimilarityCollector collector =
         new VectorSimilarityCollector(0.5f, DEFAULT_DECAY, Integer.MAX_VALUE);
