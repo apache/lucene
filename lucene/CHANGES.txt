@@ -401,6 +401,18 @@ New Features
   translates each term into a SpanTermQuery within a {@link SpanOrQuery}, but retains only the most frequent terms so it
   will not overflow the boolean max clause count. (Alan Woodward, Nishant Mehta, David Smiley)
 
+* GITHUB#16029: Scalar quantization option to disable centering and writing of float vectors. This
+  reduces vector storage costs by 4x or more but also reduces accuracy of distance estimates and
+  "float" vectors when requested. Using this feature is a one-way door -- once merged data blind
+  it is not possible to re-encode to a different quantization width or center vectors again.
+  (Trevor McCulloch)
+
+* GITHUB#16580: Allow in-place updates of SORTED_NUMERIC doc-values via
+  IndexWriter#updateSortedNumericDocValue (and IndexWriter#updateDocValues with a single
+  SortedNumericDocValuesField). An update sets a single value per matched document; the field may be
+  single- or multi-valued. Single-valued columns reuse the numeric update path (including the
+  incremental delta overlay), and multi-valued columns are merged per-doc. (Houston Putman)
+
 Improvements
 ---------------------
 
@@ -510,7 +522,11 @@ Optimizations
 * GITHUB#16582: Rewrite sorted-numeric doc-values range queries that cover every value of a field to a
   FieldExistsQuery, and collapse an IndexOrDocValuesQuery whose two sides rewrite equally. (Houston Putman)
 
+<<<<<<< HEAD
 * GITHUB#1669: Use intoBitSet to speed up ReqExclBulkScorer with dense exclusions. (Ke Wei)
+=======
+* GITHUB#16520: Support two-phase filters in MaxScoreBulkScorer bitset path. (Ke Wei)
+>>>>>>> main
 
 Bug Fixes
 ---------------------
@@ -582,6 +598,8 @@ Build
   LUCENE_GRADLE_DISTRIBUTION_URL), see './gradlew helpLocalSettings' for more
   information. (David Smiley, Dawid Weiss)
 
+* Upgrade forbiddenapis to version 3.11.  (Uwe Schindler)
+
 Other
 ---------------------
 * GITHUB#16266: Remove deprecated search(Query, Collector) calls in QueryUtils by replacing
@@ -608,6 +626,12 @@ API Changes
   upgrade. Both behaviors are now exposed as nested classes: [Byte|Float]VectorSimilarityQuery.Explicit exposes the
   Lucene 10.4 behavior and is deprecated, and [Byte|Float]VectorSimilarityQuery.Adaptive exposes the 10.5 behavior.
   (Kaival Parikh, Chris Hostetter, Michael Sokolov)
+
+* GITHUB#16573: Remove the NumericFieldStats API (added in 10.5.0 via GITHUB#15740, GITHUB#15817) and
+  revert SortedNumericDocValuesRangeQuery to no longer use it. The statistics it derived from points
+  and doc values could be incorrect if points and doc values are encoded differently, for example when
+  a float/double field is indexed with points and NumericDocValues, causing range queries to return
+  wrong results. (Chris Hostetter, Houston Putman)
 
 Bug Fixes
 ---------------------
