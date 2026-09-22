@@ -73,9 +73,9 @@ public abstract class FlatVectorsWriter extends KnnVectorsWriter {
    *
    * <p>A wrapping writer should forward this method along with {@link #mergeOneFlatVectorField}.
    * Forwarding only the latter stays correct, but the wrapped writer then prepares nothing.
-   * Forwarding helps only when the wrapping format opens the wrapped writer's own reader over the
-   * merged segment. Otherwise {@link MergeScorerData#scorerSupplier} rejects the prepared data and
-   * the merge uses its fallback.
+   * Forwarding helps only when the wrapping format's reader unwraps to the wrapped writer's own
+   * reader over the merged segment. Otherwise {@link MergeScorerData#scorerSupplier} rejects the
+   * prepared data and the merge uses its fallback.
    *
    * @param fieldInfo field to merge
    * @param mergeState merge state
@@ -106,8 +106,10 @@ public abstract class FlatVectorsWriter extends KnnVectorsWriter {
      * Creates a scorer supplier for {@code mergedReader}. The caller must close the supplier to
      * release the prepared data.
      *
-     * <p>The reader is matched to the preparing writer's own reader by type. A reader that wraps
-     * that reader is rejected even when it reads the correct segment.
+     * <p>The reader is matched to the preparing writer's own reader by type after {@link
+     * org.apache.lucene.codecs.KnnVectorsReader#unwrapReaderForField}, so a wrapper is served only
+     * if it overrides that method to return the wrapped reader, which it may do only if it keeps
+     * that reader's ordinals; any other reader is rejected.
      *
      * <p>This method may be called at most once, after the preparing writer is finished and closed
      * and {@code mergedReader} is open on the segment it wrote. A second call, or a call after

@@ -33,6 +33,8 @@ import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
+import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
+import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter.MergeScorerData;
 import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
@@ -45,14 +47,18 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.FilterCodecReader;
+import org.apache.lucene.index.Float16VectorValues;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentCommitInfo;
 import org.apache.lucene.index.SegmentInfos;
@@ -77,6 +83,7 @@ import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
+import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
 
 /**
@@ -170,6 +177,26 @@ public class TestLucene104ScalarQuantizedMergeScorer extends LuceneTestCase {
               + encoding,
           fallback.mergedRawBytesRead() >= (long) DIM * Float.BYTES * 2 * DOCS_PER_SEGMENT);
     }
+  }
+
+  /**
+   * Verifies that a reader wrapping this format's reader still consumes the hand-off, as long as it
+   * unwraps to it: the merge does not read the merged vectors back.
+   */
+  public void testHandOffServesAWrappingReader() throws IOException {
+    ScalarEncoding encoding = randomAsymmetricEncoding();
+    MergeCounts counts =
+        runMerge(
+            new HnswOverFlatFormat(new WrappingFlatFormat(encoding), ALWAYS_GRAPH),
+            VectorSimilarityFunction.EUCLIDEAN,
+            true,
+            true);
+    assertTrue(
+        "the merge read the merged vectors back through the wrapper: "
+            + counts.mergedRawBytesRead()
+            + " bytes for "
+            + encoding,
+        counts.mergedRawBytesRead() < (long) DIM * Float.BYTES);
   }
 
   /**
@@ -999,6 +1026,98 @@ public class TestLucene104ScalarQuantizedMergeScorer extends LuceneTestCase {
           return handle;
         }
       };
+    }
+  }
+
+  /** The shipped flat format behind a reader wrapper that unwraps to the shipped reader. */
+  private static final class WrappingFlatFormat extends FlatVectorsFormat {
+    private final FlatVectorsFormat delegate;
+
+    WrappingFlatFormat(ScalarEncoding encoding) {
+      super("WrappingFlatFormat");
+      this.delegate = new Lucene104ScalarQuantizedVectorsFormat(encoding);
+    }
+
+    @Override
+    public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
+      return delegate.fieldsWriter(state);
+    }
+
+    @Override
+    public FlatVectorsReader fieldsReader(SegmentReadState state) throws IOException {
+      return new WrappingFlatReader(delegate.fieldsReader(state));
+    }
+
+    @Override
+    public int getMaxDimensions(String fieldName) {
+      return delegate.getMaxDimensions(fieldName);
+    }
+  }
+
+  /** Forwards everything, and unwraps to the reader it wraps, which the hand-off relies on. */
+  private static final class WrappingFlatReader extends FlatVectorsReader {
+    private final FlatVectorsReader delegate;
+
+    WrappingFlatReader(FlatVectorsReader delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override
+    public KnnVectorsReader unwrapReaderForField(String field) {
+      return delegate.unwrapReaderForField(field);
+    }
+
+    @Override
+    public FlatVectorsScorer getFlatVectorScorer(String field) throws IOException {
+      return delegate.getFlatVectorScorer(field);
+    }
+
+    @Override
+    public RandomVectorScorer getRandomVectorScorer(String field, float[] target)
+        throws IOException {
+      return delegate.getRandomVectorScorer(field, target);
+    }
+
+    @Override
+    public RandomVectorScorer getRandomVectorScorer(String field, byte[] target)
+        throws IOException {
+      return delegate.getRandomVectorScorer(field, target);
+    }
+
+    @Override
+    public RandomVectorScorer getRandomVectorScorer(String field, short[] target)
+        throws IOException {
+      return delegate.getRandomVectorScorer(field, target);
+    }
+
+    @Override
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+      delegate.checkIntegrity(merge);
+    }
+
+    @Override
+    public FloatVectorValues getFloatVectorValues(String field) throws IOException {
+      return delegate.getFloatVectorValues(field);
+    }
+
+    @Override
+    public ByteVectorValues getByteVectorValues(String field) throws IOException {
+      return delegate.getByteVectorValues(field);
+    }
+
+    @Override
+    public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+      return delegate.getFloat16VectorValues(field);
+    }
+
+    @Override
+    public void close() throws IOException {
+      delegate.close();
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      return delegate.ramBytesUsed();
     }
   }
 }

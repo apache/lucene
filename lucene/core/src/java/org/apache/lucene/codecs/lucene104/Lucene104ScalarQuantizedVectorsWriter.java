@@ -19,10 +19,10 @@ package org.apache.lucene.codecs.lucene104;
 import static org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
 import static org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_COMPONENT;
 import static org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.writeCorrections;
+import static org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.writeQueryRecord;
 import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.util.RamUsageEstimator.shallowSizeOfInstance;
-import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.transposeHalfByte;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -80,6 +80,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   private final Mode mode;
   private final int version;
   private final FlatVectorsWriter rawVectorDelegate;
+  private final Lucene104ScalarQuantizedVectorScorer vectorScorer;
   private boolean finished;
 
   /** Sole constructor */
@@ -91,6 +92,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       Lucene104ScalarQuantizedVectorScorer vectorsScorer)
       throws IOException {
     super(vectorsScorer);
+    this.vectorScorer = vectorsScorer;
     this.encoding = encoding;
     this.mode = mode;
     this.version =
@@ -371,7 +373,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   }
 
   @Override
-  public final void mergeOneFlatVectorField(FieldInfo fieldInfo, MergeState mergeState)
+  public void mergeOneFlatVectorField(FieldInfo fieldInfo, MergeState mergeState)
       throws IOException {
     mergeOneFlatVectorField(fieldInfo, mergeState, _ -> false);
   }
@@ -379,8 +381,8 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   /**
    * {@inheritDoc}
    *
-   * <p>HNSW merges call this overload. Subclasses that customize merging must override this method
-   * because {@link #mergeOneFlatVectorField(FieldInfo, MergeState)} is final.
+   * <p>HNSW merges call this overload rather than {@link #mergeOneFlatVectorField(FieldInfo,
+   * MergeState)}, so subclasses that customize merging must override this method too.
    *
    * <p>Only {@link Mode#CENTERED} prepares data. The data-blind modes return {@code null} and use
    * the reader fallback for the graph build.
@@ -543,10 +545,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
         packIndexRecord(encoding, indexQuantized, indexPacked);
         vectorData.writeBytes(indexPacked, indexPacked.length);
         writeCorrections(vectorData, corrections[0]);
-        // the query side, packed as Lucene104ScalarQuantizedVectorsReader packs it
-        transposeHalfByte(queryQuantized, queryPacked);
-        queryData.writeBytes(queryPacked, queryPacked.length);
-        writeCorrections(queryData, corrections[1]);
+        writeQueryRecord(queryData, queryQuantized, queryPacked, corrections[1]);
         docsWithField.add(docV);
       }
       CodecUtil.writeFooter(queryData);
@@ -560,7 +559,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
         segmentWriteState.directory,
         segmentWriteState.context,
         fieldInfo,
-        (Lucene104ScalarQuantizedVectorScorer) vectorsScorer,
+        vectorScorer,
         queryDataName);
   }
 
@@ -596,12 +595,12 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       boolean handedOver = false;
       try {
         QuantizedByteVectorValues indexVectors =
-            mergedReader instanceof Lucene104ScalarQuantizedVectorsReader quantizedReader
+            mergedReader.unwrapReaderForField(fieldInfo.name)
+                    instanceof Lucene104ScalarQuantizedVectorsReader quantizedReader
                 ? quantizedReader.getQuantizedVectorValues(fieldInfo.name)
                 : null;
         if (indexVectors == null) {
-          // Accept only this format's reader type. A wrapper around that reader must use the
-          // fallback, even over the correct segment.
+          // not this format's reader, even after unwrapping
           return null;
         }
         handedOver = true;

@@ -17,11 +17,10 @@
 package org.apache.lucene.codecs.lucene104;
 
 import static org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.VECTOR_DATA_EXTENSION;
-import static org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.writeCorrections;
+import static org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.writeQueryRecord;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readSimilarityFunction;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.transposeHalfByte;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -720,10 +719,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
               encoding.getQueryBits(),
               quantizedByteVectorValues.getCentroid());
       docsWithField.add(docV);
-      // pack and store the 4bit query vector
-      transposeHalfByte(quantizationScratch, toQuery);
-      binarizedQueryData.writeBytes(toQuery, toQuery.length);
-      writeCorrections(binarizedQueryData, r);
+      writeQueryRecord(binarizedQueryData, quantizationScratch, toQuery, r);
     }
     return docsWithField;
   }

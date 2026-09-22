@@ -26,6 +26,7 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
+import org.apache.lucene.util.quantization.OptimizedScalarQuantizer.QuantizationResult;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
 
 /**
@@ -136,6 +137,18 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
     output.writeInt(Float.floatToIntBits(corrections.upperInterval()));
     output.writeInt(Float.floatToIntBits(corrections.additionalCorrection()));
     output.writeInt(corrections.quantizedComponentSum());
+  }
+
+  /**
+   * Packs a quantized query-side record from {@code scratch} into {@code dest} and writes it with
+   * its corrections. The writer and the reader produce query-side records through this method.
+   */
+  static void writeQueryRecord(
+      IndexOutput out, byte[] scratch, byte[] dest, QuantizationResult corrections)
+      throws IOException {
+    OptimizedScalarQuantizer.transposeHalfByte(scratch, dest);
+    out.writeBytes(dest, dest.length);
+    writeCorrections(out, corrections);
   }
 
   private static final FlatVectorsFormat rawVectorFormat =
