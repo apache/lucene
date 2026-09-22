@@ -30,12 +30,9 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.DocIdStream;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TotalHitCountCollectorManager;
 import org.apache.lucene.store.Directory;
@@ -178,31 +175,5 @@ public class MustNotBooleanQueryBenchmark {
   @Benchmark
   public int searchMustNot() throws IOException {
     return searcher.search(query, collectorManager);
-  }
-
-  @Benchmark
-  public int searchMustNotWithoutCountOptimization() throws IOException {
-    HitCountCollector collector = new HitCountCollector();
-    searcher.search(query, collector);
-    return collector.count;
-  }
-
-  private static class HitCountCollector extends SimpleCollector {
-    private int count;
-
-    @Override
-    public void collect(int doc) {
-      count++;
-    }
-
-    @Override
-    public void collect(DocIdStream stream) throws IOException {
-      count += stream.count();
-    }
-
-    @Override
-    public ScoreMode scoreMode() {
-      return ScoreMode.COMPLETE_NO_SCORES;
-    }
   }
 }
