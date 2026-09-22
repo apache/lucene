@@ -69,26 +69,11 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
 
   public Lucene99FlatVectorsReader(SegmentReadState state, FlatVectorsScorer scorer)
       throws IOException {
-    // how these are read is up to whoever wraps this format
-    this(state, scorer, null);
-  }
-
-  /**
-   * Creates a Lucene99FlatVectorsReader.
-   *
-   * @param state the segment read state
-   * @param scorer the flat vectors scorer
-   * @param accessHint how to read the vectors when {@code state} does not already say, or null
-   */
-  public Lucene99FlatVectorsReader(
-      SegmentReadState state, FlatVectorsScorer scorer, DataAccessHint accessHint)
-      throws IOException {
     int versionMeta = readMetadata(state);
     this.vectorScorer = scorer;
     this.fieldInfos = state.fieldInfos;
-
-    dataContext =
-        state.context.union(FileTypeHint.DATA, FileDataHint.KNN_VECTORS).coalesce(accessHint);
+    // how these are read is up to whoever wraps this format
+    dataContext = state.context.union(FileTypeHint.DATA, FileDataHint.KNN_VECTORS);
     try {
       vectorData =
           openDataInput(
