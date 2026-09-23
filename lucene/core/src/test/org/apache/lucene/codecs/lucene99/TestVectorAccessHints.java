@@ -16,6 +16,10 @@
  */
 package org.apache.lucene.codecs.lucene99;
 
+import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.not;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,6 +48,7 @@ import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
+import org.hamcrest.MatcherAssert;
 
 /**
  * Who says how vector files are read: the format that walks them, rather than the one that holds
@@ -109,7 +114,7 @@ public class TestVectorAccessHints extends LuceneTestCase {
           temps.add(open);
         }
       }
-      assertFalse("no temporary file was read back: " + opens, temps.isEmpty());
+      MatcherAssert.assertThat("no temporary file was read back: " + opens, temps, not(empty()));
       assertVectorHints(temps, opens);
     }
   }
@@ -182,7 +187,8 @@ public class TestVectorAccessHints extends LuceneTestCase {
       }
 
       List<Open> quantized = opens.endingWith("veq");
-      assertFalse("no quantized vectors were opened: " + opens, quantized.isEmpty());
+      MatcherAssert.assertThat(
+          "no quantized vectors were opened: " + opens, quantized, not(empty()));
       for (Open open : quantized) {
         if (open.context().hints().contains(ReadOnceHint.INSTANCE) == false) {
           assertEquals(
@@ -214,7 +220,7 @@ public class TestVectorAccessHints extends LuceneTestCase {
         opens.endingWith(Lucene99FlatVectorsFormat.VECTOR_DATA_EXTENSION).stream()
             .filter(open -> open.context().hints().contains(ReadOnceHint.INSTANCE) == false)
             .toList();
-    assertFalse("no vectors were opened: " + opens, vectorOpens.isEmpty());
+    MatcherAssert.assertThat("no vectors were opened: " + opens, vectorOpens, not(empty()));
     return vectorOpens;
   }
 
@@ -226,14 +232,16 @@ public class TestVectorAccessHints extends LuceneTestCase {
         vectorOpens.add(open);
       }
     }
-    assertFalse("no vectors were opened: " + opens, vectorOpens.isEmpty());
+    MatcherAssert.assertThat("no vectors were opened: " + opens, vectorOpens, not(empty()));
     for (Open open : vectorOpens) {
-      assertTrue(
+      MatcherAssert.assertThat(
           "opened without saying it holds vectors: " + open,
-          open.context().hints().contains(FileDataHint.KNN_VECTORS));
-      assertTrue(
+          open.context().hints(),
+          hasItem(FileDataHint.KNN_VECTORS));
+      MatcherAssert.assertThat(
           "opened without saying how it is read: " + open,
-          open.context().hints().contains(DataAccessHint.RANDOM));
+          open.context().hints(),
+          hasItem(DataAccessHint.RANDOM));
     }
   }
 
