@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.store;
 
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -168,7 +170,8 @@ public interface IOContext {
    * @throws IllegalArgumentException if that would give it two different hints of the same type
    */
   default IOContext union(FileOpenHint... hints) {
-    return withHints(
-        Stream.concat(hints().stream(), Stream.of(hints)).distinct().toArray(FileOpenHint[]::new));
+    Set<FileOpenHint> merged = new HashSet<>(hints());
+    Collections.addAll(merged, hints);
+    return withHints(merged.toArray(FileOpenHint[]::new));
   }
 }

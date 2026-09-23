@@ -17,8 +17,12 @@
 package org.apache.lucene.store;
 
 /**
- * A hint that reads of the file do not come back to the same parts of it. A writer sets it for a
- * file that is read that way once written.
+ * A hint that a file is not worth keeping in memory. It may be read often; what it lacks is reuse
+ * worth caching for, because its reads repeat in no pattern a cache can exploit, or because it is
+ * large enough next to the rest of the index that holding it would push out data that does benefit.
+ *
+ * <p>Close to {@link ReadOnceHint}, and weaker: it does not claim the file is read once, or in
+ * order, or even that a read never revisits bytes another read has touched.
  */
 public enum NoReuseHint implements IOContext.FileOpenHint {
   INSTANCE
