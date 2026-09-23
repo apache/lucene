@@ -143,6 +143,10 @@ New Features
 
 * GITHUB#16473: Add scalar quantization support in Fp16 vector encoding. (Pulkit Gupta)
 
+* GITHUB#XXXX: Add experimental ProactiveMergePolicy. Optional before and after selectors run
+  around a wrapped merge policy. DeleteRunSelector reclaims deletes that LogMergePolicy leaves
+  below the merge factor, bounded by a caller-supplied byte cap. (Costin Leau)
+
 Improvements
 ---------------------
 * GITHUB#15704: Replace LinkedList with more efficient data structure. (Renato Haeberli)
