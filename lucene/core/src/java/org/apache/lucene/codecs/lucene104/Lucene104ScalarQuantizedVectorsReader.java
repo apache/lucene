@@ -17,10 +17,10 @@
 package org.apache.lucene.codecs.lucene104;
 
 import static org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.VECTOR_DATA_EXTENSION;
+import static org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.writeQueryRecord;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readSimilarityFunction;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.transposeHalfByte;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -52,6 +52,7 @@ import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataAccessHint;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FileDataHint;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
@@ -628,36 +629,68 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
       }
       throw t;
     }
-    IndexInput quantizedScoreDataInput =
-        segmentWriteState.directory.openInput(
-            tempScoreQuantizedVectorName, segmentWriteState.context);
+    assert docsWithField.cardinality() == vectorValues.size();
+    return mergeScorerSupplier(
+        fieldInfo,
+        vectorValues,
+        vectorScorer,
+        segmentWriteState.directory,
+        segmentWriteState.context,
+        tempScoreQuantizedVectorName);
+  }
+
+  /**
+   * Builds a supplier that scores query-side records in {@code queryDataName} against the segment's
+   * own {@code indexVectors}. The query records use the layout written by {@link
+   * #writeBinarizedQueryData}.
+   *
+   * <p>This method takes ownership of the file. The returned supplier deletes it when closed, and
+   * this method deletes it if supplier construction fails.
+   */
+  static CloseableRandomVectorScorerSupplier mergeScorerSupplier(
+      FieldInfo fieldInfo,
+      QuantizedByteVectorValues indexVectors,
+      Lucene104ScalarQuantizedVectorScorer vectorScorer,
+      Directory directory,
+      IOContext context,
+      String queryDataName)
+      throws IOException {
+    IndexInput queryData = null;
     try {
-      OffHeapScalarQuantizedVectorValues scoreVectorValues =
+      queryData = directory.openInput(queryDataName, context);
+      // Query-side and index-side data contain one record per field vector.
+      OffHeapScalarQuantizedVectorValues queryVectors =
           new OffHeapScalarQuantizedVectorValues.DenseOffHeapVectorValues(
               true,
               fieldInfo.getVectorDimension(),
-              docsWithField.cardinality(),
-              vectorValues.getCentroid(),
-              vectorValues.getCentroidDP(),
-              quantizer,
-              fi.scalarEncoding,
+              indexVectors.size(),
+              indexVectors.getCentroid(),
+              indexVectors.getCentroidDP(),
+              new OptimizedScalarQuantizer(fieldInfo.getVectorSimilarityFunction()),
+              indexVectors.getScalarEncoding(),
               fieldInfo.getVectorSimilarityFunction(),
               vectorScorer,
-              quantizedScoreDataInput);
+              queryData);
       RandomVectorScorerSupplier scorerSupplier =
           vectorScorer.getRandomVectorScorerSupplier(
-              fieldInfo.getVectorSimilarityFunction(), scoreVectorValues, vectorValues);
-      final String finalTempScoreQuantizedVectorName = tempScoreQuantizedVectorName;
+              fieldInfo.getVectorSimilarityFunction(), queryVectors, indexVectors);
+      final IndexInput queryDataInput = queryData;
       return CloseableRandomVectorScorerSupplier.create(
           scorerSupplier,
-          vectorValues.size(),
+          indexVectors.size(),
           () -> {
-            IOUtils.close(quantizedScoreDataInput);
-            IOUtils.deleteFilesIgnoringExceptions(
-                segmentWriteState.directory, finalTempScoreQuantizedVectorName);
+            try {
+              IOUtils.close(queryDataInput);
+            } finally {
+              IOUtils.deleteFilesIgnoringExceptions(directory, queryDataName);
+            }
           });
     } catch (Throwable t) {
-      IOUtils.closeWhileSuppressingExceptions(t, quantizedScoreDataInput);
+      try {
+        IOUtils.closeWhileSuppressingExceptions(t, queryData);
+      } finally {
+        IOUtils.deleteFilesIgnoringExceptions(directory, queryDataName);
+      }
       throw t;
     }
   }
@@ -686,13 +719,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
               encoding.getQueryBits(),
               quantizedByteVectorValues.getCentroid());
       docsWithField.add(docV);
-      // pack and store the 4bit query vector
-      transposeHalfByte(quantizationScratch, toQuery);
-      binarizedQueryData.writeBytes(toQuery, toQuery.length);
-      binarizedQueryData.writeInt(Float.floatToIntBits(r.lowerInterval()));
-      binarizedQueryData.writeInt(Float.floatToIntBits(r.upperInterval()));
-      binarizedQueryData.writeInt(Float.floatToIntBits(r.additionalCorrection()));
-      binarizedQueryData.writeInt(r.quantizedComponentSum());
+      writeQueryRecord(binarizedQueryData, quantizationScratch, toQuery, r);
     }
     return docsWithField;
   }
