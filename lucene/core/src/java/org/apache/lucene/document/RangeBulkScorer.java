@@ -75,7 +75,9 @@ final class RangeBulkScorer extends BulkScorer {
       final int filteredMax = Math.min(max, maxDocID);
       iterator.advance(filteredMin);
       if (acceptDocs == null) {
-        collector.collectRange(filteredMin, filteredMax);
+        if (filteredMin < filteredMax) {
+          collector.collectRange(filteredMin, filteredMax);
+        }
       } else {
         int rangeStart = -1;
         for (int doc = filteredMin; doc < filteredMax; doc++) {

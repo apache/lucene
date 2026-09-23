@@ -22,6 +22,7 @@ import java.util.Objects;
 import java.util.function.DoubleToLongFunction;
 import java.util.function.LongToDoubleFunction;
 import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.search.comparators.DoubleComparator;
@@ -45,6 +46,16 @@ import org.apache.lucene.util.NumericUtils;
  * #SCORES} DoubleValuesSource.
  */
 public abstract class DoubleValuesSource implements SegmentCacheable {
+
+  /** Monotonicity direction of a decoder function */
+  public enum Monotonicity {
+    /** Increasing function */
+    INCREASING,
+    /** Decreasing function */
+    DECREASING,
+    /** Non-monotonic or unknown direction function */
+    NONE
+  }
 
   /**
    * Returns a {@link DoubleValues} instance for the passed-in LeafReaderContext and scores
@@ -278,28 +289,41 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
   }
 
   /**
-   * Creates a DoubleValuesSource that wraps a generic NumericDocValues field
+   * Creates a DoubleValuesSource that wraps a generic NumericDocValues field. Assumes no monotonic
+   * direction by default (Monotonicity.NONE).
    *
    * @param field the field to wrap, must have NumericDocValues
    * @param decoder a function to convert the long-valued doc values to doubles
    */
   public static DoubleValuesSource fromField(String field, LongToDoubleFunction decoder) {
-    return new FieldValuesSource(field, decoder);
+    return fromField(field, decoder, Monotonicity.NONE);
+  }
+
+  /**
+   * Creates a DoubleValuesSource that wraps a generic NumericDocValues field
+   *
+   * @param field the field to wrap, must have NumericDocValues
+   * @param decoder a function to convert the long-valued doc values to doubles
+   * @param monotonicity the monotonicity direction of the decoder function
+   */
+  public static DoubleValuesSource fromField(
+      String field, LongToDoubleFunction decoder, Monotonicity monotonicity) {
+    return new FieldValuesSource(field, decoder, monotonicity);
   }
 
   /** Creates a DoubleValuesSource that wraps a double-valued field */
   public static DoubleValuesSource fromDoubleField(String field) {
-    return fromField(field, Double::longBitsToDouble);
+    return fromField(field, Double::longBitsToDouble, Monotonicity.INCREASING);
   }
 
   /** Creates a DoubleValuesSource that wraps a float-valued field */
   public static DoubleValuesSource fromFloatField(String field) {
-    return fromField(field, (v) -> (double) Float.intBitsToFloat((int) v));
+    return fromField(field, (v) -> (double) Float.intBitsToFloat((int) v), Monotonicity.INCREASING);
   }
 
   /** Creates a DoubleValuesSource that wraps a long-valued field */
   public static DoubleValuesSource fromLongField(String field) {
-    return fromField(field, (v) -> (double) v);
+    return fromField(field, (v) -> (double) v, Monotonicity.INCREASING);
   }
 
   /** Creates a DoubleValuesSource that wraps an int-valued field */
@@ -455,10 +479,13 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
 
     final String field;
     final LongToDoubleFunction decoder;
+    final Monotonicity monotonicity;
 
-    private FieldValuesSource(String field, LongToDoubleFunction decoder) {
+    private FieldValuesSource(
+        String field, LongToDoubleFunction decoder, Monotonicity monotonicity) {
       this.field = field;
       this.decoder = decoder;
+      this.monotonicity = Objects.requireNonNull(monotonicity);
     }
 
     @Override
@@ -466,7 +493,9 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
       if (this == o) return true;
       if (o == null || getClass() != o.getClass()) return false;
       FieldValuesSource that = (FieldValuesSource) o;
-      return Objects.equals(field, that.field) && Objects.equals(decoder, that.decoder);
+      return Objects.equals(field, that.field)
+          && Objects.equals(decoder, that.decoder)
+          && monotonicity == that.monotonicity;
     }
 
     @Override
@@ -476,12 +505,13 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
 
     @Override
     public int hashCode() {
-      return Objects.hash(field, decoder);
+      return Objects.hash(field, decoder, monotonicity);
     }
 
     @Override
     public DoubleValues getValues(LeafReaderContext ctx, DoubleValues scores) throws IOException {
       final NumericDocValues values = DocValues.getNumeric(ctx.reader(), field);
+      final DocValuesSkipper skipper = ctx.reader().getDocValuesSkipper(field);
       return new DoubleValues() {
         @Override
         public double doubleValue() throws IOException {
@@ -491,6 +521,43 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
         @Override
         public boolean advanceExact(int target) throws IOException {
           return values.advanceExact(target);
+        }
+
+        @Override
+        public int advanceShallow(int target) throws IOException {
+          if (skipper != null) {
+            skipper.advance(target);
+            return skipper.maxDocID(0);
+          }
+          return DocIdSetIterator.NO_MORE_DOCS;
+        }
+
+        @Override
+        public float getMaxScore(int upTo) throws IOException {
+          if (skipper != null && monotonicity != Monotonicity.NONE) {
+            if (skipper.minDocID(0) <= upTo) {
+              long rawBound =
+                  (monotonicity == Monotonicity.INCREASING)
+                      ? skipper.maxValue(0)
+                      : skipper.minValue(0);
+              return (float) decoder.applyAsDouble(rawBound);
+            }
+          }
+          return Float.POSITIVE_INFINITY;
+        }
+
+        @Override
+        public float getMinScore(int upTo) throws IOException {
+          if (skipper != null && monotonicity != Monotonicity.NONE) {
+            if (skipper.minDocID(0) <= upTo) {
+              long rawBound =
+                  (monotonicity == Monotonicity.INCREASING)
+                      ? skipper.minValue(0)
+                      : skipper.maxValue(0);
+              return (float) decoder.applyAsDouble(rawBound);
+            }
+          }
+          return Float.NEGATIVE_INFINITY;
         }
       };
     }

@@ -300,7 +300,7 @@ public class DirectIODirectory extends FilterDirectory {
     }
   }
 
-  private static final class DirectIOIndexInput extends IndexInput {
+  static final class DirectIOIndexInput extends IndexInput { // package-private, visible for test
     private final ByteBuffer buffer;
     private final FileChannel channel;
     private final int blockSize;
@@ -309,6 +309,17 @@ public class DirectIODirectory extends FilterDirectory {
     private final boolean isClosable; // clones and slices are not closable
     private boolean isOpen;
     private long filePos;
+
+    /**
+     * Where a lazily positioned clone/slice starts, until its first fill: -1 when nothing is
+     * pending, otherwise the number of bytes from the start of the block at {@code filePos +
+     * buffer.capacity()} to this input's position 0. Consumed by the first {@link #refill(int)};
+     * dropped by a repositioning {@link #seek(long)} or {@link #seekInternal(long)}. The sentinel
+     * is -1 rather than 0 because 0 is a legal pending value (a block-aligned start), and such a
+     * slice must still take the first-fill path so that its EOF check uses the pending value rather
+     * than the length of the caller's read.
+     */
+    private int pendingDelta = -1;
 
     /**
      * Creates a new instance of DirectIOIndexInput for reading index input with direct IO bypassing
@@ -344,8 +355,17 @@ public class DirectIODirectory extends FilterDirectory {
       this.isClosable = false;
       this.length = length;
       this.offset = offset;
-      this.filePos = -bufferSize;
+      // Remember the start position instead of reading it now; the first refill() resolves it, so
+      // slice() does no I/O even when offset is not block-aligned.
+      final long alignedStart = offset - (offset % this.blockSize);
+      this.filePos = alignedStart - bufferSize;
+      this.pendingDelta = (int) (offset - alignedStart);
       buffer.limit(0);
+    }
+
+    // visible for test: true until the first fill
+    boolean isDeferred() {
+      return pendingDelta >= 0;
     }
 
     private static ByteBuffer allocateBuffer(int bufferSize, int blockSize) {
@@ -370,7 +390,9 @@ public class DirectIODirectory extends FilterDirectory {
       // refill) first,
       // will result in negative value equal to bufferSize being returned,
       // due to the initialization method filePos = -bufferSize used in constructor.
-      assert filePointer == -buffer.capacity() - offset || filePointer >= 0
+      // Before its first fill a lazily positioned clone/slice is further offset by its pending
+      // delta, because its filePos starts at alignedStart - bufferSize rather than -bufferSize.
+      assert filePointer == -buffer.capacity() - Math.max(pendingDelta, 0) || filePointer >= 0
           : "filePointer should either be initial value equal to negative buffer capacity, or larger than or equal to 0";
       return Math.max(filePointer, 0);
     }
@@ -378,6 +400,15 @@ public class DirectIODirectory extends FilterDirectory {
     @Override
     public void seek(long pos) throws IOException {
       if (pos != getFilePointer()) {
+        if (pendingDelta >= 0) {
+          // A slice that has not been read yet fills first, so the window check below sees the
+          // same buffer the eager code had: a seek past this input's length that lands in that
+          // block repositions within it instead of failing, as it always has.
+          final int parked = pendingDelta;
+          pendingDelta = -1;
+          fill(parked);
+          buffer.position(parked);
+        }
         final long absolutePos = pos + offset;
         if (absolutePos >= filePos && absolutePos <= filePos + buffer.limit()) {
           // the new position is within the existing buffer
@@ -390,6 +421,10 @@ public class DirectIODirectory extends FilterDirectory {
     }
 
     private void seekInternal(long pos) throws IOException {
+      // An explicit seek replaces a pending start, and its refill must check EOF against this
+      // position rather than the pending one. Only clone() gets here with a pending start: it
+      // positions a fresh clone at the parent's file pointer.
+      pendingDelta = -1;
       final long absPos = pos + offset;
       final long alignedPos = absPos - (absPos % blockSize);
       filePos = alignedPos - buffer.capacity();
@@ -441,6 +476,23 @@ public class DirectIODirectory extends FilterDirectory {
     }
 
     private void refill(int bytesToRead) throws IOException {
+      final int parked = pendingDelta;
+      if (parked >= 0) {
+        // First fill of a slice with a pending start: fill and position exactly as the constructor
+        // used to, so the EOF check uses the pending offset and an over-long first read behaves as
+        // before. If that leaves nothing to read (a zero-length slice at the very end of the file),
+        // fall through so the caller's own read throws EOFException as it always did.
+        pendingDelta = -1;
+        fill(parked);
+        buffer.position(parked);
+        if (buffer.hasRemaining()) {
+          return;
+        }
+      }
+      fill(bytesToRead);
+    }
+
+    private void fill(int bytesToRead) throws IOException {
       filePos += buffer.capacity();
 
       // BaseDirectoryTestCase#testSeekPastEOF test for consecutive read past EOF,
@@ -553,9 +605,9 @@ public class DirectIODirectory extends FilterDirectory {
         throw new IllegalArgumentException(
             "slice() " + sliceDescription + " out of bounds: " + this);
       }
-      var slice = new DirectIOIndexInput(sliceDescription, this, this.offset + offset, length);
-      slice.seekInternal(0L);
-      return slice;
+      // The constructor remembers the start position and the first read resolves it, so
+      // constructing a slice performs no I/O.
+      return new DirectIOIndexInput(sliceDescription, this, this.offset + offset, length);
     }
   }
 }

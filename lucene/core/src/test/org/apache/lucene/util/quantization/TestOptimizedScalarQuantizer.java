@@ -78,6 +78,44 @@ public class TestOptimizedScalarQuantizer extends LuceneTestCase {
     }
   }
 
+  public void testDeQuantizeFloat16MatchesFloat() {
+    int dims = 16;
+    int numVectors = 32;
+    float[][] vectors = new float[numVectors][];
+    float[] centroid = new float[dims];
+    for (int i = 0; i < numVectors; ++i) {
+      vectors[i] = new float[dims];
+      for (int j = 0; j < dims; ++j) {
+        vectors[i][j] = randomFloat();
+        centroid[j] += vectors[i][j];
+      }
+    }
+    for (int j = 0; j < dims; ++j) {
+      centroid[j] /= numVectors;
+    }
+    OptimizedScalarQuantizer osq =
+        new OptimizedScalarQuantizer(VectorSimilarityFunction.DOT_PRODUCT);
+    float[] scratch = new float[dims];
+    for (byte bit : ALL_BITS) {
+      byte[] destination = new byte[dims];
+      for (int i = 0; i < numVectors; ++i) {
+        System.arraycopy(vectors[i], 0, scratch, 0, dims);
+        OptimizedScalarQuantizer.QuantizationResult result =
+            osq.scalarQuantize(scratch, destination, bit, centroid);
+        float[] floatDeq = new float[dims];
+        deQuantize(
+            destination, floatDeq, bit, result.lowerInterval(), result.upperInterval(), centroid);
+        short[] shortDeq = new short[dims];
+        deQuantize(
+            destination, shortDeq, bit, result.lowerInterval(), result.upperInterval(), centroid);
+        // The short (fp16) overload must equal the float overload rounded to fp16, component-wise.
+        for (int k = 0; k < dims; ++k) {
+          assertEquals(Float.floatToFloat16(floatDeq[k]), shortDeq[k]);
+        }
+      }
+    }
+  }
+
   public void testAbusiveEdgeCases() {
     // large zero array
     for (VectorSimilarityFunction vectorSimilarityFunction : VectorSimilarityFunction.values()) {

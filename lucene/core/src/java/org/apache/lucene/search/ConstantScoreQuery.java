@@ -178,7 +178,7 @@ public final class ConstantScoreQuery extends Query {
             }
 
             @Override
-            public long cost() {
+            public long cost() throws IOException {
               return innerScorerSupplier.cost();
             }
           };
