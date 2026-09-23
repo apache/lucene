@@ -25,7 +25,8 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 
-/** Searches an HNSW graph for filtered nearest neighbors, inspired by the <a
+/**
+ * Searches an HNSW graph for filtered nearest neighbors, inspired by the <a
  * href="https://dl.acm.org/doi/abs/10.1145/3802098">PathSeer algorithm</a>.
  *
  * <p>This implementation searches an unmodified HNSW graph in two phases:
