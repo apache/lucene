@@ -359,6 +359,11 @@ Other
 API Changes
 ---------------------
 
+* GITHUB#16696: FlatVectorsWriter gains mergeOneFlatVectorFieldForMergeScorer and the
+  FlatVectorsWriter.MergeScorerData handle it returns, so that a flat writer can prepare what a
+  merge scorer over the merged vectors needs while it writes them. The default prepares nothing;
+  a writer that wraps another one should forward the new method too. (John Maurice)
+
 * GITHUB#14399: Add a default LeafFieldComparator#disableSkipping method so document skipping can be
   disabled per segment. (Serhiy Bzhezytskyy)
 
@@ -523,6 +528,10 @@ Optimizations
   FieldExistsQuery, and collapse an IndexOrDocValuesQuery whose two sides rewrite equally. (Houston Putman)
 
 * GITHUB#16520: Support two-phase filters in MaxScoreBulkScorer bitset path. (Ke Wei)
+
+* GITHUB#16696: Merging an HNSW graph over Lucene104HnswScalarQuantizedVectorsFormat in its default
+  CENTERED mode, with an asymmetric encoding of a float32 field, no longer reads the merged float
+  vectors back to build the merge scorer. (John Maurice)
 
 * GITHUB#16669: Use intoBitSet to speed up ReqExclBulkScorer with dense exclusions. (Ke Wei)
 
