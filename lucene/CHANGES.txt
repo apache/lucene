@@ -171,6 +171,8 @@ Optimizations
 
 * GITHUB#16520: Support two-phase filters in MaxScoreBulkScorer bitset path. (Ke Wei)
 
+* GITHUB#16669: Use intoBitSet to speed up ReqExclBulkScorer with dense exclusions. (Ke Wei)
+
 Bug Fixes
 ---------------------
 * GITHUB#16546: Prevent RangeBulkScorer from passing empty ranges to LeafCollector. (jxy)
