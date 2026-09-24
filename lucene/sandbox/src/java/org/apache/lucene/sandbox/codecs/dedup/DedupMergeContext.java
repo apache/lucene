@@ -171,6 +171,7 @@ final class DedupMergeContext implements Accountable {
           groupOrds.get(fieldData.groupKey),
           fieldData.fieldOrdToGroupOrd.elementsCount,
           fieldData.maxDoc,
+          fieldData.maxGroupOrd,
           fieldData.docsWithFieldSet,
           new FieldOrdToGroupOrdArrayList(fieldData.fieldOrdToGroupOrd));
     }
@@ -201,6 +202,7 @@ final class DedupMergeContext implements Accountable {
         // record hit and ord in group
         fieldData.docsWithFieldSet.add(next.mappedDocID);
         fieldData.fieldOrdToGroupOrd.add(cursor.index);
+        fieldData.maxGroupOrd = Math.max(fieldData.maxGroupOrd, cursor.index);
       }
     }
   }
@@ -409,15 +411,37 @@ final class DedupMergeContext implements Accountable {
     }
   }
 
-  private record FieldData(
-      FieldInfo fieldInfo,
-      GroupKey groupKey,
-      DocsWithFieldSet docsWithFieldSet,
-      IntArrayList fieldOrdToGroupOrd,
-      DocIDMerger<?> merger,
-      int maxDoc) {
+  private static final class FieldData {
+    private final FieldInfo fieldInfo;
+    private final GroupKey groupKey;
+    private final DocsWithFieldSet docsWithFieldSet;
+    private final IntArrayList fieldOrdToGroupOrd;
+    private final DocIDMerger<?> merger;
+    private final int maxDoc;
+    // Largest group ordinal referenced by this field, tracked as vectors are merged in.
+    private int maxGroupOrd;
 
     static final long SHALLOW_SIZE = RamUsageEstimator.shallowSizeOfInstance(FieldData.class);
+
+    FieldData(
+        FieldInfo fieldInfo,
+        GroupKey groupKey,
+        DocsWithFieldSet docsWithFieldSet,
+        IntArrayList fieldOrdToGroupOrd,
+        DocIDMerger<?> merger,
+        int maxDoc) {
+      this.fieldInfo = fieldInfo;
+      this.groupKey = groupKey;
+      this.docsWithFieldSet = docsWithFieldSet;
+      this.fieldOrdToGroupOrd = fieldOrdToGroupOrd;
+      this.merger = merger;
+      this.maxDoc = maxDoc;
+      this.maxGroupOrd = 0;
+    }
+
+    GroupKey groupKey() {
+      return groupKey;
+    }
   }
 
   private static class Sub<T extends KnnVectorValues> extends DocIDMerger.Sub {
