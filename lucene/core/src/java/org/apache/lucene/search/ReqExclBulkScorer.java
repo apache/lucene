@@ -26,7 +26,7 @@ final class ReqExclBulkScorer extends BulkScorer {
   private final BulkScorer req;
   private final DocIdSetIterator exclApproximation;
   private final TwoPhaseIterator exclTwoPhase;
-  private WindowBits windowBits;
+  private final WindowBits windowBits = new WindowBits();
 
   ReqExclBulkScorer(BulkScorer req, Scorer excl) {
     this.req = req;
@@ -52,9 +52,6 @@ final class ReqExclBulkScorer extends BulkScorer {
 
   @Override
   public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
-    if (windowBits == null) {
-      windowBits = new WindowBits();
-    }
     FixedBitSet windowMask = windowBits.windowMask;
 
     int upTo = min;

@@ -231,7 +231,7 @@ public class TestReqExclBulkScorer extends LuceneTestCase {
       accepted.clear(42);
       accepted.clear(601);
       expected.clear(42);
-      expected.clear(600);
+      expected.clear(601);
     }
 
     BitSetIterator exclusion = new BitSetIterator(excluded, excluded.cardinality());
@@ -253,7 +253,7 @@ public class TestReqExclBulkScorer extends LuceneTestCase {
                 collected.set(doc);
               }
             },
-            null,
+            accepted != null ? accepted.asReadOnlyBits() : null,
             0,
             maxDoc));
 
