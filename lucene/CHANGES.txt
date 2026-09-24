@@ -533,6 +533,8 @@ Optimizations
   CENTERED mode, with an asymmetric encoding of a float32 field, no longer reads the merged float
   vectors back to build the merge scorer. (John Maurice)
 
+* GITHUB#16669: Use intoBitSet to speed up ReqExclBulkScorer with dense exclusions. (Ke Wei)
+
 Bug Fixes
 ---------------------
 
