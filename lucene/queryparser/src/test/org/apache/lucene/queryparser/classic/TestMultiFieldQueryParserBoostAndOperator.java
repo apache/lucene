@@ -22,28 +22,7 @@ import org.apache.lucene.queryparser.classic.QueryParser.Operator;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
-/**
- * Reproduces and guards against a bug GITHUB#16441 in {@link QueryParserBase#addMultiTermClauses}:
- * when a MultiFieldQueryParser query is analyzed to a single term via the whitespace "MultiTerm"
- * grammar path (see QueryParser.jj), and a field leaf other than a bare TermQuery (a boosted term,
- * a PrefixQuery, etc.) is produced for one of the fields, the resulting query incorrectly forces
- * every field clause to Occur.MUST under the AND default operator instead of preserving the
- * intended Occur.SHOULD disjunction across fields.
- *
- * <p>This is a variant of the issue tracked as https://github.com/apache/lucene/issues/8648. The
- * "allNestedTermQueries" heuristic in {@code addMultiTermClauses} originally only recognized bare
- * {@code TermQuery} clauses; the fix widens it to recognize any leaf clause that is not itself a
- * nested {@code BooleanQuery}, since the real distinguishing signal is whether q's direct clauses
- * represent several term positions to be joined by the default operator (nested BooleanQuery
- * clauses), or field alternatives for a single term position (any other leaf type), which must be
- * passed through unchanged regardless of the default operator.
- *
- * <p>This test class also guards against two regressions introduced by intermediate, incorrect fix
- * attempts: one that only special-cased BoostQuery (missed PrefixQuery and similar leaves), and one
- * that stopped flattening nested BooleanQuery clauses altogether (broke the genuine multi-term AND
- * case, since QueryParser.jj's Query() production bypasses addMultiTermClauses' output entirely
- * whenever it ends up adding a single clause).
- */
+/** Reproduces and guards against a bug GITHUB#16441 in {@link QueryParserBase} */
 public class TestMultiFieldQueryParserBoostAndOperator extends LuceneTestCase {
 
   private MultiFieldQueryParser boostedParser() {
