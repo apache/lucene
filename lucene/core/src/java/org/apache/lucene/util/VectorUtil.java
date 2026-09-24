@@ -522,6 +522,19 @@ public final class VectorUtil {
     return true;
   }
 
+  /**
+   * Returns true if all dimensions of provided float16 vector, encoded as {@code short[]}, are zero
+   * (either {@code +0} or {@code -0}), false otherwise.
+   */
+  public static boolean isZeroVectorFloat16(short[] v) {
+    for (short value : v) {
+      if ((value & 0x7FFF) != 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   /** Returns true if all dimensions of provided vector are zero, false otherwise. */
   public static boolean isZeroVector(byte[] v) {
     for (byte value : v) {

@@ -842,6 +842,32 @@ public class TestField extends LuceneTestCase {
     field.setVectorValue(new short[] {two, one, Float.floatToFloat16(4f)});
   }
 
+  public void testKnnFloat16FieldZeroVectors() {
+    short zero = Float.floatToFloat16(0f);
+    short negZero = Float.floatToFloat16(-0f);
+    short[] zeroVector = {zero, negZero, zero};
+
+    IllegalArgumentException zeroError =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> new KnnFloat16VectorField("knnF16", zeroVector, VectorSimilarityFunction.COSINE));
+    assertTrue(zeroError.getMessage(), zeroError.getMessage().contains("zero vector not allowed"));
+
+    KnnFloat16VectorField cosineField =
+        new KnnFloat16VectorField(
+            "knnF16",
+            new short[] {Float.floatToFloat16(1f), zero, Float.floatToFloat16(2f)},
+            VectorSimilarityFunction.COSINE);
+    zeroError =
+        expectThrows(IllegalArgumentException.class, () -> cosineField.setVectorValue(zeroVector));
+    assertTrue(zeroError.getMessage(), zeroError.getMessage().contains("zero vector not allowed"));
+
+    // non-COSINE fields allow zero vectors
+    KnnFloat16VectorField euclideanField =
+        new KnnFloat16VectorField("knnF16Euc", zeroVector, VectorSimilarityFunction.EUCLIDEAN);
+    euclideanField.setVectorValue(zeroVector);
+  }
+
   public void testKnnFloat16QueryNonFinite() {
     short one = Float.floatToFloat16(1f);
 
