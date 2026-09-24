@@ -23,6 +23,7 @@ import java.io.IOException;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.FieldOrdToGroupOrd;
@@ -176,6 +177,31 @@ final class DedupUtil {
           fieldOrdToGroupOrdOffset,
           fieldOrdToGroupOrdSize);
     }
+  }
+
+  /**
+   * Prefetches a run of {@code count} field ords starting at {@code ord} from the group view. Field
+   * ords that are consecutive need not map to consecutive group ords, so the run is remapped and
+   * prefetched ord by ord rather than as a single contiguous read.
+   *
+   * @return the number of vectors a prefetch was actually issued for
+   */
+  static int prefetchRemapped(
+      KnnVectorValues groupView,
+      FieldOrdToGroupOrd fieldOrdToGroupOrd,
+      int ord,
+      int count,
+      int size)
+      throws IOException {
+    if (ord < 0 || ord >= size || count <= 0) {
+      return 0;
+    }
+    final int runLength = Math.min(count, size - ord);
+    int prefetched = 0;
+    for (int i = 0; i < runLength; i++) {
+      prefetched += groupView.prefetch(fieldOrdToGroupOrd.get(ord + i), 1);
+    }
+    return prefetched;
   }
 
   static long hashBytes(byte[] bytes) {

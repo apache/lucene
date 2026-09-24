@@ -17,9 +17,14 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.Callable;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.util.ArrayUtil;
 
 /**
  * A Query that re-scores another Query with a {@link DoubleValuesSource} function and cut-off the
@@ -62,6 +67,25 @@ public class RescoreTopNQuery extends Query {
     Query rewritten = indexSearcher.rewrite(query);
     Weight weight = indexSearcher.createWeight(rewritten, ScoreMode.COMPLETE_NO_SCORES, 1.0f);
     HitQueue queue = new HitQueue(n, false);
+    // A value source that reads the inner scorer's score must be consumed at the scorer's current
+    // position, so those cannot be prefetched ahead and are scored as we go.
+    int originalCount =
+        valuesSource.needsScores()
+            ? rescoreInline(reader, weight, rewrittenValueSource, queue)
+            : rescoreWithPrefetch(indexSearcher, reader, weight, rewrittenValueSource, queue);
+    int i = 0;
+    ScoreDoc[] scoreDocs = new ScoreDoc[queue.size()];
+    for (ScoreDoc topDoc : queue) {
+      scoreDocs[i++] = topDoc;
+    }
+    TopDocs topDocs =
+        new TopDocs(new TotalHits(originalCount, TotalHits.Relation.EQUAL_TO), scoreDocs);
+    return DocAndScoreQuery.createDocAndScoreQuery(reader, topDocs, 0);
+  }
+
+  private int rescoreInline(
+      IndexReader reader, Weight weight, DoubleValuesSource rewrittenValueSource, HitQueue queue)
+      throws IOException {
     int originalCount = 0;
     for (var leaf : reader.leaves()) {
       Scorer innerScorer = weight.scorer(leaf);
@@ -71,24 +95,82 @@ public class RescoreTopNQuery extends Query {
       DoubleValues rescores = rewrittenValueSource.getValues(leaf, getDoubleValues(innerScorer));
       DocIdSetIterator iterator = innerScorer.iterator();
       while (iterator.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-        int docId = iterator.docID();
-        if (rescores.advanceExact(docId)) {
-          double v = rescores.doubleValue();
-          queue.insertWithOverflow(new ScoreDoc(leaf.docBase + docId, (float) v));
-        } else {
-          queue.insertWithOverflow(new ScoreDoc(leaf.docBase + docId, 0f));
-        }
+        rescoreInto(queue, rescores, leaf.docBase, iterator.docID());
         originalCount++;
       }
     }
-    int i = 0;
-    ScoreDoc[] scoreDocs = new ScoreDoc[queue.size()];
-    for (ScoreDoc topDoc : queue) {
-      scoreDocs[i++] = topDoc;
+    return originalCount;
+  }
+
+  /**
+   * Starts the loads for every candidate before scoring any of them, so that more than one read is
+   * in flight when the values live on slow storage. Each segment's prefetches are issued on the
+   * searcher's executor: prefetching costs real CPU per candidate, so issuing a whole shortlist
+   * from a single thread caps how many reads can be outstanding. Only doc ids are buffered, never
+   * values.
+   */
+  private int rescoreWithPrefetch(
+      IndexSearcher indexSearcher,
+      IndexReader reader,
+      Weight weight,
+      DoubleValuesSource rewrittenValueSource,
+      HitQueue queue)
+      throws IOException {
+    final List<LeafReaderContext> leaves = reader.leaves();
+    final DoubleValues[] leafValues = new DoubleValues[leaves.size()];
+    final int[][] leafDocs = new int[leaves.size()][];
+    final List<Callable<Void>> tasks = new ArrayList<>(leaves.size());
+    for (int i = 0; i < leaves.size(); i++) {
+      final int idx = i;
+      final LeafReaderContext leaf = leaves.get(i);
+      tasks.add(
+          () -> {
+            Scorer innerScorer = weight.scorer(leaf);
+            if (innerScorer == null) {
+              return null;
+            }
+            DoubleValues rescores = rewrittenValueSource.getValues(leaf, null);
+            DocIdSetIterator iterator = innerScorer.iterator();
+            int[] docs = new int[16];
+            int count = 0;
+            while (iterator.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+              int docId = iterator.docID();
+              rescores.prefetch(docId);
+              if (count == docs.length) {
+                docs = ArrayUtil.grow(docs, count + 1);
+              }
+              docs[count++] = docId;
+            }
+            leafValues[idx] = rescores;
+            leafDocs[idx] = ArrayUtil.copyOfSubArray(docs, 0, count);
+            return null;
+          });
     }
-    TopDocs topDocs =
-        new TopDocs(new TotalHits(originalCount, TotalHits.Relation.EQUAL_TO), scoreDocs);
-    return DocAndScoreQuery.createDocAndScoreQuery(reader, topDocs, 0);
+    indexSearcher.getTaskExecutor().invokeAll(tasks);
+
+    int originalCount = 0;
+    for (int i = 0; i < leaves.size(); i++) {
+      int[] docs = leafDocs[i];
+      if (docs == null) {
+        continue;
+      }
+      int docBase = leaves.get(i).docBase;
+      DoubleValues values = leafValues[i];
+      for (int doc : docs) {
+        rescoreInto(queue, values, docBase, doc);
+        originalCount++;
+      }
+    }
+    return originalCount;
+  }
+
+  private static void rescoreInto(HitQueue queue, DoubleValues values, int docBase, int docId)
+      throws IOException {
+    if (values.advanceExact(docId)) {
+      queue.insertWithOverflow(new ScoreDoc(docBase + docId, (float) values.doubleValue()));
+    } else {
+      queue.insertWithOverflow(new ScoreDoc(docBase + docId, 0f));
+    }
   }
 
   private DoubleValues getDoubleValues(Scorer innerScorer) {
