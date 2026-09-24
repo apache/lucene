@@ -535,6 +535,8 @@ Optimizations
 
 * GITHUB#16669: Use intoBitSet to speed up ReqExclBulkScorer with dense exclusions. (Ke Wei)
 
+* GITHUB#16715: Use unbounded lead cost for prohibited clauses. (Ke Wei)
+
 Bug Fixes
 ---------------------
 

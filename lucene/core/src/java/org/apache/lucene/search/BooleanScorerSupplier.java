@@ -238,11 +238,15 @@ final class BooleanScorerSupplier extends ScorerSupplier {
     if (positiveScorer == null) {
       return null;
     }
+
     final long positiveScorerCost = positiveScorer.cost();
 
+    // Prohibited clauses are bulk-loaded within each window, so use an unbounded lead cost
+    // when selecting their implementations. Keep positiveScorerCost for the disjunction
+    // since the positive side drives which windows need exclusion.
     List<Scorer> prohibited = new ArrayList<>();
     for (ScorerSupplier ss : subs.get(Occur.MUST_NOT)) {
-      prohibited.add(ss.get(positiveScorerCost));
+      prohibited.add(ss.get(Long.MAX_VALUE));
     }
 
     if (prohibited.isEmpty()) {
