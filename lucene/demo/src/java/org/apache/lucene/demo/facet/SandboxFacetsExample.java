@@ -22,6 +22,7 @@ import static org.apache.lucene.sandbox.facet.utils.ComparableUtils.byAggregated
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoubleDocValuesField;
@@ -649,8 +650,8 @@ public class SandboxFacetsExample {
     // FacetFieldCollectorManager anyway, and leaf cutter are not merged or anything like that.
     FacetFieldCollectorManager<CountFacetRecorder> publishDayDimensionCollectorManager =
         new FacetFieldCollectorManager<>(defaultTaxoCutter, publishDayDimensionRecorder);
-    List<FacetFieldCollectorManager<CountFacetRecorder>> drillSidewaysManagers =
-        List.of(publishDayDimensionCollectorManager);
+    Map<String, FacetFieldCollectorManager<CountFacetRecorder>> drillSidewaysManagers =
+        Map.of("Publish Date", publishDayDimensionCollectorManager);
 
     //// (3) search
     // Right now we return the same Recorder we created - so we can ignore results

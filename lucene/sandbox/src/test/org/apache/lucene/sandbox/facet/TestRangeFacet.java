@@ -20,7 +20,7 @@ import static org.apache.lucene.facet.FacetsConfig.DEFAULT_INDEX_FIELD_NAME;
 
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
-import java.util.List;
+import java.util.Map;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoubleDocValuesField;
 import org.apache.lucene.document.DoublePoint;
@@ -537,7 +537,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     ////// First search, no drill-downs:
     DrillDownQuery ddq = new DrillDownQuery(config);
-    ds.search(ddq, collectorManager, List.of());
+    ds.search(ddq, collectorManager, Map.of());
 
     // assertEquals(100, dsr.hits.totalHits.value());
     assertEquals(
@@ -555,7 +555,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     dimCollectorManager = new FacetFieldCollectorManager<>(dimCutter, dimCountRecorder);
     ddq = new DrillDownQuery(config);
     ddq.add("dim", "b");
-    ds.search(ddq, fieldCollectorManager, List.of(dimCollectorManager));
+    ds.search(ddq, fieldCollectorManager, Map.of("dim", dimCollectorManager));
 
     // assertEquals(75, dsr.hits.totalHits.value());
     assertEquals(
@@ -573,7 +573,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     dimCollectorManager = new FacetFieldCollectorManager<>(dimCutter, dimCountRecorder);
     ddq = new DrillDownQuery(config);
     ddq.add("field", LongPoint.newRangeQuery("field", 0L, 10L));
-    ds.search(ddq, dimCollectorManager, List.of(fieldCollectorManager));
+    ds.search(ddq, dimCollectorManager, Map.of("field", fieldCollectorManager));
 
     // assertEquals(11, dsr.hits.totalHits.value());
     assertEquals(
@@ -1622,11 +1622,12 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     countRecorder = new CountFacetRecorder();
 
-    DrillSideways.Result<Integer, CountFacetRecorder> result =
+    DrillSideways.ResultByDim<Integer, CountFacetRecorder> result =
         ds.search(
             ddq,
             DummyTotalHitCountCollector.createManager(),
-            List.of(new FacetFieldCollectorManager<>(doubleRangeFacetCutter, countRecorder)));
+            Map.of(
+                "field", new FacetFieldCollectorManager<>(doubleRangeFacetCutter, countRecorder)));
     assertEquals(1, result.drillDownResult().intValue());
     assertEquals(
         "dim=field path=[] value=-2147483648 childCount=6\n  < 1 (0)\n  < 2 (1)\n  < 5 (3)\n  < 10 (3)\n  < 20 (3)\n  < 50 (3)\n",
