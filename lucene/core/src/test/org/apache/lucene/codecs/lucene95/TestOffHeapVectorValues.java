@@ -26,15 +26,55 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 public class TestOffHeapVectorValues extends LuceneTestCase {
 
   public void testPrefetchVectorValuesWithMoreThanOneOrds() throws IOException {
+    // {1, 2} are consecutive, so they are prefetched with a single read.
     CountingIndexInput byteIndexInput = new CountingIndexInput();
     OffHeapByteVectorValues values = createTestByteVectorValues(byteIndexInput);
     values.prefetch(new int[] {1, 2, 5}, 2);
-    assertEquals(2, byteIndexInput.getPrefetchCount());
+    assertEquals(1, byteIndexInput.getPrefetchCount());
 
     CountingIndexInput floatIndexInput = new CountingIndexInput();
     OffHeapFloatVectorValues floatValues = createTestFloatVectorValues(floatIndexInput);
     floatValues.prefetch(new int[] {1, 2, 5}, 2);
-    assertEquals(2, floatIndexInput.getPrefetchCount());
+    assertEquals(1, floatIndexInput.getPrefetchCount());
+  }
+
+  public void testPrefetchCoalescesConsecutiveOrdsOnly() throws IOException {
+    // One read per run of consecutive ords: {1, 2, 3}, {7}, {9, 10}.
+    CountingIndexInput byteIndexInput = new CountingIndexInput();
+    OffHeapByteVectorValues values = createTestByteVectorValues(byteIndexInput);
+    values.prefetch(new int[] {1, 2, 3, 7, 9, 10}, 6);
+    assertEquals(3, byteIndexInput.getPrefetchCount());
+
+    // Ords are not sorted here, so no run forms and every ord costs a read.
+    CountingIndexInput floatIndexInput = new CountingIndexInput();
+    OffHeapFloatVectorValues floatValues = createTestFloatVectorValues(floatIndexInput);
+    floatValues.prefetch(new int[] {10, 3, 2, 8}, 4);
+    assertEquals(4, floatIndexInput.getPrefetchCount());
+  }
+
+  public void testPrefetchContiguousRun() throws IOException {
+    CountingIndexInput byteIndexInput = new CountingIndexInput();
+    OffHeapByteVectorValues values = createTestByteVectorValues(byteIndexInput);
+    assertEquals(4, values.prefetch(10, 4));
+    assertEquals(1, byteIndexInput.getPrefetchCount());
+
+    // A run reaching past the last ord is clamped to the vectors that exist.
+    assertEquals(2, values.prefetch(98, 50));
+    assertEquals(2, byteIndexInput.getPrefetchCount());
+
+    // Nothing to prefetch: out of range ord, or a non-positive count.
+    assertEquals(0, values.prefetch(100, 1));
+    assertEquals(0, values.prefetch(-1, 1));
+    assertEquals(0, values.prefetch(1, 0));
+    assertEquals(2, byteIndexInput.getPrefetchCount());
+  }
+
+  public void testPrefetchReportsNothingPrefetchedWhenInputDeclinesIt() throws IOException {
+    // The default IndexInput#prefetch is a no-op returning false: callers gain nothing by
+    // deferring.
+    OffHeapFloatVectorValues floatValues =
+        createTestFloatVectorValues(new NoopPrefetchIndexInput());
+    assertEquals(0, floatValues.prefetch(1, 4));
   }
 
   public void testPrefetchVectorValuesWithLessThanOneOrds() throws IOException {
@@ -58,12 +98,12 @@ public class TestOffHeapVectorValues extends LuceneTestCase {
     // array length so it only prefetches the available ords instead of running past the array end.
     CountingIndexInput byteIndexInput = new CountingIndexInput();
     OffHeapByteVectorValues values = createTestByteVectorValues(byteIndexInput);
-    values.prefetch(new int[] {1, 2}, 5);
+    values.prefetch(new int[] {1, 3}, 5);
     assertEquals(2, byteIndexInput.getPrefetchCount());
 
     CountingIndexInput floatIndexInput = new CountingIndexInput();
     OffHeapFloatVectorValues floatValues = createTestFloatVectorValues(floatIndexInput);
-    floatValues.prefetch(new int[] {1, 2}, 5);
+    floatValues.prefetch(new int[] {1, 3}, 5);
     assertEquals(2, floatIndexInput.getPrefetchCount());
   }
 
@@ -79,7 +119,16 @@ public class TestOffHeapVectorValues extends LuceneTestCase {
         100, 100, indexInput, 4, null, VectorSimilarityFunction.EUCLIDEAN);
   }
 
-  private static final class CountingIndexInput extends IndexInput {
+  /** An input that declines to prefetch, like the default {@link IndexInput#prefetch}. */
+  private static final class NoopPrefetchIndexInput extends CountingIndexInput {
+
+    @Override
+    public boolean prefetch(long offset, long length) throws IOException {
+      return false;
+    }
+  }
+
+  private static class CountingIndexInput extends IndexInput {
 
     AtomicInteger counter;
 
