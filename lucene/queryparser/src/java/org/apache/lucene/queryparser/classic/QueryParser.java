@@ -744,7 +744,7 @@ public class QueryParser extends QueryParserBase implements QueryParserConstants
     }
     if (splitOnWhitespace == false) {
       firstQuery = getFieldQuery(field, discardEscapeChar(text.image), false);
-      addMultiTermClauses(clauses, firstQuery);
+      addClause(clauses, CONJ_NONE, MOD_NONE, firstQuery);
     }
     {
       if ("" != null) return firstQuery;

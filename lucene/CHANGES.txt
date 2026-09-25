@@ -121,6 +121,8 @@ API Changes
   so that per-file bookkeeping in subclasses applies to copied files; subclasses that want an
   optimized copy (e.g. HardlinkCopyDirectoryWrapper) may override to delegate. (Tim Allison)
 
+* GITHUB#16441: Remove deprecated method QueryParserBase.addMultiTermClauses (Egor Potemkin, Olivier Jaquemet)
+
 New Features
 ---------------------
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
@@ -217,6 +219,10 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#16441: MultiFieldQueryParser + per-field boosts produce wrong Occur under AND default operator (Egor Potemkin, Olivier Jaquemet)
+
+* GITHUB#16443: MultiFieldQueryParser: default operator is not honored between term positions (Egor Potemkin, Olivier Jaquemet)
+
 * GITHUB#16553: Fix stored-fields corruption when PerField#finish throws: the stored-fields frame
   was left open, causing "Wrote N docs, finish called with numDocs=M" at flush. (Michael Marshall)
 
