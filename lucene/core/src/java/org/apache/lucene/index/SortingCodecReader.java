@@ -327,6 +327,12 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
 
     @Override
+    public boolean prefetch(int ord, int count) throws IOException {
+      // ords are interpreted in the delegate's ord-space, as in vectorValue().
+      return delegate.prefetch(ord, count);
+    }
+
+    @Override
     public int dimension() {
       return delegate.dimension();
     }
@@ -360,6 +366,12 @@ public final class SortingCodecReader extends FilterCodecReader {
     @Override
     public byte[] vectorValue(int ord) throws IOException {
       return delegate.vectorValue(ord);
+    }
+
+    @Override
+    public boolean prefetch(int ord, int count) throws IOException {
+      // ords are interpreted in the delegate's ord-space, as in vectorValue().
+      return delegate.prefetch(ord, count);
     }
 
     @Override
@@ -397,6 +409,12 @@ public final class SortingCodecReader extends FilterCodecReader {
     @Override
     public short[] vectorValue(int ord) throws IOException {
       return delegate.vectorValue(ord);
+    }
+
+    @Override
+    public boolean prefetch(int ord, int count) throws IOException {
+      // ords are interpreted in the delegate's ord-space, as in vectorValue().
+      return delegate.prefetch(ord, count);
     }
 
     @Override

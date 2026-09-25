@@ -737,6 +737,12 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     }
 
     @Override
+    public boolean prefetch(int ord, int count) throws IOException {
+      // vectorValue()/rescorer() read the raw full-precision vectors, so prefetch those.
+      return rawVectorValues.prefetch(ord, count);
+    }
+
+    @Override
     public ScalarQuantizedVectorValues copy() throws IOException {
       return new ScalarQuantizedVectorValues(rawVectorValues.copy(), quantizedVectorValues.copy());
     }
@@ -795,6 +801,11 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     @Override
     public short[] vectorValue(int ord) throws IOException {
       return rawVectorValues.vectorValue(ord);
+    }
+
+    @Override
+    public boolean prefetch(int ord, int count) throws IOException {
+      return rawVectorValues.prefetch(ord, count);
     }
 
     @Override
