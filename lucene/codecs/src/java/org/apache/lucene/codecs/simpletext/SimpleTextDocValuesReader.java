@@ -54,6 +54,7 @@ import java.util.function.IntFunction;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.CorruptIndexException;
+import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
@@ -65,6 +66,9 @@ import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.SortedNumericSelector;
+import org.apache.lucene.search.SortedSetSelector;
 import org.apache.lucene.store.BufferedChecksumIndexInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IndexInput;
@@ -669,7 +673,33 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
   }
 
   @Override
-  public SortedNumericDocValues getSortedNumeric(FieldInfo field) throws IOException {
+  public SortedNumericDocValues getSortedNumeric(FieldInfo fieldInfo) throws IOException {
+    final OneField field = fields.get(fieldInfo.name);
+
+    // SegmentCoreReaders already verifies this field is
+    // valid:
+    assert field != null;
+
+    final SortedNumericDocValues multi = getMultiValuedSortedNumeric(fieldInfo);
+    if (isSingleValued(field) == false) {
+      return multi;
+    }
+
+    // Every document has at most one value: expose the column as a singleton, like the default
+    // codec does, so that consumers relying on DocValues.unwrapSingleton() see the same shape.
+    return DocValues.singleton(
+        SortedNumericSelector.wrap(multi, SortedNumericSelector.Type.MIN, SortField.Type.LONG));
+  }
+
+  /**
+   * Returns true if every document of the field has at most one value (according to the max value
+   * count recorded by the writer), in which case the field is exposed as a singleton.
+   */
+  private static boolean isSingleValued(OneField field) {
+    return field.maxValueCount >= 0 && field.maxValueCount <= 1;
+  }
+
+  private SortedNumericDocValues getMultiValuedSortedNumeric(FieldInfo field) throws IOException {
     final BinaryDocValues binary = getBinary(field);
     return new SortedNumericDocValues() {
 
@@ -746,6 +776,17 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
     // valid:
     assert field != null;
 
+    final SortedSetDocValues multi = getMultiValuedSortedSet(field);
+    if (isSingleValued(field) == false) {
+      return multi;
+    }
+
+    // Every document has at most one ordinal: expose the column as a singleton, like the default
+    // codec does, so that consumers relying on DocValues.unwrapSingleton() see the same shape.
+    return DocValues.singleton(SortedSetSelector.wrap(multi, SortedSetSelector.Type.MIN));
+  }
+
+  private SortedSetDocValues getMultiValuedSortedSet(OneField field) throws IOException {
     final IndexInput in = data.clone();
     final BytesRefBuilder scratch = new BytesRefBuilder();
     final DecimalFormat decoder =
