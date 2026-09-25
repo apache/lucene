@@ -56,25 +56,33 @@ public class TestStoredFieldsMergeReadAdvice extends LuceneTestCase {
           assertEquals(2, reader.leaves().size());
           opens.clear();
           w.forceMerge(1);
+
+          // the merge is over, so what it opened is gone even though the segments are still open
+          List<Open> sequential = sequentialOpens(opens);
+          assertFalse(
+              "the merge never opened stored fields for itself: " + opens, sequential.isEmpty());
+          for (Open open : sequential) {
+            assertTrue("the merge kept its stored fields open: " + open, open.closed());
+          }
         }
       }
 
-      List<Open> sequential = new ArrayList<>();
-      for (Open open : opens.all()) {
-        if (open.name().endsWith(".fdt") && open.hint() == DataAccessHint.SEQUENTIAL) {
-          sequential.add(open);
-        }
-      }
-      assertFalse(
-          "the merge never opened stored fields for itself: " + opens, sequential.isEmpty());
-      for (Open open : sequential) {
-        assertTrue("the merge left its own stored fields open: " + open, open.closed());
-      }
       assertEquals(
           "the merge re-advised the stored fields searches are reading: " + opens,
           List.of(),
           opens.advised());
     }
+  }
+
+  /** The opens a merge made for itself: the data file, asked for front to back. */
+  private static List<Open> sequentialOpens(Opens opens) {
+    List<Open> sequential = new ArrayList<>();
+    for (Open open : opens.all()) {
+      if (open.name().endsWith(".fdt") && open.hint() == DataAccessHint.SEQUENTIAL) {
+        sequential.add(open);
+      }
+    }
+    return sequential;
   }
 
   /** One {@link Directory#openInput} call. */

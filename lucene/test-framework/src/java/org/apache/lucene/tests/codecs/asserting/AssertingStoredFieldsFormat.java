@@ -95,6 +95,11 @@ public class AssertingStoredFieldsFormat extends StoredFieldsFormat {
     }
 
     @Override
+    public void finishMerge() throws IOException {
+      in.finishMerge();
+    }
+
+    @Override
     public String toString() {
       return getClass().getSimpleName() + "(" + in.toString() + ")";
     }

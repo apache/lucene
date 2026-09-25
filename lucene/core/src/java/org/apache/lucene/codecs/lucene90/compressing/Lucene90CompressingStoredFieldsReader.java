@@ -108,6 +108,9 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   // the reader this one was cloned from, which owns the mapping merges read
   private final Lucene90CompressingStoredFieldsReader original;
   private IndexInput mergeFieldsStream;
+  // merge instances handed out and not yet finished, so a reader that keeps one is not left holding
+  // a closed input
+  private int mergeInstances;
 
   // used by clone
   private Lucene90CompressingStoredFieldsReader(
@@ -727,6 +730,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   private synchronized IndexInput mergeFieldsStream() throws IOException {
     assert original == this;
     ensureOpen();
+    mergeInstances++;
     if (mergeFieldsStream == null) {
       if (context.context() == IOContext.Context.MERGE) {
         // opened by a merge to begin with, so it already advises sequential reads
@@ -743,6 +747,26 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
       }
     }
     return mergeFieldsStream;
+  }
+
+  /**
+   * Closes the mapping a merge used, once no merge instance is left holding it. The reader stays
+   * usable for searches, and a later merge maps the file again.
+   */
+  @Override
+  public void finishMerge() throws IOException {
+    original.releaseMergeFieldsStream();
+  }
+
+  private synchronized void releaseMergeFieldsStream() throws IOException {
+    assert original == this;
+    if (closed || --mergeInstances > 0) {
+      return;
+    }
+    if (mergeFieldsStream != null && mergeFieldsStream != fieldsStream) {
+      mergeFieldsStream.close();
+    }
+    mergeFieldsStream = null;
   }
 
   int getVersion() {
