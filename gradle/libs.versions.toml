@@ -11,7 +11,7 @@ commons-codec = "1.17.2"
 # benchmark/ bzip2 compression
 commons-compress = "1.19"
 # See ecj-lint.gradle (used for more linting).
-ecj = "3.44.0"
+ecj = "3.46.100"
 # java linting
 errorprone = "2.50.0"
 # markdown documentation generation
@@ -19,7 +19,7 @@ flexmark = "0.64.8"
 # @keep This is GJF version for java source code formatting
 googleJavaFormat = "1.33.0-markdown"
 # gradle build support
-groovy = "5.1.0"
+groovy = "6.0.0"
 # test assertions
 hamcrest = "2.2"
 # analysis/icu/, gradle regeneration unicode support
@@ -51,7 +51,7 @@ opennlp = "2.5.10"
 # distribution.tests/ process management
 procfork = "1.0.6"
 # unit tests
-randomizedtesting = "2.8.1"
+randomizedtesting = "2.9.2"
 # spatial-extras/ support
 s2-geometry = "1.0.0"
 # spatial-extras/ support
@@ -59,7 +59,7 @@ spatial4j = "0.8"
 # benchmark/ XML parsing
 xerces = "2.12.2"
 # external datasets decompression
-zstd = "1.5.7-15"
+zstd = "1.5.7-20"
 
 [libraries]
 antlr-core = { module = "org.antlr:antlr4", version.ref = "antlr" }
@@ -100,7 +100,6 @@ xerces = { module = "xerces:xercesImpl", version.ref = "xerces" }
 zstd = { module = "com.github.luben:zstd-jni", version.ref = "zstd" }
 
 [plugins]
-benmanes-versions = "com.github.ben-manes.versions:0.63.1"
 carrotsearch-buildopts = "com.carrotsearch.gradle.opts:0.2.3"
 carrotsearch-dependencychecks = "com.carrotsearch.gradle.dependencychecks:0.2.3"
 errorprone = "net.ltgt.errorprone:5.1.0"

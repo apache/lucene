@@ -394,6 +394,7 @@ public class MMapDirectory extends FSDirectory {
     }
   }
 
+  @SuppressWarnings("unchecked")
   private static <A> MMapIndexInputProvider<A> lookupProvider() {
     final var lookup = MethodHandles.lookup();
     try {
