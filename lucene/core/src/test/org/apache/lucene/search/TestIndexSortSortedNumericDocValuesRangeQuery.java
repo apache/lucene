@@ -21,7 +21,13 @@ import static org.hamcrest.Matchers.instanceOf;
 import java.io.IOException;
 import java.util.Random;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.DoubleDocValuesField;
+import org.apache.lucene.document.DoubleField;
+import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.FloatDocValuesField;
+import org.apache.lucene.document.FloatField;
+import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -39,6 +45,7 @@ import org.apache.lucene.tests.search.DummyTotalHitCountCollector;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.NumericUtils;
 import org.hamcrest.MatcherAssert;
 
 @LuceneTestCase.SuppressCodecs(value = "SimpleText")
@@ -510,21 +517,305 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     dir.close();
   }
 
-  public void testOtherSortTypes() throws Exception {
-    for (SortField.Type type : new SortField.Type[] {SortField.Type.FLOAT, SortField.Type.DOUBLE}) {
+  public void testSameHitsAsPointRangeQueryFloatSort() throws IOException {
+    final int iters = atLeast(10);
+    for (int iter = 0; iter < iters; ++iter) {
       Directory dir = newDirectory();
 
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-      Sort indexSort = new Sort(new SortedNumericSortField("field", type));
-      iwc.setIndexSort(indexSort);
+      boolean reverse = random().nextBoolean();
+      boolean enableMissingValue = random().nextBoolean();
+      Float missingValue = null;
+      if (enableMissingValue) {
+        missingValue =
+            random().nextBoolean()
+                ? (float) TestUtil.nextInt(random(), -100, 10000)
+                : (random().nextBoolean() ? Float.NEGATIVE_INFINITY : Float.POSITIVE_INFINITY);
+      }
+      SortField sortField =
+          new SortedNumericSortField(
+              "dv", SortField.Type.FLOAT, reverse, SortedNumericSelector.Type.MIN, missingValue);
+      iwc.setIndexSort(new Sort(sortField));
 
-      RandomIndexWriter writer = new RandomIndexWriter(random(), dir, iwc);
-      writer.addDocument(createDocument("field", 0));
+      RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
 
-      testIndexSortOptimizationDeactivated(writer);
+      final int numDocs = atLeast(100);
+      for (int i = 0; i < numDocs; ++i) {
+        Document doc = new Document();
+        final int numValues = TestUtil.nextInt(random(), 0, 1);
+        for (int j = 0; j < numValues; ++j) {
+          final float value = TestUtil.nextInt(random(), -100, 10000) + 0.5f;
+          doc.add(new SortedNumericDocValuesField("dv", NumericUtils.floatToSortableInt(value)));
+          doc.add(new FloatPoint("idx", value));
+        }
+        iw.addDocument(doc);
+      }
+      if (random().nextBoolean()) {
+        iw.deleteDocuments(FloatPoint.newRangeQuery("idx", 0f, 10f));
+      }
+      final IndexReader reader = iw.getReader();
+      final IndexSearcher searcher = newSearcher(reader);
+      iw.close();
 
-      writer.close();
+      for (int i = 0; i < 100; ++i) {
+        final float min =
+            random().nextBoolean()
+                ? Float.NEGATIVE_INFINITY
+                : TestUtil.nextInt(random(), -100, 10000) + 0.5f;
+        final float max =
+            random().nextBoolean()
+                ? Float.POSITIVE_INFINITY
+                : TestUtil.nextInt(random(), -100, 10000) + 0.5f;
+        final Query q1 = FloatPoint.newRangeQuery("idx", min, max);
+        final Query q2 = createFloatQuery("dv", min, max);
+        assertSameHits(searcher, q1, q2, false);
+      }
+
+      reader.close();
       dir.close();
+    }
+  }
+
+  public void testSameHitsAsPointRangeQueryDoubleSort() throws IOException {
+    final int iters = atLeast(10);
+    for (int iter = 0; iter < iters; ++iter) {
+      Directory dir = newDirectory();
+
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      boolean reverse = random().nextBoolean();
+      boolean enableMissingValue = random().nextBoolean();
+      Double missingValue = null;
+      if (enableMissingValue) {
+        missingValue =
+            random().nextBoolean()
+                ? (double) TestUtil.nextLong(random(), -100, 10000)
+                : (random().nextBoolean() ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY);
+      }
+      SortField sortField =
+          new SortedNumericSortField(
+              "dv", SortField.Type.DOUBLE, reverse, SortedNumericSelector.Type.MIN, missingValue);
+      iwc.setIndexSort(new Sort(sortField));
+
+      RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
+
+      final int numDocs = atLeast(100);
+      for (int i = 0; i < numDocs; ++i) {
+        Document doc = new Document();
+        final int numValues = TestUtil.nextInt(random(), 0, 1);
+        for (int j = 0; j < numValues; ++j) {
+          final double value = TestUtil.nextLong(random(), -100, 10000) + 0.5d;
+          doc.add(new SortedNumericDocValuesField("dv", NumericUtils.doubleToSortableLong(value)));
+          doc.add(new DoublePoint("idx", value));
+        }
+        iw.addDocument(doc);
+      }
+      if (random().nextBoolean()) {
+        iw.deleteDocuments(DoublePoint.newRangeQuery("idx", 0d, 10d));
+      }
+      final IndexReader reader = iw.getReader();
+      final IndexSearcher searcher = newSearcher(reader);
+      iw.close();
+
+      for (int i = 0; i < 100; ++i) {
+        final double min =
+            random().nextBoolean()
+                ? Double.NEGATIVE_INFINITY
+                : TestUtil.nextLong(random(), -100, 10000) + 0.5d;
+        final double max =
+            random().nextBoolean()
+                ? Double.POSITIVE_INFINITY
+                : TestUtil.nextLong(random(), -100, 10000) + 0.5d;
+        final Query q1 = DoublePoint.newRangeQuery("idx", min, max);
+        final Query q2 = createDoubleQuery("dv", min, max);
+        assertSameHits(searcher, q1, q2, false);
+      }
+
+      reader.close();
+      dir.close();
+    }
+  }
+
+  /**
+   * Verifies that float and double index sorts, indexed with points on the same field (as {@link
+   * FloatField}/{@link DoubleField} do), activate the optimization end to end and produce the same
+   * hits and counts as the equivalent point range query.
+   */
+  public void testFloatAndDoubleFieldSameHits() throws IOException {
+    for (boolean isFloat : new boolean[] {true, false}) {
+      for (boolean reverse : new boolean[] {false, true}) {
+        Directory dir = newDirectory();
+        IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+        SortField sortField =
+            isFloat
+                ? FloatField.newSortField("field", reverse, SortedNumericSelector.Type.MIN)
+                : DoubleField.newSortField("field", reverse, SortedNumericSelector.Type.MIN);
+        iwc.setIndexSort(new Sort(sortField));
+        RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
+
+        final int numDocs = atLeast(100);
+        for (int i = 0; i < numDocs; ++i) {
+          Document doc = new Document();
+          double value = TestUtil.nextInt(random(), -100, 10000) + 0.25d;
+          doc.add(
+              isFloat
+                  ? new FloatField("field", (float) value, Field.Store.NO)
+                  : new DoubleField("field", value, Field.Store.NO));
+          iw.addDocument(doc);
+        }
+        iw.forceMerge(1);
+        IndexReader reader = iw.getReader();
+        IndexSearcher searcher = newSearcher(reader);
+        iw.close();
+
+        for (int i = 0; i < 100; ++i) {
+          double a = TestUtil.nextInt(random(), -110, 10010) + 0.25d;
+          double b = TestUtil.nextInt(random(), -110, 10010) + 0.25d;
+          double min = Math.min(a, b);
+          double max = Math.max(a, b);
+          Query q1;
+          Query q2;
+          if (isFloat) {
+            q1 = FloatPoint.newRangeQuery("field", (float) min, (float) max);
+            q2 = FloatField.newRangeQuery("field", (float) min, (float) max);
+          } else {
+            q1 = DoublePoint.newRangeQuery("field", min, max);
+            q2 = DoubleField.newRangeQuery("field", min, max);
+          }
+          assertEquals(searcher.count(q1), searcher.count(q2));
+          assertSameHits(searcher, q1, q2, false);
+        }
+
+        reader.close();
+        dir.close();
+      }
+    }
+  }
+
+  /**
+   * Verifies support for single-valued {@link org.apache.lucene.index.NumericDocValues} float and
+   * double fields, which store raw IEEE-754 bits (unlike {@code SortedNumericDocValues} fields,
+   * which store the sortable encoding). Bounds are passed in that same raw-bits space. A parallel
+   * points field ("pt") acts as both the oracle and a correct fallback; optionally points are also
+   * indexed on the doc-values field itself to exercise the BKD path.
+   */
+  public void testNumericDocValuesFloatAndDouble() throws IOException {
+    for (boolean isFloat : new boolean[] {true, false}) {
+      for (boolean pointsOnDvField : new boolean[] {false, true}) {
+        Directory dir = newDirectory();
+        IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+        SortField.Type type = isFloat ? SortField.Type.FLOAT : SortField.Type.DOUBLE;
+        // Plain SortField (not SortedNumeric) over single-valued NumericDocValues (raw bits).
+        iwc.setIndexSort(new Sort(new SortField("dv", type, random().nextBoolean())));
+        RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
+
+        final int numDocs = atLeast(100);
+        for (int i = 0; i < numDocs; ++i) {
+          Document doc = new Document();
+          double value = TestUtil.nextInt(random(), -100, 10000) + 0.5d;
+          if (isFloat) {
+            doc.add(new FloatDocValuesField("dv", (float) value));
+            doc.add(new FloatPoint("pt", (float) value));
+            if (pointsOnDvField) doc.add(new FloatPoint("dv", (float) value));
+          } else {
+            doc.add(new DoubleDocValuesField("dv", value));
+            doc.add(new DoublePoint("pt", value));
+            if (pointsOnDvField) doc.add(new DoublePoint("dv", value));
+          }
+          iw.addDocument(doc);
+        }
+        iw.forceMerge(1);
+        IndexReader reader = iw.getReader();
+        IndexSearcher searcher = newSearcher(reader);
+        iw.close();
+
+        for (int i = 0; i < 100; ++i) {
+          double a = TestUtil.nextInt(random(), -110, 10010) + 0.5d;
+          double b = TestUtil.nextInt(random(), -110, 10010) + 0.5d;
+          double min = Math.min(a, b);
+          double max = Math.max(a, b);
+          Query oracle; // range over the parallel "pt" points field
+          Query q; // uses the float/double constructor, which converts to sortable longs
+          if (isFloat) {
+            oracle = FloatPoint.newRangeQuery("pt", (float) min, (float) max);
+            q =
+                new IndexSortSortedNumericDocValuesRangeQuery(
+                    "dv", (float) min, (float) max, oracle);
+          } else {
+            oracle = DoublePoint.newRangeQuery("pt", min, max);
+            q = new IndexSortSortedNumericDocValuesRangeQuery("dv", min, max, oracle);
+          }
+          assertSameHits(searcher, oracle, q, false);
+          assertEquals(
+              "count pointsOnDvField=" + pointsOnDvField,
+              searcher.count(oracle),
+              searcher.count(q));
+        }
+
+        reader.close();
+        dir.close();
+      }
+    }
+  }
+
+  /**
+   * Verifies that the scorer path (not just {@code count()}) actually engages the optimization for
+   * float and double sorts and returns the right documents. A live optimization produces a plain
+   * iterator with no two-phase iterator, whereas the {@code SortedNumericDocValuesField} fallback
+   * always exposes a two-phase iterator, so the two are distinguishable. Both the binary-search
+   * scorer path (no points) and the BKD scorer path (points on the field) are covered.
+   */
+  public void testFloatDoubleScorerUsesOptimization() throws Exception {
+    for (boolean isFloat : new boolean[] {true, false}) {
+      for (boolean withPoints : new boolean[] {false, true}) {
+        Directory dir = newDirectory();
+        IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+        SortField.Type type = isFloat ? SortField.Type.FLOAT : SortField.Type.DOUBLE;
+        iwc.setIndexSort(new Sort(new SortedNumericSortField("dv", type)));
+        RandomIndexWriter writer = new RandomIndexWriter(random(), dir, iwc);
+        double[] vals = {-80.5, -5.25, 0.5, 2.5, 30.5, 35.5};
+        for (double v : vals) {
+          Document doc = new Document();
+          if (isFloat) {
+            doc.add(
+                new SortedNumericDocValuesField("dv", NumericUtils.floatToSortableInt((float) v)));
+            if (withPoints) doc.add(new FloatPoint("dv", (float) v));
+          } else {
+            doc.add(new SortedNumericDocValuesField("dv", NumericUtils.doubleToSortableLong(v)));
+            if (withPoints) doc.add(new DoublePoint("dv", v));
+          }
+          writer.addDocument(doc);
+        }
+        writer.forceMerge(1);
+        DirectoryReader reader = writer.getReader();
+        IndexSearcher searcher = newSearcher(reader);
+        writer.close();
+
+        // Range [0, 31] matches 0.5, 2.5 and 30.5 -> 3 docs.
+        Query q = isFloat ? createFloatQuery("dv", 0f, 31f) : createDoubleQuery("dv", 0d, 31d);
+        Weight weight = q.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
+        int totalHits = 0;
+        for (LeafReaderContext ctx : searcher.getIndexReader().leaves()) {
+          Scorer scorer = weight.scorer(ctx);
+          if (scorer == null) {
+            continue;
+          }
+          assertNull(
+              "optimization should be active in the scorer (isFloat="
+                  + isFloat
+                  + ", withPoints="
+                  + withPoints
+                  + ")",
+              scorer.twoPhaseIterator());
+          DocIdSetIterator it = scorer.iterator();
+          for (int d = it.nextDoc(); d != DocIdSetIterator.NO_MORE_DOCS; d = it.nextDoc()) {
+            totalHits++;
+          }
+        }
+        assertEquals(3, totalHits);
+
+        reader.close();
+        dir.close();
+      }
     }
   }
 
@@ -725,6 +1016,26 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
   private Query createQuery(String field, long lowerValue, long upperValue) {
     Query fallbackQuery =
         SortedNumericDocValuesField.newSlowRangeQuery(field, lowerValue, upperValue);
+    return new IndexSortSortedNumericDocValuesRangeQuery(
+        field, lowerValue, upperValue, fallbackQuery);
+  }
+
+  private Query createFloatQuery(String field, float lowerValue, float upperValue) {
+    Query fallbackQuery =
+        SortedNumericDocValuesField.newSlowRangeQuery(
+            field,
+            NumericUtils.floatToSortableInt(lowerValue),
+            NumericUtils.floatToSortableInt(upperValue));
+    return new IndexSortSortedNumericDocValuesRangeQuery(
+        field, lowerValue, upperValue, fallbackQuery);
+  }
+
+  private Query createDoubleQuery(String field, double lowerValue, double upperValue) {
+    Query fallbackQuery =
+        SortedNumericDocValuesField.newSlowRangeQuery(
+            field,
+            NumericUtils.doubleToSortableLong(lowerValue),
+            NumericUtils.doubleToSortableLong(upperValue));
     return new IndexSortSortedNumericDocValuesRangeQuery(
         field, lowerValue, upperValue, fallbackQuery);
   }

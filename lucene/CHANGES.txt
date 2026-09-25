@@ -436,6 +436,12 @@ Improvements
 * GITHUB#16091: Replace deprecated IndexSearcher#search(Query, Collector) usage with CollectorManager
   in JoinUtil#createJoinQuery for the GlobalOrdinalsCollector case. (Luca Cavanna)
 
+* GITHUB#16698: Extend the index-sort range query optimization
+  (IndexSortSortedNumericDocValuesRangeQuery) to float and double values, so range queries on
+  FloatField/DoubleField can take advantage of a matching primary index sort. Values encoded as
+  either NumericDocValues (raw bits) or SortedNumericDocValues (sortable bits) are handled
+  correctly. (Houston Putman)
+
 Optimizations
 ---------------------
 
