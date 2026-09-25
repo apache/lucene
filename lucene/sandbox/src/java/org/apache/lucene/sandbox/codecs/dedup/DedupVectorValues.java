@@ -59,7 +59,8 @@ sealed interface DedupVectorValues
         DedupVectorValues.FloatImpl,
         DedupVectorValues.Float16Impl,
         DedupScalarQuantizedVectorValues.FieldValues,
-        DedupScalarQuantizedVectorValues.RawAndQuantizedValues {
+        DedupScalarQuantizedVectorValues.RawAndQuantizedValues,
+        DedupScalarQuantizedVectorValues.Float16RawAndQuantizedValues {
 
   /** The dense view over distinct vectors, indexed by group ordinal. */
   KnnVectorValues getGroupView();

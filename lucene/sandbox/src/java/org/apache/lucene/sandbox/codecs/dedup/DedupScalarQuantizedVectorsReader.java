@@ -67,10 +67,11 @@ import org.apache.lucene.util.quantization.QuantizedVectorsReader;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 /**
- * Reads de-duplicated flat vectors written by {@link DedupScalarQuantizedVectorsFormat}. Each
- * FLOAT32 field exposes a full-precision view backed by the raw de-duplicated vectors, scored
- * against a data-blind quantized view sharing the same {@code fieldOrdToGroupOrd} translation map.
- * BYTE and FLOAT16 fields are stored and read raw only.
+ * Reads de-duplicated flat vectors written by {@link DedupScalarQuantizedVectorsFormat}. FLOAT32
+ * and FLOAT16 fields each expose a full-precision view backed by the raw de-duplicated vectors,
+ * scored against a data-blind quantized view sharing the same {@code fieldOrdToGroupOrd}
+ * translation map (FLOAT16 vectors are inflated to {@code float} for quantized scoring). BYTE
+ * fields are stored and read raw only.
  *
  * @lucene.experimental
  */
@@ -199,7 +200,7 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
       QuantizedGroupInfo quantizedGroupInfo = groupInfos.get(fieldInfo.groupOrd());
       GroupInfo groupInfo = quantizedGroupInfo.groupInfo();
       QuantizedBlock quantizedBlock = null;
-      if (fieldInfo.encoding() == FLOAT32) {
+      if (fieldInfo.encoding() == FLOAT32 || fieldInfo.encoding() == FLOAT16) {
         DedupQuantizer.Flavor flavor = DedupQuantizer.Flavor.of(fieldInfo.function());
         quantizedBlock = quantizedGroupInfo.quantizedBlocks().get(flavor);
         if (quantizedBlock == null) {
@@ -232,7 +233,7 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
       GroupInfo groupInfo,
       Map<DedupQuantizer.Flavor, QuantizedBlock> quantizedBlocks)
       throws IOException {
-    if (groupInfo.encoding() != FLOAT32) {
+    if (groupInfo.encoding() == BYTE) {
       if (quantizedBlocks.isEmpty() == false) {
         throw new CorruptIndexException(
             "Unexpected quantized data for encoding=" + groupInfo.encoding(), meta);
@@ -345,8 +346,9 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
   @Override
   public RandomVectorScorer getRandomVectorScorer(String field, short[] target) throws IOException {
     FieldEntry entry = getEntry(field, FLOAT16);
-    Float16VectorValues vectorValues = getFloat16VectorValues(entry);
-    return vectorsScorer.getRandomVectorScorer(entry.fieldInfo().function(), vectorValues, target);
+    FieldValues quantizedValues = getFloat16QuantizedVectorValues(entry);
+    return vectorsScorer.getRandomVectorScorer(
+        entry.fieldInfo().function(), quantizedValues, target);
   }
 
   @Override
@@ -411,7 +413,8 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
     return getByteVectorValues(getEntry(field, BYTE));
   }
 
-  private Float16VectorValues getFloat16VectorValues(FieldEntry entry) throws IOException {
+  private DedupVectorValues.Float16Impl getRawFloat16VectorValues(FieldEntry entry)
+      throws IOException {
     return loadDedupFloat16s(
         vectorsScorer,
         entry.fieldInfo().function(),
@@ -425,9 +428,27 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
         entry.fieldInfo().fieldOrdToGroupOrdSize());
   }
 
+  private FieldValues getFloat16QuantizedVectorValues(FieldEntry entry) throws IOException {
+    return DedupScalarQuantizedVectorValues.loadQuantizedFloat16(
+        vectorsScorer,
+        entry.fieldInfo().function(),
+        entry.quantizedBlock().encoding(),
+        entry.fieldInfo().ordToDoc(),
+        entry.fieldInfo().dimension(),
+        entry.groupInfo().groupNumVectors(),
+        vectorData,
+        quantizedVectorData,
+        entry.quantizedBlock().quantizedDataOffset(),
+        entry.quantizedBlock().quantizedDataSize(),
+        entry.fieldInfo().fieldOrdToGroupOrdOffset(),
+        entry.fieldInfo().fieldOrdToGroupOrdSize());
+  }
+
   @Override
   public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
-    return getFloat16VectorValues(getEntry(field, FLOAT16));
+    FieldEntry entry = getEntry(field, FLOAT16);
+    return new DedupScalarQuantizedVectorValues.Float16RawAndQuantizedValues(
+        getRawFloat16VectorValues(entry), getFloat16QuantizedVectorValues(entry));
   }
 
   @Override
@@ -445,11 +466,12 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
   public CloseableRandomVectorScorerSupplier getRandomVectorScorerSupplierForMerge(
       FieldInfo fieldInfo, SegmentWriteState segmentWriteState) throws IOException {
     FieldEntry entry = fields.get(fieldInfo.name);
-    if (entry == null || entry.fieldInfo().encoding() != FLOAT32) {
-      // BYTE and FLOAT16 fields are stored raw only
+    QuantizedFieldAccess access = quantizedFieldAccess(entry);
+    if (access == null) {
+      // Not a quantized field (e.g. BYTE, stored raw only)
       return null;
     }
-    FieldValues quantizedValues = getQuantizedVectorValues(entry);
+    FieldValues quantizedValues = access.quantizedValues();
     ScalarEncoding encoding = entry.quantizedBlock().encoding();
     if (encoding.isAsymmetric() == false) {
       RandomVectorScorerSupplier supplier =
@@ -460,11 +482,11 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
 
     // Asymmetric encodings compare query-encoded vectors against the stored doc-encoded vectors.
     // Write a query-encoded record per distinct vector of the group into a temporary file; both
-    // sides then resolve through the shared fieldOrdToGroupOrd translation.
-    DedupVectorValues.FloatImpl rawValues = getRawFloatVectorValues(entry);
-    FloatVectorValues groupView = rawValues.getGroupView();
+    // sides then resolve through the shared fieldOrdToGroupOrd translation. The group's raw vectors
+    // are read as float[] (FLOAT16 groups are inflated from short[]).
     int dimension = entry.fieldInfo().dimension();
     int groupNumVectors = entry.groupInfo().groupNumVectors();
+    GroupVectorSupplier groupVectors = access.groupVectors();
     DedupQuantizer.Flavor flavor =
         DedupQuantizer.Flavor.of(fieldInfo.getVectorSimilarityFunction());
 
@@ -481,7 +503,7 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
       byte[] toQuery = new byte[encoding.getQueryPackedLength(dimension)];
       for (int groupOrd = 0; groupOrd < groupNumVectors; groupOrd++) {
         // copy: normalization and quantization mutate the input, which is a shared buffer
-        System.arraycopy(groupView.vectorValue(groupOrd), 0, vector, 0, dimension);
+        System.arraycopy(groupVectors.get(groupOrd), 0, vector, 0, dimension);
         if (flavor.normalized()) {
           VectorUtil.l2normalize(vector);
         }
@@ -588,4 +610,48 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
 
   private record QuantizedGroupInfo(
       GroupInfo groupInfo, Map<DedupQuantizer.Flavor, QuantizedBlock> quantizedBlocks) {}
+
+  /** Supplies a group's raw distinct vector at an ordinal as {@code float[]} (FP16 is inflated). */
+  private interface GroupVectorSupplier {
+    float[] get(int groupOrd) throws IOException;
+  }
+
+  /**
+   * The two encoding-specific handles a quantized field needs at merge time: its quantized values
+   * view, and a supplier of its group's raw distinct vectors as {@code float[]} (used to re-encode
+   * queries for asymmetric encodings). Bundling them keeps the per-encoding dispatch in one place
+   * ({@link #quantizedFieldAccess}) rather than scattered across the merge logic.
+   */
+  private record QuantizedFieldAccess(
+      FieldValues quantizedValues, GroupVectorSupplier groupVectors) {}
+
+  /**
+   * Resolves the quantized-field handles for {@code entry}, or {@code null} if the field is not
+   * quantized (e.g. BYTE, stored raw only). This is the single point that switches on the vector
+   * encoding; adding a new quantizable encoding means adding a case here.
+   */
+  private QuantizedFieldAccess quantizedFieldAccess(FieldEntry entry) throws IOException {
+    if (entry == null) {
+      return null;
+    }
+    int dimension = entry.fieldInfo().dimension();
+    return switch (entry.fieldInfo().encoding()) {
+      case FLOAT32 -> {
+        FloatVectorValues groupView = getRawFloatVectorValues(entry).getGroupView();
+        yield new QuantizedFieldAccess(getQuantizedVectorValues(entry), groupView::vectorValue);
+      }
+      case FLOAT16 -> {
+        Float16VectorValues groupView = getRawFloat16VectorValues(entry).getGroupView();
+        // TODO: we currently quantize float16 by inflating each vector to fp32 first, since the
+        //  scalar quantizer computes in fp32 and the JVM has no fp16 arithmetic type. Quantize
+        //  float16 directly once that is possible, see
+        //  https://github.com/apache/lucene/issues/16533
+        float[] inflated = new float[dimension];
+        yield new QuantizedFieldAccess(
+            getFloat16QuantizedVectorValues(entry),
+            ord -> DedupUtil.inflateFloat16(groupView.vectorValue(ord), inflated));
+      }
+      case BYTE -> null; // stored raw only, not quantized
+    };
+  }
 }

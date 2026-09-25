@@ -92,10 +92,11 @@ public class TestDedupHnswScalarQuantizedVectorsFormat extends TestDedupHnswVect
         } else {
           assertTrue(totalByteSize > 0);
           assertTrue(offHeap.get("vdd") > 0L); // NOTE: different from vec
-          if (fieldInfo.getVectorEncoding() == VectorEncoding.FLOAT32) {
+          if (fieldInfo.getVectorEncoding() == VectorEncoding.FLOAT32
+              || fieldInfo.getVectorEncoding() == VectorEncoding.FLOAT16) {
             assertTrue(offHeap.get("vdqd") > 0L); // NOTE: different from veq
           } else {
-            assertNull(offHeap.get("vdqd")); // BYTE and FLOAT16 fields are stored raw only
+            assertNull(offHeap.get("vdqd")); // BYTE fields are stored raw only
           }
 
           if (hasHNSW(knnVectorsReader, fieldInfo)) {

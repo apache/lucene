@@ -41,10 +41,14 @@ final class DedupScalarQuantizedVectorsScorer extends DedupFlatVectorsScorer {
     super(QUANTIZED_SCORER);
   }
 
-  /** Full-precision views resolve to their quantized values for scoring. */
+  /** Full-precision views (float32 or float16) resolve to their quantized values for scoring. */
   @Override
   protected KnnVectorValues unwrap(KnnVectorValues vectorValues) {
     if (vectorValues instanceof RawAndQuantizedValues rawAndQuantized) {
+      return rawAndQuantized.getQuantizedValues();
+    }
+    if (vectorValues
+        instanceof DedupScalarQuantizedVectorValues.Float16RawAndQuantizedValues rawAndQuantized) {
       return rawAndQuantized.getQuantizedValues();
     }
     return vectorValues;
