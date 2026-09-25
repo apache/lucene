@@ -53,7 +53,7 @@ final class NormalizedFloatVectorValues extends FloatVectorValues {
   }
 
   @Override
-  public int prefetch(int ord, int count) throws IOException {
+  public boolean prefetch(int ord, int count) throws IOException {
     return values.prefetch(ord, count);
   }
 

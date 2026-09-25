@@ -184,9 +184,9 @@ final class DedupUtil {
    * ords that are consecutive need not map to consecutive group ords, so the run is remapped and
    * prefetched ord by ord rather than as a single contiguous read.
    *
-   * @return the number of vectors a prefetch was actually issued for
+   * @return true if a prefetch was actually issued for any of them
    */
-  static int prefetchRemapped(
+  static boolean prefetchRemapped(
       KnnVectorValues groupView,
       FieldOrdToGroupOrd fieldOrdToGroupOrd,
       int ord,
@@ -194,12 +194,13 @@ final class DedupUtil {
       int size)
       throws IOException {
     if (ord < 0 || ord >= size || count <= 0) {
-      return 0;
+      return false;
     }
     final int runLength = Math.min(count, size - ord);
-    int prefetched = 0;
+    boolean prefetched = false;
     for (int i = 0; i < runLength; i++) {
-      prefetched += groupView.prefetch(fieldOrdToGroupOrd.get(ord + i), 1);
+      // Not short-circuiting: every ord in the run has to be issued.
+      prefetched |= groupView.prefetch(fieldOrdToGroupOrd.get(ord + i), 1);
     }
     return prefetched;
   }

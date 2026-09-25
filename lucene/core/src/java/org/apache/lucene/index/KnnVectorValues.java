@@ -58,11 +58,11 @@ public abstract class KnnVectorValues {
    *
    * @param ord the ordinal of the first vector to prefetch
    * @param count how many consecutive vectors to prefetch, starting at {@code ord}
-   * @return the number of vectors a prefetch was actually issued for, {@code 0} if none, in which
-   *     case the caller gains nothing by deferring the reads
+   * @return true if prefetch actually prefetched something, hence the caller can benefit from
+   *     deferring the reads
    */
-  public int prefetch(int ord, int count) throws IOException {
-    return 0;
+  public boolean prefetch(int ord, int count) throws IOException {
+    return false;
   }
 
   /**

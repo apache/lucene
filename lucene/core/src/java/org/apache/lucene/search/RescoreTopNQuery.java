@@ -17,10 +17,8 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.Callable;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -72,7 +70,7 @@ public class RescoreTopNQuery extends Query {
     int originalCount =
         valuesSource.needsScores()
             ? rescoreInline(reader, weight, rewrittenValueSource, queue)
-            : rescoreWithPrefetch(indexSearcher, reader, weight, rewrittenValueSource, queue);
+            : rescoreWithPrefetch(reader, weight, rewrittenValueSource, queue);
     int i = 0;
     ScoreDoc[] scoreDocs = new ScoreDoc[queue.size()];
     for (ScoreDoc topDoc : queue) {
@@ -104,49 +102,37 @@ public class RescoreTopNQuery extends Query {
 
   /**
    * Starts the loads for every candidate before scoring any of them, so that more than one read is
-   * in flight when the values live on slow storage. Each segment's prefetches are issued on the
-   * searcher's executor: prefetching costs real CPU per candidate, so issuing a whole shortlist
-   * from a single thread caps how many reads can be outstanding. Only doc ids are buffered, never
-   * values.
+   * in flight when the values live on slow storage. A rerank shortlist is spread over every
+   * segment, so the prefetches for all segments are issued before any scoring rather than a segment
+   * at a time. Only doc ids are buffered, never values.
    */
   private int rescoreWithPrefetch(
-      IndexSearcher indexSearcher,
-      IndexReader reader,
-      Weight weight,
-      DoubleValuesSource rewrittenValueSource,
-      HitQueue queue)
+      IndexReader reader, Weight weight, DoubleValuesSource rewrittenValueSource, HitQueue queue)
       throws IOException {
     final List<LeafReaderContext> leaves = reader.leaves();
     final DoubleValues[] leafValues = new DoubleValues[leaves.size()];
     final int[][] leafDocs = new int[leaves.size()][];
-    final List<Callable<Void>> tasks = new ArrayList<>(leaves.size());
     for (int i = 0; i < leaves.size(); i++) {
-      final int idx = i;
       final LeafReaderContext leaf = leaves.get(i);
-      tasks.add(
-          () -> {
-            Scorer innerScorer = weight.scorer(leaf);
-            if (innerScorer == null) {
-              return null;
-            }
-            DoubleValues rescores = rewrittenValueSource.getValues(leaf, null);
-            DocIdSetIterator iterator = innerScorer.iterator();
-            int[] docs = new int[16];
-            int count = 0;
-            while (iterator.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-              int docId = iterator.docID();
-              rescores.prefetch(docId);
-              if (count == docs.length) {
-                docs = ArrayUtil.grow(docs, count + 1);
-              }
-              docs[count++] = docId;
-            }
-            leafValues[idx] = rescores;
-            leafDocs[idx] = ArrayUtil.copyOfSubArray(docs, 0, count);
-            return null;
-          });
+      Scorer innerScorer = weight.scorer(leaf);
+      if (innerScorer == null) {
+        continue;
+      }
+      DoubleValues rescores = rewrittenValueSource.getValues(leaf, null);
+      DocIdSetIterator iterator = innerScorer.iterator();
+      int[] docs = new int[16];
+      int count = 0;
+      while (iterator.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+        int docId = iterator.docID();
+        rescores.prefetch(docId);
+        if (count == docs.length) {
+          docs = ArrayUtil.grow(docs, count + 1);
+        }
+        docs[count++] = docId;
+      }
+      leafValues[i] = rescores;
+      leafDocs[i] = ArrayUtil.copyOfSubArray(docs, 0, count);
     }
-    indexSearcher.getTaskExecutor().invokeAll(tasks);
 
     int originalCount = 0;
     for (int i = 0; i < leaves.size(); i++) {

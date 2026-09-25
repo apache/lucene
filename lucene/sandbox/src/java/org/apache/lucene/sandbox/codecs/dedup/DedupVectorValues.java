@@ -159,7 +159,7 @@ sealed interface DedupVectorValues
     }
 
     @Override
-    public int prefetch(int ord, int count) throws IOException {
+    public boolean prefetch(int ord, int count) throws IOException {
       return DedupUtil.prefetchRemapped(groupView, fieldOrdToGroupOrd, ord, count, size());
     }
 
@@ -284,7 +284,7 @@ sealed interface DedupVectorValues
     }
 
     @Override
-    public int prefetch(int ord, int count) throws IOException {
+    public boolean prefetch(int ord, int count) throws IOException {
       return DedupUtil.prefetchRemapped(groupView, fieldOrdToGroupOrd, ord, count, size());
     }
 
@@ -409,7 +409,7 @@ sealed interface DedupVectorValues
     }
 
     @Override
-    public int prefetch(int ord, int count) throws IOException {
+    public boolean prefetch(int ord, int count) throws IOException {
       return DedupUtil.prefetchRemapped(groupView, fieldOrdToGroupOrd, ord, count, size());
     }
 
