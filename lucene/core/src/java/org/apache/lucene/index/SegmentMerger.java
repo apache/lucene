@@ -28,6 +28,7 @@ import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.NormsConsumer;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsWriter;
+import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.StoredFieldsWriter;
 import org.apache.lucene.codecs.TermVectorsWriter;
 import org.apache.lucene.store.Directory;
@@ -330,6 +331,11 @@ final class SegmentMerger {
 
   void cleanupMerge() throws IOException {
     for (KnnVectorsReader reader : mergeState.knnVectorsReaders) {
+      if (reader != null) {
+        reader.finishMerge();
+      }
+    }
+    for (StoredFieldsReader reader : mergeState.storedFieldsReaders) {
       if (reader != null) {
         reader.finishMerge();
       }

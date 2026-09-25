@@ -54,7 +54,16 @@ public abstract class StoredFieldsReader extends StoredFields implements Cloneab
    *
    * <p>The default implementation returns {@code this}
    */
-  public StoredFieldsReader getMergeInstance() {
+  public StoredFieldsReader getMergeInstance() throws IOException {
     return this;
   }
+
+  /**
+   * Optional: release whatever {@link #getMergeInstance()} set up for this merge. Called once the
+   * merge is over, on the reader the merge instance came from, so a reader that opened a file of
+   * its own for merging can let it go rather than hold it for as long as the segment is open.
+   *
+   * <p>The default implementation is empty
+   */
+  public void finishMerge() throws IOException {}
 }
