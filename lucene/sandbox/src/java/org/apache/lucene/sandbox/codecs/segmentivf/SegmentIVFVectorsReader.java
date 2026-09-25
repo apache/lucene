@@ -937,24 +937,31 @@ final class SegmentIVFVectorsReader extends KnnVectorsReader {
     private static final boolean LINUX =
         System.getProperty("os.name", "").toLowerCase(Locale.ROOT).startsWith("linux");
 
-    private static final MethodHandle SYSCALL, MMAP, OPEN, CLOSE;
+    /**
+     * Linux native bindings are held separately so loading the memory policy on another platform
+     * never tries to resolve libc symbols.
+     */
+    private static final class Native {
+      static final MethodHandle SYSCALL, MMAP, OPEN, CLOSE;
 
-    static {
-      ValueLayout.OfLong j = ValueLayout.JAVA_LONG;
-      ValueLayout.OfInt i = ValueLayout.JAVA_INT;
-      AddressLayout p = ValueLayout.ADDRESS;
-      SYSCALL = libc("syscall", FunctionDescriptor.of(j, j, j, j, j, j, j, j), 1);
-      MMAP = libc("mmap", FunctionDescriptor.of(p, p, j, i, i, i, j), -1);
-      OPEN = libc("open", FunctionDescriptor.of(i, p, i), 2);
-      CLOSE = libc("close", FunctionDescriptor.of(i, i), -1);
-    }
+      static {
+        ValueLayout.OfLong j = ValueLayout.JAVA_LONG;
+        ValueLayout.OfInt i = ValueLayout.JAVA_INT;
+        AddressLayout p = ValueLayout.ADDRESS;
+        SYSCALL = libc("syscall", FunctionDescriptor.of(j, j, j, j, j, j, j, j), 1);
+        MMAP = libc("mmap", FunctionDescriptor.of(p, p, j, i, i, i, j), -1);
+        OPEN = libc("open", FunctionDescriptor.of(i, p, i), 2);
+        CLOSE = libc("close", FunctionDescriptor.of(i, i), -1);
+      }
 
-    private static MethodHandle libc(String name, FunctionDescriptor fd, int firstVariadicArg) {
-      Linker linker = Linker.nativeLinker();
-      MemorySegment symbol = linker.defaultLookup().find(name).orElseThrow();
-      return firstVariadicArg < 0
-          ? linker.downcallHandle(symbol, fd)
-          : linker.downcallHandle(symbol, fd, Linker.Option.firstVariadicArg(firstVariadicArg));
+      private static MethodHandle libc(
+          String name, FunctionDescriptor fd, int firstVariadicArg) {
+        Linker linker = Linker.nativeLinker();
+        MemorySegment symbol = linker.defaultLookup().find(name).orElseThrow();
+        return firstVariadicArg < 0
+            ? linker.downcallHandle(symbol, fd)
+            : linker.downcallHandle(symbol, fd, Linker.Option.firstVariadicArg(firstVariadicArg));
+      }
     }
 
     private static final ThreadLocal<Ring> RINGS = ThreadLocal.withInitial(Ring::create);
@@ -1064,7 +1071,7 @@ final class SegmentIVFVectorsReader extends KnnVectorsReader {
       if (LINUX == false) throw new IOException("io_uring is unsupported on this platform");
       int fd;
       try (Arena arena = Arena.ofConfined()) {
-        fd = (int) OPEN.invokeExact(arena.allocateFrom(path.toString()), O_RDONLY);
+        fd = (int) Native.OPEN.invokeExact(arena.allocateFrom(path.toString()), O_RDONLY);
       } catch (Throwable t) {
         throw new IOException("open failed for " + path, t);
       }
@@ -1108,7 +1115,7 @@ final class SegmentIVFVectorsReader extends KnnVectorsReader {
     private static void closeFd(int fd) throws IOException {
       int rc;
       try {
-        rc = (int) CLOSE.invokeExact(fd);
+        rc = (int) Native.CLOSE.invokeExact(fd);
       } catch (Throwable t) {
         throw new IOException("close failed", t);
       }
@@ -1116,7 +1123,7 @@ final class SegmentIVFVectorsReader extends KnnVectorsReader {
     }
 
     private static long syscall(long n, long a, long b, long c, long d) throws Throwable {
-      return (long) SYSCALL.invokeExact(n, a, b, c, d, 0L, 0L);
+      return (long) Native.SYSCALL.invokeExact(n, a, b, c, d, 0L, 0L);
     }
 
     private static final class Ring {
@@ -1225,7 +1232,8 @@ final class SegmentIVFVectorsReader extends KnnVectorsReader {
       private static MemorySegment map(long length, long fd, long offset) throws Throwable {
         MemorySegment p =
             (MemorySegment)
-                MMAP.invokeExact(MemorySegment.NULL, length, PROT_RW, MAP_SHARED, (int) fd, offset);
+                Native.MMAP.invokeExact(
+                    MemorySegment.NULL, length, PROT_RW, MAP_SHARED, (int) fd, offset);
         if (p.address() == -1L) throw new IllegalStateException("io_uring mmap failed");
         return p.reinterpret(length);
       }
