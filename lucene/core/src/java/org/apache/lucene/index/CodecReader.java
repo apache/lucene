@@ -322,41 +322,50 @@ public abstract class CodecReader extends LeafReader {
 
   @Override
   public void checkIntegrity() throws IOException {
+    checkIntegrity(null);
+  }
+
+  /**
+   * {@link #checkIntegrity()} on behalf of a merge, which is told about so that a long checksum can
+   * notice it has been aborted. Covers exactly what the formats verify for themselves when their
+   * merges begin, and so nothing of the compound file that may contain them.
+   */
+  void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
     ensureOpen();
 
     // terms/postings
     if (getPostingsReader() != null) {
-      getPostingsReader().checkIntegrity(null);
+      getPostingsReader().checkIntegrity(merge);
     }
 
     // norms
     if (getNormsReader() != null) {
-      getNormsReader().checkIntegrity(null);
+      getNormsReader().checkIntegrity(merge);
     }
 
     // docvalues
     if (getDocValuesReader() != null) {
-      getDocValuesReader().checkIntegrity(null);
+      getDocValuesReader().checkIntegrity(merge);
     }
 
     // stored fields
     if (getFieldsReader() != null) {
-      getFieldsReader().checkIntegrity(null);
+      getFieldsReader().checkIntegrity(merge);
     }
 
     // term vectors
     if (getTermVectorsReader() != null) {
-      getTermVectorsReader().checkIntegrity(null);
+      getTermVectorsReader().checkIntegrity(merge);
     }
 
     // points
     if (getPointsReader() != null) {
-      getPointsReader().checkIntegrity(null);
+      getPointsReader().checkIntegrity(merge);
     }
 
     // vectors
     if (getVectorReader() != null) {
-      getVectorReader().checkIntegrity(null);
+      getVectorReader().checkIntegrity(merge);
     }
   }
 }
