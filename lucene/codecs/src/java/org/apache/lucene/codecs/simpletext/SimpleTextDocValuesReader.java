@@ -675,9 +675,6 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
   @Override
   public SortedNumericDocValues getSortedNumeric(FieldInfo fieldInfo) throws IOException {
     final OneField field = fields.get(fieldInfo.name);
-
-    // SegmentCoreReaders already verifies this field is
-    // valid:
     assert field != null;
 
     final SortedNumericDocValues multi = getMultiValuedSortedNumeric(fieldInfo);
