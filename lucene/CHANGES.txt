@@ -406,12 +406,6 @@ New Features
   translates each term into a SpanTermQuery within a {@link SpanOrQuery}, but retains only the most frequent terms so it
   will not overflow the boolean max clause count. (Alan Woodward, Nishant Mehta, David Smiley)
 
-* GITHUB#16029: Scalar quantization option to disable centering and writing of float vectors. This
-  reduces vector storage costs by 4x or more but also reduces accuracy of distance estimates and
-  "float" vectors when requested. Using this feature is a one-way door -- once merged data blind
-  it is not possible to re-encode to a different quantization width or center vectors again.
-  (Trevor McCulloch)
-
 * GITHUB#16580: Allow in-place updates of SORTED_NUMERIC doc-values via
   IndexWriter#updateSortedNumericDocValue (and IndexWriter#updateDocValues with a single
   SortedNumericDocValuesField). An update sets a single value per matched document; the field may be
