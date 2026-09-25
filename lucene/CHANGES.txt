@@ -8,9 +8,9 @@ http://s.apache.org/luceneversions
 API Changes
 ---------------------
 * GITHUB#16705: KnnVectorValues#prefetch(int ord, int count) replaces prefetch(int ord). It prefetches
-  a run of consecutive vectors with a single read and returns how many vectors a prefetch was issued
-  for. The int[] form now coalesces ordinals that are consecutive in the array over it.
-  (Ankur Goel, Jim Ferenczi)
+  a run of consecutive vectors with a single read and returns true if a prefetch was issued, like
+  IndexInput#prefetch. The int[] form now coalesces ordinals that are consecutive in the array over
+  it. (Ankur Goel, Jim Ferenczi)
 
 * GITHUB#15113: Move long[] group varint support from core to backward-codecs. The legacy long[]
   GroupVIntUtil and DataOutput APIs were removed from core and are now only available for backward

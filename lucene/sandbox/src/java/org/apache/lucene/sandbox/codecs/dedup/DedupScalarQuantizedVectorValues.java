@@ -196,7 +196,7 @@ final class DedupScalarQuantizedVectorValues {
     }
 
     @Override
-    public int prefetch(int ord, int count) throws IOException {
+    public boolean prefetch(int ord, int count) throws IOException {
       return DedupUtil.prefetchRemapped(groupView, fieldOrdToGroupOrd, ord, count, size());
     }
 
@@ -304,7 +304,7 @@ final class DedupScalarQuantizedVectorValues {
     }
 
     @Override
-    public int prefetch(int ord, int count) throws IOException {
+    public boolean prefetch(int ord, int count) throws IOException {
       return rawValues.prefetch(ord, count);
     }
 

@@ -53,20 +53,41 @@ public class TestOffHeapVectorValues extends LuceneTestCase {
   }
 
   public void testPrefetchContiguousRun() throws IOException {
+    // byteSize is 1 here, so a run of n ords is a single n-byte read at offset ord.
     CountingIndexInput byteIndexInput = new CountingIndexInput();
     OffHeapByteVectorValues values = createTestByteVectorValues(byteIndexInput);
-    assertEquals(4, values.prefetch(10, 4));
+    assertTrue(values.prefetch(10, 4));
     assertEquals(1, byteIndexInput.getPrefetchCount());
+    assertEquals(10, byteIndexInput.lastOffset);
+    assertEquals(4, byteIndexInput.lastLength);
 
     // A run reaching past the last ord is clamped to the vectors that exist.
-    assertEquals(2, values.prefetch(98, 50));
+    assertTrue(values.prefetch(98, 50));
     assertEquals(2, byteIndexInput.getPrefetchCount());
+    assertEquals(2, byteIndexInput.lastLength);
 
     // Nothing to prefetch: out of range ord, or a non-positive count.
-    assertEquals(0, values.prefetch(100, 1));
-    assertEquals(0, values.prefetch(-1, 1));
-    assertEquals(0, values.prefetch(1, 0));
+    assertFalse(values.prefetch(100, 1));
+    assertFalse(values.prefetch(-1, 1));
+    assertFalse(values.prefetch(1, 0));
     assertEquals(2, byteIndexInput.getPrefetchCount());
+  }
+
+  public void testPrefetchFloat16VectorValues() throws IOException {
+    // fp16 stores vectors contiguously by ordinal just like fp32 and byte, so it prefetches the
+    // same way: one read per run of consecutive ords.
+    CountingIndexInput indexInput = new CountingIndexInput();
+    OffHeapFloat16VectorValues values = createTestFloat16VectorValues(indexInput);
+    assertTrue(values.prefetch(3, 2));
+    assertEquals(1, indexInput.getPrefetchCount());
+    assertEquals(3 * 2, indexInput.lastOffset);
+    assertEquals(2 * 2, indexInput.lastLength);
+
+    values.prefetch(new int[] {1, 2, 3, 7}, 4);
+    assertEquals(3, indexInput.getPrefetchCount());
+
+    assertFalse(values.prefetch(100, 1));
+    assertEquals(3, indexInput.getPrefetchCount());
   }
 
   public void testPrefetchReportsNothingPrefetchedWhenInputDeclinesIt() throws IOException {
@@ -74,7 +95,7 @@ public class TestOffHeapVectorValues extends LuceneTestCase {
     // deferring.
     OffHeapFloatVectorValues floatValues =
         createTestFloatVectorValues(new NoopPrefetchIndexInput());
-    assertEquals(0, floatValues.prefetch(1, 4));
+    assertFalse(floatValues.prefetch(1, 4));
   }
 
   public void testPrefetchVectorValuesWithLessThanOneOrds() throws IOException {
@@ -119,6 +140,11 @@ public class TestOffHeapVectorValues extends LuceneTestCase {
         100, 100, indexInput, 4, null, VectorSimilarityFunction.EUCLIDEAN);
   }
 
+  private OffHeapFloat16VectorValues createTestFloat16VectorValues(IndexInput indexInput) {
+    return new OffHeapFloat16VectorValues.DenseOffHeapVectorValues(
+        100, 100, indexInput, 2, null, VectorSimilarityFunction.EUCLIDEAN);
+  }
+
   /** An input that declines to prefetch, like the default {@link IndexInput#prefetch}. */
   private static final class NoopPrefetchIndexInput extends CountingIndexInput {
 
@@ -131,6 +157,8 @@ public class TestOffHeapVectorValues extends LuceneTestCase {
   private static class CountingIndexInput extends IndexInput {
 
     AtomicInteger counter;
+    long lastOffset = -1;
+    long lastLength = -1;
 
     public CountingIndexInput() {
       super("closing index input");
@@ -140,6 +168,8 @@ public class TestOffHeapVectorValues extends LuceneTestCase {
     @Override
     public boolean prefetch(long offset, long length) throws IOException {
       counter.incrementAndGet();
+      lastOffset = offset;
+      lastLength = length;
       return true;
     }
 

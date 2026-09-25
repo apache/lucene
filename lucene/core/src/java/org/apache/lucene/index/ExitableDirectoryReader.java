@@ -503,6 +503,11 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
+      public boolean prefetch(int ord, int count) throws IOException {
+        return vectorValues.prefetch(ord, count);
+      }
+
+      @Override
       public int ordToDoc(int ord) {
         return vectorValues.ordToDoc(ord);
       }
@@ -523,8 +528,10 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
-      public FloatVectorValues copy() {
-        throw new UnsupportedOperationException();
+      public FloatVectorValues copy() throws IOException {
+        // A caller that needs a second view, e.g. to prefetch ahead of the scoring position, still
+        // has to get one that checks the timeout.
+        return new ExitableFloatVectorValues(vectorValues.copy());
       }
     }
 
@@ -543,6 +550,11 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       @Override
       public short[] vectorValue(int ord) throws IOException {
         return vectorValues.vectorValue(ord);
+      }
+
+      @Override
+      public boolean prefetch(int ord, int count) throws IOException {
+        return vectorValues.prefetch(ord, count);
       }
 
       @Override
@@ -566,8 +578,10 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
-      public Float16VectorValues copy() {
-        throw new UnsupportedOperationException();
+      public Float16VectorValues copy() throws IOException {
+        // A caller that needs a second view, e.g. to prefetch ahead of the scoring position, still
+        // has to get one that checks the timeout.
+        return new ExitableFloat16VectorValues(vectorValues.copy());
       }
     }
 
@@ -594,6 +608,11 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
+      public boolean prefetch(int ord, int count) throws IOException {
+        return vectorValues.prefetch(ord, count);
+      }
+
+      @Override
       public int ordToDoc(int ord) {
         return vectorValues.ordToDoc(ord);
       }
@@ -609,8 +628,10 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
-      public ByteVectorValues copy() {
-        throw new UnsupportedOperationException();
+      public ByteVectorValues copy() throws IOException {
+        // A caller that needs a second view, e.g. to prefetch ahead of the scoring position, still
+        // has to get one that checks the timeout.
+        return new ExitableByteVectorValues(vectorValues.copy());
       }
     }
   }
