@@ -21,3 +21,16 @@ plugins {
 }
 
 description = 'Grandparent project for Apache Lucene Core'
+
+tasks.named("dependencyUpdates").configure {
+  rejectPreReleases = true
+
+  def ignoredVersions = [
+    // See GH#16638, PR #14575.
+    "io.sgr:s2-geometry-library-java:1.0.1",
+  ]
+
+  rejectVersionIf {
+    "${candidate.group}:${candidate.module}:${candidate.version}".toString() in ignoredVersions
+  }
+}

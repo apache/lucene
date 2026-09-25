@@ -67,7 +67,11 @@ final class NumericDocValuesFieldUpdates extends DocValuesFieldUpdates {
   private final long minValue;
 
   NumericDocValuesFieldUpdates(long delGen, String field, int maxDoc) {
-    super(maxDoc, delGen, field, DocValuesType.NUMERIC);
+    this(delGen, field, DocValuesType.NUMERIC, maxDoc);
+  }
+
+  NumericDocValuesFieldUpdates(long delGen, String field, DocValuesType type, int maxDoc) {
+    super(maxDoc, delGen, field, type);
     // we don't know the min/max range so we use the growable writer here to adjust as we go.
     values = new PagedGrowableWriter(1, PAGE_SIZE, 1, PackedInts.DEFAULT);
     minValue = 0;
@@ -75,7 +79,12 @@ final class NumericDocValuesFieldUpdates extends DocValuesFieldUpdates {
 
   NumericDocValuesFieldUpdates(
       long delGen, String field, long minValue, long maxValue, int maxDoc) {
-    super(maxDoc, delGen, field, DocValuesType.NUMERIC);
+    this(delGen, field, DocValuesType.NUMERIC, minValue, maxValue, maxDoc);
+  }
+
+  NumericDocValuesFieldUpdates(
+      long delGen, String field, DocValuesType type, long minValue, long maxValue, int maxDoc) {
+    super(maxDoc, delGen, field, type);
     assert minValue <= maxValue
         : "minValue must be <= maxValue [" + minValue + " > " + maxValue + "]";
     int bitsPerValue = PackedInts.unsignedBitsRequired(maxValue - minValue);
@@ -141,7 +150,12 @@ final class NumericDocValuesFieldUpdates extends DocValuesFieldUpdates {
     private boolean hasAtLeastOneValue;
 
     SingleValueNumericDocValuesFieldUpdates(long delGen, String field, int maxDoc, long value) {
-      super(maxDoc, delGen, field, DocValuesType.NUMERIC);
+      this(delGen, field, DocValuesType.NUMERIC, maxDoc, value);
+    }
+
+    SingleValueNumericDocValuesFieldUpdates(
+        long delGen, String field, DocValuesType type, int maxDoc, long value) {
+      super(maxDoc, delGen, field, type);
       this.bitSet = new SparseFixedBitSet(maxDoc);
       this.value = value;
     }

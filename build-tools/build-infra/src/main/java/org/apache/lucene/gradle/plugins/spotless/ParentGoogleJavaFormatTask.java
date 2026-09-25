@@ -67,6 +67,13 @@ abstract class ParentGoogleJavaFormatTask extends DefaultTask {
   @PathSensitive(PathSensitivity.RELATIVE)
   public abstract ConfigurableFileCollection getSourceFiles();
 
+  /**
+   * The formatter's coordinates (module and version). Any change invalidates all cached file states
+   * so that every source file is processed again with the new formatter.
+   */
+  @Input
+  public abstract Property<String> getFormatterVersion();
+
   @OutputFile
   public abstract RegularFileProperty getOutputChangeListFile();
 
@@ -143,7 +150,9 @@ abstract class ParentGoogleJavaFormatTask extends DefaultTask {
     if (pathProvider.isPresent()) {
       Files.writeString(
           pathProvider.get().getAsFile().toPath(),
-          JsonOutput.prettyPrint(JsonOutput.toJson(fileStates)));
+          JsonOutput.prettyPrint(
+              JsonOutput.toJson(
+                  Map.of("formatter", getFormatterVersion().get(), "files", fileStates))));
     }
   }
 
@@ -154,7 +163,13 @@ abstract class ParentGoogleJavaFormatTask extends DefaultTask {
       if (Files.exists(path)) {
         try {
           @SuppressWarnings("unchecked")
-          var saved = (Map<String, Map<String, Object>>) new JsonSlurper().parse(path);
+          var root = (Map<String, Object>) new JsonSlurper().parse(path);
+          if (!getFormatterVersion().get().equals(root.get("formatter"))) {
+            // The formatter changed, ignore all stored file states.
+            return checksums;
+          }
+          @SuppressWarnings("unchecked")
+          var saved = (Map<String, Map<String, Object>>) root.get("files");
           var restored =
               saved.entrySet().stream()
                   .collect(

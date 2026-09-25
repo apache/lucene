@@ -359,6 +359,11 @@ Other
 API Changes
 ---------------------
 
+* GITHUB#16696: FlatVectorsWriter gains mergeOneFlatVectorFieldForMergeScorer and the
+  FlatVectorsWriter.MergeScorerData handle it returns, so that a flat writer can prepare what a
+  merge scorer over the merged vectors needs while it writes them. The default prepares nothing;
+  a writer that wraps another one should forward the new method too. (John Maurice)
+
 * GITHUB#14399: Add a default LeafFieldComparator#disableSkipping method so document skipping can be
   disabled per segment. (Serhiy Bzhezytskyy)
 
@@ -400,6 +405,12 @@ New Features
 * GITHUB#16484: Add SpanMultiTermQueryWrapper.FrequentTermsSpanBooleanQueryRewrite.  It's a rewrite method that
   translates each term into a SpanTermQuery within a {@link SpanOrQuery}, but retains only the most frequent terms so it
   will not overflow the boolean max clause count. (Alan Woodward, Nishant Mehta, David Smiley)
+
+* GITHUB#16580: Allow in-place updates of SORTED_NUMERIC doc-values via
+  IndexWriter#updateSortedNumericDocValue (and IndexWriter#updateDocValues with a single
+  SortedNumericDocValuesField). An update sets a single value per matched document; the field may be
+  single- or multi-valued. Single-valued columns reuse the numeric update path (including the
+  incremental delta overlay), and multi-valued columns are merged per-doc. (Houston Putman)
 
 Improvements
 ---------------------
@@ -510,6 +521,14 @@ Optimizations
 * GITHUB#16582: Rewrite sorted-numeric doc-values range queries that cover every value of a field to a
   FieldExistsQuery, and collapse an IndexOrDocValuesQuery whose two sides rewrite equally. (Houston Putman)
 
+* GITHUB#16520: Support two-phase filters in MaxScoreBulkScorer bitset path. (Ke Wei)
+
+* GITHUB#16696: Merging an HNSW graph over Lucene104HnswScalarQuantizedVectorsFormat in its default
+  CENTERED mode, with an asymmetric encoding of a float32 field, no longer reads the merged float
+  vectors back to build the merge scorer. (John Maurice)
+
+* GITHUB#16669: Use intoBitSet to speed up ReqExclBulkScorer with dense exclusions. (Ke Wei)
+
 Bug Fixes
 ---------------------
 
@@ -580,6 +599,8 @@ Build
   LUCENE_GRADLE_DISTRIBUTION_URL), see './gradlew helpLocalSettings' for more
   information. (David Smiley, Dawid Weiss)
 
+* Upgrade forbiddenapis to version 3.11.  (Uwe Schindler)
+
 Other
 ---------------------
 * GITHUB#16266: Remove deprecated search(Query, Collector) calls in QueryUtils by replacing
@@ -606,6 +627,12 @@ API Changes
   upgrade. Both behaviors are now exposed as nested classes: [Byte|Float]VectorSimilarityQuery.Explicit exposes the
   Lucene 10.4 behavior and is deprecated, and [Byte|Float]VectorSimilarityQuery.Adaptive exposes the 10.5 behavior.
   (Kaival Parikh, Chris Hostetter, Michael Sokolov)
+
+* GITHUB#16573: Remove the NumericFieldStats API (added in 10.5.0 via GITHUB#15740, GITHUB#15817) and
+  revert SortedNumericDocValuesRangeQuery to no longer use it. The statistics it derived from points
+  and doc values could be incorrect if points and doc values are encoded differently, for example when
+  a float/double field is indexed with points and NumericDocValues, causing range queries to return
+  wrong results. (Chris Hostetter, Houston Putman)
 
 Bug Fixes
 ---------------------
