@@ -954,8 +954,7 @@ final class SegmentIVFVectorsReader extends KnnVectorsReader {
         CLOSE = libc("close", FunctionDescriptor.of(i, i), -1);
       }
 
-      private static MethodHandle libc(
-          String name, FunctionDescriptor fd, int firstVariadicArg) {
+      private static MethodHandle libc(String name, FunctionDescriptor fd, int firstVariadicArg) {
         Linker linker = Linker.nativeLinker();
         MemorySegment symbol = linker.defaultLookup().find(name).orElseThrow();
         return firstVariadicArg < 0
