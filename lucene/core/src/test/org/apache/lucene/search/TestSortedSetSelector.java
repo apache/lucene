@@ -19,11 +19,16 @@ package org.apache.lucene.search;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.SortedSetDocValuesField;
+import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.FixedBitSet;
 
 /**
  * Tests for SortedSetSortField selectors other than MIN, these require optional codec support
@@ -525,6 +530,73 @@ public class TestSortedSetSelector extends LuceneTestCase {
     // 'bar' comes before 'baz'
     assertEquals("1", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
     assertEquals("2", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
+
+    ir.close();
+    dir.close();
+  }
+
+  /**
+   * The selector views cache the selected ordinal of the current doc. A bulk {@link
+   * SortedDocValues#intoBitSet} delegated to the wrapped multi-valued iterator moves it without
+   * going through the view's own nextDoc/advance, so the cached ordinal must be refreshed for the
+   * doc the view ends up positioned on.
+   */
+  public void testIntoBitSetRefreshesCachedOrd() throws Exception {
+    Directory dir = newDirectory();
+    RandomIndexWriter writer =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()));
+    int numDocs = TestUtil.nextInt(random(), 50, 200);
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      // the first doc is always multi-valued so that the field is never exposed as a singleton
+      int numValues = i == 0 ? 2 : random().nextInt(4);
+      for (int j = 0; j < numValues; j++) {
+        doc.add(
+            new SortedSetDocValuesField(
+                "value", newBytesRef(TestUtil.randomSimpleString(random(), 1, 3))));
+      }
+      writer.addDocument(doc);
+    }
+    writer.forceMerge(1);
+    IndexReader ir = writer.getReader();
+    writer.close();
+    LeafReader leaf = getOnlyLeafReader(ir);
+    assertNull(DocValues.unwrapSingleton(DocValues.getSortedSet(leaf, "value")));
+
+    for (SortedSetSelector.Type type : SortedSetSelector.Type.values()) {
+      SortedDocValues actual = SortedSetSelector.wrap(DocValues.getSortedSet(leaf, "value"), type);
+      SortedDocValues expected =
+          SortedSetSelector.wrap(DocValues.getSortedSet(leaf, "value"), type);
+      FixedBitSet bits = new FixedBitSet(leaf.maxDoc());
+
+      int doc = actual.nextDoc();
+      while (doc != DocIdSetIterator.NO_MORE_DOCS) {
+        int upTo = Math.min(leaf.maxDoc(), doc + 1 + random().nextInt(10));
+        actual.intoBitSet(upTo, bits, 0);
+        doc = actual.docID();
+        assertTrue(doc >= upTo);
+        if (doc != DocIdSetIterator.NO_MORE_DOCS) {
+          assertTrue(expected.advanceExact(doc));
+          assertEquals("type=" + type + " doc=" + doc, expected.ordValue(), actual.ordValue());
+          if (random().nextBoolean()) {
+            doc = actual.nextDoc();
+            if (doc != DocIdSetIterator.NO_MORE_DOCS) {
+              assertTrue(expected.advanceExact(doc));
+              assertEquals("type=" + type + " doc=" + doc, expected.ordValue(), actual.ordValue());
+            }
+          }
+        }
+      }
+
+      // every doc with a value was collected exactly once by the bulk calls, or visited by nextDoc
+      SortedDocValues all = SortedSetSelector.wrap(DocValues.getSortedSet(leaf, "value"), type);
+      int visited = 0;
+      for (int d = all.nextDoc(); d != DocIdSetIterator.NO_MORE_DOCS; d = all.nextDoc()) {
+        visited++;
+      }
+      assertTrue(bits.cardinality() <= visited);
+    }
 
     ir.close();
     dir.close();
