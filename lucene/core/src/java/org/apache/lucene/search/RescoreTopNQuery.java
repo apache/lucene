@@ -17,9 +17,13 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.store.VectorBatch;
+import org.apache.lucene.util.ArrayUtil;
 
 /**
  * A Query that re-scores another Query with a {@link DoubleValuesSource} function and cut-off the
@@ -63,6 +67,13 @@ public class RescoreTopNQuery extends Query {
     Weight weight = indexSearcher.createWeight(rewritten, ScoreMode.COMPLETE_NO_SCORES, 1.0f);
     HitQueue queue = new HitQueue(n, false);
     int originalCount = 0;
+    // A rerank shortlist is spread over every segment, so on its own each segment contributes only
+    // a fraction of the query's reads. When the store can gather reads across segment files, queue
+    // every segment's shortlist and issue one submission for the whole query rather than one per
+    // segment. The batch is opened from the first segment that has hits, since an arbitrary segment
+    // may hold no values for the field and so cannot supply one.
+    VectorBatch batch = null;
+    List<PendingLeaf> pendingLeaves = new ArrayList<>();
     for (var leaf : reader.leaves()) {
       Scorer innerScorer = weight.scorer(leaf);
       if (innerScorer == null) {
@@ -70,15 +81,43 @@ public class RescoreTopNQuery extends Query {
       }
       DoubleValues rescores = rewrittenValueSource.getValues(leaf, getDoubleValues(innerScorer));
       DocIdSetIterator iterator = innerScorer.iterator();
-      while (iterator.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-        int docId = iterator.docID();
-        if (rescores.advanceExact(docId)) {
-          double v = rescores.doubleValue();
-          queue.insertWithOverflow(new ScoreDoc(leaf.docBase + docId, (float) v));
-        } else {
-          queue.insertWithOverflow(new ScoreDoc(leaf.docBase + docId, 0f));
+      if (rewrittenValueSource instanceof FullPrecisionFloatVectorSimilarityValuesSource vsrc) {
+        int[] docs = new int[64];
+        int count = 0;
+        for (int docId = iterator.nextDoc();
+            docId != DocIdSetIterator.NO_MORE_DOCS;
+            docId = iterator.nextDoc()) {
+          if (count == docs.length) docs = ArrayUtil.grow(docs);
+          docs[count++] = docId;
         }
-        originalCount++;
+        if (batch == null && count > 0) {
+          batch = vsrc.newVectorBatch(leaf); // null when this store cannot batch across segments
+        }
+        // Queue this segment's shortlist; nothing is read until every segment has been queued and
+        // the batch executes below. A store with no batch support leaves us on the per-doc path.
+        var pending = batch == null ? null : vsrc.queueShortlist(leaf, docs, count, batch);
+        if (pending != null) {
+          pendingLeaves.add(new PendingLeaf(leaf.docBase, docs, count, pending));
+        } else {
+          for (int j = 0; j < count; j++) {
+            originalCount += insertRescored(rescores, queue, leaf.docBase, docs[j]);
+          }
+        }
+      } else {
+        while (iterator.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+          originalCount += insertRescored(rescores, queue, leaf.docBase, iterator.docID());
+        }
+      }
+    }
+    if (batch != null) {
+      batch.execute(); // the query's only submission: every segment's shortlist at once
+      // Insert in leaf order, so the queue sees hits in exactly the order it would have anyway.
+      for (PendingLeaf pl : pendingLeaves) {
+        float[] scores = pl.pending().scores();
+        for (int j = 0; j < pl.count(); j++) {
+          queue.insertWithOverflow(new ScoreDoc(pl.docBase() + pl.docs()[j], scores[j]));
+          originalCount++;
+        }
       }
     }
     int i = 0;
@@ -89,6 +128,23 @@ public class RescoreTopNQuery extends Query {
     TopDocs topDocs =
         new TopDocs(new TotalHits(originalCount, TotalHits.Relation.EQUAL_TO), scoreDocs);
     return DocAndScoreQuery.createDocAndScoreQuery(reader, topDocs, 0);
+  }
+
+  /** One segment's shortlist, queued in the batch and waiting to be scored. */
+  private record PendingLeaf(
+      int docBase,
+      int[] docs,
+      int count,
+      FullPrecisionFloatVectorSimilarityValuesSource.Pending pending) {}
+
+  private static int insertRescored(DoubleValues rescores, HitQueue queue, int docBase, int docId)
+      throws IOException {
+    if (rescores.advanceExact(docId)) {
+      queue.insertWithOverflow(new ScoreDoc(docBase + docId, (float) rescores.doubleValue()));
+    } else {
+      queue.insertWithOverflow(new ScoreDoc(docBase + docId, 0f));
+    }
+    return 1;
   }
 
   private DoubleValues getDoubleValues(Scorer innerScorer) {

@@ -57,6 +57,7 @@ import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.VectorBatch;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -380,6 +381,18 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
   @Override
   public void close() throws IOException {
     IOUtils.close(quantizedVectorData, rawVectorsReader);
+  }
+
+  /** Raw float32 vectors live in the delegate reader, so batch reads go straight to it. */
+  @Override
+  public VectorBatch newRawVectorBatch(String field) throws IOException {
+    return rawVectorsReader.newRawVectorBatch(field);
+  }
+
+  @Override
+  public boolean addRawVectors(String field, int[] ords, int count, float[] out, VectorBatch batch)
+      throws IOException {
+    return rawVectorsReader.addRawVectors(field, ords, count, out, batch);
   }
 
   @Override

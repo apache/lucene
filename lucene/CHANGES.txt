@@ -123,6 +123,16 @@ API Changes
 
 New Features
 ---------------------
+* GITHUB#16656: Add ParallelVectorReadable and VectorBatch so a full-precision KNN rerank
+  shortlist is read as one batch across every segment of the index rather than one read per
+  vector, plus SelectiveDirectIODirectory (misc) serving .vec with O_DIRECT and 4KB-aligned
+  FLOAT32 vector data, for rerank on larger-than-RAM indexes. (Ankur Goel)
+
+* GITHUB#16666: Add IoUringDirectory to the sandbox, serving the raw float32 KNN vector file via
+  io_uring with O_DIRECT so a rerank shortlist spanning every segment is fetched as one batched
+  submission instead of one blocking read per vector. Opt-in and experimental; a transparent
+  pass-through when liburing-ffi is unavailable. (Ankur Goel)
+
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
   modern Hangul conjoining jamo before KoreanTokenizer. (Mingi Jeong)
 
