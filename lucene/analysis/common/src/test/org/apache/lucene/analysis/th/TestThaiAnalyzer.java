@@ -146,4 +146,12 @@ public class TestThaiAnalyzer extends BaseTokenStreamTestCase {
         new int[] {4, 7, 9, 14, 19, 22, 25, 29, 33, 36, 39, 41});
     analyzer.close();
   }
+
+  public void testMaiyamok() throws Exception {
+    Analyzer analyzer = new ThaiAnalyzer(CharArraySet.EMPTY_SET);
+    assertAnalyzesTo(analyzer, "วิ่งเร็วๆ", new String[] {"วิ่ง", "เร็ว", "เร็ว"});
+    assertAnalyzesTo(analyzer, "พูดมากๆ นะ", new String[] {"พูด", "มาก", "มาก", "นะ"});
+    analyzer.close();
+  }
 }
+
