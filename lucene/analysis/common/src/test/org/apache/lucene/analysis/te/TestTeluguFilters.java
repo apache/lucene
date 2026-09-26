@@ -37,7 +37,7 @@ public class TestTeluguFilters extends BaseTokenStreamFactoryTestCase {
     TokenStream stream = whitespaceMockTokenizer(reader);
     stream = tokenFilterFactory("IndicNormalization").create(stream);
     stream = tokenFilterFactory("TeluguNormalization").create(stream);
-    assertTokenStreamContents(stream, new String[] {"వస్తుమలు"});
+    assertTokenStreamContents(stream, new String[] {"వస్తువులు"});
   }
 
   /** Test TeluguStemFilterFactory */
@@ -47,7 +47,7 @@ public class TestTeluguFilters extends BaseTokenStreamFactoryTestCase {
     stream = tokenFilterFactory("IndicNormalization").create(stream);
     stream = tokenFilterFactory("TeluguNormalization").create(stream);
     stream = tokenFilterFactory("TeluguStem").create(stream);
-    assertTokenStreamContents(stream, new String[] {"వస్తుమ"});
+    assertTokenStreamContents(stream, new String[] {"వస్తువు"});
   }
 
   /** Test that bogus arguments result in exception */
