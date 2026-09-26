@@ -53,6 +53,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.packed.DirectWriter;
 
 /**
  * Tests that {@link DedupHnswVectorsFormat} stores each distinct vector once. De-duplication is
@@ -211,8 +212,13 @@ public class TestDedupFlatVectorsFormat extends LuceneTestCase {
         DedupFlatVectorsReader dedupReader = getDedupReader(leafReader, "f");
         FieldInfo fieldInfo = leafReader.getFieldInfos().fieldInfo("f");
 
+        // fieldOrdToGroupOrd is packed with the minimum bits required for the largest group
+        // ordinal. There are 2 distinct vectors (group ords 0 and 1), so each entry needs
+        // bitsRequired(1) bits rather than a full 32-bit int.
+        int bitsPerValue = DirectWriter.bitsRequired(1);
         long expectedOffHeapSize =
-            (docVectors.length * Integer.BYTES) // fieldOrdToGroupOrd mapping
+            DirectWriter.bytesRequired(
+                    docVectors.length, bitsPerValue) // fieldOrdToGroupOrd mapping
                 + (a.length + b.length) * Float.BYTES; // raw vector size
 
         assertEquals(
