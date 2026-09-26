@@ -116,7 +116,8 @@ final class DedupFlushContext implements Accountable {
     Map<GroupKey, Set<DedupQuantizer.Flavor>> groupFlavors = new HashMap<>();
     if (quantizer != null) {
       for (FieldData fieldData : fieldDataList) {
-        if (fieldData.fieldInfo.getVectorEncoding() == VectorEncoding.FLOAT32) {
+        VectorEncoding fieldEncoding = fieldData.fieldInfo.getVectorEncoding();
+        if (fieldEncoding == VectorEncoding.FLOAT32 || fieldEncoding == VectorEncoding.FLOAT16) {
           groupFlavors
               .computeIfAbsent(fieldData.groupKey, _ -> EnumSet.noneOf(DedupQuantizer.Flavor.class))
               .add(DedupQuantizer.Flavor.of(fieldData.fieldInfo.getVectorSimilarityFunction()));
@@ -156,6 +157,20 @@ final class DedupFlushContext implements Accountable {
               groupNumVectors,
               groupFlavors.get(groupKey),
               floatGroup::get,
+              null);
+        } else if (group instanceof Float16Group float16Group) {
+          // FLOAT16 is stored raw as short[]; inflate to float[] for data-blind quantization. The
+          // quantized record is a pure function of the float values and flavor, so it matches the
+          // record a FLOAT32 vector of the same values would produce.
+          float[] inflated = new float[dimension];
+          quantizer.writeGroup(
+              meta,
+              quantizedVectorData,
+              encoding,
+              dimension,
+              groupNumVectors,
+              groupFlavors.get(groupKey),
+              ord -> DedupUtil.inflateFloat16(float16Group.get(ord), inflated),
               null);
         } else {
           DedupQuantizer.writeEmptyGroup(meta);

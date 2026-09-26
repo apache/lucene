@@ -41,8 +41,14 @@ import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncod
  * tradeoff relative to that format, which centers vectors on a per-field centroid before
  * quantizing.
  *
- * <p>Only {@link org.apache.lucene.index.VectorEncoding#FLOAT32} vectors are quantized; BYTE and
- * FLOAT16 vectors are stored raw only, identical to {@link DedupFlatVectorsFormat}.
+ * <p>Both {@link org.apache.lucene.index.VectorEncoding#FLOAT32} and {@link
+ * org.apache.lucene.index.VectorEncoding#FLOAT16} vectors are quantized (FLOAT16 vectors are
+ * inflated to {@code float} for the data-blind quantizer, and kept raw as {@code short[]} for
+ * full-fidelity readback); BYTE vectors are stored raw only, identical to {@link
+ * DedupFlatVectorsFormat}. The fp16-to-fp32 inflation before quantization matches the core {@link
+ * org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat} and is required while
+ * the JVM lacks fp16 arithmetic; quantizing fp16 directly is tracked by <a
+ * href="https://github.com/apache/lucene/issues/16533">LUCENE issue #16533</a>.
  *
  * <h2>.vdd (vector de-dup data) file</h2>
  *
@@ -51,8 +57,8 @@ import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncod
  *
  * <h2>.vdqd (vector de-dup quantized data) file</h2>
  *
- * <p>One block per FLOAT32 group and {@link DedupQuantizer.Flavor} in use (aligned to {@code
- * Float.BYTES}), holding one quantized record per distinct vector:
+ * <p>One block per quantized (FLOAT32 or FLOAT16) group and {@link DedupQuantizer.Flavor} in use
+ * (aligned to {@code Float.BYTES}), holding one quantized record per distinct vector:
  *
  * <ul>
  *   <li><b>[byte]</b> the packed quantized values (layout depends on the {@link ScalarEncoding})
@@ -69,7 +75,7 @@ import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncod
  * additionally recording its flavor blocks:
  *
  * <ul>
- *   <li><b>[vint]</b> the number of flavor blocks ({@code 0} for non-FLOAT32 groups)
+ *   <li><b>[vint]</b> the number of flavor blocks ({@code 0} for BYTE groups)
  *   <li>per flavor block: <b>[vint]</b> the flavor wire number, <b>[vint]</b> the {@link
  *       ScalarEncoding} wire number of its records, <b>[int64]</b> offset and <b>[int64]</b> length
  *       of its quantized records in the .vdqd file

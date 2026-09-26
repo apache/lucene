@@ -182,6 +182,26 @@ final class DedupUtil {
     return murmurhash3_x64_128(bytes, 0, bytes.length, GOOD_FAST_HASH_SEED)[0];
   }
 
+  /**
+   * Inflates a float16 vector (stored as {@code short[]}) into the provided {@code float[]} buffer
+   * and returns it, so it can be fed to the {@code float[]}-based scalar quantizer. The buffer is
+   * reused across calls.
+   *
+   * <p>Scalar quantization computes the centroid and corrective terms in fp32, and the JVM has no
+   * fp16 arithmetic type, so fp16 vectors must be inflated to fp32 before quantization. This is the
+   * same approach the core {@code Lucene104ScalarQuantizedVectorsWriter} takes. Doing the
+   * quantization directly on fp16 (once the JVM supports fp16 arithmetic) is tracked by <a
+   * href="https://github.com/apache/lucene/issues/16533">LUCENE issue #16533</a>. The inflation is
+   * lossless (every fp16 value is exactly representable in fp32), so the quantized record is
+   * identical to what the same values indexed as fp32 would produce.
+   */
+  static float[] inflateFloat16(short[] float16Vector, float[] dest) {
+    for (int i = 0; i < float16Vector.length; i++) {
+      dest[i] = Float.float16ToFloat(float16Vector[i]);
+    }
+    return dest;
+  }
+
   static long alignBytes(IndexOutput output, VectorEncoding encoding) throws IOException {
     int alignBytes =
         switch (encoding) {

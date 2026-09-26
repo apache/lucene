@@ -134,12 +134,12 @@ final class DedupMergeContext implements Accountable {
       groupInfo.write(meta);
 
       if (quantizer != null) {
+        // Flavors referenced by this group's fields, shared across both quantized branches.
+        Set<DedupQuantizer.Flavor> flavors = EnumSet.noneOf(DedupQuantizer.Flavor.class);
+        for (FieldData fieldData : entry.getValue()) {
+          flavors.add(DedupQuantizer.Flavor.of(fieldData.fieldInfo.getVectorSimilarityFunction()));
+        }
         if (mergeGroup instanceof FloatGroup floatGroup) {
-          Set<DedupQuantizer.Flavor> flavors = EnumSet.noneOf(DedupQuantizer.Flavor.class);
-          for (FieldData fieldData : entry.getValue()) {
-            flavors.add(
-                DedupQuantizer.Flavor.of(fieldData.fieldInfo.getVectorSimilarityFunction()));
-          }
           quantizer.writeGroup(
               meta,
               quantizedVectorData,
@@ -149,6 +149,18 @@ final class DedupMergeContext implements Accountable {
               flavors,
               ord -> floatGroup.get(ord).get(),
               floatGroup::preQuantized);
+        } else if (mergeGroup instanceof Float16Group float16Group) {
+          // FLOAT16 is stored raw as short[]; inflate to float[] for data-blind quantization.
+          float[] inflated = new float[dimension];
+          quantizer.writeGroup(
+              meta,
+              quantizedVectorData,
+              encoding,
+              dimension,
+              groupNumVectors,
+              flavors,
+              ord -> DedupUtil.inflateFloat16(float16Group.get(ord).get(), inflated),
+              float16Group::preQuantized);
         } else {
           DedupQuantizer.writeEmptyGroup(meta);
         }
@@ -369,6 +381,23 @@ final class DedupMergeContext implements Accountable {
     @Override
     Float16Vector vectorFrom(Sub<Float16VectorValues> sub) {
       return new Float16Vector(sub.values, sub.iterator.index());
+    }
+
+    /**
+     * The already-quantized record of the distinct vector at a group ordinal, when its source
+     * segment is in this format (data-blind quantization is a pure function of the inflated raw
+     * vector, so the record can be copied on merge instead of re-quantizing), or {@code null}.
+     */
+    DedupQuantizer.PreQuantized preQuantized(int ord) {
+      Float16Vector handle = get(ord);
+      if (handle.values()
+          instanceof
+          DedupScalarQuantizedVectorValues.Float16RawAndQuantizedValues rawAndQuantized) {
+        DedupScalarQuantizedVectorValues.FieldValues quantized =
+            rawAndQuantized.getQuantizedValues();
+        return new DedupQuantizer.PreQuantized(quantized, quantized.flavor(), handle.ord());
+      }
+      return null;
     }
 
     @Override

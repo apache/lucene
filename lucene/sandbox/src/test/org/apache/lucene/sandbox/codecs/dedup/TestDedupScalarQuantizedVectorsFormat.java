@@ -19,6 +19,7 @@ package org.apache.lucene.sandbox.codecs.dedup;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN;
 import static org.apache.lucene.index.VectorEncoding.BYTE;
+import static org.apache.lucene.index.VectorEncoding.FLOAT16;
 import static org.apache.lucene.index.VectorEncoding.FLOAT32;
 import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
 import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
@@ -33,11 +34,13 @@ import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnByteVectorField;
+import org.apache.lucene.document.KnnFloat16VectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -331,6 +334,106 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
         assertNull(entry.quantizedBlock()); // no quantized data
       }
     }
+  }
+
+  /**
+   * FLOAT16 fields are quantized like FLOAT32: repeated vectors are stored once (raw and
+   * quantized), the raw {@code short[]} still reads back per document, and a quantized block is
+   * present.
+   */
+  public void testFloat16DuplicatesStoredOnceQuantized() throws Exception {
+    short[] a = toFloat16(new float[] {1, 2, 3, 4});
+    short[] b = toFloat16(new float[] {5, 6, 7, 8});
+    short[][] docVectors = {a, b, a, b, a, b}; // 3 copies each of 2 vectors
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, config())) {
+      for (short[] docVector : docVectors) {
+        Document doc = new Document();
+        doc.add(new KnnFloat16VectorField("f", docVector, EUCLIDEAN));
+        w.addDocument(doc);
+      }
+      w.forceMerge(1);
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        LeafReader leafReader = getOnlyLeafReader(reader);
+        Float16VectorValues values = leafReader.getFloat16VectorValues("f");
+        assertEquals(docVectors.length, values.size()); // one entry per document
+        assertEquals(2, groupNumVectors(values)); // only two distinct vectors stored
+
+        // raw float16 vectors read back exactly, resolved per document
+        for (int ord = 0; ord < values.size(); ord++) {
+          short[] vector = values.vectorValue(ord);
+          assertTrue(Arrays.equals(a, vector) || Arrays.equals(b, vector));
+        }
+
+        // the quantized block holds exactly two records
+        DedupScalarQuantizedVectorsReader sqReader = getQuantizedReader(leafReader, "f");
+        DedupScalarQuantizedVectorsReader.FieldEntry entry = sqReader.getEntry("f", FLOAT16);
+        assertNotNull(entry.quantizedBlock());
+        assertEquals(2 * quantizedRecordSize(a.length), entry.quantizedBlock().quantizedDataSize());
+      }
+    }
+  }
+
+  /**
+   * FLOAT16 duplicates that span multiple segments collapse to a single quantized copy on merge,
+   * and searches rank the query's duplicates together at the top.
+   */
+  public void testFloat16DuplicatesAcrossSegmentsAndSearch() throws Exception {
+    int dimension = 16;
+    float[] af = randomVector(dimension);
+    float[] bf = new float[dimension];
+    for (int i = 0; i < dimension; i++) {
+      bf[i] = -af[i]; // far away from a
+    }
+    short[] a = toFloat16(af);
+    short[] b = toFloat16(bf);
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, config())) {
+      int numA = 3, numB = 3;
+      for (int i = 0; i < numA; i++) {
+        Document doc = new Document();
+        doc.add(new KnnFloat16VectorField("f", a, EUCLIDEAN));
+        w.addDocument(doc);
+        w.commit(); // one segment per document
+      }
+      for (int i = 0; i < numB; i++) {
+        Document doc = new Document();
+        doc.add(new KnnFloat16VectorField("f", b, EUCLIDEAN));
+        w.addDocument(doc);
+        w.commit();
+      }
+      w.forceMerge(1); // exercises FP16 merge-time quantized dedup + scorer supplier
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        LeafReader leafReader = getOnlyLeafReader(reader);
+        Float16VectorValues values = leafReader.getFloat16VectorValues("f");
+        assertEquals(numA + numB, values.size());
+        assertEquals(2, groupNumVectors(values)); // collapsed across segments
+
+        TopDocs topDocs =
+            leafReader.searchNearestVectors(
+                "f",
+                a,
+                numA + numB,
+                AcceptDocs.fromLiveDocs(null, leafReader.maxDoc()),
+                Integer.MAX_VALUE);
+        assertEquals(numA + numB, topDocs.scoreDocs.length);
+        float scoreA = topDocs.scoreDocs[0].score;
+        for (int i = 0; i < numA; i++) {
+          assertEquals(scoreA, topDocs.scoreDocs[i].score, 0f); // duplicates share a score
+        }
+        for (int i = numA; i < numA + numB; i++) {
+          assertTrue(topDocs.scoreDocs[i].score < scoreA);
+        }
+      }
+    }
+  }
+
+  private static short[] toFloat16(float[] vector) {
+    short[] out = new short[vector.length];
+    for (int i = 0; i < vector.length; i++) {
+      out[i] = Float.floatToFloat16(vector[i]);
+    }
+    return out;
   }
 
   /**

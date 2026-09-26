@@ -20,9 +20,13 @@ import static org.apache.lucene.index.VectorEncoding.FLOAT32;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.lucene104.OffHeapScalarQuantizedVectorValues;
+import org.apache.lucene.codecs.lucene95.OffHeapFloat16VectorValues;
 import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.KnnVectorValues;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.FieldOrdToGroupOrd;
 import org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.FieldOrdToGroupOrdOffHeap;
@@ -118,6 +122,55 @@ final class DedupScalarQuantizedVectorValues {
   }
 
   /**
+   * Like {@link #loadQuantized}, but for a FLOAT16 field: the doc-level field view is FLOAT16 (raw
+   * {@code short[]} storage), while scoring still resolves through the shared quantized group view.
+   * Used to build the quantized half of a {@link Float16RawAndQuantizedValues}.
+   */
+  static FieldValues loadQuantizedFloat16(
+      DedupScalarQuantizedVectorsScorer vectorsScorer,
+      VectorSimilarityFunction function,
+      ScalarEncoding encoding,
+      OrdToDocDISIReaderConfiguration configuration,
+      int dimension,
+      int groupNumVectors,
+      IndexInput vectorData,
+      IndexInput quantizedVectorData,
+      long quantizedDataOffset,
+      long quantizedDataSize,
+      long fieldOrdToGroupOrdOffset,
+      long fieldOrdToGroupOrdSize)
+      throws IOException {
+
+    final OffHeapFloat16VectorValues fieldView =
+        OffHeapFloat16VectorValues.load(
+            function,
+            vectorsScorer,
+            configuration,
+            VectorEncoding.FLOAT16,
+            dimension,
+            0,
+            0,
+            vectorData);
+
+    final QuantizedByteVectorValues groupView =
+        groupValues(
+            false,
+            vectorsScorer,
+            function,
+            DedupQuantizer.Flavor.of(function),
+            encoding,
+            dimension,
+            groupNumVectors,
+            quantizedVectorData.slice(
+                "quantized-group-slice", quantizedDataOffset, quantizedDataSize));
+
+    final FieldOrdToGroupOrd fieldOrdToGroupOrd =
+        new FieldOrdToGroupOrdOffHeap(vectorData, fieldOrdToGroupOrdOffset, fieldOrdToGroupOrdSize);
+
+    return new FieldValues(vectorsScorer, function, fieldView, groupView, fieldOrdToGroupOrd);
+  }
+
+  /**
    * A field's quantized vector values: doc operations delegate to the field's ordinal-to-doc
    * mapping while vector operations resolve through {@code fieldOrdToGroupOrd} into the shared
    * group view.
@@ -125,7 +178,7 @@ final class DedupScalarQuantizedVectorValues {
   static final class FieldValues extends QuantizedByteVectorValues implements DedupVectorValues {
     private final DedupScalarQuantizedVectorsScorer vectorsScorer;
     private final VectorSimilarityFunction function;
-    private final FloatVectorValues fieldView;
+    private final KnnVectorValues fieldView;
     private final QuantizedByteVectorValues groupView;
     private final FieldOrdToGroupOrd fieldOrdToGroupOrd;
     private int[] scratch;
@@ -133,7 +186,7 @@ final class DedupScalarQuantizedVectorValues {
     FieldValues(
         DedupScalarQuantizedVectorsScorer vectorsScorer,
         VectorSimilarityFunction function,
-        FloatVectorValues fieldView,
+        KnnVectorValues fieldView,
         QuantizedByteVectorValues groupView,
         FieldOrdToGroupOrd fieldOrdToGroupOrd) {
       this.vectorsScorer = vectorsScorer;
@@ -245,7 +298,9 @@ final class DedupScalarQuantizedVectorValues {
       FieldValues copy = copy();
       DocIndexIterator indexIterator = copy.iterator();
       RandomVectorScorer vectorScorer = vectorsScorer.getRandomVectorScorer(function, copy, target);
-      boolean isDense = copy.fieldView instanceof OffHeapFloatVectorValues.DenseOffHeapVectorValues;
+      boolean isDense =
+          copy.fieldView instanceof OffHeapFloatVectorValues.DenseOffHeapVectorValues
+              || copy.fieldView instanceof OffHeapFloat16VectorValues.DenseOffHeapVectorValues;
       return new DedupVectorScorer(indexIterator, vectorScorer, isDense);
     }
   }
@@ -325,6 +380,90 @@ final class DedupScalarQuantizedVectorValues {
 
     @Override
     public VectorScorer rescorer(float[] target) throws IOException {
+      return rawValues.rescorer(target);
+    }
+  }
+
+  /**
+   * FLOAT16 analogue of {@link RawAndQuantizedValues}: exposes a field's raw de-duplicated {@code
+   * short[]} vectors for full-fidelity readback, while {@link #scorer(short[])} scores against the
+   * shared quantized view (the {@code short[]} target is inflated to {@code float[]} to match the
+   * data-blind quantizer). Mirrors the FLOAT16 handling in {@code
+   * Lucene104ScalarQuantizedVectorsReader}.
+   */
+  static final class Float16RawAndQuantizedValues extends Float16VectorValues
+      implements DedupVectorValues {
+    private final DedupVectorValues.Float16Impl rawValues;
+    private final FieldValues quantizedValues;
+
+    Float16RawAndQuantizedValues(
+        DedupVectorValues.Float16Impl rawValues, FieldValues quantizedValues) {
+      this.rawValues = rawValues;
+      this.quantizedValues = quantizedValues;
+    }
+
+    FieldValues getQuantizedValues() {
+      return quantizedValues;
+    }
+
+    @Override
+    public KnnVectorValues getGroupView() {
+      return rawValues.getGroupView();
+    }
+
+    @Override
+    public FieldOrdToGroupOrd getFieldOrdToGroupOrd() {
+      return rawValues.getFieldOrdToGroupOrd();
+    }
+
+    @Override
+    public int dimension() {
+      return rawValues.dimension();
+    }
+
+    @Override
+    public int size() {
+      return rawValues.size();
+    }
+
+    @Override
+    public int ordToDoc(int ord) {
+      return rawValues.ordToDoc(ord);
+    }
+
+    @Override
+    public Bits getAcceptOrds(Bits acceptDocs) {
+      return rawValues.getAcceptOrds(acceptDocs);
+    }
+
+    @Override
+    public void prefetch(int[] ordsToPrefetch, int numOrds) throws IOException {
+      rawValues.prefetch(ordsToPrefetch, numOrds);
+    }
+
+    @Override
+    public short[] vectorValue(int ord) throws IOException {
+      return rawValues.vectorValue(ord);
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      return rawValues.iterator();
+    }
+
+    @Override
+    public Float16RawAndQuantizedValues copy() throws IOException {
+      return new Float16RawAndQuantizedValues(rawValues.copy(), quantizedValues.copy());
+    }
+
+    @Override
+    public VectorScorer scorer(short[] target) throws IOException {
+      float[] inflated = DedupUtil.inflateFloat16(target, new float[target.length]);
+      return quantizedValues.scorer(inflated);
+    }
+
+    @Override
+    public VectorScorer rescorer(short[] target) throws IOException {
       return rawValues.rescorer(target);
     }
   }
