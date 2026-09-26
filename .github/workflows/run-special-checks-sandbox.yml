@@ -66,6 +66,12 @@ jobs:
       - name: Prepare Lucene workspace
         uses: ./.github/actions/prepare-for-build
 
+      - name: Prepare AVX2 Faiss C library
+        run: |
+          cp "$CONDA_PREFIX/lib/libfaiss_c.so" "$CONDA_PREFIX/lib/libfaiss_c_avx2.so"
+          patchelf --replace-needed libfaiss.so libfaiss_avx2.so "$CONDA_PREFIX/lib/libfaiss_c_avx2.so"
+          ldd "$CONDA_PREFIX/lib/libfaiss_c_avx2.so" || true
+
       - name: Run tests for Faiss codec
         run: >
           LD_LIBRARY_PATH=$CONDA_PREFIX/lib
