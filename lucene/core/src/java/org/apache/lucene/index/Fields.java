@@ -31,7 +31,18 @@ public abstract class Fields implements Iterable<String> {
   /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
   protected Fields() {}
 
-  /** Returns an iterator that will step through all fields names. This will not return null. */
+  /**
+   * Returns an iterator that will step through all fields names. This will not return null.
+   *
+   * <p><b>NOTE</b>: field names must be returned in ascending {@link String#compareTo natural
+   * order}. {@link MultiFields} and {@link
+   * org.apache.lucene.codecs.perfield.PerFieldPostingsFormat} merge several of these iterators with
+   * {@link org.apache.lucene.util.MergedIterator}, whose behaviour is undefined when its inputs are
+   * not sorted, so an implementation that returns field names in another order (for instance from a
+   * {@link java.util.HashMap#keySet()}) silently produces wrong results rather than an error: the
+   * merge stops deduplicating, and a name present in two sub-iterators can be returned twice.
+   * {@link CheckIndex} verifies this for the fields of an index.
+   */
   @Override
   public abstract Iterator<String> iterator();
 
