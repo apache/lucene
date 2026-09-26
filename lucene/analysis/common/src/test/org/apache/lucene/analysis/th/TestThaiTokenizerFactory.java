@@ -55,4 +55,3 @@ public class TestThaiTokenizerFactory extends BaseTokenStreamFactoryTestCase {
     assertTrue(expected.getMessage().contains("Unknown parameters"));
   }
 }
-

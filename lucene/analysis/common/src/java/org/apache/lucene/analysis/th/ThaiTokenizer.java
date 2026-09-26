@@ -28,8 +28,9 @@ import org.apache.lucene.util.AttributeFactory;
 /**
  * Tokenizer that uses {@link BreakIterator} to tokenize Thai text.
  *
- * <p>Supports an optional user dictionary ({@link CharArraySet}) for custom or domain-specific words.
- * When a user dictionary word matches, it takes precedence over default segmentation boundaries.
+ * <p>Supports an optional user dictionary ({@link CharArraySet}) for custom or domain-specific
+ * words. When a user dictionary word matches, it takes precedence over default segmentation
+ * boundaries.
  *
  * <p>WARNING: this tokenizer may not be supported by all JREs. It is known to work with Sun/Oracle
  * and Harmony JREs. If your application needs to be fully portable, consider using ICUTokenizer
