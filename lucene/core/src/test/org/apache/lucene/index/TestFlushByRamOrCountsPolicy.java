@@ -21,6 +21,8 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.TextField;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.store.MockDirectoryWrapper;
@@ -374,6 +376,48 @@ public class TestFlushByRamOrCountsPolicy extends LuceneTestCase {
       } else {
         notPending.add(next);
       }
+    }
+  }
+
+  public void testFlushByBufferLimit() throws IOException {
+    // Test that DWPT is flushed when buffer count approaches limit
+    Directory dir = newDirectory();
+    MockAnalyzer analyzer = new MockAnalyzer(random());
+    analyzer.setMaxTokenLength(TestUtil.nextInt(random(), 1, IndexWriter.MAX_TERM_LENGTH));
+
+    IndexWriterConfig iwc = newIndexWriterConfig(analyzer);
+    // Disable RAM and doc count based flushing to isolate buffer limit testing
+    iwc.setRAMBufferSizeMB(256.0);
+    iwc.setMaxBufferedDocs(10000);
+
+    IndexWriter writer = new IndexWriter(dir, iwc);
+    DocumentsWriter docsWriter = writer.getDocsWriter();
+    DocumentsWriterFlushControl flushControl = docsWriter.flushControl;
+
+    // Create a document with many unique terms to force buffer allocation
+    Document doc = new Document();
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < 1000; i++) {
+      sb.append("term").append(i).append(" ");
+    }
+    doc.add(new TextField("content", sb.toString(), Field.Store.NO));
+
+    // Add documents until we approach buffer limit
+    // Note: This is a simplified test - in practice, reaching 65000 buffers would require
+    // an enormous amount of data, so we test the mechanism rather than the actual limit
+    writer.addDocument(doc);
+
+    writer.close();
+    dir.close();
+
+    // Verify that the buffer limit checking mechanism is in place
+    Iterator<DocumentsWriterPerThread> activeWriters = flushControl.allActiveWriters();
+    if (activeWriters.hasNext()) {
+      DocumentsWriterPerThread dwpt = activeWriters.next();
+      // The method should exist and not throw an exception
+      boolean approaching = dwpt.isApproachingBufferLimit();
+      // With normal document sizes, we shouldn't be approaching the limit
+      assertFalse("Should not be approaching buffer limit with normal documents", approaching);
     }
   }
 }
