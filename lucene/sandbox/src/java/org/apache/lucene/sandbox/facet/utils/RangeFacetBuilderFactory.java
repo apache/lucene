@@ -35,7 +35,9 @@ public final class RangeFacetBuilderFactory {
 
   /** Request long range facets for numeric field by name. */
   public static CommonFacetBuilder forLongRanges(String field, LongRange... ranges) {
-    return forLongRanges(field, MultiLongValuesSource.fromLongField(field), ranges);
+    return new CommonFacetBuilder(
+            field, LongRangeFacetCutter.create(field, ranges), new RangeOrdToLabel(ranges))
+        .withSortByOrdinal();
   }
 
   /**
