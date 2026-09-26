@@ -114,4 +114,15 @@ public final class ThaiAnalyzer extends StopwordAnalyzerBase {
     result = new ThaiNormalizationFilter(result);
     return result;
   }
+
+  /** Wraps the Reader with {@link ThaiCharFilter} */
+  @Override
+  protected Reader initReader(String fieldName, Reader reader) {
+    return new ThaiCharFilter(reader);
+  }
+
+  @Override
+  protected Reader initReaderForNormalization(String fieldName, Reader reader) {
+    return new ThaiCharFilter(reader);
+  }
 }
