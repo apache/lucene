@@ -27,6 +27,7 @@ import java.lang.foreign.SymbolLookup;
 import java.lang.invoke.MethodHandle;
 import java.util.Arrays;
 import java.util.Locale;
+import org.apache.lucene.util.Constants;
 
 /**
  * Utility class to wrap necessary functions of the native <a
@@ -37,8 +38,44 @@ import java.util.Locale;
  */
 @SuppressWarnings("restricted") // uses unsafe calls
 final class FaissNativeWrapper {
-  static {
+
+  static final String LOADED_LIBRARY = loadLibrary();
+
+  private static String loadLibrary() {
+    // Manual override via system property
+    String customLib = System.getProperty("lucene.faiss.libname");
+    if (customLib != null && customLib.isBlank() == false) {
+      System.loadLibrary(customLib);
+      return customLib;
+    }
+    // Try SIMD variants matching the CPU architecture
+    switch (Constants.OS_ARCH) {
+      case "amd64", "x86_64" -> {
+        if (Constants.HAS_AVX512 && tryLoad("faiss_c_avx512")) {
+          return "faiss_c_avx512";
+        }
+        if (Constants.HAS_AVX2 && tryLoad("faiss_c_avx2")) {
+          return "faiss_c_avx2";
+        }
+      }
+      case "aarch64" -> {
+        if (Constants.HAS_SVE && tryLoad("faiss_c_sve")) {
+          return "faiss_c_sve";
+        }
+      }
+    }
+    // Fallback to generic baseline
     System.loadLibrary(FaissLibrary.NAME);
+    return FaissLibrary.NAME;
+  }
+
+  private static boolean tryLoad(String libName) {
+    try {
+      System.loadLibrary(libName);
+      return true;
+    } catch (UnsatisfiedLinkError _) {
+      return false;
+    }
   }
 
   private static MethodHandle getHandle(String functionName, FunctionDescriptor descriptor) {

@@ -82,12 +82,16 @@ public final class Constants {
   private static final boolean HAS_SSE4A =
       HotspotVMOptions.get("UseXmmI2F").map(Boolean::valueOf).orElse(false);
 
+  /** true for cpu with AVX-512 support. */
+  public static final boolean HAS_AVX512 =
+      HotspotVMOptions.get("UseAVX").map(Integer::valueOf).orElse(0) >= 3;
+
   /** true for cpu with AVX support at least AVX2. */
-  private static final boolean HAS_AVX2 =
+  public static final boolean HAS_AVX2 =
       HotspotVMOptions.get("UseAVX").map(Integer::valueOf).orElse(0) >= 2;
 
   /** true for arm cpu with SVE support. */
-  private static final boolean HAS_SVE =
+  public static final boolean HAS_SVE =
       HotspotVMOptions.get("UseSVE").map(Integer::valueOf).orElse(0) >= 1;
 
   /** true iff we know VFMA has faster throughput than separate vmul/vadd. */
