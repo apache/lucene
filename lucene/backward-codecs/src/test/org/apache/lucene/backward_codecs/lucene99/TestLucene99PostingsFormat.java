@@ -53,6 +53,11 @@ public class TestLucene99PostingsFormat extends BasePostingsFormatTestCase {
     return codec;
   }
 
+  @Override
+  protected boolean indexFakeImpacts() {
+    return true;
+  }
+
   /** Make sure the final sub-block(s) are not skipped. */
   public void testFinalBlock() throws Exception {
     Directory d = newDirectory();
