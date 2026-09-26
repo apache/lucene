@@ -146,4 +146,16 @@ public class TestThaiAnalyzer extends BaseTokenStreamTestCase {
         new int[] {4, 7, 9, 14, 19, 22, 25, 29, 33, 36, 39, 41});
     analyzer.close();
   }
+
+  public void testNormalization() throws Exception {
+    Analyzer analyzer = new ThaiAnalyzer(CharArraySet.EMPTY_SET);
+    // Double Sara E -> Sara Ae
+    assertAnalyzesTo(analyzer, "\u0E40\u0E40\u0E1B\u0E25\u0E01", new String[] {"\u0E41\u0E1B\u0E25\u0E01"});
+    // Decomposed Sara Am -> Sara Am
+    assertAnalyzesTo(analyzer, "\u0E17\u0E4D\u0E32\u0E07\u0E32\u0E19", new String[] {"\u0E17\u0E33\u0E07\u0E32\u0E19"});
+    // Duplicate vowels
+    assertAnalyzesTo(analyzer, "\u0E14\u0E35\u0E35", new String[] {"\u0E14\u0E35"});
+    analyzer.close();
+  }
 }
+
