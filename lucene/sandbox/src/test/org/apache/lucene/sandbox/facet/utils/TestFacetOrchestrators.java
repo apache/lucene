@@ -198,6 +198,59 @@ public class TestFacetOrchestrators extends SandboxFacetTestCase {
     IOUtils.close(taxoWriter, searcher.getIndexReader(), taxoReader, taxoDir, dir);
   }
 
+  /**
+   * Drill sideways builders are matched to dimensions by name, not by the order in which they were
+   * added.
+   */
+  public void testDrillSidewaysBuilderOrder() throws Exception {
+    Directory dir = newDirectory();
+    Directory taxoDir = newDirectory();
+    DirectoryTaxonomyWriter taxoWriter =
+        new DirectoryTaxonomyWriter(taxoDir, IndexWriterConfig.OpenMode.CREATE);
+    FacetsConfig config = new FacetsConfig();
+    config.setHierarchical("Publish Date", true);
+    config.setHierarchical("Author", false);
+
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+    for (String[] authorAndDate :
+        new String[][] {{"Bob", "2010"}, {"Lisa", "2010"}, {"Lisa", "2012"}}) {
+      Document doc = new Document();
+      doc.add(new FacetField("Author", authorAndDate[0]));
+      doc.add(new FacetField("Publish Date", authorAndDate[1]));
+      writer.addDocument(config.build(taxoWriter, doc));
+    }
+    IndexSearcher searcher = getNewSearcherForDrillSideways(writer.getReader());
+    TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
+
+    DrillDownQuery query = new DrillDownQuery(config);
+    query.add("Author", "Lisa");
+    query.add("Publish Date", "2010");
+
+    FacetBuilder authorBuilder =
+        new TaxonomyFacetBuilder(config, taxoReader, "Author").withTopN(10);
+    FacetBuilder publishDateBuilder =
+        new TaxonomyFacetBuilder(config, taxoReader, "Publish Date").withTopN(10);
+
+    // Builders are added in the opposite order to the query dimensions:
+    new DrillSidewaysFacetOrchestrator()
+        .addDrillDownBuilder(new TaxonomyFacetBuilder(config, taxoReader, "Author"))
+        .addDrillSidewaysBuilder("Publish Date", publishDateBuilder)
+        .addDrillSidewaysBuilder("Author", authorBuilder)
+        .collect(query, new DrillSideways(searcher, config, taxoReader));
+
+    // Sideways on Author keeps Publish Date=2010, i.e. Bob/2010 and Lisa/2010:
+    assertEquals(
+        "dim=Author path=[] value=2 childCount=2\n  Bob (1)\n  Lisa (1)\n",
+        authorBuilder.getResult().toString());
+    // Sideways on Publish Date keeps Author=Lisa, i.e. Lisa/2010 and Lisa/2012:
+    assertEquals(
+        "dim=Publish Date path=[] value=2 childCount=2\n  2010 (1)\n  2012 (1)\n",
+        publishDateBuilder.getResult().toString());
+
+    writer.close();
+    IOUtils.close(taxoWriter, searcher.getIndexReader(), taxoReader, taxoDir, dir);
+  }
+
   /** Tests mix of long range, double range and taxonomy facets. */
   public void testMixedRangeAndNonRangeTaxonomy() throws IOException {
     Directory d = newDirectory();

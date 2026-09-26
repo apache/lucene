@@ -36,23 +36,14 @@ import org.apache.lucene.search.MultiCollectorManager;
  * @lucene.experimental
  */
 public final class DrillSidewaysFacetOrchestrator {
-  private List<FacetBuilder> drillDownFacetBuilders = new ArrayList<>();
-  private Map<String, Integer> dimToIndex = new HashMap<>();
-  private Map<Integer, List<FacetBuilder>> drillSidewaysFacetBuilders = new HashMap<>();
+  private final List<FacetBuilder> drillDownFacetBuilders = new ArrayList<>();
+  private final Map<String, List<FacetBuilder>> drillSidewaysFacetBuilders = new HashMap<>();
 
   public DrillSidewaysFacetOrchestrator() {}
 
   public DrillSidewaysFacetOrchestrator addDrillSidewaysBuilder(
       String dim, FacetBuilder facetBuilder) {
-    // TODO: this looks fragile as it duplicates index assignment logic from DrillDownQuery.
-    //       Instead we can change DrillSideways API to accept a dimension (String) to collector
-    //       manager map instead of a list so that we can be sure that we use the right
-    //       collector for the right dimension.
-    //       but I think we should do it in a separate PR as it requires changing existing API.
-    int dimIndex = dimToIndex.computeIfAbsent(dim, (_) -> dimToIndex.size());
-    drillSidewaysFacetBuilders
-        .computeIfAbsent(dimIndex, (_) -> new ArrayList<>())
-        .add(facetBuilder);
+    drillSidewaysFacetBuilders.computeIfAbsent(dim, (_) -> new ArrayList<>()).add(facetBuilder);
     return this;
   }
 
@@ -76,18 +67,22 @@ public final class DrillSidewaysFacetOrchestrator {
         FacetOrchestrator.createMainCollector(drillDownFacetBuilders, mainCollector);
 
     // drill sideways
-    List<VoidFacetFieldCollectorManager> drillSidewaysManagers = new ArrayList<>();
-    for (int i = 0; i < drillSidewaysFacetBuilders.size(); i++) {
+    Map<String, VoidFacetFieldCollectorManager> drillSidewaysManagers = new HashMap<>();
+    for (Map.Entry<String, List<FacetBuilder>> dim : drillSidewaysFacetBuilders.entrySet()) {
       List<FacetFieldCollectorManager<?>> managers =
-          FacetOrchestrator.collectorManagerForBuilders(drillSidewaysFacetBuilders.get(i));
+          FacetOrchestrator.collectorManagerForBuilders(dim.getValue());
       if (managers.size() != 1) {
         throw new IllegalArgumentException(
-            "Expected exactly one collector manager per dimension but got " + managers.size());
+            "Expected exactly one collector manager for dimension "
+                + dim.getKey()
+                + " but got "
+                + managers.size());
       }
-      drillSidewaysManagers.add(new VoidFacetFieldCollectorManager(managers.getFirst()));
+      drillSidewaysManagers.put(
+          dim.getKey(), new VoidFacetFieldCollectorManager(managers.getFirst()));
     }
 
-    DrillSideways.Result<Object[], ?> result =
+    DrillSideways.ResultByDim<Object[], Void> result =
         drillSideways.search(query, drillDownManager, drillSidewaysManagers);
 
     if (mainCollector != null) {
