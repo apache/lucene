@@ -20,6 +20,7 @@ import java.io.IOException;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.util.CharsRefBuilder;
 
@@ -37,11 +38,15 @@ public final class ThaiRepeatFilter extends TokenFilter {
   public static final char MAIYAMOK = '\u0E46';
 
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
+  private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
   private final PositionIncrementAttribute posIncAtt =
       addAttribute(PositionIncrementAttribute.class);
 
   private final CharsRefBuilder lastTerm = new CharsRefBuilder();
   private int pendingRepeats = 0;
+  private int repeatIndex = 0;
+  private int[] repeatStarts = new int[4];
+  private int[] repeatEnds = new int[4];
   private State savedState;
 
   /**
@@ -59,6 +64,8 @@ public final class ThaiRepeatFilter extends TokenFilter {
       restoreState(savedState);
       termAtt.copyBuffer(lastTerm.chars(), 0, lastTerm.length());
       posIncAtt.setPositionIncrement(1);
+      offsetAtt.setOffset(repeatStarts[repeatIndex], repeatEnds[repeatIndex]);
+      repeatIndex++;
       pendingRepeats--;
       return true;
     }
@@ -66,6 +73,8 @@ public final class ThaiRepeatFilter extends TokenFilter {
     while (input.incrementToken()) {
       char[] buffer = termAtt.buffer();
       int len = termAtt.length();
+      int origStart = offsetAtt.startOffset();
+      int origEnd = offsetAtt.endOffset();
 
       // Case 1: Token consists entirely of Maiyamok characters (e.g. "ๆ" or "ๆๆ")
       if (isAllMaiyamok(buffer, len)) {
@@ -76,8 +85,18 @@ public final class ThaiRepeatFilter extends TokenFilter {
         int count = len;
         termAtt.copyBuffer(lastTerm.chars(), 0, lastTerm.length());
         if (count > 1) {
+          int firstEnd = Math.min(origEnd, origStart + 1);
+          offsetAtt.setOffset(origStart, firstEnd);
+          ensureRepeatCapacity(count - 1);
+          for (int i = 0; i < count - 1; i++) {
+            int s = Math.min(origEnd, origStart + 1 + i);
+            int e = (i == count - 2) ? origEnd : Math.min(origEnd, s + 1);
+            repeatStarts[i] = s;
+            repeatEnds[i] = e;
+          }
           savedState = captureState();
           pendingRepeats = count - 1;
+          repeatIndex = 0;
         }
         return true;
       }
@@ -88,10 +107,24 @@ public final class ThaiRepeatFilter extends TokenFilter {
         maiyamokCount++;
       }
       if (maiyamokCount > 0) {
-        termAtt.setLength(len - maiyamokCount);
+        int baseLen = len - maiyamokCount;
+        termAtt.setLength(baseLen);
         lastTerm.copyChars(termAtt.buffer(), 0, termAtt.length());
+
+        int baseEnd = Math.max(origStart, origEnd - maiyamokCount);
+        offsetAtt.setOffset(origStart, baseEnd);
+
+        ensureRepeatCapacity(maiyamokCount);
+        for (int i = 0; i < maiyamokCount; i++) {
+          int s = Math.min(origEnd, baseEnd + i);
+          int e = (i == maiyamokCount - 1) ? origEnd : Math.min(origEnd, s + 1);
+          repeatStarts[i] = s;
+          repeatEnds[i] = e;
+        }
+
         savedState = captureState();
         pendingRepeats = maiyamokCount;
+        repeatIndex = 0;
         return true;
       }
 
@@ -101,6 +134,13 @@ public final class ThaiRepeatFilter extends TokenFilter {
     }
 
     return false;
+  }
+
+  private void ensureRepeatCapacity(int count) {
+    if (count > repeatStarts.length) {
+      repeatStarts = new int[count];
+      repeatEnds = new int[count];
+    }
   }
 
   private static boolean isAllMaiyamok(char[] buffer, int len) {
@@ -120,6 +160,7 @@ public final class ThaiRepeatFilter extends TokenFilter {
     super.reset();
     lastTerm.clear();
     pendingRepeats = 0;
+    repeatIndex = 0;
     savedState = null;
   }
 }
