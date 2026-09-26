@@ -94,15 +94,15 @@ public final class ThaiAnalyzer extends StopwordAnalyzerBase {
    * the text in the provided {@link Reader}.
    *
    * @return {@link org.apache.lucene.analysis.Analyzer.TokenStreamComponents} built from a {@link
-   *     ThaiTokenizer} filtered with {@link LowerCaseFilter}, {@link DecimalDigitFilter} and {@link
-   *     StopFilter}
+   *     ThaiTokenizer} filtered with {@link LowerCaseFilter}, {@link DecimalDigitFilter}, {@link
+   *     ThaiNormalizationFilter} and {@link StopFilter}
    */
   @Override
   protected TokenStreamComponents createComponents(String fieldName) {
     final Tokenizer source = new ThaiTokenizer();
     TokenStream result = new LowerCaseFilter(source);
     result = new DecimalDigitFilter(result);
-
+    result = new ThaiNormalizationFilter(result);
     result = new StopFilter(result, stopwords);
     return new TokenStreamComponents(source, result);
   }
@@ -111,6 +111,18 @@ public final class ThaiAnalyzer extends StopwordAnalyzerBase {
   protected TokenStream normalize(String fieldName, TokenStream in) {
     TokenStream result = new LowerCaseFilter(in);
     result = new DecimalDigitFilter(result);
+    result = new ThaiNormalizationFilter(result);
     return result;
+  }
+
+  /** Wraps the Reader with {@link ThaiCharFilter} */
+  @Override
+  protected Reader initReader(String fieldName, Reader reader) {
+    return new ThaiCharFilter(reader);
+  }
+
+  @Override
+  protected Reader initReaderForNormalization(String fieldName, Reader reader) {
+    return new ThaiCharFilter(reader);
   }
 }
