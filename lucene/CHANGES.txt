@@ -123,6 +123,9 @@ API Changes
 
 New Features
 ---------------------
+* GITHUB#16720: Add ThaiRepeatFilter and ThaiRepeatFilterFactory to expand Thai repetition
+  mark (Maiyamok) with exact OffsetAttribute and highlighter compatibility. (Kamthorn Krairaksa)
+
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
   modern Hangul conjoining jamo before KoreanTokenizer. (Mingi Jeong)
 
