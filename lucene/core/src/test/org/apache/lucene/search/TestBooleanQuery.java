@@ -1411,4 +1411,106 @@ public class TestBooleanQuery extends LuceneTestCase {
         UnsupportedOperationException.class,
         () -> bq.clauses().add(new BooleanClause(MatchNoDocsQuery.INSTANCE, Occur.SHOULD)));
   }
+
+  // Tests for skipping zero-cost SHOULD clauses in BooleanScorerSupplier
+
+  public void testAllZeroCostShouldClauses() throws IOException {
+    // All SHOULD clauses match nothing — should return 0 results
+    try (Directory dir = newDirectory();
+        RandomIndexWriter w = new RandomIndexWriter(random(), dir)) {
+      Document doc = new Document();
+      doc.add(new StringField("field", "value", Store.NO));
+      w.addDocument(doc);
+
+      try (IndexReader reader = w.getReader()) {
+        IndexSearcher searcher = newSearcher(reader);
+        // "nonexistent1" and "nonexistent2" don't exist — zero cost
+        BooleanQuery query =
+            new BooleanQuery.Builder()
+                .add(new TermQuery(new Term("field", "nonexistent1")), Occur.SHOULD)
+                .add(new TermQuery(new Term("field", "nonexistent2")), Occur.SHOULD)
+                .add(new TermQuery(new Term("field", "nonexistent3")), Occur.SHOULD)
+                .build();
+        assertEquals(0, searcher.count(query));
+      }
+    }
+  }
+
+  public void testMixedZeroCostAndLiveShouldClauses() throws IOException {
+    // Some SHOULD clauses match, some don't — only live ones should contribute
+    try (Directory dir = newDirectory();
+        RandomIndexWriter w = new RandomIndexWriter(random(), dir)) {
+      Document doc = new Document();
+      doc.add(new StringField("field", "value", Store.NO));
+      w.addDocument(doc);
+
+      try (IndexReader reader = w.getReader()) {
+        IndexSearcher searcher = newSearcher(reader);
+        BooleanQuery query =
+            new BooleanQuery.Builder()
+                .add(new TermQuery(new Term("field", "nonexistent1")), Occur.SHOULD)
+                .add(new TermQuery(new Term("field", "value")), Occur.SHOULD) // matches
+                .add(new TermQuery(new Term("field", "nonexistent2")), Occur.SHOULD)
+                .build();
+        assertEquals(1, searcher.count(query));
+      }
+    }
+  }
+
+  public void testZeroCostShouldWithMustClause() throws IOException {
+    // MUST clause matches, all SHOULD clauses are zero-cost
+    // The MUST should still work; zero-cost SHOULDs just don't contribute to scoring
+    try (Directory dir = newDirectory();
+        RandomIndexWriter w = new RandomIndexWriter(random(), dir)) {
+      Document doc = new Document();
+      doc.add(new StringField("field", "value", Store.NO));
+      w.addDocument(doc);
+
+      try (IndexReader reader = w.getReader()) {
+        IndexSearcher searcher = newSearcher(reader);
+        BooleanQuery query =
+            new BooleanQuery.Builder()
+                .add(new TermQuery(new Term("field", "value")), Occur.MUST)
+                .add(new TermQuery(new Term("field", "nonexistent1")), Occur.SHOULD)
+                .add(new TermQuery(new Term("field", "nonexistent2")), Occur.SHOULD)
+                .build();
+        assertEquals(1, searcher.count(query));
+      }
+    }
+  }
+
+  public void testZeroCostShouldWithMinShouldMatch() throws IOException {
+    // With minShouldMatch=2, zero-cost clauses should NOT be skipped
+    // because we need to know the true count of matching clauses
+    try (Directory dir = newDirectory();
+        RandomIndexWriter w = new RandomIndexWriter(random(), dir)) {
+      Document doc = new Document();
+      doc.add(new StringField("field", "a", Store.NO));
+      doc.add(new StringField("field", "b", Store.NO));
+      w.addDocument(doc);
+
+      try (IndexReader reader = w.getReader()) {
+        IndexSearcher searcher = newSearcher(reader);
+        // 2 live clauses + 1 zero-cost, minShouldMatch=2 — should still match
+        BooleanQuery query =
+            new BooleanQuery.Builder()
+                .add(new TermQuery(new Term("field", "a")), Occur.SHOULD)
+                .add(new TermQuery(new Term("field", "b")), Occur.SHOULD)
+                .add(new TermQuery(new Term("field", "nonexistent")), Occur.SHOULD)
+                .setMinimumNumberShouldMatch(2)
+                .build();
+        assertEquals(1, searcher.count(query));
+
+        // 1 live clause + 2 zero-cost, minShouldMatch=2 — should NOT match
+        BooleanQuery query2 =
+            new BooleanQuery.Builder()
+                .add(new TermQuery(new Term("field", "a")), Occur.SHOULD)
+                .add(new TermQuery(new Term("field", "nonexistent1")), Occur.SHOULD)
+                .add(new TermQuery(new Term("field", "nonexistent2")), Occur.SHOULD)
+                .setMinimumNumberShouldMatch(2)
+                .build();
+        assertEquals(0, searcher.count(query2));
+      }
+    }
+  }
 }
