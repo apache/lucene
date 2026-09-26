@@ -18,6 +18,7 @@ package org.apache.lucene.facet;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,20 +31,25 @@ import org.apache.lucene.facet.sortedset.SortedSetDocValuesFacetField;
 import org.apache.lucene.facet.sortedset.SortedSetDocValuesReaderState;
 import org.apache.lucene.facet.taxonomy.FastTaxonomyFacetCounts;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.FieldDoc;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.MultiCollectorManager;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopFieldCollector;
 import org.apache.lucene.search.TopFieldCollectorManager;
 import org.apache.lucene.search.TopFieldDocs;
 import org.apache.lucene.search.TopScoreDocCollectorManager;
+import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 /**
@@ -85,6 +91,8 @@ public class DrillSideways {
   /** (optional) {@link ExecutorService} used for "concurrent" drill sideways if desired. */
   private final ExecutorService executor;
 
+  private final boolean allowEarlyTermination;
+
   /** Create a new {@code DrillSideways} instance. */
   public DrillSideways(IndexSearcher searcher, FacetsConfig config, TaxonomyReader taxoReader) {
     this(searcher, config, taxoReader, null);
@@ -108,7 +116,7 @@ public class DrillSideways {
       FacetsConfig config,
       TaxonomyReader taxoReader,
       SortedSetDocValuesReaderState state) {
-    this(searcher, config, taxoReader, state, null);
+    this(searcher, config, taxoReader, state, null, false);
   }
 
   /**
@@ -123,11 +131,28 @@ public class DrillSideways {
       TaxonomyReader taxoReader,
       SortedSetDocValuesReaderState state,
       ExecutorService executor) {
+    this(searcher, config, taxoReader, state, executor, false);
+  }
+
+  /**
+   * Create a new {@code DrillSideways} instance, where some dimensions were indexed with {@link
+   * SortedSetDocValuesFacetField} and others were indexed with {@link FacetField}.
+   *
+   * <p>Use this constructor to use the concurrent implementation
+   */
+  public DrillSideways(
+      IndexSearcher searcher,
+      FacetsConfig config,
+      TaxonomyReader taxoReader,
+      SortedSetDocValuesReaderState state,
+      ExecutorService executor,
+      boolean allowEarlyTermination) {
     this.searcher = searcher;
     this.config = config;
     this.taxoReader = taxoReader;
     this.state = state;
     this.executor = executor;
+    this.allowEarlyTermination = allowEarlyTermination;
   }
 
   /**
@@ -333,7 +358,10 @@ public class DrillSideways {
     if (drillDownFacetsCollectorManager != null) {
       // Make sure we populate a facet collector corresponding to the base query if desired:
       mainCollectorManager =
-          new MultiCollectorManager(drillDownFacetsCollectorManager, hitCollectorManager);
+          allowEarlyTermination
+              ? new EarlyTerminatingFacetsAndHitsCollectorManager<>(
+                  drillDownFacetsCollectorManager, hitCollectorManager)
+              : new MultiCollectorManager(drillDownFacetsCollectorManager, hitCollectorManager);
     } else {
       mainCollectorManager = hitCollectorManager;
     }
@@ -540,6 +568,83 @@ public class DrillSideways {
       super(
           facets, hits, drillDownFacetsCollector, drillSidewaysFacetsCollector, drillSidewaysDims);
       this.collectorResult = collectorResult;
+    }
+  }
+
+  static class EarlyTerminatingFacetsAndHitsCollectorManager<C extends Collector, T>
+      implements CollectorManager<
+          EarlyTerminatingFacetsAndHitsCollectorManager.FacetAndHitsCollector<C>, Object[]> {
+
+    private final FacetsCollectorManager facetsCollectorManager;
+    private final CollectorManager<C, T> hitCollectorManager;
+
+    public EarlyTerminatingFacetsAndHitsCollectorManager(
+        FacetsCollectorManager facetsCollectorManager, CollectorManager<C, T> hitCollectorManager) {
+      this.facetsCollectorManager = facetsCollectorManager;
+      this.hitCollectorManager = hitCollectorManager;
+    }
+
+    @Override
+    public FacetAndHitsCollector<C> newCollector() throws IOException {
+      return new FacetAndHitsCollector<>(
+          facetsCollectorManager.newCollector(), hitCollectorManager.newCollector());
+    }
+
+    @Override
+    public Object[] reduce(Collection<FacetAndHitsCollector<C>> collectors) throws IOException {
+      List<C> hitCollectors = new ArrayList<>(collectors.size());
+      List<FacetsCollector> facetsCollectors = new ArrayList<>(collectors.size());
+      for (FacetAndHitsCollector<C> collector : collectors) {
+        hitCollectors.add(collector.hitCollector);
+        facetsCollectors.add(collector.facetsCollector);
+      }
+      FacetsCollector facetsCollectorResult = facetsCollectorManager.reduce(facetsCollectors);
+      T hitCollectorResult = hitCollectorManager.reduce(hitCollectors);
+      return new Object[] {facetsCollectorResult, hitCollectorResult};
+    }
+
+    record FacetAndHitsCollector<C extends Collector>(
+        FacetsCollector facetsCollector, C hitCollector) implements Collector {
+
+      @Override
+      public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
+        final LeafCollector hitCollectorLeaf = hitCollector.getLeafCollector(context);
+        final LeafCollector facetCollectorLeaf = facetsCollector.getLeafCollector(context);
+        return new LeafCollector() {
+          @Override
+          public void setScorer(Scorable scorer) throws IOException {
+            hitCollectorLeaf.setScorer(scorer);
+            facetCollectorLeaf.setScorer(scorer);
+          }
+
+          @Override
+          public void collect(int doc) throws IOException {
+            hitCollectorLeaf.collect(
+                doc); // Any exception in the hit collector will terminate facets collection too
+            facetCollectorLeaf.collect(doc);
+          }
+        };
+      }
+
+      @Override
+      public ScoreMode scoreMode() {
+        ScoreMode hitCollectorScoreMode = hitCollector.scoreMode();
+        ScoreMode facetCollectorScoreMode = facetsCollector.scoreMode();
+        if (hitCollectorScoreMode == facetCollectorScoreMode) {
+          return hitCollectorScoreMode;
+        }
+        if (hitCollectorScoreMode.needsScores() || facetCollectorScoreMode.needsScores()) {
+          return ScoreMode.COMPLETE;
+        } else {
+          return ScoreMode.COMPLETE_NO_SCORES;
+        }
+      }
+
+      @Override
+      public void setWeight(Weight weight) {
+        hitCollector.setWeight(weight);
+        facetsCollector.setWeight(weight);
+      }
     }
   }
 }
