@@ -145,6 +145,9 @@ New Features
 
 Improvements
 ---------------------
+* GITHUB#16718: Modernize ThaiAnalyzer default stopwords list based on contemporary Thai corpus
+  frequency analysis and linguistically validated stop words. (Kamthorn Krairaksa)
+
 * GITHUB#15704: Replace LinkedList with more efficient data structure. (Renato Haeberli)
 
 * GITHUB#15682: Use ArrayDeque instead of LinkedList in CompoundWordTokenFilterBase.java. (Renato Haeberli)
