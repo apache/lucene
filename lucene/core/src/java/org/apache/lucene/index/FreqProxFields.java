@@ -129,7 +129,7 @@ class FreqProxFields extends Fields {
 
     FreqProxTermsEnum(FreqProxTermsWriterPerField terms) {
       this.terms = terms;
-      this.termsPool = new BytesRefBlockPool(terms.bytePool);
+      this.termsPool = new BytesRefBlockPool(terms.termBytePool);
       this.numTerms = terms.getNumTerms();
       sortedTermIDs = terms.getSortedTermIDs();
       assert sortedTermIDs != null;
