@@ -147,7 +147,7 @@ public class TestComplexExplanations extends BaseExplanationTestCase {
   }
 
   public void testExplainFailingOptionalClauses() throws Exception {
-    // minShouldMatch not satisfied, show failing SHOULD.
+    // minShouldMatch not satisfied, show the matching clause and the failing SHOULD.
     BooleanQuery msm =
         new BooleanQuery.Builder()
             .add(new TermQuery(new Term(FIELD, "w1")), Occur.SHOULD)
@@ -158,6 +158,7 @@ public class TestComplexExplanations extends BaseExplanationTestCase {
     String msmExpl = searcher.explain(msm, 0).toString();
     assertTrue(
         msmExpl.contains("Failure to match minimum number of optional clauses: 2, matched: 1"));
+    assertTrue(msmExpl.contains("weight(field:w1"));
     assertTrue(msmExpl.contains("no match on optional clause (field:xx)"));
     assertTrue(msmExpl.contains("no match on optional clause (field:zz)"));
     assertFalse(msmExpl.contains("no match on optional clause (field:w1)"));
@@ -172,12 +173,14 @@ public class TestComplexExplanations extends BaseExplanationTestCase {
     assertTrue(disjExpl.contains("no match on optional clause (field:xx)"));
     assertTrue(disjExpl.contains("no match on optional clause (field:zz)"));
 
-    // MUST clause fails, failing SHOULD are not shown.
+    // MUST clause fails: failing SHOULD are hidden, the failing required clause is shown.
     BooleanQuery mustFail =
         new BooleanQuery.Builder()
             .add(new TermQuery(new Term(FIELD, "missing")), Occur.MUST)
             .add(new TermQuery(new Term(FIELD, "xx")), Occur.SHOULD)
             .build();
-    assertFalse(searcher.explain(mustFail, 0).toString().contains("no match on optional clause"));
+    String mustFailExpl = searcher.explain(mustFail, 0).toString();
+    assertFalse(mustFailExpl.contains("no match on optional clause"));
+    assertTrue(mustFailExpl.contains("no match on required clause (field:missing)"));
   }
 }
