@@ -752,6 +752,9 @@ public class TestLRUQueryCache extends LuceneTestCase {
     var expectedRamBytesUsed =
         HASHTABLE_RAM_BYTES_PER_ENTRY
             + queryCacheKey.ramBytesUsed()
+            // The query object is accounted once per distinct query, separately from the per-entry
+            // key overhead (here there is a single segment, so a single entry).
+            + RamUsageEstimator.sizeOf(accountableQuery, 32)
             + queryCache.getChildResources().iterator().next().ramBytesUsed();
     assertEquals(expectedRamBytesUsed, queryCache.ramBytesUsed());
     queryCache.assertConsistent();
@@ -2845,6 +2848,125 @@ public class TestLRUQueryCache extends LuceneTestCase {
 
     dir.close();
     queryCache.close();
+  }
+
+  public void testReQueryWithEqualButDistinctQueryInstanceHits() throws IOException {
+    try (Directory dir = newDirectory();
+        RandomIndexWriter w = new RandomIndexWriter(random(), dir)) {
+      Document doc = new Document();
+      doc.add(new StringField("color", "red", Store.NO));
+      w.addDocument(doc);
+      w.forceMerge(1);
+      try (IndexReader reader = w.getReader()) {
+        assertEquals(1, reader.leaves().size());
+        final IndexSearcher searcher = newSearcher(reader);
+
+        final AtomicLong hitCount = new AtomicLong();
+        final AtomicLong missCount = new AtomicLong();
+        final LRUQueryCache queryCache =
+            new LRUQueryCache(1000000, 10000000, _ -> true, Float.POSITIVE_INFINITY) {
+              @Override
+              protected void onHit(Object readerCoreKey, Query query) {
+                super.onHit(readerCoreKey, query);
+                hitCount.incrementAndGet();
+              }
+
+              @Override
+              protected void onMiss(Object readerCoreKey, Query query) {
+                super.onMiss(readerCoreKey, query);
+                missCount.incrementAndGet();
+              }
+            };
+        searcher.setQueryCache(queryCache);
+        searcher.setQueryCachingPolicy(ALWAYS_CACHE);
+
+        searcher.search(new ConstantScoreQuery(new TermQuery(new Term("color", "red"))), 1);
+        assertEquals(0, hitCount.longValue());
+        assertEquals(1, missCount.longValue());
+
+        // second request uses a distinct-but-value-equal Query instance
+        searcher.search(new ConstantScoreQuery(new TermQuery(new Term("color", "red"))), 1);
+        assertEquals(1, hitCount.longValue());
+        assertEquals(1, missCount.longValue());
+
+        queryCache.close();
+      }
+    }
+  }
+
+  private static IndexReader twoSegmentIndex(Directory dir, String term) throws IOException {
+    IndexWriterConfig iwc = new IndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE);
+    try (IndexWriter w = new IndexWriter(dir, iwc)) {
+      for (int i = 0; i < 2; i++) {
+        Document doc = new Document();
+        doc.add(new StringField("f", term, Store.NO));
+        w.addDocument(doc);
+        w.commit(); // separate segment per doc
+      }
+      IndexReader reader = DirectoryReader.open(w);
+      assertEquals(2, reader.leaves().size());
+      return reader;
+    }
+  }
+
+  public void testQueryRamAccountedOncePerDistinctQuery() throws IOException {
+    try (Directory dir = newDirectory()) {
+      // large term so the query bytes dominate per-entry and doc-id-set overhead
+      String bigTerm = "x".repeat(4000);
+      try (IndexReader reader = twoSegmentIndex(dir, bigTerm)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        LRUQueryCache queryCache =
+            new LRUQueryCache(100, 100_000_000, _ -> true, Float.POSITIVE_INFINITY);
+        searcher.setQueryCache(queryCache);
+        searcher.setQueryCachingPolicy(ALWAYS_CACHE);
+
+        TermQuery query = new TermQuery(new Term("f", bigTerm));
+        long queryBytes = RamUsageEstimator.sizeOf(query, 32);
+
+        searcher.search(new ConstantScoreQuery(query), 1);
+
+        assertEquals("cached on both segments", 2, queryCache.getCacheSize());
+        assertTrue(
+            "query bytes should be counted at least once", queryCache.ramBytesUsed() >= queryBytes);
+        assertTrue(
+            "query bytes must not be double-counted across segments: "
+                + queryCache.ramBytesUsed()
+                + " should be < 2x "
+                + queryBytes,
+            queryCache.ramBytesUsed() < 2 * queryBytes);
+        queryCache.assertConsistent();
+        queryCache.close();
+      }
+    }
+  }
+
+  public void testCanonicalQueryInstanceSharedAcrossSegments() throws IOException {
+    try (Directory dir = newDirectory()) {
+      try (IndexReader reader = twoSegmentIndex(dir, "red")) {
+        LRUQueryCache queryCache =
+            new LRUQueryCache(100, 100_000_000, _ -> true, Float.POSITIVE_INFINITY);
+
+        IndexReader.CacheHelper h0 = reader.leaves().get(0).reader().getCoreCacheHelper();
+        IndexReader.CacheHelper h1 = reader.leaves().get(1).reader().getCoreCacheHelper();
+
+        Query qA = new TermQuery(new Term("f", "red"));
+        Query qB = new TermQuery(new Term("f", "red"));
+        assertNotSame(qA, qB);
+
+        queryCache.putIfAbsent(qA, new LRUQueryCache.CacheAndCount(DocIdSet.EMPTY, 0), h0);
+        queryCache.putIfAbsent(qB, new LRUQueryCache.CacheAndCount(DocIdSet.EMPTY, 0), h1);
+
+        Map<LRUQueryCache.QueryCacheKey, LRUQueryCache.QueryMetadata> unique =
+            queryCache.getUniqueQueries();
+        assertEquals("one entry per segment", 2, unique.size());
+        Query[] queries = unique.keySet().stream().map(k -> k.query).toArray(Query[]::new);
+        assertSame(
+            "both segment entries should share one canonical Query instance despite distinct inputs",
+            queries[0],
+            queries[1]);
+        queryCache.close();
+      }
+    }
   }
 
   public static class DefaultCleanUpThreadFactory implements ThreadFactory {
