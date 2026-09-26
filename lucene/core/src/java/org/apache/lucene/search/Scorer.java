@@ -130,4 +130,27 @@ public abstract class Scorer extends Scorable {
     }
     buffer.size = size;
   }
+
+  /**
+   * Apply this {@link Scorer} as a required clause on the given {@link DocAndScoreAccBuffer}. This
+   * filters out documents from the buffer that do not match this scorer, and adds the scores of
+   * this {@link Scorer} to the scores.
+   */
+  public void applyAsRequiredClause(DocAndScoreAccBuffer buffer) throws IOException {
+    DocIdSetIterator iterator = iterator();
+    int intersectionSize = 0;
+    int curDoc = iterator.docID();
+    for (int i = 0; i < buffer.size; ++i) {
+      int targetDoc = buffer.docs[i];
+      if (curDoc < targetDoc) {
+        curDoc = iterator.advance(targetDoc);
+      }
+      if (curDoc == targetDoc) {
+        buffer.docs[intersectionSize] = targetDoc;
+        buffer.scores[intersectionSize] = buffer.scores[i] + score();
+        intersectionSize++;
+      }
+    }
+    buffer.size = intersectionSize;
+  }
 }
