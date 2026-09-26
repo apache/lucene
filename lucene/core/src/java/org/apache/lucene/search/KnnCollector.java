@@ -59,6 +59,16 @@ public interface KnnCollector {
   int k();
 
   /**
+   * Returns the number of results currently held by this collector.
+   *
+   * <p>The default implementation can only distinguish a full collector from a non-full one.
+   * Collectors that expose their result heap size should override this method.
+   */
+  default int numCollected() {
+    return minCompetitiveSimilarity() == Float.NEGATIVE_INFINITY ? 0 : k();
+  }
+
+  /**
    * Collect the provided docId and include in the result set.
    *
    * @param docId of the vector to collect
@@ -129,6 +139,11 @@ public interface KnnCollector {
     @Override
     public int k() {
       return collector.k();
+    }
+
+    @Override
+    public int numCollected() {
+      return collector.numCollected();
     }
 
     @Override
