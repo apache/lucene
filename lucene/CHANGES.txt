@@ -123,6 +123,10 @@ API Changes
 
 New Features
 ---------------------
+* GITHUB#16717: Add ThaiCharFilter, ThaiCharFilterFactory, and ThaiNormalizationFilter for
+  pre-tokenization character normalization and token-level normalization in ThaiAnalyzer.
+  (Kamthorn Krairaksa)
+
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
   modern Hangul conjoining jamo before KoreanTokenizer. (Mingi Jeong)
 
