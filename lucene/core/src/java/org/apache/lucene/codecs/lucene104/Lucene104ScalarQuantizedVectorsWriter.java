@@ -49,7 +49,10 @@ import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.internal.hppc.FloatArrayList;
 import org.apache.lucene.search.VectorScorer;
+import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FileDataHint;
+import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IOUtils;
@@ -397,6 +400,15 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   }
 
   /**
+   * The quantized query vectors staged for the merge scorer. A graph build reads them by ordinal as
+   * it walks, so they are read at random.
+   */
+  private IOContext queryDataContext() {
+    return segmentWriteState.context.withHints(
+        FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM);
+  }
+
+  /**
    * Writes merged index-side and query-side records in one pass. Index-side records go to the
    * quantized vector data file, while query-side records go to a temporary file owned by the
    * returned handle.
@@ -428,7 +440,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     String queryDataName = null;
     try (IndexOutput queryData =
         segmentWriteState.directory.createTempOutput(
-            segmentWriteState.segmentInfo.name, "queries", segmentWriteState.context)) {
+            segmentWriteState.segmentInfo.name, "queries", queryDataContext())) {
       queryDataName = queryData.getName();
       KnnVectorValues.DocIndexIterator iterator = vectorValues.iterator();
       for (int docV = iterator.nextDoc(); docV != NO_MORE_DOCS; docV = iterator.nextDoc()) {
@@ -450,11 +462,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       throw t;
     }
     return new PreparedQueryData(
-        segmentWriteState.directory,
-        segmentWriteState.context,
-        fieldInfo,
-        vectorScorer,
-        queryDataName);
+        segmentWriteState.directory, queryDataContext(), fieldInfo, vectorScorer, queryDataName);
   }
 
   /** Owns one field's temporary query-side records until its graph scorer takes them over. */

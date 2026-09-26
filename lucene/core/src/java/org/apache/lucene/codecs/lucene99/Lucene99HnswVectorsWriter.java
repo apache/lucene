@@ -51,6 +51,9 @@ import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.TaskExecutor;
+import org.apache.lucene.store.DataAccessHint;
+import org.apache.lucene.store.FileDataHint;
+import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.IOUtils;
@@ -485,7 +488,9 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     if (flatVectorsReader instanceof QuantizedVectorsReader quantizedVectorsReader
         && fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
       return quantizedVectorsReader.getRandomVectorScorerSupplierForMerge(
-          fieldInfo, segmentWriteState);
+          fieldInfo,
+          segmentWriteState.withHints(
+              FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM));
     }
     return null;
   }
@@ -537,7 +542,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
               segmentWriteState.directory,
               segmentWriteState.segmentInfo,
               segmentWriteState.fieldInfos,
-              segmentWriteState.context,
+              segmentWriteState.context.union(
+                  FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM),
               segmentWriteState.segmentSuffix);
       flatVectorsReader = flatVectorsFormat.fieldsReader(readState);
     }
