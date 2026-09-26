@@ -27,6 +27,7 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.store.BaseDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.NamedSPILoader;
 
 /**
  * Tests to ensure that {@link Codec}s won't need to implement all formats in case where only a
@@ -88,6 +89,13 @@ public class TestMinimalCodec extends LuceneTestCase {
 
     protected MinimalCodec(String name) {
       super(name);
+    }
+
+    @Override
+    public boolean replace(NamedSPILoader.NamedSPI prev) {
+      assertEquals("MinimalCodec", prev.getName());
+      assertEquals(ThrowingCodec.class.getName(), prev.getClass().getName());
+      return true;
     }
 
     @Override
@@ -159,6 +167,69 @@ public class TestMinimalCodec extends LuceneTestCase {
     @Override
     public CompoundFormat compoundFormat() {
       return wrappedCodec.compoundFormat();
+    }
+  }
+
+  /** ... same name as MinimalCompoundCodec - MinimalCodec */
+  public static class ThrowingCodec extends Codec {
+
+    public ThrowingCodec() {
+      super("MinimalCodec");
+    }
+
+    @Override
+    public FieldInfosFormat fieldInfosFormat() {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public SegmentInfoFormat segmentInfoFormat() {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public CompoundFormat compoundFormat() {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public LiveDocsFormat liveDocsFormat() {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public StoredFieldsFormat storedFieldsFormat() {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public PostingsFormat postingsFormat() {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public DocValuesFormat docValuesFormat() {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public TermVectorsFormat termVectorsFormat() {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public NormsFormat normsFormat() {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public PointsFormat pointsFormat() {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public KnnVectorsFormat knnVectorsFormat() {
+      throw new UnsupportedOperationException();
     }
   }
 }
