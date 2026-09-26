@@ -44,6 +44,7 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.packed.PackedInts;
@@ -502,6 +503,21 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     BULK_MERGE_ENABLED = v;
   }
 
+  // hybrid merge reuses the bulk merge chunk-copying logic and is subject to the same risks;
+  // this escape hatch disables the hybrid strategy on top of enableBulkMerge.
+  static final String HYBRID_MERGE_ENABLED_SYSPROP =
+      Lucene90CompressingStoredFieldsWriter.class.getName() + ".enableHybridMerge";
+  static final boolean HYBRID_MERGE_ENABLED;
+
+  static {
+    boolean v = true;
+    try {
+      v = Boolean.parseBoolean(System.getProperty(HYBRID_MERGE_ENABLED_SYSPROP, "true"));
+    } catch (SecurityException _) {
+    }
+    HYBRID_MERGE_ENABLED = v;
+  }
+
   private void copyOneDoc(Lucene90CompressingStoredFieldsReader reader, int docID)
       throws IOException {
     assert reader.getVersion() == VERSION_CURRENT;
@@ -527,12 +543,25 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     assert mergeState.liveDocs[sub.readerIndex] == null;
 
     int docID = fromDocID;
-    final FieldsIndex index = reader.getIndexReader();
 
     // copy docs that belong to the previous chunk
     while (docID < toDocID && reader.isLoaded(docID)) {
       copyOneDoc(reader, docID++);
     }
+    if (docID >= toDocID) {
+      return;
+    }
+    copyChunksImpl(reader, sub, docID, toDocID);
+  }
+
+  private void copyChunksImpl(
+      final Lucene90CompressingStoredFieldsReader reader,
+      final CompressingStoredFieldsMergeSub sub,
+      final int fromDocID,
+      final int toDocID)
+      throws IOException {
+    int docID = fromDocID;
+    final FieldsIndex index = reader.getIndexReader();
     if (docID >= toDocID) {
       return;
     }
@@ -593,6 +622,40 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     }
   }
 
+  /** Returns true if the given docID is the first doc of its chunk. */
+  private static boolean isFirstDocInChunk(FieldsIndex index, int docID) {
+    return docID == 0 || index.getStartPointer(docID) != index.getStartPointer(docID - 1);
+  }
+
+  /**
+   * Copies a contiguous range of live docIDs [{@code fromDocID}, {@code toDocID}), copying chunks
+   * whose docs are all contained in the range without decompressing them, and the docs of the first
+   * chunk doc by doc if the range doesn't start at a chunk boundary.
+   *
+   * <p>All docs of the range must be live and contiguous.
+   */
+  private void copyContiguousLiveDocs(
+      final MergeState mergeState,
+      final CompressingStoredFieldsMergeSub sub,
+      final int fromDocID,
+      final int toDocID)
+      throws IOException {
+    final Lucene90CompressingStoredFieldsReader reader =
+        (Lucene90CompressingStoredFieldsReader) mergeState.storedFieldsReaders[sub.readerIndex];
+    assert reader.getVersion() == VERSION_CURRENT;
+    assert reader.getChunkSize() == chunkSize;
+    assert reader.getCompressionMode() == compressionMode;
+    final FieldsIndex index = reader.getIndexReader();
+
+    // copy docs of the first chunk doc by doc until the next chunk boundary: this chunk contains
+    // deletions or was partially consumed by a previous range
+    int docID = fromDocID;
+    while (docID < toDocID && !isFirstDocInChunk(index, docID)) {
+      copyOneDoc(reader, docID++);
+    }
+    copyChunksImpl(reader, sub, docID, toDocID);
+  }
+
   @Override
   public int merge(MergeState mergeState) throws IOException {
     final MatchingReaders matchingReaders = new MatchingReaders(mergeState);
@@ -626,6 +689,20 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
         }
         ++toDocID; // exclusive bound
         copyChunks(mergeState, current, fromDocID, toDocID);
+        docCount += (toDocID - fromDocID);
+      } else if (sub.mergeStrategy == MergeStrategy.HYBRID) {
+        final int fromDocID = sub.docID;
+        int toDocID = fromDocID;
+        final CompressingStoredFieldsMergeSub current = sub;
+        // collect a contiguous range of live docIDs: the docID merger skips deleted docs, so a
+        // gap in docIDs means the chunks around it cannot be copied directly and the range ends
+        while ((sub = docIDMerger.next()) == current && sub.docID == toDocID + 1) {
+          ++toDocID;
+        }
+        ++toDocID; // exclusive bound
+        // unlike the BULK branch, sub may be == current here (deletion gap found): the outer
+        // loop reuses it without calling next() again
+        copyContiguousLiveDocs(mergeState, current, fromDocID, toDocID);
         docCount += (toDocID - fromDocID);
       } else if (sub.mergeStrategy == MergeStrategy.DOC) {
         copyOneDoc((Lucene90CompressingStoredFieldsReader) reader, sub.docID);
@@ -661,6 +738,56 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
         && candidate.getNumDirtyChunks() * 100 > candidate.getNumChunks();
   }
 
+  /**
+   * Returns true if this reader should be merged with the hybrid strategy. The gain comes from
+   * copying chunks directly, so this is only worth it when deletions touch few chunks: this method
+   * counts the number of chunks that contain at least one deleted doc, and returns false when the
+   * count reaches half the total number of chunks.
+   */
+  private static boolean hybridEligible(MergeState mergeState, int readerIndex) {
+    Lucene90CompressingStoredFieldsReader reader =
+        (Lucene90CompressingStoredFieldsReader) mergeState.storedFieldsReaders[readerIndex];
+    final Bits liveDocs = mergeState.liveDocs[readerIndex];
+    final FieldsIndex index = reader.getIndexReader();
+    final long totalChunks = reader.getNumChunks();
+
+    long dirtyChunks = 0;
+    long lastEndBlock = -1;
+    int runStart = -1;
+    for (int docID = 0; docID < liveDocs.length(); ++docID) {
+      if (liveDocs.get(docID) == false) {
+        if (runStart < 0) {
+          runStart = docID;
+        }
+      } else if (runStart >= 0) {
+        // end of a deletion run [runStart, docID)
+        long startBlock = index.getBlockID(runStart);
+        long endBlock = index.getBlockID(docID - 1);
+        if (startBlock > lastEndBlock) {
+          dirtyChunks += endBlock - startBlock + 1;
+        } else if (endBlock > lastEndBlock) {
+          dirtyChunks += endBlock - lastEndBlock;
+        }
+        lastEndBlock = endBlock;
+        runStart = -1;
+        if (dirtyChunks * 2 >= totalChunks) {
+          return false; // too many dirty chunks already
+        }
+      }
+    }
+    if (runStart >= 0) {
+      // deletion run reaching the end of the segment
+      long startBlock = index.getBlockID(runStart);
+      long endBlock = index.getBlockID(liveDocs.length() - 1);
+      if (startBlock > lastEndBlock) {
+        dirtyChunks += endBlock - startBlock + 1;
+      } else if (endBlock > lastEndBlock) {
+        dirtyChunks += endBlock - lastEndBlock;
+      }
+    }
+    return dirtyChunks * 2 < totalChunks;
+  }
+
   private enum MergeStrategy {
     /** Copy chunk by chunk in a compressed format */
     BULK,
@@ -669,7 +796,10 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     DOC,
 
     /** Copy field by field of decompressed documents */
-    VISITOR
+    VISITOR,
+
+    /** Copy chunks whose docs are all live directly, and docs of other chunks doc by doc */
+    HYBRID
   }
 
   private MergeStrategy getMergeStrategy(
@@ -682,16 +812,18 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     }
     Lucene90CompressingStoredFieldsReader reader =
         (Lucene90CompressingStoredFieldsReader) candidate;
-    if (BULK_MERGE_ENABLED
-        && reader.getCompressionMode() == compressionMode
-        && reader.getChunkSize() == chunkSize
-        // its not worth fine-graining this if there are deletions.
-        && mergeState.liveDocs[readerIndex] == null
-        && !tooDirty(reader)) {
+    final boolean bulkEligible =
+        BULK_MERGE_ENABLED
+            && reader.getCompressionMode() == compressionMode
+            && reader.getChunkSize() == chunkSize
+            && !tooDirty(reader);
+    if (bulkEligible && mergeState.liveDocs[readerIndex] == null) {
       return MergeStrategy.BULK;
-    } else {
-      return MergeStrategy.DOC;
     }
+    if (bulkEligible && HYBRID_MERGE_ENABLED && hybridEligible(mergeState, readerIndex)) {
+      return MergeStrategy.HYBRID;
+    }
+    return MergeStrategy.DOC;
   }
 
   private static class CompressingStoredFieldsMergeSub extends DocIDMerger.Sub {
