@@ -405,6 +405,11 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
+  public void dotProductBulk(float[] query, float[][] docs, float[] results) {
+    delegateVectorUtilSupport.dotProductBulk(query, docs, results);
+  }
+
+  @Override
   public int dotProduct(byte[] a, byte[] b) {
     return (dotProduct$MH != null)
         ? dotProduct(MemorySegment.ofArray(a), MemorySegment.ofArray(b))
