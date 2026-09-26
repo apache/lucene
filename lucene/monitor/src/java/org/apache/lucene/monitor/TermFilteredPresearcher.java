@@ -57,7 +57,8 @@ import org.apache.lucene.util.BytesRefIterator;
  *
  * <p>Filtering by additional fields can be configured by passing a set of field names. Documents
  * that contain values in those fields will only be checked against {@link MonitorQuery} instances
- * that have the same fieldname-value mapping in their metadata.
+ * that have the same fieldname-value mapping in their metadata. Note that these fields should not
+ * appear in the queries themselves. They should appear only in query metadata and in the documents.
  */
 public class TermFilteredPresearcher extends Presearcher {
 
