@@ -19,11 +19,21 @@ package org.apache.lucene.analysis.ko.dict;
 import java.io.IOException;
 import org.apache.lucene.util.fst.FST;
 
-/** Thin wrapper around an FST with root-arc caching for Hangul syllables (11,172 arcs). */
+/**
+ * Thin wrapper around an FST with root-arc caching for Hangul syllables (11,172 arcs).
+ *
+ * <p>When {@code cacheHangulSyllables} is {@code true}, root arcs for all Hangul syllables
+ * ({@code 0xAC00}–{@code 0xD7A3}) are cached for faster lookup at the cost of additional heap. When
+ * {@code false}, only a single unused root arc is cached.
+ */
 public final class TokenInfoFST extends org.apache.lucene.analysis.morph.TokenInfoFST {
 
   public TokenInfoFST(FST<Long> fst) throws IOException {
-    super(fst, 0xD7A3, 0xAC00);
+    this(fst, true);
+  }
+
+  public TokenInfoFST(FST<Long> fst, boolean cacheHangulSyllables) throws IOException {
+    super(fst, cacheHangulSyllables ? 0xD7A3 : 0, cacheHangulSyllables ? 0xAC00 : 0);
   }
 
   /**
