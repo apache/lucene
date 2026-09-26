@@ -193,7 +193,14 @@ public class PayloadScoreQuery extends SpanQuery {
       }
       NumericDocValues norms = context.reader().getNormValues(field);
       PayloadSpans payloadSpans = new PayloadSpans(spans, decoder);
-      final var scorer = new PayloadSpanScorer(payloadSpans, innerWeight.getSimScorer(), norms);
+      SpanScorer innerScorer = innerWeight.createSpanScorer(payloadSpans, context);
+      final var scorer =
+          new PayloadSpanScorer(payloadSpans, innerWeight.getSimScorer(), norms) {
+            @Override
+            protected float getSpanScore() throws IOException {
+              return innerScorer.scoreCurrentDoc(sloppyFreq());
+            }
+          };
       return new DefaultScorerSupplier(scorer);
     }
   }
