@@ -154,4 +154,3 @@ public class TestThaiAnalyzer extends BaseTokenStreamTestCase {
     analyzer.close();
   }
 }
-

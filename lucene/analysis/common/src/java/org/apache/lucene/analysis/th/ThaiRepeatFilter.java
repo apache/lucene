@@ -25,12 +25,12 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.util.CharsRefBuilder;
 
 /**
- * A {@link TokenFilter} that handles Thai Maiyamok (ๆ, U+0E46), which denotes
- * word repetition (reduplication).
+ * A {@link TokenFilter} that handles Thai Maiyamok (ๆ, U+0E46), which denotes word repetition
+ * (reduplication).
  *
- * <p>When a standalone Maiyamok token is encountered, it is replaced with the preceding
- * term. When a token with trailing Maiyamok is encountered, trailing Maiyamok characters
- * are stripped and duplicate token(s) are emitted.
+ * <p>When a standalone Maiyamok token is encountered, it is replaced with the preceding term. When
+ * a token with trailing Maiyamok is encountered, trailing Maiyamok characters are stripped and
+ * duplicate token(s) are emitted.
  */
 public final class ThaiRepeatFilter extends TokenFilter {
 

@@ -31,14 +31,16 @@ public class TestThaiRepeatFilter extends BaseTokenStreamTestCase {
     // Standalone token "ๆ" after "เร็ว"
     TokenStream ts = whitespaceMockTokenizer("เร็ว ๆ");
     ts = new ThaiRepeatFilter(ts);
-    assertTokenStreamContents(ts, new String[] {"เร็ว", "เร็ว"}, new int[] {0, 5}, new int[] {4, 6});
+    assertTokenStreamContents(
+        ts, new String[] {"เร็ว", "เร็ว"}, new int[] {0, 5}, new int[] {4, 6});
   }
 
   public void testAttachedMaiyamok() throws IOException {
     // Attached "ๆ" at the end of word "เร็วๆ"
     TokenStream ts = whitespaceMockTokenizer("เร็วๆ");
     ts = new ThaiRepeatFilter(ts);
-    assertTokenStreamContents(ts, new String[] {"เร็ว", "เร็ว"}, new int[] {0, 4}, new int[] {4, 5});
+    assertTokenStreamContents(
+        ts, new String[] {"เร็ว", "เร็ว"}, new int[] {0, 4}, new int[] {4, 5});
   }
 
   public void testMultipleMaiyamok() throws IOException {
