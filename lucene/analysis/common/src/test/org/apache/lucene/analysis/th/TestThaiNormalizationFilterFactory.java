@@ -27,11 +27,13 @@ import org.apache.lucene.tests.analysis.MockTokenizer;
 public class TestThaiNormalizationFilterFactory extends BaseTokenStreamFactoryTestCase {
 
   public void testNormalization() throws Exception {
-    Reader reader = new StringReader("\u0E40\u0E40\u0E1B\u0E25\u0E01 \u0E17\u0E4D\u0E32\u0E07\u0E32\u0E19");
+    Reader reader =
+        new StringReader("\u0E40\u0E40\u0E1B\u0E25\u0E01 \u0E17\u0E4D\u0E32\u0E07\u0E32\u0E19");
     TokenStream stream = new MockTokenizer(MockTokenizer.WHITESPACE, false);
     ((Tokenizer) stream).setReader(reader);
     stream = tokenFilterFactory("ThaiNormalization").create(stream);
-    assertTokenStreamContents(stream, new String[] {"\u0E41\u0E1B\u0E25\u0E01", "\u0E17\u0E33\u0E07\u0E32\u0E19"});
+    assertTokenStreamContents(
+        stream, new String[] {"\u0E41\u0E1B\u0E25\u0E01", "\u0E17\u0E33\u0E07\u0E32\u0E19"});
   }
 
   /** Test that bogus arguments result in exception */

@@ -33,7 +33,9 @@ public class TestThaiNormalizer extends BaseTokenStreamTestCase {
 
   public void testSaraAmDecomposition() throws IOException {
     // Nikhahit (U+0E4D) + Sara Aa (U+0E32) -> Sara Am (U+0E33)
-    check("\u0E17\u0E4D\u0E32\u0E07\u0E32\u0E19", "\u0E17\u0E33\u0E07\u0E32\u0E19"); // ทํางาน -> ทำงาน
+    check(
+        "\u0E17\u0E4D\u0E32\u0E07\u0E32\u0E19",
+        "\u0E17\u0E33\u0E07\u0E32\u0E19"); // ทํางาน -> ทำงาน
 
     // Nikhahit + Tone (U+0E49) + Sara Aa -> Tone + Sara Am
     check("\u0E19\u0E4D\u0E49\u0E32", "\u0E19\u0E49\u0E33"); // นํ้า -> น้ำ
@@ -67,8 +69,12 @@ public class TestThaiNormalizer extends BaseTokenStreamTestCase {
   }
 
   public void testZeroWidthCharacters() throws IOException {
-    check("\u0E20\u0E32\u0E29\u0E32\u200B\u0E44\u0E17\u0E22", "\u0E20\u0E32\u0E29\u0E32\u0E44\u0E17\u0E22");
-    check("\u0E20\u0E32\u0E29\u0E32\u200C\u0E44\u0E17\u0E22", "\u0E20\u0E32\u0E29\u0E32\u0E44\u0E17\u0E22");
+    check(
+        "\u0E20\u0E32\u0E29\u0E32\u200B\u0E44\u0E17\u0E22",
+        "\u0E20\u0E32\u0E29\u0E32\u0E44\u0E17\u0E22");
+    check(
+        "\u0E20\u0E32\u0E29\u0E32\u200C\u0E44\u0E17\u0E22",
+        "\u0E20\u0E32\u0E29\u0E32\u0E44\u0E17\u0E22");
   }
 
   public void testLakkhangyao() throws IOException {

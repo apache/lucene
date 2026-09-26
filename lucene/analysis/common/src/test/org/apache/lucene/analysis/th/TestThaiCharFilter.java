@@ -87,8 +87,8 @@ public class TestThaiCharFilter extends BaseTokenStreamTestCase {
   }
 
   /**
-   * Demonstrates that pre-tokenization char filtering allows BreakIterator to
-   * segment words correctly that would otherwise be mistakenly merged into one huge token.
+   * Demonstrates that pre-tokenization char filtering allows BreakIterator to segment words
+   * correctly that would otherwise be mistakenly merged into one huge token.
    */
   public void testBreakIteratorSegmentationWithCharFilter() throws IOException {
     assumeTrue(

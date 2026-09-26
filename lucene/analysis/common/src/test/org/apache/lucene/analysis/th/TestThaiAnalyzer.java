@@ -150,10 +150,14 @@ public class TestThaiAnalyzer extends BaseTokenStreamTestCase {
   public void testNormalization() throws Exception {
     Analyzer analyzer = new ThaiAnalyzer(CharArraySet.EMPTY_SET);
     // Double Sara E -> Sara Ae
-    assertAnalyzesTo(analyzer, "\u0E40\u0E40\u0E1B\u0E25\u0E01", new String[] {"\u0E41\u0E1B\u0E25\u0E01"});
-    // Decomposed Sara Am -> Sara Am (pre-tokenization allows BreakIterator to properly segment ทำ and งาน)
     assertAnalyzesTo(
-        analyzer, "\u0E17\u0E4D\u0E32\u0E07\u0E32\u0E19", new String[] {"\u0E17\u0E33", "\u0E07\u0E32\u0E19"});
+        analyzer, "\u0E40\u0E40\u0E1B\u0E25\u0E01", new String[] {"\u0E41\u0E1B\u0E25\u0E01"});
+    // Decomposed Sara Am -> Sara Am (pre-tokenization allows BreakIterator to properly segment ทำ
+    // and งาน)
+    assertAnalyzesTo(
+        analyzer,
+        "\u0E17\u0E4D\u0E32\u0E07\u0E32\u0E19",
+        new String[] {"\u0E17\u0E33", "\u0E07\u0E32\u0E19"});
     // Sentence with double Sara E properly segmented into individual words thanks to ThaiCharFilter
     assertAnalyzesTo(
         analyzer, "ฉันรัก\u0E40\u0E40มวมาก", new String[] {"ฉัน", "รัก", "แมว", "มาก"});
@@ -162,4 +166,3 @@ public class TestThaiAnalyzer extends BaseTokenStreamTestCase {
     analyzer.close();
   }
 }
-

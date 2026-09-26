@@ -21,26 +21,29 @@ import java.io.Reader;
 import org.apache.lucene.analysis.charfilter.BaseCharFilter;
 
 /**
- * A {@link org.apache.lucene.analysis.CharFilter} that normalizes Thai text at the character
- * stream level before tokenization.
+ * A {@link org.apache.lucene.analysis.CharFilter} that normalizes Thai text at the character stream
+ * level before tokenization.
  *
- * <p>Applying normalization before tokenization is critical for Thai, because typographic
- * anomalies (such as two consecutive Sara E characters instead of Sara Ae, or zero-width
- * characters) prevent the dictionary-based {@link java.text.BreakIterator} from locating word
- * boundaries, causing multiple adjacent words to be mistakenly merged into one token.
+ * <p>Applying normalization before tokenization is critical for Thai, because typographic anomalies
+ * (such as two consecutive Sara E characters instead of Sara Ae, or zero-width characters) prevent
+ * the dictionary-based {@link java.text.BreakIterator} from locating word boundaries, causing
+ * multiple adjacent words to be mistakenly merged into one token.
  *
  * <p>Normalizations performed:
+ *
  * <ul>
  *   <li>Removes Zero-Width characters (U+200B ZWSP, U+200C ZWNJ, U+200D ZWJ, U+FEFF BOM)
  *   <li>Replaces double Sara E (เ + เ, U+0E40 U+0E40) with Sara Ae (แ, U+0E41)
- *   <li>Recomposes decomposed Sara Am (U+0E4D + U+0E32 &rarr; U+0E33, and U+0E4D + tone + U+0E32 &rarr; tone + U+0E33)
+ *   <li>Recomposes decomposed Sara Am (U+0E4D + U+0E32 &rarr; U+0E33, and U+0E4D + tone + U+0E32
+ *       &rarr; tone + U+0E33)
  *   <li>Deduplicates consecutive repeated diacritics / tone marks (e.g. ดีี &rarr; ดี)
  *   <li>Reorders misplaced tone mark before an above/below vowel to canonical order
- *   <li>Replaces Lakkhangyao (ๅ, U+0E45) with Sara Aa (า, U+0E32) unless preceded by Ru (ฤ) or Lu (ฦ)
+ *   <li>Replaces Lakkhangyao (ๅ, U+0E45) with Sara Aa (า, U+0E32) unless preceded by Ru (ฤ) or Lu
+ *       (ฦ)
  * </ul>
  *
- * <p>All character deletions and contractions correctly update the character offset map
- * using {@link #addOffCorrectMap(int, int)}.
+ * <p>All character deletions and contractions correctly update the character offset map using
+ * {@link #addOffCorrectMap(int, int)}.
  *
  * @since 11.0.0
  */

@@ -22,15 +22,18 @@ import static org.apache.lucene.analysis.util.StemmerUtil.delete;
  * Normalizer for Thai.
  *
  * <p>Normalizes Thai text to handle common orthographic variations, typos, and encoding anomalies:
+ *
  * <ul>
  *   <li>Removes zero-width characters (ZWSP U+200B, ZWNJ U+200C).
  *   <li>Replaces double Sara E (U+0E40 U+0E40) with Sara Ae (U+0E41).
- *   <li>Recomposes decomposed Sara Am (Nikhahit U+0E4D + optional tone mark + Sara Aa U+0E32)
- *       into canonical Sara Am (U+0E33).
- *   <li>Normalizes Lakkhangyao (U+0E45) to Sara Aa (U+0E32) unless preceded by Ru (U+0E24) or Lu (U+0E26).
- *   <li>Reorders misplaced tone marks (U+0E48-U+0E4B) or Thanthakhat (U+0E4C) with above/below vowels
- *       (U+0E31, U+0E34-U+0E3A, U+0E47) to canonical Unicode order (vowel before tone mark).
- *   <li>Reorders follow vowels (e.g. Sara Aa U+0E32, Sara Am U+0E33) and misplaced trailing tone marks.
+ *   <li>Recomposes decomposed Sara Am (Nikhahit U+0E4D + optional tone mark + Sara Aa U+0E32) into
+ *       canonical Sara Am (U+0E33).
+ *   <li>Normalizes Lakkhangyao (U+0E45) to Sara Aa (U+0E32) unless preceded by Ru (U+0E24) or Lu
+ *       (U+0E26).
+ *   <li>Reorders misplaced tone marks (U+0E48-U+0E4B) or Thanthakhat (U+0E4C) with above/below
+ *       vowels (U+0E31, U+0E34-U+0E3A, U+0E47) to canonical Unicode order (vowel before tone mark).
+ *   <li>Reorders follow vowels (e.g. Sara Aa U+0E32, Sara Am U+0E33) and misplaced trailing tone
+ *       marks.
  *   <li>Deduplicates repeated vowels, tone marks, and diacritics.
  *   <li>Removes dangling combining marks at the start of a token.
  * </ul>
@@ -73,7 +76,8 @@ public class ThaiNormalizer {
         continue;
       }
 
-      // Nikhahit (U+0E4D) + optional tone mark + Sara Aa (U+0E32) -> optional tone mark + Sara Am (U+0E33)
+      // Nikhahit (U+0E4D) + optional tone mark + Sara Aa (U+0E32) -> optional tone mark + Sara Am
+      // (U+0E33)
       if (c == '\u0E4D') {
         if (i + 1 < len && s[i + 1] == '\u0E32') {
           s[i] = '\u0E33';
