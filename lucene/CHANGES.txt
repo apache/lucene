@@ -215,6 +215,8 @@ Optimizations
 * GITHUB#16619: DirectIODirectory's slice() no longer performs a blocking direct read when
   creating a slice; the first read resolves the deferred start position instead. (John Maurice)
 
+* GITHUB#15683: Reuse reader's fieldinfos. (Vliam Durina)
+
 Bug Fixes
 ---------------------
 * GITHUB#16553: Fix stored-fields corruption when PerField#finish throws: the stored-fields frame
