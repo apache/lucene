@@ -105,13 +105,9 @@ public class ThaiTokenizer extends SegmentingTokenizerBase {
       int minLen = Integer.MAX_VALUE;
       int maxLen = 0;
       for (Object obj : userDictionary) {
-        int length = (obj instanceof char[]) ? ((char[]) obj).length : obj.toString().length();
-        if (length < minLen) {
-          minLen = length;
-        }
-        if (length > maxLen) {
-          maxLen = length;
-        }
+        int length = ((char[]) obj).length;
+        minLen = Math.min(minLen, length);
+        maxLen = Math.max(maxLen, length);
       }
       this.minDictWordLen = minLen;
       this.maxDictWordLen = maxLen;
