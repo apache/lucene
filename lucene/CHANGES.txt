@@ -126,6 +126,13 @@ New Features
 * GITHUB#16722: Support user dictionary in ThaiTokenizer and ThaiTokenizerFactory.
   (Kamthorn Krairaksa)
 
+* GITHUB#16717: Add ThaiCharFilter, ThaiCharFilterFactory, and ThaiNormalizationFilter for
+  pre-tokenization character normalization and token-level normalization in ThaiAnalyzer.
+  (Kamthorn Krairaksa)
+
+* GITHUB#16720: Add ThaiRepeatFilter and ThaiRepeatFilterFactory to expand Thai repetition
+  mark (Maiyamok) with exact OffsetAttribute and highlighter compatibility. (Kamthorn Krairaksa)
+
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
   modern Hangul conjoining jamo before KoreanTokenizer. (Mingi Jeong)
 
@@ -148,6 +155,9 @@ New Features
 
 Improvements
 ---------------------
+* GITHUB#16718: Modernize ThaiAnalyzer default stopwords list based on contemporary Thai corpus
+  frequency analysis and linguistically validated stop words. (Kamthorn Krairaksa)
+
 * GITHUB#15704: Replace LinkedList with more efficient data structure. (Renato Haeberli)
 
 * GITHUB#15682: Use ArrayDeque instead of LinkedList in CompoundWordTokenFilterBase.java. (Renato Haeberli)
