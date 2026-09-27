@@ -147,6 +147,13 @@ public class TestThaiAnalyzer extends BaseTokenStreamTestCase {
     analyzer.close();
   }
 
+  public void testMaiyamok() throws Exception {
+    Analyzer analyzer = new ThaiAnalyzer(CharArraySet.EMPTY_SET);
+    assertAnalyzesTo(analyzer, "วิ่งเร็วๆ", new String[] {"วิ่ง", "เร็ว", "เร็ว"});
+    assertAnalyzesTo(analyzer, "พูดมากๆ นะ", new String[] {"พูด", "มาก", "มาก", "นะ"});
+    analyzer.close();
+  }
+
   /** LUCENE-4253, #14730: Test that common content words in compounds are not over-filtered */
   public void testCompoundAndContentWordsNotOverFiltered() throws Exception {
     Analyzer analyzer = new ThaiAnalyzer();
