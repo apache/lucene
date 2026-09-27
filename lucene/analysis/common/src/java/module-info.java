@@ -149,7 +149,8 @@ module org.apache.lucene.analysis.common {
       org.apache.lucene.analysis.charfilter.MappingCharFilterFactory,
       org.apache.lucene.analysis.cjk.CJKWidthCharFilterFactory,
       org.apache.lucene.analysis.fa.PersianCharFilterFactory,
-      org.apache.lucene.analysis.pattern.PatternReplaceCharFilterFactory;
+      org.apache.lucene.analysis.pattern.PatternReplaceCharFilterFactory,
+      org.apache.lucene.analysis.th.ThaiCharFilterFactory;
   provides org.apache.lucene.analysis.TokenFilterFactory with
       org.apache.lucene.analysis.tr.ApostropheFilterFactory,
       org.apache.lucene.analysis.ar.ArabicNormalizationFilterFactory,
@@ -262,6 +263,7 @@ module org.apache.lucene.analysis.common {
       org.apache.lucene.analysis.core.FlattenGraphFilterFactory,
       org.apache.lucene.analysis.te.TeluguNormalizationFilterFactory,
       org.apache.lucene.analysis.te.TeluguStemFilterFactory,
+      org.apache.lucene.analysis.th.ThaiNormalizationFilterFactory,
       org.apache.lucene.analysis.tr.TurkishLowerCaseFilterFactory,
       org.apache.lucene.analysis.util.ElisionFilterFactory;
   provides org.apache.lucene.analysis.TokenizerFactory with
