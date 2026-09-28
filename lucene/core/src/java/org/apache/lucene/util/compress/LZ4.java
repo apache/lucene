@@ -128,9 +128,13 @@ public final class LZ4 {
       // copying a multiple of 8 bytes can make decompression from 5% to 10% faster
       final int fastLen = (matchLen + 7) & 0xFFFFFFF8;
       if (matchDec < matchLen || dOff + fastLen > destEnd) {
-        // overlap -> naive incremental copy
-        for (int ref = dOff - matchDec, end = dOff + matchLen; dOff < end; ++ref, ++dOff) {
-          dest[dOff] = dest[ref];
+        if (matchLen >= 64 && matchDec < matchLen) {
+          copyLongOverlap(dest, dOff, matchDec, matchLen);
+          dOff += matchLen;
+        } else {
+          for (int ref = dOff - matchDec, end = dOff + matchLen; dOff < end; ++ref, ++dOff) {
+            dest[dOff] = dest[ref];
+          }
         }
       } else {
         // no overlap -> arraycopy
@@ -140,6 +144,23 @@ public final class LZ4 {
     } while (dOff < destEnd);
 
     return dOff;
+  }
+
+  private static void copyLongOverlap(byte[] dest, int offset, int distance, int length) {
+    if (distance == 1) {
+      Arrays.fill(dest, offset, offset + length, dest[offset - 1]);
+      return;
+    }
+    // Seed one complete period from bytes that have already been decoded.
+    System.arraycopy(dest, offset - distance, dest, offset, distance);
+    int copied = distance;
+    while (copied < length) {
+      // Both ranges are initialized and disjoint. A single overlapping arraycopy would
+      // copy stale bytes instead of repeating the pattern required by the LZ4 format.
+      int next = Math.min(copied, length - copied);
+      System.arraycopy(dest, offset, dest, offset + copied, next);
+      copied += next;
+    }
   }
 
   private static void encodeLen(int l, DataOutput out) throws IOException {

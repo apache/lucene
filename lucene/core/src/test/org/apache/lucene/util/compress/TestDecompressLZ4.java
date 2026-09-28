@@ -18,9 +18,50 @@ package org.apache.lucene.util.compress;
 
 import java.io.IOException;
 import org.apache.lucene.store.ByteArrayDataInput;
+import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.ArrayUtil;
 
 public class TestDecompressLZ4 extends LuceneTestCase {
+  public void testOverlappingMatchesWithDictionaryAndPartialReads() throws IOException {
+    for (int distance : new int[] {1, 2, 3, 7, 8, 15, 16, 17, 63, 64, 65, 255, 65535}) {
+      for (int length : new int[] {4, 63, 64, 65, 1024, 131089}) {
+        byte[] dictionary = new byte[distance];
+        random().nextBytes(dictionary);
+        var encoded = ByteBuffersDataOutput.newResettableInstance();
+        // A match against the preset dictionary, followed by five terminal literals.
+        encoded.writeByte((byte) Math.min(15, length - 4));
+        encoded.writeShort((short) distance);
+        if (length >= 19) {
+          int remaining = length - 19;
+          while (remaining >= 255) {
+            encoded.writeByte((byte) 255);
+            remaining -= 255;
+          }
+          encoded.writeByte((byte) remaining);
+        }
+        encoded.writeByte((byte) 0x50);
+        encoded.writeBytes(new byte[] {1, 2, 3, 4, 5}, 5);
+        byte[] compressed = encoded.toArrayCopy();
+        for (int requested : new int[] {1, Math.min(63, length), length, length + 5}) {
+          byte[] dest = new byte[distance + length + 5];
+          System.arraycopy(dictionary, 0, dest, 0, distance);
+          int end = LZ4.decompress(new ByteArrayDataInput(compressed), requested, dest, distance);
+          assertEquals(distance + (requested <= length ? length : length + 5), end);
+          assertArrayEquals(dictionary, ArrayUtil.copyOfSubArray(dest, 0, distance));
+          for (int i = 0; i < length; i++) {
+            assertEquals(dictionary[i % distance], dest[distance + i]);
+          }
+          if (requested > length) {
+            assertArrayEquals(
+                new byte[] {1, 2, 3, 4, 5},
+                ArrayUtil.copyOfSubArray(dest, distance + length, dest.length));
+          }
+        }
+      }
+    }
+  }
+
   public void testDecompressOffset0() {
     byte[] input =
         new byte[] {
