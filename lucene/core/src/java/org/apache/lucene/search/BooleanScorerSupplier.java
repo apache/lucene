@@ -241,6 +241,12 @@ final class BooleanScorerSupplier extends ScorerSupplier {
 
     final long positiveScorerCost = positiveScorer.cost();
 
+    // Benchmarks from #16715 show a crossover around 0.3%: sparse required clauses are
+    // faster with ReqExclScorer, while denser clauses benefit from ReqExclBulkScorer.
+    if (subs.get(Occur.MUST_NOT).isEmpty() == false && positiveScorerCost <= 3L * maxDoc / 1000) {
+      return null;
+    }
+
     // Prohibited clauses are bulk-loaded within each window, so use an unbounded lead cost
     // when selecting their implementations. Keep positiveScorerCost for the disjunction
     // since the positive side drives which windows need exclusion.
