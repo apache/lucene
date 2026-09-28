@@ -55,6 +55,9 @@ public class ThaiTokenizer extends SegmentingTokenizerBase {
   /** used for breaking the text into sentences */
   private static final BreakIterator sentenceProto = BreakIterator.getSentenceInstance(Locale.ROOT);
 
+  /** Default buffer size in characters for Thai sentence segmentation */
+  public static final int DEFAULT_BUFFER_SIZE = BUFFERMAX;
+
   private final BreakIterator wordBreaker;
   private final CharArrayIterator wrapper = CharArrayIterator.newWordInstance();
 
@@ -82,6 +85,25 @@ public class ThaiTokenizer extends SegmentingTokenizerBase {
     this(DEFAULT_TOKEN_ATTRIBUTE_FACTORY, userDictionary);
   }
 
+  /**
+   * Creates a new ThaiTokenizer with a custom buffer size.
+   *
+   * @param bufferSize internal buffer size in characters
+   */
+  public ThaiTokenizer(int bufferSize) {
+    this(DEFAULT_TOKEN_ATTRIBUTE_FACTORY, null, bufferSize);
+  }
+
+  /**
+   * Creates a new ThaiTokenizer with a user dictionary and custom buffer size.
+   *
+   * @param userDictionary custom dictionary of words, or null for default dictionary only
+   * @param bufferSize internal buffer size in characters
+   */
+  public ThaiTokenizer(CharArraySet userDictionary, int bufferSize) {
+    this(DEFAULT_TOKEN_ATTRIBUTE_FACTORY, userDictionary, bufferSize);
+  }
+
   /** Creates a new ThaiTokenizer, supplying the AttributeFactory */
   public ThaiTokenizer(AttributeFactory factory) {
     this(factory, null);
@@ -94,7 +116,18 @@ public class ThaiTokenizer extends SegmentingTokenizerBase {
    * @param userDictionary custom dictionary of words, or null for default dictionary only
    */
   public ThaiTokenizer(AttributeFactory factory, CharArraySet userDictionary) {
-    super(factory, (BreakIterator) sentenceProto.clone());
+    this(factory, userDictionary, BUFFERMAX);
+  }
+
+  /**
+   * Creates a new ThaiTokenizer, supplying the AttributeFactory, user dictionary, and buffer size.
+   *
+   * @param factory AttributeFactory to use
+   * @param userDictionary custom dictionary of words, or null for default dictionary only
+   * @param bufferSize internal buffer size in characters
+   */
+  public ThaiTokenizer(AttributeFactory factory, CharArraySet userDictionary, int bufferSize) {
+    super(factory, (BreakIterator) sentenceProto.clone(), bufferSize);
     if (!DBBI_AVAILABLE) {
       throw new UnsupportedOperationException(
           "This JRE does not have support for Thai segmentation");
@@ -115,6 +148,11 @@ public class ThaiTokenizer extends SegmentingTokenizerBase {
       this.minDictWordLen = 0;
       this.maxDictWordLen = 0;
     }
+  }
+
+  @Override
+  protected boolean isSafeEnd(char ch) {
+    return super.isSafeEnd(ch) || Character.isWhitespace(ch);
   }
 
   @Override

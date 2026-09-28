@@ -44,12 +44,14 @@ public class ThaiTokenizerFactory extends TokenizerFactory implements ResourceLo
   public static final String NAME = "thai";
 
   private final String dictFile;
+  private final int bufferSize;
   private CharArraySet dictionary;
 
   /** Creates a new ThaiTokenizerFactory */
   public ThaiTokenizerFactory(Map<String, String> args) {
     super(args);
     dictFile = get(args, "dictionary");
+    bufferSize = getInt(args, "bufferSize", ThaiTokenizer.DEFAULT_BUFFER_SIZE);
     if (!args.isEmpty()) {
       throw new IllegalArgumentException("Unknown parameters: " + args);
     }
@@ -69,6 +71,6 @@ public class ThaiTokenizerFactory extends TokenizerFactory implements ResourceLo
 
   @Override
   public Tokenizer create(AttributeFactory factory) {
-    return new ThaiTokenizer(factory, dictionary);
+    return new ThaiTokenizer(factory, dictionary, bufferSize);
   }
 }
