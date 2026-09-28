@@ -47,6 +47,7 @@ import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.ChecksumIndexInput;
+import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.FileDataHint;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
@@ -453,6 +454,15 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     return null;
   }
 
+  /**
+   * The quantized query vectors staged for the merge scorer. A graph build reads them by ordinal as
+   * it walks, so they are read at random.
+   */
+  private static IOContext queryDataContext(SegmentWriteState segmentWriteState) {
+    return segmentWriteState.context.withHints(
+        FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM);
+  }
+
   @Override
   public CloseableRandomVectorScorerSupplier getRandomVectorScorerSupplierForMerge(
       FieldInfo fieldInfo, SegmentWriteState segmentWriteState) throws IOException {
@@ -479,7 +489,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     DocsWithFieldSet docsWithField;
     try (IndexOutput tempScoreQuantizedVector =
         segmentWriteState.directory.createTempOutput(
-            segmentWriteState.segmentInfo.name, "queries", segmentWriteState.context)) {
+            segmentWriteState.segmentInfo.name, "queries", queryDataContext(segmentWriteState))) {
       tempScoreQuantizedVectorName = tempScoreQuantizedVector.getName();
       docsWithField =
           writeBinarizedQueryData(
@@ -498,7 +508,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     }
     IndexInput quantizedScoreDataInput =
         segmentWriteState.directory.openInput(
-            tempScoreQuantizedVectorName, segmentWriteState.context);
+            tempScoreQuantizedVectorName, queryDataContext(segmentWriteState));
     try {
       OffHeapScalarQuantizedVectorValues scoreVectorValues =
           new OffHeapScalarQuantizedVectorValues.DenseOffHeapVectorValues(
