@@ -192,12 +192,6 @@ Improvements
 Optimizations
 ---------------------
 
-* GITHUB#16682: Carry file open hints on merge and flush contexts, which used to drop them. An HNSW
-  format now carries the random access hint for the vectors it reads, rather than the flat format
-  holding them claiming it whatever reads them. Add NoReuseHint, set by stored fields, term vectors
-  and the raw vectors kept only to rescore, so an application can tell those apart from the files it
-  wants to keep in memory. (Jim Ferenczi)
-
 * GITHUB#16431: Add support for Block-Max WAND dynamic score skipping in FunctionScoreQuery
   and DoubleValuesSource using DocValuesSkipper. (Rajat Jain)
 
@@ -464,6 +458,12 @@ Improvements
 
 Optimizations
 ---------------------
+
+* GITHUB#16682: Carry file open hints on merge and flush contexts, which used to drop them. An HNSW
+  format now carries the random access hint for the vectors it reads, rather than the flat format
+  holding them claiming it whatever reads them. Add NoReuseHint, set by stored fields, term vectors
+  and the raw vectors kept only to rescore, so an application can tell those apart from the files it
+  wants to keep in memory. (Jim Ferenczi)
 
 * GITHUB#16593: DenseLiveDocs and SparseLiveDocs implement Bits#applyMask in bulk, restoring the
   word-at-a-time masking that live docs had before GITHUB#13084 exposed them as LiveDocs rather than
