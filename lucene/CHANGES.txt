@@ -121,6 +121,10 @@ API Changes
   so that per-file bookkeeping in subclasses applies to copied files; subclasses that want an
   optimized copy (e.g. HardlinkCopyDirectoryWrapper) may override to delegate. (Tim Allison)
 
+* GITHUB#16707: Add DrillSideways#search that takes drill sideways CollectorManagers and returns
+  their results in a Map keyed by dimension name, which is easier to use than the deprecated
+  position based List. (Egor Potemkin)
+
 New Features
 ---------------------
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of

@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -77,6 +78,7 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TotalHitCountCollectorManager;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
@@ -250,6 +252,118 @@ public class TestDrillSideways extends FacetTestCase {
     // test getTopChildren(0, dim)
     expectThrows(
         IllegalArgumentException.class, () -> concurrentResult.facets.getTopChildren(0, "Color"));
+
+    writer.close();
+    IOUtils.close(searcher.getIndexReader(), taxoReader, taxoWriter, dir, taxoDir);
+  }
+
+  public void testCollectorManagersPerDimension() throws Exception {
+    Directory dir = newDirectory();
+    Directory taxoDir = newDirectory();
+    DirectoryTaxonomyWriter taxoWriter =
+        new DirectoryTaxonomyWriter(taxoDir, IndexWriterConfig.OpenMode.CREATE);
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+    FacetsConfig config = new FacetsConfig();
+
+    for (String[] colorAndSize :
+        new String[][] {
+          {"Red", "Small"}, {"Red", "Large"}, {"Blue", "Small"}, {"Green", "Small"}
+        }) {
+      Document doc = new Document();
+      doc.add(new FacetField("Color", colorAndSize[0]));
+      doc.add(new FacetField("Size", colorAndSize[1]));
+      writer.addDocument(config.build(taxoWriter, doc));
+    }
+
+    IndexSearcher searcher = getNewSearcher(writer.getReader());
+    TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
+    DrillSideways ds = getNewDrillSideways(searcher, config, taxoReader);
+
+    DrillDownQuery ddq = new DrillDownQuery(config);
+    ddq.add("Color", "Red");
+    ddq.add("Size", "Small");
+
+    // Deliberately in the opposite order to the order in which dimensions were added to the query,
+    // to make sure that collector managers are matched by dimension rather than by position:
+    Map<String, TotalHitCountCollectorManager> collectorManagers = new LinkedHashMap<>();
+    collectorManagers.put("Size", new TotalHitCountCollectorManager(searcher.getSlices()));
+    collectorManagers.put("Color", new TotalHitCountCollectorManager(searcher.getSlices()));
+
+    DrillSideways.ResultByDim<Integer, Integer> result =
+        ds.search(ddq, new TotalHitCountCollectorManager(searcher.getSlices()), collectorManagers);
+
+    // Only one doc matches both drill down dimensions:
+    assertEquals(Integer.valueOf(1), result.drillDownResult());
+    // Drill sideways on Color keeps Size=Small: Red/Small, Blue/Small and Green/Small match.
+    // Drill sideways on Size keeps Color=Red: Red/Small and Red/Large match.
+    assertEquals(Map.of("Color", 3, "Size", 2), result.drillSidewaysResults());
+    expectThrows(UnsupportedOperationException.class, () -> result.drillSidewaysResults().clear());
+
+    // The deprecated List based method returns the same results, ordered by dimension index:
+    DrillSideways.Result<Integer, Integer> resultByIndex =
+        ds.search(
+            ddq,
+            new TotalHitCountCollectorManager(searcher.getSlices()),
+            List.of(
+                new TotalHitCountCollectorManager(searcher.getSlices()),
+                new TotalHitCountCollectorManager(searcher.getSlices())));
+    assertEquals(Integer.valueOf(1), resultByIndex.drillDownResult());
+    assertEquals(List.of(3, 2), resultByIndex.drillSidewaysResults());
+
+    // A query without drill down dimensions requires an empty map:
+    DrillDownQuery noDimsQuery = new DrillDownQuery(config);
+    DrillSideways.ResultByDim<Integer, Integer> noDimsResult =
+        ds.search(noDimsQuery, new TotalHitCountCollectorManager(searcher.getSlices()), Map.of());
+    assertEquals(Integer.valueOf(4), noDimsResult.drillDownResult());
+    assertTrue(noDimsResult.drillSidewaysResults().isEmpty());
+
+    // Dimensions of the query that have no collector manager are not allowed:
+    IllegalArgumentException e =
+        expectThrows(
+            IllegalArgumentException.class,
+            () ->
+                ds.search(
+                    ddq,
+                    new TotalHitCountCollectorManager(searcher.getSlices()),
+                    Map.of("Color", new TotalHitCountCollectorManager(searcher.getSlices()))));
+    assertTrue(e.getMessage().contains("[Size]"));
+
+    // Collector managers for dimensions that are not in the query are not allowed either:
+    e =
+        expectThrows(
+            IllegalArgumentException.class,
+            () ->
+                ds.search(
+                    ddq,
+                    new TotalHitCountCollectorManager(searcher.getSlices()),
+                    Map.of(
+                        "Color",
+                        new TotalHitCountCollectorManager(searcher.getSlices()),
+                        "Size",
+                        new TotalHitCountCollectorManager(searcher.getSlices()),
+                        "Author",
+                        new TotalHitCountCollectorManager(searcher.getSlices()))));
+    assertTrue(e.getMessage().contains("[Author]"));
+
+    expectThrows(
+        IllegalArgumentException.class,
+        () ->
+            ds.search(
+                ddq,
+                new TotalHitCountCollectorManager(searcher.getSlices()),
+                (Map<String, TotalHitCountCollectorManager>) null));
+
+    expectThrows(
+        IllegalArgumentException.class,
+        () ->
+            ds.search(
+                ddq,
+                null,
+                Map.of(
+                    "Color",
+                    new TotalHitCountCollectorManager(searcher.getSlices()),
+                    "Size",
+                    new TotalHitCountCollectorManager(searcher.getSlices()))));
 
     writer.close();
     IOUtils.close(searcher.getIndexReader(), taxoReader, taxoWriter, dir, taxoDir);
