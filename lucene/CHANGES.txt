@@ -421,6 +421,10 @@ New Features
 Improvements
 ---------------------
 
+* GITHUB#16708: IndexWriter#addBatch now rejects non-finite float vector values and, with cosine
+  similarity, zero vectors in VectorColumns, matching the checks done by KnnFloatVectorField and
+  KnnByteVectorField. (Mayya Sharipova)
+
 * GITHUB#16298: Store doc values DISI data into a separate file. (Sagar Upadhyaya)
 
 * GITHUB#16247: Introduce CachingCollectorManager to parallelize search when using CachingCollector.
