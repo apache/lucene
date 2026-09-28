@@ -289,6 +289,21 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
   }
 
   /**
+   * Returns a DoubleValues instance for computing the vector similarity score per document against
+   * the float16 query vector
+   *
+   * @param ctx the context for which to return the DoubleValues
+   * @param queryVector float16 query vector
+   * @param vectorField knn float16 field name
+   * @return DoubleValues instance
+   * @throws IOException if an {@link IOException} occurs
+   */
+  public static DoubleValues similarityToQueryVector(
+      LeafReaderContext ctx, short[] queryVector, String vectorField) throws IOException {
+    return new Float16VectorSimilarityValuesSource(queryVector, vectorField).getValues(ctx, null);
+  }
+
+  /**
    * Creates a DoubleValuesSource that wraps a generic NumericDocValues field. Assumes no monotonic
    * direction by default (Monotonicity.NONE).
    *
