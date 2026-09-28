@@ -109,8 +109,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   // the reader this one was cloned from, which owns the mapping merges read
   private final Lucene90CompressingStoredFieldsReader original;
   private IndexInput mergeFieldsStream;
-  // merge instances handed out and not yet finished, so a reader that keeps one is not left holding
-  // a closed input
+  // merge instances handed out and not yet finished
   private int mergeInstances;
 
   // used by clone
@@ -726,9 +725,9 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   }
 
   /**
-   * The data file as a merge reads it, front to back. Read advice applies to a whole mapping, so a
-   * merge maps the file again rather than re-advising the one searches are reading at random.
-   * Mapped on the first merge and closed with this reader, since merge instances are never closed.
+   * The data file as a merge reads it, front to back. Advice applies to a whole mapping, so a merge
+   * maps the file again instead of changing the one searches use. Mapped on the first merge and
+   * released by {@link #finishMerge()}.
    */
   private synchronized IndexInput mergeFieldsStream() throws IOException {
     assert original == this;
@@ -742,7 +741,9 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
         try {
           mergeFieldsStream =
               directory.openInput(
-                  fieldsStreamFN, context.withHints(FileTypeHint.DATA, DataAccessHint.SEQUENTIAL));
+                  fieldsStreamFN,
+                  context.withHints(
+                      FileTypeHint.DATA, DataAccessHint.SEQUENTIAL, NoReuseHint.INSTANCE));
         } catch (FileNotFoundException | NoSuchFileException _) {
           // an open reader outlives its files, so fall back to the mapping it already holds
           mergeFieldsStream = fieldsStream;
@@ -753,8 +754,8 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   }
 
   /**
-   * Closes the mapping a merge used, once no merge instance is left holding it. The reader stays
-   * usable for searches, and a later merge maps the file again.
+   * Closes the mapping a merge used, once no merge instance holds it. A later merge maps the file
+   * again.
    */
   @Override
   public void finishMerge() throws IOException {

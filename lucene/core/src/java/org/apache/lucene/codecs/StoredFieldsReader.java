@@ -59,9 +59,8 @@ public abstract class StoredFieldsReader extends StoredFields implements Cloneab
   }
 
   /**
-   * Optional: release whatever {@link #getMergeInstance()} set up for this merge. Called once the
-   * merge is over, on the reader the merge instance came from, so a reader that opened a file of
-   * its own for merging can let it go rather than hold it for as long as the segment is open.
+   * Optional: release what {@link #getMergeInstance()} set up, on the reader it came from. Called
+   * once the merge is over.
    *
    * <p>The default implementation is empty
    */

@@ -19,6 +19,7 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.store.DataAccessHint;
@@ -27,6 +28,8 @@ import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.NoReuseHint;
+import org.apache.lucene.store.ReadOnceHint;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 /**
@@ -78,7 +81,13 @@ public class TestStoredFieldsMergeReadAdvice extends LuceneTestCase {
   private static List<Open> sequentialOpens(Opens opens) {
     List<Open> sequential = new ArrayList<>();
     for (Open open : opens.all()) {
-      if (open.name().endsWith(".fdt") && open.hint() == DataAccessHint.SEQUENTIAL) {
+      // integrity checks read a file once, front to back, and say so with READONCE
+      if (open.name().endsWith(".fdt")
+          && open.hint() == DataAccessHint.SEQUENTIAL
+          && open.hints().contains(ReadOnceHint.INSTANCE) == false) {
+        assertTrue(
+            "a merge reads the data file once and does not come back: " + open,
+            open.hints().contains(NoReuseHint.INSTANCE));
         sequential.add(open);
       }
     }
@@ -98,6 +107,10 @@ public class TestStoredFieldsMergeReadAdvice extends LuceneTestCase {
 
     String name() {
       return name;
+    }
+
+    Set<IOContext.FileOpenHint> hints() {
+      return context.hints();
     }
 
     DataAccessHint hint() {
