@@ -63,4 +63,51 @@ public class TestThaiTokenizer extends BaseTokenStreamTestCase {
     tokenizer.setReader(new StringReader("ภาษาไทย"));
     assertTokenStreamContents(tokenizer, new String[] {"ภาษา", "ไทย"});
   }
+
+  public void testLongTextAcrossBufferBoundary() throws IOException {
+    // Generate long Thai text (> 1024 chars) with spaces as clause boundaries
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < 110; i++) {
+      sb.append("ภาษาไทย "); // 9 chars per repetition, 110 * 9 = 990 chars
+    }
+    // Now at ~990 chars; add words spanning across index 1024
+    sb.append("มหาวิทยาลัย "); // 12 chars -> total ~1002
+    sb.append("กรุงเทพมหานคร "); // 14 chars -> total ~1016
+    sb.append("ประเทศไทย"); // 9 chars -> total ~1025, crossing 1024 boundary
+
+    Tokenizer tokenizer = new ThaiTokenizer();
+    tokenizer.setReader(new StringReader(sb.toString()));
+    tokenizer.reset();
+    boolean foundCrossingWord = false;
+    org.apache.lucene.analysis.tokenattributes.CharTermAttribute termAtt =
+        tokenizer.addAttribute(org.apache.lucene.analysis.tokenattributes.CharTermAttribute.class);
+    while (tokenizer.incrementToken()) {
+      String term = termAtt.toString();
+      if ("ประเทศ".equals(term)) {
+        foundCrossingWord = true;
+      }
+      assertFalse("Word should not be truncated into fragment 'ประ'", "ประ".equals(term));
+      assertFalse("Word should not be truncated into fragment 'เทศ'", "เทศ".equals(term));
+    }
+    tokenizer.end();
+    tokenizer.close();
+    assertTrue("Should find intact term 'ประเทศ'", foundCrossingWord);
+  }
+
+  public void testCustomBufferSize() throws IOException {
+    // Tiny buffer size of 32 chars
+    Tokenizer tokenizer = new ThaiTokenizer(32);
+    tokenizer.setReader(new StringReader("การทดสอบ ภาษาไทย มหาวิทยาลัย"));
+    assertTokenStreamContents(
+        tokenizer, new String[] {"การ", "ทดสอบ", "ภาษา", "ไทย", "มหาวิทยาลัย"});
+  }
+
+  public void testFactoryWithBufferSize() throws IOException {
+    java.util.Map<String, String> args = new java.util.HashMap<>();
+    args.put("bufferSize", "2048");
+    ThaiTokenizerFactory factory = new ThaiTokenizerFactory(args);
+    Tokenizer tokenizer = factory.create();
+    tokenizer.setReader(new StringReader("ภาษาไทย"));
+    assertTokenStreamContents(tokenizer, new String[] {"ภาษา", "ไทย"});
+  }
 }
