@@ -27,6 +27,7 @@ import static org.apache.lucene.document.column.ColumnBatchTestUtil.byteVectorTy
 import static org.apache.lucene.document.column.ColumnBatchTestUtil.float16VectorType;
 import static org.apache.lucene.document.column.ColumnBatchTestUtil.floatVectorType;
 import static org.apache.lucene.document.column.ColumnBatchTestUtil.simpleBatch;
+import static org.apache.lucene.document.column.ColumnBatchTestUtil.vectorValuesCursor;
 
 import java.io.IOException;
 import org.apache.lucene.document.FieldType;
@@ -194,6 +195,25 @@ public class TestColumnBatchVectorColumn extends LuceneTestCase {
                 w.addBatch(
                     simpleBatch(2, new ArrayDenseFloatVectorColumn("v", vectorType, vectors))));
     assertTrue(e.getMessage(), e.getMessage().contains("expected dimension 3"));
+
+    // dense values cursor declaring the wrong dimension is rejected once per batch
+    float[][] shortVectors = {{1f, 2f}, {3f, 4f}};
+    e =
+        expectThrows(
+            IllegalArgumentException.class,
+            () ->
+                w.addBatch(
+                    simpleBatch(
+                        2,
+                        new ArrayDenseFloatVectorColumn("v", vectorType, shortVectors) {
+                          @Override
+                          public VectorValuesCursor<float[]> values() {
+                            return vectorValuesCursor(shortVectors, 2, random().nextBoolean());
+                          }
+                        })));
+    assertTrue(
+        e.getMessage(),
+        e.getMessage().contains("expected dimension 3 but values cursor has dimension 2"));
     w.rollback();
     dir.close();
   }
@@ -568,5 +588,35 @@ public class TestColumnBatchVectorColumn extends LuceneTestCase {
     r.close();
     w.close();
     dir.close();
+  }
+
+  /** No vectors writer calls {@link VectorValuesCursor#fill} yet, so test it directly. */
+  public void testValidatingCursorFill() {
+    VectorSimilarityFunction sim = VectorSimilarityFunction.EUCLIDEAN;
+    FieldType vectorType = floatVectorType(2, sim);
+
+    // the valid prefix is copied, then the non-finite vector at doc 2 is rejected
+    float[][] vectors = {{1f, 2f}, {3f, 4f}, {5f, Float.NaN}};
+    VectorColumn<float[]> column = new ArrayDenseFloatVectorColumn("v", vectorType, vectors);
+    ValidatingVectorValuesCursor<float[]> cursor =
+        ValidatingVectorValuesCursor.ofFloats(column, column.values(), sim);
+    float[] buffer = new float[6];
+    cursor.fill(buffer, 0, 2);
+    assertArrayEquals(new float[] {1f, 2f, 3f, 4f, 0f, 0f}, buffer, 0f);
+    IllegalArgumentException e =
+        expectThrows(IllegalArgumentException.class, () -> cursor.fill(buffer, 4, 1));
+    assertTrue(e.getMessage(), e.getMessage().contains("non-finite value at vector[1]"));
+    assertTrue(e.getMessage(), e.getMessage().contains("at batch doc 2"));
+    // consuming past size() fails
+    expectThrows(IllegalStateException.class, () -> cursor.fill(buffer, 0, 2));
+
+    // a row longer than the dimension is rejected by the default fill, not truncated
+    float[][] ragged = {{1f, 2f}, {3f, 4f, 5f}};
+    VectorColumn<float[]> raggedColumn = new ArrayDenseFloatVectorColumn("v", vectorType, ragged);
+    ValidatingVectorValuesCursor<float[]> raggedCursor =
+        ValidatingVectorValuesCursor.ofFloats(raggedColumn, raggedColumn.values(), sim);
+    e = expectThrows(IllegalArgumentException.class, () -> raggedCursor.fill(new float[4], 0, 2));
+    assertTrue(
+        e.getMessage(), e.getMessage().contains("expected dimension 2 but got vector of length 3"));
   }
 }

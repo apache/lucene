@@ -1377,7 +1377,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
         // tag: indexed StringField
         addBinaryTupleColumn(cols, "tag", tagType, docs, from, toExcl, d -> d.tag);
 
-        // vec: float vectors (sparse)
+        // vec: float vectors (dense when every doc in the batch has one)
         addFloatVectorColumn(cols, "vec", vecType, docs, from, toExcl);
 
         w.addBatch(
@@ -1533,6 +1533,14 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     int n = 0;
     for (int i = from; i < toExcl; i++) if (docs[i].vec != null) n++;
     if (n == 0) return;
+    if (n == toExcl - from) {
+      float[][] values = new float[n][];
+      for (int i = from; i < toExcl; i++) {
+        values[i - from] = docs[i].vec;
+      }
+      cols.add(new ArrayDenseFloatVectorColumn(name, type, values));
+      return;
+    }
     int[] docIds = new int[n];
     float[][] values = new float[n][];
     int p = 0;
@@ -1552,6 +1560,14 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     ParityDoc[] docs = new ParityDoc[numDocs];
     for (int i = 0; i < numDocs; i++) {
       docs[i] = randomParityDoc(r);
+    }
+    if (r.nextBoolean()) {
+      // every doc has a vector, so each batch indexes "vec" through a dense column
+      for (ParityDoc d : docs) {
+        if (d.vec == null) {
+          d.vec = new float[] {r.nextFloat(), r.nextFloat()};
+        }
+      }
     }
 
     Directory batchDir = newDirectory();
