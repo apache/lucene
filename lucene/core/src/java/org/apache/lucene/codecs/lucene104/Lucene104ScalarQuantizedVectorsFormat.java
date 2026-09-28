@@ -24,6 +24,7 @@ import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.store.NoReuseHint;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
 
 /**
@@ -132,7 +133,7 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   @Override
   public FlatVectorsReader fieldsReader(SegmentReadState state) throws IOException {
     return new Lucene104ScalarQuantizedVectorsReader(
-        state, rawVectorFormat.fieldsReader(state), scorer);
+        state, rawVectorFormat.fieldsReader(rescoreOnly(state)), scorer);
   }
 
   @Override
@@ -151,5 +152,10 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
         + ", rawVectorFormat="
         + rawVectorFormat
         + ")";
+  }
+
+  /** The raw vectors are only read back to rescore. */
+  private static SegmentReadState rescoreOnly(SegmentReadState state) {
+    return new SegmentReadState(state, state.context.union(NoReuseHint.INSTANCE));
   }
 }
