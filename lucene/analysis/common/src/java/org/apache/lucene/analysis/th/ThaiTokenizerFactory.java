@@ -16,10 +16,14 @@
  */
 package org.apache.lucene.analysis.th;
 
+import java.io.IOException;
 import java.util.Map;
+import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.TokenizerFactory;
 import org.apache.lucene.util.AttributeFactory;
+import org.apache.lucene.util.ResourceLoader;
+import org.apache.lucene.util.ResourceLoaderAware;
 
 /**
  * Factory for {@link ThaiTokenizer}.
@@ -27,21 +31,25 @@ import org.apache.lucene.util.AttributeFactory;
  * <pre><code class="language-xml">
  * &lt;fieldType name="text_thai" class="solr.TextField" positionIncrementGap="100"&gt;
  *   &lt;analyzer&gt;
- *     &lt;tokenizer class="solr.ThaiTokenizerFactory"/&gt;
+ *     &lt;tokenizer class="solr.ThaiTokenizerFactory" dictionary="custom_words.txt"/&gt;
  *   &lt;/analyzer&gt;
  * &lt;/fieldType&gt;</code></pre>
  *
  * @since 4.10.0
  * @lucene.spi {@value #NAME}
  */
-public class ThaiTokenizerFactory extends TokenizerFactory {
+public class ThaiTokenizerFactory extends TokenizerFactory implements ResourceLoaderAware {
 
   /** SPI name */
   public static final String NAME = "thai";
 
+  private final String dictFile;
+  private CharArraySet dictionary;
+
   /** Creates a new ThaiTokenizerFactory */
   public ThaiTokenizerFactory(Map<String, String> args) {
     super(args);
+    dictFile = get(args, "dictionary");
     if (!args.isEmpty()) {
       throw new IllegalArgumentException("Unknown parameters: " + args);
     }
@@ -53,7 +61,14 @@ public class ThaiTokenizerFactory extends TokenizerFactory {
   }
 
   @Override
+  public void inform(ResourceLoader loader) throws IOException {
+    if (dictFile != null) {
+      dictionary = getWordSet(loader, dictFile, false);
+    }
+  }
+
+  @Override
   public Tokenizer create(AttributeFactory factory) {
-    return new ThaiTokenizer(factory);
+    return new ThaiTokenizer(factory, dictionary);
   }
 }
