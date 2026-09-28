@@ -31,7 +31,7 @@ import org.apache.lucene.analysis.TokenStream;
  *   &lt;/analyzer&gt;
  * &lt;/fieldType&gt;</code></pre>
  *
- * @since 11.0.0
+ * @since 10.6.0
  * @lucene.spi {@value #NAME}
  */
 public class ThaiRepeatFilterFactory extends TokenFilterFactory {

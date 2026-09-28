@@ -45,7 +45,7 @@ import org.apache.lucene.analysis.charfilter.BaseCharFilter;
  * <p>All character deletions and contractions correctly update the character offset map using
  * {@link #addOffCorrectMap(int, int)}.
  *
- * @since 11.0.0
+ * @since 10.6.0
  */
 public class ThaiCharFilter extends BaseCharFilter {
 
