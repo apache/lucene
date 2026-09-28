@@ -123,6 +123,16 @@ API Changes
 
 New Features
 ---------------------
+* GITHUB#16722: Support user dictionary in ThaiTokenizer and ThaiTokenizerFactory.
+  (Kamthorn Krairaksa)
+
+* GITHUB#16717: Add ThaiCharFilter, ThaiCharFilterFactory, and ThaiNormalizationFilter for
+  pre-tokenization character normalization and token-level normalization in ThaiAnalyzer.
+  (Kamthorn Krairaksa)
+
+* GITHUB#16720: Add ThaiRepeatFilter and ThaiRepeatFilterFactory to expand Thai repetition
+  mark (Maiyamok) with exact OffsetAttribute and highlighter compatibility. (Kamthorn Krairaksa)
+
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
   modern Hangul conjoining jamo before KoreanTokenizer. (Mingi Jeong)
 
@@ -145,6 +155,9 @@ New Features
 
 Improvements
 ---------------------
+* GITHUB#16718: Modernize ThaiAnalyzer default stopwords list based on contemporary Thai corpus
+  frequency analysis and linguistically validated stop words. (Kamthorn Krairaksa)
+
 * GITHUB#15704: Replace LinkedList with more efficient data structure. (Renato Haeberli)
 
 * GITHUB#15682: Use ArrayDeque instead of LinkedList in CompoundWordTokenFilterBase.java. (Renato Haeberli)
@@ -224,6 +237,8 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#10153: Allow configurable buffer size in SegmentingTokenizerBase and recognize whitespace as safe boundary in ThaiTokenizer to avoid splitting words across buffer boundaries. (Kamthorn Krairaksa)
+
 * GITHUB#16553: Fix stored-fields corruption when PerField#finish throws: the stored-fields frame
   was left open, causing "Wrote N docs, finish called with numDocs=M" at flush. (Michael Marshall)
 
@@ -413,12 +428,6 @@ New Features
   translates each term into a SpanTermQuery within a {@link SpanOrQuery}, but retains only the most frequent terms so it
   will not overflow the boolean max clause count. (Alan Woodward, Nishant Mehta, David Smiley)
 
-* GITHUB#16029: Scalar quantization option to disable centering and writing of float vectors. This
-  reduces vector storage costs by 4x or more but also reduces accuracy of distance estimates and
-  "float" vectors when requested. Using this feature is a one-way door -- once merged data blind
-  it is not possible to re-encode to a different quantization width or center vectors again.
-  (Trevor McCulloch)
-
 * GITHUB#16580: Allow in-place updates of SORTED_NUMERIC doc-values via
   IndexWriter#updateSortedNumericDocValue (and IndexWriter#updateDocValues with a single
   SortedNumericDocValuesField). An update sets a single value per matched document; the field may be
@@ -539,6 +548,8 @@ Optimizations
 * GITHUB#16696: Merging an HNSW graph over Lucene104HnswScalarQuantizedVectorsFormat in its default
   CENTERED mode, with an asymmetric encoding of a float32 field, no longer reads the merged float
   vectors back to build the merge scorer. (John Maurice)
+
+* GITHUB#16669: Use intoBitSet to speed up ReqExclBulkScorer with dense exclusions. (Ke Wei)
 
 Bug Fixes
 ---------------------
