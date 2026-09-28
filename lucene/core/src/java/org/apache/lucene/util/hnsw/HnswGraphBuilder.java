@@ -489,6 +489,7 @@ public class HnswGraphBuilder implements HnswBuilder {
       throws IOException {
     boolean[] mask = new boolean[candidates.size()];
     // Select the best maxConnOnLevel neighbors of the new node, applying the diversity heuristic
+    cands:
     for (int i = candidates.size() - 1; neighbors.size() < maxConnOnLevel && i >= 0; i--) {
       // compare each neighbor (in distance order) against the closer neighbors selected so far,
       // only adding it if it is closer to the target than to any of the other selected neighbors
@@ -504,6 +505,14 @@ public class HnswGraphBuilder implements HnswBuilder {
         // here we don't need to lock, because there's no incoming link so no others is able to
         // discover this node such that no others will modify this neighbor array as well
         if (isLinkRepair) {
+          // there's a very small chance this is trying to add a duplicate node,
+          // if the scoring function is estimated and the highest score is NOT
+          // the identity function (which would already be filtered out by diversityCheck)
+          for (int j = 0; j < neighbors.size(); j++) {
+            if (neighbors.nodes()[j] == node) {
+              continue cands;
+            }
+          }
           neighbors.addOutOfOrder(cNode, cScore);
         } else {
           neighbors.addInOrder(cNode, cScore);
