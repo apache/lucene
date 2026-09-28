@@ -29,8 +29,6 @@ import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
-import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
-import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsWriter;
 import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.MergeScheduler;
 import org.apache.lucene.index.SegmentReadState;
@@ -41,10 +39,13 @@ import org.apache.lucene.util.hnsw.HnswGraph;
 /**
  * An HNSW vector format that de-duplicates raw vectors.
  *
- * <p>Graph construction and search are identical to {@link
- * org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat}. A {@link DedupFlatVectorsFormat} is
- * used for the flat vector storage, which stores each distinct vector exactly once, shared across
- * all documents that reference it.
+ * <p>Unlike {@link org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat}, which builds one
+ * HNSW node per document, this format builds a single graph node per <b>distinct</b> vector (see
+ * {@link DedupHnswVectorsWriter}), saving graph construction time and index size when many
+ * documents share the same vector. At search time the graph is traversed over distinct vectors and
+ * each match is expanded back to all documents that reference it (see {@link
+ * DedupHnswVectorsReader}). A {@link DedupFlatVectorsFormat} is used for the flat vector storage,
+ * which stores each distinct vector exactly once, shared across all documents that reference it.
  *
  * <p>This format is suitable for high-performance filtered vector search when filter information is
  * available at indexing time. In addition to the primary vector field, the user creates separate
@@ -193,22 +194,13 @@ public final class DedupHnswVectorsFormat extends KnnVectorsFormat {
 
   @Override
   public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    // TODO: Can we have an HNSW writer that uses de-duplication information to speed up graph
-    //  construction?
-    return new Lucene99HnswVectorsWriter(
-        state,
-        maxConn,
-        beamWidth,
-        FORMAT,
-        FORMAT.fieldsWriter(state),
-        numMergeWorkers,
-        mergeExec,
-        tinySegmentsThreshold);
+    return new DedupHnswVectorsWriter(
+        state, maxConn, beamWidth, tinySegmentsThreshold, FORMAT, FORMAT.fieldsWriter(state));
   }
 
   @Override
   public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new Lucene99HnswVectorsReader(state, FORMAT.fieldsReader(state));
+    return new DedupHnswVectorsReader(state, FORMAT.fieldsReader(state));
   }
 
   @Override

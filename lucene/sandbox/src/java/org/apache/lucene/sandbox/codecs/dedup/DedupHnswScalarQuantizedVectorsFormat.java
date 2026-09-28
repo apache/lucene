@@ -29,8 +29,6 @@ import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
-import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
-import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsWriter;
 import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.MergeScheduler;
 import org.apache.lucene.index.SegmentReadState;
@@ -43,10 +41,11 @@ import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncod
  * An HNSW vector format that de-duplicates vectors, storing each distinct vector once in both raw
  * and scalar quantized form.
  *
- * <p>Graph construction and search are identical to {@link
- * org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat}, with searches scoring against the
- * quantized vectors. A {@link DedupScalarQuantizedVectorsFormat} is used for the flat vector
- * storage, which stores each distinct vector exactly once, shared across all documents that
+ * <p>The HNSW graph is built over the <b>distinct</b> vectors (one node per unique vector; see
+ * {@link DedupHnswVectorsWriter}) rather than one node per document, and searches score the query
+ * against the quantized distinct vectors and expand each match to all referencing documents (see
+ * {@link DedupHnswVectorsReader}). A {@link DedupScalarQuantizedVectorsFormat} is used for the flat
+ * vector storage, which stores each distinct vector exactly once, shared across all documents that
  * reference it. See {@link DedupHnswVectorsFormat} for the intended multi-field usage pattern.
  *
  * <p>If you customize this format, be sure to <b>share the same instance</b> of the underlying
@@ -209,20 +208,18 @@ public final class DedupHnswScalarQuantizedVectorsFormat extends KnnVectorsForma
 
   @Override
   public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new Lucene99HnswVectorsWriter(
+    return new DedupHnswVectorsWriter(
         state,
         maxConn,
         beamWidth,
+        tinySegmentsThreshold,
         flatVectorsFormat,
-        flatVectorsFormat.fieldsWriter(state),
-        numMergeWorkers,
-        mergeExec,
-        tinySegmentsThreshold);
+        flatVectorsFormat.fieldsWriter(state));
   }
 
   @Override
   public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new Lucene99HnswVectorsReader(state, flatVectorsFormat.fieldsReader(state));
+    return new DedupHnswVectorsReader(state, flatVectorsFormat.fieldsReader(state));
   }
 
   @Override

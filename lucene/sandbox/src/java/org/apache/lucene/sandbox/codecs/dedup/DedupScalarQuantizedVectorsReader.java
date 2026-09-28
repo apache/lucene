@@ -128,23 +128,32 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
       }
     }
 
-    this.vectorData =
-        openDataInput(
-            state,
-            versionMeta,
-            vectorDataCodecName,
-            vectorDataExtension,
-            versionStart,
-            versionCurrent);
+    IndexInput vectorDataInput = null;
+    IndexInput quantizedVectorDataInput = null;
+    try {
+      vectorDataInput =
+          openDataInput(
+              state,
+              versionMeta,
+              vectorDataCodecName,
+              vectorDataExtension,
+              versionStart,
+              versionCurrent);
 
-    this.quantizedVectorData =
-        openDataInput(
-            state,
-            versionMeta,
-            quantizedVectorDataCodecName,
-            quantizedVectorDataExtension,
-            versionStart,
-            versionCurrent);
+      quantizedVectorDataInput =
+          openDataInput(
+              state,
+              versionMeta,
+              quantizedVectorDataCodecName,
+              quantizedVectorDataExtension,
+              versionStart,
+              versionCurrent);
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, vectorDataInput, quantizedVectorDataInput);
+      throw t;
+    }
+    this.vectorData = vectorDataInput;
+    this.quantizedVectorData = quantizedVectorDataInput;
   }
 
   private void readMetaBody(ChecksumIndexInput meta, FieldInfos fieldInfos) throws IOException {

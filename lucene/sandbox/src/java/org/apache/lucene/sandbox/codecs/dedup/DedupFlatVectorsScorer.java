@@ -57,6 +57,79 @@ sealed class DedupFlatVectorsScorer implements FlatVectorsScorer
     return vectorValues;
   }
 
+  /**
+   * A {@link RandomVectorScorerSupplier} whose ordinals are <b>group</b> ordinals (one per distinct
+   * vector), scoring against the values' <b>raw</b> {@link DedupVectorValues#getGroupView() group
+   * view} using the full-precision flat scorer.
+   *
+   * <p>Unlike {@link #getRandomVectorScorerSupplier(VectorSimilarityFunction, KnnVectorValues)},
+   * which returns a supplier over per-document (field) ordinals that internally resolve to groups,
+   * this supplier operates purely in group-ordinal space. It is used by {@link
+   * DedupHnswVectorsWriter} to build a single HNSW graph over the distinct vectors of a field.
+   *
+   * <p>Graph construction always uses the raw group vectors (never the quantized view). This keeps
+   * construction encoding-agnostic — in particular it avoids the node-vs-node quantized supplier,
+   * which is unsupported for asymmetric encodings — while search still scores the query against the
+   * appropriate (quantized) group view via {@link #getGroupRandomVectorScorer}.
+   */
+  RandomVectorScorerSupplier getGroupRandomVectorScorerSupplier(
+      VectorSimilarityFunction similarityFunction, DedupVectorValues dedupValues)
+      throws IOException {
+    // Use the raw group view scored by the full-precision flat scorer (FLAT_SCORER), not the
+    // (possibly quantized) delegate, so any scalar encoding can build a graph.
+    return FLAT_SCORER.getRandomVectorScorerSupplier(
+        similarityFunction, dedupValues.getGroupView());
+  }
+
+  /**
+   * A {@link RandomVectorScorer} for a query {@code target} whose ordinals are <b>group</b>
+   * ordinals, scoring against the values' {@link DedupVectorValues#getGroupView() group view}. Used
+   * by {@link DedupHnswVectorsReader} to search the group graph. The returned scorer's {@code
+   * maxOrd()} is the number of distinct vectors, and {@code ordToDoc}/{@code getAcceptOrds} operate
+   * in group-ordinal space (the caller is responsible for expanding groups back to documents).
+   */
+  RandomVectorScorer getGroupRandomVectorScorer(
+      VectorSimilarityFunction similarityFunction, DedupVectorValues dedupValues, float[] target)
+      throws IOException {
+    DedupVectorValues scoringValues = scoringGroupValues(dedupValues);
+    return delegate.getRandomVectorScorer(similarityFunction, scoringValues.getGroupView(), target);
+  }
+
+  /**
+   * Byte-target variant of {@link #getGroupRandomVectorScorer(VectorSimilarityFunction,
+   * DedupVectorValues, float[])}.
+   */
+  RandomVectorScorer getGroupRandomVectorScorer(
+      VectorSimilarityFunction similarityFunction, DedupVectorValues dedupValues, byte[] target)
+      throws IOException {
+    DedupVectorValues scoringValues = scoringGroupValues(dedupValues);
+    return delegate.getRandomVectorScorer(similarityFunction, scoringValues.getGroupView(), target);
+  }
+
+  /**
+   * Float16-target variant of {@link #getGroupRandomVectorScorer(VectorSimilarityFunction,
+   * DedupVectorValues, float[])}.
+   */
+  RandomVectorScorer getGroupRandomVectorScorer(
+      VectorSimilarityFunction similarityFunction, DedupVectorValues dedupValues, short[] target)
+      throws IOException {
+    DedupVectorValues scoringValues = scoringGroupValues(dedupValues);
+    return delegate.getRandomVectorScorer(similarityFunction, scoringValues.getGroupView(), target);
+  }
+
+  /**
+   * Resolves the {@link DedupVectorValues} to use for group-ordinal scoring, unwrapping composite
+   * (raw-and-quantized) values to their scoring view so that quantized fields score against the
+   * quantized group view, exactly as {@link #getRandomVectorScorer} does per document.
+   */
+  private DedupVectorValues scoringGroupValues(DedupVectorValues dedupValues) {
+    KnnVectorValues unwrapped = unwrap((KnnVectorValues) dedupValues);
+    if (unwrapped instanceof DedupVectorValues unwrappedDedup) {
+      return unwrappedDedup;
+    }
+    return dedupValues;
+  }
+
   @Override
   public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues)
