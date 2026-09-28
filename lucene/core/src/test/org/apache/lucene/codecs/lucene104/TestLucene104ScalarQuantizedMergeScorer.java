@@ -38,7 +38,6 @@ import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter.MergeScorerData;
 import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
-import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.Mode;
 import org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsWriter;
@@ -308,51 +307,6 @@ public class TestLucene104ScalarQuantizedMergeScorer extends LuceneTestCase {
   }
 
   /**
-   * Verifies that {@link Mode#DATA_BLIND_WITH_FLOATS} prepares no data, leaving HNSW on the reader
-   * fallback: only {@link Mode#CENTERED} prepares. Both paths create query-data files, but only the
-   * writer path returns one as a handoff.
-   *
-   * <p>{@link Mode#DATA_BLIND_WITHOUT_FLOATS} rejects asymmetric encodings, so that case expects an
-   * exception.
-   */
-  public void testDataBlindModesKeepTheReaderPath() throws IOException {
-    for (ScalarEncoding encoding : asymmetricEncodings()) {
-      List<MergeScorerData> handles = new ArrayList<>();
-      MergeCounts counts =
-          runMerge(
-              new HnswOverFlatFormat(
-                  new CapturingFlatFormat(encoding, Mode.DATA_BLIND_WITH_FLOATS, handles),
-                  ALWAYS_GRAPH),
-              VectorSimilarityFunction.EUCLIDEAN,
-              true,
-              true);
-      assertEquals("a data-blind merge prepared a hand-off: " + handles, List.of(), handles);
-      assertEquals(
-          "the reader fallback did not write its own query file: " + counts.handOffs(),
-          1,
-          counts.handOffs().size());
-      assertTrue(
-          "the data-blind merge did not read the merged vectors back: "
-              + counts.mergedRawBytesRead()
-              + " bytes for "
-              + encoding,
-          counts.mergedRawBytesRead() >= (long) DIM * Float.BYTES * 2 * DOCS_PER_SEGMENT);
-
-      expectThrows(
-          IllegalArgumentException.class,
-          () ->
-              new Lucene104HnswScalarQuantizedVectorsFormat(
-                  encoding,
-                  Mode.DATA_BLIND_WITHOUT_FLOATS,
-                  MAX_CONN,
-                  BEAM_WIDTH,
-                  1,
-                  null,
-                  ALWAYS_GRAPH));
-    }
-  }
-
-  /**
    * Verifies that {@link IndexWriter#addIndexes(CodecReader...)} merges readers whose field numbers
    * differ from their underlying segments. The flat writer must resolve the field by name.
    */
@@ -413,8 +367,7 @@ public class TestLucene104ScalarQuantizedMergeScorer extends LuceneTestCase {
     ScalarEncoding encoding = randomAsymmetricEncoding();
     List<MergeScorerData> handles = new ArrayList<>();
     runMerge(
-        new HnswOverFlatFormat(
-            new CapturingFlatFormat(encoding, Mode.CENTERED, handles), ALWAYS_GRAPH),
+        new HnswOverFlatFormat(new CapturingFlatFormat(encoding, handles), ALWAYS_GRAPH),
         VectorSimilarityFunction.EUCLIDEAN,
         true,
         true);
@@ -978,14 +931,14 @@ public class TestLucene104ScalarQuantizedMergeScorer extends LuceneTestCase {
     private final ScalarEncoding encoding;
 
     NoPrepareFlatFormat(ScalarEncoding encoding) {
-      super(encoding, Mode.CENTERED);
+      super(encoding);
       this.encoding = encoding;
     }
 
     @Override
     public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
       return new Lucene104ScalarQuantizedVectorsWriter(
-          state, encoding, Mode.CENTERED, RAW_FORMAT.fieldsWriter(state), QUANTIZED_SCORER) {
+          state, encoding, RAW_FORMAT.fieldsWriter(state), QUANTIZED_SCORER) {
         @Override
         public MergeScorerData mergeOneFlatVectorFieldForMergeScorer(
             FieldInfo fieldInfo, MergeState mergeState, IntPredicate needsMergeScorer)
@@ -1000,20 +953,18 @@ public class TestLucene104ScalarQuantizedMergeScorer extends LuceneTestCase {
   /** The shipped flat format, keeping every hand-off it prepares for the test to inspect. */
   private static final class CapturingFlatFormat extends Lucene104ScalarQuantizedVectorsFormat {
     private final ScalarEncoding encoding;
-    private final Mode mode;
     private final List<MergeScorerData> handles;
 
-    CapturingFlatFormat(ScalarEncoding encoding, Mode mode, List<MergeScorerData> handles) {
-      super(encoding, mode);
+    CapturingFlatFormat(ScalarEncoding encoding, List<MergeScorerData> handles) {
+      super(encoding);
       this.encoding = encoding;
-      this.mode = mode;
       this.handles = handles;
     }
 
     @Override
     public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
       return new Lucene104ScalarQuantizedVectorsWriter(
-          state, encoding, mode, RAW_FORMAT.fieldsWriter(state), QUANTIZED_SCORER) {
+          state, encoding, RAW_FORMAT.fieldsWriter(state), QUANTIZED_SCORER) {
         @Override
         public MergeScorerData mergeOneFlatVectorFieldForMergeScorer(
             FieldInfo fieldInfo, MergeState mergeState, IntPredicate needsMergeScorer)
