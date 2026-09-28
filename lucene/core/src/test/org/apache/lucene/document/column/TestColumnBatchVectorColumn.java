@@ -196,6 +196,71 @@ public class TestColumnBatchVectorColumn extends LuceneTestCase {
     dir.close();
   }
 
+  public void testFloatVectorValueValidation() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+    FieldType euclidean = floatVectorType(2, VectorSimilarityFunction.EUCLIDEAN);
+    FieldType cosine = floatVectorType(2, VectorSimilarityFunction.COSINE);
+
+    // non-finite, dense
+    float bad = random().nextBoolean() ? Float.NaN : Float.POSITIVE_INFINITY;
+    float[][] denseVectors = {{1f, 2f}, {3f, bad}};
+    IllegalArgumentException e =
+        expectThrows(
+            IllegalArgumentException.class,
+            () ->
+                w.addBatch(
+                    simpleBatch(
+                        2, new ArrayDenseFloatVectorColumn("euc", euclidean, denseVectors))));
+    assertTrue(e.getMessage(), e.getMessage().contains("non-finite value at vector[1]"));
+    assertTrue(e.getMessage(), e.getMessage().contains("at batch doc 1"));
+
+    // non-finite, sparse
+    int[] docIds = {0, 2};
+    float[][] sparseVectors = {{1f, 2f}, {Float.NEGATIVE_INFINITY, 4f}};
+    e =
+        expectThrows(
+            IllegalArgumentException.class,
+            () ->
+                w.addBatch(
+                    simpleBatch(
+                        3, new ArrayFloatVectorColumn("euc", euclidean, docIds, sparseVectors))));
+    assertTrue(e.getMessage(), e.getMessage().contains("non-finite value at vector[0]"));
+    assertTrue(e.getMessage(), e.getMessage().contains("at batch doc 2"));
+
+    // zero vector with COSINE
+    float[][] zeroVectors = {{1f, 2f}, {0f, 0f}};
+    e =
+        expectThrows(
+            IllegalArgumentException.class,
+            () ->
+                w.addBatch(
+                    simpleBatch(2, new ArrayDenseFloatVectorColumn("cos", cosine, zeroVectors))));
+    assertTrue(e.getMessage(), e.getMessage().contains("zero vector at batch doc 1"));
+
+    w.rollback();
+    dir.close();
+  }
+
+  public void testByteVectorValueValidation() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+    FieldType cosine = byteVectorType(2, VectorSimilarityFunction.COSINE);
+
+    // zero vector with COSINE
+    byte[][] zeroVectors = {{0, 0}, {1, 2}};
+    IllegalArgumentException e =
+        expectThrows(
+            IllegalArgumentException.class,
+            () ->
+                w.addBatch(
+                    simpleBatch(2, new ArrayDenseByteVectorColumn("cos", cosine, zeroVectors))));
+    assertTrue(e.getMessage(), e.getMessage().contains("zero vector at batch doc 0"));
+
+    w.rollback();
+    dir.close();
+  }
+
   public void testZeroDimensionFieldTypeFails() {
     FieldType bad = new FieldType();
     // No vector attributes set -> vectorDimension() == 0
