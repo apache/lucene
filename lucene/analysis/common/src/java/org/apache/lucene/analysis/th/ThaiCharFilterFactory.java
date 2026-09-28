@@ -31,7 +31,7 @@ import org.apache.lucene.analysis.CharFilterFactory;
  *   &lt;/analyzer&gt;
  * &lt;/fieldType&gt;</pre>
  *
- * @since 11.0.0
+ * @since 10.6.0
  * @lucene.spi {@value #NAME}
  */
 public class ThaiCharFilterFactory extends CharFilterFactory {
