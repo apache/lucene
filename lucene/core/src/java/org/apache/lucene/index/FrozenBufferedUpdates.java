@@ -284,15 +284,21 @@ final class FrozenBufferedUpdates {
           }
           if (dvUpdates == null) {
             if (isNumeric) {
+              DocValuesType dvType = value.getType();
               if (value.hasSingleValue()) {
                 dvUpdates =
                     new NumericDocValuesFieldUpdates.SingleValueNumericDocValuesFieldUpdates(
-                        delGen, updateField, segState.reader.maxDoc(), value.getNumericValue(0));
+                        delGen,
+                        updateField,
+                        dvType,
+                        segState.reader.maxDoc(),
+                        value.getNumericValue(0));
               } else {
                 dvUpdates =
                     new NumericDocValuesFieldUpdates(
                         delGen,
                         updateField,
+                        dvType,
                         value.getMinNumeric(),
                         value.getMaxNumeric(),
                         segState.reader.maxDoc());
