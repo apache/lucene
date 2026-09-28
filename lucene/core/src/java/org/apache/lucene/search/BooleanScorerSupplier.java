@@ -428,14 +428,18 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       }
       return new BlockMaxConjunctionBulkScorer(maxDoc, requiredScoring);
     }
+
+    // Pure filter conjunctions always have a constant score of 0, including in TOP_SCORES mode.
+    if (requiredScoring.isEmpty()
+        && maxDoc >= DenseConjunctionBulkScorer.WINDOW_SIZE
+        && leadCost >= maxDoc / DenseConjunctionBulkScorer.DENSITY_THRESHOLD_INVERSE) {
+      return DenseConjunctionBulkScorer.of(requiredNoScoring, maxDoc, 0f);
+    }
+
     if (scoreMode != ScoreMode.TOP_SCORES
         && requiredScoring.size() + requiredNoScoring.size() >= 2
         && requiredScoring.stream().map(Scorer::twoPhaseIterator).allMatch(Objects::isNull)) {
-      if (requiredScoring.isEmpty()
-          && maxDoc >= DenseConjunctionBulkScorer.WINDOW_SIZE
-          && leadCost >= maxDoc / DenseConjunctionBulkScorer.DENSITY_THRESHOLD_INVERSE) {
-        return DenseConjunctionBulkScorer.of(requiredNoScoring, maxDoc, 0f);
-      } else if (requiredNoScoring.stream()
+      if (requiredNoScoring.stream()
           .map(Scorer::twoPhaseIterator)
           .allMatch(Objects::isNull)) {
         return new ConjunctionBulkScorer(requiredScoring, requiredNoScoring);

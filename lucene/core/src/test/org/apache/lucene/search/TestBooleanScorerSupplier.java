@@ -588,4 +588,44 @@ public class TestBooleanScorerSupplier extends LuceneTestCase {
         new BooleanScorerSupplier(new FakeWeight(), subs, ScoreMode.TOP_SCORES, 0, 100).get(10);
     assertEquals(2.0, scorer.getMaxScore(DocIdSetIterator.NO_MORE_DOCS), 0.0);
   }
+
+  public void testPureFilterConjunctionUsesDenseConjunctionBulkScorer() throws IOException {
+    final int maxDoc = 10000;
+    final long threshold = maxDoc / DenseConjunctionBulkScorer.DENSITY_THRESHOLD_INVERSE;
+    final long denseCost = threshold * 2;
+
+    Map<Occur, Collection<ScorerSupplier>> subs = new EnumMap<>(Occur.class);
+    for (Occur occur : Occur.values()) {
+      subs.put(occur, new ArrayList<>());
+    }
+
+    subs.get(Occur.FILTER).add(new FakeScorerSupplier(denseCost, denseCost));
+    subs.get(Occur.FILTER).add(new FakeScorerSupplier(2 * denseCost, denseCost));
+
+    BulkScorer bulkScorer =
+        new BooleanScorerSupplier(new FakeWeight(), subs, ScoreMode.TOP_SCORES, 0, maxDoc)
+            .bulkScorer();
+    assertTrue(bulkScorer instanceof DenseConjunctionBulkScorer);
+
+    int[] hitCount = new int[1];
+    bulkScorer.score(
+        new LeafCollector() {
+          private Scorable scorer;
+
+          @Override
+          public void setScorer(Scorable scorer) {
+            this.scorer = scorer;
+          }
+
+          @Override
+          public void collect(int doc) throws IOException {
+            assertEquals(0f, scorer.score(), 0f);
+            hitCount[0]++;
+          }
+        },
+        null,
+        0,
+        maxDoc);
+    assertEquals(denseCost, hitCount[0]);
+  }
 }
