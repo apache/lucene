@@ -143,6 +143,9 @@ New Features
 
 * GITHUB#16473: Add scalar quantization support in Fp16 vector encoding. (Pulkit Gupta)
 
+* GITHUB#16725: Add Float16VectorSimilarityQuery for similarity threshold search over fp16 vectors.
+  (Recep Eken)
+
 Improvements
 ---------------------
 * GITHUB#15704: Replace LinkedList with more efficient data structure. (Renato Haeberli)
