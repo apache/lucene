@@ -12,10 +12,14 @@ on:
 
 permissions: {}
 
+# don't want to mark PRs as stale concurrently
+concurrency:
+  group: ${{ github.workflow }}
+
 jobs:
   stale:
     name: Mark stale PRs
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
 
     permissions:
       pull-requests: write # must comment/label PRs

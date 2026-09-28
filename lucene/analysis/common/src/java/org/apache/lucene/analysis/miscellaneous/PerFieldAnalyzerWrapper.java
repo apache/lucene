@@ -22,10 +22,11 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.DelegatingAnalyzerWrapper;
 
 /// This analyzer is used to facilitate scenarios where different fields require different analysis
-/// techniques. Use the Map argument in [#PerFieldAnalyzerWrapper(Analyzer, java.util.Map)] to
-/// add non-default analyzers for fields.
+/// techniques. Use the Map argument in [#PerFieldAnalyzerWrapper(Analyzer, java.util.Map)] to add
+/// non-default analyzers for fields.
 ///
 /// Example usage:
+///
 /// ```java
 /// Map<String,Analyzer> analyzerPerField = new HashMap<>();
 /// analyzerPerField.put("firstname", new KeywordAnalyzer());
@@ -35,8 +36,8 @@ import org.apache.lucene.analysis.DelegatingAnalyzerWrapper;
 ///   new PerFieldAnalyzerWrapper(new StandardAnalyzer(version), analyzerPerField);
 /// ```
 ///
-/// In this example, StandardAnalyzer will be used for all fields except "firstname" and
-/// "lastname", for which KeywordAnalyzer will be used.
+/// In this example, StandardAnalyzer will be used for all fields except "firstname" and "lastname",
+/// for which KeywordAnalyzer will be used.
 ///
 /// A PerFieldAnalyzerWrapper can be used like any other analyzer, for both indexing and query
 /// parsing.

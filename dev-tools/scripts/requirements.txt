@@ -15,6 +15,6 @@ PyGithub==2.10.0
 # JIRA processing in githubPRs
 jira==3.10.5
 # type-checking in "make lint"
-ty==0.0.75
+ty==0.0.77
 # linting in "make lint"
 ruff==0.16.5
