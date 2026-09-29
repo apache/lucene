@@ -200,6 +200,12 @@ final class BooleanScorerSupplier extends ScorerSupplier {
     final int numMustClauses = subs.get(Occur.MUST).size();
     final int numRequiredClauses = numMustClauses + subs.get(Occur.FILTER).size();
 
+    // ReqExclScorer avoids the overhead of bulk-loading prohibited matches when required clauses
+    // match at most 0.3% of documents; denser required clauses benefit from ReqExclBulkScorer.
+    if (subs.get(Occur.MUST_NOT).isEmpty() == false && cost() <= 3L * maxDoc / 1000) {
+      return null;
+    }
+
     BulkScorer positiveScorer;
     if (numRequiredClauses == 0) {
       // TODO: what is the right heuristic here?
@@ -240,12 +246,6 @@ final class BooleanScorerSupplier extends ScorerSupplier {
     }
 
     final long positiveScorerCost = positiveScorer.cost();
-
-    // Benchmarks from #16715 show a crossover around 0.3%: sparse required clauses are
-    // faster with ReqExclScorer, while denser clauses benefit from ReqExclBulkScorer.
-    if (subs.get(Occur.MUST_NOT).isEmpty() == false && positiveScorerCost <= 3L * maxDoc / 1000) {
-      return null;
-    }
 
     // Prohibited clauses are bulk-loaded within each window, so use an unbounded lead cost
     // when selecting their implementations. Keep positiveScorerCost for the disjunction
