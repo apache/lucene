@@ -53,14 +53,10 @@ import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 
 /**
- * Benchmarks dense interleaved MUST_NOT term disjunctions over a MatchAllDocsQuery.
+ * Benchmarks dense and sparse MUST_NOT term disjunctions over a {@link MatchAllDocsQuery}.
  *
- * <p>Most documents are indexed with every prohibited term except one rotating hole, which keeps
- * term posting lists dense enough that {@code DisjunctionDISIApproximation} splits some clauses
- * into linear-scanned iterators. Periodic pass-through documents have no prohibited terms, so the
- * query returns a small non-zero hit count while repeatedly invoking {@code ReqExclBulkScorer} and
- * the exclusion disjunction's {@code docIDRunEnd()} path. The default setup builds 10M documents
- * and force-merges to one segment to match the target regression scenario.
+ * <p>Excluded documents are assigned one prohibited term in round-robin order. The dense scenario
+ * excludes most documents, while the sparse scenario excludes one document per interval.
  */
 @State(Scope.Benchmark)
 @BenchmarkMode(Mode.Throughput)
@@ -75,7 +71,8 @@ public class MustNotBooleanQueryBenchmark {
 
   private static final String EXCLUDED_FIELD = "excluded";
   private static final String EXCLUDED_TERM_PREFIX = "term";
-  private static final int PASS_THROUGH_INTERVAL = 128;
+  private static final String DENSE = "dense";
+  private static final String SPARSE = "sparse";
 
   private Directory dir;
   private IndexReader reader;
@@ -91,6 +88,12 @@ public class MustNotBooleanQueryBenchmark {
 
     @Param({"3", "7", "11"})
     public int mustNotTermCount;
+
+    @Param({DENSE})
+    public String distribution;
+
+    @Param({"128"})
+    public int interval;
   }
 
   @Setup(Level.Trial)
@@ -100,7 +103,8 @@ public class MustNotBooleanQueryBenchmark {
 
     try (IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig())) {
       for (int docID = 0; docID < params.docCount; docID++) {
-        writer.addDocument(document(docID, params.mustNotTermCount));
+        writer.addDocument(
+            document(docID, params.mustNotTermCount, params.distribution, params.interval));
       }
       writer.forceMerge(1);
       reader = DirectoryReader.open(writer);
@@ -110,23 +114,33 @@ public class MustNotBooleanQueryBenchmark {
     searcher.setQueryCache(null);
     query = query(params.mustNotTermCount);
     collectorManager = new TotalHitCountCollectorManager(searcher.getSlices());
-    int expectedHitCount = (params.docCount - 1) / PASS_THROUGH_INTERVAL + 1;
+    int intervalDocCount = (params.docCount - 1) / params.interval + 1;
+    int expectedHitCount =
+        DENSE.equals(params.distribution) ? intervalDocCount : params.docCount - intervalDocCount;
     int actualHitCount = searcher.search(query, collectorManager);
     if (actualHitCount != expectedHitCount) {
       throw new AssertionError("expected " + expectedHitCount + " hits but got " + actualHitCount);
     }
   }
 
-  private static Document document(int docID, int mustNotTermCount) {
+  private static Document document(
+      int docID, int mustNotTermCount, String distribution, int interval) {
     Document doc = new Document();
-    if (docID % PASS_THROUGH_INTERVAL == 0) {
-      return doc;
-    }
-    int missingTerm = docID % mustNotTermCount;
-    for (int termOrd = 0; termOrd < mustNotTermCount; termOrd++) {
-      if (termOrd != missingTerm) {
-        doc.add(new StringField(EXCLUDED_FIELD, term(termOrd), Field.Store.NO));
-      }
+    switch (distribution) {
+      case DENSE:
+        if (docID % interval != 0) {
+          doc.add(new StringField(EXCLUDED_FIELD, term(docID % mustNotTermCount), Field.Store.NO));
+        }
+        break;
+      case SPARSE:
+        if (docID % interval == 0) {
+          doc.add(
+              new StringField(
+                  EXCLUDED_FIELD, term((docID / interval) % mustNotTermCount), Field.Store.NO));
+        }
+        break;
+      default:
+        throw new IllegalArgumentException("Unknown distribution: " + distribution);
     }
     return doc;
   }

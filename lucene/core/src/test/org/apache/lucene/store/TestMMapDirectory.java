@@ -148,6 +148,7 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
     hints.addAll(Arrays.asList(FileTypeHint.values()));
     hints.addAll(Arrays.asList(PreloadHint.values()));
     hints.addAll(Arrays.asList(ReadOnceHint.values()));
+    hints.addAll(Arrays.asList(NoReuseHint.values()));
     for (var hint : hints) {
       var context = new DefaultIOContext(hint);
       assertEquals(Constants.DEFAULT_READADVICE, func.apply("e", context).get());

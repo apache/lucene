@@ -28,11 +28,9 @@ import org.apache.lucene.queryparser.flexible.messages.MessageImpl;
  * string. For example "+t1 -t2 t3" will have a tree of:
  *
  * <blockquote>
- *
  * &lt;BooleanQueryNode&gt; &lt;ModifierQueryNode modifier="MOD_REQ"&gt; &lt;t1/&gt;
  * &lt;/ModifierQueryNode&gt; &lt;ModifierQueryNode modifier="MOD_NOT"&gt; &lt;t2/&gt;
  * &lt;/ModifierQueryNode&gt; &lt;t3/&gt; &lt;/BooleanQueryNode&gt;
- *
  * </blockquote>
  */
 public class ModifierQueryNode extends QueryNodeImpl {
