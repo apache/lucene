@@ -20,7 +20,9 @@ package org.apache.lucene.codecs.lucene99;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readSimilarityFunction;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.file.NoSuchFileException;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
@@ -43,10 +45,12 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataAccessHint;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FileDataHint;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.NoReuseHint;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
@@ -61,19 +65,34 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   private static final long SHALLOW_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(Lucene99FlatVectorsFormat.class);
 
-  private final IntObjectHashMap<FieldEntry> fields = new IntObjectHashMap<>();
+  private final IntObjectHashMap<FieldEntry> fields;
   private final FlatVectorsScorer vectorScorer;
   private final IndexInput vectorData;
   private final FieldInfos fieldInfos;
   private final IOContext dataContext;
+  private final Directory directory;
+  private final String vectorDataFN;
+  // the reader a merge instance came from, which owns the mapping merges read
+  private final Lucene99FlatVectorsReader original;
+  private IndexInput mergeVectorData;
+  // merge instances handed out and not yet finished
+  private int mergeInstances;
 
   public Lucene99FlatVectorsReader(SegmentReadState state, FlatVectorsScorer scorer)
       throws IOException {
+    this.fields = new IntObjectHashMap<>();
     int versionMeta = readMetadata(state);
     this.vectorScorer = scorer;
     this.fieldInfos = state.fieldInfos;
+    this.directory = state.directory;
+    this.original = this;
     // how these are read is up to whoever wraps this format
     dataContext = state.context.union(FileTypeHint.DATA, FileDataHint.KNN_VECTORS);
+    this.vectorDataFN =
+        IndexFileNames.segmentFileName(
+            state.segmentInfo.name,
+            state.segmentSuffix,
+            Lucene99FlatVectorsFormat.VECTOR_DATA_EXTENSION);
     try {
       vectorData =
           openDataInput(
@@ -86,6 +105,18 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
       IOUtils.closeWhileSuppressingExceptions(t, this);
       throw t;
     }
+  }
+
+  /** Reads the same fields as {@code reader}, through the mapping a merge opened for itself. */
+  private Lucene99FlatVectorsReader(Lucene99FlatVectorsReader reader, IndexInput vectorData) {
+    this.fields = reader.fields;
+    this.vectorScorer = reader.vectorScorer;
+    this.fieldInfos = reader.fieldInfos;
+    this.dataContext = reader.dataContext;
+    this.directory = reader.directory;
+    this.vectorDataFN = reader.vectorDataFN;
+    this.original = reader.original;
+    this.vectorData = vectorData;
   }
 
   private int readMetadata(SegmentReadState state) throws IOException {
@@ -185,9 +216,38 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
 
   @Override
   public FlatVectorsReader getMergeInstance() throws IOException {
-    // Update the read advice since vectors are guaranteed to be accessed sequentially for merge
-    vectorData.updateIOContext(dataContext.withHints(DataAccessHint.SEQUENTIAL));
-    return this;
+    return new Lucene99FlatVectorsReader(this, original.mergeVectorData().clone());
+  }
+
+  /**
+   * The vectors as a merge reads them, front to back and once. Advice applies to a whole mapping,
+   * so a merge maps the file again. Mapped on the first merge and released by {@link
+   * #finishMerge()}.
+   */
+  private synchronized IndexInput mergeVectorData() throws IOException {
+    assert original == this;
+    mergeInstances++;
+    if (mergeVectorData == null) {
+      if (dataContext.context() == IOContext.Context.MERGE) {
+        // opened by a merge to begin with, so it already reads the file front to back
+        mergeVectorData = vectorData;
+      } else {
+        try {
+          mergeVectorData =
+              directory.openInput(
+                  vectorDataFN,
+                  dataContext.withHints(
+                      FileTypeHint.DATA,
+                      FileDataHint.KNN_VECTORS,
+                      DataAccessHint.SEQUENTIAL,
+                      NoReuseHint.INSTANCE));
+        } catch (FileNotFoundException | NoSuchFileException _) {
+          // an open reader outlives its files, so fall back to the mapping it already holds
+          mergeVectorData = vectorData;
+        }
+      }
+    }
+    return mergeVectorData;
   }
 
   private FieldEntry getFieldEntryOrThrow(String field) {
@@ -312,16 +372,30 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
         target);
   }
 
+  /**
+   * Closes the mapping a merge used, once no merge instance holds it. A later merge maps the file
+   * again.
+   */
   @Override
   public void finishMerge() throws IOException {
-    // This makes sure that the access pattern hint is reverted back since HNSW implementation
-    // needs it
-    vectorData.updateIOContext(dataContext);
+    original.releaseMergeVectorData();
+  }
+
+  private synchronized void releaseMergeVectorData() throws IOException {
+    assert original == this;
+    if (--mergeInstances > 0) {
+      return;
+    }
+    if (mergeVectorData != null && mergeVectorData != vectorData) {
+      mergeVectorData.close();
+    }
+    mergeVectorData = null;
   }
 
   @Override
   public void close() throws IOException {
-    IOUtils.close(vectorData);
+    IOUtils.close(
+        vectorData, original == this && mergeVectorData != vectorData ? mergeVectorData : null);
   }
 
   private record FieldEntry(
