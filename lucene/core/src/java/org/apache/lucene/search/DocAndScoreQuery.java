@@ -28,11 +28,11 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.ReaderUtil;
 
 /** A query that wraps precomputed documents and scores */
-class DocAndScoreQuery extends Query {
+public class DocAndScoreQuery extends Query {
 
   /** Optional hook to explain why a doc is missing. Returns null for the generic message. */
   @FunctionalInterface
-  interface NoMatchExplainer {
+  public interface NoMatchExplainer {
     Explanation explain(LeafReaderContext context, int doc, int topN) throws IOException;
   }
 
@@ -91,11 +91,34 @@ class DocAndScoreQuery extends Query {
     this.noMatchExplainer = noMatchExplainer;
   }
 
-  static Query createDocAndScoreQuery(IndexReader reader, TopDocs topK, int reentryCount) {
+  /**
+   * Create a query that matches exactly the documents in {@code topK} with precomputed scores.
+   *
+   * @see #createDocAndScoreQuery(IndexReader, TopDocs, int, NoMatchExplainer)
+   */
+  public static Query createDocAndScoreQuery(IndexReader reader, TopDocs topK, int reentryCount) {
     return createDocAndScoreQuery(reader, topK, reentryCount, null);
   }
 
-  static Query createDocAndScoreQuery(
+  /**
+   * Create a query that matches exactly the documents in {@code topK} with precomputed scores. The
+   * docids in {@code topK} must be global docids with respect to {@code reader}, and the query may
+   * only be executed against that reader; {@link Query#createWeight(IndexSearcher, ScoreMode,
+   * float)} throws {@link IllegalStateException} otherwise.
+   *
+   * <p>The entries of {@code topK} are expected in descending score order, as produced by a
+   * nearest-neighbors search. Note that the {@link TopDocs#scoreDocs} array is sorted by docid in
+   * place, and the max score is captured from its first entry before that happens.
+   *
+   * @param reader the reader the {@code topK} docids were collected against
+   * @param topK the documents to match and their scores; must be non-empty and is modified in place
+   *     as described above
+   * @param reentryCount the number of leaves that were re-entered by the search that produced
+   *     {@code topK}, purely informational
+   * @param noMatchExplainer optional hook producing a richer explanation for documents not in
+   *     {@code topK}; may be null
+   */
+  public static Query createDocAndScoreQuery(
       IndexReader reader, TopDocs topK, int reentryCount, NoMatchExplainer noMatchExplainer) {
     int len = topK.scoreDocs.length;
     assert len > 0;

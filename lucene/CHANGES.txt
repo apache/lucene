@@ -143,6 +143,9 @@ New Features
 
 * GITHUB#16473: Add scalar quantization support in Fp16 vector encoding. (Pulkit Gupta)
 
+* GITHUB#16735: Add Float16VectorSimilarityQuery for similarity threshold search over fp16 vectors.
+  (Recep Eken)
+
 Improvements
 ---------------------
 * GITHUB#15704: Replace LinkedList with more efficient data structure. (Renato Haeberli)
@@ -233,6 +236,8 @@ Bug Fixes
 * GITHUB#7865 AbstractRangeQueryNode#toQueryString(EscapeQuerySyntax) now
   returns a string which can be parsed back into the original node.
   (Peter Barna, Adam Schwartz)
+
+* GITHUB#15133: Take the FST suffix cache into account when reporting FST ramBytesUsed (Anh Dung Bui)
 
 * GITHUB#14847: Allow Faiss vector format to index >2GB of vectors per-field per-segment by using MemorySegment APIs
   (instead of ByteBuffer) to copy bytes to native memory. (Kaival Parikh)
@@ -382,6 +387,8 @@ API Changes
 
 * GITHUB#16647: Add KnnVectorsReader.getVectorCount to read vector counts from metadata (Chris Hegarty)
 
+* GITHUB#16686: Make DocAndScoreQuery public (Trevor McCulloch)
+
 New Features
 ---------------------
 * GITHUB#16722: Support user dictionary in ThaiTokenizer and ThaiTokenizerFactory.
@@ -495,6 +502,9 @@ Optimizations
 
 * GITHUB#16352: Better cost() estimation for SkipBlockRangeIterator. (Alan Woodward)
 
+* GITHUB#16268: LongRangeFacetCutter: doc-values skip index for single + multi-valued fields,
+  single-valued segment unwrapping, and interval tracker rewind. (Jakub Slowinski)
+
 * GITHUB#16285: Apply GCD bound transform to sorted numeric rangeIntoBitSet, comparing raw
   encoded values directly instead of decoding every packed value. (Costin Leau)
 
@@ -580,6 +590,10 @@ Bug Fixes
   the node's degree. Previously nodes with a degree of 1 were always forced into the join set,
   which made the join set degenerate to the whole graph on hub-and-spoke shaped HNSW graphs.
   (Mayya Sharipova)
+
+* GITHUB#16478: Reject LZ4 match offsets that point before the start of the output in
+  LZ4#decompress. Corrupt input previously threw ArrayIndexOutOfBoundsException instead of
+  a checked IOException. (Serhiy Bzhezytskyy)
 
 * GITHUB#16350: Disable bulk-scoring in monitor queries. (Alan Woodward)
 
