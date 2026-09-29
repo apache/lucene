@@ -22,6 +22,7 @@ module org.apache.lucene.sandbox {
   requires org.apache.lucene.facet;
 
   exports org.apache.lucene.payloads;
+  exports org.apache.lucene.sandbox.codecs.dedup;
   exports org.apache.lucene.sandbox.codecs.faiss;
   exports org.apache.lucene.sandbox.codecs.idversion;
   exports org.apache.lucene.sandbox.codecs.quantization;
@@ -41,5 +42,7 @@ module org.apache.lucene.sandbox {
   provides org.apache.lucene.codecs.PostingsFormat with
       org.apache.lucene.sandbox.codecs.idversion.IDVersionPostingsFormat;
   provides org.apache.lucene.codecs.KnnVectorsFormat with
-      org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormat;
+      org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormat,
+      org.apache.lucene.sandbox.codecs.dedup.DedupHnswVectorsFormat,
+      org.apache.lucene.sandbox.codecs.dedup.DedupHnswScalarQuantizedVectorsFormat;
 }

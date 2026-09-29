@@ -36,6 +36,7 @@ ignore = [
   "C416",    # unnecessary list comprehension
   "C417",    # unnecessary map() usage
   "C901",    # function is too complex
+  "CPY001",  # probably needs copyright headers configured
   "D100",    # missing docstring in public module
   "D101",    # missing docstring in public class
   "D102",    # missing docstring in public method
@@ -68,6 +69,7 @@ ignore = [
   "PLR0912", # too many branches
   "PLR0913", # too many arguments in function definition
   "PLR0915", # too many statements
+  "PLR0917", # too many positional arguments
   "PLR1704", # redefining argument with local name
   "PLR1714", # consider merging multiple comparisons
   "PLR1722", # use sys.exit() instead of exit

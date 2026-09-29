@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.LeafFieldComparator;
@@ -30,7 +29,6 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
-import org.apache.lucene.util.FixedBitSet;
 
 /**
  * This collector specializes in collecting the most relevant document (group head) for each group
@@ -40,7 +38,7 @@ import org.apache.lucene.util.FixedBitSet;
  *
  * @lucene.experimental
  */
-@SuppressWarnings({"unchecked", "rawtypes"})
+@SuppressWarnings({"rawtypes"})
 public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
 
   private final GroupSelector<T> groupSelector;
@@ -77,44 +75,6 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
       reversed[i] = sortFields[i].getReverse() ? -1 : 1;
     }
     this.compIDXEnd = this.reversed.length - 1;
-  }
-
-  /**
-   * @param maxDoc The maxDoc of the top level {@link IndexReader}.
-   * @return a {@link FixedBitSet} containing all group heads.
-   */
-  public FixedBitSet retrieveGroupHeads(int maxDoc) {
-    FixedBitSet bitSet = new FixedBitSet(maxDoc);
-
-    Collection<? extends GroupHead<T>> groupHeads = getCollectedGroupHeads();
-    for (GroupHead groupHead : groupHeads) {
-      bitSet.set(groupHead.doc);
-    }
-
-    return bitSet;
-  }
-
-  /**
-   * @return an int array containing all group heads. The size of the array is equal to number of
-   *     collected unique groups.
-   */
-  public int[] retrieveGroupHeads() {
-    Collection<? extends GroupHead<T>> groupHeads = getCollectedGroupHeads();
-    int[] docHeads = new int[groupHeads.size()];
-
-    int i = 0;
-    for (GroupHead groupHead : groupHeads) {
-      docHeads[i++] = groupHead.doc;
-    }
-
-    return docHeads;
-  }
-
-  /**
-   * @return the number of group heads found for a query.
-   */
-  public int groupHeadsSize() {
-    return getCollectedGroupHeads().size();
   }
 
   /**

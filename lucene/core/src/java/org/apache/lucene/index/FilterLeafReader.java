@@ -121,12 +121,12 @@ public abstract class FilterLeafReader extends LeafReader {
     }
 
     @Override
-    public long getSumTotalTermFreq() throws IOException {
+    public long getSumTotalTermFreq() {
       return in.getSumTotalTermFreq();
     }
 
     @Override
-    public long getSumDocFreq() throws IOException {
+    public long getSumDocFreq() {
       return in.getSumDocFreq();
     }
 

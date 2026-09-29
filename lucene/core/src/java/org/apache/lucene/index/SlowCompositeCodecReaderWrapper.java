@@ -849,6 +849,18 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
       return map;
     }
 
+    @Override
+    public int getVectorCount(FieldInfo fieldInfo) throws IOException {
+      int count = 0;
+      for (int i = 0; i < readers.length; i++) {
+        FieldInfo subFieldInfo = codecReaders[i].getFieldInfos().fieldInfo(fieldInfo.name);
+        if (subFieldInfo != null && subFieldInfo.getVectorDimension() > 0) {
+          count += readers[i].getVectorCount(subFieldInfo);
+        }
+      }
+      return count;
+    }
+
     class MergedFloatVectorValues extends FloatVectorValues {
       final int dimension;
       final int size;

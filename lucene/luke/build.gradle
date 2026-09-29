@@ -110,12 +110,12 @@ def standaloneAssembleTask = tasks.register("standaloneAssemble", Sync, {
   doLast {
 
     logger.lifecycle(
-    """
+        """
 Standalone Luke distribution assembled. You can run it with:
 java -jar "${standaloneDistDir}/${standaloneJarName}"
 java --module-path "${standaloneDistDir}" -m org.apache.lucene.luke
         """
-    )
+        )
   }
 })
 
@@ -144,10 +144,10 @@ tasks.register("run", {
   doFirst {
     logger.lifecycle("Launching Luke ${project.version} right now...")
     ant.exec(
-        executable: rootProject.getExtensions().getByType(AlternativeJdkSupportPlugin.AltJvmExtension).compilationJvm.get().javaExecutable.toString(),
-        spawn: true,
-        vmlauncher: true
-        ) {
+            executable: rootProject.getExtensions().getByType(AlternativeJdkSupportPlugin.AltJvmExtension).compilationJvm.get().javaExecutable.toString(),
+            spawn: true,
+            vmlauncher: true
+            ) {
           arg(value: '-jar')
           arg(value: file("${standaloneDistDir}/${standaloneJar.archiveFileName.get()}").absolutePath)
         }

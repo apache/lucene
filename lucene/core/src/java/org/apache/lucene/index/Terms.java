@@ -106,13 +106,13 @@ public abstract class Terms {
    * Returns the sum of {@link TermsEnum#totalTermFreq} for all terms in this field. Note that, just
    * like other term measures, this measure does not take deleted documents into account.
    */
-  public abstract long getSumTotalTermFreq() throws IOException;
+  public abstract long getSumTotalTermFreq();
 
   /**
    * Returns the sum of {@link TermsEnum#docFreq()} for all terms in this field. Note that, just
    * like other term measures, this measure does not take deleted documents into account.
    */
-  public abstract long getSumDocFreq() throws IOException;
+  public abstract long getSumDocFreq();
 
   /**
    * Returns the number of documents that have at least one term for this field. Note that, just
@@ -237,12 +237,12 @@ public abstract class Terms {
         }
 
         @Override
-        public long getSumTotalTermFreq() throws IOException {
+        public long getSumTotalTermFreq() {
           return 0;
         }
 
         @Override
-        public long getSumDocFreq() throws IOException {
+        public long getSumDocFreq() {
           return 0;
         }
 

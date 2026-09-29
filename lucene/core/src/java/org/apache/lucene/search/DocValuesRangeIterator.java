@@ -17,12 +17,15 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.function.LongPredicate;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.internal.hppc.LongHashSet;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOBooleanSupplier;
 import org.apache.lucene.util.LongBitSet;
@@ -135,7 +138,7 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
    *     place of the per-doc bit lookup. Computed at construction time so callers don't have to
    *     trust an undocumented invariant about the bounds of set bits in {@code ords}.
    */
-  private record OrdinalSet(long min, long max, LongBitSet ords, boolean contiguous) {
+  private record OrdinalSet(long min, long max, LongPredicate ords, boolean contiguous) {
 
     boolean disjoint(DocValuesSkipper skipper) {
       if (skipper == null) {
@@ -145,27 +148,38 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
     }
   }
 
-  private static OrdinalSet buildOrdinalSet(TermsEnum termsEnum, long ordCount) throws IOException {
+  private static OrdinalSet buildOrdinalSet(TermsEnum termsEnum) throws IOException {
     if (termsEnum.next() == null) {
       return null;
     }
-    // TODO can we be more memory efficient here? eg LongHashSet
-    LongBitSet ords = new LongBitSet(ordCount);
     long min = termsEnum.ord();
-    ords.set(min);
     long max = min;
-    // Count distinct ords via getAndSet so a TermsEnum that yields a duplicate ord doesn't fool
-    // the contiguity check below. The first set bit (min) is always new on a fresh bitset.
+    long[] collected = new long[] {min};
+    int count = 1;
+    long prev = min;
     long distinctCount = 1;
+    // Track distinct ords because a TermsEnum may yield duplicate ords.
     while (termsEnum.next() != null) {
-      max = termsEnum.ord();
-      if (ords.getAndSet(max) == false) {
+      long ord = termsEnum.ord();
+      if (ord != prev) {
         distinctCount++;
+        prev = ord;
       }
+      max = ord;
+      if (count == collected.length) {
+        collected = ArrayUtil.grow(collected);
+      }
+      collected[count++] = ord;
     }
-    // If every ord in [min, max] is set, the set is equivalent to forOrdinalRange and can use the
-    // cheaper range check + block-level YES short-circuit.
-    return new OrdinalSet(min, max, ords, distinctCount == max - min + 1);
+    boolean contiguous = distinctCount == max - min + 1;
+    if (contiguous) {
+      return new OrdinalSet(min, max, _ -> true, true);
+    }
+    LongHashSet ords = new LongHashSet(count);
+    for (int i = 0; i < count; i++) {
+      ords.add(collected[i]);
+    }
+    return new OrdinalSet(min, max, ords::contains, false);
   }
 
   /**
@@ -177,14 +191,14 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
    */
   public static DocValuesRangeIterator forOrdinalSet(
       SortedDocValues values, DocValuesSkipper skipper, TermsEnum terms) throws IOException {
-    OrdinalSet ordinalSet = buildOrdinalSet(terms, values.getValueCount());
+    OrdinalSet ordinalSet = buildOrdinalSet(terms);
     if (ordinalSet == null || ordinalSet.disjoint(skipper)) {
       return new EmptyRangeIterator();
     }
     if (ordinalSet.contiguous) {
       return forOrdinalRange(values, skipper, ordinalSet.min, ordinalSet.max);
     }
-    IOBooleanSupplier check = () -> ordinalSet.ords.get(values.ordValue());
+    IOBooleanSupplier check = () -> ordinalSet.ords.test(values.ordValue());
     return skipper == null
         ? new DocValuesValueRangeIterator(values, check, 2)
         : new DocValuesBlockRangeIterator(
@@ -200,7 +214,7 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
    */
   public static DocValuesRangeIterator forOrdinalSet(
       SortedSetDocValues values, DocValuesSkipper skipper, TermsEnum terms) throws IOException {
-    OrdinalSet ordinalSet = buildOrdinalSet(terms, values.getValueCount());
+    OrdinalSet ordinalSet = buildOrdinalSet(terms);
     return forOrdinalSet(values, skipper, ordinalSet);
   }
 
@@ -221,7 +235,7 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
       LongBitSet ords) {
     // Pass contiguous=false: callers of this overload aren't required by the javadoc to keep all
     // set bits within [minOrd, maxOrd], so we can't infer contiguity from cardinality alone.
-    return forOrdinalSet(values, skipper, new OrdinalSet(minOrd, maxOrd, ords, false));
+    return forOrdinalSet(values, skipper, new OrdinalSet(minOrd, maxOrd, ords::get, false));
   }
 
   private static DocValuesRangeIterator forOrdinalSet(
@@ -239,7 +253,7 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
             if (v > ordinalSet.max) {
               return false;
             }
-            if (v >= ordinalSet.min && ordinalSet.ords.get(v)) {
+            if (v >= ordinalSet.min && ordinalSet.ords.test(v)) {
               return true;
             }
           }
@@ -292,11 +306,6 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
     }
 
     @Override
-    public int docIDRunEnd() throws IOException {
-      return blockIterator.docID() + 1;
-    }
-
-    @Override
     public final float matchCost() {
       return matchCost;
     }
@@ -329,7 +338,12 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
 
     @Override
     public final int docIDRunEnd() throws IOException {
-      return blockIterator.docIDRunEnd();
+      // docIDRunEnd() may be called on non-matches, so only YES proves that the current doc and the
+      // rest of the run are actual matches.
+      return switch (blockIterator.getMatch()) {
+        case YES -> blockIterator.docIDRunEnd();
+        case YES_IF_PRESENT, MAYBE -> blockIterator.docID();
+      };
     }
 
     @Override
@@ -337,7 +351,7 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
       while (blockIterator.docID() < upTo) {
         int blockStart = blockIterator.docID();
         SkipBlockRangeIterator.Match match = blockIterator.getMatch();
-        int blockEnd = blockEnd(upTo, match);
+        int blockEnd = blockEnd(upTo);
         switch (match) {
           case YES -> bitSet.set(blockStart - offset, blockEnd - offset);
           case YES_IF_PRESENT -> {
@@ -360,12 +374,10 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
     abstract void intoMaybeBlock(int blockStart, int blockEnd, FixedBitSet bitSet, int offset)
         throws IOException;
 
-    // For MAYBE blocks docIDRunEnd() is conservative (doc+1), so use the full block boundary to
-    // evaluate/classify the whole block at once.
-    private int blockEnd(int upTo, SkipBlockRangeIterator.Match match) throws IOException {
-      return match == SkipBlockRangeIterator.Match.MAYBE
-          ? Math.min(upTo, blockIterator.blockEnd())
-          : Math.min(upTo, blockIterator.docIDRunEnd());
+    // For MAYBE/YES_IF_PRESENT blocks this is the block boundary; for YES blocks it may extend
+    // further via multi-level run expansion.
+    private int blockEnd(int upTo) throws IOException {
+      return Math.min(upTo, blockIterator.docIDRunEnd());
     }
 
     @Override
@@ -380,7 +392,7 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
           bitSet.clear(cursor - offset, blockStart - offset);
         }
         SkipBlockRangeIterator.Match match = blockIterator.getMatch();
-        int blockEnd = blockEnd(upTo, match);
+        int blockEnd = blockEnd(upTo);
 
         if (match != SkipBlockRangeIterator.Match.YES
             && bitSet.nextSetBit(blockStart - offset, blockEnd - offset)

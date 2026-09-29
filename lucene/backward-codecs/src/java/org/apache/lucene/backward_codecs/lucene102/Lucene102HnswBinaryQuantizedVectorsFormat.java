@@ -33,6 +33,9 @@ import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.search.TaskExecutor;
+import org.apache.lucene.store.DataAccessHint;
+import org.apache.lucene.store.FileDataHint;
+import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.util.hnsw.HnswGraph;
 
 /**
@@ -119,7 +122,10 @@ public class Lucene102HnswBinaryQuantizedVectorsFormat extends KnnVectorsFormat 
 
   @Override
   public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new Lucene99HnswVectorsReader(state, flatVectorsFormat.fieldsReader(state));
+    return new Lucene99HnswVectorsReader(
+        state,
+        flatVectorsFormat.fieldsReader(
+            state.withHints(FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM)));
   }
 
   @Override
