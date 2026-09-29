@@ -231,6 +231,15 @@ public class TestVectorUtil extends LuceneTestCase {
     return v;
   }
 
+  public static short[] randomVectorFloat16(int dim) {
+    short[] v = new short[dim];
+    Random random = random();
+    for (int i = 0; i < dim; i++) {
+      v[i] = Float.floatToFloat16(random.nextFloat());
+    }
+    return v;
+  }
+
   private static byte[] randomVectorBytes() {
     BytesRef v = TestUtil.randomBinaryTerm(random(), TestUtil.nextInt(random(), 1, 100));
     // clip at -127 to avoid overflow
