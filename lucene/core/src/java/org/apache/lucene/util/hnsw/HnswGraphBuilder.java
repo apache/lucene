@@ -489,7 +489,6 @@ public class HnswGraphBuilder implements HnswBuilder {
       throws IOException {
     boolean[] mask = new boolean[candidates.size()];
     // Select the best maxConnOnLevel neighbors of the new node, applying the diversity heuristic
-    cands:
     for (int i = candidates.size() - 1; neighbors.size() < maxConnOnLevel && i >= 0; i--) {
       // compare each neighbor (in distance order) against the closer neighbors selected so far,
       // only adding it if it is closer to the target than to any of the other selected neighbors
@@ -508,10 +507,8 @@ public class HnswGraphBuilder implements HnswBuilder {
           // there's a very small chance this is trying to add a duplicate node,
           // if the scoring function is estimated and the highest score is NOT
           // the identity function (which would already be filtered out by diversityCheck)
-          for (int j = 0; j < neighbors.size(); j++) {
-            if (neighbors.nodes()[j] == node) {
-              continue cands;
-            }
+          if (contains(neighbors, cNode)) {
+            continue;
           }
           neighbors.addOutOfOrder(cNode, cScore);
         } else {
@@ -520,6 +517,13 @@ public class HnswGraphBuilder implements HnswBuilder {
       }
     }
     return mask;
+  }
+
+  private static boolean contains(NeighborArray array, int node) {
+    for (int i = 0; i < array.size(); i++) {
+      if (array.nodes()[i] == node) return true;
+    }
+    return false;
   }
 
   static void popToScratch(GraphBuilderKnnCollector candidates, NeighborArray scratch) {
