@@ -428,6 +428,9 @@ New Features
 
 Improvements
 ---------------------
+* GITHUB#16743: RamUsageEstimator#sizeOfObject now estimates boxed Boolean, Byte, Character, Short,
+  Float and Double at their shallow size instead of the default size. (Eugene Rizhkov)
+
 * GITHUB#16718: Modernize ThaiAnalyzer default stopwords list based on contemporary Thai corpus
   frequency analysis and linguistically validated stop words. (Kamthorn Krairaksa)
 
