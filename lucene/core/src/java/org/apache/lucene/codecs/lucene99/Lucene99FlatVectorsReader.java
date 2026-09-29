@@ -72,7 +72,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   private final IOContext dataContext;
   private final Directory directory;
   private final String vectorDataFN;
-  // the reader a merge instance came from, which owns the mapping merges read
+  // the reader that owns the mapping merges read
   private final Lucene99FlatVectorsReader original;
   private IndexInput mergeVectorData;
   // merge instances handed out and not yet finished
@@ -98,7 +98,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
           openDataInput(
               state,
               versionMeta,
-              Lucene99FlatVectorsFormat.VECTOR_DATA_EXTENSION,
+              vectorDataFN,
               Lucene99FlatVectorsFormat.VECTOR_DATA_CODEC_NAME,
               dataContext);
     } catch (Throwable t) {
@@ -146,14 +146,8 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   }
 
   private static IndexInput openDataInput(
-      SegmentReadState state,
-      int versionMeta,
-      String fileExtension,
-      String codecName,
-      IOContext context)
+      SegmentReadState state, int versionMeta, String fileName, String codecName, IOContext context)
       throws IOException {
-    String fileName =
-        IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, fileExtension);
     IndexInput in = state.directory.openInput(fileName, context);
     try {
       int versionVectorData =
@@ -220,9 +214,8 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   }
 
   /**
-   * The vectors as a merge reads them, front to back and once. Advice applies to a whole mapping,
-   * so a merge maps the file again. Mapped on the first merge and released by {@link
-   * #finishMerge()}.
+   * The vectors as a merge reads them, front to back and once. Advice belongs to a mapping, so a
+   * merge maps the file again. Mapped on the first merge, released by {@link #finishMerge()}.
    */
   private synchronized IndexInput mergeVectorData() throws IOException {
     assert original == this;
@@ -236,11 +229,12 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
           mergeVectorData =
               directory.openInput(
                   vectorDataFN,
-                  dataContext.withHints(
-                      FileTypeHint.DATA,
-                      FileDataHint.KNN_VECTORS,
-                      DataAccessHint.SEQUENTIAL,
-                      NoReuseHint.INSTANCE));
+                  IOContext.merge()
+                      .withHints(
+                          FileTypeHint.DATA,
+                          FileDataHint.KNN_VECTORS,
+                          DataAccessHint.SEQUENTIAL,
+                          NoReuseHint.INSTANCE));
         } catch (FileNotFoundException | NoSuchFileException _) {
           // an open reader outlives its files, so fall back to the mapping it already holds
           mergeVectorData = vectorData;
