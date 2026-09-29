@@ -64,9 +64,14 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
    */
   private final int DELETE_PCT_THRESHOLD = 40;
 
-  /** Represents a vector reader that contains graph info. */
+  /**
+   * Represents a vector reader that contains graph info.
+   *
+   * @param graphSize total number of nodes in the graph, including deleted ones
+   * @param liveVectorCount number of nodes in the graph whose documents are live
+   */
   protected record GraphReader(
-      KnnVectorsReader reader, MergeState.DocMap initDocMap, int graphSize) {}
+      KnnVectorsReader reader, MergeState.DocMap initDocMap, int graphSize, int liveVectorCount) {}
 
   /**
    * @param fieldInfo FieldInfo for the field being merged
@@ -121,12 +126,13 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
     int candidateVectorCount = countLiveVectors(liveDocs, knnVectorValues);
     int graphSize = graph.size();
 
-    GraphReader graphReader = new GraphReader(reader, docMap, graphSize);
+    GraphReader graphReader = new GraphReader(reader, docMap, graphSize, candidateVectorCount);
 
     int deletePct = ((graphSize - candidateVectorCount) * 100) / graphSize;
 
     if (deletePct <= DELETE_PCT_THRESHOLD
-        && (largestGraphReader == null || candidateVectorCount > largestGraphReader.graphSize)) {
+        && (largestGraphReader == null
+            || candidateVectorCount > largestGraphReader.liveVectorCount)) {
       largestGraphReader = graphReader;
     }
 
