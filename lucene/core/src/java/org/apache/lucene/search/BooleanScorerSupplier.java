@@ -439,9 +439,7 @@ final class BooleanScorerSupplier extends ScorerSupplier {
     if (scoreMode != ScoreMode.TOP_SCORES
         && requiredScoring.size() + requiredNoScoring.size() >= 2
         && requiredScoring.stream().map(Scorer::twoPhaseIterator).allMatch(Objects::isNull)) {
-      if (requiredNoScoring.stream()
-          .map(Scorer::twoPhaseIterator)
-          .allMatch(Objects::isNull)) {
+      if (requiredNoScoring.stream().map(Scorer::twoPhaseIterator).allMatch(Objects::isNull)) {
         return new ConjunctionBulkScorer(requiredScoring, requiredNoScoring);
       }
     }
