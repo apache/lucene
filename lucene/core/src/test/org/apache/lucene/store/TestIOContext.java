@@ -38,12 +38,16 @@ public class TestIOContext extends LuceneTestCase {
       assertEquals(context.context(), newContext.context());
       assertEquals(context.mergeInfo(), newContext.mergeInfo());
       assertEquals(context.flushInfo(), newContext.flushInfo());
-      if (context != newContext) {
-        assertTrue(context.mergeInfo() == null && context.flushInfo() == null);
-        assertEquals(Set.of(newHint), newContext.hints());
-      } else {
-        assertTrue(context.mergeInfo() != null || context.flushInfo() != null);
-      }
+      assertEquals(Set.of(newHint), newContext.hints());
+    }
+  }
+
+  /** Every context rejects two hints of one type, since a hint is looked up by its type. */
+  public void testRejectsRepeatedHintType() {
+    for (var context : getContexts()) {
+      expectThrows(
+          IllegalArgumentException.class,
+          () -> context.withHints(DataAccessHint.RANDOM, DataAccessHint.SEQUENTIAL));
     }
   }
 
