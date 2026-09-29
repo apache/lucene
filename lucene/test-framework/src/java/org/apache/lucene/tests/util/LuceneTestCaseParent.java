@@ -31,6 +31,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.io.UncheckedIOException;
 import java.lang.reflect.Constructor;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
@@ -165,6 +166,7 @@ import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 import org.hamcrest.Matcher;
 import org.hamcrest.MatcherAssert;
+import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
@@ -2536,36 +2538,50 @@ public abstract sealed class LuceneTestCaseParent extends Assert
   private static final QueryCache DEFAULT_QUERY_CACHE = IndexSearcher.getDefaultQueryCache();
   private static final QueryCachingPolicy DEFAULT_CACHING_POLICY =
       IndexSearcher.getDefaultQueryCachingPolicy();
-  private static final List<LRUQueryCache> queryCacheList = new ArrayList<>();
+  private static LRUQueryCache classQueryCache;
 
-  @Before
-  public void overrideTestDefaultQueryCache() {
-    // Make sure each test method has its own cache
-    overrideDefaultQueryCache();
+  private static LRUQueryCache createAndOverrideDefaultQueryCache() {
+    LRUQueryCache lruQueryCache =
+        new LRUQueryCache(10000, 1 << 25, _ -> true, Float.POSITIVE_INFINITY);
+    IndexSearcher.setDefaultQueryCache(lruQueryCache);
+    IndexSearcher.setDefaultQueryCachingPolicy(MAYBE_CACHE_POLICY);
+    return lruQueryCache;
+  }
+
+  private static void resetDefaultQueryCache(LRUQueryCache queryCache) {
+    IndexSearcher.setDefaultQueryCache(DEFAULT_QUERY_CACHE);
+    IndexSearcher.setDefaultQueryCachingPolicy(DEFAULT_CACHING_POLICY);
+    try {
+      queryCache.close();
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
   }
 
   @BeforeClass
-  public static void overrideDefaultQueryCache() {
+  public static void overrideClassDefaultQueryCache() {
     // we need to reset the query cache in an @BeforeClass so that tests that
     // instantiate an IndexSearcher in an @BeforeClass method use a fresh new cache
-    LRUQueryCache queryCacheTemp =
-        new LRUQueryCache(10000, 1 << 25, _ -> true, Float.POSITIVE_INFINITY);
-    queryCacheList.add(queryCacheTemp);
-    IndexSearcher.setDefaultQueryCache(queryCacheTemp);
-    IndexSearcher.setDefaultQueryCachingPolicy(MAYBE_CACHE_POLICY);
+    classQueryCache = createAndOverrideDefaultQueryCache();
   }
 
   @AfterClass
-  public static void resetDefaultQueryCache() {
-    IndexSearcher.setDefaultQueryCache(DEFAULT_QUERY_CACHE);
-    IndexSearcher.setDefaultQueryCachingPolicy(DEFAULT_CACHING_POLICY);
-    for (int i = 0; i < queryCacheList.size(); i++) {
-      try {
-        queryCacheList.get(i).close();
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
-    }
+  public static void resetClassDefaultQueryCache() {
+    resetDefaultQueryCache(classQueryCache);
+    classQueryCache = null;
+  }
+
+  private LRUQueryCache methodQueryCache;
+
+  @Before
+  public void overrideTestDefaultQueryCache() {
+    methodQueryCache = createAndOverrideDefaultQueryCache();
+  }
+
+  @After
+  public void resetTestDefaultQueryCache() {
+    resetDefaultQueryCache(methodQueryCache);
+    methodQueryCache = null;
   }
 
   @BeforeClass
