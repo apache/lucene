@@ -116,12 +116,7 @@ final class DedupUtil {
         ORD_TO_DOC_DIRECT_MONOTONIC_BLOCK_SHIFT, meta, vectorData, vectorCount, maxDoc, docs);
 
     // write fieldOrdToGroupOrd
-    //
-    // The group ordinals are typically far smaller than 2^32 (the whole point of de-duplication is
-    // that distinct vectors are few relative to documents), so we pack each ordinal using the
-    // minimum number of bits that can represent the largest group ordinal referenced by this field
-    // (tracked by the caller as vectors are added). The chosen width is persisted to the metadata
-    // so the reader can decode without assuming a fixed width.
+    // pack each ordinal to minimize storage, using the bits needed for the largest group ordinal
     int groupOrdBitsPerValue = DirectWriter.bitsRequired(maxGroupOrd);
 
     long fieldOrdToGroupOrdOffset = vectorData.alignFilePointer(FIELD_ORD_TO_GROUP_ORD_ALIGN_BYTES);
