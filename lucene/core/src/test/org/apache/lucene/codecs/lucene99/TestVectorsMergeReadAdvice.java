@@ -40,9 +40,8 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
 /**
- * A merge reads the raw vectors front to back, while a graph search reads them at random, and read
- * advice applies to a whole mapping. So a merge opens the data file for itself instead of
- * re-advising the one searches are reading.
+ * A merge reads the raw vectors front to back while a graph search reads them at random, and read
+ * advice applies to a whole mapping, so a merge opens the data file for itself.
  */
 public class TestVectorsMergeReadAdvice extends LuceneTestCase {
 

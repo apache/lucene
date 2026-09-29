@@ -105,7 +105,9 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     this.rawVectorDelegate = rawVectorDelegate;
     try {
       meta = state.directory.createOutput(metaFileName, state.context);
-      vectorData = state.directory.createOutput(vectorDataFileName, state.context);
+      vectorData =
+          state.directory.createOutput(
+              vectorDataFileName, state.context.union(FileTypeHint.DATA, FileDataHint.KNN_VECTORS));
 
       CodecUtil.writeIndexHeader(
           meta,
