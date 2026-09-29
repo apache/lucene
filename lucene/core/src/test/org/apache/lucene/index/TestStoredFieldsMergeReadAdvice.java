@@ -88,6 +88,10 @@ public class TestStoredFieldsMergeReadAdvice extends LuceneTestCase {
         assertTrue(
             "a merge reads the data file once and does not come back: " + open,
             open.hints().contains(NoReuseHint.INSTANCE));
+        assertSame(
+            "the open says a merge is reading, so a directory can route it: " + open,
+            IOContext.Context.MERGE,
+            open.context());
         sequential.add(open);
       }
     }
@@ -115,6 +119,10 @@ public class TestStoredFieldsMergeReadAdvice extends LuceneTestCase {
 
     DataAccessHint hint() {
       return context.hints(DataAccessHint.class).findFirst().orElse(null);
+    }
+
+    IOContext.Context context() {
+      return context.context();
     }
 
     boolean closed() {

@@ -742,8 +742,9 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
           mergeFieldsStream =
               directory.openInput(
                   fieldsStreamFN,
-                  context.withHints(
-                      FileTypeHint.DATA, DataAccessHint.SEQUENTIAL, NoReuseHint.INSTANCE));
+                  IOContext.merge()
+                      .withHints(
+                          FileTypeHint.DATA, DataAccessHint.SEQUENTIAL, NoReuseHint.INSTANCE));
         } catch (FileNotFoundException | NoSuchFileException _) {
           // an open reader outlives its files, so fall back to the mapping it already holds
           mergeFieldsStream = fieldsStream;
