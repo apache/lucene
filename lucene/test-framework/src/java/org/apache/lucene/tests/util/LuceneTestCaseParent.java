@@ -31,7 +31,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
-import java.io.UncheckedIOException;
 import java.lang.reflect.Constructor;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
@@ -2548,16 +2547,6 @@ public abstract sealed class LuceneTestCaseParent extends Assert
     return lruQueryCache;
   }
 
-  private static void resetDefaultQueryCache(LRUQueryCache queryCache) {
-    IndexSearcher.setDefaultQueryCache(DEFAULT_QUERY_CACHE);
-    IndexSearcher.setDefaultQueryCachingPolicy(DEFAULT_CACHING_POLICY);
-    try {
-      queryCache.close();
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
-    }
-  }
-
   @BeforeClass
   public static void overrideClassDefaultQueryCache() {
     // we need to reset the query cache in an @BeforeClass so that tests that
@@ -2566,8 +2555,10 @@ public abstract sealed class LuceneTestCaseParent extends Assert
   }
 
   @AfterClass
-  public static void resetClassDefaultQueryCache() {
-    resetDefaultQueryCache(classQueryCache);
+  public static void resetClassDefaultQueryCache() throws IOException {
+    IndexSearcher.setDefaultQueryCache(DEFAULT_QUERY_CACHE);
+    IndexSearcher.setDefaultQueryCachingPolicy(DEFAULT_CACHING_POLICY);
+    IOUtils.close(classQueryCache);
     classQueryCache = null;
   }
 
@@ -2579,8 +2570,12 @@ public abstract sealed class LuceneTestCaseParent extends Assert
   }
 
   @After
-  public void resetTestDefaultQueryCache() {
-    resetDefaultQueryCache(methodQueryCache);
+  public void resetTestDefaultQueryCache() throws IOException {
+    // Restore the class-level cache so TestRules and @AfterClass still see a
+    // test-scoped cache rather than the process-wide production default.
+    IndexSearcher.setDefaultQueryCache(classQueryCache);
+    IndexSearcher.setDefaultQueryCachingPolicy(MAYBE_CACHE_POLICY);
+    IOUtils.close(methodQueryCache);
     methodQueryCache = null;
   }
 
