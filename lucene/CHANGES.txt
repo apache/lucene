@@ -462,6 +462,10 @@ Improvements
 Optimizations
 ---------------------
 
+* GITHUB#16706: Reduce the sandboxed dedup vector formats' index size by packing each field
+  ordinal to group ordinal mapping at the minimum bit width required for the largest group ordinal,
+  instead of a fixed 32-bit width. (Pranshu Shukla)
+
 * GITHUB#16682: Carry file open hints on merge and flush contexts, which used to drop them. An HNSW
   format now carries the random access hint for the vectors it reads, rather than the flat format
   holding them claiming it whatever reads them. Add NoReuseHint, set by stored fields, term vectors
