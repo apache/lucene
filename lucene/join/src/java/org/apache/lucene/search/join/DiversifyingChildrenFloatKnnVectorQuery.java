@@ -26,15 +26,12 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.HitQueue;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopDocsCollector;
-import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
@@ -120,37 +117,8 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
     if (floatVectorScorer == null) {
       return NO_RESULTS;
     }
-
-    DiversifyingChildrenVectorScorer vectorScorer =
-        new DiversifyingChildrenVectorScorer(acceptIterator, parentBitSet, floatVectorScorer);
-    final int queueSize = Math.min(k, Math.toIntExact(acceptIterator.cost()));
-    HitQueue queue = new HitQueue(queueSize, true);
-    TotalHits.Relation relation = TotalHits.Relation.EQUAL_TO;
-    ScoreDoc topDoc = queue.top();
-    while (vectorScorer.nextParent() != DocIdSetIterator.NO_MORE_DOCS) {
-      // Mark results as partial if timeout is met
-      if (queryTimeout != null && queryTimeout.shouldExit()) {
-        relation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
-        break;
-      }
-
-      float score = vectorScorer.score();
-      if (score > topDoc.score) {
-        topDoc.score = score;
-        topDoc.doc = vectorScorer.bestChild();
-        topDoc = queue.updateTop();
-      }
-    }
-
-    // Remove any remaining sentinel values
-    while (queue.size() > 0 && queue.top().score < 0) {
-      queue.pop();
-    }
-
-    ScoreDoc[] topScoreDocs = queue.drainToArrayHighestFirst(ScoreDoc[]::new);
-
-    TotalHits totalHits = new TotalHits(acceptIterator.cost(), relation);
-    return new TopDocs(totalHits, topScoreDocs);
+    return DiversifyingChildrenVectorScorer.collect(
+        acceptIterator, parentBitSet, floatVectorScorer, k, queryTimeout);
   }
 
   @Override
@@ -204,54 +172,5 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
     int result = Objects.hash(super.hashCode(), parentsFilter, childFilter, k);
     result = 31 * result + Arrays.hashCode(query);
     return result;
-  }
-
-  static class DiversifyingChildrenVectorScorer {
-    private final VectorScorer vectorScorer;
-    private final DocIdSetIterator vectorIterator;
-    private final DocIdSetIterator acceptedChildrenIterator;
-    private final BitSet parentBitSet;
-    private int currentParent = -1;
-    private int bestChild = -1;
-    private float currentScore = Float.NEGATIVE_INFINITY;
-
-    protected DiversifyingChildrenVectorScorer(
-        DocIdSetIterator acceptedChildrenIterator, BitSet parentBitSet, VectorScorer vectorScorer) {
-      this.acceptedChildrenIterator = acceptedChildrenIterator;
-      this.vectorScorer = vectorScorer;
-      this.vectorIterator = vectorScorer.iterator();
-      this.parentBitSet = parentBitSet;
-    }
-
-    public int bestChild() {
-      return bestChild;
-    }
-
-    public int nextParent() throws IOException {
-      int nextChild = acceptedChildrenIterator.docID();
-      if (nextChild == -1) {
-        nextChild = acceptedChildrenIterator.nextDoc();
-      }
-      if (nextChild == DocIdSetIterator.NO_MORE_DOCS) {
-        currentParent = DocIdSetIterator.NO_MORE_DOCS;
-        return currentParent;
-      }
-      currentScore = Float.NEGATIVE_INFINITY;
-      currentParent = parentBitSet.nextSetBit(nextChild);
-      do {
-        vectorIterator.advance(nextChild);
-        float score = vectorScorer.score();
-        if (score > currentScore) {
-          bestChild = nextChild;
-          currentScore = score;
-        }
-      } while ((nextChild = acceptedChildrenIterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS
-          && nextChild < currentParent);
-      return currentParent;
-    }
-
-    public float score() throws IOException {
-      return currentScore;
-    }
   }
 }

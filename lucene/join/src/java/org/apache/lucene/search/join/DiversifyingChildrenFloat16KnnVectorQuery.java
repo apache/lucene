@@ -21,14 +21,14 @@ import static org.apache.lucene.search.knn.KnnSearchStrategy.Hnsw.DEFAULT;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
-import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.KnnByteVectorQuery;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.search.KnnFloat16VectorQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopDocsCollector;
@@ -38,28 +38,28 @@ import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.util.BitSet;
 
 /**
- * kNN byte vector query that joins matching children vector documents with their parent doc id. The
- * top documents returned are the child document ids and the calculated scores. Here is how to use
- * this in conjunction with {@link ToParentBlockJoinQuery}.
+ * kNN float16 vector query that joins matching children vector documents with their parent doc id.
+ * The top documents returned are the child document ids and the calculated scores. Here is how to
+ * use this in conjunction with {@link ToParentBlockJoinQuery}.
  *
  * <pre><code class="language-java">
- *   Query knnQuery = new DiversifyingChildrenByteKnnVectorQuery(fieldName, queryVector, ...);
+ *   Query knnQuery = new DiversifyingChildrenFloat16KnnVectorQuery(fieldName, queryVector, ...);
  *   // Rewrite executes kNN search and collects nearest children docIds and their scores
  *   Query rewrittenKnnQuery = searcher.rewrite(knnQuery);
  *   // Join the scored children docs with their parents and score the parents
  *   Query childrenToParents = new ToParentBlockJoinQuery(rewrittenKnnQuery, parentsFilter, ScoreMode.MAX);
  * </code></pre>
  */
-public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
+public class DiversifyingChildrenFloat16KnnVectorQuery extends KnnFloat16VectorQuery {
   private static final TopDocs NO_RESULTS = TopDocsCollector.EMPTY_TOPDOCS;
 
   private final BitSetProducer parentsFilter;
   private final Query childFilter;
   private final int k;
-  private final byte[] query;
+  private final short[] query;
 
   /**
-   * Create a ToParentBlockJoinByteVectorQuery.
+   * Create a DiversifyingChildrenFloat16KnnVectorQuery.
    *
    * @param field the query field
    * @param query the vector query
@@ -67,13 +67,13 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
    * @param k how many parent documents to return given the matching children
    * @param parentsFilter Filter identifying the parent documents.
    */
-  public DiversifyingChildrenByteKnnVectorQuery(
-      String field, byte[] query, Query childFilter, int k, BitSetProducer parentsFilter) {
+  public DiversifyingChildrenFloat16KnnVectorQuery(
+      String field, short[] query, Query childFilter, int k, BitSetProducer parentsFilter) {
     this(field, query, childFilter, k, parentsFilter, DEFAULT);
   }
 
   /**
-   * Create a DiversifyingChildrenByteKnnVectorQuery.
+   * Create a DiversifyingChildrenFloat16KnnVectorQuery.
    *
    * @param field the query field
    * @param query the vector query
@@ -85,9 +85,9 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
    *     strategy.
    * @lucene.experimental
    */
-  public DiversifyingChildrenByteKnnVectorQuery(
+  public DiversifyingChildrenFloat16KnnVectorQuery(
       String field,
-      byte[] query,
+      short[] query,
       Query childFilter,
       int k,
       BitSetProducer parentsFilter,
@@ -103,9 +103,9 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
   protected TopDocs exactSearch(
       LeafReaderContext context, DocIdSetIterator acceptIterator, QueryTimeout queryTimeout)
       throws IOException {
-    ByteVectorValues byteVectorValues = context.reader().getByteVectorValues(field);
-    if (byteVectorValues == null) {
-      ByteVectorValues.checkField(context.reader(), field);
+    Float16VectorValues float16VectorValues = context.reader().getFloat16VectorValues(field);
+    if (float16VectorValues == null) {
+      Float16VectorValues.checkField(context.reader(), field);
       return NO_RESULTS;
     }
 
@@ -113,13 +113,12 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
     if (parentBitSet == null) {
       return NO_RESULTS;
     }
-
-    VectorScorer scorer = byteVectorValues.scorer(query);
-    if (scorer == null) {
+    VectorScorer float16VectorScorer = float16VectorValues.scorer(query);
+    if (float16VectorScorer == null) {
       return NO_RESULTS;
     }
     return DiversifyingChildrenVectorScorer.collect(
-        acceptIterator, parentBitSet, scorer, k, queryTimeout);
+        acceptIterator, parentBitSet, float16VectorScorer, k, queryTimeout);
   }
 
   @Override
@@ -134,7 +133,7 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
       int visitedLimit,
       KnnCollectorManager knnCollectorManager)
       throws IOException {
-    ByteVectorValues.checkField(context.reader(), field);
+    Float16VectorValues.checkField(context.reader(), field);
     KnnCollector collector =
         knnCollectorManager.newCollector(visitedLimit, searchStrategy, context);
     if (collector == null) {
@@ -161,7 +160,7 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     if (!super.equals(o)) return false;
-    DiversifyingChildrenByteKnnVectorQuery that = (DiversifyingChildrenByteKnnVectorQuery) o;
+    DiversifyingChildrenFloat16KnnVectorQuery that = (DiversifyingChildrenFloat16KnnVectorQuery) o;
     return k == that.k
         && Objects.equals(parentsFilter, that.parentsFilter)
         && Objects.equals(childFilter, that.childFilter)
