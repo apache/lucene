@@ -376,6 +376,8 @@ API Changes
 
 * GITHUB#16647: Add KnnVectorsReader.getVectorCount to read vector counts from metadata (Chris Hegarty)
 
+* GITHUB#16686: Make DocAndScoreQuery public (Trevor McCulloch)
+
 New Features
 ---------------------
 
