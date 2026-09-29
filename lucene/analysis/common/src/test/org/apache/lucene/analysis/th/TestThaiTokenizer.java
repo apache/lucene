@@ -46,6 +46,15 @@ public class TestThaiTokenizer extends BaseTokenStreamTestCase {
     assertTokenStreamContents(tokenizer, new String[] {"ไป", "พารากอน", "กัน"});
   }
 
+  // empty string in a segmentation dictionary REALLY does not make sense...
+  // but don't crash on it
+  public void testUserDictionaryEmptyString() throws IOException {
+    CharArraySet userDict = new CharArraySet(List.of("", "พารากอน"), false);
+    Tokenizer tokenizer = new ThaiTokenizer(userDict);
+    tokenizer.setReader(new StringReader("ไปพารากอนกัน"));
+    assertTokenStreamContents(tokenizer, new String[] {"ไป", "พารากอน", "กัน"});
+  }
+
   public void testMultipleUserDictionaryTermsAndOffsets() throws IOException {
     CharArraySet userDict = new CharArraySet(List.of("พารากอน", "คนขับรถ"), false);
     Tokenizer tokenizer = new ThaiTokenizer(userDict);

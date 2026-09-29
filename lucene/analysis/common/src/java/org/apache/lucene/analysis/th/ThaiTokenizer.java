@@ -142,7 +142,7 @@ public class ThaiTokenizer extends SegmentingTokenizerBase {
         minLen = Math.min(minLen, length);
         maxLen = Math.max(maxLen, length);
       }
-      this.minDictWordLen = minLen;
+      this.minDictWordLen = Math.max(1, minLen); // ignore empty string
       this.maxDictWordLen = maxLen;
     } else {
       this.minDictWordLen = 0;
@@ -187,6 +187,7 @@ public class ThaiTokenizer extends SegmentingTokenizerBase {
     if (userDictionary != null && !userDictionary.isEmpty()) {
       int remaining = sentenceEnd - (sentenceStart + start);
       int maxLen = Math.min(maxDictWordLen, remaining);
+      assert minDictWordLen > 0;
       for (int l = maxLen; l >= minDictWordLen; l--) {
         if (userDictionary.contains(buffer, sentenceStart + start, l)) {
           int customEnd = start + l;
