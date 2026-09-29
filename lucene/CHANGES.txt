@@ -178,10 +178,12 @@ Improvements
 
 Optimizations
 ---------------------
-* GITHUB#16145: Always fire prefetch when ReadAdvice is RANDOM in MemorySegmentIndexInput. The power-of-two throttle
-  assumes "consecutive cache hits → file is warm", which does not hold for random-access patterns where each request
-  visits unpredictable pages. An isRandom boolean flag bypasses the throttle with zero overhead on the non-RANDOM
-  hot path.
+* GITHUB#16145: Bound the power-of-two prefetch backoff in MemorySegmentIndexInput and delay it until 1024
+  consecutive page-cache hits. The unbounded schedule assumes a warm file stays warm, but the page cache churns;
+  under memory pressure the expected number of reads that went unprefetched was unbounded. The gap between probes
+  now starts at 16 after 1024 consecutive hits, doubles as the hit count doubles, and is capped at 256, so at most
+  255 reads go unprefetched per eviction event. The shared hit counter is no longer written on every prefetch call
+  in the hot case.
   (Michael Marshall)
 
 * GITHUB#16431: Add support for Block-Max WAND dynamic score skipping in FunctionScoreQuery

@@ -342,8 +342,7 @@ public class MMapDirectory extends FSDirectory {
           fileSize,
           chunkSizePower,
           confined,
-          toReadAdvice,
-          readAdvice == ReadAdvice.RANDOM);
+          toReadAdvice);
     } catch (Throwable t) {
       arena.close();
       throw t;
