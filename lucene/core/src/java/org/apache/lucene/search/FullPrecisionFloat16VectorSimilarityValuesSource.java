@@ -20,31 +20,31 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
-import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorSimilarityFunction;
 
 /**
  * A {@link DoubleValuesSource} that computes vector similarity between a query vector and the raw
- * full-precision vectors indexed in the provided {@link
- * org.apache.lucene.document.KnnFloatVectorField} in documents.
+ * half-precision (FLOAT16) vectors indexed in the provided {@link
+ * org.apache.lucene.document.KnnFloat16VectorField} in documents.
  */
-public class FullPrecisionFloatVectorSimilarityValuesSource
+public class FullPrecisionFloat16VectorSimilarityValuesSource
     extends AbstractFullPrecisionVectorSimilarityValuesSource {
 
-  private final float[] queryVector;
+  private final short[] queryVector;
 
   /**
    * Creates a {@link DoubleValuesSource} that returns the vector similarity score between the
    * provided query vector and the field for documents.
    *
    * @param vector the query vector
-   * @param fieldName the field name of the {@link org.apache.lucene.document.KnnFloatVectorField}
+   * @param fieldName the field name of the {@link org.apache.lucene.document.KnnFloat16VectorField}
    * @param vectorSimilarityFunction the vector similarity function to use
    */
-  public FullPrecisionFloatVectorSimilarityValuesSource(
-      float[] vector, String fieldName, VectorSimilarityFunction vectorSimilarityFunction) {
+  public FullPrecisionFloat16VectorSimilarityValuesSource(
+      short[] vector, String fieldName, VectorSimilarityFunction vectorSimilarityFunction) {
     super(fieldName, vectorSimilarityFunction);
     this.queryVector = vector;
   }
@@ -55,20 +55,20 @@ public class FullPrecisionFloatVectorSimilarityValuesSource
    * the field.
    *
    * @param vector the query vector
-   * @param fieldName the field name of the {@link org.apache.lucene.document.KnnFloatVectorField}
+   * @param fieldName the field name of the {@link org.apache.lucene.document.KnnFloat16VectorField}
    */
-  public FullPrecisionFloatVectorSimilarityValuesSource(float[] vector, String fieldName) {
+  public FullPrecisionFloat16VectorSimilarityValuesSource(short[] vector, String fieldName) {
     this(vector, fieldName, null);
   }
 
   @Override
   protected KnnVectorValues getVectorValues(LeafReaderContext ctx) throws IOException {
-    return ctx.reader().getFloatVectorValues(fieldName);
+    return ctx.reader().getFloat16VectorValues(fieldName);
   }
 
   @Override
   protected void checkField(LeafReaderContext ctx) {
-    FloatVectorValues.checkField(ctx.reader(), fieldName);
+    Float16VectorValues.checkField(ctx.reader(), fieldName);
   }
 
   @Override
@@ -78,13 +78,13 @@ public class FullPrecisionFloatVectorSimilarityValuesSource
 
   @Override
   protected VectorScorer fullPrecisionRescorer(KnnVectorValues vectorValues) throws IOException {
-    return ((FloatVectorValues) vectorValues).rescorer(queryVector);
+    return ((Float16VectorValues) vectorValues).rescorer(queryVector);
   }
 
   @Override
   protected double compareToQuery(KnnVectorValues vectorValues, int ord) throws IOException {
     return vectorSimilarityFunction.compare(
-        queryVector, ((FloatVectorValues) vectorValues).vectorValue(ord));
+        queryVector, ((Float16VectorValues) vectorValues).vectorValue(ord));
   }
 
   @Override
@@ -96,8 +96,8 @@ public class FullPrecisionFloatVectorSimilarityValuesSource
   public boolean equals(Object obj) {
     if (this == obj) return true;
     if (obj == null || getClass() != obj.getClass()) return false;
-    FullPrecisionFloatVectorSimilarityValuesSource other =
-        (FullPrecisionFloatVectorSimilarityValuesSource) obj;
+    FullPrecisionFloat16VectorSimilarityValuesSource other =
+        (FullPrecisionFloat16VectorSimilarityValuesSource) obj;
     return Objects.equals(fieldName, other.fieldName)
         && Objects.equals(vectorSimilarityFunction, other.vectorSimilarityFunction)
         && Arrays.equals(queryVector, other.queryVector);
@@ -105,7 +105,7 @@ public class FullPrecisionFloatVectorSimilarityValuesSource
 
   @Override
   public String toString() {
-    return "FullPrecisionFloatVectorSimilarityValuesSource(fieldName="
+    return "FullPrecisionFloat16VectorSimilarityValuesSource(fieldName="
         + fieldName
         + " vectorSimilarityFunction="
         + vectorSimilarityFunction
