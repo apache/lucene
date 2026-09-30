@@ -71,8 +71,8 @@ public interface IOContext {
   }
 
   /**
-   * Returns an {@link IOContext} for merging, for a caller that knows a merge reads the file but
-   * not how large the merge is.
+   * Returns an {@link IOContext} for merging when the caller does not know how large the merge is.
+   * Unlike {@link #merge(MergeInfo)}, {@link #mergeInfo()} on the returned context is {@code null}.
    */
   static IOContext merge() {
     return merge(null, Set.of());
@@ -147,7 +147,10 @@ public interface IOContext {
   /** The {@link Context} this context is for */
   Context context();
 
-  /** Merge info, when {@link #context()} is {@link Context#MERGE} and the caller knows it */
+  /**
+   * Merge info, or {@code null} if {@link #context()} is not {@link Context#MERGE}, or if it is but
+   * the caller does not know how large the merge is (see {@link #merge()}).
+   */
   MergeInfo mergeInfo();
 
   /** Flush info, if {@link #context()} is {@link Context#FLUSH} */
