@@ -16,12 +16,6 @@
  */
 package org.apache.lucene.sandbox.codecs.dedup;
 
-import static org.apache.lucene.sandbox.codecs.dedup.DedupFlatVectorsFormat.META_CODEC_NAME;
-import static org.apache.lucene.sandbox.codecs.dedup.DedupFlatVectorsFormat.META_EXTENSION;
-import static org.apache.lucene.sandbox.codecs.dedup.DedupFlatVectorsFormat.VECTOR_DATA_CODEC_NAME;
-import static org.apache.lucene.sandbox.codecs.dedup.DedupFlatVectorsFormat.VECTOR_DATA_EXTENSION;
-import static org.apache.lucene.sandbox.codecs.dedup.DedupFlatVectorsFormat.VERSION_CURRENT;
-
 import java.io.IOException;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
@@ -41,6 +35,10 @@ import org.apache.lucene.util.RamUsageEstimator;
  * or merging existing segments (never both), delegating to {@link DedupFlushContext} or {@link
  * DedupMergeContext} accordingly.
  *
+ * <p>Also used by {@link DedupScalarQuantizedVectorsFormat} (with a non-null {@link
+ * DedupQuantizer}) to additionally write a quantized copy of each applicable group, into a separate
+ * quantized vector data file.
+ *
  * @lucene.experimental
  */
 final class DedupFlatVectorsWriter extends FlatVectorsWriter {
@@ -49,7 +47,10 @@ final class DedupFlatVectorsWriter extends FlatVectorsWriter {
 
   private final IndexOutput meta;
   private final IndexOutput vectorData;
+  private final IndexOutput quantizedVectorData;
   private boolean finished;
+
+  private final DedupQuantizer quantizer;
 
   private final DedupFlushContext flushContext;
   private boolean usedForFlush;
@@ -57,34 +58,62 @@ final class DedupFlatVectorsWriter extends FlatVectorsWriter {
   private final DedupMergeContext mergeContext;
   private boolean usedForMerge;
 
-  DedupFlatVectorsWriter(SegmentWriteState state, FlatVectorsScorer vectorsScorer)
+  DedupFlatVectorsWriter(
+      SegmentWriteState state,
+      FlatVectorsScorer vectorsScorer,
+      DedupQuantizer quantizer,
+      String metaCodecName,
+      String metaExtension,
+      String vectorDataCodecName,
+      String vectorDataExtension,
+      String quantizedVectorDataCodecName,
+      String quantizedVectorDataExtension,
+      int versionCurrent)
       throws IOException {
     super(vectorsScorer);
 
     this.finished = false;
+    this.quantizer = quantizer;
     this.flushContext = new DedupFlushContext();
     this.usedForFlush = false;
     this.mergeContext = new DedupMergeContext();
     this.usedForMerge = false;
 
     String metaFileName =
-        IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, META_EXTENSION);
+        IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, metaExtension);
     String vectorDataFileName =
         IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, VECTOR_DATA_EXTENSION);
+            state.segmentInfo.name, state.segmentSuffix, vectorDataExtension);
 
     boolean success = false;
     try {
       this.meta = state.directory.createOutput(metaFileName, state.context);
+      CodecUtil.writeIndexHeader(
+          meta, metaCodecName, versionCurrent, state.segmentInfo.getId(), state.segmentSuffix);
+
       this.vectorData = state.directory.createOutput(vectorDataFileName, state.context);
       CodecUtil.writeIndexHeader(
-          meta, META_CODEC_NAME, VERSION_CURRENT, state.segmentInfo.getId(), state.segmentSuffix);
-      CodecUtil.writeIndexHeader(
           vectorData,
-          VECTOR_DATA_CODEC_NAME,
-          VERSION_CURRENT,
+          vectorDataCodecName,
+          versionCurrent,
           state.segmentInfo.getId(),
           state.segmentSuffix);
+
+      if (quantizer != null) {
+        String quantizedVectorDataFileName =
+            IndexFileNames.segmentFileName(
+                state.segmentInfo.name, state.segmentSuffix, quantizedVectorDataExtension);
+        this.quantizedVectorData =
+            state.directory.createOutput(quantizedVectorDataFileName, state.context);
+        CodecUtil.writeIndexHeader(
+            quantizedVectorData,
+            quantizedVectorDataCodecName,
+            versionCurrent,
+            state.segmentInfo.getId(),
+            state.segmentSuffix);
+      } else {
+        this.quantizedVectorData = null;
+      }
       success = true;
     } finally {
       if (success == false) {
@@ -110,7 +139,7 @@ final class DedupFlatVectorsWriter extends FlatVectorsWriter {
     }
     usedForFlush = true;
 
-    flushContext.flush(meta, vectorData, maxDoc, sortMap);
+    flushContext.flush(meta, vectorData, quantizedVectorData, maxDoc, sortMap, quantizer);
   }
 
   @Override
@@ -126,6 +155,10 @@ final class DedupFlatVectorsWriter extends FlatVectorsWriter {
 
     CodecUtil.writeFooter(meta);
     CodecUtil.writeFooter(vectorData);
+
+    if (quantizedVectorData != null) {
+      CodecUtil.writeFooter(quantizedVectorData);
+    }
   }
 
   @Override
@@ -140,12 +173,12 @@ final class DedupFlatVectorsWriter extends FlatVectorsWriter {
   }
 
   private void finishMerge() throws IOException {
-    mergeContext.finish(meta, vectorData);
+    mergeContext.finish(meta, vectorData, quantizedVectorData, quantizer);
   }
 
   @Override
   public void close() throws IOException {
-    IOUtils.close(meta, vectorData);
+    IOUtils.close(meta, vectorData, quantizedVectorData);
   }
 
   @Override

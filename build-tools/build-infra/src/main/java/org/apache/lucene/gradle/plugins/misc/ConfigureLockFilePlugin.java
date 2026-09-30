@@ -26,7 +26,7 @@ import org.gradle.api.Project;
  * Configure dependency checks plugin which validates and updates the top-level {@code
  * versions.lock}, taking care of cross-configuration consistency of transitive dependencies.
  *
- * @see "https://github.com/apache/lucene/blob/main/help/dependencies.txt"
+ * @see "https://github.com/apache/lucene/blob/main/help/dependencies.md"
  * @see
  *     "https://github.com/carrotsearch/gradle-build-infra#plugin-comcarrotsearchgradlebuildinfradependencychecksdependencychecksplugin"
  */

@@ -123,11 +123,6 @@ API Changes
 
 New Features
 ---------------------
-* GITHUB#16418: Incremental doc-values updates. A set-only doc-values update (NUMERIC or BINARY) is written as a sparse
-  "delta" overlay holding just the updated documents and layered over the base column at read time, instead of
-  rewriting the whole column, turning per-update write amplification from O(column) into O(updated docs). Enabled by
-  default; disable with IndexWriterConfig#setMaxDocValuesOverlays(0). (Jim Ferenczi)
-
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
   modern Hangul conjoining jamo before KoreanTokenizer. (Mingi Jeong)
 
@@ -147,6 +142,9 @@ New Features
 * GITHUB#16383: Add fp16 vector encoding support. (Pulkit Gupta)
 
 * GITHUB#16473: Add scalar quantization support in Fp16 vector encoding. (Pulkit Gupta)
+
+* GITHUB#16735: Add Float16VectorSimilarityQuery for similarity threshold search over fp16 vectors.
+  (Recep Eken)
 
 Improvements
 ---------------------
@@ -183,6 +181,7 @@ Improvements
 
 Optimizations
 ---------------------
+
 * GITHUB#16431: Add support for Block-Max WAND dynamic score skipping in FunctionScoreQuery
   and DoubleValuesSource using DocValuesSkipper. (Rajat Jain)
 
@@ -217,14 +216,20 @@ Optimizations
 
 * GITHUB#12324: ELiminate redundant work in AbstractKnnVectorQuery.rewrite (Mike Sokolov)
 
+* GITHUB#16619: DirectIODirectory's slice() no longer performs a blocking direct read when
+  creating a slice; the first read resolves the deferred start position instead. (John Maurice)
+
 Bug Fixes
 ---------------------
+* GITHUB#16657: Fix hashCode/equals contract violation in LRUQueryCache's QueryCacheKey and account a
+  cached query's RAM once per distinct query. (Sagar Upadhyaya)
+
+* GITHUB#16553: Fix stored-fields corruption when PerField#finish throws: the stored-fields frame
+  was left open, causing "Wrote N docs, finish called with numDocs=M" at flush. (Michael Marshall)
+
 * GITHUB#16552: Reconnect HNSW nodes whose out-degree decays across successive
   merge-reuse generations, preventing progressive recall loss under low delete
   rates. (Ethan Baker)
-
-* GITHUB#16565: IndexWriter#updateBinaryDocValue now rejects updating a field that is part of the
-  index sort, matching IndexWriter#updateNumericDocValue. (Jim Ferenczi)
 
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
@@ -234,6 +239,8 @@ Bug Fixes
 * GITHUB#7865 AbstractRangeQueryNode#toQueryString(EscapeQuerySyntax) now
   returns a string which can be parsed back into the original node.
   (Peter Barna, Adam Schwartz)
+
+* GITHUB#15133: Take the FST suffix cache into account when reporting FST ramBytesUsed (Anh Dung Bui)
 
 * GITHUB#14847: Allow Faiss vector format to index >2GB of vectors per-field per-segment by using MemorySegment APIs
   (instead of ByteBuffer) to copy bytes to native memory. (Kaival Parikh)
@@ -258,6 +265,8 @@ Bug Fixes
 * GITHUB#15838: Fix luke terms export failure on Windows when field names contain characters forbidden in file name (Binlong Gao)
 
 * GITHUB#15939: Fix thread-safety issues with NFARunAutomaton. (Dimitris Rempapis)
+
+* GITHUB#16212: Fix concurrent modification in LRUQueryCache.cleanUp(). (Prithvi S)
 
 * GITHUB#16278: Refactor NativeFSLockFactory lock acquisition to cleanly separate locking and file system logic. (Bharathi-Kanna)
 
@@ -359,6 +368,11 @@ Other
 API Changes
 ---------------------
 
+* GITHUB#16696: FlatVectorsWriter gains mergeOneFlatVectorFieldForMergeScorer and the
+  FlatVectorsWriter.MergeScorerData handle it returns, so that a flat writer can prepare what a
+  merge scorer over the merged vectors needs while it writes them. The default prepares nothing;
+  a writer that wraps another one should forward the new method too. (John Maurice)
+
 * GITHUB#14399: Add a default LeafFieldComparator#disableSkipping method so document skipping can be
   disabled per segment. (Serhiy Bzhezytskyy)
 
@@ -374,8 +388,30 @@ API Changes
 * GITHUB#16385: Remove unused public methods in AllGroupHeadsCollector.
                 Update grouping package info to use CollectorManager instead of Collector. (Binlong Gao)
 
+* GITHUB#16647: Add KnnVectorsReader.getVectorCount to read vector counts from metadata (Chris Hegarty)
+
+* GITHUB#16686: Make DocAndScoreQuery public (Trevor McCulloch)
+
 New Features
 ---------------------
+* GITHUB#16722: Support user dictionary in ThaiTokenizer and ThaiTokenizerFactory.
+  (Kamthorn Krairaksa)
+
+* GITHUB#16717: Add ThaiCharFilter, ThaiCharFilterFactory, and ThaiNormalizationFilter for
+  pre-tokenization character normalization and token-level normalization in ThaiAnalyzer.
+  (Kamthorn Krairaksa)
+
+* GITHUB#16720: Add ThaiRepeatFilter and ThaiRepeatFilterFactory to expand Thai repetition
+  mark (Maiyamok) with exact OffsetAttribute and highlighter compatibility. (Kamthorn Krairaksa)
+
+* GITHUB#16680: Add a "subword" type to the subword tokens generated by
+  the compound word token filters, so downstream filters can distinguish
+  them from original terms. (Renato Haeberli)
+
+* GITHUB#16418: Incremental doc-values updates. A set-only doc-values update (NUMERIC or BINARY) is written as a sparse
+  "delta" overlay holding just the updated documents and layered over the base column at read time, instead of
+  rewriting the whole column, turning per-update write amplification from O(column) into O(updated docs). Enabled by
+  default; disable with IndexWriterConfig#setMaxDocValuesOverlays(0). (Jim Ferenczi)
 
 * GITHUB#16243: Add StableTflSimilarity, a similarity that estimates term rarity from term length
   and document length instead of corpus statistics such as document frequency. It also supports k3
@@ -385,16 +421,31 @@ New Features
   requiring the ICU analysis plugin. Uses a generated switch for fold exceptions with
   Character.toLowerCase() as the default fallback. (Robert Muir, Costin Leau)
 
-* GITHUB#15979: Add a sandboxed de-duplicating HNSW vector format (DedupHnswVectorsFormat) that stores
-  each distinct full-precision vector once, shared across all documents and fields that reference it.
-  (Kaival Parikh)
+* GITHUB#15979, GITHUB#16506: Add sandboxed de-duplicating HNSW vector formats (DedupHnswVectorsFormat,
+  DedupHnswScalarQuantizedVectorsFormat) that store each distinct full-precision and quantized vector
+  once, shared across all documents and fields that reference it. Quantization is data-blind (assumes
+  vectors are centered at zero) for effective de-duplication across fields. (Kaival Parikh)
 
 * GITHUB#16484: Add SpanMultiTermQueryWrapper.FrequentTermsSpanBooleanQueryRewrite.  It's a rewrite method that
   translates each term into a SpanTermQuery within a {@link SpanOrQuery}, but retains only the most frequent terms so it
   will not overflow the boolean max clause count. (Alan Woodward, Nishant Mehta, David Smiley)
 
+* GITHUB#16580: Allow in-place updates of SORTED_NUMERIC doc-values via
+  IndexWriter#updateSortedNumericDocValue (and IndexWriter#updateDocValues with a single
+  SortedNumericDocValuesField). An update sets a single value per matched document; the field may be
+  single- or multi-valued. Single-valued columns reuse the numeric update path (including the
+  incremental delta overlay), and multi-valued columns are merged per-doc. (Houston Putman)
+
 Improvements
 ---------------------
+* GITHUB#16718: Modernize ThaiAnalyzer default stopwords list based on contemporary Thai corpus
+  frequency analysis and linguistically validated stop words. (Kamthorn Krairaksa)
+
+* GITHUB#16708: IndexWriter#addBatch now rejects non-finite float vector values and, with cosine
+  similarity, zero vectors in VectorColumns, matching the checks done by KnnFloatVectorField and
+  KnnByteVectorField. (Mayya Sharipova)
+
+* GITHUB#16298: Store doc values DISI data into a separate file. (Sagar Upadhyaya)
 
 * GITHUB#16247: Introduce CachingCollectorManager to parallelize search when using CachingCollector.
                 Remove experimental GroupingSearch constructor that takes a GroupSelector as argument
@@ -417,6 +468,18 @@ Improvements
 
 Optimizations
 ---------------------
+
+* GITHUB#16682: Carry file open hints on merge and flush contexts, which used to drop them. An HNSW
+  format now carries the random access hint for the vectors it reads, rather than the flat format
+  holding them claiming it whatever reads them. Add NoReuseHint, set by stored fields, term vectors
+  and the raw vectors kept only to rescore, so an application can tell those apart from the files it
+  wants to keep in memory. (Jim Ferenczi)
+
+* GITHUB#16593: DenseLiveDocs and SparseLiveDocs implement Bits#applyMask in bulk, restoring the
+  word-at-a-time masking that live docs had before GITHUB#13084 exposed them as LiveDocs rather than
+  as a FixedBitSet, so AcceptDocs, the bulk scorers and CheckIndex no longer test one bit per
+  candidate document when a segment has deletions. (John Maurice)
+
 * GITHUB#16416: Use ArrayDeque instead of ArrayList for FIFO output buffering in
   JapaneseCompletionFilter, avoiding repeated element shifting on removal. (Luiz Lima)
 
@@ -441,6 +504,9 @@ Optimizations
   rangeIntoBitSet. (Costin Leau)
 
 * GITHUB#16352: Better cost() estimation for SkipBlockRangeIterator. (Alan Woodward)
+
+* GITHUB#16268: LongRangeFacetCutter: doc-values skip index for single + multi-valued fields,
+  single-valued segment unwrapping, and interval tracker rewind. (Jakub Slowinski)
 
 * GITHUB#16285: Apply GCD bound transform to sorted numeric rangeIntoBitSet, comparing raw
   encoded values directly instead of decoding every packed value. (Costin Leau)
@@ -480,8 +546,38 @@ Optimizations
   LatLonDocValuesQuery, XYDocValuesPointInGeometryQuery, and
   SortedNumericDocValuesSetQuery. (Costin Leau)
 
+* GITHUB#16297: Use LongHashSet for sparse ordinal sets in DocValuesRangeIterator so memory
+  scales with matching terms instead of segment cardinality. (Costin Leau)
+
+* GITHUB#16631: Vectorize the uint4 nibble unpack used by Lucene104ScalarQuantizedVectorsFormat
+  via VectorUtilSupport, vectors are now unpacked with the Panama Vector API. (Jakub Slowinski)
+
+* GITHUB#16588: AcceptDocs builds its bit set from the raw filter iterator so that
+  DocIdSetIterator#intoBitSet is used on segments with deletions. (John Maurice)
+
+* GITHUB#16515: Apply filter before scoring in MaxScoreBulkScorer. (Ke Wei)
+
+* GITHUB#16582: Rewrite sorted-numeric doc-values range queries that cover every value of a field to a
+  FieldExistsQuery, and collapse an IndexOrDocValuesQuery whose two sides rewrite equally. (Houston Putman)
+
+* GITHUB#16520: Support two-phase filters in MaxScoreBulkScorer bitset path. (Ke Wei)
+
+* GITHUB#16696: Merging an HNSW graph over Lucene104HnswScalarQuantizedVectorsFormat in its default
+  CENTERED mode, with an asymmetric encoding of a float32 field, no longer reads the merged float
+  vectors back to build the merge scorer. (John Maurice)
+
+* GITHUB#16669: Use intoBitSet to speed up ReqExclBulkScorer with dense exclusions. (Ke Wei)
+
 Bug Fixes
 ---------------------
+* GITHUB#10153: Allow configurable buffer size in SegmentingTokenizerBase and recognize whitespace as safe boundary in ThaiTokenizer to avoid splitting words across buffer boundaries. (Kamthorn Krairaksa)
+
+* GITHUB#16620: Make HNSW merges abortable during graph initialization and repair, so that the
+  copy, repair and rebalance phases of an initialized graph build can be promptly aborted when the
+  surrounding merge is cancelled. (Tanguy Leroux)
+
+* GITHUB#16565: IndexWriter#updateBinaryDocValue now rejects updating a field that is part of the
+  index sort, matching IndexWriter#updateNumericDocValue. (Jim Ferenczi)
 
 * GITHUB#16546: Prevent RangeBulkScorer from passing empty ranges to LeafCollector. (jxy)
 
@@ -497,6 +593,10 @@ Bug Fixes
   the node's degree. Previously nodes with a degree of 1 were always forced into the join set,
   which made the join set degenerate to the whole graph on hub-and-spoke shaped HNSW graphs.
   (Mayya Sharipova)
+
+* GITHUB#16478: Reject LZ4 match offsets that point before the start of the output in
+  LZ4#decompress. Corrupt input previously threw ArrayIndexOutOfBoundsException instead of
+  a checked IOException. (Serhiy Bzhezytskyy)
 
 * GITHUB#16350: Disable bulk-scoring in monitor queries. (Alan Woodward)
 
@@ -530,6 +630,24 @@ Bug Fixes
 * GITHUB#16452: Fix over-allocation in MemoryAccountingBitsetCollectorManager.Result#bitSet, which
   is now sized to highestMatchedDoc + 1 instead of the full searched range. (Sasilekha R)
 
+* GITHUB#16577: Fix incorrect position increment generated by FixedShingleFilter. (Kishor Kharbas)
+
+* GITHUB#16728: Handle edge cases with inaccurate scorers that can cause duplicate neighbor links
+  in the HNSW graph. (Simon Cooper)
+
+* GITHUB#16139: Fix IBSimilarity with DistributionSPL producing negative scores due to
+  floating-point rounding errors. (Prithvi S)
+
+Build
+---------------------
+
+* GITHUB#16543, GITHUB#16521, GITHUB#16483: allow custom gradle-wrapper.jar
+  and gradle distribution mirrors (via environment variables LUCENE_GRADLE_WRAPPER_URL,
+  LUCENE_GRADLE_DISTRIBUTION_URL), see './gradlew helpLocalSettings' for more
+  information. (David Smiley, Dawid Weiss)
+
+* Upgrade forbiddenapis to version 3.11.  (Uwe Schindler)
+
 Other
 ---------------------
 * GITHUB#16266: Remove deprecated search(Query, Collector) calls in QueryUtils by replacing
@@ -543,6 +661,33 @@ Other
   (Sanghun Lee)
 
 * GITHUB#16516: Simplify array copy by ArrayUtil.copyOfSubArray() in grouping package (Binlong Gao)
+
+======================= Lucene 10.5.2 =======================
+
+API Changes
+---------------------
+
+* GITHUB#16654: Public constructors of [Byte|Float]VectorSimilarityQuery are now private (binary-incompatible change).
+  Lucene 10.5.0 (GITHUB#15784) switched these queries from explicit to adaptive HNSW graph traversal but kept the
+  constructor signatures, so the two positional float arguments silently changed meaning from (traversalSimilarity,
+  resultSimilarity) to (resultSimilarity, decay). This turns that silent behavior change into a compilation error on
+  upgrade. Both behaviors are now exposed as nested classes: [Byte|Float]VectorSimilarityQuery.Explicit exposes the
+  Lucene 10.4 behavior and is deprecated, and [Byte|Float]VectorSimilarityQuery.Adaptive exposes the 10.5 behavior.
+  (Kaival Parikh, Chris Hostetter, Michael Sokolov)
+
+* GITHUB#16573: Remove the NumericFieldStats API (added in 10.5.0 via GITHUB#15740, GITHUB#15817) and
+  revert SortedNumericDocValuesRangeQuery to no longer use it. The statistics it derived from points
+  and doc values could be incorrect if points and doc values are encoded differently, for example when
+  a float/double field is indexed with points and NumericDocValues, causing range queries to return
+  wrong results. (Chris Hostetter, Houston Putman)
+
+Bug Fixes
+---------------------
+
+* GITHUB#16665: Fix Lucene104HnswScalarQuantizedVectorsFormat merges with an asymmetric encoding
+  (1 and 2 bit quantization today) and COSINE similarity: the merge scorer's query side was
+  quantized from un-normalized vectors while the index side was normalized, so the merge trips an
+  assertion and otherwise builds the graph from wrong scores. (John Maurice)
 
 ======================= Lucene 10.5.1 =======================
 

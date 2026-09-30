@@ -127,9 +127,9 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
   public static final int VERSION_86 = 10;
 
   /** The version that records per-field incremental doc-values overlay generations. */
-  public static final int VERSION_11_0 = 11;
+  public static final int VERSION_10_6 = 11;
 
-  static final int VERSION_CURRENT = VERSION_11_0;
+  static final int VERSION_CURRENT = VERSION_10_6;
 
   /** Name of the generation reference file name */
   static final String OLD_SEGMENTS_GEN = "segments.gen";
@@ -460,7 +460,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
         dvUpdateFiles = Collections.unmodifiableMap(map);
       }
       siPerCommit.setDocValuesUpdatesFiles(dvUpdateFiles);
-      if (format >= VERSION_11_0) {
+      if (format >= VERSION_10_6) {
         final int numOverlayFields = CodecUtil.readBEInt(input);
         for (int i = 0; i < numOverlayFields; i++) {
           final int fieldNumber = CodecUtil.readBEInt(input);
@@ -718,7 +718,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
         CodecUtil.writeBEInt(out, e.getKey());
         out.writeSetOfStrings(e.getValue());
       }
-      // Doc-values overlays, part of the format since VERSION_11_0 (which VERSION_CURRENT always
+      // Doc-values overlays, part of the format since VERSION_10_6 (which VERSION_CURRENT always
       // is).
       // field -> {baseGen, deltaGenNewestFirst...}; empty for segments without overlays.
       final Map<Integer, long[]> overlays = siPerCommit.getDocValuesOverlays();

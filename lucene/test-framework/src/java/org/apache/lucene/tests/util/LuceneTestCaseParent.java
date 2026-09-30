@@ -213,7 +213,7 @@ public abstract sealed class LuceneTestCaseParent extends Assert
   public static final String DEFAULT_LINE_DOCS_FILE = "europarl.lines.txt.gz";
 
   /**
-   * Random sample from enwiki used in tests. See {@code help/tests.txt}. gradle task downloading
+   * Random sample from enwiki used in tests. See {@code help/tests.md}. gradle task downloading
    * this data set: {@code gradlew getEnWikiRandomLines}.
    */
   public static final String JENKINS_LARGE_LINE_DOCS_FILE = "enwiki.random.lines.txt";
@@ -1795,6 +1795,16 @@ public abstract sealed class LuceneTestCaseParent extends Assert
     }
 
     c.setMaxFullFlushMergeWaitMillis(rarely(r) ? atLeast(r, 1000) : atLeast(r, 200));
+
+    // Randomize the incremental doc-values overlay budget (GH#16418) over a small, bounded range.
+    // A field's reader keeps one producer open per live generation (base plus up to this many
+    // sparse deltas), so open file handles scale with segments x updated-fields x overlays; a fixed
+    // default would both push update-heavy tests past the open-handle limit and leave the lower
+    // budgets (including the disabled, dense-rewrite path at 0) uncovered. Tests that need a
+    // specific budget set it explicitly after newIndexWriterConfig and, if update-heavy, annotate a
+    // matching @HandleLimitFS.MaxOpenHandles.
+    c.setMaxDocValuesOverlays(TestUtil.nextInt(r, 0, 4));
+
     return c;
   }
 

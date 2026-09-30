@@ -220,6 +220,16 @@ public class HnswGraphBuilder implements HnswBuilder {
     this.abortCheck = abortCheck;
   }
 
+  /**
+   * Runs the abort check if one has been set, otherwise does nothing. Subclasses should call this
+   * from any long-running merge operation so that a cancelled merge can be aborted promptly.
+   */
+  protected final void maybeAbort() throws IOException {
+    if (abortCheck != null) {
+      abortCheck.run();
+    }
+  }
+
   @Override
   public OnHeapHnswGraph getCompletedGraph() throws IOException {
     if (!frozen) {
@@ -494,6 +504,12 @@ public class HnswGraphBuilder implements HnswBuilder {
         // here we don't need to lock, because there's no incoming link so no others is able to
         // discover this node such that no others will modify this neighbor array as well
         if (isLinkRepair) {
+          // there's a very small chance this is trying to add a duplicate node,
+          // if the scoring function is estimated and the highest score is NOT
+          // the identity function (which would already be filtered out by diversityCheck)
+          if (contains(neighbors, cNode)) {
+            continue;
+          }
           neighbors.addOutOfOrder(cNode, cScore);
         } else {
           neighbors.addInOrder(cNode, cScore);
@@ -501,6 +517,13 @@ public class HnswGraphBuilder implements HnswBuilder {
       }
     }
     return mask;
+  }
+
+  private static boolean contains(NeighborArray array, int node) {
+    for (int i = 0; i < array.size(); i++) {
+      if (array.nodes()[i] == node) return true;
+    }
+    return false;
   }
 
   static void popToScratch(GraphBuilderKnnCollector candidates, NeighborArray scratch) {

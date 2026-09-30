@@ -105,7 +105,7 @@ public class CheckLicensesPlugin extends LuceneGradlePlugin {
                 "build-options.properties",
                 "dev-tools/**",
                 "gradle/**",
-                "help/*.txt",
+                "help/*.md",
                 "lucene/licenses/*",
                 "versions.lock",
 
