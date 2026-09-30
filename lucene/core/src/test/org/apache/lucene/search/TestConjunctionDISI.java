@@ -443,5 +443,8 @@ public class TestConjunctionDISI extends LuceneTestCase {
 
     assertEquals(NO_MORE_DOCS, conjunction.nextDoc());
     assertEquals(NO_MORE_DOCS, conjunction.docID());
+    for (DocIdSetIterator iterator : iterators) {
+      assertEquals(NO_MORE_DOCS, iterator.docID());
+    }
   }
 }
