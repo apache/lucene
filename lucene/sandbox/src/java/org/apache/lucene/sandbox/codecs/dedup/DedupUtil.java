@@ -45,11 +45,6 @@ final class DedupUtil {
   /** Alignment bytes on disk for fieldOrdToGroupOrd. */
   private static final int FIELD_ORD_TO_GROUP_ORD_ALIGN_BYTES = 4;
 
-  // TODO: This is the number of bits used to write each group ordinal in the index-backed per-field
-  //  FieldOrdToGroupOrd mapping. Evaluate using fewer bits to reduce index size, at the expense of
-  //  costlier lookups.
-  static final int FIELD_ORD_TO_GROUP_ORD_BITS_PER_VALUE = 32;
-
   /** Initial allocation size for internal re-used int[] scratch buffers. */
   static final int SCRATCH_INITIAL_SIZE = 16;
 
@@ -104,6 +99,7 @@ final class DedupUtil {
       int groupOrd,
       int vectorCount,
       int maxDoc,
+      int maxGroupOrd,
       DocsWithFieldSet docs,
       FieldOrdToGroupOrd fieldOrdToGroupOrd)
       throws IOException {
@@ -120,9 +116,12 @@ final class DedupUtil {
         ORD_TO_DOC_DIRECT_MONOTONIC_BLOCK_SHIFT, meta, vectorData, vectorCount, maxDoc, docs);
 
     // write fieldOrdToGroupOrd
+    // pack each ordinal to minimize storage, using the bits needed for the largest group ordinal
+    int fieldOrdToGroupOrdBitsPerValue = DirectWriter.bitsRequired(maxGroupOrd);
+
     long fieldOrdToGroupOrdOffset = vectorData.alignFilePointer(FIELD_ORD_TO_GROUP_ORD_ALIGN_BYTES);
     DirectWriter writer =
-        DirectWriter.getInstance(vectorData, vectorCount, FIELD_ORD_TO_GROUP_ORD_BITS_PER_VALUE);
+        DirectWriter.getInstance(vectorData, vectorCount, fieldOrdToGroupOrdBitsPerValue);
     for (int i = 0; i < vectorCount; i++) {
       writer.add(fieldOrdToGroupOrd.get(i));
     }
@@ -131,6 +130,7 @@ final class DedupUtil {
 
     meta.writeLong(fieldOrdToGroupOrdOffset);
     meta.writeLong(fieldOrdToGroupOrdSize);
+    meta.writeInt(fieldOrdToGroupOrdBitsPerValue);
   }
 
   static void writeEndMarker(IndexOutput meta) throws IOException {
@@ -146,7 +146,8 @@ final class DedupUtil {
       int vectorCount,
       OrdToDocDISIReaderConfiguration ordToDoc,
       long fieldOrdToGroupOrdOffset,
-      long fieldOrdToGroupOrdSize) {
+      long fieldOrdToGroupOrdSize,
+      int fieldOrdToGroupOrdBitsPerValue) {
 
     static ReadFieldInfo read(IndexInput meta) throws IOException {
 
@@ -164,6 +165,7 @@ final class DedupUtil {
           OrdToDocDISIReaderConfiguration.fromStoredMeta(meta, vectorCount);
       long fieldOrdToGroupOrdOffset = meta.readLong();
       long fieldOrdToGroupOrdSize = meta.readLong();
+      int fieldOrdToGroupOrdBitsPerValue = meta.readInt();
 
       return new ReadFieldInfo(
           fieldNumber,
@@ -174,7 +176,8 @@ final class DedupUtil {
           vectorCount,
           ordToDoc,
           fieldOrdToGroupOrdOffset,
-          fieldOrdToGroupOrdSize);
+          fieldOrdToGroupOrdSize,
+          fieldOrdToGroupOrdBitsPerValue);
     }
   }
 
