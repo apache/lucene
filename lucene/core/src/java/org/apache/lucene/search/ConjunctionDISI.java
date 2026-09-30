@@ -269,6 +269,9 @@ final class ConjunctionDISI extends FilterDocIdSetIterator {
           if (doc != NO_MORE_DOCS) {
             lead.advance(NO_MORE_DOCS);
           }
+          for (BitSetIterator iterator : bitSetIterators) {
+            iterator.setDocId(NO_MORE_DOCS);
+          }
           return NO_MORE_DOCS;
         }
         for (BitSet bitSet : bitSets) {
