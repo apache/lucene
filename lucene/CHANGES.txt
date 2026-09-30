@@ -635,7 +635,7 @@ Bug Fixes
 * GITHUB#16139: Fix IBSimilarity with DistributionSPL producing negative scores due to
   floating-point rounding errors. (Prithvi S)
 
-* GITHUB#XXXXX: LateInteractionFloatValuesSource.ScoreFunction.SUM_MAX_SIM now sums raw per-token
+* GITHUB#16748: LateInteractionFloatValuesSource.ScoreFunction.SUM_MAX_SIM now sums raw per-token
   similarities and scales the total once, instead of summing per-token scaled scores, so that
   documents are ranked by MaxSim for EUCLIDEAN and MAXIMUM_INNER_PRODUCT. Scores for COSINE and
   DOT_PRODUCT are unchanged. (Lantao Jin)
