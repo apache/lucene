@@ -101,7 +101,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   // clustering similar documents together. NOTE: this cache must be small since it's fully scanned.
   private final long[] prefetchedBlockIDCache;
   private int prefetchedBlockIDCacheIndex;
-  private boolean closed;
+  private volatile boolean closed;
   // what a merge needs to map the data file for itself
   private final Directory directory;
   private final String fieldsStreamFN;
