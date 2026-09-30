@@ -145,7 +145,7 @@ New Features
 
 * GITHUB#16735: Add Float16VectorSimilarityQuery for similarity threshold search over fp16 vectors.
   (Recep Eken)
-  
+
 * GITHUB#16742: Add experimental ProactiveMergePolicy. Optional before and after selectors run
   around a wrapped merge policy. DeleteRunSelector reclaims deletes that LogMergePolicy leaves
   below the merge factor, bounded by a caller-supplied byte cap. (Costin Leau)
