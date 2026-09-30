@@ -146,7 +146,8 @@ New Features
 * GITHUB#16735: Add Float16VectorSimilarityQuery for similarity threshold search over fp16 vectors.
   (Recep Eken)
 
-* GITHUB#16738: Add fp16 query support in diversifying children KNN query. (Pulkit Gupta)
+* GITHUB#16738: Add DiversifyingChildrenFloat16KnnVectorQuery for fp16 parent-block-join KNN
+  search. (Pulkit Gupta)
 
 Improvements
 ---------------------

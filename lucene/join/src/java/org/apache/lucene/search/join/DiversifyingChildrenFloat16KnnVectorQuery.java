@@ -117,8 +117,8 @@ public class DiversifyingChildrenFloat16KnnVectorQuery extends KnnFloat16VectorQ
     if (float16VectorScorer == null) {
       return NO_RESULTS;
     }
-    return DiversifyingChildrenVectorScorer.collect(
-        acceptIterator, parentBitSet, float16VectorScorer, k, queryTimeout);
+    return new DiversifyingChildrenVectorScorer(acceptIterator, parentBitSet, float16VectorScorer)
+        .collect(k, queryTimeout);
   }
 
   @Override

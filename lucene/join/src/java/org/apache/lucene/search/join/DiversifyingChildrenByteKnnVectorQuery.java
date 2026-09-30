@@ -118,8 +118,8 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
     if (scorer == null) {
       return NO_RESULTS;
     }
-    return DiversifyingChildrenVectorScorer.collect(
-        acceptIterator, parentBitSet, scorer, k, queryTimeout);
+    return new DiversifyingChildrenVectorScorer(acceptIterator, parentBitSet, scorer)
+        .collect(k, queryTimeout);
   }
 
   @Override

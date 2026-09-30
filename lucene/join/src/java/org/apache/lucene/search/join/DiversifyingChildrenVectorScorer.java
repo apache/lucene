@@ -39,6 +39,11 @@ class DiversifyingChildrenVectorScorer {
   private int bestChild = -1;
   private float currentScore = Float.NEGATIVE_INFINITY;
 
+  /**
+   * @param acceptedChildrenIterator the child documents to score
+   * @param parentBitSet the parent documents
+   * @param vectorScorer scores a child document against the query vector
+   */
   DiversifyingChildrenVectorScorer(
       DocIdSetIterator acceptedChildrenIterator, BitSet parentBitSet, VectorScorer vectorScorer) {
     this.acceptedChildrenIterator = acceptedChildrenIterator;
@@ -47,11 +52,11 @@ class DiversifyingChildrenVectorScorer {
     this.parentBitSet = parentBitSet;
   }
 
-  public int bestChild() {
+  private int bestChild() {
     return bestChild;
   }
 
-  public int nextParent() throws IOException {
+  private int nextParent() throws IOException {
     int nextChild = acceptedChildrenIterator.docID();
     if (nextChild == -1) {
       nextChild = acceptedChildrenIterator.nextDoc();
@@ -74,44 +79,34 @@ class DiversifyingChildrenVectorScorer {
     return currentParent;
   }
 
-  public float score() throws IOException {
+  private float score() throws IOException {
     return currentScore;
   }
 
   /**
    * Returns the top {@code k} scoring children, at most one per parent document. The results are
-   * marked as a lower bound if the given timeout is met before every parent has been visited.
+   * marked as a lower bound if the given timeout is met before every parent has been visited. The
+   * accepted children are consumed, so this may be called once per instance.
    *
-   * @param acceptedChildrenIterator the child documents to score
-   * @param parentBitSet the parent documents
-   * @param scorer scores a child document against the query vector
    * @param k how many children to return
    * @param queryTimeout the timeout to honour, or null for no timeout
    */
-  static TopDocs collect(
-      DocIdSetIterator acceptedChildrenIterator,
-      BitSet parentBitSet,
-      VectorScorer scorer,
-      int k,
-      QueryTimeout queryTimeout)
-      throws IOException {
-    DiversifyingChildrenVectorScorer childrenScorer =
-        new DiversifyingChildrenVectorScorer(acceptedChildrenIterator, parentBitSet, scorer);
+  TopDocs collect(int k, QueryTimeout queryTimeout) throws IOException {
     final int queueSize = Math.min(k, Math.toIntExact(acceptedChildrenIterator.cost()));
     HitQueue queue = new HitQueue(queueSize, true);
     TotalHits.Relation relation = TotalHits.Relation.EQUAL_TO;
     ScoreDoc topDoc = queue.top();
-    while (childrenScorer.nextParent() != DocIdSetIterator.NO_MORE_DOCS) {
+    while (nextParent() != DocIdSetIterator.NO_MORE_DOCS) {
       // Mark results as partial if timeout is met
       if (queryTimeout != null && queryTimeout.shouldExit()) {
         relation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
         break;
       }
 
-      float score = childrenScorer.score();
+      float score = score();
       if (score > topDoc.score) {
         topDoc.score = score;
-        topDoc.doc = childrenScorer.bestChild();
+        topDoc.doc = bestChild();
         topDoc = queue.updateTop();
       }
     }
