@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.sandbox.codecs.dedup;
 
+import static org.apache.lucene.index.VectorEncoding.FLOAT16;
 import static org.apache.lucene.index.VectorEncoding.FLOAT32;
 
 import java.io.IOException;
@@ -26,7 +27,6 @@ import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
-import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.FieldOrdToGroupOrd;
 import org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.FieldOrdToGroupOrdOffHeap;
@@ -143,14 +143,7 @@ final class DedupScalarQuantizedVectorValues {
 
     final OffHeapFloat16VectorValues fieldView =
         OffHeapFloat16VectorValues.load(
-            function,
-            vectorsScorer,
-            configuration,
-            VectorEncoding.FLOAT16,
-            dimension,
-            0,
-            0,
-            vectorData);
+            function, vectorsScorer, configuration, FLOAT16, dimension, 0, 0, vectorData);
 
     final QuantizedByteVectorValues groupView =
         groupValues(
