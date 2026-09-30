@@ -310,11 +310,13 @@ final class DedupScalarQuantizedVectorValues {
    * #scorer(float[])} scores against the quantized values instead. Mirrors {@code
    * Lucene104ScalarQuantizedVectorsReader.ScalarQuantizedVectorValues}.
    */
-  static final class RawAndQuantizedValues extends FloatVectorValues implements DedupVectorValues {
+  static final class Float32RawAndQuantizedValues extends FloatVectorValues
+      implements DedupVectorValues {
     private final DedupVectorValues.FloatImpl rawValues;
     private final FieldValues quantizedValues;
 
-    RawAndQuantizedValues(DedupVectorValues.FloatImpl rawValues, FieldValues quantizedValues) {
+    Float32RawAndQuantizedValues(
+        DedupVectorValues.FloatImpl rawValues, FieldValues quantizedValues) {
       this.rawValues = rawValues;
       this.quantizedValues = quantizedValues;
     }
@@ -369,8 +371,8 @@ final class DedupScalarQuantizedVectorValues {
     }
 
     @Override
-    public RawAndQuantizedValues copy() throws IOException {
-      return new RawAndQuantizedValues(rawValues.copy(), quantizedValues.copy());
+    public Float32RawAndQuantizedValues copy() throws IOException {
+      return new Float32RawAndQuantizedValues(rawValues.copy(), quantizedValues.copy());
     }
 
     @Override
@@ -385,11 +387,10 @@ final class DedupScalarQuantizedVectorValues {
   }
 
   /**
-   * FLOAT16 analogue of {@link RawAndQuantizedValues}: exposes a field's raw de-duplicated {@code
-   * short[]} vectors for full-fidelity readback, while {@link #scorer(short[])} scores against the
-   * shared quantized view (the {@code short[]} target is inflated to {@code float[]} to match the
-   * data-blind quantizer). Mirrors the FLOAT16 handling in {@code
-   * Lucene104ScalarQuantizedVectorsReader}.
+   * FLOAT16 analogue of {@link Float32RawAndQuantizedValues}: exposes a field's raw de-duplicated
+   * {@code short[]} vectors for full-fidelity readback, while {@link #scorer(short[])} scores
+   * against the shared quantized view (the {@code short[]} target is inflated to {@code float[]} to
+   * match the data-blind quantizer).
    */
   static final class Float16RawAndQuantizedValues extends Float16VectorValues
       implements DedupVectorValues {

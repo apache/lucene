@@ -26,7 +26,6 @@ import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.SameThreadExecutorService;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
@@ -92,8 +91,7 @@ public class TestDedupHnswScalarQuantizedVectorsFormat extends TestDedupHnswVect
         } else {
           assertTrue(totalByteSize > 0);
           assertTrue(offHeap.get("vdd") > 0L); // NOTE: different from vec
-          if (fieldInfo.getVectorEncoding() == VectorEncoding.FLOAT32
-              || fieldInfo.getVectorEncoding() == VectorEncoding.FLOAT16) {
+          if (fieldInfo.getVectorEncoding().isFloatingPoint()) {
             assertTrue(offHeap.get("vdqd") > 0L); // NOTE: different from veq
           } else {
             assertNull(offHeap.get("vdqd")); // BYTE fields are stored raw only

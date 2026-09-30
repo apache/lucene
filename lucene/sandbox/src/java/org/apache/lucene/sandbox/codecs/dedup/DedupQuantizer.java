@@ -188,9 +188,9 @@ record DedupQuantizer(ScalarEncoding encoding) {
    * flavor is available (i.e. the vector originates from a segment in this format), it is copied
    * as-is; otherwise the raw vector is quantized. The block locations are written to {@code meta};
    * BYTE groups (stored raw only) record an empty list. FLOAT32 and FLOAT16 groups are both
-   * quantized; callers supply {@code vectors} as {@code float[]} (FLOAT16 groups inflate their
-   * {@code short[]} storage to {@code float[]} first), since the quantized record is a pure
-   * function of the {@code float[]} values and the flavor, independent of the source encoding.
+   * quantized; callers supply {@code vectors} as {@code float[]} (FLOAT16 inflates its {@code
+   * short[]} storage first), since the quantized record is a pure function of the {@code float[]}
+   * values and the flavor, independent of the source encoding.
    */
   void writeGroup(
       IndexOutput meta,
@@ -203,7 +203,7 @@ record DedupQuantizer(ScalarEncoding encoding) {
       PreQuantizedSupplier preQuantized)
       throws IOException {
 
-    if (groupEncoding == VectorEncoding.BYTE) {
+    if (groupEncoding.isFloatingPoint() == false) {
       writeEmptyGroup(meta);
       return;
     }

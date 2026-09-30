@@ -308,7 +308,8 @@ final class DedupMergeContext implements Accountable {
     DedupQuantizer.PreQuantized preQuantized(int ord) {
       FloatVector handle = get(ord);
       if (handle.values()
-          instanceof DedupScalarQuantizedVectorValues.RawAndQuantizedValues rawAndQuantized) {
+          instanceof
+          DedupScalarQuantizedVectorValues.Float32RawAndQuantizedValues rawAndQuantized) {
         DedupScalarQuantizedVectorValues.FieldValues quantized =
             rawAndQuantized.getQuantizedValues();
         return new DedupQuantizer.PreQuantized(quantized, quantized.flavor(), handle.ord());

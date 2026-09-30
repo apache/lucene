@@ -45,10 +45,7 @@ import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncod
  * org.apache.lucene.index.VectorEncoding#FLOAT16} vectors are quantized (FLOAT16 vectors are
  * inflated to {@code float} for the data-blind quantizer, and kept raw as {@code short[]} for
  * full-fidelity readback); BYTE vectors are stored raw only, identical to {@link
- * DedupFlatVectorsFormat}. The fp16-to-fp32 inflation before quantization matches the core {@link
- * org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat} and is required while
- * the JVM lacks fp16 arithmetic; quantizing fp16 directly is tracked by <a
- * href="https://github.com/apache/lucene/issues/16533">LUCENE issue #16533</a>.
+ * DedupFlatVectorsFormat}.
  *
  * <h2>.vdd (vector de-dup data) file</h2>
  *

@@ -183,17 +183,8 @@ final class DedupUtil {
   }
 
   /**
-   * Inflates a float16 vector (stored as {@code short[]}) into the provided {@code float[]} buffer
-   * and returns it, so it can be fed to the {@code float[]}-based scalar quantizer. The buffer is
-   * reused across calls.
-   *
-   * <p>Scalar quantization computes the centroid and corrective terms in fp32, and the JVM has no
-   * fp16 arithmetic type, so fp16 vectors must be inflated to fp32 before quantization. This is the
-   * same approach the core {@code Lucene104ScalarQuantizedVectorsWriter} takes. Doing the
-   * quantization directly on fp16 (once the JVM supports fp16 arithmetic) is tracked by <a
-   * href="https://github.com/apache/lucene/issues/16533">LUCENE issue #16533</a>. The inflation is
-   * lossless (every fp16 value is exactly representable in fp32), so the quantized record is
-   * identical to what the same values indexed as fp32 would produce.
+   * Inflates a float16 vector ({@code short[]}) into the reused {@code float[]} buffer for the
+   * fp32-based scalar quantizer.
    */
   static float[] inflateFloat16(short[] float16Vector, float[] dest) {
     for (int i = 0; i < float16Vector.length; i++) {
