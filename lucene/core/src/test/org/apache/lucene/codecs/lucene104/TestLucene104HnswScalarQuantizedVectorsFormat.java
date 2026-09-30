@@ -43,7 +43,6 @@ import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsWriter;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.document.KnnFloat16VectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.CodecReader;
@@ -361,7 +360,8 @@ public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVector
 
             IndexableField field =
                 switch (vectorEncoding) {
-                  case BYTE -> new KnnByteVectorField("v", randomVector8(dim), DOT_PRODUCT);
+                  case BYTE ->
+                      throw new IllegalStateException("not expected to run for byte vectors");
                   case FLOAT16 ->
                       new KnnFloat16VectorField(
                           "v", randomNormalizedFloat16Vector(dim), DOT_PRODUCT);
