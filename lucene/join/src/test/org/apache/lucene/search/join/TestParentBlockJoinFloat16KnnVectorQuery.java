@@ -153,8 +153,7 @@ public class TestParentBlockJoinFloat16KnnVectorQuery
     float[] v = new float[dim];
     Random random = random();
     for (int i = 0; i < dim; i++) {
-      // snap to a value exactly representable in float16 so the query and field vectors match
-      v[i] = Float.float16ToFloat(Float.floatToFloat16(random.nextFloat()));
+      v[i] = random.nextFloat();
     }
     return v;
   }
