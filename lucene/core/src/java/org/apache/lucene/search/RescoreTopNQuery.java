@@ -22,7 +22,6 @@ import java.util.Objects;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.util.ArrayUtil;
 
 /**
  * A Query that re-scores another Query with a {@link DoubleValuesSource} function and cut-off the
@@ -35,6 +34,13 @@ import org.apache.lucene.util.ArrayUtil;
  * @lucene.experimental
  */
 public class RescoreTopNQuery extends Query {
+
+  /**
+   * Number of candidates whose loads are kept in flight while rescoring. Large enough to cover the
+   * queue depth a block device needs to reach its peak read rate, small enough that the buffer does
+   * not grow with the rescoring set.
+   */
+  private static final int PREFETCH_WINDOW = 128;
 
   private final int n;
   private final Query query;
@@ -101,17 +107,27 @@ public class RescoreTopNQuery extends Query {
   }
 
   /**
-   * Starts the loads for every candidate before scoring any of them, so that more than one read is
-   * in flight when the values live on slow storage. A rerank shortlist is spread over every
-   * segment, so the prefetches for all segments are issued before any scoring rather than a segment
-   * at a time. Only doc ids are buffered, never values.
+   * Starts the loads for the candidates ahead of the scoring position, so that more than one read
+   * is in flight when the values live on slow storage.
+   *
+   * <p>Candidates are held in a fixed-size ring rather than buffered in full: a rerank shortlist
+   * can be large, and its size is a function of the query rather than of the index. Each iteration
+   * issues the prefetch for one candidate and, once the ring is full, scores the oldest one, which
+   * by then has had a whole window of candidates' worth of time to load. That keeps {@link
+   * #PREFETCH_WINDOW} reads in flight from end to end instead of draining every time a batch is
+   * scored. The ring spans segments, because a shortlist is spread over all of them and a
+   * segment-at-a-time window would go idle at every boundary.
+   *
+   * <p>Only doc ids are buffered, never values.
    */
   private int rescoreWithPrefetch(
       IndexReader reader, Weight weight, DoubleValuesSource rewrittenValueSource, HitQueue queue)
       throws IOException {
     final List<LeafReaderContext> leaves = reader.leaves();
     final DoubleValues[] leafValues = new DoubleValues[leaves.size()];
-    final int[][] leafDocs = new int[leaves.size()][];
+    final PrefetchRing ring = new PrefetchRing(PREFETCH_WINDOW);
+    int originalCount = 0;
+
     for (int i = 0; i < leaves.size(); i++) {
       final LeafReaderContext leaf = leaves.get(i);
       Scorer innerScorer = weight.scorer(leaf);
@@ -119,35 +135,87 @@ public class RescoreTopNQuery extends Query {
         continue;
       }
       DoubleValues rescores = rewrittenValueSource.getValues(leaf, null);
+      leafValues[i] = rescores;
       DocIdSetIterator iterator = innerScorer.iterator();
-      int[] docs = new int[16];
-      int count = 0;
       while (iterator.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
         int docId = iterator.docID();
+        // Issue the load first, so that the new read is in flight while we block on the oldest one.
         rescores.prefetch(docId);
-        if (count == docs.length) {
-          docs = ArrayUtil.grow(docs, count + 1);
+        if (ring.isFull()) {
+          scoreOldest(ring, leaves, leafValues, queue);
+          originalCount++;
         }
-        docs[count++] = docId;
+        ring.append(i, docId);
       }
-      leafValues[i] = rescores;
-      leafDocs[i] = ArrayUtil.copyOfSubArray(docs, 0, count);
     }
 
-    int originalCount = 0;
-    for (int i = 0; i < leaves.size(); i++) {
-      int[] docs = leafDocs[i];
-      if (docs == null) {
-        continue;
-      }
-      int docBase = leaves.get(i).docBase;
-      DoubleValues values = leafValues[i];
-      for (int doc : docs) {
-        rescoreInto(queue, values, docBase, doc);
-        originalCount++;
-      }
+    while (ring.isEmpty() == false) {
+      scoreOldest(ring, leaves, leafValues, queue);
+      originalCount++;
     }
     return originalCount;
+  }
+
+  /**
+   * Scores the candidate that has been in the ring longest, and so has had the most time to load,
+   * then drops it.
+   */
+  private static void scoreOldest(
+      PrefetchRing ring, List<LeafReaderContext> leaves, DoubleValues[] leafValues, HitQueue queue)
+      throws IOException {
+    int leafOrd = ring.oldestLeaf();
+    rescoreInto(queue, leafValues[leafOrd], leaves.get(leafOrd).docBase, ring.oldestDoc());
+    ring.removeOldest();
+  }
+
+  /**
+   * Fixed-size FIFO of the candidates whose loads have been issued but whose scores have not been
+   * read yet. Holds doc ids and the segment they belong to, never values, and never grows with the
+   * size of the rescoring set.
+   */
+  private static final class PrefetchRing {
+    private final int[] docs;
+    private final int[] leafOrds;
+    private int head;
+    private int size;
+
+    PrefetchRing(int capacity) {
+      this.docs = new int[capacity];
+      this.leafOrds = new int[capacity];
+    }
+
+    boolean isFull() {
+      return size == docs.length;
+    }
+
+    boolean isEmpty() {
+      return size == 0;
+    }
+
+    /** Adds a candidate. A window may straddle segments, so the segment travels with the doc id. */
+    void append(int leafOrd, int doc) {
+      assert isFull() == false : "ring is full";
+      int tail = (head + size) % docs.length;
+      docs[tail] = doc;
+      leafOrds[tail] = leafOrd;
+      size++;
+    }
+
+    int oldestDoc() {
+      assert isEmpty() == false : "ring is empty";
+      return docs[head];
+    }
+
+    int oldestLeaf() {
+      assert isEmpty() == false : "ring is empty";
+      return leafOrds[head];
+    }
+
+    void removeOldest() {
+      assert isEmpty() == false : "ring is empty";
+      head = (head + 1) % docs.length;
+      size--;
+    }
   }
 
   private static void rescoreInto(HitQueue queue, DoubleValues values, int docBase, int docId)
