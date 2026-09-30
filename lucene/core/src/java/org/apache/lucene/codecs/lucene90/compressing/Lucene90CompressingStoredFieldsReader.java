@@ -272,14 +272,16 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
 
   /** Close the underlying {@link IndexInput}s. */
   @Override
-  public synchronized void close() throws IOException {
+  public void close() throws IOException {
     if (!closed) {
-      IOUtils.close(
-          indexReader,
-          fieldsStream,
-          original == this && mergeFieldsStream != fieldsStream ? mergeFieldsStream : null);
+      IOUtils.close(indexReader, fieldsStream, mergeFieldsStreamToClose());
       closed = true;
     }
+  }
+
+  /** The mapping a merge opened, read under the lock that guards it, closed outside it. */
+  private synchronized IndexInput mergeFieldsStreamToClose() {
+    return original == this && mergeFieldsStream != fieldsStream ? mergeFieldsStream : null;
   }
 
   private static void readField(DataInput in, StoredFieldVisitor visitor, FieldInfo info, int bits)
