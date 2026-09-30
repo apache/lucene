@@ -20,6 +20,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.store.DataAccessHint;
@@ -74,6 +76,101 @@ public class TestStoredFieldsMergeReadAdvice extends LuceneTestCase {
           "the merge re-advised the stored fields searches are reading: " + opens,
           List.of(),
           opens.advised());
+    }
+  }
+
+  /** Nothing depends on the hook: finishing twice, or never, still leaves the mapping sound. */
+  public void testTheHookIsAHint() throws Exception {
+    Opens opens = new Opens();
+    try (Directory dir = new RecordingDirectory(newDirectory(), opens)) {
+      writeDocuments(dir);
+      List<Open> mapped;
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        StoredFieldsReader fields = ((CodecReader) getOnlyLeafReader(reader)).getFieldsReader();
+        opens.clear();
+
+        StoredFieldsReader first = fields.getMergeInstance();
+        StoredFieldsReader second = fields.getMergeInstance();
+        mapped = sequentialOpens(opens);
+        assertEquals("one mapping for both merge instances: " + opens, 1, mapped.size());
+
+        // twice from one instance, and once from a reader that is not a merge instance
+        first.finishMerge();
+        first.finishMerge();
+        fields.finishMerge();
+        assertFalse("still held by the second instance: " + opens, mapped.get(0).closed());
+
+        second.finishMerge();
+        assertTrue("released by the last instance: " + opens, mapped.get(0).closed());
+      }
+    }
+  }
+
+  /** A merge instance nobody finishes, the way an abandoned merge leaves one behind. */
+  public void testTheMappingIsClosedWithTheReader() throws Exception {
+    Opens opens = new Opens();
+    try (Directory dir = new RecordingDirectory(newDirectory(), opens)) {
+      writeDocuments(dir);
+      List<Open> mapped;
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        StoredFieldsReader fields = ((CodecReader) getOnlyLeafReader(reader)).getFieldsReader();
+        opens.clear();
+
+        assertNotNull(fields.getMergeInstance());
+        mapped = sequentialOpens(opens);
+        assertEquals("one mapping for the merge instance: " + opens, 1, mapped.size());
+        assertFalse("still held by the merge instance: " + opens, mapped.get(0).closed());
+      }
+      assertTrue("closed with the reader: " + mapped.get(0), mapped.get(0).closed());
+    }
+  }
+
+  /** A merge open that fails leaves nothing behind, so a later merge still releases the mapping. */
+  public void testAFailedMergeOpenIsNotCountedAsAMergeInstance() throws Exception {
+    Opens opens = new Opens();
+    AtomicBoolean failMergeOpens = new AtomicBoolean();
+    try (Directory dir =
+        new RecordingDirectory(newDirectory(), opens) {
+          @Override
+          public IndexInput openInput(String name, IOContext context) throws IOException {
+            if (failMergeOpens.get()
+                && name.endsWith(".fdt")
+                && context.context() == IOContext.Context.MERGE) {
+              throw new IOException("injected");
+            }
+            return super.openInput(name, context);
+          }
+        }) {
+      writeDocuments(dir);
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        StoredFieldsReader fields = ((CodecReader) getOnlyLeafReader(reader)).getFieldsReader();
+        opens.clear();
+
+        failMergeOpens.set(true);
+        expectThrows(IOException.class, fields::getMergeInstance);
+        assertEquals("a failed open maps nothing: " + opens, List.of(), sequentialOpens(opens));
+
+        failMergeOpens.set(false);
+        StoredFieldsReader merging = fields.getMergeInstance();
+        List<Open> mapped = sequentialOpens(opens);
+        assertEquals("one mapping for the one merge instance: " + opens, 1, mapped.size());
+
+        merging.finishMerge();
+        assertTrue("released by the only merge instance: " + opens, mapped.get(0).closed());
+      }
+    }
+  }
+
+  private static void writeDocuments(Directory dir) throws IOException {
+    IndexWriterConfig iwc = new IndexWriterConfig();
+    iwc.setUseCompoundFile(false); // so the directory sees the data file by name
+    try (IndexWriter w = new IndexWriter(dir, iwc)) {
+      for (int i = 0; i < 64; i++) {
+        Document doc = new Document();
+        doc.add(new StoredField("field", "value " + i));
+        w.addDocument(doc);
+      }
+      w.commit();
     }
   }
 
@@ -169,7 +266,7 @@ public class TestStoredFieldsMergeReadAdvice extends LuceneTestCase {
     }
   }
 
-  private static final class RecordingDirectory extends FilterDirectory {
+  private static class RecordingDirectory extends FilterDirectory {
     private final Opens opens;
 
     RecordingDirectory(Directory in, Opens opens) {

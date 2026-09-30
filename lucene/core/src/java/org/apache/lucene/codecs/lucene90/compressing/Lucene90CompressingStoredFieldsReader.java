@@ -111,6 +111,8 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   private IndexInput mergeFieldsStream;
   // merge instances handed out and not yet finished
   private int mergeInstances;
+  // set once this merge instance has released the mapping
+  private boolean mergeFinished;
 
   // used by clone
   private Lucene90CompressingStoredFieldsReader(
@@ -720,19 +722,27 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   @Override
   public StoredFieldsReader getMergeInstance() throws IOException {
     ensureOpen();
-    return new Lucene90CompressingStoredFieldsReader(
-        this, true, original.mergeFieldsStream().clone());
+    IndexInput stream = original.mergeFieldsStream();
+    boolean success = false;
+    try {
+      StoredFieldsReader mergeInstance =
+          new Lucene90CompressingStoredFieldsReader(this, true, stream.clone());
+      success = true;
+      return mergeInstance;
+    } finally {
+      if (success == false) {
+        original.releaseMergeFieldsStream();
+      }
+    }
   }
 
   /**
    * The data file as a merge reads it, front to back. Advice applies to a whole mapping, so a merge
-   * maps the file again instead of changing the one searches use. Mapped on the first merge and
-   * released by {@link #finishMerge()}.
+   * maps the file again. Mapped on the first merge, released by {@link #finishMerge()}.
    */
   private synchronized IndexInput mergeFieldsStream() throws IOException {
     assert original == this;
     ensureOpen();
-    mergeInstances++;
     if (mergeFieldsStream == null) {
       if (context.context() == IOContext.Context.MERGE) {
         // opened by a merge to begin with, so it already advises sequential reads
@@ -751,21 +761,23 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
         }
       }
     }
+    mergeInstances++;
     return mergeFieldsStream;
   }
 
-  /**
-   * Closes the mapping a merge used, once no merge instance holds it. A later merge maps the file
-   * again.
-   */
+  /** Releases the mapping once no other merge instance holds it. A later merge maps it again. */
   @Override
   public void finishMerge() throws IOException {
+    if (merging == false || mergeFinished) {
+      return;
+    }
+    mergeFinished = true;
     original.releaseMergeFieldsStream();
   }
 
   private synchronized void releaseMergeFieldsStream() throws IOException {
     assert original == this;
-    if (closed || --mergeInstances > 0) {
+    if (closed || mergeInstances == 0 || --mergeInstances > 0) {
       return;
     }
     if (mergeFieldsStream != null && mergeFieldsStream != fieldsStream) {
