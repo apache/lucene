@@ -75,8 +75,8 @@ public class GradleWrapperDownloader {
 
   public static void checkVersion() {
     int major = Runtime.version().feature();
-    if (major < 21 || major > 26) {
-      throw new IllegalStateException("java version must be 21..26, your version: " + major);
+    if (major < 21 || major > 27) {
+      throw new IllegalStateException("java version must be 21..27, your version: " + major);
     }
   }
 
