@@ -25,16 +25,20 @@ import java.util.stream.Collectors;
 record DefaultIOContext(Set<FileOpenHint> hints) implements IOContext {
 
   public DefaultIOContext(Set<FileOpenHint> hints) {
-    this.hints = Set.copyOf(Objects.requireNonNull(hints));
+    this.hints = checkOneHintPerType(hints);
+  }
 
-    // there should only be one hint of each type in the IOContext
+  /** Returns an immutable copy of {@code hints}, rejecting any type given more than once. */
+  static Set<FileOpenHint> checkOneHintPerType(Set<FileOpenHint> hints) {
+    Set<FileOpenHint> copy = Set.copyOf(Objects.requireNonNull(hints));
     Map<Class<? extends FileOpenHint>, List<FileOpenHint>> hintClasses =
-        hints.stream().collect(Collectors.groupingBy(IOContext.FileOpenHint::getClass));
+        copy.stream().collect(Collectors.groupingBy(IOContext.FileOpenHint::getClass));
     for (var hintType : hintClasses.entrySet()) {
       if (hintType.getValue().size() > 1) {
         throw new IllegalArgumentException("Multiple hints of type " + hintType + " specified");
       }
     }
+    return copy;
   }
 
   public DefaultIOContext(FileOpenHint... hints) {

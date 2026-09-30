@@ -566,17 +566,8 @@ public abstract class PointRangeQuery extends Query {
     };
   }
 
-  private boolean canRewriteToMatchAllQuery(IndexReader reader) throws IOException {
-    for (LeafReaderContext context : reader.leaves()) {
-      LeafReader leaf = context.reader();
-      PointValues values = leaf.getPointValues(field);
-
-      if (values == null || values.getDocCount() != leaf.maxDoc()) {
-        return false;
-      }
-    }
-
-    return true;
+  private boolean canRewriteToMatchAllQuery(IndexReader reader) {
+    return reader.maxDoc() == PointValues.getDocCount(reader, field);
   }
 
   private boolean canRewriteToFieldExistsQuery(IndexReader reader) {

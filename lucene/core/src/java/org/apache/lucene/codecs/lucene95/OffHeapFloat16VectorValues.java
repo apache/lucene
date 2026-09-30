@@ -91,6 +91,24 @@ public abstract class OffHeapFloat16VectorValues extends Float16VectorValues
     return VectorEncoding.FLOAT16;
   }
 
+  @Override
+  public void prefetch(final int[] ordsToPrefetch, int numOrds) throws IOException {
+    if (ordsToPrefetch == null) {
+      return;
+    }
+
+    int finalNumOrds = Math.min(numOrds, ordsToPrefetch.length);
+    if (finalNumOrds <= 1) {
+      return;
+    }
+
+    // calculate offset and prefetch immediately
+    for (int i = 0; i < finalNumOrds; i++) {
+      long offset = (long) ordsToPrefetch[i] * byteSize;
+      slice.prefetch(offset, byteSize);
+    }
+  }
+
   public static OffHeapFloat16VectorValues load(
       VectorSimilarityFunction vectorSimilarityFunction,
       FlatVectorsScorer flatVectorsScorer,
