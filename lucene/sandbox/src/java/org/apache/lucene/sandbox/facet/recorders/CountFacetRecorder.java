@@ -120,37 +120,21 @@ public final class CountFacetRecorder implements FacetRecorder {
       values = new IntIntHashMap();
     }
 
-    OrdinalIterator dimOrds = facetCutter.getOrdinalsToRollup();
-    if (dimOrds != null) {
-      for (int dimOrd = dimOrds.nextOrd(); dimOrd != NO_MORE_ORDS; dimOrd = dimOrds.nextOrd()) {
-        int rolledUp = rollup(dimOrd, facetCutter);
-        if (rolledUp > 0) {
-          values.addTo(dimOrd, rolledUp);
+    if (facetCutter.needsRemapping()) {
+      IntIntHashMap remapped = new IntIntHashMap();
+      for (IntIntHashMap.IntIntCursor e : values) {
+        OrdinalIterator finals = facetCutter.remapOrd(e.key);
+        for (int g = finals.nextOrd(); g != NO_MORE_ORDS; g = finals.nextOrd()) {
+          remapped.addTo(g, e.value);
         }
       }
+      values = remapped;
     }
   }
 
   @Override
   public boolean contains(int ordinal) {
     return values.containsKey(ordinal);
-  }
-
-  private int rollup(int ord, FacetCutter facetCutter) throws IOException {
-    OrdinalIterator childOrds = facetCutter.getChildrenOrds(ord);
-    int accum = 0;
-    for (int nextChild = childOrds.nextOrd();
-        nextChild != NO_MORE_ORDS;
-        nextChild = childOrds.nextOrd()) {
-      int rolledUp = rollup(nextChild, facetCutter);
-      // Don't rollup zeros to not add ordinals that we don't actually have counts for to the map
-      if (rolledUp > 0) {
-        accum += values.addTo(nextChild, rolledUp);
-      } else {
-        accum += values.get(nextChild);
-      }
-    }
-    return accum;
   }
 
   private static class CountLeafFacetRecorder implements LeafFacetRecorder {
