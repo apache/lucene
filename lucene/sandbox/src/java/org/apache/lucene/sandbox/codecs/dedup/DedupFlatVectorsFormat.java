@@ -81,6 +81,7 @@ import org.apache.lucene.index.SegmentWriteState;
  *       org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration#writeStoredMeta}
  *   <li><b>[int64]</b> offset to this field's {@code fieldOrdToGroupOrd} map in the .vdd file
  *   <li><b>[int64]</b> length of this field's {@code fieldOrdToGroupOrd} map, in bytes
+ *   <li><b>[int32]</b> bits per value used to pack this field's {@code fieldOrdToGroupOrd} map
  * </ul>
  *
  * <p>also terminated by <b>[int32]</b> {@code -1}.

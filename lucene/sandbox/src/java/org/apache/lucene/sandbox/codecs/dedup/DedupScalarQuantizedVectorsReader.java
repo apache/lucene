@@ -352,7 +352,8 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
         entry.groupInfo().vectorDataOffset(),
         entry.groupInfo().vectorDataSize(),
         entry.fieldInfo().fieldOrdToGroupOrdOffset(),
-        entry.fieldInfo().fieldOrdToGroupOrdSize());
+        entry.fieldInfo().fieldOrdToGroupOrdSize(),
+        entry.fieldInfo().fieldOrdToGroupOrdBitsPerValue());
   }
 
   private FieldValues getQuantizedVectorValues(FieldEntry entry) throws IOException {
@@ -368,7 +369,8 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
         entry.quantizedBlock().quantizedDataOffset(),
         entry.quantizedBlock().quantizedDataSize(),
         entry.fieldInfo().fieldOrdToGroupOrdOffset(),
-        entry.fieldInfo().fieldOrdToGroupOrdSize());
+        entry.fieldInfo().fieldOrdToGroupOrdSize(),
+        entry.fieldInfo().fieldOrdToGroupOrdBitsPerValue());
   }
 
   @Override
@@ -389,7 +391,8 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
         entry.groupInfo().vectorDataOffset(),
         entry.groupInfo().vectorDataSize(),
         entry.fieldInfo().fieldOrdToGroupOrdOffset(),
-        entry.fieldInfo().fieldOrdToGroupOrdSize());
+        entry.fieldInfo().fieldOrdToGroupOrdSize(),
+        entry.fieldInfo().fieldOrdToGroupOrdBitsPerValue());
   }
 
   @Override

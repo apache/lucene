@@ -52,6 +52,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.packed.DirectWriter;
 
 /**
  * Tests that {@link DedupHnswVectorsFormat} stores each distinct vector once. De-duplication is
@@ -175,8 +176,13 @@ public class TestDedupFlatVectorsFormat extends LuceneTestCase {
         DedupFlatVectorsReader dedupReader = getDedupReader(leafReader, "f");
         FieldInfo fieldInfo = leafReader.getFieldInfos().fieldInfo("f");
 
+        // fieldOrdToGroupOrd is packed with the minimum bits required for the largest group
+        // ordinal. There are 2 distinct vectors (group ords 0 and 1), so each entry needs
+        // bitsRequired(1) bits rather than a full 32-bit int.
+        int bitsPerValue = DirectWriter.bitsRequired(1);
         long expectedOffHeapSize =
-            (docVectors.length * Integer.BYTES) // fieldOrdToGroupOrd mapping
+            DirectWriter.bytesRequired(
+                    docVectors.length, bitsPerValue) // fieldOrdToGroupOrd mapping
                 + (a.length + b.length) * Float.BYTES; // raw vector size
 
         assertEquals(
@@ -185,6 +191,60 @@ public class TestDedupFlatVectorsFormat extends LuceneTestCase {
                 .getOffHeapByteSize(fieldInfo)
                 .get("vdd") // vector data extension
                 .longValue());
+      }
+    }
+  }
+
+  /**
+   * Off-heap size grows with the packed bit width, i.e. log2(maxGroupOrd); more distinct vectors
+   * need more bits per entry than the 2-vector case in {@link #testOffHeapSize()}.
+   */
+  public void testOffHeapSizeScalesWithGroupOrdWidth() throws Exception {
+    // 5 distinct vectors -> group ords 0..4 -> maxGroupOrd = 4 -> bitsRequired(4) = 3 bits,
+    // which is strictly greater than bitsRequired(1) = 1 bit for the 2-distinct-vector case.
+    float[][] distinct = {{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}, {1, 1, 1, 1}};
+    // Reference each distinct vector twice so there are duplicates to de-duplicate, while keeping
+    // exactly 5 distinct groups.
+    float[][] docVectors = new float[distinct.length * 2][];
+    for (int i = 0; i < distinct.length; i++) {
+      docVectors[i] = distinct[i];
+      docVectors[i + distinct.length] = distinct[i];
+    }
+
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, config())) {
+      for (float[] vector : docVectors) {
+        Document doc = new Document();
+        doc.add(new KnnFloatVectorField("f", vector, EUCLIDEAN));
+        w.addDocument(doc);
+      }
+      w.forceMerge(1);
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        LeafReader leafReader = getOnlyLeafReader(reader);
+        FloatVectorValues values = leafReader.getFloatVectorValues("f");
+        assertEquals(docVectors.length, values.size());
+        assertEquals(distinct.length, groupNumVectors(values)); // exactly 5 distinct vectors
+
+        DedupFlatVectorsReader dedupReader = getDedupReader(leafReader, "f");
+        FieldInfo fieldInfo = leafReader.getFieldInfos().fieldInfo("f");
+
+        int maxGroupOrd = distinct.length - 1; // group ords are 0..(N-1)
+        int bitsPerValue = DirectWriter.bitsRequired(maxGroupOrd);
+
+        // The width must have grown relative to the 2-distinct-vector case, confirming the packed
+        // width tracks log2(maxGroupOrd) rather than being fixed.
+        assertTrue(
+            "bit width should grow with more distinct vectors",
+            bitsPerValue > DirectWriter.bitsRequired(1));
+
+        long rawVectorBytes = (long) distinct.length * distinct[0].length * Float.BYTES;
+        long expectedOffHeapSize =
+            DirectWriter.bytesRequired(
+                    docVectors.length, bitsPerValue) // fieldOrdToGroupOrd mapping
+                + rawVectorBytes; // raw vector size
+
+        assertEquals(
+            expectedOffHeapSize, dedupReader.getOffHeapByteSize(fieldInfo).get("vdd").longValue());
       }
     }
   }
