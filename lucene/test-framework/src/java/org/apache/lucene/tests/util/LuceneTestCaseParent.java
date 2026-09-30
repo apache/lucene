@@ -2558,6 +2558,9 @@ public abstract sealed class LuceneTestCaseParent extends Assert
   public static void resetClassDefaultQueryCache() throws IOException {
     IndexSearcher.setDefaultQueryCache(DEFAULT_QUERY_CACHE);
     IndexSearcher.setDefaultQueryCachingPolicy(DEFAULT_CACHING_POLICY);
+    if (classQueryCache != null) {
+      classQueryCache.clear();
+    }
     IOUtils.close(classQueryCache);
     classQueryCache = null;
   }
@@ -2575,6 +2578,9 @@ public abstract sealed class LuceneTestCaseParent extends Assert
     // test-scoped cache rather than the process-wide production default.
     IndexSearcher.setDefaultQueryCache(classQueryCache);
     IndexSearcher.setDefaultQueryCachingPolicy(MAYBE_CACHE_POLICY);
+    if (methodQueryCache != null) {
+      methodQueryCache.clear();
+    }
     IOUtils.close(methodQueryCache);
     methodQueryCache = null;
   }
