@@ -220,10 +220,11 @@ mp.getMaxCFSSegmentSizeMB();
 
 ```java
 IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
-iwc.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(false);
-iwc.getConfig().getCodec().compoundFormat().setMaxCFSSegmentSizeMB(512);
-iwc.getConfig().getCodec().compoundFormat().getShouldUseCompoundFile();
-iwc.getConfig().getCodec().compoundFormat().getMaxCFSSegmentSizeMB();
+CompoundFormat cfs = iwc.getCodec().compoundFormat();
+cfs.setShouldUseCompoundFile(false);
+cfs.setMaxCFSSegmentSizeMB(512);
+cfs.getShouldUseCompoundFile();
+cfs.getMaxCFSSegmentSizeMB();
 ```
 
 ### Implicit determinization removed from RegexpQuery and WildcardQuery
@@ -512,7 +513,7 @@ if (in.prefetch(offset, length)) {
 in.updateReadAdvice(ReadAdvice.SEQUENTIAL);
 
 // After
-in.updateIOContext(ioContext.withHints(DataAccessHint.SEQUENTIAL));
+in.updateIOContext(IOContext.DEFAULT.withHints(DataAccessHint.SEQUENTIAL));
 ```
 
 ### `CheckedIntConsumer` renamed to `IOIntConsumer` (GITHUB#14973)
