@@ -102,17 +102,28 @@ final class MultiSorter {
                 .thenComparingInt(ld -> ld.docID));
 
     PackedLongValues.Builder[] builders = new PackedLongValues.Builder[leafCount];
-
     for (int i = 0; i < leafCount; i++) {
-      CodecReader reader = readers.get(i);
-      LeafAndDocID leaf = new LeafAndDocID(i, reader.getLiveDocs(), reader.maxDoc());
-      setComparableValues(comparables, parents[i], i, leaf.docID);
-      queue.add(leaf);
       builders[i] = PackedLongValues.monotonicBuilder(PackedInts.COMPACT);
     }
 
-    // merge sort:
+    // Only live documents take part in the ordering. A deleted document keeps its slot in the
+    // reader's doc map (the builder must see every doc id, in order) but never enters the queue.
+    // Its sort value may be missing rather than merely irrelevant: a range-restricted merge input
+    // hides the values of the documents outside its range, and letting those documents compete
+    // sorts them as "missing", which can make the concatenation look sorted while the live
+    // documents are not.
     int mappedDocID = 0;
+    for (int i = 0; i < leafCount; i++) {
+      CodecReader reader = readers.get(i);
+      LeafAndDocID leaf = new LeafAndDocID(i, reader.getLiveDocs(), reader.maxDoc());
+      skipDeleted(leaf, builders[i], mappedDocID);
+      if (leaf.docID < leaf.maxDoc) {
+        setComparableValues(comparables, parents[i], i, leaf.docID);
+        queue.add(leaf);
+      }
+    }
+
+    // merge sort:
     int lastReaderIndex = 0;
     boolean isSorted = true;
     while (queue.size() != 0) {
@@ -123,10 +134,9 @@ final class MultiSorter {
       }
       lastReaderIndex = top.readerIndex;
       builders[top.readerIndex].add(mappedDocID);
-      if (top.liveDocs == null || top.liveDocs.get(top.docID)) {
-        mappedDocID++;
-      }
+      mappedDocID++;
       top.docID++;
+      skipDeleted(top, builders[top.readerIndex], mappedDocID);
       if (top.docID < top.maxDoc) {
         setComparableValues(comparables, parents[top.readerIndex], top.readerIndex, top.docID);
         queue.updateTop();
@@ -166,6 +176,22 @@ final class MultiSorter {
     final int effectiveDocID = parents == null ? docID : parents.nextSetBit(docID);
     for (IndexSorter.ComparableValues comparable : comparables) {
       comparable.setTopValue(readerIndex, effectiveDocID);
+    }
+  }
+
+  /**
+   * Advances {@code leaf} past deleted documents, giving each a doc-map slot so that the builder
+   * stays dense and monotonic. Deleted documents are mapped to -1 by the returned doc maps, so the
+   * value recorded here is never read.
+   */
+  private static void skipDeleted(
+      LeafAndDocID leaf, PackedLongValues.Builder builder, int mappedDocID) {
+    if (leaf.liveDocs == null) {
+      return;
+    }
+    while (leaf.docID < leaf.maxDoc && leaf.liveDocs.get(leaf.docID) == false) {
+      builder.add(mappedDocID);
+      leaf.docID++;
     }
   }
 

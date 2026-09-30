@@ -1336,6 +1336,51 @@ public class TestMultiOutputMerge extends LuceneTestCase {
     }
   }
 
+  /**
+   * Same as {@link #testBoundariesOnAKeyGiveDisjointKeyRanges}, but the sort puts missing values
+   * last. A range-restricted input hides the sort values of the documents outside its range, so
+   * they compare as missing; sorting them last made every later input look like it started with the
+   * largest possible key, which let {@link MultiSorter} conclude the inputs were already in order
+   * and concatenate them instead of merge-sorting.
+   */
+  public void testBoundariesOnAKeyWithMissingLastSort() throws Exception {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = newIndexWriterConfig(analyzer);
+      iwc.setIndexSort(
+          new Sort(new SortField("tenant", SortField.Type.STRING, false, SortField.STRING_LAST)));
+      iwc.setMergePolicy(new KeyPartitioningMergePolicy());
+      Random random = random();
+      int expected = 0;
+      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+        for (int seg = 0; seg < SEGMENTS; seg++) {
+          for (int d = 0; d < PER_SEGMENT; d++) {
+            Document doc = doc(id(seg, d), 0);
+            doc.add(new SortedDocValuesField("tenant", new BytesRef(tenant(random.nextInt(10)))));
+            w.addDocument(doc);
+            expected++;
+          }
+          w.commit();
+        }
+        w.forceMerge(OUTPUTS, true);
+      }
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        assertEquals(OUTPUTS, reader.leaves().size());
+        assertEquals(expected, reader.numDocs());
+        for (LeafReaderContext ctx : reader.leaves()) {
+          SortedDocValues tenants = ctx.reader().getSortedDocValues("tenant");
+          String max = null;
+          for (int doc = 0; doc < ctx.reader().maxDoc(); doc++) {
+            assertTrue(tenants.advanceExact(doc));
+            String value = tenants.lookupOrd(tenants.ordValue()).utf8ToString();
+            assertTrue(
+                "segment is not sorted at doc " + doc, max == null || value.compareTo(max) >= 0);
+            max = value;
+          }
+        }
+      }
+    }
+  }
+
   private static String tenant(int i) {
     return String.format(java.util.Locale.ROOT, "tenant-%02d", i);
   }
