@@ -210,7 +210,17 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
 
   @Override
   public FlatVectorsReader getMergeInstance() throws IOException {
-    return new Lucene99FlatVectorsReader(this, original.mergeVectorData().clone());
+    IndexInput data = original.mergeVectorData();
+    boolean success = false;
+    try {
+      FlatVectorsReader mergeInstance = new Lucene99FlatVectorsReader(this, data.clone());
+      success = true;
+      return mergeInstance;
+    } finally {
+      if (success == false) {
+        original.releaseMergeVectorData();
+      }
+    }
   }
 
   /**
@@ -219,7 +229,6 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
    */
   private synchronized IndexInput mergeVectorData() throws IOException {
     assert original == this;
-    mergeInstances++;
     if (mergeVectorData == null) {
       if (dataContext.context() == IOContext.Context.MERGE) {
         // opened by a merge to begin with, so it already reads the file front to back
@@ -241,6 +250,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
         }
       }
     }
+    mergeInstances++;
     return mergeVectorData;
   }
 

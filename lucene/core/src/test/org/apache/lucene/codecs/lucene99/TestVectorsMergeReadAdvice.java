@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
@@ -129,6 +130,88 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
     }
   }
 
+  /** The mapping goes with the reader, even if no merge ever says it is finished. */
+  public void testTheMappingIsClosedWithTheReader() throws Exception {
+    Opens opens = new Opens();
+    try (Directory dir = new RecordingDirectory(newDirectory(), opens)) {
+      IndexWriterConfig iwc = new IndexWriterConfig();
+      iwc.setCodec(TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat()));
+      iwc.setUseCompoundFile(false);
+      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+        for (int i = 0; i < 16; i++) {
+          Document doc = new Document();
+          doc.add(new KnnFloatVectorField("field", vector(), VectorSimilarityFunction.DOT_PRODUCT));
+          w.addDocument(doc);
+        }
+        w.commit();
+      }
+      List<Open> mapped;
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        KnnVectorsReader vectors =
+            ((CodecReader) getOnlyLeafReader(reader))
+                .getVectorReader()
+                .unwrapReaderForField("field");
+        opens.clear();
+
+        // a merge instance nobody finishes, as an abandoned merge leaves behind
+        assertNotNull(vectors.getMergeInstance());
+        mapped = sequentialOpens(opens);
+        assertEquals("one mapping for the merge instance: " + opens, 1, mapped.size());
+        assertFalse("still held by the merge instance: " + opens, mapped.get(0).closed());
+      }
+      assertTrue("closed with the reader: " + mapped.get(0), mapped.get(0).closed());
+    }
+  }
+
+  /** A merge open that fails leaves nothing behind, so a later merge still releases the mapping. */
+  public void testAFailedMergeOpenIsNotCountedAsAMergeInstance() throws Exception {
+    Opens opens = new Opens();
+    AtomicBoolean failMergeOpens = new AtomicBoolean();
+    try (Directory dir =
+        new RecordingDirectory(newDirectory(), opens) {
+          @Override
+          public IndexInput openInput(String name, IOContext context) throws IOException {
+            if (failMergeOpens.get()
+                && name.endsWith(".vec")
+                && context.context() == IOContext.Context.MERGE) {
+              throw new IOException("injected");
+            }
+            return super.openInput(name, context);
+          }
+        }) {
+      IndexWriterConfig iwc = new IndexWriterConfig();
+      iwc.setCodec(TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat()));
+      iwc.setUseCompoundFile(false);
+      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+        for (int i = 0; i < 16; i++) {
+          Document doc = new Document();
+          doc.add(new KnnFloatVectorField("field", vector(), VectorSimilarityFunction.DOT_PRODUCT));
+          w.addDocument(doc);
+        }
+        w.commit();
+      }
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        KnnVectorsReader vectors =
+            ((CodecReader) getOnlyLeafReader(reader))
+                .getVectorReader()
+                .unwrapReaderForField("field");
+        opens.clear();
+
+        failMergeOpens.set(true);
+        expectThrows(IOException.class, vectors::getMergeInstance);
+        assertEquals("a failed open maps nothing: " + opens, List.of(), sequentialOpens(opens));
+
+        failMergeOpens.set(false);
+        KnnVectorsReader merging = vectors.getMergeInstance();
+        List<Open> mapped = sequentialOpens(opens);
+        assertEquals("one mapping for the one merge instance: " + opens, 1, mapped.size());
+
+        merging.finishMerge();
+        assertTrue("released by the only merge instance: " + opens, mapped.get(0).closed());
+      }
+    }
+  }
+
   private static float[] vector() {
     float[] v = new float[DIM];
     for (int i = 0; i < DIM; i++) {
@@ -229,7 +312,7 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
     }
   }
 
-  private static final class RecordingDirectory extends FilterDirectory {
+  private static class RecordingDirectory extends FilterDirectory {
     private final Opens opens;
 
     RecordingDirectory(Directory in, Opens opens) {
