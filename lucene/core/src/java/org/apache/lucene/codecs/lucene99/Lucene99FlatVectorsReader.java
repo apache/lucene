@@ -398,8 +398,12 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
 
   @Override
   public void close() throws IOException {
-    IOUtils.close(
-        vectorData, original == this && mergeVectorData != vectorData ? mergeVectorData : null);
+    IOUtils.close(vectorData, mergeVectorDataToClose());
+  }
+
+  /** The mapping a merge opened, read under the lock that guards it, closed outside it. */
+  private synchronized IndexInput mergeVectorDataToClose() {
+    return original == this && mergeVectorData != vectorData ? mergeVectorData : null;
   }
 
   private record FieldEntry(
