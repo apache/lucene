@@ -87,7 +87,7 @@ sealed interface DedupVectorValues
       long vectorDataSize,
       long fieldOrdToGroupOrdOffset,
       long fieldOrdToGroupOrdSize,
-      int groupOrdBitsPerValue)
+      int fieldOrdToGroupOrdBitsPerValue)
       throws IOException {
 
     final OffHeapByteVectorValues fieldView =
@@ -105,7 +105,10 @@ sealed interface DedupVectorValues
 
     final FieldOrdToGroupOrd fieldOrdToGroupOrd =
         new FieldOrdToGroupOrdOffHeap(
-            vectorData, fieldOrdToGroupOrdOffset, fieldOrdToGroupOrdSize, groupOrdBitsPerValue);
+            vectorData,
+            fieldOrdToGroupOrdOffset,
+            fieldOrdToGroupOrdSize,
+            fieldOrdToGroupOrdBitsPerValue);
 
     return new ByteImpl(vectorsScorer, function, fieldView, groupView, fieldOrdToGroupOrd);
   }
@@ -209,7 +212,7 @@ sealed interface DedupVectorValues
       long vectorDataSize,
       long fieldOrdToGroupOrdOffset,
       long fieldOrdToGroupOrdSize,
-      int groupOrdBitsPerValue)
+      int fieldOrdToGroupOrdBitsPerValue)
       throws IOException {
 
     final OffHeapFloatVectorValues fieldView =
@@ -227,7 +230,10 @@ sealed interface DedupVectorValues
 
     final FieldOrdToGroupOrd fieldOrdToGroupOrd =
         new FieldOrdToGroupOrdOffHeap(
-            vectorData, fieldOrdToGroupOrdOffset, fieldOrdToGroupOrdSize, groupOrdBitsPerValue);
+            vectorData,
+            fieldOrdToGroupOrdOffset,
+            fieldOrdToGroupOrdSize,
+            fieldOrdToGroupOrdBitsPerValue);
 
     return new FloatImpl(vectorsScorer, function, fieldView, groupView, fieldOrdToGroupOrd);
   }
@@ -331,7 +337,7 @@ sealed interface DedupVectorValues
       long vectorDataSize,
       long fieldOrdToGroupOrdOffset,
       long fieldOrdToGroupOrdSize,
-      int groupOrdBitsPerValue)
+      int fieldOrdToGroupOrdBitsPerValue)
       throws IOException {
 
     final OffHeapFloat16VectorValues fieldView =
@@ -349,7 +355,10 @@ sealed interface DedupVectorValues
 
     final FieldOrdToGroupOrd fieldOrdToGroupOrd =
         new FieldOrdToGroupOrdOffHeap(
-            vectorData, fieldOrdToGroupOrdOffset, fieldOrdToGroupOrdSize, groupOrdBitsPerValue);
+            vectorData,
+            fieldOrdToGroupOrdOffset,
+            fieldOrdToGroupOrdSize,
+            fieldOrdToGroupOrdBitsPerValue);
 
     return new Float16Impl(vectorsScorer, function, fieldView, groupView, fieldOrdToGroupOrd);
   }
@@ -504,7 +513,7 @@ sealed interface DedupVectorValues
       IndexInput vectorData,
       long fieldOrdToGroupOrdOffset,
       long fieldOrdToGroupOrdSize,
-      int groupOrdBitsPerValue,
+      int fieldOrdToGroupOrdBitsPerValue,
       LongValues values)
       implements FieldOrdToGroupOrd {
 
@@ -512,16 +521,16 @@ sealed interface DedupVectorValues
         IndexInput vectorData,
         long fieldOrdToGroupOrdOffset,
         long fieldOrdToGroupOrdSize,
-        int groupOrdBitsPerValue)
+        int fieldOrdToGroupOrdBitsPerValue)
         throws IOException {
       RandomAccessInput slice =
           vectorData.randomAccessSlice(fieldOrdToGroupOrdOffset, fieldOrdToGroupOrdSize);
-      LongValues values = DirectReader.getInstance(slice, groupOrdBitsPerValue);
+      LongValues values = DirectReader.getInstance(slice, fieldOrdToGroupOrdBitsPerValue);
       this(
           vectorData,
           fieldOrdToGroupOrdOffset,
           fieldOrdToGroupOrdSize,
-          groupOrdBitsPerValue,
+          fieldOrdToGroupOrdBitsPerValue,
           values);
     }
 
@@ -536,7 +545,7 @@ sealed interface DedupVectorValues
           vectorData.clone(),
           fieldOrdToGroupOrdOffset,
           fieldOrdToGroupOrdSize,
-          groupOrdBitsPerValue);
+          fieldOrdToGroupOrdBitsPerValue);
     }
   }
 }

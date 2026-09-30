@@ -117,10 +117,11 @@ final class DedupUtil {
 
     // write fieldOrdToGroupOrd
     // pack each ordinal to minimize storage, using the bits needed for the largest group ordinal
-    int groupOrdBitsPerValue = DirectWriter.bitsRequired(maxGroupOrd);
+    int fieldOrdToGroupOrdBitsPerValue = DirectWriter.bitsRequired(maxGroupOrd);
 
     long fieldOrdToGroupOrdOffset = vectorData.alignFilePointer(FIELD_ORD_TO_GROUP_ORD_ALIGN_BYTES);
-    DirectWriter writer = DirectWriter.getInstance(vectorData, vectorCount, groupOrdBitsPerValue);
+    DirectWriter writer =
+        DirectWriter.getInstance(vectorData, vectorCount, fieldOrdToGroupOrdBitsPerValue);
     for (int i = 0; i < vectorCount; i++) {
       writer.add(fieldOrdToGroupOrd.get(i));
     }
@@ -129,7 +130,7 @@ final class DedupUtil {
 
     meta.writeLong(fieldOrdToGroupOrdOffset);
     meta.writeLong(fieldOrdToGroupOrdSize);
-    meta.writeInt(groupOrdBitsPerValue);
+    meta.writeInt(fieldOrdToGroupOrdBitsPerValue);
   }
 
   static void writeEndMarker(IndexOutput meta) throws IOException {
@@ -146,9 +147,6 @@ final class DedupUtil {
       OrdToDocDISIReaderConfiguration ordToDoc,
       long fieldOrdToGroupOrdOffset,
       long fieldOrdToGroupOrdSize,
-      // Bits used to pack each entry of the fieldOrdToGroupOrd array (a group ordinal); named to
-      // match its sibling fieldOrdToGroupOrd* fields, referred to as groupOrdBitsPerValue
-      // elsewhere.
       int fieldOrdToGroupOrdBitsPerValue) {
 
     static ReadFieldInfo read(IndexInput meta) throws IOException {

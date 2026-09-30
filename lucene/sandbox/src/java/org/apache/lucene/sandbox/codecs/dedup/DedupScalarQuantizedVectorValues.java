@@ -93,7 +93,7 @@ final class DedupScalarQuantizedVectorValues {
       long quantizedDataSize,
       long fieldOrdToGroupOrdOffset,
       long fieldOrdToGroupOrdSize,
-      int groupOrdBitsPerValue)
+      int fieldOrdToGroupOrdBitsPerValue)
       throws IOException {
 
     final OffHeapFloatVectorValues fieldView =
@@ -114,7 +114,10 @@ final class DedupScalarQuantizedVectorValues {
 
     final FieldOrdToGroupOrd fieldOrdToGroupOrd =
         new FieldOrdToGroupOrdOffHeap(
-            vectorData, fieldOrdToGroupOrdOffset, fieldOrdToGroupOrdSize, groupOrdBitsPerValue);
+            vectorData,
+            fieldOrdToGroupOrdOffset,
+            fieldOrdToGroupOrdSize,
+            fieldOrdToGroupOrdBitsPerValue);
 
     return new FieldValues(vectorsScorer, function, fieldView, groupView, fieldOrdToGroupOrd);
   }
