@@ -22,7 +22,9 @@ import java.util.List;
 import org.apache.lucene.facet.MultiLongValues;
 import org.apache.lucene.facet.MultiLongValuesSource;
 import org.apache.lucene.facet.range.LongRange;
+import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.sandbox.facet.cutters.LeafFacetCutter;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
@@ -32,8 +34,9 @@ class NonOverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
   NonOverlappingLongRangeFacetCutter(
       MultiLongValuesSource longValuesSource,
       LongValuesSource singleLongValuesSource,
-      LongRange[] longRanges) {
-    super(longValuesSource, singleLongValuesSource, longRanges);
+      LongRange[] longRanges,
+      String fieldName) {
+    super(longValuesSource, singleLongValuesSource, longRanges, fieldName);
   }
 
   /**
@@ -68,6 +71,19 @@ class NonOverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
 
   @Override
   public LeafFacetCutter createLeafCutter(LeafReaderContext context) throws IOException {
+    if (fieldName != null) {
+      DocValuesSkipper skipper = context.reader().getDocValuesSkipper(fieldName);
+      if (skipper != null) {
+        NumericDocValues singletonValues = singletonFieldValues(context);
+        if (singletonValues != null) {
+          return new NonOverlappingLongRangeSingleValueLeafFacetCutter(
+              asLongValues(singletonValues), boundaries, pos, skipper);
+        }
+        MultiLongValues values = valuesSource.getValues(context);
+        return new NonOverlappingLongRangeMultiValueLeafFacetCutter(
+            values, boundaries, pos, skipper);
+      }
+    }
     if (singleValues != null) {
       LongValues values = singleValues.getValues(context, null);
       return new NonOverlappingLongRangeSingleValueLeafFacetCutter(values, boundaries, pos);
@@ -90,6 +106,11 @@ class NonOverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
       super(longValues, boundaries, pos);
     }
 
+    NonOverlappingLongRangeMultiValueLeafFacetCutter(
+        MultiLongValues longValues, long[] boundaries, int[] pos, DocValuesSkipper skipper) {
+      super(longValues, boundaries, pos, skipper);
+    }
+
     @Override
     public int nextOrd() throws IOException {
       while (true) {
@@ -110,6 +131,11 @@ class NonOverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
     NonOverlappingLongRangeSingleValueLeafFacetCutter(
         LongValues longValues, long[] boundaries, int[] pos) {
       super(longValues, boundaries, pos);
+    }
+
+    NonOverlappingLongRangeSingleValueLeafFacetCutter(
+        LongValues longValues, long[] boundaries, int[] pos, DocValuesSkipper skipper) {
+      super(longValues, boundaries, pos, skipper);
     }
 
     @Override
