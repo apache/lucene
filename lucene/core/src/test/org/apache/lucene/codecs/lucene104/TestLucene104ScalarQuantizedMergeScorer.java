@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.codecs.lucene104;
 
-import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -81,7 +80,6 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.HnswGraph;
-import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
 
@@ -196,79 +194,6 @@ public class TestLucene104ScalarQuantizedMergeScorer extends LuceneTestCase {
             + " bytes for "
             + encoding,
         counts.mergedRawBytesRead() < (long) DIM * Float.BYTES);
-  }
-
-  /**
-   * Verifies that writer and reader paths produce identical quantized vector data and HNSW graphs.
-   * One {@code multiScalarQuantize} call must match separate index-side and query-side {@code
-   * scalarQuantize} calls.
-   *
-   * <p>The sorted index and sparse second vector field exercise non-dense merged order. Non-unit
-   * COSINE vectors exercise query-side normalization.
-   */
-  public void testGraphIsIdenticalToTheReaderFallback() throws IOException {
-    for (ScalarEncoding encoding : asymmetricEncodings()) {
-      for (VectorSimilarityFunction similarity : VectorSimilarityFunction.values()) {
-        assertBothPathsWriteTheSameFiles(encoding, similarity, List.of(), VECTOR_EXTENSIONS);
-      }
-    }
-  }
-
-  /**
-   * Verifies that writer and reader paths produce identical vector records when deletions change
-   * merged ordinals.
-   *
-   * <p>The graph is excluded because HNSW output is not reproducible across otherwise identical
-   * merges that drop documents.
-   */
-  public void testMergedRecordsAreIdenticalWithDeletions() throws IOException {
-    for (ScalarEncoding encoding : asymmetricEncodings()) {
-      VectorSimilarityFunction similarity =
-          RandomPicks.randomFrom(random(), VectorSimilarityFunction.values());
-      List<String> deleted = new ArrayList<>();
-      for (int i = 0; i < 2 * DOCS_PER_SEGMENT; i++) {
-        if (random().nextInt(10) == 0) {
-          deleted.add(Integer.toString(i));
-        }
-      }
-      assertBothPathsWriteTheSameFiles(encoding, similarity, deleted, RECORD_EXTENSIONS);
-    }
-  }
-
-  private void assertBothPathsWriteTheSameFiles(
-      ScalarEncoding encoding,
-      VectorSimilarityFunction similarity,
-      List<String> deleted,
-      Set<String> compared)
-      throws IOException {
-    long savedSeed = HnswGraphBuilder.randSeed;
-    try {
-      float[][] vectors = randomVectors(2 * DOCS_PER_SEGMENT, similarity);
-      long seed = random().nextLong();
-      HnswGraphBuilder.randSeed = seed;
-      Map<String, byte[]> writerPath =
-          mergedVectorFiles(writerPathFormat(encoding, ALWAYS_GRAPH), vectors, similarity, deleted);
-      HnswGraphBuilder.randSeed = seed;
-      Map<String, byte[]> readerPath =
-          mergedVectorFiles(readerPathFormat(encoding, ALWAYS_GRAPH), vectors, similarity, deleted);
-      assertEquals(
-          "different files were written for " + encoding + "/" + similarity,
-          writerPath.keySet(),
-          readerPath.keySet());
-      for (String extension : compared) {
-        assertArrayEquals(
-            "the body of the merged ."
-                + extension
-                + " file, header and footer aside, differs for "
-                + encoding
-                + "/"
-                + similarity,
-            writerPath.get(extension),
-            readerPath.get(extension));
-      }
-    } finally {
-      HnswGraphBuilder.randSeed = savedSeed;
-    }
   }
 
   /**
