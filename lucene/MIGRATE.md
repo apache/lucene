@@ -174,10 +174,10 @@ Do not rely on Lucene to put ASM on the classpath.
 
 ### Possibility to optimize `readGroupVInt()` in `DataInput` subclasses removed (GITHUB#15116)
 
-Any subclass of `DataInput` that have implemented `readGroupVInt()` need to remove that implementation.
+Any subclass of `DataInput` that has implemented `readGroupVInt()` needs to remove that implementation.
 
 Instead make sure that subclasses of `IndexInput` implement `RandomAccessInput`.
-Pure `DataInput` subclasses cannot be optimized anymore as they cannot offer random access and seeking.`
+Pure `DataInput` subclasses cannot be optimized anymore as they cannot offer random access and seeking.
 
 ### SortField.setMissingValue() has been removed
 
