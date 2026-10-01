@@ -181,7 +181,9 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     boolean success = false;
     try {
       meta = state.directory.createOutput(metaFileName, state.context);
-      vectorIndex = state.directory.createOutput(indexDataFileName, state.context);
+      vectorIndex =
+          state.directory.createOutput(
+              indexDataFileName, state.context.union(FileTypeHint.DATA, FileDataHint.KNN_VECTORS));
 
       CodecUtil.writeIndexHeader(
           meta,

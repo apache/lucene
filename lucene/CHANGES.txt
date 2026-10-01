@@ -109,6 +109,11 @@ Optimizations
   ordinal to group ordinal mapping at the minimum bit width required for the largest group ordinal,
   instead of a fixed 32-bit width. (Pranshu Shukla)
 
+* GITHUB#16749: Merges now open the raw vectors for themselves and state that they read the data
+  file sequentially, instead of changing the advice on the mapping searches read at random. The
+  vectors writers now state what file they are writing, and the raw vectors a quantized format keeps
+  only to rescore say so as they are written. (Jim Ferenczi)
+
 * GITHUB#16682: Carry file open hints on merge and flush contexts, which used to drop them. An HNSW
   format now carries the random access hint for the vectors it reads, rather than the flat format
   holding them claiming it whatever reads them. Add NoReuseHint, set by stored fields, term vectors

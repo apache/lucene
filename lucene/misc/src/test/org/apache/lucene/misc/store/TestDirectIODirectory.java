@@ -196,6 +196,10 @@ public class TestDirectIODirectory extends BaseDirectoryTestCase {
               IOContext.merge(new MergeInfo(numDocs, largeSize, true, -1)),
               OptionalLong.of(smallSize)));
 
+      // a merge that does not say how large it is leaves the decision to the file length
+      assertTrue(dir.useDirectIO("dummy", IOContext.merge(), OptionalLong.of(largeSize)));
+      assertFalse(dir.useDirectIO("dummy", IOContext.merge(), OptionalLong.of(smallSize)));
+
       assertFalse(
           dir.useDirectIO(
               "dummy", IOContext.flush(new FlushInfo(numDocs, largeSize)), OptionalLong.empty()));
