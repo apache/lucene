@@ -21,15 +21,20 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoubleDocValuesField;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FloatDocValuesField;
 import org.apache.lucene.document.NumericDocValuesField;
+import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.AssertingDirectoryReader;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.CheckHits;
 import org.apache.lucene.tests.util.English;
@@ -47,6 +52,9 @@ public class TestDoubleValuesSource extends LuceneTestCase {
   private static Directory dir;
   private static IndexReader reader;
   private static IndexSearcher searcher;
+
+  private static Directory skipIndexDir;
+  private static DirectoryReader skipIndexReader;
 
   @BeforeClass
   public static void beforeClass() throws Exception {
@@ -72,15 +80,22 @@ public class TestDoubleValuesSource extends LuceneTestCase {
     reader = iw.getReader();
     iw.close();
     searcher = newSearcher(reader);
+
+    skipIndexDir = indexWithSkipIndex();
+    skipIndexReader = new AssertingDirectoryReader(DirectoryReader.open(skipIndexDir));
   }
 
   @AfterClass
   public static void afterClass() throws Exception {
     reader.close();
     dir.close();
+    skipIndexReader.close();
+    skipIndexDir.close();
     searcher = null;
     reader = null;
     dir = null;
+    skipIndexReader = null;
+    skipIndexDir = null;
   }
 
   public void testSortMissingZeroDefault() throws Exception {
@@ -364,5 +379,55 @@ public class TestDoubleValuesSource extends LuceneTestCase {
             return null;
           }
         });
+  }
+
+  private static Directory indexWithSkipIndex() throws IOException {
+    Directory directory = newDirectory();
+    IndexWriterConfig conf = newIndexWriterConfig();
+    conf.setCodec(TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(16)));
+    conf.setMergePolicy(newLogMergePolicy()); // we rely on docids following indexing order
+    try (IndexWriter writer = new IndexWriter(directory, conf)) {
+      for (int i = 0; i < 200; i++) {
+        Document doc = new Document();
+        doc.add(NumericDocValuesField.indexedField("field", i));
+        writer.addDocument(doc);
+      }
+      writer.forceMerge(1);
+    }
+    return directory;
+  }
+
+  private static DoubleValues skipIndexValues() throws IOException {
+    LeafReaderContext context = skipIndexReader.leaves().get(0);
+    return DoubleValuesSource.fromLongField("field").getValues(context, null);
+  }
+
+  public void testAdvanceShallow() throws Exception {
+    DoubleValues values = skipIndexValues();
+    int blockEnd = values.advanceShallow(0);
+    assertEquals(blockEnd, values.advanceShallow(blockEnd));
+    assertTrue(values.advanceShallow(blockEnd + 1) > blockEnd);
+  }
+
+  public void testMaxScoreBeyondTheCurrentBlock() throws Exception {
+    DoubleValues values = skipIndexValues();
+    int upTo = values.advanceShallow(0) + 1;
+    assertTrue(values.advanceExact(upTo));
+    double score = values.doubleValue();
+    assertTrue(values.getMinScore(upTo) <= score);
+    assertTrue(score <= values.getMaxScore(upTo));
+
+    assertEquals(Float.POSITIVE_INFINITY, values.getMaxScore(DocIdSetIterator.NO_MORE_DOCS), 0f);
+    assertEquals(Float.NEGATIVE_INFINITY, values.getMinScore(DocIdSetIterator.NO_MORE_DOCS), 0f);
+  }
+
+  public void testMaxScoreAfterTheSkipperIsExhausted() throws Exception {
+    DoubleValues values = skipIndexValues();
+    values.advanceShallow(0);
+
+    assertEquals(
+        DocIdSetIterator.NO_MORE_DOCS, values.advanceShallow(DocIdSetIterator.NO_MORE_DOCS));
+    assertEquals(Float.POSITIVE_INFINITY, values.getMaxScore(DocIdSetIterator.NO_MORE_DOCS), 0f);
+    assertEquals(Float.NEGATIVE_INFINITY, values.getMinScore(DocIdSetIterator.NO_MORE_DOCS), 0f);
   }
 }
