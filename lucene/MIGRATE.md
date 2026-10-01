@@ -167,6 +167,8 @@ Pure `DataInput` subclasses cannot be optimized anymore as they cannot offer ran
 ### SortField.setMissingValue() has been removed
 
 Missing values should be configured in SortField constructor methods, as they are now final.
+`SortedNumericSortField` and `SortedSetSortField` take the missing value after a
+selector argument, not in the same position as `SortField`.
 
 ```java
 // Before
@@ -175,6 +177,13 @@ sf.setMissingValue(0L);
 
 // After
 SortField sf = new SortField("price", SortField.Type.LONG, false, 0L);
+
+// SortedNumericSortField
+new SortedNumericSortField(
+    "price", SortField.Type.LONG, false, SortedNumericSelector.Type.MIN, 0L);
+// SortedSetSortField
+new SortedSetSortField(
+    "category", false, SortedSetSelector.Type.MIN, SortField.STRING_LAST);
 ```
 
 ### MatchAllDocs and MatchNoDocs are singletons
@@ -554,11 +563,13 @@ The constructor that took `onlyLongestMatch` plus `reuseChars` has been removed
 [GITHUB#14356](https://github.com/apache/lucene/pull/14356)). Remaining
 constructors are `(TokenStream, CharArraySet)` and
 `(TokenStream, CharArraySet, minWordSize, minSubwordSize, maxSubwordSize,
-onlyLongestMatchIgnoreSubwords)`. Super always gets `onlyLongestMatch=false`.
+onlyLongestMatchIgnoreSubwords)`.
+
 The new flag is roughly old `onlyLongestMatch=true` + `reuseChars=false`, but
 also advances the token position past matched subword tokens. Code that is
 sensitive to token positions (phrase queries, span queries, highlighters) may
-see different results.
+see different results. The snippet below is that case. If you used other flag
+combinations, pass `false` or the two-arg constructor.
 
 ```java
 // Before
