@@ -179,11 +179,6 @@ Improvements
 Optimizations
 ---------------------
 
-* GITHUB#16739: IncrementalHnswGraphMerger now picks the base graph for a merge by comparing live
-  vector counts. It previously compared a candidate's live count against the current base's total
-  node count, so a graph with deletions could be kept as the base over a larger deletion-free graph,
-  depending on the order in which readers were added. (Lantao Jin)
-
 * GITHUB#16431: Add support for Block-Max WAND dynamic score skipping in FunctionScoreQuery
   and DoubleValuesSource using DocValuesSkipper. (Rajat Jain)
 
@@ -223,6 +218,11 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#16739: IncrementalHnswGraphMerger now picks the base graph for a merge by comparing live
+  vector counts. It previously compared a candidate's live count against the current base's total
+  node count, so a graph with deletions could be kept as the base over a larger deletion-free graph,
+  depending on the order in which readers were added. (Lantao Jin)
+
 * GITHUB#16553: Fix stored-fields corruption when PerField#finish throws: the stored-fields frame
   was left open, causing "Wrote N docs, finish called with numDocs=M" at flush. (Michael Marshall)
 

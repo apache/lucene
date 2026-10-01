@@ -62,11 +62,13 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
    * <p>A value of 40 means that if more than 40% of the graph's original vectors have been deleted,
    * the graph will not be selected as the base.
    */
-  private final int DELETE_PCT_THRESHOLD = 40;
+  static final int DELETE_PCT_THRESHOLD = 40;
 
   /**
    * Represents a vector reader that contains graph info.
    *
+   * @param reader the vectors reader that provides the graph
+   * @param initDocMap maps the reader's doc IDs to doc IDs in the merged segment
    * @param graphSize total number of nodes in the graph, including deleted ones
    * @param liveVectorCount number of nodes in the graph whose documents are live
    */
