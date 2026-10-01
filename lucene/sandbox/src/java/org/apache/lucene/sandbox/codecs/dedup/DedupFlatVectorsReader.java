@@ -100,16 +100,18 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
       } finally {
         CodecUtil.checkFooter(meta, priorE);
       }
+      this.vectorData =
+          openDataInput(
+              state,
+              versionMeta,
+              vectorDataCodecName,
+              vectorDataExtension,
+              versionStart,
+              versionCurrent);
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
-
-    this.vectorData =
-        openDataInput(
-            state,
-            versionMeta,
-            vectorDataCodecName,
-            vectorDataExtension,
-            versionStart,
-            versionCurrent);
   }
 
   private void readMetaBody(ChecksumIndexInput meta, FieldInfos fieldInfos) throws IOException {
