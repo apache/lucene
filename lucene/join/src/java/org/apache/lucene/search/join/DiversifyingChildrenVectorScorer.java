@@ -29,6 +29,8 @@ import org.apache.lucene.util.BitSet;
 /**
  * Iterates the accepted child documents one parent at a time, tracking the best scoring child of
  * each parent. Scoring is delegated to the given {@link VectorScorer}.
+ *
+ * @lucene.experimental
  */
 class DiversifyingChildrenVectorScorer {
   private final VectorScorer vectorScorer;
