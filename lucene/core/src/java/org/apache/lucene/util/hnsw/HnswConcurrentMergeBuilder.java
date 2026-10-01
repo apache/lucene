@@ -43,7 +43,10 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
 
   private static final int DEFAULT_BATCH_SIZE =
       2048; // number of vectors the worker handles sequentially at one batch
-  // Number of disconnected nodes a repair worker claims atomically at a time.
+  // Number of disconnected nodes a repair worker claims atomically at a time. Each repair is a
+  // full beam search, so the claim itself is negligible at any batch size; the only cost of a
+  // larger batch is that a level with few flagged nodes no longer spreads across all workers.
+  // Repair time was flat from 1 to 256 and ~7% slower at 1024 on a 500k-vector, 35%-delete merge.
   private static final int REPAIR_BATCH_SIZE = 64;
 
   private final TaskExecutor taskExecutor;
@@ -115,7 +118,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     }
     if (prunedGraph != null) {
       long repairStartNs = System.nanoTime();
-      repairDisconnectedNodes();
+      int repairedNodes = repairDisconnectedNodes();
       long rebalanceStartNs = System.nanoTime();
       prunedGraph.builder().rebalanceGraph();
       long rebalanceEndNs = System.nanoTime();
@@ -124,7 +127,8 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
             HNSW_COMPONENT,
             String.format(
                 Locale.ROOT,
-                "repaired reused graph: %.2f ms repair with %d workers, %.2f ms rebalance",
+                "repaired reused graph: %d nodes in %.2f ms with %d workers, %.2f ms rebalance",
+                repairedNodes,
                 (rebalanceStartNs - repairStartNs) / 1_000_000.0,
                 workers.length,
                 (rebalanceEndNs - rebalanceStartNs) / 1_000_000.0));
@@ -160,14 +164,18 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
   /**
    * Repairs the pruned graph's disconnected nodes across the worker pool, one level at a time from
    * the top down.
+   *
+   * @return the number of nodes repaired, counting a node once per level it was repaired on
    */
-  private void repairDisconnectedNodes() throws IOException {
+  private int repairDisconnectedNodes() throws IOException {
+    int repairedNodes = 0;
     for (int level = prunedGraph.numLevels() - 1; level >= 0; level--) {
       IntsRef disconnectedNodes = prunedGraph.disconnectedNodesByLevel()[level];
       if (disconnectedNodes == null) {
         continue;
       }
       int total = disconnectedNodes.length;
+      repairedNodes += total;
       // Use at most one task per worker and no more tasks than repair batches; each task
       // dynamically claims batches below.
       int taskCount = Math.min(workers.length, Math.ceilDiv(total, REPAIR_BATCH_SIZE));
@@ -193,6 +201,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
       // addConnections descends through the already-repaired upper levels.
       taskExecutor.invokeAll(tasks);
     }
+    return repairedNodes;
   }
 
   @Override

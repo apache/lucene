@@ -241,8 +241,8 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
       RandomVectorScorerSupplier supplier = buildScorerSupplier(vectors);
       OnHeapHnswGraph base = HnswGraphBuilder.create(supplier, M, beamWidth, 42).build(size);
 
-      // Delete ~33% (<= 40% so the base graph is reused), compacting survivors into a dense
-      // ordinal space so the merged graph has no holes.
+      // Delete ~33%, compacting survivors into a dense ordinal space so the merged graph has no
+      // holes. pruneGraph is called directly here, so the merger's reuse threshold does not apply.
       int[] newOrdMap = new int[size];
       int liveCount = 0;
       for (int old = 0; old < size; old++) {
@@ -311,21 +311,21 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
     long savedRandSeed = HnswGraphBuilder.randSeed;
     ExecutorService exec = Executors.newFixedThreadPool(2, new NamedThreadFactory("hnswRepair2"));
     try {
-      HnswGraphBuilder.randSeed = 17;
+      HnswGraphBuilder.randSeed = 42;
       similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
       int M = 16;
       int beamWidth = 100;
       int size = 512;
       int dim = 16;
       MockVectorValues vectors =
-          MockVectorValues.fromValues(createRandomFloatVectors(size, dim, new Random(17)));
+          MockVectorValues.fromValues(createRandomFloatVectors(size, dim, new Random(42)));
       RandomVectorScorerSupplier supplier = buildScorerSupplier(vectors);
-      OnHeapHnswGraph base = HnswGraphBuilder.create(supplier, M, beamWidth, 17).build(size);
+      OnHeapHnswGraph base = HnswGraphBuilder.create(supplier, M, beamWidth, 42).build(size);
 
       int[] newOrdMap = new int[size];
       int liveCount = 0;
       for (int old = 0; old < size; old++) {
-        newOrdMap[old] = (old % 3 == 1) ? -1 : liveCount++; // ~33% deleted, <= 40%
+        newOrdMap[old] = (old % 3 == 1) ? -1 : liveCount++; // ~33% deleted
       }
 
       InitializedHnswGraphBuilder.PrunedGraph prunedGraph =
@@ -412,9 +412,9 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
 
   /**
    * End-to-end: a real force-merge with 2 merge workers over an index whose largest segment carries
-   * deletes (&lt;= 40%, so its graph is reused as the merge base) drives {@link
-   * org.apache.lucene.util.hnsw.ConcurrentHnswMerger} through {@code pruneGraph} and the concurrent
-   * repair path. The merged graph must be sized correctly, rooted, and searchable.
+   * deletes (below {@code IncrementalHnswGraphMerger.DELETE_PCT_THRESHOLD}, so its graph is reused
+   * as the merge base) drives {@link ConcurrentHnswMerger} through {@code pruneGraph} and the
+   * concurrent repair path. The merged graph must be sized correctly, rooted, and searchable.
    */
   public void testConcurrentMergeReuseWithDeletesEndToEnd() throws IOException {
     similarityFunction = RandomizedTest.randomFrom(VectorSimilarityFunction.values());
@@ -454,7 +454,10 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
           w.addDocument(doc);
         }
         w.flush(); // segment 2, deletion-free
-        // Delete ~30% of the base segment: leaves it eligible as the reuse base AND with deletes.
+        // Delete 3 of every 10 base docs (30%): under the merger's reuse threshold, so the base
+        // segment is still chosen as the reuse base, but carrying deletes so repair runs.
+        int deletePct = 30;
+        assertTrue(deletePct < IncrementalHnswGraphMerger.DELETE_PCT_THRESHOLD);
         for (int d = 0; d < baseSize; d += 10) {
           for (int off = 0; off < 3 && d + off < baseSize; off++) {
             w.deleteDocuments(new Term("id", Integer.toString(d + off)));
