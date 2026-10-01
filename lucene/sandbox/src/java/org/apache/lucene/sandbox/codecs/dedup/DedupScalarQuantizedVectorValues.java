@@ -296,6 +296,20 @@ final class DedupScalarQuantizedVectorValues {
               || copy.fieldView instanceof OffHeapFloat16VectorValues.DenseOffHeapVectorValues;
       return new DedupVectorScorer(indexIterator, vectorScorer, isDense);
     }
+
+    @Override
+    public VectorScorer scorer(short[] target) throws IOException {
+      if (size() == 0) {
+        return null;
+      }
+      FieldValues copy = copy();
+      DocIndexIterator indexIterator = copy.iterator();
+      RandomVectorScorer vectorScorer = vectorsScorer.getRandomVectorScorer(function, copy, target);
+      boolean isDense =
+          copy.fieldView instanceof OffHeapFloatVectorValues.DenseOffHeapVectorValues
+              || copy.fieldView instanceof OffHeapFloat16VectorValues.DenseOffHeapVectorValues;
+      return new DedupVectorScorer(indexIterator, vectorScorer, isDense);
+    }
   }
 
   /**
@@ -382,8 +396,7 @@ final class DedupScalarQuantizedVectorValues {
   /**
    * FLOAT16 analogue of {@link Float32RawAndQuantizedValues}: exposes a field's raw de-duplicated
    * {@code short[]} vectors for full-fidelity readback, while {@link #scorer(short[])} scores
-   * against the shared quantized view (the {@code short[]} target is inflated to {@code float[]} to
-   * match the data-blind quantizer).
+   * against the shared quantized view.
    */
   static final class Float16RawAndQuantizedValues extends Float16VectorValues
       implements DedupVectorValues {
@@ -452,8 +465,7 @@ final class DedupScalarQuantizedVectorValues {
 
     @Override
     public VectorScorer scorer(short[] target) throws IOException {
-      float[] inflated = DedupUtil.inflateFloat16(target, new float[target.length]);
-      return quantizedValues.scorer(inflated);
+      return quantizedValues.scorer(target);
     }
 
     @Override
