@@ -159,6 +159,19 @@ long maxRamBytesUsed = 50 * 1024 * 1024; // 50MB
 IndexSearcher.setDefaultQueryCache(new LRUQueryCache(maxCachedQueries, maxRamBytesUsed));
 ```
 
+### Filtered HNSW search default threshold (GITHUB#14160)
+
+Filter-optimized HNSW search now runs when 60% or fewer vectors pass the
+pre-filter (`KnnSearchStrategy.DEFAULT_FILTERED_SEARCH_THRESHOLD`). Recall and
+latency for filtered kNN can change with no API change. To pick a different
+cutoff, pass `new KnnSearchStrategy.Hnsw(threshold)` to the vector query
+constructor (`0` never uses the filtered path, `100` always does).
+
+### Expressions compiler no longer depends on ASM (GITHUB#14597)
+
+The expressions module compiles with the JDK Classfile API instead of ASM.
+Do not rely on Lucene to put ASM on the classpath.
+
 ### Possibility to optimize `readGroupVInt()` in `DataInput` subclasses removed (GITHUB#15116)
 
 Any subclass of `DataInput` that have implemented `readGroupVInt()` need to remove that implementation.
@@ -389,6 +402,12 @@ Automaton c = Operations.concatenate(a, b);
 Automaton u = Operations.union(List.of(a, b));
 Automaton c = Operations.concatenate(List.of(a, b));
 ```
+
+### `Operations.complement()` and `minus()` are deprecated (GITHUB#15763, GITHUB#15755)
+
+These methods are slow and will be removed in Lucene 12. Prefer other automaton
+operations in production. For tests, `minus` is available as
+`AutomatonTestUtil.minus()`.
 
 ### Cheap reader getters no longer throw `IOException` (GITHUB#16057)
 
