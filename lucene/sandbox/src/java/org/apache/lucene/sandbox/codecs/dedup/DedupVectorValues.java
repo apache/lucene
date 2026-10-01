@@ -19,7 +19,6 @@ package org.apache.lucene.sandbox.codecs.dedup;
 import static org.apache.lucene.index.VectorEncoding.BYTE;
 import static org.apache.lucene.index.VectorEncoding.FLOAT16;
 import static org.apache.lucene.index.VectorEncoding.FLOAT32;
-import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.FIELD_ORD_TO_GROUP_ORD_BITS_PER_VALUE;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.SCRATCH_INITIAL_SIZE;
 import static org.apache.lucene.search.VectorScorer.Bulk.fromRandomScorerDense;
 import static org.apache.lucene.search.VectorScorer.Bulk.fromRandomScorerSparse;
@@ -87,7 +86,8 @@ sealed interface DedupVectorValues
       long vectorDataOffset,
       long vectorDataSize,
       long fieldOrdToGroupOrdOffset,
-      long fieldOrdToGroupOrdSize)
+      long fieldOrdToGroupOrdSize,
+      int fieldOrdToGroupOrdBitsPerValue)
       throws IOException {
 
     final OffHeapByteVectorValues fieldView =
@@ -104,7 +104,11 @@ sealed interface DedupVectorValues
             function);
 
     final FieldOrdToGroupOrd fieldOrdToGroupOrd =
-        new FieldOrdToGroupOrdOffHeap(vectorData, fieldOrdToGroupOrdOffset, fieldOrdToGroupOrdSize);
+        new FieldOrdToGroupOrdOffHeap(
+            vectorData,
+            fieldOrdToGroupOrdOffset,
+            fieldOrdToGroupOrdSize,
+            fieldOrdToGroupOrdBitsPerValue);
 
     return new ByteImpl(vectorsScorer, function, fieldView, groupView, fieldOrdToGroupOrd);
   }
@@ -207,7 +211,8 @@ sealed interface DedupVectorValues
       long vectorDataOffset,
       long vectorDataSize,
       long fieldOrdToGroupOrdOffset,
-      long fieldOrdToGroupOrdSize)
+      long fieldOrdToGroupOrdSize,
+      int fieldOrdToGroupOrdBitsPerValue)
       throws IOException {
 
     final OffHeapFloatVectorValues fieldView =
@@ -224,7 +229,11 @@ sealed interface DedupVectorValues
             function);
 
     final FieldOrdToGroupOrd fieldOrdToGroupOrd =
-        new FieldOrdToGroupOrdOffHeap(vectorData, fieldOrdToGroupOrdOffset, fieldOrdToGroupOrdSize);
+        new FieldOrdToGroupOrdOffHeap(
+            vectorData,
+            fieldOrdToGroupOrdOffset,
+            fieldOrdToGroupOrdSize,
+            fieldOrdToGroupOrdBitsPerValue);
 
     return new FloatImpl(vectorsScorer, function, fieldView, groupView, fieldOrdToGroupOrd);
   }
@@ -327,7 +336,8 @@ sealed interface DedupVectorValues
       long vectorDataOffset,
       long vectorDataSize,
       long fieldOrdToGroupOrdOffset,
-      long fieldOrdToGroupOrdSize)
+      long fieldOrdToGroupOrdSize,
+      int fieldOrdToGroupOrdBitsPerValue)
       throws IOException {
 
     final OffHeapFloat16VectorValues fieldView =
@@ -344,7 +354,11 @@ sealed interface DedupVectorValues
             function);
 
     final FieldOrdToGroupOrd fieldOrdToGroupOrd =
-        new FieldOrdToGroupOrdOffHeap(vectorData, fieldOrdToGroupOrdOffset, fieldOrdToGroupOrdSize);
+        new FieldOrdToGroupOrdOffHeap(
+            vectorData,
+            fieldOrdToGroupOrdOffset,
+            fieldOrdToGroupOrdSize,
+            fieldOrdToGroupOrdBitsPerValue);
 
     return new Float16Impl(vectorsScorer, function, fieldView, groupView, fieldOrdToGroupOrd);
   }
@@ -499,16 +513,25 @@ sealed interface DedupVectorValues
       IndexInput vectorData,
       long fieldOrdToGroupOrdOffset,
       long fieldOrdToGroupOrdSize,
+      int fieldOrdToGroupOrdBitsPerValue,
       LongValues values)
       implements FieldOrdToGroupOrd {
 
     FieldOrdToGroupOrdOffHeap(
-        IndexInput vectorData, long fieldOrdToGroupOrdOffset, long fieldOrdToGroupOrdSize)
+        IndexInput vectorData,
+        long fieldOrdToGroupOrdOffset,
+        long fieldOrdToGroupOrdSize,
+        int fieldOrdToGroupOrdBitsPerValue)
         throws IOException {
       RandomAccessInput slice =
           vectorData.randomAccessSlice(fieldOrdToGroupOrdOffset, fieldOrdToGroupOrdSize);
-      LongValues values = DirectReader.getInstance(slice, FIELD_ORD_TO_GROUP_ORD_BITS_PER_VALUE);
-      this(vectorData, fieldOrdToGroupOrdOffset, fieldOrdToGroupOrdSize, values);
+      LongValues values = DirectReader.getInstance(slice, fieldOrdToGroupOrdBitsPerValue);
+      this(
+          vectorData,
+          fieldOrdToGroupOrdOffset,
+          fieldOrdToGroupOrdSize,
+          fieldOrdToGroupOrdBitsPerValue,
+          values);
     }
 
     @Override
@@ -519,7 +542,10 @@ sealed interface DedupVectorValues
     @Override
     public FieldOrdToGroupOrd copy() throws IOException {
       return new FieldOrdToGroupOrdOffHeap(
-          vectorData.clone(), fieldOrdToGroupOrdOffset, fieldOrdToGroupOrdSize);
+          vectorData.clone(),
+          fieldOrdToGroupOrdOffset,
+          fieldOrdToGroupOrdSize,
+          fieldOrdToGroupOrdBitsPerValue);
     }
   }
 }
