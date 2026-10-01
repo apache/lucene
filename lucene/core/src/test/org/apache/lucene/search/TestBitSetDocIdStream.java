@@ -85,11 +85,11 @@ public class TestBitSetDocIdStream extends LuceneTestCase {
     int count = stream.orInto(dest);
 
     stream.forEach(
-        bitSet.length() + base,
+        base,
         doc -> {
           assertTrue(dest.get(base + doc));
         });
-    assertEquals(stream.count(), count);
+    assertEquals(bitSet.cardinality(), count);
   }
 
   public void testForEachUpTo() throws IOException {
