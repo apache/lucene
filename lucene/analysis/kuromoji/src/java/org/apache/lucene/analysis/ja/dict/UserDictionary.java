@@ -24,13 +24,18 @@ import java.util.List;
 import java.util.regex.Pattern;
 import org.apache.lucene.analysis.morph.Dictionary;
 import org.apache.lucene.analysis.util.CSVUtil;
+import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.IntsRefBuilder;
+import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.FSTCompiler;
 import org.apache.lucene.util.fst.PositiveIntOutputs;
 
 /** Class for building a User Dictionary. This class allows for custom segmentation of phrases. */
-public final class UserDictionary implements Dictionary<UserMorphData> {
+public final class UserDictionary implements Dictionary<UserMorphData>, Accountable {
+
+  private static final long BASE_RAM_BYTES_USED =
+      RamUsageEstimator.shallowSizeOfInstance(UserDictionary.class);
 
   public static final String INTERNAL_SEPARATOR = "\u0000";
 
@@ -46,6 +51,8 @@ public final class UserDictionary implements Dictionary<UserMorphData> {
 
   // holds readings and POS, indexed by wordid
   private final UserMorphData morphAtts;
+
+  private final long ramBytesUsed;
 
   static final int CUSTOM_DICTIONARY_WORD_ID_OFFSET = 100000000;
 
@@ -146,6 +153,17 @@ public final class UserDictionary implements Dictionary<UserMorphData> {
             FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader()), false);
     this.morphAtts = new UserMorphData(data.toArray(String[]::new));
     this.segmentations = segmentations.toArray(int[][]::new);
+    this.ramBytesUsed = computeRamBytesUsed();
+  }
+
+  private long computeRamBytesUsed() {
+    long bytes = BASE_RAM_BYTES_USED + fst.ramBytesUsed() + morphAtts.ramBytesUsed();
+    bytes += RamUsageEstimator.shallowSizeOf((Object[]) segmentations);
+    // The constructor adds exactly one int[] per feature entry; never null.
+    for (int[] seg : segmentations) {
+      bytes += RamUsageEstimator.sizeOf(seg);
+    }
+    return bytes;
   }
 
   @Override
@@ -213,6 +231,11 @@ public final class UserDictionary implements Dictionary<UserMorphData> {
 
   public TokenInfoFST getFST() {
     return fst;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return ramBytesUsed;
   }
 
   private static final int[][] EMPTY_RESULT = new int[0][];

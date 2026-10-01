@@ -17,21 +17,47 @@
 package org.apache.lucene.analysis.ko.dict;
 
 import org.apache.lucene.analysis.ko.POS;
+import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.RamUsageEstimator;
 
 /** Morphological information for user dictionary. */
-final class UserMorphData implements KoMorphData {
+final class UserMorphData implements KoMorphData, Accountable {
   private static final int WORD_COST = -100000;
 
   // NNG left
   private static final short LEFT_ID = 1781;
 
+  private static final long BASE_RAM_BYTES_USED =
+      RamUsageEstimator.shallowSizeOfInstance(UserMorphData.class);
+
   // length, length... indexed by compound ID or null for simple noun
   private final int[][] segmentations;
   private final short[] rightIds;
 
+  private final long ramBytesUsed;
+
   UserMorphData(int[][] segmentations, short[] rightIds) {
     this.segmentations = segmentations;
     this.rightIds = rightIds;
+    // Sizing the segmentations walks every entry, so compute it once: both arrays are immutable
+    // and a user dictionary can be arbitrarily large.
+    this.ramBytesUsed = computeRamBytesUsed();
+  }
+
+  private long computeRamBytesUsed() {
+    long bytes = BASE_RAM_BYTES_USED + RamUsageEstimator.sizeOf(rightIds);
+    bytes += RamUsageEstimator.shallowSizeOf((Object[]) segmentations);
+    for (int[] seg : segmentations) {
+      if (seg != null) {
+        bytes += RamUsageEstimator.sizeOf(seg);
+      }
+    }
+    return bytes;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return ramBytesUsed;
   }
 
   @Override

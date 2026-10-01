@@ -20,18 +20,33 @@ import static org.apache.lucene.analysis.ja.dict.UserDictionary.CUSTOM_DICTIONAR
 import static org.apache.lucene.analysis.ja.dict.UserDictionary.INTERNAL_SEPARATOR;
 
 import org.apache.lucene.analysis.util.CSVUtil;
+import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.RamUsageEstimator;
 
 /** Morphological information for user dictionary. */
-final class UserMorphData implements JaMorphData {
+final class UserMorphData implements JaMorphData, Accountable {
   public static final int WORD_COST = -100000;
   public static final int LEFT_ID = 5;
   public static final int RIGHT_ID = 5;
 
+  private static final long BASE_RAM_BYTES_USED =
+      RamUsageEstimator.shallowSizeOfInstance(UserMorphData.class);
+
   // holds readings and POS, indexed by wordid
   private final String[] data;
 
+  private final long ramBytesUsed;
+
   UserMorphData(String[] data) {
     this.data = data;
+    // Sizing the data walks every string, so compute it once: the array is immutable and a user
+    // dictionary can be arbitrarily large.
+    this.ramBytesUsed = BASE_RAM_BYTES_USED + RamUsageEstimator.sizeOf(data);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return ramBytesUsed;
   }
 
   @Override

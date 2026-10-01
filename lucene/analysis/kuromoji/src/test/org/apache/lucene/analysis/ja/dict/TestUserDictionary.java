@@ -20,6 +20,8 @@ import java.io.IOException;
 import java.io.StringReader;
 import org.apache.lucene.analysis.ja.TestJapaneseTokenizer;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.RamUsageTester;
+import org.apache.lucene.util.RamUsageEstimator;
 
 public class TestUserDictionary extends LuceneTestCase {
 
@@ -73,6 +75,36 @@ public class TestUserDictionary extends LuceneTestCase {
   public void testRead() throws IOException {
     UserDictionary dictionary = TestJapaneseTokenizer.readDict();
     assertNotNull(dictionary);
+  }
+
+  public void testRamBytesUsed() throws IOException {
+    // The appended entry is multi-segment, so its segmentation array carries real content.
+    String entry = "愛,愛,アイ,カスタム名詞";
+    UserDictionary small = UserDictionary.open(new StringReader(entry));
+    UserDictionary large =
+        UserDictionary.open(new StringReader(entry + "\n日本経済新聞,日本 経済 新聞,ニホン ケイザイ シンブン,カスタム名詞"));
+    assertTrue(large.ramBytesUsed() > small.ramBytesUsed());
+    // Two entries, of one and three segments, so the segmentations are an int[2] and an int[4].
+    // Check the exact total, not just a lower bound, so a too-large size fails too.
+    // TestTokenInfoFST checks the FST part, which this module cannot measure.
+    long expectedSegmentations =
+        RamUsageEstimator.shallowSizeOf(new Object[2])
+            + RamUsageEstimator.sizeOf(new int[2])
+            + RamUsageEstimator.sizeOf(new int[4]);
+    assertEquals(
+        RamUsageEstimator.shallowSizeOfInstance(UserDictionary.class)
+            + large.getFST().ramBytesUsed()
+            + large.getMorphAttributes().ramBytesUsed()
+            + expectedSegmentations,
+        large.ramBytesUsed());
+    // The feature data is only strings, so it can be measured directly.
+    assertMorphAttributesRamBytesUsed(small);
+    assertMorphAttributesRamBytesUsed(large);
+  }
+
+  private static void assertMorphAttributesRamBytesUsed(UserDictionary dictionary) {
+    UserMorphData morphAtts = dictionary.getMorphAttributes();
+    assertEquals(RamUsageTester.ramUsed(morphAtts), morphAtts.ramBytesUsed());
   }
 
   public void testReadInvalid1() throws IOException {

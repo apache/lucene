@@ -17,19 +17,26 @@
 package org.apache.lucene.analysis.morph;
 
 import java.io.IOException;
+import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.FST.Arc;
 
 /**
  * Thin wrapper around an FST with root-arc caching.
  *
- * <p>Root arcs between <code>cacheFloor</code> and <code>cacheFloor</code> are cached.
+ * <p>Root arcs between <code>cacheFloor</code> and <code>cacheCeiling</code> are cached.
  */
-public abstract class TokenInfoFST {
+public abstract class TokenInfoFST implements Accountable {
+  private static final long BASE_RAM_BYTES_USED =
+      RamUsageEstimator.shallowSizeOfInstance(TokenInfoFST.class);
+  private static final long ARC_SHALLOW_SIZE = RamUsageEstimator.shallowSizeOfInstance(Arc.class);
+
   protected final FST<Long> fst;
   private final int cacheCeiling;
   private final int cacheFloor;
   private final Arc<Long>[] rootCache;
+  private final long ramBytesUsed;
 
   public final Long NO_OUTPUT;
 
@@ -46,6 +53,30 @@ public abstract class TokenInfoFST {
     this.cacheFloor = cacheFloor;
     NO_OUTPUT = fst.outputs.getNoOutput();
     rootCache = cacheRootArcs();
+    ramBytesUsed = computeRamBytesUsed();
+  }
+
+  private long computeRamBytesUsed() {
+    long bytes =
+        BASE_RAM_BYTES_USED + fst.ramBytesUsed() + RamUsageEstimator.shallowSizeOf(rootCache);
+    // NO_OUTPUT is shared and documented for == comparison, so charging it over-counts.
+    for (Arc<Long> arc : rootCache) {
+      if (arc != null) {
+        bytes += ARC_SHALLOW_SIZE;
+        if (arc.output() != NO_OUTPUT) {
+          bytes += fst.outputs.ramBytesUsed(arc.output());
+        }
+        if (arc.nextFinalOutput() != NO_OUTPUT) {
+          bytes += fst.outputs.ramBytesUsed(arc.nextFinalOutput());
+        }
+      }
+    }
+    return bytes;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return ramBytesUsed;
   }
 
   @SuppressWarnings({"rawtypes", "unchecked"})

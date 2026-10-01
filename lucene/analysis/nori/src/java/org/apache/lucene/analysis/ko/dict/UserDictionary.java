@@ -23,8 +23,10 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.analysis.morph.Dictionary;
+import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IntsRefBuilder;
+import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.FSTCompiler;
 import org.apache.lucene.util.fst.PositiveIntOutputs;
@@ -33,7 +35,10 @@ import org.apache.lucene.util.fst.PositiveIntOutputs;
  * Class for building a User Dictionary. This class allows for adding custom nouns (세종) or compounds
  * (세종시 세종 시).
  */
-public final class UserDictionary implements Dictionary<UserMorphData> {
+public final class UserDictionary implements Dictionary<UserMorphData>, Accountable {
+  private static final long BASE_RAM_BYTES_USED =
+      RamUsageEstimator.shallowSizeOfInstance(UserDictionary.class);
+
   // text -> wordID
   private final TokenInfoFST fst;
 
@@ -44,7 +49,9 @@ public final class UserDictionary implements Dictionary<UserMorphData> {
   // NNG right with hangul and no coda on the last char
   private static final short RIGHT_ID_F = 3534;
 
-  private UserMorphData morphAtts;
+  private final UserMorphData morphAtts;
+
+  private final long ramBytesUsed;
 
   public static UserDictionary open(Reader reader) throws IOException {
 
@@ -139,6 +146,7 @@ public final class UserDictionary implements Dictionary<UserMorphData> {
         new TokenInfoFST(FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader()));
     int[][] segmentations = _segmentations.toArray(int[][]::new);
     this.morphAtts = new UserMorphData(segmentations, rightIds);
+    this.ramBytesUsed = BASE_RAM_BYTES_USED + fst.ramBytesUsed() + morphAtts.ramBytesUsed();
   }
 
   public TokenInfoFST getFST() {
@@ -148,6 +156,11 @@ public final class UserDictionary implements Dictionary<UserMorphData> {
   @Override
   public UserMorphData getMorphAttributes() {
     return morphAtts;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return ramBytesUsed;
   }
 
   /**

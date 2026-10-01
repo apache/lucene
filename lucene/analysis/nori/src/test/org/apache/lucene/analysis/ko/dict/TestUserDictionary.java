@@ -17,10 +17,13 @@
 package org.apache.lucene.analysis.ko.dict;
 
 import java.io.IOException;
+import java.io.StringReader;
 import java.util.List;
 import org.apache.lucene.analysis.ko.POS;
 import org.apache.lucene.analysis.ko.TestKoreanTokenizer;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.RamUsageTester;
+import org.apache.lucene.util.RamUsageEstimator;
 
 public class TestUserDictionary extends LuceneTestCase {
   public void testLookup() throws IOException {
@@ -56,5 +59,28 @@ public class TestUserDictionary extends LuceneTestCase {
   public void testRead() {
     UserDictionary dictionary = TestKoreanTokenizer.readDict();
     assertNotNull(dictionary);
+  }
+
+  public void testRamBytesUsed() throws IOException {
+    // The appended entry is a compound, so its segmentation is non-null; a simple noun is null.
+    String entry = "세종";
+    UserDictionary small = UserDictionary.open(new StringReader(entry));
+    UserDictionary large = UserDictionary.open(new StringReader(entry + "\n세종시 세종 시"));
+    assertTrue(large.ramBytesUsed() > small.ramBytesUsed());
+    // The dictionary is just the FST plus the morphological data, so check the exact total.
+    // TestTokenInfoFST checks the FST part, which this module cannot measure.
+    assertEquals(
+        RamUsageEstimator.shallowSizeOfInstance(UserDictionary.class)
+            + large.getFST().ramBytesUsed()
+            + large.getMorphAttributes().ramBytesUsed(),
+        large.ramBytesUsed());
+    // The morphological data is only arrays, so it can be measured directly.
+    assertMorphAttributesRamBytesUsed(small);
+    assertMorphAttributesRamBytesUsed(large);
+  }
+
+  private static void assertMorphAttributesRamBytesUsed(UserDictionary dictionary) {
+    UserMorphData morphAtts = dictionary.getMorphAttributes();
+    assertEquals(RamUsageTester.ramUsed(morphAtts), morphAtts.ramBytesUsed());
   }
 }
