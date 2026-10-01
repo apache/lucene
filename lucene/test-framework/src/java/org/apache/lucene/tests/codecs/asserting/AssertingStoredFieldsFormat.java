@@ -89,8 +89,13 @@ public class AssertingStoredFieldsFormat extends StoredFieldsFormat {
     }
 
     @Override
-    public StoredFieldsReader getMergeInstance() {
+    public StoredFieldsReader getMergeInstance() throws IOException {
       return new AssertingStoredFieldsReader(in.getMergeInstance(), maxDoc, true);
+    }
+
+    @Override
+    public void finishMerge() throws IOException {
+      in.finishMerge();
     }
 
     @Override
