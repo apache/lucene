@@ -22,6 +22,7 @@ import java.util.Collections;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
+import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
@@ -1111,7 +1112,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
 
     Query filterQuery =
         new CountingFilterQuery(
-            new TermQuery(new Term("filter", "yes")), intoBitSetCalls, advanceCalls);
+            new TermQuery(new Term("filter", "yes")), intoBitSetCalls, null, advanceCalls);
 
     BooleanQuery innerOr =
         new BooleanQuery.Builder()
@@ -1214,7 +1215,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
 
     Query filterQuery =
         new CountingFilterQuery(
-            new TermQuery(new Term("filter", "yes")), intoBitSetCalls, advanceCalls);
+            new TermQuery(new Term("filter", "yes")), intoBitSetCalls, null, advanceCalls);
 
     BooleanQuery innerOr =
         new BooleanQuery.Builder()
@@ -1281,11 +1282,14 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
   private static class CountingFilterQuery extends Query {
     private final Query delegate;
     private final int[] intoBitSetCalls;
+    private final int[] twoPhaseIntoBitSetCalls;
     private final int[] advanceCalls;
 
-    CountingFilterQuery(Query delegate, int[] intoBitSetCalls, int[] advanceCalls) {
+    CountingFilterQuery(
+        Query delegate, int[] intoBitSetCalls, int[] twoPhaseIntoBitSetCalls, int[] advanceCalls) {
       this.delegate = delegate;
       this.intoBitSetCalls = intoBitSetCalls;
+      this.twoPhaseIntoBitSetCalls = twoPhaseIntoBitSetCalls;
       this.advanceCalls = advanceCalls;
     }
 
@@ -1302,6 +1306,29 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
             @Override
             public Scorer get(long leadCost) throws IOException {
               Scorer innerScorer = innerSS.get(leadCost);
+              TwoPhaseIterator innerTwoPhase = innerScorer.twoPhaseIterator();
+              if (innerTwoPhase != null) {
+                TwoPhaseIterator countingTwoPhase =
+                    new TwoPhaseIterator(innerTwoPhase.approximation()) {
+                      @Override
+                      public boolean matches() throws IOException {
+                        return innerTwoPhase.matches();
+                      }
+
+                      @Override
+                      public float matchCost() {
+                        return innerTwoPhase.matchCost();
+                      }
+
+                      @Override
+                      public void intoBitSet(int upTo, FixedBitSet bitSet, int offset)
+                          throws IOException {
+                        twoPhaseIntoBitSetCalls[0]++;
+                        innerTwoPhase.intoBitSet(upTo, bitSet, offset);
+                      }
+                    };
+                return new ConstantScoreScorer(0f, scoreMode, countingTwoPhase);
+              }
               DocIdSetIterator innerIter = innerScorer.iterator();
               DocIdSetIterator countingIter =
                   new FilterDocIdSetIterator(innerIter) {
@@ -1443,6 +1470,43 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
             + minTarget,
         minTarget >= filterStart);
 
+    reader.close();
+    dir.close();
+  }
+
+  public void testTwoPhaseFilterUsesBitSet() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig());
+    for (int i = 0; i < 10000; i++) {
+      Document doc = new Document();
+      doc.add(new TextField("body", "dense1", Field.Store.NO));
+      doc.add(new TextField("body", "dense2", Field.Store.NO));
+      doc.add(SortedNumericDocValuesField.indexedField("filter", i % 20));
+      w.addDocument(doc);
+    }
+    w.close();
+
+    DirectoryReader reader = DirectoryReader.open(dir);
+    IndexSearcher searcher = new IndexSearcher(reader);
+    searcher.setQueryCache(null);
+
+    BooleanQuery innerOr =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("body", "dense1")), Occur.SHOULD)
+            .add(new TermQuery(new Term("body", "dense2")), Occur.SHOULD)
+            .build();
+
+    int[] twoPhaseIntoBitSetCalls = {0};
+    Query delegateFilterQuery = SortedNumericDocValuesField.newSlowRangeQuery("filter", 1, 1);
+    Query filterQuery =
+        new CountingFilterQuery(delegateFilterQuery, null, twoPhaseIntoBitSetCalls, new int[1]);
+    BooleanQuery outerQuery =
+        new BooleanQuery.Builder().add(innerOr, Occur.MUST).add(filterQuery, Occur.FILTER).build();
+    TopDocs topDocs = searcher.search(outerQuery, 1000);
+    assertEquals(500, topDocs.totalHits.value());
+    assertTrue(
+        "Expected twoPhaseIntoBitSetCalls() to be called on the two-phase filter",
+        twoPhaseIntoBitSetCalls[0] > 0);
     reader.close();
     dir.close();
   }
