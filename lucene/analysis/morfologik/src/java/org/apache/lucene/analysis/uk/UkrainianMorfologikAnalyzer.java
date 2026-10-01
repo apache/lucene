@@ -70,6 +70,9 @@ public final class UkrainianMorfologikAnalyzer extends StopwordAnalyzerBase {
   private static DefaultResources getDefaultResources() {
     if (defaultResources == null) {
       synchronized (DefaultResources.class) {
+        if (defaultResources != null) {
+          return defaultResources;
+        }
         try {
           CharArraySet wordList;
           try (var is = UkrainianMorfologikAnalyzer.class.getResourceAsStream("stopwords.txt")) {
