@@ -65,8 +65,8 @@ final class FaissNativeWrapper {
       }
     }
     // Fallback to generic baseline
-    System.loadLibrary(FaissLibrary.NAME);
-    return FaissLibrary.NAME;
+    System.loadLibrary("faiss_c");
+    return "faiss_c";
   }
 
   private static boolean tryLoad(String libName) {
