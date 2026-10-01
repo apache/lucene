@@ -247,7 +247,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
                           FileDataHint.KNN_VECTORS,
                           DataAccessHint.SEQUENTIAL,
                           NoReuseHint.INSTANCE));
-        } catch (FileNotFoundException | NoSuchFileException e) {
+        } catch (@SuppressWarnings("unused") FileNotFoundException | NoSuchFileException e) {
           // an open reader outlives its files, so fall back to the mapping it already holds
           mergeVectorData = vectorData;
         }
