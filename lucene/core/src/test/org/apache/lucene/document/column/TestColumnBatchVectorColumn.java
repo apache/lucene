@@ -30,7 +30,12 @@ import static org.apache.lucene.document.column.ColumnBatchTestUtil.simpleBatch;
 import static org.apache.lucene.document.column.ColumnBatchTestUtil.vectorValuesCursor;
 
 import java.io.IOException;
+import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.lucene104.Lucene104HnswScalarQuantizedVectorsFormat;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
+import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.ByteVectorValues;
@@ -39,16 +44,24 @@ import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.KnnFloatVectorQuery;
+import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
 
 /** Tests for {@link VectorColumn} batch indexing. */
 public class TestColumnBatchVectorColumn extends LuceneTestCase {
@@ -175,9 +188,15 @@ public class TestColumnBatchVectorColumn extends LuceneTestCase {
     // FieldType says FLOAT32 but column carries byte[] vectors.
     FieldType vectorType = floatVectorType(2, VectorSimilarityFunction.EUCLIDEAN);
     byte[][] vectors = {{1, 2}, {3, 4}};
-    expectThrows(
-        ClassCastException.class,
-        () -> w.addBatch(simpleBatch(2, new ArrayDenseByteVectorColumn("v", vectorType, vectors))));
+    // ClassCastException when the writer reads vectors with next(); ArrayStoreException when it
+    // fills its own float[] arrays from the column's byte[] data
+    RuntimeException e =
+        expectThrows(
+            RuntimeException.class,
+            () ->
+                w.addBatch(
+                    simpleBatch(2, new ArrayDenseByteVectorColumn("v", vectorType, vectors))));
+    assertTrue(e.toString(), e instanceof ClassCastException || e instanceof ArrayStoreException);
     w.rollback();
     dir.close();
   }
@@ -618,5 +637,85 @@ public class TestColumnBatchVectorColumn extends LuceneTestCase {
     e = expectThrows(IllegalArgumentException.class, () -> raggedCursor.fill(new float[4], 0, 2));
     assertTrue(
         e.getMessage(), e.getMessage().contains("expected dimension 2 but got vector of length 3"));
+  }
+
+  /**
+   * Dense batches go through the flat, HNSW and scalar-quantized {@code addDenseValues} overrides.
+   * With the same vectors in the same order they must build the same index as {@code addDocument},
+   * including when the graph is created partway through a batch.
+   */
+  public void testDenseBatchesMatchAddDocument() throws IOException {
+    int threshold = random().nextInt(5);
+    KnnVectorsFormat format =
+        random().nextBoolean()
+            ? new Lucene99HnswVectorsFormat(16, 100, threshold)
+            : new Lucene104HnswScalarQuantizedVectorsFormat(
+                ScalarEncoding.UNSIGNED_BYTE, 16, 100, 1, null, threshold);
+    VectorSimilarityFunction sim =
+        random().nextBoolean()
+            ? VectorSimilarityFunction.EUCLIDEAN
+            : VectorSimilarityFunction.COSINE;
+    int dim = TestUtil.nextInt(random(), 2, 16);
+    float[][] vectors = new float[TestUtil.nextInt(random(), 50, 300)][dim];
+    for (float[] vector : vectors) {
+      for (int i = 0; i < dim; i++) {
+        vector[i] = random().nextFloat() + 0.01f;
+      }
+    }
+    FieldType vectorType = floatVectorType(dim, sim);
+
+    try (Directory batchDir = newDirectory();
+        Directory docDir = newDirectory()) {
+      try (IndexWriter w = new IndexWriter(batchDir, singleSegmentConfig(format))) {
+        for (int from = 0; from < vectors.length; ) {
+          int to = Math.min(vectors.length, from + TestUtil.nextInt(random(), 1, 50));
+          float[][] batch = ArrayUtil.copyOfSubArray(vectors, from, to);
+          w.addBatch(
+              simpleBatch(to - from, new ArrayDenseFloatVectorColumn("v", vectorType, batch)));
+          from = to;
+        }
+      }
+      try (IndexWriter w = new IndexWriter(docDir, singleSegmentConfig(format))) {
+        for (float[] vector : vectors) {
+          Document doc = new Document();
+          doc.add(new KnnFloatVectorField("v", vector, vectorType));
+          w.addDocument(doc);
+        }
+      }
+
+      try (DirectoryReader batchReader = DirectoryReader.open(batchDir);
+          DirectoryReader docReader = DirectoryReader.open(docDir)) {
+        LeafReader batchLeaf = getOnlyLeafReader(batchReader);
+        LeafReader docLeaf = getOnlyLeafReader(docReader);
+        FloatVectorValues batchValues = batchLeaf.getFloatVectorValues("v");
+        FloatVectorValues docValues = docLeaf.getFloatVectorValues("v");
+        assertEquals(vectors.length, batchValues.size());
+        for (int ord = 0; ord < vectors.length; ord++) {
+          assertEquals(docValues.ordToDoc(ord), batchValues.ordToDoc(ord));
+          assertArrayEquals(docValues.vectorValue(ord), batchValues.vectorValue(ord), 0f);
+        }
+        IndexSearcher batchSearcher = newSearcher(batchReader);
+        IndexSearcher docSearcher = newSearcher(docReader);
+        for (int i = 0; i < 10; i++) {
+          float[] query = vectors[random().nextInt(vectors.length)];
+          KnnFloatVectorQuery knn = new KnnFloatVectorQuery("v", query, 10);
+          ScoreDoc[] expected = docSearcher.search(knn, 10).scoreDocs;
+          ScoreDoc[] actual = batchSearcher.search(knn, 10).scoreDocs;
+          assertEquals(expected.length, actual.length);
+          for (int j = 0; j < expected.length; j++) {
+            assertEquals(expected[j].doc, actual[j].doc);
+            assertEquals(expected[j].score, actual[j].score, 0f);
+          }
+        }
+      }
+    }
+  }
+
+  private static IndexWriterConfig singleSegmentConfig(KnnVectorsFormat format) {
+    return new IndexWriterConfig()
+        .setCodec(TestUtil.alwaysKnnVectorsFormat(format))
+        .setMergePolicy(NoMergePolicy.INSTANCE)
+        .setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH)
+        .setRAMBufferSizeMB(64);
   }
 }

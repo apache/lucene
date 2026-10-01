@@ -45,10 +45,13 @@ public abstract class KnnFieldVectorsWriter<T> implements Accountable {
    *
    * <p>The cursor may throw while it is being consumed, for example when a vector fails validation.
    * In that case the documents of the whole batch are marked as deleted, but the writer must remain
-   * in a consistent state: every doc ID it has recorded must have its vector.
+   * in a consistent state: every doc ID it has recorded must have its vector. Validation runs after
+   * the copy, so when {@link VectorValuesCursor#fill} throws, the destination may already hold the
+   * rejected vectors; record doc IDs and vectors only after {@code fill} has returned.
    *
    * <p>The default implementation calls {@link #addValue} once per vector. Override for a more
-   * efficient bulk path.
+   * efficient bulk path. A writer that wraps another field writer should forward this method to it,
+   * otherwise the delegate's override is never reached.
    *
    * @lucene.experimental
    */
