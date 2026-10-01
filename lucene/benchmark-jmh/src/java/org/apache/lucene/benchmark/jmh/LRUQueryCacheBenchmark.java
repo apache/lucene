@@ -38,6 +38,7 @@ import org.openjdk.jmh.annotations.Group;
 import org.openjdk.jmh.annotations.GroupThreads;
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Measurement;
+import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
@@ -56,18 +57,26 @@ public class LRUQueryCacheBenchmark {
 
   private static final int SEGMENTS = 50;
 
+  // 16 = partitioned; 1 = single global lock (proxy for the pre-partition 10.x cache).
+  @Param({"16", "1"})
+  public int numberOfPartitions;
+
   private Query[] queries;
   private IndexReader.CacheHelper[] cacheHelpers;
 
   private LRUQueryCache.CacheAndCount sampleCacheAndCount;
   private LRUQueryCache queryCache;
+  // Small cap so the working set overflows and eviction fires continuously.
+  private static final long EVICTING_MAX_RAM_BYTES = 8L * 1024 * 1024; // 8MB
+  private LRUQueryCache evictingCache;
   private int[] zipfKeys;
   private int[] zipfKeysForInvalidation;
   private AtomicBoolean[] invalidated;
   private final AtomicLong lastInvalidateNs = new AtomicLong(0);
   private static final long INVALIDATE_INTERVAL_NS = TimeUnit.MILLISECONDS.toNanos(2000);
-  private static final long CACHE_BACKGROUND_CLEANUP_INTERVAL_NS =
-      TimeUnit.MILLISECONDS.toNanos(1000);
+  // CacheCleanUpParameters expects milliseconds; keep this small so background cleanup actually
+  // runs during a benchmark iteration.
+  private static final long CACHE_BACKGROUND_CLEANUP_INTERVAL_MS = 100;
 
   @Setup
   public void setup() {
@@ -87,7 +96,7 @@ public class LRUQueryCacheBenchmark {
     }
     LRUQueryCache.CacheCleanUpParameters cacheCleanUpParameters =
         new LRUQueryCache.CacheCleanUpParameters(
-            CACHE_BACKGROUND_CLEANUP_INTERVAL_NS,
+            CACHE_BACKGROUND_CLEANUP_INTERVAL_MS,
             new ScheduledThreadPoolExecutor(1, new DefaultCleanUpThreadFactory()));
     queryCache =
         new LRUQueryCache(
@@ -95,8 +104,12 @@ public class LRUQueryCacheBenchmark {
             MAX_SIZE_IN_BYTES * 16,
             _ -> true,
             100000,
-            16,
+            numberOfPartitions,
             cacheCleanUpParameters);
+
+    evictingCache =
+        new LRUQueryCache(
+            MAX_SIZE, EVICTING_MAX_RAM_BYTES, _ -> true, 100000, numberOfPartitions, null);
 
     this.queries = new Query[MAX_SIZE];
     for (int i = 0; i < MAX_SIZE; i++) {
@@ -136,6 +149,7 @@ public class LRUQueryCacheBenchmark {
     assert queryCache.getCacheSize() >= 0;
     assert queryCache.getCacheCount() > 0;
     assert queryCache.ramBytesUsed() >= 0;
+    evictingCache.clear();
     queryCache.clear();
     assert queryCache.getCacheSize() == 0;
     assert queryCache.ramBytesUsed() == 0;
@@ -148,6 +162,43 @@ public class LRUQueryCacheBenchmark {
     int random = ThreadLocalRandom.current().nextInt(MAX_SIZE);
     queryCache.putIfAbsent(
         queries[random], this.sampleCacheAndCount, cacheHelpers[random & (SEGMENTS - 1)]);
+  }
+
+  // Eviction under contention: random (query, segment) over the full space against a small cache,
+  // so the working set overflows and evictIfNecessary fires on almost every insert. Put-heavy.
+  @Benchmark
+  @Group("evictionHeavy")
+  @GroupThreads(8)
+  public void evictionHeavy_putIfAbsent() {
+    int q = ThreadLocalRandom.current().nextInt(MAX_SIZE);
+    int seg = ThreadLocalRandom.current().nextInt(SEGMENTS);
+    evictingCache.putIfAbsent(queries[q], this.sampleCacheAndCount, cacheHelpers[seg]);
+  }
+
+  @Benchmark
+  @Group("evictionHeavy")
+  @GroupThreads(2)
+  public LRUQueryCache.CacheAndCount evictionHeavy_get() {
+    int q = ThreadLocalRandom.current().nextInt(MAX_SIZE);
+    int seg = ThreadLocalRandom.current().nextInt(SEGMENTS);
+    return evictingCache.get(queries[q], cacheHelpers[seg]);
+  }
+
+  // Worst case for query-only routing: one hot query, so all its entries share a single partition.
+  @Benchmark
+  @Group("hotSingleQuery")
+  @GroupThreads(6)
+  public LRUQueryCache.CacheAndCount hotSingleQuery_get() {
+    int seg = ThreadLocalRandom.current().nextInt(SEGMENTS);
+    return queryCache.get(queries[0], cacheHelpers[seg]);
+  }
+
+  @Benchmark
+  @Group("hotSingleQuery")
+  @GroupThreads(4)
+  public void hotSingleQuery_putIfAbsent() {
+    int seg = ThreadLocalRandom.current().nextInt(SEGMENTS);
+    queryCache.putIfAbsent(queries[0], this.sampleCacheAndCount, cacheHelpers[seg]);
   }
 
   @Benchmark

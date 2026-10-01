@@ -16,10 +16,8 @@
  */
 package org.apache.lucene.codecs.lucene104;
 
-import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -27,7 +25,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.IntPredicate;
 import java.util.function.LongConsumer;
-import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
@@ -38,14 +35,12 @@ import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter.MergeScorerData;
 import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
-import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.Mode;
 import org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsWriter;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloatVectorField;
-import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CodecReader;
@@ -65,10 +60,7 @@ import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.SerialMergeScheduler;
-import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.Sort;
-import org.apache.lucene.search.SortField;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.FilterIndexInput;
@@ -79,10 +71,8 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.HnswGraph;
-import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
 
@@ -200,79 +190,6 @@ public class TestLucene104ScalarQuantizedMergeScorer extends LuceneTestCase {
   }
 
   /**
-   * Verifies that writer and reader paths produce identical quantized vector data and HNSW graphs.
-   * One {@code multiScalarQuantize} call must match separate index-side and query-side {@code
-   * scalarQuantize} calls.
-   *
-   * <p>The sorted index and sparse second vector field exercise non-dense merged order. Non-unit
-   * COSINE vectors exercise query-side normalization.
-   */
-  public void testGraphIsIdenticalToTheReaderFallback() throws IOException {
-    for (ScalarEncoding encoding : asymmetricEncodings()) {
-      for (VectorSimilarityFunction similarity : VectorSimilarityFunction.values()) {
-        assertBothPathsWriteTheSameFiles(encoding, similarity, List.of(), VECTOR_EXTENSIONS);
-      }
-    }
-  }
-
-  /**
-   * Verifies that writer and reader paths produce identical vector records when deletions change
-   * merged ordinals.
-   *
-   * <p>The graph is excluded because HNSW output is not reproducible across otherwise identical
-   * merges that drop documents.
-   */
-  public void testMergedRecordsAreIdenticalWithDeletions() throws IOException {
-    for (ScalarEncoding encoding : asymmetricEncodings()) {
-      VectorSimilarityFunction similarity =
-          RandomPicks.randomFrom(random(), VectorSimilarityFunction.values());
-      List<String> deleted = new ArrayList<>();
-      for (int i = 0; i < 2 * DOCS_PER_SEGMENT; i++) {
-        if (random().nextInt(10) == 0) {
-          deleted.add(Integer.toString(i));
-        }
-      }
-      assertBothPathsWriteTheSameFiles(encoding, similarity, deleted, RECORD_EXTENSIONS);
-    }
-  }
-
-  private void assertBothPathsWriteTheSameFiles(
-      ScalarEncoding encoding,
-      VectorSimilarityFunction similarity,
-      List<String> deleted,
-      Set<String> compared)
-      throws IOException {
-    long savedSeed = HnswGraphBuilder.randSeed;
-    try {
-      float[][] vectors = randomVectors(2 * DOCS_PER_SEGMENT, similarity);
-      long seed = random().nextLong();
-      HnswGraphBuilder.randSeed = seed;
-      Map<String, byte[]> writerPath =
-          mergedVectorFiles(writerPathFormat(encoding, ALWAYS_GRAPH), vectors, similarity, deleted);
-      HnswGraphBuilder.randSeed = seed;
-      Map<String, byte[]> readerPath =
-          mergedVectorFiles(readerPathFormat(encoding, ALWAYS_GRAPH), vectors, similarity, deleted);
-      assertEquals(
-          "different files were written for " + encoding + "/" + similarity,
-          writerPath.keySet(),
-          readerPath.keySet());
-      for (String extension : compared) {
-        assertArrayEquals(
-            "the body of the merged ."
-                + extension
-                + " file, header and footer aside, differs for "
-                + encoding
-                + "/"
-                + similarity,
-            writerPath.get(extension),
-            readerPath.get(extension));
-      }
-    } finally {
-      HnswGraphBuilder.randSeed = savedSeed;
-    }
-  }
-
-  /**
    * Verifies that a merge with no graph never creates a handoff file. This covers an HNSW merge
    * rejected by the graph-size predicate and a flat merge that supplies no predicate to the
    * two-argument merge method.
@@ -304,51 +221,6 @@ public class TestLucene104ScalarQuantizedMergeScorer extends LuceneTestCase {
           "the flat format prepared merge scorer data nobody can ask for: " + flatOnly.handOffs(),
           List.of(),
           flatOnly.handOffs());
-    }
-  }
-
-  /**
-   * Verifies that {@link Mode#DATA_BLIND_WITH_FLOATS} prepares no data, leaving HNSW on the reader
-   * fallback: only {@link Mode#CENTERED} prepares. Both paths create query-data files, but only the
-   * writer path returns one as a handoff.
-   *
-   * <p>{@link Mode#DATA_BLIND_WITHOUT_FLOATS} rejects asymmetric encodings, so that case expects an
-   * exception.
-   */
-  public void testDataBlindModesKeepTheReaderPath() throws IOException {
-    for (ScalarEncoding encoding : asymmetricEncodings()) {
-      List<MergeScorerData> handles = new ArrayList<>();
-      MergeCounts counts =
-          runMerge(
-              new HnswOverFlatFormat(
-                  new CapturingFlatFormat(encoding, Mode.DATA_BLIND_WITH_FLOATS, handles),
-                  ALWAYS_GRAPH),
-              VectorSimilarityFunction.EUCLIDEAN,
-              true,
-              true);
-      assertEquals("a data-blind merge prepared a hand-off: " + handles, List.of(), handles);
-      assertEquals(
-          "the reader fallback did not write its own query file: " + counts.handOffs(),
-          1,
-          counts.handOffs().size());
-      assertTrue(
-          "the data-blind merge did not read the merged vectors back: "
-              + counts.mergedRawBytesRead()
-              + " bytes for "
-              + encoding,
-          counts.mergedRawBytesRead() >= (long) DIM * Float.BYTES * 2 * DOCS_PER_SEGMENT);
-
-      expectThrows(
-          IllegalArgumentException.class,
-          () ->
-              new Lucene104HnswScalarQuantizedVectorsFormat(
-                  encoding,
-                  Mode.DATA_BLIND_WITHOUT_FLOATS,
-                  MAX_CONN,
-                  BEAM_WIDTH,
-                  1,
-                  null,
-                  ALWAYS_GRAPH));
     }
   }
 
@@ -413,8 +285,7 @@ public class TestLucene104ScalarQuantizedMergeScorer extends LuceneTestCase {
     ScalarEncoding encoding = randomAsymmetricEncoding();
     List<MergeScorerData> handles = new ArrayList<>();
     runMerge(
-        new HnswOverFlatFormat(
-            new CapturingFlatFormat(encoding, Mode.CENTERED, handles), ALWAYS_GRAPH),
+        new HnswOverFlatFormat(new CapturingFlatFormat(encoding, handles), ALWAYS_GRAPH),
         VectorSimilarityFunction.EUCLIDEAN,
         true,
         true);
@@ -754,88 +625,6 @@ public class TestLucene104ScalarQuantizedMergeScorer extends LuceneTestCase {
     }
   }
 
-  /**
-   * Merges two segments and returns merged vector-file bodies keyed by extension. Headers and
-   * footers are omitted because random segment IDs and their checksums differ between equivalent
-   * indexes.
-   *
-   * <p>The index is sorted, a second vector field is sparse, and documents named by {@code deleted}
-   * are removed before the merge.
-   */
-  private Map<String, byte[]> mergedVectorFiles(
-      KnnVectorsFormat format,
-      float[][] vectors,
-      VectorSimilarityFunction similarity,
-      List<String> deleted)
-      throws IOException {
-    try (Directory dir = newDirectory()) {
-      IndexWriterConfig config =
-          new IndexWriterConfig()
-              .setCodec(TestUtil.alwaysKnnVectorsFormat(format))
-              .setIndexSort(new Sort(new SortField("sort", SortField.Type.LONG)))
-              // the two arms have to meet the same segments, so nothing may merge in the background
-              .setMergeScheduler(new SerialMergeScheduler())
-              .setUseCompoundFile(false);
-      config.getCodec().compoundFormat().setShouldUseCompoundFile(false);
-      try (IndexWriter writer = new IndexWriter(dir, config)) {
-        for (int i = 0; i < vectors.length; i++) {
-          Document doc = new Document();
-          doc.add(new StringField("id", Integer.toString(i), Field.Store.NO));
-          doc.add(new NumericDocValuesField("sort", (i * 7919L) % 1000));
-          doc.add(new KnnFloatVectorField("v", vectors[i], similarity));
-          if (i % 3 == 0) {
-            doc.add(new KnnFloatVectorField("w", vectors[vectors.length - 1 - i], similarity));
-          }
-          writer.addDocument(doc);
-          if (i == vectors.length / 2 - 1) {
-            writer.commit();
-          }
-        }
-        writer.commit();
-        for (String id : deleted) {
-          writer.deleteDocuments(new Term("id", id));
-        }
-        writer.commit();
-        writer.forceMerge(1);
-        writer.commit();
-      }
-      SegmentInfos infos = SegmentInfos.readLatestCommit(dir);
-      assertEquals(1, infos.size());
-      Map<String, byte[]> files = new HashMap<>();
-      for (String file : infos.info(0).files()) {
-        String extension = file.substring(file.lastIndexOf('.') + 1);
-        if (VECTOR_EXTENSIONS.contains(extension)) {
-          files.put(extension, fileBody(dir, file));
-        }
-      }
-      assertTrue("no raw vectors were written", files.containsKey("vec"));
-      assertTrue("no quantized vectors were written", files.containsKey("veq"));
-      assertTrue("no graph was written, so this compares nothing", files.get("vex").length > 0);
-      return files;
-    }
-  }
-
-  /** Vector record files, excluding the HNSW graph. */
-  private static final Set<String> RECORD_EXTENSIONS = Set.of("vec", "veq", "vemq");
-
-  private static final Set<String> VECTOR_EXTENSIONS = Set.of("vec", "veq", "vemq", "vex");
-
-  /** The bytes of a codec file between its index header and its footer. */
-  private static byte[] fileBody(Directory dir, String file) throws IOException {
-    try (IndexInput in = dir.openInput(file, IOContext.READONCE)) {
-      in.readInt(); // magic
-      in.readString(); // codec name
-      in.readInt(); // version
-      in.skipBytes(StringHelper.ID_LENGTH);
-      in.skipBytes(in.readByte() & 0xFF); // segment suffix
-      long start = in.getFilePointer();
-      long length = in.length() - CodecUtil.footerLength() - start;
-      byte[] body = new byte[Math.toIntExact(length)];
-      in.readBytes(body, 0, body.length);
-      return body;
-    }
-  }
-
   private float[][] randomVectors(int count, VectorSimilarityFunction similarity) {
     float[][] vectors = new float[count][];
     for (int i = 0; i < count; i++) {
@@ -978,14 +767,14 @@ public class TestLucene104ScalarQuantizedMergeScorer extends LuceneTestCase {
     private final ScalarEncoding encoding;
 
     NoPrepareFlatFormat(ScalarEncoding encoding) {
-      super(encoding, Mode.CENTERED);
+      super(encoding);
       this.encoding = encoding;
     }
 
     @Override
     public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
       return new Lucene104ScalarQuantizedVectorsWriter(
-          state, encoding, Mode.CENTERED, RAW_FORMAT.fieldsWriter(state), QUANTIZED_SCORER) {
+          state, encoding, RAW_FORMAT.fieldsWriter(state), QUANTIZED_SCORER) {
         @Override
         public MergeScorerData mergeOneFlatVectorFieldForMergeScorer(
             FieldInfo fieldInfo, MergeState mergeState, IntPredicate needsMergeScorer)
@@ -1000,20 +789,18 @@ public class TestLucene104ScalarQuantizedMergeScorer extends LuceneTestCase {
   /** The shipped flat format, keeping every hand-off it prepares for the test to inspect. */
   private static final class CapturingFlatFormat extends Lucene104ScalarQuantizedVectorsFormat {
     private final ScalarEncoding encoding;
-    private final Mode mode;
     private final List<MergeScorerData> handles;
 
-    CapturingFlatFormat(ScalarEncoding encoding, Mode mode, List<MergeScorerData> handles) {
-      super(encoding, mode);
+    CapturingFlatFormat(ScalarEncoding encoding, List<MergeScorerData> handles) {
+      super(encoding);
       this.encoding = encoding;
-      this.mode = mode;
       this.handles = handles;
     }
 
     @Override
     public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
       return new Lucene104ScalarQuantizedVectorsWriter(
-          state, encoding, mode, RAW_FORMAT.fieldsWriter(state), QUANTIZED_SCORER) {
+          state, encoding, RAW_FORMAT.fieldsWriter(state), QUANTIZED_SCORER) {
         @Override
         public MergeScorerData mergeOneFlatVectorFieldForMergeScorer(
             FieldInfo fieldInfo, MergeState mergeState, IntPredicate needsMergeScorer)
