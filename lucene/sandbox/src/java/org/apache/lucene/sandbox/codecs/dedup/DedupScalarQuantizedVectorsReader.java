@@ -441,7 +441,8 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
         entry.quantizedBlock().quantizedDataOffset(),
         entry.quantizedBlock().quantizedDataSize(),
         entry.fieldInfo().fieldOrdToGroupOrdOffset(),
-        entry.fieldInfo().fieldOrdToGroupOrdSize());
+        entry.fieldInfo().fieldOrdToGroupOrdSize(),
+        entry.fieldInfo().fieldOrdToGroupOrdBitsPerValue());
   }
 
   @Override
