@@ -42,8 +42,10 @@ support.
 
 #### Key changes
 
-- All tests must be Jupiter tests, typically this means
-methods must be annotated with `@Test`. Method prefix
+These apply if you extend `LuceneTestCaseJupiter`. `LuceneTestCase` (JUnit4) is
+unchanged.
+
+- Methods must be annotated with `@Test`. Method prefix
 `test*` is not sufficient. Methods that are named `test*` but are not tests
 will cause validation errors.
 - You can use parameterized tests, dynamic tests, etc. All these are supported.
@@ -112,9 +114,9 @@ Starting with Lucene 11.0.0, the index upgrade policy has been relaxed to allow 
 #### Upgrade Example
 
 ```java
-// Opening an index created with Lucene 10.x in Lucene 11.x+
+// Opening a 10.x index in 11 still works (MIN_SUPPORTED_MAJOR is 10).
+// Later majors may keep that minimum if no format break occurs.
 try (Directory dir = FSDirectory.open(indexPath)) {
-    // This will now succeed (if MIN_SUPPORTED_MAJOR <= 10)
     try (DirectoryReader reader = DirectoryReader.open(dir)) {
         // Index can be read normally
     }
@@ -263,9 +265,11 @@ Automaton dfa = Operations.determinize(WildcardQuery.toAutomaton(new Term("myfie
 Query query = new AutomatonQuery(new Term("myfield", pattern), dfa);
 ```
 
-The same change made `QueryVisitor.consumeTermsMatching` take
-`Supplier<ByteRunnable>` instead of `ByteRunAutomaton`, so visitors can run a DFA
-or an NFA. `ByteRunAutomaton` still implements `ByteRunnable`.
+### `QueryVisitor.consumeTermsMatching` takes `Supplier<ByteRunnable>`
+
+Because automata may now be a DFA or an NFA, `consumeTermsMatching` takes
+`Supplier<ByteRunnable>` instead of `ByteRunAutomaton`. `ByteRunAutomaton` still
+implements `ByteRunnable`. `QueryVisitor` implementers must update the override.
 
 ```java
 // Before
@@ -542,6 +546,9 @@ IOIntConsumer consumer = doc -> { ... };
 
 ### IEEE FLOAT16 vector APIs (GITHUB#16383)
 
+Custom `LeafReader` / knn codec authors must implement the new `FLOAT16` APIs.
+Typical application code is unaffected unless it switches on `VectorEncoding`.
+
 `LeafReader.getFloat16VectorValues` is abstract (`FilterLeafReader` already
 delegates). `KnnVectorsReader` / `FlatVectorsReader` /
 `FlatVectorsScorer` gained `getFloat16VectorValues`, `search(short[])`, and
@@ -643,8 +650,9 @@ If you already have a `List`, pass it directly.
 
 ### `TopFieldCollectorManager.getCollectors()` has been removed (GITHUB#15605)
 
-Internal collector tracking was removed. There is no replacement; do not
-retain collectors from `newCollector()` yourself.
+Internal collector tracking was removed. There is no replacement.
+`IndexSearcher.search(query, manager)` is unchanged. Only code that called
+`getCollectors()` needs to change.
 
 ### `long[]` GroupVInt APIs moved to backward-codecs (GITHUB#15113)
 
@@ -662,8 +670,8 @@ org.apache.lucene.backward_codecs.store.GroupVIntUtil.readGroupVInts(in, longDst
 
 ### Deprecated CheckIndex parameters have been removed (GITHUB#11023)
 
-The old `-fast` CLI flag has been removed. Use `-level` (`1`-`3`; default `1`) to
-choose how thorough the check is.
+The `-fast` and `-slow` CLI flags have been removed. Use `-level` (`1`-`3`;
+default `1`). Old `-fast` is the default (`1`); old `-slow` is `-level 3`.
 
 ## Migration from Lucene 10.4 to Lucene 10.5
 
