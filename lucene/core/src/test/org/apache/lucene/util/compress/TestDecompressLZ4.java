@@ -24,8 +24,12 @@ import org.apache.lucene.util.ArrayUtil;
 
 public class TestDecompressLZ4 extends LuceneTestCase {
   public void testOverlappingMatchesWithDictionaryAndPartialReads() throws IOException {
-    for (int distance : new int[] {1, 2, 3, 7, 8, 15, 16, 17, 63, 64, 65, 255, 65535}) {
-      for (int length : new int[] {4, 63, 64, 65, 1024, 131089}) {
+    for (int distance : new int[] {1, 2, 3, 7, 8, 15, 16, 17, 31, 32, 63, 64, 65, 255, 65535}) {
+      for (int length :
+          new int[] {
+            4, 7, 8, 15, 16, 17, 18, 19, 31, 32, 63, 64, 65, 255, 256, 257, 273, 274, 275, 511, 512,
+            513, 1024, 131089
+          }) {
         byte[] dictionary = new byte[distance];
         random().nextBytes(dictionary);
         var encoded = ByteBuffersDataOutput.newResettableInstance();
