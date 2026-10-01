@@ -48,7 +48,6 @@ import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
-import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.store.DataAccessHint;
@@ -179,7 +178,9 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
 
     try {
       meta = state.directory.createOutput(metaFileName, state.context);
-      vectorIndex = state.directory.createOutput(indexDataFileName, state.context);
+      vectorIndex =
+          state.directory.createOutput(
+              indexDataFileName, state.context.union(FileTypeHint.DATA, FileDataHint.KNN_VECTORS));
 
       CodecUtil.writeIndexHeader(
           meta,
@@ -486,7 +487,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       }
     }
     if (flatVectorsReader instanceof QuantizedVectorsReader quantizedVectorsReader
-        && fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
+        && fieldInfo.getVectorEncoding().isFloatingPoint()) {
       return quantizedVectorsReader.getRandomVectorScorerSupplierForMerge(
           fieldInfo,
           segmentWriteState.withHints(

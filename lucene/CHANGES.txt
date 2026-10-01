@@ -7,6 +7,11 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
+* GITHUB#16705: KnnVectorValues#prefetch(int ord, int count) replaces prefetch(int ord). It prefetches
+  a run of consecutive vectors with a single read and returns true if a prefetch was issued, like
+  IndexInput#prefetch. The int[] form now coalesces ordinals that are consecutive in the array over
+  it. (Ankur Goel, Jim Ferenczi)
+
 * GITHUB#15113: Move long[] group varint support from core to backward-codecs. The legacy long[]
   GroupVIntUtil and DataOutput APIs were removed from core and are now only available for backward
   codecs. (Subhramit Basu)
@@ -143,6 +148,9 @@ New Features
 
 * GITHUB#16473: Add scalar quantization support in Fp16 vector encoding. (Pulkit Gupta)
 
+* GITHUB#16735: Add Float16VectorSimilarityQuery for similarity threshold search over fp16 vectors.
+  (Recep Eken)
+
 Improvements
 ---------------------
 * GITHUB#15704: Replace LinkedList with more efficient data structure. (Renato Haeberli)
@@ -218,6 +226,9 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#16657: Fix hashCode/equals contract violation in LRUQueryCache's QueryCacheKey and account a
+  cached query's RAM once per distinct query. (Sagar Upadhyaya)
+
 * GITHUB#16553: Fix stored-fields corruption when PerField#finish throws: the stored-fields frame
   was left open, causing "Wrote N docs, finish called with numDocs=M" at flush. (Michael Marshall)
 
@@ -233,6 +244,8 @@ Bug Fixes
 * GITHUB#7865 AbstractRangeQueryNode#toQueryString(EscapeQuerySyntax) now
   returns a string which can be parsed back into the original node.
   (Peter Barna, Adam Schwartz)
+
+* GITHUB#15133: Take the FST suffix cache into account when reporting FST ramBytesUsed (Anh Dung Bui)
 
 * GITHUB#14847: Allow Faiss vector format to index >2GB of vectors per-field per-segment by using MemorySegment APIs
   (instead of ByteBuffer) to copy bytes to native memory. (Kaival Parikh)
@@ -267,6 +280,8 @@ Bug Fixes
 * Make VectorScorer#bulk default method lazily position its iterator on first use. (Michael Marshall)
 
 * GITHUB#16409: Fix filtered HNSW search boundary handling to match the general HNSW searcher. (Mingi Jeong)
+
+* GITHUB#16687: Use quantized vectors for fp16 HNSW graph construction during merges. (Kaival Parikh)
 
 Changes in Runtime Behavior
 ---------------------
@@ -382,6 +397,8 @@ API Changes
 
 * GITHUB#16647: Add KnnVectorsReader.getVectorCount to read vector counts from metadata (Chris Hegarty)
 
+* GITHUB#16686: Make DocAndScoreQuery public (Trevor McCulloch)
+
 New Features
 ---------------------
 * GITHUB#16722: Support user dictionary in ThaiTokenizer and ThaiTokenizerFactory.
@@ -459,6 +476,18 @@ Improvements
 Optimizations
 ---------------------
 
+* GITHUB#16706: Reduce the sandboxed dedup vector formats' index size by packing each field
+  ordinal to group ordinal mapping at the minimum bit width required for the largest group ordinal,
+  instead of a fixed 32-bit width. (Pranshu Shukla)
+
+* GITHUB#16749: Merges now open the raw vectors for themselves and state that they read the data
+  file sequentially, instead of changing the advice on the mapping searches read at random. The
+  vectors writers now state what file they are writing, and the raw vectors a quantized format keeps
+  only to rescore say so as they are written. (Jim Ferenczi)
+
+* GITHUB#16684: Merges now open stored fields for themselves and state that they read the data file
+  sequentially, instead of reusing the mapping searches read at random. (Jim Ferenczi)
+
 * GITHUB#16682: Carry file open hints on merge and flush contexts, which used to drop them. An HNSW
   format now carries the random access hint for the vectors it reads, rather than the flat format
   holding them claiming it whatever reads them. Add NoReuseHint, set by stored fields, term vectors
@@ -494,6 +523,9 @@ Optimizations
   rangeIntoBitSet. (Costin Leau)
 
 * GITHUB#16352: Better cost() estimation for SkipBlockRangeIterator. (Alan Woodward)
+
+* GITHUB#16268: LongRangeFacetCutter: doc-values skip index for single + multi-valued fields,
+  single-valued segment unwrapping, and interval tracker rewind. (Jakub Slowinski)
 
 * GITHUB#16285: Apply GCD bound transform to sorted numeric rangeIntoBitSet, comparing raw
   encoded values directly instead of decoding every packed value. (Costin Leau)
@@ -555,6 +587,9 @@ Optimizations
 
 * GITHUB#16669: Use intoBitSet to speed up ReqExclBulkScorer with dense exclusions. (Ke Wei)
 
+* GITHUB#16667: Rewrite BooleanQuery to MatchNoDocsQuery when it has MUST_NOT clause matching one of
+  its MUST boost or constant score query clauses. (Egor Potemkin)
+
 Bug Fixes
 ---------------------
 * GITHUB#10153: Allow configurable buffer size in SegmentingTokenizerBase and recognize whitespace as safe boundary in ThaiTokenizer to avoid splitting words across buffer boundaries. (Kamthorn Krairaksa)
@@ -580,6 +615,10 @@ Bug Fixes
   the node's degree. Previously nodes with a degree of 1 were always forced into the join set,
   which made the join set degenerate to the whole graph on hub-and-spoke shaped HNSW graphs.
   (Mayya Sharipova)
+
+* GITHUB#16478: Reject LZ4 match offsets that point before the start of the output in
+  LZ4#decompress. Corrupt input previously threw ArrayIndexOutOfBoundsException instead of
+  a checked IOException. (Serhiy Bzhezytskyy)
 
 * GITHUB#16350: Disable bulk-scoring in monitor queries. (Alan Woodward)
 
@@ -614,6 +653,9 @@ Bug Fixes
   is now sized to highestMatchedDoc + 1 instead of the full searched range. (Sasilekha R)
 
 * GITHUB#16577: Fix incorrect position increment generated by FixedShingleFilter. (Kishor Kharbas)
+
+* GITHUB#16728: Handle edge cases with inaccurate scorers that can cause duplicate neighbor links
+  in the HNSW graph. (Simon Cooper)
 
 * GITHUB#16139: Fix IBSimilarity with DistributionSPL producing negative scores due to
   floating-point rounding errors. (Prithvi S)
