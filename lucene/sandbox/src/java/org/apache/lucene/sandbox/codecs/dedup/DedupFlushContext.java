@@ -213,6 +213,7 @@ final class DedupFlushContext implements Accountable {
           groupOrds.get(fieldData.groupKey),
           vectorCount,
           maxDoc,
+          fieldData.fieldWriter.getMaxGroupOrd(),
           docs,
           fieldOrdToGroupOrdFinal);
     }

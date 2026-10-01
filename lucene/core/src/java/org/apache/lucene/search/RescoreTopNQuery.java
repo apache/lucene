@@ -17,8 +17,10 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorSimilarityFunction;
 
 /**
@@ -32,6 +34,13 @@ import org.apache.lucene.index.VectorSimilarityFunction;
  * @lucene.experimental
  */
 public class RescoreTopNQuery extends Query {
+
+  /**
+   * Number of candidates whose loads are kept in flight while rescoring. Large enough to cover the
+   * queue depth a block device needs to reach its peak read rate, small enough that the buffer does
+   * not grow with the rescoring set.
+   */
+  private static final int PREFETCH_WINDOW = 128;
 
   private final int n;
   private final Query query;
@@ -62,6 +71,25 @@ public class RescoreTopNQuery extends Query {
     Query rewritten = indexSearcher.rewrite(query);
     Weight weight = indexSearcher.createWeight(rewritten, ScoreMode.COMPLETE_NO_SCORES, 1.0f);
     HitQueue queue = new HitQueue(n, false);
+    // A value source that reads the inner scorer's score must be consumed at the scorer's current
+    // position, so those cannot be prefetched ahead and are scored as we go.
+    int originalCount =
+        valuesSource.needsScores()
+            ? rescoreInline(reader, weight, rewrittenValueSource, queue)
+            : rescoreWithPrefetch(reader, weight, rewrittenValueSource, queue);
+    int i = 0;
+    ScoreDoc[] scoreDocs = new ScoreDoc[queue.size()];
+    for (ScoreDoc topDoc : queue) {
+      scoreDocs[i++] = topDoc;
+    }
+    TopDocs topDocs =
+        new TopDocs(new TotalHits(originalCount, TotalHits.Relation.EQUAL_TO), scoreDocs);
+    return DocAndScoreQuery.createDocAndScoreQuery(reader, topDocs, 0);
+  }
+
+  private int rescoreInline(
+      IndexReader reader, Weight weight, DoubleValuesSource rewrittenValueSource, HitQueue queue)
+      throws IOException {
     int originalCount = 0;
     for (var leaf : reader.leaves()) {
       Scorer innerScorer = weight.scorer(leaf);
@@ -71,24 +99,132 @@ public class RescoreTopNQuery extends Query {
       DoubleValues rescores = rewrittenValueSource.getValues(leaf, getDoubleValues(innerScorer));
       DocIdSetIterator iterator = innerScorer.iterator();
       while (iterator.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-        int docId = iterator.docID();
-        if (rescores.advanceExact(docId)) {
-          double v = rescores.doubleValue();
-          queue.insertWithOverflow(new ScoreDoc(leaf.docBase + docId, (float) v));
-        } else {
-          queue.insertWithOverflow(new ScoreDoc(leaf.docBase + docId, 0f));
-        }
+        rescoreInto(queue, rescores, leaf.docBase, iterator.docID());
         originalCount++;
       }
     }
-    int i = 0;
-    ScoreDoc[] scoreDocs = new ScoreDoc[queue.size()];
-    for (ScoreDoc topDoc : queue) {
-      scoreDocs[i++] = topDoc;
+    return originalCount;
+  }
+
+  /**
+   * Starts the loads for the candidates ahead of the scoring position, so that more than one read
+   * is in flight when the values live on slow storage.
+   *
+   * <p>Candidates are held in a fixed-size ring rather than buffered in full: a rerank shortlist
+   * can be large, and its size is a function of the query rather than of the index. Each iteration
+   * issues the prefetch for one candidate and, once the ring is full, scores the oldest one, which
+   * by then has had a whole window of candidates' worth of time to load. That keeps {@link
+   * #PREFETCH_WINDOW} reads in flight from end to end instead of draining every time a batch is
+   * scored. The ring spans segments, because a shortlist is spread over all of them and a
+   * segment-at-a-time window would go idle at every boundary.
+   *
+   * <p>Only doc ids are buffered, never values.
+   */
+  private int rescoreWithPrefetch(
+      IndexReader reader, Weight weight, DoubleValuesSource rewrittenValueSource, HitQueue queue)
+      throws IOException {
+    final List<LeafReaderContext> leaves = reader.leaves();
+    final DoubleValues[] leafValues = new DoubleValues[leaves.size()];
+    final PrefetchRing ring = new PrefetchRing(PREFETCH_WINDOW);
+    int originalCount = 0;
+
+    for (int i = 0; i < leaves.size(); i++) {
+      final LeafReaderContext leaf = leaves.get(i);
+      Scorer innerScorer = weight.scorer(leaf);
+      if (innerScorer == null) {
+        continue;
+      }
+      DoubleValues rescores = rewrittenValueSource.getValues(leaf, null);
+      leafValues[i] = rescores;
+      DocIdSetIterator iterator = innerScorer.iterator();
+      while (iterator.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+        int docId = iterator.docID();
+        // Issue the load first, so that the new read is in flight while we block on the oldest one.
+        rescores.prefetch(docId);
+        if (ring.isFull()) {
+          scoreOldest(ring, leaves, leafValues, queue);
+          originalCount++;
+        }
+        ring.append(i, docId);
+      }
     }
-    TopDocs topDocs =
-        new TopDocs(new TotalHits(originalCount, TotalHits.Relation.EQUAL_TO), scoreDocs);
-    return DocAndScoreQuery.createDocAndScoreQuery(reader, topDocs, 0);
+
+    while (ring.isEmpty() == false) {
+      scoreOldest(ring, leaves, leafValues, queue);
+      originalCount++;
+    }
+    return originalCount;
+  }
+
+  /**
+   * Scores the candidate that has been in the ring longest, and so has had the most time to load,
+   * then drops it.
+   */
+  private static void scoreOldest(
+      PrefetchRing ring, List<LeafReaderContext> leaves, DoubleValues[] leafValues, HitQueue queue)
+      throws IOException {
+    int leafOrd = ring.oldestLeaf();
+    rescoreInto(queue, leafValues[leafOrd], leaves.get(leafOrd).docBase, ring.oldestDoc());
+    ring.removeOldest();
+  }
+
+  /**
+   * Fixed-size FIFO of the candidates whose loads have been issued but whose scores have not been
+   * read yet. Holds doc ids and the segment they belong to, never values, and never grows with the
+   * size of the rescoring set.
+   */
+  private static final class PrefetchRing {
+    private final int[] docs;
+    private final int[] leafOrds;
+    private int head;
+    private int size;
+
+    PrefetchRing(int capacity) {
+      this.docs = new int[capacity];
+      this.leafOrds = new int[capacity];
+    }
+
+    boolean isFull() {
+      return size == docs.length;
+    }
+
+    boolean isEmpty() {
+      return size == 0;
+    }
+
+    /** Adds a candidate. A window may straddle segments, so the segment travels with the doc id. */
+    void append(int leafOrd, int doc) {
+      assert isFull() == false : "ring is full";
+      int tail = (head + size) % docs.length;
+      docs[tail] = doc;
+      leafOrds[tail] = leafOrd;
+      size++;
+    }
+
+    int oldestDoc() {
+      assert isEmpty() == false : "ring is empty";
+      return docs[head];
+    }
+
+    int oldestLeaf() {
+      assert isEmpty() == false : "ring is empty";
+      return leafOrds[head];
+    }
+
+    void removeOldest() {
+      assert isEmpty() == false : "ring is empty";
+      head = (head + 1) % docs.length;
+      size--;
+    }
+  }
+
+  private static void rescoreInto(HitQueue queue, DoubleValues values, int docBase, int docId)
+      throws IOException {
+    if (values.advanceExact(docId)) {
+      queue.insertWithOverflow(new ScoreDoc(docBase + docId, (float) values.doubleValue()));
+    } else {
+      queue.insertWithOverflow(new ScoreDoc(docBase + docId, 0f));
+    }
   }
 
   private DoubleValues getDoubleValues(Scorer innerScorer) {
@@ -148,6 +284,23 @@ public class RescoreTopNQuery extends Query {
     DoubleValuesSource valuaSource =
         new FullPrecisionFloatVectorSimilarityValuesSource(targetVector, field);
     return new RescoreTopNQuery(in, valuaSource, n);
+  }
+
+  /**
+   * Utility method to create a new RescoreTopNQuery which uses half-precision (FLOAT16) vectors for
+   * rescoring.
+   *
+   * @param in the inner Query to rescore
+   * @param targetVector the target vector to compute score, as FLOAT16 bit patterns
+   * @param field the vector field to compute score
+   * @param n the number of results to keep
+   * @return the RescoreTopNQuery
+   */
+  public static Query createFullPrecisionRescorerQuery(
+      Query in, short[] targetVector, String field, int n) {
+    DoubleValuesSource valuesSource =
+        new FullPrecisionFloat16VectorSimilarityValuesSource(targetVector, field);
+    return new RescoreTopNQuery(in, valuesSource, n);
   }
 
   /**
