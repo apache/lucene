@@ -62,11 +62,18 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
    * <p>A value of 40 means that if more than 40% of the graph's original vectors have been deleted,
    * the graph will not be selected as the base.
    */
-  private final int DELETE_PCT_THRESHOLD = 40;
+  static final int DELETE_PCT_THRESHOLD = 40;
 
-  /** Represents a vector reader that contains graph info. */
+  /**
+   * Represents a vector reader that contains graph info.
+   *
+   * @param reader the vectors reader that provides the graph
+   * @param initDocMap maps the reader's doc IDs to doc IDs in the merged segment
+   * @param graphSize total number of nodes in the graph, including deleted ones
+   * @param liveVectorCount number of nodes in the graph whose documents are live
+   */
   protected record GraphReader(
-      KnnVectorsReader reader, MergeState.DocMap initDocMap, int graphSize) {}
+      KnnVectorsReader reader, MergeState.DocMap initDocMap, int graphSize, int liveVectorCount) {}
 
   /**
    * @param fieldInfo FieldInfo for the field being merged
@@ -121,12 +128,13 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
     int candidateVectorCount = countLiveVectors(liveDocs, knnVectorValues);
     int graphSize = graph.size();
 
-    GraphReader graphReader = new GraphReader(reader, docMap, graphSize);
+    GraphReader graphReader = new GraphReader(reader, docMap, graphSize, candidateVectorCount);
 
     int deletePct = ((graphSize - candidateVectorCount) * 100) / graphSize;
 
     if (deletePct <= DELETE_PCT_THRESHOLD
-        && (largestGraphReader == null || candidateVectorCount > largestGraphReader.graphSize)) {
+        && (largestGraphReader == null
+            || candidateVectorCount > largestGraphReader.liveVectorCount)) {
       largestGraphReader = graphReader;
     }
 
