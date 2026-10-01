@@ -15,7 +15,7 @@ concurrency:
 jobs:
   zizmor:
     name: Run zizmor
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     timeout-minutes: 15
     permissions:
       security-events: write # integration with github advanced security

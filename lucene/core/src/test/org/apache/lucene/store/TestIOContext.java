@@ -51,7 +51,7 @@ public class TestIOContext extends LuceneTestCase {
     }
   }
 
-  /** A merge that only knows a merge is reading, which is all a reader reopening a file knows. */
+  /** A merge context with no MergeInfo, which is all a reader reopening a file can say. */
   public void testMergeWithoutMergeInfo() {
     IOContext context = IOContext.merge();
     assertEquals(IOContext.Context.MERGE, context.context());
