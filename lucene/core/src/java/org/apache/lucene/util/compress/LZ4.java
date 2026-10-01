@@ -95,7 +95,11 @@ public final class LZ4 {
 
       if (literalLen != 0) {
         if (literalLen == 0x0F) {
-          literalLen = readExtendedLength(compressed);
+          byte len;
+          while ((len = compressed.readByte()) == (byte) 0xFF) {
+            literalLen += 0xFF;
+          }
+          literalLen += len & 0xFF;
         }
         compressed.readBytes(dest, dOff, literalLen);
         dOff += literalLen;
@@ -144,20 +148,15 @@ public final class LZ4 {
     return dOff;
   }
 
-  // Decode a length whose four-bit prefix is 15.
-  private static int readExtendedLength(DataInput compressed) throws IOException {
-    int length = 0x0F;
-    int next;
-    while ((next = compressed.readByte()) == (byte) 0xFF) {
-      length += 0xFF;
-    }
-    return length + (next & 0xFF);
-  }
-
   private static int decompressLongMatch(
       DataInput compressed, int matchDec, byte[] dest, int dOff, int destEnd) throws IOException {
     // The token and the first length-extension byte represent at least 274 bytes.
-    int matchLen = MIN_MATCH + 0xFF + readExtendedLength(compressed);
+    int matchLen = MIN_MATCH + 0x0F + 0xFF;
+    int len;
+    while ((len = compressed.readByte()) == (byte) 0xFF) {
+      matchLen += 0xFF;
+    }
+    matchLen += len & 0xFF;
     if (matchDec >= matchLen) {
       final int fastLen = (matchLen + 7) & 0xFFFFFFF8;
       System.arraycopy(
