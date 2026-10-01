@@ -516,7 +516,11 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
               fieldInfo.getVectorSimilarityFunction(), vectorValues);
       return CloseableRandomVectorScorerSupplier.create(supplier, vectorValues.size(), () -> {});
     }
-    FloatVectorValues floatVectorValues = getFloatVectorValues(fieldInfo.name);
+    FloatVectorValues floatVectorValues =
+        fieldInfo.getVectorEncoding() == VectorEncoding.FLOAT16
+            ? new Lucene104ScalarQuantizedVectorsWriter.Float16AsFloatVectorValues(
+                getFloat16VectorValues(fieldInfo.name))
+            : getFloatVectorValues(fieldInfo.name);
     if (fieldInfo.getVectorSimilarityFunction() == VectorSimilarityFunction.COSINE) {
       // the index side of this segment was quantized from normalized vectors, the query side must
       // be too
@@ -721,6 +725,12 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     }
 
     @Override
+    public boolean prefetch(int ord, int count) throws IOException {
+      // vectorValue()/rescorer() read the raw full-precision vectors, so prefetch those.
+      return rawVectorValues.prefetch(ord, count);
+    }
+
+    @Override
     public ScalarQuantizedVectorValues copy() throws IOException {
       return new ScalarQuantizedVectorValues(rawVectorValues.copy(), quantizedVectorValues.copy());
     }
@@ -779,6 +789,11 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     @Override
     public short[] vectorValue(int ord) throws IOException {
       return rawVectorValues.vectorValue(ord);
+    }
+
+    @Override
+    public boolean prefetch(int ord, int count) throws IOException {
+      return rawVectorValues.prefetch(ord, count);
     }
 
     @Override

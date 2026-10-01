@@ -285,7 +285,8 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
         entry.groupInfo.vectorDataOffset(),
         entry.groupInfo.vectorDataSize(),
         entry.fieldInfo.fieldOrdToGroupOrdOffset(),
-        entry.fieldInfo.fieldOrdToGroupOrdSize());
+        entry.fieldInfo.fieldOrdToGroupOrdSize(),
+        entry.fieldInfo.fieldOrdToGroupOrdBitsPerValue());
   }
 
   @Override
@@ -304,7 +305,8 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
         entry.groupInfo.vectorDataOffset(),
         entry.groupInfo.vectorDataSize(),
         entry.fieldInfo.fieldOrdToGroupOrdOffset(),
-        entry.fieldInfo.fieldOrdToGroupOrdSize());
+        entry.fieldInfo.fieldOrdToGroupOrdSize(),
+        entry.fieldInfo.fieldOrdToGroupOrdBitsPerValue());
   }
 
   @Override
@@ -323,7 +325,8 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
         entry.groupInfo.vectorDataOffset(),
         entry.groupInfo.vectorDataSize(),
         entry.fieldInfo.fieldOrdToGroupOrdOffset(),
-        entry.fieldInfo.fieldOrdToGroupOrdSize());
+        entry.fieldInfo.fieldOrdToGroupOrdSize(),
+        entry.fieldInfo.fieldOrdToGroupOrdBitsPerValue());
   }
 
   @Override
