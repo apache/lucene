@@ -535,19 +535,6 @@ if (in.prefetch(offset, length)) {
 }
 ```
 
-### `IndexInput.updateReadAdvice` is now `updateIOContext` (GITHUB#14844)
-
-`IndexInput.updateReadAdvice(ReadAdvice)` was replaced by
-`updateIOContext(IOContext)`. Pass an `IOContext` with the desired hints.
-
-```java
-// Before
-in.updateReadAdvice(ReadAdvice.SEQUENTIAL);
-
-// After
-in.updateIOContext(IOContext.DEFAULT.withHints(DataAccessHint.SEQUENTIAL));
-```
-
 ### `CheckedIntConsumer` renamed to `IOIntConsumer` (GITHUB#14973)
 
 `org.apache.lucene.search.CheckedIntConsumer` is now
@@ -582,30 +569,27 @@ switch (fieldInfo.getVectorEncoding()) {
 }
 ```
 
-### `DictionaryCompoundWordTokenFilter` constructor change (GITHUB#14356)
+### `DictionaryCompoundWordTokenFilter` deprecated constructor removed (GITHUB#14356)
 
-The constructor that took `onlyLongestMatch` plus `reuseChars` has been removed
-([GITHUB#14311](https://github.com/apache/lucene/pull/14311),
-[GITHUB#14356](https://github.com/apache/lucene/pull/14356)). Remaining
+The deprecated constructor that took both `onlyLongestMatch` and
+`onlyLongestMatchIgnoreSubwords` has been removed. Lucene 10 already added the
+replacement that takes only `onlyLongestMatchIgnoreSubwords`
+([GITHUB#14278](https://github.com/apache/lucene/pull/14278),
+[GITHUB#14311](https://github.com/apache/lucene/pull/14311)). Remaining
 constructors are `(TokenStream, CharArraySet)` and
 `(TokenStream, CharArraySet, minWordSize, minSubwordSize, maxSubwordSize,
 onlyLongestMatchIgnoreSubwords)`.
 
-The new flag is roughly old `onlyLongestMatch=true` + `reuseChars=false`, but
-also advances the token position past matched subword tokens. Code that is
-sensitive to token positions (phrase queries, span queries, highlighters) may
-see different results. The snippet below is that case. If you used other flag
-combinations, pass `false` or the two-arg constructor.
-
 ```java
-// Before
+// Before (deprecated in 10.x)
 new DictionaryCompoundWordTokenFilter(
     input, dictionary, minWordSize, minSubwordSize, maxSubwordSize,
-    onlyLongestMatch, reuseChars);
+    onlyLongestMatch, onlyLongestMatchIgnoreSubwords);
 
-// After: onlyLongestMatchIgnoreSubwords is roughly old onlyLongestMatch=true and reuseChars=false
+// After
 new DictionaryCompoundWordTokenFilter(
-    input, dictionary, minWordSize, minSubwordSize, maxSubwordSize, true);
+    input, dictionary, minWordSize, minSubwordSize, maxSubwordSize,
+    onlyLongestMatchIgnoreSubwords);
 ```
 
 ### `DocIdSet` API changes (GITHUB#14284, GITHUB#14288, GITHUB#14290, GITHUB#14297)
@@ -638,7 +622,7 @@ BitSet fromIterator = BitSet.of(iterator, maxDoc);
 If you used `DocIdSet.all(maxDoc)`, iterate with `DocIdSetIterator.all(maxDoc)`
 instead.
 
-### `HnswConcurrentMergeBuilder` dropped `maxConn` (GITHUB#15184)
+### `HnswConcurrentMergeBuilder` dropped `maxConn` (GITHUB#14097)
 
 The constructor no longer takes `M` / `maxConn`; `OnHeapHnswGraph` already
 has it.
