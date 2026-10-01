@@ -288,14 +288,14 @@ implements `ByteRunnable`. `QueryVisitor` implementers must update the override.
 // Before
 @Override
 public void consumeTermsMatching(Query query, String field, ByteRunAutomaton automaton) {
-  // ...
+    // ...
 }
 
 // After
 @Override
 public void consumeTermsMatching(Query query, String field, Supplier<ByteRunnable> automaton) {
-  ByteRunnable runnable = automaton.get();
-  // ...
+    ByteRunnable runnable = automaton.get();
+    // ...
 }
 ```
 
@@ -347,10 +347,10 @@ not need a named subclass should use `PriorityQueue.usingLessThan` or
 ```java
 // Before
 PriorityQueue<ScoreDoc> pq = new PriorityQueue<ScoreDoc>(numHits) {
-  @Override
-  protected boolean lessThan(ScoreDoc a, ScoreDoc b) {
-    return a.score < b.score;
-  }
+    @Override
+    protected boolean lessThan(ScoreDoc a, ScoreDoc b) {
+        return a.score < b.score;
+    }
 };
 
 // After: no subclass needed
@@ -358,9 +358,9 @@ PriorityQueue<ScoreDoc> pq = PriorityQueue.usingLessThan(numHits, (a, b) -> a.sc
 
 // After: named subclass that still needs heap access
 class HitQueue extends PriorityQueue<ScoreDoc> {
-  HitQueue(int size) {
-    super(size, (a, b) -> a.score < b.score);
-  }
+    HitQueue(int size) {
+        super(size, (a, b) -> a.score < b.score);
+    }
 }
 ```
 
@@ -425,13 +425,13 @@ operations in production. For tests, `minus` is available as
 // Before
 @Override
 public Terms terms(String field) throws IOException {
-  return in.terms(field);
+    return in.terms(field);
 }
 
 // After
 @Override
 public Terms terms(String field) {
-  return in.terms(field);
+    return in.terms(field);
 }
 ```
 
@@ -449,19 +449,19 @@ query cache; keys are `(query, segment)`. `clearCoreCacheKey` takes
 cache.clearCoreCacheKey(reader.getCoreCacheHelper().getKey());
 
 class MyQueryCache extends LRUQueryCache {
-  MyQueryCache(int maxSize, long maxRamBytesUsed) {
-    super(maxSize, maxRamBytesUsed);
-  }
+    MyQueryCache(int maxSize, long maxRamBytesUsed) {
+        super(maxSize, maxRamBytesUsed);
+    }
 
-  @Override
-  protected void onCacheEntryInserted(Object readerCoreKey, Query query, long ramBytesUsed) {
-    // called once per (segment, query) insertion
-  }
+    @Override
+    protected void onCacheEntryInserted(Object readerCoreKey, Query query, long ramBytesUsed) {
+        // called once per (segment, query) insertion
+    }
 
-  @Override
-  protected void onCacheEntryEvicted(Object readerCoreKey, Query query, long ramBytesUsed) {
-    // called once per (segment, query) eviction
-  }
+    @Override
+    protected void onCacheEntryEvicted(Object readerCoreKey, Query query, long ramBytesUsed) {
+        // called once per (segment, query) eviction
+    }
 }
 ```
 
@@ -494,7 +494,7 @@ instead of `instanceof FieldsReader` + `getFieldReader`.
 ```java
 // Before
 if (reader instanceof PerFieldKnnVectorsFormat.FieldsReader perField) {
-  reader = perField.getFieldReader(field);
+    reader = perField.getFieldReader(field);
 }
 
 // After
@@ -512,12 +512,12 @@ Drop `throws IOException` from overrides.
 ```java
 @Override
 public long cost() throws IOException {
-  return in.cost();
+    return in.cost();
 }
 
 @Override
 public void setTopLevelScoringClause() {
-  in.setTopLevelScoringClause();
+    in.setTopLevelScoringClause();
 }
 ```
 
@@ -531,7 +531,7 @@ implementation returns `false` (no-op). Overrides must return that flag.
 
 ```java
 if (in.prefetch(offset, length)) {
-  // the implementation actually prefetched; the read can be deferred
+    // the implementation actually prefetched; the read can be deferred
 }
 ```
 
@@ -576,9 +576,9 @@ delegates). `KnnVectorsReader` / `FlatVectorsReader` /
 
 ```java
 switch (fieldInfo.getVectorEncoding()) {
-  case BYTE -> reader.getByteVectorValues(field);
-  case FLOAT32 -> reader.getFloatVectorValues(field);
-  case FLOAT16 -> reader.getFloat16VectorValues(field);
+    case BYTE -> reader.getByteVectorValues(field);
+    case FLOAT32 -> reader.getFloatVectorValues(field);
+    case FLOAT16 -> reader.getFloat16VectorValues(field);
 }
 ```
 
@@ -619,7 +619,7 @@ redundant.
 // Before
 @Override
 public DocIdSetIterator iterator() throws IOException {
-  return in.iterator();
+    return in.iterator();
 }
 
 BitSet bits = new BitDocIdSet(bitSet).bits();
@@ -627,7 +627,7 @@ BitSet bits = new BitDocIdSet(bitSet).bits();
 // After
 @Override
 public DocIdSetIterator iterator() {
-  return in.iterator();
+    return in.iterator();
 }
 
 BitSet bits = bitSet; // keep the BitSet you already have
