@@ -227,8 +227,6 @@ Bug Fixes
 
 * GITHUB#16443: MultiFieldQueryParser: default operator is not honored between term positions (Egor Potemkin, Olivier Jaquemet)
 
-* GITHUB#10153: Allow configurable buffer size in SegmentingTokenizerBase and recognize whitespace as safe boundary in ThaiTokenizer to avoid splitting words across buffer boundaries. (Kamthorn Krairaksa)
-
 * GITHUB#16657: Fix hashCode/equals contract violation in LRUQueryCache's QueryCacheKey and account a
   cached query's RAM once per distinct query. (Sagar Upadhyaya)
 
