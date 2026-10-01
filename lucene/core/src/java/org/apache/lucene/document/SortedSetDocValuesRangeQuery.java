@@ -121,12 +121,13 @@ final class SortedSetDocValuesRangeQuery extends Query {
         DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
         SortedSetDocValues values = DocValues.getSortedSet(context.reader(), field);
         final SortedDocValues singleton = DocValues.unwrapSingleton(values);
-        final SortField primarySortField;
-        if (singleton != null
-            && skipper != null
-            && (primarySortField = densePrimarySort(context.reader(), skipper)) != null) {
-          return getScorerSupplierFromDensePrimarySort(
-              singleton, values, skipper, primarySortField);
+        if (singleton != null && skipper != null) {
+          SortField primarySortField =
+              canUsePrimarySortShortcut(context.reader(), field, skipper.docCount());
+          if (primarySortField != null) {
+            return getScorerSupplierFromDensePrimarySort(
+                singleton, values, skipper, primarySortField);
+          }
         }
         // implement ScorerSupplier, since we do some expensive stuff to make a scorer
         return new ConstantScoreScorerSupplier(score(), scoreMode, context.reader().maxDoc()) {
@@ -276,16 +277,23 @@ final class SortedSetDocValuesRangeQuery extends Query {
     return maxOrd;
   }
 
-  private SortField densePrimarySort(LeafReader reader, DocValuesSkipper skipper) {
-    if (skipper.docCount() != reader.maxDoc()) {
+  /**
+   * Returns the primary sort field if it is safe to use the {@link SortedSkipperScorerSupplier}
+   * range shortcuts for this query, or {@code null} if the shortcut cannot be applied.
+   *
+   * <p>The shortcuts assume that docs without a value do not appear before or within the matching
+   * doc-ID range. This requires that the field is dense (every doc has a value, {@code docCount ==
+   * reader.maxDoc()}).
+   */
+  private static SortField canUsePrimarySortShortcut(LeafReader reader, String field, int docCount)
+      throws IOException {
+    SortField sf = Sort.getPrimarySortField(reader);
+    if (sf == null || sf.getField().equals(field) == false) {
       return null;
     }
-    final Sort indexSort = reader.getMetaData().sort();
-    if (indexSort == null
-        || indexSort.getSort().length == 0
-        || indexSort.getSort()[0].getField().equals(field) == false) {
+    if (docCount != reader.maxDoc()) {
       return null;
     }
-    return indexSort.getSort()[0];
+    return sf;
   }
 }

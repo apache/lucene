@@ -34,6 +34,7 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
@@ -235,12 +236,12 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
       }
 
       @Override
-      public long getSumTotalTermFreq() throws IOException {
+      public long getSumTotalTermFreq() {
         return delegateTerms.getSumTotalTermFreq();
       }
 
       @Override
-      public long getSumDocFreq() throws IOException {
+      public long getSumDocFreq() {
         return delegateTerms.getSumDocFreq();
       }
 
@@ -387,8 +388,8 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
-      delegateFieldsProducer.checkIntegrity();
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+      delegateFieldsProducer.checkIntegrity(merge);
     }
 
     @Override

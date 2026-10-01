@@ -55,6 +55,7 @@ import org.apache.lucene.index.FreqAndNormBuffer;
 import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentInfo;
@@ -825,7 +826,7 @@ public class RandomPostingsTester {
           }
 
           @Override
-          public void checkIntegrity() throws IOException {}
+          public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {}
         };
     FieldsConsumer consumer = codec.postingsFormat().fieldsConsumer(writeState);
     boolean success = false;

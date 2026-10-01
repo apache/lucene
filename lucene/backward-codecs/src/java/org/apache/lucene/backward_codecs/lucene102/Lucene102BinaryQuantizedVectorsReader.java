@@ -40,9 +40,11 @@ import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.KnnVectorValues;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorEncoding;
@@ -51,7 +53,6 @@ import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.ChecksumIndexInput;
-import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.FileDataHint;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
@@ -126,10 +127,8 @@ public class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader
               versionMeta,
               VECTOR_DATA_EXTENSION,
               Lucene102BinaryQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
-              // Quantized vectors are accessed randomly from their node ID stored in the HNSW
-              // graph.
-              state.context.withHints(
-                  FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM));
+              // how these are read is up to whoever wraps this format
+              state.context.union(FileTypeHint.DATA, FileDataHint.KNN_VECTORS));
     } catch (Throwable t) {
       IOUtils.closeWhileSuppressingExceptions(t, this);
       throw t;
@@ -211,9 +210,14 @@ public class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    rawVectorsReader.checkIntegrity();
-    CodecUtil.checksumEntireFile(quantizedVectorData);
+  public RandomVectorScorer getRandomVectorScorer(String field, short[] target) throws IOException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+    rawVectorsReader.checkIntegrity(merge);
+    CodecUtil.checksumEntireFile(quantizedVectorData, merge);
   }
 
   @Override
@@ -250,6 +254,11 @@ public class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader
   @Override
   public ByteVectorValues getByteVectorValues(String field) throws IOException {
     return rawVectorsReader.getByteVectorValues(field);
+  }
+
+  @Override
+  public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -301,6 +310,17 @@ public class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader
     }
     var quant = Map.of(VECTOR_DATA_EXTENSION, fieldEntry.vectorDataLength());
     return KnnVectorsReader.mergeOffHeapByteSizeMaps(raw, quant);
+  }
+
+  @Override
+  public int getVectorCount(FieldInfo fieldInfo) throws IOException {
+    Objects.requireNonNull(fieldInfo);
+    FieldEntry fieldEntry = fields.get(fieldInfo.name);
+    if (fieldEntry == null) {
+      assert fieldInfo.getVectorEncoding() == VectorEncoding.BYTE;
+      return rawVectorsReader.getVectorCount(fieldInfo);
+    }
+    return fieldEntry.size();
   }
 
   float[] getCentroid(String field) {

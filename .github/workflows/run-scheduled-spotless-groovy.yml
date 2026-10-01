@@ -9,6 +9,10 @@ on:
 
 permissions: {}
 
+# do not need to run more than one of these at a time
+concurrency:
+  group: ${{ github.workflow }}
+
 env:
   DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
 
@@ -16,11 +20,11 @@ jobs:
   test:
     name: Check groovy/gradle script formatting compliance
     timeout-minutes: 15
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04-arm
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 

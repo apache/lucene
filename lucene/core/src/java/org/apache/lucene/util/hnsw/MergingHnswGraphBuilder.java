@@ -21,8 +21,10 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Locale;
 import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.util.BitSet;
+import org.apache.lucene.util.IORunnable;
 
 /**
  * A graph builder that is used during segments' merging.
@@ -86,6 +88,9 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
    *     all vectors expected to be added to the graph in the future
    * @param initializedNodes the nodes will be initialized through the merging, if null, all nodes
    *     should be already initialized after {@link #updateGraph(HnswGraph, int[])} being called
+   * @param abortCheck optional check invoked during the graph-join initialization/repair of the
+   *     base graph; may throw {@link org.apache.lucene.index.MergePolicy.MergeAbortedException} to
+   *     abort a cancelled merge promptly rather than only during subsequent node insertion, or null
    * @return a new HnswGraphBuilder that is initialized with the provided HnswGraph
    * @throws IOException when reading the graph fails
    */
@@ -96,13 +101,43 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
       HnswGraph[] graphs,
       int[][] ordMaps,
       int totalNumberOfVectors,
-      BitSet initializedNodes)
+      BitSet initializedNodes,
+      IORunnable abortCheck)
       throws IOException {
     OnHeapHnswGraph graph =
         InitializedHnswGraphBuilder.initGraph(
-            graphs[0], ordMaps[0], totalNumberOfVectors, beamWidth, scorerSupplier);
+            graphs[0], ordMaps[0], totalNumberOfVectors, beamWidth, scorerSupplier, abortCheck);
     return new MergingHnswGraphBuilder(
         scorerSupplier, beamWidth, seed, graph, graphs, ordMaps, initializedNodes);
+  }
+
+  /**
+   * Same as {@link #fromGraphs(RandomVectorScorerSupplier, int, long, HnswGraph[], int[][], int,
+   * BitSet, IORunnable)} but without an abort check.
+   *
+   * <p>This parameter-less overload is kept deliberately so the abort-check change stays purely
+   * additive: existing call sites keep compiling unchanged, which keeps the backport to 10.5
+   * minimal. New callers should prefer the {@code abortCheck} overload so a cancelled merge can be
+   * aborted during the graph-join initialization/repair phase.
+   */
+  public static MergingHnswGraphBuilder fromGraphs(
+      RandomVectorScorerSupplier scorerSupplier,
+      int beamWidth,
+      long seed,
+      HnswGraph[] graphs,
+      int[][] ordMaps,
+      int totalNumberOfVectors,
+      BitSet initializedNodes)
+      throws IOException {
+    return fromGraphs(
+        scorerSupplier,
+        beamWidth,
+        seed,
+        graphs,
+        ordMaps,
+        totalNumberOfVectors,
+        initializedNodes,
+        null);
   }
 
   @Override
@@ -110,6 +145,7 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
     if (frozen) {
       throw new IllegalStateException("This HnswGraphBuilder is frozen and cannot be updated");
     }
+    long startTimeNs = System.nanoTime();
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
       String graphSizes = "";
       for (HnswGraph g : graphs) {
@@ -139,6 +175,17 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
       }
     }
 
+    if (infoStream.isEnabled(HNSW_COMPONENT)) {
+      double elapsedMs = (System.nanoTime() - startTimeNs) / 1_000_000.0;
+      infoStream.message(
+          HNSW_COMPONENT,
+          String.format(
+              Locale.ROOT,
+              "merge completed: %d vectors from merging %d graphs in %.2f ms",
+              maxOrd,
+              graphs.length,
+              elapsedMs));
+    }
     return getCompletedGraph();
   }
 

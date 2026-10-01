@@ -46,6 +46,7 @@ import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.SlowImpactsEnum;
@@ -61,6 +62,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.NoReuseHint;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
@@ -147,7 +149,9 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
       final String vectorsStreamFN =
           IndexFileNames.segmentFileName(segment, segmentSuffix, VECTORS_EXTENSION);
       vectorsStream =
-          d.openInput(vectorsStreamFN, context.withHints(FileTypeHint.DATA, DataAccessHint.RANDOM));
+          d.openInput(
+              vectorsStreamFN,
+              context.withHints(FileTypeHint.DATA, DataAccessHint.RANDOM, NoReuseHint.INSTANCE));
       version =
           CodecUtil.checkIndexHeader(
               vectorsStream, formatName, VERSION_START, VERSION_CURRENT, si.getId(), segmentSuffix);
@@ -1017,12 +1021,12 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     }
 
     @Override
-    public long getSumTotalTermFreq() throws IOException {
+    public long getSumTotalTermFreq() {
       return totalTermFreq;
     }
 
     @Override
-    public long getSumDocFreq() throws IOException {
+    public long getSumDocFreq() {
       return numTerms;
     }
 
@@ -1349,9 +1353,9 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    indexReader.checkIntegrity();
-    CodecUtil.checksumEntireFile(vectorsStream);
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+    indexReader.checkIntegrity(merge);
+    CodecUtil.checksumEntireFile(vectorsStream, merge);
   }
 
   @Override

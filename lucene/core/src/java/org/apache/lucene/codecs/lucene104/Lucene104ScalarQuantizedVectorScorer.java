@@ -62,38 +62,8 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
       throws IOException {
     if (vectorValues instanceof QuantizedByteVectorValues qv) {
       FlatVectorsScorer.checkDimensions(target.length, qv.dimension());
-      OptimizedScalarQuantizer quantizer = qv.getQuantizer();
-      ScalarEncoding scalarEncoding = qv.getScalarEncoding();
-      byte[] scratch = new byte[scalarEncoding.getDiscreteDimensions(qv.dimension())];
-      final byte[] targetQuantized;
-      if (scalarEncoding.isAsymmetric() == false) {
-        targetQuantized = scratch;
-      } else {
-        // This is asymmetric quantization, we will pack the vector
-        targetQuantized = new byte[scalarEncoding.getQueryPackedLength(scratch.length)];
-      }
       // We make a copy as the quantization process mutates the input
-      float[] copy = ArrayUtil.copyOfSubArray(target, 0, target.length);
-      if (similarityFunction == COSINE) {
-        VectorUtil.l2normalize(copy);
-      }
-      target = copy;
-      var targetCorrectiveTerms =
-          quantizer.scalarQuantize(
-              target, scratch, scalarEncoding.getQueryBits(), qv.getCentroid());
-      // for asymmetric encodings with 4-bit query, we need to transpose the nibbles for fast
-      // scoring comparisons
-      if (scalarEncoding == ScalarEncoding.SINGLE_BIT_QUERY_NIBBLE
-          || scalarEncoding == ScalarEncoding.DIBIT_QUERY_NIBBLE) {
-        OptimizedScalarQuantizer.transposeHalfByte(scratch, targetQuantized);
-      }
-      return new RandomVectorScorer.AbstractRandomVectorScorer(qv) {
-        @Override
-        public float score(int node) throws IOException {
-          return quantizedScore(
-              targetQuantized, targetCorrectiveTerms, qv, node, similarityFunction);
-        }
-      };
+      return getRandomQuantizedVectorScorer(similarityFunction, qv, ArrayUtil.copyArray(target));
     }
     // It is possible to get to this branch during initial indexing and flush
     return nonQuantizedDelegate.getRandomVectorScorer(similarityFunction, vectorValues, target);
@@ -105,6 +75,60 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
       throws IOException {
     FlatVectorsScorer.checkDimensions(target.length, vectorValues.dimension());
     return nonQuantizedDelegate.getRandomVectorScorer(similarityFunction, vectorValues, target);
+  }
+
+  @Override
+  public RandomVectorScorer getRandomVectorScorer(
+      VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, short[] target)
+      throws IOException {
+    if (vectorValues instanceof QuantizedByteVectorValues qv) {
+      FlatVectorsScorer.checkDimensions(target.length, qv.dimension());
+      // Quantization operates on fp32, so inflate the fp16 query first
+      // TODO: quantize fp16 directly, see https://github.com/apache/lucene/issues/16533
+      float[] inflated = new float[target.length];
+      for (int i = 0; i < target.length; i++) {
+        inflated[i] = Float.float16ToFloat(target[i]);
+      }
+      return getRandomQuantizedVectorScorer(similarityFunction, qv, inflated);
+    }
+    // It is possible to get to this branch during initial indexing and flush
+    return nonQuantizedDelegate.getRandomVectorScorer(similarityFunction, vectorValues, target);
+  }
+
+  /**
+   * Quantizes {@code query} against the centroid of {@code qv} and returns a scorer over the
+   * quantized vectors. {@code query} is modified in place.
+   */
+  private RandomVectorScorer getRandomQuantizedVectorScorer(
+      VectorSimilarityFunction similarityFunction, QuantizedByteVectorValues qv, float[] query)
+      throws IOException {
+    OptimizedScalarQuantizer quantizer = qv.getQuantizer();
+    ScalarEncoding scalarEncoding = qv.getScalarEncoding();
+    byte[] scratch = new byte[scalarEncoding.getDiscreteDimensions(qv.dimension())];
+    final byte[] targetQuantized;
+    if (scalarEncoding.isAsymmetric() == false) {
+      targetQuantized = scratch;
+    } else {
+      // This is asymmetric quantization, we will pack the vector
+      targetQuantized = new byte[scalarEncoding.getQueryPackedLength(scratch.length)];
+    }
+    if (similarityFunction == COSINE) {
+      VectorUtil.l2normalize(query);
+    }
+    var targetCorrectiveTerms =
+        quantizer.scalarQuantize(query, scratch, scalarEncoding.getQueryBits(), qv.getCentroid());
+    // for asymmetric encodings with 4-bit query, we need to transpose the nibbles for fast
+    // scoring comparisons
+    if (scalarEncoding == ScalarEncoding.SINGLE_BIT_QUERY_NIBBLE
+        || scalarEncoding == ScalarEncoding.DIBIT_QUERY_NIBBLE) {
+      OptimizedScalarQuantizer.transposeHalfByte(scratch, targetQuantized);
+    }
+    return new RandomVectorScorer.AbstractRandomVectorScorer(qv) {
+      @Override
+      public float score(int node) throws IOException {
+        return quantizedScore(targetQuantized, targetCorrectiveTerms, qv, node, similarityFunction);
+      }
+    };
   }
 
   public RandomVectorScorerSupplier getRandomVectorScorerSupplier(

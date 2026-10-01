@@ -165,6 +165,7 @@ import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 import org.hamcrest.Matcher;
 import org.hamcrest.MatcherAssert;
+import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
@@ -213,7 +214,7 @@ public abstract sealed class LuceneTestCaseParent extends Assert
   public static final String DEFAULT_LINE_DOCS_FILE = "europarl.lines.txt.gz";
 
   /**
-   * Random sample from enwiki used in tests. See {@code help/tests.txt}. gradle task downloading
+   * Random sample from enwiki used in tests. See {@code help/tests.md}. gradle task downloading
    * this data set: {@code gradlew getEnWikiRandomLines}.
    */
   public static final String JENKINS_LARGE_LINE_DOCS_FILE = "enwiki.random.lines.txt";
@@ -1795,6 +1796,16 @@ public abstract sealed class LuceneTestCaseParent extends Assert
     }
 
     c.setMaxFullFlushMergeWaitMillis(rarely(r) ? atLeast(r, 1000) : atLeast(r, 200));
+
+    // Randomize the incremental doc-values overlay budget (GH#16418) over a small, bounded range.
+    // A field's reader keeps one producer open per live generation (base plus up to this many
+    // sparse deltas), so open file handles scale with segments x updated-fields x overlays; a fixed
+    // default would both push update-heavy tests past the open-handle limit and leave the lower
+    // budgets (including the disabled, dense-rewrite path at 0) uncovered. Tests that need a
+    // specific budget set it explicitly after newIndexWriterConfig and, if update-heavy, annotate a
+    // matching @HandleLimitFS.MaxOpenHandles.
+    c.setMaxDocValuesOverlays(TestUtil.nextInt(r, 0, 4));
+
     return c;
   }
 
@@ -2526,36 +2537,52 @@ public abstract sealed class LuceneTestCaseParent extends Assert
   private static final QueryCache DEFAULT_QUERY_CACHE = IndexSearcher.getDefaultQueryCache();
   private static final QueryCachingPolicy DEFAULT_CACHING_POLICY =
       IndexSearcher.getDefaultQueryCachingPolicy();
-  private static final List<LRUQueryCache> queryCacheList = new ArrayList<>();
+  private static LRUQueryCache classQueryCache;
 
-  @Before
-  public void overrideTestDefaultQueryCache() {
-    // Make sure each test method has its own cache
-    overrideDefaultQueryCache();
+  private static LRUQueryCache createAndOverrideDefaultQueryCache() {
+    LRUQueryCache lruQueryCache =
+        new LRUQueryCache(10000, 1 << 25, _ -> true, Float.POSITIVE_INFINITY);
+    IndexSearcher.setDefaultQueryCache(lruQueryCache);
+    IndexSearcher.setDefaultQueryCachingPolicy(MAYBE_CACHE_POLICY);
+    return lruQueryCache;
   }
 
   @BeforeClass
-  public static void overrideDefaultQueryCache() {
+  public static void overrideClassDefaultQueryCache() {
     // we need to reset the query cache in an @BeforeClass so that tests that
     // instantiate an IndexSearcher in an @BeforeClass method use a fresh new cache
-    LRUQueryCache queryCacheTemp =
-        new LRUQueryCache(10000, 1 << 25, _ -> true, Float.POSITIVE_INFINITY);
-    queryCacheList.add(queryCacheTemp);
-    IndexSearcher.setDefaultQueryCache(queryCacheTemp);
-    IndexSearcher.setDefaultQueryCachingPolicy(MAYBE_CACHE_POLICY);
+    classQueryCache = createAndOverrideDefaultQueryCache();
   }
 
   @AfterClass
-  public static void resetDefaultQueryCache() {
+  public static void resetClassDefaultQueryCache() throws IOException {
     IndexSearcher.setDefaultQueryCache(DEFAULT_QUERY_CACHE);
     IndexSearcher.setDefaultQueryCachingPolicy(DEFAULT_CACHING_POLICY);
-    for (int i = 0; i < queryCacheList.size(); i++) {
-      try {
-        queryCacheList.get(i).close();
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
+    if (classQueryCache != null) {
+      classQueryCache.clear();
     }
+    IOUtils.close(classQueryCache);
+    classQueryCache = null;
+  }
+
+  private LRUQueryCache methodQueryCache;
+
+  @Before
+  public void overrideTestDefaultQueryCache() {
+    methodQueryCache = createAndOverrideDefaultQueryCache();
+  }
+
+  @After
+  public void resetTestDefaultQueryCache() throws IOException {
+    // Restore the class-level cache so TestRules and @AfterClass still see a
+    // test-scoped cache rather than the process-wide production default.
+    IndexSearcher.setDefaultQueryCache(classQueryCache);
+    IndexSearcher.setDefaultQueryCachingPolicy(MAYBE_CACHE_POLICY);
+    if (methodQueryCache != null) {
+      methodQueryCache.clear();
+    }
+    IOUtils.close(methodQueryCache);
+    methodQueryCache = null;
   }
 
   @BeforeClass

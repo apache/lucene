@@ -201,7 +201,7 @@ public abstract class TermVectorsWriter implements Closeable, Accountable {
       TermVectorsReader reader = mergeState.termVectorsReaders[i];
       if (reader != null) {
         mergeState.checkAborted();
-        reader.checkIntegrity();
+        reader.checkIntegrity(mergeState.oneMerge);
       }
       subs.add(new TermVectorsMergeSub(mergeState.docMaps[i], reader, mergeState.maxDocs[i]));
     }

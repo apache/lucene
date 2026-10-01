@@ -35,8 +35,10 @@ import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -176,6 +178,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
     int byteSize =
         switch (info.getVectorEncoding()) {
           case BYTE -> Byte.BYTES;
+          case FLOAT16 -> Short.BYTES;
           case FLOAT32 -> Float.BYTES;
         };
     long vectorBytes = Math.multiplyExact((long) dimension, byteSize);
@@ -229,9 +232,9 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    CodecUtil.checksumEntireFile(vectorData);
-    CodecUtil.checksumEntireFile(vectorIndex);
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+    CodecUtil.checksumEntireFile(vectorData, merge);
+    CodecUtil.checksumEntireFile(vectorIndex, merge);
   }
 
   private FieldEntry getFieldEntryOrThrow(String field) {
@@ -290,6 +293,11 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
   }
 
   @Override
+  public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public void search(String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.FLOAT32);
@@ -345,6 +353,12 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
         vectorValues.getAcceptOrds(acceptDocs.bits()));
   }
 
+  @Override
+  public void search(String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
+    throw new UnsupportedOperationException();
+  }
+
   /** Get knn graph values; used for testing */
   @Override
   public HnswGraph getGraph(String field) throws IOException {
@@ -370,6 +384,11 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
     var raw = Map.entry(VECTOR_DATA_EXTENSION, entry.vectorDataLength);
     var graph = Map.entry(VECTOR_INDEX_EXTENSION, entry.vectorIndexLength);
     return Map.ofEntries(raw, graph);
+  }
+
+  @Override
+  public int getVectorCount(FieldInfo fieldInfo) {
+    return getFieldEntryOrThrow(fieldInfo.name).size();
   }
 
   @Override

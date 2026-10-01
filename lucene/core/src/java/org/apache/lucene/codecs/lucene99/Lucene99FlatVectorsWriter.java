@@ -23,6 +23,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.ShortBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.codecs.CodecUtil;
@@ -34,6 +35,7 @@ import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.KnnVectorValues;
@@ -41,6 +43,8 @@ import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.store.FileDataHint;
+import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IOFunction;
@@ -113,7 +117,10 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
 
     try {
       meta = state.directory.createOutput(metaFileName, state.context);
-      vectorData = state.directory.createOutput(vectorDataFileName, state.context);
+      // how these are read is up to whoever wraps this format
+      vectorData =
+          state.directory.createOutput(
+              vectorDataFileName, state.context.union(FileTypeHint.DATA, FileDataHint.KNN_VECTORS));
 
       CodecUtil.writeIndexHeader(
           meta,
@@ -181,6 +188,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     return output.alignFilePointer(
         switch (encoding) {
           case BYTE -> Float.BYTES;
+          case FLOAT16 -> Float.BYTES;
           case FLOAT32 -> 64; // optimal alignment for Arm Neoverse machines.
         });
   }
@@ -192,6 +200,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     long vectorDataOffset = alignOutput(vectorData, encoding);
     switch (encoding) {
       case BYTE -> writeByteVectors(fieldWriter);
+      case FLOAT16 -> writeFloat16Vectors(fieldWriter, fieldInfo);
       case FLOAT32 -> writeFloat32Vectors(fieldWriter, fieldInfo);
     }
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
@@ -207,6 +216,19 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
             .order(ByteOrder.LITTLE_ENDIAN);
     for (Object v : fieldWriter.getVectors()) {
       buffer.asFloatBuffer().put((float[]) v);
+      vectorData.writeBytes(buffer.array(), buffer.array().length);
+    }
+  }
+
+  private void writeFloat16Vectors(FlatFieldVectorsWriter<?> fieldWriter, FieldInfo fieldInfo)
+      throws IOException {
+    final ByteBuffer buffer =
+        ByteBuffer.allocate(fieldInfo.getVectorDimension() * Short.BYTES)
+            .order(ByteOrder.LITTLE_ENDIAN);
+    final ShortBuffer shortBuffer = buffer.asShortBuffer();
+    for (Object v : fieldWriter.getVectors()) {
+      shortBuffer.rewind();
+      shortBuffer.put((short[]) v);
       vectorData.writeBytes(buffer.array(), buffer.array().length);
     }
   }
@@ -232,6 +254,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     long vectorDataOffset = alignOutput(vectorData, encoding);
     switch (encoding) {
       case BYTE -> writeSortedByteVectors(fieldWriter, ordMap);
+      case FLOAT16 -> writeSortedFloat16Vectors(fieldWriter, fieldInfo, ordMap);
       case FLOAT32 -> writeSortedFloat32Vectors(fieldWriter, fieldInfo, ordMap);
     }
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
@@ -247,6 +270,20 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     for (int ordinal : ordMap) {
       float[] vector = (float[]) fieldWriter.getVectors().get(ordinal);
       buffer.asFloatBuffer().put(vector);
+      vectorData.writeBytes(buffer.array(), buffer.array().length);
+    }
+  }
+
+  private void writeSortedFloat16Vectors(
+      FlatFieldVectorsWriter<?> fieldWriter, FieldInfo fieldInfo, int[] ordMap) throws IOException {
+    final ByteBuffer buffer =
+        ByteBuffer.allocate(fieldInfo.getVectorDimension() * Short.BYTES)
+            .order(ByteOrder.LITTLE_ENDIAN);
+    final ShortBuffer shortBuffer = buffer.asShortBuffer();
+    for (int ordinal : ordMap) {
+      short[] vector = (short[]) fieldWriter.getVectors().get(ordinal);
+      shortBuffer.rewind();
+      shortBuffer.put(vector);
       vectorData.writeBytes(buffer.array(), buffer.array().length);
     }
   }
@@ -273,6 +310,11 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
               writeByteVectorData(
                   vectorData,
                   KnnVectorsWriter.MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState));
+          case FLOAT16 ->
+              writeFloat16VectorData(
+                  vectorData,
+                  KnnVectorsWriter.MergedVectorValues.mergeFloat16VectorValues(
+                      fieldInfo, mergeState));
           case FLOAT32 ->
               writeVectorData(
                   vectorData,
@@ -347,6 +389,28 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     return docsWithField;
   }
 
+  /**
+   * Writes the vector values to the output and returns a set of documents that contains vectors.
+   */
+  private static DocsWithFieldSet writeFloat16VectorData(
+      IndexOutput output, Float16VectorValues float16VectorValues) throws IOException {
+    DocsWithFieldSet docsWithField = new DocsWithFieldSet();
+    ByteBuffer buffer =
+        ByteBuffer.allocate(float16VectorValues.dimension() * VectorEncoding.FLOAT16.byteSize)
+            .order(ByteOrder.LITTLE_ENDIAN);
+    ShortBuffer shortBuffer = buffer.asShortBuffer();
+    KnnVectorValues.DocIndexIterator iter = float16VectorValues.iterator();
+    for (int docV = iter.nextDoc(); docV != NO_MORE_DOCS; docV = iter.nextDoc()) {
+      // write vector
+      short[] value = float16VectorValues.vectorValue(iter.index());
+      shortBuffer.rewind();
+      shortBuffer.put(value);
+      output.writeBytes(buffer.array(), buffer.limit());
+      docsWithField.add(docV);
+    }
+    return docsWithField;
+  }
+
   @Override
   public void close() throws IOException {
     IOUtils.close(meta, vectorData);
@@ -375,6 +439,13 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
             new DefaultFieldWriter<byte[]>(fieldInfo) {
               @Override
               public byte[] copyValue(byte[] value) {
+                return ArrayUtil.copyOfSubArray(value, 0, dim);
+              }
+            };
+        case FLOAT16 ->
+            new DefaultFieldWriter<short[]>(fieldInfo) {
+              @Override
+              public short[] copyValue(short[] value) {
                 return ArrayUtil.copyOfSubArray(value, 0, dim);
               }
             };

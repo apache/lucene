@@ -24,6 +24,7 @@ import java.util.function.Supplier;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.Sorter;
@@ -68,6 +69,15 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
               }
             };
         break;
+      case FLOAT16:
+        newField =
+            new FieldWriter<short[]>(fieldInfo) {
+              @Override
+              public short[] copyValue(short[] vectorValue) {
+                return ArrayUtil.copyOfSubArray(vectorValue, 0, fieldInfo.getVectorDimension());
+              }
+            };
+        break;
       default:
         throw new UnsupportedOperationException();
     }
@@ -106,6 +116,19 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
                   : bufferedByteVectorValues;
           writeField(fieldData.fieldInfo, byteVectorValues, maxDoc);
           break;
+        case FLOAT16:
+          BufferedFloat16VectorValues bufferedFloat16VectorValues =
+              new BufferedFloat16VectorValues(
+                  (List<short[]>) fieldData.vectors,
+                  fieldData.fieldInfo.getVectorDimension(),
+                  fieldData.docsWithField);
+          Float16VectorValues float16VectorValues =
+              sortMap != null
+                  ? new SortingFloat16VectorValues(
+                      bufferedFloat16VectorValues, fieldData.docsWithField, sortMap)
+                  : bufferedFloat16VectorValues;
+          writeField(fieldData.fieldInfo, float16VectorValues, maxDoc);
+          break;
       }
     }
   }
@@ -139,6 +162,46 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
 
     @Override
     public SortingFloatVectorValues copy() {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      return iteratorSupplier.get();
+    }
+  }
+
+  /**
+   * Sorting Float16VectorValues that iterate over documents in the order of the provided sortMap
+   */
+  private static class SortingFloat16VectorValues extends Float16VectorValues {
+    private final BufferedFloat16VectorValues delegate;
+    private final Supplier<SortingValuesIterator> iteratorSupplier;
+
+    SortingFloat16VectorValues(
+        BufferedFloat16VectorValues delegate, DocsWithFieldSet docsWithField, Sorter.DocMap sortMap)
+        throws IOException {
+      this.delegate = delegate.copy();
+      iteratorSupplier = SortingCodecReader.iteratorSupplier(delegate, sortMap);
+    }
+
+    @Override
+    public short[] vectorValue(int ord) throws IOException {
+      return delegate.vectorValue(ord);
+    }
+
+    @Override
+    public int dimension() {
+      return delegate.dimension();
+    }
+
+    @Override
+    public int size() {
+      return delegate.size();
+    }
+
+    @Override
+    public SortingFloat16VectorValues copy() {
       throw new UnsupportedOperationException();
     }
 
@@ -208,6 +271,11 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
             MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState);
         writeField(fieldInfo, byteVectorValues, mergeState.segmentInfo.maxDoc());
         break;
+      case FLOAT16:
+        Float16VectorValues float16VectorValues =
+            MergedVectorValues.mergeFloat16VectorValues(fieldInfo, mergeState);
+        writeField(fieldInfo, float16VectorValues, mergeState.segmentInfo.maxDoc());
+        break;
     }
     return null;
   }
@@ -215,6 +283,10 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
   /** Write the provided float vector field */
   protected abstract void writeField(
       FieldInfo fieldInfo, FloatVectorValues floatVectorValues, int maxDoc) throws IOException;
+
+  /** Write the provided float16 vector field */
+  protected abstract void writeField(
+      FieldInfo fieldInfo, Float16VectorValues float16VectorValues, int maxDoc) throws IOException;
 
   /** Write the provided byte vector field */
   protected abstract void writeField(
@@ -309,6 +381,52 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     @Override
     public BufferedFloatVectorValues copy() throws IOException {
       return new BufferedFloatVectorValues(vectors, dimension, docsWithField);
+    }
+  }
+
+  private static class BufferedFloat16VectorValues extends Float16VectorValues {
+    // These are always the vectors of a VectorValuesWriter, which are copied when added to it
+    final List<short[]> vectors;
+    final int dimension;
+    private final DocIdSet docsWithField;
+    private final DocIndexIterator iterator;
+
+    BufferedFloat16VectorValues(List<short[]> vectors, int dimension, DocIdSet docsWithField)
+        throws IOException {
+      this.vectors = vectors;
+      this.dimension = dimension;
+      this.docsWithField = docsWithField;
+      this.iterator = fromDISI(docsWithField.iterator());
+    }
+
+    @Override
+    public int dimension() {
+      return dimension;
+    }
+
+    @Override
+    public int size() {
+      return vectors.size();
+    }
+
+    @Override
+    public int ordToDoc(int ord) {
+      return ord;
+    }
+
+    @Override
+    public short[] vectorValue(int targetOrd) {
+      return vectors.get(targetOrd);
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      return iterator;
+    }
+
+    @Override
+    public BufferedFloat16VectorValues copy() throws IOException {
+      return new BufferedFloat16VectorValues(vectors, dimension, docsWithField);
     }
   }
 

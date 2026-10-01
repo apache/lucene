@@ -56,6 +56,9 @@ import org.apache.lucene.util.SuppressForbidden;
  */
 final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
+  // Delegate for float16 (short[]) operations until JDK 27 provides Float16Vector support
+  private static final DefaultVectorUtilSupport FLOAT16_DELEGATE = new DefaultVectorUtilSupport();
+
   // preferred vector sizes, which can be altered for testing
   private static final VectorSpecies<Float> FLOAT_SPECIES;
   private static final VectorSpecies<Double> DOUBLE_SPECIES =
@@ -69,6 +72,10 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   private static final VectorSpecies<Short> SHORT_SPECIES;
   private static final VectorSpecies<Byte> BYTE_SPECIES_128 = ByteVector.SPECIES_128;
   private static final VectorSpecies<Byte> BYTE_SPECIES_256 = ByteVector.SPECIES_256;
+  // full register needed, no widening
+  private static final VectorSpecies<Byte> BYTE_SPECIES_FULL =
+      ByteVector.SPECIES_MAX.withShape(
+          VectorShape.forBitSize(PanamaVectorConstants.PREFERRED_VECTOR_BITSIZE));
 
   static final int VECTOR_BITSIZE;
 
@@ -298,6 +305,23 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     FloatVector res1 = acc1.add(acc2);
     FloatVector res2 = acc3.add(acc4);
     return res1.add(res2).reduceLanes(ADD);
+  }
+
+  // float16 (short[]) operations delegate to scalar implementation until JDK 27
+
+  @Override
+  public float dotProduct(short[] a, short[] b) {
+    return FLOAT16_DELEGATE.dotProduct(a, b);
+  }
+
+  @Override
+  public float cosine(short[] a, short[] b) {
+    return FLOAT16_DELEGATE.cosine(a, b);
+  }
+
+  @Override
+  public float squareDistance(short[] a, short[] b) {
+    return FLOAT16_DELEGATE.squareDistance(a, b);
   }
 
   // Binary functions, these all follow a general pattern like this:
@@ -562,6 +586,24 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
               .reduceLanes(ADD);
     }
     return sum;
+  }
+
+  @Override
+  public void int4Unpack(byte[] packed, byte[] unpacked) {
+    final int len = packed.length;
+    final int bound = BYTE_SPECIES_FULL.loopBound(len);
+    int i = 0;
+    for (; i < bound; i += BYTE_SPECIES_FULL.length()) {
+      ByteVector v = ByteVector.fromArray(BYTE_SPECIES_FULL, packed, i);
+      // LSHR is a logical shift within the byte lane, so the high nibble needs no mask.
+      v.lanewise(LSHR, 4).intoArray(unpacked, i);
+      v.lanewise(VectorOperators.AND, (byte) 0x0F).intoArray(unpacked, len + i);
+    }
+    // scalar tail
+    for (; i < len; i++) {
+      unpacked[i] = (byte) ((packed[i] >> 4) & 0x0F);
+      unpacked[len + i] = (byte) (packed[i] & 0x0F);
+    }
   }
 
   @Override
