@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.tests.index;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.StoredFieldsReader;
@@ -33,7 +35,11 @@ public class MergingCodecReader extends FilterCodecReader {
       new CloseableThreadLocal<>() {
         @Override
         protected StoredFieldsReader initialValue() {
-          return in.getFieldsReader().getMergeInstance();
+          try {
+            return in.getFieldsReader().getMergeInstance();
+          } catch (IOException e) {
+            throw new UncheckedIOException(e);
+          }
         }
       };
   private final CloseableThreadLocal<NormsProducer> normsReader =
