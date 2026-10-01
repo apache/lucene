@@ -49,6 +49,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.NoReuseHint;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
@@ -278,7 +279,8 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
 
       vectorsStream =
           directory.createOutput(
-              IndexFileNames.segmentFileName(segment, segmentSuffix, VECTORS_EXTENSION), context);
+              IndexFileNames.segmentFileName(segment, segmentSuffix, VECTORS_EXTENSION),
+              context.union(NoReuseHint.INSTANCE));
       CodecUtil.writeIndexHeader(
           vectorsStream, formatName, VERSION_CURRENT, si.getId(), segmentSuffix);
       assert CodecUtil.indexHeaderLength(formatName, segmentSuffix)

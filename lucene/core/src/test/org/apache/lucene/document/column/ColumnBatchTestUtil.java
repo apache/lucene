@@ -45,6 +45,13 @@ public class ColumnBatchTestUtil {
     return type;
   }
 
+  public static FieldType float16VectorType(int dimension, VectorSimilarityFunction sim) {
+    FieldType type = new FieldType();
+    type.setVectorAttributes(dimension, VectorEncoding.FLOAT16, sim);
+    type.freeze();
+    return type;
+  }
+
   public static ColumnBatch simpleBatch(int numDocs, Column... columns) {
     return new ColumnBatch() {
       @Override
@@ -468,6 +475,34 @@ public class ColumnBatchTestUtil {
 
         @Override
         public byte[] value() {
+          return values[pos];
+        }
+      };
+    }
+  }
+
+  public static class ArrayDenseFloat16VectorColumn extends VectorColumn<short[]> {
+    private final short[][] values;
+
+    public ArrayDenseFloat16VectorColumn(
+        String name, IndexableFieldType fieldType, short[][] values) {
+      super(name, fieldType, Density.DENSE);
+      this.values = values;
+    }
+
+    @Override
+    public ObjectTupleCursor<short[]> tuples() {
+      return new ObjectTupleCursor<>() {
+        int pos = -1;
+
+        @Override
+        public int nextDoc() {
+          pos++;
+          return pos < values.length ? pos : DocIdSetIterator.NO_MORE_DOCS;
+        }
+
+        @Override
+        public short[] value() {
           return values[pos];
         }
       };

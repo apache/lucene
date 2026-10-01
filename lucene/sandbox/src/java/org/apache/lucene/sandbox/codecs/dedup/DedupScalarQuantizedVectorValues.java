@@ -92,7 +92,8 @@ final class DedupScalarQuantizedVectorValues {
       long quantizedDataOffset,
       long quantizedDataSize,
       long fieldOrdToGroupOrdOffset,
-      long fieldOrdToGroupOrdSize)
+      long fieldOrdToGroupOrdSize,
+      int fieldOrdToGroupOrdBitsPerValue)
       throws IOException {
 
     final OffHeapFloatVectorValues fieldView =
@@ -112,7 +113,11 @@ final class DedupScalarQuantizedVectorValues {
                 "quantized-group-slice", quantizedDataOffset, quantizedDataSize));
 
     final FieldOrdToGroupOrd fieldOrdToGroupOrd =
-        new FieldOrdToGroupOrdOffHeap(vectorData, fieldOrdToGroupOrdOffset, fieldOrdToGroupOrdSize);
+        new FieldOrdToGroupOrdOffHeap(
+            vectorData,
+            fieldOrdToGroupOrdOffset,
+            fieldOrdToGroupOrdSize,
+            fieldOrdToGroupOrdBitsPerValue);
 
     return new FieldValues(vectorsScorer, function, fieldView, groupView, fieldOrdToGroupOrd);
   }
@@ -193,6 +198,11 @@ final class DedupScalarQuantizedVectorValues {
         scratch[i] = fieldOrdToGroupOrd.get(ordsToPrefetch[i]);
       }
       groupView.prefetch(scratch, numOrds);
+    }
+
+    @Override
+    public boolean prefetch(int ord, int count) throws IOException {
+      return DedupUtil.prefetchRemapped(groupView, fieldOrdToGroupOrd, ord, count, size());
     }
 
     @Override
@@ -299,8 +309,8 @@ final class DedupScalarQuantizedVectorValues {
     }
 
     @Override
-    public void prefetch(int[] ordsToPrefetch, int numOrds) throws IOException {
-      rawValues.prefetch(ordsToPrefetch, numOrds);
+    public boolean prefetch(int ord, int count) throws IOException {
+      return rawValues.prefetch(ord, count);
     }
 
     @Override

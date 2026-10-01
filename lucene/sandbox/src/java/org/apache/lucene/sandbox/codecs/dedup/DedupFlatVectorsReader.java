@@ -44,7 +44,6 @@ import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.GroupInfo;
 import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.ReadFieldInfo;
 import org.apache.lucene.store.ChecksumIndexInput;
-import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.FileDataHint;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
@@ -198,10 +197,8 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, vectorDataExtension);
 
-    IOContext.FileOpenHint[] hints = {
-      FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM
-    };
-    IOContext context = state.context.withHints(hints);
+    // how these are read is up to whoever wraps this format
+    IOContext context = state.context.union(FileTypeHint.DATA, FileDataHint.KNN_VECTORS);
 
     IndexInput in = null;
     boolean success = false;
@@ -288,7 +285,8 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
         entry.groupInfo.vectorDataOffset(),
         entry.groupInfo.vectorDataSize(),
         entry.fieldInfo.fieldOrdToGroupOrdOffset(),
-        entry.fieldInfo.fieldOrdToGroupOrdSize());
+        entry.fieldInfo.fieldOrdToGroupOrdSize(),
+        entry.fieldInfo.fieldOrdToGroupOrdBitsPerValue());
   }
 
   @Override
@@ -307,7 +305,8 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
         entry.groupInfo.vectorDataOffset(),
         entry.groupInfo.vectorDataSize(),
         entry.fieldInfo.fieldOrdToGroupOrdOffset(),
-        entry.fieldInfo.fieldOrdToGroupOrdSize());
+        entry.fieldInfo.fieldOrdToGroupOrdSize(),
+        entry.fieldInfo.fieldOrdToGroupOrdBitsPerValue());
   }
 
   @Override
@@ -326,7 +325,8 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
         entry.groupInfo.vectorDataOffset(),
         entry.groupInfo.vectorDataSize(),
         entry.fieldInfo.fieldOrdToGroupOrdOffset(),
-        entry.fieldInfo.fieldOrdToGroupOrdSize());
+        entry.fieldInfo.fieldOrdToGroupOrdSize(),
+        entry.fieldInfo.fieldOrdToGroupOrdBitsPerValue());
   }
 
   @Override

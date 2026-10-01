@@ -305,7 +305,9 @@ final class ReadersAndUpdates {
       final String field = ent.getKey();
       final List<DocValuesFieldUpdates> updates = ent.getValue();
       DocValuesType type = updates.get(0).type;
-      assert type == DocValuesType.NUMERIC || type == DocValuesType.BINARY
+      assert type == DocValuesType.NUMERIC
+              || type == DocValuesType.BINARY
+              || type == DocValuesType.SORTED_NUMERIC
           : "unsupported type: " + type;
       final List<DocValuesFieldUpdates> updatesToApply = new ArrayList<>();
       long bytes = 0;
@@ -354,9 +356,10 @@ final class ReadersAndUpdates {
         }
       }
       // Set-only updates become a sparse delta generation overlaid at read time; a removal falls
-      // back to the dense
-      // rewrite. (Skip-indexed fields can't reach here: IndexWriter rejects doc-values updates on
-      // them.)
+      // back to the dense rewrite. (Skip-indexed fields can't reach here: IndexWriter rejects
+      // doc-values updates on them.) A single-valued sorted-numeric update writes a single-valued
+      // delta; the base column may be single- or multi-valued and is preserved per-doc by the
+      // sorted-numeric merge/overlay.
       final boolean sparseDelta = config.getMaxDocValuesOverlays() > 0 && anyRemoval == false;
       // Past maxDocValuesOverlays, fold the prior deltas into this write as one sparse generation
       // (base untouched) instead of appending another.
@@ -384,9 +387,12 @@ final class ReadersAndUpdates {
             // maxDoc for sparse columns) and deltas are small by construction.
             deltaCoverage +=
                 docsWithValueCount(
-                    type == DocValuesType.BINARY
-                        ? p.getBinary(fieldInfo)
-                        : p.getNumeric(fieldInfo));
+                    switch (type) {
+                      case BINARY -> p.getBinary(fieldInfo);
+                      case SORTED_NUMERIC -> p.getSortedNumeric(fieldInfo);
+                      // $CASES-OMITTED$
+                      default -> p.getNumeric(fieldInfo);
+                    });
           }
         } catch (Throwable t) {
           // The try-with-resources below owns the normal close; close here if opening a delta fails
@@ -483,7 +489,7 @@ final class ReadersAndUpdates {
                   };
                 }
               });
-        } else {
+        } else if (type == DocValuesType.NUMERIC) {
           // write the numeric updates to a new gen'd docvalues file
           fieldsConsumer.addNumericField(
               fieldInfo,
@@ -501,49 +507,87 @@ final class ReadersAndUpdates {
                       compact && foldToDense == false
                           ? overlayNumeric(deltaProducers, fieldInfo)
                           : reader.getNumericDocValues(field);
-                  final MergedDocValues<NumericDocValues> mergedDocValues =
-                      new MergedDocValues<>(
-                          onDisk,
-                          DocValuesFieldUpdates.Iterator.asNumericDocValues(iterator),
-                          iterator);
-                  // Merge sort of the original doc values with updated doc values:
-                  return new NumericDocValues() {
-                    @Override
-                    public long longValue() throws IOException {
-                      return mergedDocValues.currentValuesSupplier.longValue();
-                    }
+                  return handleMergedNumericDocValues(onDisk, iterator);
+                }
+              });
+        } else {
+          assert type == DocValuesType.SORTED_NUMERIC : "unsupported type: " + type;
+          // The update is single-valued but the base column may be multi-valued, so merge/overlay
+          // natively as sorted-numeric (the update wins per doc, other docs keep their whole set).
+          fieldsConsumer.addSortedNumericField(
+              fieldInfo,
+              new EmptyDocValuesProducer() {
+                @Override
+                public SortedNumericDocValues getSortedNumeric(FieldInfo fieldInfoIn)
+                    throws IOException {
+                  DocValuesFieldUpdates.Iterator iterator = updateSupplier.apply(fieldInfo);
+                  if (sparseDelta && compact == false) {
+                    // write only the updated docs (single-valued) as a singleton column; unchanged
+                    // docs come from the base at read time
+                    return DocValues.singleton(
+                        DocValuesFieldUpdates.Iterator.asNumericDocValues(iterator));
+                  }
+                  // sparse fold merges the prior deltas (stays sparse); a dense rewrite (removal or
+                  // fold-to-dense) merges the base column
+                  final SortedNumericDocValues onDisk =
+                      compact && foldToDense == false
+                          ? overlaySortedNumeric(deltaProducers, fieldInfo)
+                          : reader.getSortedNumericDocValues(field);
+                  final NumericDocValues singletonOnDisk = DocValues.unwrapSingleton(onDisk);
+                  if (singletonOnDisk != null) {
+                    return DocValues.singleton(
+                        handleMergedNumericDocValues(singletonOnDisk, iterator));
+                  } else {
+                    final MergedDocValues<SortedNumericDocValues> mergedDocValues =
+                        new MergedDocValues<>(
+                            onDisk,
+                            DocValues.singleton(
+                                DocValuesFieldUpdates.Iterator.asNumericDocValues(iterator)),
+                            iterator);
+                    // Merge sort of the original doc values with updated doc values:
+                    return new SortedNumericDocValues() {
+                      @Override
+                      public long nextValue() throws IOException {
+                        return mergedDocValues.currentValuesSupplier.nextValue();
+                      }
 
-                    @Override
-                    public boolean advanceExact(int target) {
-                      return mergedDocValues.advanceExact(target);
-                    }
+                      @Override
+                      public int docValueCount() {
+                        return mergedDocValues.currentValuesSupplier.docValueCount();
+                      }
 
-                    @Override
-                    public int docID() {
-                      return mergedDocValues.docID();
-                    }
+                      @Override
+                      public boolean advanceExact(int target) {
+                        return mergedDocValues.advanceExact(target);
+                      }
 
-                    @Override
-                    public int nextDoc() throws IOException {
-                      return mergedDocValues.nextDoc();
-                    }
+                      @Override
+                      public int docID() {
+                        return mergedDocValues.docID();
+                      }
 
-                    @Override
-                    public int advance(int target) {
-                      return mergedDocValues.advance(target);
-                    }
+                      @Override
+                      public int nextDoc() throws IOException {
+                        return mergedDocValues.nextDoc();
+                      }
 
-                    @Override
-                    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset)
-                        throws IOException {
-                      mergedDocValues.intoBitSet(upTo, bitSet, offset);
-                    }
+                      @Override
+                      public int advance(int target) {
+                        return mergedDocValues.advance(target);
+                      }
 
-                    @Override
-                    public long cost() {
-                      return mergedDocValues.cost();
-                    }
-                  };
+                      @Override
+                      public void intoBitSet(int upTo, FixedBitSet bitSet, int offset)
+                          throws IOException {
+                        mergedDocValues.intoBitSet(upTo, bitSet, offset);
+                      }
+
+                      @Override
+                      public long cost() {
+                        return mergedDocValues.cost();
+                      }
+                    };
+                  }
                 }
               });
         }
@@ -603,6 +647,15 @@ final class ReadersAndUpdates {
       layers[i] = producers.get(i).getBinary(fieldInfo);
     }
     return new OverlayBinaryDocValues(layers);
+  }
+
+  /**
+   * Fresh overlay over the delta generations of a sorted-numeric field, newest first, used to fold
+   * deltas during compaction.
+   */
+  private static SortedNumericDocValues overlaySortedNumeric(
+      List<DocValuesProducer> producers, FieldInfo fieldInfo) throws IOException {
+    return OverlaySortedNumericDocValues.from(fieldInfo, producers);
   }
 
   /**
@@ -739,6 +792,52 @@ final class ReadersAndUpdates {
         currentValuesSupplier = updateDocValues;
       }
     }
+  }
+
+  private NumericDocValues handleMergedNumericDocValues(
+      NumericDocValues onDisk, DocValuesFieldUpdates.Iterator updateIterator) {
+    final MergedDocValues<NumericDocValues> mergedDocValues =
+        new MergedDocValues<>(
+            onDisk,
+            DocValuesFieldUpdates.Iterator.asNumericDocValues(updateIterator),
+            updateIterator);
+    // Merge sort of the original doc values with updated doc values:
+    return new NumericDocValues() {
+      @Override
+      public long longValue() throws IOException {
+        return mergedDocValues.currentValuesSupplier.longValue();
+      }
+
+      @Override
+      public boolean advanceExact(int target) {
+        return mergedDocValues.advanceExact(target);
+      }
+
+      @Override
+      public int docID() {
+        return mergedDocValues.docID();
+      }
+
+      @Override
+      public int nextDoc() throws IOException {
+        return mergedDocValues.nextDoc();
+      }
+
+      @Override
+      public int advance(int target) {
+        return mergedDocValues.advance(target);
+      }
+
+      @Override
+      public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+        mergedDocValues.intoBitSet(upTo, bitSet, offset);
+      }
+
+      @Override
+      public long cost() {
+        return mergedDocValues.cost();
+      }
+    };
   }
 
   private synchronized Set<String> writeFieldInfosGen(
