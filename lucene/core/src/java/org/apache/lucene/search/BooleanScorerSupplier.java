@@ -227,6 +227,12 @@ final class BooleanScorerSupplier extends ScorerSupplier {
     } else if (numMustClauses == 0 && numOptionalClauses > 1 && minShouldMatch >= 1) {
       positiveScorer = filteredOptionalBulkScorer();
     } else if (numRequiredClauses > 0 && numOptionalClauses == 0 && minShouldMatch == 0) {
+      if (!subs.get(Occur.MUST_NOT).isEmpty()) {
+        BulkScorer negated = negatedRequiredBulkScorer();
+        if (negated != null) {
+          return negated;
+        }
+      }
       positiveScorer = requiredBulkScorer();
     } else {
       // TODO: there are some cases where BooleanScorer
@@ -374,6 +380,39 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       }
       return new DefaultBulkScorer(scorer);
     }
+  }
+
+  // Use DenseConjunctionBulkScorer with NegationTwoPhaseIterator(s) instead of ReqExclBulkScorer
+  // when the required side is dense FILTER-only and no scores are needed. Returns null if the
+  // conditions for this optimization are not met, falling back to the standard path.
+  private BulkScorer negatedRequiredBulkScorer() throws IOException {
+    if (scoreMode.needsScores()) {
+      return null;
+    }
+    Collection<ScorerSupplier> filters = subs.get(Occur.FILTER);
+    if (filters.isEmpty() || !subs.get(Occur.MUST).isEmpty()) {
+      return null;
+    }
+    long leadCost =
+        filters.stream().mapToLong(ScorerSupplier::cost).min().orElse(Long.MAX_VALUE);
+    if (maxDoc < DenseConjunctionBulkScorer.WINDOW_SIZE
+        || leadCost < (long) maxDoc / DenseConjunctionBulkScorer.DENSITY_THRESHOLD_INVERSE) {
+      return null;
+    }
+    List<Scorer> allScorers = new ArrayList<>();
+    for (ScorerSupplier ss : filters) {
+      allScorers.add(ss.get(leadCost));
+    }
+    for (ScorerSupplier ss : subs.get(Occur.MUST_NOT)) {
+      Scorer prohib = ss.get(leadCost);
+      TwoPhaseIterator twoPhase = prohib.twoPhaseIterator();
+      NegationTwoPhaseIterator negation =
+          twoPhase != null
+              ? new NegationTwoPhaseIterator(twoPhase, maxDoc)
+              : new NegationTwoPhaseIterator(prohib.iterator(), maxDoc);
+      allScorers.add(new ConstantScoreScorer(0f, ScoreMode.COMPLETE_NO_SCORES, negation));
+    }
+    return DenseConjunctionBulkScorer.of(allScorers, maxDoc, 0f);
   }
 
   // Return a BulkScorer for the required clauses only
