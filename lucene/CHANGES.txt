@@ -286,6 +286,8 @@ Bug Fixes
 
 * GITHUB#16687: Use quantized vectors for fp16 HNSW graph construction during merges. (Kaival Parikh)
 
+* GITHUB#16764: Fix Lucene104ScalarQuantizedVectorsWriter to skip deleted docs when recomputing merge centroid (Pranshu Shukla)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
