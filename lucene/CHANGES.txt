@@ -151,6 +151,9 @@ New Features
 * GITHUB#16735: Add Float16VectorSimilarityQuery for similarity threshold search over fp16 vectors.
   (Recep Eken)
 
+* GITHUB#16738: Add DiversifyingChildrenFloat16KnnVectorQuery for fp16 parent-block-join KNN
+  search. (Pulkit Gupta)
+
 * GITHUB#16710: Add scalar quantization support for FLOAT16 vectors in the dedup KNN codec. FLOAT16
   fields are now de-duplicated and quantized like FLOAT32, storing each distinct vector once in both
   raw (short[]) and quantized form. (Pranshu Shukla)
