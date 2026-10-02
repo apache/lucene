@@ -168,11 +168,13 @@ public abstract class DirectoryReader extends BaseCompositeReader<LeafReader> {
 
   /**
    * Expert: returns an IndexReader reading the index on the given {@link IndexCommit}. This method
-   * allows to open indices that were created with a Lucene version older than N-1 provided that all
-   * codecs for this index are available in the classpath and the segment file format used was
-   * created with Lucene 7 or newer. Users of this API must be aware that Lucene doesn't guarantee
-   * semantic compatibility for indices created with versions older than N-1. All backwards
-   * compatibility aside from the file format is optional and applied on a best effort basis.
+   * allows to open indices that were created with a Lucene version older than {@link
+   * org.apache.lucene.util.Version#MIN_SUPPORTED_MAJOR} provided that all codecs for this index are
+   * available in the classpath and the segment file format used was created with Lucene 7 or newer.
+   * Users of this API must be aware that Lucene doesn't guarantee semantic compatibility for
+   * indices created with versions older than {@link
+   * org.apache.lucene.util.Version#MIN_SUPPORTED_MAJOR}. All backwards compatibility aside from the
+   * file format is optional and applied on a best effort basis.
    *
    * @param commit the commit point to open
    * @param minSupportedMajorVersion the minimum supported major index version
@@ -193,11 +195,13 @@ public abstract class DirectoryReader extends BaseCompositeReader<LeafReader> {
 
   /**
    * Expert: returns an IndexReader reading the index on the given {@link IndexCommit}. This method
-   * allows to open indices that were created with a Lucene version older than N-1 provided that all
-   * codecs for this index are available in the classpath and the segment file format used was
-   * created with Lucene 7 or newer. Users of this API must be aware that Lucene doesn't guarantee
-   * semantic compatibility for indices created with versions older than N-1. All backwards
-   * compatibility aside from the file format is optional and applied on a best effort basis.
+   * allows to open indices that were created with a Lucene version older than {@link
+   * org.apache.lucene.util.Version#MIN_SUPPORTED_MAJOR} provided that all codecs for this index are
+   * available in the classpath and the segment file format used was created with Lucene 7 or newer.
+   * Users of this API must be aware that Lucene doesn't guarantee semantic compatibility for
+   * indices created with versions older than {@link
+   * org.apache.lucene.util.Version#MIN_SUPPORTED_MAJOR}. All backwards compatibility aside from the
+   * file format is optional and applied on a best effort basis.
    *
    * @param commit the commit point to open
    * @param minSupportedMajorVersion the minimum supported major index version

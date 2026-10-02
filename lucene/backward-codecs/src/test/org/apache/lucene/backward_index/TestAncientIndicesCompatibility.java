@@ -199,14 +199,7 @@ public class TestAncientIndicesCompatibility extends LuceneTestCase {
       checker.setInfoStream(new PrintStream(bos, false, UTF_8));
       checker.setLevel(CheckIndex.Level.MIN_LEVEL_FOR_INTEGRITY_CHECKS);
       CheckIndex.Status indexStatus = checker.checkIndex();
-      // TODO this conditional is no longer exercised.
-      // It would only be needed in the future for versions that can only be
-      // read via expert API (hence their codecs are maintained), but can't be written into.
-      /*
-      if (version.startsWith("9.")) {
-        assertTrue(indexStatus.clean);
-      } else {
-      */
+
       assertFalse(indexStatus.clean);
       // CheckIndex doesn't enforce a minimum version, so we either get an
       // IndexFormatTooOldException
@@ -215,7 +208,6 @@ public class TestAncientIndicesCompatibility extends LuceneTestCase {
           bos.toString(UTF_8).contains(IndexFormatTooOldException.class.getName());
       boolean missingCodec = bos.toString(UTF_8).contains("Could not load codec");
       assertTrue(formatTooOld || missingCodec);
-      // }
       checker.close();
 
       dir.close();

@@ -29,7 +29,6 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.text.ParseException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -62,7 +61,6 @@ import org.junit.Before;
 public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
 
   static final Set<String> OLD_VERSIONS;
-  protected static final Set<Version> BINARY_SUPPORTED_VERSIONS;
 
   private static final Version LATEST_PREVIOUS_MAJOR = getLatestPreviousMajorVersion();
 
@@ -84,23 +82,14 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
     } catch (IOException exception) {
       throw new RuntimeException("failed to load resource", exception);
     }
-    Set<Version> binaryVersions = new HashSet<>();
     for (String version : OLD_VERSIONS) {
       try {
         Version v = Version.parse(version);
-        assertTrue(
-            "Unsupported binary version: " + v, v.major >= Version.MIN_BINARY_SUPPORTED_MAJOR);
-        binaryVersions.add(v);
+        assertTrue("Unsupported version: " + v, v.major >= Version.MIN_SUPPORTED_MAJOR);
       } catch (ParseException ex) {
         throw new RuntimeException(ex);
       }
     }
-
-    for (Version version : getAllCurrentReleasedVersions()) {
-      // make sure we never miss a version.
-      assertTrue("Version: " + version + " missing", binaryVersions.remove(version));
-    }
-    BINARY_SUPPORTED_VERSIONS = Collections.unmodifiableSet(binaryVersions);
   }
 
   /**
@@ -245,6 +234,60 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
     List<Object[]> versionAndPatterns = new ArrayList<>();
     List<Version> versionList = getAllCurrentReleasedVersionsAndCurrent();
     for (Version v : versionList) {
+      for (Object p : patterns) {
+        versionAndPatterns.add(new Object[] {v, p});
+      }
+    }
+    return versionAndPatterns;
+  }
+
+  /**
+   * Like {@link #allVersion}, but only the first release of each supported major ({@code X.0.0}).
+   *
+   * <p>Used by tests whose indexes are generated only at major releases. The current major uses
+   * {@link Version#LATEST} when that release is itself {@code X.0.0}, so the index is created on
+   * the fly.
+   *
+   * <p>Every major from {@link Version#MIN_SUPPORTED_MAJOR} through {@link Version#LATEST} must be
+   * present, so dropping a supported major cannot happen silently.
+   */
+  public static Iterable<Object[]> allInitialMajorVersion(String name, String... suffixes) {
+    List<Object> patterns = new ArrayList<>();
+    for (String suffix : suffixes) {
+      patterns.add(createPattern(name, suffix));
+    }
+
+    List<Version> versions = new ArrayList<>();
+    Set<Integer> majors = new HashSet<>();
+    for (Version v : getAllCurrentVersions()) {
+      if (v.major >= Version.MIN_SUPPORTED_MAJOR
+          && v.minor == 0
+          && v.bugfix == 0
+          && v.prerelease == 0) {
+        versions.add(v);
+        majors.add(v.major);
+      }
+    }
+
+    List<Integer> missing = new ArrayList<>();
+    for (int major = Version.MIN_SUPPORTED_MAJOR; major <= Version.LATEST.major; major++) {
+      if (majors.contains(major) == false) {
+        missing.add(major);
+      }
+    }
+    if (missing.isEmpty() == false) {
+      throw new AssertionError(
+          "Missing first-release BWC index coverage for major version(s) "
+              + missing
+              + " (supported majors are "
+              + Version.MIN_SUPPORTED_MAJOR
+              + " through "
+              + Version.LATEST.major
+              + ")");
+    }
+
+    List<Object[]> versionAndPatterns = new ArrayList<>();
+    for (Version v : versions) {
       for (Object p : patterns) {
         versionAndPatterns.add(new Object[] {v, p});
       }

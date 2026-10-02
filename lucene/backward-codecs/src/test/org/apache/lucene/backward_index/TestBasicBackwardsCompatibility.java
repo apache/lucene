@@ -254,13 +254,12 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
     writer.addDocument(doc);
   }
 
-  public static void searchIndex(
-      Directory dir, String oldName, int minIndexMajorVersion, Version nameVersion)
+  public static void searchIndex(Directory dir, String oldName, Version nameVersion)
       throws IOException {
     // QueryParser parser = new QueryParser("contents", new MockAnalyzer(random));
     // Query query = parser.parse("handle:1");
     IndexCommit indexCommit = DirectoryReader.listCommits(dir).get(0);
-    IndexReader reader = DirectoryReader.open(indexCommit, minIndexMajorVersion, null);
+    IndexReader reader = DirectoryReader.open(indexCommit, null);
     IndexSearcher searcher = newSearcher(reader);
 
     TestUtil.checkIndex(dir);
@@ -755,7 +754,7 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
   }
 
   public void testSearchOldIndex() throws Exception {
-    searchIndex(directory, indexPattern, Version.MIN_SUPPORTED_MAJOR, version);
+    searchIndex(directory, indexPattern, version);
   }
 
   public void testFullyMergeOldIndex() throws Exception {

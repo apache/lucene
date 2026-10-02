@@ -18,8 +18,6 @@ package org.apache.lucene.backward_index;
 
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Random;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -49,10 +47,7 @@ public class TestMoreTermsBackwardsCompatibility extends BackwardsCompatibilityT
 
   @ParametersFactory(argumentFormatting = "Lucene-Version:%1$s; Pattern: %2$s")
   public static Iterable<Object[]> testVersionsFactory() {
-    List<Object[]> params = new ArrayList<>();
-    params.add(new Object[] {Version.LUCENE_9_0_0, createPattern(INDEX_NAME, SUFFIX)});
-    params.add(new Object[] {Version.LUCENE_10_0_0, createPattern(INDEX_NAME, SUFFIX)});
-    return params;
+    return allInitialMajorVersion(INDEX_NAME, SUFFIX);
   }
 
   @Override

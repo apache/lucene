@@ -18,9 +18,7 @@ package org.apache.lucene.backward_index;
 
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -53,14 +51,13 @@ public class TestDVUpdateBackwardsCompatibility extends BackwardsCompatibilityTe
     super(version, pattern);
   }
 
-  /** Provides the initial release of the previous major to the test-framework */
+  /**
+   * Indexes are generated only at the first release of each major. The factory fails if any
+   * supported major is missing so coverage cannot be dropped by deleting a version from a list.
+   */
   @ParametersFactory(argumentFormatting = "Lucene-Version:%1$s; Pattern: %2$s")
   public static Iterable<Object[]> testVersionsFactory() {
-    List<Object[]> params = new ArrayList<>();
-    // TODO - WHY ONLY on the first major version?
-    params.add(new Object[] {Version.LUCENE_9_0_0, createPattern(INDEX_NAME, SUFFIX)});
-    params.add(new Object[] {Version.LUCENE_10_0_0, createPattern(INDEX_NAME, SUFFIX)});
-    return params;
+    return allInitialMajorVersion(INDEX_NAME, SUFFIX);
   }
 
   @Override

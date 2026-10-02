@@ -251,7 +251,10 @@ public final class Version {
 
   /**
    * Constant for the minimal supported major version number of an index. This version is defined by
-   * the major version number that initially created the index.
+   * the major version number that initially created the index. An index can be opened if its {@code
+   * indexCreatedVersionMajor} is >= this constant, regardless of how many major version numbers
+   * have been released since. Segment codecs from this constant through {@link #LATEST} are
+   * built-in.
    *
    * <p>This constant is manually controlled and should only be bumped when format changes make it
    * impossible to safely read older indexes. Examples include:
@@ -264,18 +267,6 @@ public final class Version {
    *
    * <p>This constant should NOT be bumped automatically with major version number releases. The
    * goal is to allow users to upgrade across multiple major version numbers when safe to do so.
-   *
-   * <p><b>Two-tier version policy:</b>
-   *
-   * <ul>
-   *   <li><b>Index opening policy:</b> An index can be opened if its {@code
-   *       indexCreatedVersionMajor} is >= this constant, regardless of how many major version
-   *       numbers have been released since.
-   *   <li><b>Codec reader policy:</b> Segment codecs are only shipped for the current major version
-   *       number and the immediately previous major version number. When no format breaks occur
-   *       between consecutive major version numbers, the previous major version number reader can
-   *       read segments from older major version numbers that use the same format.
-   * </ul>
    *
    * <p><b>When to bump this constant:</b>
    *
@@ -301,24 +292,6 @@ public final class Version {
    * @since 11.0.0
    */
   public static final int MIN_SUPPORTED_MAJOR = 9;
-
-  /**
-   * The minimum major version that can be read via the expert-API read-only path (e.g. {@code
-   * StandardDirectoryReader.open(commit, minSupportedMajor, executor)} and {@code
-   * SegmentInfos.readLatestCommit(dir, minSupportedMajor)}).
-   *
-   * <p>This constant is pinned to the previous major at the time its index zip files and codec
-   * support were collected. It must be set explicitly rather than derived from {@link
-   * #MIN_SUPPORTED_MAJOR} arithmetically, so that it remains stable when {@link
-   * #MIN_SUPPORTED_MAJOR} is bumped for a new major release.
-   *
-   * <p><b>When to update:</b> When {@link #MIN_SUPPORTED_MAJOR} is bumped, set this constant to the
-   * old value of {@link #MIN_SUPPORTED_MAJOR} and add the corresponding index zip files and codec
-   * support to the backward-codecs module.
-   *
-   * @since 11.0.0
-   */
-  public static final int MIN_BINARY_SUPPORTED_MAJOR = 9;
 
   /**
    * @see #getPackageImplementationVersion()
