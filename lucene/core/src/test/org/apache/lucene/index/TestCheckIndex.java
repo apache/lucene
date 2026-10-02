@@ -20,6 +20,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.util.List;
 import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.Document;
@@ -34,6 +35,9 @@ import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.analysis.CannedTokenStream;
 import org.apache.lucene.tests.analysis.Token;
 import org.apache.lucene.tests.index.BaseTestCheckIndex;
@@ -291,6 +295,76 @@ public class TestCheckIndex extends BaseTestCheckIndex {
         CheckIndex.Status checkIndexStatus = checkers.checkIndex();
         assertFalse(checkIndexStatus.clean);
       }
+    }
+  }
+
+  /**
+   * {@link CheckIndex#exorciseIndex} threw {@link NullPointerException} when the status came from
+   * an index whose commit point could not be read at all: {@code Status.newSegments} is left null
+   * in that case, and only {@code partial} was checked before dereferencing it.
+   *
+   * <p>Three distinct corruptions all reach it, and all three are what users report on GITHUB-7820
+   * — a missing or truncated {@code .si}, or a truncated {@code segments_N}. The command line
+   * (CheckIndex#doCheck) and Luke's dialog both test {@code missingSegments} themselves before
+   * calling, so this only reached callers of the public API.
+   */
+  public void testExorciseUnreadableCommitPoint() throws Exception {
+    for (String corruption : List.of("delete-si", "truncate-si", "truncate-segments")) {
+      try (MockDirectoryWrapper dir = newMockDirectory()) {
+        // this test intentionally leaves a broken index behind
+        dir.setCheckIndexOnClose(false);
+
+        IndexWriterConfig iwc = new IndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE);
+        try (IndexWriter iw = new IndexWriter(dir, iwc)) {
+          for (int seg = 0; seg < 2; seg++) {
+            Document doc = new Document();
+            doc.add(new StringField("id", "d" + seg, Field.Store.NO));
+            iw.addDocument(doc);
+            iw.commit();
+          }
+        }
+
+        // NOTE: relying on precise file naming, as testPriorBrokenCommitPoint above already does.
+        String victim =
+            switch (corruption) {
+              case "delete-si", "truncate-si" -> "_1.si";
+              default -> SegmentInfos.getLastCommitSegmentsFileName(dir);
+            };
+        assertTrue(victim, slowFileExists(dir, victim));
+
+        if (corruption.equals("delete-si")) {
+          dir.deleteFile(victim);
+        } else {
+          truncate(dir, victim);
+        }
+
+        try (CheckIndex checker = new CheckIndex(dir)) {
+          checker.setInfoStream(new PrintStream(new ByteArrayOutputStream(), false, UTF_8), false);
+          CheckIndex.Status status = checker.checkIndex();
+
+          // step 1 of GITHUB-7820 detects it; step 2 (actually exorcising) is still open
+          assertFalse(corruption, status.clean);
+          assertTrue(corruption, status.missingSegments);
+
+          // ... so exorcising must refuse, rather than throwing NullPointerException
+          IllegalArgumentException expected =
+              expectThrows(IllegalArgumentException.class, () -> checker.exorciseIndex(status));
+          assertTrue(expected.getMessage(), expected.getMessage().contains("segments file"));
+        }
+      }
+    }
+  }
+
+  /** Rewrites {@code name} keeping only its first 70% of bytes. */
+  private static void truncate(Directory dir, String name) throws IOException {
+    byte[] bytes;
+    try (IndexInput in = dir.openInput(name, IOContext.READONCE)) {
+      bytes = new byte[(int) (in.length() * 0.7)];
+      in.readBytes(bytes, 0, bytes.length);
+    }
+    dir.deleteFile(name);
+    try (IndexOutput out = dir.createOutput(name, IOContext.DEFAULT)) {
+      out.writeBytes(bytes, bytes.length);
     }
   }
 }

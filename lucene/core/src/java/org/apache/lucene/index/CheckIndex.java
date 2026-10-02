@@ -4584,12 +4584,20 @@ public final class CheckIndex implements Closeable {
    *
    * <p><b>WARNING</b>: this writes a new segments file into the index, effectively removing all
    * documents in broken segments from the index. BE CAREFUL.
+   *
+   * @throws IllegalArgumentException if the status came from a partial check, or from an index
+   *     whose commit point could not be read at all ({@link Status#missingSegments}), in which case
+   *     there is no set of segments to write.
    */
   public void exorciseIndex(Status result) throws IOException {
     ensureOpen();
     if (result.partial) {
       throw new IllegalArgumentException(
           "can only exorcise an index that was fully checked (this status checked a subset of segments)");
+    }
+    if (result.missingSegments) {
+      throw new IllegalArgumentException(
+          "cannot exorcise an index whose segments file could not be read; no segments were recovered");
     }
     result.newSegments.changed();
     result.newSegments.commit(result.dir);
