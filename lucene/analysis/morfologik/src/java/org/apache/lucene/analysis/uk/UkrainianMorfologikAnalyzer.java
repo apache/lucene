@@ -63,67 +63,67 @@ public final class UkrainianMorfologikAnalyzer extends StopwordAnalyzerBase {
     NORMALIZER_MAP = builder.build();
   }
 
-  /** Returns a lazy singleton with the default Ukrainian resources. */
-  @SuppressWarnings("NonFinalStaticField")
-  private static volatile DefaultResources defaultResources;
-
-  private static DefaultResources getDefaultResources() {
-    if (defaultResources == null) {
-      synchronized (DefaultResources.class) {
-        try {
-          CharArraySet wordList;
-          try (var is = UkrainianMorfologikAnalyzer.class.getResourceAsStream("stopwords.txt")) {
-            if (is == null) {
-              throw new IOException("Could not locate the required stopwords resource.");
-            }
-            wordList = WordlistLoader.getSnowballWordSet(is);
-          }
-
-          // First, try to look up the resource module by name.
-          Dictionary dictionary;
-          Module ourModule = DefaultResources.class.getModule();
-          if (ourModule.isNamed() && ourModule.getLayer() != null) {
-            var module =
-                ourModule
-                    .getLayer()
-                    .findModule("morfologik.ukrainian.search")
-                    .orElseThrow(
-                        () ->
-                            new IOException(
-                                "Can't find the resource module: morfologik.ukrainian.search"));
-
-            try (var fsaStream = module.getResourceAsStream("ua/net/nlp/ukrainian.dict");
-                var metaStream = module.getResourceAsStream("ua/net/nlp/ukrainian.info")) {
-              dictionary = Dictionary.read(fsaStream, metaStream);
-            }
-          } else {
-            var name = "ua/net/nlp/ukrainian.dict";
-            dictionary =
-                Dictionary.read(
-                    IOUtils.requireResourceNonNull(
-                        UkrainianMorfologikAnalyzer.class.getClassLoader().getResource(name),
-                        name));
-          }
-          defaultResources = new DefaultResources(wordList, dictionary);
-        } catch (IOException e) {
-          throw new UncheckedIOException(
-              "Could not load the required resources for the Ukrainian analyzer.", e);
-        }
-      }
-    }
-    return defaultResources;
-  }
-
-  private record DefaultResources(CharArraySet stopSet, Dictionary dictionary) {}
-
   /** Returns the default stopword set for this analyzer */
   public static CharArraySet getDefaultStopwords() {
-    return CharArraySet.unmodifiableSet(getDefaultResources().stopSet);
+    return CharArraySet.unmodifiableSet(DefaultsHolder.DEFAULT_STOP_SET);
+  }
+
+  /**
+   * Atomically loads the default resources in a lazy fashion once the outer class accesses them the
+   * first time.
+   */
+  private static class DefaultsHolder {
+    static final CharArraySet DEFAULT_STOP_SET;
+    static final Dictionary DEFAULT_DICTIONARY;
+
+    static {
+      try {
+        CharArraySet wordList;
+        try (var is = UkrainianMorfologikAnalyzer.class.getResourceAsStream("stopwords.txt")) {
+          if (is == null) {
+            throw new IOException("Could not locate the required stopwords resource.");
+          }
+          wordList = WordlistLoader.getSnowballWordSet(is);
+        }
+
+        // First, try to look up the resource module by name.
+        Dictionary dictionary;
+        Module ourModule = UkrainianMorfologikAnalyzer.class.getModule();
+        if (ourModule.isNamed() && ourModule.getLayer() != null) {
+          var module =
+              ourModule
+                  .getLayer()
+                  .findModule("morfologik.ukrainian.search")
+                  .orElseThrow(
+                      () ->
+                          new IOException(
+                              "Can't find the resource module: morfologik.ukrainian.search"));
+
+          try (var fsaStream = module.getResourceAsStream("ua/net/nlp/ukrainian.dict");
+              var metaStream = module.getResourceAsStream("ua/net/nlp/ukrainian.info")) {
+            dictionary = Dictionary.read(fsaStream, metaStream);
+          }
+        } else {
+          var name = "ua/net/nlp/ukrainian.dict";
+          dictionary =
+              Dictionary.read(
+                  IOUtils.requireResourceNonNull(
+                      UkrainianMorfologikAnalyzer.class.getClassLoader().getResource(name), name));
+        }
+
+        DEFAULT_STOP_SET = wordList;
+        DEFAULT_DICTIONARY = dictionary;
+      } catch (IOException e) {
+        // the resources should always be present as they are part of the distribution (JAR)
+        throw new UncheckedIOException(
+            "Could not load the required resources for the Ukrainian analyzer.", e);
+      }
+    }
   }
 
   /** Builds an analyzer with the default stop words. */
   public UkrainianMorfologikAnalyzer() {
-    this(getDefaultResources().stopSet);
+    this(DefaultsHolder.DEFAULT_STOP_SET);
   }
 
   /**
@@ -145,7 +145,7 @@ public final class UkrainianMorfologikAnalyzer extends StopwordAnalyzerBase {
   public UkrainianMorfologikAnalyzer(CharArraySet stopwords, CharArraySet stemExclusionSet) {
     super(stopwords);
     this.stemExclusionSet = CharArraySet.unmodifiableSet(CharArraySet.copy(stemExclusionSet));
-    this.dictionary = getDefaultResources().dictionary;
+    this.dictionary = DefaultsHolder.DEFAULT_DICTIONARY;
   }
 
   @Override

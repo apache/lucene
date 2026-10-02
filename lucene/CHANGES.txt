@@ -663,6 +663,10 @@ Bug Fixes
 * GITHUB#16139: Fix IBSimilarity with DistributionSPL producing negative scores due to
   floating-point rounding errors. (Prithvi S)
 
+* GITHUB#16755: UkrainianMorfologikAnalyzer no longer reloads the Ukrainian dictionary when
+  threads race to initialize it, which could leave each analyzer holding its own ~7 MB copy.
+  (Eugene Rizhkov)
+
 Build
 ---------------------
 
