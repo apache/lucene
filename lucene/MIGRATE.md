@@ -97,7 +97,7 @@ Starting with Lucene 11.0.0, the index upgrade policy has been relaxed to allow 
 #### Upgrade Example
 
 ```java
-// Opening an index created with Lucene 9.x in Lucene 11.x+
+// Opening an index created with Lucene 9.x or 10.x in Lucene 11.x+
 try (Directory dir = FSDirectory.open(indexPath)) {
     try (DirectoryReader reader = DirectoryReader.open(dir)) {
         // Index can be read normally
@@ -111,7 +111,10 @@ try (Directory dir = FSDirectory.open(indexPath)) {
 
 #### Error Handling
 
-If the index creation version is below `MIN_SUPPORTED_MAJOR`, Lucene throws `IndexFormatTooOldException` and the index must be reindexed.
+Enhanced error messages will clearly indicate:
+
+- Whether the index creation version is below `MIN_SUPPORTED_MAJOR` (reindex required)
+- Whether segments are too old to read directly (sequential upgrade required)
 
 ### TieredMergePolicy#setMaxMergeAtOnce removed
 
