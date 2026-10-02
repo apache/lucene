@@ -306,9 +306,7 @@ final class DedupScalarQuantizedVectorValues {
       FieldValues copy = copy();
       DocIndexIterator indexIterator = copy.iterator();
       RandomVectorScorer vectorScorer = vectorsScorer.getRandomVectorScorer(function, copy, target);
-      boolean isDense =
-          copy.fieldView instanceof OffHeapFloatVectorValues.DenseOffHeapVectorValues
-              || copy.fieldView instanceof OffHeapFloat16VectorValues.DenseOffHeapVectorValues;
+      boolean isDense = copy.fieldView instanceof OffHeapFloatVectorValues.DenseOffHeapVectorValues;
       return new DedupVectorScorer(indexIterator, vectorScorer, isDense);
     }
 
@@ -321,8 +319,7 @@ final class DedupScalarQuantizedVectorValues {
       DocIndexIterator indexIterator = copy.iterator();
       RandomVectorScorer vectorScorer = vectorsScorer.getRandomVectorScorer(function, copy, target);
       boolean isDense =
-          copy.fieldView instanceof OffHeapFloatVectorValues.DenseOffHeapVectorValues
-              || copy.fieldView instanceof OffHeapFloat16VectorValues.DenseOffHeapVectorValues;
+          copy.fieldView instanceof OffHeapFloat16VectorValues.DenseOffHeapVectorValues;
       return new DedupVectorScorer(indexIterator, vectorScorer, isDense);
     }
   }
@@ -409,9 +406,9 @@ final class DedupScalarQuantizedVectorValues {
   }
 
   /**
-   * FLOAT16 analogue of {@link Float32RawAndQuantizedValues}: exposes a field's raw de-duplicated
-   * {@code short[]} vectors for full-fidelity readback, while {@link #scorer(short[])} scores
-   * against the shared quantized view.
+   * Full-precision view of a field backed by the raw de-duplicated vectors, whose {@link
+   * #scorer(short[])} scores against the quantized values instead. Mirrors {@code
+   * Lucene104ScalarQuantizedVectorsReader.ScalarQuantizedFloat16VectorValues}.
    */
   static final class Float16RawAndQuantizedValues extends Float16VectorValues
       implements DedupVectorValues {

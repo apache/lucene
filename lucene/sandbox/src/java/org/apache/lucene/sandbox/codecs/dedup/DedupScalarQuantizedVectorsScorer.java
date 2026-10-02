@@ -21,6 +21,7 @@ import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorScorer;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.sandbox.codecs.dedup.DedupScalarQuantizedVectorValues.FieldValues;
+import org.apache.lucene.sandbox.codecs.dedup.DedupScalarQuantizedVectorValues.Float16RawAndQuantizedValues;
 import org.apache.lucene.sandbox.codecs.dedup.DedupScalarQuantizedVectorValues.Float32RawAndQuantizedValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
@@ -47,8 +48,7 @@ final class DedupScalarQuantizedVectorsScorer extends DedupFlatVectorsScorer {
     if (vectorValues instanceof Float32RawAndQuantizedValues rawAndQuantized) {
       return rawAndQuantized.getQuantizedValues();
     }
-    if (vectorValues
-        instanceof DedupScalarQuantizedVectorValues.Float16RawAndQuantizedValues rawAndQuantized) {
+    if (vectorValues instanceof Float16RawAndQuantizedValues rawAndQuantized) {
       return rawAndQuantized.getQuantizedValues();
     }
     return vectorValues;

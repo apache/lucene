@@ -134,12 +134,14 @@ final class DedupMergeContext implements Accountable {
       groupInfo.write(meta);
 
       if (quantizer != null) {
-        // Flavors referenced by this group's fields, shared across both quantized branches.
-        Set<DedupQuantizer.Flavor> flavors = EnumSet.noneOf(DedupQuantizer.Flavor.class);
-        for (FieldData fieldData : entry.getValue()) {
-          flavors.add(DedupQuantizer.Flavor.of(fieldData.fieldInfo.getVectorSimilarityFunction()));
-        }
         if (mergeGroup instanceof FloatGroup floatGroup) {
+          // Flavors referenced by this group's fields
+          Set<DedupQuantizer.Flavor> flavors = EnumSet.noneOf(DedupQuantizer.Flavor.class);
+          for (FieldData fieldData : entry.getValue()) {
+            flavors.add(
+                DedupQuantizer.Flavor.of(fieldData.fieldInfo.getVectorSimilarityFunction()));
+          }
+
           quantizer.writeGroup(
               meta,
               quantizedVectorData,
@@ -150,6 +152,12 @@ final class DedupMergeContext implements Accountable {
               ord -> floatGroup.get(ord).get(),
               floatGroup::preQuantized);
         } else if (mergeGroup instanceof Float16Group float16Group) {
+          // Flavors referenced by this group's fields
+          Set<DedupQuantizer.Flavor> flavors = EnumSet.noneOf(DedupQuantizer.Flavor.class);
+          for (FieldData fieldData : entry.getValue()) {
+            flavors.add(
+                DedupQuantizer.Flavor.of(fieldData.fieldInfo.getVectorSimilarityFunction()));
+          }
           // FLOAT16 is stored raw as short[]; inflate to float[] for data-blind quantization.
           float[] inflated = new float[dimension];
           quantizer.writeGroup(

@@ -454,7 +454,12 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
 
   @Override
   public QuantizedByteVectorValues getQuantizedVectorValues(String field) throws IOException {
-    FieldEntry entry = getEntry(field, FLOAT32);
+    FieldEntry entry = fields.get(field);
+    if (entry == null) {
+      throw new IllegalArgumentException("field=" + field + " not found");
+    } else if (entry.fieldInfo.encoding().isFloatingPoint() == false) {
+      throw new IllegalArgumentException("field=" + field + " not indexed as floating point");
+    }
     return getQuantizedVectorValues(entry);
   }
 
@@ -471,8 +476,7 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
       // Not a quantized field (missing, or e.g. BYTE stored raw only)
       return null;
     }
-    FieldVectorsMergeView mergeView = fieldVectorsMergeView(entry);
-    FieldValues quantizedValues = mergeView.quantizedValues();
+    FieldValues quantizedValues = (FieldValues) getQuantizedVectorValues(fieldInfo.name);
     ScalarEncoding encoding = entry.quantizedBlock().encoding();
     if (encoding.isAsymmetric() == false) {
       RandomVectorScorerSupplier supplier =
@@ -484,10 +488,20 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
     // Asymmetric encodings compare query-encoded vectors against the stored doc-encoded vectors.
     // Write a query-encoded record per distinct vector of the group into a temporary file; both
     // sides then resolve through the shared fieldOrdToGroupOrd translation. The group's raw vectors
-    // are read as float[] (FLOAT16 groups are inflated from short[]).
+    // are read directly from the group view (indexed by group ordinal, not field ordinal) as
+    // float[] (FLOAT16 groups are inflated from short[]).
+    FloatVectorValues floatVectorValues;
+    if (fieldInfo.getVectorEncoding() == VectorEncoding.FLOAT16) {
+      DedupVectorValues dedupValues = (DedupVectorValues) getFloat16VectorValues(fieldInfo.name);
+      floatVectorValues =
+          new Float16AsFloatVectorValues((Float16VectorValues) dedupValues.getGroupView());
+    } else {
+      DedupVectorValues dedupValues = (DedupVectorValues) getFloatVectorValues(fieldInfo.name);
+      floatVectorValues = (FloatVectorValues) dedupValues.getGroupView();
+    }
+
     int dimension = entry.fieldInfo().dimension();
     int groupNumVectors = entry.groupInfo().groupNumVectors();
-    DedupQuantizer.FloatVectorSupplier rawVectors = mergeView.rawVectors();
     DedupQuantizer.Flavor flavor =
         DedupQuantizer.Flavor.of(fieldInfo.getVectorSimilarityFunction());
 
@@ -504,7 +518,7 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
       byte[] toQuery = new byte[encoding.getQueryPackedLength(dimension)];
       for (int groupOrd = 0; groupOrd < groupNumVectors; groupOrd++) {
         // copy: normalization and quantization mutate the input, which is a shared buffer
-        System.arraycopy(rawVectors.get(groupOrd), 0, vector, 0, dimension);
+        System.arraycopy(floatVectorValues.vectorValue(groupOrd), 0, vector, 0, dimension);
         if (flavor.normalized()) {
           VectorUtil.l2normalize(vector);
         }
@@ -613,42 +627,50 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
       GroupInfo groupInfo, Map<DedupQuantizer.Flavor, QuantizedBlock> quantizedBlocks) {}
 
   /**
-   * Supplies the inputs the merge scorer needs to score this field's vectors as the merged HNSW
-   * graph is rebuilt: {@code quantizedValues}, the stored quantized doc-side records (scored
-   * directly for symmetric encodings), and {@code rawVectors}, the raw vectors as {@code float[]}
-   * (asymmetric encodings re-encode the query side from these). Holding both lets {@link
-   * #fieldVectorsMergeView} be the one place that dispatches on encoding.
+   * Exposes a {@link Float16VectorValues} as {@link FloatVectorValues}, inflating fp16 to fp32 on
+   * read, so the merge path can reuse the fp32 quantization classes.
    */
-  private record FieldVectorsMergeView(
-      FieldValues quantizedValues, DedupQuantizer.FloatVectorSupplier rawVectors) {}
+  static final class Float16AsFloatVectorValues extends FloatVectorValues {
+    private final Float16VectorValues values;
+    private final float[] floatVector;
 
-  /**
-   * Builds the {@link FieldVectorsMergeView} for {@code entry}, or {@code null} if the field is not
-   * quantized (e.g. BYTE, stored raw only). This is the single point that switches on the vector
-   * encoding; adding a new quantizable encoding means adding a case here.
-   */
-  private FieldVectorsMergeView fieldVectorsMergeView(FieldEntry entry) throws IOException {
-    if (entry == null) {
-      return null;
+    Float16AsFloatVectorValues(Float16VectorValues values) {
+      this.values = values;
+      this.floatVector = new float[values.dimension()];
     }
-    int dimension = entry.fieldInfo().dimension();
-    return switch (entry.fieldInfo().encoding()) {
-      case FLOAT32 -> {
-        FloatVectorValues groupView = getRawFloatVectorValues(entry).getGroupView();
-        yield new FieldVectorsMergeView(getQuantizedVectorValues(entry), groupView::vectorValue);
+
+    @Override
+    public int dimension() {
+      return values.dimension();
+    }
+
+    @Override
+    public int size() {
+      return values.size();
+    }
+
+    @Override
+    public int ordToDoc(int ord) {
+      return values.ordToDoc(ord);
+    }
+
+    @Override
+    public float[] vectorValue(int ord) throws IOException {
+      short[] v = values.vectorValue(ord);
+      for (int i = 0; i < v.length; i++) {
+        floatVector[i] = Float.float16ToFloat(v[i]);
       }
-      case FLOAT16 -> {
-        Float16VectorValues groupView = getRawFloat16VectorValues(entry).getGroupView();
-        // TODO: we currently quantize float16 by inflating each vector to fp32 first, since the
-        //  scalar quantizer computes in fp32 and the JVM has no fp16 arithmetic type. Quantize
-        //  float16 directly once that is possible, see
-        //  https://github.com/apache/lucene/issues/16533
-        float[] inflated = new float[dimension];
-        yield new FieldVectorsMergeView(
-            getFloat16QuantizedVectorValues(entry),
-            ord -> DedupUtil.inflateFloat16(groupView.vectorValue(ord), inflated));
-      }
-      case BYTE -> null; // stored raw only, not quantized
-    };
+      return floatVector;
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      return values.iterator();
+    }
+
+    @Override
+    public DedupScalarQuantizedVectorsReader.Float16AsFloatVectorValues copy() throws IOException {
+      return new DedupScalarQuantizedVectorsReader.Float16AsFloatVectorValues(values.copy());
+    }
   }
 }

@@ -54,6 +54,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.VectorUtil;
+import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
 
 /**
@@ -65,9 +66,27 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
 
   private static final ScalarEncoding ENCODING = ScalarEncoding.UNSIGNED_BYTE;
 
+  /**
+   * Build an index writer config whose dedup format always builds the HNSW graph.
+   *
+   * <p>The default {@code tinySegmentsThreshold} ({@link
+   * org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat#HNSW_GRAPH_THRESHOLD} = 100) lets
+   * small segments skip graph construction and store vectors flat only. These tests use tiny
+   * deterministic datasets, so we pin the threshold to {@code 0} ("always build the graph") rather
+   * than inflating document counts, guaranteeing the merge-time graph construction and search paths
+   * are exercised.
+   */
   private static IndexWriterConfig config() {
     return newIndexWriterConfig()
-        .setCodec(TestUtil.alwaysKnnVectorsFormat(new DedupHnswScalarQuantizedVectorsFormat()));
+        .setCodec(
+            TestUtil.alwaysKnnVectorsFormat(
+                new DedupHnswScalarQuantizedVectorsFormat(
+                    ENCODING,
+                    DEFAULT_MAX_CONN,
+                    DEFAULT_BEAM_WIDTH,
+                    1,
+                    null,
+                    0))); // tinySegmentsThreshold=0 => always build the HNSW graph
   }
 
   /** Size in bytes of one quantized record for the given dimension. */
@@ -183,6 +202,7 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
         FloatVectorValues values = leafReader.getFloatVectorValues("f");
         assertEquals(docVectors.length, values.size());
         assertEquals(2, groupNumVectors(values)); // a's duplicate collapsed across segments
+        assertGraphBuilt(leafReader, "f"); // merge built the HNSW graph, not the tiny shortcut
 
         DedupScalarQuantizedVectorsReader sqReader = getQuantizedReader(leafReader, "f");
         DedupScalarQuantizedVectorsReader.FieldEntry entry = sqReader.getEntry("f", FLOAT32);
@@ -224,6 +244,7 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
                   AcceptDocs.fromLiveDocs(null, leafReader.maxDoc()),
                   Integer.MAX_VALUE);
           assertEquals(numA + numB, topDocs.scoreDocs.length);
+          assertGraphBuilt(leafReader, "f"); // search ran over a real HNSW graph
           // duplicates of a rank first with identical scores
           float scoreA = topDocs.scoreDocs[0].score;
           for (int i = 0; i < numA; i++) {
@@ -408,6 +429,7 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
         Float16VectorValues values = leafReader.getFloat16VectorValues("f");
         assertEquals(numA + numB, values.size());
         assertEquals(2, groupNumVectors(values)); // collapsed across segments
+        assertGraphBuilt(leafReader, "f"); // merge built the HNSW graph, not the tiny shortcut
 
         TopDocs topDocs =
             leafReader.searchNearestVectors(
@@ -482,6 +504,7 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
             FloatVectorValues values = leafReader.getFloatVectorValues("f");
             assertEquals(2 * numDistinct, values.size());
             assertEquals(numDistinct, groupNumVectors(values)); // de-duplicated across segments
+            assertGraphBuilt(leafReader, "f"); // threshold=0 forced the merge-time graph build
 
             float[] query =
                 function == DOT_PRODUCT ? VectorUtil.l2normalize(distinct[0].clone()) : distinct[0];
@@ -502,6 +525,148 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
     }
   }
 
+  /**
+   * Every encoding survives a merge of FLOAT16 fields with graph building forced (exercising the
+   * merge-time scorer suppliers, including the temporary query-vectors file of asymmetric encodings
+   * and the FLOAT16 {@code short[]} -> {@code float[]} inflation on the raw side) and searches
+   * sanely afterwards.
+   */
+  public void testFloat16AllEncodingsMergeAndSearch() throws Exception {
+    int dimension = 32;
+    int numDistinct = 20;
+    float[][] distinct = new float[numDistinct][];
+    for (int i = 0; i < numDistinct; i++) {
+      distinct[i] = randomVector(dimension);
+    }
+    for (ScalarEncoding encoding : ScalarEncoding.values()) {
+      for (VectorSimilarityFunction function : VectorSimilarityFunction.values()) {
+        IndexWriterConfig config =
+            newIndexWriterConfig()
+                .setCodec(
+                    TestUtil.alwaysKnnVectorsFormat(
+                        new DedupHnswScalarQuantizedVectorsFormat(
+                            encoding,
+                            DEFAULT_MAX_CONN,
+                            DEFAULT_BEAM_WIDTH,
+                            1,
+                            null,
+                            0))); // always build graphs
+        try (Directory dir = newDirectory();
+            IndexWriter w = new IndexWriter(dir, config)) {
+          for (int segment = 0; segment < 2; segment++) { // duplicates across segments
+            for (int i = 0; i < numDistinct; i++) {
+              Document doc = new Document();
+              float[] vector =
+                  function == DOT_PRODUCT
+                      ? VectorUtil.l2normalize(distinct[i].clone())
+                      : distinct[i];
+              doc.add(new KnnFloat16VectorField("f", toFloat16(vector), function));
+              w.addDocument(doc);
+            }
+            w.commit();
+          }
+          w.forceMerge(1); // exercises the merge-time graph construction scorer
+
+          try (DirectoryReader reader = DirectoryReader.open(w)) {
+            LeafReader leafReader = getOnlyLeafReader(reader);
+            Float16VectorValues values = leafReader.getFloat16VectorValues("f");
+            assertEquals(2 * numDistinct, values.size());
+            assertEquals(numDistinct, groupNumVectors(values)); // de-duplicated across segments
+            assertGraphBuilt(leafReader, "f"); // threshold=0 forced the merge-time graph build
+
+            float[] queryFloat =
+                function == DOT_PRODUCT ? VectorUtil.l2normalize(distinct[0].clone()) : distinct[0];
+            short[] query = toFloat16(queryFloat);
+            TopDocs topDocs =
+                leafReader.searchNearestVectors(
+                    "f",
+                    query,
+                    2,
+                    AcceptDocs.fromLiveDocs(null, leafReader.maxDoc()),
+                    Integer.MAX_VALUE);
+            String context = "encoding=" + encoding + ", function=" + function;
+            assertEquals(context, 2, topDocs.scoreDocs.length);
+            // the two duplicates of the query vector share the (top) score
+            assertEquals(context, topDocs.scoreDocs[0].score, topDocs.scoreDocs[1].score, 0f);
+          }
+        }
+      }
+    }
+  }
+
+  public void testFloat16SharedGroupAsymmetricMerge() throws Exception {
+    int dimension = 32;
+    int smallCount = 2;
+    int bigCount = 20;
+    float[][] small = new float[smallCount][];
+    float[][] big = new float[bigCount][];
+    for (int i = 0; i < smallCount; i++) {
+      small[i] = randomVector(dimension);
+    }
+    for (int i = 0; i < bigCount; i++) {
+      big[i] = randomVector(dimension);
+    }
+    for (ScalarEncoding encoding : ScalarEncoding.values()) {
+      if (encoding.isAsymmetric() == false) {
+        continue; // the EOF only reproduces on the asymmetric merge path
+      }
+      IndexWriterConfig config =
+          newIndexWriterConfig()
+              .setCodec(
+                  TestUtil.alwaysKnnVectorsFormat(
+                      new DedupHnswScalarQuantizedVectorsFormat(
+                          encoding,
+                          DEFAULT_MAX_CONN,
+                          DEFAULT_BEAM_WIDTH,
+                          1,
+                          null,
+                          0))); // always build graphs
+      try (Directory dir = newDirectory();
+          IndexWriter w = new IndexWriter(dir, config)) {
+        for (int segment = 0; segment < 2; segment++) { // duplicates across segments
+          for (int i = 0; i < smallCount; i++) {
+            Document d = new Document();
+            d.add(new KnnFloat16VectorField("small", toFloat16(small[i]), EUCLIDEAN));
+            w.addDocument(d);
+          }
+          for (int i = 0; i < bigCount; i++) {
+            Document d = new Document();
+            d.add(new KnnFloat16VectorField("big", toFloat16(big[i]), EUCLIDEAN));
+            w.addDocument(d);
+          }
+          w.commit();
+        }
+        // the "small" field has only smallCount*2 doc-entries but shares a group of
+        // smallCount+bigCount distinct vectors: merging it previously overran its map.
+        w.forceMerge(1);
+
+        try (DirectoryReader reader = DirectoryReader.open(w)) {
+          LeafReader leafReader = getOnlyLeafReader(reader);
+          String context = "encoding=" + encoding;
+
+          Float16VectorValues smallValues = leafReader.getFloat16VectorValues("small");
+          assertEquals(context, 2 * smallCount, smallValues.size());
+          Float16VectorValues bigValues = leafReader.getFloat16VectorValues("big");
+          assertEquals(context, 2 * bigCount, bigValues.size());
+          assertGraphBuilt(leafReader, "small"); // threshold=0 forced the merge-time graph build
+          assertGraphBuilt(leafReader, "big");
+
+          // search the small field: its two duplicates of the query share the top score
+          short[] q = toFloat16(small[0]);
+          TopDocs topDocs =
+              leafReader.searchNearestVectors(
+                  "small",
+                  q,
+                  2,
+                  AcceptDocs.fromLiveDocs(null, leafReader.maxDoc()),
+                  Integer.MAX_VALUE);
+          assertEquals(context, 2, topDocs.scoreDocs.length);
+          assertEquals(context, topDocs.scoreDocs[0].score, topDocs.scoreDocs[1].score, 0f);
+        }
+      }
+    }
+  }
+
   private float[] randomVector(int dimension) {
     float[] vector = new float[dimension];
     for (int i = 0; i < dimension; i++) {
@@ -514,6 +679,22 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
   private static int groupNumVectors(KnnVectorValues values) {
     assertThat(values, instanceOf(DedupVectorValues.class));
     return ((DedupVectorValues) values).getGroupView().size();
+  }
+
+  /**
+   * Asserts an HNSW graph was actually built for the field (i.e. the tiny-segment shortcut was not
+   * taken). A skipped graph yields {@link org.apache.lucene.util.hnsw.HnswGraph#EMPTY} with size 0.
+   */
+  private static void assertGraphBuilt(LeafReader leafReader, String field) throws Exception {
+    assertThat(leafReader, instanceOf(CodecReader.class));
+    KnnVectorsReader knnVectorsReader = ((CodecReader) leafReader).getVectorReader();
+    KnnVectorsReader perField = knnVectorsReader.unwrapReaderForField(field);
+    assertThat(perField, instanceOf(Lucene99HnswVectorsReader.class));
+    HnswGraph graph = ((Lucene99HnswVectorsReader) perField).getGraph(field);
+    assertNotNull("no graph for field=" + field, graph);
+    assertTrue(
+        "expected an HNSW graph to be built for field=" + field + " but it was empty",
+        graph.size() > 0);
   }
 
   /** Get underlying quantized dedup vector reader instance. */
