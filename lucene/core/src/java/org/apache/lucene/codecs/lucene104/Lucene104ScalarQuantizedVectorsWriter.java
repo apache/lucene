@@ -55,6 +55,7 @@ import org.apache.lucene.store.FileDataHint;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.VectorUtil;
@@ -642,7 +643,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
       KnnVectorsReader knnVectorsReader = mergeState.knnVectorsReaders[i];
       if (knnVectorsReader == null) continue;
-      count += accumulateCentroid(knnVectorsReader, fieldInfo, centroid);
+      count += accumulateCentroid(knnVectorsReader, fieldInfo, mergeState.liveDocs[i], centroid);
     }
     if (count == 0) {
       return count;
@@ -657,7 +658,8 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   }
 
   private static int accumulateCentroid(
-      KnnVectorsReader reader, FieldInfo fieldInfo, float[] centroid) throws IOException {
+      KnnVectorsReader reader, FieldInfo fieldInfo, Bits liveDocs, float[] centroid)
+      throws IOException {
     FloatVectorValues vectorValues = floatingPointVectorValues(reader, fieldInfo);
     if (vectorValues == null) {
       return 0;
@@ -665,6 +667,9 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     int count = 0;
     KnnVectorValues.DocIndexIterator iterator = vectorValues.iterator();
     for (int doc = iterator.nextDoc(); doc != NO_MORE_DOCS; doc = iterator.nextDoc()) {
+      if (liveDocs != null && liveDocs.get(doc) == false) {
+        continue;
+      }
       count++;
       float[] vector = vectorValues.vectorValue(iterator.index());
       for (int j = 0; j < vector.length; j++) {
