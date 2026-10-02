@@ -1959,5 +1959,10 @@ public class AssertingLeafReader extends FilterLeafReader {
     public DocIdSetIterator deletedDocsIterator() {
       return liveDocs.deletedDocsIterator();
     }
+
+    @Override
+    public FixedBitSet toFixedBitSet() {
+      return liveDocs.toFixedBitSet();
+    }
   }
 }

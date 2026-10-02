@@ -867,6 +867,8 @@ public final class FixedBitSet extends BitSet {
 
     if (bits instanceof FixedBitSet fbs) {
       return fbs.clone();
+    } else if (bits instanceof LiveDocs ld) {
+      return ld.toFixedBitSet();
     } else {
       int length = bits.length();
       FixedBitSet bitSet = new FixedBitSet(length);
