@@ -212,6 +212,17 @@ final class DedupUtil {
     return murmurhash3_x64_128(bytes, 0, bytes.length, GOOD_FAST_HASH_SEED)[0];
   }
 
+  /**
+   * Inflates a float16 vector ({@code short[]}) into the reused {@code float[]} buffer for the
+   * fp32-based scalar quantizer.
+   */
+  static float[] inflateFloat16(short[] float16Vector, float[] dest) {
+    for (int i = 0; i < float16Vector.length; i++) {
+      dest[i] = Float.float16ToFloat(float16Vector[i]);
+    }
+    return dest;
+  }
+
   static long alignBytes(IndexOutput output, VectorEncoding encoding) throws IOException {
     int alignBytes =
         switch (encoding) {

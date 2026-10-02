@@ -154,6 +154,10 @@ New Features
 * GITHUB#16738: Add DiversifyingChildrenFloat16KnnVectorQuery for fp16 parent-block-join KNN
   search. (Pulkit Gupta)
 
+* GITHUB#16710: Add scalar quantization support for FLOAT16 vectors in the dedup KNN codec. FLOAT16
+  fields are now de-duplicated and quantized like FLOAT32, storing each distinct vector once in both
+  raw (short[]) and quantized form. (Pranshu Shukla)
+
 Improvements
 ---------------------
 * GITHUB#15704: Replace LinkedList with more efficient data structure. (Renato Haeberli)
