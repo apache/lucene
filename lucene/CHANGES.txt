@@ -614,6 +614,9 @@ Optimizations
   and the merge mapping keeps the hints the file was opened with, changing only how it is read.
   (Jim Ferenczi)
 
+* GITHUB#TK: Vectorize OptimizedScalarQuantizer with osqCenter, osqGridStats and osqAssign.
+  (Jakub Slowinski)
+
 Bug Fixes
 ---------------------
 * GITHUB#10153: Allow configurable buffer size in SegmentingTokenizerBase and recognize whitespace as safe boundary in ThaiTokenizer to avoid splitting words across buffer boundaries. (Kamthorn Krairaksa)
