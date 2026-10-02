@@ -229,6 +229,10 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#16768: DenseLiveDocs and SparseLiveDocs now reject a backing bit set with bits set at or
+  beyond maxDoc. Such bits skewed deletedCount and made the live and deleted doc iterators return
+  doc ids past maxDoc. (Salvatore Campagna)
+
 * GITHUB#16657: Fix hashCode/equals contract violation in LRUQueryCache's QueryCacheKey and account a
   cached query's RAM once per distinct query. (Sagar Upadhyaya)
 
