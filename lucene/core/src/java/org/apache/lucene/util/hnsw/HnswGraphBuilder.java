@@ -746,6 +746,11 @@ public class HnswGraphBuilder implements HnswBuilder {
     }
 
     @Override
+    public int numCollected() {
+      return queue.size();
+    }
+
+    @Override
     public boolean collect(int docId, float similarity) {
       return queue.insertWithOverflow(docId, similarity);
     }
