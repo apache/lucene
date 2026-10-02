@@ -297,7 +297,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
 
   /**
    * Read a particular segmentFileName, as long as the commit's {@link
-   * SegmentInfos#getIndexCreatedVersionMajor()} is strictly greater than the provided minimum
+   * SegmentInfo#getMinVersion()} is strictly greater than the provided minimum
    * supported major version. If the commit's version is older, an {@link
    * IndexFormatTooOldException} will be thrown. Note that this may throw an IOException if a commit
    * is in process.
