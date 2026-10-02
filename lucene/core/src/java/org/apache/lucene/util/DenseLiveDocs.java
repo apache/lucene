@@ -58,8 +58,9 @@ public final class DenseLiveDocs implements LiveDocs {
   /**
    * Creates a builder for constructing DenseLiveDocs instances.
    *
-   * @param liveDocs bit set where set bits represent LIVE documents
-   * @param maxDoc the maximum document ID (exclusive)
+   * @param liveDocs bit set where set bits represent LIVE documents; may be longer than maxDoc, but
+   *     must have no bits set at or beyond maxDoc
+   * @param maxDoc the maximum document ID (exclusive), must not be negative
    * @return a new builder instance
    */
   public static Builder builder(FixedBitSet liveDocs, int maxDoc) {
@@ -92,9 +93,19 @@ public final class DenseLiveDocs implements LiveDocs {
      * Builds the DenseLiveDocs instance.
      *
      * @return a new DenseLiveDocs instance
-     * @throws IllegalArgumentException if deletedCount is outside valid range [0, maxDoc]
+     * @throws IllegalArgumentException if maxDoc is negative, if liveDocs has bits set at or beyond
+     *     maxDoc, or if deletedCount is outside valid range [0, maxDoc]
      */
     public DenseLiveDocs build() {
+      if (maxDoc < 0) {
+        throw new IllegalArgumentException("maxDoc must not be negative: " + maxDoc);
+      }
+
+      if (liveDocs.length() > maxDoc
+          && liveDocs.nextSetBit(maxDoc) != DocIdSetIterator.NO_MORE_DOCS) {
+        throw new IllegalArgumentException("liveDocs has bits set at or beyond maxDoc=" + maxDoc);
+      }
+
       int count = deletedCount != null ? deletedCount : (maxDoc - liveDocs.cardinality());
 
       if (count < 0 || count > maxDoc) {
