@@ -1479,7 +1479,8 @@ public final class CheckIndex implements Closeable {
     String lastField = null;
     for (String field : fields) {
 
-      // MultiFieldsEnum relies upon this order...
+      // MultiFields and PerFieldPostingsFormat merge these iterators with MergedIterator, whose
+      // behaviour is undefined unless every input is sorted; see Fields#iterator().
       if (lastField != null && field.compareTo(lastField) <= 0) {
         throw new CheckIndexException(
             "fields out of order: lastField=" + lastField + " field=" + field);
