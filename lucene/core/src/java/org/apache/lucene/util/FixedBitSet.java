@@ -867,17 +867,11 @@ public final class FixedBitSet extends BitSet {
 
     if (bits instanceof FixedBitSet fbs) {
       return fbs.clone();
-    } else if (bits instanceof LiveDocs ld) {
-      return ld.toFixedBitSet();
     } else {
       int length = bits.length();
       FixedBitSet bitSet = new FixedBitSet(length);
       bitSet.set(0, length);
-      for (int i = 0; i < length; ++i) {
-        if (bits.get(i) == false) {
-          bitSet.clear(i);
-        }
-      }
+      bits.applyMask(bitSet, 0);
       return bitSet;
     }
   }

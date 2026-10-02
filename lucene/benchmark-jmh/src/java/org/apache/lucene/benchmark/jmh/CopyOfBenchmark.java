@@ -40,8 +40,9 @@ import org.openjdk.jmh.annotations.Warmup;
  * Benchmarks for {@link FixedBitSet#copyOf(Bits)} with {@link DenseLiveDocs}, {@link
  * SparseLiveDocs}, and a generic {@link Bits} implementation.
  *
- * <p>The generic fallback method ({@code copyOfGenericBits}) is critical: it proves that the
- * per-bit loop does not regress when LiveDocs types exit early via a fast path.
+ * <p>The generic method ({@code copyOfGenericBits}) is critical: a {@link Bits} that does not
+ * override {@link Bits#applyMask} goes through the default per-bit implementation, which must not
+ * regress compared to the per-bit loop that {@code copyOf} used before.
  *
  * @see FixedBitSet#copyOf(Bits)
  * @see DenseLiveDocs
@@ -88,7 +89,7 @@ public class CopyOfBenchmark {
     denseLiveDocs = DenseLiveDocs.builder(fixedSet, size).build();
     sparseLiveDocs = SparseLiveDocs.builder(sparseSet, size).build();
 
-    // Generic Bits that is NOT a LiveDocs — exercises the fallback loop
+    // Generic Bits that is NOT a LiveDocs — exercises the default applyMask
     FixedBitSet referenceBits = fixedSet.clone();
     genericBits =
         new Bits() {

@@ -18,7 +18,7 @@ package org.apache.lucene.util;
 
 import org.apache.lucene.tests.util.LuceneTestCase;
 
-/** Tests for {@link LiveDocs#toFixedBitSet()} via {@link FixedBitSet#copyOf(Bits)}. */
+/** Tests for {@link FixedBitSet#copyOf(Bits)} on {@link LiveDocs} implementations. */
 public class TestLiveDocsCopyOf extends LuceneTestCase {
 
   public void testDenseLiveDocsCopyOf() {
@@ -53,6 +53,20 @@ public class TestLiveDocsCopyOf extends LuceneTestCase {
     for (int i = 0; i < maxDoc; i++) {
       assertEquals("mismatch at doc " + i, sparse.get(i), copy.get(i));
     }
+  }
+
+  public void testCopyOfPaddedDenseLiveDocsPreservesLength() {
+    int maxDoc = 100;
+    FixedBitSet backing = new FixedBitSet(256);
+    backing.set(0, maxDoc);
+    backing.clear(7);
+    DenseLiveDocs dense = DenseLiveDocs.builder(backing, maxDoc).build();
+    assertEquals(maxDoc, dense.length());
+
+    FixedBitSet copy = FixedBitSet.copyOf(dense);
+
+    assertEquals(dense.length(), copy.length());
+    assertEquals(dense.length() - dense.deletedCount(), copy.cardinality());
   }
 
   public void testRandomized() {

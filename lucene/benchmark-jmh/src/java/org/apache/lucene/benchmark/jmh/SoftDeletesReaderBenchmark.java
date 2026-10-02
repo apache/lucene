@@ -17,6 +17,7 @@
 package org.apache.lucene.benchmark.jmh;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.document.Document;
@@ -51,7 +52,8 @@ import org.openjdk.jmh.annotations.Warmup;
  * Measures the cost of wrapping a reader with {@link SoftDeletesDirectoryReaderWrapper}, which
  * calls {@link org.apache.lucene.util.FixedBitSet#copyOf(Bits)} on each leaf's live docs. Since
  * #15413, live docs are {@link org.apache.lucene.util.DenseLiveDocs} or {@link
- * org.apache.lucene.util.SparseLiveDocs} which fall through to the per-bit generic loop.
+ * org.apache.lucene.util.SparseLiveDocs}, which {@code copyOf} copies through {@link
+ * Bits#applyMask} rather than a per-bit loop.
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
@@ -75,7 +77,7 @@ public class SoftDeletesReaderBenchmark {
 
   @Setup(Level.Trial)
   public void setup() throws Exception {
-    tempDir = Path.of(System.getProperty("java.io.tmpdir"), "softdel-bench-" + System.nanoTime());
+    tempDir = Files.createTempDirectory("softdel-bench");
     dir = MMapDirectory.open(tempDir);
 
     IndexWriterConfig config =
