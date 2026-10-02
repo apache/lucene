@@ -61,29 +61,25 @@ It instead routes through `createOutput`, so filter directories that override
 that relied on the wrapped directory's optimized copy should override `copyFrom` and
 delegate explicitly, as `HardlinkCopyDirectoryWrapper` does.
 
-### Relaxed Index Upgrade Policy (GITHUB#13797)
+### Relaxed Index Upgrade Policy (GITHUB#13797, GITHUB#16741)
 
 Starting with Lucene 11.0.0, the index upgrade policy has been relaxed to allow safe upgrades across multiple major version numbers without reindexing when no format breaks occur.
 
 #### Key Changes
 
 - `Version.MIN_SUPPORTED_MAJOR` is now manually maintained instead of auto-computed as `LATEST.major-1`
-- Set to 10 for Lucene 11.0.0, allowing indexes created with Lucene 10.x to be opened directly
+- Set to 9 for Lucene 11.0.0, so indexes created with Lucene 9.x remain fully supported (open and write)
 - Will only be bumped when actual incompatible format changes are introduced
-
-#### Two-Tier Version Policy
-
-1. **Index opening policy**: An index can be opened if its creation version >= `MIN_SUPPORTED_MAJOR`
-2. **Codec reader policy**: Segments can only be read directly if written by current or previous major version number
+- The distinction between write and read-only compatibility is removed: all the built-in codecs provide full support
 
 #### Upgrade Scenarios
 
 ##### Scenario 1: No format breaks (wider upgrade span)
 
-- Index created with Lucene 10.x can be opened directly in Lucene 11.x, 12.x, 13.x, 14.x (as long as MIN_SUPPORTED_MAJOR stays ≤ 10)
+- Index created with Lucene 9.x can be opened directly in Lucene 11.x, 12.x, 13.x (as long as MIN_SUPPORTED_MAJOR stays ≤ 9)
 - Simply open the index with the new version; segments will be upgraded gradually through normal merging
 - Optional: Call `forceMerge()` or use `UpgradeIndexMergePolicy` to upgrade segment formats immediately
-- **Important**: You still only get one upgrade per index lifetime. Once MIN_SUPPORTED_MAJOR is bumped above 10, the index becomes unopenable and must be reindexed.
+- **Important**: You still only get one upgrade per index lifetime. Once MIN_SUPPORTED_MAJOR is bumped above 9, the index becomes unopenable and must be reindexed.
 
 ##### Scenario 2: Format breaks occur
 
@@ -93,17 +89,16 @@ Starting with Lucene 11.0.0, the index upgrade policy has been relaxed to allow 
 
 ##### Scenario 3: After using your upgrade
 
-- Index created with Lucene 10.x, successfully opened with Lucene 14.x
-- The index's creation version is still 10 (this never changes)
-- When Lucene 15+ bumps MIN_SUPPORTED_MAJOR above 10, this index becomes unopenable
+- Index created with Lucene 9.x, successfully opened with Lucene 13.x
+- The index's creation version is still 9 (this never changes)
+- When a later release bumps MIN_SUPPORTED_MAJOR above 9, this index becomes unopenable
 - Must reindex to continue using newer Lucene versions
 
 #### Upgrade Example
 
 ```java
-// Opening an index created with Lucene 10.x in Lucene 11.x+
+// Opening an index created with Lucene 9.x or 10.x in Lucene 11.x+
 try (Directory dir = FSDirectory.open(indexPath)) {
-    // This will now succeed (if MIN_SUPPORTED_MAJOR <= 10)
     try (DirectoryReader reader = DirectoryReader.open(dir)) {
         // Index can be read normally
     }

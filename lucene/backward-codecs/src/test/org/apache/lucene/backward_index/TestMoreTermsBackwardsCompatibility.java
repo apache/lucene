@@ -18,8 +18,6 @@ package org.apache.lucene.backward_index;
 
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Random;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -39,7 +37,7 @@ import org.apache.lucene.util.Version;
 @LuceneTestCase.AwaitsFix(bugUrl = "https://github.com/apache/lucene/issues/13847")
 public class TestMoreTermsBackwardsCompatibility extends BackwardsCompatibilityTestBase {
 
-  static final String INDEX_NAME = "unsupported.moreterms";
+  static final String INDEX_NAME = "moreterms";
 
   static final String SUFFIX = "";
 
@@ -49,9 +47,7 @@ public class TestMoreTermsBackwardsCompatibility extends BackwardsCompatibilityT
 
   @ParametersFactory(argumentFormatting = "Lucene-Version:%1$s; Pattern: %2$s")
   public static Iterable<Object[]> testVersionsFactory() {
-    List<Object[]> params = new ArrayList<>();
-    params.add(new Object[] {Version.fromBits(9, 0, 0), createPattern(INDEX_NAME, SUFFIX)});
-    return params;
+    return allInitialMajorVersion(INDEX_NAME, SUFFIX);
   }
 
   @Override

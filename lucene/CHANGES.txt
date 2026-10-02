@@ -7,6 +7,9 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
+* GITHUB#16741: Lower the minimum supported major version from 10 to 9. Indexes created with 9.x
+  remain fully supported in Lucene 11, no reindexing required. (Luca Cavanna)
+
 * GITHUB#16705: KnnVectorValues#prefetch(int ord, int count) replaces prefetch(int ord). It prefetches
   a run of consecutive vectors with a single read and returns true if a prefetch was issued, like
   IndexInput#prefetch. The int[] form now coalesces ordinals that are consecutive in the array over

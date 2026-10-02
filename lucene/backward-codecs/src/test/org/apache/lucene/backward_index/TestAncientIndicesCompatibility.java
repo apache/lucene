@@ -199,18 +199,15 @@ public class TestAncientIndicesCompatibility extends LuceneTestCase {
       checker.setInfoStream(new PrintStream(bos, false, UTF_8));
       checker.setLevel(CheckIndex.Level.MIN_LEVEL_FOR_INTEGRITY_CHECKS);
       CheckIndex.Status indexStatus = checker.checkIndex();
-      if (version.startsWith("9.")) {
-        assertTrue(indexStatus.clean);
-      } else {
-        assertFalse(indexStatus.clean);
-        // CheckIndex doesn't enforce a minimum version, so we either get an
-        // IndexFormatTooOldException
-        // or an IllegalArgumentException saying that the codec doesn't exist.
-        boolean formatTooOld =
-            bos.toString(UTF_8).contains(IndexFormatTooOldException.class.getName());
-        boolean missingCodec = bos.toString(UTF_8).contains("Could not load codec");
-        assertTrue(formatTooOld || missingCodec);
-      }
+
+      assertFalse(indexStatus.clean);
+      // CheckIndex doesn't enforce a minimum version, so we either get an
+      // IndexFormatTooOldException
+      // or an IllegalArgumentException saying that the codec doesn't exist.
+      boolean formatTooOld =
+          bos.toString(UTF_8).contains(IndexFormatTooOldException.class.getName());
+      boolean missingCodec = bos.toString(UTF_8).contains("Could not load codec");
+      assertTrue(formatTooOld || missingCodec);
       checker.close();
 
       dir.close();
