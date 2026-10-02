@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
@@ -190,7 +191,10 @@ public abstract class MergePolicy {
    */
   public static class OneMerge {
     private final CompletableFuture<Boolean> mergeCompleted = new CompletableFuture<>();
-    SegmentCommitInfo info; // used by IndexWriter
+    SegmentCommitInfo info; // used by IndexWriter; the sole output of a normal merge
+    // Non-null only for a partitioned merge (getDocRangePartitions() != null), in
+    // which case it holds one SegmentCommitInfo per output. `info` stays null.
+    List<SegmentCommitInfo> infos; // used by IndexWriter
     boolean registerDone; // used by IndexWriter
     long mergeGen; // used by IndexWriter
     boolean isExternal; // used by IndexWriter
@@ -212,6 +216,32 @@ public abstract class MergePolicy {
     private final OneMergeProgress mergeProgress;
 
     volatile long mergeStartNS = -1;
+
+    private volatile boolean inputsVerified;
+
+    /**
+     * Whether this merge has already verified the checksums of every file of every input, so that a
+     * pass over them need only check that the footer is intact.
+     *
+     * <p>Each codec opens its merge by checksumming the input files it is about to read, which
+     * costs a full read of them; an ordinary merge therefore reads its inputs twice to write them
+     * once. A merge that runs several passes over the same inputs -- one per output of a
+     * partitioned merge -- would pay that once per pass, and a second verification of the same
+     * bytes cannot find anything the first one missed.
+     *
+     * @lucene.internal
+     */
+    public boolean areInputsVerified() {
+      return inputsVerified;
+    }
+
+    /**
+     * Records that every input of this merge has been verified. Only {@link IndexWriter} sets this,
+     * and only after verifying all of them, so it can never suppress a check that has not happened.
+     */
+    void markInputsVerified() {
+      inputsVerified = true;
+    }
 
     /** Total number of documents in segments to be merged, not accounting for deletions. */
     final int totalMaxDoc;
@@ -328,11 +358,100 @@ public abstract class MergePolicy {
     }
 
     /**
+     * Expert: split this merge into several output segments, each holding a contiguous doc range of
+     * every input.
+     *
+     * <p>Returns {@code null} (the default) for the usual behaviour of producing exactly one
+     * segment. Called once, <b>after</b> merge readers have been opened, so an implementation may
+     * inspect {@link #getMergeReader()} to place boundaries on real key values rather than on doc
+     * counts. Otherwise the returned array has one entry per input segment, in the order of {@link
+     * #segments}. Each entry is a non-decreasing array of {@code outputCount + 1} boundaries
+     * starting at {@code 0} and ending at that input's {@code maxDoc}: output {@code o} takes docs
+     * {@code [b[o], b[o+1])} from that input.
+     *
+     * <p><b>Cost:</b> bytes written are unaffected -- every document is written exactly once, into
+     * whichever output owns it. Reads depend on whether a format can skip by document range. The
+     * inputs are verified once for the whole merge rather than once per output, and doc values seek
+     * to the range an output owns, so those cost about what an ordinary merge costs.
+     *
+     * <p>Two formats cannot skip, and each output reads them in full: a terms dictionary is ordered
+     * by term, so a term's postings are spread across every output and masking documents saves
+     * nothing; and a block k-d tree is ordered by value, so no leaf can be skipped by document
+     * range. Both are linear in the output count. Stored fields and term vectors are read by random
+     * access per document, so an output touches only the chunks its own range falls in, plus the
+     * two it straddles -- a constant penalty rather than one that grows with the output count.
+     *
+     * <p>Note that splitting a merge does not reduce the segment count the way an ordinary merge
+     * does, so a policy that partitions also has to choose merges whose inputs belong to the same
+     * part of the key space; otherwise the same data is merged apart and back together repeatedly.
+     *
+     * <p>Expressing the split as boundaries rather than arbitrary doc sets makes the two properties
+     * {@link IndexWriter} depends on structural rather than a caller obligation: the outputs are
+     * <b>disjoint</b> and together <b>cover every document</b>. {@link IndexWriter} validates the
+     * shape and rejects the merge otherwise.
+     *
+     * <p><b>Wrapping policies must delegate this method and {@link #isPartitioned()}.</b> A wrapper
+     * such as {@link OneMergeWrappingMergePolicy} that re-wraps the {@link OneMerge} without
+     * forwarding them silently downgrades the merge to a single output -- no error, just no
+     * partitioning.
+     *
+     * <p>An index sort is not required, but it is what makes an output mean something: because
+     * every input is then sorted by the same key, a contiguous doc range is a contiguous key range,
+     * so each output holds a range of keys and is itself correctly sorted. Without one the split is
+     * still well defined -- the documents are simply distributed by position.
+     *
+     * @lucene.experimental
+     */
+    public int[][] getDocRangePartitions(List<CodecReader> readers) throws IOException {
+      return null;
+    }
+
+    /**
+     * Whether this merge produces several segments. Must be cheap: {@link IndexWriter} calls it to
+     * pick a code path, before merge readers exist.
+     *
+     * @lucene.experimental
+     */
+    public boolean isPartitioned() {
+      return false;
+    }
+
+    /** Set by IndexWriter once {@link #getDocRangePartitions(List)} has been resolved. */
+    int outputCount = 1;
+
+    /** Number of segments this merge produces; 1 unless it is partitioned. */
+    public final int getOutputCount() {
+      return outputCount;
+    }
+
+    /**
      * Expert: Sets the {@link SegmentCommitInfo} of the merged segment. Allows sub-classes to e.g.
      * {@link SegmentInfo#addDiagnostics(Map) add diagnostic} properties.
      */
     public void setMergeInfo(SegmentCommitInfo info) {
       this.info = info;
+    }
+
+    /**
+     * Expert: sets the {@link SegmentCommitInfo} of one output of a partitioned merge.
+     *
+     * @lucene.experimental
+     */
+    public void setMergeInfo(int output, SegmentCommitInfo info) {
+      if (infos == null) {
+        infos = new ArrayList<>(Collections.nCopies(outputCount, null));
+      }
+      infos.set(output, info);
+    }
+
+    /**
+     * Returns every {@link SegmentCommitInfo} this merge produced: a singleton for a normal merge,
+     * one per output for a partitioned merge. Entries may be null before the merge has run.
+     *
+     * @lucene.experimental
+     */
+    public List<SegmentCommitInfo> getMergeInfos() {
+      return infos != null ? infos : Collections.singletonList(info);
     }
 
     /**
@@ -480,9 +599,50 @@ public abstract class MergePolicy {
       }
     }
 
-    /** Returns the merge readers or an empty list if the readers were not initialized yet. */
     List<MergeReader> getMergeReader() {
       return mergeReaders;
+    }
+  }
+
+  /**
+   * A {@link OneMerge} that forwards every behavioural method to another merge.
+   *
+   * <p>Wrapping a merge by hand is error-prone: a wrapper that forgets to forward {@link
+   * OneMerge#isPartitioned()} and {@link OneMerge#getDocRangePartitions(List)} silently turns a
+   * partitioned merge back into a single-output one. Extend this instead of {@link OneMerge} when
+   * wrapping, and new behaviour is inherited automatically.
+   *
+   * @lucene.experimental
+   */
+  public static class FilterOneMerge extends OneMerge {
+    /** The merge being wrapped. */
+    protected final OneMerge in;
+
+    /** Wrap {@code in}. */
+    public FilterOneMerge(OneMerge in) {
+      super(in.segments);
+      this.in = in;
+    }
+
+    @Override
+    public boolean isPartitioned() {
+      return in.isPartitioned();
+    }
+
+    @Override
+    public int[][] getDocRangePartitions(List<CodecReader> readers) throws IOException {
+      return in.getDocRangePartitions(readers);
+    }
+
+    @Override
+    public CodecReader wrapForMerge(CodecReader reader) throws IOException {
+      return in.wrapForMerge(reader);
+    }
+
+    @Override
+    public Sorter.DocMap reorder(CodecReader reader, Directory dir, Executor executor)
+        throws IOException {
+      return in.reorder(reader, dir, executor);
     }
   }
 

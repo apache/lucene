@@ -72,11 +72,29 @@ public class OneMergeWrappingMergePolicy extends FilterMergePolicy {
     return wrapSpec(in.findFullFlushMerges(mergeTrigger, segmentInfos, mergeContext));
   }
 
+  /**
+   * Wrapping creates a new {@link MergePolicy.OneMerge}, so any behaviour not forwarded is lost.
+   * Losing partitioning would silently produce a single output instead of several, so it is checked
+   * rather than left to be discovered as missing data. Extend {@link MergePolicy.FilterOneMerge} to
+   * forward automatically.
+   */
+  private static void checkPreserved(OneMerge original, OneMerge wrapped) {
+    if (original.isPartitioned() && wrapped.isPartitioned() == false) {
+      throw new IllegalStateException(
+          "wrapping dropped the partitioning of a OneMerge: "
+              + wrapped.getClass().getName()
+              + " must forward isPartitioned()/getDocRangePartitions(List), "
+              + "e.g. by extending MergePolicy.FilterOneMerge");
+    }
+  }
+
   private MergeSpecification wrapSpec(MergeSpecification spec) {
     MergeSpecification wrapped = spec == null ? null : new MergeSpecification();
     if (wrapped != null) {
       for (OneMerge merge : spec.merges) {
-        wrapped.add(wrapOneMerge.apply(merge));
+        OneMerge w = wrapOneMerge.apply(merge);
+        checkPreserved(merge, w);
+        wrapped.add(w);
       }
     }
     return wrapped;
