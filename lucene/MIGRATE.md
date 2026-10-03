@@ -232,6 +232,64 @@ Query query = new AutomatonQuery(new Term("myfield", pattern), dfa);
 
 Corresponding methods and parameters have been renamed accordingly.
 
+## Migration from Lucene 10.5 to Lucene 10.6
+
+### Thai analysis: output of `ThaiAnalyzer`, its default stopwords and `ThaiTokenizer` changed
+
+Lucene 10.6 improves Thai analysis (GITHUB#16717, GITHUB#16718, GITHUB#16720, GITHUB#16722,
+GITHUB#16727). Most of it is additive: `ThaiCharFilter`, `ThaiNormalizationFilter`,
+`ThaiRepeatFilter` (SPI names `thai`, `thaiNormalization`, `thaiRepeat`), a user dictionary and a
+configurable buffer size for `ThaiTokenizer`. Three existing defaults also produce different terms
+than in 10.5 for some input. An index built with 10.5 may therefore stop matching queries analyzed
+with 10.6 until it is reindexed.
+
+* `ThaiAnalyzer` applies `ThaiCharFilter` to the input and runs `ThaiNormalizationFilter` and
+  `ThaiRepeatFilter` between `DecimalDigitFilter` and the stop filter. `normalize()` applies the
+  char filter and `ThaiNormalizationFilter` too. Text with decomposed Sara Am (`น` + `ํ` + `้` + `า`),
+  doubled Sara E (`เเ`), repeated or misordered vowel and tone marks, zero-width characters, or the
+  repetition mark `ๆ` is analyzed differently.
+* `ThaiAnalyzer.getDefaultStopSet()` returns a different list: 87 entries instead of 115. 30 words
+  that are common content words (for example `ผล`, `เปิด`, `ส่ง`, `ทาง`) were removed and `ทำให้` and
+  `สำหรับ` were added. Words that used to be dropped from the index are now indexed.
+* `ThaiTokenizer` treats whitespace as a safe place to cut when its 1024-character buffer fills,
+  in addition to line and paragraph separators. Only text with no sentence break for 1024 or more
+  characters is affected: a word that used to be split at the end of the buffer is no longer split,
+  and the cut points for the following text can move.
+
+Example (10.5 behavior built by hand, compared with `new ThaiAnalyzer()` from 10.6):
+
+| Input | 10.5 | 10.6 |
+|---|---|---|
+| `น` `ํ` `้` `า` + `ตาลทราย` | `นํ้าตาลทราย` | `น้ำตาล`, `ทราย` |
+| `เเมวนอนหลับ` | `เเมวน`, `อ`, `น`, `หลับ` | `แมว`, `นอน`, `หลับ` |
+| `ผลไม้และการเปิดตัวสินค้า` | `ผลไม้`, `ตัว`, `สินค้า` | `ผลไม้`, `เปิด`, `ตัว`, `สินค้า` |
+| `สวัสดีๆ` | `สวัสดี`, `ๆ` | `สวัสดี`, `สวัสดี` |
+
+To keep the 10.5 output (for example to search an existing index without reindexing), build the
+analyzer from the previous components. `legacyStopSet` is the `stopwords.txt` shipped with 10.5:
+
+```java
+Analyzer legacyThai =
+    new StopwordAnalyzerBase(legacyStopSet) {
+      @Override
+      protected TokenStreamComponents createComponents(String fieldName) {
+        Tokenizer source = new ThaiTokenizer();
+        TokenStream result = new LowerCaseFilter(source);
+        result = new DecimalDigitFilter(result);
+        result = new StopFilter(result, stopwords);
+        return new TokenStreamComponents(source, result);
+      }
+
+      @Override
+      protected TokenStream normalize(String fieldName, TokenStream in) {
+        return new DecimalDigitFilter(new LowerCaseFilter(in));
+      }
+    };
+```
+
+To restore the 10.5 buffer cut points as well, subclass `ThaiTokenizer` and override `isSafeEnd(char)`
+so that it only accepts U+000A, U+000D, U+0085, U+2028 and U+2029.
+
 ## Migration from Lucene 10.4 to Lucene 10.5
 
 ### `[Byte|Float]VectorSimilarityQuery` now performs adaptive HNSW graph traversal
