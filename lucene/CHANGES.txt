@@ -190,7 +190,7 @@ Improvements
 Optimizations
 ---------------------
 
-* GITHUB#XXXXX: Lucene99FlatVectorsWriter now aligns float32 vector data to 4096 bytes instead of 64,
+* GITHUB#16771: Lucene99FlatVectorsWriter now aligns float32 vector data to 4096 bytes instead of 64,
   so a 1024-dim vector occupies exactly one page and a rescoring read no longer straddles two.
   (Ankur Goel)
 
