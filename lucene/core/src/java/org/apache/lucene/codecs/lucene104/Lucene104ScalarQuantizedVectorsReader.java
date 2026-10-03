@@ -78,7 +78,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
   private static final long SHALLOW_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(Lucene104ScalarQuantizedVectorsReader.class);
 
-  private final Map<String, FieldEntry> fields = new HashMap<>();
+  private final Map<String, FieldEntry> fields;
   private final IndexInput quantizedVectorData;
   private final FlatVectorsReader rawVectorsReader;
   private final Lucene104ScalarQuantizedVectorScorer vectorScorer;
@@ -89,6 +89,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
       FlatVectorsReader rawVectorsReader,
       Lucene104ScalarQuantizedVectorScorer vectorsScorer)
       throws IOException {
+    this.fields = new HashMap<>();
     this.vectorScorer = vectorsScorer;
     this.rawVectorsReader = rawVectorsReader;
     int versionMeta = -1;
@@ -127,6 +128,17 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
       IOUtils.closeWhileSuppressingExceptions(t, this);
       throw t;
     }
+  }
+
+  /**
+   * Reads the same fields as {@code reader}, with the raw vectors read by {@code rawVectorsReader}.
+   */
+  private Lucene104ScalarQuantizedVectorsReader(
+      Lucene104ScalarQuantizedVectorsReader reader, FlatVectorsReader rawVectorsReader) {
+    this.fields = reader.fields;
+    this.quantizedVectorData = reader.quantizedVectorData;
+    this.vectorScorer = reader.vectorScorer;
+    this.rawVectorsReader = rawVectorsReader;
   }
 
   private void readFields(ChecksumIndexInput meta, FieldInfos infos) throws IOException {
@@ -359,6 +371,24 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
         }
       }
     }
+  }
+
+  /**
+   * A merge reads the raw vectors to quantize them again, so it reads them the way the raw reader's
+   * merge instance does.
+   */
+  @Override
+  public FlatVectorsReader getMergeInstance() throws IOException {
+    FlatVectorsReader rawMergeInstance = rawVectorsReader.getMergeInstance();
+    if (rawMergeInstance == rawVectorsReader) {
+      return this;
+    }
+    return new Lucene104ScalarQuantizedVectorsReader(this, rawMergeInstance);
+  }
+
+  @Override
+  public void finishMerge() throws IOException {
+    rawVectorsReader.finishMerge();
   }
 
   @Override

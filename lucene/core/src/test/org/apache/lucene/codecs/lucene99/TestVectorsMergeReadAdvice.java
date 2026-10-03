@@ -21,13 +21,19 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
+import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
+import org.apache.lucene.codecs.lucene104.Lucene104HnswScalarQuantizedVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.SegmentReader;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.Directory;
@@ -49,10 +55,19 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
   private static final int DIM = 8;
 
   public void testMergeOpensItsOwnVectors() throws Exception {
+    assertMergeOpensItsOwnVectors(new Lucene99HnswVectorsFormat());
+  }
+
+  /** The quantized format reads the raw vectors through the raw reader's merge instance. */
+  public void testAQuantizedMergeOpensItsOwnRawVectors() throws Exception {
+    assertMergeOpensItsOwnVectors(new Lucene104HnswScalarQuantizedVectorsFormat());
+  }
+
+  private void assertMergeOpensItsOwnVectors(KnnVectorsFormat format) throws Exception {
     Opens opens = new Opens();
     try (Directory dir = new RecordingDirectory(newDirectory(), opens)) {
       IndexWriterConfig iwc = new IndexWriterConfig();
-      iwc.setCodec(TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat()));
+      iwc.setCodec(TestUtil.alwaysKnnVectorsFormat(format));
       iwc.setUseCompoundFile(false); // so the directory sees the data file by name
       try (IndexWriter w = new IndexWriter(dir, iwc)) {
         for (int segment = 0; segment < 2; segment++) {
@@ -85,6 +100,81 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
           "the merge re-advised the vectors searches are reading: " + opens,
           List.of(),
           opens.advised());
+    }
+  }
+
+  /** A reader a merge opened already reads the vectors the way a merge does. */
+  public void testAMergeReadsThroughTheReaderItOpened() throws Exception {
+    Opens opens = new Opens();
+    try (Directory dir = new RecordingDirectory(newDirectory(), opens)) {
+      IndexWriterConfig iwc = new IndexWriterConfig();
+      iwc.setCodec(TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat()));
+      iwc.setUseCompoundFile(false);
+      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+        for (int segment = 0; segment < 2; segment++) {
+          for (int i = 0; i < 16; i++) {
+            Document doc = new Document();
+            doc.add(
+                new KnnFloatVectorField("field", vector(), VectorSimilarityFunction.DOT_PRODUCT));
+            w.addDocument(doc);
+          }
+          w.commit();
+        }
+        // no reader is open, so the merge opens the segments itself, with a merge context
+        opens.clear();
+        w.forceMerge(1);
+      }
+      assertEquals(
+          "the merge mapped vectors its own readers already map: " + opens,
+          List.of(),
+          sequentialOpens(opens));
+      assertEquals("the merge re-advised the vectors: " + opens, List.of(), opens.advised());
+    }
+  }
+
+  /** Searches that do not read the vectors at random leave nothing for a merge to undo. */
+  public void testNoMappingWhenSearchesDoNotReadAtRandom() throws Exception {
+    Opens opens = new Opens();
+    try (Directory dir = new RecordingDirectory(newDirectory(), opens)) {
+      IndexWriterConfig iwc = new IndexWriterConfig();
+      iwc.setCodec(TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat()));
+      iwc.setUseCompoundFile(false);
+      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+        for (int i = 0; i < 16; i++) {
+          Document doc = new Document();
+          doc.add(new KnnFloatVectorField("field", vector(), VectorSimilarityFunction.DOT_PRODUCT));
+          w.addDocument(doc);
+        }
+        w.commit();
+      }
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        SegmentReader segment = (SegmentReader) getOnlyLeafReader(reader);
+        String vectorData = null;
+        for (String file : segment.getSegmentInfo().files()) {
+          if (file.endsWith("." + Lucene99FlatVectorsFormat.VECTOR_DATA_EXTENSION)) {
+            vectorData = file;
+          }
+        }
+        assertNotNull(vectorData);
+        String segmentName = segment.getSegmentInfo().info.name;
+        // the per-field suffix, between the segment name and the extension
+        String suffix = vectorData.substring(segmentName.length() + 1, vectorData.lastIndexOf('.'));
+        SegmentReadState state =
+            new SegmentReadState(
+                dir,
+                segment.getSegmentInfo().info,
+                segment.getFieldInfos(),
+                IOContext.DEFAULT,
+                suffix);
+        try (FlatVectorsReader flat =
+            new Lucene99FlatVectorsFormat(FlatVectorScorerUtil.getLucene99FlatVectorsScorer())
+                .fieldsReader(state)) {
+          opens.clear();
+          assertSame(flat, flat.getMergeInstance());
+          flat.finishMerge();
+          assertEquals("nothing to map again: " + opens, List.of(), opens.all());
+        }
+      }
     }
   }
 

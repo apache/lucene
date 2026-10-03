@@ -210,6 +210,9 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
 
   @Override
   public FlatVectorsReader getMergeInstance() throws IOException {
+    if (mergeNeedsItsOwnMapping() == false) {
+      return this;
+    }
     IndexInput data = original.mergeVectorData();
     boolean success = false;
     try {
@@ -224,30 +227,35 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   }
 
   /**
+   * Whether a merge has to map the file again: only when searches read it at random. Otherwise the
+   * mapping searches use carries no advice a merge reading front to back would suffer from, and a
+   * reader a merge opened already reads the file the way a merge does.
+   */
+  private boolean mergeNeedsItsOwnMapping() {
+    return dataContext.context() != IOContext.Context.MERGE
+        && dataContext.hints().contains(DataAccessHint.RANDOM);
+  }
+
+  /**
    * The vectors as a merge reads them, front to back and once. Advice belongs to a mapping, so a
    * merge maps the file again. Mapped on the first merge, released by {@link #finishMerge()}.
    */
   private synchronized IndexInput mergeVectorData() throws IOException {
     assert original == this;
     if (mergeVectorData == null) {
-      if (dataContext.context() == IOContext.Context.MERGE) {
-        // opened by a merge to begin with, so it already reads the file front to back
+      try {
+        mergeVectorData =
+            directory.openInput(
+                vectorDataFN,
+                IOContext.merge()
+                    .withHints(
+                        FileTypeHint.DATA,
+                        FileDataHint.KNN_VECTORS,
+                        DataAccessHint.SEQUENTIAL,
+                        NoReuseHint.INSTANCE));
+      } catch (FileNotFoundException | NoSuchFileException _) {
+        // an open reader outlives its files, so fall back to the mapping it already holds
         mergeVectorData = vectorData;
-      } else {
-        try {
-          mergeVectorData =
-              directory.openInput(
-                  vectorDataFN,
-                  IOContext.merge()
-                      .withHints(
-                          FileTypeHint.DATA,
-                          FileDataHint.KNN_VECTORS,
-                          DataAccessHint.SEQUENTIAL,
-                          NoReuseHint.INSTANCE));
-        } catch (FileNotFoundException | NoSuchFileException _) {
-          // an open reader outlives its files, so fall back to the mapping it already holds
-          mergeVectorData = vectorData;
-        }
       }
     }
     mergeInstances++;
@@ -382,7 +390,9 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
    */
   @Override
   public void finishMerge() throws IOException {
-    original.releaseMergeVectorData();
+    if (mergeNeedsItsOwnMapping()) {
+      original.releaseMergeVectorData();
+    }
   }
 
   private synchronized void releaseMergeVectorData() throws IOException {
