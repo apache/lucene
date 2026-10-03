@@ -70,6 +70,8 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
   private final MergeInput mergeVectorData;
   // whether this is a merge instance, reading through mergeVectorData
   private final boolean mergeInstance;
+  // on a merge instance: whether it gave its mappings back
+  private boolean finished;
 
   DedupFlatVectorsReader(
       SegmentReadState state,
@@ -383,9 +385,14 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
     }
   }
 
+  /**
+   * Gives back the mapping this merge instance holds, once: finishing the reader it came from, or
+   * finishing it again, releases nothing.
+   */
   @Override
-  public void finishMerge() throws IOException {
-    if (mergeInstance) {
+  public synchronized void finishMerge() throws IOException {
+    if (mergeInstance && finished == false) {
+      finished = true;
       mergeVectorData.release();
     }
   }

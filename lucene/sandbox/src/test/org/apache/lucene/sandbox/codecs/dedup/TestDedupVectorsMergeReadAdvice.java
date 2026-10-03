@@ -144,6 +144,7 @@ public class TestDedupVectorsMergeReadAdvice extends LuceneTestCase {
         w.commit();
       }
       List<Open> mapped;
+      KnnVectorsReader abandoned;
       try (DirectoryReader reader = DirectoryReader.open(dir)) {
         KnnVectorsReader vectors =
             ((CodecReader) getOnlyLeafReader(reader))
@@ -161,17 +162,23 @@ public class TestDedupVectorsMergeReadAdvice extends LuceneTestCase {
 
         first.finishMerge();
         assertFalse("still held by the second instance: " + opens, mapped.get(0).closed());
+        first.finishMerge();
+        assertFalse("finishing twice released another's hold: " + opens, mapped.get(0).closed());
+        vectors.finishMerge();
+        assertFalse("the reader itself holds nothing to release: " + opens, mapped.get(0).closed());
 
         second.finishMerge();
         assertTrue("released by the last instance: " + opens, mapped.get(0).closed());
 
         // a merge instance nobody finishes, as an abandoned merge leaves behind
-        vectors.getMergeInstance();
+        abandoned = vectors.getMergeInstance();
         mapped = mergeOpens(opens, "vdd");
         assertEquals("a later merge maps it again: " + opens, 2, mapped.size());
         assertFalse(mapped.get(1).closed());
       }
       assertTrue("closed with the reader: " + mapped.get(1), mapped.get(1).closed());
+      // and finishing it afterwards does not close it a second time
+      abandoned.finishMerge();
     }
   }
 

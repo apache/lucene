@@ -80,6 +80,7 @@ final class MergeInput implements Closeable {
 
   /** Gives back the mapping of a merge that is done, closing it after the last one. */
   synchronized void release() throws IOException {
+    assert merges > 0;
     if (--merges > 0) {
       return;
     }
@@ -100,14 +101,22 @@ final class MergeInput implements Closeable {
 
   @Override
   public void close() throws IOException {
-    IndexInput toClose = mappingToClose();
+    IndexInput toClose = takeMapping();
     if (toClose != null) {
       toClose.close();
     }
   }
 
-  /** The mapping a merge opened, read under the lock that guards it, closed outside it. */
-  private synchronized IndexInput mappingToClose() {
-    return mergeInput != searchInput ? mergeInput : null;
+  /**
+   * The mapping a merge opened, taken under the lock that guards it so that a merge finishing later
+   * does not close it again, and closed outside it.
+   */
+  private synchronized IndexInput takeMapping() {
+    if (mergeInput == searchInput) {
+      return null;
+    }
+    IndexInput toClose = mergeInput;
+    mergeInput = null;
+    return toClose;
   }
 }

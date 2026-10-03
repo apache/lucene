@@ -89,6 +89,8 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
   private final MergeInput mergeQuantizedVectorData;
   // whether this is a merge instance, reading through the merge inputs
   private final boolean mergeInstance;
+  // on a merge instance: whether it gave its mappings back
+  private boolean finished;
 
   DedupScalarQuantizedVectorsReader(
       SegmentReadState state,
@@ -606,9 +608,14 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
     }
   }
 
+  /**
+   * Gives back the mappings this merge instance holds, once: finishing the reader it came from, or
+   * finishing it again, releases nothing.
+   */
   @Override
-  public void finishMerge() throws IOException {
-    if (mergeInstance) {
+  public synchronized void finishMerge() throws IOException {
+    if (mergeInstance && finished == false) {
+      finished = true;
       IOUtils.close(mergeVectorData::release, mergeQuantizedVectorData::release);
     }
   }
