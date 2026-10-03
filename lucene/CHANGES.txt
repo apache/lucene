@@ -483,6 +483,10 @@ Optimizations
   ordinal to group ordinal mapping at the minimum bit width required for the largest group ordinal,
   instead of a fixed 32-bit width. (Pranshu Shukla)
 
+* GITHUB#16769: Merges now also open their own mapping of the raw vectors behind the scalar-quantized
+  and Faiss formats, and of the de-duplicating formats' data files. A merge does so only when
+  searches read the file at random. (Jim Ferenczi)
+
 * GITHUB#16749: Merges now open the raw vectors for themselves and state that they read the data
   file sequentially, instead of changing the advice on the mapping searches read at random. The
   vectors writers now state what file they are writing, and the raw vectors a quantized format keeps
