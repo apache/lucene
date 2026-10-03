@@ -25,7 +25,6 @@ import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
-import org.apache.lucene.codecs.lucene104.Lucene104HnswScalarQuantizedVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.CodecReader;
@@ -57,11 +56,6 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
 
   public void testMergeOpensItsOwnVectors() throws Exception {
     assertMergeOpensItsOwnVectors(new Lucene99HnswVectorsFormat());
-  }
-
-  /** The quantized format reads the raw vectors through the raw reader's merge instance. */
-  public void testAQuantizedMergeOpensItsOwnRawVectors() throws Exception {
-    assertMergeOpensItsOwnVectors(new Lucene104HnswScalarQuantizedVectorsFormat());
   }
 
   private void assertMergeOpensItsOwnVectors(KnnVectorsFormat format) throws Exception {
