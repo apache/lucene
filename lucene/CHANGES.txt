@@ -190,6 +190,10 @@ Improvements
 Optimizations
 ---------------------
 
+* GITHUB#XXXXX: Lucene99FlatVectorsWriter now aligns float32 vector data to 4096 bytes instead of 64,
+  so a 1024-dim vector occupies exactly one page and a rescoring read no longer straddles two.
+  (Ankur Goel)
+
 * GITHUB#16431: Add support for Block-Max WAND dynamic score skipping in FunctionScoreQuery
   and DoubleValuesSource using DocValuesSkipper. (Rajat Jain)
 

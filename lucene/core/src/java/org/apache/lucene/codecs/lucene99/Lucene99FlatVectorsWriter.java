@@ -189,7 +189,10 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
         switch (encoding) {
           case BYTE -> Float.BYTES;
           case FLOAT16 -> Float.BYTES;
-          case FLOAT32 -> 64; // optimal alignment for Arm Neoverse machines.
+          // page-aligned, so a vector whose size is a multiple of 4 KB (e.g. 1024 dims) occupies
+          // whole pages and a rescoring read touches no extra page. Also a multiple of the 64-byte
+          // alignment that is optimal for Arm Neoverse machines.
+          case FLOAT32 -> 4096;
         });
   }
 
