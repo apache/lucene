@@ -25,15 +25,25 @@ import static org.hamcrest.Matchers.oneOf;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Locale;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.IntPredicate;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
+import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
+import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
+import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
+import org.apache.lucene.codecs.hnsw.FlatVectorsWriter.MergeScorerData;
+import org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsWriter;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.KnnFloat16VectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
@@ -43,10 +53,17 @@ import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.MergeState;
+import org.apache.lucene.index.NoMergePolicy;
+import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentReader;
 import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.index.SerialMergeScheduler;
+import org.apache.lucene.index.TieredMergePolicy;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.TopDocs;
@@ -103,7 +120,7 @@ public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVector
         "Lucene104HnswScalarQuantizedVectorsFormat(name=Lucene104HnswScalarQuantizedVectorsFormat,"
             + " maxConn=10, beamWidth=20, tinySegmentsThreshold=100,"
             + " flatVectorFormat=Lucene104ScalarQuantizedVectorsFormat(name=Lucene104ScalarQuantizedVectorsFormat,"
-            + " encoding=UNSIGNED_BYTE, mode=CENTERED,"
+            + " encoding=UNSIGNED_BYTE,"
             + " flatVectorScorer=Lucene104ScalarQuantizedVectorScorer(nonQuantizedDelegate=%s()),"
             + " rawVectorFormat=Lucene99FlatVectorsFormat(vectorsScorer=%s())))";
 
@@ -277,36 +294,6 @@ public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVector
                 ScalarEncoding.UNSIGNED_BYTE, 20, 100, 1, new SameThreadExecutorService()));
   }
 
-  public void testDataBlindWithoutFloatsRejectsAsymmetricEncodings() {
-    for (ScalarEncoding encoding : ScalarEncoding.values()) {
-      if (encoding.isAsymmetric()) {
-        IllegalArgumentException e =
-            expectThrows(
-                IllegalArgumentException.class,
-                () ->
-                    new Lucene104HnswScalarQuantizedVectorsFormat(
-                        encoding,
-                        Lucene104ScalarQuantizedVectorsFormat.Mode.DATA_BLIND_WITHOUT_FLOATS,
-                        Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
-                        Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH,
-                        1,
-                        null,
-                        Lucene99HnswVectorsFormat.HNSW_GRAPH_THRESHOLD));
-        assertTrue(e.getMessage(), e.getMessage().contains(encoding.toString()));
-      } else {
-        assertNotNull(
-            new Lucene104HnswScalarQuantizedVectorsFormat(
-                encoding,
-                Lucene104ScalarQuantizedVectorsFormat.Mode.DATA_BLIND_WITHOUT_FLOATS,
-                Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
-                Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH,
-                1,
-                null,
-                Lucene99HnswVectorsFormat.HNSW_GRAPH_THRESHOLD));
-      }
-    }
-  }
-
   // Ensures that all expected vector similarity functions are translatable in the format.
   public void testVectorSimilarityFuncs() {
     // This does not necessarily have to be all similarity functions, but
@@ -341,67 +328,162 @@ public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVector
     }
   }
 
-  public void testDataBlindHnswSearch() throws Exception {
-    String fieldName = "field";
-    int numVectors = random().nextInt(99, 500);
-    int dims = random().nextInt(12, 65);
-    VectorSimilarityFunction similarityFunction = randomSimilarity();
-    // asymmetric encodings are rejected with DATA_BLIND_WITHOUT_FLOATS, so restrict to symmetric
-    // ones; the encoding field may itself be asymmetric since it is chosen randomly in setUp
-    ScalarEncoding dataBlindEncoding = encoding;
-    while (dataBlindEncoding.isAsymmetric()) {
-      dataBlindEncoding = ScalarEncoding.values()[random().nextInt(ScalarEncoding.values().length)];
-    }
-    KnnVectorsFormat dataBlind =
-        new Lucene104HnswScalarQuantizedVectorsFormat(
-            dataBlindEncoding,
-            Lucene104ScalarQuantizedVectorsFormat.Mode.DATA_BLIND_WITHOUT_FLOATS,
-            Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
-            Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH,
-            1,
-            null,
-            Lucene99HnswVectorsFormat.HNSW_GRAPH_THRESHOLD);
-    try (Directory dir = newDirectory()) {
-      try (IndexWriter w =
-          new IndexWriter(
-              dir, newIndexWriterConfig().setCodec(TestUtil.alwaysKnnVectorsFormat(dataBlind)))) {
-        int k = random().nextInt(5, 30);
-        for (int i = 0; i < numVectors; i++) {
-          Document doc = new Document();
-          float[] vector = randomVector(dims);
-          if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT) {
-            vector = VectorUtil.l2normalize(vector);
-          }
-          doc.add(new KnnFloatVectorField(fieldName, vector, similarityFunction));
-          w.addDocument(doc);
-          if (i % 50 == 0) {
-            w.commit(); // create multiple segments to exercise the data-blind merge path
-          }
+  /**
+   * Verifies where merging gets the quantized scorer supplier used to build the HNSW graph: from
+   * query data the flat writer prepared ({@link
+   * Lucene104ScalarQuantizedVectorsWriter#mergeOneFlatVectorFieldForMergeScorer}) for asymmetric
+   * encodings, otherwise from {@link
+   * Lucene104ScalarQuantizedVectorsReader#getRandomVectorScorerSupplierForMerge}.
+   */
+  public void testMergeScorer() throws IOException {
+    int dim = 8;
+
+    for (ScalarEncoding scalarEncoding : ScalarEncoding.values()) {
+      for (VectorEncoding vectorEncoding : VectorEncoding.values()) {
+        if (vectorEncoding.isFloatingPoint() == false) { // not applicable for BYTE
+          continue;
         }
-        w.commit();
-        float[] query = randomVector(dims);
-        if (similarityFunction == VectorSimilarityFunction.DOT_PRODUCT) {
-          query = VectorUtil.l2normalize(query);
-        }
-        // Merge the data-blind segments into one, then read and search the single leaf.
-        w.forceMerge(1);
-        try (IndexReader reader = DirectoryReader.open(w)) {
-          LeafReader r = getOnlyLeafReader(reader);
-          FloatVectorValues vectorValues = r.getFloatVectorValues(fieldName);
-          // Data-blind segments expose a bare dequantizing view; no raw float vectors are present.
-          assertFalse(
-              vectorValues
-                  instanceof Lucene104ScalarQuantizedVectorsReader.ScalarQuantizedVectorValues);
-          TopDocs td =
-              r.searchNearestVectors(
-                  fieldName,
-                  query,
-                  k,
-                  AcceptDocs.fromLiveDocs(null, r.maxDoc()),
-                  Integer.MAX_VALUE);
-          assertEquals(k, td.scoreDocs.length);
+
+        MergeScorerCounts counts = new MergeScorerCounts();
+        IndexWriterConfig config =
+            newIndexWriterConfig()
+                .setCodec(
+                    TestUtil.alwaysKnnVectorsFormat(
+                        new MergeScorerCountingFormat(scalarEncoding, counts)))
+                .setMergeScheduler(new SerialMergeScheduler())
+                .setMergePolicy(NoMergePolicy.INSTANCE); // no merges while indexing
+
+        try (Directory dir = newDirectory();
+            IndexWriter w = new IndexWriter(dir, config)) {
+          for (int i = 0; i < 2; i++) {
+            Document document = new Document();
+
+            IndexableField field =
+                switch (vectorEncoding) {
+                  case BYTE ->
+                      throw new IllegalStateException("not expected to run for byte vectors");
+                  case FLOAT16 ->
+                      new KnnFloat16VectorField(
+                          "v", randomNormalizedFloat16Vector(dim), DOT_PRODUCT);
+                  case FLOAT32 ->
+                      new KnnFloatVectorField("v", randomNormalizedVector(dim), DOT_PRODUCT);
+                };
+            document.add(field);
+
+            w.addDocument(document);
+            w.commit();
+          }
+
+          String fields = vectorEncoding + " x " + scalarEncoding;
+          String preparedMessage =
+              fields + ": merge scorer data prepared by mergeOneFlatVectorFieldForMergeScorer";
+          String fromReaderMessage = fields + ": calls to getRandomVectorScorerSupplierForMerge";
+
+          // the merge scorer is only requested during merges, never on flush
+          assertEquals(preparedMessage + " before merge", 0, counts.prepared.get());
+          assertEquals(fromReaderMessage + " before merge", 0, counts.fromReader.get());
+
+          w.getConfig().setMergePolicy(new TieredMergePolicy());
+          w.forceMerge(1);
+
+          // asymmetric encodings get their merge scorer from query data the flat writer prepared
+          // while merging; symmetric encodings ask the merged reader for it
+          boolean expectPrepared = scalarEncoding.isAsymmetric();
+          assertEquals(preparedMessage, expectPrepared ? 1 : 0, counts.prepared.get());
+          assertEquals(fromReaderMessage, expectPrepared ? 0 : 1, counts.fromReader.get());
         }
       }
+    }
+  }
+
+  /** Counts how merges obtained the scorer supplier used to build the HNSW graph. */
+  private static final class MergeScorerCounts {
+    /** Non-null {@link MergeScorerData} returned by the flat writer while merging a field. */
+    final AtomicInteger prepared = new AtomicInteger();
+
+    /**
+     * Calls to {@link Lucene104ScalarQuantizedVectorsReader#getRandomVectorScorerSupplierForMerge}.
+     */
+    final AtomicInteger fromReader = new AtomicInteger();
+  }
+
+  /**
+   * Same as {@link Lucene104HnswScalarQuantizedVectorsFormat}, except that merges use a flat writer
+   * and reader that record in {@link MergeScorerCounts} where the merge scorer came from. Keeps the
+   * parent's name so that segments are still read back via SPI with the regular format.
+   */
+  private static final class MergeScorerCountingFormat
+      extends Lucene104HnswScalarQuantizedVectorsFormat {
+    private final FlatVectorsFormat flatVectorsFormat;
+
+    MergeScorerCountingFormat(ScalarEncoding encoding, MergeScorerCounts counts) {
+      // tinySegmentsThreshold=0 so a graph (and hence the merge scorer) is always built
+      super(
+          encoding,
+          Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
+          Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH,
+          1,
+          null,
+          0);
+      FlatVectorsFormat delegate = new Lucene104ScalarQuantizedVectorsFormat(encoding);
+      FlatVectorsFormat rawVectorsFormat =
+          new Lucene99FlatVectorsFormat(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
+      Lucene104ScalarQuantizedVectorScorer scorer =
+          new Lucene104ScalarQuantizedVectorScorer(
+              FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
+
+      this.flatVectorsFormat =
+          new FlatVectorsFormat(delegate.getName()) {
+            @Override
+            public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
+              return new Lucene104ScalarQuantizedVectorsWriter(
+                  state, encoding, rawVectorsFormat.fieldsWriter(state), scorer) {
+                @Override
+                public MergeScorerData mergeOneFlatVectorFieldForMergeScorer(
+                    FieldInfo fieldInfo, MergeState mergeState, IntPredicate needsMergeScorer)
+                    throws IOException {
+                  MergeScorerData prepared =
+                      super.mergeOneFlatVectorFieldForMergeScorer(
+                          fieldInfo, mergeState, needsMergeScorer);
+                  if (prepared != null) {
+                    counts.prepared.incrementAndGet();
+                  }
+                  return prepared;
+                }
+              };
+            }
+
+            @Override
+            public FlatVectorsReader fieldsReader(SegmentReadState state) throws IOException {
+              return new Lucene104ScalarQuantizedVectorsReader(
+                  state, rawVectorsFormat.fieldsReader(state), scorer) {
+                @Override
+                public CloseableRandomVectorScorerSupplier getRandomVectorScorerSupplierForMerge(
+                    FieldInfo fieldInfo, SegmentWriteState segmentWriteState) throws IOException {
+                  counts.fromReader.incrementAndGet();
+                  return super.getRandomVectorScorerSupplierForMerge(fieldInfo, segmentWriteState);
+                }
+              };
+            }
+
+            @Override
+            public int getMaxDimensions(String fieldName) {
+              return delegate.getMaxDimensions(fieldName);
+            }
+          };
+    }
+
+    @Override
+    public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
+      return new Lucene99HnswVectorsWriter(
+          state,
+          Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
+          Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH,
+          flatVectorsFormat,
+          flatVectorsFormat.fieldsWriter(state),
+          1,
+          null,
+          0);
     }
   }
 
