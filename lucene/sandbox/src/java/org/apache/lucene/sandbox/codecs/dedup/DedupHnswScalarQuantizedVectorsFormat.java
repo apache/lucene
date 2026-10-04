@@ -33,7 +33,6 @@ import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.MergeScheduler;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.FileDataHint;
 import org.apache.lucene.store.FileTypeHint;
@@ -80,8 +79,10 @@ public final class DedupHnswScalarQuantizedVectorsFormat extends KnnVectorsForma
   /** The format for storing, reading, and merging vectors on disk. */
   private final FlatVectorsFormat flatVectorsFormat;
 
-  private final int numMergeWorkers;
-  private final TaskExecutor mergeExec;
+  // TODO: wire concurrent merge through to DedupHnswVectorsWriter. The numMergeWorkers/mergeExec
+  //  constructor params are currently validated but not used (the writer merges single-threaded),
+  //  so they are not retained as fields. Pass them to the writer once concurrent merge is
+  // supported.
 
   /**
    * The threshold to use to bypass HNSW graph building for tiny segments in terms of k for a graph
@@ -200,12 +201,6 @@ public final class DedupHnswScalarQuantizedVectorsFormat extends KnnVectorsForma
     if (numMergeWorkers == 1 && mergeExec != null) {
       throw new IllegalArgumentException(
           "No executor service is needed as we'll use single thread to merge");
-    }
-    this.numMergeWorkers = numMergeWorkers;
-    if (mergeExec != null) {
-      this.mergeExec = new TaskExecutor(mergeExec);
-    } else {
-      this.mergeExec = null;
     }
   }
 

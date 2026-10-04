@@ -171,76 +171,130 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
     };
   }
 
-  /** Builds the HNSW graph over the field's distinct vectors and writes it plus the postings. */
+  /** Builds and writes the HNSW graph for a field, choosing a per-field layout. */
   private void buildAndWriteGraph(FieldInfo fieldInfo) throws IOException {
     // TODO: build incrementally as new distinct vectors are introduced, instead of all at once
     //  here. Insert a node the first time each distinct vector appears (keyed by its first-seen
     //  index) via HnswGraphBuilder#addGraphNode, then on flush remap first-seen ids to the final
     //  group ordinals when writing neighbor lists and postings. This should smoothen the peak
-    // memory
-    //  and flush latency.
+    //  memory and flush latency.
     DedupVectorValues dedupValues = getDedupVectorValues(fieldInfo);
-    if (dedupValues == null) {
+    if (dedupValues == null || dedupValues.getGroupView().size() == 0) {
       writeEmptyField(fieldInfo);
       return;
     }
 
-    KnnVectorValues groupView = dedupValues.getGroupView();
-    int groupCount = groupView.size();
-    KnnVectorValues fieldView = (KnnVectorValues) dedupValues;
-    int fieldOrdCount = fieldView.size();
+    int groupCount = dedupValues.getGroupView().size();
+    int fieldOrdCount = ((KnnVectorValues) dedupValues).size();
 
-    if (groupCount == 0) {
-      writeEmptyField(fieldInfo);
-      return;
+    // When there is no effective de-duplication (every document has a distinct vector), the group
+    // machinery is pure overhead, so build a plain document-space graph; otherwise de-duplicate.
+    if (selectMode(groupCount, fieldOrdCount) == DedupLayoutMode.PLAIN) {
+      writePlainField(fieldInfo, dedupValues, fieldOrdCount);
+    } else {
+      writeDedupField(fieldInfo, dedupValues, groupCount, fieldOrdCount);
     }
+  }
 
-    // Skip building the HNSW graph for tiny segments (like Lucene99HnswVectorsWriter): search will
-    // scan the distinct vectors exhaustively. The threshold is evaluated over the group (distinct
-    // vector) count, since that is the graph's node count. We still write the group-to-field-ords
-    // map so search can expand matches to documents.
-    OnHeapHnswGraph graph = null;
+  /**
+   * PLAIN layout: one graph node per document (field ordinal), scored at full precision, with no
+   * postings. Search then behaves like a vanilla HNSW search.
+   */
+  private void writePlainField(
+      FieldInfo fieldInfo, DedupVectorValues dedupValues, int fieldOrdCount) throws IOException {
+    DedupFlatVectorsScorer scorer =
+        (DedupFlatVectorsScorer) flatVectorsReader.getFlatVectorScorer(fieldInfo.name);
+
     long graphDataOffset = graphData.getFilePointer();
-    int[][] graphLevelNodeOffsets = new int[0][];
-    if (shouldCreateGraph(tinySegmentsThreshold, groupCount)) {
-      DedupFlatVectorsScorer scorer =
-          (DedupFlatVectorsScorer) flatVectorsReader.getFlatVectorScorer(fieldInfo.name);
-      // Graph construction will use the raw group vectors (never the quantized view).
-      RandomVectorScorerSupplier scorerSupplier =
-          scorer.getGroupRandomVectorScorerSupplier(
-              fieldInfo.getVectorSimilarityFunction(), dedupValues);
-
-      HnswGraphBuilder builder =
-          HnswGraphBuilder.create(
-              scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed, groupCount);
-      builder.setInfoStream(segmentWriteState.infoStream);
-      graph = builder.build(groupCount);
-
-      // write graph neighbors (group-ordinal space)
-      graphLevelNodeOffsets = writeGraph(graph);
-    }
+    OnHeapHnswGraph graph =
+        maybeBuildGraph(
+            fieldOrdCount,
+            scorer.getPlainRandomVectorScorerSupplier(
+                fieldInfo.getVectorSimilarityFunction(), dedupValues));
+    int[][] graphLevelNodeOffsets = writeGraph(graph);
     long graphDataLength = graphData.getFilePointer() - graphDataOffset;
-
-    // build the postings: groupOrd -> list of field ordinals
-    // TODO: the flattened field ordinals are written as plain ints in writeMeta. Store them more
-    //  compactly (e.g. bit-packed via DirectWriter, like the forward fieldOrdToGroupOrd map) to
-    //  reduce index size. Size only; correctness is unaffected.
-    FieldOrdToGroupOrd fieldOrdToGroupOrd = dedupValues.getFieldOrdToGroupOrd();
-    int[] groupOffsets = new int[groupCount + 1];
-    int[] flattenedFieldOrds = new int[fieldOrdCount];
-    computeDistinctVectorPostings(
-        fieldOrdToGroupOrd, fieldOrdCount, groupCount, groupOffsets, flattenedFieldOrds);
 
     writeMeta(
         fieldInfo,
+        DedupLayoutMode.PLAIN,
+        fieldOrdCount,
+        fieldOrdCount,
+        fieldOrdCount,
+        graphDataOffset,
+        graphDataLength,
+        graph,
+        graphLevelNodeOffsets,
+        new int[0],
+        new int[0]);
+  }
+
+  /**
+   * DEDUP layout: one graph node per distinct vector (group ordinal), plus a {@code
+   * DistinctVectorPostings} that maps each group back to its documents.
+   */
+  private void writeDedupField(
+      FieldInfo fieldInfo, DedupVectorValues dedupValues, int groupCount, int fieldOrdCount)
+      throws IOException {
+    DedupFlatVectorsScorer scorer =
+        (DedupFlatVectorsScorer) flatVectorsReader.getFlatVectorScorer(fieldInfo.name);
+
+    long graphDataOffset = graphData.getFilePointer();
+    OnHeapHnswGraph graph =
+        maybeBuildGraph(
+            groupCount,
+            scorer.getGroupRandomVectorScorerSupplier(
+                fieldInfo.getVectorSimilarityFunction(), dedupValues));
+    int[][] graphLevelNodeOffsets = writeGraph(graph);
+    long graphDataLength = graphData.getFilePointer() - graphDataOffset;
+
+    // TODO: the flattened field ordinals are written as plain ints in writeMeta. Store them more
+    //  compactly (e.g. bit-packed via DirectWriter, like the forward fieldOrdToGroupOrd map) to
+    //  reduce index size. Size only; correctness is unaffected.
+    int[] groupOffsets = new int[groupCount + 1];
+    int[] flattenedFieldOrds = new int[fieldOrdCount];
+    computeDistinctVectorPostings(
+        dedupValues.getFieldOrdToGroupOrd(),
+        fieldOrdCount,
+        groupCount,
+        groupOffsets,
+        flattenedFieldOrds);
+
+    writeMeta(
+        fieldInfo,
+        DedupLayoutMode.DEDUP,
         groupCount,
         fieldOrdCount,
+        groupCount,
         graphDataOffset,
         graphDataLength,
         graph,
         graphLevelNodeOffsets,
         groupOffsets,
         flattenedFieldOrds);
+  }
+
+  /**
+   * Builds an HNSW graph of {@code nodeCount} nodes from {@code scorerSupplier}, or returns {@code
+   * null} for tiny segments where a full scan is cheaper (mirrors {@link
+   * org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsWriter}).
+   */
+  private OnHeapHnswGraph maybeBuildGraph(int nodeCount, RandomVectorScorerSupplier scorerSupplier)
+      throws IOException {
+    if (shouldCreateGraph(tinySegmentsThreshold, nodeCount) == false) {
+      return null;
+    }
+    HnswGraphBuilder builder =
+        HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed, nodeCount);
+    builder.setInfoStream(segmentWriteState.infoStream);
+    return builder.build(nodeCount);
+  }
+
+  /**
+   * Chooses {@link DedupLayoutMode#PLAIN} when the field has no effective de-duplication (one
+   * distinct vector per document), otherwise {@link DedupLayoutMode#DEDUP}.
+   */
+  private static DedupLayoutMode selectMode(int groupCount, int fieldOrdCount) {
+    return groupCount == fieldOrdCount ? DedupLayoutMode.PLAIN : DedupLayoutMode.DEDUP;
   }
 
   /**
@@ -348,8 +402,10 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
 
   private void writeMeta(
       FieldInfo field,
+      DedupLayoutMode mode,
       int groupCount,
       int fieldOrdCount,
+      int graphNodeCount,
       long graphDataOffset,
       long graphDataLength,
       HnswGraph graph,
@@ -360,10 +416,11 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
     meta.writeInt(field.number);
     meta.writeInt(groupCount);
     meta.writeInt(fieldOrdCount);
+    mode.write(meta);
     meta.writeVLong(graphDataOffset);
     meta.writeVLong(graphDataLength);
 
-    // graph nodes on each level (group-ordinal space)
+    // graph nodes on each level (group-ordinal space for DEDUP, field-ordinal space for PLAIN)
     if (graph == null) {
       meta.writeVInt(M);
       meta.writeVInt(0);
@@ -388,7 +445,7 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
             meta.writeVInt(n);
           }
         } else {
-          assert nodesOnLevel.size() == groupCount : "Level 0 expects to have all group nodes";
+          assert nodesOnLevel.size() == graphNodeCount : "Level 0 expects to have all graph nodes";
         }
       }
       long start = graphData.getFilePointer();
@@ -408,26 +465,29 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
       meta.writeLong(graphData.getFilePointer() - start);
     }
 
-    // Postings offsets (monotonic): groupCount + 1 entries.
-    long groupOffsetsStart = graphData.getFilePointer();
-    meta.writeLong(groupOffsetsStart);
-    meta.writeVInt(DIRECT_MONOTONIC_BLOCK_SHIFT);
-    DirectMonotonicWriter groupOffsetsWriter =
-        DirectMonotonicWriter.getInstance(
-            meta, graphData, groupCount + 1L, DIRECT_MONOTONIC_BLOCK_SHIFT);
-    for (int offset : groupOffsets) {
-      groupOffsetsWriter.add(offset);
-    }
-    groupOffsetsWriter.finish();
-    meta.writeLong(graphData.getFilePointer() - groupOffsetsStart);
+    // Postings are only written in DEDUP mode (PLAIN nodes are already documents).
+    if (mode == DedupLayoutMode.DEDUP) {
+      // Postings offsets (monotonic): groupCount + 1 entries.
+      long groupOffsetsStart = graphData.getFilePointer();
+      meta.writeLong(groupOffsetsStart);
+      meta.writeVInt(DIRECT_MONOTONIC_BLOCK_SHIFT);
+      DirectMonotonicWriter groupOffsetsWriter =
+          DirectMonotonicWriter.getInstance(
+              meta, graphData, groupCount + 1L, DIRECT_MONOTONIC_BLOCK_SHIFT);
+      for (int offset : groupOffsets) {
+        groupOffsetsWriter.add(offset);
+      }
+      groupOffsetsWriter.finish();
+      meta.writeLong(graphData.getFilePointer() - groupOffsetsStart);
 
-    // Postings flattened field ordinals (dense int).
-    long fieldOrdsDataStart = graphData.getFilePointer();
-    meta.writeLong(fieldOrdsDataStart);
-    for (int fieldOrd : flattenedFieldOrds) {
-      graphData.writeInt(fieldOrd);
+      // Postings flattened field ordinals (dense int).
+      long fieldOrdsDataStart = graphData.getFilePointer();
+      meta.writeLong(fieldOrdsDataStart);
+      for (int fieldOrd : flattenedFieldOrds) {
+        graphData.writeInt(fieldOrd);
+      }
+      meta.writeLong(graphData.getFilePointer() - fieldOrdsDataStart);
     }
-    meta.writeLong(graphData.getFilePointer() - fieldOrdsDataStart);
   }
 
   private void ensureFlatReaderOpen() throws IOException {

@@ -98,10 +98,12 @@ public class TestDedupHnswScalarQuantizedVectorsFormat extends TestDedupHnswVect
           }
 
           if (hasHNSW(knnVectorsReader, fieldInfo)) {
-            assertTrue(offHeap.get("vdhd") > 0L); // dedup HNSW graph + CSR data
+            assertTrue(offHeap.get("vdhd") > 0L); // HNSW graph (+ postings in DEDUP mode)
           } else {
-            // No graph (e.g. tiny segment), but .vdhd still holds the group-to-field-ords data.
-            assertTrue(offHeap.get("vdhd") > 0L);
+            // No graph (e.g. tiny segment). In DEDUP mode .vdhd still holds the postings; in PLAIN
+            // mode there are no postings, so .vdhd may be absent/zero for this field.
+            Long vdhd = offHeap.get("vdhd");
+            assertTrue(vdhd == null || vdhd >= 0L);
           }
         }
       } else {

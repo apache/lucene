@@ -74,6 +74,24 @@ sealed class DedupFlatVectorsScorer implements FlatVectorsScorer
   }
 
   /**
+   * A {@link RandomVectorScorerSupplier} over field (per-document) ordinals, scoring the field's
+   * raw vectors with the full-precision flat scorer. Used by {@link DedupHnswVectorsWriter} to
+   * build a plain document-space HNSW graph (one node per document) when a field has no effective
+   * de-duplication.
+   *
+   * <p>Like {@link #getGroupRandomVectorScorerSupplier}, this deliberately uses the full-precision
+   * {@code FLAT_SCORER} rather than the (possibly quantized) delegate, so graph construction stays
+   * encoding-agnostic — the node-vs-node quantized supplier is unsupported for asymmetric
+   * encodings.
+   */
+  RandomVectorScorerSupplier getPlainRandomVectorScorerSupplier(
+      VectorSimilarityFunction similarityFunction, DedupVectorValues dedupValues)
+      throws IOException {
+    return FLAT_SCORER.getRandomVectorScorerSupplier(
+        similarityFunction, (KnnVectorValues) dedupValues);
+  }
+
+  /**
    * Returns a scorer that scores the query {@code target} against the distinct vectors in the
    * {@link DedupVectorValues#getGroupView() group view}. The scorer works in group-ordinal space:
    * {@code score(g)} scores the query against distinct vector {@code g}.

@@ -52,6 +52,7 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
+import org.apache.lucene.util.hnsw.OrdinalTranslatedKnnCollector;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
@@ -75,7 +76,6 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
   private final FieldInfos fieldInfos;
   private final Map<String, FieldEntry> fields;
   private final IndexInput graphData;
-  private final int version;
 
   DedupHnswVectorsReader(SegmentReadState state, FlatVectorsReader flatVectorsReader)
       throws IOException {
@@ -105,7 +105,6 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
       } finally {
         CodecUtil.checkFooter(meta, priorE);
       }
-      this.version = versionMeta;
       this.graphData =
           openDataInput(
               state,
@@ -203,10 +202,21 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
     DedupVectorValues values = (DedupVectorValues) flatVectorsReader.getFloatVectorValues(field);
     DedupFlatVectorsScorer scorer =
         (DedupFlatVectorsScorer) flatVectorsReader.getFlatVectorScorer(field);
-    RandomVectorScorer groupScorer =
-        scorer.getGroupRandomVectorScorer(
-            fieldInfos.fieldInfo(field).getVectorSimilarityFunction(), values, target);
-    searchGroupGraph(entry, values, groupScorer, knnCollector, acceptDocs);
+    var similarity = fieldInfos.fieldInfo(field).getVectorSimilarityFunction();
+    if (entry.mode == DedupLayoutMode.PLAIN) {
+      searchPlainGraph(
+          entry,
+          scorer.getRandomVectorScorer(similarity, (KnnVectorValues) values, target),
+          knnCollector,
+          acceptDocs);
+    } else {
+      searchGroupGraph(
+          entry,
+          values,
+          scorer.getGroupRandomVectorScorer(similarity, values, target),
+          knnCollector,
+          acceptDocs);
+    }
   }
 
   @Override
@@ -216,10 +226,21 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
     DedupVectorValues values = (DedupVectorValues) flatVectorsReader.getByteVectorValues(field);
     DedupFlatVectorsScorer scorer =
         (DedupFlatVectorsScorer) flatVectorsReader.getFlatVectorScorer(field);
-    RandomVectorScorer groupScorer =
-        scorer.getGroupRandomVectorScorer(
-            fieldInfos.fieldInfo(field).getVectorSimilarityFunction(), values, target);
-    searchGroupGraph(entry, values, groupScorer, knnCollector, acceptDocs);
+    var similarity = fieldInfos.fieldInfo(field).getVectorSimilarityFunction();
+    if (entry.mode == DedupLayoutMode.PLAIN) {
+      searchPlainGraph(
+          entry,
+          scorer.getRandomVectorScorer(similarity, (KnnVectorValues) values, target),
+          knnCollector,
+          acceptDocs);
+    } else {
+      searchGroupGraph(
+          entry,
+          values,
+          scorer.getGroupRandomVectorScorer(similarity, values, target),
+          knnCollector,
+          acceptDocs);
+    }
   }
 
   @Override
@@ -229,10 +250,62 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
     DedupVectorValues values = (DedupVectorValues) flatVectorsReader.getFloat16VectorValues(field);
     DedupFlatVectorsScorer scorer =
         (DedupFlatVectorsScorer) flatVectorsReader.getFlatVectorScorer(field);
-    RandomVectorScorer groupScorer =
-        scorer.getGroupRandomVectorScorer(
-            fieldInfos.fieldInfo(field).getVectorSimilarityFunction(), values, target);
-    searchGroupGraph(entry, values, groupScorer, knnCollector, acceptDocs);
+    var similarity = fieldInfos.fieldInfo(field).getVectorSimilarityFunction();
+    if (entry.mode == DedupLayoutMode.PLAIN) {
+      searchPlainGraph(
+          entry,
+          scorer.getRandomVectorScorer(similarity, (KnnVectorValues) values, target),
+          knnCollector,
+          acceptDocs);
+    } else {
+      searchGroupGraph(
+          entry,
+          values,
+          scorer.getGroupRandomVectorScorer(similarity, values, target),
+          knnCollector,
+          acceptDocs);
+    }
+  }
+
+  /**
+   * Runs a vanilla HNSW search over a document-space graph (PLAIN mode). Node ordinals are field
+   * ordinals, so results map directly to documents via the scorer's {@code ordToDoc}; no group
+   * expansion or group-level accept filtering is needed. Mirrors {@link
+   * org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader}'s search.
+   */
+  private void searchPlainGraph(
+      FieldEntry entry, RandomVectorScorer scorer, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
+    if (entry.fieldOrdCount == 0 || knnCollector.k() == 0) {
+      return;
+    }
+    KnnCollector collector = new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
+    Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs.bits());
+
+    int graphSize = entry.graphDataLength == 0 ? 0 : entry.fieldOrdCount;
+    int numVectors = scorer.maxOrd();
+    int filteredDocCount = Math.min(acceptDocs.cost(), graphSize);
+    boolean doHnsw = knnCollector.k() < numVectors;
+    int unfilteredVisit = HnswGraphSearcher.expectedVisitedNodes(knnCollector.k(), graphSize);
+    if (unfilteredVisit >= filteredDocCount || graphSize == 0) {
+      doHnsw = false;
+    }
+
+    if (doHnsw) {
+      HnswGraphSearcher.search(scorer, collector, getGraph(entry), acceptedOrds, filteredDocCount);
+    } else {
+      // Exhaustive: score every vector (document) directly.
+      for (int ord = 0; ord < numVectors; ord++) {
+        if (acceptedOrds != null && acceptedOrds.get(ord) == false) {
+          continue;
+        }
+        if (knnCollector.earlyTerminated()) {
+          break;
+        }
+        knnCollector.incVisitedCount(1);
+        collector.collect(ord, scorer.score(ord));
+      }
+    }
   }
 
   /**
@@ -365,7 +438,7 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
     if (entry.graphDataLength == 0) {
       return HnswGraph.EMPTY;
     }
-    return new OffHeapHnswGraph(entry, graphData, version);
+    return new OffHeapHnswGraph(entry, graphData);
   }
 
   @Override
@@ -480,6 +553,7 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
   /** Per-field metadata parsed from the {@code .vdhm} file. */
   private record FieldEntry(
       VectorEncoding vectorEncoding,
+      DedupLayoutMode mode,
       int groupCount,
       int fieldOrdCount,
       long graphDataOffset,
@@ -507,6 +581,7 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
         // empty field: no graph, no postings
         return new FieldEntry(
             info.getVectorEncoding(),
+            DedupLayoutMode.DEDUP,
             0,
             fieldOrdCount,
             0,
@@ -525,6 +600,7 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
             0);
       }
 
+      DedupLayoutMode mode = DedupLayoutMode.read(input);
       long graphDataOffset = input.readVLong();
       long graphDataLength = input.readVLong();
 
@@ -562,17 +638,31 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
         offsetsLength = 0;
       }
 
-      // Postings offsets (monotonic, groupCount + 1) then flattened field ordinals.
-      long groupOffsetsOffset = input.readLong();
-      int groupOffsetsBlockShift = input.readVInt();
-      DirectMonotonicReader.Meta groupOffsetsMeta =
-          DirectMonotonicReader.loadMeta(input, groupCount + 1L, groupOffsetsBlockShift);
-      long groupOffsetsLength = input.readLong();
-      long fieldOrdsDataOffset = input.readLong();
-      long fieldOrdsDataLength = input.readLong();
+      // Postings (DEDUP only): offsets (monotonic, groupCount + 1) then flattened field ordinals.
+      long groupOffsetsOffset;
+      DirectMonotonicReader.Meta groupOffsetsMeta;
+      long groupOffsetsLength;
+      long fieldOrdsDataOffset;
+      long fieldOrdsDataLength;
+      if (mode == DedupLayoutMode.DEDUP) {
+        groupOffsetsOffset = input.readLong();
+        int groupOffsetsBlockShift = input.readVInt();
+        groupOffsetsMeta =
+            DirectMonotonicReader.loadMeta(input, groupCount + 1L, groupOffsetsBlockShift);
+        groupOffsetsLength = input.readLong();
+        fieldOrdsDataOffset = input.readLong();
+        fieldOrdsDataLength = input.readLong();
+      } else {
+        groupOffsetsOffset = 0;
+        groupOffsetsMeta = null;
+        groupOffsetsLength = 0;
+        fieldOrdsDataOffset = 0;
+        fieldOrdsDataLength = 0;
+      }
 
       return new FieldEntry(
           info.getVectorEncoding(),
+          mode,
           groupCount,
           fieldOrdCount,
           graphDataOffset,
@@ -604,7 +694,6 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
     private final int entryNode;
     private final int size;
     private final int maxConn;
-    private final int version;
     private final DirectMonotonicReader graphLevelNodeOffsets;
     private final long[] graphLevelNodeIndexOffsets;
     private final int[] currentNeighborsBuffer;
@@ -613,13 +702,12 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
     private int arcUpTo;
     private int arc;
 
-    OffHeapHnswGraph(FieldEntry entry, IndexInput graphData, int version) throws IOException {
+    OffHeapHnswGraph(FieldEntry entry, IndexInput graphData) throws IOException {
       this.dataIn = graphData.slice("graph-data", entry.graphDataOffset, entry.graphDataLength);
       this.nodesByLevel = entry.nodesByLevel;
       this.numLevels = entry.numLevels;
       this.entryNode = numLevels > 1 ? nodesByLevel[numLevels - 1][0] : 0;
       this.size = entry.groupCount;
-      this.version = version;
       RandomAccessInput addressesData =
           graphData.randomAccessSlice(entry.offsetsOffset, entry.offsetsLength);
       this.graphLevelNodeOffsets =
