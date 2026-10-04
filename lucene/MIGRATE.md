@@ -243,15 +243,15 @@ configurable buffer size for `ThaiTokenizer`. Three existing defaults also produ
 than in 10.5 for some input. An index built with 10.5 may therefore stop matching queries analyzed
 with 10.6 until it is reindexed.
 
-* `ThaiAnalyzer` applies `ThaiCharFilter` to the input and runs `ThaiNormalizationFilter` and
+- `ThaiAnalyzer` applies `ThaiCharFilter` to the input and runs `ThaiNormalizationFilter` and
   `ThaiRepeatFilter` between `DecimalDigitFilter` and the stop filter. `normalize()` applies the
   char filter and `ThaiNormalizationFilter` too. Text with decomposed Sara Am (`น` + `ํ` + `้` + `า`),
   doubled Sara E (`เเ`), repeated or misordered vowel and tone marks, zero-width characters, or the
   repetition mark `ๆ` is analyzed differently.
-* `ThaiAnalyzer.getDefaultStopSet()` returns a different list: 87 entries instead of 115. 30 words
+- `ThaiAnalyzer.getDefaultStopSet()` returns a different list: 87 entries instead of 115. 30 words
   that are common content words (for example `ผล`, `เปิด`, `ส่ง`, `ทาง`) were removed and `ทำให้` and
   `สำหรับ` were added. Words that used to be dropped from the index are now indexed.
-* `ThaiTokenizer` treats whitespace as a safe place to cut when its 1024-character buffer fills,
+- `ThaiTokenizer` treats whitespace as a safe place to cut when its 1024-character buffer fills,
   in addition to line and paragraph separators. Only text with no sentence break for 1024 or more
   characters is affected: a word that used to be split at the end of the buffer is no longer split,
   and the cut points for the following text can move.
