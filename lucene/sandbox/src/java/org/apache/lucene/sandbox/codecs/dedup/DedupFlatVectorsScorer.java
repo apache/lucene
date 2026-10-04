@@ -58,19 +58,11 @@ sealed class DedupFlatVectorsScorer implements FlatVectorsScorer
   }
 
   /**
-   * A {@link RandomVectorScorerSupplier} whose ordinals are <b>group</b> ordinals (one per distinct
-   * vector), scoring against the values' <b>raw</b> {@link DedupVectorValues#getGroupView() group
-   * view} using the full-precision flat scorer.
-   *
-   * <p>Unlike {@link #getRandomVectorScorerSupplier(VectorSimilarityFunction, KnnVectorValues)},
-   * which returns a supplier over per-document (field) ordinals that internally resolve to groups,
-   * this supplier operates purely in group-ordinal space. It is used by {@link
-   * DedupHnswVectorsWriter} to build a single HNSW graph over the distinct vectors of a field.
-   *
-   * <p>Graph construction always uses the raw group vectors (never the quantized view). This keeps
-   * construction encoding-agnostic — in particular it avoids the node-vs-node quantized supplier,
-   * which is unsupported for asymmetric encodings — while search still scores the query against the
-   * appropriate (quantized) group view via {@link #getGroupRandomVectorScorer}.
+   * A {@link RandomVectorScorerSupplier} that operates purely in group-ordinal space. Unlike {@link
+   * #getRandomVectorScorerSupplier(VectorSimilarityFunction, KnnVectorValues)}, where the scored
+   * nodes are field (per-document) ordinals that are resolved to groups, here the scored nodes are
+   * group ordinals themselves — so no translation is needed. Used by {@link DedupHnswVectorsWriter}
+   * to build a single HNSW graph over a field's distinct vectors.
    */
   RandomVectorScorerSupplier getGroupRandomVectorScorerSupplier(
       VectorSimilarityFunction similarityFunction, DedupVectorValues dedupValues)
@@ -82,11 +74,12 @@ sealed class DedupFlatVectorsScorer implements FlatVectorsScorer
   }
 
   /**
-   * A {@link RandomVectorScorer} for a query {@code target} whose ordinals are <b>group</b>
-   * ordinals, scoring against the values' {@link DedupVectorValues#getGroupView() group view}. Used
-   * by {@link DedupHnswVectorsReader} to search the group graph. The returned scorer's {@code
-   * maxOrd()} is the number of distinct vectors, and {@code ordToDoc}/{@code getAcceptOrds} operate
-   * in group-ordinal space (the caller is responsible for expanding groups back to documents).
+   * Returns a scorer that scores the query {@code target} against the distinct vectors in the
+   * {@link DedupVectorValues#getGroupView() group view}. The scorer works in group-ordinal space:
+   * {@code score(g)} scores the query against distinct vector {@code g}.
+   *
+   * <p>Used by {@link DedupHnswVectorsReader} to search the group graph. Because results come back
+   * as group ordinals, the caller must expand each group back to the documents that reference it.
    */
   RandomVectorScorer getGroupRandomVectorScorer(
       VectorSimilarityFunction similarityFunction, DedupVectorValues dedupValues, float[] target)
@@ -118,9 +111,9 @@ sealed class DedupFlatVectorsScorer implements FlatVectorsScorer
   }
 
   /**
-   * Resolves the {@link DedupVectorValues} to use for group-ordinal scoring, unwrapping composite
-   * (raw-and-quantized) values to their scoring view so that quantized fields score against the
-   * quantized group view, exactly as {@link #getRandomVectorScorer} does per document.
+   * Picks the {@link DedupVectorValues} to score against. For quantized fields this unwraps the
+   * raw-and-quantized values to the quantized view, so scoring uses the quantized vectors (the same
+   * view {@link #getRandomVectorScorer} uses per document).
    */
   private DedupVectorValues scoringGroupValues(DedupVectorValues dedupValues) {
     KnnVectorValues unwrapped = unwrap((KnnVectorValues) dedupValues);
@@ -130,6 +123,19 @@ sealed class DedupFlatVectorsScorer implements FlatVectorsScorer
     return dedupValues;
   }
 
+  /**
+   * Returns a node-vs-node {@link RandomVectorScorerSupplier} that accepts per-document (field)
+   * ordinals, used by callers such as the HNSW graph builder to compare two stored vectors by their
+   * ordinals.
+   *
+   * <p>For {@link DedupVectorValues} this wraps the scorer built on top of the unique vectors
+   * ({@link DedupVectorValues#getGroupView() group view}), operating purely in group-ordinal space.
+   * The field-ordinal to group-ordinal conversion for each scored node is done by {@link
+   * RandomVectorScorerSupplierImpl} via {@link DedupVectorValues#getFieldOrdToGroupOrd()} before
+   * delegating.
+   *
+   * <p>Non-deduplicated values are passed straight through to the delegate with no wrapping.
+   */
   @Override
   public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues)

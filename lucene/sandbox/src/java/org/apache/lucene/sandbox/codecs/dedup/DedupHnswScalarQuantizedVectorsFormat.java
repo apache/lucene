@@ -222,7 +222,8 @@ public final class DedupHnswScalarQuantizedVectorsFormat extends KnnVectorsForma
 
   @Override
   public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new DedupHnswVectorsReader(state,
+    return new DedupHnswVectorsReader(
+        state,
         flatVectorsFormat.fieldsReader(
             state.withHints(FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM)));
   }

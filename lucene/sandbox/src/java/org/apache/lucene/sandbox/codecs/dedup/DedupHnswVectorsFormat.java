@@ -203,7 +203,8 @@ public final class DedupHnswVectorsFormat extends KnnVectorsFormat {
 
   @Override
   public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new DedupHnswVectorsReader(state,
+    return new DedupHnswVectorsReader(
+        state,
         FORMAT.fieldsReader(
             state.withHints(FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM)));
   }

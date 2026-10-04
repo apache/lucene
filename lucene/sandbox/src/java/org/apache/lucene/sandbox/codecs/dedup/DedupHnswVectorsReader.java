@@ -61,8 +61,8 @@ import org.apache.lucene.util.packed.DirectMonotonicReader;
  * <p>The graph is stored over <b>distinct</b> vectors (group ordinals). At search time, the query
  * is scored against the group view (one entry per distinct vector), the group graph is traversed,
  * and each matched group node is expanded to all documents that reference it (via the stored {@link
- * GroupToFieldOrds} mapping), respecting per-document accept bits. This returns every document
- * sharing a matched distinct vector, each with that vector's similarity.
+ * DistinctVectorPostings} mapping), respecting per-document accept bits. This returns every
+ * document sharing a matched distinct vector, each with that vector's similarity.
  *
  * @lucene.experimental
  */
@@ -74,7 +74,7 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
   private final FlatVectorsReader flatVectorsReader;
   private final FieldInfos fieldInfos;
   private final Map<String, FieldEntry> fields;
-  private final IndexInput vectorIndex;
+  private final IndexInput graphData;
   private final int version;
 
   DedupHnswVectorsReader(SegmentReadState state, FlatVectorsReader flatVectorsReader)
@@ -106,7 +106,7 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
         CodecUtil.checkFooter(meta, priorE);
       }
       this.version = versionMeta;
-      this.vectorIndex =
+      this.graphData =
           openDataInput(
               state,
               versionMeta,
@@ -253,15 +253,15 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
     }
 
     KnnVectorValues fieldView = (KnnVectorValues) values;
-    GroupToFieldOrds groupToFieldOrds = new GroupToFieldOrds(entry, vectorIndex);
+    DistinctVectorPostings postings = new DistinctVectorPostings(entry, graphData);
 
     // A field ordinal maps to a document via the flat reader's ordToDoc; build a per-group accept
     // bit set and a per-group->docs expander that respect per-document acceptDocs.
     Bits acceptedDocs = acceptDocs.bits();
-    Bits groupAccept = groupAcceptBits(entry, groupToFieldOrds, fieldView, acceptedDocs);
+    Bits groupAccept = groupAcceptBits(entry, postings, fieldView, acceptedDocs);
 
     KnnCollector expandingCollector =
-        new DedupExpandingCollector(knnCollector, groupToFieldOrds, fieldView, acceptedDocs);
+        new DedupExpandingCollector(knnCollector, postings, fieldView, acceptedDocs);
 
     HnswGraph graph = getGraph(entry);
     int graphSize = entry.groupCount;
@@ -272,7 +272,7 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
     int numGroups = groupScorer.maxOrd();
     // Only use HNSW when a graph was actually built (tiny segments skip it, see the writer). When
     // present, the graph has one node per group so graph.size() == groupCount.
-    boolean hasGraph = entry.vectorIndexLength > 0;
+    boolean hasGraph = entry.graphDataLength > 0;
     boolean doHnsw = hasGraph && knnCollector.k() < numGroups;
     int unfilteredVisit = HnswGraphSearcher.expectedVisitedNodes(knnCollector.k(), graphSize);
     if (unfilteredVisit >= filteredGroupCount || graphSize == 0) {
@@ -314,7 +314,7 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
    */
   private Bits groupAcceptBits(
       FieldEntry entry,
-      GroupToFieldOrds groupToFieldOrds,
+      DistinctVectorPostings postings,
       KnnVectorValues fieldView,
       Bits acceptedDocs)
       throws IOException {
@@ -323,10 +323,10 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
     }
     boolean[] accepted = new boolean[entry.groupCount];
     for (int g = 0; g < entry.groupCount; g++) {
-      int start = groupToFieldOrds.offset(g);
-      int end = groupToFieldOrds.offset(g + 1);
+      int start = postings.offset(g);
+      int end = postings.offset(g + 1);
       for (int i = start; i < end; i++) {
-        int fieldOrd = groupToFieldOrds.fieldOrd(i);
+        int fieldOrd = postings.fieldOrd(i);
         int docId = fieldView.ordToDoc(fieldOrd);
         if (acceptedDocs.get(docId)) {
           accepted[g] = true;
@@ -355,23 +355,23 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
     if (info == null || (entry = fields.get(field)) == null) {
       throw new IllegalArgumentException("field=\"" + field + "\" not found");
     }
-    if (entry.vectorIndexLength > 0) {
+    if (entry.graphDataLength > 0) {
       return getGraph(entry);
     }
     return HnswGraph.EMPTY;
   }
 
   private HnswGraph getGraph(FieldEntry entry) throws IOException {
-    if (entry.vectorIndexLength == 0) {
+    if (entry.graphDataLength == 0) {
       return HnswGraph.EMPTY;
     }
-    return new OffHeapHnswGraph(entry, vectorIndex, version);
+    return new OffHeapHnswGraph(entry, graphData, version);
   }
 
   @Override
   public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
     flatVectorsReader.checkIntegrity(merge);
-    CodecUtil.checksumEntireFile(vectorIndex, merge);
+    CodecUtil.checksumEntireFile(graphData, merge);
   }
 
   /** Approximate heap usage of this reader, including the delegate flat reader. */
@@ -388,8 +388,7 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
     if (entry == null) {
       return flat;
     }
-    long graphBytes =
-        entry.vectorIndexLength + entry.groupOffsetsLength + entry.fieldOrdsDataLength;
+    long graphBytes = entry.graphDataLength + entry.groupOffsetsLength + entry.fieldOrdsDataLength;
     var graph = Map.of(DedupHnswVectorsWriter.DATA_EXTENSION, graphBytes);
     return KnnVectorsReader.mergeOffHeapByteSizeMaps(flat, graph);
   }
@@ -406,27 +405,27 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
 
   @Override
   public void close() throws IOException {
-    IOUtils.close(flatVectorsReader, vectorIndex);
+    IOUtils.close(flatVectorsReader, graphData);
   }
 
   /**
    * A {@link KnnCollector} decorator that, on {@code collect(groupOrd, score)}, expands the group
-   * ordinal to all its referencing documents (via {@link GroupToFieldOrds}) and collects each
+   * ordinal to all its referencing documents (via {@link DistinctVectorPostings}) and collects each
    * accepted document with the group's score. Group ordinals map to documents through the flat
    * reader's {@code ordToDoc}.
    */
   private static final class DedupExpandingCollector extends KnnCollector.Decorator {
-    private final GroupToFieldOrds groupToFieldOrds;
+    private final DistinctVectorPostings postings;
     private final KnnVectorValues fieldView;
     private final Bits acceptedDocs;
 
     DedupExpandingCollector(
         KnnCollector collector,
-        GroupToFieldOrds groupToFieldOrds,
+        DistinctVectorPostings postings,
         KnnVectorValues fieldView,
         Bits acceptedDocs) {
       super(collector);
-      this.groupToFieldOrds = groupToFieldOrds;
+      this.postings = postings;
       this.fieldView = fieldView;
       this.acceptedDocs = acceptedDocs;
     }
@@ -435,10 +434,10 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
     public boolean collect(int groupOrd, float similarity) {
       boolean collectedAny = false;
       try {
-        int start = groupToFieldOrds.offset(groupOrd);
-        int end = groupToFieldOrds.offset(groupOrd + 1);
+        int start = postings.offset(groupOrd);
+        int end = postings.offset(groupOrd + 1);
         for (int i = start; i < end; i++) {
-          int fieldOrd = groupToFieldOrds.fieldOrd(i);
+          int fieldOrd = postings.fieldOrd(i);
           int docId = fieldView.ordToDoc(fieldOrd);
           if (acceptedDocs == null || acceptedDocs.get(docId)) {
             collectedAny |= super.collect(docId, similarity);
@@ -452,20 +451,21 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
   }
 
   /**
-   * Random access to the group-ordinal to field-ordinals mapping (the inverse of {@code
-   * fieldOrdToGroupOrd}), stored in the data file in CSR form: a monotonic {@code offsets} table
-   * plus a flattened array of field ordinals.
+   * Posting list keyed by group ordinal (distinct vector): each group's slice lists the field
+   * ordinals (documents) that reference that distinct vector. This is the inverse of {@code
+   * fieldOrdToGroupOrd}, stored in the data file as a monotonic {@code offsets} table plus a
+   * flattened array of field ordinals, where {@code offsets[g]..offsets[g+1]} delimits group {@code
+   * g}'s postings.
    */
-  private static final class GroupToFieldOrds {
+  private static final class DistinctVectorPostings {
     private final DirectMonotonicReader offsets;
     private final RandomAccessInput data;
 
-    GroupToFieldOrds(FieldEntry entry, IndexInput vectorIndex) throws IOException {
+    DistinctVectorPostings(FieldEntry entry, IndexInput graphData) throws IOException {
       RandomAccessInput offsetsSlice =
-          vectorIndex.randomAccessSlice(entry.groupOffsetsOffset, entry.groupOffsetsLength);
+          graphData.randomAccessSlice(entry.groupOffsetsOffset, entry.groupOffsetsLength);
       this.offsets = DirectMonotonicReader.getInstance(entry.groupOffsetsMeta, offsetsSlice);
-      this.data =
-          vectorIndex.randomAccessSlice(entry.fieldOrdsDataOffset, entry.fieldOrdsDataLength);
+      this.data = graphData.randomAccessSlice(entry.fieldOrdsDataOffset, entry.fieldOrdsDataLength);
     }
 
     int offset(int group) {
@@ -482,8 +482,8 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
       VectorEncoding vectorEncoding,
       int groupCount,
       int fieldOrdCount,
-      long vectorIndexOffset,
-      long vectorIndexLength,
+      long graphDataOffset,
+      long graphDataLength,
       long groupOffsetsOffset,
       DirectMonotonicReader.Meta groupOffsetsMeta,
       long groupOffsetsLength,
@@ -504,7 +504,7 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
       int groupCount = input.readInt();
       int fieldOrdCount = input.readInt();
       if (groupCount == 0) {
-        // empty field: no graph, no CSR
+        // empty field: no graph, no postings
         return new FieldEntry(
             info.getVectorEncoding(),
             0,
@@ -525,8 +525,8 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
             0);
       }
 
-      long vectorIndexOffset = input.readVLong();
-      long vectorIndexLength = input.readVLong();
+      long graphDataOffset = input.readVLong();
+      long graphDataLength = input.readVLong();
 
       int M = input.readVInt();
       int numLevels = input.readVInt();
@@ -562,7 +562,7 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
         offsetsLength = 0;
       }
 
-      // CSR inverse offsets (monotonic, groupCount + 1) then flattened field ordinals.
+      // Postings offsets (monotonic, groupCount + 1) then flattened field ordinals.
       long groupOffsetsOffset = input.readLong();
       int groupOffsetsBlockShift = input.readVInt();
       DirectMonotonicReader.Meta groupOffsetsMeta =
@@ -575,8 +575,8 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
           info.getVectorEncoding(),
           groupCount,
           fieldOrdCount,
-          vectorIndexOffset,
-          vectorIndexLength,
+          graphDataOffset,
+          graphDataLength,
           groupOffsetsOffset,
           groupOffsetsMeta,
           groupOffsetsLength,
@@ -613,16 +613,15 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
     private int arcUpTo;
     private int arc;
 
-    OffHeapHnswGraph(FieldEntry entry, IndexInput vectorIndex, int version) throws IOException {
-      this.dataIn =
-          vectorIndex.slice("graph-data", entry.vectorIndexOffset, entry.vectorIndexLength);
+    OffHeapHnswGraph(FieldEntry entry, IndexInput graphData, int version) throws IOException {
+      this.dataIn = graphData.slice("graph-data", entry.graphDataOffset, entry.graphDataLength);
       this.nodesByLevel = entry.nodesByLevel;
       this.numLevels = entry.numLevels;
       this.entryNode = numLevels > 1 ? nodesByLevel[numLevels - 1][0] : 0;
       this.size = entry.groupCount;
       this.version = version;
       RandomAccessInput addressesData =
-          vectorIndex.randomAccessSlice(entry.offsetsOffset, entry.offsetsLength);
+          graphData.randomAccessSlice(entry.offsetsOffset, entry.offsetsLength);
       this.graphLevelNodeOffsets =
           DirectMonotonicReader.getInstance(entry.offsetsMeta, addressesData);
       this.currentNeighborsBuffer = new int[entry.M * 2];
