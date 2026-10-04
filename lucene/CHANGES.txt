@@ -691,7 +691,7 @@ Other
 
 API Changes
 ---------------------
- 
+
 * GITHUB#16654: Public constructors of [Byte|Float]VectorSimilarityQuery are now private (binary-incompatible change).
   Lucene 10.5.0 (GITHUB#15784) switched these queries from explicit to adaptive HNSW graph traversal but kept the
   constructor signatures, so the two positional float arguments silently changed meaning from (traversalSimilarity,
