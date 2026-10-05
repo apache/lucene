@@ -23,9 +23,11 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermStates;
 import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
@@ -163,6 +165,49 @@ public final class SpanOrQuery extends SpanQuery {
       for (SpanWeight w : subWeights) {
         w.extractTermStates(contexts);
       }
+    }
+
+    @Override
+    public SpanScorer createSpanScorer(Spans spans, LeafReaderContext ctx) throws IOException {
+      NumericDocValues norms = ctx.reader().getNormValues(field);
+      List<SpanScorer> subScorers = createPerClauseScorers(ctx, norms);
+      if (subScorers == null) {
+        return new SpanScorer(spans, simScorer, norms);
+      }
+      return new SpanOrScorer(subScorers, spans, norms);
+    }
+
+    /**
+     * Creates per-clause SpanScorers, each using its own simScorer. Returns null if no clauses have
+     * spans in this segment.
+     */
+    private List<SpanScorer> createPerClauseScorers(
+        LeafReaderContext context, NumericDocValues norms) throws IOException {
+      List<SpanScorer> subScorers = new ArrayList<>();
+      for (SpanWeight w : subWeights) {
+        Spans spans = w.getSpans(context, Postings.POSITIONS);
+        if (spans != null) {
+          subScorers.add(new SpanScorer(spans, w.getSimScorer(), norms));
+        }
+      }
+      return subScorers.isEmpty() ? null : subScorers;
+    }
+
+    @Override
+    public Explanation explain(LeafReaderContext context, int doc) throws IOException {
+      List<Explanation> subExplanations = new ArrayList<>();
+      float sum = 0;
+      for (SpanWeight w : subWeights) {
+        Explanation e = w.explain(context, doc);
+        if (e.isMatch()) {
+          subExplanations.add(e);
+          sum += e.getValue().floatValue();
+        }
+      }
+      if (subExplanations.isEmpty()) {
+        return Explanation.noMatch("no matching term");
+      }
+      return Explanation.match(sum, "sum of:", subExplanations);
     }
 
     @Override
