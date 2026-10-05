@@ -650,6 +650,8 @@ Bug Fixes
   been aborted, so IndexWriter#rollback and abortMerges no longer block until the entire graph is
   built. (Jeho Jeong)
 
+* GITHUB#16500: ByteBuffersDataInput now throws EOFException on random-access reads past the limit. (Sagar Upadhyaya)
+
 * GITHUB#16428: Accumulate join Total/Avg scores in double precision in
   GlobalOrdinalsWithScoreCollector, fixing an intermittent failure caused by
   non-associative float addition that #16378 missed. (Luca Cavanna)
