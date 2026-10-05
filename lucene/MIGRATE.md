@@ -139,14 +139,36 @@ Enhanced error messages will clearly indicate:
 This parameter has no replacement, TieredMergePolicy no longer bounds the
 number of segments that may be merged together.
 
-### Snowball dependency upgrade (Dutch stemmer)
+### Snowball dependency upgrade (GITHUB#15505)
 
-Snowball replaced the "Dutch" stemmer by the "Kraaij-Pohlmann" stemmer (previous called dutch-kp). As a result Lucene supports 2 Dutch stemmers:
+Lucene 11 upgrades the bundled Snowball stemmers
+([GITHUB#15505](https://github.com/apache/lucene/pull/15505)). Several
+algorithms emit different stems than Lucene 10 (English, French, German,
+Dutch, and others). Existing indexes that used Snowball stemming should
+be reindexed so search-time analysis matches indexed tokens.
 
-- DutchStemmer, which is now the "Kraaij-Pohlmann" stemmer.
-- Dutch_porterStemmer, which is the DutchStemmer from Lucene-10 and before.
+#### Dutch stemmer
 
-Opening an pre Lucene-11 index which is indexed using the DutchStemmer will succeed, but due to the different stemmer implementation a re-index is needed in order to make searching work correctly. Or replace DutchStemmer by Dutch_porterStemmer in your code.
+Snowball replaced the "Dutch" stemmer with the "Kraaij-Pohlmann" stemmer
+(previously called dutch-kp). Lucene now ships two Dutch stemmers:
+
+- `DutchStemmer`, which is now the Kraaij-Pohlmann stemmer.
+  `DutchAnalyzer` and `language="Dutch"` use this.
+- `Dutch_porterStemmer`, which is the Dutch stemmer from Lucene 10 and
+  earlier.
+
+A pre-Lucene-11 index that used `DutchStemmer` can still be opened, but
+search will not match until you reindex, or switch the analyzer to
+`Dutch_porterStemmer` / `language="Dutch_porter"` to keep the old stems.
+
+#### New stemmers
+
+- `PolishStemmer`, plus `PolishSnowballAnalyzer` in the stempel module
+  (an alternative to the Stempel-based `PolishAnalyzer`).
+- `EsperantoStemmer`
+
+Select them with `SnowballFilter` / `SnowballPorterFilterFactory` using
+`language="Polish"` or `language="Esperanto"`.
 
 ### Query caching is now disabled by default
 
