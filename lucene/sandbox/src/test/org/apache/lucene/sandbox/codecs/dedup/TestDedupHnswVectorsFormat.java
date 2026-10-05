@@ -302,6 +302,153 @@ public class TestDedupHnswVectorsFormat extends BaseKnnVectorsFormatTestCase {
     }
   }
 
+  /**
+   * Quantifies filtered-search recall on the DEDUP path. Because groups are no longer pre-filtered
+   * against {@code acceptDocs} (the HNSW beam keeps only the top-k <b>groups</b> by similarity and
+   * {@code acceptDocs} is applied lazily at expansion), a selective filter whose accepted documents
+   * live in lower-scoring groups can be pruned by the beam before expansion. This test measures the
+   * recall of filtered KNN against brute-force ground truth and asserts a (loose) lower bound so the
+   * number is tracked rather than silently regressing.
+   */
+  public void testFilteredRecallDedup() throws Exception {
+    int dim = 16;
+    int distinct = 2000; // 2000 distinct vectors -> 2000 DEDUP groups (large enough that HNSW runs)
+    int copiesPerVector = 4; // each shared by 4 docs
+    int k = 10;
+    int acceptEvery = 32; // ~1 in 32 docs accepted: a selective, scattered filter
+
+    float[][] uniqueVectors = new float[distinct][];
+    for (int i = 0; i < distinct; i++) {
+      uniqueVectors[i] = randomVector(dim);
+    }
+
+    // tinySegmentsThreshold=0 forces graph construction so the beam/termination behavior is
+    // exercised (not an exhaustive scan).
+    Codec codec = TestUtil.alwaysKnnVectorsFormat(new DedupHnswVectorsFormat(16, 100, 0));
+
+    try (Directory dir = newDirectory();
+        var w =
+            new org.apache.lucene.index.IndexWriter(dir, newIndexWriterConfig().setCodec(codec))) {
+      for (int i = 0; i < distinct; i++) {
+        for (int c = 0; c < copiesPerVector; c++) {
+          boolean accept = ((i * copiesPerVector + c) % acceptEvery) == 0;
+          var doc = new org.apache.lucene.document.Document();
+          doc.add(
+              new org.apache.lucene.document.KnnFloatVectorField(
+                  "f", uniqueVectors[i].clone(), VectorSimilarityFunction.EUCLIDEAN));
+          if (accept) {
+            doc.add(
+                new org.apache.lucene.document.StringField(
+                    "filter", "yes", org.apache.lucene.document.Field.Store.NO));
+          }
+          w.addDocument(doc);
+        }
+      }
+      w.forceMerge(1);
+
+      try (var reader = org.apache.lucene.index.DirectoryReader.open(w)) {
+        assertEquals(1, reader.leaves().size());
+        LeafReader leaf = reader.leaves().get(0).reader();
+        KnnVectorsReader knnReader =
+            ((CodecReader) leaf).getVectorReader().unwrapReaderForField("f");
+        // Confirm an HNSW graph was actually built (otherwise the search is an exhaustive scan and
+        // this test would not exercise beam pruning). One node per distinct vector.
+        var graph = ((DedupHnswVectorsReader) knnReader).getGraph("f");
+        assertEquals(distinct, graph.size());
+
+        // Build docid-keyed truth directly from the index (do NOT assume docid == insertion order).
+        int maxDoc = leaf.maxDoc();
+        float[][] docVector = new float[maxDoc][];
+        var fvv = leaf.getFloatVectorValues("f");
+        var it = fvv.iterator();
+        for (int docId = it.nextDoc();
+            docId != org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+            docId = it.nextDoc()) {
+          docVector[docId] = fvv.vectorValue(it.index()).clone();
+        }
+        // Accepted docids = those matching the filter, read back from the index.
+        boolean[] docAccepted = new boolean[maxDoc];
+        var searcher = new org.apache.lucene.search.IndexSearcher(reader);
+        var filter =
+            new org.apache.lucene.search.TermQuery(
+                new org.apache.lucene.index.Term("filter", "yes"));
+        var filterTop = searcher.search(filter, maxDoc);
+        for (var sd : filterTop.scoreDocs) {
+          docAccepted[sd.doc] = true;
+        }
+
+        int numQueries = 20;
+        int totalGroundTruth = 0;
+        int totalFound = 0;
+        for (int q = 0; q < numQueries; q++) {
+          float[] target = randomVector(dim);
+
+          // Ground truth: top-k accepted docs by exact similarity (brute force).
+          java.util.List<Integer> gt = bruteForceTopK(target, docVector, docAccepted, k);
+
+          var query =
+              new org.apache.lucene.search.KnnFloatVectorQuery("f", target.clone(), k, filter);
+          var topDocs = searcher.search(query, k);
+          java.util.Set<Integer> returned = new HashSet<>();
+          for (var sd : topDocs.scoreDocs) {
+            returned.add(sd.doc);
+          }
+
+          for (int docId : gt) {
+            totalGroundTruth++;
+            if (returned.contains(docId)) {
+              totalFound++;
+            }
+          }
+
+          // Correctness: lazy filtering must never return a non-accepted doc.
+          for (var sd : topDocs.scoreDocs) {
+            assertTrue("returned a non-accepted doc " + sd.doc, docAccepted[sd.doc]);
+          }
+        }
+
+        double recall = totalGroundTruth == 0 ? 1.0 : (double) totalFound / totalGroundTruth;
+        System.out.println(
+            "testFilteredRecallDedup: filtered recall@"
+                + k
+                + " = "
+                + recall
+                + " ("
+                + totalFound
+                + "/"
+                + totalGroundTruth
+                + ")");
+        // Loose lower bound: documents the recall impact of lazy filtering without being flaky.
+        // Tighten (or add over-fetch) if this proves too low in practice.
+        assertTrue("filtered recall unexpectedly low: " + recall, recall >= 0.5);
+      }
+    }
+  }
+
+  /** Brute-force top-k accepted docids by exact EUCLIDEAN similarity. */
+  private static java.util.List<Integer> bruteForceTopK(
+      float[] target, float[][] docVector, boolean[] docAccepted, int k) {
+    int n = docVector.length;
+    Integer[] order = new Integer[n];
+    float[] scores = new float[n];
+    for (int i = 0; i < n; i++) {
+      order[i] = i;
+      scores[i] =
+          docVector[i] == null
+              ? Float.NEGATIVE_INFINITY
+              : VectorSimilarityFunction.EUCLIDEAN.compare(target, docVector[i]);
+    }
+    Arrays.sort(order, (a, b) -> Float.compare(scores[b], scores[a]));
+    java.util.List<Integer> out = new java.util.ArrayList<>();
+    for (int i = 0; i < n && out.size() < k; i++) {
+      int docId = order[i];
+      if (docAccepted[docId]) {
+        out.add(docId);
+      }
+    }
+    return out;
+  }
+
   @Override
   protected void assertOffHeapByteSize(LeafReader r, String fieldName) throws IOException {
     var fieldInfo = r.getFieldInfos().fieldInfo(fieldName);

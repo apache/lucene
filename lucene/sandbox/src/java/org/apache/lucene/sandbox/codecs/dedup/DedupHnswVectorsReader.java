@@ -340,6 +340,10 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
    * documents that reference it. The {@code groupScorer} operates in group-ordinal space (its
    * {@code maxOrd()} is the number of distinct vectors and {@code score(groupOrd)} scores the query
    * against the distinct vector).
+   *
+   * <p>Groups are <b>not</b> pre-filtered against {@code acceptDocs}; traversal selects groups
+   * purely by similarity, and {@code acceptDocs} is applied lazily when a selected group is expanded
+   * to its documents. This avoids scanning every group's posting list up front.
    */
   private void searchGroupGraph(
       FieldEntry entry,
@@ -355,19 +359,16 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
     KnnVectorValues fieldView = (KnnVectorValues) values;
     DistinctVectorPostings postings = new DistinctVectorPostings(entry, graphData);
 
-    // A field ordinal maps to a document via the flat reader's ordToDoc; build a per-group accept
-    // bit set and a per-group->docs expander that respect per-document acceptDocs.
+    // Do NOT pre-filter groups against acceptDocs: scanning every group's postings up front wastes
+    // CPU. Instead every group is traversable in the graph, and acceptDocs is applied only when a
+    // selected group is expanded to its documents (see DedupExpandingCollector).
     Bits acceptedDocs = acceptDocs.bits();
-    Bits groupAccept = groupAcceptBits(entry, postings, fieldView, acceptedDocs);
 
     KnnCollector expandingCollector =
         new DedupExpandingCollector(knnCollector, postings, fieldView, acceptedDocs);
 
     HnswGraph graph = getGraph(entry);
     int graphSize = entry.groupCount;
-    int filteredGroupCount =
-        groupAccept == null ? graphSize : countAccepted(groupAccept, graphSize);
-    filteredGroupCount = Math.min(filteredGroupCount, graphSize);
 
     int numGroups = groupScorer.maxOrd();
     // Only use HNSW when a graph was actually built (tiny segments skip it, see the writer). When
@@ -375,19 +376,15 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
     boolean hasGraph = entry.graphDataLength > 0;
     boolean doHnsw = hasGraph && knnCollector.k() < numGroups;
     int unfilteredVisit = HnswGraphSearcher.expectedVisitedNodes(knnCollector.k(), graphSize);
-    if (unfilteredVisit >= filteredGroupCount || graphSize == 0) {
+    if (unfilteredVisit >= graphSize || graphSize == 0) {
       doHnsw = false;
     }
 
     if (doHnsw) {
-      HnswGraphSearcher.search(
-          groupScorer, expandingCollector, graph, groupAccept, filteredGroupCount);
+      HnswGraphSearcher.search(groupScorer, expandingCollector, graph, null, graphSize);
     } else {
       // Exhaustive: score every group and expand.
       for (int g = 0; g < numGroups; g++) {
-        if (groupAccept != null && groupAccept.get(g) == false) {
-          continue;
-        }
         if (knnCollector.earlyTerminated()) {
           break;
         }
@@ -396,16 +393,6 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
         expandingCollector.collect(g, score);
       }
     }
-  }
-
-  private static int countAccepted(Bits groupAccept, int groupCount) {
-    int count = 0;
-    for (int g = 0; g < groupCount; g++) {
-      if (groupAccept.get(g)) {
-        count++;
-      }
-    }
-    return count;
   }
 
   /** Loads the HYBRID {@code nodeToGroupOrd} map (one group-view ordinal per graph node). */
@@ -425,7 +412,8 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
    * {@code [0, numLargeGroups)} are promoted large groups and expand (via the large-group postings)
    * to all their referencing documents; nodes in {@code [numLargeGroups, nodeCount)} are individual
    * small-group documents and map to a single document. Node scoring is handled by {@code
-   * hybridScorer} (node ordinal space); per-document accept bits are respected throughout.
+   * hybridScorer} (node ordinal space); nodes are not pre-filtered against {@code acceptDocs} —
+   * traversal selects by similarity and {@code acceptDocs} is applied lazily at expansion time.
    */
   private void searchHybridGraph(
       FieldEntry entry,
@@ -441,33 +429,29 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
 
     KnnVectorValues fieldView = (KnnVectorValues) values;
     HybridPostings postings = new HybridPostings(entry, graphData);
+    // Do NOT pre-filter nodes against acceptDocs: for large-group nodes this would scan every
+    // posting up front, wasting CPU. Every node is traversable; acceptDocs is applied only when a
+    // selected node is expanded/mapped to documents (see HybridExpandingCollector).
     Bits acceptedDocs = acceptDocs.bits();
-    Bits nodeAccept = hybridNodeAcceptBits(entry, postings, fieldView, acceptedDocs);
 
     KnnCollector expandingCollector =
         new HybridExpandingCollector(knnCollector, entry, postings, fieldView, acceptedDocs);
 
     HnswGraph graph = getGraph(entry);
     int graphSize = entry.graphNodeCount;
-    int filteredNodeCount = nodeAccept == null ? graphSize : countAccepted(nodeAccept, graphSize);
-    filteredNodeCount = Math.min(filteredNodeCount, graphSize);
 
     int numNodes = hybridScorer.maxOrd();
     boolean hasGraph = entry.graphDataLength > 0;
     boolean doHnsw = hasGraph && knnCollector.k() < numNodes;
     int unfilteredVisit = HnswGraphSearcher.expectedVisitedNodes(knnCollector.k(), graphSize);
-    if (unfilteredVisit >= filteredNodeCount || graphSize == 0) {
+    if (unfilteredVisit >= graphSize || graphSize == 0) {
       doHnsw = false;
     }
 
     if (doHnsw) {
-      HnswGraphSearcher.search(
-          hybridScorer, expandingCollector, graph, nodeAccept, filteredNodeCount);
+      HnswGraphSearcher.search(hybridScorer, expandingCollector, graph, null, graphSize);
     } else {
       for (int node = 0; node < numNodes; node++) {
-        if (nodeAccept != null && nodeAccept.get(node) == false) {
-          continue;
-        }
         if (knnCollector.earlyTerminated()) {
           break;
         }
@@ -476,88 +460,6 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
         expandingCollector.collect(node, score);
       }
     }
-  }
-
-  /**
-   * Builds a node-level accept {@link Bits} for HYBRID: a large-group node is accepted if any of its
-   * referencing documents is accepted; a small-group node is accepted if its single document is
-   * accepted. Returns {@code null} if all documents are accepted.
-   */
-  private Bits hybridNodeAcceptBits(
-      FieldEntry entry, HybridPostings postings, KnnVectorValues fieldView, Bits acceptedDocs)
-      throws IOException {
-    if (acceptedDocs == null) {
-      return null;
-    }
-    int nodeCount = entry.graphNodeCount;
-    boolean[] accepted = new boolean[nodeCount];
-    for (int node = 0; node < entry.numLargeGroups; node++) {
-      int start = postings.offset(node);
-      int end = postings.offset(node + 1);
-      for (int i = start; i < end; i++) {
-        int docId = fieldView.ordToDoc(postings.fieldOrd(i));
-        if (acceptedDocs.get(docId)) {
-          accepted[node] = true;
-          break;
-        }
-      }
-    }
-    for (int s = 0; s < entry.numSmallDocs; s++) {
-      int node = entry.numLargeGroups + s;
-      int docId = fieldView.ordToDoc(postings.smallNodeFieldOrd(s));
-      accepted[node] = acceptedDocs.get(docId);
-    }
-    return new Bits() {
-      @Override
-      public boolean get(int index) {
-        return accepted[index];
-      }
-
-      @Override
-      public int length() {
-        return nodeCount;
-      }
-    };
-  }
-
-  /**
-   * Builds a group-level accept {@link Bits}: a group is accepted if any field ordinal referencing
-   * it maps to an accepted document. Returns {@code null} if all documents are accepted.
-   */
-  private Bits groupAcceptBits(
-      FieldEntry entry,
-      DistinctVectorPostings postings,
-      KnnVectorValues fieldView,
-      Bits acceptedDocs)
-      throws IOException {
-    if (acceptedDocs == null) {
-      return null;
-    }
-    boolean[] accepted = new boolean[entry.groupCount];
-    for (int g = 0; g < entry.groupCount; g++) {
-      int start = postings.offset(g);
-      int end = postings.offset(g + 1);
-      for (int i = start; i < end; i++) {
-        int fieldOrd = postings.fieldOrd(i);
-        int docId = fieldView.ordToDoc(fieldOrd);
-        if (acceptedDocs.get(docId)) {
-          accepted[g] = true;
-          break;
-        }
-      }
-    }
-    final int len = entry.groupCount;
-    return new Bits() {
-      @Override
-      public boolean get(int index) {
-        return accepted[index];
-      }
-
-      @Override
-      public int length() {
-        return len;
-      }
-    };
   }
 
   @Override
@@ -649,6 +551,11 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
 
     @Override
     public boolean collect(int groupOrd, float similarity) {
+      // Once the top-k is full, a group whose (shared) score is below the current competitive
+      // threshold cannot contribute any result, so skip expanding/filtering its postings entirely.
+      if (similarity < collector.minCompetitiveSimilarity()) {
+        return false;
+      }
       boolean collectedAny = false;
       try {
         int start = postings.offset(groupOrd);
@@ -694,6 +601,11 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
 
     @Override
     public boolean collect(int node, float similarity) {
+      // Once the top-k is full, a node whose (shared) score is below the current competitive
+      // threshold cannot contribute any result, so skip expanding/filtering it entirely.
+      if (similarity < collector.minCompetitiveSimilarity()) {
+        return false;
+      }
       boolean collectedAny = false;
       try {
         if (node < entry.numLargeGroups) {
