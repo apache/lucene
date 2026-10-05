@@ -292,6 +292,10 @@ Bug Fixes
 * GITHUB#16728: Handle edge cases with inaccurate scorers that can cause duplicate neighbor links
   in the HNSW graph. (Simon Cooper)
 
+* GITHUB#16755: UkrainianMorfologikAnalyzer no longer reloads the Ukrainian dictionary when
+  threads race to initialize it, which could leave each analyzer holding its own ~7 MB copy.
+  (Eugene Rizhkov)
+
 Build
 ---------------------
 
