@@ -13,6 +13,5 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-org.apache.lucene.codecs.TestMinimalCodec$ThrowingCodec
-org.apache.lucene.codecs.TestMinimalCodec$MinimalCodec
-org.apache.lucene.codecs.TestMinimalCodec$MinimalCompoundCodec
+org.apache.lucene.util.TestNamedSPILoader$ReplaceableServiceImpl1
+org.apache.lucene.util.TestNamedSPILoader$ReplaceableServiceImpl2
