@@ -30,6 +30,9 @@ API Changes
 
 Bug Fixes
 ---------------------
+* GITHUB#16146: Ensure BitSetConjunctionDISI leaves all sub-iterators at NO_MORE_DOCS when
+  exhausted. (Michael Marshall)
+
 * GITHUB#16553: Fix stored-fields corruption when PerField#finish throws: the stored-fields frame
   was left open, causing "Wrote N docs, finish called with numDocs=M" at flush. (Michael Marshall)
 
