@@ -23,6 +23,7 @@ import static org.apache.lucene.sandbox.codecs.segmentivf.SegmentIVFVectorsForma
 import static org.apache.lucene.sandbox.codecs.segmentivf.SegmentIVFVectorsFormat.META_CODEC_NAME;
 import static org.apache.lucene.sandbox.codecs.segmentivf.SegmentIVFVectorsFormat.META_EXTENSION;
 import static org.apache.lucene.sandbox.codecs.segmentivf.SegmentIVFVectorsFormat.VERSION_CURRENT;
+import static org.apache.lucene.sandbox.codecs.segmentivf.SegmentIVFVectorsFormat.VERSION_START;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -72,8 +73,12 @@ import org.apache.lucene.util.packed.DirectMonotonicWriter;
 final class SegmentIVFVectorsWriter extends KnnVectorsWriter {
   private static final int GATHER_AHEAD = 256;
 
+  /** Test hook: the format version new segments are written in. */
+  static volatile int writeVersion = VERSION_CURRENT;
+
   private final SegmentWriteState state;
   private final SegmentIVFVectorsFormat format;
+  private final int version = writeVersion;
   private IndexOutput meta, data;
   private final List<BufferedField> fields = new ArrayList<>();
 
@@ -85,8 +90,8 @@ final class SegmentIVFVectorsWriter extends KnnVectorsWriter {
     try {
       meta = create(META_EXTENSION);
       data = create(DATA_EXTENSION);
-      CodecUtil.writeIndexHeader(meta, META_CODEC_NAME, VERSION_CURRENT, id, state.segmentSuffix);
-      CodecUtil.writeIndexHeader(data, DATA_CODEC_NAME, VERSION_CURRENT, id, state.segmentSuffix);
+      CodecUtil.writeIndexHeader(meta, META_CODEC_NAME, version, id, state.segmentSuffix);
+      CodecUtil.writeIndexHeader(data, DATA_CODEC_NAME, version, id, state.segmentSuffix);
     } catch (Throwable t) {
       IOUtils.closeWhileSuppressingExceptions(t, meta, data);
       throw t;
@@ -307,21 +312,25 @@ final class SegmentIVFVectorsWriter extends KnnVectorsWriter {
     byte[] row = new byte[staged.recordLen];
     int stride = staged.stride, docIdOffset = staged.fine.codeBytes;
     int primaryOffset = CodeRecord.primaryCellOffset(docIdOffset);
-    for (int pass = 0; pass < 2; pass++) {
-      int from = pass * staged.recordLen, len = pass == 0 ? staged.recordLen : staged.coarseBytes;
-      meta.writeVLong(data.getFilePointer());
-      for (int slot = 0; slot < slotRow.length; slot++) {
-        if ((slot & (GATHER_AHEAD - 1)) == 0) {
-          int end = Math.min(slotRow.length, slot + GATHER_AHEAD);
-          for (int p = slot; p < end; p++) rows.prefetch((long) slotRow[p] * stride, stride);
-        }
-        rows.readBytes((long) slotRow[slot] * stride + from, row, 0, len);
-        if (pass == 0) {
-          BitUtil.VH_LE_INT.set(row, primaryOffset, cl.cell(slotRow[slot], 0));
-          slotDoc[slot] = (int) BitUtil.VH_LE_INT.get(row, docIdOffset);
-        }
-        data.writeBytes(row, 0, len);
-      }
+    // Fine records are read only to rerank a shortlist deduplicated by document, so each vector
+    // has one, in ordinal order, and only its coarse code is written per slot.
+    boolean perSlot = version == VERSION_START;
+    int[] docs = new int[count];
+    meta.writeVLong(data.getFilePointer());
+    for (int i = 0, n = perSlot ? slotRow.length : count; i < n; i++) {
+      int ord = perSlot ? slotRow[i] : i;
+      if (perSlot && (i & (GATHER_AHEAD - 1)) == 0) prefetchRows(rows, slotRow, i, stride);
+      rows.readBytes((long) ord * stride, row, 0, staged.recordLen);
+      BitUtil.VH_LE_INT.set(row, primaryOffset, cl.cell(ord, 0));
+      docs[ord] = (int) BitUtil.VH_LE_INT.get(row, docIdOffset);
+      data.writeBytes(row, 0, staged.recordLen);
+    }
+    meta.writeVLong(data.getFilePointer());
+    for (int slot = 0; slot < slotRow.length; slot++) {
+      if ((slot & (GATHER_AHEAD - 1)) == 0) prefetchRows(rows, slotRow, slot, stride);
+      rows.readBytes((long) slotRow[slot] * stride + staged.recordLen, row, 0, staged.coarseBytes);
+      slotDoc[slot] = docs[slotRow[slot]];
+      data.writeBytes(row, 0, staged.coarseBytes);
     }
     meta.writeVLong(data.getFilePointer());
     if (nlist > 1) {
@@ -335,6 +344,12 @@ final class SegmentIVFVectorsWriter extends KnnVectorsWriter {
     var w = DirectMonotonicWriter.getInstance(meta, data, nlist + 1, DIRECT_MONOTONIC_BLOCK_SHIFT);
     for (int start : cellStart) w.add((long) start * Integer.BYTES);
     w.finish();
+  }
+
+  private static void prefetchRows(RandomAccessInput rows, int[] slotRow, int from, int stride)
+      throws IOException {
+    int end = Math.min(slotRow.length, from + GATHER_AHEAD);
+    for (int p = from; p < end; p++) rows.prefetch((long) slotRow[p] * stride, stride);
   }
 
   @Override

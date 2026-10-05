@@ -155,7 +155,7 @@ public final class SegmentIVFKnnQuery extends KnnFloatVectorQuery {
 
     // Keep the globally nearest candidates by coarse distance: (distance, segment, position).
     int total = 0;
-    for (Candidates c : candidates) total += c.slots().length;
+    for (Candidates c : candidates) total += c.records().length;
     long[] ranked = new long[total];
     for (int l = 0, at = 0; l < candidates.size(); l++) {
       int[] distances = candidates.get(l).distances();
@@ -167,27 +167,27 @@ public final class SegmentIVFKnnQuery extends KnnFloatVectorQuery {
     int keep = (int) Math.min(total, SegmentIVFVectorsReader.rerankCount(k));
     int[] counts = new int[leaves.size()];
     for (int i = 0; i < keep; i++) counts[(int) (ranked[i] >>> 20) & 0xFFFFF]++;
-    int[][] slots = new int[leaves.size()][];
-    for (int l = 0; l < slots.length; l++) slots[l] = new int[counts[l]];
+    int[][] records = new int[leaves.size()][];
+    for (int l = 0; l < records.length; l++) records[l] = new int[counts[l]];
     Arrays.fill(counts, 0);
     for (int i = 0; i < keep; i++) {
       int l = (int) (ranked[i] >>> 20) & 0xFFFFF;
-      slots[l][counts[l]++] = candidates.get(l).slots()[(int) ranked[i] & 0xFFFFF];
+      records[l][counts[l]++] = candidates.get(l).records()[(int) ranked[i] & 0xFFFFF];
     }
 
     List<Callable<TopDocs>> reranks = new ArrayList<>();
     List<Integer> ords = new ArrayList<>();
     for (int l = 0; l < leaves.size(); l++) {
-      if (slots[l].length == 0) continue;
+      if (records[l].length == 0) continue;
       LeafReaderContext context = leaves.get(l);
       SegmentIVFVectorsReader reader = readers.get(l);
       Candidates from = candidates.get(l);
-      int[] leafSlots = slots[l];
+      int[] leafRecords = records[l];
       ords.add(context.ord);
       reranks.add(
           () -> {
             TopKnnCollector collector = new TopKnnCollector(k, Integer.MAX_VALUE, strategy);
-            reader.rerank(from, leafSlots, collector);
+            reader.rerank(from, leafRecords, collector);
             TopDocs hits = collector.topDocs();
             for (ScoreDoc hit : hits.scoreDocs) hit.doc += context.docBase;
             return hits;

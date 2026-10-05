@@ -40,7 +40,13 @@ public final class SegmentIVFVectorsFormat extends KnnVectorsFormat {
   static final String NAME = "SegmentIVFVectorsFormat";
   static final String META_CODEC_NAME = NAME + "Meta", DATA_CODEC_NAME = NAME + "Data";
   static final String META_EXTENSION = "ivfm", DATA_EXTENSION = "ivfd";
-  static final int VERSION_CURRENT = 0, DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
+
+  /** Version 0 writes a fine record per slot; version 1 writes one per vector, in ordinal order. */
+  static final int VERSION_START = 0,
+      VERSION_PRIMARY_FINE = 1,
+      VERSION_CURRENT = VERSION_PRIMARY_FINE;
+
+  static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
 
   /** Maximum configurable number of cells per field. */
   public static final int MAX_NLIST = 0xFFFF;

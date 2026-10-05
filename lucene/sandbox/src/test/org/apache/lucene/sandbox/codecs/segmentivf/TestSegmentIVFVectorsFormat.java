@@ -74,8 +74,18 @@ public class TestSegmentIVFVectorsFormat extends LuceneTestCase {
   }
 
   public void testRoundTripDeletesSortSparseFieldsAndMerge() throws Exception {
+    roundTrip(SegmentIVFVectorsFormat.VERSION_CURRENT);
+  }
+
+  /** Version 0 segments, with a fine record per slot, still search and merge into the current. */
+  public void testReadsAndMergesVersion0Segments() throws Exception {
+    roundTrip(SegmentIVFVectorsFormat.VERSION_START);
+  }
+
+  private static void roundTrip(int flushVersion) throws Exception {
     for (FineTier tier : FineTier.values()) {
       for (VectorSimilarityFunction similarity : VectorSimilarityFunction.values()) {
+        SegmentIVFVectorsWriter.writeVersion = flushVersion;
         try (Directory dir = newDirectory();
             IndexWriter writer = new IndexWriter(dir, config(tier, 8, true))) {
           for (int i = 0; i < 240; i++) {
@@ -93,7 +103,10 @@ public class TestSegmentIVFVectorsFormat extends LuceneTestCase {
             writer.deleteDocuments(new Term("id", Integer.toString(i)));
           }
           for (int stage = 0; stage < 2; stage++) {
-            if (stage == 1) writer.forceMerge(1);
+            if (stage == 1) {
+              SegmentIVFVectorsWriter.writeVersion = SegmentIVFVectorsFormat.VERSION_CURRENT;
+              writer.forceMerge(1);
+            }
             try (DirectoryReader reader = DirectoryReader.open(writer)) {
               for (var leaf : reader.leaves()) {
                 for (String field : List.of("v", "other")) {
@@ -104,36 +117,50 @@ public class TestSegmentIVFVectorsFormat extends LuceneTestCase {
           }
           writer.commit();
           TestUtil.checkIndex(dir);
+        } finally {
+          SegmentIVFVectorsWriter.writeVersion = SegmentIVFVectorsFormat.VERSION_CURRENT;
         }
       }
     }
   }
 
   public void testFilteredWalkAndExactSmallFilter() throws Exception {
-    for (FineTier tier : FineTier.values()) {
-      try (Directory dir = newDirectory();
-          IndexWriter writer = new IndexWriter(dir, config(tier, 2, false))) {
-        for (int i = 0; i < 3000; i++) {
-          Document doc = new Document();
-          doc.add(new KnnFloatVectorField("v", randomVector(), VectorSimilarityFunction.COSINE));
-          writer.addDocument(doc);
-        }
-        writer.forceMerge(1);
-        try (DirectoryReader reader = DirectoryReader.open(writer)) {
-          LeafReader leaf = reader.leaves().get(0).reader();
-          // Half the documents: far above the exact bound, so the widening walk runs.
-          FixedBitSet half = new FixedBitSet(leaf.maxDoc());
-          for (int doc = 0; doc < leaf.maxDoc(); doc += 2) half.set(doc);
-          assertSearch(leaf, "v", VectorSimilarityFunction.COSINE, tier, half);
-          // A handful: reranked whole, so the result is exact to the tier's precision.
-          FixedBitSet few = new FixedBitSet(leaf.maxDoc());
-          for (int doc = 5; doc < leaf.maxDoc(); doc += 97) few.set(doc);
-          assertSearch(leaf, "v", VectorSimilarityFunction.COSINE, tier, few);
-          TopKnnCollector none = new TopKnnCollector(10, Integer.MAX_VALUE);
-          leaf.searchNearestVectors("v", randomVector(), none, accepting(new FixedBitSet(3000)));
-          assertEquals(0, none.topDocs().scoreDocs.length);
+    int[] versions = {
+      SegmentIVFVectorsFormat.VERSION_START, SegmentIVFVectorsFormat.VERSION_CURRENT
+    };
+    try {
+      for (int version : versions) {
+        SegmentIVFVectorsWriter.writeVersion = version;
+        for (FineTier tier : FineTier.values()) {
+          try (Directory dir = newDirectory();
+              IndexWriter writer = new IndexWriter(dir, config(tier, 2, false))) {
+            for (int i = 0; i < 3000; i++) {
+              Document doc = new Document();
+              doc.add(
+                  new KnnFloatVectorField("v", randomVector(), VectorSimilarityFunction.COSINE));
+              writer.addDocument(doc);
+            }
+            writer.forceMerge(1);
+            try (DirectoryReader reader = DirectoryReader.open(writer)) {
+              LeafReader leaf = reader.leaves().get(0).reader();
+              // Half the documents: far above the exact bound, so the widening walk runs.
+              FixedBitSet half = new FixedBitSet(leaf.maxDoc());
+              for (int doc = 0; doc < leaf.maxDoc(); doc += 2) half.set(doc);
+              assertSearch(leaf, "v", VectorSimilarityFunction.COSINE, tier, half);
+              // A handful: reranked whole, so the result is exact to the tier's precision.
+              FixedBitSet few = new FixedBitSet(leaf.maxDoc());
+              for (int doc = 5; doc < leaf.maxDoc(); doc += 97) few.set(doc);
+              assertSearch(leaf, "v", VectorSimilarityFunction.COSINE, tier, few);
+              TopKnnCollector none = new TopKnnCollector(10, Integer.MAX_VALUE);
+              leaf.searchNearestVectors(
+                  "v", randomVector(), none, accepting(new FixedBitSet(3000)));
+              assertEquals(0, none.topDocs().scoreDocs.length);
+            }
+          }
         }
       }
+    } finally {
+      SegmentIVFVectorsWriter.writeVersion = SegmentIVFVectorsFormat.VERSION_CURRENT;
     }
   }
 
@@ -193,6 +220,7 @@ public class TestSegmentIVFVectorsFormat extends LuceneTestCase {
             (SegmentIVFVectorsReader)
                 ((CodecReader) leaf).getVectorReader().unwrapReaderForField("v");
         var field = sivf.field("v");
+        assertOneFineRecordPerVector(field);
         SegmentIVFVectorsReader.Uring.PINNER.submit(() -> {}).get(); // runs after the pin copy
         assertNotNull("coarse codes were not pinned", field.pinnedCoarse);
         assertNotNull("slot-to-document section was not pinned", field.pinnedSlotDocs);
@@ -212,6 +240,21 @@ public class TestSegmentIVFVectorsFormat extends LuceneTestCase {
         }
       } finally {
         SegmentIVFVectorsReader.Uring.forceUring = null;
+      }
+    }
+  }
+
+  /** Spill copies hold only coarse codes: each vector has one fine record, at its ordinal. */
+  private static void assertOneFineRecordPerVector(SegmentIVFVectorsReader.Field field)
+      throws Exception {
+    assertTrue("test needs spill copies", field.cellStart[field.nlist] > field.count);
+    assertEquals((long) field.count * field.recordLen, field.sections[2] - field.sections[1]);
+    for (int cell = 0; cell < field.nlist; cell++) {
+      for (int slot = field.cellStart[cell]; slot < field.cellStart[cell + 1]; slot++) {
+        int doc = field.slotDocs.readInt((long) slot * Integer.BYTES);
+        // dense: a document's ordinal is its id
+        int record = field.records.readInt((long) doc * field.recordLen + field.docIdOffset);
+        assertEquals(doc, record);
       }
     }
   }
