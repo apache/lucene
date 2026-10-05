@@ -362,8 +362,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
           QUANTIZED_VECTOR_COMPONENT, "Vectors' count:" + vectorCount);
     }
     // Only asymmetric encodings have query-side records, and both FLOAT16 and FLOAT32 fields
-    // score graphs with them. The predicate sees vectorCount before deletions, so it can
-    // request data even when the merged field is too small to build a graph.
+    // score graphs with them.
     boolean prepareQueryData =
         encoding.isAsymmetric()
             && fieldInfo.getVectorEncoding().isFloatingPoint()
