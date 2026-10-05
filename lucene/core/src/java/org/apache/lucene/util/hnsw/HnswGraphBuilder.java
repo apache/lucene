@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.SplittableRandom;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.search.KnnCollector;
@@ -95,20 +94,9 @@ public class HnswGraphBuilder implements HnswBuilder {
    */
   private long mergeStartTimeNs = -1;
 
-  /**
-   * Shared accumulator for total worker time across all concurrent merge workers. Each chunk's
-   * elapsed time is added here so that effective concurrency can be computed at merge end.
-   */
-  private AtomicLong cumulativeWorkTimeNs;
-
   /** Set the merge-level start time so progress prints show time since merge began. */
   void setMergeStartTimeNs(long mergeStartTimeNs) {
     this.mergeStartTimeNs = mergeStartTimeNs;
-  }
-
-  /** Set the shared accumulator for tracking cumulative worker time across concurrent chunks. */
-  void setCumulativeWorkTimeNs(AtomicLong cumulativeWorkTimeNs) {
-    this.cumulativeWorkTimeNs = cumulativeWorkTimeNs;
   }
 
   public static HnswGraphBuilder create(
@@ -260,9 +248,6 @@ public class HnswGraphBuilder implements HnswBuilder {
       }
     }
     long chunkedElapsedNs = System.nanoTime() - startNs;
-    if (cumulativeWorkTimeNs != null) {
-      cumulativeWorkTimeNs.addAndGet(chunkedElapsedNs);
-    }
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
       double elapsedMs = chunkedElapsedNs / 1_000_000.0;
       infoStream.message(

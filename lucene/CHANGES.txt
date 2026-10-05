@@ -416,6 +416,11 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#16729: Concurrent HNSW graph merges no longer run single-threaded when they start while
+  sibling merges hold ConcurrentMergeScheduler's intra-merge threads. Workers are now recruited
+  between batches in every phase of the merge, so threads that free up part way through a merge are
+  put to use. (Alec Bernardi)
+
 * GITHUB#17020: Reduce CachingTokenFilter memory use by not copying stale term bytes in
   CharTermAttributeImpl#clone. (Eugene Rizhkov)
 

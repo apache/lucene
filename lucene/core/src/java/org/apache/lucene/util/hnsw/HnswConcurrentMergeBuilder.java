@@ -21,9 +21,12 @@ import static org.apache.lucene.util.hnsw.HnswGraphBuilder.HNSW_COMPONENT;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;
@@ -35,6 +38,7 @@ import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.IOSupplier;
+import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.IntsRef;
 
@@ -149,7 +153,6 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     this.graphs = graphs;
     this.ordMaps = ordMaps;
     this.taskExecutor = taskExecutor;
-    AtomicInteger workProgress = new AtomicInteger(0);
     workers = new ConcurrentMergeWorker[numWorker];
     hnswLock = new HnswLock();
     for (int i = 0; i < numWorker; i++) {
@@ -160,8 +163,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
               HnswGraphBuilder.randSeed,
               hnsw,
               hnswLock,
-              initializedNodes,
-              workProgress);
+              initializedNodes);
     }
     this.prunedGraph = prunedGraph;
   }
@@ -180,7 +182,6 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     AtomicLong cumulativeWorkTimeNs = new AtomicLong();
     for (ConcurrentMergeWorker worker : workers) {
       worker.setMergeStartTimeNs(mergeStartTimeNs);
-      worker.setCumulativeWorkTimeNs(cumulativeWorkTimeNs);
     }
     // The join plans only read the graphs being joined, so they are computed while the repaired
     // base graph is rebalanced. The rebalance is one long single-threaded task and invokeAll starts
@@ -191,7 +192,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     AtomicLong rebalanceNs = new AtomicLong();
     if (prunedGraph != null) {
       long repairStartNs = System.nanoTime();
-      repairedNodes = repairDisconnectedNodes();
+      repairedNodes = repairDisconnectedNodes(cumulativeWorkTimeNs);
       repairNs = System.nanoTime() - repairStartNs;
       tasks.add(() -> {
         long rebalanceStartNs = System.nanoTime();
@@ -241,15 +242,12 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     if (plans.length > 0) {
       joinGraphs(plans, maxOrd, cumulativeWorkTimeNs);
     }
-    List<Callable<Void>> futures = new ArrayList<>();
-    for (int i = 0; i < workers.length; i++) {
-      int finalI = i;
-      futures.add(() -> {
-        workers[finalI].run(maxOrd);
-        return null;
-      });
-    }
-    taskExecutor.invokeAll(futures);
+    runInBatches(
+        "insert",
+        maxOrd,
+        workers[0].batchSize,
+        cumulativeWorkTimeNs,
+        (worker, start, end) -> worker.addVectors(start, end));
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
       double wallClockMs = (System.nanoTime() - mergeStartTimeNs) / 1_000_000.0;
       double totalWorkerMs = cumulativeWorkTimeNs.get() / 1_000_000.0;
@@ -281,8 +279,11 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
       plans[g] = null; // not needed once joined
       FixedBitSet joinSet = plan.joinSet;
       int size = joinSet.length();
+      int batchSize = joinBatchSize(size);
       runInBatches(
+          "join set of graph " + g,
           size,
+          batchSize,
           cumulativeWorkTimeNs,
           (worker, start, end) -> {
             for (int u = joinSet.nextSetBit(start, end);
@@ -299,7 +300,9 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
         workers[w].joinedGraph = graph;
       }
       runInBatches(
+          "join graph " + g,
           size,
+          batchSize,
           cumulativeWorkTimeNs,
           (worker, start, end) -> {
             for (int u = start; u < end; u++) {
@@ -362,35 +365,159 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
   }
 
   /**
-   * Splits [0, count) into batches that the workers pick concurrently, and returns once all batches
-   * are done.
+   * The batch size for a phase of a join. The phases of a join are short, so a worker that picks
+   * the last full-size batch would keep the others idle for most of a phase. Smaller batches keep
+   * all workers busy until the end.
    */
-  private void runInBatches(int count, AtomicLong cumulativeWorkTimeNs, BatchTask task)
+  private int joinBatchSize(int count) {
+    return Math.max(1, Math.min(workers[0].batchSize, count / (workers.length * MIN_JOIN_BATCHES)));
+  }
+
+  /**
+   * Splits [0, count) into batches that the workers claim from a shared counter, and returns once
+   * all batches are done. The calling thread runs the first worker. Before each batch that is not
+   * the last, it offers the workers that have not started to the executor, no more of them than
+   * there are batches left, so that threads which free up during the phase join it.
+   *
+   * <p>Offering every worker before running any of them, as {@link TaskExecutor#invokeAll} does,
+   * fails when the executor has no free thread and runs a command on the calling thread instead,
+   * like {@code ConcurrentMergeScheduler}'s intra-merge executor: the first worker then claims
+   * every batch before the others are offered, and the phase runs on one thread even if threads
+   * free up.
+   *
+   * <p>If a batch fails, the other workers stop at their next claim, workers that have not started
+   * are skipped, and the failure is rethrown once the started workers are done.
+   *
+   * @param phase names the phase in the {@link InfoStream} message logged once it is done
+   */
+  private void runInBatches(
+      String phase, int count, int batchSize, AtomicLong cumulativeWorkTimeNs, BatchTask task)
       throws IOException {
-    // The phases of a join are short, so a worker that picks the last full-size batch would keep
-    // the others idle for most of a phase. Smaller batches keep all workers busy until the end.
-    int batchSize =
-        Math.max(1, Math.min(workers[0].batchSize, count / (workers.length * MIN_JOIN_BATCHES)));
-    AtomicInteger progress = new AtomicInteger(0);
-    List<Callable<Void>> futures = new ArrayList<>();
-    for (ConcurrentMergeWorker worker : workers) {
-      futures.add(() -> {
-        long startNs = System.nanoTime();
-        for (int start = progress.getAndAdd(batchSize);
-            start < count;
-            start = progress.getAndAdd(batchSize)) {
-          task.run(worker, start, Math.min(count, start + batchSize));
+    long phaseStartNs = System.nanoTime();
+    Phase batches = new Phase(count, batchSize, task, cumulativeWorkTimeNs);
+    List<Future<Void>> recruited = new ArrayList<>(workers.length - 1);
+    Throwable failure = null;
+    try {
+      for (int start = batches.claim(); start < count; start = batches.claim()) {
+        int end = Math.min(count, start + batchSize);
+        int wanted = Math.min(workers.length - 1, Math.ceilDiv(count - end, batchSize));
+        while (recruited.size() < wanted) {
+          int w = recruited.size() + 1;
+          Optional<Future<Void>> future =
+              taskExecutor.tryInvoke(() -> {
+                batches.drain(w);
+                return null;
+              });
+          if (future.isEmpty()) {
+            break; // no thread is free now, so run this batch here and offer again before the next
+          }
+          recruited.add(future.get());
         }
-        cumulativeWorkTimeNs.addAndGet(System.nanoTime() - startNs);
-        return null;
-      });
+        batches.run(0, start, end);
+      }
+    } catch (Throwable t) {
+      batches.stop();
+      failure = t;
     }
-    taskExecutor.invokeAll(futures);
+    // a worker that has not started has nothing left to claim, and waiting for it to start could
+    // mean waiting for unrelated tasks that hold the executor's threads
+    for (Future<Void> future : recruited) {
+      future.cancel(false);
+    }
+    try {
+      TaskExecutor.collectResults(recruited);
+    } catch (Throwable t) {
+      failure = IOUtils.useOrSuppress(failure, t);
+    }
+    if (failure != null) {
+      throw IOUtils.rethrowAlways(failure);
+    }
+    if (infoStream.isEnabled(HNSW_COMPONENT)) {
+      infoStream.message(
+          HNSW_COMPONENT,
+          String.format(
+              Locale.ROOT,
+              "phase %s: %d items in batches of %d, %d/%d workers ran batches %s, %.2f ms wall clock, %.2f ms worker time",
+              phase,
+              count,
+              batchSize,
+              batches.workersThatRan(),
+              workers.length,
+              Arrays.toString(batches.batchesByWorker),
+              (System.nanoTime() - phaseStartNs) / 1_000_000.0,
+              batches.workNs.get() / 1_000_000.0));
+    }
   }
 
   @FunctionalInterface
   private interface BatchTask {
     void run(ConcurrentMergeWorker worker, int start, int end) throws IOException;
+  }
+
+  /** The state that the workers of one {@link #runInBatches} call share. */
+  private final class Phase {
+    private final AtomicInteger progress = new AtomicInteger();
+    private final int count;
+    private final int batchSize;
+    private final BatchTask task;
+    private final AtomicLong cumulativeWorkTimeNs;
+    private final AtomicLong workNs = new AtomicLong();
+
+    /**
+     * Batches run by each worker. An element is only written by the thread running that worker, and
+     * only read once that worker is done.
+     */
+    private final int[] batchesByWorker = new int[workers.length];
+
+    Phase(int count, int batchSize, BatchTask task, AtomicLong cumulativeWorkTimeNs) {
+      this.count = count;
+      this.batchSize = batchSize;
+      this.task = task;
+      this.cumulativeWorkTimeNs = cumulativeWorkTimeNs;
+    }
+
+    /** Claims the next batch, and returns its start, which is at least {@code count} if none. */
+    int claim() {
+      return progress.getAndAdd(batchSize);
+    }
+
+    /** Makes every later {@link #claim} find no batch left. */
+    void stop() {
+      // count rather than Integer.MAX_VALUE, since later claims keep adding to it
+      progress.set(count);
+    }
+
+    /** Runs batches on worker {@code w} until none are left. */
+    void drain(int w) throws IOException {
+      for (int start = claim(); start < count; start = claim()) {
+        run(w, start, Math.min(count, start + batchSize));
+      }
+    }
+
+    void run(int w, int start, int end) throws IOException {
+      long startNs = System.nanoTime();
+      try {
+        task.run(workers[w], start, end);
+      } catch (Throwable t) {
+        stop();
+        throw t;
+      } finally {
+        long elapsedNs = System.nanoTime() - startNs;
+        workNs.addAndGet(elapsedNs);
+        cumulativeWorkTimeNs.addAndGet(elapsedNs);
+      }
+      batchesByWorker[w]++;
+    }
+
+    int workersThatRan() {
+      int ran = 0;
+      for (int batches : batchesByWorker) {
+        if (batches > 0) {
+          ran++;
+        }
+      }
+      return ran;
+    }
   }
 
   /**
@@ -399,38 +526,28 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
    *
    * @return the number of nodes repaired, counting a node once per level it was repaired on
    */
-  private int repairDisconnectedNodes() throws IOException {
+  private int repairDisconnectedNodes(AtomicLong cumulativeWorkTimeNs) throws IOException {
     int repairedNodes = 0;
     for (int level = prunedGraph.numLevels() - 1; level >= 0; level--) {
       IntsRef disconnectedNodes = prunedGraph.disconnectedNodesByLevel()[level];
       if (disconnectedNodes == null) {
         continue;
       }
-      int total = disconnectedNodes.length;
-      repairedNodes += total;
-      // Use at most one task per worker and no more tasks than repair batches; each task
-      // dynamically claims batches below.
-      int taskCount = Math.min(workers.length, Math.ceilDiv(total, REPAIR_BATCH_SIZE));
-      AtomicInteger repairProgress = new AtomicInteger(0);
+      repairedNodes += disconnectedNodes.length;
       int repairLevel = level;
-      List<Callable<Void>> tasks = new ArrayList<>(taskCount);
-      for (int t = 0; t < taskCount; t++) {
-        ConcurrentMergeWorker worker = workers[t];
-        tasks.add(() -> {
-          int from;
-          while ((from = repairProgress.getAndAdd(REPAIR_BATCH_SIZE)) < total) {
-            int length = Math.min(REPAIR_BATCH_SIZE, total - from);
-            worker.fixDisconnectedNodes(
-                new IntsRef(disconnectedNodes.ints, disconnectedNodes.offset + from, length),
-                repairLevel,
-                worker.scorer);
-          }
-          return null;
-        });
-      }
-      // Finish every repair task at this level before repairing the next lower level, because
+      // Finish every repair batch at this level before repairing the next lower level, because
       // addConnections descends through the already-repaired upper levels.
-      taskExecutor.invokeAll(tasks);
+      runInBatches(
+          "repair level " + level,
+          disconnectedNodes.length,
+          REPAIR_BATCH_SIZE,
+          cumulativeWorkTimeNs,
+          (worker, start, end) ->
+              worker.fixDisconnectedNodes(
+                  new IntsRef(
+                      disconnectedNodes.ints, disconnectedNodes.offset + start, end - start),
+                  repairLevel,
+                  worker.scorer));
     }
     return repairedNodes;
   }
@@ -488,12 +605,6 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
 
   private static final class ConcurrentMergeWorker extends HnswGraphBuilder {
 
-    /**
-     * A common AtomicInteger shared among all workers, used for tracking what's the next vector to
-     * be added to the graph.
-     */
-    private final AtomicInteger workProgress;
-
     private final BitSet initializedNodes;
     private int batchSize = DEFAULT_BATCH_SIZE;
 
@@ -509,8 +620,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
         long seed,
         OnHeapHnswGraph hnsw,
         HnswLock hnswLock,
-        BitSet initializedNodes,
-        AtomicInteger workProgress)
+        BitSet initializedNodes)
         throws IOException {
       super(
           scorerSupplier,
@@ -522,34 +632,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
               new NeighborQueue(beamWidth, true),
               hnswLock,
               HnswGraphSearcher.createVisitedSet(beamWidth, HnswGraphSearcher.getGraphSize(hnsw))));
-      this.workProgress = workProgress;
       this.initializedNodes = initializedNodes;
-    }
-
-    /**
-     * This method first try to "reserve" part of work by calling {@link #getStartPos(int)} and then
-     * calling {@link #addVectors(int, int)} to actually add the nodes to the graph. By doing this
-     * we are able to dynamically allocate the work to multiple workers and try to make all of them
-     * finishing around the same time.
-     */
-    private void run(int maxOrd) throws IOException {
-      int start = getStartPos(maxOrd);
-      int end;
-      while (start != -1) {
-        end = Math.min(maxOrd, start + batchSize);
-        addVectors(start, end);
-        start = getStartPos(maxOrd);
-      }
-    }
-
-    /** Reserve the work by atomically increment the {@link #workProgress} */
-    private int getStartPos(int maxOrd) {
-      int start = workProgress.getAndAdd(batchSize);
-      if (start < maxOrd) {
-        return start;
-      } else {
-        return -1;
-      }
     }
 
     @Override
@@ -607,6 +690,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
    * that concurrent modification of the graph will not impact the search
    */
   private static class MergeSearcher extends HnswGraphSearcher {
+
     private final HnswLock hnswLock;
     private int[] nodeBuffer;
     private int upto;
