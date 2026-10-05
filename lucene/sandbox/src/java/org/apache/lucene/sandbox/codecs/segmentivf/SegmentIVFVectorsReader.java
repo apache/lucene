@@ -24,6 +24,7 @@ import static org.apache.lucene.sandbox.codecs.segmentivf.SegmentIVFVectorsForma
 import static org.apache.lucene.sandbox.codecs.segmentivf.SegmentIVFVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
 import static org.apache.lucene.sandbox.codecs.segmentivf.SegmentIVFVectorsFormat.META_CODEC_NAME;
 import static org.apache.lucene.sandbox.codecs.segmentivf.SegmentIVFVectorsFormat.META_EXTENSION;
+import static org.apache.lucene.sandbox.codecs.segmentivf.SegmentIVFVectorsFormat.VERSION_COARSE_TIER;
 import static org.apache.lucene.sandbox.codecs.segmentivf.SegmentIVFVectorsFormat.VERSION_CURRENT;
 import static org.apache.lucene.sandbox.codecs.segmentivf.SegmentIVFVectorsFormat.VERSION_START;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
@@ -66,8 +67,11 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.sandbox.codecs.segmentivf.Centroids.CentroidCodes;
 import org.apache.lucene.sandbox.codecs.segmentivf.Centroids.CentroidGraph;
+import org.apache.lucene.sandbox.codecs.segmentivf.SegmentIVFVectorsFormat.CoarseTier;
 import org.apache.lucene.sandbox.codecs.segmentivf.SegmentIVFVectorsFormat.FineTier;
 import org.apache.lucene.sandbox.codecs.segmentivf.SegmentIVFVectorsFormat.SearchStrategy;
+import org.apache.lucene.sandbox.codecs.segmentivf.SegmentIVFVectorsWriter.StagedVectors;
+import org.apache.lucene.sandbox.codecs.segmentivf.Tiers.CoarseCodec;
 import org.apache.lucene.sandbox.codecs.segmentivf.Tiers.CodeRecord;
 import org.apache.lucene.sandbox.codecs.segmentivf.Tiers.FineCodec;
 import org.apache.lucene.sandbox.codecs.segmentivf.Tiers.HadamardRotation;
@@ -95,9 +99,10 @@ import org.apache.lucene.util.packed.DirectMonotonicReader;
 /**
  * Searches SegmentIVF fields by probing cells, scanning coarse codes, and reranking a shortlist.
  *
- * <p>The coarse scan is intentionally bandwidth-oriented: compact Nitrox2 rows are processed with
- * XOR and popcount, then only a bounded set of survivors reaches the more expensive fine scorer.
- * Filtered search chooses between scanning selected cells and visiting accepted documents directly.
+ * <p>The coarse scan is intentionally bandwidth-oriented: compact Nitrox2 or BBQ rows are processed
+ * with bitwise operations and popcount, then only a bounded set of survivors reaches the more
+ * expensive fine scorer. Filtered search chooses between scanning selected cells and visiting
+ * accepted documents directly.
  */
 final class SegmentIVFVectorsReader extends KnnVectorsReader {
   /** Coarse candidates fine-reranked per requested neighbor, and never fewer than MIN_RERANK. */
@@ -186,6 +191,8 @@ final class SegmentIVFVectorsReader extends KnnVectorsReader {
   final class Field {
     final VectorSimilarityFunction similarity;
     final FineTier fineTier;
+    final CoarseTier coarseTier;
+    final CoarseCodec coarseCodec;
     final int dim, nlist, count, nprobe, spillBits, recordLen, coarseBytes, docIdOffset;
     // Version 0 wrote a fine record per slot, so records are indexed by slot rather than ordinal.
     final boolean recordPerSlot;
@@ -212,6 +219,10 @@ final class SegmentIVFVectorsReader extends KnnVectorsReader {
       recordPerSlot = version == VERSION_START;
       similarity = info.getVectorSimilarityFunction();
       fineTier = FineTier.values()[meta.readByte()];
+      coarseTier =
+          version >= VERSION_COARSE_TIER
+              ? CoarseTier.values()[meta.readByte()]
+              : CoarseTier.NITROX2;
       dim = meta.readVInt();
       nlist = meta.readVInt();
       count = meta.readVInt();
@@ -226,7 +237,8 @@ final class SegmentIVFVectorsReader extends KnnVectorsReader {
       rotation = HadamardRotation.create(dim, rotationSeed);
       fine = new FineCodec(fineTier, dim);
       recordLen = CodeRecord.length(fine.codeBytes);
-      coarseBytes = Nitrox2.bytesPerVector(dim);
+      coarseCodec = CoarseCodec.of(coarseTier, dim);
+      coarseBytes = coarseCodec.codeBytes;
       docIdOffset = fine.codeBytes;
     }
 
@@ -382,8 +394,8 @@ final class SegmentIVFVectorsReader extends KnnVectorsReader {
       allCells = new int[nlist];
       for (int c = 0; c < nlist; c++) allCells[c] = c;
       long graphLength = sections[4] - sections[3];
-      graph = graphLength == 0 ? null : CentroidGraph.read(section(3), dim, graphLength);
-      codes = new CentroidCodes(centroids, dim, fine);
+      graph = graphLength == 0 ? null : CentroidGraph.read(section(3), coarseCodec, graphLength);
+      codes = new CentroidCodes(centroids, fine, coarseCodec);
     }
 
     synchronized int cellOf(int ord) throws IOException {
@@ -407,11 +419,14 @@ final class SegmentIVFVectorsReader extends KnnVectorsReader {
       // One snapshot per query, so a copy published mid-query cannot mix offsets.
       final MemorySegment pinnedCoarse = Field.this.pinnedCoarse;
       final float[] rotated;
+      // The query against the graph's anchor, and per probed cell against its centroid when
+      // codes are anchored.
       final byte[] qCode;
+      private byte[][] cellQueries;
       final FineCodec.Query fine;
       final KnnCollector collector;
       final Scratch scratch = Scratch.LOCAL.get();
-      final int bins = coarseBytes * 8 + 2, shortlist, pool;
+      final int bins = coarseCodec.bins, shortlist, pool;
       final int[] histogram = scratch.histogram = ArrayUtil.growNoCopy(scratch.histogram, bins);
       int size, admitted, threshold = bins - 1;
       Candidates gathered;
@@ -425,10 +440,22 @@ final class SegmentIVFVectorsReader extends KnnVectorsReader {
         Arrays.fill(histogram, 0, bins, 0);
         if (codes == null) loadCodes();
         rotated = new float[dim];
-        qCode = new byte[coarseBytes];
+        qCode = new byte[coarseCodec.queryBytes];
         rotation.rotate(VectorUtil.l2normalize(ArrayUtil.copyOfSubArray(target, 0, dim)), rotated);
-        Nitrox2.encode(rotated, dim, qCode, 0);
+        codes.prepare(rotated, qCode);
         fine = Field.this.fine.query(rotated, similarity);
+      }
+
+      /** The query to compare with the codes of {@code cell}. */
+      private byte[] cellQuery(int cell) {
+        if (coarseCodec.anchored() == false) return qCode;
+        if (cellQueries == null) cellQueries = new byte[nlist][];
+        byte[] q = cellQueries[cell];
+        if (q == null) {
+          q = cellQueries[cell] = qCode.clone();
+          coarseCodec.anchorQuery(q, rotated, centroids[cell]);
+        }
+        return q;
       }
 
       /** A rerank of {@code from}'s shortlist on this thread, reusing its encoded query. */
@@ -560,7 +587,7 @@ final class SegmentIVFVectorsReader extends KnnVectorsReader {
         for (int cell : cells) {
           int base = cellStart[cell], rows = cellStart[cell + 1] - base;
           int[] distances = scratch.distances = ArrayUtil.growNoCopy(scratch.distances, rows);
-          distances(base, rows, distances);
+          distances(cell, base, rows, distances);
           for (int from = 0; from < rows; from += ADMIT_BLOCK) {
             int block = Math.min(ADMIT_BLOCK, rows - from);
             int n = K.filterAtMost(distances, from, block, threshold, scratch.kept);
@@ -584,7 +611,7 @@ final class SegmentIVFVectorsReader extends KnnVectorsReader {
         long[] packed = scratch.packed = ArrayUtil.growNoCopy(scratch.packed, n);
         int[] distance = new int[1];
         for (int i = 0; i < n; i++) {
-          distances(slots[i], 1, distance);
+          distances(SegmentIVFVectorsWriter.cellOfSlot(cellStart, slots[i]), slots[i], 1, distance);
           histogram[distance[0]]++;
           packed[size++] = ((long) distance[0] << 32) | slots[i];
         }
@@ -599,16 +626,18 @@ final class SegmentIVFVectorsReader extends KnnVectorsReader {
         return pinnedCoarse != null ? (long) slotBase * coarseBytes : Field.this.runBase(slotBase);
       }
 
-      private void distances(int base, int rows, int[] out) throws IOException {
+      /** Distances to {@code rows} slots of {@code cell} from slot {@code base}. */
+      private void distances(int cell, int base, int rows, int[] out) throws IOException {
+        byte[] q = cellQuery(cell);
         MemorySegment run = coarseRun(base, rows);
         if (run != null) {
-          K.hamming(qCode, run, runBase(base), rows, out);
+          coarseCodec.distances(q, run, runBase(base), rows, out);
           return;
         }
         byte[] code = scratch.bytes = ArrayUtil.growNoCopy(scratch.bytes, coarseBytes);
         for (int row = 0; row < rows; row++) {
           coarse.readBytes((long) (base + row) * coarseBytes, code, 0, coarseBytes);
-          out[row] = K.hamming(qCode, code, 0);
+          out[row] = coarseCodec.distance(q, code, 0);
         }
       }
 
@@ -719,15 +748,16 @@ final class SegmentIVFVectorsReader extends KnnVectorsReader {
             int base = cellStart[batch[c]], end = cellStart[batch[c] + 1];
             MemorySegment run = coarseRun(base, end - base);
             long runBase = runBase(base);
+            byte[] q = cellQuery(batch[c]);
             for (int slot = base; slot < end; slot++) {
               int doc = docAt(slotDocs, slot);
               if (filter.get(doc) == false) continue;
               int d;
               if (run != null) {
-                d = K.hamming(qCode, run, runBase + (long) (slot - base) * coarseBytes);
+                d = coarseCodec.distance(q, run, runBase + (long) (slot - base) * coarseBytes);
               } else {
                 coarse.readBytes((long) slot * coarseBytes, code, 0, coarseBytes);
-                d = K.hamming(qCode, code, 0);
+                d = coarseCodec.distance(q, code, 0);
               }
               survivors++;
               if (distinct < shortlist && scratch.addDistinct(doc)) distinct++;
@@ -750,13 +780,26 @@ final class SegmentIVFVectorsReader extends KnnVectorsReader {
 
       Values() throws IOException {}
 
-      void copyRow(int ord, int docId, byte[] dest, int offset) throws IOException {
+      /**
+       * Copies ordinal {@code ord}'s fine record to {@code dest} at {@code offset} as document
+       * {@code docId}, with the coarse query {@code staged} stages for routing: copied when both
+       * tiers are Nitrox2, else derived from the record.
+       */
+      void copyRow(int ord, int docId, byte[] dest, int offset, StagedVectors staged)
+          throws IOException {
         records.readBytes((long) recordOfOrd(ord) * recordLen, dest, offset, recordLen);
         BitUtil.VH_LE_INT.set(dest, offset + docIdOffset, docId);
         BitUtil.VH_LE_INT.set(dest, offset + CodeRecord.primaryCellOffset(docIdOffset), 0);
-        loadOrdToSlot();
-        coarse.readBytes(
-            (long) ordToSlot[ord] * coarseBytes, dest, offset + recordLen, coarseBytes);
+        // A Nitrox2 code is its own query; other staged codes are derived from the record.
+        if (coarseCodec instanceof Nitrox2 && staged.coarse instanceof Nitrox2) {
+          loadOrdToSlot();
+          coarse.readBytes(
+              (long) ordToSlot[ord] * coarseBytes, dest, offset + recordLen, coarseBytes);
+        } else {
+          fine.decode(dest, offset, rotated);
+          VectorUtil.l2normalize(rotated, false);
+          staged.coarse.encodeQuery(rotated, dest, offset + recordLen);
+        }
       }
 
       @Override

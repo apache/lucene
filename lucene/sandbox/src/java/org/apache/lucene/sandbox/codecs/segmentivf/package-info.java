@@ -21,12 +21,14 @@
  *
  * <p>Vectors are normalized, rotated with a randomized Hadamard transform and clustered into {@code
  * nlist} cells per segment, with up to {@code spillBits} extra copies near cell boundaries. Each
- * copy stores a 2-bit Nitrox2 coarse code (compared by XOR and popcount), and each vector one INT8
- * or FP32 fine record that its copies share. Flushes and merges warm-start clustering from segments
- * this process already wrote.
+ * copy stores a coarse code, and each vector one INT8 or FP32 fine record that its copies share.
+ * The coarse tier is either a 2-bit Nitrox2 code compared by XOR and popcount, or a 1-bit BBQ code
+ * of the offset from its cell's centroid, scored against a 4-bit query by AND and popcount; the
+ * centroid graph and clustering use the same tier. Flushes and merges warm-start clustering from
+ * segments this process already wrote.
  *
  * <p>A query picks cells through a graph over the centroid codes, scans their coarse codes with
- * SIMD Hamming kernels, and keeps a deduplicated shortlist per segment. {@link
+ * SIMD popcount kernels, and keeps a deduplicated shortlist per segment. {@link
  * org.apache.lucene.sandbox.codecs.segmentivf.SegmentIVFKnnQuery} merges those shortlists and
  * fine-reranks only the index-wide best, so fine reads do not grow with the segment count; a plain
  * {@code KnnFloatVectorQuery} reranks per segment. Filters apply before any scoring.

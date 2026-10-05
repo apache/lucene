@@ -109,7 +109,7 @@ final class Clustering {
         if (seed != null) centroids[c] = ArrayUtil.copyOfSubArray(seed[c], 0, dim);
         normalize(centroids[c]);
       }
-      codes = new CentroidCodes(centroids, dim, null);
+      codes = new CentroidCodes(centroids, null, src.coarse);
       assignment = new int[count];
       cell2 = new int[count];
       d1 = new float[count];
@@ -156,7 +156,7 @@ final class Clustering {
       Parallel.overRange(
           count,
           (lo, hi) -> {
-            CentroidCodes.Scratch scratch = new CentroidCodes.Scratch(dim, nlist, shortlist);
+            CentroidCodes.Scratch scratch = new CentroidCodes.Scratch(codes.codec, shortlist);
             CentroidCodes.Routing routing = new CentroidCodes.Routing(2);
             StagedVectors.Cursor cur = src.cursor();
             for (int i = lo; i < hi; i++) {
@@ -176,7 +176,7 @@ final class Clustering {
                   cell2[i] = warm.cell2[i];
                 }
               } else {
-                cur.coarseInto(scratch.qCode);
+                cur.coarseInto(codes, scratch.qCode);
                 codes.routePacked(vector, shortlist, 2, routing, scratch);
                 assignment[i] = routing.count > 0 ? routing.cells[0] : 0;
                 d1[i] = routing.d1;
@@ -225,7 +225,7 @@ final class Clustering {
       Parallel.overRange(
           count,
           (lo, hi) -> {
-            CentroidCodes.Scratch scratch = new CentroidCodes.Scratch(dim, nlist, shortlist);
+            CentroidCodes.Scratch scratch = new CentroidCodes.Scratch(codes.codec, shortlist);
             CentroidCodes.Routing routing = new CentroidCodes.Routing(keep);
             int[] cands = new int[1 + keep];
             float[] residual = new float[dim], loss = new float[spillBits];
@@ -240,7 +240,7 @@ final class Clustering {
               }
               cur.load(i);
               float[] vector = cur.vector();
-              cur.coarseInto(scratch.qCode);
+              cur.coarseInto(codes, scratch.qCode);
               codes.routePacked(vector, shortlist, keep, routing, scratch);
               int incumbent = assignment[i], n = routing.count;
               float incumbentDist = codes.exactDistance(vector, incumbent);

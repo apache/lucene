@@ -80,6 +80,34 @@ class Kernels {
     return sum;
   }
 
+  /**
+   * {@code sum_k popcount(q_k & code) << k} over the four {@code bits}-byte planes {@code q_k} of a
+   * 4-bit query, for {@code rows} codes {@code stride} bytes apart: {@link
+   * VectorUtil#int4BitDotProduct} on the packed bits of each code.
+   */
+  void int4BitDots(
+      byte[] q, int bits, MemorySegment codes, long offset, int stride, int rows, int[] out) {
+    for (int r = 0; r < rows; r++) {
+      long at = offset + (long) r * stride;
+      long sum = 0;
+      for (int i = 0; i < bits; i++) {
+        int code = codes.get(ValueLayout.JAVA_BYTE, at + i);
+        for (int k = 0; k < 4; k++)
+          sum += (long) Integer.bitCount(q[k * bits + i] & code & 255) << k;
+      }
+      out[r] = (int) sum;
+    }
+  }
+
+  int int4BitDot(byte[] q, int bits, byte[] codes, int offset) {
+    long sum = 0;
+    for (int i = 0; i < bits; i++) {
+      int code = codes[offset + i];
+      for (int k = 0; k < 4; k++) sum += (long) Integer.bitCount(q[k * bits + i] & code & 255) << k;
+    }
+    return (int) sum;
+  }
+
   int filterAtMost(int[] distances, int from, int count, int threshold, int[] out) {
     int kept = 0;
     for (int i = 0; i < count; i++) if (distances[from + i] <= threshold) out[kept++] = i;
@@ -336,6 +364,74 @@ class Kernels {
 
     private static LongVector popcount(LongVector query, LongVector code) {
       return query.lanewise(VectorOperators.XOR, code).lanewise(VectorOperators.BIT_COUNT);
+    }
+
+    @Override
+    void int4BitDots(
+        byte[] q, int bits, MemorySegment codes, long offset, int stride, int rows, int[] out) {
+      if (codes.isNative() == false || bits < BYTES.length()) {
+        super.int4BitDots(q, bits, codes, offset, stride, rows, out);
+        return;
+      }
+      int prefix = bits - bits % BYTES.length();
+      for (int r = 0; r < rows; r++) {
+        long row = offset + (long) r * stride;
+        var s0 = LongVector.zero(LONGS);
+        var s1 = LongVector.zero(LONGS);
+        var s2 = LongVector.zero(LONGS);
+        var s3 = LongVector.zero(LONGS);
+        for (int i = 0; i < prefix; i += BYTES.length()) {
+          var code = code(codes, row + i);
+          s0 = s0.add(andCount(query(q, i), code));
+          s1 = s1.add(andCount(query(q, bits + i), code));
+          s2 = s2.add(andCount(query(q, 2 * bits + i), code));
+          s3 = s3.add(andCount(query(q, 3 * bits + i), code));
+        }
+        long sum =
+            s0.reduceLanes(VectorOperators.ADD)
+                + (s1.reduceLanes(VectorOperators.ADD) << 1)
+                + (s2.reduceLanes(VectorOperators.ADD) << 2)
+                + (s3.reduceLanes(VectorOperators.ADD) << 3);
+        for (int i = prefix; i < bits; i++) {
+          int code = codes.get(ValueLayout.JAVA_BYTE, row + i);
+          for (int k = 0; k < 4; k++) {
+            sum += (long) Integer.bitCount(q[k * bits + i] & code & 255) << k;
+          }
+        }
+        out[r] = (int) sum;
+      }
+    }
+
+    @Override
+    int int4BitDot(byte[] q, int bits, byte[] codes, int offset) {
+      if (bits < BYTES.length()) return super.int4BitDot(q, bits, codes, offset);
+      int prefix = bits - bits % BYTES.length();
+      var s0 = LongVector.zero(LONGS);
+      var s1 = LongVector.zero(LONGS);
+      var s2 = LongVector.zero(LONGS);
+      var s3 = LongVector.zero(LONGS);
+      for (int i = 0; i < prefix; i += BYTES.length()) {
+        var code = code(codes, offset + i);
+        s0 = s0.add(andCount(query(q, i), code));
+        s1 = s1.add(andCount(query(q, bits + i), code));
+        s2 = s2.add(andCount(query(q, 2 * bits + i), code));
+        s3 = s3.add(andCount(query(q, 3 * bits + i), code));
+      }
+      long sum =
+          s0.reduceLanes(VectorOperators.ADD)
+              + (s1.reduceLanes(VectorOperators.ADD) << 1)
+              + (s2.reduceLanes(VectorOperators.ADD) << 2)
+              + (s3.reduceLanes(VectorOperators.ADD) << 3);
+      for (int i = prefix; i < bits; i++) {
+        int code = codes[offset + i];
+        for (int k = 0; k < 4; k++)
+          sum += (long) Integer.bitCount(q[k * bits + i] & code & 255) << k;
+      }
+      return (int) sum;
+    }
+
+    private static LongVector andCount(LongVector query, LongVector code) {
+      return query.lanewise(VectorOperators.AND, code).lanewise(VectorOperators.BIT_COUNT);
     }
 
     @Override

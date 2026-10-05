@@ -26,13 +26,14 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
 
 /**
- * Two-tier inverted-file (IVF) vector format: a Nitrox2 Hamming scan over the probed cells followed
- * by an INT8 or FP32 rerank of a bounded shortlist.
+ * Two-tier inverted-file (IVF) vector format: a coarse scan over the probed cells followed by an
+ * INT8 or FP32 rerank of a bounded shortlist.
  *
  * <p>{@code nlist} is the target number of cells per segment (at most one per vector), {@code
  * nprobe} is the default number of cells a query visits, {@code spillBits} is the maximum number of
- * boundary cells each vector is also written to, and {@link FineTier} selects the rerank encoding.
- * Use {@link SearchStrategy} to override the probe count per query.
+ * boundary cells each vector is also written to, {@link CoarseTier} selects the scan encoding and
+ * {@link FineTier} the rerank encoding. Use {@link SearchStrategy} to override the probe count per
+ * query.
  *
  * @lucene.experimental
  */
@@ -41,10 +42,14 @@ public final class SegmentIVFVectorsFormat extends KnnVectorsFormat {
   static final String META_CODEC_NAME = NAME + "Meta", DATA_CODEC_NAME = NAME + "Data";
   static final String META_EXTENSION = "ivfm", DATA_EXTENSION = "ivfd";
 
-  /** Version 0 writes a fine record per slot; version 1 writes one per vector, in ordinal order. */
+  /**
+   * Version 0 writes a fine record per slot; version 1 writes one per vector, in ordinal order;
+   * version 2 records the coarse tier, which was always Nitrox2 before.
+   */
   static final int VERSION_START = 0,
       VERSION_PRIMARY_FINE = 1,
-      VERSION_CURRENT = VERSION_PRIMARY_FINE;
+      VERSION_COARSE_TIER = 2,
+      VERSION_CURRENT = VERSION_COARSE_TIER;
 
   static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
 
@@ -55,6 +60,21 @@ public final class SegmentIVFVectorsFormat extends KnnVectorsFormat {
 
   final int nlist, nprobe, spillBits;
   final FineTier fineTier;
+  final CoarseTier coarseTier;
+
+  /**
+   * Encoding of the coarse tier: the cell scan, the centroid graph and clustering's routing all use
+   * the same one.
+   */
+  public enum CoarseTier {
+    /** A 2-bit thermometer code per dimension compared by XOR and popcount. */
+    NITROX2,
+    /**
+     * Better Binary Quantization: a 1-bit code per dimension of a vector's offset from its cell's
+     * centroid, with optimized-interval corrections, scored against a 4-bit query.
+     */
+    BBQ
+  }
 
   /** Encoding of the fine rerank tier. */
   public enum FineTier {
@@ -72,22 +92,36 @@ public final class SegmentIVFVectorsFormat extends KnnVectorsFormat {
     this(nlist, nprobe, 1, FineTier.INT8);
   }
 
-  /** Creates a fully configured format. */
+  /** Creates a format with Nitrox2 coarse codes. */
   public SegmentIVFVectorsFormat(int nlist, int nprobe, int spillBits, FineTier fineTier) {
+    this(nlist, nprobe, spillBits, fineTier, CoarseTier.NITROX2);
+  }
+
+  /** Creates a fully configured format. */
+  public SegmentIVFVectorsFormat(
+      int nlist, int nprobe, int spillBits, FineTier fineTier, CoarseTier coarseTier) {
     super(NAME);
-    if (nlist < 1 || nlist > MAX_NLIST || nprobe < 1 || spillBits < 0 || fineTier == null) {
+    if (nlist < 1
+        || nlist > MAX_NLIST
+        || nprobe < 1
+        || spillBits < 0
+        || fineTier == null
+        || coarseTier == null) {
       throw new IllegalArgumentException(
           "require 1 <= nlist <= "
               + MAX_NLIST
-              + ", nprobe >= 1, spillBits >= 0 and non-null fineTier; got nlist="
+              + ", nprobe >= 1, spillBits >= 0 and non-null tiers; got nlist="
               + nlist
               + " nprobe="
               + nprobe
               + " spillBits="
               + spillBits
               + " fineTier="
-              + fineTier);
+              + fineTier
+              + " coarseTier="
+              + coarseTier);
     }
+    this.coarseTier = coarseTier;
     this.nlist = nlist;
     this.nprobe = nprobe;
     this.spillBits = spillBits;
@@ -165,6 +199,6 @@ public final class SegmentIVFVectorsFormat extends KnnVectorsFormat {
   @Override
   public String toString() {
     String head = NAME + "(nlist=" + nlist + " nprobe=" + nprobe + " spillBits=" + spillBits;
-    return head + " fineTier=" + fineTier + ")";
+    return head + " fineTier=" + fineTier + " coarseTier=" + coarseTier + ")";
   }
 }

@@ -20,9 +20,9 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Random;
 import org.apache.lucene.sandbox.codecs.segmentivf.Clustering.Parallel;
+import org.apache.lucene.sandbox.codecs.segmentivf.Tiers.CoarseCodec;
 import org.apache.lucene.sandbox.codecs.segmentivf.Tiers.CodeRecord;
 import org.apache.lucene.sandbox.codecs.segmentivf.Tiers.FineCodec;
-import org.apache.lucene.sandbox.codecs.segmentivf.Tiers.Nitrox2;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.RandomAccessInput;
@@ -40,18 +40,21 @@ final class Centroids {
     private static final int TILE = 512;
 
     final float[][] centroids;
+    final CoarseCodec codec;
     final byte[] coarse;
     final int nlist, coarseBytes;
-    private final int dim, fineStride;
+    // The anchor of every centroid code and prepared query: the mean centroid, if codes need one.
+    float[] anchor;
+    private final int fineStride;
     private final FineCodec fine;
     private final byte[] fineRecords;
     private final ThreadLocal<byte[]> gathered = ThreadLocal.withInitial(() -> new byte[0]);
 
-    CentroidCodes(float[][] centroids, int dim, FineCodec fine) {
-      this.dim = dim;
+    CentroidCodes(float[][] centroids, FineCodec fine, CoarseCodec codec) {
       this.nlist = centroids.length;
       this.centroids = centroids;
-      this.coarseBytes = Nitrox2.bytesPerVector(dim);
+      this.codec = codec;
+      this.coarseBytes = codec.codeBytes;
       this.coarse = new byte[nlist * coarseBytes];
       this.fine = fine;
       this.fineStride = fine == null ? 0 : CodeRecord.length(fine.codeBytes);
@@ -60,10 +63,17 @@ final class Centroids {
     }
 
     void encodeAll() {
+      anchor = codec.anchor(centroids);
       for (int c = 0; c < nlist; c++) {
-        Nitrox2.encode(centroids[c], dim, coarse, c * coarseBytes);
+        codec.encode(centroids[c], anchor, coarse, c * coarseBytes);
         if (fine != null) fine.encode(centroids[c], fineRecords, c * fineStride);
       }
+    }
+
+    /** Prepares {@code vector} for {@link #routePacked} or a graph search, into {@code qCode}. */
+    void prepare(float[] vector, byte[] qCode) {
+      codec.encodeQuery(vector, qCode, 0);
+      codec.anchorQuery(qCode, vector, anchor);
     }
 
     void rankCandidates(float[] vector, int[] cands, int count, float[] out) {
@@ -96,11 +106,11 @@ final class Centroids {
       final float[] verifyDist;
       final byte[] qCode;
 
-      Scratch(int dim, int nlist, int shortlist) {
+      Scratch(CoarseCodec codec, int shortlist) {
         heap = new long[shortlist];
         verifyCells = new int[shortlist];
         verifyDist = new float[shortlist];
-        qCode = new byte[Nitrox2.bytesPerVector(dim)];
+        qCode = new byte[codec.queryBytes];
       }
     }
 
@@ -111,7 +121,7 @@ final class Centroids {
       int n = 0, worst = Integer.MAX_VALUE;
       for (int base = 0; base < nlist; base += TILE) {
         final int rows = Math.min(TILE, nlist - base);
-        Kernels.INSTANCE.hamming(scratch.qCode, coarse, base * coarseBytes, rows, cd);
+        codec.distances(scratch.qCode, coarse, base * coarseBytes, rows, cd);
         for (int r = 0; r < rows; r++) {
           final int dist = cd[r];
           if (n < want) {
@@ -154,12 +164,12 @@ final class Centroids {
    * A compact graph over centroid codes that avoids scoring every cell when selecting query probes.
    */
   record CentroidGraph(
-      int nlist, int coarseBytes, int stride, int entry, byte[] nodes, int[][] building) {
+      CoarseCodec codec, int nlist, int stride, int entry, byte[] nodes, int[][] building) {
     static final int M = 16, EF_CONSTRUCTION = 64, EF_MULTIPLIER = 2, MIN_EF = 32;
     private static final int ALIGN = 64, ORD_BYTES = 2, LOCK_STRIPES = 512, INSERT_GRAIN = 256;
     private static final ThreadLocal<int[]> VISITED = ThreadLocal.withInitial(() -> new int[1]);
 
-    static CentroidGraph build(CentroidCodes codes, int dim) throws IOException {
+    static CentroidGraph build(CentroidCodes codes) throws IOException {
       int nlist = codes.nlist, coarseBytes = codes.coarseBytes;
       int stride = (coarseBytes + 2 + M * ORD_BYTES + ALIGN - 1) / ALIGN * ALIGN;
       int[][] neighbours = new int[nlist][];
@@ -174,16 +184,16 @@ final class Centroids {
       }
       int entry = order[0];
       CentroidGraph partial =
-          new CentroidGraph(nlist, coarseBytes, coarseBytes, entry, codes.coarse, neighbours);
+          new CentroidGraph(codes.codec, nlist, coarseBytes, entry, codes.coarse, neighbours);
       Object[] locks = new Object[LOCK_STRIPES];
       for (int i = 0; i < LOCK_STRIPES; i++) locks[i] = new Object();
       Parallel.RangeTask insertRange =
           (from, to) -> {
-            byte[] code = new byte[coarseBytes];
+            byte[] code = new byte[codes.codec.queryBytes];
             int[] visited = new int[nlist];
             for (int idx = from + 1; idx <= to; idx++) {
               int node = order[idx];
-              Nitrox2.encode(codes.centroids[node], dim, code, 0);
+              codes.prepare(codes.centroids[node], code);
               int n = partial.search(code, EF_CONSTRUCTION, visited, null);
               int[] kept = neighbours[node] = prune(codes, codes.centroids[node], visited, n);
               for (int i = 0; i < kept.length; i++) {
@@ -209,7 +219,7 @@ final class Centroids {
           nodes[off + 1] = (byte) (neighbours[c][i] >>> 8);
         }
       }
-      return new CentroidGraph(nlist, coarseBytes, stride, entry, nodes, null);
+      return new CentroidGraph(codes.codec, nlist, stride, entry, nodes, null);
     }
 
     private static void connect(int[][] neighbours, int entry) {
@@ -311,7 +321,7 @@ final class Centroids {
       for (int fan = 1; ; ) {
         int firstOut = nOut;
         for (int i = 0; i < fan && nOut < out.length; i++) out[nOut++] = fanOffsets[i] / stride;
-        if (fan > 0) Kernels.INSTANCE.hammingAt(qCode, nodes, fanOffsets, fan, fanDist);
+        if (fan > 0) codec.distancesAt(qCode, nodes, fanOffsets, fan, fanDist);
         if (outDist != null) System.arraycopy(fanDist, 0, outDist, firstOut, nOut - firstOut);
         for (int i = 0; i < fan; i++) {
           if (bestN == cap && fanDist[i] >= (int) (best[0] >>> 32)) continue;
@@ -326,7 +336,7 @@ final class Centroids {
         if (bestN == cap && (int) (top >>> 32) > (int) (best[0] >>> 32)) return nOut;
         int node = (int) top;
         int[] adj = building == null ? null : building[node];
-        int degOff = node * stride + coarseBytes;
+        int degOff = node * stride + codec.codeBytes;
         int deg =
             adj != null ? adj.length : (nodes[degOff] & 0xFF) | (nodes[degOff + 1] & 0xFF) << 8;
         fan = 0;
@@ -346,14 +356,15 @@ final class Centroids {
       out.writeBytes(nodes, 0, nodes.length);
     }
 
-    static CentroidGraph read(RandomAccessInput in, int dim, long length) throws IOException {
+    static CentroidGraph read(RandomAccessInput in, CoarseCodec codec, long length)
+        throws IOException {
       byte[] head = new byte[(int) Math.min(16, length)];
       in.readBytes(0, head, 0, head.length);
       ByteArrayDataInput header = new ByteArrayDataInput(head);
       int nlist = header.readVInt(), stride = header.readVInt(), entry = header.readVInt();
       byte[] nodes = new byte[nlist * stride];
       in.readBytes(header.getPosition(), nodes, 0, nodes.length);
-      return new CentroidGraph(nlist, Nitrox2.bytesPerVector(dim), stride, entry, nodes, null);
+      return new CentroidGraph(codec, nlist, stride, entry, nodes, null);
     }
 
     private static void siftUp(long[] h, int i, long v, boolean max) {

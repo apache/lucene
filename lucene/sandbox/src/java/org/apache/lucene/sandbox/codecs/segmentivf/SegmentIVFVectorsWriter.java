@@ -22,6 +22,7 @@ import static org.apache.lucene.sandbox.codecs.segmentivf.SegmentIVFVectorsForma
 import static org.apache.lucene.sandbox.codecs.segmentivf.SegmentIVFVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
 import static org.apache.lucene.sandbox.codecs.segmentivf.SegmentIVFVectorsFormat.META_CODEC_NAME;
 import static org.apache.lucene.sandbox.codecs.segmentivf.SegmentIVFVectorsFormat.META_EXTENSION;
+import static org.apache.lucene.sandbox.codecs.segmentivf.SegmentIVFVectorsFormat.VERSION_COARSE_TIER;
 import static org.apache.lucene.sandbox.codecs.segmentivf.SegmentIVFVectorsFormat.VERSION_CURRENT;
 import static org.apache.lucene.sandbox.codecs.segmentivf.SegmentIVFVectorsFormat.VERSION_START;
 
@@ -48,11 +49,12 @@ import org.apache.lucene.sandbox.codecs.segmentivf.Centroids.CentroidGraph;
 import org.apache.lucene.sandbox.codecs.segmentivf.Clustering.HotStart;
 import org.apache.lucene.sandbox.codecs.segmentivf.Clustering.Parallel;
 import org.apache.lucene.sandbox.codecs.segmentivf.Clustering.WarmState;
+import org.apache.lucene.sandbox.codecs.segmentivf.SegmentIVFVectorsFormat.CoarseTier;
 import org.apache.lucene.sandbox.codecs.segmentivf.SegmentIVFVectorsReader.Field;
+import org.apache.lucene.sandbox.codecs.segmentivf.Tiers.CoarseCodec;
 import org.apache.lucene.sandbox.codecs.segmentivf.Tiers.CodeRecord;
 import org.apache.lucene.sandbox.codecs.segmentivf.Tiers.FineCodec;
 import org.apache.lucene.sandbox.codecs.segmentivf.Tiers.HadamardRotation;
-import org.apache.lucene.sandbox.codecs.segmentivf.Tiers.Nitrox2;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.RandomAccessInput;
@@ -103,6 +105,14 @@ final class SegmentIVFVectorsWriter extends KnnVectorsWriter {
     return state.directory.createOutput(name, state.context);
   }
 
+  private FineCodec fine(int dim) {
+    return new FineCodec(format.fineTier, dim);
+  }
+
+  private CoarseCodec coarse(int dim) {
+    return CoarseCodec.of(format.coarseTier, dim);
+  }
+
   static long rotationSeed(int dim) {
     return 0x9E3779B97F4A7C15L ^ dim;
   }
@@ -128,7 +138,7 @@ final class SegmentIVFVectorsWriter extends KnnVectorsWriter {
         keys[i] = (long) doc << 32 | i;
       }
       Arrays.sort(keys);
-      try (var staged = new StagedVectors(state, new FineCodec(format.fineTier, dim), 0)) {
+      try (var staged = new StagedVectors(state, fine(dim), coarse(dim), 0)) {
         for (int start = 0, n; start < count; start += n) {
           n = Math.min(StagedVectors.CHUNK_ORDS, count - start);
           staged.add(start, n, k -> (int) (keys[k] >>> 32), (k, _) -> vectors[(int) keys[k]], true);
@@ -213,7 +223,7 @@ final class SegmentIVFVectorsWriter extends KnnVectorsWriter {
       secondary[r] = snapshots[r].cell2();
     }
     boolean parallel = copyable;
-    try (var staged = new StagedVectors(state, new FineCodec(format.fineTier, dim), readers)) {
+    try (var staged = new StagedVectors(state, fine(dim), coarse(dim), readers)) {
       int max = StagedVectors.CHUNK_ORDS;
       int[] srcs = new int[max], ords = new int[max], docs = new int[max];
       StagedVectors.Rows rows =
@@ -221,7 +231,8 @@ final class SegmentIVFVectorsWriter extends KnnVectorsWriter {
             int r = srcs[j];
             if (views[r] != null) {
               if (local[r] == null) local[r] = views[r].new Values();
-              ((Field.Values) local[r]).copyRow(ords[j], docs[j], staged.chunk, j * staged.stride);
+              ((Field.Values) local[r])
+                  .copyRow(ords[j], docs[j], staged.chunk, j * staged.stride, staged);
               return null;
             }
             if (local[r] == null) local[r] = parallel ? vals[r].copy() : vals[r];
@@ -279,6 +290,8 @@ final class SegmentIVFVectorsWriter extends KnnVectorsWriter {
     int nlist = count == 0 ? 0 : format.nlist;
     meta.writeInt(info.number);
     meta.writeByte((byte) format.fineTier.ordinal());
+    if (version >= VERSION_COARSE_TIER) meta.writeByte((byte) format.coarseTier.ordinal());
+    else if (format.coarseTier != CoarseTier.NITROX2) throw new IllegalStateException("version");
     meta.writeVInt(dim);
     meta.writeVInt(nlist);
     meta.writeVInt(count);
@@ -326,15 +339,20 @@ final class SegmentIVFVectorsWriter extends KnnVectorsWriter {
       data.writeBytes(row, 0, staged.recordLen);
     }
     meta.writeVLong(data.getFilePointer());
-    for (int slot = 0; slot < slotRow.length; slot++) {
-      if ((slot & (GATHER_AHEAD - 1)) == 0) prefetchRows(rows, slotRow, slot, stride);
-      rows.readBytes((long) slotRow[slot] * stride + staged.recordLen, row, 0, staged.coarseBytes);
-      slotDoc[slot] = docs[slotRow[slot]];
-      data.writeBytes(row, 0, staged.coarseBytes);
+    for (int slot = 0; slot < slotRow.length; slot++) slotDoc[slot] = docs[slotRow[slot]];
+    if (staged.coarse.anchored()) {
+      writeAnchoredCoarse(staged, cl, cellStart, slotRow);
+    } else {
+      for (int slot = 0; slot < slotRow.length; slot++) {
+        if ((slot & (GATHER_AHEAD - 1)) == 0) prefetchRows(rows, slotRow, slot, stride);
+        rows.readBytes(
+            (long) slotRow[slot] * stride + staged.recordLen, row, 0, staged.coarse.codeBytes);
+        data.writeBytes(row, 0, staged.coarse.codeBytes);
+      }
     }
     meta.writeVLong(data.getFilePointer());
     if (nlist > 1) {
-      CentroidGraph.build(new CentroidCodes(cl.centroids(), dim, null), dim).write(data);
+      CentroidGraph.build(new CentroidCodes(cl.centroids(), null, staged.coarse)).write(data);
     }
     meta.writeVLong(data.getFilePointer());
     for (int slot : primarySlot) data.writeInt(slot);
@@ -344,6 +362,46 @@ final class SegmentIVFVectorsWriter extends KnnVectorsWriter {
     var w = DirectMonotonicWriter.getInstance(meta, data, nlist + 1, DIRECT_MONOTONIC_BLOCK_SHIFT);
     for (int start : cellStart) w.add((long) start * Integer.BYTES);
     w.finish();
+  }
+
+  /**
+   * Writes each slot's coarse code relative to its cell's centroid, so a spill copy is coded
+   * against the cell it is scanned in. Codes are derived from the staged fine records, as every
+   * flush and merge clusters anew.
+   */
+  private void writeAnchoredCoarse(
+      StagedVectors staged, Clustering.Result cl, int[] cellStart, int[] slotRow)
+      throws IOException {
+    CoarseCodec coarse = staged.coarse;
+    float[][] centroids = cl.centroids();
+    int codeBytes = coarse.codeBytes, chunk = StagedVectors.CHUNK_ORDS;
+    byte[] codes = new byte[chunk * codeBytes];
+    for (int from = 0; from < slotRow.length; from += chunk) {
+      int base = from, n = Math.min(chunk, slotRow.length - from);
+      Parallel.overRange(
+          n,
+          (lo, hi) -> {
+            StagedVectors.Cursor cur = staged.cursor();
+            int cell = cellOfSlot(cellStart, base + lo);
+            for (int i = lo; i < hi; i++) {
+              while (cellStart[cell + 1] <= base + i) cell++;
+              cur.load(slotRow[base + i]);
+              coarse.encode(cur.vector(), centroids[cell], codes, i * codeBytes);
+            }
+          });
+      data.writeBytes(codes, 0, n * codeBytes);
+    }
+  }
+
+  /** The cell holding {@code slot}: the last whose start is at most {@code slot}. */
+  static int cellOfSlot(int[] cellStart, int slot) {
+    int lo = 0, hi = cellStart.length - 2;
+    while (lo < hi) {
+      int mid = (lo + hi + 1) >>> 1;
+      if (cellStart[mid] <= slot) lo = mid;
+      else hi = mid - 1;
+    }
+    return lo;
   }
 
   private static void prefetchRows(RandomAccessInput rows, int[] slotRow, int from, int stride)
@@ -416,6 +474,8 @@ final class SegmentIVFVectorsWriter extends KnnVectorsWriter {
     }
 
     final FineCodec fine;
+    final CoarseCodec coarse;
+    // Each record is staged with its coarse query for routing, also its code when unanchored.
     final int dim, recordLen, coarseBytes, stride, readers;
     private final HadamardRotation rotation;
     private final SegmentWriteState state;
@@ -425,13 +485,15 @@ final class SegmentIVFVectorsWriter extends KnnVectorsWriter {
     private IndexInput input;
     int count;
 
-    StagedVectors(SegmentWriteState state, FineCodec fine, int readers) throws IOException {
+    StagedVectors(SegmentWriteState state, FineCodec fine, CoarseCodec coarse, int readers)
+        throws IOException {
       this.state = state;
       this.fine = fine;
+      this.coarse = coarse;
       this.readers = readers;
       dim = fine.dim;
       recordLen = CodeRecord.length(fine.codeBytes);
-      coarseBytes = Nitrox2.bytesPerVector(dim);
+      coarseBytes = coarse.queryBytes;
       stride = recordLen + coarseBytes;
       rotation = HadamardRotation.create(dim, rotationSeed(dim));
       out = state.directory.createTempOutput(state.segmentInfo.name, "ivfstage", state.context);
@@ -456,7 +518,7 @@ final class SegmentIVFVectorsWriter extends KnnVectorsWriter {
               fine.encode(rotated, chunk, at);
               BitUtil.VH_LE_INT.set(chunk, at + docIdOffset, docs.applyAsInt(base + j));
               BitUtil.VH_LE_INT.set(chunk, at + primaryOffset, 0);
-              Nitrox2.encode(rotated, dim, chunk, at + recordLen);
+              coarse.encodeQuery(rotated, chunk, at + recordLen);
             }
           };
       if (parallel) Parallel.overRange(n, encode);
@@ -498,8 +560,10 @@ final class SegmentIVFVectorsWriter extends KnnVectorsWriter {
         return vector;
       }
 
-      void coarseInto(byte[] dest) {
+      /** Prepares the loaded row as a routing query against {@code codes}, into {@code dest}. */
+      void coarseInto(CentroidCodes codes, byte[] dest) {
         System.arraycopy(row, recordLen, dest, 0, coarseBytes);
+        coarse.anchorQuery(dest, vector(), codes.anchor);
       }
     }
 

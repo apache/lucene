@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.VectorUtil;
 
 /** Tests the SIMD kernels against the scalar ones, including tail lengths. */
 public class TestKernels extends LuceneTestCase {
@@ -88,5 +89,87 @@ public class TestKernels extends LuceneTestCase {
         }
       }
     }
+  }
+
+  public void testInt4BitDotsMatchLucene() {
+    Kernels scalar = new Kernels();
+    Kernels vector = Kernels.INSTANCE;
+    List<Integer> dims = new ArrayList<>(List.of(96, 100, 200, 384, 960, 1000, 1023, 1024, 1536));
+    for (int dim = 1; dim <= 70; dim++) dims.add(dim);
+    for (int dim : dims) {
+      int bits = (dim + 7) / 8, stride = bits + random().nextInt(20);
+      byte[] query = new byte[4 * bits];
+      random().nextBytes(query);
+      int rows = 1 + random().nextInt(9), offset = 5;
+      byte[] codes = new byte[offset + rows * stride];
+      random().nextBytes(codes);
+      int[] expected = new int[rows];
+      for (int r = 0; r < rows; r++) {
+        byte[] code = Arrays.copyOfRange(codes, offset + r * stride, offset + r * stride + bits);
+        expected[r] = (int) VectorUtil.int4BitDotProduct(query, code);
+        assertEquals(
+            "dim=" + dim, expected[r], scalar.int4BitDot(query, bits, codes, offset + r * stride));
+        assertEquals(
+            "dim=" + dim, expected[r], vector.int4BitDot(query, bits, codes, offset + r * stride));
+      }
+      try (Arena arena = Arena.ofConfined()) {
+        MemorySegment segment = arena.allocate(codes.length);
+        MemorySegment.copy(codes, 0, segment, ValueLayout.JAVA_BYTE, 0, codes.length);
+        for (Kernels k : List.of(scalar, vector)) {
+          int[] actual = new int[rows];
+          k.int4BitDots(query, bits, segment, offset, stride, rows, actual);
+          assertArrayEquals("native dim=" + dim, expected, actual);
+          k.int4BitDots(query, bits, MemorySegment.ofArray(codes), offset, stride, rows, actual);
+          assertArrayEquals("heap dim=" + dim, expected, actual);
+        }
+      }
+    }
+  }
+
+  /** BBQ distances estimate the dot product, whatever the anchor, in every code layout. */
+  public void testBbqDistancesEstimateDotProducts() {
+    for (int dim : new int[] {24, 100, 384, 1024}) {
+      Tiers.Bbq bbq = new Tiers.Bbq(dim);
+      float[] anchor = unit(dim), query = unit(dim);
+      for (int d = 0; d < dim; d++) anchor[d] *= 0.5f; // an off-unit mean, as of centroids
+      int rows = 64;
+      byte[] codes = new byte[rows * bbq.codeBytes];
+      float[][] vectors = new float[rows][];
+      for (int r = 0; r < rows; r++) {
+        vectors[r] = unit(dim);
+        // mix in the anchor so some vectors sit near it, as cell members do
+        for (int d = 0; d < dim && r % 2 == 0; d++) vectors[r][d] += anchor[d];
+        VectorUtil.l2normalize(vectors[r]);
+        bbq.encode(vectors[r], anchor, codes, r * bbq.codeBytes);
+      }
+      byte[] q = new byte[bbq.queryBytes];
+      bbq.encodeQuery(query, q, 0);
+      bbq.anchorQuery(q, query, anchor);
+      int[] fromArray = new int[rows], fromSegment = new int[rows];
+      bbq.distances(q, codes, 0, rows, fromArray);
+      try (Arena arena = Arena.ofConfined()) {
+        MemorySegment segment = arena.allocate(codes.length);
+        MemorySegment.copy(codes, 0, segment, ValueLayout.JAVA_BYTE, 0, codes.length);
+        bbq.distances(q, segment, 0, rows, fromSegment);
+        assertEquals(fromArray[3], bbq.distance(q, segment, 3L * bbq.codeBytes));
+      }
+      assertArrayEquals(fromArray, fromSegment);
+      // One-bit codes are noisy at low dimension; the error shrinks as 1/sqrt(dim).
+      double squared = 0, scale = 1 / Math.sqrt(dim);
+      for (int r = 0; r < rows; r++) {
+        float estimate = 1f - (float) fromArray[r] / Tiers.Bbq.SCALE;
+        float exact = VectorUtil.dotProduct(query, vectors[r]);
+        assertEquals("dim=" + dim + " row=" + r, exact, estimate, 5 * scale + 0.02);
+        squared += (estimate - exact) * (estimate - exact);
+      }
+      double rms = Math.sqrt(squared / rows);
+      assertTrue("dim=" + dim + " rms=" + rms, rms <= 1.5 * scale);
+    }
+  }
+
+  private static float[] unit(int dim) {
+    float[] v = new float[dim];
+    for (int d = 0; d < dim; d++) v[d] = (float) random().nextGaussian();
+    return VectorUtil.l2normalize(v);
   }
 }
