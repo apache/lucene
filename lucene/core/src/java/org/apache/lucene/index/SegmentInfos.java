@@ -296,10 +296,11 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
   }
 
   /**
-   * Read a particular segmentFileName, as long as the commit's {@link SegmentInfo#getMinVersion()}
-   * is strictly greater than the provided minimum supported major version. If the commit's version
-   * is older, an {@link IndexFormatTooOldException} will be thrown. Note that this may throw an
-   * IOException if a commit is in process.
+   * Read a particular segmentFileName, as long as each segment's {@link
+   * SegmentInfo#getMinVersion()} within the commit is strictly greater than the provided minimum
+   * supported major version. If the commit's version is older, an {@link
+   * IndexFormatTooOldException} will be thrown. Note that this may throw an IOException if a commit
+   * is in process.
    */
   public static SegmentInfos readCommit(
       Directory directory, String segmentFileName, int minSupportedMajorVersion)
