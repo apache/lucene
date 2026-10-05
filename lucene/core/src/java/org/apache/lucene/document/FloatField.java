@@ -19,6 +19,7 @@ package org.apache.lucene.document;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.search.IndexOrDocValuesQuery;
+import org.apache.lucene.search.IndexSortSortedNumericDocValuesRangeQuery;
 import org.apache.lucene.search.PointRangeQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.SortField;
@@ -141,12 +142,15 @@ public final class FloatField extends Field {
    */
   public static Query newRangeQuery(String field, float lowerValue, float upperValue) {
     PointRangeQuery.checkArgs(field, lowerValue, upperValue);
-    return new IndexOrDocValuesQuery(
-        FloatPoint.newRangeQuery(field, lowerValue, upperValue),
-        SortedNumericDocValuesField.newSlowRangeQuery(
-            field,
-            NumericUtils.floatToSortableInt(lowerValue),
-            NumericUtils.floatToSortableInt(upperValue)));
+    Query fallbackQuery =
+        new IndexOrDocValuesQuery(
+            FloatPoint.newRangeQuery(field, lowerValue, upperValue),
+            SortedNumericDocValuesField.newSlowRangeQuery(
+                field,
+                NumericUtils.floatToSortableInt(lowerValue),
+                NumericUtils.floatToSortableInt(upperValue)));
+    return new IndexSortSortedNumericDocValuesRangeQuery(
+        field, lowerValue, upperValue, fallbackQuery);
   }
 
   /**
