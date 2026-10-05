@@ -36,12 +36,26 @@ public interface Accountable {
    * "ram" for historical reasons; only JVM heap memory should be reported. Off-heap resources such
    * as memory-mapped files or native direct buffers should not be included. Negative values are
    * illegal.
+   *
+   * <p>Implementations are encouraged to follow an ownership-oriented convention: report memory
+   * allocated for this object's lifetime, or released by its {@code close()} method if applicable.
+   * Inputs received via constructors or factories may be borrowed, wrapped, sliced, or copied;
+   * implementations should report only the bytes they actually own, not the deep content of
+   * referenced storage they do not own. The reference itself (the pointer slot for a borrowed
+   * field) is part of this object's own layout and is naturally accounted via shallow size; what
+   * should not be added is the deep content of the referenced storage. Reporting the deep content
+   * of borrowed storage can lead to double counting when consumers sum across multiple Accountable
+   * instances that share state.
    */
   long ramBytesUsed();
 
   /**
    * Returns nested resources of this class. The result should be a point-in-time snapshot (to avoid
    * race conditions).
+   *
+   * <p>This method is a diagnostic accessor intended for inspection and printing. The returned
+   * collection is not a deduplicated ownership tree; it may include borrowed or shared references.
+   * Summing {@link #ramBytesUsed()} across its elements is not generally sum-safe.
    *
    * @see Accountables
    */
