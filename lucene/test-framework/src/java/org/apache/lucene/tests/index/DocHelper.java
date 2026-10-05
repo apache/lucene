@@ -19,8 +19,10 @@ package org.apache.lucene.tests.index;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Random;
+import java.util.function.Function;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -28,6 +30,7 @@ import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
+import org.apache.lucene.index.DWPTGroupingCriteriaDefinition;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -328,5 +331,52 @@ public class DocHelper {
       doc.add(new Field("field" + (i + 1), sb.toString(), TEXT_TYPE_STORED_WITH_TVS));
     }
     return doc;
+  }
+
+  /**
+   * Creates a log document with a given id, indexName and status code
+   *
+   * @param n id of the document
+   * @param indexName index name where document is added
+   * @param statusCode status code of the log entry
+   * @return a log document with a given id, indexName and status code
+   */
+  public static Document createLogDocument(int n, String indexName, int statusCode) {
+    Document doc = new Document();
+    doc.add(new Field("id", Integer.toString(n), STRING_TYPE_STORED_WITH_TVS));
+    doc.add(new Field("indexname", indexName, STRING_TYPE_STORED_WITH_TVS));
+    doc.add(new Field("statuscode", Integer.toString(statusCode), STRING_TYPE_STORED_WITH_TVS));
+    doc.add(new Field("@timestamp", "898787158", STRING_TYPE_STORED_WITH_TVS));
+    doc.add(new Field("clientip", "5.12.211.1", STRING_TYPE_STORED_WITH_TVS));
+    doc.add(new Field("request", "GET /gematu/lowsea.gif HTTP/1.1", STRING_TYPE_STORED_WITH_TVS));
+
+    return doc;
+  }
+
+  /**
+   * Returns a criteria definition which groups data by status code.
+   *
+   * @return a criteria definition which groups data by status code.
+   */
+  public static DWPTGroupingCriteriaDefinition getDWPTCriteriaDefinition() {
+    final Function<Iterable<? extends Iterable<? extends IndexableField>>, Integer>
+        criteriaFunction =
+            (docs) -> {
+              Iterator<? extends IndexableField> docIt = docs.iterator().next().iterator();
+              while (docIt.hasNext()) {
+                IndexableField field = docIt.next();
+                if (field.stringValue() != null && field.name().equals("statuscode")) {
+                  int statusCode = Integer.parseInt(field.stringValue());
+                  if ((statusCode / 100) == 2 || (statusCode / 100) == 3) {
+                    return 1;
+                  } else if ((statusCode / 100) == 4 || (statusCode / 100) == 5) {
+                    return 2;
+                  }
+                }
+              }
+              return 0;
+            };
+
+    return new DWPTGroupingCriteriaDefinition(criteriaFunction, 4);
   }
 }
