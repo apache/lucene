@@ -40,7 +40,10 @@ import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.search.AcceptDocs;
+import org.apache.lucene.search.DocAndFloatFeatureBuffer;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.DataInput;
@@ -308,6 +311,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
         fieldEntry,
         knnCollector,
         acceptDocs,
+        () -> flatVectorsReader.getFloatVectorValues(field).scorer(target),
         () -> flatVectorsReader.getRandomVectorScorer(field, target));
   }
 
@@ -319,69 +323,69 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
         fieldEntry,
         knnCollector,
         acceptDocs,
+        () -> flatVectorsReader.getByteVectorValues(field).scorer(target),
         () -> flatVectorsReader.getRandomVectorScorer(field, target));
   }
 
   private void search(
       FieldEntry fieldEntry,
-      KnnCollector knnCollector,
+      KnnCollector docIdCollector,
       AcceptDocs acceptDocs,
+      IOSupplier<VectorScorer> sequentialScorerSupplier,
       IOSupplier<RandomVectorScorer> scorerSupplier)
       throws IOException {
-    if (fieldEntry.size() == 0 || knnCollector.k() == 0) {
+    if (fieldEntry.size() == 0 || docIdCollector.k() == 0) {
       return;
     }
+    int graphSize = (fieldEntry.vectorIndexLength() == 0) ? 0 : fieldEntry.size();
+
+    if (graphSize == 0) {
+      scanAllDocs(docIdCollector, acceptDocs, sequentialScorerSupplier.get());
+      return;
+    }
+
     final RandomVectorScorer scorer = scorerSupplier.get();
-    final KnnCollector collector =
-        new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
+
     // Take into account if quantized? E.g. some scorer cost?
     // Use approximate cardinality as this is good enough, but ensure we don't exceed the graph
     // size as that is illogical
-    int graphSize = (fieldEntry.vectorIndexLength() == 0) ? 0 : fieldEntry.size();
     int filteredDocCount = Math.min(acceptDocs.cost(), graphSize);
-    Bits accepted = acceptDocs.bits();
-    final Bits acceptedOrds = scorer.getAcceptOrds(accepted);
     int numVectors = scorer.maxOrd();
-    boolean doHnsw = knnCollector.k() < numVectors;
     // The approximate number of vectors that would be visited if we did not filter
-    int unfilteredVisit = HnswGraphSearcher.expectedVisitedNodes(knnCollector.k(), graphSize);
-    if (unfilteredVisit >= filteredDocCount || graphSize == 0) {
-      doHnsw = false;
-    }
-    if (doHnsw) {
+    int unfilteredVisit = HnswGraphSearcher.expectedVisitedNodes(docIdCollector.k(), graphSize);
+    if (unfilteredVisit < filteredDocCount && docIdCollector.k() < numVectors) {
+      final KnnCollector collector =
+          new OrdinalTranslatedKnnCollector(docIdCollector, scorer::ordToDoc);
+      final Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs.bits());
+
       HnswGraphSearcher.search(
           scorer, collector, getGraph(fieldEntry), acceptedOrds, filteredDocCount);
     } else {
-      // if k is larger than the number of vectors we expect to visit in an HNSW search,
-      // we can just iterate over all vectors and collect them.
-      int[] ords = new int[EXHAUSTIVE_BULK_SCORE_ORDS];
-      float[] scores = new float[EXHAUSTIVE_BULK_SCORE_ORDS];
-      int numOrds = 0;
-      for (int i = 0; i < numVectors; i++) {
-        if (acceptedOrds == null || acceptedOrds.get(i)) {
-          if (knnCollector.earlyTerminated()) {
-            break;
-          }
-          ords[numOrds++] = i;
-          if (numOrds == ords.length) {
-            knnCollector.incVisitedCount(numOrds);
-            if (scorer.bulkScore(ords, scores, numOrds) > knnCollector.minCompetitiveSimilarity()) {
-              for (int j = 0; j < numOrds; j++) {
-                knnCollector.collect(scorer.ordToDoc(ords[j]), scores[j]);
-              }
-            }
-            numOrds = 0;
-          }
+      scanAllDocs(docIdCollector, acceptDocs, sequentialScorerSupplier.get());
+    }
+  }
+
+  private void scanAllDocs(KnnCollector knnCollector, AcceptDocs acceptDocs, VectorScorer scorer)
+      throws IOException {
+    VectorScorer.Bulk bulkScorer = scorer.bulk(acceptDocs.iterator());
+    DocAndFloatFeatureBuffer buffer = new DocAndFloatFeatureBuffer();
+
+    for (float maxScore = bulkScorer.nextDocsAndScores(DocIdSetIterator.NO_MORE_DOCS, null, buffer);
+        buffer.size > 0;
+        maxScore = bulkScorer.nextDocsAndScores(DocIdSetIterator.NO_MORE_DOCS, null, buffer)) {
+
+      if (maxScore >= knnCollector.minCompetitiveSimilarity()) {
+        for (int i = 0; i < buffer.size; ++i) {
+          float score = buffer.features[i];
+          int doc = buffer.docs[i];
+          knnCollector.collect(doc, score);
         }
       }
 
-      if (numOrds > 0) {
-        knnCollector.incVisitedCount(numOrds);
-        if (scorer.bulkScore(ords, scores, numOrds) > knnCollector.minCompetitiveSimilarity()) {
-          for (int j = 0; j < numOrds; j++) {
-            knnCollector.collect(scorer.ordToDoc(ords[j]), scores[j]);
-          }
-        }
+      knnCollector.incVisitedCount(buffer.size);
+      if (knnCollector.earlyTerminated()) {
+        // Respect query timeout
+        break;
       }
     }
   }
