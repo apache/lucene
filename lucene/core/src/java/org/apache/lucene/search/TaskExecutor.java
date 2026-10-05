@@ -155,7 +155,7 @@ public final class TaskExecutor {
     return Optional.of(future);
   }
 
-  private static <T> List<T> collectResults(List<RunnableFuture<T>> futures) throws IOException {
+  public static <T> List<T> collectResults(List<? extends Future<T>> futures) throws IOException {
     Throwable exc = null;
     List<T> results = new ArrayList<>(futures.size());
     for (Future<T> future : futures) {
