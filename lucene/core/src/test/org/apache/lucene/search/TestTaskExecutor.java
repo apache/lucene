@@ -21,12 +21,15 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -381,5 +384,89 @@ public class TestTaskExecutor extends LuceneTestCase {
       assertEquals(taskCount, res.size());
       assertEquals(taskCount, executedTasks.get());
     }
+  }
+
+  public void testTryInvokeDeclinesTheCallingThread() {
+    TaskExecutor taskExecutor = new TaskExecutor(Runnable::run);
+    Optional<Future<Void>> future =
+        taskExecutor.tryInvoke(() -> {
+          throw new AssertionError("a declined task must not run");
+        });
+    assertTrue(future.isEmpty());
+  }
+
+  public void testTryInvokeDeclinesRejectedTask() {
+    // TaskExecutor runs a rejected command on the calling thread, which tryInvoke must decline
+    TaskExecutor taskExecutor =
+        new TaskExecutor(_ -> {
+          throw new RejectedExecutionException();
+        });
+    Optional<Future<Void>> future =
+        taskExecutor.tryInvoke(() -> {
+          throw new AssertionError("a declined task must not run");
+        });
+    assertTrue(future.isEmpty());
+  }
+
+  public void testTryInvokeForksToAnotherThread() throws Exception {
+    TaskExecutor taskExecutor = new TaskExecutor(executorService);
+    Thread caller = Thread.currentThread();
+    Optional<Future<Thread>> future = taskExecutor.tryInvoke(Thread::currentThread);
+    assertTrue(future.isPresent());
+    assertNotSame(caller, TaskExecutor.collectResults(List.of(future.get())).get(0));
+  }
+
+  public void testCancelSkipsTaskThatHasNotStarted() throws Exception {
+    CountDownLatch release = new CountDownLatch(1);
+    // occupy the only thread so that the forked task stays queued
+    Future<?> blocker =
+        executorService.submit(() -> {
+          release.await();
+          return null;
+        });
+    try {
+      TaskExecutor taskExecutor = new TaskExecutor(executorService);
+      AtomicInteger runs = new AtomicInteger();
+      Optional<Future<Integer>> future = taskExecutor.tryInvoke(runs::incrementAndGet);
+      assertTrue("a queued task is forked, not declined", future.isPresent());
+      assertTrue(future.get().cancel(false));
+      // must not wait for the blocked thread to take the task
+      assertEquals(
+          Collections.singletonList(null), TaskExecutor.collectResults(List.of(future.get())));
+      release.countDown();
+      blocker.get();
+      // the queued command has run by now, since the pool has a single thread
+      executorService.submit(() -> {}).get();
+      assertEquals(0, runs.get());
+    } finally {
+      release.countDown();
+    }
+  }
+
+  public void testCancelWaitsForStartedTask() throws Exception {
+    TaskExecutor taskExecutor = new TaskExecutor(executorService);
+    CountDownLatch started = new CountDownLatch(1);
+    CountDownLatch release = new CountDownLatch(1);
+    Optional<Future<Integer>> future =
+        taskExecutor.tryInvoke(() -> {
+          started.countDown();
+          release.await();
+          return 42;
+        });
+    assertTrue(future.isPresent());
+    started.await();
+    assertFalse("a started task cannot be cancelled", future.get().cancel(false));
+    assertFalse(future.get().isDone());
+    release.countDown();
+    assertEquals(List.of(42), TaskExecutor.collectResults(List.of(future.get())));
+  }
+
+  public void testTaskQueuedThenTakenByCallerRuns() throws Exception {
+    // forking from the pool's only thread queues the task, which that same thread takes later
+    TaskExecutor taskExecutor = new TaskExecutor(executorService);
+    Optional<Future<Integer>> future =
+        executorService.submit(() -> taskExecutor.tryInvoke(() -> 42)).get();
+    assertTrue("a queued task is forked, not declined", future.isPresent());
+    assertEquals(42, future.get().get().intValue());
   }
 }

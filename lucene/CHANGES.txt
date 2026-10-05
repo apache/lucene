@@ -41,6 +41,11 @@ Other
 
 API Changes
 ---------------------
+* GITHUB#16729: Add TaskExecutor#tryInvoke, which forks a single task unless the backing Executor
+  would run it on the calling thread, and make TaskExecutor#collectResults public so callers can await
+  the futures it returns. Cancelling such a future skips its task if it has not started yet.
+  (Alec Bernardi)
+
 * GITHUB#16997: Monitor's QueryTree subclasses now implement collectTerms(TermCollector), and
   collectTerms(BiConsumer) is final. (Luke Kot-Zaniewski)
 
