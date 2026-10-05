@@ -42,7 +42,18 @@ enum DedupLayoutMode {
    * Builds a document-space graph (one node per document) with no postings, so search behaves like
    * a vanilla HNSW search. Used when the field has no effective de-duplication.
    */
-  PLAIN((byte) 1);
+  PLAIN((byte) 1),
+
+  /**
+   * Mixed layout. The graph contains one node per <b>large</b> group (a distinct vector referenced
+   * by more than the configured threshold of documents) plus one node per <b>document</b> that
+   * belongs to a small group. Large-group nodes carry a {@code DistinctVectorPostings} slice to
+   * expand back to their documents; small-group nodes are documents themselves and carry only their
+   * single field ordinal. A per-node {@code nodeToGroupOrd} map lets the scorer resolve every node
+   * (large or small) to a vector in the group view. Used when a field has a few very large groups
+   * but most documents are (near-)unique.
+   */
+  HYBRID((byte) 2);
 
   private final byte id;
 

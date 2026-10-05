@@ -90,6 +90,7 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
   private final int M;
   private final int beamWidth;
   private final int tinySegmentsThreshold;
+  private final int hybridGroupThreshold;
   private final FlatVectorsFormat flatVectorsFormat;
   private final FlatVectorsWriter flatVectorWriter;
 
@@ -107,6 +108,7 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
       int M,
       int beamWidth,
       int tinySegmentsThreshold,
+      int hybridGroupThreshold,
       FlatVectorsFormat flatVectorsFormat,
       FlatVectorsWriter flatVectorWriter)
       throws IOException {
@@ -114,6 +116,7 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
     this.M = M;
     this.beamWidth = beamWidth;
     this.tinySegmentsThreshold = tinySegmentsThreshold;
+    this.hybridGroupThreshold = hybridGroupThreshold;
     this.flatVectorsFormat = flatVectorsFormat;
     this.flatVectorWriter = flatVectorWriter;
 
@@ -189,8 +192,12 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
 
     // When there is no effective de-duplication (every document has a distinct vector), the group
     // machinery is pure overhead, so build a plain document-space graph; otherwise de-duplicate.
-    if (selectMode(groupCount, fieldOrdCount) == DedupLayoutMode.PLAIN) {
+    DedupLayoutMode mode = selectMode(groupCount, fieldOrdCount);
+    if (mode == DedupLayoutMode.PLAIN) {
       writePlainField(fieldInfo, dedupValues, fieldOrdCount);
+    } else if (hybridGroupThreshold > 0) {
+      // HYBRID is enabled and the field has some de-duplication: promote only the large groups.
+      writeHybridField(fieldInfo, dedupValues, groupCount, fieldOrdCount);
     } else {
       writeDedupField(fieldInfo, dedupValues, groupCount, fieldOrdCount);
     }
@@ -271,6 +278,151 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
         graphLevelNodeOffsets,
         groupOffsets,
         flattenedFieldOrds);
+  }
+
+  /**
+   * HYBRID layout: one graph node per <b>large</b> group (a distinct vector referenced by more than
+   * {@link #hybridGroupThreshold} documents) and one graph node per document that belongs to a
+   * small group.
+   *
+   * <p>Node ordinals are laid out as:
+   *
+   * <ul>
+   *   <li>{@code [0, numLargeGroups)} — the promoted large groups, in ascending group-ordinal
+   *       order. Each carries a {@code DistinctVectorPostings} slice listing all its field ordinals
+   *       (documents).
+   *   <li>{@code [numLargeGroups, numLargeGroups + numSmallDocs)} — the documents of all small
+   *       groups, in ascending field-ordinal order. Each carries exactly one field ordinal.
+   * </ul>
+   *
+   * <p>A {@code nodeToGroupOrd} map (one entry per node) resolves every node to a vector in the
+   * group view so the HNSW graph can be built and searched uniformly in group-view scoring space.
+   */
+  private void writeHybridField(
+      FieldInfo fieldInfo, DedupVectorValues dedupValues, int groupCount, int fieldOrdCount)
+      throws IOException {
+    DedupFlatVectorsScorer scorer =
+        (DedupFlatVectorsScorer) flatVectorsReader.getFlatVectorScorer(fieldInfo.name);
+    FieldOrdToGroupOrd fieldOrdToGroupOrd = dedupValues.getFieldOrdToGroupOrd();
+
+    // 1. Count how many documents reference each group.
+    int[] groupSizes = new int[groupCount];
+    for (int fieldOrd = 0; fieldOrd < fieldOrdCount; fieldOrd++) {
+      groupSizes[fieldOrdToGroupOrd.get(fieldOrd)]++;
+    }
+
+    // 2. Partition groups: large (promoted to a group-node) vs small (kept as per-doc nodes).
+    //    largeGroupNode[g] = node ordinal of group g if promoted, else -1.
+    int[] largeGroupNode = new int[groupCount];
+    Arrays.fill(largeGroupNode, -1);
+    int numLargeGroups = 0;
+    for (int g = 0; g < groupCount; g++) {
+      if (groupSizes[g] > hybridGroupThreshold) {
+        largeGroupNode[g] = numLargeGroups++;
+      }
+    }
+
+    // Number of documents that remain as individual nodes (belong to small groups).
+    int numSmallDocs = 0;
+    for (int g = 0; g < groupCount; g++) {
+      if (largeGroupNode[g] == -1) {
+        numSmallDocs += groupSizes[g];
+      }
+    }
+    int nodeCount = numLargeGroups + numSmallDocs;
+
+    // 3. Build the per-node -> group-view-ordinal map and the per-small-node -> field ordinal map.
+    //    Node layout: large-group nodes first (ascending group ord), then small-group docs
+    //    (ascending field ord).
+    int[] nodeToGroupOrd = new int[nodeCount];
+    int[] smallNodeFieldOrd = new int[numSmallDocs];
+    // Large-group nodes score against the group's distinct vector.
+    for (int g = 0; g < groupCount; g++) {
+      if (largeGroupNode[g] != -1) {
+        nodeToGroupOrd[largeGroupNode[g]] = g;
+      }
+    }
+    // Small-group doc nodes score against their doc's (shared) distinct vector.
+    int smallNode = 0;
+    for (int fieldOrd = 0; fieldOrd < fieldOrdCount; fieldOrd++) {
+      int g = fieldOrdToGroupOrd.get(fieldOrd);
+      if (largeGroupNode[g] == -1) {
+        int node = numLargeGroups + smallNode;
+        nodeToGroupOrd[node] = g;
+        smallNodeFieldOrd[smallNode] = fieldOrd;
+        smallNode++;
+      }
+    }
+    assert smallNode == numSmallDocs;
+
+    // 4. Build the graph over the hybrid node space, scoring each node via nodeToGroupOrd.
+    long graphDataOffset = graphData.getFilePointer();
+    OnHeapHnswGraph graph =
+        maybeBuildGraph(
+            nodeCount,
+            scorer.getHybridRandomVectorScorerSupplier(
+                fieldInfo.getVectorSimilarityFunction(), dedupValues, nodeToGroupOrd));
+    int[][] graphLevelNodeOffsets = writeGraph(graph);
+    long graphDataLength = graphData.getFilePointer() - graphDataOffset;
+
+    // 5. Postings for the promoted (large) groups only, keyed by large-group node ordinal.
+    int[] largeGroupOffsets = new int[numLargeGroups + 1];
+    int[] flattenedFieldOrds = new int[fieldOrdCount - numSmallDocs];
+    computeLargeGroupPostings(
+        fieldOrdToGroupOrd,
+        fieldOrdCount,
+        largeGroupNode,
+        numLargeGroups,
+        groupSizes,
+        largeGroupOffsets,
+        flattenedFieldOrds);
+
+    writeHybridMeta(
+        fieldInfo,
+        groupCount,
+        fieldOrdCount,
+        nodeCount,
+        numLargeGroups,
+        numSmallDocs,
+        graphDataOffset,
+        graphDataLength,
+        graph,
+        graphLevelNodeOffsets,
+        nodeToGroupOrd,
+        largeGroupOffsets,
+        flattenedFieldOrds,
+        smallNodeFieldOrd);
+  }
+
+  /**
+   * Flattens the large (promoted) groups' field ordinals into contiguous slices keyed by large-group
+   * node ordinal. {@code largeGroupOffsets[n]..largeGroupOffsets[n+1]} delimits the documents of the
+   * group promoted to node {@code n}.
+   */
+  private void computeLargeGroupPostings(
+      FieldOrdToGroupOrd fieldOrdToGroupOrd,
+      int fieldOrdCount,
+      int[] largeGroupNode,
+      int numLargeGroups,
+      int[] groupSizes,
+      int[] offsets,
+      int[] flattened) {
+    for (int g = 0; g < largeGroupNode.length; g++) {
+      int node = largeGroupNode[g];
+      if (node != -1) {
+        offsets[node + 1] = groupSizes[g];
+      }
+    }
+    for (int n = 0; n < numLargeGroups; n++) {
+      offsets[n + 1] += offsets[n];
+    }
+    int[] cursor = ArrayUtil.copyOfSubArray(offsets, 0, numLargeGroups);
+    for (int fieldOrd = 0; fieldOrd < fieldOrdCount; fieldOrd++) {
+      int node = largeGroupNode[fieldOrdToGroupOrd.get(fieldOrd)];
+      if (node != -1) {
+        flattened[cursor[node]++] = fieldOrd;
+      }
+    }
   }
 
   /**
@@ -421,73 +573,156 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
     meta.writeVLong(graphDataLength);
 
     // graph nodes on each level (group-ordinal space for DEDUP, field-ordinal space for PLAIN)
-    if (graph == null) {
-      meta.writeVInt(M);
-      meta.writeVInt(0);
-    } else {
-      meta.writeVInt(graph.maxConn());
-      meta.writeVInt(graph.numLevels());
-      long valueCount = 0;
-      for (int level = 0; level < graph.numLevels(); level++) {
-        NodesIterator nodesOnLevel = graph.getNodesOnLevel(level);
-        valueCount += nodesOnLevel.size();
-        if (level > 0) {
-          int[] nol = new int[nodesOnLevel.size()];
-          int numberConsumed = nodesOnLevel.consume(nol);
-          Arrays.sort(nol);
-          assert numberConsumed == nodesOnLevel.size();
-          meta.writeVInt(nol.length);
-          for (int i = nodesOnLevel.size() - 1; i > 0; --i) {
-            nol[i] -= nol[i - 1];
-          }
-          for (int n : nol) {
-            assert n >= 0 : "delta encoding for nodes failed; expected nodes to be sorted";
-            meta.writeVInt(n);
-          }
-        } else {
-          assert nodesOnLevel.size() == graphNodeCount : "Level 0 expects to have all graph nodes";
-        }
-      }
-      long start = graphData.getFilePointer();
-      meta.writeLong(start);
-      meta.writeVInt(DIRECT_MONOTONIC_BLOCK_SHIFT);
-      DirectMonotonicWriter memoryOffsetsWriter =
-          DirectMonotonicWriter.getInstance(
-              meta, graphData, valueCount, DIRECT_MONOTONIC_BLOCK_SHIFT);
-      long cumulativeOffsetSum = 0;
-      for (int[] levelOffsets : graphLevelNodeOffsets) {
-        for (int v : levelOffsets) {
-          memoryOffsetsWriter.add(cumulativeOffsetSum);
-          cumulativeOffsetSum += v;
-        }
-      }
-      memoryOffsetsWriter.finish();
-      meta.writeLong(graphData.getFilePointer() - start);
-    }
+    writeGraphMeta(graph, graphNodeCount, graphLevelNodeOffsets);
 
     // Postings are only written in DEDUP mode (PLAIN nodes are already documents).
     if (mode == DedupLayoutMode.DEDUP) {
-      // Postings offsets (monotonic): groupCount + 1 entries.
-      long groupOffsetsStart = graphData.getFilePointer();
-      meta.writeLong(groupOffsetsStart);
-      meta.writeVInt(DIRECT_MONOTONIC_BLOCK_SHIFT);
-      DirectMonotonicWriter groupOffsetsWriter =
-          DirectMonotonicWriter.getInstance(
-              meta, graphData, groupCount + 1L, DIRECT_MONOTONIC_BLOCK_SHIFT);
-      for (int offset : groupOffsets) {
-        groupOffsetsWriter.add(offset);
-      }
-      groupOffsetsWriter.finish();
-      meta.writeLong(graphData.getFilePointer() - groupOffsetsStart);
-
-      // Postings flattened field ordinals (dense int).
-      long fieldOrdsDataStart = graphData.getFilePointer();
-      meta.writeLong(fieldOrdsDataStart);
-      for (int fieldOrd : flattenedFieldOrds) {
-        graphData.writeInt(fieldOrd);
-      }
-      meta.writeLong(graphData.getFilePointer() - fieldOrdsDataStart);
+      writePostings(groupCount, groupOffsets, flattenedFieldOrds);
     }
+  }
+
+  /**
+   * Writes the per-level graph node lists and the monotonic node-offset table into {@code meta}
+   * (and the offset data into {@code graphData}). {@code graphNodeCount} is the number of level-0
+   * nodes (group ordinals for DEDUP, field ordinals for PLAIN, hybrid nodes for HYBRID).
+   */
+  private void writeGraphMeta(HnswGraph graph, int graphNodeCount, int[][] graphLevelNodeOffsets)
+      throws IOException {
+    if (graph == null) {
+      meta.writeVInt(M);
+      meta.writeVInt(0);
+      return;
+    }
+    meta.writeVInt(graph.maxConn());
+    meta.writeVInt(graph.numLevels());
+    long valueCount = 0;
+    for (int level = 0; level < graph.numLevels(); level++) {
+      NodesIterator nodesOnLevel = graph.getNodesOnLevel(level);
+      valueCount += nodesOnLevel.size();
+      if (level > 0) {
+        int[] nol = new int[nodesOnLevel.size()];
+        int numberConsumed = nodesOnLevel.consume(nol);
+        Arrays.sort(nol);
+        assert numberConsumed == nodesOnLevel.size();
+        meta.writeVInt(nol.length);
+        for (int i = nodesOnLevel.size() - 1; i > 0; --i) {
+          nol[i] -= nol[i - 1];
+        }
+        for (int n : nol) {
+          assert n >= 0 : "delta encoding for nodes failed; expected nodes to be sorted";
+          meta.writeVInt(n);
+        }
+      } else {
+        assert nodesOnLevel.size() == graphNodeCount : "Level 0 expects to have all graph nodes";
+      }
+    }
+    long start = graphData.getFilePointer();
+    meta.writeLong(start);
+    meta.writeVInt(DIRECT_MONOTONIC_BLOCK_SHIFT);
+    DirectMonotonicWriter memoryOffsetsWriter =
+        DirectMonotonicWriter.getInstance(meta, graphData, valueCount, DIRECT_MONOTONIC_BLOCK_SHIFT);
+    long cumulativeOffsetSum = 0;
+    for (int[] levelOffsets : graphLevelNodeOffsets) {
+      for (int v : levelOffsets) {
+        memoryOffsetsWriter.add(cumulativeOffsetSum);
+        cumulativeOffsetSum += v;
+      }
+    }
+    memoryOffsetsWriter.finish();
+    meta.writeLong(graphData.getFilePointer() - start);
+  }
+
+  /**
+   * Writes a {@code DistinctVectorPostings} block: a monotonic offsets table ({@code
+   * numEntries + 1}) followed by the flattened field ordinals. Used for DEDUP (keyed by group
+   * ordinal) and the large-group portion of HYBRID (keyed by large-group node ordinal).
+   */
+  private void writePostings(int numEntries, int[] offsets, int[] flattenedFieldOrds)
+      throws IOException {
+    // Postings offsets (monotonic): numEntries + 1 entries.
+    long groupOffsetsStart = graphData.getFilePointer();
+    meta.writeLong(groupOffsetsStart);
+    meta.writeVInt(DIRECT_MONOTONIC_BLOCK_SHIFT);
+    DirectMonotonicWriter groupOffsetsWriter =
+        DirectMonotonicWriter.getInstance(
+            meta, graphData, numEntries + 1L, DIRECT_MONOTONIC_BLOCK_SHIFT);
+    for (int offset : offsets) {
+      groupOffsetsWriter.add(offset);
+    }
+    groupOffsetsWriter.finish();
+    meta.writeLong(graphData.getFilePointer() - groupOffsetsStart);
+
+    // Postings flattened field ordinals (dense int).
+    long fieldOrdsDataStart = graphData.getFilePointer();
+    meta.writeLong(fieldOrdsDataStart);
+    for (int fieldOrd : flattenedFieldOrds) {
+      graphData.writeInt(fieldOrd);
+    }
+    meta.writeLong(graphData.getFilePointer() - fieldOrdsDataStart);
+  }
+
+  /**
+   * Writes HYBRID metadata. Layout in {@code meta} after the common header:
+   *
+   * <ol>
+   *   <li>graph meta (over {@code nodeCount} level-0 nodes)
+   *   <li>{@code numLargeGroups}, {@code numSmallDocs}
+   *   <li>{@code nodeToGroupOrd} block (dense int in {@code graphData}): maps each node to a
+   *       group-view ordinal for scoring
+   *   <li>large-group postings block (offsets + flattened field ords), keyed by large-group node
+   *   <li>small-node field-ordinal block (dense int in {@code graphData}): one field ordinal per
+   *       small-group doc node
+   * </ol>
+   */
+  private void writeHybridMeta(
+      FieldInfo field,
+      int groupCount,
+      int fieldOrdCount,
+      int nodeCount,
+      int numLargeGroups,
+      int numSmallDocs,
+      long graphDataOffset,
+      long graphDataLength,
+      HnswGraph graph,
+      int[][] graphLevelNodeOffsets,
+      int[] nodeToGroupOrd,
+      int[] largeGroupOffsets,
+      int[] flattenedFieldOrds,
+      int[] smallNodeFieldOrd)
+      throws IOException {
+    meta.writeInt(field.number);
+    meta.writeInt(groupCount);
+    meta.writeInt(fieldOrdCount);
+    DedupLayoutMode.HYBRID.write(meta);
+    meta.writeVLong(graphDataOffset);
+    meta.writeVLong(graphDataLength);
+
+    // numLargeGroups/numSmallDocs come before the graph meta so the reader knows the level-0 node
+    // count (numLargeGroups + numSmallDocs) while parsing the graph meta.
+    meta.writeInt(numLargeGroups);
+    meta.writeInt(numSmallDocs);
+
+    // Graph meta over the hybrid node space (level 0 has nodeCount nodes).
+    writeGraphMeta(graph, nodeCount, graphLevelNodeOffsets);
+
+    // nodeToGroupOrd: dense int, nodeCount entries.
+    long nodeToGroupStart = graphData.getFilePointer();
+    meta.writeLong(nodeToGroupStart);
+    for (int groupOrd : nodeToGroupOrd) {
+      graphData.writeInt(groupOrd);
+    }
+    meta.writeLong(graphData.getFilePointer() - nodeToGroupStart);
+
+    // Large-group postings, keyed by large-group node ordinal (first numLargeGroups nodes).
+    writePostings(numLargeGroups, largeGroupOffsets, flattenedFieldOrds);
+
+    // Small-node field ordinals: dense int, numSmallDocs entries.
+    long smallNodeStart = graphData.getFilePointer();
+    meta.writeLong(smallNodeStart);
+    for (int fieldOrd : smallNodeFieldOrd) {
+      graphData.writeInt(fieldOrd);
+    }
+    meta.writeLong(graphData.getFilePointer() - smallNodeStart);
   }
 
   private void ensureFlatReaderOpen() throws IOException {

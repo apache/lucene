@@ -211,6 +211,7 @@ public final class DedupHnswScalarQuantizedVectorsFormat extends KnnVectorsForma
         maxConn,
         beamWidth,
         tinySegmentsThreshold,
+        DedupHnswVectorsFormat.DEFAULT_HYBRID_GROUP_THRESHOLD,
         flatVectorsFormat,
         flatVectorsFormat.fieldsWriter(state));
   }

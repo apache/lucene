@@ -209,6 +209,15 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
           scorer.getRandomVectorScorer(similarity, (KnnVectorValues) values, target),
           knnCollector,
           acceptDocs);
+    } else if (entry.mode == DedupLayoutMode.HYBRID) {
+      int[] nodeToGroupOrd = readNodeToGroupOrd(entry);
+      searchHybridGraph(
+          entry,
+          values,
+          scorer.getHybridRandomVectorScorer(similarity, values, target, nodeToGroupOrd),
+          nodeToGroupOrd,
+          knnCollector,
+          acceptDocs);
     } else {
       searchGroupGraph(
           entry,
@@ -233,6 +242,15 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
           scorer.getRandomVectorScorer(similarity, (KnnVectorValues) values, target),
           knnCollector,
           acceptDocs);
+    } else if (entry.mode == DedupLayoutMode.HYBRID) {
+      int[] nodeToGroupOrd = readNodeToGroupOrd(entry);
+      searchHybridGraph(
+          entry,
+          values,
+          scorer.getHybridRandomVectorScorer(similarity, values, target, nodeToGroupOrd),
+          nodeToGroupOrd,
+          knnCollector,
+          acceptDocs);
     } else {
       searchGroupGraph(
           entry,
@@ -255,6 +273,15 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
       searchPlainGraph(
           entry,
           scorer.getRandomVectorScorer(similarity, (KnnVectorValues) values, target),
+          knnCollector,
+          acceptDocs);
+    } else if (entry.mode == DedupLayoutMode.HYBRID) {
+      int[] nodeToGroupOrd = readNodeToGroupOrd(entry);
+      searchHybridGraph(
+          entry,
+          values,
+          scorer.getHybridRandomVectorScorer(similarity, values, target, nodeToGroupOrd),
+          nodeToGroupOrd,
           knnCollector,
           acceptDocs);
     } else {
@@ -381,6 +408,118 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
     return count;
   }
 
+  /** Loads the HYBRID {@code nodeToGroupOrd} map (one group-view ordinal per graph node). */
+  private int[] readNodeToGroupOrd(FieldEntry entry) throws IOException {
+    int nodeCount = entry.graphNodeCount;
+    int[] nodeToGroupOrd = new int[nodeCount];
+    RandomAccessInput in =
+        graphData.randomAccessSlice(entry.nodeToGroupOrdOffset, entry.nodeToGroupOrdLength);
+    for (int node = 0; node < nodeCount; node++) {
+      nodeToGroupOrd[node] = in.readInt((long) node * Integer.BYTES);
+    }
+    return nodeToGroupOrd;
+  }
+
+  /**
+   * Runs an HNSW search over a HYBRID graph, then maps each collected node to documents. Nodes in
+   * {@code [0, numLargeGroups)} are promoted large groups and expand (via the large-group postings)
+   * to all their referencing documents; nodes in {@code [numLargeGroups, nodeCount)} are individual
+   * small-group documents and map to a single document. Node scoring is handled by {@code
+   * hybridScorer} (node ordinal space); per-document accept bits are respected throughout.
+   */
+  private void searchHybridGraph(
+      FieldEntry entry,
+      DedupVectorValues values,
+      RandomVectorScorer hybridScorer,
+      int[] nodeToGroupOrd,
+      KnnCollector knnCollector,
+      AcceptDocs acceptDocs)
+      throws IOException {
+    if (entry.graphNodeCount == 0 || knnCollector.k() == 0) {
+      return;
+    }
+
+    KnnVectorValues fieldView = (KnnVectorValues) values;
+    HybridPostings postings = new HybridPostings(entry, graphData);
+    Bits acceptedDocs = acceptDocs.bits();
+    Bits nodeAccept = hybridNodeAcceptBits(entry, postings, fieldView, acceptedDocs);
+
+    KnnCollector expandingCollector =
+        new HybridExpandingCollector(knnCollector, entry, postings, fieldView, acceptedDocs);
+
+    HnswGraph graph = getGraph(entry);
+    int graphSize = entry.graphNodeCount;
+    int filteredNodeCount = nodeAccept == null ? graphSize : countAccepted(nodeAccept, graphSize);
+    filteredNodeCount = Math.min(filteredNodeCount, graphSize);
+
+    int numNodes = hybridScorer.maxOrd();
+    boolean hasGraph = entry.graphDataLength > 0;
+    boolean doHnsw = hasGraph && knnCollector.k() < numNodes;
+    int unfilteredVisit = HnswGraphSearcher.expectedVisitedNodes(knnCollector.k(), graphSize);
+    if (unfilteredVisit >= filteredNodeCount || graphSize == 0) {
+      doHnsw = false;
+    }
+
+    if (doHnsw) {
+      HnswGraphSearcher.search(
+          hybridScorer, expandingCollector, graph, nodeAccept, filteredNodeCount);
+    } else {
+      for (int node = 0; node < numNodes; node++) {
+        if (nodeAccept != null && nodeAccept.get(node) == false) {
+          continue;
+        }
+        if (knnCollector.earlyTerminated()) {
+          break;
+        }
+        knnCollector.incVisitedCount(1);
+        float score = hybridScorer.score(node);
+        expandingCollector.collect(node, score);
+      }
+    }
+  }
+
+  /**
+   * Builds a node-level accept {@link Bits} for HYBRID: a large-group node is accepted if any of its
+   * referencing documents is accepted; a small-group node is accepted if its single document is
+   * accepted. Returns {@code null} if all documents are accepted.
+   */
+  private Bits hybridNodeAcceptBits(
+      FieldEntry entry, HybridPostings postings, KnnVectorValues fieldView, Bits acceptedDocs)
+      throws IOException {
+    if (acceptedDocs == null) {
+      return null;
+    }
+    int nodeCount = entry.graphNodeCount;
+    boolean[] accepted = new boolean[nodeCount];
+    for (int node = 0; node < entry.numLargeGroups; node++) {
+      int start = postings.offset(node);
+      int end = postings.offset(node + 1);
+      for (int i = start; i < end; i++) {
+        int docId = fieldView.ordToDoc(postings.fieldOrd(i));
+        if (acceptedDocs.get(docId)) {
+          accepted[node] = true;
+          break;
+        }
+      }
+    }
+    for (int s = 0; s < entry.numSmallDocs; s++) {
+      int node = entry.numLargeGroups + s;
+      int docId = fieldView.ordToDoc(postings.smallNodeFieldOrd(s));
+      accepted[node] = acceptedDocs.get(docId);
+    }
+    return new Bits() {
+      @Override
+      public boolean get(int index) {
+        return accepted[index];
+      }
+
+      @Override
+      public int length() {
+        return nodeCount;
+      }
+    };
+  }
+
   /**
    * Builds a group-level accept {@link Bits}: a group is accepted if any field ordinal referencing
    * it maps to an accepted document. Returns {@code null} if all documents are accepted.
@@ -461,7 +600,12 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
     if (entry == null) {
       return flat;
     }
-    long graphBytes = entry.graphDataLength + entry.groupOffsetsLength + entry.fieldOrdsDataLength;
+    long graphBytes =
+        entry.graphDataLength
+            + entry.groupOffsetsLength
+            + entry.fieldOrdsDataLength
+            + entry.nodeToGroupOrdLength
+            + entry.smallNodeFieldOrdLength;
     var graph = Map.of(DedupHnswVectorsWriter.DATA_EXTENSION, graphBytes);
     return KnnVectorsReader.mergeOffHeapByteSizeMaps(flat, graph);
   }
@@ -524,6 +668,92 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
   }
 
   /**
+   * A {@link KnnCollector} decorator for HYBRID results. On {@code collect(node, score)}: a
+   * large-group node ({@code node < numLargeGroups}) is expanded to all referencing documents via
+   * the large-group postings; a small-group node maps to its single document via {@code
+   * smallNodeFieldOrd}. Field ordinals map to documents through the flat reader's {@code ordToDoc}.
+   */
+  private static final class HybridExpandingCollector extends KnnCollector.Decorator {
+    private final FieldEntry entry;
+    private final HybridPostings postings;
+    private final KnnVectorValues fieldView;
+    private final Bits acceptedDocs;
+
+    HybridExpandingCollector(
+        KnnCollector collector,
+        FieldEntry entry,
+        HybridPostings postings,
+        KnnVectorValues fieldView,
+        Bits acceptedDocs) {
+      super(collector);
+      this.entry = entry;
+      this.postings = postings;
+      this.fieldView = fieldView;
+      this.acceptedDocs = acceptedDocs;
+    }
+
+    @Override
+    public boolean collect(int node, float similarity) {
+      boolean collectedAny = false;
+      try {
+        if (node < entry.numLargeGroups) {
+          int start = postings.offset(node);
+          int end = postings.offset(node + 1);
+          for (int i = start; i < end; i++) {
+            int docId = fieldView.ordToDoc(postings.fieldOrd(i));
+            if (acceptedDocs == null || acceptedDocs.get(docId)) {
+              collectedAny |= super.collect(docId, similarity);
+            }
+          }
+        } else {
+          int fieldOrd = postings.smallNodeFieldOrd(node - entry.numLargeGroups);
+          int docId = fieldView.ordToDoc(fieldOrd);
+          if (acceptedDocs == null || acceptedDocs.get(docId)) {
+            collectedAny = super.collect(docId, similarity);
+          }
+        }
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+      return collectedAny;
+    }
+  }
+
+  /**
+   * HYBRID posting store. The large (promoted) groups' documents are stored exactly like {@link
+   * DistinctVectorPostings} (a monotonic {@code offsets} table keyed by large-group node ordinal
+   * plus a flattened array of field ordinals). The small-group document nodes carry a single field
+   * ordinal each, stored in a dense array indexed by {@code node - numLargeGroups}.
+   */
+  private static final class HybridPostings {
+    private final DirectMonotonicReader offsets;
+    private final RandomAccessInput data;
+    private final RandomAccessInput smallNodeData;
+
+    HybridPostings(FieldEntry entry, IndexInput graphData) throws IOException {
+      RandomAccessInput offsetsSlice =
+          graphData.randomAccessSlice(entry.groupOffsetsOffset, entry.groupOffsetsLength);
+      this.offsets = DirectMonotonicReader.getInstance(entry.groupOffsetsMeta, offsetsSlice);
+      this.data = graphData.randomAccessSlice(entry.fieldOrdsDataOffset, entry.fieldOrdsDataLength);
+      this.smallNodeData =
+          graphData.randomAccessSlice(
+              entry.smallNodeFieldOrdOffset, entry.smallNodeFieldOrdLength);
+    }
+
+    int offset(int largeGroupNode) {
+      return (int) offsets.get(largeGroupNode);
+    }
+
+    int fieldOrd(int index) throws IOException {
+      return data.readInt((long) index * Integer.BYTES);
+    }
+
+    int smallNodeFieldOrd(int smallNodeIndex) throws IOException {
+      return smallNodeData.readInt((long) smallNodeIndex * Integer.BYTES);
+    }
+  }
+
+  /**
    * Posting list keyed by group ordinal (distinct vector): each group's slice lists the field
    * ordinals (documents) that reference that distinct vector. This is the inverse of {@code
    * fieldOrdToGroupOrd}, stored in the data file as a monotonic {@code offsets} table plus a
@@ -556,6 +786,7 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
       DedupLayoutMode mode,
       int groupCount,
       int fieldOrdCount,
+      int graphNodeCount,
       long graphDataOffset,
       long graphDataLength,
       long groupOffsetsOffset,
@@ -563,6 +794,12 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
       long groupOffsetsLength,
       long fieldOrdsDataOffset,
       long fieldOrdsDataLength,
+      int numLargeGroups,
+      int numSmallDocs,
+      long nodeToGroupOrdOffset,
+      long nodeToGroupOrdLength,
+      long smallNodeFieldOrdOffset,
+      long smallNodeFieldOrdLength,
       int M,
       int numLevels,
       int[][] nodesByLevel,
@@ -587,7 +824,14 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
             0,
             0,
             0,
+            0,
             null,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
             0,
             0,
             0,
@@ -604,6 +848,20 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
       long graphDataOffset = input.readVLong();
       long graphDataLength = input.readVLong();
 
+      // For HYBRID, numLargeGroups/numSmallDocs precede the graph meta, so the level-0 node count
+      // (numLargeGroups + numSmallDocs) is known while parsing it.
+      int numLargeGroups = 0;
+      int numSmallDocs = 0;
+      int graphNodeCount;
+      if (mode == DedupLayoutMode.HYBRID) {
+        numLargeGroups = input.readInt();
+        numSmallDocs = input.readInt();
+        graphNodeCount = numLargeGroups + numSmallDocs;
+      } else {
+        // PLAIN: one node per document (groupCount == fieldOrdCount). DEDUP: one node per group.
+        graphNodeCount = groupCount;
+      }
+
       int M = input.readVInt();
       int numLevels = input.readVInt();
       int[][] nodesByLevel = new int[numLevels][];
@@ -618,7 +876,7 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
             nodesByLevel[level][i] = nodesByLevel[level][i - 1] + input.readVInt();
           }
         } else {
-          numberOfOffsets += groupCount;
+          numberOfOffsets += graphNodeCount;
         }
       }
 
@@ -638,12 +896,19 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
         offsetsLength = 0;
       }
 
-      // Postings (DEDUP only): offsets (monotonic, groupCount + 1) then flattened field ordinals.
-      long groupOffsetsOffset;
-      DirectMonotonicReader.Meta groupOffsetsMeta;
-      long groupOffsetsLength;
-      long fieldOrdsDataOffset;
-      long fieldOrdsDataLength;
+      // Postings. DEDUP: offsets (monotonic, groupCount + 1) then flattened field ordinals keyed by
+      // group ordinal. HYBRID: a nodeToGroupOrd map (dense int, graphNodeCount), then the
+      // large-group postings (offsets monotonic numLargeGroups + 1, then flattened field ordinals),
+      // then the small-node field ordinals (dense int, numSmallDocs). PLAIN: none.
+      long groupOffsetsOffset = 0;
+      DirectMonotonicReader.Meta groupOffsetsMeta = null;
+      long groupOffsetsLength = 0;
+      long fieldOrdsDataOffset = 0;
+      long fieldOrdsDataLength = 0;
+      long nodeToGroupOrdOffset = 0;
+      long nodeToGroupOrdLength = 0;
+      long smallNodeFieldOrdOffset = 0;
+      long smallNodeFieldOrdLength = 0;
       if (mode == DedupLayoutMode.DEDUP) {
         groupOffsetsOffset = input.readLong();
         int groupOffsetsBlockShift = input.readVInt();
@@ -652,12 +917,18 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
         groupOffsetsLength = input.readLong();
         fieldOrdsDataOffset = input.readLong();
         fieldOrdsDataLength = input.readLong();
-      } else {
-        groupOffsetsOffset = 0;
-        groupOffsetsMeta = null;
-        groupOffsetsLength = 0;
-        fieldOrdsDataOffset = 0;
-        fieldOrdsDataLength = 0;
+      } else if (mode == DedupLayoutMode.HYBRID) {
+        nodeToGroupOrdOffset = input.readLong();
+        nodeToGroupOrdLength = input.readLong();
+        groupOffsetsOffset = input.readLong();
+        int groupOffsetsBlockShift = input.readVInt();
+        groupOffsetsMeta =
+            DirectMonotonicReader.loadMeta(input, numLargeGroups + 1L, groupOffsetsBlockShift);
+        groupOffsetsLength = input.readLong();
+        fieldOrdsDataOffset = input.readLong();
+        fieldOrdsDataLength = input.readLong();
+        smallNodeFieldOrdOffset = input.readLong();
+        smallNodeFieldOrdLength = input.readLong();
       }
 
       return new FieldEntry(
@@ -665,6 +936,7 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
           mode,
           groupCount,
           fieldOrdCount,
+          graphNodeCount,
           graphDataOffset,
           graphDataLength,
           groupOffsetsOffset,
@@ -672,6 +944,12 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
           groupOffsetsLength,
           fieldOrdsDataOffset,
           fieldOrdsDataLength,
+          numLargeGroups,
+          numSmallDocs,
+          nodeToGroupOrdOffset,
+          nodeToGroupOrdLength,
+          smallNodeFieldOrdOffset,
+          smallNodeFieldOrdLength,
           M,
           numLevels,
           nodesByLevel,
@@ -707,7 +985,7 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
       this.nodesByLevel = entry.nodesByLevel;
       this.numLevels = entry.numLevels;
       this.entryNode = numLevels > 1 ? nodesByLevel[numLevels - 1][0] : 0;
-      this.size = entry.groupCount;
+      this.size = entry.graphNodeCount;
       RandomAccessInput addressesData =
           graphData.randomAccessSlice(entry.offsetsOffset, entry.offsetsLength);
       this.graphLevelNodeOffsets =

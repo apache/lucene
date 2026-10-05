@@ -68,6 +68,13 @@ public final class DedupHnswVectorsFormat extends KnnVectorsFormat {
   private static final String NAME = "DedupHnswVectorsFormat";
 
   /**
+   * Default hybrid-group threshold: {@code 0} disables the {@link DedupLayoutMode#HYBRID} layout, so
+   * fields fall back to the whole-field {@link DedupLayoutMode#PLAIN}/{@link DedupLayoutMode#DEDUP}
+   * selection.
+   */
+  public static final int DEFAULT_HYBRID_GROUP_THRESHOLD = 0;
+
+  /**
    * Controls how many of the nearest neighbor candidates are connected to the new node. Defaults to
    * {@link org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat#DEFAULT_MAX_CONN}. See
    * {@link HnswGraph} for more details.
@@ -103,10 +110,24 @@ public final class DedupHnswVectorsFormat extends KnnVectorsFormat {
    */
   private final int tinySegmentsThreshold;
 
+  /**
+   * When positive, enables the {@link DedupLayoutMode#HYBRID} layout: within a field, any distinct
+   * vector (group) referenced by <b>more than</b> this many documents is promoted to a single HNSW
+   * node with a posting list, while all remaining documents stay as individual HNSW nodes with no
+   * postings. {@code 0} (the default) disables HYBRID and keeps the whole-field PLAIN/DEDUP
+   * selection. Negative values are not allowed.
+   */
+  private final int hybridGroupThreshold;
+
   /** Constructs a format using default graph construction parameters */
   public DedupHnswVectorsFormat() {
     this(
-        DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, DEFAULT_NUM_MERGE_WORKER, null, HNSW_GRAPH_THRESHOLD);
+        DEFAULT_MAX_CONN,
+        DEFAULT_BEAM_WIDTH,
+        DEFAULT_NUM_MERGE_WORKER,
+        null,
+        HNSW_GRAPH_THRESHOLD,
+        DEFAULT_HYBRID_GROUP_THRESHOLD);
   }
 
   /**
@@ -116,7 +137,13 @@ public final class DedupHnswVectorsFormat extends KnnVectorsFormat {
    * @param beamWidth the size of the queue maintained during graph construction.
    */
   public DedupHnswVectorsFormat(int maxConn, int beamWidth) {
-    this(maxConn, beamWidth, DEFAULT_NUM_MERGE_WORKER, null, HNSW_GRAPH_THRESHOLD);
+    this(
+        maxConn,
+        beamWidth,
+        DEFAULT_NUM_MERGE_WORKER,
+        null,
+        HNSW_GRAPH_THRESHOLD,
+        DEFAULT_HYBRID_GROUP_THRESHOLD);
   }
 
   /**
@@ -128,7 +155,13 @@ public final class DedupHnswVectorsFormat extends KnnVectorsFormat {
    *     neighbors of the current graph size
    */
   public DedupHnswVectorsFormat(int maxConn, int beamWidth, int tinySegmentsThreshold) {
-    this(maxConn, beamWidth, DEFAULT_NUM_MERGE_WORKER, null, tinySegmentsThreshold);
+    this(
+        maxConn,
+        beamWidth,
+        DEFAULT_NUM_MERGE_WORKER,
+        null,
+        tinySegmentsThreshold,
+        DEFAULT_HYBRID_GROUP_THRESHOLD);
   }
 
   /**
@@ -144,7 +177,13 @@ public final class DedupHnswVectorsFormat extends KnnVectorsFormat {
    */
   public DedupHnswVectorsFormat(
       int maxConn, int beamWidth, int numMergeWorkers, ExecutorService mergeExec) {
-    this(maxConn, beamWidth, numMergeWorkers, mergeExec, HNSW_GRAPH_THRESHOLD);
+    this(
+        maxConn,
+        beamWidth,
+        numMergeWorkers,
+        mergeExec,
+        HNSW_GRAPH_THRESHOLD,
+        DEFAULT_HYBRID_GROUP_THRESHOLD);
   }
 
   /**
@@ -159,13 +198,17 @@ public final class DedupHnswVectorsFormat extends KnnVectorsFormat {
    *     MergeScheduler#getIntraMergeExecutor(MergePolicy.OneMerge)} is used.
    * @param tinySegmentsThreshold the expected number of vector operations to return k nearest
    *     neighbors of the current graph size
+   * @param hybridGroupThreshold when positive, enables the {@link DedupLayoutMode#HYBRID} layout:
+   *     groups referenced by more than this many documents are promoted to posting-backed graph
+   *     nodes, while all other documents remain individual graph nodes. {@code 0} disables HYBRID.
    */
   public DedupHnswVectorsFormat(
       int maxConn,
       int beamWidth,
       int numMergeWorkers,
       ExecutorService mergeExec,
-      int tinySegmentsThreshold) {
+      int tinySegmentsThreshold,
+      int hybridGroupThreshold) {
     super(NAME);
     if (maxConn <= 0 || maxConn > MAXIMUM_MAX_CONN) {
       throw new IllegalArgumentException(
@@ -181,9 +224,15 @@ public final class DedupHnswVectorsFormat extends KnnVectorsFormat {
               + "; beamWidth="
               + beamWidth);
     }
+    if (hybridGroupThreshold < 0) {
+      throw new IllegalArgumentException(
+          "hybridGroupThreshold must be non-negative; hybridGroupThreshold="
+              + hybridGroupThreshold);
+    }
     this.maxConn = maxConn;
     this.beamWidth = beamWidth;
     this.tinySegmentsThreshold = tinySegmentsThreshold;
+    this.hybridGroupThreshold = hybridGroupThreshold;
     if (numMergeWorkers == 1 && mergeExec != null) {
       throw new IllegalArgumentException(
           "No executor service is needed as we'll use single thread to merge");
@@ -193,7 +242,13 @@ public final class DedupHnswVectorsFormat extends KnnVectorsFormat {
   @Override
   public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
     return new DedupHnswVectorsWriter(
-        state, maxConn, beamWidth, tinySegmentsThreshold, FORMAT, FORMAT.fieldsWriter(state));
+        state,
+        maxConn,
+        beamWidth,
+        tinySegmentsThreshold,
+        hybridGroupThreshold,
+        FORMAT,
+        FORMAT.fieldsWriter(state));
   }
 
   @Override
@@ -218,6 +273,8 @@ public final class DedupHnswVectorsFormat extends KnnVectorsFormat {
         + beamWidth
         + ", tinySegmentsThreshold="
         + tinySegmentsThreshold
+        + ", hybridGroupThreshold="
+        + hybridGroupThreshold
         + ")";
   }
 }

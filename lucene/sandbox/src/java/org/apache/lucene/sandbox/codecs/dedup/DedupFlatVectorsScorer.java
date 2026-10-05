@@ -92,6 +92,26 @@ sealed class DedupFlatVectorsScorer implements FlatVectorsScorer
   }
 
   /**
+   * A {@link RandomVectorScorerSupplier} over a HYBRID node space, where each node is resolved to a
+   * group-view ordinal via {@code nodeToGroupOrd} and scored against that distinct vector. Used by
+   * {@link DedupHnswVectorsWriter} to build the hybrid graph (large-group nodes + per-document
+   * small-group nodes) in a single uniform group-view scoring space.
+   *
+   * <p>Like {@link #getGroupRandomVectorScorerSupplier}, this uses the full-precision {@code
+   * FLAT_SCORER} over the group view so graph construction stays encoding-agnostic.
+   */
+  RandomVectorScorerSupplier getHybridRandomVectorScorerSupplier(
+      VectorSimilarityFunction similarityFunction,
+      DedupVectorValues dedupValues,
+      int[] nodeToGroupOrd)
+      throws IOException {
+    RandomVectorScorerSupplier groupView =
+        FLAT_SCORER.getRandomVectorScorerSupplier(similarityFunction, dedupValues.getGroupView());
+    return new HybridRandomVectorScorerSupplier(
+        nodeToGroupOrd, dedupValues.getGroupView(), groupView);
+  }
+
+  /**
    * Returns a scorer that scores the query {@code target} against the distinct vectors in the
    * {@link DedupVectorValues#getGroupView() group view}. The scorer works in group-ordinal space:
    * {@code score(g)} scores the query against distinct vector {@code g}.
@@ -129,12 +149,75 @@ sealed class DedupFlatVectorsScorer implements FlatVectorsScorer
   }
 
   /**
+   * Returns a scorer over a HYBRID node space for the query {@code target}: node ordinals span
+   * {@code [0, nodeToGroupOrd.length)} and {@code score(node)} scores the query against the group
+   * view vector {@code nodeToGroupOrd[node]}. Used by {@link DedupHnswVectorsReader} to search the
+   * hybrid graph; each collected node is then expanded (large-group nodes) or mapped (small-group
+   * doc nodes) to documents by the reader.
+   */
+  RandomVectorScorer getHybridRandomVectorScorer(
+      VectorSimilarityFunction similarityFunction,
+      DedupVectorValues dedupValues,
+      float[] target,
+      int[] nodeToGroupOrd)
+      throws IOException {
+    return new HybridRandomVectorScorer(
+        getGroupRandomVectorScorer(similarityFunction, dedupValues, target), nodeToGroupOrd);
+  }
+
+  /** Byte-target variant of {@link #getHybridRandomVectorScorer}. */
+  RandomVectorScorer getHybridRandomVectorScorer(
+      VectorSimilarityFunction similarityFunction,
+      DedupVectorValues dedupValues,
+      byte[] target,
+      int[] nodeToGroupOrd)
+      throws IOException {
+    return new HybridRandomVectorScorer(
+        getGroupRandomVectorScorer(similarityFunction, dedupValues, target), nodeToGroupOrd);
+  }
+
+  /** Float16-target variant of {@link #getHybridRandomVectorScorer}. */
+  RandomVectorScorer getHybridRandomVectorScorer(
+      VectorSimilarityFunction similarityFunction,
+      DedupVectorValues dedupValues,
+      short[] target,
+      int[] nodeToGroupOrd)
+      throws IOException {
+    return new HybridRandomVectorScorer(
+        getGroupRandomVectorScorer(similarityFunction, dedupValues, target), nodeToGroupOrd);
+  }
+
+  /**
+   * Wraps a group-space {@link RandomVectorScorer} so that it accepts HYBRID node ordinals: {@code
+   * score(node)} delegates to {@code groupScorer.score(nodeToGroupOrd[node])}, and {@code maxOrd()}
+   * reports the number of hybrid nodes.
+   */
+  private static final class HybridRandomVectorScorer implements RandomVectorScorer {
+    private final RandomVectorScorer groupScorer;
+    private final int[] nodeToGroupOrd;
+
+    HybridRandomVectorScorer(RandomVectorScorer groupScorer, int[] nodeToGroupOrd) {
+      this.groupScorer = groupScorer;
+      this.nodeToGroupOrd = nodeToGroupOrd;
+    }
+
+    @Override
+    public float score(int node) throws IOException {
+      return groupScorer.score(nodeToGroupOrd[node]);
+    }
+
+    @Override
+    public int maxOrd() {
+      return nodeToGroupOrd.length;
+    }
+  }
+
+  /**
    * Picks the {@link DedupVectorValues} to score against. For quantized fields this unwraps the
    * raw-and-quantized values to the quantized view, so scoring uses the quantized vectors (the same
    * view {@link #getRandomVectorScorer} uses per document).
    */
-  private DedupVectorValues scoringGroupValues(DedupVectorValues dedupValues) {
-    KnnVectorValues unwrapped = unwrap((KnnVectorValues) dedupValues);
+  private DedupVectorValues scoringGroupValues(DedupVectorValues dedupValues) {    KnnVectorValues unwrapped = unwrap((KnnVectorValues) dedupValues);
     if (unwrapped instanceof DedupVectorValues unwrappedDedup) {
       return unwrappedDedup;
     }
@@ -211,11 +294,47 @@ sealed class DedupFlatVectorsScorer implements FlatVectorsScorer
   }
 
   /**
+   * A node-vs-node supplier over a HYBRID node space. Node ordinals span {@code
+   * [0, nodeToGroupOrd.length)}; each is resolved to a group-view ordinal via {@code
+   * nodeToGroupOrd} and scored against the group view. {@link #copy()} shares the immutable {@code
+   * nodeToGroupOrd} map and copies the underlying group-view supplier.
+   */
+  record HybridRandomVectorScorerSupplier(
+      int[] nodeToGroupOrd, KnnVectorValues groupValues, RandomVectorScorerSupplier groupView)
+      implements RandomVectorScorerSupplier {
+
+    @Override
+    public UpdateableRandomVectorScorer scorer() throws IOException {
+      UpdateableRandomVectorScorer groupScorer = groupView.scorer();
+      return new UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer(groupValues) {
+        @Override
+        public int maxOrd() {
+          return nodeToGroupOrd.length;
+        }
+
+        @Override
+        public float score(int node) throws IOException {
+          return groupScorer.score(nodeToGroupOrd[node]);
+        }
+
+        @Override
+        public void setScoringOrdinal(int node) throws IOException {
+          groupScorer.setScoringOrdinal(nodeToGroupOrd[node]);
+        }
+      };
+    }
+
+    @Override
+    public RandomVectorScorerSupplier copy() throws IOException {
+      return new HybridRandomVectorScorerSupplier(nodeToGroupOrd, groupValues, groupView.copy());
+    }
+  }
+
+  /**
    * Supplies scorers whose scoring and target ordinals are both translated to group ordinals, with
    * doc operations on the original values.
    */
-  record RandomVectorScorerSupplierImpl(
-      KnnVectorValues values,
+  record RandomVectorScorerSupplierImpl(      KnnVectorValues values,
       RandomVectorScorerSupplier groupView,
       FieldOrdToGroupOrd fieldOrdToGroupOrd)
       implements RandomVectorScorerSupplier {

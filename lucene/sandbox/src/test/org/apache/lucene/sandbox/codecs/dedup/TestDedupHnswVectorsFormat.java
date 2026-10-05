@@ -203,6 +203,105 @@ public class TestDedupHnswVectorsFormat extends BaseKnnVectorsFormatTestCase {
     }
   }
 
+  /**
+   * HYBRID layout: groups referenced by more than the configured threshold become single
+   * posting-backed graph nodes, while all other documents remain individual graph nodes. The graph
+   * node count must therefore equal {@code numLargeGroups + numSmallDocs}, and search must still
+   * fan a large group out to all its documents while returning small-group documents directly.
+   */
+  public void testHybridLayout() throws Exception {
+    int dim = 8;
+    int threshold = 5;
+
+    // Two "large" groups, each with more than `threshold` copies -> promoted to one node each.
+    int largeGroups = 2;
+    int copiesPerLargeGroup = threshold + 10; // 15
+    // Several "small" groups each with a single copy -> kept as individual document nodes.
+    int smallGroups = 12;
+
+    float[][] largeVectors = new float[largeGroups][];
+    for (int i = 0; i < largeGroups; i++) {
+      largeVectors[i] = randomVector(dim);
+    }
+    float[][] smallVectors = new float[smallGroups][];
+    for (int i = 0; i < smallGroups; i++) {
+      smallVectors[i] = randomVector(dim);
+    }
+
+    int expectedLargeNodes = largeGroups;
+    int expectedSmallNodes = smallGroups; // one copy each
+    int expectedGraphNodes = expectedLargeNodes + expectedSmallNodes;
+    int expectedDocCount = largeGroups * copiesPerLargeGroup + smallGroups;
+
+    // tinySegmentsThreshold=0 forces graph construction; hybridGroupThreshold enables HYBRID.
+    // (numMergeWorkers=1 with a null executor is allowed by the format.)
+    Codec codec =
+        TestUtil.alwaysKnnVectorsFormat(
+            new DedupHnswVectorsFormat(16, 100, 1, null, 0, threshold));
+
+    try (Directory dir = newDirectory();
+        var w =
+            new org.apache.lucene.index.IndexWriter(dir, newIndexWriterConfig().setCodec(codec))) {
+      for (int i = 0; i < largeGroups; i++) {
+        for (int c = 0; c < copiesPerLargeGroup; c++) {
+          var doc = new org.apache.lucene.document.Document();
+          doc.add(
+              new org.apache.lucene.document.KnnFloatVectorField(
+                  "f", largeVectors[i].clone(), VectorSimilarityFunction.EUCLIDEAN));
+          w.addDocument(doc);
+        }
+      }
+      for (int i = 0; i < smallGroups; i++) {
+        var doc = new org.apache.lucene.document.Document();
+        doc.add(
+            new org.apache.lucene.document.KnnFloatVectorField(
+                "f", smallVectors[i].clone(), VectorSimilarityFunction.EUCLIDEAN));
+        w.addDocument(doc);
+      }
+      w.forceMerge(1);
+
+      try (var reader = org.apache.lucene.index.DirectoryReader.open(w)) {
+        assertEquals(1, reader.leaves().size());
+        LeafReader leaf = reader.leaves().get(0).reader();
+        KnnVectorsReader knnReader =
+            ((CodecReader) leaf).getVectorReader().unwrapReaderForField("f");
+        assertTrue(knnReader instanceof DedupHnswVectorsReader);
+        var fieldInfo = leaf.getFieldInfos().fieldInfo("f");
+
+        // The hybrid graph has one node per large group plus one node per small-group doc.
+        var graph = ((DedupHnswVectorsReader) knnReader).getGraph("f");
+        assertEquals(expectedGraphNodes, graph.size());
+        // The reported vector count is still the number of documents.
+        assertEquals(expectedDocCount, knnReader.getVectorCount(fieldInfo));
+
+        var searcher = new org.apache.lucene.search.IndexSearcher(reader);
+
+        // A query matching a large group must fan out to all copiesPerLargeGroup documents.
+        var largeQuery =
+            new org.apache.lucene.search.KnnFloatVectorQuery(
+                "f", largeVectors[0].clone(), copiesPerLargeGroup + 5);
+        var largeTop = searcher.search(largeQuery, copiesPerLargeGroup + 5);
+        float best = largeTop.scoreDocs.length == 0 ? 0f : largeTop.scoreDocs[0].score;
+        int exactMatches = 0;
+        for (var sd : largeTop.scoreDocs) {
+          if (sd.score == best) {
+            exactMatches++;
+          }
+        }
+        assertTrue(
+            "expected large group to fan out to " + copiesPerLargeGroup + " docs, got "
+                + exactMatches,
+            exactMatches >= copiesPerLargeGroup);
+
+        // A query matching a small group must return its single document as the top hit.
+        var smallQuery =
+            new org.apache.lucene.search.KnnFloatVectorQuery("f", smallVectors[0].clone(), 5);
+        var smallTop = searcher.search(smallQuery, 5);
+        assertThat(smallTop.scoreDocs.length, greaterThan(0));
+      }
+    }
+  }
+
   @Override
   protected void assertOffHeapByteSize(LeafReader r, String fieldName) throws IOException {
     var fieldInfo = r.getFieldInfos().fieldInfo(fieldName);
