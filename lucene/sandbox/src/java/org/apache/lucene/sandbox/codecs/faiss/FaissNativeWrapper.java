@@ -27,6 +27,7 @@ import java.lang.foreign.SymbolLookup;
 import java.lang.invoke.MethodHandle;
 import java.util.Arrays;
 import java.util.Locale;
+import java.util.logging.Logger;
 import org.apache.lucene.util.Constants;
 
 /**
@@ -40,6 +41,7 @@ import org.apache.lucene.util.Constants;
 final class FaissNativeWrapper {
 
   static final String LOADED_LIBRARY = loadLibrary();
+  private static final Logger LOG = Logger.getLogger(FaissNativeWrapper.class.getName());
 
   private static String loadLibrary() {
     // Manual override via system property
@@ -48,22 +50,40 @@ final class FaissNativeWrapper {
       System.loadLibrary(customLib);
       return customLib;
     }
+
     // Try SIMD variants matching the CPU architecture
     switch (Constants.OS_ARCH) {
       case "amd64", "x86_64" -> {
-        if (Constants.HAS_AVX512 && tryLoad("faiss_c_avx512")) {
-          return "faiss_c_avx512";
-        }
-        if (Constants.HAS_AVX2 && tryLoad("faiss_c_avx2")) {
-          return "faiss_c_avx2";
+        if (Constants.HAS_AVX512) {
+          if (tryLoad("faiss_c_avx512")) {
+            return "faiss_c_avx512";
+          }
+          if (tryLoad("faiss_c_avx2")) {
+            LOG.warning(
+                "CPU supports AVX-512, but 'faiss_c_avx512' was not found; falling back to 'faiss_c_avx2'.");
+            return "faiss_c_avx2";
+          }
+          LOG.warning(
+              "CPU supports AVX-512, but neither 'faiss_c_avx512' nor 'faiss_c_avx2' was found; falling back to generic 'faiss_c'.");
+        } else if (Constants.HAS_AVX2) {
+          if (tryLoad("faiss_c_avx2")) {
+            return "faiss_c_avx2";
+          }
+          LOG.warning(
+              "CPU supports AVX2, but 'faiss_c_avx2' was not found; falling back to generic 'faiss_c'.");
         }
       }
       case "aarch64" -> {
-        if (Constants.HAS_SVE && tryLoad("faiss_c_sve")) {
-          return "faiss_c_sve";
+        if (Constants.HAS_SVE) {
+          if (tryLoad("faiss_c_sve")) {
+            return "faiss_c_sve";
+          }
+          LOG.warning(
+              "CPU supports SVE, but 'faiss_c_sve' was not found; falling back to generic 'faiss_c'.");
         }
       }
     }
+
     // Fallback to generic baseline
     System.loadLibrary("faiss_c");
     return "faiss_c";
