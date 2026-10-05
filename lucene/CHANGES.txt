@@ -102,6 +102,10 @@ Improvements
 * GITHUB#16091: Replace deprecated IndexSearcher#search(Query, Collector) usage with CollectorManager
   in JoinUtil#createJoinQuery for the GlobalOrdinalsCollector case. (Luca Cavanna)
 
+* GITHUB#7820: CheckIndex now reports which segment's .si file could not be read, rather than only that
+  a commit point was unreadable. SegmentInfos throws CorruptSegmentInfoException, carrying the segment
+  name and the underlying failure. (Gokul Manoj, Serhiy Bzhezytskyy)
+
 Optimizations
 ---------------------
 
