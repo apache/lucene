@@ -65,7 +65,7 @@ public final class UkrainianMorfologikAnalyzer extends StopwordAnalyzerBase {
 
   /** Returns the default stopword set for this analyzer */
   public static CharArraySet getDefaultStopwords() {
-    return CharArraySet.unmodifiableSet(DefaultsHolder.DEFAULT_STOP_SET);
+    return DefaultsHolder.DEFAULT_STOP_SET;
   }
 
   /**
