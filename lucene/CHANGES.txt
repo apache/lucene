@@ -245,6 +245,10 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#16729: Concurrent HNSW graph merges no longer run single-threaded when they start while
+  sibling merges hold ConcurrentMergeScheduler's intra-merge threads. Workers are now recruited
+  between batches, so threads that free up part way through a merge are put to use. (Alec Bernardi)
+
 * GITHUB#16657: Fix hashCode/equals contract violation in LRUQueryCache's QueryCacheKey and account a
   cached query's RAM once per distinct query. (Sagar Upadhyaya)
 
