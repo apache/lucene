@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 import org.apache.lucene.analysis.morph.Dictionary;
+import org.apache.lucene.analysis.morph.MorphFSTLoader;
 import org.apache.lucene.analysis.util.CSVUtil;
 import org.apache.lucene.util.IntsRefBuilder;
 import org.apache.lucene.util.fst.FST;
@@ -141,9 +142,10 @@ public final class UserDictionary implements Dictionary<UserMorphData> {
       segmentations.add(wordIdAndLength);
       ord++;
     }
+    FST.FSTMetadata<Long> metadata = fstCompiler.compile();
     this.fst =
         new TokenInfoFST(
-            FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader()), false);
+            MorphFSTLoader.loadCompiled(metadata, fstCompiler.getFSTReader()), false);
     this.morphAtts = new UserMorphData(data.toArray(String[]::new));
     this.segmentations = segmentations.toArray(int[][]::new);
   }
