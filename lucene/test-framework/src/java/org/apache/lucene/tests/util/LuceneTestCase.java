@@ -49,6 +49,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
@@ -355,121 +356,121 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
             LuceneTestCase::random,
             () -> RandomizedContext.current().getTargetClass());
 
-    classRules =
-        RuleChain.outerRule(new TestRuleIgnoreTestSuites())
-            .around(
-                new TestRuleAdapter() {
-                  @SuppressWarnings("NonFinalStaticField")
-                  private static TestFrameworkInfra testFrameworkInfra;
+    List<TestRule> orderedClassRules = new ArrayList<>();
+    orderedClassRules.add(new TestRuleIgnoreTestSuites());
+    orderedClassRules.add(
+        new TestRuleAdapter() {
+          @SuppressWarnings("NonFinalStaticField")
+          private static TestFrameworkInfra testFrameworkInfra;
 
-                  @Override
-                  protected void before() throws Throwable {
-                    int maxCalls =
-                        Integer.parseInt(System.getProperty(SYSPROP_RANDOM_MAXCALLS, "0"));
-                    Supplier<Random> supplier = () -> RandomizedContext.current().getRandom();
-                    if (maxCalls > 0) {
-                      var finalizedSupplier = supplier;
-                      supplier = () -> new MaxCallCountRandom(finalizedSupplier.get(), maxCalls);
+          @Override
+          protected void before() throws Throwable {
+            int maxCalls = Integer.parseInt(System.getProperty(SYSPROP_RANDOM_MAXCALLS, "0"));
+            Supplier<Random> supplier = () -> RandomizedContext.current().getRandom();
+            if (maxCalls > 0) {
+              var finalizedSupplier = supplier;
+              supplier = () -> new MaxCallCountRandom(finalizedSupplier.get(), maxCalls);
+            }
+
+            int maxAcquires = Integer.parseInt(System.getProperty(SYSPROP_RANDOM_MAXACQUIRES, "0"));
+            if (maxAcquires > 0) {
+              var finalizedSupplier = supplier;
+              supplier =
+                  () -> {
+                    if (randomCalls.incrementAndGet() > maxAcquires) {
+                      throw new RuntimeException(
+                          "Too many random() calls. Consider using LuceneTestCase.nonAssertingRandom for"
+                              + " large loops or data generation.");
                     }
+                    return finalizedSupplier.get();
+                  };
+            }
 
-                    int maxAcquires =
-                        Integer.parseInt(System.getProperty(SYSPROP_RANDOM_MAXACQUIRES, "0"));
-                    if (maxAcquires > 0) {
-                      var finalizedSupplier = supplier;
-                      supplier =
-                          () -> {
-                            if (randomCalls.incrementAndGet() > maxAcquires) {
-                              throw new RuntimeException(
-                                  "Too many random() calls. Consider using LuceneTestCase.nonAssertingRandom for"
-                                      + " large loops or data generation.");
-                            }
-                            return finalizedSupplier.get();
-                          };
-                    }
-
-                    var finalizedSupplier = supplier;
-                    setTestFrameworkInfra(
-                        null,
-                        testFrameworkInfra =
-                            new TestFrameworkInfra() {
-                              @Override
-                              public Random threadRandom() {
-                                return finalizedSupplier.get();
-                              }
-
-                              @Override
-                              public SetupAndRestoreStaticEnv getClassEnv() {
-                                return setupAndRestoreClassEnv;
-                              }
-
-                              @Override
-                              public TemporaryFilesSupplier getTempFilesSupplier() {
-                                return tempFilesSupplier;
-                              }
-
-                              @Override
-                              public SuiteFailureState getSuiteFailureState() {
-                                return suiteFailureMarker;
-                              }
-
-                              @Override
-                              public Field newField(
-                                  Random random, String name, Object value, FieldType type) {
-                                return fieldToType.newField(random, name, value, type);
-                              }
-                            });
-                  }
-
-                  @Override
-                  protected void afterAlways(List<Throwable> errors) {
-                    setTestFrameworkInfra(testFrameworkInfra, null);
-                  }
-                })
-            .around(ignoreAfterMaxFailures)
-            .around(suiteFailureMarker)
-            .around(
-                new VerifyTestClassNamingConvention(
-                    "org.apache.lucene", Pattern.compile("(.+\\.)(Test)([^.]+)")))
-            .around(new TestRuleAssertionsRequired())
-            .around(new TestRuleLimitSysouts(suiteFailureMarker))
-            .around(new CallbacksToRuleAdapter(tempFilesSupplier))
-            .around(new NoClassHooksShadowingRule())
-            .around(
-                new NoInstanceHooksOverridesRule() {
-                  @Override
-                  protected boolean verify(Method key) {
-                    String name = key.getName();
-                    return !(name.equals("setUp") || name.equals("tearDown"));
-                  }
-                })
-            .around(classNameRule = new TestRuleStoreClassName())
-            .around(
-                new TestRuleRestoreSystemProperties(
-                    // Enlist all properties to which we have write access (security manager);
-                    // these should be restored to previous state, no matter what the outcome of the
-                    // test.
-
-                    // We reset the default locale and timezone; these properties change as a
-                    // side-effect
-                    "user.language", "user.timezone"))
-            .around(new CallbacksToRuleAdapter(setupAndRestoreClassEnv))
-            .around(new CallbacksToRuleAdapter(fieldToType = new FieldToType()))
-            .around(
-                new CallbacksToRuleAdapter(
-                    new BeforeAfterCallback() {
+            var finalizedSupplier = supplier;
+            setTestFrameworkInfra(
+                null,
+                testFrameworkInfra =
+                    new TestFrameworkInfra() {
                       @Override
-                      public void before() {
-                        // Save environment information to reproduce-info listener.
-                        // This listener can be invoked after all the tests and other callbacks have
-                        // completed; I don't see any clean way to pass it there.
-                        RunListenerPrintReproduceInfo.envInfoJunit4 =
-                            new TestEnvInfo(
-                                setupAndRestoreClassEnv.codec,
-                                setupAndRestoreClassEnv.similarity,
-                                setupAndRestoreClassEnv.locale,
-                                setupAndRestoreClassEnv.timeZone);
+                      public Random threadRandom() {
+                        return finalizedSupplier.get();
                       }
-                    }));
+
+                      @Override
+                      public SetupAndRestoreStaticEnv getClassEnv() {
+                        return setupAndRestoreClassEnv;
+                      }
+
+                      @Override
+                      public TemporaryFilesSupplier getTempFilesSupplier() {
+                        return tempFilesSupplier;
+                      }
+
+                      @Override
+                      public SuiteFailureState getSuiteFailureState() {
+                        return suiteFailureMarker;
+                      }
+
+                      @Override
+                      public Field newField(
+                          Random random, String name, Object value, FieldType type) {
+                        return fieldToType.newField(random, name, value, type);
+                      }
+                    });
+          }
+
+          @Override
+          protected void afterAlways(List<Throwable> errors) {
+            setTestFrameworkInfra(testFrameworkInfra, null);
+          }
+        });
+    orderedClassRules.add(ignoreAfterMaxFailures);
+    orderedClassRules.add(suiteFailureMarker);
+    orderedClassRules.add(
+        new VerifyTestClassNamingConvention(
+            "org.apache.lucene", Pattern.compile("(.+\\.)(Test)([^.]+)")));
+    orderedClassRules.add(new TestRuleAssertionsRequired());
+    orderedClassRules.add(new TestRuleLimitSysouts(suiteFailureMarker));
+    orderedClassRules.add(new CallbacksToRuleAdapter(tempFilesSupplier));
+    orderedClassRules.add(new NoClassHooksShadowingRule());
+    orderedClassRules.add(
+        new NoInstanceHooksOverridesRule() {
+          @Override
+          protected boolean verify(Method key) {
+            String name = key.getName();
+            return !(name.equals("setUp") || name.equals("tearDown"));
+          }
+        });
+    orderedClassRules.add(classNameRule = new TestRuleStoreClassName());
+    orderedClassRules.add(
+        new TestRuleRestoreSystemProperties(
+            // Enlist all properties to which we have write access (security manager);
+            // these should be restored to previous state, no matter what the outcome of the
+            // test.
+
+            // We reset the default locale and timezone; these properties change as a
+            // side-effect
+            "user.language", "user.timezone"));
+    orderedClassRules.add(new CallbacksToRuleAdapter(setupAndRestoreClassEnv));
+    orderedClassRules.add(new CallbacksToRuleAdapter(fieldToType = new FieldToType()));
+    orderedClassRules.add(
+        new CallbacksToRuleAdapter(
+            new BeforeAfterCallback() {
+              @Override
+              public void before() {
+                // Save environment information to reproduce-info listener.
+                // This listener can be invoked after all the tests and other callbacks have
+                // completed; I don't see any clean way to pass it there.
+                RunListenerPrintReproduceInfo.envInfoJunit4 =
+                    new TestEnvInfo(
+                        setupAndRestoreClassEnv.codec,
+                        setupAndRestoreClassEnv.similarity,
+                        setupAndRestoreClassEnv.locale,
+                        setupAndRestoreClassEnv.timeZone);
+              }
+            }));
+    orderedClassRules.addAll(suiteCallbacks().stream().map(CallbacksToRuleAdapter::new).toList());
+    classRules = asRuleChain(orderedClassRules);
   }
 
   // -----------------------------------------------------------------
@@ -490,13 +491,26 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
    * This controls how individual test rules are nested. It is important that _all_ rules declared
    * in {@link LuceneTestCase} are executed in proper order if they depend on each other.
    */
-  @Rule
-  public final TestRule ruleChain =
-      RuleChain.outerRule(testFailureMarker)
-          .around(ignoreAfterMaxFailures)
-          .around(threadAndTestNameRule)
-          .around(new CallbacksToRuleAdapter(new TestRuleSetupAndRestoreInstanceEnv()))
-          .around(parentChainCallRule);
+  @Rule public final TestRule ruleChain;
+
+  {
+    List<TestRule> orderedTestRules = new ArrayList<>();
+    orderedTestRules.add(testFailureMarker);
+    orderedTestRules.add(ignoreAfterMaxFailures);
+    orderedTestRules.add(threadAndTestNameRule);
+    orderedTestRules.add(new CallbacksToRuleAdapter(new TestRuleSetupAndRestoreInstanceEnv()));
+    orderedTestRules.add(parentChainCallRule);
+    orderedTestRules.addAll(testCallbacks().stream().map(CallbacksToRuleAdapter::new).toList());
+    ruleChain = asRuleChain(orderedTestRules);
+  }
+
+  private static RuleChain asRuleChain(List<? extends TestRule> rules) {
+    RuleChain chain = RuleChain.emptyRuleChain();
+    for (TestRule rule : rules) {
+      chain = chain.around(rule);
+    }
+    return chain;
+  }
 
   /** A counter of calls to {@link #random()} if {@link #SYSPROP_RANDOM_MAXACQUIRES} is defined. */
   @SuppressWarnings("NonFinalStaticField")
