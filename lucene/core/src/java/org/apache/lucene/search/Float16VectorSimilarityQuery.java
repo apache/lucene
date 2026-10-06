@@ -112,9 +112,9 @@ public abstract sealed class Float16VectorSimilarityQuery extends AbstractVector
     public String toString(String field) {
       return String.format(
           Locale.ROOT,
-          "Float16VectorSimilarityQuery.Adaptive[field=%s target=[%f...] resultSimilarity=%f decay=%f filter=%s]",
+          "Float16VectorSimilarityQuery.Adaptive[field=%s target=[%d...] resultSimilarity=%f decay=%f filter=%s]",
           field,
-          Float.float16ToFloat(super.target[0]),
+          super.target[0],
           resultSimilarity,
           decay,
           filter);
