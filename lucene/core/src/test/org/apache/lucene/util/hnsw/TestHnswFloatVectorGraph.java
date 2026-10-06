@@ -72,6 +72,8 @@ import org.junit.Before;
 /** Tests HNSW KNN graphs */
 public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
 
+  private static final String ID_FIELD = "id";
+
   @Before
   public void setup() {
     similarityFunction = RandomizedTest.randomFrom(VectorSimilarityFunction.values());
@@ -443,25 +445,24 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
         for (int i = 0; i < baseSize; i++) {
           Document doc = new Document();
           doc.add(knnVectorField(field, vectors.vectorValue(i), similarityFunction));
-          doc.add(new StringField("id", Integer.toString(i), Field.Store.NO));
+          doc.add(new StringField(ID_FIELD, Integer.toString(i), Field.Store.NO));
           w.addDocument(doc);
         }
         w.flush(); // segment 1 = the base graph
         for (int i = baseSize; i < total; i++) {
           Document doc = new Document();
           doc.add(knnVectorField(field, vectors.vectorValue(i), similarityFunction));
-          doc.add(new StringField("id", Integer.toString(i), Field.Store.NO));
+          doc.add(new StringField(ID_FIELD, Integer.toString(i), Field.Store.NO));
           w.addDocument(doc);
         }
         w.flush(); // segment 2, deletion-free
-        // Delete 3 of every 10 base docs (30%): under the merger's reuse threshold, so the base
-        // segment is still chosen as the reuse base, but carrying deletes so repair runs.
-        int deletePct = 30;
-        assertTrue(deletePct < IncrementalHnswGraphMerger.DELETE_PCT_THRESHOLD);
-        for (int d = 0; d < baseSize; d += 10) {
-          for (int off = 0; off < 3 && d + off < baseSize; off++) {
-            w.deleteDocuments(new Term("id", Integer.toString(d + off)));
-          }
+        // Delete under the merger's reuse threshold, so the base segment is still chosen as the
+        // reuse base, but carrying deletes so repair runs.
+        int deletePct =
+            TestUtil.nextInt(random(), 1, IncrementalHnswGraphMerger.DELETE_PCT_THRESHOLD - 1);
+        int toDelete = baseSize * deletePct / 100;
+        for (int d = 0; d < toDelete; d++) {
+          w.deleteDocuments(new Term(ID_FIELD, Integer.toString(d)));
         }
         w.commit();
       }

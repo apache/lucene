@@ -90,7 +90,7 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
   // Tracks if the graph has deletes
   private boolean hasDeletes = false;
 
-  /** Seeds the rebalance promotions, kept separate from the level-assignment stream. */
+  /** Seed for the random promotions in {@link #rebalanceGraph}. */
   private final long seed;
 
   /**

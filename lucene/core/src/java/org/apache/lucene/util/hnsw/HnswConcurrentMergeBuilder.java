@@ -41,12 +41,10 @@ import org.apache.lucene.util.IntsRef;
  */
 public class HnswConcurrentMergeBuilder implements HnswBuilder {
 
-  private static final int DEFAULT_BATCH_SIZE =
-      2048; // number of vectors the worker handles sequentially at one batch
-  // Number of disconnected nodes a repair worker claims atomically at a time. Each repair is a
-  // full beam search, so the claim itself is negligible at any batch size; the only cost of a
-  // larger batch is that a level with few flagged nodes no longer spreads across all workers.
-  // Repair time was flat from 1 to 256 and ~7% slower at 1024 on a 500k-vector, 35%-delete merge.
+  // Number of vectors the worker handles sequentially at one batch.
+  private static final int DEFAULT_BATCH_SIZE = 2048;
+
+  // Number of disconnected nodes a repair worker claims at a time.
   private static final int REPAIR_BATCH_SIZE = 64;
 
   private final TaskExecutor taskExecutor;
