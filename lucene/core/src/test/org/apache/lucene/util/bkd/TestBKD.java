@@ -80,7 +80,10 @@ public class TestBKD extends LuceneTestCase {
 
         final BitSet hits = new BitSet();
         r.intersect(getIntersectVisitor(hits, queryMin, queryMax, config));
-
+        final BitSet hitsFromTwoPhaseVisitor = new BitSet();
+        r.intersect(
+            getTwoPhaseIntersectVisitor(hitsFromTwoPhaseVisitor, queryMin, queryMax, config));
+        assertEquals(hits, hitsFromTwoPhaseVisitor);
         for (int docID = 0; docID < 100; docID++) {
           boolean expected = docID >= 42 && docID <= 87;
           boolean actual = hits.get(docID);
@@ -177,7 +180,11 @@ public class TestBKD extends LuceneTestCase {
 
           final BitSet hits = new BitSet();
           r.intersect(getIntersectVisitor(hits, queryMinBytes, queryMaxBytes, config));
-
+          final BitSet hitsWithTwoPhaseVisitor = new BitSet();
+          r.intersect(
+              getTwoPhaseIntersectVisitor(
+                  hitsWithTwoPhaseVisitor, queryMinBytes, queryMaxBytes, config));
+          assertEquals(hitsWithTwoPhaseVisitor, hits);
           for (int docID = 0; docID < numDocs; docID++) {
             int[] docValues = docs[docID];
             boolean expected = true;
@@ -265,7 +272,11 @@ public class TestBKD extends LuceneTestCase {
 
           final BitSet hits = new BitSet();
           pointValues.intersect(getIntersectVisitor(hits, queryMinBytes, queryMaxBytes, config));
-
+          final BitSet hitsWithTwoPhaseVisitor = new BitSet();
+          pointValues.intersect(
+              getTwoPhaseIntersectVisitor(
+                  hitsWithTwoPhaseVisitor, queryMinBytes, queryMaxBytes, config));
+          assertEquals(hitsWithTwoPhaseVisitor, hits);
           for (int docID = 0; docID < numDocs; docID++) {
             BigInteger[] docValues = docs[docID];
             boolean expected = true;
@@ -854,12 +865,22 @@ public class TestBKD extends LuceneTestCase {
             new BKDConfig(numDataDims, numIndexDims, numBytesPerDim, maxPointsInLeafNode);
         final BitSet hits = new BitSet();
         pointValues.intersect(getIntersectVisitor(hits, queryMin, queryMax, config));
+        final BitSet hitsWithTwoPhaseVisitor = new BitSet();
+        pointValues.intersect(
+            getTwoPhaseIntersectVisitor(hitsWithTwoPhaseVisitor, queryMin, queryMax, config));
+        assertEquals(hitsWithTwoPhaseVisitor, hits);
         assertHits(hits, expected);
 
         hits.clear();
+        hitsWithTwoPhaseVisitor.clear();
         pointValues
             .getPointTree()
             .visitDocValues(getIntersectVisitor(hits, queryMin, queryMax, config));
+        pointValues
+            .getPointTree()
+            .visitDocValues(
+                getTwoPhaseIntersectVisitor(hitsWithTwoPhaseVisitor, queryMin, queryMax, config));
+        assertEquals(hitsWithTwoPhaseVisitor, hits);
         assertHits(hits, expected);
       }
       in.close();
@@ -883,7 +904,9 @@ public class TestBKD extends LuceneTestCase {
     tree = rarely() ? clone : tree;
     final long[] visitDocIDSize = new long[] {0};
     final long[] visitDocValuesSize = new long[] {0};
-    final IntersectVisitor visitor =
+    IntersectVisitor visitor = null;
+
+    visitor =
         new IntersectVisitor() {
           @Override
           public void visit(int docID) {
@@ -900,9 +923,11 @@ public class TestBKD extends LuceneTestCase {
             return Relation.CELL_CROSSES_QUERY;
           }
         };
+
     if (random().nextBoolean()) {
       tree.visitDocIDs(visitor);
       tree.visitDocValues(visitor);
+
     } else {
       tree.visitDocValues(visitor);
       tree.visitDocIDs(visitor);
@@ -985,6 +1010,116 @@ public class TestBKD extends LuceneTestCase {
         if (random().nextBoolean()) {
           // check the default method is correct
           IntersectVisitor.super.visit(iterator, packedValue);
+        } else {
+          assertEquals(iterator.docID(), -1);
+          int cost = Math.toIntExact(iterator.cost());
+          int numberOfPoints = 0;
+          int docID;
+          while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+            assertEquals(iterator.docID(), docID);
+            visit(docID, packedValue);
+            numberOfPoints++;
+          }
+          assertEquals(cost, numberOfPoints);
+          assertEquals(iterator.docID(), DocIdSetIterator.NO_MORE_DOCS);
+          assertEquals(iterator.nextDoc(), DocIdSetIterator.NO_MORE_DOCS);
+          assertEquals(iterator.docID(), DocIdSetIterator.NO_MORE_DOCS);
+        }
+      }
+
+      @Override
+      public Relation compare(byte[] minPacked, byte[] maxPacked) {
+        boolean crosses = false;
+        for (int dim = 0; dim < config.numIndexDims(); dim++) {
+          if (Arrays.compareUnsigned(
+                      maxPacked,
+                      dim * config.bytesPerDim(),
+                      dim * config.bytesPerDim() + config.bytesPerDim(),
+                      queryMin[dim],
+                      0,
+                      config.bytesPerDim())
+                  < 0
+              || Arrays.compareUnsigned(
+                      minPacked,
+                      dim * config.bytesPerDim(),
+                      dim * config.bytesPerDim() + config.bytesPerDim(),
+                      queryMax[dim],
+                      0,
+                      config.bytesPerDim())
+                  > 0) {
+            return Relation.CELL_OUTSIDE_QUERY;
+          } else if (Arrays.compareUnsigned(
+                      minPacked,
+                      dim * config.bytesPerDim(),
+                      dim * config.bytesPerDim() + config.bytesPerDim(),
+                      queryMin[dim],
+                      0,
+                      config.bytesPerDim())
+                  < 0
+              || Arrays.compareUnsigned(
+                      maxPacked,
+                      dim * config.bytesPerDim(),
+                      dim * config.bytesPerDim() + config.bytesPerDim(),
+                      queryMax[dim],
+                      0,
+                      config.bytesPerDim())
+                  > 0) {
+            crosses = true;
+          }
+        }
+
+        if (crosses) {
+          return Relation.CELL_CROSSES_QUERY;
+        } else {
+          return Relation.CELL_INSIDE_QUERY;
+        }
+      }
+    };
+  }
+
+  private BKDReader.BaseTwoPhaseIntersectVisitor getTwoPhaseIntersectVisitor(
+      BitSet hits, byte[][] queryMin, byte[][] queryMax, BKDConfig config) {
+    return new BKDReader.BaseTwoPhaseIntersectVisitor() {
+      @Override
+      public void visit(int docID) {
+        hits.set(docID);
+        // System.out.println("visit docID=" + docID);
+      }
+
+      @Override
+      public void visit(int docID, byte[] packedValue) {
+        // System.out.println("visit check docID=" + docID);
+        for (int dim = 0; dim < config.numIndexDims(); dim++) {
+          if (Arrays.compareUnsigned(
+                      packedValue,
+                      dim * config.bytesPerDim(),
+                      dim * config.bytesPerDim() + config.bytesPerDim(),
+                      queryMin[dim],
+                      0,
+                      config.bytesPerDim())
+                  < 0
+              || Arrays.compareUnsigned(
+                      packedValue,
+                      dim * config.bytesPerDim(),
+                      dim * config.bytesPerDim() + config.bytesPerDim(),
+                      queryMax[dim],
+                      0,
+                      config.bytesPerDim())
+                  > 0) {
+            // System.out.println("  no");
+            return;
+          }
+        }
+
+        // System.out.println("  yes");
+        hits.set(docID);
+      }
+
+      @Override
+      public void visit(DocIdSetIterator iterator, byte[] packedValue) throws IOException {
+        if (random().nextBoolean()) {
+          // check the default method is correct
+          super.visit(iterator, packedValue);
         } else {
           assertEquals(iterator.docID(), -1);
           int cost = Math.toIntExact(iterator.cost());
@@ -1344,6 +1479,28 @@ public class TestBKD extends LuceneTestCase {
       in.seek(fp);
       PointValues r = getPointValues(in);
       int[] count = new int[1];
+      int[] countWithTwoPhaseVisitor = new int[1];
+      r.intersect(
+          new BKDReader.BaseTwoPhaseIntersectVisitor() {
+            @Override
+            public void visit(int docID) throws IOException {
+              countWithTwoPhaseVisitor[0]++;
+            }
+
+            @Override
+            public void visit(int docID, byte[] packedValue) throws IOException {
+              visit(docID);
+            }
+
+            @Override
+            public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+              if (random().nextInt(7) == 1) {
+                return Relation.CELL_CROSSES_QUERY;
+              } else {
+                return Relation.CELL_INSIDE_QUERY;
+              }
+            }
+          });
       r.intersect(
           new IntersectVisitor() {
 
@@ -1366,6 +1523,7 @@ public class TestBKD extends LuceneTestCase {
               }
             }
           });
+      assertEquals(count[0], countWithTwoPhaseVisitor[0]);
       assertEquals(numDocs, count[0]);
       in.close();
     }
@@ -1411,6 +1569,31 @@ public class TestBKD extends LuceneTestCase {
     in.seek(fp);
     PointValues r = getPointValues(in);
     int[] count = new int[1];
+    int[] countWithTwoPhaseVisitor = new int[1];
+    r.intersect(
+        new BKDReader.BaseTwoPhaseIntersectVisitor() {
+          @Override
+          public void visit(int docID) throws IOException {
+            countWithTwoPhaseVisitor[0]++;
+          }
+
+          @Override
+          public void visit(int docID, byte[] packedValue) throws IOException {
+            assert packedValue.length == numDims * bytesPerDim;
+            visit(docID);
+          }
+
+          @Override
+          public Relation compare(byte[] minPacked, byte[] maxPacked) {
+            assert minPacked.length == numIndexDims * bytesPerDim;
+            assert maxPacked.length == numIndexDims * bytesPerDim;
+            if (random().nextInt(7) == 1) {
+              return Relation.CELL_CROSSES_QUERY;
+            } else {
+              return Relation.CELL_INSIDE_QUERY;
+            }
+          }
+        });
     r.intersect(
         new IntersectVisitor() {
 
@@ -1436,6 +1619,7 @@ public class TestBKD extends LuceneTestCase {
             }
           }
         });
+    assertEquals(count[0], countWithTwoPhaseVisitor[0]);
     assertEquals(numDocs, count[0]);
     in.close();
     dir.close();
@@ -1480,6 +1664,22 @@ public class TestBKD extends LuceneTestCase {
     pointsIn.seek(indexFP);
     PointValues points = getPointValues(pointsIn);
 
+    long estimatedCountWithTwoPhaseVisitor =
+        points.estimatePointCount(
+            new BKDReader.BaseTwoPhaseIntersectVisitor() {
+              @Override
+              public void visit(int docID) throws IOException {}
+
+              @Override
+              public void visit(int docID, byte[] packedValue) throws IOException {}
+
+              @Override
+              public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+                return Relation.CELL_INSIDE_QUERY;
+              }
+            });
+    assertEquals(estimatedCountWithTwoPhaseVisitor, numValues);
+
     // If all points match, then the point count is numValues
     assertEquals(
         numValues,
@@ -1494,6 +1694,22 @@ public class TestBKD extends LuceneTestCase {
               @Override
               public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
                 return Relation.CELL_INSIDE_QUERY;
+              }
+            }));
+
+    assertEquals(
+        0,
+        points.estimatePointCount(
+            new BKDReader.BaseTwoPhaseIntersectVisitor() {
+              @Override
+              public void visit(int docID, byte[] packedValue) throws IOException {}
+
+              @Override
+              public void visit(int docID) throws IOException {}
+
+              @Override
+              public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+                return Relation.CELL_OUTSIDE_QUERY;
               }
             }));
 
@@ -1516,6 +1732,28 @@ public class TestBKD extends LuceneTestCase {
 
     // If only one point matches, then the point count is (actualMaxPointsInLeafNode + 1) / 2
     // in general, or maybe 2x that if the point is a split value
+    final long pointCountWithTwoPhaseVisitor =
+        points.estimatePointCount(
+            new BKDReader.BaseTwoPhaseIntersectVisitor() {
+              @Override
+              public void visit(int docID, byte[] packedValue) throws IOException {}
+
+              @Override
+              public void visit(int docID) throws IOException {}
+
+              @Override
+              public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+                if (Arrays.compareUnsigned(
+                            uniquePointValue, 0, numBytesPerDim, maxPackedValue, 0, numBytesPerDim)
+                        > 0
+                    || Arrays.compareUnsigned(
+                            uniquePointValue, 0, numBytesPerDim, minPackedValue, 0, numBytesPerDim)
+                        < 0) {
+                  return Relation.CELL_OUTSIDE_QUERY;
+                }
+                return Relation.CELL_CROSSES_QUERY;
+              }
+            });
     final long pointCount =
         points.estimatePointCount(
             new IntersectVisitor() {
@@ -1539,6 +1777,7 @@ public class TestBKD extends LuceneTestCase {
               }
             });
     long lastNodePointCount = numValues % maxPointsInLeafNode;
+    assertEquals(pointCount, pointCountWithTwoPhaseVisitor);
     assertTrue(
         "" + pointCount,
         pointCount == (maxPointsInLeafNode + 1) / 2 // common case
