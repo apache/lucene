@@ -105,7 +105,9 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     this.rawVectorDelegate = rawVectorDelegate;
     try {
       meta = state.directory.createOutput(metaFileName, state.context);
-      vectorData = state.directory.createOutput(vectorDataFileName, state.context);
+      vectorData =
+          state.directory.createOutput(
+              vectorDataFileName, state.context.union(FileTypeHint.DATA, FileDataHint.KNN_VECTORS));
 
       CodecUtil.writeIndexHeader(
           meta,
@@ -358,12 +360,12 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       segmentWriteState.infoStream.message(
           QUANTIZED_VECTOR_COMPONENT, "Vectors' count:" + vectorCount);
     }
-    // Only asymmetric encodings have query-side records, and only FLOAT32 fields score graphs with
-    // them. FLOAT16 fields use fp16 vectors. The predicate sees vectorCount before deletions, so it
-    // can request data even when the merged field is too small to build a graph.
+    // Only asymmetric encodings have query-side records, and both FLOAT16 and FLOAT32 fields
+    // score graphs with them. The predicate sees vectorCount before deletions, so it can
+    // request data even when the merged field is too small to build a graph.
     boolean prepareQueryData =
         encoding.isAsymmetric()
-            && fieldInfo.getVectorEncoding() == VectorEncoding.FLOAT32
+            && fieldInfo.getVectorEncoding().isFloatingPoint()
             && needsMergeScorer.test(vectorCount);
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
     DocsWithFieldSet docsWithField;
