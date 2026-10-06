@@ -606,6 +606,10 @@ Optimizations
 * GITHUB#16667: Rewrite BooleanQuery to MatchNoDocsQuery when it has MUST_NOT clause matching one of
   its MUST boost or constant score query clauses. (Egor Potemkin)
 
+* GITHUB#XXXXX: DirectoryTaxonomyReader#getBulkOrdinals now returns early when every requested label
+  is in the ordinal cache, instead of always opening a TermsEnum over the taxonomy index.
+  (Alex Baranov)
+
 Bug Fixes
 ---------------------
 * GITHUB#10153: Allow configurable buffer size in SegmentingTokenizerBase and recognize whitespace as safe boundary in ThaiTokenizer to avoid splitting words across buffer boundaries. (Kamthorn Krairaksa)
