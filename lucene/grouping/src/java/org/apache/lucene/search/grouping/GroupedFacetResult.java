@@ -37,7 +37,7 @@ public class GroupedFacetResult {
 
   private int currentMin;
 
-  public GroupedFacetResult(
+  GroupedFacetResult(
       int size, int minCount, boolean orderByCount, int totalCount, int totalMissingCount) {
     this.facetEntries =
         new TreeSet<>(
@@ -56,7 +56,7 @@ public class GroupedFacetResult {
     currentMin = minCount;
   }
 
-  public void addFacetCount(BytesRef facetValue, int count) {
+  void addFacetCount(BytesRef facetValue, int count) {
     if (count < currentMin) {
       return;
     }

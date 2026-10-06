@@ -45,6 +45,12 @@ import org.apache.lucene.util.UnicodeUtil;
  * one document with that facet value. Groups spanning multiple search slices are counted exactly
  * once (cross-slice deduplication is handled in {@link #reduce}).
  *
+ * <p>When {@code minCount} is {@code 0}, zero-count facet terms are included in the result. Those
+ * terms must be copied to {@link BytesRef} at {@link LeafCollector#finish()} time because {@link
+ * #reduce} no longer has access to per-segment DocValues. On a high-cardinality facet field this
+ * can use substantially more memory than when {@code minCount > 0}, which only materializes terms
+ * that were actually collected.
+ *
  * @lucene.experimental
  */
 public class TermGroupFacetCollectorManager
@@ -66,7 +72,8 @@ public class TermGroupFacetCollectorManager
    * @param facetFieldMultivalued whether the facet field has multiple values per document
    * @param facetPrefix only include facet entries with this prefix; may be null
    * @param size the maximum number of facet entries to include in the result (offset + limit)
-   * @param minCount minimum count for a facet entry to be included
+   * @param minCount minimum count for a facet entry to be included. {@code 0} includes zero-count
+   *     terms and materializes every in-range facet term (see class javadoc)
    * @param orderByCount whether to sort facet entries by count descending (vs. lexicographic)
    */
   public TermGroupFacetCollectorManager(
@@ -176,7 +183,7 @@ public class TermGroupFacetCollectorManager
     // Packs (groupOrd, facetOrd) into a single long. Adding 1 to each maps the missing sentinel
     // (-1) to 0, making the encoding unambiguous for non-negative ordinal values.
     private static long encodePair(int groupOrd, int facetOrd) {
-      return ((long) (groupOrd + 1) << 32) | (facetOrd + 1);
+      return (((long) groupOrd + 1) << 32) | ((long) facetOrd + 1);
     }
 
     // Single-valued facet field implementation.
