@@ -7,6 +7,10 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
+* GITHUB#16292: Remove TermGroupFacetCollector and GroupFacetCollector. Use
+  TermGroupFacetCollectorManager, which supports concurrent search. GroupedFacetResult
+  and FacetEntry are now top-level types. (Luca Cavanna)
+
 * GITHUB#16705: KnnVectorValues#prefetch(int ord, int count) replaces prefetch(int ord). It prefetches
   a run of consecutive vectors with a single read and returns true if a prefetch was issued, like
   IndexInput#prefetch. The int[] form now coalesces ordinals that are consecutive in the array over

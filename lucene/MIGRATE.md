@@ -48,6 +48,45 @@ called `LuceneTestCaseParent` but you should reference them either
 without an explicit type or via the type of the parent class
 for your test framework. The parent class may be removed in the future.
 
+### TermGroupFacetCollector and GroupFacetCollector removed (GITHUB#16292)
+
+`TermGroupFacetCollector` and its base class `GroupFacetCollector` have been removed.
+Use `TermGroupFacetCollectorManager` with `IndexSearcher#search(Query, CollectorManager)`
+instead. `size`, `minCount`, and `orderByCount` are now constructor arguments; merging
+happens in `reduce()`.
+
+`GroupedFacetResult` and `FacetEntry` are now top-level types in
+`org.apache.lucene.search.grouping`. `FacetEntry` is nested in `GroupedFacetResult`
+(`GroupedFacetResult.FacetEntry`).
+
+Before:
+
+```java
+TermGroupFacetCollector collector =
+    TermGroupFacetCollector.createTermGroupFacetCollector(
+        groupField, facetField, facetFieldMultivalued, facetPrefix, initialSize);
+searcher.search(query, collector);
+TermGroupFacetCollector.GroupedFacetResult result =
+    collector.mergeSegmentResults(offset + limit, minCount, orderByCount);
+List<TermGroupFacetCollector.FacetEntry> entries = result.getFacetEntries(offset, limit);
+```
+
+After:
+
+```java
+TermGroupFacetCollectorManager manager =
+    new TermGroupFacetCollectorManager(
+        groupField,
+        facetField,
+        facetFieldMultivalued,
+        facetPrefix,
+        offset + limit,
+        minCount,
+        orderByCount);
+GroupedFacetResult result = searcher.search(query, manager);
+List<GroupedFacetResult.FacetEntry> entries = result.getFacetEntries(offset, limit);
+```
+
 ### Directory#copyFrom is now abstract (GITHUB#16530)
 
 `Directory#copyFrom` no longer has a default implementation, so classes that extend
