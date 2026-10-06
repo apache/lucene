@@ -294,8 +294,10 @@ public class TieredMergePolicy extends MergePolicy {
 
   private static class SegmentSizeAndDocs {
     private final SegmentCommitInfo segInfo;
+
     /// Size of the segment in bytes, pro-rated by the number of live documents.
     private final long sizeInBytes;
+
     private final int delCount;
     private final int maxDoc;
     private final String name;
