@@ -29,6 +29,7 @@ import static jdk.incubator.vector.VectorOperators.ZERO_EXTEND_S2I;
 import static org.apache.lucene.util.VectorUtil.isUnitVector;
 
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.DoubleVector;
 import jdk.incubator.vector.FloatVector;
@@ -171,6 +172,122 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     FloatVector res1 = acc1.add(acc2);
     FloatVector res2 = acc3.add(acc4);
     return res1.add(res2).reduceLanes(ADD);
+  }
+
+  /** */
+  @Override
+  public void dotProductBulk(float[] query, float[][] docs, float[] results) {
+    int docIdx = 0;
+
+    // Process in batches of 4 documents at a time
+    for (; docIdx + 3 < docs.length; docIdx += 4) {
+      float[] d0 = docs[docIdx];
+      float[] d1 = docs[docIdx + 1];
+      float[] d2 = docs[docIdx + 2];
+      float[] d3 = docs[docIdx + 3];
+
+      FloatVector acc0 = FloatVector.zero(FLOAT_SPECIES);
+      FloatVector acc1 = FloatVector.zero(FLOAT_SPECIES);
+      FloatVector acc2 = FloatVector.zero(FLOAT_SPECIES);
+      FloatVector acc3 = FloatVector.zero(FLOAT_SPECIES);
+
+      int i = 0;
+      int limit = FLOAT_SPECIES.loopBound(query.length);
+
+      for (; i < limit; i += FLOAT_SPECIES.length()) {
+        // LOAD QUERY ONCE
+        FloatVector vq = FloatVector.fromArray(FLOAT_SPECIES, query, i);
+
+        // SCORE AGAINST 4 DOCUMENTS
+        acc0 = fma(vq, FloatVector.fromArray(FLOAT_SPECIES, d0, i), acc0);
+        acc1 = fma(vq, FloatVector.fromArray(FLOAT_SPECIES, d1, i), acc1);
+        acc2 = fma(vq, FloatVector.fromArray(FLOAT_SPECIES, d2, i), acc2);
+        acc3 = fma(vq, FloatVector.fromArray(FLOAT_SPECIES, d3, i), acc3);
+      }
+
+      results[docIdx] = acc0.reduceLanes(ADD) + scalarDotProductBulk(query, d0, i);
+      results[docIdx + 1] = acc1.reduceLanes(ADD) + scalarDotProductBulk(query, d1, i);
+      results[docIdx + 2] = acc2.reduceLanes(ADD) + scalarDotProductBulk(query, d2, i);
+      results[docIdx + 3] = acc3.reduceLanes(ADD) + scalarDotProductBulk(query, d3, i);
+    }
+
+    for (; docIdx < docs.length; docIdx++) {
+      results[docIdx] = dotProduct(query, docs[docIdx]);
+    }
+  }
+
+  /** Helper method to process the remaining un-vectorized tail of the arrays */
+  private float scalarDotProductBulk(float[] a, float[] b, int startIndex) {
+    float res = 0;
+    for (int i = startIndex; i < a.length; i++) {
+      res = fma(a[i], b[i], res);
+    }
+    return res;
+  }
+
+  /**
+   * SIMD accelerated bulk dot product for off-heap memory segments. Called directly by
+   * MemorySegmentBulkVectorOps.
+   */
+  public static void dotProductBulk(
+      MemorySegment seg,
+      float[] scores,
+      float[] query,
+      long node1Offset,
+      long node2Offset,
+      long node3Offset,
+      long node4Offset,
+      int dims) {
+
+    FloatVector acc0 = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector acc1 = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector acc2 = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector acc3 = FloatVector.zero(FLOAT_SPECIES);
+
+    int i = 0;
+    int limit = FLOAT_SPECIES.loopBound(dims);
+
+    for (; i < limit; i += FLOAT_SPECIES.length()) {
+      FloatVector vq = FloatVector.fromArray(FLOAT_SPECIES, query, i);
+
+      // Load 4 off-heap document vectors directly into registers
+      FloatVector v0 =
+          FloatVector.fromMemorySegment(
+              FLOAT_SPECIES, seg, node1Offset + (long) i * Float.BYTES, LITTLE_ENDIAN);
+      FloatVector v1 =
+          FloatVector.fromMemorySegment(
+              FLOAT_SPECIES, seg, node2Offset + (long) i * Float.BYTES, LITTLE_ENDIAN);
+      FloatVector v2 =
+          FloatVector.fromMemorySegment(
+              FLOAT_SPECIES, seg, node3Offset + (long) i * Float.BYTES, LITTLE_ENDIAN);
+      FloatVector v3 =
+          FloatVector.fromMemorySegment(
+              FLOAT_SPECIES, seg, node4Offset + (long) i * Float.BYTES, LITTLE_ENDIAN);
+
+      acc0 = fma(vq, v0, acc0);
+      acc1 = fma(vq, v1, acc1);
+      acc2 = fma(vq, v2, acc2);
+      acc3 = fma(vq, v3, acc3);
+    }
+
+    float res0 = acc0.reduceLanes(ADD);
+    float res1 = acc1.reduceLanes(ADD);
+    float res2 = acc2.reduceLanes(ADD);
+    float res3 = acc3.reduceLanes(ADD);
+
+    // Scalar tail for remainder dimensions
+    for (; i < dims; i++) {
+      float q = query[i];
+      res0 = fma(q, seg.get(ValueLayout.JAVA_FLOAT, node1Offset + (long) i * Float.BYTES), res0);
+      res1 = fma(q, seg.get(ValueLayout.JAVA_FLOAT, node2Offset + (long) i * Float.BYTES), res1);
+      res2 = fma(q, seg.get(ValueLayout.JAVA_FLOAT, node3Offset + (long) i * Float.BYTES), res2);
+      res3 = fma(q, seg.get(ValueLayout.JAVA_FLOAT, node4Offset + (long) i * Float.BYTES), res3);
+    }
+
+    scores[0] = res0;
+    scores[1] = res1;
+    scores[2] = res2;
+    scores[3] = res3;
   }
 
   @Override
