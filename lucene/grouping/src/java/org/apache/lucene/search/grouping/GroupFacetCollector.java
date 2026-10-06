@@ -33,7 +33,11 @@ import org.apache.lucene.util.PriorityQueue;
  * Base class for computing grouped facets.
  *
  * @lucene.experimental
+ * @deprecated Use {@code TermGroupFacetCollectorManager} instead, which supports concurrent search.
+ *     {@code GroupedFacetResult} and {@code GroupedFacetResult.FacetEntry} are now top-level
+ *     classes.
  */
+@Deprecated
 public abstract class GroupFacetCollector extends SimpleCollector {
 
   protected final String groupField;
@@ -64,7 +68,13 @@ public abstract class GroupFacetCollector extends SimpleCollector {
    *     </code> then the facets are sorted lexicographically in ascending order.
    * @return grouped facet results
    * @throws IOException If I/O related errors occur during merging segment grouped facet counts.
+   * @deprecated Use {@link TermGroupFacetCollectorManager} instead. The {@code size}, {@code
+   *     minCount}, and {@code orderByCount} parameters are now passed to its constructor, and
+   *     merging happens automatically inside {@link
+   *     org.apache.lucene.search.IndexSearcher#search(org.apache.lucene.search.Query,
+   *     org.apache.lucene.search.CollectorManager)}.
    */
+  @Deprecated
   public GroupedFacetResult mergeSegmentResults(int size, int minCount, boolean orderByCount)
       throws IOException {
     int totalCount = 0;
