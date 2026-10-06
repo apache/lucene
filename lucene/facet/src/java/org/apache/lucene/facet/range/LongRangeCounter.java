@@ -40,7 +40,7 @@ import java.util.Comparator;
 abstract class LongRangeCounter {
 
   /** accumulated counts for all of the ranges */
-  private final int[] countBuffer;
+  protected final int[] countBuffer;
 
   /**
    * for multi-value docs, we keep track of the last elementary interval we've counted so we can use
@@ -110,6 +110,13 @@ abstract class LongRangeCounter {
         processSingleValuedHit(mid + 1);
         return;
       }
+    }
+  }
+
+  /** Count a batch of single valued doc values */
+  void addSingleValuedBatch(long[] values, int count) {
+    for (int i = 0; i < count; i++) {
+      addSingleValued(values[i]);
     }
   }
 
