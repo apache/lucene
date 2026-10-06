@@ -233,6 +233,10 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#16625: Close the reader pool before the deleter removes files on rollback, so that
+  uncommitted segment files are not deleted while pooled readers still hold them open.
+  (Jean Pierre Mandujano)
+
 * GITHUB#16657: Fix hashCode/equals contract violation in LRUQueryCache's QueryCacheKey and account a
   cached query's RAM once per distinct query. (Sagar Upadhyaya)
 
