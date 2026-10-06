@@ -66,6 +66,12 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
   private final Map<String, FieldEntry> fields;
   private final IndexInput vectorData;
   private final String vectorDataExtension;
+  // the vectors as merges read them, shared with this reader's merge instances
+  private final MergeInput mergeVectorData;
+  // whether this is a merge instance, reading through mergeVectorData
+  private final boolean mergeInstance;
+  // on a merge instance: whether it gave its mappings back
+  private boolean finished;
 
   DedupFlatVectorsReader(
       SegmentReadState state,
@@ -81,6 +87,7 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
     this.vectorsScorer = vectorsScorer;
     this.fields = new HashMap<>();
     this.vectorDataExtension = vectorDataExtension;
+    this.mergeInstance = false;
 
     String metaFileName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, metaExtension);
@@ -116,6 +123,28 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
       IOUtils.closeWhileSuppressingExceptions(t, this);
       throw t;
     }
+    this.mergeVectorData =
+        new MergeInput(
+            state.directory,
+            IndexFileNames.segmentFileName(
+                state.segmentInfo.name, state.segmentSuffix, vectorDataExtension),
+            dataContext(state),
+            vectorData);
+  }
+
+  /** Reads the same fields as {@code reader}, through the mapping a merge opened for itself. */
+  private DedupFlatVectorsReader(DedupFlatVectorsReader reader, IndexInput vectorData) {
+    this.vectorsScorer = reader.vectorsScorer;
+    this.fields = reader.fields;
+    this.vectorData = vectorData;
+    this.vectorDataExtension = reader.vectorDataExtension;
+    this.mergeVectorData = reader.mergeVectorData;
+    this.mergeInstance = true;
+  }
+
+  // how these are read is up to whoever wraps this format
+  private static IOContext dataContext(SegmentReadState state) {
+    return state.context.union(FileTypeHint.DATA, FileDataHint.KNN_VECTORS);
   }
 
   private void readMetaBody(ChecksumIndexInput meta, FieldInfos fieldInfos) throws IOException {
@@ -199,8 +228,7 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, vectorDataExtension);
 
-    // how these are read is up to whoever wraps this format
-    IOContext context = state.context.union(FileTypeHint.DATA, FileDataHint.KNN_VECTORS);
+    IOContext context = dataContext(state);
 
     IndexInput in = null;
     boolean success = false;
@@ -337,21 +365,41 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
   }
 
   @Override
-  public FlatVectorsReader getMergeInstance() {
+  public FlatVectorsReader getMergeInstance() throws IOException {
     // TODO: Can we improve performance using sequential IO + avoiding read-backs? One way is to
     //  de-duplicate only within a document, allowing for cleaner sort of vectors during flush +
     //  avoid read-backs for full equality checks during merge.
-    return this;
+    if (mergeVectorData.needed() == false) {
+      return this;
+    }
+    IndexInput data = mergeVectorData.acquire();
+    boolean success = false;
+    try {
+      FlatVectorsReader reader = new DedupFlatVectorsReader(this, data.clone());
+      success = true;
+      return reader;
+    } finally {
+      if (success == false) {
+        mergeVectorData.release();
+      }
+    }
   }
 
+  /**
+   * Gives back the mapping this merge instance holds, once: finishing the reader it came from, or
+   * finishing it again, releases nothing.
+   */
   @Override
-  public void finishMerge() {
-    // TODO: Converse of getMergeInstance()
+  public synchronized void finishMerge() throws IOException {
+    if (mergeInstance && finished == false) {
+      finished = true;
+      mergeVectorData.release();
+    }
   }
 
   @Override
   public void close() throws IOException {
-    IOUtils.close(vectorData);
+    IOUtils.close(vectorData, mergeInstance ? null : mergeVectorData);
   }
 
   @Override

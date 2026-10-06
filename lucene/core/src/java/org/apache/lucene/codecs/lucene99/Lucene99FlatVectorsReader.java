@@ -77,6 +77,8 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   private IndexInput mergeVectorData;
   // merge instances handed out and not yet finished
   private int mergeInstances;
+  // on a merge instance: whether it gave the mapping back, guarded by the original's lock
+  private boolean finished;
 
   public Lucene99FlatVectorsReader(SegmentReadState state, FlatVectorsScorer scorer)
       throws IOException {
@@ -210,6 +212,9 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
 
   @Override
   public FlatVectorsReader getMergeInstance() throws IOException {
+    if (mergeNeedsItsOwnMapping() == false) {
+      return this;
+    }
     IndexInput data = original.mergeVectorData();
     boolean success = false;
     try {
@@ -218,9 +223,19 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
       return mergeInstance;
     } finally {
       if (success == false) {
-        original.releaseMergeVectorData();
+        original.release();
       }
     }
+  }
+
+  /**
+   * Whether a merge has to map the file again: only when searches read it at random. Otherwise the
+   * mapping searches use carries no advice a merge reading front to back would suffer from, and a
+   * reader a merge opened already reads the file the way a merge does.
+   */
+  private boolean mergeNeedsItsOwnMapping() {
+    return dataContext.context() != IOContext.Context.MERGE
+        && dataContext.hints().contains(DataAccessHint.RANDOM);
   }
 
   /**
@@ -230,24 +245,19 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   private synchronized IndexInput mergeVectorData() throws IOException {
     assert original == this;
     if (mergeVectorData == null) {
-      if (dataContext.context() == IOContext.Context.MERGE) {
-        // opened by a merge to begin with, so it already reads the file front to back
+      try {
+        mergeVectorData =
+            directory.openInput(
+                vectorDataFN,
+                IOContext.merge()
+                    .withHints(
+                        FileTypeHint.DATA,
+                        FileDataHint.KNN_VECTORS,
+                        DataAccessHint.SEQUENTIAL,
+                        NoReuseHint.INSTANCE));
+      } catch (FileNotFoundException | NoSuchFileException _) {
+        // an open reader outlives its files, so fall back to the mapping it already holds
         mergeVectorData = vectorData;
-      } else {
-        try {
-          mergeVectorData =
-              directory.openInput(
-                  vectorDataFN,
-                  IOContext.merge()
-                      .withHints(
-                          FileTypeHint.DATA,
-                          FileDataHint.KNN_VECTORS,
-                          DataAccessHint.SEQUENTIAL,
-                          NoReuseHint.INSTANCE));
-        } catch (FileNotFoundException | NoSuchFileException _) {
-          // an open reader outlives its files, so fall back to the mapping it already holds
-          mergeVectorData = vectorData;
-        }
       }
     }
     mergeInstances++;
@@ -378,15 +388,29 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
 
   /**
    * Closes the mapping a merge used, once no merge instance holds it. A later merge maps the file
-   * again.
+   * again. Only a merge instance holds the mapping, and it gives it back once: finishing the reader
+   * it came from, or finishing it again, releases nothing.
    */
   @Override
   public void finishMerge() throws IOException {
-    original.releaseMergeVectorData();
+    if (original != this) {
+      original.releaseMergeVectorData(this);
+    }
   }
 
-  private synchronized void releaseMergeVectorData() throws IOException {
-    assert original == this;
+  private synchronized void releaseMergeVectorData(Lucene99FlatVectorsReader mergeInstance)
+      throws IOException {
+    assert original == this && mergeInstance.original == this;
+    if (mergeInstance.finished) {
+      return;
+    }
+    mergeInstance.finished = true;
+    release();
+  }
+
+  /** Gives back one hold on the mapping, closing it once none is left. */
+  private synchronized void release() throws IOException {
+    assert original == this && mergeInstances > 0;
     if (--mergeInstances > 0) {
       return;
     }
@@ -398,12 +422,20 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
 
   @Override
   public void close() throws IOException {
-    IOUtils.close(vectorData, mergeVectorDataToClose());
+    IOUtils.close(vectorData, takeMergeVectorData());
   }
 
-  /** The mapping a merge opened, read under the lock that guards it, closed outside it. */
-  private synchronized IndexInput mergeVectorDataToClose() {
-    return original == this && mergeVectorData != vectorData ? mergeVectorData : null;
+  /**
+   * The mapping a merge opened, taken under the lock that guards it so that a merge finishing later
+   * does not close it again, and closed outside it.
+   */
+  private synchronized IndexInput takeMergeVectorData() {
+    if (original != this || mergeVectorData == vectorData) {
+      return null;
+    }
+    IndexInput toClose = mergeVectorData;
+    mergeVectorData = null;
+    return toClose;
   }
 
   private record FieldEntry(
