@@ -63,7 +63,7 @@ public class HacksPlugin extends LuceneGradlePlugin {
                   project
                       .getLayout()
                       .getBuildDirectory()
-                      .file("tasks/${task.name}/dummy-output.txt")
+                      .file("tasks/" + task.getName() + "/dummy-output.txt")
                       .get()
                       .getAsFile();
               task.getOutputs().file(dummyOutput);
