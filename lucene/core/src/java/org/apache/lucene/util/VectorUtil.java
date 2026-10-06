@@ -307,6 +307,18 @@ public final class VectorUtil {
   }
 
   /**
+   * Unpacks uint4 nibbles: the high nibble of {@code packed[i]} goes to {@code unpacked[i]}, the
+   * low nibble to {@code unpacked[packed.length + i]}.
+   */
+  public static void int4Unpack(byte[] packed, byte[] unpacked) {
+    if (unpacked.length != packed.length * 2) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + unpacked.length + " != 2 * " + packed.length);
+    }
+    IMPL.int4Unpack(packed, unpacked);
+  }
+
+  /**
    * Dot product computed over uint4 (values between [0,15]) bytes. Both vectors are considered
    * "packed" (i.e. every byte representing two values).
    *
@@ -504,6 +516,19 @@ public final class VectorUtil {
   public static boolean isZeroVector(float[] v) {
     for (float value : v) {
       if (value != 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Returns true if all dimensions of provided float16 vector, encoded as {@code short[]}, are zero
+   * (either {@code +0} or {@code -0}), false otherwise.
+   */
+  public static boolean isZeroVectorFloat16(short[] v) {
+    for (short value : v) {
+      if ((value & 0x7FFF) != 0) {
         return false;
       }
     }

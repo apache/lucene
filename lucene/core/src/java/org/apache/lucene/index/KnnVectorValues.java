@@ -50,12 +50,47 @@ public abstract class KnnVectorValues {
   }
 
   /**
-   * Prefetches the provided ordinals
+   * Prefetches {@code count} consecutive vectors starting at the given ordinal, so that later calls
+   * to read them are more likely to hit memory. Implementations should start the reads and return
+   * without waiting for them, and are free to prefetch fewer vectors than asked for, including none
+   * at all. {@code count} is clamped to the number of vectors remaining after {@code ord}. The
+   * default implementation is a no-op.
+   *
+   * @param ord the ordinal of the first vector to prefetch
+   * @param count how many consecutive vectors to prefetch, starting at {@code ord}
+   * @return true if prefetch actually prefetched something, hence the caller can benefit from
+   *     deferring the reads
+   */
+  public boolean prefetch(int ord, int count) throws IOException {
+    return false;
+  }
+
+  /**
+   * Prefetches the provided ordinals. Ordinals that are consecutive in the array are prefetched
+   * together with a single call to {@link #prefetch(int, int)}.
    *
    * @param ordsToPrefetch a list of ordinals to prefetch
    * @param numOrds number of ords to prefetch from ordsToPrefetch array
    */
-  public void prefetch(final int[] ordsToPrefetch, int numOrds) throws IOException {}
+  public void prefetch(final int[] ordsToPrefetch, int numOrds) throws IOException {
+    if (ordsToPrefetch == null) {
+      return;
+    }
+    final int count = Math.min(numOrds, ordsToPrefetch.length);
+    if (count <= 1) {
+      // A single ord is read right after this call, so prefetching it buys no overlap. Callers that
+      // do want a lone value loaded ahead of time should call prefetch(ord, 1) directly.
+      return;
+    }
+    int i = 0;
+    while (i < count) {
+      final int runStart = i++;
+      while (i < count && ordsToPrefetch[i] == ordsToPrefetch[i - 1] + 1) {
+        i++;
+      }
+      prefetch(ordsToPrefetch[runStart], i - runStart);
+    }
+  }
 
   /**
    * Creates a new copy of this {@link KnnVectorValues}. This is helpful when you need to access
