@@ -22,13 +22,13 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 public class TestLiveDocsCopyOf extends LuceneTestCase {
 
   public void testDenseLiveDocsCopyOf() {
-    int maxDoc = 1000;
+    int maxDoc = atLeast(1000);
     FixedBitSet liveBits = new FixedBitSet(maxDoc);
     liveBits.set(0, maxDoc);
     // Delete some known positions
     liveBits.clear(0);
     liveBits.clear(42);
-    liveBits.clear(999);
+    liveBits.clear(maxDoc - 1);
 
     DenseLiveDocs dense = DenseLiveDocs.builder(liveBits, maxDoc).build();
     FixedBitSet copy = FixedBitSet.copyOf(dense);
@@ -37,14 +37,18 @@ public class TestLiveDocsCopyOf extends LuceneTestCase {
     for (int i = 0; i < maxDoc; i++) {
       assertEquals("mismatch at doc " + i, dense.get(i), copy.get(i));
     }
+
+    // PendingDeletes mutates the copy and publishes it, so it must not share state with the source
+    copy.clear(100);
+    assertTrue(dense.get(100));
   }
 
   public void testSparseLiveDocsCopyOf() {
-    int maxDoc = 1000;
+    int maxDoc = atLeast(1000);
     SparseFixedBitSet deletedDocs = new SparseFixedBitSet(maxDoc);
     deletedDocs.set(0);
     deletedDocs.set(42);
-    deletedDocs.set(999);
+    deletedDocs.set(maxDoc - 1);
 
     SparseLiveDocs sparse = SparseLiveDocs.builder(deletedDocs, maxDoc).build();
     FixedBitSet copy = FixedBitSet.copyOf(sparse);
@@ -53,6 +57,41 @@ public class TestLiveDocsCopyOf extends LuceneTestCase {
     for (int i = 0; i < maxDoc; i++) {
       assertEquals("mismatch at doc " + i, sparse.get(i), copy.get(i));
     }
+
+    copy.clear(100);
+    assertTrue(sparse.get(100));
+  }
+
+  public void testBoundarySizes() {
+    // Word (64) and SparseFixedBitSet block (4096) boundaries
+    for (int maxDoc : new int[] {1, 63, 64, 65, 4095, 4096, 4097}) {
+      int[] allDocs = new int[maxDoc];
+      for (int i = 0; i < maxDoc; i++) {
+        allDocs[i] = i;
+      }
+      assertCopyOf(maxDoc, allDocs);
+      assertCopyOf(maxDoc, new int[] {random().nextInt(maxDoc)});
+      assertCopyOf(maxDoc, new int[] {maxDoc - 1});
+    }
+  }
+
+  private static void assertCopyOf(int maxDoc, int[] deleted) {
+    FixedBitSet liveBits = new FixedBitSet(maxDoc);
+    liveBits.set(0, maxDoc);
+    SparseFixedBitSet deletedDocs = new SparseFixedBitSet(maxDoc);
+    FixedBitSet reference = new FixedBitSet(maxDoc);
+    reference.set(0, maxDoc);
+    for (int doc : deleted) {
+      liveBits.clear(doc);
+      deletedDocs.set(doc);
+      reference.clear(doc);
+    }
+
+    DenseLiveDocs dense = DenseLiveDocs.builder(liveBits, maxDoc).build();
+    SparseLiveDocs sparse = SparseLiveDocs.builder(deletedDocs, maxDoc).build();
+
+    assertEquals(reference, FixedBitSet.copyOf(dense));
+    assertEquals(reference, FixedBitSet.copyOf(sparse));
   }
 
   public void testCopyOfPaddedDenseLiveDocsPreservesLength() {
@@ -70,32 +109,28 @@ public class TestLiveDocsCopyOf extends LuceneTestCase {
   }
 
   public void testRandomized() {
-    for (int iter = 0; iter < 50; iter++) {
+    int iters = atLeast(50);
+    for (int iter = 0; iter < iters; iter++) {
       int maxDoc = random().nextInt(10_000) + 1;
       double deletionRate = random().nextDouble() * 0.5;
       int numDeleted = (int) (maxDoc * deletionRate);
 
-      // Build both representations
+      // Build both representations, plus a reference independent of LiveDocs#get
       FixedBitSet liveBits = new FixedBitSet(maxDoc);
       liveBits.set(0, maxDoc);
       SparseFixedBitSet deletedDocs = new SparseFixedBitSet(maxDoc);
+      FixedBitSet reference = new FixedBitSet(maxDoc);
+      reference.set(0, maxDoc);
 
       for (int i = 0; i < numDeleted; i++) {
         int docId = random().nextInt(maxDoc);
         liveBits.clear(docId);
         deletedDocs.set(docId);
+        reference.clear(docId);
       }
 
       DenseLiveDocs dense = DenseLiveDocs.builder(liveBits, maxDoc).build();
       SparseLiveDocs sparse = SparseLiveDocs.builder(deletedDocs, maxDoc).build();
-
-      // Build per-bit reference
-      FixedBitSet reference = new FixedBitSet(maxDoc);
-      for (int i = 0; i < maxDoc; i++) {
-        if (dense.get(i)) {
-          reference.set(i);
-        }
-      }
 
       FixedBitSet denseCopy = FixedBitSet.copyOf(dense);
       FixedBitSet sparseCopy = FixedBitSet.copyOf(sparse);

@@ -71,6 +71,13 @@ public class SoftDeletesReaderBenchmark {
   @Param({"0.01", "0.05"})
   double softDeleteRate;
 
+  /**
+   * Lucene90LiveDocsFormat picks SparseLiveDocs at or below 1% hard deletes and DenseLiveDocs
+   * above, so this covers both representations.
+   */
+  @Param({"0.005", "0.05"})
+  double hardDeleteRate;
+
   private Directory dir;
   private DirectoryReader baseReader;
   private Path tempDir;
@@ -101,7 +108,7 @@ public class SoftDeletesReaderBenchmark {
             replacement,
             new NumericDocValuesField(SOFT_DELETE_FIELD, 1));
       }
-      int hardDeleted = Math.max(1, (int) (numDocs * 0.01));
+      int hardDeleted = Math.max(1, (int) (numDocs * hardDeleteRate));
       for (int i = 0; i < hardDeleted; i++) {
         int docId = (int) (((long) (i + softDeleted) * 6971) % numDocs);
         w.deleteDocuments(new Term("id", Integer.toString(docId)));
