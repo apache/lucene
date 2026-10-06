@@ -21,7 +21,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.lucene104.Lucene104HnswScalarQuantizedVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
@@ -50,10 +52,18 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
   private static final int DIM = 8;
 
   public void testMergeOpensItsOwnVectors() throws Exception {
+    assertMergeOpensItsOwnVectors(new Lucene99HnswVectorsFormat());
+  }
+
+  public void testQuantizedMergeOpensItsOwnVectors() throws Exception {
+    assertMergeOpensItsOwnVectors(new Lucene104HnswScalarQuantizedVectorsFormat());
+  }
+
+  private static void assertMergeOpensItsOwnVectors(KnnVectorsFormat format) throws Exception {
     Opens opens = new Opens();
     try (Directory dir = new RecordingDirectory(newDirectory(), opens)) {
       IndexWriterConfig iwc = new IndexWriterConfig();
-      iwc.setCodec(TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat()));
+      iwc.setCodec(TestUtil.alwaysKnnVectorsFormat(format));
       iwc.setUseCompoundFile(false); // so the directory sees the data file by name
       try (IndexWriter w = new IndexWriter(dir, iwc)) {
         for (int segment = 0; segment < 2; segment++) {
@@ -77,6 +87,7 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
           assertFalse(
               "the merge never opened the vectors for itself: " + opens, sequential.isEmpty());
           for (Open open : sequential) {
+            assertTrue("the merge did not read the vectors it opened: " + open, open.read());
             assertTrue("the merge kept its vectors open: " + open, open.closed());
           }
         }
@@ -90,10 +101,20 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
   }
 
   public void testTheMappingIsSharedThenReleasedByTheLastMergeInstance() throws Exception {
+    assertMappingIsSharedThenReleasedByTheLastMergeInstance(new Lucene99HnswVectorsFormat());
+  }
+
+  public void testQuantizedMappingIsSharedThenReleasedByTheLastMergeInstance() throws Exception {
+    assertMappingIsSharedThenReleasedByTheLastMergeInstance(
+        new Lucene104HnswScalarQuantizedVectorsFormat());
+  }
+
+  private static void assertMappingIsSharedThenReleasedByTheLastMergeInstance(
+      KnnVectorsFormat format) throws Exception {
     Opens opens = new Opens();
     try (Directory dir = new RecordingDirectory(newDirectory(), opens)) {
       IndexWriterConfig iwc = new IndexWriterConfig();
-      iwc.setCodec(TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat()));
+      iwc.setCodec(TestUtil.alwaysKnnVectorsFormat(format));
       iwc.setUseCompoundFile(false);
       try (IndexWriter w = new IndexWriter(dir, iwc)) {
         for (int i = 0; i < 16; i++) {
@@ -247,6 +268,7 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
     private final String name;
     private final IOContext context;
     private volatile boolean closed;
+    private volatile boolean read;
 
     Open(String name, IOContext context) {
       this.name = name;
@@ -273,9 +295,14 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
       return closed;
     }
 
+    /** Whether the input was sliced, which is how the vectors are read. */
+    boolean read() {
+      return read;
+    }
+
     @Override
     public String toString() {
-      return name + " [hint=" + hint() + " closed=" + closed + "]";
+      return name + " [hint=" + hint() + " closed=" + closed + " read=" + read + "]";
     }
   }
 
@@ -359,6 +386,7 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
 
     @Override
     public IndexInput slice(String sliceDescription, long offset, long length) throws IOException {
+      open.read = true;
       return new RecordingIndexInput(in.slice(sliceDescription, offset, length), name, open, opens);
     }
   }
