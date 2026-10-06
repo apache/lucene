@@ -48,7 +48,7 @@ called `LuceneTestCaseParent` but you should reference them either
 without an explicit type or via the type of the parent class
 for your test framework. The parent class may be removed in the future.
 
-### TermGroupFacetCollector and GroupFacetCollector removed (GITHUB#16292)
+### TermGroupFacetCollector and GroupFacetCollector removed (GITHUB#16292, GITHUB#16779)
 
 `TermGroupFacetCollector` and its base class `GroupFacetCollector` have been removed.
 Use `TermGroupFacetCollectorManager` with `IndexSearcher#search(Query, CollectorManager)`
