@@ -37,6 +37,7 @@ import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
+import org.apache.lucene.document.column.VectorValuesCursor;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.Float16VectorValues;
@@ -732,6 +733,29 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     }
 
     @Override
+    public void addValue(int docID, T vectorValue) throws IOException {
+      flatFieldVectorsWriter.addValue(docID, vectorValue);
+      accumulate(vectorValue);
+    }
+
+    /**
+     * Adds the batch to the flat writer, then accumulates the new vectors. The flat writer records
+     * nothing if the cursor throws, so neither does this writer.
+     */
+    @Override
+    public void addDenseValues(int firstDocID, VectorValuesCursor<T> values) throws IOException {
+      final int firstOrd = getVectors().size();
+      flatFieldVectorsWriter.addDenseValues(firstDocID, values);
+      final List<T> vectors = getVectors();
+      for (int ord = firstOrd; ord < vectors.size(); ord++) {
+        accumulate(vectors.get(ord));
+      }
+    }
+
+    /** Adds a stored vector to the centroid sums and caches its magnitude when COSINE. */
+    abstract void accumulate(T vector);
+
+    @Override
     public DocsWithFieldSet getDocsWithFieldSet() {
       return flatFieldVectorsWriter.getDocsWithFieldSet();
     }
@@ -760,7 +784,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
      * Adds {@code vector} to the centroid sums, unit-scaled when COSINE, and caches its magnitude
      * for {@link #scaleToUnitLength}.
      */
-    protected final void accumulate(float[] vector) {
+    protected final void accumulateFloats(float[] vector) {
       if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
         float dp = VectorUtil.dotProduct(vector, vector);
         float divisor = (float) Math.sqrt(dp);
@@ -834,9 +858,8 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     }
 
     @Override
-    public void addValue(int docID, float[] vectorValue) throws IOException {
-      flatFieldVectorsWriter.addValue(docID, vectorValue);
-      accumulate(vectorValue);
+    void accumulate(float[] vector) {
+      accumulateFloats(vector);
     }
 
     @Override
@@ -865,10 +888,9 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     }
 
     @Override
-    public void addValue(int docID, short[] vectorValue) throws IOException {
-      flatFieldVectorsWriter.addValue(docID, vectorValue);
-      inflate(vectorValue);
-      accumulate(inflated);
+    void accumulate(short[] vector) {
+      inflate(vector);
+      accumulateFloats(inflated);
     }
 
     @Override

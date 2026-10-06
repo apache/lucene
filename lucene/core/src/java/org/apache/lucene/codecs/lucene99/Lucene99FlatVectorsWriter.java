@@ -32,6 +32,7 @@ import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
+import org.apache.lucene.document.column.VectorValuesCursor;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
@@ -441,6 +442,11 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
               public byte[] copyValue(byte[] value) {
                 return ArrayUtil.copyOfSubArray(value, 0, dim);
               }
+
+              @Override
+              byte[] newVector() {
+                return new byte[dim];
+              }
             };
         case FLOAT16 ->
             new DefaultFieldWriter<short[]>(fieldInfo) {
@@ -448,12 +454,22 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
               public short[] copyValue(short[] value) {
                 return ArrayUtil.copyOfSubArray(value, 0, dim);
               }
+
+              @Override
+              short[] newVector() {
+                return new short[dim];
+              }
             };
         case FLOAT32 ->
             new DefaultFieldWriter<float[]>(fieldInfo) {
               @Override
               public float[] copyValue(float[] value) {
                 return ArrayUtil.copyOfSubArray(value, 0, dim);
+              }
+
+              @Override
+              float[] newVector() {
+                return new float[dim];
               }
             };
       };
@@ -482,6 +498,35 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       docsWithField.add(docID);
       vectors.add(copy);
       lastDocID = docID;
+    }
+
+    /** Returns a new, empty array for one vector of this field's dimension. */
+    abstract T newVector();
+
+    /**
+     * Fills each vector straight into a newly allocated array, so a vector is copied once. Doc IDs
+     * and vectors are recorded only after every {@code fill} has returned, so the writer is
+     * unchanged if the cursor throws.
+     */
+    @Override
+    public void addDenseValues(int firstDocID, VectorValuesCursor<T> values) throws IOException {
+      if (finished) {
+        throw new IllegalStateException("already finished, cannot add more values");
+      }
+      assert firstDocID > lastDocID;
+      final int count = values.size();
+      if (count == 0) {
+        return;
+      }
+      final List<T> batch = new ArrayList<>(count);
+      for (int i = 0; i < count; i++) {
+        T vector = newVector();
+        values.fill(vector, 0, 1);
+        batch.add(vector);
+      }
+      vectors.addAll(batch);
+      docsWithField.addRange(firstDocID, firstDocID + count);
+      lastDocID = firstDocID + count - 1;
     }
 
     @Override

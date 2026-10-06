@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.document.column;
 
+import java.lang.reflect.Array;
 import java.util.List;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.document.FieldType;
@@ -24,6 +25,7 @@ import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 
 /** Shared helpers for column-batch indexing tests. */
@@ -428,10 +430,12 @@ public class ColumnBatchTestUtil {
 
   public static class ArrayDenseFloatVectorColumn extends VectorColumn<float[]> {
     private final float[][] values;
+    private final boolean bulkFill;
 
     public ArrayDenseFloatVectorColumn(
         String name, IndexableFieldType fieldType, float[][] values) {
       super(name, fieldType, Density.DENSE);
+      this.bulkFill = LuceneTestCase.random().nextBoolean();
       this.values = values;
     }
 
@@ -452,13 +456,20 @@ public class ColumnBatchTestUtil {
         }
       };
     }
+
+    @Override
+    public VectorValuesCursor<float[]> values() {
+      return vectorValuesCursor(values, fieldType().vectorDimension(), bulkFill);
+    }
   }
 
   public static class ArrayDenseByteVectorColumn extends VectorColumn<byte[]> {
     private final byte[][] values;
+    private final boolean bulkFill;
 
     public ArrayDenseByteVectorColumn(String name, IndexableFieldType fieldType, byte[][] values) {
       super(name, fieldType, Density.DENSE);
+      this.bulkFill = LuceneTestCase.random().nextBoolean();
       this.values = values;
     }
 
@@ -479,14 +490,21 @@ public class ColumnBatchTestUtil {
         }
       };
     }
+
+    @Override
+    public VectorValuesCursor<byte[]> values() {
+      return vectorValuesCursor(values, fieldType().vectorDimension(), bulkFill);
+    }
   }
 
   public static class ArrayDenseFloat16VectorColumn extends VectorColumn<short[]> {
     private final short[][] values;
+    private final boolean bulkFill;
 
     public ArrayDenseFloat16VectorColumn(
         String name, IndexableFieldType fieldType, short[][] values) {
       super(name, fieldType, Density.DENSE);
+      this.bulkFill = LuceneTestCase.random().nextBoolean();
       this.values = values;
     }
 
@@ -507,6 +525,64 @@ public class ColumnBatchTestUtil {
         }
       };
     }
+
+    @Override
+    public VectorValuesCursor<short[]> values() {
+      return vectorValuesCursor(values, fieldType().vectorDimension(), bulkFill);
+    }
+  }
+
+  /**
+   * Returns a dense vector cursor over {@code rows}. When {@code bulkFill} is true and every row
+   * has {@code dimension} elements, {@link VectorValuesCursor#fill} is overridden with a single
+   * copy from a flat row-major array; otherwise it uses the default per-vector implementation.
+   */
+  @SuppressWarnings("unchecked")
+  static <T> VectorValuesCursor<T> vectorValuesCursor(T[] rows, int dimension, boolean bulkFill) {
+    boolean uniform = true;
+    for (T row : rows) {
+      uniform &= Array.getLength(row) == dimension;
+    }
+    final T flat;
+    if (bulkFill && uniform) {
+      flat =
+          (T)
+              Array.newInstance(
+                  rows.getClass().getComponentType().getComponentType(), rows.length * dimension);
+      for (int i = 0; i < rows.length; i++) {
+        System.arraycopy(rows[i], 0, flat, i * dimension, dimension);
+      }
+    } else {
+      flat = null;
+    }
+    return new VectorValuesCursor<>(rows.length, dimension) {
+      int pos;
+
+      private void advance(int count) {
+        if (count > size() - pos) {
+          throw new IllegalStateException(
+              "cannot consume " + count + " vectors; " + pos + " of " + size() + " consumed");
+        }
+        pos += count;
+      }
+
+      @Override
+      public T next() {
+        advance(1);
+        return rows[pos - 1];
+      }
+
+      @Override
+      public void fill(T dst, int dstOffset, int count) {
+        if (flat == null) {
+          super.fill(dst, dstOffset, count);
+          return;
+        }
+        int start = pos;
+        advance(count);
+        System.arraycopy(flat, start * dimension, dst, dstOffset, count * dimension);
+      }
+    };
   }
 
   // ---------------------------------------------------------------------------
