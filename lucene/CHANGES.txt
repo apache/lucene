@@ -7,10 +7,6 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
-* GITHUB#16292: Remove TermGroupFacetCollector and GroupFacetCollector. Use
-  TermGroupFacetCollectorManager, which supports concurrent search. GroupedFacetResult
-  and FacetEntry are now top-level types. (Luca Cavanna)
-
 * GITHUB#16705: KnnVectorValues#prefetch(int ord, int count) replaces prefetch(int ord). It prefetches
   a run of consecutive vectors with a single read and returns true if a prefetch was issued, like
   IndexInput#prefetch. The int[] form now coalesces ordinals that are consecutive in the array over
@@ -129,6 +125,10 @@ API Changes
   final copyThroughCreateOutput helper. FilterDirectory#copyFrom now routes through createOutput
   so that per-file bookkeeping in subclasses applies to copied files; subclasses that want an
   optimized copy (e.g. HardlinkCopyDirectoryWrapper) may override to delegate. (Tim Allison)
+
+* GITHUB#XXX: Remove TermGroupFacetCollector and GroupFacetCollector. Use
+  TermGroupFacetCollectorManager, which supports concurrent search. GroupedFacetResult
+  and FacetEntry are now top-level types. (Luca Cavanna)
 
 New Features
 ---------------------
