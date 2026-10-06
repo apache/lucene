@@ -2544,8 +2544,6 @@ public abstract sealed class LuceneTestCaseParent extends Assert
    * subclasses must call these, in order, from their test-level before/after hooks.
    */
   static List<BeforeAfterCallback> testCallbacks() {
-    // restores the suite-level cache afterwards, so that suite-level hooks still see a
-    // test-scoped cache rather than the process-wide production default.
     return List.of(new SetupAndRestoreQueryCache());
   }
 
