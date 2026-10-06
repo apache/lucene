@@ -106,6 +106,10 @@ Improvements
   a commit point was unreadable. SegmentInfos throws CorruptSegmentInfoException, carrying the segment
   name and the underlying failure. (Gokul Manoj, Serhiy Bzhezytskyy)
 
+* GITHUB#16292: Introduce TermGroupFacetCollectorManager to enable concurrent search with grouped
+  faceting, removing usages of the deprecated IndexSearcher#search(Query, Collector).
+  (Luca Cavanna)
+
 Optimizations
 ---------------------
 
