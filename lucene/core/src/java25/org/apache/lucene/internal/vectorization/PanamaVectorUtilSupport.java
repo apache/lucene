@@ -1551,7 +1551,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       int k = (int) ((Math.min(Math.max(x, lower), upper) - lower) * stepInv + 0.5f);
       float d = x - (lower + k * step);
       sumK += k;
-      sumKK += k * k;
+      sumKK += (long) k * k;
       sumXK += x * k;
       sumXD += x * d;
       sumDD += d * d;

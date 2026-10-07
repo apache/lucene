@@ -614,7 +614,7 @@ Optimizations
   and the merge mapping keeps the hints the file was opened with, changing only how it is read.
   (Jim Ferenczi)
 
-* GITHUB#TK: Vectorize OptimizedScalarQuantizer with osqCenter, osqGridStats and osqAssign.
+* GITHUB#16790: Vectorize OptimizedScalarQuantizer with osqCenter, osqGridStats and osqAssign.
   (Jakub Slowinski)
 
 Bug Fixes
