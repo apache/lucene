@@ -23,6 +23,7 @@ import java.io.IOException;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.FieldOrdToGroupOrd;
@@ -44,11 +45,6 @@ final class DedupUtil {
 
   /** Alignment bytes on disk for fieldOrdToGroupOrd. */
   private static final int FIELD_ORD_TO_GROUP_ORD_ALIGN_BYTES = 4;
-
-  // TODO: This is the number of bits used to write each group ordinal in the index-backed per-field
-  //  FieldOrdToGroupOrd mapping. Evaluate using fewer bits to reduce index size, at the expense of
-  //  costlier lookups.
-  static final int FIELD_ORD_TO_GROUP_ORD_BITS_PER_VALUE = 32;
 
   /** Initial allocation size for internal re-used int[] scratch buffers. */
   static final int SCRATCH_INITIAL_SIZE = 16;
@@ -104,6 +100,7 @@ final class DedupUtil {
       int groupOrd,
       int vectorCount,
       int maxDoc,
+      int maxGroupOrd,
       DocsWithFieldSet docs,
       FieldOrdToGroupOrd fieldOrdToGroupOrd)
       throws IOException {
@@ -120,9 +117,12 @@ final class DedupUtil {
         ORD_TO_DOC_DIRECT_MONOTONIC_BLOCK_SHIFT, meta, vectorData, vectorCount, maxDoc, docs);
 
     // write fieldOrdToGroupOrd
+    // pack each ordinal to minimize storage, using the bits needed for the largest group ordinal
+    int fieldOrdToGroupOrdBitsPerValue = DirectWriter.bitsRequired(maxGroupOrd);
+
     long fieldOrdToGroupOrdOffset = vectorData.alignFilePointer(FIELD_ORD_TO_GROUP_ORD_ALIGN_BYTES);
     DirectWriter writer =
-        DirectWriter.getInstance(vectorData, vectorCount, FIELD_ORD_TO_GROUP_ORD_BITS_PER_VALUE);
+        DirectWriter.getInstance(vectorData, vectorCount, fieldOrdToGroupOrdBitsPerValue);
     for (int i = 0; i < vectorCount; i++) {
       writer.add(fieldOrdToGroupOrd.get(i));
     }
@@ -131,6 +131,7 @@ final class DedupUtil {
 
     meta.writeLong(fieldOrdToGroupOrdOffset);
     meta.writeLong(fieldOrdToGroupOrdSize);
+    meta.writeInt(fieldOrdToGroupOrdBitsPerValue);
   }
 
   static void writeEndMarker(IndexOutput meta) throws IOException {
@@ -146,7 +147,8 @@ final class DedupUtil {
       int vectorCount,
       OrdToDocDISIReaderConfiguration ordToDoc,
       long fieldOrdToGroupOrdOffset,
-      long fieldOrdToGroupOrdSize) {
+      long fieldOrdToGroupOrdSize,
+      int fieldOrdToGroupOrdBitsPerValue) {
 
     static ReadFieldInfo read(IndexInput meta) throws IOException {
 
@@ -164,6 +166,7 @@ final class DedupUtil {
           OrdToDocDISIReaderConfiguration.fromStoredMeta(meta, vectorCount);
       long fieldOrdToGroupOrdOffset = meta.readLong();
       long fieldOrdToGroupOrdSize = meta.readLong();
+      int fieldOrdToGroupOrdBitsPerValue = meta.readInt();
 
       return new ReadFieldInfo(
           fieldNumber,
@@ -174,8 +177,35 @@ final class DedupUtil {
           vectorCount,
           ordToDoc,
           fieldOrdToGroupOrdOffset,
-          fieldOrdToGroupOrdSize);
+          fieldOrdToGroupOrdSize,
+          fieldOrdToGroupOrdBitsPerValue);
     }
+  }
+
+  /**
+   * Prefetches a run of {@code count} field ords starting at {@code ord} from the group view. Field
+   * ords that are consecutive need not map to consecutive group ords, so the run is remapped and
+   * prefetched ord by ord rather than as a single contiguous read.
+   *
+   * @return true if a prefetch was actually issued for any of them
+   */
+  static boolean prefetchRemapped(
+      KnnVectorValues groupView,
+      FieldOrdToGroupOrd fieldOrdToGroupOrd,
+      int ord,
+      int count,
+      int size)
+      throws IOException {
+    if (ord < 0 || ord >= size || count <= 0) {
+      return false;
+    }
+    final int runLength = Math.min(count, size - ord);
+    boolean prefetched = false;
+    for (int i = 0; i < runLength; i++) {
+      // Not short-circuiting: every ord in the run has to be issued.
+      prefetched |= groupView.prefetch(fieldOrdToGroupOrd.get(ord + i), 1);
+    }
+    return prefetched;
   }
 
   static long hashBytes(byte[] bytes) {
