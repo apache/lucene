@@ -17,6 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.LongField;
@@ -228,6 +229,53 @@ public class TestIndexOrDocValuesQuery extends LuceneTestCase {
     reader.close();
     w.close();
     dir.close();
+  }
+
+  /** Test that IndexOrDocValuesQuery counts as 1 clause, not 2, for maxClauseCount. */
+  public void testVisitCountsAsOneClause() {
+    AtomicInteger leafCount = new AtomicInteger(0);
+    QueryVisitor countingVisitor =
+        new QueryVisitor() {
+          @Override
+          public void visitLeaf(Query query) {
+            leafCount.incrementAndGet();
+          }
+        };
+
+    Query indexQuery = LongPoint.newExactQuery("f2", 42);
+    Query dvQuery = SortedNumericDocValuesField.newSlowRangeQuery("f2", 42, 42L);
+    IndexOrDocValuesQuery query = new IndexOrDocValuesQuery(indexQuery, dvQuery);
+
+    query.visit(countingVisitor);
+
+    // Should count as 1 clause (the indexQuery), not 2
+    assertEquals(1, leafCount.get());
+  }
+
+  /** Test that visit still exposes the correct field from the indexQuery. */
+  public void testVisitExposesField() {
+    java.util.Set<String> fields = new java.util.HashSet<>();
+    QueryVisitor fieldCollector =
+        new QueryVisitor() {
+          @Override
+          public boolean acceptField(String field) {
+            fields.add(field);
+            return true;
+          }
+
+          @Override
+          public void visitLeaf(Query query) {
+            // no-op
+          }
+        };
+
+    Query indexQuery = LongPoint.newExactQuery("f2", 42);
+    Query dvQuery = SortedNumericDocValuesField.newSlowRangeQuery("f2", 42, 42L);
+    IndexOrDocValuesQuery query = new IndexOrDocValuesQuery(indexQuery, dvQuery);
+
+    query.visit(fieldCollector);
+
+    assertEquals(java.util.Set.of("f2"), fields);
   }
 
   public void testQueryMatchesAllOrNone() throws Exception {
