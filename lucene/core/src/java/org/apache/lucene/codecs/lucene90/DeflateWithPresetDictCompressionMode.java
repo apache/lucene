@@ -114,6 +114,14 @@ public final class DeflateWithPresetDictCompressionMode extends CompressionMode 
       }
       final int dictLength = in.readVInt();
       final int blockLength = in.readVInt();
+      if (dictLength < 0 || dictLength > originalLength) {
+        throw new CorruptIndexException(
+            "Illegal dict length: " + dictLength + ", originalLength=" + originalLength, in);
+      }
+      if (blockLength <= 0 || blockLength > originalLength) {
+        throw new CorruptIndexException(
+            "Illegal block length: " + blockLength + ", originalLength=" + originalLength, in);
+      }
       bytes.bytes = ArrayUtil.growNoCopy(bytes.bytes, dictLength);
       bytes.offset = bytes.length = 0;
 
