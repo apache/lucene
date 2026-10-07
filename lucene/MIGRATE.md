@@ -128,7 +128,7 @@ Starting with Lucene 11.0.0, the index upgrade policy has been relaxed to allow 
 
 ##### Scenario 1: No format breaks (wider upgrade span)
 
-- Index created with Lucene 9.x can be opened directly in Lucene 11.x, 12.x, 13.x (as long as MIN_SUPPORTED_MAJOR stays ≤ 9)
+- Index created with Lucene 9.x can be opened directly in Lucene 10.x, 11.x, 12.x, 13.x, 14.x (as long as MIN_SUPPORTED_MAJOR stays ≤ 9)
 - Simply open the index with the new version; segments will be upgraded gradually through normal merging
 - Optional: Call `forceMerge()` or use `UpgradeIndexMergePolicy` to upgrade segment formats immediately
 - **Important**: You still only get one upgrade per index lifetime. Once MIN_SUPPORTED_MAJOR is bumped above 9, the index becomes unopenable and must be reindexed.
@@ -141,9 +141,9 @@ Starting with Lucene 11.0.0, the index upgrade policy has been relaxed to allow 
 
 ##### Scenario 3: After using your upgrade
 
-- Index created with Lucene 9.x, successfully opened with Lucene 13.x
+- Index created with Lucene 9.x, successfully opened with Lucene 14.x
 - The index's creation version is still 9 (this never changes)
-- When a later release bumps MIN_SUPPORTED_MAJOR above 9, this index becomes unopenable
+- When Lucene 15+ bumps MIN_SUPPORTED_MAJOR above 9, this index becomes unopenable
 - Must reindex to continue using newer Lucene versions
 
 #### Upgrade Example
@@ -788,7 +788,7 @@ Analyzer legacyThai =
 ```
 
 To restore the 10.5 buffer cut points as well, subclass `ThaiTokenizer` and override `isSafeEnd(char)`
-so that it only accepts U+000A, U+000D, U+0085, U+2028 and U+2029.I also 
+so that it only accepts U+000A, U+000D, U+0085, U+2028 and U+2029.
 
 ## Migration from Lucene 10.4 to Lucene 10.5
 
