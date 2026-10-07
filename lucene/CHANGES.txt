@@ -604,7 +604,7 @@ Optimizations
 
 * GITHUB#16769: Merges now also open their own mapping of the raw vectors behind the Faiss format,
   and of the de-duplicating formats' data files. A merge does so only when searches read the file at
-  random. (Jim Ferenczi)
+  random, and the merge mapping keeps the hints the file was opened with. (Jim Ferenczi)
 
 Bug Fixes
 ---------------------
