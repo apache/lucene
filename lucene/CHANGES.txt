@@ -487,10 +487,10 @@ Optimizations
   ordinal to group ordinal mapping at the minimum bit width required for the largest group ordinal,
   instead of a fixed 32-bit width. (Pranshu Shukla)
 
-* GITHUB#16749: Merges now open the raw vectors for themselves and state that they read the data
-  file sequentially, instead of changing the advice on the mapping searches read at random. The
-  vectors writers now state what file they are writing, and the raw vectors a quantized format keeps
-  only to rescore say so as they are written. (Jim Ferenczi)
+* GITHUB#16749: Merges now open the raw vectors for themselves when searches read them at random,
+  and state that they read the data file sequentially, instead of changing the advice on the mapping
+  searches use. The vectors writers now state what file they are writing, and the raw vectors a
+  quantized format keeps only to rescore say so as they are written. (Jim Ferenczi)
 
 * GITHUB#16622: Merges of quantized vector fields now also open the raw vectors for themselves.
   Lucene104ScalarQuantizedVectorsReader, and the backward-codecs Lucene99 and Lucene102 quantized
@@ -602,9 +602,9 @@ Optimizations
 * GITHUB#16667: Rewrite BooleanQuery to MatchNoDocsQuery when it has MUST_NOT clause matching one of
   its MUST boost or constant score query clauses. (Egor Potemkin)
 
-* GITHUB#16769: Merges now also open their own mapping of the raw vectors behind the Faiss format.
-  A merge does so only when searches read the file at random, and the merge mapping keeps the hints
-  the file was opened with, reading it front to back. (Jim Ferenczi)
+* GITHUB#16769: Merges now also open their own mapping of the raw vectors behind the Faiss format,
+  and the merge mapping keeps the hints the file was opened with, changing only how it is read.
+  (Jim Ferenczi)
 
 Bug Fixes
 ---------------------

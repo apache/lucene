@@ -223,7 +223,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
       return mergeInstance;
     } finally {
       if (success == false) {
-        original.release();
+        IOUtils.closeWhileHandlingException(original.release());
       }
     }
   }
@@ -397,30 +397,32 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   @Override
   public void finishMerge() throws IOException {
     if (original != this) {
-      original.releaseMergeVectorData(this);
+      IOUtils.close(original.releaseMergeVectorData(this));
     }
   }
 
-  private synchronized void releaseMergeVectorData(Lucene99FlatVectorsReader mergeInstance)
-      throws IOException {
+  /** Gives back the hold of {@code mergeInstance}, once; returns the mapping to close, if any. */
+  private synchronized IndexInput releaseMergeVectorData(Lucene99FlatVectorsReader mergeInstance) {
     assert original == this && mergeInstance.original == this;
     if (mergeInstance.finished) {
-      return;
+      return null;
     }
     mergeInstance.finished = true;
-    release();
+    return release();
   }
 
-  /** Gives back one hold on the mapping, closing it once none is left. */
-  private synchronized void release() throws IOException {
+  /**
+   * Gives back one hold on the mapping. Once none is left, returns it for the caller to close
+   * outside the lock.
+   */
+  private synchronized IndexInput release() {
     assert original == this && mergeInstances > 0;
     if (--mergeInstances > 0) {
-      return;
+      return null;
     }
-    if (mergeVectorData != null && mergeVectorData != vectorData) {
-      mergeVectorData.close();
-    }
+    IndexInput toClose = mergeVectorData == vectorData ? null : mergeVectorData;
     mergeVectorData = null;
+    return toClose;
   }
 
   @Override
