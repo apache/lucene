@@ -189,7 +189,8 @@ Improvements
 
 * GITHUB#7820: CheckIndex now reports which segment's .si file could not be read, rather than only that
   a commit point was unreadable. SegmentInfos throws CorruptSegmentInfoException, carrying the segment
-  name and the underlying failure. (Gokul Manoj, Serhiy Bzhezytskyy)
+  name and the underlying failure, when a .si file is missing or corrupt; other I/O failures, such as
+  transient ones, propagate unchanged. (Gokul Manoj, Serhiy Bzhezytskyy)
 
 Optimizations
 ---------------------
