@@ -602,9 +602,9 @@ Optimizations
 * GITHUB#16667: Rewrite BooleanQuery to MatchNoDocsQuery when it has MUST_NOT clause matching one of
   its MUST boost or constant score query clauses. (Egor Potemkin)
 
-* GITHUB#16769: Merges now also open their own mapping of the raw vectors behind the Faiss format,
-  and of the de-duplicating formats' data files. A merge does so only when searches read the file at
-  random, and the merge mapping keeps the hints the file was opened with. (Jim Ferenczi)
+* GITHUB#16769: Merges now also open their own mapping of the raw vectors behind the Faiss format.
+  A merge does so only when searches read the file at random, and the merge mapping keeps the hints
+  the file was opened with, reading it front to back. (Jim Ferenczi)
 
 Bug Fixes
 ---------------------

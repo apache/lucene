@@ -51,7 +51,6 @@ import org.apache.lucene.store.FileDataHint;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.NoReuseHint;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
@@ -240,8 +239,8 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   }
 
   /**
-   * The vectors as a merge reads them, front to back and once. Advice belongs to a mapping, so a
-   * merge maps the file again. Mapped on the first merge, released by {@link #finishMerge()}.
+   * The vectors as a merge reads them, front to back. Advice belongs to a mapping, so a merge maps
+   * the file again. Mapped on the first merge, released by {@link #finishMerge()}.
    */
   private synchronized IndexInput mergeVectorData() throws IOException {
     assert original == this;
@@ -257,19 +256,14 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     return mergeVectorData;
   }
 
-  /**
-   * A merge context with what the caller said about the file, read front to back and not reused.
-   */
+  /** The caller's context as a merge reading the file front to back: only the access changes. */
   private IOContext mergeContext() {
     return IOContext.merge()
         .withHints(
             Stream.concat(
                     dataContext.hints().stream()
-                        .filter(
-                            hint ->
-                                hint instanceof DataAccessHint == false
-                                    && hint != NoReuseHint.INSTANCE),
-                    Stream.of(DataAccessHint.SEQUENTIAL, NoReuseHint.INSTANCE))
+                        .filter(hint -> hint instanceof DataAccessHint == false),
+                    Stream.of(DataAccessHint.SEQUENTIAL))
                 .toArray(IOContext.FileOpenHint[]::new));
   }
 

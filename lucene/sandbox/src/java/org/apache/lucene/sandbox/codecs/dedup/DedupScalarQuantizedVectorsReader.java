@@ -84,12 +84,6 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
   private final IndexInput quantizedVectorData;
   private final String vectorDataExtension;
   private final String quantizedVectorDataExtension;
-  // the vectors as merges read them, shared with this reader's merge instances
-  private final MergeInput mergeVectorData;
-  // whether this is a merge instance, reading the raw vectors through the merge mapping
-  private final boolean mergeInstance;
-  // on a merge instance: whether it gave its mappings back
-  private boolean finished;
 
   DedupScalarQuantizedVectorsReader(
       SegmentReadState state,
@@ -108,7 +102,6 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
     this.fields = new HashMap<>();
     this.vectorDataExtension = vectorDataExtension;
     this.quantizedVectorDataExtension = quantizedVectorDataExtension;
-    this.mergeInstance = false;
 
     String metaFileName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, metaExtension);
@@ -152,38 +145,6 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
       IOUtils.closeWhileSuppressingExceptions(t, this);
       throw t;
     }
-    this.mergeVectorData = mergeInput(state, vectorDataExtension, vectorData);
-  }
-
-  /**
-   * Reads the same fields as {@code reader}, the raw vectors through the mapping a merge opened.
-   */
-  private DedupScalarQuantizedVectorsReader(
-      DedupScalarQuantizedVectorsReader reader,
-      IndexInput vectorData,
-      IndexInput quantizedVectorData) {
-    this.vectorsScorer = reader.vectorsScorer;
-    this.fields = reader.fields;
-    this.vectorData = vectorData;
-    this.quantizedVectorData = quantizedVectorData;
-    this.vectorDataExtension = reader.vectorDataExtension;
-    this.quantizedVectorDataExtension = reader.quantizedVectorDataExtension;
-    this.mergeVectorData = reader.mergeVectorData;
-    this.mergeInstance = true;
-  }
-
-  private static MergeInput mergeInput(
-      SegmentReadState state, String extension, IndexInput searchInput) {
-    return new MergeInput(
-        state.directory,
-        IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, extension),
-        dataContext(state),
-        searchInput);
-  }
-
-  // how these are read is up to whoever wraps this format
-  private static IOContext dataContext(SegmentReadState state) {
-    return state.context.union(FileTypeHint.DATA, FileDataHint.KNN_VECTORS);
   }
 
   private void readMetaBody(ChecksumIndexInput meta, FieldInfos fieldInfos) throws IOException {
@@ -313,7 +274,8 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, vectorDataExtension);
 
-    IOContext context = dataContext(state);
+    // how these are read is up to whoever wraps this format
+    IOContext context = state.context.union(FileTypeHint.DATA, FileDataHint.KNN_VECTORS);
 
     IndexInput in = null;
     boolean success = false;
@@ -576,48 +538,9 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
     }
   }
 
-  /**
-   * A merge reads the raw vectors to find the distinct ones and copies their quantized records, so
-   * it reads both files through mappings of its own when searches read them at random.
-   */
-  @Override
-  public FlatVectorsReader getMergeInstance() throws IOException {
-    if (mergeVectorData.needed() == false) {
-      return this;
-    }
-    IndexInput data = mergeVectorData.acquire();
-    boolean success = false;
-    try {
-      FlatVectorsReader reader =
-          new DedupScalarQuantizedVectorsReader(this, data.clone(), quantizedVectorData.clone());
-      success = true;
-      return reader;
-    } finally {
-      if (success == false) {
-        mergeVectorData.release();
-      }
-    }
-  }
-
-  /**
-   * Gives back the mapping this merge instance holds, once: finishing the reader it came from, or
-   * finishing it again, releases nothing.
-   */
-  @Override
-  public synchronized void finishMerge() throws IOException {
-    if (mergeInstance && finished == false) {
-      finished = true;
-      mergeVectorData.release();
-    }
-  }
-
   @Override
   public void close() throws IOException {
-    if (mergeInstance) {
-      IOUtils.close(vectorData, quantizedVectorData);
-    } else {
-      IOUtils.close(vectorData, quantizedVectorData, mergeVectorData);
-    }
+    IOUtils.close(vectorData, quantizedVectorData);
   }
 
   @Override

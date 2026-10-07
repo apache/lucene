@@ -58,14 +58,18 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
   private static final int DIM = 8;
 
   public void testMergeOpensItsOwnVectors() throws Exception {
-    assertMergeOpensItsOwnVectors(new Lucene99HnswVectorsFormat());
+    assertMergeOpensItsOwnVectors(new Lucene99HnswVectorsFormat(), false);
   }
 
   public void testQuantizedMergeOpensItsOwnVectors() throws Exception {
-    assertMergeOpensItsOwnVectors(new Lucene104HnswScalarQuantizedVectorsFormat());
+    assertMergeOpensItsOwnVectors(new Lucene104HnswScalarQuantizedVectorsFormat(), true);
   }
 
-  private static void assertMergeOpensItsOwnVectors(KnnVectorsFormat format) throws Exception {
+  /**
+   * @param noReuse whether the format opens its raw vectors with {@link NoReuseHint}
+   */
+  private static void assertMergeOpensItsOwnVectors(KnnVectorsFormat format, boolean noReuse)
+      throws Exception {
     Opens opens = new Opens();
     try (Directory dir = new RecordingDirectory(newDirectory(), opens)) {
       IndexWriterConfig iwc = new IndexWriterConfig();
@@ -95,6 +99,10 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
           for (Open open : sequential) {
             assertTrue("the merge did not read the vectors it opened: " + open, open.read());
             assertTrue("the merge kept its vectors open: " + open, open.closed());
+            assertEquals(
+                "the merge mapping keeps what the format said: " + open,
+                noReuse,
+                open.hints().contains(NoReuseHint.INSTANCE));
           }
         }
       }
@@ -162,10 +170,7 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
     }
   }
 
-  /**
-   * The merge mapping changes how the file is read and keeps everything else the caller said about
-   * it, so a directory routing on those hints sees the same file during merges.
-   */
+  /** The merge mapping changes how the file is read and keeps everything else the caller said. */
   public void testTheMergeMappingKeepsWhatTheCallerSaid() throws Exception {
     Opens opens = new Opens();
     try (Directory dir = new RecordingDirectory(newDirectory(), opens)) {
@@ -183,7 +188,8 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
       try (DirectoryReader reader = DirectoryReader.open(dir)) {
         SegmentReader segment = (SegmentReader) getOnlyLeafReader(reader);
         IOContext searchContext =
-            IOContext.DEFAULT.withHints(DataAccessHint.RANDOM, CallerHint.INSTANCE);
+            IOContext.DEFAULT.withHints(
+                DataAccessHint.RANDOM, NoReuseHint.INSTANCE, CallerHint.INSTANCE);
         try (FlatVectorsReader flat = flatReader(dir, segment, searchContext)) {
           opens.clear();
           FlatVectorsReader mergeInstance = flat.getMergeInstance();
@@ -191,6 +197,7 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
           assertEquals("one mapping for the merge: " + opens, 1, mapped.size());
           Set<IOContext.FileOpenHint> hints = mapped.get(0).hints();
           assertTrue("the caller's hint is kept: " + hints, hints.contains(CallerHint.INSTANCE));
+          assertTrue(hints.contains(NoReuseHint.INSTANCE));
           assertTrue(hints.contains(FileTypeHint.DATA));
           assertTrue(hints.contains(FileDataHint.KNN_VECTORS));
           assertFalse(
@@ -466,7 +473,7 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
     return v;
   }
 
-  /** The opens a merge made for itself: the vector data, read front to back and once. */
+  /** The opens a merge made for itself: the vector data, read front to back. */
   private static List<Open> sequentialOpens(Opens opens) {
     List<Open> sequential = new ArrayList<>();
     for (Open open : opens.all()) {
@@ -474,9 +481,6 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
       if (open.name().endsWith(".vec")
           && open.hint() == DataAccessHint.SEQUENTIAL
           && open.hints().contains(ReadOnceHint.INSTANCE) == false) {
-        assertTrue(
-            "a merge reads the vectors once and does not come back: " + open,
-            open.hints().contains(NoReuseHint.INSTANCE));
         assertSame(
             "the open says a merge is reading, so a directory can route it: " + open,
             IOContext.Context.MERGE,
