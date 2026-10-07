@@ -91,6 +91,8 @@ jobs:
 
       - name: Configure tools
         uses: ./.github/actions/prepare-for-build
+        with:
+          java-version: ${{ matrix.java }}
 
       - name: Install eclint
         if: ${{ ! startsWith(matrix.os, 'windows') }}
