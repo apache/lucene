@@ -154,6 +154,8 @@ New Features
 * GITHUB#16738: Add DiversifyingChildrenFloat16KnnVectorQuery for fp16 parent-block-join KNN
   search. (Pulkit Gupta)
 
+* GITHUB#16628: Add re-ranking and prefetch support for fp16 vectors. (Pulkit Gupta)
+
 Improvements
 ---------------------
 * GITHUB#15704: Replace LinkedList with more efficient data structure. (Renato Haeberli)
