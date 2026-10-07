@@ -430,7 +430,7 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
   }
 
   private FieldValues getFloat16QuantizedVectorValues(FieldEntry entry) throws IOException {
-    return DedupScalarQuantizedVectorValues.loadQuantizedFloat16(
+    return DedupScalarQuantizedVectorValues.loadQuantized(
         vectorsScorer,
         entry.fieldInfo().function(),
         entry.quantizedBlock().encoding(),
@@ -454,7 +454,7 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
   }
 
   @Override
-  public QuantizedByteVectorValues getQuantizedVectorValues(String field) throws IOException {
+  public FieldValues getQuantizedVectorValues(String field) throws IOException {
     FieldEntry entry = fields.get(field);
     if (entry == null) {
       throw new IllegalArgumentException("field=" + field + " not found");
@@ -477,7 +477,7 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
       // Not a quantized field (missing, or e.g. BYTE stored raw only)
       return null;
     }
-    FieldValues quantizedValues = (FieldValues) getQuantizedVectorValues(fieldInfo.name);
+    FieldValues quantizedValues = getQuantizedVectorValues(entry);
     ScalarEncoding encoding = entry.quantizedBlock().encoding();
     if (encoding.isAsymmetric() == false) {
       RandomVectorScorerSupplier supplier =
@@ -493,12 +493,11 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
     // float[] (FLOAT16 groups are inflated from short[]).
     FloatVectorValues floatVectorValues;
     if (fieldInfo.getVectorEncoding() == VectorEncoding.FLOAT16) {
-      DedupVectorValues dedupValues = (DedupVectorValues) getFloat16VectorValues(fieldInfo.name);
-      floatVectorValues =
-          new Float16AsFloatVectorValues((Float16VectorValues) dedupValues.getGroupView());
+      DedupVectorValues.Float16Impl float16RawValues = getRawFloat16VectorValues(entry);
+      floatVectorValues = new Float16AsFloatVectorValues(float16RawValues.getGroupView());
     } else {
-      DedupVectorValues dedupValues = (DedupVectorValues) getFloatVectorValues(fieldInfo.name);
-      floatVectorValues = (FloatVectorValues) dedupValues.getGroupView();
+      DedupVectorValues.FloatImpl float32RawValues = getRawFloatVectorValues(entry);
+      floatVectorValues = float32RawValues.getGroupView();
     }
 
     int dimension = entry.fieldInfo().dimension();

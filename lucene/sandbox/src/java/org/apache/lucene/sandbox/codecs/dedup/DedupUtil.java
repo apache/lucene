@@ -217,6 +217,8 @@ final class DedupUtil {
    * fp32-based scalar quantizer.
    */
   static float[] inflateFloat16(short[] float16Vector, float[] dest) {
+    assert float16Vector.length == dest.length
+        : "length mismatch: float16Vector=" + float16Vector.length + " dest=" + dest.length;
     for (int i = 0; i < float16Vector.length; i++) {
       dest[i] = Float.float16ToFloat(float16Vector[i]);
     }

@@ -636,8 +636,8 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
           }
           w.commit();
         }
-        // the "small" field has only smallCount*2 doc-entries but shares a group of
-        // smallCount+bigCount distinct vectors: merging it previously overran its map.
+        // "small" has smallCount*2 doc-entries but shares a group of smallCount+bigCount distinct
+        // vectors; merging must map its field ords into the larger group without overrun.
         w.forceMerge(1);
 
         try (DirectoryReader reader = DirectoryReader.open(w)) {
