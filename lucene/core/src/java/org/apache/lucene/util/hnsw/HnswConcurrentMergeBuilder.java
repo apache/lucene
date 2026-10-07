@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
@@ -40,8 +41,8 @@ import org.apache.lucene.util.InfoStream;
  */
 public class HnswConcurrentMergeBuilder implements HnswBuilder {
 
-  private static final int DEFAULT_BATCH_SIZE =
-      2048; // number of vectors the worker handles sequentially at one batch
+  /// number of vectors the worker handles sequentially at one batch
+  private static final int DEFAULT_BATCH_SIZE = 2048;
 
   private final TaskExecutor taskExecutor;
   private final ConcurrentMergeWorker[] workers;
@@ -90,16 +91,46 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
       worker.setMergeStartTimeNs(mergeStartTimeNs);
       worker.setCumulativeWorkTimeNs(cumulativeWorkTimeNs);
     }
-    List<Callable<Void>> futures = new ArrayList<>();
-    for (int i = 0; i < workers.length; i++) {
+
+    // Reserve first worker for calling thread: only create Futures for remaining workers
+    List<Callable<Void>> tasks = new ArrayList<>(workers.length - 1);
+    for (int i = 1; i < workers.length; i++) {
       int finalI = i;
-      futures.add(
+      tasks.add(
           () -> {
             workers[finalI].run(maxOrd);
             return null;
           });
     }
-    taskExecutor.invokeAll(futures);
+
+    final List<Future<Void>> started = new ArrayList<>(workers.length);
+    try {
+      int start = workers[0].getStartPos(maxOrd);
+      int end;
+      while (start != -1) {
+        // Use this thread for the first worker
+        end = start + workers[0].batchSize;
+        if (end >= maxOrd) {
+          end = maxOrd; // No need to recruit more workers if this is the last batch
+        } else {
+          // Recruit other threads for workers that haven't started yet
+          while (started.size() < tasks.size()) {
+            var maybeFuture = taskExecutor.tryInvoke(tasks.get(started.size()));
+            if (maybeFuture.isEmpty()) {
+              break; // No room for more workers; break to process batch on this thread
+            }
+
+            started.add(maybeFuture.get());
+          }
+        }
+
+        workers[0].addVectors(start, end);
+        start = workers[0].getStartPos(maxOrd);
+      }
+    } finally {
+      TaskExecutor.collectResults(started);
+    }
+
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
       double wallClockMs = (System.nanoTime() - mergeStartTimeNs) / 1_000_000.0;
       double totalWorkerMs = cumulativeWorkTimeNs.get() / 1_000_000.0;
@@ -108,9 +139,11 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
           HNSW_COMPONENT,
           String.format(
               Locale.ROOT,
-              "merge completed: %d vectors, %.2f ms wall clock, %.2f ms cumulative worker time, %.2fx effective concurrency",
+              "merge completed: %d vectors, %.2f ms wall clock, %d/%d workers recruited, %.2f ms cumulative worker time, %.2fx effective concurrency",
               maxOrd,
               wallClockMs,
+              started.size() + 1,
+              workers.length,
               totalWorkerMs,
               effectiveConcurrency));
     }

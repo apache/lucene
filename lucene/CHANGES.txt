@@ -7,6 +7,10 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
+* GITHUB#16729: Add TaskExecutor#tryInvoke, which submits a single task only if the backing Executor
+  will run it on another thread, and make TaskExecutor#collectResults public so callers can await the
+  futures it returns. (Alec Bernardi)
+
 * GITHUB#16705: KnnVectorValues#prefetch(int ord, int count) replaces prefetch(int ord). It prefetches
   a run of consecutive vectors with a single read and returns true if a prefetch was issued, like
   IndexInput#prefetch. The int[] form now coalesces ordinals that are consecutive in the array over
@@ -241,6 +245,10 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#16729: Concurrent HNSW graph merges no longer run single-threaded when they start while
+  sibling merges hold ConcurrentMergeScheduler's intra-merge threads. Workers are now recruited
+  between batches, so threads that free up part way through a merge are put to use. (Alec Bernardi)
+
 * GITHUB#16657: Fix hashCode/equals contract violation in LRUQueryCache's QueryCacheKey and account a
   cached query's RAM once per distinct query. (Sagar Upadhyaya)
 

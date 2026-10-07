@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
@@ -115,7 +116,46 @@ public final class TaskExecutor {
     return collectResults(futures);
   }
 
-  private static <T> List<T> collectResults(List<RunnableFuture<T>> futures) throws IOException {
+  /// Execute `callable` on the backing [Executor], but only if it runs on another thread.
+  /// Otherwise, control is returned to the caller without executing `callable`.
+  ///
+  /// The caller keeps control, so it can do work itself and offer `callable` again once more
+  /// parallelism becomes available. This lets a shared workload spread across threads as they free
+  /// up, instead of the calling thread being consumed by the first task it could not place.
+  ///
+  /// @apiNote Blocking on the returned [Future] may lead to deadlock when the backing [Executor]
+  ///   cannot process work without the blocked thread.
+  ///
+  /// @implNote Due to the limited interface of the [Executor] backing this [TaskExecutor], this
+  ///   method only detects *immediate* re-entry. If `callable` is deferred, this method returns a
+  ///   [Future] even though the execution may be scheduled on the calling thread. At that time, the
+  ///   [Future] is cancelled without executing `callable`.
+  ///
+  /// @param callable the [Callable] to execute on some *other* thread
+  /// @return An [Optional] containing a [Future] that will complete with the result of `callable`,
+  ///   or else [Optional#empty()] if the [Executor] chose the calling thread.
+  public <T> Optional<Future<T>> tryInvoke(Callable<T> callable) {
+    final Thread callingThread = Thread.currentThread();
+    final FutureTask<T> future = new FutureTask<>(callable);
+
+    executor.execute(
+        () -> {
+          if (Thread.currentThread() == callingThread) {
+            future.cancel(false);
+            return;
+          }
+
+          future.run();
+        });
+
+    if (future.isCancelled()) {
+      return Optional.empty();
+    }
+
+    return Optional.of(future);
+  }
+
+  public static <T> List<T> collectResults(List<? extends Future<T>> futures) throws IOException {
     Throwable exc = null;
     List<T> results = new ArrayList<>(futures.size());
     for (Future<T> future : futures) {
