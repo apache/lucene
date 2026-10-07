@@ -130,6 +130,8 @@ API Changes
   TermGroupFacetCollectorManager, which supports concurrent search. GroupedFacetResult
   and FacetEntry are now top-level types. (Luca Cavanna)
 
+* GITHUB#16686: Make DocAndScoreQuery public (Trevor McCulloch)
+
 New Features
 ---------------------
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
@@ -409,8 +411,6 @@ API Changes
                 Update grouping package info to use CollectorManager instead of Collector. (Binlong Gao)
 
 * GITHUB#16647: Add KnnVectorsReader.getVectorCount to read vector counts from metadata (Chris Hegarty)
-
-* GITHUB#16686: Make DocAndScoreQuery public (Trevor McCulloch)
 
 New Features
 ---------------------
