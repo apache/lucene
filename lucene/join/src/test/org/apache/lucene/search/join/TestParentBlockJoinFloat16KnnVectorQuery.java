@@ -22,9 +22,10 @@ import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.KnnByteVectorField;
+import org.apache.lucene.document.KnnFloat16VectorField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
@@ -36,9 +37,9 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.BytesRef;
 
-public class TestParentBlockJoinByteKnnVectorQuery extends ParentBlockJoinKnnVectorQueryTestCase {
+public class TestParentBlockJoinFloat16KnnVectorQuery
+    extends ParentBlockJoinKnnVectorQueryTestCase {
 
   @Override
   Query getParentJoinKnnQuery(
@@ -47,19 +48,19 @@ public class TestParentBlockJoinByteKnnVectorQuery extends ParentBlockJoinKnnVec
       Query childFilter,
       int k,
       BitSetProducer parentBitSet) {
-    return new DiversifyingChildrenByteKnnVectorQuery(
+    return new DiversifyingChildrenFloat16KnnVectorQuery(
         fieldName, fromFloat(queryVector), childFilter, k, parentBitSet);
   }
 
   @Override
   Field getKnnVectorField(String name, float[] vector) {
-    return new KnnByteVectorField(name, fromFloat(vector));
+    return new KnnFloat16VectorField(name, fromFloat(vector), VectorSimilarityFunction.EUCLIDEAN);
   }
 
   @Override
   Field getKnnVectorField(
       String name, float[] vector, VectorSimilarityFunction vectorSimilarityFunction) {
-    return new KnnByteVectorField(name, fromFloat(vector), vectorSimilarityFunction);
+    return new KnnFloat16VectorField(name, fromFloat(vector), vectorSimilarityFunction);
   }
 
   public void testVectorEncodingMismatch() throws IOException {
@@ -82,14 +83,53 @@ public class TestParentBlockJoinByteKnnVectorQuery extends ParentBlockJoinKnnVec
                 "field", new float[] {1, 2}, null, 2, parentFilter);
         assertThrows(IllegalStateException.class, () -> searcher.search(kvq, 3));
 
-        Query float16Kvq =
+        Query byteKvq =
+            new DiversifyingChildrenByteKnnVectorQuery(
+                "field", new byte[] {1, 2}, null, 2, parentFilter);
+        assertThrows(IllegalStateException.class, () -> searcher.search(byteKvq, 3));
+      }
+    }
+  }
+
+  public void testScoreCosine() throws IOException {
+    try (Directory d = newDirectory()) {
+      try (IndexWriter w =
+          new IndexWriter(
+              d,
+              new IndexWriterConfig()
+                  .setCodec(TestUtil.getDefaultCodec())
+                  .setMergePolicy(newMergePolicy(random(), false)))) {
+        for (int j = 1; j <= 5; j++) {
+          List<Document> toAdd = new ArrayList<>();
+          Document doc = new Document();
+          doc.add(getKnnVectorField("field", new float[] {j, j * j}, COSINE));
+          doc.add(newStringField("id", Integer.toString(j), Field.Store.YES));
+          toAdd.add(doc);
+          toAdd.add(makeParent(new int[] {j}));
+          w.addDocuments(toAdd);
+        }
+      }
+      try (IndexReader reader = DirectoryReader.open(d)) {
+        assertEquals(1, reader.leaves().size());
+        IndexSearcher searcher = new IndexSearcher(reader);
+        BitSetProducer parentFilter = parentFilter(searcher.getIndexReader());
+        DiversifyingChildrenFloat16KnnVectorQuery query =
             new DiversifyingChildrenFloat16KnnVectorQuery(
-                "field",
-                new short[] {Float.floatToFloat16(1), Float.floatToFloat16(2)},
-                null,
-                2,
-                parentFilter);
-        assertThrows(IllegalStateException.class, () -> searcher.search(float16Kvq, 3));
+                "field", fromFloat(new float[] {2, 3}), null, 3, parentFilter);
+        /* score0 = ((2,3) * (1, 1) = 5) / (||2, 3|| * ||1, 1|| = sqrt(26)), then
+         * normalized by (1 + x) /2.
+         */
+        float score0 =
+            (float) ((1 + (2 * 1 + 3 * 1) / Math.sqrt((2 * 2 + 3 * 3) * (1 * 1 + 1 * 1))) / 2);
+
+        /* score1 = ((2,3) * (2, 4) = 16) / (||2, 3|| * ||2, 4|| = sqrt(260)), then
+         * normalized by (1 + x) /2
+         */
+        float score1 =
+            (float) ((1 + (2 * 2 + 3 * 4) / Math.sqrt((2 * 2 + 3 * 3) * (2 * 2 + 4 * 4))) / 2);
+
+        assertScorerResults(
+            searcher, query, new float[] {score0, score1}, new String[] {"1", "2"}, 2);
       }
     }
   }
@@ -98,41 +138,31 @@ public class TestParentBlockJoinByteKnnVectorQuery extends ParentBlockJoinKnnVec
     // test without filter
     Query query = getParentJoinKnnQuery("field", new float[] {0, 1}, null, 10, null);
     assertEquals(
-        "DiversifyingChildrenByteKnnVectorQuery:field[0,...][10]", query.toString("ignored"));
+        "DiversifyingChildrenFloat16KnnVectorQuery:field[0,...][10]", query.toString("ignored"));
 
     // test with filter
     Query filter = new TermQuery(new Term("id", "text"));
-    query = getParentJoinKnnQuery("field", new float[] {0, 1}, filter, 10, null);
+    query = getParentJoinKnnQuery("field", new float[] {0.0f, 1.0f}, filter, 10, null);
     assertEquals(
-        "DiversifyingChildrenByteKnnVectorQuery:field[0,...][10][id:text]",
+        "DiversifyingChildrenFloat16KnnVectorQuery:field[0,...][10][id:text]",
         query.toString("ignored"));
-  }
-
-  private static byte[] fromFloat(float[] queryVector) {
-    byte[] query = new byte[queryVector.length];
-    for (int i = 0; i < queryVector.length; i++) {
-      assert queryVector[i] == (byte) queryVector[i];
-      query[i] = (byte) queryVector[i];
-    }
-    return query;
   }
 
   @Override
   float[] randomVector(int dim) {
-    BytesRef v = TestUtil.randomBinaryTerm(random(), dim);
-    // clip at -127 to avoid overflow
-    for (int i = v.offset; i < v.offset + v.length; i++) {
-      if (v.bytes[i] == -128) {
-        v.bytes[i] = -127;
-      }
+    float[] v = new float[dim];
+    Random random = random();
+    for (int i = 0; i < dim; i++) {
+      v[i] = random.nextFloat();
     }
-    assert v.offset == 0;
-    byte[] b = v.bytes;
-    float[] v1 = new float[b.length];
-    int vi = 0;
-    for (int i = 0; i < v.length; i++) {
-      v1[vi++] = b[i];
+    return v;
+  }
+
+  private static short[] fromFloat(float[] queryVector) {
+    short[] query = new short[queryVector.length];
+    for (int i = 0; i < queryVector.length; i++) {
+      query[i] = Float.floatToFloat16(queryVector[i]);
     }
-    return v1;
+    return query;
   }
 }
