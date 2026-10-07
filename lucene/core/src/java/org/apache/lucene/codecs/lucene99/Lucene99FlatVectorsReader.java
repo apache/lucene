@@ -24,6 +24,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
@@ -246,15 +247,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     assert original == this;
     if (mergeVectorData == null) {
       try {
-        mergeVectorData =
-            directory.openInput(
-                vectorDataFN,
-                IOContext.merge()
-                    .withHints(
-                        FileTypeHint.DATA,
-                        FileDataHint.KNN_VECTORS,
-                        DataAccessHint.SEQUENTIAL,
-                        NoReuseHint.INSTANCE));
+        mergeVectorData = directory.openInput(vectorDataFN, mergeContext());
       } catch (FileNotFoundException | NoSuchFileException _) {
         // an open reader outlives its files, so fall back to the mapping it already holds
         mergeVectorData = vectorData;
@@ -262,6 +255,22 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     }
     mergeInstances++;
     return mergeVectorData;
+  }
+
+  /**
+   * A merge context with what the caller said about the file, read front to back and not reused.
+   */
+  private IOContext mergeContext() {
+    return IOContext.merge()
+        .withHints(
+            Stream.concat(
+                    dataContext.hints().stream()
+                        .filter(
+                            hint ->
+                                hint instanceof DataAccessHint == false
+                                    && hint != NoReuseHint.INSTANCE),
+                    Stream.of(DataAccessHint.SEQUENTIAL, NoReuseHint.INSTANCE))
+                .toArray(IOContext.FileOpenHint[]::new));
   }
 
   private FieldEntry getFieldEntryOrThrow(String field) {

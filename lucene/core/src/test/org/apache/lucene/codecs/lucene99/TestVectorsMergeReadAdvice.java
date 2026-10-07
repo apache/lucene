@@ -38,6 +38,8 @@ import org.apache.lucene.index.SegmentReader;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FileDataHint;
+import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.IOContext;
@@ -150,26 +152,7 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
       }
       try (DirectoryReader reader = DirectoryReader.open(dir)) {
         SegmentReader segment = (SegmentReader) getOnlyLeafReader(reader);
-        String vectorData = null;
-        for (String file : segment.getSegmentInfo().files()) {
-          if (file.endsWith("." + Lucene99FlatVectorsFormat.VECTOR_DATA_EXTENSION)) {
-            vectorData = file;
-          }
-        }
-        assertNotNull(vectorData);
-        String segmentName = segment.getSegmentInfo().info.name;
-        // the per-field suffix, between the segment name and the extension
-        String suffix = vectorData.substring(segmentName.length() + 1, vectorData.lastIndexOf('.'));
-        SegmentReadState state =
-            new SegmentReadState(
-                dir,
-                segment.getSegmentInfo().info,
-                segment.getFieldInfos(),
-                IOContext.DEFAULT,
-                suffix);
-        try (FlatVectorsReader flat =
-            new Lucene99FlatVectorsFormat(FlatVectorScorerUtil.getLucene99FlatVectorsScorer())
-                .fieldsReader(state)) {
+        try (FlatVectorsReader flat = flatReader(dir, segment, IOContext.DEFAULT)) {
           opens.clear();
           assertSame(flat, flat.getMergeInstance());
           flat.finishMerge();
@@ -177,6 +160,74 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
         }
       }
     }
+  }
+
+  /**
+   * The merge mapping changes how the file is read and keeps everything else the caller said about
+   * it, so a directory routing on those hints sees the same file during merges.
+   */
+  public void testTheMergeMappingKeepsWhatTheCallerSaid() throws Exception {
+    Opens opens = new Opens();
+    try (Directory dir = new RecordingDirectory(newDirectory(), opens)) {
+      IndexWriterConfig iwc = new IndexWriterConfig();
+      iwc.setCodec(TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat()));
+      iwc.setUseCompoundFile(false);
+      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+        for (int i = 0; i < 16; i++) {
+          Document doc = new Document();
+          doc.add(new KnnFloatVectorField("field", vector(), VectorSimilarityFunction.DOT_PRODUCT));
+          w.addDocument(doc);
+        }
+        w.commit();
+      }
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        SegmentReader segment = (SegmentReader) getOnlyLeafReader(reader);
+        IOContext searchContext =
+            IOContext.DEFAULT.withHints(DataAccessHint.RANDOM, CallerHint.INSTANCE);
+        try (FlatVectorsReader flat = flatReader(dir, segment, searchContext)) {
+          opens.clear();
+          FlatVectorsReader mergeInstance = flat.getMergeInstance();
+          List<Open> mapped = sequentialOpens(opens);
+          assertEquals("one mapping for the merge: " + opens, 1, mapped.size());
+          Set<IOContext.FileOpenHint> hints = mapped.get(0).hints();
+          assertTrue("the caller's hint is kept: " + hints, hints.contains(CallerHint.INSTANCE));
+          assertTrue(hints.contains(FileTypeHint.DATA));
+          assertTrue(hints.contains(FileDataHint.KNN_VECTORS));
+          assertFalse(
+              "searches read at random, not the merge: " + hints,
+              hints.contains(DataAccessHint.RANDOM));
+          mergeInstance.finishMerge();
+        }
+      }
+    }
+  }
+
+  /** A hint only the caller knows about. */
+  private enum CallerHint implements IOContext.FileOpenHint {
+    INSTANCE
+  }
+
+  /**
+   * A flat vectors reader over the only vectors file of {@code segment}, opened with {@code
+   * context}.
+   */
+  private static FlatVectorsReader flatReader(
+      Directory dir, SegmentReader segment, IOContext context) throws IOException {
+    String vectorData = null;
+    for (String file : segment.getSegmentInfo().files()) {
+      if (file.endsWith("." + Lucene99FlatVectorsFormat.VECTOR_DATA_EXTENSION)) {
+        vectorData = file;
+      }
+    }
+    assertNotNull(vectorData);
+    String segmentName = segment.getSegmentInfo().info.name;
+    // the per-field suffix, between the segment name and the extension
+    String suffix = vectorData.substring(segmentName.length() + 1, vectorData.lastIndexOf('.'));
+    SegmentReadState state =
+        new SegmentReadState(
+            dir, segment.getSegmentInfo().info, segment.getFieldInfos(), context, suffix);
+    return new Lucene99FlatVectorsFormat(FlatVectorScorerUtil.getLucene99FlatVectorsScorer())
+        .fieldsReader(state);
   }
 
   public void testTheMappingIsSharedThenReleasedByTheLastMergeInstance() throws Exception {
