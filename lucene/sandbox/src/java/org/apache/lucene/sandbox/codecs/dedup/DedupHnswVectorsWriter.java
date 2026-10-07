@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsWriter;
@@ -37,10 +38,13 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.FieldOrdToGroupOrd;
+import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.hnsw.HnswConcurrentMergeBuilder;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
@@ -91,6 +95,14 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
   private final int beamWidth;
   private final int tinySegmentsThreshold;
   private final int hybridGroupThreshold;
+  private final int numMergeWorkers;
+  // Non-null only when the format was given an explicit merge ExecutorService. Otherwise, the merge
+  // scheduler's intra-merge executor (from MergeState) is used when available.
+  private final TaskExecutor mergeExec;
+  // Set for the duration of a single mergeOneField build so maybeBuildGraph can pick a concurrent
+  // builder. null during flush (flush always builds single-threaded, like Lucene99).
+  private TaskExecutor activeMergeExecutor;
+  private int activeMergeWorkers = 1;
   private final FlatVectorsFormat flatVectorsFormat;
   private final FlatVectorsWriter flatVectorWriter;
 
@@ -109,6 +121,8 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
       int beamWidth,
       int tinySegmentsThreshold,
       int hybridGroupThreshold,
+      int numMergeWorkers,
+      ExecutorService mergeExec,
       FlatVectorsFormat flatVectorsFormat,
       FlatVectorsWriter flatVectorWriter)
       throws IOException {
@@ -117,6 +131,8 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
     this.beamWidth = beamWidth;
     this.tinySegmentsThreshold = tinySegmentsThreshold;
     this.hybridGroupThreshold = hybridGroupThreshold;
+    this.numMergeWorkers = numMergeWorkers;
+    this.mergeExec = mergeExec == null ? null : new TaskExecutor(mergeExec);
     this.flatVectorsFormat = flatVectorsFormat;
     this.flatVectorWriter = flatVectorWriter;
 
@@ -167,10 +183,35 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
     // Delegate the flat merge; it re-de-duplicates across the merged segments.
     fields.add(fieldInfo);
     flatVectorWriter.mergeOneFlatVectorField(fieldInfo, mergeState);
+    // Choose the executor for concurrent graph building during this merge, mirroring
+    // Lucene99HnswVectorsWriter: prefer the format's explicit mergeExec; otherwise fall back to the
+    // merge scheduler's intra-merge executor. Captured here (on the merge thread) and consumed by
+    // buildAndWriteGraph -> maybeBuildGraph in the returned IORunnable.
+    final TaskExecutor chosenExec;
+    final int chosenWorkers;
+    if (mergeExec != null) {
+      chosenExec = mergeExec;
+      chosenWorkers = numMergeWorkers;
+    } else if (mergeState.intraMergeTaskExecutor != null) {
+      chosenExec = new TaskExecutor(mergeState.intraMergeTaskExecutor);
+      // numMergeWorkers defaults to 1 unless the format was configured otherwise; use it to bound
+      // the intra-merge parallelism (matching Lucene99's numMergeWorkers argument).
+      chosenWorkers = numMergeWorkers;
+    } else {
+      chosenExec = null;
+      chosenWorkers = 1;
+    }
     return () -> {
       mergeState.checkAborted();
       ensureFlatReaderOpen();
-      buildAndWriteGraph(fieldInfo);
+      activeMergeExecutor = chosenExec;
+      activeMergeWorkers = chosenWorkers;
+      try {
+        buildAndWriteGraph(fieldInfo);
+      } finally {
+        activeMergeExecutor = null;
+        activeMergeWorkers = 1;
+      }
     };
   }
 
@@ -190,9 +231,18 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
     int groupCount = dedupValues.getGroupView().size();
     int fieldOrdCount = ((KnnVectorValues) dedupValues).size();
 
-    // When there is no effective de-duplication (every document has a distinct vector), the group
-    // machinery is pure overhead, so build a plain document-space graph; otherwise de-duplicate.
-    DedupLayoutMode mode = selectMode(groupCount, fieldOrdCount);
+    // Number of DISTINCT groups actually referenced BY THIS FIELD. The group view is shared across
+    // all of a segment's dedup fields, so groupCount (its global size) can exceed the groups a
+    // single field references (e.g. a filtered sub-field that indexes only a subset of documents).
+    // Deciding the layout from groupCount vs fieldOrdCount would then wrongly classify a field with
+    // NO within-field duplication as de-duplicated. The correct per-field test is: does this field
+    // reference as many distinct groups as it has documents? If so, there is nothing to de-dup.
+    int distinctGroupsReferenced =
+        countDistinctReferencedGroups(dedupValues.getFieldOrdToGroupOrd(), fieldOrdCount, groupCount);
+
+    // When there is no effective de-duplication (every document references a distinct vector), the
+    // group machinery is pure overhead, so build a plain document-space graph; otherwise de-dup.
+    DedupLayoutMode mode = selectMode(distinctGroupsReferenced, fieldOrdCount);
     if (mode == DedupLayoutMode.PLAIN) {
       writePlainField(fieldInfo, dedupValues, fieldOrdCount);
     } else if (hybridGroupThreshold > 0) {
@@ -201,6 +251,33 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
     } else {
       writeDedupField(fieldInfo, dedupValues, groupCount, fieldOrdCount);
     }
+  }
+
+  /**
+   * Counts the distinct group ordinals referenced by a field's documents. Returns a value in {@code
+   * [0, fieldOrdCount]}; when it equals {@code fieldOrdCount} the field has no within-field
+   * de-duplication (every document references a unique group). {@code groupCount} bounds the group
+   * ordinal space and sizes the membership bitset.
+   */
+  private static int countDistinctReferencedGroups(
+      FieldOrdToGroupOrd fieldOrdToGroupOrd, int fieldOrdCount, int groupCount) {
+    if (fieldOrdCount == 0) {
+      return 0;
+    }
+    FixedBitSet seen = new FixedBitSet(groupCount);
+    int distinct = 0;
+    for (int ord = 0; ord < fieldOrdCount; ord++) {
+      int groupOrd = fieldOrdToGroupOrd.get(ord);
+      if (seen.getAndSet(groupOrd) == false) {
+        distinct++;
+        // Early out: once we've seen one distinct group per document, it cannot grow further and
+        // the field is already known to be fully distinct.
+        if (distinct == fieldOrdCount) {
+          break;
+        }
+      }
+    }
+    return distinct;
   }
 
   /**
@@ -435,6 +512,24 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
     if (shouldCreateGraph(tinySegmentsThreshold, nodeCount) == false) {
       return null;
     }
+    // During a merge with an executor and more than one worker, build the graph concurrently
+    // (matching Lucene99HnswVectorsWriter). Flush, and single-worker merges, build single-threaded.
+    if (activeMergeExecutor != null && activeMergeWorkers > 1) {
+      // getGraph() returns the empty, pre-sized OnHeapHnswGraph that the concurrent workers fill in.
+      OnHeapHnswGraph empty =
+          HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed, nodeCount)
+              .getGraph();
+      HnswConcurrentMergeBuilder concurrentBuilder =
+          new HnswConcurrentMergeBuilder(
+              activeMergeExecutor,
+              activeMergeWorkers,
+              scorerSupplier,
+              beamWidth,
+              empty,
+              /* initializedNodes= */ null);
+      concurrentBuilder.setInfoStream(segmentWriteState.infoStream);
+      return concurrentBuilder.build(nodeCount);
+    }
     HnswGraphBuilder builder =
         HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed, nodeCount);
     builder.setInfoStream(segmentWriteState.infoStream);
@@ -445,8 +540,10 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
    * Chooses {@link DedupLayoutMode#PLAIN} when the field has no effective de-duplication (one
    * distinct vector per document), otherwise {@link DedupLayoutMode#DEDUP}.
    */
-  private static DedupLayoutMode selectMode(int groupCount, int fieldOrdCount) {
-    return groupCount == fieldOrdCount ? DedupLayoutMode.PLAIN : DedupLayoutMode.DEDUP;
+  private static DedupLayoutMode selectMode(int distinctGroupsReferenced, int fieldOrdCount) {
+    return distinctGroupsReferenced == fieldOrdCount
+        ? DedupLayoutMode.PLAIN
+        : DedupLayoutMode.DEDUP;
   }
 
   /**

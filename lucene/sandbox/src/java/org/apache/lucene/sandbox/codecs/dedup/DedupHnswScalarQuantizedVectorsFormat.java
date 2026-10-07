@@ -79,10 +79,15 @@ public final class DedupHnswScalarQuantizedVectorsFormat extends KnnVectorsForma
   /** The format for storing, reading, and merging vectors on disk. */
   private final FlatVectorsFormat flatVectorsFormat;
 
-  // TODO: wire concurrent merge through to DedupHnswVectorsWriter. The numMergeWorkers/mergeExec
-  //  constructor params are currently validated but not used (the writer merges single-threaded),
-  //  so they are not retained as fields. Pass them to the writer once concurrent merge is
-  // supported.
+  /**
+   * Number of workers (threads) used when building the HNSW graph during a merge; {@code > 1}
+   * (with an available executor) builds concurrently, matching {@link
+   * org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsWriter}.
+   */
+  private final int numMergeWorkers;
+
+  /** Explicit merge executor, or {@code null} to use the merge scheduler's intra-merge executor. */
+  private final ExecutorService mergeExec;
 
   /**
    * The threshold to use to bypass HNSW graph building for tiny segments in terms of k for a graph
@@ -202,6 +207,8 @@ public final class DedupHnswScalarQuantizedVectorsFormat extends KnnVectorsForma
       throw new IllegalArgumentException(
           "No executor service is needed as we'll use single thread to merge");
     }
+    this.numMergeWorkers = numMergeWorkers;
+    this.mergeExec = mergeExec;
   }
 
   @Override
@@ -212,6 +219,8 @@ public final class DedupHnswScalarQuantizedVectorsFormat extends KnnVectorsForma
         beamWidth,
         tinySegmentsThreshold,
         DedupHnswVectorsFormat.DEFAULT_HYBRID_GROUP_THRESHOLD,
+        numMergeWorkers,
+        mergeExec,
         flatVectorsFormat,
         flatVectorsFormat.fieldsWriter(state));
   }
