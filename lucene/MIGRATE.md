@@ -158,7 +158,7 @@ Snowball replaced the "Dutch" stemmer with the "Kraaij-Pohlmann" stemmer
   earlier.
 
 A pre-Lucene-11 index that used `DutchStemmer` can still be opened, but
-search will not match until you reindex, or switch the analyzer to
+search will not match until you reindex, or switch the query analyzer to
 `Dutch_porterStemmer` / `language="Dutch_porter"` to keep the old stems.
 
 #### New stemmers
