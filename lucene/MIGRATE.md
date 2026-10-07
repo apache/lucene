@@ -19,6 +19,17 @@
 
 ## Migration from Lucene 10.x to Lucene 11.0
 
+### Java 25 is the minimum required JDK (GITHUB#14229, GITHUB#15215)
+
+Lucene 11 requires Java 25. Rebuild and run on JDK 25 or newer before upgrading
+library versions.
+
+### Security Manager support has been removed (GITHUB#14801)
+
+All Security Manager and `java.security` related code has been removed. That machinery is
+effectively dead on Java 24+. Drop any `java.security.manager` flags or policy
+files that existed only for Lucene.
+
 ### JUnit5/jupiter support in the test-framework
 
 Lucene 11 brings initial support for writing test cases
@@ -31,8 +42,10 @@ support.
 
 #### Key changes
 
-- All tests must be Jupiter tests, typically this means
-methods must be annotated with `@Test`. Method prefix
+These apply if you extend `LuceneTestCaseJupiter`. `LuceneTestCase` (JUnit4) is
+unchanged.
+
+- Methods must be annotated with `@Test`. Method prefix
 `test*` is not sufficient. Methods that are named `test*` but are not tests
 will cause validation errors.
 - You can use parameterized tests, dynamic tests, etc. All these are supported.
@@ -47,6 +60,45 @@ annotations instead of `setUp` and `tearDown` methods.
 called `LuceneTestCaseParent` but you should reference them either
 without an explicit type or via the type of the parent class
 for your test framework. The parent class may be removed in the future.
+
+### TermGroupFacetCollector and GroupFacetCollector removed (GITHUB#16292, GITHUB#16779)
+
+`TermGroupFacetCollector` and its base class `GroupFacetCollector` have been removed.
+Use `TermGroupFacetCollectorManager` with `IndexSearcher#search(Query, CollectorManager)`
+instead. `size`, `minCount`, and `orderByCount` are now constructor arguments; merging
+happens in `reduce()`.
+
+`GroupedFacetResult` and `FacetEntry` are now top-level types in
+`org.apache.lucene.search.grouping`. `FacetEntry` is nested in `GroupedFacetResult`
+(`GroupedFacetResult.FacetEntry`).
+
+Before:
+
+```java
+TermGroupFacetCollector collector =
+    TermGroupFacetCollector.createTermGroupFacetCollector(
+        groupField, facetField, facetFieldMultivalued, facetPrefix, initialSize);
+searcher.search(query, collector);
+TermGroupFacetCollector.GroupedFacetResult result =
+    collector.mergeSegmentResults(offset + limit, minCount, orderByCount);
+List<TermGroupFacetCollector.FacetEntry> entries = result.getFacetEntries(offset, limit);
+```
+
+After:
+
+```java
+TermGroupFacetCollectorManager manager =
+    new TermGroupFacetCollectorManager(
+        groupField,
+        facetField,
+        facetFieldMultivalued,
+        facetPrefix,
+        offset + limit,
+        minCount,
+        orderByCount);
+GroupedFacetResult result = searcher.search(query, manager);
+List<GroupedFacetResult.FacetEntry> entries = result.getFacetEntries(offset, limit);
+```
 
 ### Directory#copyFrom is now abstract (GITHUB#16530)
 
@@ -121,14 +173,36 @@ Enhanced error messages will clearly indicate:
 This parameter has no replacement, TieredMergePolicy no longer bounds the
 number of segments that may be merged together.
 
-### Snowball dependency upgrade (Dutch stemmer)
+### Snowball dependency upgrade (GITHUB#15505)
 
-Snowball replaced the "Dutch" stemmer by the "Kraaij-Pohlmann" stemmer (previous called dutch-kp). As a result Lucene supports 2 Dutch stemmers:
+Lucene 11 upgrades the bundled Snowball stemmers
+([GITHUB#15505](https://github.com/apache/lucene/pull/15505)). Several
+algorithms emit different stems than Lucene 10 (English, French, German,
+Dutch, and others). Existing indexes that used Snowball stemming should
+be reindexed so search-time analysis matches indexed tokens.
 
-- DutchStemmer, which is now the "Kraaij-Pohlmann" stemmer.
-- Dutch_porterStemmer, which is the DutchStemmer from Lucene-10 and before.
+#### Dutch stemmer
 
-Opening an pre Lucene-11 index which is indexed using the DutchStemmer will succeed, but due to the different stemmer implementation a re-index is needed in order to make searching work correctly. Or replace DutchStemmer by Dutch_porterStemmer in your code.
+Snowball replaced the "Dutch" stemmer with the "Kraaij-Pohlmann" stemmer
+(previously called dutch-kp). Lucene now ships two Dutch stemmers:
+
+- `DutchStemmer`, which is now the Kraaij-Pohlmann stemmer.
+  `DutchAnalyzer` and `language="Dutch"` use this.
+- `Dutch_porterStemmer`, which is the Dutch stemmer from Lucene 10 and
+  earlier.
+
+A pre-Lucene-11 index that used `DutchStemmer` can still be opened, but
+search will not match until you reindex, or switch the query analyzer to
+`Dutch_porterStemmer` / `language="Dutch_porter"` to keep the old stems.
+
+#### New stemmers
+
+- `PolishStemmer`, plus `PolishSnowballAnalyzer` in the stempel module
+  (an alternative to the Stempel-based `PolishAnalyzer`).
+- `EsperantoStemmer`
+
+Select them with `SnowballFilter` / `SnowballPorterFilterFactory` using
+`language="Polish"` or `language="Esperanto"`.
 
 ### Query caching is now disabled by default
 
@@ -141,21 +215,57 @@ long maxRamBytesUsed = 50 * 1024 * 1024; // 50MB
 IndexSearcher.setDefaultQueryCache(new LRUQueryCache(maxCachedQueries, maxRamBytesUsed));
 ```
 
+### Filtered HNSW search default threshold (GITHUB#14160)
+
+Filter-optimized HNSW search now runs when 60% or fewer vectors pass the
+pre-filter (`KnnSearchStrategy.DEFAULT_FILTERED_SEARCH_THRESHOLD`). Recall and
+latency for filtered kNN can change with no API change. To pick a different
+cutoff, pass `new KnnSearchStrategy.Hnsw(threshold)` to the vector query
+constructor (`0` never uses the filtered path, `100` always does).
+
+### Expressions compiler no longer depends on ASM (GITHUB#14597)
+
+The expressions module compiles with the JDK Classfile API instead of ASM.
+Do not rely on Lucene to put ASM on the classpath.
+
 ### Possibility to optimize `readGroupVInt()` in `DataInput` subclasses removed (GITHUB#15116)
 
-Any subclass of `DataInput` that have implemented `readGroupVInt()` need to remove that implementation.
+Any subclass of `DataInput` that has implemented `readGroupVInt()` needs to remove that implementation.
 
 Instead make sure that subclasses of `IndexInput` implement `RandomAccessInput`.
-Pure `DataInput` subclasses cannot be optimized anymore as they cannot offer random access and seeking.`
+Pure `DataInput` subclasses cannot be optimized anymore as they cannot offer random access and seeking.
 
 ### SortField.setMissingValue() has been removed
 
 Missing values should be configured in SortField constructor methods, as they are now final.
+`SortedNumericSortField` and `SortedSetSortField` take the missing value after a
+selector argument, not in the same position as `SortField`.
+
+```java
+// Before
+SortField sf = new SortField("price", SortField.Type.LONG);
+sf.setMissingValue(0L);
+
+// After
+SortField sf = new SortField("price", SortField.Type.LONG, false, 0L);
+
+// SortedNumericSortField
+new SortedNumericSortField(
+    "price", SortField.Type.LONG, false, SortedNumericSelector.Type.MIN, 0L);
+// SortedSetSortField
+new SortedSetSortField(
+    "category", false, SortedSetSelector.Type.MIN, SortField.STRING_LAST);
+```
 
 ### MatchAllDocs and MatchNoDocs are singletons
 
 MatchAllDocs and MatchNoDocs queries should use the INSTANCE final field instead of creating
 new objects. The constructors will be removed in the future.
+
+```java
+Query all = MatchAllDocsQuery.INSTANCE; // not new MatchAllDocsQuery()
+Query none = MatchNoDocsQuery.INSTANCE; // not new MatchNoDocsQuery()
+```
 
 ### APIs for configuring compound file creation thresholds have been updated and moved
 
@@ -190,10 +300,11 @@ mp.getMaxCFSSegmentSizeMB();
 
 ```java
 IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
-iwc.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(false);
-iwc.getConfig().getCodec().compoundFormat().setMaxCFSSegmentSizeMB(512);
-iwc.getConfig().getCodec().compoundFormat().getShouldUseCompoundFile();
-iwc.getConfig().getCodec().compoundFormat().getMaxCFSSegmentSizeMB();
+CompoundFormat cfs = iwc.getCodec().compoundFormat();
+cfs.setShouldUseCompoundFile(false);
+cfs.setMaxCFSSegmentSizeMB(512);
+cfs.getShouldUseCompoundFile();
+cfs.getMaxCFSSegmentSizeMB();
 ```
 
 ### Implicit determinization removed from RegexpQuery and WildcardQuery
@@ -223,9 +334,461 @@ Automaton dfa = Operations.determinize(WildcardQuery.toAutomaton(new Term("myfie
 Query query = new AutomatonQuery(new Term("myfield", pattern), dfa);
 ```
 
+### `QueryVisitor.consumeTermsMatching` takes `Supplier<ByteRunnable>`
+
+Because automata may now be a DFA or an NFA, `consumeTermsMatching` takes
+`Supplier<ByteRunnable>` instead of `ByteRunAutomaton`. `ByteRunAutomaton` still
+implements `ByteRunnable`. `QueryVisitor` implementers must update the override.
+
+```java
+// Before
+@Override
+public void consumeTermsMatching(Query query, String field, ByteRunAutomaton automaton) {
+    // ...
+}
+
+// After
+@Override
+public void consumeTermsMatching(Query query, String field, Supplier<ByteRunnable> automaton) {
+    ByteRunnable runnable = automaton.get();
+    // ...
+}
+```
+
 ### CollectionStatistics and TermStatistics have been renamed to FieldStats and TermStats (GITHUB#15929)
 
-Corresponding methods and parameters have been renamed accordingly.
+Corresponding methods and parameters have been renamed accordingly:
+`IndexSearcher.collectionStatistics` is now `fieldStats`,
+`IndexSearcher.termStatistics` is now `termStats`.
+
+```java
+// Before (IndexSearcher)
+@Override
+public CollectionStatistics collectionStatistics(String field) throws IOException { ... }
+
+@Override
+public TermStatistics termStatistics(Term term, int docFreq, long totalTermFreq) throws IOException { ... }
+
+// Before (Similarity)
+public SimScorer scorer(float boost, CollectionStatistics collectionStats, TermStatistics... termStats) { ... }
+
+// After (IndexSearcher)
+@Override
+public FieldStats fieldStats(String field) throws IOException { ... }
+
+@Override
+public TermStats termStats(Term term, int docFreq, long totalTermFreq) throws IOException { ... }
+
+// After (Similarity)
+public SimScorer scorer(float boost, FieldStats fieldStats, TermStats... termStats) { ... }
+```
+
+### RegExp optional complement syntax has been removed (GITHUB#15750)
+
+The `~` complement syntax (`RegExp.DEPRECATED_COMPLEMENT` int flag and
+`RegExp.Kind.REGEXP_DEPRECATED_COMPLEMENT` enum value) was deprecated in Lucene
+10 and removed in 11. `RegExp.ALL` no longer includes that flag. Prefer
+complement bracket expressions (`[^...]`) instead; for example, `[^fo]` matches
+any character that is not an `f` or `o`.
+
+### `PriorityQueue` now takes a `LessThan` (GITHUB#14873)
+
+The one-arg constructor and overridable `lessThan` method were removed
+([GITHUB#14871](https://github.com/apache/lucene/pull/14871),
+[GITHUB#14873](https://github.com/apache/lucene/pull/14873)). Callers that do
+not need a named subclass should use `PriorityQueue.usingLessThan` or
+`usingComparator`. Named subclasses that still need heap access pass
+`LessThan` into `super`.
+
+```java
+// Before
+PriorityQueue<ScoreDoc> pq = new PriorityQueue<ScoreDoc>(numHits) {
+    @Override
+    protected boolean lessThan(ScoreDoc a, ScoreDoc b) {
+        return a.score < b.score;
+    }
+};
+
+// After: no subclass needed
+PriorityQueue<ScoreDoc> pq = PriorityQueue.usingLessThan(numHits, (a, b) -> a.score < b.score);
+
+// After: named subclass that still needs heap access
+class HitQueue extends PriorityQueue<ScoreDoc> {
+    HitQueue(int size) {
+        super(size, (a, b) -> a.score < b.score);
+    }
+}
+```
+
+### `PriorityQueue.remove` has been removed (GITHUB#15493)
+
+`remove` did a linear identity scan, not `equals`
+([GITHUB#15309](https://github.com/apache/lucene/issues/15309),
+[GITHUB#15493](https://github.com/apache/lucene/pull/15493)). Implement it on a
+subclass if you still need it (`getHeapArray`, `size`, `upHeap`, and `downHeap`
+stay protected).
+
+### `CollectionUtil.newHashMap` / `newHashSet` have been removed (GITHUB#15517)
+
+Use `HashMap.newHashMap` / `HashSet.newHashSet`.
+
+```java
+// Before
+Map<String, Integer> map = CollectionUtil.newHashMap(expectedSize);
+Set<String> set = CollectionUtil.newHashSet(expectedSize);
+
+// After
+Map<String, Integer> map = HashMap.newHashMap(expectedSize);
+Set<String> set = HashSet.newHashSet(expectedSize);
+```
+
+### Two-arg `Operations.concatenate` / `union` have been removed (GITHUB#15762)
+
+`Operations.concatenate(Automaton, Automaton)` and
+`Operations.union(Automaton, Automaton)` were removed (deprecated in 10.2,
+[GITHUB#14209](https://github.com/apache/lucene/pull/14209)). Use the
+`List` / `Collection` overloads.
+
+```java
+// Before
+Automaton u = Operations.union(a, b);
+Automaton c = Operations.concatenate(a, b);
+
+// After
+Automaton u = Operations.union(List.of(a, b));
+Automaton c = Operations.concatenate(List.of(a, b));
+```
+
+### `Operations.complement()` and `minus()` are deprecated (GITHUB#15763, GITHUB#15755)
+
+These methods are slow and will be removed in Lucene 12. Prefer other automaton
+operations in production. For tests, `minus` is available as
+`AutomatonTestUtil.minus()`.
+
+### Cheap reader getters no longer throw `IOException` (GITHUB#16057)
+
+[GITHUB#16052](https://github.com/apache/lucene/issues/16052) /
+[GITHUB#16057](https://github.com/apache/lucene/pull/16057) /
+[GITHUB#16059](https://github.com/apache/lucene/pull/16059) /
+[GITHUB#16060](https://github.com/apache/lucene/pull/16060): `LeafReader.terms`
+/ `getPointValues` / `getDocValuesSkipper`, `Fields.terms`,
+`Terms.getSumTotalTermFreq` / `getSumDocFreq` / `getDocCount`, and
+`PointValues` min/max/dimension getters no longer throw. Overrides must drop
+`throws IOException`. Remaining I/O inside those getters should be wrapped as
+`UncheckedIOException`.
+
+```java
+// Before
+@Override
+public Terms terms(String field) throws IOException {
+    return in.terms(field);
+}
+
+// After
+@Override
+public Terms terms(String field) {
+    return in.terms(field);
+}
+```
+
+### `LRUQueryCache.clearCoreCacheKey` now takes `CacheKey` (GITHUB#15558)
+
+[GITHUB#15558](https://github.com/apache/lucene/pull/15558)
+([GITHUB#14222](https://github.com/apache/lucene/issues/14222)) partitions the
+query cache; keys are `(query, segment)`. `clearCoreCacheKey` takes
+`IndexReader.CacheKey` instead of `Object`. The old `onQueryCache` /
+`onDocIdSetCache` / eviction hooks still compile but now fire once per
+`(segment, query)` entry. Prefer `onCacheEntryInserted` /
+`onCacheEntryEvicted`.
+
+```java
+cache.clearCoreCacheKey(reader.getCoreCacheHelper().getKey());
+
+class MyQueryCache extends LRUQueryCache {
+    MyQueryCache(int maxSize, long maxRamBytesUsed) {
+        super(maxSize, maxRamBytesUsed);
+    }
+
+    @Override
+    protected void onCacheEntryInserted(Object readerCoreKey, Query query, long ramBytesUsed) {
+        // called once per (segment, query) insertion
+    }
+
+    @Override
+    protected void onCacheEntryEvicted(Object readerCoreKey, Query query, long ramBytesUsed) {
+        // called once per (segment, query) eviction
+    }
+}
+```
+
+### `checkIntegrity` now takes `MergePolicy.OneMerge` (GITHUB#16281)
+
+Codec `checkIntegrity()` on `DocValuesProducer`, `FieldsProducer`,
+`KnnVectorsReader` / `FlatVectorsReader`, `StoredFieldsReader`,
+`PostingsReaderBase`, and `PointsReader` is now
+`checkIntegrity(MergePolicy.OneMerge)` so checksums can abort with the merge.
+Pass `null` when there is no merge. `LeafReader.checkIntegrity()` is still
+no-arg.
+
+```java
+// During a merge, pass the merge so checksums can abort
+producer.checkIntegrity(oneMerge);
+
+// Outside a merge
+producer.checkIntegrity(null);
+
+// LeafReader is unchanged
+leafReader.checkIntegrity();
+```
+
+### `PerFieldKnnVectorsFormat.FieldsReader` is hidden (GITHUB#15187)
+
+`FieldsReader` is no longer a public type. Use
+`KnnVectorsReader.unwrapReaderForField(String)` (default: `return this`)
+instead of `instanceof FieldsReader` + `getFieldReader`.
+
+```java
+// Before
+if (reader instanceof PerFieldKnnVectorsFormat.FieldsReader perField) {
+    reader = perField.getFieldReader(field);
+}
+
+// After
+reader = reader.unwrapReaderForField(field);
+```
+
+### `ScorerSupplier.cost()` throws `IOException` (GITHUB#16518)
+
+Overrides that wrap another supplier must declare `throws IOException`.
+
+### `ScorerSupplier.setTopLevelScoringClause` no longer throws (GITHUB#14291)
+
+Drop `throws IOException` from overrides.
+
+```java
+@Override
+public long cost() throws IOException {
+    return in.cost();
+}
+
+@Override
+public void setTopLevelScoringClause() {
+    in.setTopLevelScoringClause();
+}
+```
+
+### `IndexInput.prefetch` returns `boolean` (GITHUB#15627)
+
+[GITHUB#15627](https://github.com/apache/lucene/pull/15627)
+([GITHUB#15515](https://github.com/apache/lucene/issues/15515)):
+`IndexInput.prefetch` / `RandomAccessInput.prefetch` return `true` when
+something was actually prefetched (callers can defer the read). The default
+implementation returns `false` (no-op). Overrides must return that flag.
+
+```java
+if (in.prefetch(offset, length)) {
+    // the implementation actually prefetched; the read can be deferred
+}
+```
+
+### `CheckedIntConsumer` renamed to `IOIntConsumer` (GITHUB#14973)
+
+`org.apache.lucene.search.CheckedIntConsumer` is now
+`org.apache.lucene.util.IOIntConsumer`.
+
+```java
+// Before
+import org.apache.lucene.search.CheckedIntConsumer;
+CheckedIntConsumer consumer = doc -> { ... };
+
+// After
+import org.apache.lucene.util.IOIntConsumer;
+IOIntConsumer consumer = doc -> { ... };
+```
+
+### IEEE FLOAT16 vector APIs (GITHUB#16383)
+
+Custom `LeafReader` / knn codec authors must implement the new `FLOAT16` APIs.
+Typical application code is unaffected unless it switches on `VectorEncoding`.
+
+`LeafReader.getFloat16VectorValues` is abstract (`FilterLeafReader` already
+delegates). `KnnVectorsReader` / `FlatVectorsReader` /
+`FlatVectorsScorer` gained `getFloat16VectorValues`, `search(short[])`, and
+`getRandomVectorScorer(..., short[])`. Custom readers and exhaustive
+`VectorEncoding` switches need a `FLOAT16` arm.
+
+```java
+switch (fieldInfo.getVectorEncoding()) {
+    case BYTE -> reader.getByteVectorValues(field);
+    case FLOAT32 -> reader.getFloatVectorValues(field);
+    case FLOAT16 -> reader.getFloat16VectorValues(field);
+}
+```
+
+### `DictionaryCompoundWordTokenFilter` deprecated constructor removed (GITHUB#14356)
+
+The deprecated constructor that took both `onlyLongestMatch` and
+`onlyLongestMatchIgnoreSubwords` has been removed. Lucene 10 already added the
+replacement that takes only `onlyLongestMatchIgnoreSubwords`
+([GITHUB#14278](https://github.com/apache/lucene/pull/14278),
+[GITHUB#14311](https://github.com/apache/lucene/pull/14311)). Remaining
+constructors are `(TokenStream, CharArraySet)` and
+`(TokenStream, CharArraySet, minWordSize, minSubwordSize, maxSubwordSize,
+onlyLongestMatchIgnoreSubwords)`.
+
+```java
+// Before (deprecated in 10.x)
+new DictionaryCompoundWordTokenFilter(
+    input, dictionary, minWordSize, minSubwordSize, maxSubwordSize,
+    onlyLongestMatch, onlyLongestMatchIgnoreSubwords);
+
+// After
+new DictionaryCompoundWordTokenFilter(
+    input, dictionary, minWordSize, minSubwordSize, maxSubwordSize,
+    onlyLongestMatchIgnoreSubwords);
+```
+
+### `DocIdSet` API changes (GITHUB#14284, GITHUB#14288, GITHUB#14290, GITHUB#14297)
+
+`DocIdSet.iterator()` no longer throws `IOException`. The unused
+`DocIdSet.all()` factory was removed. `DocIdSet.bits()` and
+`BitDocIdSet.bits()` were removed: wrapping a `BitSet` just to unwrap it was
+redundant.
+
+```java
+// Before
+@Override
+public DocIdSetIterator iterator() throws IOException {
+    return in.iterator();
+}
+
+BitSet bits = new BitDocIdSet(bitSet).bits();
+
+// After
+@Override
+public DocIdSetIterator iterator() {
+    return in.iterator();
+}
+
+BitSet bits = bitSet; // keep the BitSet you already have
+// or, if you have a DocIdSetIterator and need a BitSet:
+BitSet fromIterator = BitSet.of(iterator, maxDoc);
+```
+
+If you used `DocIdSet.all(maxDoc)`, iterate with `DocIdSetIterator.all(maxDoc)`
+instead.
+
+### `HnswConcurrentMergeBuilder` dropped `maxConn` (GITHUB#14097)
+
+The constructor no longer takes `M` / `maxConn`; `OnHeapHnswGraph` already
+has it.
+
+```java
+// Before
+new HnswConcurrentMergeBuilder(
+    taskExecutor, numWorkers, scorerSupplier, maxConn, beamWidth, hnsw, initializedNodes);
+
+// After
+new HnswConcurrentMergeBuilder(
+    taskExecutor, numWorkers, scorerSupplier, beamWidth, hnsw, initializedNodes);
+```
+
+### `TopGroups.merge` now takes a `List` (GITHUB#15897)
+
+```java
+// Before
+TopGroups<BytesRef> merged =
+    TopGroups.merge(shardGroups, groupSort, docSort, docOffset, docTopN, scoreMergeMode);
+
+// After (shardGroups is a TopGroups[])
+TopGroups<BytesRef> merged =
+    TopGroups.merge(Arrays.asList(shardGroups), groupSort, docSort, docOffset, docTopN, scoreMergeMode);
+```
+
+If you already have a `List`, pass it directly.
+
+### `TopFieldCollectorManager.getCollectors()` has been removed (GITHUB#15605)
+
+Internal collector tracking was removed. There is no replacement.
+`IndexSearcher.search(query, manager)` is unchanged. Only code that called
+`getCollectors()` needs to change.
+
+### `long[]` GroupVInt APIs moved to backward-codecs (GITHUB#15113)
+
+`int[]` group-varint encoding stays in core (`DataOutput.writeGroupVInts`,
+`org.apache.lucene.util.GroupVIntUtil`). The legacy `long[]` APIs were removed
+from core and now live in `org.apache.lucene.backward_codecs.store.GroupVIntUtil`.
+
+```java
+// Before (core)
+org.apache.lucene.util.GroupVIntUtil.readGroupVInts(in, longDst, limit);
+
+// After (backward-codecs only)
+org.apache.lucene.backward_codecs.store.GroupVIntUtil.readGroupVInts(in, longDst, limit);
+```
+
+### Deprecated CheckIndex parameters have been removed (GITHUB#11023)
+
+The `-fast` and `-slow` CLI flags have been removed. Use `-level` (`1`-`3`;
+default `1`). Old `-fast` is the default (`1`); old `-slow` is `-level 3`.
+
+## Migration from Lucene 10.5 to Lucene 10.6
+
+### Thai analysis: output of `ThaiAnalyzer`, its default stopwords and `ThaiTokenizer` changed
+
+Lucene 10.6 improves Thai analysis (GITHUB#16717, GITHUB#16718, GITHUB#16720, GITHUB#16722,
+GITHUB#16727). Most of it is additive: `ThaiCharFilter`, `ThaiNormalizationFilter`,
+`ThaiRepeatFilter` (SPI names `thai`, `thaiNormalization`, `thaiRepeat`), a user dictionary and a
+configurable buffer size for `ThaiTokenizer`. Three existing defaults also produce different terms
+than in 10.5 for some input. An index built with 10.5 may therefore stop matching queries analyzed
+with 10.6 until it is reindexed.
+
+- `ThaiAnalyzer` applies `ThaiCharFilter` to the input and runs `ThaiNormalizationFilter` and
+  `ThaiRepeatFilter` between `DecimalDigitFilter` and the stop filter. `normalize()` applies the
+  char filter and `ThaiNormalizationFilter` too. Text with decomposed Sara Am (`น` + `ํ` + `้` + `า`),
+  doubled Sara E (`เเ`), repeated or misordered vowel and tone marks, zero-width characters, or the
+  repetition mark `ๆ` is analyzed differently.
+- `ThaiAnalyzer.getDefaultStopSet()` returns a different list: 87 entries instead of 115. 30 words
+  that are common content words (for example `ผล`, `เปิด`, `ส่ง`, `ทาง`) were removed and `ทำให้` and
+  `สำหรับ` were added. Words that used to be dropped from the index are now indexed.
+- `ThaiTokenizer` treats whitespace as a safe place to cut when its 1024-character buffer fills,
+  in addition to line and paragraph separators. Only text with no sentence break for 1024 or more
+  characters is affected: a word that used to be split at the end of the buffer is no longer split,
+  and the cut points for the following text can move.
+
+Example (10.5 behavior built by hand, compared with `new ThaiAnalyzer()` from 10.6):
+
+| Input | 10.5 | 10.6 |
+|---|---|---|
+| `น` `ํ` `้` `า` + `ตาลทราย` | `นํ้าตาลทราย` | `น้ำตาล`, `ทราย` |
+| `เเมวนอนหลับ` | `เเมวน`, `อ`, `น`, `หลับ` | `แมว`, `นอน`, `หลับ` |
+| `ผลไม้และการเปิดตัวสินค้า` | `ผลไม้`, `ตัว`, `สินค้า` | `ผลไม้`, `เปิด`, `ตัว`, `สินค้า` |
+| `สวัสดีๆ` | `สวัสดี`, `ๆ` | `สวัสดี`, `สวัสดี` |
+
+To keep the 10.5 output (for example to search an existing index without reindexing), build the
+analyzer from the previous components. `legacyStopSet` is the `stopwords.txt` shipped with 10.5:
+
+```java
+Analyzer legacyThai =
+    new StopwordAnalyzerBase(legacyStopSet) {
+      @Override
+      protected TokenStreamComponents createComponents(String fieldName) {
+        Tokenizer source = new ThaiTokenizer();
+        TokenStream result = new LowerCaseFilter(source);
+        result = new DecimalDigitFilter(result);
+        result = new StopFilter(result, stopwords);
+        return new TokenStreamComponents(source, result);
+      }
+
+      @Override
+      protected TokenStream normalize(String fieldName, TokenStream in) {
+        return new DecimalDigitFilter(new LowerCaseFilter(in));
+      }
+    };
+```
+
+To restore the 10.5 buffer cut points as well, subclass `ThaiTokenizer` and override `isSafeEnd(char)`
+so that it only accepts U+000A, U+000D, U+0085, U+2028 and U+2029.I also 
 
 ## Migration from Lucene 10.4 to Lucene 10.5
 
@@ -342,14 +905,11 @@ These classes no longer take a `determinizeWorkLimit` and no longer determinize
 behind the scenes. It is the responsibility of the caller to call
 `Operations.determinize()` for DFA execution.
 
-### RegExp optional complement syntax has been removed (LUCENE-11)
+### RegExp optional complement syntax has been deprecated
 
-Support for the optional complement syntax (`~`) that was deprecated in Lucene 10
-has been removed. The `DEPRECATED_COMPLEMENT` flag and `REGEXP_DEPRECATED_COMPLEMENT`
-enum value are no longer available.
-
-Users should migrate to using *complement bracket expressions* (`[^...]`) instead.
-For example, `[^fo]` matches any character that is not an `f` or `o`.
+The optional complement syntax (`~`) is deprecated. Prefer complement bracket
+expressions (`[^...]`) instead. For example, `[^fo]` matches any character that
+is not an `f` or `o`.
 
 ### DocValuesFieldExistsQuery, NormsFieldExistsQuery and KnnVectorFieldExistsQuery removed in favor of FieldExistsQuery (LUCENE-10436)
 
