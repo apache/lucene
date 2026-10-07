@@ -163,6 +163,11 @@ sealed interface DedupVectorValues
     }
 
     @Override
+    public boolean prefetch(int ord, int count) throws IOException {
+      return DedupUtil.prefetchRemapped(groupView, fieldOrdToGroupOrd, ord, count, size());
+    }
+
+    @Override
     public byte[] vectorValue(int ord) throws IOException {
       return groupView.vectorValue(fieldOrdToGroupOrd.get(ord));
     }
@@ -288,6 +293,11 @@ sealed interface DedupVectorValues
     }
 
     @Override
+    public boolean prefetch(int ord, int count) throws IOException {
+      return DedupUtil.prefetchRemapped(groupView, fieldOrdToGroupOrd, ord, count, size());
+    }
+
+    @Override
     public float[] vectorValue(int ord) throws IOException {
       return groupView.vectorValue(fieldOrdToGroupOrd.get(ord));
     }
@@ -410,6 +420,11 @@ sealed interface DedupVectorValues
         scratch[i] = fieldOrdToGroupOrd.get(ordsToPrefetch[i]);
       }
       groupView.prefetch(scratch, numOrds);
+    }
+
+    @Override
+    public boolean prefetch(int ord, int count) throws IOException {
+      return DedupUtil.prefetchRemapped(groupView, fieldOrdToGroupOrd, ord, count, size());
     }
 
     @Override
