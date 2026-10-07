@@ -20,17 +20,17 @@ import java.io.Closeable;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
+import java.util.stream.Stream;
 import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.NoReuseHint;
 
 /**
- * A data file as merges read it. Read advice applies to a whole mapping, so when searches read the
- * file at random a merge maps it again without that advice, instead of reading through the mapping
- * searches use. The merge mapping does not claim another access pattern: a merge in this format
- * comes back to vectors it has already read, to compare the ones whose hashes collide and to
- * quantize the distinct ones once all are known.
+ * The raw vectors as merges read them: at random, since a duplicate reads its group's vector back,
+ * and not reused. Read advice applies to a whole mapping, so when searches read the file
+ * differently a merge maps it again instead of reading through the mapping searches use.
  *
  * <p>The mapping is opened when a merge first asks for it, shared by the merges that follow, and
  * closed when the last one is done, or with the reader.
@@ -55,12 +55,12 @@ final class MergeInput implements Closeable {
   }
 
   /**
-   * Whether a merge needs a mapping of its own: only when searches read the file at random. A file
-   * a merge opened is already read the way a merge reads it.
+   * Whether a merge needs a mapping of its own: only when searches read the file differently. A
+   * file a merge opened is already read the way a merge reads it.
    */
   boolean needed() {
     return context.context() != IOContext.Context.MERGE
-        && context.hints().contains(DataAccessHint.RANDOM);
+        && context.hints().equals(mergeContext().hints()) == false;
   }
 
   /** The mapping for one more merge, to give back with {@link #release()}. */
@@ -90,12 +90,18 @@ final class MergeInput implements Closeable {
     mergeInput = null;
   }
 
-  /** The context searches opened the file with, as a merge, without their access pattern. */
+  /** A merge context with what the caller said about the file, read at random and not reused. */
   private IOContext mergeContext() {
+    Stream<IOContext.FileOpenHint> merge = Stream.of(DataAccessHint.RANDOM, NoReuseHint.INSTANCE);
     return IOContext.merge()
         .withHints(
-            context.hints().stream()
-                .filter(hint -> hint instanceof DataAccessHint == false)
+            Stream.concat(
+                    context.hints().stream()
+                        .filter(
+                            hint ->
+                                hint instanceof DataAccessHint == false
+                                    && hint != NoReuseHint.INSTANCE),
+                    merge)
                 .toArray(IOContext.FileOpenHint[]::new));
   }
 

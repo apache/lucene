@@ -86,8 +86,7 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
   private final String quantizedVectorDataExtension;
   // the vectors as merges read them, shared with this reader's merge instances
   private final MergeInput mergeVectorData;
-  private final MergeInput mergeQuantizedVectorData;
-  // whether this is a merge instance, reading through the merge inputs
+  // whether this is a merge instance, reading the raw vectors through the merge mapping
   private final boolean mergeInstance;
   // on a merge instance: whether it gave its mappings back
   private boolean finished;
@@ -154,11 +153,11 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
       throw t;
     }
     this.mergeVectorData = mergeInput(state, vectorDataExtension, vectorData);
-    this.mergeQuantizedVectorData =
-        mergeInput(state, quantizedVectorDataExtension, quantizedVectorData);
   }
 
-  /** Reads the same fields as {@code reader}, through the mappings a merge opened for itself. */
+  /**
+   * Reads the same fields as {@code reader}, the raw vectors through the mapping a merge opened.
+   */
   private DedupScalarQuantizedVectorsReader(
       DedupScalarQuantizedVectorsReader reader,
       IndexInput vectorData,
@@ -170,7 +169,6 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
     this.vectorDataExtension = reader.vectorDataExtension;
     this.quantizedVectorDataExtension = reader.quantizedVectorDataExtension;
     this.mergeVectorData = reader.mergeVectorData;
-    this.mergeQuantizedVectorData = reader.mergeQuantizedVectorData;
     this.mergeInstance = true;
   }
 
@@ -590,17 +588,10 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
     IndexInput data = mergeVectorData.acquire();
     boolean success = false;
     try {
-      IndexInput quantizedData = mergeQuantizedVectorData.acquire();
-      try {
-        FlatVectorsReader reader =
-            new DedupScalarQuantizedVectorsReader(this, data.clone(), quantizedData.clone());
-        success = true;
-        return reader;
-      } finally {
-        if (success == false) {
-          mergeQuantizedVectorData.release();
-        }
-      }
+      FlatVectorsReader reader =
+          new DedupScalarQuantizedVectorsReader(this, data.clone(), quantizedVectorData.clone());
+      success = true;
+      return reader;
     } finally {
       if (success == false) {
         mergeVectorData.release();
@@ -609,14 +600,14 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
   }
 
   /**
-   * Gives back the mappings this merge instance holds, once: finishing the reader it came from, or
+   * Gives back the mapping this merge instance holds, once: finishing the reader it came from, or
    * finishing it again, releases nothing.
    */
   @Override
   public synchronized void finishMerge() throws IOException {
     if (mergeInstance && finished == false) {
       finished = true;
-      IOUtils.close(mergeVectorData::release, mergeQuantizedVectorData::release);
+      mergeVectorData.release();
     }
   }
 
@@ -625,7 +616,7 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
     if (mergeInstance) {
       IOUtils.close(vectorData, quantizedVectorData);
     } else {
-      IOUtils.close(vectorData, quantizedVectorData, mergeVectorData, mergeQuantizedVectorData);
+      IOUtils.close(vectorData, quantizedVectorData, mergeVectorData);
     }
   }
 

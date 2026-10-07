@@ -39,28 +39,28 @@ import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.NoReuseHint;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
 /**
- * Searches read the de-duplicated vectors at random, and read advice applies to a whole mapping, so
- * a merge opens the data files for itself without that advice.
+ * Read advice applies to a whole mapping, so a merge maps the raw vectors again: it reads them at
+ * random, as a duplicate reads its group's vector back, and does not reuse them. Searches keep the
+ * quantized vectors, and a merge reads them the same way, through the mapping searches use.
  */
 public class TestDedupVectorsMergeReadAdvice extends LuceneTestCase {
 
   private static final int DIM = 8;
 
   public void testFlatMergeOpensItsOwnVectors() throws Exception {
-    assertMergeOpensItsOwnVectors(new DedupHnswVectorsFormat(), List.of("vdd"));
+    assertMergeOpensItsOwnVectors(new DedupHnswVectorsFormat());
   }
 
-  public void testQuantizedMergeOpensItsOwnVectors() throws Exception {
-    assertMergeOpensItsOwnVectors(
-        new DedupHnswScalarQuantizedVectorsFormat(), List.of("vdd", "vdqd"));
+  public void testQuantizedMergeOpensItsOwnRawVectors() throws Exception {
+    assertMergeOpensItsOwnVectors(new DedupHnswScalarQuantizedVectorsFormat());
   }
 
-  private void assertMergeOpensItsOwnVectors(KnnVectorsFormat format, List<String> extensions)
-      throws Exception {
+  private void assertMergeOpensItsOwnVectors(KnnVectorsFormat format) throws Exception {
     Opens opens = new Opens();
     // vectors repeat within and across segments, so the merge compares and revisits them
     float[][] distinct = new float[8][];
@@ -91,14 +91,13 @@ public class TestDedupVectorsMergeReadAdvice extends LuceneTestCase {
           opens.clear();
           w.forceMerge(1);
 
-          for (String extension : extensions) {
-            List<Open> merged = mergeOpens(opens, extension);
-            assertFalse(
-                "the merge never opened ." + extension + " for itself: " + opens, merged.isEmpty());
-            for (Open open : merged) {
-              assertTrue("the merge kept ." + extension + " open: " + open, open.closed());
-            }
+          List<Open> merged = mergeOpens(opens, "vdd");
+          assertFalse("the merge never opened .vdd for itself: " + opens, merged.isEmpty());
+          for (Open open : merged) {
+            assertTrue("the merge kept .vdd open: " + open, open.closed());
           }
+          assertEquals(
+              "the merge mapped the quantized vectors again", List.of(), mergeOpens(opens, "vdqd"));
         }
         w.commit();
       }
@@ -194,10 +193,11 @@ public class TestDedupVectorsMergeReadAdvice extends LuceneTestCase {
   private static List<Open> mergeOpens(Opens opens, String extension) {
     List<Open> merge = new ArrayList<>();
     for (Open open : opens.all()) {
-      // integrity checks read the whole file once and say so with an access hint
+      // a merge building a graph reads the merged vectors at random too, but keeps them
       if (open.name().endsWith("." + extension)
           && open.context().context() == IOContext.Context.MERGE
-          && open.context().hints(DataAccessHint.class).findAny().isEmpty()) {
+          && open.context().hints().contains(DataAccessHint.RANDOM)
+          && open.context().hints().contains(NoReuseHint.INSTANCE)) {
         merge.add(open);
       }
     }
