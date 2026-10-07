@@ -460,6 +460,80 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
+  public void osqCenter(float[] vector, float[] centroid, float[] stats) {
+    float dot = 0;
+    float min = Float.MAX_VALUE;
+    float max = -Float.MAX_VALUE;
+    float sumSq = 0;
+    float sum = 0;
+    for (int i = 0; i < vector.length; i++) {
+      dot += vector[i] * centroid[i];
+      float x = vector[i] - centroid[i];
+      vector[i] = x;
+      min = Math.min(min, x);
+      max = Math.max(max, x);
+      sumSq += x * x;
+      sum += x;
+    }
+    stats[0] = dot;
+    stats[1] = min;
+    stats[2] = max;
+    stats[3] = sumSq;
+    stats[4] = sum;
+  }
+
+  @Override
+  public void osqGridStats(float[] vector, float lower, float upper, int points, double[] stats) {
+    osqGridStatsImpl(vector, lower, upper, points, stats);
+  }
+
+  static void osqGridStatsImpl(
+      float[] vector, float lower, float upper, int points, double[] stats) {
+    float stepInv = (points - 1f) / (upper - lower);
+    float step = (upper - lower) / (points - 1f);
+    long sumK = 0;
+    long sumKK = 0;
+    double sumXK = 0;
+    double sumXD = 0;
+    double sumDD = 0;
+    double sumX = 0;
+    for (float x : vector) {
+      // Adds 0.5 and truncates, as Math.round is costly to match in the Panama version.
+      int k = (int) ((Math.min(Math.max(x, lower), upper) - lower) * stepInv + 0.5f);
+      float d = x - (lower + k * step);
+      sumK += k;
+      sumKK += (long) k * k;
+      sumXK += x * k;
+      sumXD += x * d;
+      sumDD += d * d;
+      sumX += x;
+    }
+    stats[0] = sumK;
+    stats[1] = sumKK;
+    stats[2] = sumXK;
+    stats[3] = sumXD;
+    stats[4] = sumDD;
+    stats[5] = sumX;
+  }
+
+  @Override
+  public int osqAssign(float[] vector, float lower, float upper, float step, byte[] dest) {
+    return osqAssignImpl(vector, 0, lower, upper, step, dest);
+  }
+
+  // The Panama version calls this for its tail, with start where its vector loop stopped.
+  static int osqAssignImpl(
+      float[] vector, int start, float lower, float upper, float step, byte[] dest) {
+    int sum = 0;
+    for (int i = start; i < vector.length; i++) {
+      int k = Math.round((Math.min(Math.max(vector[i], lower), upper) - lower) / step);
+      sum += k;
+      dest[i] = (byte) k;
+    }
+    return sum;
+  }
+
+  @Override
   public int filterByScore(
       int[] docBuffer, double[] scoreBuffer, double minScoreInclusive, int upTo) {
     int newSize = 0;

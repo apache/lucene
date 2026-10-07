@@ -599,6 +599,52 @@ public final class VectorUtil {
   }
 
   /**
+   * Subtracts {@code centroid} from {@code vector} in place, for the optimized scalar quantizer,
+   * and writes into {@code stats} the dot product of the original vector with {@code centroid},
+   * then the min, max, sum of squares and sum of the result.
+   */
+  public static void osqCenter(float[] vector, float[] centroid, float[] stats) {
+    if (vector.length != centroid.length) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + vector.length + "!=" + centroid.length);
+    }
+    if (stats.length < 5) {
+      throw new IllegalArgumentException("stats must have at least 5 entries: " + stats.length);
+    }
+    IMPL.osqCenter(vector, centroid, stats);
+  }
+
+  /**
+   * Computes the sums that the optimized scalar quantizer's interval search needs for one interval.
+   * Each value {@code x} of {@code vector}, limited to {@code [lower, upper]}, is rounded half up
+   * to one of {@code points} levels {@code k}, which dequantizes to {@code x'}. Writes the sums of
+   * k, k * k, x * k, x * (x - x'), (x - x') * (x - x') and x into {@code stats}.
+   */
+  public static void osqGridStats(
+      float[] vector, float lower, float upper, int points, double[] stats) {
+    if (points < 2 || points > 256) {
+      throw new IllegalArgumentException("points must be in [2, 256]: " + points);
+    }
+    if (stats.length < 6) {
+      throw new IllegalArgumentException("stats must have at least 6 entries: " + stats.length);
+    }
+    IMPL.osqGridStats(vector, lower, upper, points, stats);
+  }
+
+  /**
+   * Quantizes {@code vector} into {@code dest} for the optimized scalar quantizer, as {@code
+   * Math.round((x - lower) / step)} with each value {@code x} limited to {@code [lower, upper]},
+   * and returns the sum of the quantized values.
+   */
+  public static int osqAssign(float[] vector, float lower, float upper, float step, byte[] dest) {
+    if (dest.length < vector.length) {
+      throw new IllegalArgumentException(
+          "dest is shorter than vector: " + dest.length + " < " + vector.length);
+    }
+    return IMPL.osqAssign(vector, lower, upper, step, dest);
+  }
+
+  /**
    * filter both {@code docBuffer} and {@code scoreBuffer} with {@code minScoreInclusive}, each
    * {@code docBuffer} and {@code scoreBuffer} of the same index forms a pair, pairs with score not
    * greater than or equal to {@code minScoreInclusive} will be filtered out from the array.

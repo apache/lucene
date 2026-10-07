@@ -561,6 +561,21 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
+  public void osqCenter(float[] vector, float[] centroid, float[] stats) {
+    delegateVectorUtilSupport.osqCenter(vector, centroid, stats);
+  }
+
+  @Override
+  public void osqGridStats(float[] vector, float lower, float upper, int points, double[] stats) {
+    delegateVectorUtilSupport.osqGridStats(vector, lower, upper, points, stats);
+  }
+
+  @Override
+  public int osqAssign(float[] vector, float lower, float upper, float step, byte[] dest) {
+    return delegateVectorUtilSupport.osqAssign(vector, lower, upper, step, dest);
+  }
+
+  @Override
   public int filterByScore(
       int[] docBuffer, double[] scoreBuffer, double minScoreInclusive, int upTo) {
     return invokeOrDelegate(
