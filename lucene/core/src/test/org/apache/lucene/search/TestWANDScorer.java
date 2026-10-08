@@ -1038,7 +1038,7 @@ public class TestWANDScorer extends LuceneTestCase {
             }
 
             @Override
-            public long cost() {
+            public long cost() throws IOException {
               return supplier.cost();
             }
           };

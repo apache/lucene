@@ -18,7 +18,6 @@ package org.apache.lucene.index;
 
 import java.util.Arrays;
 import java.util.List;
-import org.apache.lucene.search.ScoreDoc;
 
 /**
  * Common util methods for dealing with {@link IndexReader}s and {@link IndexReaderContext}s.
@@ -95,45 +94,90 @@ public final class ReaderUtil {
   }
 
   /**
-   * Partitions global doc IDs from ScoreDoc array by leaf. Extracts doc IDs, sorts them, and
-   * partitions across leaves.
+   * Result of partitioning doc IDs by leaf, including the original input ordinals for
+   * scatter/gather. {@code docIdsByLeaf[k]} holds the sorted global doc IDs that fall in leaf
+   * {@code k}, and {@code ordinalsByLeaf[k][i]} is the index in the original {@code globalDocIds}
+   * input array of the doc ID at {@code docIdsByLeaf[k][i]}.
    *
-   * @param hits the ScoreDoc array (typically from TopDocs.scoreDocs)
-   * @param leaves the index reader's leaves
-   * @return array indexed by leaf ord, containing global doc IDs for that leaf (empty if no hits)
+   * <p>Both arrays have the same shape: {@code ordinalsByLeaf[k].length == docIdsByLeaf[k].length}
+   * for every leaf {@code k}.
+   *
+   * @param docIdsByLeaf per-leaf sorted global doc IDs; {@code docIdsByLeaf[k]} holds the doc IDs
+   *     that fall in leaf {@code k} (empty if none)
+   * @param ordinalsByLeaf per-leaf original input positions; {@code ordinalsByLeaf[k][i]} is the
+   *     index in the original input array of the doc ID at {@code docIdsByLeaf[k][i]}
    */
-  public static int[][] partitionByLeaf(ScoreDoc[] hits, List<LeafReaderContext> leaves) {
+  public record PartitionedHits(int[][] docIdsByLeaf, int[][] ordinalsByLeaf) {}
+
+  /**
+   * Partitions global doc IDs by leaf, tracking each doc ID's original position in the input array
+   * so callers can reassemble per-leaf results back to input order (scatter/gather).
+   *
+   * <p>Doc IDs may be supplied in any order (e.g., ranking order); within each leaf the returned
+   * doc IDs are sorted in ascending order. For every partitioned doc ID the result also records its
+   * index in the original {@code globalDocIds} array, so callers can map per-leaf results back to
+   * input order. Callers that do not need the ordinals can simply ignore {@link
+   * PartitionedHits#ordinalsByLeaf()} and use {@link PartitionedHits#docIdsByLeaf()}.
+   *
+   * <p>The input array is not mutated.
+   *
+   * @param globalDocIds global doc IDs in any order (e.g., ranking order)
+   * @param leaves the index reader's leaves
+   * @return per-leaf sorted doc IDs alongside per-leaf ordinals into the input array
+   */
+  public static PartitionedHits partitionByLeaf(
+      int[] globalDocIds, List<LeafReaderContext> leaves) {
     int numLeaves = leaves.size();
-    int[][] result = new int[numLeaves][];
-    if (hits.length == 0) {
-      Arrays.fill(result, EMPTY_INT_ARRAY);
-      return result;
+    if (globalDocIds.length == 0) {
+      int[][] docIdsByLeaf = new int[numLeaves][];
+      int[][] ordinalsByLeaf = new int[numLeaves][];
+      Arrays.fill(docIdsByLeaf, EMPTY_INT_ARRAY);
+      Arrays.fill(ordinalsByLeaf, EMPTY_INT_ARRAY);
+      return new PartitionedHits(docIdsByLeaf, ordinalsByLeaf);
     }
-    int[] sortedDocIds = new int[hits.length];
-    for (int i = 0; i < hits.length; i++) {
-      sortedDocIds[i] = hits[i].doc;
+
+    // Pack each (docId, ordinal) into a long: docId in the high 32 bits, ordinal in the low 32,
+    // then sort with the primitive Arrays.sort(long[]). Both values are non-negative, so ascending
+    // long order matches ascending docId order and the ordinal rides along.
+    final long[] packed = new long[globalDocIds.length];
+    for (int i = 0; i < packed.length; i++) {
+      packed[i] = ((long) globalDocIds[i] << 32) | (i & 0xFFFFFFFFL);
     }
-    Arrays.sort(sortedDocIds);
+    Arrays.sort(packed);
+
+    // Partition into per-leaf slices via binary search on each leaf's end boundary
+    int[][] docIdsByLeaf = new int[numLeaves][];
+    int[][] ordinalsByLeaf = new int[numLeaves][];
     int from = 0;
     int leafIdx = 0;
-    for (; leafIdx < numLeaves && from < sortedDocIds.length; leafIdx++) {
+    for (; leafIdx < numLeaves && from < packed.length; leafIdx++) {
       LeafReaderContext leaf = leaves.get(leafIdx);
-      int leafEnd = leaf.docBase + leaf.reader().maxDoc();
-      if (sortedDocIds[from] >= leafEnd) {
-        result[leafIdx] = EMPTY_INT_ARRAY;
+      long leafEndPacked = ((long) (leaf.docBase + leaf.reader().maxDoc())) << 32;
+      if (packed[from] >= leafEndPacked) {
+        docIdsByLeaf[leafIdx] = EMPTY_INT_ARRAY;
+        ordinalsByLeaf[leafIdx] = EMPTY_INT_ARRAY;
         continue;
       }
-      int to = Arrays.binarySearch(sortedDocIds, from, sortedDocIds.length, leafEnd);
+      int to = Arrays.binarySearch(packed, from, packed.length, leafEndPacked);
       if (to < 0) {
         to = -to - 1;
       }
       int count = to - from;
       assert count > 0;
-      result[leafIdx] = new int[count];
-      System.arraycopy(sortedDocIds, from, result[leafIdx], 0, count);
+      int[] leafDocs = new int[count];
+      int[] leafOrds = new int[count];
+      for (int i = 0; i < count; i++) {
+        long p = packed[from + i];
+        leafDocs[i] = (int) (p >>> 32);
+        leafOrds[i] = (int) p;
+      }
+      docIdsByLeaf[leafIdx] = leafDocs;
+      ordinalsByLeaf[leafIdx] = leafOrds;
       from = to;
     }
-    Arrays.fill(result, leafIdx, numLeaves, EMPTY_INT_ARRAY);
-    return result;
+
+    Arrays.fill(docIdsByLeaf, leafIdx, numLeaves, EMPTY_INT_ARRAY);
+    Arrays.fill(ordinalsByLeaf, leafIdx, numLeaves, EMPTY_INT_ARRAY);
+    return new PartitionedHits(docIdsByLeaf, ordinalsByLeaf);
   }
 }

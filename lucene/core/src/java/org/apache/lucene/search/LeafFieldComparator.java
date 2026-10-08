@@ -111,4 +111,13 @@ public interface LeafFieldComparator {
    * collector when hits threshold is reached.
    */
   default void setHitsThresholdReached() throws IOException {}
+
+  /**
+   * Informs this leaf comparator that document skipping should be disabled for this segment. Called
+   * by {@link TopFieldCollector} when the search sort is a prefix of <em>this segment's</em> index
+   * sort, so the collector can already terminate early and any extra skipping work in the
+   * comparator is redundant. This is a per-segment decision: a {@link
+   * org.apache.lucene.index.MultiReader} may combine segments with different index sorts.
+   */
+  default void disableSkipping() {}
 }

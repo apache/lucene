@@ -26,6 +26,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
@@ -177,7 +178,8 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
     return vectorValue.length;
   }
 
-  static void packNibbles(byte[] unpacked, byte[] packed) {
+  /** Packs two 4-bit values per output byte: the upper half holds {@code unpacked[i]}. */
+  public static void packNibbles(byte[] unpacked, byte[] packed) {
     assert unpacked.length == packed.length * 2;
     for (int i = 0; i < packed.length; i++) {
       int x = unpacked[i] << 4 | unpacked[packed.length + i];
@@ -185,12 +187,9 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
     }
   }
 
-  static void unpackNibbles(byte[] packed, byte[] unpacked) {
-    assert unpacked.length == packed.length * 2;
-    for (int i = 0; i < packed.length; i++) {
-      unpacked[i] = (byte) ((packed[i] >> 4) & 0x0F);
-      unpacked[packed.length + i] = (byte) (packed[i] & 0x0F);
-    }
+  /** Unpacks two 4-bit values per input byte, the reverse of {@link #packNibbles}. */
+  public static void unpackNibbles(byte[] packed, byte[] unpacked) {
+    VectorUtil.int4Unpack(packed, unpacked);
   }
 
   static OffHeapScalarQuantizedVectorValues load(
@@ -242,7 +241,7 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
   }
 
   /** Dense off-heap scalar quantized vector values */
-  static class DenseOffHeapVectorValues extends OffHeapScalarQuantizedVectorValues {
+  public static class DenseOffHeapVectorValues extends OffHeapScalarQuantizedVectorValues {
     DenseOffHeapVectorValues(
         int dimension,
         int size,
@@ -265,7 +264,8 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
           slice);
     }
 
-    DenseOffHeapVectorValues(
+    /** Creates dense off-heap scalar quantized vector values over the given slice. */
+    public DenseOffHeapVectorValues(
         boolean isQuerySide,
         int dimension,
         int size,
@@ -311,6 +311,31 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
 
     @Override
     public VectorScorer scorer(float[] target) throws IOException {
+      assert isQuerySide == false;
+      OffHeapScalarQuantizedVectorValues.DenseOffHeapVectorValues copy = copy();
+      DocIndexIterator iterator = copy.iterator();
+      RandomVectorScorer scorer =
+          vectorsScorer.getRandomVectorScorer(similarityFunction, copy, target);
+      return new VectorScorer() {
+        @Override
+        public float score() throws IOException {
+          return scorer.score(iterator.index());
+        }
+
+        @Override
+        public DocIdSetIterator iterator() {
+          return iterator;
+        }
+
+        @Override
+        public VectorScorer.Bulk bulk(DocIdSetIterator matchingDocs) {
+          return Bulk.fromRandomScorerDense(scorer, iterator, matchingDocs);
+        }
+      };
+    }
+
+    @Override
+    public VectorScorer scorer(short[] target) throws IOException {
       assert isQuerySide == false;
       OffHeapScalarQuantizedVectorValues.DenseOffHeapVectorValues copy = copy();
       DocIndexIterator iterator = copy.iterator();
@@ -447,6 +472,31 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
         }
       };
     }
+
+    @Override
+    public VectorScorer scorer(short[] target) throws IOException {
+      assert isQuerySide == false;
+      SparseOffHeapVectorValues copy = copy();
+      DocIndexIterator iterator = copy.iterator();
+      RandomVectorScorer scorer =
+          vectorsScorer.getRandomVectorScorer(similarityFunction, copy, target);
+      return new VectorScorer() {
+        @Override
+        public float score() throws IOException {
+          return scorer.score(iterator.index());
+        }
+
+        @Override
+        public DocIdSetIterator iterator() {
+          return iterator;
+        }
+
+        @Override
+        public VectorScorer.Bulk bulk(DocIdSetIterator matchingDocs) {
+          return Bulk.fromRandomScorerSparse(scorer, iterator, matchingDocs);
+        }
+      };
+    }
   }
 
   private static class EmptyOffHeapVectorValues extends OffHeapScalarQuantizedVectorValues {
@@ -484,6 +534,11 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
 
     @Override
     public VectorScorer scorer(float[] target) {
+      return null;
+    }
+
+    @Override
+    public VectorScorer scorer(short[] target) {
       return null;
     }
   }

@@ -45,13 +45,14 @@ set JAVA_EXE=java.exe
 %JAVA_EXE% -version >NUL 2>&1
 if %ERRORLEVEL% equ 0 goto execute
 
-echo. 1>&2
-echo ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH. 1>&2
-echo. 1>&2
-echo Please set the JAVA_HOME variable in your environment to match the 1>&2
-echo location of your Java installation. 1>&2
+1>&2 echo.
+1>&2 echo ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH.
+1>&2 echo.
+1>&2 echo Please set the JAVA_HOME variable in your environment to match the
+1>&2 echo location of your Java installation.
 
 "%COMSPEC%" /c exit 1
+goto exitWithErrorLevel
 
 :findJavaFromJavaHome
 set JAVA_HOME=%JAVA_HOME:"=%
@@ -59,13 +60,14 @@ set JAVA_EXE=%JAVA_HOME%/bin/java.exe
 
 if exist "%JAVA_EXE%" goto execute
 
-echo. 1>&2
-echo ERROR: JAVA_HOME is set to an invalid directory: %JAVA_HOME% 1>&2
-echo. 1>&2
-echo Please set the JAVA_HOME variable in your environment to match the 1>&2
-echo location of your Java installation. 1>&2
+1>&2 echo.
+1>&2 echo ERROR: JAVA_HOME is set to an invalid directory: %JAVA_HOME%
+1>&2 echo.
+1>&2 echo Please set the JAVA_HOME variable in your environment to match the
+1>&2 echo location of your Java installation.
 
 "%COMSPEC%" /c exit 1
+goto exitWithErrorLevel
 
 :execute
 @rem Setup the command line
@@ -77,7 +79,20 @@ SET GRADLE_TEMPDIR=%DIRNAME%\.gradle\tmp
 IF NOT EXIST "%GRADLE_TEMPDIR%" MKDIR "%GRADLE_TEMPDIR%"
 SET DEFAULT_JVM_OPTS=%DEFAULT_JVM_OPTS% "-Djava.io.tmpdir=%GRADLE_TEMPDIR%"
 
+@rem Intranet mirrors for gradle-wrapper.jar and the gradle distribution, see GradleMirrorSetup.java
+@rem and 'gradlew helpLocalSettings'.
+IF DEFINED LUCENE_GRADLE_DISTRIBUTION_URL goto intranetSetup
+IF DEFINED LUCENE_GRADLE_WRAPPER_URL goto intranetSetup
+goto wrapperJar
+
+:intranetSetup
+"%JAVA_EXE%" %JAVA_OPTS% "%APP_HOME%/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/GradleMirrorSetup.java" "%APP_HOME%" %*
+IF %ERRORLEVEL% NEQ 0 goto exitWithErrorLevel
+
+:wrapperJar
 @rem LUCENE-9266: verify and download the gradle wrapper jar if we don't have one.
+@rem Skipped entirely if LUCENE_GRADLE_VERIFY_CHECKSUMS=false, see 'gradlew helpLocalSettings'.
+IF /I "%LUCENE_GRADLE_VERIFY_CHECKSUMS%"=="false" goto gradleProperties
 set GRADLE_WRAPPER_JAR=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar
 set GRADLE_WRAPPER_CHECKSUM=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar.sha256
 
@@ -91,11 +106,12 @@ for /f "tokens=* delims=" %%H in ('certutil -hashfile "%GRADLE_WRAPPER_JAR%" SHA
 )
 
 if /i "%ACTUAL%" NEQ "%EXPECTED%" (
-  "%JAVA_EXE%" -XX:TieredStopAtLevel=1 %JAVA_OPTS% "%APP_HOME%/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/WrapperDownloader.java" "%GRADLE_WRAPPER_JAR%"
+  "%JAVA_EXE%" -XX:TieredStopAtLevel=1 %JAVA_OPTS% "%APP_HOME%/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/GradleWrapperDownloader.java" "%GRADLE_WRAPPER_JAR%"
   IF %ERRORLEVEL% EQU 1 goto failWithJvmMessage
   IF %ERRORLEVEL% NEQ 0 goto exitWithErrorLevel
 )
 
+:gradleProperties
 @rem Generate gradle.properties if it does not exist
 IF NOT EXIST "%APP_HOME%\gradle.properties" (
   @rem local expansion is needed to check ERRORLEVEL inside control blocks.
@@ -119,8 +135,9 @@ goto exitWithErrorLevel
 @rem Execute Gradle
 @rem endlocal doesn't take effect until after the line is parsed and variables are expanded
 @rem which allows us to clear the local environment before executing the java command
-endlocal & "%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -jar "%APP_HOME%\gradle\wrapper\gradle-wrapper.jar" %* & call :exitWithErrorLevel
+endlocal & "%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -jar "%APP_HOME%\gradle\wrapper\gradle-wrapper.jar" %* & call :exitWithErrorLevel & goto exitWithErrorLevel
 
+@rem This label must not be changed. We rely on old scripts being able to jump to this point.
 :exitWithErrorLevel
 @rem Use "%COMSPEC%" /c exit to allow operators to work properly in scripts
 "%COMSPEC%" /c exit %ERRORLEVEL%

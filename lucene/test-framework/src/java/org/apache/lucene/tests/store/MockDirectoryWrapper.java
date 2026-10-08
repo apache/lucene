@@ -1120,8 +1120,8 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
     }
   }
 
-  // don't override optional methods like copyFrom: we need the default impl for things like disk
-  // full checks. we randomly exercise "raw" directories anyway. We ensure default impls are used:
+  // Pin the FilterDirectory default impls below so subclasses can't accidentally override them;
+  // copyFrom routes through createOutput, which is where disk-full simulation happens.
 
   @Override
   public final ChecksumIndexInput openChecksumInput(String name) throws IOException {

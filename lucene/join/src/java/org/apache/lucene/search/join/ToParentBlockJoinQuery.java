@@ -175,7 +175,7 @@ public class ToParentBlockJoinQuery extends Query {
         }
 
         @Override
-        public long cost() {
+        public long cost() throws IOException {
           return childScorerSupplier.cost();
         }
 
