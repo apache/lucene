@@ -21,10 +21,12 @@ import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentInfo;
+import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.Directory;
@@ -181,6 +183,73 @@ public class TestLucene90CompoundFormat extends BaseCompoundFormatTestCase {
     return ((MemorySegmentAccessInput) in).segmentSliceOrNull(0, 1).address();
   }
 
+  public void testNoMergeMappingOnceClosed() throws IOException {
+    try (Directory base = newDirectory()) {
+      SegmentInfo si = writeCompound(base);
+      DataOpens dir = new DataOpens(base);
+      Directory cfs = si.getCodec().compoundFormat().getCompoundReader(dir, si);
+      cfs.close();
+      expectThrows(AlreadyClosedException.class, () -> cfs.openInput("_123.0", IOContext.merge()));
+      assertEquals(1, dir.opens.size());
+      assertEquals(1, dir.closes);
+    }
+  }
+
+  public void testAFailedMergeOpenKeepsNothingOpen() throws IOException {
+    try (Directory base = newDirectory()) {
+      SegmentInfo si = writeCompound(base);
+      DataOpens dir = new DataOpens(base);
+      try (Directory cfs = si.getCodec().compoundFormat().getCompoundReader(dir, si)) {
+        dir.failNextOpen = true;
+        expectThrows(IOException.class, () -> cfs.openInput("_123.0", IOContext.merge()));
+        assertEquals(1, dir.opens.size());
+        try (IndexInput merge = cfs.openInput("_123.0", IOContext.merge());
+            IndexInput expected = base.openInput("_123.0", IOContext.DEFAULT)) {
+          assertSameStreams("_123.0", expected, merge);
+        }
+        assertEquals("the next merge maps the file", 2, dir.opens.size());
+      }
+      assertEquals(2, dir.closes);
+    }
+  }
+
+  public void testConcurrentMergeOpensMapOnce() throws Exception {
+    try (Directory base = newDirectory()) {
+      SegmentInfo si = writeCompound(base);
+      DataOpens dir = new DataOpens(base);
+      try (Directory cfs = si.getCodec().compoundFormat().getCompoundReader(dir, si)) {
+        int threadCount = 2 + random().nextInt(4);
+        CountDownLatch start = new CountDownLatch(1);
+        List<Thread> threads = new ArrayList<>();
+        List<Throwable> failures = Collections.synchronizedList(new ArrayList<>());
+        for (int t = 0; t < threadCount; t++) {
+          String file = "_123." + (t % 2);
+          Thread thread =
+              new Thread(
+                  () -> {
+                    try {
+                      start.await();
+                      try (IndexInput in = cfs.openInput(file, IOContext.merge())) {
+                        in.seek(in.length());
+                      }
+                    } catch (Throwable e) {
+                      failures.add(e);
+                    }
+                  });
+          thread.start();
+          threads.add(thread);
+        }
+        start.countDown();
+        for (Thread thread : threads) {
+          thread.join();
+        }
+        assertEquals(List.of(), failures);
+        assertEquals(2, dir.opens.size());
+      }
+      assertEquals(2, dir.closes);
+    }
+  }
+
   private static SegmentInfo writeCompound(Directory dir) throws IOException {
     SegmentInfo si = newSegmentInfo(dir, "_123");
     List<String> files = new ArrayList<>();
@@ -196,9 +265,10 @@ public class TestLucene90CompoundFormat extends BaseCompoundFormatTestCase {
 
   /** Records the contexts the compound data file is opened with, and counts closes. */
   private static class DataOpens extends FilterDirectory {
-    final List<IOContext> opens = new ArrayList<>();
-    int closes;
-    boolean gone;
+    final List<IOContext> opens = Collections.synchronizedList(new ArrayList<>());
+    volatile int closes;
+    volatile boolean gone;
+    volatile boolean failNextOpen;
 
     DataOpens(Directory in) {
       super(in);
@@ -212,11 +282,17 @@ public class TestLucene90CompoundFormat extends BaseCompoundFormatTestCase {
       if (gone && opens.isEmpty() == false) {
         throw new NoSuchFileException(name);
       }
+      if (failNextOpen) {
+        failNextOpen = false;
+        throw new IOException("simulated failure opening " + name);
+      }
       opens.add(context);
       return new FilterIndexInput(name, super.openInput(name, context)) {
         @Override
         public void close() throws IOException {
-          closes++;
+          synchronized (DataOpens.this) {
+            closes++;
+          }
           super.close();
         }
 
