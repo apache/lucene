@@ -429,7 +429,7 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
       dir.setPreload(MMapDirectory.NO_FILES);
       try (var in = (MemorySegmentIndexInput) dir.openInput("test", IOContext.DEFAULT)) {
         for (int i = 0; i < PrefetchBackoff.N; i++) {
-          assertTrue("call " + i, in.backoff.shouldProbe());
+          assertTrue("call " + i, in.backoff.shouldProbe(++in.prefetchCalls));
           in.backoff.onHit();
         }
       }
@@ -438,11 +438,33 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
         int calls = 1 << 16;
         int probes = 0;
         for (int i = 0; i < calls; i++) {
-          if (in.backoff.shouldProbe()) {
+          if (in.backoff.shouldProbe(++in.prefetchCalls)) {
             probes++;
           }
         }
         assertTrue("expected sampling, got " + probes + " probes in " + calls, probes < calls / 16);
+      }
+    }
+  }
+
+  // Each input seeds its call counter from a shared sequence, so among SKIP consecutive clones of
+  // a warm input exactly one samples on its first prefetch call.
+  public void testClonesSampleAtDifferentOffsets() throws IOException {
+    try (MMapDirectory dir =
+        new MMapDirectory(createTempDir("testClonesSampleAtDifferentOffsets"))) {
+      try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
+        out.writeBytes(new byte[64], 0, 64);
+      }
+      dir.setPreload(MMapDirectory.ALL_FILES); // warm from the first call
+      try (var in = (MemorySegmentIndexInput) dir.openInput("test", IOContext.DEFAULT)) {
+        int firstCallProbes = 0;
+        for (int i = 0; i < PrefetchBackoff.SKIP; i++) {
+          MemorySegmentIndexInput clone = in.clone();
+          if (clone.backoff.shouldProbe(++clone.prefetchCalls)) {
+            firstCallProbes++;
+          }
+        }
+        assertEquals(1, firstCallProbes);
       }
     }
   }

@@ -58,6 +58,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
   final MemorySegment[] segments;
   final Function<IOContext, ReadAdvice> toReadAdvice;
   final PrefetchBackoff backoff;
+  int prefetchCalls; // this input's own count, seeded per input; see PrefetchBackoff
 
   int curSegmentIndex = -1;
   MemorySegment
@@ -118,6 +119,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
     this.curSegment = segments[0];
     this.toReadAdvice = toReadAdvice;
     this.backoff = backoff;
+    this.prefetchCalls = backoff.nextSeed();
   }
 
   void ensureOpen() {
@@ -346,7 +348,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
 
     ensureOpen();
 
-    if (backoff.shouldProbe() == false) {
+    if (backoff.shouldProbe(++prefetchCalls) == false) {
       return false;
     }
 

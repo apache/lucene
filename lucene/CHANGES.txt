@@ -180,7 +180,7 @@ Optimizations
 ---------------------
 * GITHUB#16145: Bound the prefetch backoff in MemorySegmentIndexInput. The gap between page-cache probes used to
   grow without limit, so under memory pressure prefetch effectively stopped working. A file now probes on every
-  prefetch call until 1024 consecutive hits, then 1 in 64 calls; a miss goes back to probing on every call.
+  prefetch call until 1024 consecutive hits, then every 64th call; a miss goes back to probing on every call.
   Preloaded files start in sampling mode. (Michael Marshall)
 
 * GITHUB#16431: Add support for Block-Max WAND dynamic score skipping in FunctionScoreQuery

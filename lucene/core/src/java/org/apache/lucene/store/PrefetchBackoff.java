@@ -16,17 +16,21 @@
  */
 package org.apache.lucene.store;
 
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Decides whether {@link MemorySegmentIndexInput#prefetch} should check the page cache before
  * calling madvise. One instance is shared by all clones and slices of an input.
  *
- * <p>Probe on every call until {@link #N} consecutive hits, then 1 in {@link #SKIP} calls; a miss
+ * <p>Probe on every call until {@link #N} consecutive hits, then every {@link #SKIP}th call; a miss
  * goes back to probing on every call. Files start cold unless preloaded: a wrong warm guess costs
- * about SKIP unprefetched reads with no feedback, a wrong cold guess costs N cheap probes. While
- * sampling, an eviction goes unnoticed for about SKIP reads.
+ * up to SKIP unprefetched reads with no feedback, a wrong cold guess costs N cheap probes. While
+ * sampling, an eviction goes unnoticed for at most SKIP - 1 reads.
+ *
+ * <p>Each input counts its own calls, seeded from a sequence number taken when it is created, so
+ * consecutive clones sample at different offsets and short-lived clones still sample collectively,
+ * though possibly at a lower frequency if clones sample fewer than {@link #SKIP} times per
+ * instance.
  */
 final class PrefetchBackoff {
 
@@ -39,12 +43,13 @@ final class PrefetchBackoff {
   // p > 3/n), so it takes on the order of a thousand hits to be confident enough to skip.
   static final int N = 1024;
 
-  // 1 in SKIP calls probes when the file looks warm, so an eviction costs about SKIP unprefetched
-  // reads before a sample notices it. On fully cached files, this is assumed to be noise.
-  // Must be a power of two.
+  // Every SKIPth call probes when the file looks warm, so an eviction costs at most SKIP - 1
+  // unprefetched reads before a sample notices it. On fully cached files, this is assumed to be
+  // noise. Must be a power of two.
   static final int SKIP = 64;
 
   private final AtomicInteger consecutiveHits;
+  private final AtomicInteger inputs;
 
   PrefetchBackoff() {
     this(false);
@@ -53,12 +58,17 @@ final class PrefetchBackoff {
   /** A preloaded file was touched page by page at open, so it starts in sampling mode. */
   PrefetchBackoff(boolean preloaded) {
     consecutiveHits = new AtomicInteger(preloaded ? N : 0);
+    inputs = new AtomicInteger();
   }
 
-  boolean shouldProbe() {
-    // ThreadLocalRandom keeps its state in Thread fields: nothing per clone to allocate or keep in
-    // sync, and no counter for callers' loops to line up with.
-    return consecutiveHits.get() < N || (ThreadLocalRandom.current().nextInt() & (SKIP - 1)) == 0;
+  /** Initial value for a new input's call counter, see {@link #shouldProbe}. Once per input. */
+  int nextSeed() {
+    return inputs.incrementAndGet();
+  }
+
+  /** {@code calls} is the input's own call count, starting from {@link #nextSeed()}. */
+  boolean shouldProbe(int calls) {
+    return consecutiveHits.get() < N || (calls & (SKIP - 1)) == 0;
   }
 
   // Both updates are racy on purpose. A lost increment or a repeated reset is harmless, and the
