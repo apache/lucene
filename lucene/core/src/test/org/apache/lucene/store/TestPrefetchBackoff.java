@@ -16,10 +16,8 @@
  */
 package org.apache.lucene.store;
 
-import static org.apache.lucene.store.PrefetchBackoff.HITS_AT_MAX_SKIP;
-import static org.apache.lucene.store.PrefetchBackoff.MAX_SKIP;
-import static org.apache.lucene.store.PrefetchBackoff.MIN_SKIP;
 import static org.apache.lucene.store.PrefetchBackoff.N;
+import static org.apache.lucene.store.PrefetchBackoff.SKIP;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,99 +41,84 @@ public class TestPrefetchBackoff extends LuceneTestCase {
   private static double probeRate(PrefetchBackoff backoff) {
     int probes = 0;
     for (int i = 0; i < WINDOW; i++) {
-      if (backoff.shouldProbe(i)) {
+      if (backoff.shouldProbe()) {
         probes++;
       }
     }
     return (double) probes / WINDOW;
   }
 
-  private static void assertRate(double expected, double actual) {
-    assertEquals(expected, actual, expected * 0.05);
+  private static void assertSampling(PrefetchBackoff backoff) {
+    double expected = 1.0 / SKIP;
+    assertEquals(expected, probeRate(backoff), expected * 0.05);
   }
 
   public void testConstants() {
     assertEquals(1, Integer.bitCount(N));
-    assertEquals(1, Integer.bitCount(MIN_SKIP));
-    assertEquals(1, Integer.bitCount(MAX_SKIP));
-    assertEquals(MAX_SKIP, PrefetchBackoff.skip(HITS_AT_MAX_SKIP));
-    assertTrue(PrefetchBackoff.skip(HITS_AT_MAX_SKIP - 1) < MAX_SKIP);
+    assertEquals(1, Integer.bitCount(SKIP));
   }
 
-  public void testProbesUnconditionallyBeforeN() {
+  public void testStartsColdThenSamples() {
     PrefetchBackoff backoff = new PrefetchBackoff();
     for (int i = 0; i < N; i++) {
-      assertTrue("call " + i, backoff.shouldProbe(random().nextInt()));
+      assertTrue("call " + i, backoff.shouldProbe());
       backoff.onHit();
     }
+    assertSampling(backoff);
   }
 
-  public void testSkipSchedule() {
-    assertEquals(MIN_SKIP, PrefetchBackoff.skip(N));
-    assertEquals(MIN_SKIP, PrefetchBackoff.skip(2 * N - 1));
-    assertEquals(2 * MIN_SKIP, PrefetchBackoff.skip(2 * N));
-    assertEquals(4 * MIN_SKIP, PrefetchBackoff.skip(4 * N));
-    assertEquals(MAX_SKIP, PrefetchBackoff.skip(HITS_AT_MAX_SKIP));
-    assertEquals(MAX_SKIP, PrefetchBackoff.skip(2 * HITS_AT_MAX_SKIP));
-    assertEquals(MAX_SKIP, PrefetchBackoff.skip(Integer.MAX_VALUE));
-  }
-
-  public void testProbeRateDoublesWithHits() {
-    PrefetchBackoff backoff = new PrefetchBackoff();
-    int hits = 0;
-    for (int skip = MIN_SKIP; skip <= MAX_SKIP; skip *= 2) {
-      int target = N * (skip / MIN_SKIP);
-      hit(backoff, target - hits);
-      hits = target;
-      assertRate(1.0 / skip, probeRate(backoff));
+  public void testPreloadedStartsSampling() {
+    PrefetchBackoff backoff = new PrefetchBackoff(true);
+    assertSampling(backoff);
+    // a miss still re-arms the full ramp
+    backoff.onMiss();
+    for (int i = 0; i < N; i++) {
+      assertTrue("call " + i, backoff.shouldProbe());
+      backoff.onHit();
     }
+    assertSampling(backoff);
   }
 
-  public void testSaturatesAtMaxSkip() {
+  public void testMissProbesUnconditionallyUntilNHits() {
     PrefetchBackoff backoff = new PrefetchBackoff();
-    hit(backoff, 100 * HITS_AT_MAX_SKIP);
-    assertRate(1.0 / MAX_SKIP, probeRate(backoff));
+    hit(backoff, N);
+    assertSampling(backoff);
+    backoff.onMiss();
+    for (int i = 0; i < N; i++) {
+      assertTrue("call " + i, backoff.shouldProbe());
+      backoff.onHit();
+    }
+    assertSampling(backoff);
   }
 
-  public void testMissResetsFromAnyTier() {
+  public void testHitsPastNAreNoOps() {
     PrefetchBackoff backoff = new PrefetchBackoff();
-    for (int hits : new int[] {N, 3 * N, HITS_AT_MAX_SKIP, 10 * HITS_AT_MAX_SKIP}) {
+    hit(backoff, 100 * N);
+    assertSampling(backoff);
+    // still exactly one miss away from re-arming
+    backoff.onMiss();
+    for (int i = 0; i < N; i++) {
+      assertTrue("call " + i, backoff.shouldProbe());
+      backoff.onHit();
+    }
+    assertSampling(backoff);
+  }
+
+  public void testMissResetsAtAnyPoint() {
+    PrefetchBackoff backoff = new PrefetchBackoff();
+    for (int hits : new int[] {0, 1, N / 2, N - 1, N, 10 * N}) {
+      backoff.onMiss();
       hit(backoff, hits);
-      assertTrue(probeRate(backoff) < 1.0);
       backoff.onMiss();
-      for (int i = 0; i < N; i++) {
-        assertTrue("hits=" + hits + " call " + i, backoff.shouldProbe(random().nextInt()));
-        backoff.onHit();
-      }
-      backoff.onMiss();
-    }
-  }
-
-  public void testCadenceNotAlignedWithBatchLoops() {
-    PrefetchBackoff backoff = new PrefetchBackoff();
-    for (int tierHits : new int[] {N, HITS_AT_MAX_SKIP}) {
-      backoff.onMiss();
-      hit(backoff, tierHits);
-      int skip = PrefetchBackoff.skip(tierHits);
-      int[] probesPerResidue = new int[skip];
-      for (int i = 0; i < WINDOW; i++) {
-        if (backoff.shouldProbe(i)) {
-          probesPerResidue[i % skip]++;
-        }
-      }
-      // If probes lined up with the low bits of the counter, one residue would take all of them.
-      // Counts for a well-mixed counter are Poisson around the mean, so allow a wide band.
-      int expected = WINDOW / skip / skip;
-      for (int r = 0; r < skip; r++) {
-        String msg = "skip=" + skip + " residue " + r + " probes=" + probesPerResidue[r];
-        assertTrue(msg, probesPerResidue[r] >= expected / 4);
-        assertTrue(msg, probesPerResidue[r] <= expected * 4);
-      }
+      assertTrue("hits=" + hits, backoff.shouldProbe());
+      backoff.onHit();
+      assertTrue("hits=" + hits, backoff.shouldProbe());
     }
   }
 
   public void testConcurrentHitsAndProbes() throws Exception {
     PrefetchBackoff backoff = new PrefetchBackoff();
+    backoff.onMiss();
     int threads = 8;
     ExecutorService exec =
         Executors.newFixedThreadPool(threads, new NamedThreadFactory("TestPrefetchBackoff"));
@@ -148,9 +131,6 @@ public class TestPrefetchBackoff extends LuceneTestCase {
         f.get();
       }
       futures.clear();
-      // 8N total hits, possibly a few more from racy overshoot, is the 8 * MIN_SKIP tier
-      int expectedSkip = PrefetchBackoff.skip(threads * N);
-      assertEquals(8 * MIN_SKIP, expectedSkip);
 
       AtomicInteger probes = new AtomicInteger();
       for (int t = 0; t < threads; t++) {
@@ -159,7 +139,7 @@ public class TestPrefetchBackoff extends LuceneTestCase {
                 () -> {
                   int local = 0;
                   for (int i = 0; i < WINDOW; i++) {
-                    if (backoff.shouldProbe(i)) {
+                    if (backoff.shouldProbe()) {
                       local++;
                     }
                   }
@@ -169,7 +149,8 @@ public class TestPrefetchBackoff extends LuceneTestCase {
       for (Future<?> f : futures) {
         f.get();
       }
-      assertRate(1.0 / expectedSkip, (double) probes.get() / (threads * WINDOW));
+      double expected = 1.0 / SKIP;
+      assertEquals(expected, (double) probes.get() / (threads * WINDOW), expected * 0.05);
     } finally {
       exec.shutdown();
     }

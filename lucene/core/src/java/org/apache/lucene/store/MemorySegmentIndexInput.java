@@ -58,8 +58,6 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
   final MemorySegment[] segments;
   final Function<IOContext, ReadAdvice> toReadAdvice;
   final PrefetchBackoff backoff;
-  // Per-instance, not shared: clones are single-threaded by contract.
-  private int prefetchCount;
 
   int curSegmentIndex = -1;
   MemorySegment
@@ -73,9 +71,10 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
       long length,
       int chunkSizePower,
       boolean confined,
-      Function<IOContext, ReadAdvice> toReadAdvice) {
+      Function<IOContext, ReadAdvice> toReadAdvice,
+      boolean preloaded) {
     assert Arrays.stream(segments).map(MemorySegment::scope).allMatch(arena.scope()::equals);
-    PrefetchBackoff backoff = new PrefetchBackoff();
+    PrefetchBackoff backoff = new PrefetchBackoff(preloaded);
     if (segments.length == 1) {
       return new SingleSegmentImpl(
           resourceDescription,
@@ -347,7 +346,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
 
     ensureOpen();
 
-    if (backoff.shouldProbe(prefetchCount++) == false) {
+    if (backoff.shouldProbe() == false) {
       return false;
     }
 
@@ -616,7 +615,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
   public final MemorySegmentIndexInput slice(
       String sliceDescription, long offset, long length, IOContext context) throws IOException {
     ReadAdvice advice = toReadAdvice.apply(context);
-    MemorySegmentIndexInput slice = buildSlice(sliceDescription, offset, length);
+    MemorySegmentIndexInput slice = slice(sliceDescription, offset, length);
     if (NATIVE_ACCESS.isPresent() && advice != ReadAdvice.NORMAL) {
       // No need to madvise with a normal advice, since it's the OS' default.
       final NativeAccess nativeAccess = NATIVE_ACCESS.get();

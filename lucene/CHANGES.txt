@@ -178,13 +178,10 @@ Improvements
 
 Optimizations
 ---------------------
-* GITHUB#16145: Bound the power-of-two prefetch backoff in MemorySegmentIndexInput and delay it until 1024
-  consecutive page-cache hits. The unbounded schedule assumes a warm file stays warm, but the page cache churns;
-  under memory pressure the expected number of reads that went unprefetched was unbounded. The gap between probes
-  now starts at 16 after 1024 consecutive hits, doubles as the hit count doubles, and is capped at 256, so at most
-  255 reads go unprefetched per eviction event. The shared hit counter is no longer written on every prefetch call
-  in the hot case.
-  (Michael Marshall)
+* GITHUB#16145: Bound the prefetch backoff in MemorySegmentIndexInput. The gap between page-cache probes used to
+  grow without limit, so under memory pressure prefetch effectively stopped working. A file now probes on every
+  prefetch call until 1024 consecutive hits, then 1 in 64 calls; a miss goes back to probing on every call.
+  Preloaded files start in sampling mode. (Michael Marshall)
 
 * GITHUB#16431: Add support for Block-Max WAND dynamic score skipping in FunctionScoreQuery
   and DoubleValuesSource using DocValuesSkipper. (Rajat Jain)

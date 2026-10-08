@@ -16,16 +16,17 @@
  */
 package org.apache.lucene.store;
 
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.lucene.internal.hppc.BitMixer;
 
 /**
  * Decides whether {@link MemorySegmentIndexInput#prefetch} should check the page cache before
  * calling madvise. One instance is shared by all clones and slices of an input.
  *
- * <p>We probe on every call until we have seen {@link #N} consecutive hits, then double the gap
- * between probes as hits keep coming, but never past {@link #MAX_SKIP}. The cap matters: pages can
- * be evicted at any time, and while we are skipping probes we have no feedback on cache quality.
+ * <p>Probe on every call until {@link #N} consecutive hits, then 1 in {@link #SKIP} calls; a miss
+ * goes back to probing on every call. Files start cold unless preloaded: a wrong warm guess costs
+ * about SKIP unprefetched reads with no feedback, a wrong cold guess costs N cheap probes. While
+ * sampling, an eviction goes unnoticed for about SKIP reads.
  */
 final class PrefetchBackoff {
 
@@ -37,35 +38,34 @@ final class PrefetchBackoff {
   // miss, the miss rate is very likely below 3/n (the "rule of three": (1-p)^n drops under 5% once
   // p > 3/n), so it takes on the order of a thousand hits to be confident enough to skip.
   static final int N = 1024;
-  private static final int LOG2_N = Integer.numberOfTrailingZeros(N);
 
-  // Gap once we start skipping, and the largest gap we allow. Every skipped call is a read we may
-  // fail to prefetch, so MAX_SKIP bounds how many of those an eviction can cost us.
-  static final int MIN_SKIP = 16;
-  static final int MAX_SKIP = 256;
+  // 1 in SKIP calls probes when the file looks warm, so an eviction costs about SKIP unprefetched
+  // reads before a sample notices it. On fully cached files, this is assumed to be noise.
+  // Must be a power of two.
+  static final int SKIP = 64;
 
-  // The hit count at which skip() reaches MAX_SKIP; counting past it changes nothing.
-  static final int HITS_AT_MAX_SKIP = N * (MAX_SKIP / MIN_SKIP);
+  private final AtomicInteger consecutiveHits;
 
-  private final AtomicInteger consecutiveHits = new AtomicInteger();
-
-  /** {@code localCount} is per clone; it is mixed so probes don't line up with callers' loops. */
-  boolean shouldProbe(int localCount) {
-    final int hits = consecutiveHits.get();
-    return hits < N || (BitMixer.mix(localCount) & (skip(hits) - 1)) == 0;
+  PrefetchBackoff() {
+    this(false);
   }
 
-  /** Gap between probes after {@code hits >= N} consecutive hits. */
-  static int skip(int hits) {
-    final int doublings = 31 - Integer.numberOfLeadingZeros(hits >>> LOG2_N);
-    return Math.min(MAX_SKIP, MIN_SKIP << doublings);
+  /** A preloaded file was touched page by page at open, so it starts in sampling mode. */
+  PrefetchBackoff(boolean preloaded) {
+    consecutiveHits = new AtomicInteger(preloaded ? N : 0);
+  }
+
+  boolean shouldProbe() {
+    // ThreadLocalRandom keeps its state in Thread fields: nothing per clone to allocate or keep in
+    // sync, and no counter for callers' loops to line up with.
+    return consecutiveHits.get() < N || (ThreadLocalRandom.current().nextInt() & (SKIP - 1)) == 0;
   }
 
   // Both updates are racy on purpose. A lost increment or a repeated reset is harmless, and the
   // guards keep the hot path from dirtying a cache line that every core reads.
 
   void onHit() {
-    if (consecutiveHits.get() < HITS_AT_MAX_SKIP) {
+    if (consecutiveHits.get() < N) {
       consecutiveHits.incrementAndGet();
     }
   }
