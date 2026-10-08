@@ -294,7 +294,7 @@ public class TestNativeVectorUtilSupport extends TestVectorUtilSupport {
                 .bindTo(name);
         return MethodHandles.foldArguments(target, record);
       } catch (ReflectiveOperationException e) {
-        throw new AssertionError("Invalid native signature for " + name, e);
+        throw new LinkageError("Invalid native signature for " + name, e);
       }
     }
 
