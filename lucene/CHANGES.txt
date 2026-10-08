@@ -194,10 +194,6 @@ Improvements
 Optimizations
 ---------------------
 
-* GITHUB#16618: Repair disconnected nodes during HNSW merge-reuse across the merge worker
-  pool instead of serially on the merge thread, so reusing a graph with deletes is no longer
-  slower than a full rebuild. (Ethan Baker)
-
 * GITHUB#16431: Add support for Block-Max WAND dynamic score skipping in FunctionScoreQuery
   and DoubleValuesSource using DocValuesSkipper. (Rajat Jain)
 
@@ -609,6 +605,10 @@ Optimizations
 
 * GITHUB#16667: Rewrite BooleanQuery to MatchNoDocsQuery when it has MUST_NOT clause matching one of
   its MUST boost or constant score query clauses. (Egor Potemkin)
+
+* GITHUB#16618: Repair disconnected nodes during HNSW merge-reuse across the merge worker
+  pool instead of serially on the merge thread, so reusing a graph with deletes is no longer
+  slower than a full rebuild. (Ethan Baker)
 
 Bug Fixes
 ---------------------
