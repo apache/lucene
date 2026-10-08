@@ -57,6 +57,7 @@ import org.apache.lucene.store.FileDataHint;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.VectorUtil;
@@ -369,8 +370,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       segmentWriteState.infoStream.message(
           QUANTIZED_VECTOR_COMPONENT, "Vectors' count:" + vectorCount);
     }
-    // Only asymmetric encodings have query-side records. The predicate sees vectorCount before
-    // deletions, so it can request data even when the merged field is too small to build a graph.
+    // Only asymmetric encodings have query-side records.
     boolean prepareQueryData = encoding.isAsymmetric() && needsMergeScorer.test(vectorCount);
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
     DocsWithFieldSet docsWithField;
@@ -634,10 +634,14 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       if (vectorValues == null) {
         continue;
       }
+      Bits liveDocs = mergeState.liveDocs[i];
       KnnVectorValues.DocIndexIterator iterator = vectorValues.iterator();
       for (int doc = iterator.nextDoc();
           doc != DocIdSetIterator.NO_MORE_DOCS;
           doc = iterator.nextDoc()) {
+        if (liveDocs != null && liveDocs.get(doc) == false) {
+          continue;
+        }
         ++count;
         float[] vector = vectorValues.vectorValue(iterator.index());
         for (int j = 0; j < vector.length; j++) {
