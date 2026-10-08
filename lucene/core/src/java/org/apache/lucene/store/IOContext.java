@@ -66,11 +66,19 @@ public interface IOContext {
 
   /** Returns an {@link IOContext} for merging with the specified {@link MergeInfo} */
   static IOContext merge(MergeInfo mergeInfo) {
+    Objects.requireNonNull(mergeInfo);
     return merge(mergeInfo, Set.of());
   }
 
+  /**
+   * Returns an {@link IOContext} for merging when the caller does not know how large the merge is.
+   * Unlike {@link #merge(MergeInfo)}, {@link #mergeInfo()} on the returned context is {@code null}.
+   */
+  static IOContext merge() {
+    return merge(null, Set.of());
+  }
+
   private static IOContext merge(MergeInfo mergeInfo, Set<FileOpenHint> hints) {
-    Objects.requireNonNull(mergeInfo);
     Set<FileOpenHint> copy = DefaultIOContext.checkOneHintPerType(hints);
     return new IOContext() {
       @Override
@@ -139,7 +147,10 @@ public interface IOContext {
   /** The {@link Context} this context is for */
   Context context();
 
-  /** Merge info, if {@link #context()} is {@link Context#MERGE} */
+  /**
+   * Merge info, or {@code null} if {@link #context()} is not {@link Context#MERGE}, or if it is but
+   * the caller does not know how large the merge is (see {@link #merge()}).
+   */
   MergeInfo mergeInfo();
 
   /** Flush info, if {@link #context()} is {@link Context#FLUSH} */

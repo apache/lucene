@@ -78,7 +78,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
   private static final long SHALLOW_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(Lucene104ScalarQuantizedVectorsReader.class);
 
-  private final Map<String, FieldEntry> fields = new HashMap<>();
+  private final Map<String, FieldEntry> fields;
   private final IndexInput quantizedVectorData;
   private final FlatVectorsReader rawVectorsReader;
   private final Lucene104ScalarQuantizedVectorScorer vectorScorer;
@@ -89,6 +89,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
       FlatVectorsReader rawVectorsReader,
       Lucene104ScalarQuantizedVectorScorer vectorsScorer)
       throws IOException {
+    this.fields = new HashMap<>();
     this.vectorScorer = vectorsScorer;
     this.rawVectorsReader = rawVectorsReader;
     int versionMeta = -1;
@@ -127,6 +128,37 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
       IOUtils.closeWhileSuppressingExceptions(t, this);
       throw t;
     }
+  }
+
+  /**
+   * Copy constructor for {@link #getMergeInstance()}: the copy shares {@code reader}'s open state
+   * and reads raw vectors through {@code rawVectorsReader}, normally the original raw reader's
+   * merge instance. It is used only by the merging thread and is never closed: {@link
+   * #finishMerge()} releases the raw merge instance.
+   */
+  protected Lucene104ScalarQuantizedVectorsReader(
+      Lucene104ScalarQuantizedVectorsReader reader, FlatVectorsReader rawVectorsReader) {
+    this.fields = reader.fields;
+    this.quantizedVectorData = reader.quantizedVectorData;
+    this.rawVectorsReader = rawVectorsReader;
+    this.vectorScorer = reader.vectorScorer;
+  }
+
+  /**
+   * Returns a copy of this reader that reads raw vectors through the raw reader's merge instance. A
+   * subclass must override this method and build its own copy through the {@link
+   * #Lucene104ScalarQuantizedVectorsReader(Lucene104ScalarQuantizedVectorsReader,
+   * FlatVectorsReader) copy constructor}, or its merge instance will be a plain {@code
+   * Lucene104ScalarQuantizedVectorsReader}.
+   */
+  @Override
+  public FlatVectorsReader getMergeInstance() throws IOException {
+    return new Lucene104ScalarQuantizedVectorsReader(this, rawVectorsReader.getMergeInstance());
+  }
+
+  @Override
+  public void finishMerge() throws IOException {
+    rawVectorsReader.finishMerge();
   }
 
   private void readFields(ChecksumIndexInput meta, FieldInfos infos) throws IOException {
@@ -516,7 +548,11 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
               fieldInfo.getVectorSimilarityFunction(), vectorValues);
       return CloseableRandomVectorScorerSupplier.create(supplier, vectorValues.size(), () -> {});
     }
-    FloatVectorValues floatVectorValues = getFloatVectorValues(fieldInfo.name);
+    FloatVectorValues floatVectorValues =
+        fieldInfo.getVectorEncoding() == VectorEncoding.FLOAT16
+            ? new Lucene104ScalarQuantizedVectorsWriter.Float16AsFloatVectorValues(
+                getFloat16VectorValues(fieldInfo.name))
+            : getFloatVectorValues(fieldInfo.name);
     if (fieldInfo.getVectorSimilarityFunction() == VectorSimilarityFunction.COSINE) {
       // the index side of this segment was quantized from normalized vectors, the query side must
       // be too
@@ -721,6 +757,12 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     }
 
     @Override
+    public boolean prefetch(int ord, int count) throws IOException {
+      // vectorValue()/rescorer() read the raw full-precision vectors, so prefetch those.
+      return rawVectorValues.prefetch(ord, count);
+    }
+
+    @Override
     public ScalarQuantizedVectorValues copy() throws IOException {
       return new ScalarQuantizedVectorValues(rawVectorValues.copy(), quantizedVectorValues.copy());
     }
@@ -779,6 +821,11 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     @Override
     public short[] vectorValue(int ord) throws IOException {
       return rawVectorValues.vectorValue(ord);
+    }
+
+    @Override
+    public boolean prefetch(int ord, int count) throws IOException {
+      return rawVectorValues.prefetch(ord, count);
     }
 
     @Override

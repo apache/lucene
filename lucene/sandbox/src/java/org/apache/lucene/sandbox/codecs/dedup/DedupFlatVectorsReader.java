@@ -104,16 +104,18 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
       } finally {
         CodecUtil.checkFooter(meta, priorE);
       }
+      this.vectorData =
+          openDataInput(
+              state,
+              versionMeta,
+              vectorDataCodecName,
+              vectorDataExtension,
+              versionStart,
+              versionCurrent);
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
-
-    this.vectorData =
-        openDataInput(
-            state,
-            versionMeta,
-            vectorDataCodecName,
-            vectorDataExtension,
-            versionStart,
-            versionCurrent);
   }
 
   private void readMetaBody(ChecksumIndexInput meta, FieldInfos fieldInfos) throws IOException {
@@ -285,7 +287,8 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
         entry.groupInfo.vectorDataOffset(),
         entry.groupInfo.vectorDataSize(),
         entry.fieldInfo.fieldOrdToGroupOrdOffset(),
-        entry.fieldInfo.fieldOrdToGroupOrdSize());
+        entry.fieldInfo.fieldOrdToGroupOrdSize(),
+        entry.fieldInfo.fieldOrdToGroupOrdBitsPerValue());
   }
 
   @Override
@@ -304,7 +307,8 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
         entry.groupInfo.vectorDataOffset(),
         entry.groupInfo.vectorDataSize(),
         entry.fieldInfo.fieldOrdToGroupOrdOffset(),
-        entry.fieldInfo.fieldOrdToGroupOrdSize());
+        entry.fieldInfo.fieldOrdToGroupOrdSize(),
+        entry.fieldInfo.fieldOrdToGroupOrdBitsPerValue());
   }
 
   @Override
@@ -323,7 +327,8 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
         entry.groupInfo.vectorDataOffset(),
         entry.groupInfo.vectorDataSize(),
         entry.fieldInfo.fieldOrdToGroupOrdOffset(),
-        entry.fieldInfo.fieldOrdToGroupOrdSize());
+        entry.fieldInfo.fieldOrdToGroupOrdSize(),
+        entry.fieldInfo.fieldOrdToGroupOrdBitsPerValue());
   }
 
   @Override

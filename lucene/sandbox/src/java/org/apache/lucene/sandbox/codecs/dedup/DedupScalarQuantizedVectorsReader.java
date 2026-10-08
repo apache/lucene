@@ -125,25 +125,26 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
       } finally {
         CodecUtil.checkFooter(meta, priorE);
       }
+      this.vectorData =
+          openDataInput(
+              state,
+              versionMeta,
+              vectorDataCodecName,
+              vectorDataExtension,
+              versionStart,
+              versionCurrent);
+      this.quantizedVectorData =
+          openDataInput(
+              state,
+              versionMeta,
+              quantizedVectorDataCodecName,
+              quantizedVectorDataExtension,
+              versionStart,
+              versionCurrent);
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
-
-    this.vectorData =
-        openDataInput(
-            state,
-            versionMeta,
-            vectorDataCodecName,
-            vectorDataExtension,
-            versionStart,
-            versionCurrent);
-
-    this.quantizedVectorData =
-        openDataInput(
-            state,
-            versionMeta,
-            quantizedVectorDataCodecName,
-            quantizedVectorDataExtension,
-            versionStart,
-            versionCurrent);
   }
 
   private void readMetaBody(ChecksumIndexInput meta, FieldInfos fieldInfos) throws IOException {
@@ -363,7 +364,8 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
         entry.groupInfo().vectorDataOffset(),
         entry.groupInfo().vectorDataSize(),
         entry.fieldInfo().fieldOrdToGroupOrdOffset(),
-        entry.fieldInfo().fieldOrdToGroupOrdSize());
+        entry.fieldInfo().fieldOrdToGroupOrdSize(),
+        entry.fieldInfo().fieldOrdToGroupOrdBitsPerValue());
   }
 
   private FieldValues getQuantizedVectorValues(FieldEntry entry) throws IOException {
@@ -379,7 +381,8 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
         entry.quantizedBlock().quantizedDataOffset(),
         entry.quantizedBlock().quantizedDataSize(),
         entry.fieldInfo().fieldOrdToGroupOrdOffset(),
-        entry.fieldInfo().fieldOrdToGroupOrdSize());
+        entry.fieldInfo().fieldOrdToGroupOrdSize(),
+        entry.fieldInfo().fieldOrdToGroupOrdBitsPerValue());
   }
 
   @Override
@@ -400,7 +403,8 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
         entry.groupInfo().vectorDataOffset(),
         entry.groupInfo().vectorDataSize(),
         entry.fieldInfo().fieldOrdToGroupOrdOffset(),
-        entry.fieldInfo().fieldOrdToGroupOrdSize());
+        entry.fieldInfo().fieldOrdToGroupOrdSize(),
+        entry.fieldInfo().fieldOrdToGroupOrdBitsPerValue());
   }
 
   @Override
@@ -419,7 +423,8 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
         entry.groupInfo().vectorDataOffset(),
         entry.groupInfo().vectorDataSize(),
         entry.fieldInfo().fieldOrdToGroupOrdOffset(),
-        entry.fieldInfo().fieldOrdToGroupOrdSize());
+        entry.fieldInfo().fieldOrdToGroupOrdSize(),
+        entry.fieldInfo().fieldOrdToGroupOrdBitsPerValue());
   }
 
   @Override

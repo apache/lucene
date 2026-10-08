@@ -154,9 +154,9 @@ public class DirectIODirectory extends FilterDirectory {
 
   /**
    * Determines if direct IO should be used for a file. By default this tests if it is a merge
-   * context and if the merge or file length exceeds the minimum size (see {@link
-   * #DEFAULT_MIN_BYTES_DIRECT}). Subclasses may override method to enforce direct IO for specific
-   * file types.
+   * context and if the merge, when its size is known, or the file length exceeds the minimum size
+   * (see {@link #DEFAULT_MIN_BYTES_DIRECT}). Subclasses may override method to enforce direct IO
+   * for specific file types.
    *
    * @param name file name (unused by default implementation)
    * @param context information about merge size
@@ -167,7 +167,8 @@ public class DirectIODirectory extends FilterDirectory {
    */
   protected boolean useDirectIO(String name, IOContext context, OptionalLong fileLength) {
     return context.context() == Context.MERGE
-        && context.mergeInfo().estimatedMergeBytes() >= minBytesDirect
+        && (context.mergeInfo() == null
+            || context.mergeInfo().estimatedMergeBytes() >= minBytesDirect)
         && fileLength.orElse(minBytesDirect) >= minBytesDirect;
   }
 
