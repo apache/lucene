@@ -423,8 +423,8 @@ public final class RamUsageEstimator {
       case float[] fa -> size = sizeOf(fa);
       case Float _ -> size = FLOAT_SIZE;
       case int[] ia -> size = sizeOf(ia);
-      case Integer i -> size = sizeOf(i);
-      case Long l -> size = sizeOf(l);
+      case Integer _ -> size = INTEGER_SIZE;
+      case Long _ -> size = LONG_SIZE;
       case long[] la -> size = sizeOf(la);
       case short[] sa -> size = sizeOf(sa);
       case Short _ -> size = SHORT_SIZE;
