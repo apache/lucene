@@ -45,11 +45,15 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.queries.function.FunctionQuery;
+import org.apache.lucene.queries.function.valuesource.ConstValueSource;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FuzzyQuery;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.PrefixQuery;
 import org.apache.lucene.search.Query;
@@ -1786,6 +1790,80 @@ public class TestUnifiedHighlighter extends UnifiedHighlighterTestBase {
 
     String[] snippets = highlighter.highlight("title", query, topDocs);
     assertArrayEquals(new String[] {"This is the <b>title</b> field."}, snippets);
+
+    ir.close();
+  }
+
+  public void testPostingsOffsetStrategy() throws Exception {
+    if (this.fieldType.indexOptions() != IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS
+        || this.fieldType.storeTermVectors()) {
+      // ignore if fieldType is not POSTINGS only
+      return;
+    }
+
+    final UnifiedHighlighter.OffsetSource expectedOffsetSource;
+    if (this.fieldType.storeTermVectors()) {
+      expectedOffsetSource = UnifiedHighlighter.OffsetSource.POSTINGS_WITH_TERM_VECTORS;
+    } else {
+      expectedOffsetSource = UnifiedHighlighter.OffsetSource.POSTINGS;
+    }
+
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
+
+    Field body = new Field("body", "", fieldType);
+    Document doc = new Document();
+    doc.add(body);
+
+    body.setStringValue(
+        "This is a test. Just a test highlighting from postings. Feel free to ignore.");
+    iw.addDocument(doc);
+    body.setStringValue("Highlighting the first term. Hope it works.");
+    iw.addDocument(doc);
+
+    IndexReader ir = iw.getReader();
+    iw.close();
+
+    IndexSearcher searcher = newSearcher(ir);
+    UnifiedHighlighter highlighter = randomUnifiedHighlighter(searcher, indexAnalyzer);
+    Query query = new TermQuery(new Term("body", "highlighting"));
+    TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
+
+    Set<Term> queryTerms = UnifiedHighlighter.extractTerms(query);
+    FieldHighlighter fieldHighlighter =
+        highlighter.getFieldHighlighter("body", query, queryTerms, 1);
+    assertEquals(
+        expectedOffsetSource,
+        fieldHighlighter
+            .getOffsetSource()); // TermQuery is compatible with POSTINGS offset strategy
+
+    String[] snippets = highlighter.highlight("body", query, topDocs);
+
+    for (Query noEffectQuery :
+        new Query[] {
+          new MatchAllDocsQuery(),
+          new MatchNoDocsQuery(),
+          new FunctionQuery(new ConstValueSource(5))
+        }) {
+      final Query booleanQuery =
+          new BooleanQuery.Builder()
+              .add(noEffectQuery, BooleanClause.Occur.MUST)
+              .add(query, BooleanClause.Occur.MUST)
+              .build();
+      queryTerms = UnifiedHighlighter.extractTerms(booleanQuery);
+      fieldHighlighter = highlighter.getFieldHighlighter("body", booleanQuery, queryTerms, 1);
+      assertEquals(
+          noEffectQuery.getClass().toString(),
+          expectedOffsetSource,
+          fieldHighlighter
+              .getOffsetSource()); // combining to a query with no effet (on highlighting) should
+      // lead to the same highlighter behavior
+
+      String[] bqSnippets = highlighter.highlight("body", query, topDocs);
+      assertArrayEquals(
+          Arrays.toString(bqSnippets),
+          snippets,
+          bqSnippets); // ensuring that the combined query does produce the same output
+    }
 
     ir.close();
   }
