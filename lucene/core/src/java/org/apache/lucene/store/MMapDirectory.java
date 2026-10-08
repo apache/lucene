@@ -266,6 +266,9 @@ public class MMapDirectory extends FSDirectory {
    * Configure which files to preload in physical memory upon opening. The default implementation
    * does not preload anything. The behavior is best effort and operating system-dependent.
    *
+   * <p>Since a preloaded file is resident when opened, {@link IndexInput#prefetch} on it starts by
+   * sampling the page cache rather than checking it on every call.
+   *
    * @param preload a {@link BiPredicate} whose first argument is the file name, and second argument
    *     is the {@link IOContext} used to open the file
    * @see #ALL_FILES
@@ -327,21 +330,17 @@ public class MMapDirectory extends FSDirectory {
     final Arena arena = confined ? Arena.ofConfined() : getSharedArena(name, arenas);
     try (var fc = FileChannel.open(path, StandardOpenOption.READ)) {
       final long fileSize = fc.size();
+      final ReadAdvice readAdvice = toReadAdvice.apply(context);
+      final boolean preloaded = preload.test(name, context);
       return MemorySegmentIndexInput.newInstance(
           resourceDescription,
           arena,
-          map(
-              arena,
-              resourceDescription,
-              fc,
-              toReadAdvice.apply(context),
-              chunkSizePower,
-              preload.test(name, context),
-              fileSize),
+          map(arena, resourceDescription, fc, readAdvice, chunkSizePower, preloaded, fileSize),
           fileSize,
           chunkSizePower,
           confined,
-          toReadAdvice);
+          toReadAdvice,
+          preloaded);
     } catch (Throwable t) {
       arena.close();
       throw t;
