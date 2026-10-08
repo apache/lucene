@@ -39,6 +39,7 @@ import org.apache.lucene.internal.hppc.LongHashSet;
 import org.apache.lucene.internal.hppc.LongIntHashMap;
 import org.apache.lucene.internal.hppc.LongObjectHashMap;
 import org.apache.lucene.search.Collector;
+import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.PointInSetQuery;
@@ -311,7 +312,7 @@ public final class JoinUtil {
             }
           };
     }
-    fromSearcher.search(fromQuery, collector);
+    fromSearcher.search(fromQuery, CollectorManager.singleton(collector));
 
     LongArrayList joinValuesList = new LongArrayList(joinValues.size());
     joinValuesList.addAll(joinValues);
@@ -431,7 +432,7 @@ public final class JoinUtil {
       final GenericTermsCollector collector)
       throws IOException {
 
-    fromSearcher.search(fromQuery, collector);
+    fromSearcher.search(fromQuery, CollectorManager.singleton(collector));
     switch (scoreMode) {
       case None:
         return new TermsQuery(
@@ -591,7 +592,8 @@ public final class JoinUtil {
         throw new IllegalArgumentException(
             String.format(Locale.ROOT, "Score mode %s isn't supported.", scoreMode));
     }
-    searcher.search(rewrittenFromQuery, globalOrdinalsWithScoreCollector);
+    searcher.search(
+        rewrittenFromQuery, CollectorManager.singleton(globalOrdinalsWithScoreCollector));
     return new GlobalOrdinalsWithScoreQuery(
         globalOrdinalsWithScoreCollector,
         scoreMode,

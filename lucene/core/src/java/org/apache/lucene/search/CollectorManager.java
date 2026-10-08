@@ -53,4 +53,18 @@ public interface CollectorManager<C extends Collector, T> {
    * called after collection is finished on all provided collectors.
    */
   T reduce(Collection<C> collectors) throws IOException;
+
+  static CollectorManager<?, Void> singleton(Collector collector) {
+    return new CollectorManager<>() {
+      @Override
+      public Collector newCollector() {
+        return collector;
+      }
+
+      @Override
+      public Void reduce(Collection<Collector> collectors) {
+        return null;
+      }
+    };
+  }
 }
