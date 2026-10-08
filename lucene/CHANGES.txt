@@ -126,6 +126,12 @@ API Changes
   so that per-file bookkeeping in subclasses applies to copied files; subclasses that want an
   optimized copy (e.g. HardlinkCopyDirectoryWrapper) may override to delegate. (Tim Allison)
 
+* GITHUB#16779: Remove TermGroupFacetCollector and GroupFacetCollector. Use
+  TermGroupFacetCollectorManager, which supports concurrent search. GroupedFacetResult
+  and FacetEntry are now top-level types. (Luca Cavanna)
+
+* GITHUB#16686: Make DocAndScoreQuery public (Trevor McCulloch)
+
 New Features
 ---------------------
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
@@ -150,6 +156,11 @@ New Features
 
 * GITHUB#16735: Add Float16VectorSimilarityQuery for similarity threshold search over fp16 vectors.
   (Recep Eken)
+
+* GITHUB#16738: Add DiversifyingChildrenFloat16KnnVectorQuery for fp16 parent-block-join KNN
+  search. (Pulkit Gupta)
+
+* GITHUB#16628: Add re-ranking and prefetch support for fp16 vectors. (Pulkit Gupta)
 
 Improvements
 ---------------------
@@ -187,6 +198,10 @@ Improvements
   improving readability of the parsing logic. (Rajat Jain)
 
 * GITHUB#16499: Clean up BytesRefHash. Remove dead lastCount and unused close(), fix stale comments (neoremind)
+
+* GITHUB#7820: CheckIndex now reports which segment's .si file could not be read, rather than only that
+  a commit point was unreadable. SegmentInfos throws CorruptSegmentInfoException, carrying the segment
+  name and the underlying failure. (Gokul Manoj, Serhiy Bzhezytskyy)
 
 Optimizations
 ---------------------
@@ -401,8 +416,6 @@ API Changes
 
 * GITHUB#16647: Add KnnVectorsReader.getVectorCount to read vector counts from metadata (Chris Hegarty)
 
-* GITHUB#16686: Make DocAndScoreQuery public (Trevor McCulloch)
-
 New Features
 ---------------------
 * GITHUB#16722: Support user dictionary in ThaiTokenizer and ThaiTokenizerFactory.
@@ -477,6 +490,10 @@ Improvements
 * GITHUB#16091: Replace deprecated IndexSearcher#search(Query, Collector) usage with CollectorManager
   in JoinUtil#createJoinQuery for the GlobalOrdinalsCollector case. (Luca Cavanna)
 
+* GITHUB#16292: Introduce TermGroupFacetCollectorManager to enable concurrent search with grouped
+  faceting, removing usages of the deprecated IndexSearcher#search(Query, Collector).
+  (Luca Cavanna)
+
 Optimizations
 ---------------------
 
@@ -484,10 +501,15 @@ Optimizations
   ordinal to group ordinal mapping at the minimum bit width required for the largest group ordinal,
   instead of a fixed 32-bit width. (Pranshu Shukla)
 
-* GITHUB#16749: Merges now open the raw vectors for themselves and state that they read the data
-  file sequentially, instead of changing the advice on the mapping searches read at random. The
-  vectors writers now state what file they are writing, and the raw vectors a quantized format keeps
-  only to rescore say so as they are written. (Jim Ferenczi)
+* GITHUB#16749: Merges now open the raw vectors for themselves when searches read them at random,
+  and state that they read the data file sequentially, instead of changing the advice on the mapping
+  searches use. The vectors writers now state what file they are writing, and the raw vectors a
+  quantized format keeps only to rescore say so as they are written. (Jim Ferenczi)
+
+* GITHUB#16622: Merges of quantized vector fields now also open the raw vectors for themselves.
+  Lucene104ScalarQuantizedVectorsReader, and the backward-codecs Lucene99 and Lucene102 quantized
+  vector readers, pass getMergeInstance() and finishMerge() on to their raw vectors reader.
+  (John Maurice)
 
 * GITHUB#16684: Merges now open stored fields for themselves and state that they read the data file
   sequentially, instead of reusing the mapping searches read at random. (Jim Ferenczi)
@@ -594,6 +616,10 @@ Optimizations
 * GITHUB#16667: Rewrite BooleanQuery to MatchNoDocsQuery when it has MUST_NOT clause matching one of
   its MUST boost or constant score query clauses. (Egor Potemkin)
 
+* GITHUB#16769: Merges now also open their own mapping of the raw vectors behind the Faiss format,
+  and the merge mapping keeps the hints the file was opened with, changing only how it is read.
+  (Jim Ferenczi)
+
 Bug Fixes
 ---------------------
 * GITHUB#10153: Allow configurable buffer size in SegmentingTokenizerBase and recognize whitespace as safe boundary in ThaiTokenizer to avoid splitting words across buffer boundaries. (Kamthorn Krairaksa)
@@ -664,6 +690,10 @@ Bug Fixes
 * GITHUB#16139: Fix IBSimilarity with DistributionSPL producing negative scores due to
   floating-point rounding errors. (Prithvi S)
 
+* GITHUB#16755: UkrainianMorfologikAnalyzer no longer reloads the Ukrainian dictionary when
+  threads race to initialize it, which could leave each analyzer holding its own ~7 MB copy.
+  (Eugene Rizhkov)
+
 Build
 ---------------------
 
@@ -709,6 +739,17 @@ API Changes
 
 Bug Fixes
 ---------------------
+
+* GITHUB#16553: Fix stored-fields corruption when PerField#finish throws: the stored-fields frame
+  was left open, causing "Wrote N docs, finish called with numDocs=M" at flush. (Michael Marshall)
+
+* GITHUB#16552: Reconnect HNSW nodes whose out-degree decays across successive
+  merge-reuse generations, preventing progressive recall loss under low delete
+  rates. (Ethan Baker)
+
+* GITHUB#16527: Hunspell: check for cancellation while building the suggestible entry cache. (Ilia Permiashkin)
+
+* GITHUB#16577: Fix incorrect position increment generated by FixedShingleFilter. (Kishor Kharbas)
 
 * GITHUB#16665: Fix Lucene104HnswScalarQuantizedVectorsFormat merges with an asymmetric encoding
   (1 and 2 bit quantization today) and COSINE similarity: the merge scorer's query side was
@@ -764,6 +805,9 @@ API Changes
 
 * GITHUB#16043: Add field parameter to FlatVectorsReader.getFlatVectorScorer to match the other
   scorer methods in that class. (Simon Cooper)
+
+* GITHUB#16042: Deprecate TopFieldCollectorManager#getCollectors. The result of the search operation is returned
+  as part of a TopFieldDocs instance, there is no need to check the state of each collector after search. (Prudhvi Godithi)
 
 * GITHUB#15990: Add experimental api to IndexWriter for columnar indexing. (Tim Brooks)
 
@@ -878,6 +922,10 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#16254: Enable the vectorized findNextGEQ path on aarch64, where it was disabled on cores
+  with fewer than 8 int lanes (Graviton2 and Graviton4). The vector compare beats the scalar
+  fallback by +75% on Graviton4 and +35% on Graviton2 (AdvanceBenchmark). (Shitij Bhargava)
+
 * GITHUB#16111: Optimize FieldExistsQuery.count() when all docs have the field. (Prithvi S)
 
 * GITHUB#16222: MultiTermQuery constant-score wrapper now defers term collection to ScorerSupplier#get()
@@ -888,6 +936,11 @@ Optimizations
   (Tianxiao Wei)
 
 * GITHUB#16176: Restore WANDScorer for TOP_SCORES + minShouldMatch > 1. (Tianxiao Wei)
+
+* GITHUB#16050, GITHUB#16177: Doc-values range queries are now always two-phase iterators, with
+  SIMD-accelerated bulk range evaluation for dense numeric doc values exposed through
+  TwoPhaseIterator#intoBitSet (overridable for SIMD block evaluation) instead of a separate plain
+  DocIdSetIterator, speeding up conjunctions of range filters. (Sagar Upadhyaya, Jim Ferenczi)
 
 * GITHUB#16153: Use TernaryLongHeap in UpdateGraphsUtils for faster HNSW graph merging. (Prithvi S)
 
