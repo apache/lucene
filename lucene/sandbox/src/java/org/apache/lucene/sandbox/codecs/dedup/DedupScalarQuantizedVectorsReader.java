@@ -343,7 +343,7 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
   @Override
   public RandomVectorScorer getRandomVectorScorer(String field, short[] target) throws IOException {
     FieldEntry entry = getEntry(field, FLOAT16);
-    FieldValues quantizedValues = getFloat16QuantizedVectorValues(entry);
+    FieldValues quantizedValues = getQuantizedVectorValues(entry);
     return vectorsScorer.getRandomVectorScorer(
         entry.fieldInfo().function(), quantizedValues, target);
   }
@@ -429,28 +429,11 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
         entry.fieldInfo().fieldOrdToGroupOrdBitsPerValue());
   }
 
-  private FieldValues getFloat16QuantizedVectorValues(FieldEntry entry) throws IOException {
-    return DedupScalarQuantizedVectorValues.loadQuantized(
-        vectorsScorer,
-        entry.fieldInfo().function(),
-        entry.quantizedBlock().encoding(),
-        entry.fieldInfo().ordToDoc(),
-        entry.fieldInfo().dimension(),
-        entry.groupInfo().groupNumVectors(),
-        vectorData,
-        quantizedVectorData,
-        entry.quantizedBlock().quantizedDataOffset(),
-        entry.quantizedBlock().quantizedDataSize(),
-        entry.fieldInfo().fieldOrdToGroupOrdOffset(),
-        entry.fieldInfo().fieldOrdToGroupOrdSize(),
-        entry.fieldInfo().fieldOrdToGroupOrdBitsPerValue());
-  }
-
   @Override
   public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
     FieldEntry entry = getEntry(field, FLOAT16);
     return new DedupScalarQuantizedVectorValues.Float16RawAndQuantizedValues(
-        getRawFloat16VectorValues(entry), getFloat16QuantizedVectorValues(entry));
+        getRawFloat16VectorValues(entry), getQuantizedVectorValues(entry));
   }
 
   @Override
@@ -458,7 +441,7 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
     FieldEntry entry = fields.get(field);
     if (entry == null) {
       throw new IllegalArgumentException("field=" + field + " not found");
-    } else if (entry.fieldInfo.encoding().isFloatingPoint() == false) {
+    } else if (entry.fieldInfo().encoding().isFloatingPoint() == false) {
       throw new IllegalArgumentException("field=" + field + " not indexed as floating point");
     }
     return getQuantizedVectorValues(entry);
@@ -630,7 +613,7 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
    * Exposes a {@link Float16VectorValues} as {@link FloatVectorValues}, inflating fp16 to fp32 on
    * read, so the merge path can reuse the fp32 quantization classes.
    */
-  static final class Float16AsFloatVectorValues extends FloatVectorValues {
+  private static final class Float16AsFloatVectorValues extends FloatVectorValues {
     private final Float16VectorValues values;
     private final float[] floatVector;
 
@@ -656,11 +639,7 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
 
     @Override
     public float[] vectorValue(int ord) throws IOException {
-      short[] v = values.vectorValue(ord);
-      for (int i = 0; i < v.length; i++) {
-        floatVector[i] = Float.float16ToFloat(v[i]);
-      }
-      return floatVector;
+      return DedupUtil.inflateFloat16(values.vectorValue(ord), floatVector);
     }
 
     @Override
@@ -669,8 +648,8 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
     }
 
     @Override
-    public DedupScalarQuantizedVectorsReader.Float16AsFloatVectorValues copy() throws IOException {
-      return new DedupScalarQuantizedVectorsReader.Float16AsFloatVectorValues(values.copy());
+    public Float16AsFloatVectorValues copy() throws IOException {
+      return new Float16AsFloatVectorValues(values.copy());
     }
   }
 }

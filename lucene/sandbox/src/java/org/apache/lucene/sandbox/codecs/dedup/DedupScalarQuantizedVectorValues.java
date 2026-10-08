@@ -16,11 +16,8 @@
  */
 package org.apache.lucene.sandbox.codecs.dedup;
 
-import static org.apache.lucene.index.VectorEncoding.FLOAT32;
-
 import java.io.IOException;
 import org.apache.lucene.codecs.lucene104.OffHeapScalarQuantizedVectorValues;
-import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
@@ -103,18 +100,29 @@ final class DedupScalarQuantizedVectorValues {
       int fieldOrdToGroupOrdBitsPerValue)
       throws IOException {
 
-    // fieldView only maps field ords to docs (size/ordToDoc/iterator); it reads no vectors — those
-    // come from the group view.
-    final OffHeapFloatVectorValues fieldView =
-        OffHeapFloatVectorValues.load(
-            function, vectorsScorer, configuration, FLOAT32, dimension, 0, 0, vectorData);
+    final DedupQuantizer.Flavor flavor = DedupQuantizer.Flavor.of(function);
+
+    final OffHeapScalarQuantizedVectorValues fieldView =
+        OffHeapScalarQuantizedVectorValues.load(
+            configuration,
+            dimension,
+            configuration.size(),
+            flavor.quantizer(),
+            encoding,
+            function,
+            vectorsScorer,
+            new float[dimension],
+            0,
+            0,
+            0,
+            vectorData);
 
     final QuantizedByteVectorValues groupView =
         groupValues(
             false,
             vectorsScorer,
             function,
-            DedupQuantizer.Flavor.of(function),
+            flavor,
             encoding,
             dimension,
             groupNumVectors,
