@@ -612,6 +612,8 @@ Optimizations
 * GITHUB#16667: Rewrite BooleanQuery to MatchNoDocsQuery when it has MUST_NOT clause matching one of
   its MUST boost or constant score query clauses. (Egor Potemkin)
 
+* GITHUB#16715: Optimize MUST_NOT scoring based on required-clause selectivity. (Ke Wei)
+
 * GITHUB#16769: Merges now also open their own mapping of the raw vectors behind the Faiss format,
   and the merge mapping keeps the hints the file was opened with, changing only how it is read.
   (Jim Ferenczi)
