@@ -131,6 +131,10 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
   private static final FunctionDescriptor findNextGEQDesc =
       FunctionDescriptor.of(JAVA_INT, POINTER, JAVA_INT, JAVA_INT, JAVA_INT);
 
+  // (POINTER, POINTER, INT, POINTER, INT, INT, POINTER) -> void
+  private static final FunctionDescriptor int4DotProductSinglePackedBulkDesc =
+      FunctionDescriptor.ofVoid(POINTER, POINTER, JAVA_INT, POINTER, JAVA_INT, JAVA_INT, POINTER);
+
   // Method handles
   private static final MethodHandle dotProduct$MH;
   private static final MethodHandle squareDistance$MH;
@@ -146,6 +150,7 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
   private static final MethodHandle int4DotProduct$MH;
   private static final MethodHandle int4DotProductSinglePacked$MH;
   private static final MethodHandle int4DotProductBothPacked$MH;
+  private static final MethodHandle int4DotProductSinglePackedBulk$MH;
   private static final MethodHandle int4BitDotProduct$MH;
   private static final MethodHandle int4DibitDotProduct$MH;
   private static final MethodHandle minMaxScalarQuantize$MH;
@@ -182,6 +187,8 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
       int4DotProductSinglePacked$MH =
           getMethodHandle("int4DotProductSinglePacked", twoPointerIntToInt);
       int4DotProductBothPacked$MH = getMethodHandle("int4DotProductBothPacked", twoPointerIntToInt);
+      int4DotProductSinglePackedBulk$MH =
+          getMethodHandle("int4DotProductSinglePackedBulk", int4DotProductSinglePackedBulkDesc);
       int4BitDotProduct$MH = getMethodHandle("int4BitDotProduct", twoPointerIntToLong);
       int4DibitDotProduct$MH = getMethodHandle("int4DibitDotProduct", twoPointerIntToLong);
       minMaxScalarQuantize$MH = getMethodHandle("minMaxScalarQuantize", minMaxScalarQuantizeDesc);
@@ -209,6 +216,7 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
       int4DotProduct$MH = null;
       int4DotProductSinglePacked$MH = null;
       int4DotProductBothPacked$MH = null;
+      int4DotProductSinglePackedBulk$MH = null;
       int4BitDotProduct$MH = null;
       int4DibitDotProduct$MH = null;
       minMaxScalarQuantize$MH = null;
@@ -378,6 +386,35 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
     return (int4DotProductBothPacked$MH != null)
         ? invokeIntMethodHandle(int4DotProductBothPacked$MH, a, b)
         : PanamaVectorUtilSupport.int4DotProductBothPacked(a, b);
+  }
+
+  /** Returns true if the native library implements {@link #int4DotProductSinglePackedBulk}. */
+  public static boolean hasInt4DotProductSinglePackedBulk() {
+    return int4DotProductSinglePackedBulk$MH != null;
+  }
+
+  /**
+   * Sets {@code results[i]} to {@link #int4DotProductSinglePacked} of {@code unpacked} and the
+   * packed vector at {@code vectors + ords[i] * stride}, for each {@code i < count}, in one native
+   * call. The native code does not check bounds.
+   */
+  public static void int4DotProductSinglePackedBulk(
+      MemorySegment unpacked,
+      MemorySegment vectors,
+      int stride,
+      MemorySegment ords,
+      int count,
+      int packedLength,
+      MemorySegment results) {
+    assert unpacked.byteSize() == 2L * packedLength;
+    assert ords.byteSize() >= (long) count * Integer.BYTES;
+    assert results.byteSize() >= (long) count * Integer.BYTES;
+    try {
+      int4DotProductSinglePackedBulk$MH.invokeExact(
+          unpacked, vectors, stride, ords, count, packedLength, results);
+    } catch (Throwable ex) {
+      throw new AssertionError("should not reach here", ex);
+    }
   }
 
   @Override
