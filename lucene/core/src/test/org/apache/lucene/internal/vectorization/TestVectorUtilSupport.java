@@ -160,6 +160,16 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
         vectorUtilSupport().int4DotProductBothPacked(pack(a), pack(b)));
   }
 
+  public void testInt4Unpack() {
+    byte[] packed = new byte[size];
+    random().nextBytes(packed);
+    byte[] expected = new byte[size * 2];
+    byte[] actual = new byte[expected.length];
+    LUCENE_PROVIDER.getVectorUtilSupport().int4Unpack(packed, expected);
+    vectorUtilSupport().int4Unpack(packed, actual);
+    assertArrayEquals(expected, actual);
+  }
+
   public void testInt4DotProductBoundaries() {
     assumeTrue("even sizes only", size % 2 == 0);
     byte MAX_VALUE = 15;
