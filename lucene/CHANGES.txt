@@ -616,6 +616,9 @@ Optimizations
   and the merge mapping keeps the hints the file was opened with, changing only how it is read.
   (Jim Ferenczi)
 
+* GITHUB#16797: Stored fields data is written with DataAccessHint.SEQUENTIAL and NoReuseHint,
+  matching how it is read. (Jim Ferenczi)
+
 Bug Fixes
 ---------------------
 * GITHUB#10153: Allow configurable buffer size in SegmentingTokenizerBase and recognize whitespace as safe boundary in ThaiTokenizer to avoid splitting words across buffer boundaries. (Kamthorn Krairaksa)
