@@ -126,6 +126,12 @@ API Changes
   so that per-file bookkeeping in subclasses applies to copied files; subclasses that want an
   optimized copy (e.g. HardlinkCopyDirectoryWrapper) may override to delegate. (Tim Allison)
 
+* GITHUB#16779: Remove TermGroupFacetCollector and GroupFacetCollector. Use
+  TermGroupFacetCollectorManager, which supports concurrent search. GroupedFacetResult
+  and FacetEntry are now top-level types. (Luca Cavanna)
+
+* GITHUB#16686: Make DocAndScoreQuery public (Trevor McCulloch)
+
 New Features
 ---------------------
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
@@ -153,6 +159,8 @@ New Features
 
 * GITHUB#16738: Add DiversifyingChildrenFloat16KnnVectorQuery for fp16 parent-block-join KNN
   search. (Pulkit Gupta)
+
+* GITHUB#16628: Add re-ranking and prefetch support for fp16 vectors. (Pulkit Gupta)
 
 Improvements
 ---------------------
@@ -404,8 +412,6 @@ API Changes
 
 * GITHUB#16647: Add KnnVectorsReader.getVectorCount to read vector counts from metadata (Chris Hegarty)
 
-* GITHUB#16686: Make DocAndScoreQuery public (Trevor McCulloch)
-
 New Features
 ---------------------
 * GITHUB#16722: Support user dictionary in ThaiTokenizer and ThaiTokenizerFactory.
@@ -491,10 +497,10 @@ Optimizations
   ordinal to group ordinal mapping at the minimum bit width required for the largest group ordinal,
   instead of a fixed 32-bit width. (Pranshu Shukla)
 
-* GITHUB#16749: Merges now open the raw vectors for themselves and state that they read the data
-  file sequentially, instead of changing the advice on the mapping searches read at random. The
-  vectors writers now state what file they are writing, and the raw vectors a quantized format keeps
-  only to rescore say so as they are written. (Jim Ferenczi)
+* GITHUB#16749: Merges now open the raw vectors for themselves when searches read them at random,
+  and state that they read the data file sequentially, instead of changing the advice on the mapping
+  searches use. The vectors writers now state what file they are writing, and the raw vectors a
+  quantized format keeps only to rescore say so as they are written. (Jim Ferenczi)
 
 * GITHUB#16622: Merges of quantized vector fields now also open the raw vectors for themselves.
   Lucene104ScalarQuantizedVectorsReader, and the backward-codecs Lucene99 and Lucene102 quantized
@@ -605,6 +611,15 @@ Optimizations
 
 * GITHUB#16667: Rewrite BooleanQuery to MatchNoDocsQuery when it has MUST_NOT clause matching one of
   its MUST boost or constant score query clauses. (Egor Potemkin)
+
+* GITHUB#16715: Optimize MUST_NOT scoring based on required-clause selectivity. (Ke Wei)
+
+* GITHUB#16769: Merges now also open their own mapping of the raw vectors behind the Faiss format,
+  and the merge mapping keeps the hints the file was opened with, changing only how it is read.
+  (Jim Ferenczi)
+
+* GITHUB#16797: Stored fields data is written with DataAccessHint.SEQUENTIAL and NoReuseHint,
+  matching how it is read. (Jim Ferenczi)
 
 * GITHUB#16618: Repair disconnected nodes during HNSW merge-reuse across the merge worker
   pool instead of serially on the merge thread, so reusing a graph with deletes is no longer
