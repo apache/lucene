@@ -229,6 +229,9 @@ Optimizations
 * GITHUB#16769: The merge mapping of the raw vectors keeps the hints the file was opened with,
   changing only how it is read. (Jim Ferenczi)
 
+* GITHUB#16797: Stored fields data is written with DataAccessHint.SEQUENTIAL and NoReuseHint,
+  matching how it is read. (Jim Ferenczi)
+
 Bug Fixes
 ---------------------
 * GITHUB#16546: Prevent RangeBulkScorer from passing empty ranges to LeafCollector. (jxy)
