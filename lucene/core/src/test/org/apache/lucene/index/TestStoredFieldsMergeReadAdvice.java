@@ -30,6 +30,7 @@ import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.NoReuseHint;
 import org.apache.lucene.store.ReadOnceHint;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -76,6 +77,38 @@ public class TestStoredFieldsMergeReadAdvice extends LuceneTestCase {
           "the merge re-advised the stored fields searches are reading: " + opens,
           List.of(),
           opens.advised());
+    }
+  }
+
+  /** The data file is written front to back and, as it is read, not reused. */
+  public void testDataIsWrittenSequentiallyAndNotReused() throws Exception {
+    List<IOContext> dataWrites = new ArrayList<>();
+    try (Directory dir =
+        new FilterDirectory(newDirectory()) {
+          @Override
+          public IndexOutput createOutput(String name, IOContext context) throws IOException {
+            if (name.endsWith(".fdt")) {
+              dataWrites.add(context);
+            }
+            return super.createOutput(name, context);
+          }
+        }) {
+      IndexWriterConfig iwc = new IndexWriterConfig();
+      iwc.setUseCompoundFile(false);
+      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+        for (int segment = 0; segment < 2; segment++) {
+          Document doc = new Document();
+          doc.add(new StoredField("field", "value " + segment));
+          w.addDocument(doc);
+          w.commit();
+        }
+        w.forceMerge(1);
+      }
+    }
+    assertEquals("two flushes and a merge: " + dataWrites, 3, dataWrites.size());
+    for (IOContext context : dataWrites) {
+      assertTrue(context.toString(), context.hints().contains(DataAccessHint.SEQUENTIAL));
+      assertTrue(context.toString(), context.hints().contains(NoReuseHint.INSTANCE));
     }
   }
 
