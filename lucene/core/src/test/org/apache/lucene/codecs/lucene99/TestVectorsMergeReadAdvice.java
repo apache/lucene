@@ -114,6 +114,62 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
     }
   }
 
+  /**
+   * In a compound segment, a merge reads the vectors through a mapping of the compound file of its
+   * own, opened without advice and closed with the segment's reader.
+   */
+  public void testACompoundMergeOpensItsOwnMapping() throws Exception {
+    KnnVectorsFormat format =
+        random().nextBoolean()
+            ? new Lucene99HnswVectorsFormat()
+            : new Lucene104HnswScalarQuantizedVectorsFormat();
+    Opens opens = new Opens();
+    List<Open> mergeOpens;
+    try (Directory dir = new RecordingDirectory(newDirectory(), opens)) {
+      IndexWriterConfig iwc = new IndexWriterConfig();
+      iwc.setCodec(TestUtil.alwaysKnnVectorsFormat(format));
+      iwc.setUseCompoundFile(true);
+      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+        for (int segment = 0; segment < 2; segment++) {
+          for (int i = 0; i < 64; i++) {
+            Document doc = new Document();
+            doc.add(
+                new KnnFloatVectorField("field", vector(), VectorSimilarityFunction.DOT_PRODUCT));
+            w.addDocument(doc);
+          }
+          w.commit();
+        }
+
+        try (DirectoryReader reader = DirectoryReader.open(w)) {
+          List<String> compoundFiles = new ArrayList<>();
+          for (var leaf : reader.leaves()) {
+            SegmentReader segmentReader = (SegmentReader) leaf.reader();
+            assertTrue(segmentReader.getSegmentInfo().info.getUseCompoundFile());
+            compoundFiles.add(segmentReader.getSegmentName() + ".cfs");
+          }
+          compoundFiles.sort(null);
+          opens.clear();
+          w.forceMerge(1);
+
+          // the segments were open before the merge, so opening their compound files again is the
+          // merge
+          mergeOpens = opens.all().stream().filter(o -> compoundFiles.contains(o.name())).toList();
+          assertEquals(
+              "the merge mapped each compound file once: " + opens,
+              compoundFiles,
+              mergeOpens.stream().map(Open::name).sorted().toList());
+          for (Open open : mergeOpens) {
+            assertTrue("the merge did not read its mapping: " + open, open.read());
+            assertEquals("opened without advice: " + open, Set.of(), open.hints());
+          }
+        }
+      }
+    }
+    for (Open open : mergeOpens) {
+      assertTrue("closed with the segment's reader: " + open, open.closed());
+    }
+  }
+
   /** A reader a merge opened already reads the vectors the way a merge does. */
   public void testAMergeReadsThroughTheReaderItOpened() throws Exception {
     Opens opens = new Opens();

@@ -18,6 +18,7 @@ package org.apache.lucene.codecs.lucene90;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.file.NoSuchFileException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -27,6 +28,7 @@ import org.apache.lucene.codecs.CompoundDirectory;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentInfo;
+import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -49,8 +51,12 @@ final class Lucene90CompoundReader extends CompoundDirectory {
 
   private final Directory directory;
   private final String segmentName;
+  private final String dataFileName;
   private final Map<String, FileEntry> entries;
   private final IndexInput handle;
+  // the mapping merges read through, opened by the first merge open and closed with this reader
+  private IndexInput mergeHandle;
+  private boolean closed;
   private int version;
 
   /** Create a new CompoundFileDirectory. */
@@ -59,7 +65,7 @@ final class Lucene90CompoundReader extends CompoundDirectory {
   public Lucene90CompoundReader(Directory directory, SegmentInfo si) throws IOException {
     this.directory = directory;
     this.segmentName = si.name;
-    String dataFileName =
+    this.dataFileName =
         IndexFileNames.segmentFileName(segmentName, "", Lucene90CompoundFormat.DATA_EXTENSION);
     String entriesFileName =
         IndexFileNames.segmentFileName(segmentName, "", Lucene90CompoundFormat.ENTRIES_EXTENSION);
@@ -142,7 +148,13 @@ final class Lucene90CompoundReader extends CompoundDirectory {
 
   @Override
   public void close() throws IOException {
-    IOUtils.close(handle);
+    IndexInput merge;
+    synchronized (this) {
+      closed = true;
+      merge = mergeHandle == handle ? null : mergeHandle;
+      mergeHandle = null;
+    }
+    IOUtils.close(handle, merge);
   }
 
   @Override
@@ -164,7 +176,28 @@ final class Lucene90CompoundReader extends CompoundDirectory {
               + entries.keySet()
               + ")");
     }
-    return handle.slice(name, entry.offset, entry.length, context);
+    IndexInput data = context.context() == IOContext.Context.MERGE ? mergeHandle() : handle;
+    return data.slice(name, entry.offset, entry.length, context);
+  }
+
+  /**
+   * A merge reads through a mapping of its own, so the access it advises does not replace the
+   * advice of searches reading the same inner files. Merges of this segment share it. Like the
+   * search mapping, it is opened without advice: each inner file is advised on its own region.
+   */
+  private synchronized IndexInput mergeHandle() throws IOException {
+    if (closed) {
+      throw new AlreadyClosedException("this Directory is closed");
+    }
+    if (mergeHandle == null) {
+      try {
+        mergeHandle = directory.openInput(dataFileName, IOContext.DEFAULT);
+      } catch (@SuppressWarnings("unused") FileNotFoundException | NoSuchFileException e) {
+        // an open reader outlives its files, so fall back to the mapping it already holds
+        mergeHandle = handle;
+      }
+    }
+    return mergeHandle;
   }
 
   /** Returns an array of strings, one for each file in the directory. */
