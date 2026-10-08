@@ -152,23 +152,10 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
       return HnswGraphBuilder.create(
           scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed, maxOrd);
     }
-    if (!graphReaders.contains(largestGraphReader)) {
-      graphReaders.addFirst(largestGraphReader);
-    } else {
-      graphReaders.sort(Comparator.comparingInt(GraphReader::graphSize).reversed());
-    }
-
+    HnswGraph[] graphs = orderGraphReaders();
     final BitSet initializedNodes =
         graphReaders.size() == numReaders ? null : new FixedBitSet(maxOrd);
     int[][] ordMaps = getNewOrdMapping(mergedVectorValues, initializedNodes);
-    HnswGraph[] graphs = new HnswGraph[graphReaders.size()];
-    for (int i = 0; i < graphReaders.size(); i++) {
-      HnswGraph graph = ((HnswGraphProvider) graphReaders.get(i).reader).getGraph(fieldInfo.name);
-      if (graph.size() == 0) {
-        throw new IllegalStateException("Graph should not be empty");
-      }
-      graphs[i] = graph;
-    }
 
     return MergingHnswGraphBuilder.fromGraphs(
         scorerSupplier,
@@ -179,6 +166,31 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
         maxOrd,
         initializedNodes,
         abortCheck);
+  }
+
+  /**
+   * Orders {@link #graphReaders} so that {@link #largestGraphReader} comes first, adding it if it
+   * has deletions, and returns the graphs of the readers in that order. Must be called at most
+   * once, and only when {@link #largestGraphReader} is not null.
+   *
+   * @return the graphs to merge, starting with the graph to initialize the merged graph from
+   * @throws IOException If an error occurs while reading a graph
+   */
+  protected final HnswGraph[] orderGraphReaders() throws IOException {
+    if (!graphReaders.contains(largestGraphReader)) {
+      graphReaders.addFirst(largestGraphReader);
+    } else {
+      graphReaders.sort(Comparator.comparingInt(GraphReader::graphSize).reversed());
+    }
+    HnswGraph[] graphs = new HnswGraph[graphReaders.size()];
+    for (int i = 0; i < graphReaders.size(); i++) {
+      HnswGraph graph = ((HnswGraphProvider) graphReaders.get(i).reader).getGraph(fieldInfo.name);
+      if (graph.size() == 0) {
+        throw new IllegalStateException("Graph should not be empty");
+      }
+      graphs[i] = graph;
+    }
+    return graphs;
   }
 
   protected final int[][] getNewOrdMapping(

@@ -21,12 +21,14 @@ import static org.apache.lucene.util.hnsw.HnswGraphBuilder.HNSW_COMPONENT;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
+import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.util.BitSet;
@@ -37,15 +39,23 @@ import org.apache.lucene.util.InfoStream;
 /**
  * A graph builder that manages multiple workers, it only supports adding the whole graph all at
  * once. It will spawn a thread for each worker and the workers will pick the work in batches.
+ *
+ * <p>When given graphs to join, the workers first join them into the graph the way {@link
+ * MergingHnswGraphBuilder} does, then add the remaining nodes.
  */
 public class HnswConcurrentMergeBuilder implements HnswBuilder {
 
   private static final int DEFAULT_BATCH_SIZE =
       2048; // number of vectors the worker handles sequentially at one batch
 
+  // number of batches each worker should get, at least, in a phase of a join
+  private static final int MIN_JOIN_BATCHES = 16;
+
   private final TaskExecutor taskExecutor;
   private final ConcurrentMergeWorker[] workers;
   private final HnswLock hnswLock;
+  private final HnswGraph[] graphs;
+  private final int[][] ordMaps;
   private InfoStream infoStream = InfoStream.getDefault();
   private boolean frozen;
 
@@ -57,6 +67,47 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
       OnHeapHnswGraph hnsw,
       BitSet initializedNodes)
       throws IOException {
+    this(
+        taskExecutor,
+        numWorker,
+        scorerSupplier,
+        beamWidth,
+        hnsw,
+        initializedNodes,
+        new HnswGraph[0],
+        new int[0][]);
+  }
+
+  /**
+   * @param initializedNodes the nodes that must not be added to the graph as new nodes, either
+   *     because they are already in it or because they belong to one of {@code graphs}; must not be
+   *     null if {@code graphs} is not empty
+   * @param graphs graphs without deletions whose nodes are not in {@code hnsw} yet; they are joined
+   *     into it with the join set approach of {@link MergingHnswGraphBuilder} before the nodes that
+   *     are not in {@code initializedNodes} are added
+   * @param ordMaps for each of {@code graphs}, the mapping from its ordinals to ordinals of {@code
+   *     hnsw}
+   */
+  public HnswConcurrentMergeBuilder(
+      TaskExecutor taskExecutor,
+      int numWorker,
+      RandomVectorScorerSupplier scorerSupplier,
+      int beamWidth,
+      OnHeapHnswGraph hnsw,
+      BitSet initializedNodes,
+      HnswGraph[] graphs,
+      int[][] ordMaps)
+      throws IOException {
+    if (graphs.length != ordMaps.length) {
+      throw new IllegalArgumentException(
+          "got " + graphs.length + " graphs but " + ordMaps.length + " ordinal maps");
+    }
+    if (graphs.length > 0 && initializedNodes == null) {
+      throw new IllegalArgumentException(
+          "initializedNodes must mark the nodes of the graphs to join");
+    }
+    this.graphs = graphs;
+    this.ordMaps = ordMaps;
     this.taskExecutor = taskExecutor;
     AtomicInteger workProgress = new AtomicInteger(0);
     workers = new ConcurrentMergeWorker[numWorker];
@@ -90,6 +141,9 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
       worker.setMergeStartTimeNs(mergeStartTimeNs);
       worker.setCumulativeWorkTimeNs(cumulativeWorkTimeNs);
     }
+    if (graphs.length > 0) {
+      joinGraphs(cumulativeWorkTimeNs);
+    }
     List<Callable<Void>> futures = new ArrayList<>();
     for (int i = 0; i < workers.length; i++) {
       int finalI = i;
@@ -115,6 +169,132 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
               effectiveConcurrency));
     }
     return getCompletedGraph();
+  }
+
+  /**
+   * Joins {@link #graphs} into the graph like {@link MergingHnswGraphBuilder} does, but with all
+   * workers. Graphs are joined one after the other: adding the join sets of all graphs before the
+   * other nodes of any of them builds a noticeably worse graph. Since the join sets only depend on
+   * the graphs being joined, they are all computed beforehand, one task per graph.
+   */
+  private void joinGraphs(AtomicLong cumulativeWorkTimeNs) throws IOException {
+    long startNs = System.nanoTime();
+    List<Callable<JoinPlan>> planTasks = new ArrayList<>(graphs.length);
+    for (int g = 0; g < graphs.length; g++) {
+      HnswGraph graph = graphs[g];
+      int[] ordMap = ordMaps[g];
+      planTasks.add(() -> JoinPlan.create(graph, ordMap));
+    }
+    JoinPlan[] plans = taskExecutor.invokeAll(planTasks).toArray(JoinPlan[]::new);
+    if (infoStream.isEnabled(HNSW_COMPONENT)) {
+      infoStream.message(
+          HNSW_COMPONENT,
+          String.format(
+              Locale.ROOT,
+              "computed the join sets of %d graphs in %.2f ms",
+              plans.length,
+              (System.nanoTime() - startNs) / 1_000_000.0));
+    }
+
+    for (int g = 0; g < plans.length; g++) {
+      JoinPlan plan = plans[g];
+      plans[g] = null; // not needed once joined
+      runInBatches(
+          plan.joinSetNodes.length,
+          cumulativeWorkTimeNs,
+          (worker, start, end) -> {
+            for (int i = start; i < end; i++) {
+              worker.addJoinSetNode(plan.joinSetNodes[i]);
+            }
+          });
+      runInBatches(
+          plan.otherNodes.length,
+          cumulativeWorkTimeNs,
+          (worker, start, end) -> {
+            for (int i = start; i < end; i++) {
+              worker.addJoinedNode(
+                  plan.otherNodes[i],
+                  plan.joinNeighbors,
+                  plan.joinNeighborsStart[i],
+                  plan.joinNeighborsStart[i + 1]);
+            }
+          });
+    }
+  }
+
+  /**
+   * The nodes a join adds to the graph, as ordinals of the graph.
+   *
+   * @param joinSetNodes the join set of the graph being joined
+   * @param otherNodes the other nodes of the graph being joined
+   * @param joinNeighborsStart the neighbors in the join set of {@code otherNodes[i]} are {@code
+   *     joinNeighbors[joinNeighborsStart[i]:joinNeighborsStart[i + 1]]}
+   * @param joinNeighbors see {@code joinNeighborsStart}
+   */
+  private record JoinPlan(
+      int[] joinSetNodes, int[] otherNodes, int[] joinNeighborsStart, int[] joinNeighbors) {
+
+    static JoinPlan create(HnswGraph graph, int[] ordMap) throws IOException {
+      IntHashSet j = UpdateGraphsUtils.computeJoinSet(graph);
+      // sort for stability
+      int[] joinSetNodes = j.toArray();
+      Arrays.sort(joinSetNodes);
+      for (int i = 0; i < joinSetNodes.length; i++) {
+        joinSetNodes[i] = ordMap[joinSetNodes[i]];
+      }
+      int[] otherNodes = new int[graph.size() - joinSetNodes.length];
+      int[] joinNeighborsStart = new int[otherNodes.length + 1];
+      IntArrayList joinNeighbors = new IntArrayList();
+      int i = 0;
+      for (int u = 0; u < graph.size(); u++) {
+        if (j.contains(u)) {
+          continue;
+        }
+        graph.seek(0, u);
+        for (int v = graph.nextNeighbor(); v != NO_MORE_DOCS; v = graph.nextNeighbor()) {
+          if (j.contains(v)) {
+            joinNeighbors.add(ordMap[v]);
+          }
+        }
+        otherNodes[i++] = ordMap[u];
+        joinNeighborsStart[i] = joinNeighbors.size();
+      }
+      assert i == otherNodes.length;
+      return new JoinPlan(joinSetNodes, otherNodes, joinNeighborsStart, joinNeighbors.toArray());
+    }
+  }
+
+  /**
+   * Splits [0, count) into batches that the workers pick concurrently, and returns once all batches
+   * are done.
+   */
+  private void runInBatches(int count, AtomicLong cumulativeWorkTimeNs, BatchTask task)
+      throws IOException {
+    // The phases of a join are short, so a worker that picks the last full-size batch would keep
+    // the others idle for most of a phase. Smaller batches keep all workers busy until the end.
+    int batchSize =
+        Math.max(1, Math.min(workers[0].batchSize, count / (workers.length * MIN_JOIN_BATCHES)));
+    AtomicInteger progress = new AtomicInteger(0);
+    List<Callable<Void>> futures = new ArrayList<>();
+    for (ConcurrentMergeWorker worker : workers) {
+      futures.add(
+          () -> {
+            long startNs = System.nanoTime();
+            for (int start = progress.getAndAdd(batchSize);
+                start < count;
+                start = progress.getAndAdd(batchSize)) {
+              task.run(worker, start, Math.min(count, start + batchSize));
+            }
+            cumulativeWorkTimeNs.addAndGet(System.nanoTime() - startNs);
+            return null;
+          });
+    }
+    taskExecutor.invokeAll(futures);
+  }
+
+  @FunctionalInterface
+  private interface BatchTask {
+    void run(ConcurrentMergeWorker worker, int start, int end) throws IOException;
   }
 
   @Override
@@ -179,6 +359,9 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     private final BitSet initializedNodes;
     private int batchSize = DEFAULT_BATCH_SIZE;
 
+    /** The entry points of the search on level 0 for {@link #addJoinedNode}, reused */
+    private final IntHashSet eps = new IntHashSet();
+
     private ConcurrentMergeWorker(
         RandomVectorScorerSupplier scorerSupplier,
         int beamWidth,
@@ -232,6 +415,35 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
         return;
       }
       super.addGraphNode(node);
+    }
+
+    /** Adds a node of the join set of a graph being joined, with a full search. */
+    private void addJoinSetNode(int node) throws IOException {
+      // skip the initializedNodes check: the node is marked since it belongs to a graph being
+      // joined
+      super.addGraphNode(node);
+    }
+
+    /**
+     * Adds a node of a graph being joined that is not in its join set, searching level 0 from the
+     * node's neighbors in the join set, {@code joinNeighbors[from:to]}, and from their neighbors.
+     */
+    private void addJoinedNode(int node, int[] joinNeighbors, int from, int to) throws IOException {
+      eps.clear();
+      for (int i = from; i < to; i++) {
+        int joinNeighbor = joinNeighbors[i];
+        eps.add(joinNeighbor);
+        Lock lock = hnswLock.read(0, joinNeighbor);
+        try {
+          NeighborArray neighbors = hnsw.getNeighbors(0, joinNeighbor);
+          for (int n = 0; n < neighbors.size(); n++) {
+            eps.add(neighbors.nodes()[n]);
+          }
+        } finally {
+          lock.unlock();
+        }
+      }
+      addGraphNode(node, eps);
     }
   }
 

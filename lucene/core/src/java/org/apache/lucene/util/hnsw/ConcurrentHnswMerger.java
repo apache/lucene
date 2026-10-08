@@ -16,17 +16,11 @@
  */
 package org.apache.lucene.util.hnsw;
 
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-
 import java.io.IOException;
-import java.util.Arrays;
-import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.KnnVectorValues;
-import org.apache.lucene.index.MergeState;
-import org.apache.lucene.internal.hppc.IntIntHashMap;
 import org.apache.lucene.search.TaskExecutor;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IORunnable;
@@ -72,100 +66,26 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
   @Override
   protected HnswBuilder createBuilder(KnnVectorValues mergedVectorValues, int maxOrd)
       throws IOException {
-    OnHeapHnswGraph graph;
-    BitSet initializedNodes = null;
-
     if (largestGraphReader == null) {
-      graph = new OnHeapHnswGraph(M, maxOrd);
-    } else {
-      KnnVectorsReader initReader = largestGraphReader.reader();
-      MergeState.DocMap initDocMap = largestGraphReader.initDocMap();
-      int initGraphSize = largestGraphReader.graphSize();
-      HnswGraph initializerGraph = ((HnswGraphProvider) initReader).getGraph(fieldInfo.name);
-
-      if (initializerGraph.size() == 0) {
-        graph = new OnHeapHnswGraph(M, maxOrd);
-      } else {
-        initializedNodes = new FixedBitSet(maxOrd);
-        int[] oldToNewOrdinalMap =
-            getNewOrdMapping(
-                fieldInfo,
-                initReader,
-                initDocMap,
-                initGraphSize,
-                mergedVectorValues,
-                initializedNodes);
-        graph =
-            InitializedHnswGraphBuilder.initGraph(
-                initializerGraph,
-                oldToNewOrdinalMap,
-                maxOrd,
-                beamWidth,
-                scorerSupplier,
-                abortCheck);
-      }
+      return new HnswConcurrentMergeBuilder(
+          taskExecutor, numWorker, scorerSupplier, beamWidth, new OnHeapHnswGraph(M, maxOrd), null);
     }
+    HnswGraph[] graphs = orderGraphReaders();
+    BitSet initializedNodes = new FixedBitSet(maxOrd);
+    int[][] ordMaps = getNewOrdMapping(mergedVectorValues, initializedNodes);
+    OnHeapHnswGraph graph =
+        InitializedHnswGraphBuilder.initGraph(
+            graphs[0], ordMaps[0], maxOrd, beamWidth, scorerSupplier, abortCheck);
+    // the remaining graphs have no deletions; join them into the base graph rather than inserting
+    // their nodes from scratch
     return new HnswConcurrentMergeBuilder(
-        taskExecutor, numWorker, scorerSupplier, beamWidth, graph, initializedNodes);
-  }
-
-  /**
-   * Creates a new mapping from old ordinals to new ordinals and returns the total number of vectors
-   * in the newly merged segment.
-   *
-   * @param mergedVectorValues vector values in the merged segment
-   * @param initializedNodes track what nodes have been initialized
-   * @return the mapping from old ordinals to new ordinals
-   * @throws IOException If an error occurs while reading from the merge state
-   */
-  private static int[] getNewOrdMapping(
-      FieldInfo fieldInfo,
-      KnnVectorsReader initReader,
-      MergeState.DocMap initDocMap,
-      int initGraphSize,
-      KnnVectorValues mergedVectorValues,
-      BitSet initializedNodes)
-      throws IOException {
-    KnnVectorValues.DocIndexIterator initializerIterator = null;
-
-    switch (fieldInfo.getVectorEncoding()) {
-      case BYTE -> initializerIterator = initReader.getByteVectorValues(fieldInfo.name).iterator();
-      case FLOAT16 ->
-          initializerIterator = initReader.getFloat16VectorValues(fieldInfo.name).iterator();
-      case FLOAT32 ->
-          initializerIterator = initReader.getFloatVectorValues(fieldInfo.name).iterator();
-    }
-
-    IntIntHashMap newIdToOldOrdinal = new IntIntHashMap(initGraphSize);
-    int maxNewDocID = -1;
-    for (int docId = initializerIterator.nextDoc();
-        docId != NO_MORE_DOCS;
-        docId = initializerIterator.nextDoc()) {
-      int newId = initDocMap.get(docId);
-      if (newId == -1) {
-        continue;
-      }
-      maxNewDocID = Math.max(newId, maxNewDocID);
-      assert newIdToOldOrdinal.containsKey(newId) == false;
-      newIdToOldOrdinal.put(newId, initializerIterator.index());
-    }
-
-    if (maxNewDocID == -1) {
-      return new int[0];
-    }
-    final int[] oldToNewOrdinalMap = new int[initGraphSize];
-    Arrays.fill(oldToNewOrdinalMap, -1);
-    KnnVectorValues.DocIndexIterator mergedVectorIterator = mergedVectorValues.iterator();
-    for (int newDocId = mergedVectorIterator.nextDoc();
-        newDocId <= maxNewDocID;
-        newDocId = mergedVectorIterator.nextDoc()) {
-      int oldOrd = newIdToOldOrdinal.getOrDefault(newDocId, -1);
-      if (oldOrd != -1) {
-        int newOrd = mergedVectorIterator.index();
-        initializedNodes.set(newOrd);
-        oldToNewOrdinalMap[oldOrd] = newOrd;
-      }
-    }
-    return oldToNewOrdinalMap;
+        taskExecutor,
+        numWorker,
+        scorerSupplier,
+        beamWidth,
+        graph,
+        initializedNodes,
+        ArrayUtil.copyOfSubArray(graphs, 1, graphs.length),
+        ArrayUtil.copyOfSubArray(ordMaps, 1, ordMaps.length));
   }
 }
