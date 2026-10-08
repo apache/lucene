@@ -23,8 +23,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import org.apache.lucene.internal.hppc.IntHashSet;
@@ -33,6 +34,7 @@ import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.InfoStream;
+import org.apache.lucene.util.ThreadInterruptedException;
 
 /**
  * A graph builder that manages multiple workers, it only supports adding the whole graph all at
@@ -58,7 +60,6 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
       BitSet initializedNodes)
       throws IOException {
     this.taskExecutor = taskExecutor;
-    AtomicInteger workProgress = new AtomicInteger(0);
     workers = new ConcurrentMergeWorker[numWorker];
     hnswLock = new HnswLock();
     for (int i = 0; i < numWorker; i++) {
@@ -69,8 +70,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
               HnswGraphBuilder.randSeed,
               hnsw,
               hnswLock,
-              initializedNodes,
-              workProgress);
+              initializedNodes);
     }
   }
 
@@ -90,12 +90,28 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
       worker.setMergeStartTimeNs(mergeStartTimeNs);
       worker.setCumulativeWorkTimeNs(cumulativeWorkTimeNs);
     }
+    BlockingQueue<ConcurrentMergeWorker> workerPool = new ArrayBlockingQueue<>(workers.length);
+    for (ConcurrentMergeWorker worker : workers) {
+      workerPool.add(worker);
+    }
+    int batchSize = workers[0].batchSize;
     List<Callable<Void>> futures = new ArrayList<>();
-    for (int i = 0; i < workers.length; i++) {
-      int finalI = i;
+    for (int start = 0; start < maxOrd; start += batchSize) {
+      int finalStart = start;
+      int finalEnd = Math.min(maxOrd, start + batchSize);
       futures.add(
           () -> {
-            workers[finalI].run(maxOrd);
+            ConcurrentMergeWorker worker;
+            try {
+              worker = workerPool.take();
+            } catch (InterruptedException e) {
+              throw new ThreadInterruptedException(e);
+            }
+            try {
+              worker.addVectors(finalStart, finalEnd);
+            } finally {
+              workerPool.offer(worker);
+            }
             return null;
           });
     }
@@ -170,12 +186,6 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
 
   private static final class ConcurrentMergeWorker extends HnswGraphBuilder {
 
-    /**
-     * A common AtomicInteger shared among all workers, used for tracking what's the next vector to
-     * be added to the graph.
-     */
-    private final AtomicInteger workProgress;
-
     private final BitSet initializedNodes;
     private int batchSize = DEFAULT_BATCH_SIZE;
 
@@ -185,8 +195,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
         long seed,
         OnHeapHnswGraph hnsw,
         HnswLock hnswLock,
-        BitSet initializedNodes,
-        AtomicInteger workProgress)
+        BitSet initializedNodes)
         throws IOException {
       super(
           scorerSupplier,
@@ -196,34 +205,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
           hnswLock,
           new MergeSearcher(
               new NeighborQueue(beamWidth, true), hnswLock, new FixedBitSet(hnsw.maxNodeId() + 1)));
-      this.workProgress = workProgress;
       this.initializedNodes = initializedNodes;
-    }
-
-    /**
-     * This method first try to "reserve" part of work by calling {@link #getStartPos(int)} and then
-     * calling {@link #addVectors(int, int)} to actually add the nodes to the graph. By doing this
-     * we are able to dynamically allocate the work to multiple workers and try to make all of them
-     * finishing around the same time.
-     */
-    private void run(int maxOrd) throws IOException {
-      int start = getStartPos(maxOrd);
-      int end;
-      while (start != -1) {
-        end = Math.min(maxOrd, start + batchSize);
-        addVectors(start, end);
-        start = getStartPos(maxOrd);
-      }
-    }
-
-    /** Reserve the work by atomically increment the {@link #workProgress} */
-    private int getStartPos(int maxOrd) {
-      int start = workProgress.getAndAdd(batchSize);
-      if (start < maxOrd) {
-        return start;
-      } else {
-        return -1;
-      }
     }
 
     @Override
