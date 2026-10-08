@@ -75,7 +75,8 @@ jobs:
     strategy:
       matrix:
         os: [ ubuntu-26.04-arm ]
-        java: [ '25' ]
+        # run on the lower and upper bound of supported java versions by the gradle build
+        java: [ '25', '27' ]
 
     runs-on: ${{ matrix.os }}
 
@@ -90,6 +91,8 @@ jobs:
 
       - name: Configure tools
         uses: ./.github/actions/prepare-for-build
+        with:
+          java-version: ${{ matrix.java }}
 
       - name: Install eclint
         if: ${{ ! startsWith(matrix.os, 'windows') }}
