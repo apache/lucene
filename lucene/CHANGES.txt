@@ -229,6 +229,8 @@ Optimizations
 * GITHUB#16769: The merge mapping of the raw vectors keeps the hints the file was opened with,
   changing only how it is read. (Jim Ferenczi)
 
+* GITHUB#16715: Optimize MUST_NOT scoring based on required-clause selectivity. (Ke Wei)
+
 * GITHUB#16797: Stored fields data is written with DataAccessHint.SEQUENTIAL and NoReuseHint,
   matching how it is read. (Jim Ferenczi)
 
