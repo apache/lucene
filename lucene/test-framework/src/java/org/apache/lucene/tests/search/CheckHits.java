@@ -548,12 +548,6 @@ public class CheckHits {
     }
 
     @Override
-    public void search(Query query, Collector collector) throws IOException {
-      checkExplanations(query);
-      super.search(query, collector);
-    }
-
-    @Override
     public <C extends Collector, T> T search(Query query, CollectorManager<C, T> collectorManager)
         throws IOException {
       checkExplanations(query);
