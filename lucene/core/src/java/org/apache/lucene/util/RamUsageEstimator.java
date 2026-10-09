@@ -102,7 +102,15 @@ public final class RamUsageEstimator {
     primitiveSizes = Collections.unmodifiableMap(primitiveSizesMap);
   }
 
-  static final int INTEGER_SIZE, LONG_SIZE, STRING_SIZE;
+  static final int BOOLEAN_SIZE,
+      BYTE_SIZE,
+      CHARACTER_SIZE,
+      SHORT_SIZE,
+      INTEGER_SIZE,
+      FLOAT_SIZE,
+      LONG_SIZE,
+      DOUBLE_SIZE,
+      STRING_SIZE;
 
   /** For testing only */
   static final boolean JVM_IS_HOTSPOT_64BIT;
@@ -133,8 +141,14 @@ public final class RamUsageEstimator {
       NUM_BYTES_ARRAY_HEADER = NUM_BYTES_OBJECT_HEADER + Integer.BYTES;
     }
 
+    BOOLEAN_SIZE = (int) shallowSizeOfInstance(Boolean.class);
+    BYTE_SIZE = (int) shallowSizeOfInstance(Byte.class);
+    CHARACTER_SIZE = (int) shallowSizeOfInstance(Character.class);
+    SHORT_SIZE = (int) shallowSizeOfInstance(Short.class);
     INTEGER_SIZE = (int) shallowSizeOfInstance(Integer.class);
+    FLOAT_SIZE = (int) shallowSizeOfInstance(Float.class);
     LONG_SIZE = (int) shallowSizeOfInstance(Long.class);
+    DOUBLE_SIZE = (int) shallowSizeOfInstance(Double.class);
     STRING_SIZE = (int) shallowSizeOfInstance(String.class);
   }
 
@@ -399,15 +413,21 @@ public final class RamUsageEstimator {
       case Accountable a -> size = a.ramBytesUsed();
       case String s -> size = sizeOf(s);
       case boolean[] ba -> size = sizeOf(ba);
+      case Boolean _ -> size = BOOLEAN_SIZE;
       case byte[] ba -> size = sizeOf(ba);
+      case Byte _ -> size = BYTE_SIZE;
       case char[] ca -> size = sizeOf(ca);
+      case Character _ -> size = CHARACTER_SIZE;
       case double[] da -> size = sizeOf(da);
+      case Double _ -> size = DOUBLE_SIZE;
       case float[] fa -> size = sizeOf(fa);
+      case Float _ -> size = FLOAT_SIZE;
       case int[] ia -> size = sizeOf(ia);
-      case Integer i -> size = sizeOf(i);
-      case Long l -> size = sizeOf(l);
+      case Integer _ -> size = INTEGER_SIZE;
+      case Long _ -> size = LONG_SIZE;
       case long[] la -> size = sizeOf(la);
       case short[] sa -> size = sizeOf(sa);
+      case Short _ -> size = SHORT_SIZE;
       case String[] sa -> size = sizeOf(sa);
       case Query q -> size = sizeOf(q, defSize);
       case Map<?, ?> m -> size = sizeOfMap(m, ++depth, defSize);

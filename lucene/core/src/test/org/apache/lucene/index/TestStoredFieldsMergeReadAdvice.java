@@ -30,9 +30,11 @@ import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.NoReuseHint;
 import org.apache.lucene.store.ReadOnceHint;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 /**
  * A merge reads stored fields front to back, while searches read them at random, and read advice
@@ -45,6 +47,7 @@ public class TestStoredFieldsMergeReadAdvice extends LuceneTestCase {
     Opens opens = new Opens();
     try (Directory dir = new RecordingDirectory(newDirectory(), opens)) {
       IndexWriterConfig iwc = new IndexWriterConfig();
+      iwc.setCodec(TestUtil.getDefaultCodec()); // the merge advice is the default format's
       iwc.setUseCompoundFile(false); // so the directory sees the data file by name
       try (IndexWriter w = new IndexWriter(dir, iwc)) {
         for (int segment = 0; segment < 2; segment++) {
@@ -76,6 +79,39 @@ public class TestStoredFieldsMergeReadAdvice extends LuceneTestCase {
           "the merge re-advised the stored fields searches are reading: " + opens,
           List.of(),
           opens.advised());
+    }
+  }
+
+  /** The data file is written front to back and, as it is read, not reused. */
+  public void testDataIsWrittenSequentiallyAndNotReused() throws Exception {
+    List<IOContext> dataWrites = new ArrayList<>();
+    try (Directory dir =
+        new FilterDirectory(newDirectory()) {
+          @Override
+          public IndexOutput createOutput(String name, IOContext context) throws IOException {
+            if (name.endsWith(".fdt")) {
+              dataWrites.add(context);
+            }
+            return super.createOutput(name, context);
+          }
+        }) {
+      IndexWriterConfig iwc = new IndexWriterConfig();
+      iwc.setCodec(TestUtil.getDefaultCodec());
+      iwc.setUseCompoundFile(false);
+      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+        for (int segment = 0; segment < 2; segment++) {
+          Document doc = new Document();
+          doc.add(new StoredField("field", "value " + segment));
+          w.addDocument(doc);
+          w.commit();
+        }
+        w.forceMerge(1);
+      }
+    }
+    assertEquals("two flushes and a merge: " + dataWrites, 3, dataWrites.size());
+    for (IOContext context : dataWrites) {
+      assertTrue(context.toString(), context.hints().contains(DataAccessHint.SEQUENTIAL));
+      assertTrue(context.toString(), context.hints().contains(NoReuseHint.INSTANCE));
     }
   }
 
@@ -163,6 +199,7 @@ public class TestStoredFieldsMergeReadAdvice extends LuceneTestCase {
 
   private static void writeDocuments(Directory dir) throws IOException {
     IndexWriterConfig iwc = new IndexWriterConfig();
+    iwc.setCodec(TestUtil.getDefaultCodec()); // the merge advice is the default format's
     iwc.setUseCompoundFile(false); // so the directory sees the data file by name
     try (IndexWriter w = new IndexWriter(dir, iwc)) {
       for (int i = 0; i < 64; i++) {
