@@ -240,6 +240,11 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#16739: IncrementalHnswGraphMerger now picks the base graph for a merge by comparing live
+  vector counts. It previously compared a candidate's live count against the current base's total
+  node count, so a graph with deletions could be kept as the base over a larger deletion-free graph,
+  depending on the order in which readers were added. (Lantao Jin)
+
 * GITHUB#16657: Fix hashCode/equals contract violation in LRUQueryCache's QueryCacheKey and account a
   cached query's RAM once per distinct query. (Sagar Upadhyaya)
 
