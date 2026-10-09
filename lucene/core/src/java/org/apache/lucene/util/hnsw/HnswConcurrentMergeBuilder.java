@@ -27,10 +27,12 @@ import java.util.Locale;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.concurrent.locks.Lock;
-import org.apache.lucene.internal.hppc.IntArrayList;
+import java.util.concurrent.locks.ReentrantLock;
 import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.search.TaskExecutor;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IORunnable;
@@ -201,7 +203,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     // join the other graphs into the base graph once it is repaired, as MergingHnswGraphBuilder
     // does after InitializedHnswGraphBuilder.initGraph
     if (graphs.length > 0) {
-      joinGraphs(cumulativeWorkTimeNs);
+      joinGraphs(maxOrd, cumulativeWorkTimeNs);
     }
     List<Callable<Void>> futures = new ArrayList<>();
     for (int i = 0; i < workers.length; i++) {
@@ -236,7 +238,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
    * other nodes of any of them builds a noticeably worse graph. Since the join sets only depend on
    * the graphs being joined, they are all computed beforehand, one task per graph.
    */
-  private void joinGraphs(AtomicLong cumulativeWorkTimeNs) throws IOException {
+  private void joinGraphs(int maxOrd, AtomicLong cumulativeWorkTimeNs) throws IOException {
     long startNs = System.nanoTime();
     List<Callable<JoinPlan>> planTasks = new ArrayList<>(graphs.length);
     for (int g = 0; g < graphs.length; g++) {
@@ -255,6 +257,8 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
               (System.nanoTime() - startNs) / 1_000_000.0));
     }
 
+    // the nodes of the joined graphs that are fully inserted, and so usable as entry points
+    InsertedNodes inserted = new InsertedNodes(maxOrd);
     for (int g = 0; g < plans.length; g++) {
       JoinPlan plan = plans[g];
       plans[g] = null; // not needed once joined
@@ -263,7 +267,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
           cumulativeWorkTimeNs,
           (worker, start, end) -> {
             for (int i = start; i < end; i++) {
-              worker.addJoinSetNode(plan.joinSetNodes[i]);
+              worker.addJoinSetNode(plan.ordMap[plan.joinSetNodes[i]], inserted);
             }
           });
       runInBatches(
@@ -271,55 +275,59 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
           cumulativeWorkTimeNs,
           (worker, start, end) -> {
             for (int i = start; i < end; i++) {
-              worker.addJoinedNode(
-                  plan.otherNodes[i],
-                  plan.joinNeighbors,
-                  plan.joinNeighborsStart[i],
-                  plan.joinNeighborsStart[i + 1]);
+              worker.addJoinedNode(plan, plan.otherNodes[i], inserted);
             }
           });
     }
   }
 
   /**
-   * The nodes a join adds to the graph, as ordinals of the graph.
+   * How a graph is joined: its join set, its other nodes, and how to read the graph. Nodes are
+   * ordinals of the graph being joined; {@code ordMap} maps them to ordinals of the merged graph.
    *
-   * @param joinSetNodes the join set of the graph being joined
-   * @param otherNodes the other nodes of the graph being joined
-   * @param joinNeighborsStart the neighbors in the join set of {@code otherNodes[i]} are {@code
-   *     joinNeighbors[joinNeighborsStart[i]:joinNeighborsStart[i + 1]]}
-   * @param joinNeighbors see {@code joinNeighborsStart}
+   * @param graph the graph being joined
+   * @param graphLock guards {@code graph}, which workers read concurrently
+   * @param ordMap maps ordinals of {@code graph} to ordinals of the merged graph
+   * @param joinSetNodes the join set of {@code graph}, sorted
+   * @param otherNodes the other nodes of {@code graph}, sorted
    */
   private record JoinPlan(
-      int[] joinSetNodes, int[] otherNodes, int[] joinNeighborsStart, int[] joinNeighbors) {
+      HnswGraph graph, Lock graphLock, int[] ordMap, int[] joinSetNodes, int[] otherNodes) {
 
     static JoinPlan create(HnswGraph graph, int[] ordMap) throws IOException {
       IntHashSet j = UpdateGraphsUtils.computeJoinSet(graph);
       // sort for stability
       int[] joinSetNodes = j.toArray();
       Arrays.sort(joinSetNodes);
-      for (int i = 0; i < joinSetNodes.length; i++) {
-        joinSetNodes[i] = ordMap[joinSetNodes[i]];
-      }
       int[] otherNodes = new int[graph.size() - joinSetNodes.length];
-      int[] joinNeighborsStart = new int[otherNodes.length + 1];
-      IntArrayList joinNeighbors = new IntArrayList();
       int i = 0;
       for (int u = 0; u < graph.size(); u++) {
-        if (j.contains(u)) {
-          continue;
+        if (j.contains(u) == false) {
+          otherNodes[i++] = u;
         }
-        graph.seek(0, u);
-        for (int v = graph.nextNeighbor(); v != NO_MORE_DOCS; v = graph.nextNeighbor()) {
-          if (j.contains(v)) {
-            joinNeighbors.add(ordMap[v]);
-          }
-        }
-        otherNodes[i++] = ordMap[u];
-        joinNeighborsStart[i] = joinNeighbors.size();
       }
       assert i == otherNodes.length;
-      return new JoinPlan(joinSetNodes, otherNodes, joinNeighborsStart, joinNeighbors.toArray());
+      return new JoinPlan(graph, new ReentrantLock(), ordMap, joinSetNodes, otherNodes);
+    }
+  }
+
+  /**
+   * A set of nodes that workers add to concurrently. Adding a node happens-before any read that
+   * finds it.
+   */
+  private static final class InsertedNodes {
+    private final AtomicLongArray words;
+
+    InsertedNodes(int maxOrd) {
+      words = new AtomicLongArray(FixedBitSet.bits2words(maxOrd));
+    }
+
+    void add(int node) {
+      words.accumulateAndGet(node >> 6, 1L << node, (a, b) -> a | b);
+    }
+
+    boolean contains(int node) {
+      return (words.get(node >> 6) & (1L << node)) != 0;
     }
   }
 
@@ -464,6 +472,9 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     /** The entry points of the search on level 0 for {@link #addJoinedNode}, reused */
     private final IntHashSet eps = new IntHashSet();
 
+    /** The neighbors of a node in the graph being joined, for {@link #addJoinedNode}, reused */
+    private int[] sourceNeighbors = new int[0];
+
     private ConcurrentMergeWorker(
         RandomVectorScorerSupplier scorerSupplier,
         int beamWidth,
@@ -520,24 +531,43 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     }
 
     /** Adds a node of the join set of a graph being joined, with a full search. */
-    private void addJoinSetNode(int node) throws IOException {
+    private void addJoinSetNode(int node, InsertedNodes inserted) throws IOException {
       // skip the initializedNodes check: the node is marked since it belongs to a graph being
       // joined
       super.addGraphNode(node);
+      inserted.add(node);
     }
 
     /**
-     * Adds a node of a graph being joined that is not in its join set, searching level 0 from the
-     * node's neighbors in the join set, {@code joinNeighbors[from:to]}, and from their neighbors.
+     * Adds a node of a graph being joined that is not in its join set. Like {@link
+     * MergingHnswGraphBuilder}, the search on level 0 enters from the node's neighbors in that
+     * graph that are already inserted, which includes its join set neighbors, and from their
+     * neighbors in the merged graph.
+     *
+     * @param u the node, as an ordinal of the graph being joined
      */
-    private void addJoinedNode(int node, int[] joinNeighbors, int from, int to) throws IOException {
+    private void addJoinedNode(JoinPlan plan, int u, InsertedNodes inserted) throws IOException {
+      int numNeighbors = 0;
+      plan.graphLock.lock();
+      try {
+        plan.graph.seek(0, u);
+        sourceNeighbors = ArrayUtil.grow(sourceNeighbors, plan.graph.neighborCount());
+        for (int v = plan.graph.nextNeighbor(); v != NO_MORE_DOCS; v = plan.graph.nextNeighbor()) {
+          sourceNeighbors[numNeighbors++] = v;
+        }
+      } finally {
+        plan.graphLock.unlock();
+      }
       eps.clear();
-      for (int i = from; i < to; i++) {
-        int joinNeighbor = joinNeighbors[i];
-        eps.add(joinNeighbor);
-        Lock lock = hnswLock.read(0, joinNeighbor);
+      for (int i = 0; i < numNeighbors; i++) {
+        int neighbor = plan.ordMap[sourceNeighbors[i]];
+        if (inserted.contains(neighbor) == false) {
+          continue;
+        }
+        eps.add(neighbor);
+        Lock lock = hnswLock.read(0, neighbor);
         try {
-          NeighborArray neighbors = hnsw.getNeighbors(0, joinNeighbor);
+          NeighborArray neighbors = hnsw.getNeighbors(0, neighbor);
           for (int n = 0; n < neighbors.size(); n++) {
             eps.add(neighbors.nodes()[n]);
           }
@@ -545,7 +575,9 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
           lock.unlock();
         }
       }
+      int node = plan.ordMap[u];
       addGraphNode(node, eps);
+      inserted.add(node);
     }
   }
 

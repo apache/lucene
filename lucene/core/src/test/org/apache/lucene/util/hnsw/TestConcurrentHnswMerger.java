@@ -20,9 +20,12 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -92,6 +95,31 @@ public class TestConcurrentHnswMerger extends LuceneTestCase {
           System.out.println(message);
         }
         assertTrue(message, concurrent.scoreCount < serial.scoreCount * 1.25);
+      }
+    }
+  }
+
+  /**
+   * With one worker the concurrent join inserts the same nodes in the same order, from the same
+   * entry points, as the serial merger, so it must build exactly the same graph.
+   */
+  public void testOneWorkerBuildsSameGraphAsSerialMerge() throws IOException {
+    int[] segmentSizes = {
+      TestUtil.nextInt(random(), 500, 1000),
+      TestUtil.nextInt(random(), 200, 500),
+      TestUtil.nextInt(random(), 50, 200)
+    };
+    List<float[]> vectors = randomVectors(segmentSizes);
+    try (Directory dir = newDirectory()) {
+      buildIndex(dir, vectors, segmentSizes);
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        OnHeapHnswGraph serial = merge(reader, vectors, 0).graph;
+        OnHeapHnswGraph concurrent = merge(reader, vectors, 1).graph;
+        assertEquals(serial.numLevels(), concurrent.numLevels());
+        assertEquals(serial.entryNode(), concurrent.entryNode());
+        for (int level = 0; level < serial.numLevels(); level++) {
+          assertEquals(neighborsByNode(serial, level), neighborsByNode(concurrent, level));
+        }
       }
     }
   }
@@ -219,6 +247,24 @@ public class TestConcurrentHnswMerger extends LuceneTestCase {
         TestUtil.shutdownExecutorService(exec);
       }
     }
+  }
+
+  /** The sorted neighbors of every node on a level, keyed by node. */
+  private static Map<Integer, List<Integer>> neighborsByNode(OnHeapHnswGraph graph, int level)
+      throws IOException {
+    Map<Integer, List<Integer>> neighborsByNode = new HashMap<>();
+    HnswGraph.NodesIterator nodes = graph.getNodesOnLevel(level);
+    while (nodes.hasNext()) {
+      int node = nodes.nextInt();
+      List<Integer> neighbors = new ArrayList<>();
+      graph.seek(level, node);
+      for (int n = graph.nextNeighbor(); n != NO_MORE_DOCS; n = graph.nextNeighbor()) {
+        neighbors.add(n);
+      }
+      Collections.sort(neighbors);
+      neighborsByNode.put(node, neighbors);
+    }
+    return neighborsByNode;
   }
 
   private static void assertNoIsolatedNodes(OnHeapHnswGraph graph) throws IOException {
