@@ -25,6 +25,7 @@ import static org.hamcrest.Matchers.oneOf;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -38,8 +39,10 @@ import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloat16VectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
+import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FieldInfo;
@@ -54,6 +57,7 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.SegmentReader;
 import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
@@ -197,6 +201,100 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
   @Override
   public void testSearchWithVisitedLimit() {
     // visited limit is not respected, as it is brute force search
+  }
+
+  /**
+   * Regression test: when source segments have deleted documents, the per-field centroid recomputed
+   * during a merge must be the mean of the live full-precision vectors only. Deleted documents must
+   * not contribute to the centroid.
+   */
+  public void testCentroidSkipsDeletedDocsOnMerge() throws IOException {
+    String fieldName = "field";
+    int dims = 8;
+    // Use a non-normalizing similarity so the stored centroid is the plain mean of live vectors.
+    VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
+
+    // Two groups of vectors: "keep" vectors all equal to 1.0, "delete" vectors all equal to 100.0.
+    // After deleting every "delete" doc, the merged centroid must equal the all-ones vector.
+    // If deleted docs were (incorrectly) included, each component would be pulled toward 100.0.
+    int numKeep = 20;
+    int numDelete = 15;
+
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+        // "keep" docs get ids with a "keep-" prefix (value 1.0); "delete" docs get ids with a
+        // "del-" prefix (value 100.0). We later delete every "del-" doc by term.
+        int keepId = 0;
+        int delId = 0;
+        // Segment 1: half the keep docs and half the delete docs.
+        for (int i = 0; i < numKeep / 2; i++) {
+          w.addDocument(
+              centroidDoc(
+                  fieldName, "keep-" + keepId++, constantVector(dims, 1.0f), similarityFunction));
+        }
+        for (int i = 0; i < numDelete / 2; i++) {
+          w.addDocument(
+              centroidDoc(
+                  fieldName, "del-" + delId++, constantVector(dims, 100.0f), similarityFunction));
+        }
+        w.commit();
+
+        // Segment 2: the remaining keep and delete docs.
+        for (int i = numKeep / 2; i < numKeep; i++) {
+          w.addDocument(
+              centroidDoc(
+                  fieldName, "keep-" + keepId++, constantVector(dims, 1.0f), similarityFunction));
+        }
+        for (int i = numDelete / 2; i < numDelete; i++) {
+          w.addDocument(
+              centroidDoc(
+                  fieldName, "del-" + delId++, constantVector(dims, 100.0f), similarityFunction));
+        }
+        w.commit();
+
+        // Delete every "del-" doc (all the 100.0-valued vectors).
+        for (int d = 0; d < numDelete; d++) {
+          w.deleteDocuments(new Term("id", "del-" + d));
+        }
+        w.commit();
+
+        // Force merge into a single segment: the centroid is recalculated over source segment(s)
+        // that carry deletions, which must be skipped.
+        w.forceMerge(1);
+
+        try (IndexReader reader = DirectoryReader.open(w)) {
+          LeafReader r = getOnlyLeafReader(reader);
+          FloatVectorValues vectorValues = r.getFloatVectorValues(fieldName);
+          assertEquals(numKeep, vectorValues.size());
+
+          QuantizedByteVectorValues qvectorValues =
+              ((Lucene104ScalarQuantizedVectorsReader.ScalarQuantizedVectorValues) vectorValues)
+                  .getQuantizedVectorValues();
+          float[] centroid = qvectorValues.getCentroid();
+          assertEquals(dims, centroid.length);
+
+          // The correct centroid is exactly the all-ones vector.
+          for (int j = 0; j < dims; j++) {
+            assertEquals(
+                "centroid component " + j + " must ignore deleted docs", 1.0f, centroid[j], 1e-4f);
+          }
+        }
+      }
+    }
+  }
+
+  private static Document centroidDoc(
+      String fieldName, String id, float[] vector, VectorSimilarityFunction similarityFunction) {
+    Document doc = new Document();
+    doc.add(new StringField("id", id, Field.Store.NO));
+    doc.add(new KnnFloatVectorField(fieldName, vector, similarityFunction));
+    return doc;
+  }
+
+  private static float[] constantVector(int dims, float value) {
+    float[] v = new float[dims];
+    Arrays.fill(v, value);
+    return v;
   }
 
   public void testQuantizedVectorsWriteAndRead() throws IOException {
