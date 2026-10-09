@@ -162,6 +162,72 @@ public class TestMemoryAccountingBitsetCollector extends LuceneTestCase {
     assertTrue(result.bitSet().length() < reader.maxDoc());
   }
 
+  public void testCollectorAllocatesNothingBeforeFirstMatch() throws Exception {
+    // Visit every leaf without collecting any doc — simulates a selective query whose scorer
+    // matches nothing in the visited leaves, or a partition-worker collector under intra-segment
+    // concurrency that sees no matches. Pre-fix, doSetNextReader eagerly grew the bitset to the
+    // full leaf/partition span; post-fix, the bitset must stay empty until an actual match.
+    CollectorMemoryTracker tracker =
+        new CollectorMemoryTracker("testMemoryTracker", Long.MAX_VALUE);
+    MemoryAccountingBitsetCollector collector = new MemoryAccountingBitsetCollector(tracker);
+    long baseline = tracker.getBytes();
+
+    for (LeafReaderContext ctx : reader.leaves()) {
+      collector.doSetNextReader(ctx);
+    }
+
+    assertEquals(
+        "collector allocated bits despite no matches; expected lazy allocation",
+        baseline,
+        tracker.getBytes());
+    assertEquals(-1, collector.getHighestSetBit());
+  }
+
+  public void testReduceHandlesNullBitsetsUnderIntraSegmentConcurrency() throws Exception {
+    // Locks in the contract that reduce() safely handles collectors whose bitSet is null
+    // (the post-fix state for any collector that saw zero matches). Forces multiple
+    // partition-workers per leaf, then runs a query that matches nothing so every collector
+    // ends up with bitSet == null; reduce() must not NPE and must return an empty result.
+    CollectorMemoryTracker tracker =
+        new CollectorMemoryTracker("testMemoryTracker", Long.MAX_VALUE);
+    MemoryAccountingBitsetCollectorManager bitsetCollectorManager =
+        new MemoryAccountingBitsetCollectorManager(tracker);
+
+    IndexSearcher searcher =
+        new IndexSearcher(reader, Runnable::run) {
+          @Override
+          protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
+            List<LeafSlice> slices = new ArrayList<>();
+            for (LeafReaderContext ctx : leaves) {
+              int maxDoc = ctx.reader().maxDoc();
+              if (maxDoc <= 1) {
+                slices.add(
+                    new LeafSlice(
+                        Collections.singletonList(
+                            LeafReaderContextPartition.createForEntireSegment(ctx))));
+              } else {
+                int mid = maxDoc / 2;
+                slices.add(
+                    new LeafSlice(
+                        Collections.singletonList(
+                            LeafReaderContextPartition.createFromAndTo(ctx, 0, mid))));
+                slices.add(
+                    new LeafSlice(
+                        Collections.singletonList(
+                            LeafReaderContextPartition.createFromAndTo(ctx, mid, maxDoc))));
+              }
+            }
+            return slices.toArray(LeafSlice[]::new);
+          }
+        };
+
+    MemoryAccountingBitsetCollectorManager.Result result =
+        searcher.search(new TermQuery(new Term("field", "does-not-exist")), bitsetCollectorManager);
+
+    assertEquals(0, result.bitSet().cardinality());
+    assertEquals(1, result.bitSet().length());
+  }
+
   public void testResultBitSetEmptyOnNoMatches() throws Exception {
     CollectorMemoryTracker tracker =
         new CollectorMemoryTracker("testMemoryTracker", Long.MAX_VALUE);
