@@ -162,6 +162,8 @@ New Features
 
 * GITHUB#16628: Add re-ranking and prefetch support for fp16 vectors. (Pulkit Gupta)
 
+* GITHUB#16710: Add scalar quantization support for FLOAT16 vectors in the dedup KNN codec. (Pranshu Shukla)
+
 Improvements
 ---------------------
 * GITHUB#15704: Replace LinkedList with more efficient data structure. (Renato Haeberli)

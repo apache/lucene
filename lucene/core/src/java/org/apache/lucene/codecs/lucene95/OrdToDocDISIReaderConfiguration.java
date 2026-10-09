@@ -226,4 +226,11 @@ public class OrdToDocDISIReaderConfiguration {
   public boolean isDense() {
     return docsWithFieldOffset == -1;
   }
+
+  /**
+   * @return the number of documents that have a value for the field
+   */
+  public int size() {
+    return size;
+  }
 }
