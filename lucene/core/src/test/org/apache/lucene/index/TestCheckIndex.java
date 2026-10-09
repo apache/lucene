@@ -37,6 +37,8 @@ import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FilterDirectory;
+import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
@@ -356,6 +358,65 @@ public class TestCheckIndex extends BaseTestCheckIndex {
         }
         assertTrue(
             out.toString(UTF_8), out.toString(UTF_8).contains("could not read segment \"_1\""));
+      }
+    }
+  }
+
+  public void testSegmentInfoIOExceptionDoesNotThrowCorruptionException() throws Exception {
+    for (String failure : List.of("fail-open", "fail-read")) {
+      try (Directory dir = newDirectory()) {
+        IndexWriterConfig iwc = new IndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE);
+        try (IndexWriter iw = new IndexWriter(dir, iwc)) {
+          for (int seg = 0; seg < 2; seg++) {
+            Document doc = new Document();
+            doc.add(new StringField("id", "d" + seg, Field.Store.NO));
+            iw.addDocument(doc);
+            iw.commit();
+          }
+        }
+
+        Directory failingDir =
+            new FilterDirectory(dir) {
+              @Override
+              public IndexInput openInput(String name, IOContext context) throws IOException {
+                if (name.equals("_1.si") == false) {
+                  return super.openInput(name, context);
+                }
+                if (failure.equals("fail-open")) {
+                  throw new IOException("simulated I/O failure opening " + name);
+                }
+                IndexInput in = super.openInput(name, context);
+                return new FilterIndexInput("failing(" + in + ")", in) {
+                  @Override
+                  public byte readByte() throws IOException {
+                    throw new IOException("simulated I/O failure reading " + name);
+                  }
+
+                  @Override
+                  public void readBytes(byte[] b, int offset, int len) throws IOException {
+                    throw new IOException("simulated I/O failure reading " + name);
+                  }
+                };
+              }
+            };
+
+        IOException e =
+            expectThrows(
+                IOException.class,
+                () ->
+                    SegmentInfos.readCommit(
+                        failingDir, SegmentInfos.getLastCommitSegmentsFileName(failingDir), 0));
+        assertFalse(failure + ": " + e, e instanceof CorruptIndexException);
+        assertTrue(failure + ": " + e, e.getMessage().startsWith("simulated I/O failure"));
+
+        // ... and CheckIndex does not blame the segment for it
+        try (CheckIndex checker = new CheckIndex(failingDir)) {
+          CheckIndex.Status status = checker.checkIndex();
+
+          assertFalse(failure, status.clean);
+          assertTrue(failure, status.missingSegments);
+          assertNull(failure, status.brokenSegmentName);
+        }
       }
     }
   }

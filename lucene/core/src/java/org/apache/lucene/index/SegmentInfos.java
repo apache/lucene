@@ -45,7 +45,6 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.StringHelper;
-import org.apache.lucene.util.ThreadInterruptedException;
 import org.apache.lucene.util.Version;
 
 /**
@@ -409,11 +408,12 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       final SegmentInfo info;
       try {
         info = codec.segmentInfoFormat().read(directory, segName, segmentID, IOContext.READONCE);
-      } catch (ThreadInterruptedException e) {
-        throw e;
-      } catch (Exception | AssertionError e) {
-        // Corruption in a .si file can surface as almost anything the codec's reader happens to do
-        // with the bad bytes, so catch broadly, but keep the root cause: it is what names the file.
+      } catch (CorruptIndexException
+          | EOFException
+          | NoSuchFileException
+          | FileNotFoundException e) {
+        // The .si is missing, truncated or failed its checksum. Anything else, e.g. a transient I/O
+        // failure, is no evidence of corruption and must propagate as-is.
         throw new CorruptSegmentInfoException(
             segName,
             "segment info file: " + segName + ".si cannot be read - it may be missing or corrupt",
