@@ -23,7 +23,6 @@ import java.io.IOException;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.VectorEncoding;
@@ -86,7 +85,7 @@ public class TestDedupHnswScalarQuantizedVectorsFormat extends TestDedupHnswVect
       knnVectorsReader = knnVectorsReader.unwrapReaderForField(fieldName);
       var offHeap = knnVectorsReader.getOffHeapByteSize(fieldInfo);
       long totalByteSize = offHeap.values().stream().mapToLong(Long::longValue).sum();
-      if (knnVectorsReader instanceof Lucene99HnswVectorsReader) {
+      if (knnVectorsReader instanceof DedupHnswVectorsReader) {
         if (getNumVectors(knnVectorsReader, fieldInfo) == 0) {
           assertEquals(0L, totalByteSize);
         } else {
@@ -99,11 +98,16 @@ public class TestDedupHnswScalarQuantizedVectorsFormat extends TestDedupHnswVect
           }
 
           if (hasHNSW(knnVectorsReader, fieldInfo)) {
-            assertTrue(offHeap.get("vex") > 0L);
+            assertTrue(offHeap.get("vdhd") > 0L); // HNSW graph (+ postings in DEDUP mode)
           } else {
-            assertTrue(offHeap.get("vex") == null || offHeap.get("vex") == 0);
+            // No graph (e.g. tiny segment). In DEDUP mode .vdhd still holds the postings; in PLAIN
+            // mode there are no postings, so .vdhd may be absent/zero for this field.
+            Long vdhd = offHeap.get("vdhd");
+            assertTrue(vdhd == null || vdhd >= 0L);
           }
         }
+      } else {
+        throw new AssertionError("unexpected reader:" + knnVectorsReader.getClass());
       }
     } else {
       throw new AssertionError("unexpected:" + r.getClass());
