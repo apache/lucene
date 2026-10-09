@@ -120,6 +120,13 @@ public class TestRamUsageEstimator extends LuceneTestCase {
     assertEquals(actual, estimated);
   }
 
+  public void testBoxedPrimitives() {
+    for (Object value : new Object[] {true, (byte) 1, 'c', (short) 1, 1, 1.0f, 1L, 1.0d}) {
+      assertEquals(
+          value.getClass().getName(), ramUsed(value), RamUsageEstimator.sizeOfObject(value));
+    }
+  }
+
   public void testBytesRefHash() {
     BytesRefHash bytes = new BytesRefHash();
     for (int i = 0; i < 100; i++) {

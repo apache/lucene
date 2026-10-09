@@ -104,7 +104,15 @@ public final class RamUsageEstimator {
     primitiveSizes = Collections.unmodifiableMap(primitiveSizesMap);
   }
 
-  static final int INTEGER_SIZE, LONG_SIZE, STRING_SIZE;
+  static final int BOOLEAN_SIZE,
+      BYTE_SIZE,
+      CHARACTER_SIZE,
+      SHORT_SIZE,
+      INTEGER_SIZE,
+      FLOAT_SIZE,
+      LONG_SIZE,
+      DOUBLE_SIZE,
+      STRING_SIZE;
 
   /** For testing only */
   static final boolean JVM_IS_HOTSPOT_64BIT;
@@ -135,8 +143,14 @@ public final class RamUsageEstimator {
       NUM_BYTES_ARRAY_HEADER = NUM_BYTES_OBJECT_HEADER + Integer.BYTES;
     }
 
+    BOOLEAN_SIZE = (int) shallowSizeOfInstance(Boolean.class);
+    BYTE_SIZE = (int) shallowSizeOfInstance(Byte.class);
+    CHARACTER_SIZE = (int) shallowSizeOfInstance(Character.class);
+    SHORT_SIZE = (int) shallowSizeOfInstance(Short.class);
     INTEGER_SIZE = (int) shallowSizeOfInstance(Integer.class);
+    FLOAT_SIZE = (int) shallowSizeOfInstance(Float.class);
     LONG_SIZE = (int) shallowSizeOfInstance(Long.class);
+    DOUBLE_SIZE = (int) shallowSizeOfInstance(Double.class);
     STRING_SIZE = (int) shallowSizeOfInstance(String.class);
   }
 
@@ -403,24 +417,36 @@ public final class RamUsageEstimator {
       size = sizeOf((String) o);
     } else if (o instanceof boolean[]) {
       size = sizeOf((boolean[]) o);
+    } else if (o instanceof Boolean) {
+      size = BOOLEAN_SIZE;
     } else if (o instanceof byte[]) {
       size = sizeOf((byte[]) o);
+    } else if (o instanceof Byte) {
+      size = BYTE_SIZE;
     } else if (o instanceof char[]) {
       size = sizeOf((char[]) o);
+    } else if (o instanceof Character) {
+      size = CHARACTER_SIZE;
     } else if (o instanceof double[]) {
       size = sizeOf((double[]) o);
+    } else if (o instanceof Double) {
+      size = DOUBLE_SIZE;
     } else if (o instanceof float[]) {
       size = sizeOf((float[]) o);
+    } else if (o instanceof Float) {
+      size = FLOAT_SIZE;
     } else if (o instanceof int[]) {
       size = sizeOf((int[]) o);
     } else if (o instanceof Integer) {
-      size = sizeOf((Integer) o);
+      size = INTEGER_SIZE;
     } else if (o instanceof Long) {
-      size = sizeOf((Long) o);
+      size = LONG_SIZE;
     } else if (o instanceof long[]) {
       size = sizeOf((long[]) o);
     } else if (o instanceof short[]) {
       size = sizeOf((short[]) o);
+    } else if (o instanceof Short) {
+      size = SHORT_SIZE;
     } else if (o instanceof String[]) {
       size = sizeOf((String[]) o);
     } else if (o instanceof Query) {
