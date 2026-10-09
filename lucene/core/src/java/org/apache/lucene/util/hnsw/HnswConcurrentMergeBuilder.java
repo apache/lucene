@@ -35,6 +35,7 @@ import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.InfoStream;
+import org.apache.lucene.util.IntsRef;
 
 /**
  * A graph builder that manages multiple workers, it only supports adding the whole graph all at
@@ -45,8 +46,11 @@ import org.apache.lucene.util.InfoStream;
  */
 public class HnswConcurrentMergeBuilder implements HnswBuilder {
 
-  private static final int DEFAULT_BATCH_SIZE =
-      2048; // number of vectors the worker handles sequentially at one batch
+  // Number of vectors the worker handles sequentially at one batch.
+  private static final int DEFAULT_BATCH_SIZE = 2048;
+
+  // Number of disconnected nodes a repair worker claims at a time.
+  private static final int REPAIR_BATCH_SIZE = 64;
 
   // number of batches each worker should get, at least, in a phase of a join
   private static final int MIN_JOIN_BATCHES = 16;
@@ -56,6 +60,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
   private final HnswLock hnswLock;
   private final HnswGraph[] graphs;
   private final int[][] ordMaps;
+  private final InitializedHnswGraphBuilder.PrunedGraph prunedGraph;
   private InfoStream infoStream = InfoStream.getDefault();
   private boolean frozen;
 
@@ -74,27 +79,60 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
         beamWidth,
         hnsw,
         initializedNodes,
+        null,
         new HnswGraph[0],
         new int[0][]);
   }
 
   /**
-   * @param initializedNodes the nodes that must not be added to the graph as new nodes, either
-   *     because they are already in it or because they belong to one of {@code graphs}; must not be
-   *     null if {@code graphs} is not empty
-   * @param graphs graphs without deletions whose nodes are not in {@code hnsw} yet; they are joined
-   *     into it with the join set approach of {@link MergingHnswGraphBuilder} before the nodes that
-   *     are not in {@code initializedNodes} are added
-   * @param ordMaps for each of {@code graphs}, the mapping from its ordinals to ordinals of {@code
-   *     hnsw}
+   * Creates a builder that, when the pruned source graph had deletes, repairs its disconnected
+   * nodes across the worker pool and rebalances it before inserting the remaining vectors.
+   *
+   * @param prunedGraph the deferred repair state, or null when the reused graph had no deletes
    */
-  public HnswConcurrentMergeBuilder(
+  HnswConcurrentMergeBuilder(
       TaskExecutor taskExecutor,
       int numWorker,
       RandomVectorScorerSupplier scorerSupplier,
       int beamWidth,
       OnHeapHnswGraph hnsw,
       BitSet initializedNodes,
+      InitializedHnswGraphBuilder.PrunedGraph prunedGraph)
+      throws IOException {
+    this(
+        taskExecutor,
+        numWorker,
+        scorerSupplier,
+        beamWidth,
+        hnsw,
+        initializedNodes,
+        prunedGraph,
+        new HnswGraph[0],
+        new int[0][]);
+  }
+
+  /**
+   * Creates a builder that first repairs the pruned source graph if it had deletes, then joins
+   * {@code graphs} into it, then inserts the remaining vectors.
+   *
+   * @param initializedNodes the nodes that must not be added to the graph as new nodes, either
+   *     because they are already in it or because they belong to one of {@code graphs}; must not be
+   *     null if {@code graphs} is not empty
+   * @param prunedGraph the deferred repair state, or null when the reused graph had no deletes
+   * @param graphs graphs without deletions whose nodes are not in {@code hnsw} yet; they are joined
+   *     into it with the join set approach of {@link MergingHnswGraphBuilder} before the nodes that
+   *     are not in {@code initializedNodes} are added
+   * @param ordMaps for each of {@code graphs}, the mapping from its ordinals to ordinals of {@code
+   *     hnsw}
+   */
+  HnswConcurrentMergeBuilder(
+      TaskExecutor taskExecutor,
+      int numWorker,
+      RandomVectorScorerSupplier scorerSupplier,
+      int beamWidth,
+      OnHeapHnswGraph hnsw,
+      BitSet initializedNodes,
+      InitializedHnswGraphBuilder.PrunedGraph prunedGraph,
       HnswGraph[] graphs,
       int[][] ordMaps)
       throws IOException {
@@ -123,6 +161,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
               initializedNodes,
               workProgress);
     }
+    this.prunedGraph = prunedGraph;
   }
 
   @Override
@@ -141,6 +180,26 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
       worker.setMergeStartTimeNs(mergeStartTimeNs);
       worker.setCumulativeWorkTimeNs(cumulativeWorkTimeNs);
     }
+    if (prunedGraph != null) {
+      long repairStartNs = System.nanoTime();
+      int repairedNodes = repairDisconnectedNodes();
+      long rebalanceStartNs = System.nanoTime();
+      prunedGraph.builder().rebalanceGraph();
+      long rebalanceEndNs = System.nanoTime();
+      if (infoStream.isEnabled(HNSW_COMPONENT)) {
+        infoStream.message(
+            HNSW_COMPONENT,
+            String.format(
+                Locale.ROOT,
+                "repaired reused graph: %d nodes in %.2f ms with %d workers, %.2f ms rebalance",
+                repairedNodes,
+                (rebalanceStartNs - repairStartNs) / 1_000_000.0,
+                workers.length,
+                (rebalanceEndNs - rebalanceStartNs) / 1_000_000.0));
+      }
+    }
+    // join the other graphs into the base graph once it is repaired, as MergingHnswGraphBuilder
+    // does after InitializedHnswGraphBuilder.initGraph
     if (graphs.length > 0) {
       joinGraphs(cumulativeWorkTimeNs);
     }
@@ -295,6 +354,49 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
   @FunctionalInterface
   private interface BatchTask {
     void run(ConcurrentMergeWorker worker, int start, int end) throws IOException;
+  }
+
+  /**
+   * Repairs the pruned graph's disconnected nodes across the worker pool, one level at a time from
+   * the top down.
+   *
+   * @return the number of nodes repaired, counting a node once per level it was repaired on
+   */
+  private int repairDisconnectedNodes() throws IOException {
+    int repairedNodes = 0;
+    for (int level = prunedGraph.numLevels() - 1; level >= 0; level--) {
+      IntsRef disconnectedNodes = prunedGraph.disconnectedNodesByLevel()[level];
+      if (disconnectedNodes == null) {
+        continue;
+      }
+      int total = disconnectedNodes.length;
+      repairedNodes += total;
+      // Use at most one task per worker and no more tasks than repair batches; each task
+      // dynamically claims batches below.
+      int taskCount = Math.min(workers.length, Math.ceilDiv(total, REPAIR_BATCH_SIZE));
+      AtomicInteger repairProgress = new AtomicInteger(0);
+      int repairLevel = level;
+      List<Callable<Void>> tasks = new ArrayList<>(taskCount);
+      for (int t = 0; t < taskCount; t++) {
+        ConcurrentMergeWorker worker = workers[t];
+        tasks.add(
+            () -> {
+              int from;
+              while ((from = repairProgress.getAndAdd(REPAIR_BATCH_SIZE)) < total) {
+                int length = Math.min(REPAIR_BATCH_SIZE, total - from);
+                worker.fixDisconnectedNodes(
+                    new IntsRef(disconnectedNodes.ints, disconnectedNodes.offset + from, length),
+                    repairLevel,
+                    worker.scorer);
+              }
+              return null;
+            });
+      }
+      // Finish every repair task at this level before repairing the next lower level, because
+      // addConnections descends through the already-repaired upper levels.
+      taskExecutor.invokeAll(tasks);
+    }
+    return repairedNodes;
   }
 
   @Override

@@ -617,12 +617,26 @@ Optimizations
 * GITHUB#16667: Rewrite BooleanQuery to MatchNoDocsQuery when it has MUST_NOT clause matching one of
   its MUST boost or constant score query clauses. (Egor Potemkin)
 
+* GITHUB#16715: Optimize MUST_NOT scoring based on required-clause selectivity. (Ke Wei)
+
 * GITHUB#16769: Merges now also open their own mapping of the raw vectors behind the Faiss format,
   and the merge mapping keeps the hints the file was opened with, changing only how it is read.
   (Jim Ferenczi)
 
+* GITHUB#16797: Stored fields data is written with DataAccessHint.SEQUENTIAL and NoReuseHint,
+  matching how it is read. (Jim Ferenczi)
+
+* GITHUB#16618: Repair disconnected nodes during HNSW merge-reuse across the merge worker
+  pool instead of serially on the merge thread, so reusing a graph with deletes is no longer
+  slower than a full rebuild. (Ethan Baker)
+
 Bug Fixes
 ---------------------
+
+* GITHUB#16764: Fix Lucene104ScalarQuantizedVectorsWriter to exclude deleted docs when recomputing the
+  merge centroid and correct the vector count so that it reflects the live docs after deletions, preventing
+  query-side data from being prepared for merged fields that are too small to build a graph. (Pranshu Shukla)
+
 * GITHUB#10153: Allow configurable buffer size in SegmentingTokenizerBase and recognize whitespace as safe boundary in ThaiTokenizer to avoid splitting words across buffer boundaries. (Kamthorn Krairaksa)
 
 * GITHUB#16620: Make HNSW merges abortable during graph initialization and repair, so that the

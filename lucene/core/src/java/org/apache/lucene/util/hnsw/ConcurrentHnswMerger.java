@@ -73,9 +73,10 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
     HnswGraph[] graphs = orderGraphReaders();
     BitSet initializedNodes = new FixedBitSet(maxOrd);
     int[][] ordMaps = getNewOrdMapping(mergedVectorValues, initializedNodes);
-    OnHeapHnswGraph graph =
-        InitializedHnswGraphBuilder.initGraph(
-            graphs[0], ordMaps[0], maxOrd, beamWidth, scorerSupplier, abortCheck);
+    // only prune the base graph here: if it had deletes, the builder repairs it with all workers
+    InitializedHnswGraphBuilder.PrunedGraph prunedGraph =
+        InitializedHnswGraphBuilder.pruneGraph(
+            scorerSupplier, beamWidth, graphs[0], ordMaps[0], maxOrd, abortCheck);
     // the remaining graphs have no deletions; join them into the base graph rather than inserting
     // their nodes from scratch
     return new HnswConcurrentMergeBuilder(
@@ -83,8 +84,9 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
         numWorker,
         scorerSupplier,
         beamWidth,
-        graph,
+        prunedGraph.graph(),
         initializedNodes,
+        prunedGraph.hasDeletes() ? prunedGraph : null,
         ArrayUtil.copyOfSubArray(graphs, 1, graphs.length),
         ArrayUtil.copyOfSubArray(ordMaps, 1, ordMaps.length));
   }
