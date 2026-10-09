@@ -706,6 +706,11 @@ Bug Fixes
   threads race to initialize it, which could leave each analyzer holding its own ~7 MB copy.
   (Eugene Rizhkov)
 
+* GITHUB#15239: BatchScoreBulkScorer and DenseConjunctionBulkScorer no longer skip hits from
+  setMinCompetitiveScore when the search ScoreMode is exhaustive. Nested TopScoreDocCollectors can
+  still track a competitive threshold without dropping matches from an outer COMPLETE collector.
+  (Shrey Narayan, NextBrick)
+
 Build
 ---------------------
 
