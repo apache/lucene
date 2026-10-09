@@ -52,6 +52,12 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
       ValueLayout.JAVA_FLOAT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
   private static final Optional<NativeAccess> NATIVE_ACCESS = NativeAccess.getImplementation();
 
+  /**
+   * Largest number of prefetch calls between residency checks. Must be a power of two. See {@link
+   * #shouldCheckResidency}.
+   */
+  static final int MAX_PREFETCH_CHECK_INTERVAL = 1024;
+
   final long length;
   final long chunkSizeMask;
   final int chunkSizePower;
@@ -339,6 +345,47 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
     }
   }
 
+  /**
+   * Counts a prefetch call and decides whether it should check if the data is resident in the page
+   * cache (and advise the OS if it is not). Checking costs system calls, so while the data keeps
+   * being found in the page cache most calls skip it.
+   *
+   * <p>The counter holds the number of calls since the last cache miss, and the caller resets it to
+   * zero on a miss. A call checks when the counter value it sees is zero or a power of two, so a
+   * long run of hits backs off exponentially.
+   *
+   * <p>The backoff is capped. Without a cap the wait between checks grows with the length of the
+   * run of hits, and after a long run (minutes or hours at high call rates) a drop in the page
+   * cache hit rate would go unnoticed for about as long again. So once the counter reaches twice
+   * {@link #MAX_PREFETCH_CHECK_INTERVAL} it is folded back to somewhere between one and two times
+   * that value, where there is only one power of two. That gives one check per {@link
+   * #MAX_PREFETCH_CHECK_INTERVAL} calls, which is infrequent enough for the cost of checking to be
+   * unnoticeable, yet frequent enough to react quickly.
+   */
+  static boolean shouldCheckResidency(AtomicInteger counter) {
+    // A plain atomic increment, rather than an update that also folds, so that the common path
+    // avoids a CAS loop.
+    final int value = counter.getAndIncrement();
+    if (BitUtil.isZeroOrPowerOfTwo(value) == false) {
+      return false;
+    }
+
+    if (value >= MAX_PREFETCH_CHECK_INTERVAL * 2) {
+      // Only calls that check can fold, about one in MAX_PREFETCH_CHECK_INTERVAL once the counter
+      // is large, so this CAS loop is rare. We require a CAS loop rather than an atomic
+      // subtraction, so that it is safe against a concurrent reset to zero.
+      counter.getAndUpdate(
+          v -> {
+            if (v >= MAX_PREFETCH_CHECK_INTERVAL * 2) {
+              return MAX_PREFETCH_CHECK_INTERVAL + (v % MAX_PREFETCH_CHECK_INTERVAL);
+            } else {
+              return v;
+            }
+          });
+    }
+    return true;
+  }
+
   @Override
   public boolean prefetch(long offset, long length) throws IOException {
     if (NATIVE_ACCESS.isEmpty()) {
@@ -347,11 +394,9 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
 
     ensureOpen();
 
-    if (BitUtil.isZeroOrPowerOfTwo(sharedPrefetchCounter.getAndIncrement()) == false) {
-      // We've had enough consecutive hits on the page cache that this number is neither zero nor a
-      // power of two. There is a good chance that a good chunk of this index input is cached in
-      // physical memory. Let's skip the overhead of the madvise system call, we'll be trying again
-      // on the next power of two of the counter.
+    if (shouldCheckResidency(sharedPrefetchCounter) == false) {
+      // Recent prefetches found their data in the page cache, so this one probably will too. Skip
+      // the residency check and madvise system calls.
       return false;
     }
 
