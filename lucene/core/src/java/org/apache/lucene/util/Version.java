@@ -259,10 +259,8 @@ public final class Version {
 
   /**
    * Constant for the minimal supported major version number of an index. This version is defined by
-   * the major version number that initially created the index. An index can be opened if its {@code
-   * indexCreatedVersionMajor} is >= this constant, regardless of how many major version numbers
-   * have been released since. Segment codecs from this constant through {@link #LATEST} are
-   * built-in.
+   * the major version number that initially created the index. Segment codecs from this constant
+   * through {@link #LATEST} are built-in.
    *
    * <p>This constant is manually controlled and should only be bumped when format changes make it
    * impossible to safely read older indexes. Examples include:
