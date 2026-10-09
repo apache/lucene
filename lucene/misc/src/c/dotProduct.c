@@ -206,6 +206,129 @@ int32_t dotProduct(int8_t vec1[], int8_t vec2[], int32_t limit) {
 }
 #endif
 
+#if defined(__aarch64__) && defined(__linux__)
+
+static int32_t int4SinglePackedScalar(const uint8_t* unpacked, const uint8_t* packed,
+                                      int32_t packedLength) {
+    int32_t result = 0;
+    for (int32_t i = 0; i < packedLength; i++) {
+        result += (packed[i] >> 4) * unpacked[i] + (packed[i] & 0x0F) * unpacked[packedLength + i];
+    }
+    return result;
+}
+
+static void int4DotProductSinglePackedBulk_scalar(const uint8_t unpacked[], const uint8_t vectors[],
+                                                  int32_t stride, const int32_t ords[],
+                                                  int32_t count, int32_t packedLength,
+                                                  int32_t results[]) {
+    for (int32_t d = 0; d < count; d++) {
+        const uint8_t* packed = vectors + (int64_t) ords[d] * stride;
+        results[d] = int4SinglePackedScalar(unpacked, packed, packedLength);
+    }
+}
+
+#if defined(__ARM_NEON)
+__attribute__((target("arch=armv8.2-a+dotprod")))
+static int32_t int4SinglePackedNeon(const uint8_t* unpacked, const uint8_t* packed,
+                                    int32_t packedLength) {
+    const uint8x16_t lowMask = vdupq_n_u8(0x0F);
+    uint32x4_t accHigh = vdupq_n_u32(0);
+    uint32x4_t accLow = vdupq_n_u32(0);
+    int32_t i = 0;
+    for (; i + 16 <= packedLength; i += 16) {
+        uint8x16_t block = vld1q_u8(&packed[i]);
+        accHigh = vdotq_u32(accHigh, vshrq_n_u8(block, 4), vld1q_u8(&unpacked[i]));
+        accLow = vdotq_u32(accLow, vandq_u8(block, lowMask), vld1q_u8(&unpacked[packedLength + i]));
+    }
+    int32_t result = (int32_t) vaddvq_u32(vaddq_u32(accHigh, accLow));
+    // Scalar tail
+    for (; i < packedLength; i++) {
+        result += (packed[i] >> 4) * unpacked[i] + (packed[i] & 0x0F) * unpacked[packedLength + i];
+    }
+    return result;
+}
+
+// Four vectors per load of the query.
+__attribute__((target("arch=armv8.2-a+dotprod")))
+static void int4SinglePackedNeon4(const uint8_t* unpacked, const uint8_t* const packed[4],
+                                  int32_t packedLength, int32_t results[4]) {
+    const uint8x16_t lowMask = vdupq_n_u8(0x0F);
+    // One accumulator per vector and nibble, so no dot waits on another.
+    uint32x4_t high0 = vdupq_n_u32(0), high1 = vdupq_n_u32(0);
+    uint32x4_t high2 = vdupq_n_u32(0), high3 = vdupq_n_u32(0);
+    uint32x4_t low0 = vdupq_n_u32(0), low1 = vdupq_n_u32(0);
+    uint32x4_t low2 = vdupq_n_u32(0), low3 = vdupq_n_u32(0);
+    int32_t i = 0;
+    for (; i + 16 <= packedLength; i += 16) {
+        uint8x16_t high = vld1q_u8(&unpacked[i]);
+        uint8x16_t low = vld1q_u8(&unpacked[packedLength + i]);
+        uint8x16_t block0 = vld1q_u8(&packed[0][i]);
+        uint8x16_t block1 = vld1q_u8(&packed[1][i]);
+        uint8x16_t block2 = vld1q_u8(&packed[2][i]);
+        uint8x16_t block3 = vld1q_u8(&packed[3][i]);
+        high0 = vdotq_u32(high0, vshrq_n_u8(block0, 4), high);
+        high1 = vdotq_u32(high1, vshrq_n_u8(block1, 4), high);
+        high2 = vdotq_u32(high2, vshrq_n_u8(block2, 4), high);
+        high3 = vdotq_u32(high3, vshrq_n_u8(block3, 4), high);
+        low0 = vdotq_u32(low0, vandq_u8(block0, lowMask), low);
+        low1 = vdotq_u32(low1, vandq_u8(block1, lowMask), low);
+        low2 = vdotq_u32(low2, vandq_u8(block2, lowMask), low);
+        low3 = vdotq_u32(low3, vandq_u8(block3, lowMask), low);
+    }
+    results[0] = (int32_t) vaddvq_u32(vaddq_u32(high0, low0));
+    results[1] = (int32_t) vaddvq_u32(vaddq_u32(high1, low1));
+    results[2] = (int32_t) vaddvq_u32(vaddq_u32(high2, low2));
+    results[3] = (int32_t) vaddvq_u32(vaddq_u32(high3, low3));
+    // Scalar tail
+    for (; i < packedLength; i++) {
+        uint8_t high = unpacked[i];
+        uint8_t low = unpacked[packedLength + i];
+        for (int32_t d = 0; d < 4; d++) {
+            results[d] += (packed[d][i] >> 4) * high + (packed[d][i] & 0x0F) * low;
+        }
+    }
+}
+
+__attribute__((target("arch=armv8.2-a+dotprod")))
+static void int4DotProductSinglePackedBulk_neon(const uint8_t unpacked[], const uint8_t vectors[],
+                                                int32_t stride, const int32_t ords[], int32_t count,
+                                                int32_t packedLength, int32_t results[]) {
+    int32_t d = 0;
+    for (; d + 4 <= count; d += 4) {
+        const uint8_t* packed[4] = {
+            vectors + (int64_t) ords[d] * stride,
+            vectors + (int64_t) ords[d + 1] * stride,
+            vectors + (int64_t) ords[d + 2] * stride,
+            vectors + (int64_t) ords[d + 3] * stride,
+        };
+        int4SinglePackedNeon4(unpacked, packed, packedLength, &results[d]);
+    }
+    for (; d < count; d++) {
+        const uint8_t* packed = vectors + (int64_t) ords[d] * stride;
+        results[d] = int4SinglePackedNeon(unpacked, packed, packedLength);
+    }
+}
+#endif
+
+static void* resolve_int4_single_packed_bulk(void) {
+#ifdef AT_HWCAP
+    unsigned long hwcap = getauxval(AT_HWCAP);
+#endif
+#if defined(HWCAP_ASIMDDP) && defined(__ARM_NEON)
+    if (hwcap & HWCAP_ASIMDDP) {
+        return (void*) int4DotProductSinglePackedBulk_neon;
+    }
+#endif
+    return (void*) int4DotProductSinglePackedBulk_scalar;
+}
+
+// Scores a whole HNSW candidate batch in one call.
+__attribute__((ifunc("resolve_int4_single_packed_bulk")))
+void int4DotProductSinglePackedBulk(const uint8_t unpacked[], const uint8_t vectors[],
+                                    int32_t stride, const int32_t ords[], int32_t count,
+                                    int32_t packedLength, int32_t results[]);
+#endif
+
 /*
 int main(int argc, const char* args[]) {
     int DIMENSIONS = 1024;

@@ -239,6 +239,8 @@ Optimizations
 * GITHUB#16619: DirectIODirectory's slice() no longer performs a blocking direct read when
   creating a slice; the first read resolves the deferred start position instead. (John Maurice)
 
+* GITHUB#16799: Score Lucene104 4-bit merge batches with one int4DotProductSinglePackedBulk call. (Jakub Slowinski)
+
 Bug Fixes
 ---------------------
 * GITHUB#16657: Fix hashCode/equals contract violation in LRUQueryCache's QueryCacheKey and account a

@@ -22,6 +22,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.oneOf;
 
+import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -34,6 +35,8 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
+import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -42,6 +45,8 @@ import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexReader;
@@ -50,6 +55,8 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NoMergePolicy;
+import org.apache.lucene.index.SegmentReader;
+import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -64,10 +71,15 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.tests.store.BaseDirectoryWrapper;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.VectorUtil;
+import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
+import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
@@ -597,6 +609,104 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
       }
     }
     return scores;
+  }
+
+  public void testBulkScoreMatchesScore() throws IOException {
+    try (Directory dir = new MockDirectoryWrapper(random(), new MMapDirectory(createTempDir()))) {
+      assertBulkScoreMatchesScore(dir);
+    }
+  }
+
+  /** {@code bulkScore} must return exactly the scores of scoring one vector at a time. */
+  private void assertBulkScoreMatchesScore(Directory dir) throws IOException {
+    // Random dims will also run the native code's tail loops.
+    int dims = random().nextInt(1, 300);
+    int numDocs = random().nextInt(50, 500);
+    VectorSimilarityFunction similarity =
+        RandomPicks.randomFrom(random(), VectorSimilarityFunction.values());
+    var nibbleFormat = new Lucene104ScalarQuantizedVectorsFormat(ScalarEncoding.PACKED_NIBBLE);
+    try (IndexWriter w =
+        new IndexWriter(
+            dir, newIndexWriterConfig().setCodec(TestUtil.alwaysKnnVectorsFormat(nibbleFormat)))) {
+      for (int i = 0; i < numDocs; i++) {
+        Document doc = new Document();
+        // Some docs have no vector, so vector ordinals and doc ids differ.
+        if (random().nextInt(5) != 0) {
+          float[] vector =
+              similarity == VectorSimilarityFunction.DOT_PRODUCT
+                  ? randomNormalizedVector(dims)
+                  : randomVector(dims);
+          doc.add(new KnnFloatVectorField("v", vector, similarity));
+        }
+        w.addDocument(doc);
+      }
+      w.forceMerge(1);
+    }
+
+    try (DirectoryReader reader = DirectoryReader.open(dir)) {
+      LeafReader leaf = getOnlyLeafReader(reader);
+      SegmentReader segmentReader = (SegmentReader) FilterLeafReader.unwrap(leaf);
+      FieldInfo fieldInfo = leaf.getFieldInfos().fieldInfo("v");
+      Lucene104ScalarQuantizedVectorsReader vectorsReader =
+          (Lucene104ScalarQuantizedVectorsReader)
+              segmentReader.getVectorReader().unwrapReaderForField("v");
+      SegmentWriteState writeState =
+          new SegmentWriteState(
+              InfoStream.getDefault(),
+              dir,
+              segmentReader.getSegmentInfo().info,
+              leaf.getFieldInfos(),
+              null,
+              IOContext.DEFAULT);
+      QuantizedByteVectorValues values = vectorsReader.getQuantizedVectorValues("v");
+      int numVectors = values.size();
+      UpdateableRandomVectorScorer perVector =
+          new Lucene104ScalarQuantizedVectorScorer(DefaultFlatVectorScorer.INSTANCE)
+              .getRandomVectorScorerSupplier(similarity, values)
+              .scorer();
+
+      // The scorer that HNSW graph construction uses during merges.
+      try (CloseableRandomVectorScorerSupplier supplier =
+          vectorsReader.getRandomVectorScorerSupplierForMerge(fieldInfo, writeState)) {
+        UpdateableRandomVectorScorer bulk = supplier.scorer();
+        // With the native library, this must be the batching scorer, not a fallback.
+        assertSame(
+            FlatVectorScorerUtil.getLucene104ScalarQuantizedVectorsScorer().getClass(),
+            bulk.getClass().getNestHost());
+
+        int[] nodes = new int[64];
+        float[] scores = new float[nodes.length];
+        for (int iter = 0; iter < 100; iter++) {
+          int query = random().nextInt(numVectors);
+          bulk.setScoringOrdinal(query);
+          perVector.setScoringOrdinal(query);
+          int single = random().nextInt(numVectors);
+          assertSameScore(perVector.score(single), bulk.score(single));
+
+          int numNodes = random().nextInt(nodes.length + 1);
+          for (int i = 0; i < numNodes; i++) {
+            nodes[i] = random().nextInt(numVectors);
+          }
+          float max = bulk.bulkScore(nodes, scores, numNodes);
+          float expectedMax = Float.NEGATIVE_INFINITY;
+          for (int i = 0; i < numNodes; i++) {
+            float expected = perVector.score(nodes[i]);
+            assertSameScore(expected, scores[i]);
+            expectedMax = Math.max(expectedMax, expected);
+          }
+          assertSameScore(expectedMax, max);
+          // A batch must not change what score() returns.
+          assertSameScore(perVector.score(single), bulk.score(single));
+        }
+      }
+    }
+  }
+
+  private static void assertSameScore(float expected, float actual) {
+    assertEquals(
+        "expected " + expected + " but was " + actual,
+        Float.floatToRawIntBits(expected),
+        Float.floatToRawIntBits(actual));
   }
 
   @Override
