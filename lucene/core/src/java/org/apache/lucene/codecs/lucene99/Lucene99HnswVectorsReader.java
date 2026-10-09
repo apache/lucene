@@ -42,7 +42,10 @@ import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.search.AcceptDocs;
+import org.apache.lucene.search.DocAndFloatFeatureBuffer;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.DataInput;
@@ -319,6 +322,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
         fieldEntry,
         knnCollector,
         acceptDocs,
+        () -> flatVectorsReader.getFloatVectorValues(field).scorer(target),
         () -> flatVectorsReader.getRandomVectorScorer(field, target));
   }
 
@@ -330,6 +334,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
         fieldEntry,
         knnCollector,
         acceptDocs,
+        () -> flatVectorsReader.getByteVectorValues(field).scorer(target),
         () -> flatVectorsReader.getRandomVectorScorer(field, target));
   }
 
@@ -341,66 +346,144 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
         fieldEntry,
         knnCollector,
         acceptDocs,
+        () -> flatVectorsReader.getFloat16VectorValues(field).scorer(target),
         () -> flatVectorsReader.getRandomVectorScorer(field, target));
   }
 
   private void search(
       FieldEntry fieldEntry,
-      KnnCollector knnCollector,
+      KnnCollector docIdCollector,
       AcceptDocs acceptDocs,
+      IOSupplier<VectorScorer> sequentialScorerSupplier,
       IOSupplier<RandomVectorScorer> scorerSupplier)
       throws IOException {
-    if (fieldEntry.size() == 0 || knnCollector.k() == 0) {
+    int numVectors = fieldEntry.size();
+    int k = docIdCollector.k();
+    if (numVectors == 0 || k == 0) {
       return;
     }
-    final RandomVectorScorer scorer = scorerSupplier.get();
-    final KnnCollector collector =
-        new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
+
+    int graphSize = (fieldEntry.vectorIndexLength() == 0) ? 0 : numVectors;
+    if (graphSize == 0 || k >= numVectors) {
+      scanAllDocs(docIdCollector, acceptDocs, sequentialScorerSupplier, scorerSupplier, numVectors);
+      return;
+    }
+
     // Take into account if quantized? E.g. some scorer cost?
     // Use approximate cardinality as this is good enough, but ensure we don't exceed the graph
     // size as that is illogical
-    int graphSize = (fieldEntry.vectorIndexLength() == 0) ? 0 : fieldEntry.size();
     int filteredDocCount = Math.min(acceptDocs.cost(), graphSize);
-    Bits accepted = acceptDocs.bits();
-    final Bits acceptedOrds = scorer.getAcceptOrds(accepted);
-    int numVectors = scorer.maxOrd();
-    boolean doHnsw = knnCollector.k() < numVectors;
     // The approximate number of vectors that would be visited if we did not filter
-    int unfilteredVisit = HnswGraphSearcher.expectedVisitedNodes(knnCollector.k(), graphSize);
-    if (unfilteredVisit >= filteredDocCount || graphSize == 0) {
-      doHnsw = false;
-    }
-    if (doHnsw) {
-      HnswGraphSearcher.search(
-          scorer, collector, getGraph(fieldEntry), acceptedOrds, filteredDocCount);
+    final RandomVectorScorer scorer = scorerSupplier.get();
+    final KnnCollector ordCollector =
+        new OrdinalTranslatedKnnCollector(docIdCollector, scorer::ordToDoc);
+    final Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs.bits());
+
+    int unfilteredVisit = HnswGraphSearcher.expectedVisitedNodes(k, graphSize);
+    if (unfilteredVisit >= filteredDocCount) {
+      scanAllDocs(docIdCollector, acceptDocs, sequentialScorerSupplier, scorerSupplier, numVectors);
     } else {
-      // if k is larger than the number of vectors we expect to visit in an HNSW search,
-      // we can just iterate over all vectors and collect them.
-      int[] ords = new int[EXHAUSTIVE_BULK_SCORE_ORDS];
-      float[] scores = new float[EXHAUSTIVE_BULK_SCORE_ORDS];
-      int numOrds = 0;
-      for (int i = 0; i < numVectors; i++) {
-        if (acceptedOrds == null || acceptedOrds.get(i)) {
-          if (knnCollector.earlyTerminated()) {
-            break;
-          }
-          ords[numOrds++] = i;
-          if (numOrds == ords.length) {
-            knnCollector.incVisitedCount(numOrds);
-            if (scorer.bulkScore(ords, scores, numOrds) > knnCollector.minCompetitiveSimilarity()) {
-              for (int j = 0; j < numOrds; j++) {
-                knnCollector.collect(scorer.ordToDoc(ords[j]), scores[j]);
-              }
-            }
-            numOrds = 0;
-          }
+      HnswGraphSearcher.search(
+          scorer, ordCollector, getGraph(fieldEntry), acceptedOrds, filteredDocCount);
+    }
+  }
+
+  /**
+   * Performs an exhaustive scan over all vectors in the segment matching `acceptDocs`.
+   *
+   * <p>This method attempts to choose the optimal strategy between iterating over vectors and
+   * checking the filter vs iterating over the filter and checking for the existence of vectors.
+   * This relies on the caller providing accurate cost estimates in `acceptDocs`
+   *
+   * @param docIdCollector a collector that accepts doc IDs and scores of top candidates
+   * @param acceptDocs An iterator over documents to score. This should minimally account for
+   *     liveness and any pre-filtering. Accounting for the existence of a vector field is optional.
+   * @param sequentialScorerSupplier produces a scorer that can score monotonic docIDs
+   * @param scorerSupplier produces a scorer that can score ordinals in any order.
+   * @param numVectors the number of documents (including deletions) with vector values in this
+   *     segment.
+   */
+  private static void scanAllDocs(
+      KnnCollector docIdCollector,
+      AcceptDocs acceptDocs,
+      IOSupplier<VectorScorer> sequentialScorerSupplier,
+      IOSupplier<RandomVectorScorer> scorerSupplier,
+      int numVectors)
+      throws IOException {
+    Bits bits = acceptDocs.bits();
+    if (bits == null || acceptDocs.cost() >= numVectors) {
+      // Case 1: No explicit filter and no deleted documents, so let's just iterate over vector ords
+      // Case 2: acceptDocs doesn't account for FieldExistsQuery, so it's probably just livedocs,
+      //         and scoring ords should be fast for both dense and sparse vector values.
+      bulkScoreOrds(docIdCollector, scorerSupplier, bits);
+      return;
+    }
+
+    // We probably have an explicit filter and possibly deletions or sparse values.
+    // Let's trust the Query provided us a good iterator.
+    VectorScorer.Bulk bulkScorer = sequentialScorerSupplier.get().bulk(acceptDocs.iterator());
+    DocAndFloatFeatureBuffer buffer = new DocAndFloatFeatureBuffer();
+
+    for (float maxScore = bulkScorer.nextDocsAndScores(DocIdSetIterator.NO_MORE_DOCS, null, buffer);
+        buffer.size > 0;
+        maxScore = bulkScorer.nextDocsAndScores(DocIdSetIterator.NO_MORE_DOCS, null, buffer)) {
+
+      if (maxScore >= docIdCollector.minCompetitiveSimilarity()) {
+        for (int i = 0; i < buffer.size; ++i) {
+          float score = buffer.features[i];
+          int doc = buffer.docs[i];
+          docIdCollector.collect(doc, score);
         }
       }
 
-      if (numOrds > 0) {
-        knnCollector.incVisitedCount(numOrds);
-        if (scorer.bulkScore(ords, scores, numOrds) > knnCollector.minCompetitiveSimilarity()) {
-          for (int j = 0; j < numOrds; j++) {
+      docIdCollector.incVisitedCount(buffer.size);
+      if (docIdCollector.earlyTerminated()) {
+        // Respect query timeout
+        break;
+      }
+    }
+  }
+
+  /**
+   * Iterates over all vector ordinals and scores those matching `acceptOrds`. Best used for small
+   * segments with not very selective filters.
+   */
+  private static void bulkScoreOrds(
+      KnnCollector knnCollector, IOSupplier<RandomVectorScorer> scorerSupplier, Bits acceptedDocs)
+      throws IOException {
+    RandomVectorScorer scorer = scorerSupplier.get();
+    Bits acceptedOrds = scorer.getAcceptOrds(acceptedDocs);
+
+    int[] ords = new int[EXHAUSTIVE_BULK_SCORE_ORDS];
+    float[] scores = new float[EXHAUSTIVE_BULK_SCORE_ORDS];
+    int maxOrd = scorer.maxOrd();
+    int numOrds = 0;
+    for (int i = 0; i < maxOrd; i++) {
+      if (acceptedOrds == null || acceptedOrds.get(i)) {
+        if (knnCollector.earlyTerminated()) {
+          break;
+        }
+        ords[numOrds++] = i;
+        if (numOrds == ords.length) {
+          knnCollector.incVisitedCount(numOrds);
+          float minScore = knnCollector.minCompetitiveSimilarity();
+          if (scorer.bulkScore(ords, scores, numOrds) > minScore) {
+            for (int j = 0; j < numOrds; j++) {
+              if (scores[j] > minScore) {
+                knnCollector.collect(scorer.ordToDoc(ords[j]), scores[j]);
+              }
+            }
+          }
+          numOrds = 0;
+        }
+      }
+    }
+    if (numOrds > 0) {
+      knnCollector.incVisitedCount(numOrds);
+      float minScore = knnCollector.minCompetitiveSimilarity();
+      if (scorer.bulkScore(ords, scores, numOrds) > minScore) {
+        for (int j = 0; j < numOrds; j++) {
+          if (scores[j] > minScore) {
             knnCollector.collect(scorer.ordToDoc(ords[j]), scores[j]);
           }
         }
