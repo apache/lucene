@@ -18,6 +18,7 @@ package org.apache.lucene.search.join;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.Locale;
 import org.apache.lucene.document.DoublePoint;
@@ -32,7 +33,6 @@ import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.OrdinalMap;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
-import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.internal.hppc.LongArrayList;
 import org.apache.lucene.internal.hppc.LongCursor;
 import org.apache.lucene.internal.hppc.LongHashSet;
@@ -46,7 +46,6 @@ import org.apache.lucene.search.PointInSetQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.SimpleCollector;
-import org.apache.lucene.search.join.DocValuesTermsCollector.Function;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -98,16 +97,8 @@ public final class JoinUtil {
       ScoreMode scoreMode)
       throws IOException {
 
-    final GenericTermsCollector termsWithScoreCollector;
-
-    if (multipleValuesPerDocument) {
-      Function<SortedSetDocValues> mvFunction =
-          DocValuesTermsCollector.sortedSetDocValues(fromField);
-      termsWithScoreCollector = GenericTermsCollector.createCollectorMV(mvFunction, scoreMode);
-    } else {
-      Function<SortedDocValues> svFunction = DocValuesTermsCollector.sortedDocValues(fromField);
-      termsWithScoreCollector = GenericTermsCollector.createCollectorSV(svFunction, scoreMode);
-    }
+    GenericTermsCollector.Manager collectorManager =
+        new GenericTermsCollector.Manager(fromField, multipleValuesPerDocument, scoreMode);
 
     return createJoinQuery(
         multipleValuesPerDocument,
@@ -116,7 +107,7 @@ public final class JoinUtil {
         fromField,
         fromSearcher,
         scoreMode,
-        termsWithScoreCollector);
+        collectorManager);
   }
 
   /**
@@ -225,94 +216,20 @@ public final class JoinUtil {
       joinScorer = (joinValue) -> (float) aggregatedScores.get(joinValue).value;
     }
 
-    Collector collector;
-    if (multipleValuesPerDocument) {
-      collector =
-          new SimpleCollector() {
+    CollectorManager<Collector, Object> collectorManager =
+        new CollectorManager<>() {
+          @Override
+          public Collector newCollector() throws IOException {
+            return JoinUtil.newCollector(
+                fromField, multipleValuesPerDocument, joinValues, needsScore, scoreAggregator);
+          }
 
-            SortedNumericDocValues sortedNumericDocValues;
-            Scorable scorer;
-
-            @Override
-            public void collect(int doc) throws IOException {
-              if (sortedNumericDocValues.advanceExact(doc)) {
-                for (int i = 0, count = sortedNumericDocValues.docValueCount(); i < count; i++) {
-                  long value = sortedNumericDocValues.nextValue();
-                  joinValues.add(value);
-                  if (needsScore) {
-                    scoreAggregator.apply(value, scorer.score());
-                  }
-                }
-              }
-            }
-
-            @Override
-            protected void doSetNextReader(LeafReaderContext context) throws IOException {
-              sortedNumericDocValues = DocValues.getSortedNumeric(context.reader(), fromField);
-            }
-
-            @Override
-            public void setScorer(Scorable scorer) throws IOException {
-              this.scorer = scorer;
-            }
-
-            @Override
-            public org.apache.lucene.search.ScoreMode scoreMode() {
-              return needsScore
-                  ? org.apache.lucene.search.ScoreMode.COMPLETE
-                  : org.apache.lucene.search.ScoreMode.COMPLETE_NO_SCORES;
-            }
-          };
-    } else {
-      collector =
-          new SimpleCollector() {
-
-            NumericDocValues numericDocValues;
-            Scorable scorer;
-            private int lastDocID = -1;
-
-            private boolean docsInOrder(int docID) {
-              if (docID < lastDocID) {
-                throw new AssertionError(
-                    "docs out of order: lastDocID=" + lastDocID + " vs docID=" + docID);
-              }
-              lastDocID = docID;
-              return true;
-            }
-
-            @Override
-            public void collect(int doc) throws IOException {
-              assert docsInOrder(doc);
-              long value = 0;
-              if (numericDocValues.advanceExact(doc)) {
-                value = numericDocValues.longValue();
-              }
-              joinValues.add(value);
-              if (needsScore) {
-                scoreAggregator.apply(value, scorer.score());
-              }
-            }
-
-            @Override
-            protected void doSetNextReader(LeafReaderContext context) throws IOException {
-              numericDocValues = DocValues.getNumeric(context.reader(), fromField);
-              lastDocID = -1;
-            }
-
-            @Override
-            public void setScorer(Scorable scorer) throws IOException {
-              this.scorer = scorer;
-            }
-
-            @Override
-            public org.apache.lucene.search.ScoreMode scoreMode() {
-              return needsScore
-                  ? org.apache.lucene.search.ScoreMode.COMPLETE
-                  : org.apache.lucene.search.ScoreMode.COMPLETE_NO_SCORES;
-            }
-          };
-    }
-    fromSearcher.search(fromQuery, CollectorManager.singleton(collector));
+          @Override
+          public Object reduce(Collection<Collector> collectors) throws IOException {
+            return null;
+          }
+        };
+    fromSearcher.search(fromQuery, collectorManager);
 
     LongArrayList joinValuesList = new LongArrayList(joinValues.size());
     joinValuesList.addAll(joinValues);
@@ -422,6 +339,102 @@ public final class JoinUtil {
     }
   }
 
+  private static Collector newCollector(
+      String fromField,
+      boolean multipleValuesPerDocument,
+      LongHashSet joinValues,
+      boolean needsScore,
+      LongFloatProcedure scoreAggregator) {
+    Collector collector;
+    if (multipleValuesPerDocument) {
+      collector =
+          new SimpleCollector() {
+
+            SortedNumericDocValues sortedNumericDocValues;
+            Scorable scorer;
+
+            @Override
+            public void collect(int doc) throws IOException {
+              if (sortedNumericDocValues.advanceExact(doc)) {
+                for (int i = 0, count = sortedNumericDocValues.docValueCount(); i < count; i++) {
+                  long value = sortedNumericDocValues.nextValue();
+                  joinValues.add(value);
+                  if (needsScore) {
+                    scoreAggregator.apply(value, scorer.score());
+                  }
+                }
+              }
+            }
+
+            @Override
+            protected void doSetNextReader(LeafReaderContext context) throws IOException {
+              sortedNumericDocValues = DocValues.getSortedNumeric(context.reader(), fromField);
+            }
+
+            @Override
+            public void setScorer(Scorable scorer) throws IOException {
+              this.scorer = scorer;
+            }
+
+            @Override
+            public org.apache.lucene.search.ScoreMode scoreMode() {
+              return needsScore
+                  ? org.apache.lucene.search.ScoreMode.COMPLETE
+                  : org.apache.lucene.search.ScoreMode.COMPLETE_NO_SCORES;
+            }
+          };
+    } else {
+      collector =
+          new SimpleCollector() {
+
+            NumericDocValues numericDocValues;
+            Scorable scorer;
+            private int lastDocID = -1;
+
+            private boolean docsInOrder(int docID) {
+              if (docID < lastDocID) {
+                throw new AssertionError(
+                    "docs out of order: lastDocID=" + lastDocID + " vs docID=" + docID);
+              }
+              lastDocID = docID;
+              return true;
+            }
+
+            @Override
+            public void collect(int doc) throws IOException {
+              assert docsInOrder(doc);
+              long value = 0;
+              if (numericDocValues.advanceExact(doc)) {
+                value = numericDocValues.longValue();
+              }
+              joinValues.add(value);
+              if (needsScore) {
+                scoreAggregator.apply(value, scorer.score());
+              }
+            }
+
+            @Override
+            protected void doSetNextReader(LeafReaderContext context) throws IOException {
+              numericDocValues = DocValues.getNumeric(context.reader(), fromField);
+              lastDocID = -1;
+            }
+
+            @Override
+            public void setScorer(Scorable scorer) throws IOException {
+              this.scorer = scorer;
+            }
+
+            @Override
+            public org.apache.lucene.search.ScoreMode scoreMode() {
+              return needsScore
+                  ? org.apache.lucene.search.ScoreMode.COMPLETE
+                  : org.apache.lucene.search.ScoreMode.COMPLETE_NO_SCORES;
+            }
+          };
+    }
+    return collector;
+  }
+
   private static Query createJoinQuery(
       boolean multipleValuesPerDocument,
       String toField,
@@ -429,15 +442,17 @@ public final class JoinUtil {
       String fromField,
       IndexSearcher fromSearcher,
       ScoreMode scoreMode,
-      final GenericTermsCollector collector)
+      final CollectorManager<GenericTermsCollector, GenericTermsCollector.TermsAndScores>
+          collectorManager)
       throws IOException {
 
-    fromSearcher.search(fromQuery, CollectorManager.singleton(collector));
+    GenericTermsCollector.TermsAndScores termsAndScores =
+        fromSearcher.search(fromQuery, collectorManager);
     switch (scoreMode) {
       case None:
         return new TermsQuery(
             toField,
-            collector.getCollectedTerms(),
+            termsAndScores.terms(),
             fromField,
             fromQuery,
             fromSearcher.getTopReaderContext().id());
@@ -449,8 +464,8 @@ public final class JoinUtil {
             scoreMode,
             toField,
             multipleValuesPerDocument,
-            collector.getCollectedTerms(),
-            collector.getScoresPerTerm(),
+            termsAndScores.terms(),
+            termsAndScores.scores(),
             fromField,
             fromQuery,
             fromSearcher.getTopReaderContext().id());
@@ -553,49 +568,23 @@ public final class JoinUtil {
 
     final Query rewrittenFromQuery = searcher.rewrite(fromQuery);
     final Query rewrittenToQuery = searcher.rewrite(toQuery);
-    GlobalOrdinalsWithScoreCollector globalOrdinalsWithScoreCollector;
-    switch (scoreMode) {
-      case Total:
-        globalOrdinalsWithScoreCollector =
-            new GlobalOrdinalsWithScoreCollector.Sum(joinField, ordinalMap, valueCount, min, max);
-        break;
-      case Min:
-        globalOrdinalsWithScoreCollector =
-            new GlobalOrdinalsWithScoreCollector.Min(joinField, ordinalMap, valueCount, min, max);
-        break;
-      case Max:
-        globalOrdinalsWithScoreCollector =
-            new GlobalOrdinalsWithScoreCollector.Max(joinField, ordinalMap, valueCount, min, max);
-        break;
-      case Avg:
-        globalOrdinalsWithScoreCollector =
-            new GlobalOrdinalsWithScoreCollector.Avg(joinField, ordinalMap, valueCount, min, max);
-        break;
-      case None:
-        if (min <= 1 && max == Integer.MAX_VALUE) {
-          return new GlobalOrdinalsQuery(
-              searcher.search(
-                  rewrittenFromQuery,
-                  new GlobalOrdinalsCollectorManager(joinField, ordinalMap, valueCount)),
-              joinField,
-              ordinalMap,
-              rewrittenToQuery,
+    if (scoreMode == ScoreMode.None && min <= 1 && max == Integer.MAX_VALUE) {
+      return new GlobalOrdinalsQuery(
+          searcher.search(
               rewrittenFromQuery,
-              searcher.getTopReaderContext().id());
-        } else {
-          globalOrdinalsWithScoreCollector =
-              new GlobalOrdinalsWithScoreCollector.NoScore(
-                  joinField, ordinalMap, valueCount, min, max);
-          break;
-        }
-      default:
-        throw new IllegalArgumentException(
-            String.format(Locale.ROOT, "Score mode %s isn't supported.", scoreMode));
+              new GlobalOrdinalsCollectorManager(joinField, ordinalMap, valueCount)),
+          joinField,
+          ordinalMap,
+          rewrittenToQuery,
+          rewrittenFromQuery,
+          searcher.getTopReaderContext().id());
     }
-    searcher.search(
-        rewrittenFromQuery, CollectorManager.singleton(globalOrdinalsWithScoreCollector));
+    GlobalOrdinalsWithScoreCollectorManager globalOrdinalsWithScoreCollectorManager =
+        new GlobalOrdinalsWithScoreCollectorManager(
+            joinField, ordinalMap, valueCount, scoreMode, min, max);
+    searcher.search(rewrittenFromQuery, globalOrdinalsWithScoreCollectorManager);
     return new GlobalOrdinalsWithScoreQuery(
-        globalOrdinalsWithScoreCollector,
+        globalOrdinalsWithScoreCollectorManager,
         scoreMode,
         joinField,
         ordinalMap,

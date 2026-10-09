@@ -62,6 +62,10 @@ abstract class TermsWithScoreCollector<DV> extends DocValuesTermsCollector<DV>
     return scores;
   }
 
+  int[] getCountsPerTerm() {
+    return null;
+  }
+
   @Override
   public void setScorer(Scorable scorer) throws IOException {
     this.scorer = scorer;
@@ -203,6 +207,11 @@ abstract class TermsWithScoreCollector<DV> extends DocValuesTermsCollector<DV>
           scores[i] = (float) (scoreSums[i] / scoreCounts[i]);
         }
         return scores;
+      }
+
+      @Override
+      int[] getCountsPerTerm() {
+        return scoreCounts;
       }
     }
   }
