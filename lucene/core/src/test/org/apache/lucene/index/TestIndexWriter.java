@@ -4049,18 +4049,22 @@ public class TestIndexWriter extends LuceneTestCase {
     e =
         expectThrows(
             IllegalArgumentException.class,
-            () -> new IndexWriterConfig().setIndexCreatedVersionMajor(Version.LATEST.major - 2));
+            () ->
+                new IndexWriterConfig()
+                    .setIndexCreatedVersionMajor(Version.MIN_SUPPORTED_MAJOR - 1));
     assertEquals(
         "indexCreatedVersionMajor may not be less than the minimum supported version: "
-            + (Version.LATEST.major - 1)
+            + (Version.MIN_SUPPORTED_MAJOR)
             + ", but got: "
-            + (Version.LATEST.major - 2),
+            + (Version.MIN_SUPPORTED_MAJOR - 1),
         e.getMessage());
 
-    for (int previousMajor = Version.LATEST.major - 1;
+    for (int previousMajor = Version.MIN_SUPPORTED_MAJOR;
         previousMajor <= Version.LATEST.major;
         previousMajor++) {
-      for (int newMajor = Version.LATEST.major - 1; newMajor <= Version.LATEST.major; newMajor++) {
+      for (int newMajor = Version.MIN_SUPPORTED_MAJOR;
+          newMajor <= Version.LATEST.major;
+          newMajor++) {
         for (OpenMode openMode : OpenMode.values()) {
           try (Directory dir = newDirectory()) {
             try (IndexWriter w =

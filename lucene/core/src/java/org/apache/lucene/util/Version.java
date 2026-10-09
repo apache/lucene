@@ -34,6 +34,111 @@ public final class Version {
   /**
    * @deprecated Use latest
    */
+  @Deprecated public static final Version LUCENE_9_0_0 = new Version(9, 0, 0);
+
+  /**
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_1_0 = new Version(9, 1, 0);
+
+  /**
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_2_0 = new Version(9, 2, 0);
+
+  /**
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_3_0 = new Version(9, 3, 0);
+
+  /**
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_4_0 = new Version(9, 4, 0);
+
+  /**
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_4_1 = new Version(9, 4, 1);
+
+  /**
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_4_2 = new Version(9, 4, 2);
+
+  /**
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_5_0 = new Version(9, 5, 0);
+
+  /**
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_6_0 = new Version(9, 6, 0);
+
+  /**
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_7_0 = new Version(9, 7, 0);
+
+  /**
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_8_0 = new Version(9, 8, 0);
+
+  /**
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_9_0 = new Version(9, 9, 0);
+
+  /**
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_9_1 = new Version(9, 9, 1);
+
+  /**
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_9_2 = new Version(9, 9, 2);
+
+  /**
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_10_0 = new Version(9, 10, 0);
+
+  /**
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_11_0 = new Version(9, 11, 0);
+
+  /**
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_11_1 = new Version(9, 11, 1);
+
+  /**
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_12_0 = new Version(9, 12, 0);
+
+  /**
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_12_1 = new Version(9, 12, 1);
+
+  /**
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_12_2 = new Version(9, 12, 2);
+
+  /**
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_12_3 = new Version(9, 12, 3);
+
+  /**
+   * @deprecated Use latest
+   */
   @Deprecated public static final Version LUCENE_10_0_0 = new Version(10, 0, 0);
 
   /**
@@ -154,7 +259,8 @@ public final class Version {
 
   /**
    * Constant for the minimal supported major version number of an index. This version is defined by
-   * the major version number that initially created the index.
+   * the major version number that initially created the index. Segment codecs from this constant
+   * through {@link #LATEST} are built-in.
    *
    * <p>This constant is manually controlled and should only be bumped when format changes make it
    * impossible to safely read older indexes. Examples include:
@@ -167,18 +273,6 @@ public final class Version {
    *
    * <p>This constant should NOT be bumped automatically with major version number releases. The
    * goal is to allow users to upgrade across multiple major version numbers when safe to do so.
-   *
-   * <p><b>Two-tier version policy:</b>
-   *
-   * <ul>
-   *   <li><b>Index opening policy:</b> An index can be opened if its {@code
-   *       indexCreatedVersionMajor} is >= this constant, regardless of how many major version
-   *       numbers have been released since.
-   *   <li><b>Codec reader policy:</b> Segment codecs are only shipped for the current major version
-   *       number and the immediately previous major version number. When no format breaks occur
-   *       between consecutive major version numbers, the previous major version number reader can
-   *       read segments from older major version numbers that use the same format.
-   * </ul>
    *
    * <p><b>When to bump this constant:</b>
    *
@@ -203,7 +297,7 @@ public final class Version {
    *
    * @since 11.0.0
    */
-  public static final int MIN_SUPPORTED_MAJOR = 10;
+  public static final int MIN_SUPPORTED_MAJOR = 9;
 
   /**
    * @see #getPackageImplementationVersion()
