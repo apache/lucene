@@ -20,15 +20,19 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.LongAdder;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloatVectorField;
+import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FieldInfo;
@@ -36,7 +40,9 @@ import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.NoMergePolicy;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TaskExecutor;
@@ -49,7 +55,7 @@ import org.apache.lucene.util.NamedThreadFactory;
 
 /**
  * Compares {@link ConcurrentHnswMerger} with the single-threaded {@link IncrementalHnswGraphMerger}
- * when merging several graphs without deletions.
+ * when merging several graphs.
  */
 public class TestConcurrentHnswMerger extends LuceneTestCase {
 
@@ -57,6 +63,7 @@ public class TestConcurrentHnswMerger extends LuceneTestCase {
   private static final int M = 16;
   private static final int BEAM_WIDTH = 100;
   private static final String VECTOR_FIELD = "v";
+  private static final String ID_FIELD = "id";
 
   /**
    * The concurrent merger must reuse the structure of every graph without deletions, as the serial
@@ -105,30 +112,83 @@ public class TestConcurrentHnswMerger extends LuceneTestCase {
         MergeResult concurrent = merge(reader, vectors, TestUtil.nextInt(random(), 2, 4));
         assertEquals(vectors.size(), concurrent.graph.size());
         assertNoIsolatedNodes(concurrent.graph);
-        List<float[]> queries = randomVectors(new int[] {100});
-        double serialRecall = recall(serial.graph, vectors, queries);
-        double concurrentRecall = recall(concurrent.graph, vectors, queries);
-        String message =
-            String.format(
-                Locale.ROOT,
-                "serial recall %.3f, concurrent recall %.3f",
-                serialRecall,
-                concurrentRecall);
-        if (VERBOSE) {
-          System.out.println(message);
-        }
-        assertTrue(message, concurrentRecall > 0.9);
-        assertTrue(message, concurrentRecall > serialRecall - 0.05);
+        assertRecallComparable(serial, concurrent);
       }
     }
   }
 
-  private record MergeResult(OnHeapHnswGraph graph, long scoreCount) {}
+  /**
+   * When the base graph has deletions, the concurrent merger repairs it with all workers before it
+   * joins the other graphs into it.
+   */
+  public void testRecallComparableToSerialMergeWithDeletesInBaseGraph() throws IOException {
+    int[] segmentSizes = {
+      TestUtil.nextInt(random(), 1500, 2000),
+      TestUtil.nextInt(random(), 500, 800),
+      TestUtil.nextInt(random(), 200, 400)
+    };
+    List<float[]> vectors = randomVectors(segmentSizes);
+    // a fifth of the largest segment: few enough for it to stay the base graph
+    Set<Integer> deleted = new HashSet<>();
+    while (deleted.size() < segmentSizes[0] / 5) {
+      deleted.add(random().nextInt(segmentSizes[0]));
+    }
+    try (Directory dir = newDirectory()) {
+      buildIndex(dir, vectors, segmentSizes, deleted);
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        assertEquals(deleted.size(), reader.leaves().get(0).reader().numDeletedDocs());
+        MergeResult serial = merge(reader, vectors, 0);
+        MergeResult concurrent = merge(reader, vectors, TestUtil.nextInt(random(), 2, 4));
+        assertEquals(vectors.size() - deleted.size(), concurrent.graph.size());
+        assertNoIsolatedNodes(concurrent.graph);
+        assertRecallComparable(serial, concurrent);
+      }
+    }
+  }
 
-  /** Merges every segment of the reader; uses the serial merger when {@code numWorkers} is 0. */
+  private static void assertRecallComparable(MergeResult serial, MergeResult concurrent)
+      throws IOException {
+    List<float[]> queries = randomVectors(new int[] {100});
+    double serialRecall = recall(serial.graph, serial.vectors, queries);
+    double concurrentRecall = recall(concurrent.graph, concurrent.vectors, queries);
+    String message =
+        String.format(
+            Locale.ROOT,
+            "serial recall %.3f, concurrent recall %.3f",
+            serialRecall,
+            concurrentRecall);
+    if (VERBOSE) {
+      System.out.println(message);
+    }
+    assertTrue(message, concurrentRecall > 0.9);
+    assertTrue(message, concurrentRecall > serialRecall - 0.05);
+  }
+
+  /** The merged graph, the vectors it was built from, and how many vectors the merge scored. */
+  private record MergeResult(OnHeapHnswGraph graph, List<float[]> vectors, long scoreCount) {}
+
+  /**
+   * Merges every segment of the reader, dropping deleted documents; uses the serial merger when
+   * {@code numWorkers} is 0. {@code vectors} holds the vector of every document, in doc ID order.
+   */
   private static MergeResult merge(DirectoryReader reader, List<float[]> vectors, int numWorkers)
       throws IOException {
-    FloatVectorValues mergedVectors = FloatVectorValues.fromFloats(vectors, DIM);
+    List<float[]> liveVectors = new ArrayList<>();
+    MergeState.DocMap[] docMaps = new MergeState.DocMap[reader.leaves().size()];
+    for (LeafReaderContext ctx : reader.leaves()) {
+      Bits liveDocs = ctx.reader().getLiveDocs();
+      int[] newDocIds = new int[ctx.reader().maxDoc()];
+      for (int doc = 0; doc < newDocIds.length; doc++) {
+        if (liveDocs == null || liveDocs.get(doc)) {
+          newDocIds[doc] = liveVectors.size();
+          liveVectors.add(vectors.get(ctx.docBase + doc));
+        } else {
+          newDocIds[doc] = -1;
+        }
+      }
+      docMaps[ctx.ord] = doc -> newDocIds[doc];
+    }
+    FloatVectorValues mergedVectors = FloatVectorValues.fromFloats(liveVectors, DIM);
     LongAdder scoreCount = new LongAdder();
     RandomVectorScorerSupplier scorerSupplier =
         new CountingScorerSupplier(
@@ -149,12 +209,11 @@ public class TestConcurrentHnswMerger extends LuceneTestCase {
       }
       for (LeafReaderContext ctx : reader.leaves()) {
         CodecReader segment = (CodecReader) ctx.reader();
-        int docBase = ctx.docBase;
-        merger.addReader(segment.getVectorReader(), doc -> docBase + doc, segment.getLiveDocs());
+        merger.addReader(segment.getVectorReader(), docMaps[ctx.ord], segment.getLiveDocs());
       }
       OnHeapHnswGraph graph =
           merger.merge(mergedVectors, InfoStream.NO_OUTPUT, mergedVectors.size());
-      return new MergeResult(graph, scoreCount.sum());
+      return new MergeResult(graph, liveVectors, scoreCount.sum());
     } finally {
       if (exec != null) {
         TestUtil.shutdownExecutorService(exec);
@@ -220,6 +279,16 @@ public class TestConcurrentHnswMerger extends LuceneTestCase {
   /** Flushes one segment per entry of {@code segmentSizes}, in order. */
   private static void buildIndex(Directory dir, List<float[]> vectors, int[] segmentSizes)
       throws IOException {
+    buildIndex(dir, vectors, segmentSizes, Set.of());
+  }
+
+  /**
+   * Flushes one segment per entry of {@code segmentSizes}, in order, then deletes the documents
+   * whose position in {@code vectors} is in {@code deleted}.
+   */
+  private static void buildIndex(
+      Directory dir, List<float[]> vectors, int[] segmentSizes, Set<Integer> deleted)
+      throws IOException {
     IndexWriterConfig cfg = new IndexWriterConfig();
     cfg.setCodec(TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat(M, BEAM_WIDTH, 0)));
     cfg.setMergePolicy(NoMergePolicy.INSTANCE);
@@ -228,12 +297,16 @@ public class TestConcurrentHnswMerger extends LuceneTestCase {
       for (int size : segmentSizes) {
         for (int i = 0; i < size; i++) {
           Document doc = new Document();
+          doc.add(new StringField(ID_FIELD, Integer.toString(ord), Field.Store.NO));
           doc.add(
               new KnnFloatVectorField(
                   VECTOR_FIELD, vectors.get(ord++), VectorSimilarityFunction.EUCLIDEAN));
           w.addDocument(doc);
         }
         w.flush();
+      }
+      for (int deletedOrd : deleted) {
+        w.deleteDocuments(new Term(ID_FIELD, Integer.toString(deletedOrd)));
       }
       w.commit();
     }
