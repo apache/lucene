@@ -110,11 +110,19 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
       final int numDocs =
           TestUtil.nextInt(random, 0, Math.min(maxDoc, 1 << TestUtil.nextInt(random, 0, pow)));
       final BitSet set = randomSet(maxDoc, numDocs);
-      final DocIdSet copy = copyOf(set, maxDoc);
-      final long actualBytes = ramBytesUsed(copy, maxDoc);
-      final long expectedBytes = copy.ramBytesUsed();
-      assertEquals(expectedBytes, actualBytes);
+      assertRamBytesUsed(set, maxDoc);
     }
+  }
+
+  /**
+   * Assert that {@link DocIdSet#ramBytesUsed()} of a copy of the given {@link BitSet} matches its
+   * measured heap usage.
+   */
+  protected void assertRamBytesUsed(BitSet set, int length) throws IOException {
+    final DocIdSet copy = copyOf(set, length);
+    final long actualBytes = ramBytesUsed(copy, length);
+    final long expectedBytes = copy.ramBytesUsed();
+    assertEquals(expectedBytes, actualBytes);
   }
 
   /**
@@ -183,7 +191,7 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
 
   private static class Dummy {
     @SuppressWarnings("unused")
-    Object o1, o2;
+    Object o1, o2, o3;
   }
 
   // same as RamUsageTester.sizeOf but tries to not take into account resources
@@ -191,9 +199,12 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
   private long ramBytesUsed(DocIdSet set, int length) throws IOException {
     Dummy dummy = new Dummy();
     dummy.o1 = copyOf(new BitSet(length), length);
-    dummy.o2 = set;
+    final BitSet full = new BitSet(length);
+    full.set(0, length);
+    dummy.o2 = copyOf(full, length);
+    dummy.o3 = set;
     long bytes1 = RamUsageTester.ramUsed(dummy);
-    dummy.o2 = null;
+    dummy.o3 = null;
     long bytes2 = RamUsageTester.ramUsed(dummy);
     return bytes1 - bytes2;
   }
