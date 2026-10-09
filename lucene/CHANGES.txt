@@ -239,6 +239,11 @@ Optimizations
 
 Bug Fixes
 ---------------------
+
+* GITHUB#16764: Fix Lucene104ScalarQuantizedVectorsWriter to exclude deleted docs when recomputing the
+  merge centroid and correct the vector count so that it reflects the live docs after deletions, preventing
+  query-side data from being prepared for merged fields that are too small to build a graph. (Pranshu Shukla)
+
 * GITHUB#16546: Prevent RangeBulkScorer from passing empty ranges to LeafCollector. (jxy)
 
 * GITHUB#10153: Allow configurable buffer size in SegmentingTokenizerBase and recognize whitespace as safe boundary in ThaiTokenizer to avoid splitting words across buffer boundaries. (Kamthorn Krairaksa)
