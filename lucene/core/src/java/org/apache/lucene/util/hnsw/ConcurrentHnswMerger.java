@@ -17,6 +17,9 @@
 package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.search.TaskExecutor;
@@ -24,6 +27,7 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IORunnable;
+import org.apache.lucene.util.IOSupplier;
 
 /** This merger merges graph in a concurrent manner, by using {@link HnswConcurrentMergeBuilder} */
 public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
@@ -78,7 +82,13 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
         InitializedHnswGraphBuilder.pruneGraph(
             scorerSupplier, beamWidth, graphs[0], ordMaps[0], maxOrd, abortCheck);
     // the remaining graphs have no deletions; join them into the base graph rather than inserting
-    // their nodes from scratch
+    // their nodes from scratch. Each call to getGraph returns a new instance, which is how every
+    // worker gets its own.
+    List<IOSupplier<HnswGraph>> otherGraphs = new ArrayList<>(graphs.length - 1);
+    for (int i = 1; i < graphReaders.size(); i++) {
+      HnswGraphProvider provider = (HnswGraphProvider) graphReaders.get(i).reader();
+      otherGraphs.add(() -> provider.getGraph(fieldInfo.name));
+    }
     return new HnswConcurrentMergeBuilder(
         taskExecutor,
         numWorker,
@@ -87,7 +97,7 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
         prunedGraph.graph(),
         initializedNodes,
         prunedGraph.hasDeletes() ? prunedGraph : null,
-        ArrayUtil.copyOfSubArray(graphs, 1, graphs.length),
+        otherGraphs,
         ArrayUtil.copyOfSubArray(ordMaps, 1, ordMaps.length));
   }
 }

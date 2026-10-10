@@ -21,7 +21,6 @@ import static org.apache.lucene.util.hnsw.HnswGraphBuilder.HNSW_COMPONENT;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.Callable;
@@ -29,13 +28,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
+import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.search.TaskExecutor;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IORunnable;
+import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.IntsRef;
 
@@ -60,7 +59,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
   private final TaskExecutor taskExecutor;
   private final ConcurrentMergeWorker[] workers;
   private final HnswLock hnswLock;
-  private final HnswGraph[] graphs;
+  private final List<IOSupplier<HnswGraph>> graphs;
   private final int[][] ordMaps;
   private final InitializedHnswGraphBuilder.PrunedGraph prunedGraph;
   private InfoStream infoStream = InfoStream.getDefault();
@@ -82,7 +81,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
         hnsw,
         initializedNodes,
         null,
-        new HnswGraph[0],
+        List.of(),
         new int[0][]);
   }
 
@@ -109,7 +108,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
         hnsw,
         initializedNodes,
         prunedGraph,
-        new HnswGraph[0],
+        List.of(),
         new int[0][]);
   }
 
@@ -123,7 +122,8 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
    * @param prunedGraph the deferred repair state, or null when the reused graph had no deletes
    * @param graphs graphs without deletions whose nodes are not in {@code hnsw} yet; they are joined
    *     into it with the join set approach of {@link MergingHnswGraphBuilder} before the nodes that
-   *     are not in {@code initializedNodes} are added
+   *     are not in {@code initializedNodes} are added. Each supplier must return a new instance on
+   *     every call, since every worker reads a graph through its own instance.
    * @param ordMaps for each of {@code graphs}, the mapping from its ordinals to ordinals of {@code
    *     hnsw}
    */
@@ -135,14 +135,14 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
       OnHeapHnswGraph hnsw,
       BitSet initializedNodes,
       InitializedHnswGraphBuilder.PrunedGraph prunedGraph,
-      HnswGraph[] graphs,
+      List<IOSupplier<HnswGraph>> graphs,
       int[][] ordMaps)
       throws IOException {
-    if (graphs.length != ordMaps.length) {
+    if (graphs.size() != ordMaps.length) {
       throw new IllegalArgumentException(
-          "got " + graphs.length + " graphs but " + ordMaps.length + " ordinal maps");
+          "got " + graphs.size() + " graphs but " + ordMaps.length + " ordinal maps");
     }
-    if (graphs.length > 0 && initializedNodes == null) {
+    if (graphs.isEmpty() == false && initializedNodes == null) {
       throw new IllegalArgumentException(
           "initializedNodes must mark the nodes of the graphs to join");
     }
@@ -182,28 +182,60 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
       worker.setMergeStartTimeNs(mergeStartTimeNs);
       worker.setCumulativeWorkTimeNs(cumulativeWorkTimeNs);
     }
+    // The join plans only read the graphs being joined, so they are computed while the repaired
+    // base graph is rebalanced, which runs on a single thread.
+    List<Callable<JoinPlan>> tasks = new ArrayList<>(graphs.size() + 1);
+    for (int g = 0; g < graphs.size(); g++) {
+      IOSupplier<HnswGraph> graph = graphs.get(g);
+      int[] ordMap = ordMaps[g];
+      tasks.add(() -> JoinPlan.create(graph.get(), ordMap));
+    }
+    int repairedNodes = 0;
+    long repairNs = 0;
+    AtomicLong rebalanceNs = new AtomicLong();
     if (prunedGraph != null) {
       long repairStartNs = System.nanoTime();
-      int repairedNodes = repairDisconnectedNodes();
-      long rebalanceStartNs = System.nanoTime();
-      prunedGraph.builder().rebalanceGraph();
-      long rebalanceEndNs = System.nanoTime();
-      if (infoStream.isEnabled(HNSW_COMPONENT)) {
+      repairedNodes = repairDisconnectedNodes();
+      repairNs = System.nanoTime() - repairStartNs;
+      tasks.add(
+          () -> {
+            long rebalanceStartNs = System.nanoTime();
+            prunedGraph.builder().rebalanceGraph();
+            rebalanceNs.set(System.nanoTime() - rebalanceStartNs);
+            return null;
+          });
+    }
+    long plansStartNs = System.nanoTime();
+    JoinPlan[] plans =
+        tasks.isEmpty()
+            ? new JoinPlan[0]
+            : taskExecutor.invokeAll(tasks).subList(0, graphs.size()).toArray(JoinPlan[]::new);
+    if (infoStream.isEnabled(HNSW_COMPONENT)) {
+      if (prunedGraph != null) {
         infoStream.message(
             HNSW_COMPONENT,
             String.format(
                 Locale.ROOT,
                 "repaired reused graph: %d nodes in %.2f ms with %d workers, %.2f ms rebalance",
                 repairedNodes,
-                (rebalanceStartNs - repairStartNs) / 1_000_000.0,
+                repairNs / 1_000_000.0,
                 workers.length,
-                (rebalanceEndNs - rebalanceStartNs) / 1_000_000.0));
+                rebalanceNs.get() / 1_000_000.0));
+      }
+      if (plans.length > 0) {
+        infoStream.message(
+            HNSW_COMPONENT,
+            String.format(
+                Locale.ROOT,
+                "computed the join sets of %d graphs in %.2f ms",
+                plans.length,
+                (System.nanoTime() - plansStartNs) / 1_000_000.0));
       }
     }
     // join the other graphs into the base graph once it is repaired, as MergingHnswGraphBuilder
     // does after InitializedHnswGraphBuilder.initGraph
-    if (graphs.length > 0) {
-      joinGraphs(maxOrd, cumulativeWorkTimeNs);
+    if (plans.length > 0) {
+      joinGraphs(plans, maxOrd, cumulativeWorkTimeNs);
     }
     List<Callable<Void>> futures = new ArrayList<>();
     for (int i = 0; i < workers.length; i++) {
@@ -235,79 +267,60 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
   /**
    * Joins {@link #graphs} into the graph like {@link MergingHnswGraphBuilder} does, but with all
    * workers. Graphs are joined one after the other: adding the join sets of all graphs before the
-   * other nodes of any of them builds a noticeably worse graph. Since the join sets only depend on
-   * the graphs being joined, they are all computed beforehand, one task per graph.
+   * other nodes of any of them builds a noticeably worse graph.
    */
-  private void joinGraphs(int maxOrd, AtomicLong cumulativeWorkTimeNs) throws IOException {
-    long startNs = System.nanoTime();
-    List<Callable<JoinPlan>> planTasks = new ArrayList<>(graphs.length);
-    for (int g = 0; g < graphs.length; g++) {
-      HnswGraph graph = graphs[g];
-      int[] ordMap = ordMaps[g];
-      planTasks.add(() -> JoinPlan.create(graph, ordMap));
-    }
-    JoinPlan[] plans = taskExecutor.invokeAll(planTasks).toArray(JoinPlan[]::new);
-    if (infoStream.isEnabled(HNSW_COMPONENT)) {
-      infoStream.message(
-          HNSW_COMPONENT,
-          String.format(
-              Locale.ROOT,
-              "computed the join sets of %d graphs in %.2f ms",
-              plans.length,
-              (System.nanoTime() - startNs) / 1_000_000.0));
-    }
-
+  private void joinGraphs(JoinPlan[] plans, int maxOrd, AtomicLong cumulativeWorkTimeNs)
+      throws IOException {
     // the nodes of the joined graphs that are fully inserted, and so usable as entry points
     InsertedNodes inserted = new InsertedNodes(maxOrd);
     for (int g = 0; g < plans.length; g++) {
       JoinPlan plan = plans[g];
       plans[g] = null; // not needed once joined
+      FixedBitSet joinSet = plan.joinSet;
+      int size = joinSet.length();
       runInBatches(
-          plan.joinSetNodes.length,
+          size,
           cumulativeWorkTimeNs,
           (worker, start, end) -> {
-            for (int i = start; i < end; i++) {
-              worker.addJoinSetNode(plan.ordMap[plan.joinSetNodes[i]], inserted);
+            for (int u = joinSet.nextSetBit(start, end);
+                u != NO_MORE_DOCS;
+                u = u + 1 < end ? joinSet.nextSetBit(u + 1, end) : NO_MORE_DOCS) {
+              worker.addJoinSetNode(plan.ordMap[u], inserted);
             }
           });
+      for (ConcurrentMergeWorker worker : workers) {
+        worker.joinedGraph = graphs.get(g).get();
+      }
       runInBatches(
-          plan.otherNodes.length,
+          size,
           cumulativeWorkTimeNs,
           (worker, start, end) -> {
-            for (int i = start; i < end; i++) {
-              worker.addJoinedNode(plan, plan.otherNodes[i], inserted);
+            for (int u = start; u < end; u++) {
+              if (joinSet.get(u) == false) {
+                worker.addJoinedNode(plan.ordMap, u, inserted);
+              }
             }
           });
+      for (ConcurrentMergeWorker worker : workers) {
+        worker.joinedGraph = null;
+      }
     }
   }
 
   /**
-   * How a graph is joined: its join set, its other nodes, and how to read the graph. Nodes are
-   * ordinals of the graph being joined; {@code ordMap} maps them to ordinals of the merged graph.
+   * How a graph is joined.
    *
-   * @param graph the graph being joined
-   * @param graphLock guards {@code graph}, which workers read concurrently
-   * @param ordMap maps ordinals of {@code graph} to ordinals of the merged graph
-   * @param joinSetNodes the join set of {@code graph}, sorted
-   * @param otherNodes the other nodes of {@code graph}, sorted
+   * @param ordMap maps ordinals of the graph being joined to ordinals of the merged graph
+   * @param joinSet the join set of the graph being joined; its other nodes are the clear bits
    */
-  private record JoinPlan(
-      HnswGraph graph, Lock graphLock, int[] ordMap, int[] joinSetNodes, int[] otherNodes) {
+  private record JoinPlan(int[] ordMap, FixedBitSet joinSet) {
 
     static JoinPlan create(HnswGraph graph, int[] ordMap) throws IOException {
-      IntHashSet j = UpdateGraphsUtils.computeJoinSet(graph);
-      // sort for stability
-      int[] joinSetNodes = j.toArray();
-      Arrays.sort(joinSetNodes);
-      int[] otherNodes = new int[graph.size() - joinSetNodes.length];
-      int i = 0;
-      for (int u = 0; u < graph.size(); u++) {
-        if (j.contains(u) == false) {
-          otherNodes[i++] = u;
-        }
+      FixedBitSet joinSet = new FixedBitSet(graph.size());
+      for (IntCursor node : UpdateGraphsUtils.computeJoinSet(graph)) {
+        joinSet.set(node.value);
       }
-      assert i == otherNodes.length;
-      return new JoinPlan(graph, new ReentrantLock(), ordMap, joinSetNodes, otherNodes);
+      return new JoinPlan(ordMap, joinSet);
     }
   }
 
@@ -472,8 +485,8 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     /** The entry points of the search on level 0 for {@link #addJoinedNode}, reused */
     private final IntHashSet eps = new IntHashSet();
 
-    /** The neighbors of a node in the graph being joined, for {@link #addJoinedNode}, reused */
-    private int[] sourceNeighbors = new int[0];
+    /** This worker's own instance of the graph being joined, for {@link #addJoinedNode} */
+    private HnswGraph joinedGraph;
 
     private ConcurrentMergeWorker(
         RandomVectorScorerSupplier scorerSupplier,
@@ -544,23 +557,14 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
      * graph that are already inserted, which includes its join set neighbors, and from their
      * neighbors in the merged graph.
      *
+     * @param ordMap maps ordinals of the graph being joined to ordinals of the merged graph
      * @param u the node, as an ordinal of the graph being joined
      */
-    private void addJoinedNode(JoinPlan plan, int u, InsertedNodes inserted) throws IOException {
-      int numNeighbors = 0;
-      plan.graphLock.lock();
-      try {
-        plan.graph.seek(0, u);
-        sourceNeighbors = ArrayUtil.grow(sourceNeighbors, plan.graph.neighborCount());
-        for (int v = plan.graph.nextNeighbor(); v != NO_MORE_DOCS; v = plan.graph.nextNeighbor()) {
-          sourceNeighbors[numNeighbors++] = v;
-        }
-      } finally {
-        plan.graphLock.unlock();
-      }
+    private void addJoinedNode(int[] ordMap, int u, InsertedNodes inserted) throws IOException {
       eps.clear();
-      for (int i = 0; i < numNeighbors; i++) {
-        int neighbor = plan.ordMap[sourceNeighbors[i]];
+      joinedGraph.seek(0, u);
+      for (int v = joinedGraph.nextNeighbor(); v != NO_MORE_DOCS; v = joinedGraph.nextNeighbor()) {
+        int neighbor = ordMap[v];
         if (inserted.contains(neighbor) == false) {
           continue;
         }
@@ -575,7 +579,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
           lock.unlock();
         }
       }
-      int node = plan.ordMap[u];
+      int node = ordMap[u];
       addGraphNode(node, eps);
       inserted.add(node);
     }
