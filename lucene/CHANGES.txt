@@ -495,6 +495,11 @@ Improvements
 Optimizations
 ---------------------
 
+* GITHUB#16794: Concurrent HNSW merges now join the other deletion-free graphs into the base graph
+  through their join sets, as serial merges have done since GITHUB#14331, instead of inserting all
+  their vectors with a full search. This makes them do about a third fewer vector comparisons.
+  (Lantao Jin)
+
 * GITHUB#16706: Reduce the sandboxed dedup vector formats' index size by packing each field
   ordinal to group ordinal mapping at the minimum bit width required for the largest group ordinal,
   instead of a fixed 32-bit width. (Pranshu Shukla)
