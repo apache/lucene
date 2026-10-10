@@ -706,6 +706,9 @@ Bug Fixes
   threads race to initialize it, which could leave each analyzer holding its own ~7 MB copy.
   (Eugene Rizhkov)
 
+* GITHUB#7820: CheckIndex#exorciseIndex threw NullPointerException instead of refusing, when given
+  the status of an index whose commit point could not be read at all. (Serhiy Bzhezytskyy)
+
 Build
 ---------------------
 
