@@ -706,6 +706,11 @@ Bug Fixes
   threads race to initialize it, which could leave each analyzer holding its own ~7 MB copy.
   (Eugene Rizhkov)
 
+* GITHUB#16807: Fix byte vector dot products and square distances staying several times slower
+  for the life of the JVM once both their signed and unsigned (uint8) variants have been used,
+  e.g. when searching UNSIGNED_BYTE and SEVEN_BIT scalar-quantized fields in one JVM.
+  (Lantao Jin)
+
 Build
 ---------------------
 

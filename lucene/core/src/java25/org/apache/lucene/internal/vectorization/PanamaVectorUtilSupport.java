@@ -384,31 +384,36 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public int dotProduct(byte[] a, byte[] b) {
-    return dotProductBody(new ArrayLoader(a), new ArrayLoader(b), true);
+    return dotProductBody(new ArrayLoader(a), new ArrayLoader(b));
   }
 
   @Override
   public int uint8DotProduct(byte[] a, byte[] b) {
-    return dotProductBody(new ArrayLoader(a), new ArrayLoader(b), false);
+    return uint8DotProductBody(new ArrayLoader(a), new ArrayLoader(b));
   }
 
   public static int dotProduct(byte[] a, MemorySegment b) {
-    return dotProductBody(new ArrayLoader(a), new MemorySegmentLoader(b), true);
+    return dotProductBody(new ArrayLoader(a), new MemorySegmentLoader(b));
   }
 
   public static int dotProduct(MemorySegment a, MemorySegment b) {
-    return dotProductBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b), true);
+    return dotProductBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b));
   }
 
   public static int uint8DotProduct(byte[] a, MemorySegment b) {
-    return dotProductBody(new ArrayLoader(a), new MemorySegmentLoader(b), false);
+    return uint8DotProductBody(new ArrayLoader(a), new MemorySegmentLoader(b));
   }
 
   public static int uint8DotProduct(MemorySegment a, MemorySegment b) {
-    return dotProductBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b), false);
+    return uint8DotProductBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b));
   }
 
-  private static int dotProductBody(ByteVectorLoader a, ByteVectorLoader b, boolean signed) {
+  // The signed and unsigned kernels deliberately share no method, here and in squareDistance.
+  // A conversion operator that is not a constant in the compiled method is not intrinsified, and
+  // C2 makes inlining decisions from per-method profiles: once both kernels had run, a shared
+  // method was compiled out of line, so whichever kernel ran second stayed much slower.
+
+  private static int dotProductBody(ByteVectorLoader a, ByteVectorLoader b) {
     assert a.length() == b.length();
     int i = 0;
     int res = 0;
@@ -418,47 +423,86 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       // compute vectorized dot product consistent with VPDPBUSD instruction
       if (VECTOR_BITSIZE >= 512) {
         i += BYTE_SPECIES.loopBound(a.length());
-        res += dotProductBody512(a, b, i, signed);
+        res += dotProductBody512(a, b, i);
       } else if (VECTOR_BITSIZE == 256) {
         i += BYTE_SPECIES.loopBound(a.length());
-        res += dotProductBody256(a, b, i, signed);
+        res += dotProductBody256(a, b, i);
       } else {
         // tricky: we don't have SPECIES_32, so we workaround with "overlapping read"
         i += ByteVector.SPECIES_64.loopBound(a.length() - ByteVector.SPECIES_64.length());
-        res += dotProductBody128(a, b, i, signed);
+        res += dotProductBody128(a, b, i);
       }
     }
 
     // scalar tail
-    if (signed) {
-      for (; i < a.length(); i++) {
-        res += a.tail(i) * b.tail(i);
+    for (; i < a.length(); i++) {
+      res += a.tail(i) * b.tail(i);
+    }
+    return res;
+  }
+
+  private static int uint8DotProductBody(ByteVectorLoader a, ByteVectorLoader b) {
+    assert a.length() == b.length();
+    int i = 0;
+    int res = 0;
+
+    // only vectorize if we'll at least enter the loop a single time
+    if (a.length() >= 16) {
+      // compute vectorized dot product consistent with VPDPBUSD instruction
+      if (VECTOR_BITSIZE >= 512) {
+        i += BYTE_SPECIES.loopBound(a.length());
+        res += uint8DotProductBody512(a, b, i);
+      } else if (VECTOR_BITSIZE == 256) {
+        i += BYTE_SPECIES.loopBound(a.length());
+        res += uint8DotProductBody256(a, b, i);
+      } else {
+        // tricky: we don't have SPECIES_32, so we workaround with "overlapping read"
+        i += ByteVector.SPECIES_64.loopBound(a.length() - ByteVector.SPECIES_64.length());
+        res += uint8DotProductBody128(a, b, i);
       }
-    } else {
-      for (; i < a.length(); i++) {
-        res += Byte.toUnsignedInt(a.tail(i)) * Byte.toUnsignedInt(b.tail(i));
-      }
+    }
+
+    // scalar tail
+    for (; i < a.length(); i++) {
+      res += Byte.toUnsignedInt(a.tail(i)) * Byte.toUnsignedInt(b.tail(i));
     }
     return res;
   }
 
   /** vectorized dot product body (512 bit vectors) */
-  private static int dotProductBody512(
-      ByteVectorLoader a, ByteVectorLoader b, int limit, boolean signed) {
+  private static int dotProductBody512(ByteVectorLoader a, ByteVectorLoader b, int limit) {
     IntVector acc = IntVector.zero(INT_SPECIES);
-    var conversion_short = signed ? B2S : ZERO_EXTEND_B2S;
-    var conversion_int = signed ? S2I : ZERO_EXTEND_S2I;
     for (int i = 0; i < limit; i += BYTE_SPECIES.length()) {
       ByteVector va8 = a.load(BYTE_SPECIES, i);
       ByteVector vb8 = b.load(BYTE_SPECIES, i);
 
       // 16-bit multiply: avoid AVX-512 heavy multiply on zmm
-      Vector<Short> va16 = va8.convertShape(conversion_short, SHORT_SPECIES, 0);
-      Vector<Short> vb16 = vb8.convertShape(conversion_short, SHORT_SPECIES, 0);
+      Vector<Short> va16 = va8.convertShape(B2S, SHORT_SPECIES, 0);
+      Vector<Short> vb16 = vb8.convertShape(B2S, SHORT_SPECIES, 0);
       Vector<Short> prod16 = va16.mul(vb16);
 
       // 32-bit add
-      Vector<Integer> prod32 = prod16.convertShape(conversion_int, INT_SPECIES, 0);
+      Vector<Integer> prod32 = prod16.convertShape(S2I, INT_SPECIES, 0);
+      acc = acc.add(prod32);
+    }
+    // reduce
+    return acc.reduceLanes(ADD);
+  }
+
+  /** vectorized unsigned dot product body (512 bit vectors) */
+  private static int uint8DotProductBody512(ByteVectorLoader a, ByteVectorLoader b, int limit) {
+    IntVector acc = IntVector.zero(INT_SPECIES);
+    for (int i = 0; i < limit; i += BYTE_SPECIES.length()) {
+      ByteVector va8 = a.load(BYTE_SPECIES, i);
+      ByteVector vb8 = b.load(BYTE_SPECIES, i);
+
+      // 16-bit multiply: avoid AVX-512 heavy multiply on zmm
+      Vector<Short> va16 = va8.convertShape(ZERO_EXTEND_B2S, SHORT_SPECIES, 0);
+      Vector<Short> vb16 = vb8.convertShape(ZERO_EXTEND_B2S, SHORT_SPECIES, 0);
+      Vector<Short> prod16 = va16.mul(vb16);
+
+      // 32-bit add: the 16-bit product is unsigned
+      Vector<Integer> prod32 = prod16.convertShape(ZERO_EXTEND_S2I, INT_SPECIES, 0);
       acc = acc.add(prod32);
     }
     // reduce
@@ -466,17 +510,31 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   /** vectorized dot product body (256 bit vectors) */
-  private static int dotProductBody256(
-      ByteVectorLoader a, ByteVectorLoader b, int limit, boolean signed) {
+  private static int dotProductBody256(ByteVectorLoader a, ByteVectorLoader b, int limit) {
     IntVector acc = IntVector.zero(IntVector.SPECIES_256);
-    var conversion = signed ? B2I : ZERO_EXTEND_B2I;
     for (int i = 0; i < limit; i += ByteVector.SPECIES_64.length()) {
       ByteVector va8 = a.load(ByteVector.SPECIES_64, i);
       ByteVector vb8 = b.load(ByteVector.SPECIES_64, i);
 
       // 32-bit multiply and add into accumulator
-      Vector<Integer> va32 = va8.convertShape(conversion, IntVector.SPECIES_256, 0);
-      Vector<Integer> vb32 = vb8.convertShape(conversion, IntVector.SPECIES_256, 0);
+      Vector<Integer> va32 = va8.convertShape(B2I, IntVector.SPECIES_256, 0);
+      Vector<Integer> vb32 = vb8.convertShape(B2I, IntVector.SPECIES_256, 0);
+      acc = acc.add(va32.mul(vb32));
+    }
+    // reduce
+    return acc.reduceLanes(ADD);
+  }
+
+  /** vectorized unsigned dot product body (256 bit vectors) */
+  private static int uint8DotProductBody256(ByteVectorLoader a, ByteVectorLoader b, int limit) {
+    IntVector acc = IntVector.zero(IntVector.SPECIES_256);
+    for (int i = 0; i < limit; i += ByteVector.SPECIES_64.length()) {
+      ByteVector va8 = a.load(ByteVector.SPECIES_64, i);
+      ByteVector vb8 = b.load(ByteVector.SPECIES_64, i);
+
+      // 32-bit multiply and add into accumulator
+      Vector<Integer> va32 = va8.convertShape(ZERO_EXTEND_B2I, IntVector.SPECIES_256, 0);
+      Vector<Integer> vb32 = vb8.convertShape(ZERO_EXTEND_B2I, IntVector.SPECIES_256, 0);
       acc = acc.add(va32.mul(vb32));
     }
     // reduce
@@ -484,11 +542,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   /** vectorized dot product body (128 bit vectors) */
-  private static int dotProductBody128(
-      ByteVectorLoader a, ByteVectorLoader b, int limit, boolean signed) {
+  private static int dotProductBody128(ByteVectorLoader a, ByteVectorLoader b, int limit) {
     IntVector acc = IntVector.zero(IntVector.SPECIES_128);
-    var conversion_short = signed ? B2S : ZERO_EXTEND_B2S;
-    var conversion_int = signed ? S2I : ZERO_EXTEND_S2I;
     // 4 bytes at a time (re-loading half the vector each time!)
     for (int i = 0; i < limit; i += ByteVector.SPECIES_64.length() >> 1) {
       // load 8 bytes
@@ -496,12 +551,33 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       ByteVector vb8 = b.load(ByteVector.SPECIES_64, i);
 
       // process first "half" only: 16-bit multiply
-      Vector<Short> va16 = va8.convert(conversion_short, 0);
-      Vector<Short> vb16 = vb8.convert(conversion_short, 0);
+      Vector<Short> va16 = va8.convert(B2S, 0);
+      Vector<Short> vb16 = vb8.convert(B2S, 0);
       Vector<Short> prod16 = va16.mul(vb16);
 
       // 32-bit add
-      acc = acc.add(prod16.convertShape(conversion_int, IntVector.SPECIES_128, 0));
+      acc = acc.add(prod16.convertShape(S2I, IntVector.SPECIES_128, 0));
+    }
+    // reduce
+    return acc.reduceLanes(ADD);
+  }
+
+  /** vectorized unsigned dot product body (128 bit vectors) */
+  private static int uint8DotProductBody128(ByteVectorLoader a, ByteVectorLoader b, int limit) {
+    IntVector acc = IntVector.zero(IntVector.SPECIES_128);
+    // 4 bytes at a time (re-loading half the vector each time!)
+    for (int i = 0; i < limit; i += ByteVector.SPECIES_64.length() >> 1) {
+      // load 8 bytes
+      ByteVector va8 = a.load(ByteVector.SPECIES_64, i);
+      ByteVector vb8 = b.load(ByteVector.SPECIES_64, i);
+
+      // process first "half" only: 16-bit multiply
+      Vector<Short> va16 = va8.convert(ZERO_EXTEND_B2S, 0);
+      Vector<Short> vb16 = vb8.convert(ZERO_EXTEND_B2S, 0);
+      Vector<Short> prod16 = va16.mul(vb16);
+
+      // 32-bit add: the 16-bit product is unsigned
+      acc = acc.add(prod16.convertShape(ZERO_EXTEND_S2I, IntVector.SPECIES_128, 0));
     }
     // reduce
     return acc.reduceLanes(ADD);
@@ -869,31 +945,31 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public int squareDistance(byte[] a, byte[] b) {
-    return squareDistanceBody(new ArrayLoader(a), new ArrayLoader(b), true);
+    return squareDistanceBody(new ArrayLoader(a), new ArrayLoader(b));
   }
 
   @Override
   public int uint8SquareDistance(byte[] a, byte[] b) {
-    return squareDistanceBody(new ArrayLoader(a), new ArrayLoader(b), false);
+    return uint8SquareDistanceBody(new ArrayLoader(a), new ArrayLoader(b));
   }
 
   public static int squareDistance(MemorySegment a, MemorySegment b) {
-    return squareDistanceBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b), true);
+    return squareDistanceBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b));
   }
 
   public static int squareDistance(byte[] a, MemorySegment b) {
-    return squareDistanceBody(new ArrayLoader(a), new MemorySegmentLoader(b), true);
+    return squareDistanceBody(new ArrayLoader(a), new MemorySegmentLoader(b));
   }
 
   public static int uint8SquareDistance(MemorySegment a, MemorySegment b) {
-    return squareDistanceBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b), false);
+    return uint8SquareDistanceBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b));
   }
 
   public static int uint8SquareDistance(byte[] a, MemorySegment b) {
-    return squareDistanceBody(new ArrayLoader(a), new MemorySegmentLoader(b), false);
+    return uint8SquareDistanceBody(new ArrayLoader(a), new MemorySegmentLoader(b));
   }
 
-  private static int squareDistanceBody(ByteVectorLoader a, ByteVectorLoader b, boolean signed) {
+  private static int squareDistanceBody(ByteVectorLoader a, ByteVectorLoader b) {
     assert a.length() == b.length();
     int i = 0;
     int res = 0;
@@ -902,41 +978,74 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     if (a.length() >= 16) {
       if (VECTOR_BITSIZE >= 256) {
         i += BYTE_SPECIES.loopBound(a.length());
-        res += squareDistanceBody256(a, b, i, signed);
+        res += squareDistanceBody256(a, b, i);
       } else {
         i += ByteVector.SPECIES_64.loopBound(a.length());
-        res += squareDistanceBody128(a, b, i, signed);
+        res += squareDistanceBody128(a, b, i);
       }
     }
 
     // scalar tail
-    if (signed) {
-      for (; i < a.length(); i++) {
-        int diff = a.tail(i) - b.tail(i);
-        res += diff * diff;
+    for (; i < a.length(); i++) {
+      int diff = a.tail(i) - b.tail(i);
+      res += diff * diff;
+    }
+    return res;
+  }
+
+  private static int uint8SquareDistanceBody(ByteVectorLoader a, ByteVectorLoader b) {
+    assert a.length() == b.length();
+    int i = 0;
+    int res = 0;
+
+    // only vectorize if we'll at least enter the loop a single time
+    if (a.length() >= 16) {
+      if (VECTOR_BITSIZE >= 256) {
+        i += BYTE_SPECIES.loopBound(a.length());
+        res += uint8SquareDistanceBody256(a, b, i);
+      } else {
+        i += ByteVector.SPECIES_64.loopBound(a.length());
+        res += uint8SquareDistanceBody128(a, b, i);
       }
-    } else {
-      for (; i < a.length(); i++) {
-        int diff = Byte.toUnsignedInt(a.tail(i)) - Byte.toUnsignedInt(b.tail(i));
-        res += diff * diff;
-      }
+    }
+
+    // scalar tail
+    for (; i < a.length(); i++) {
+      int diff = Byte.toUnsignedInt(a.tail(i)) - Byte.toUnsignedInt(b.tail(i));
+      res += diff * diff;
     }
     return res;
   }
 
   /** vectorized square distance body (256+ bit vectors) */
-  private static int squareDistanceBody256(
-      ByteVectorLoader a, ByteVectorLoader b, int limit, boolean signed) {
+  private static int squareDistanceBody256(ByteVectorLoader a, ByteVectorLoader b, int limit) {
     IntVector acc = IntVector.zero(INT_SPECIES);
-    var conversion = signed ? B2I : ZERO_EXTEND_B2I;
     for (int i = 0; i < limit; i += BYTE_SPECIES.length()) {
       ByteVector va8 = a.load(BYTE_SPECIES, i);
       ByteVector vb8 = b.load(BYTE_SPECIES, i);
 
       // 32-bit sub, multiply, and add into accumulators
       // TODO: uses AVX-512 heavy multiply on zmm, should we just use 256-bit vectors on AVX-512?
-      Vector<Integer> va32 = va8.convertShape(conversion, INT_SPECIES, 0);
-      Vector<Integer> vb32 = vb8.convertShape(conversion, INT_SPECIES, 0);
+      Vector<Integer> va32 = va8.convertShape(B2I, INT_SPECIES, 0);
+      Vector<Integer> vb32 = vb8.convertShape(B2I, INT_SPECIES, 0);
+      Vector<Integer> diff32 = va32.sub(vb32);
+      acc = acc.add(diff32.mul(diff32));
+    }
+    // reduce
+    return acc.reduceLanes(ADD);
+  }
+
+  /** vectorized unsigned square distance body (256+ bit vectors) */
+  private static int uint8SquareDistanceBody256(ByteVectorLoader a, ByteVectorLoader b, int limit) {
+    IntVector acc = IntVector.zero(INT_SPECIES);
+    for (int i = 0; i < limit; i += BYTE_SPECIES.length()) {
+      ByteVector va8 = a.load(BYTE_SPECIES, i);
+      ByteVector vb8 = b.load(BYTE_SPECIES, i);
+
+      // 32-bit sub, multiply, and add into accumulators
+      // TODO: uses AVX-512 heavy multiply on zmm, should we just use 256-bit vectors on AVX-512?
+      Vector<Integer> va32 = va8.convertShape(ZERO_EXTEND_B2I, INT_SPECIES, 0);
+      Vector<Integer> vb32 = vb8.convertShape(ZERO_EXTEND_B2I, INT_SPECIES, 0);
       Vector<Integer> diff32 = va32.sub(vb32);
       acc = acc.add(diff32.mul(diff32));
     }
@@ -945,23 +1054,46 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   /** vectorized square distance body (128 bit vectors) */
-  private static int squareDistanceBody128(
-      ByteVectorLoader a, ByteVectorLoader b, int limit, boolean signed) {
+  private static int squareDistanceBody128(ByteVectorLoader a, ByteVectorLoader b, int limit) {
     // 128-bit implementation, which must "split up" vectors due to widening conversions
     // it doesn't help to do the overlapping read trick, due to 32-bit multiply in the formula
     IntVector acc1 = IntVector.zero(IntVector.SPECIES_128);
     IntVector acc2 = IntVector.zero(IntVector.SPECIES_128);
-    var conversion_short = signed ? B2S : ZERO_EXTEND_B2S;
     for (int i = 0; i < limit; i += ByteVector.SPECIES_64.length()) {
       ByteVector va8 = a.load(ByteVector.SPECIES_64, i);
       ByteVector vb8 = b.load(ByteVector.SPECIES_64, i);
 
       // 16-bit sub
-      Vector<Short> va16 = va8.convertShape(conversion_short, ShortVector.SPECIES_128, 0);
-      Vector<Short> vb16 = vb8.convertShape(conversion_short, ShortVector.SPECIES_128, 0);
+      Vector<Short> va16 = va8.convertShape(B2S, ShortVector.SPECIES_128, 0);
+      Vector<Short> vb16 = vb8.convertShape(B2S, ShortVector.SPECIES_128, 0);
       Vector<Short> diff16 = va16.sub(vb16);
 
       // 32-bit multiply and add into accumulators
+      Vector<Integer> diff32_1 = diff16.convertShape(S2I, IntVector.SPECIES_128, 0);
+      Vector<Integer> diff32_2 = diff16.convertShape(S2I, IntVector.SPECIES_128, 1);
+      acc1 = acc1.add(diff32_1.mul(diff32_1));
+      acc2 = acc2.add(diff32_2.mul(diff32_2));
+    }
+    // reduce
+    return acc1.add(acc2).reduceLanes(ADD);
+  }
+
+  /** vectorized unsigned square distance body (128 bit vectors) */
+  private static int uint8SquareDistanceBody128(ByteVectorLoader a, ByteVectorLoader b, int limit) {
+    // 128-bit implementation, which must "split up" vectors due to widening conversions
+    // it doesn't help to do the overlapping read trick, due to 32-bit multiply in the formula
+    IntVector acc1 = IntVector.zero(IntVector.SPECIES_128);
+    IntVector acc2 = IntVector.zero(IntVector.SPECIES_128);
+    for (int i = 0; i < limit; i += ByteVector.SPECIES_64.length()) {
+      ByteVector va8 = a.load(ByteVector.SPECIES_64, i);
+      ByteVector vb8 = b.load(ByteVector.SPECIES_64, i);
+
+      // 16-bit sub
+      Vector<Short> va16 = va8.convertShape(ZERO_EXTEND_B2S, ShortVector.SPECIES_128, 0);
+      Vector<Short> vb16 = vb8.convertShape(ZERO_EXTEND_B2S, ShortVector.SPECIES_128, 0);
+      Vector<Short> diff16 = va16.sub(vb16);
+
+      // 32-bit multiply and add into accumulators: the 16-bit difference is signed
       Vector<Integer> diff32_1 = diff16.convertShape(S2I, IntVector.SPECIES_128, 0);
       Vector<Integer> diff32_2 = diff16.convertShape(S2I, IntVector.SPECIES_128, 1);
       acc1 = acc1.add(diff32_1.mul(diff32_1));
