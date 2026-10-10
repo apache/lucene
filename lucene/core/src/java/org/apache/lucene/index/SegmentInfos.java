@@ -45,6 +45,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.StringHelper;
+import org.apache.lucene.util.ThreadInterruptedException;
 import org.apache.lucene.util.Version;
 
 /**
@@ -62,7 +63,8 @@ import org.apache.lucene.util.Version;
  * <ul>
  *   <li><code>segments_N</code>: Header, LuceneVersion, Version, NameCounter, SegCount,
  *       MinSegmentLuceneVersion, &lt;SegName, SegID, SegCodec, DelGen, DeletionCount,
- *       FieldInfosGen, DocValuesGen, UpdatesFiles&gt;<sup>SegCount</sup>, CommitUserData, Footer
+ *       FieldInfosGen, DocValuesGen, UpdatesFiles, DocValuesOverlays&gt;<sup>SegCount</sup>,
+ *       CommitUserData, Footer
  * </ul>
  *
  * Data types:
@@ -82,6 +84,10 @@ import org.apache.lucene.util.Version;
  *   <li>CommitUserData --&gt; {@link DataOutput#writeMapOfStrings Map&lt;String,String&gt;}
  *   <li>UpdatesFiles --&gt; Map&lt;{@link DataOutput#writeInt Int32}, {@link
  *       DataOutput#writeSetOfStrings(Set) Set&lt;String&gt;}&gt;
+ *   <li>DocValuesOverlays --&gt; OverlayCount, &lt;FieldNumber, BaseGen, DeltaCount,
+ *       DeltaGen<sup>DeltaCount</sup>&gt;<sup>OverlayCount</sup>; OverlayCount, FieldNumber and
+ *       DeltaCount are {@link DataOutput#writeInt Int32}, BaseGen and DeltaGen are {@link
+ *       DataOutput#writeLong Int64}
  *   <li>Footer --&gt; {@link CodecUtil#writeFooter CodecFooter}
  * </ul>
  *
@@ -106,6 +112,9 @@ import org.apache.lucene.util.Version;
  *       no updates to DocValues in that segment. Anything above zero means there are updates to
  *       DocValues stored by {@link DocValuesFormat}.
  *   <li>UpdatesFiles stores the set of files that were updated in that segment per field.
+ *   <li>DocValuesOverlays records, per field that has incremental (sparse) doc-values updates, the
+ *       base generation and the delta generations (newest first) overlaid on it at read time; empty
+ *       for segments without overlays.
  * </ul>
  *
  * @lucene.experimental
@@ -118,7 +127,10 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
   /** The version that recorded SegmentCommitInfo IDs */
   public static final int VERSION_86 = 10;
 
-  static final int VERSION_CURRENT = VERSION_86;
+  /** The version that records per-field incremental doc-values overlay generations. */
+  public static final int VERSION_10_6 = 11;
+
+  static final int VERSION_CURRENT = VERSION_10_6;
 
   /** Name of the generation reference file name */
   static final String OLD_SEGMENTS_GEN = "segments.gen";
@@ -285,8 +297,8 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
   }
 
   /**
-   * Read a particular segmentFileName, as long as the commit's {@link
-   * SegmentInfos#getIndexCreatedVersionMajor()} is strictly greater than the provided minimum
+   * Read a particular segmentFileName, as long as each segment's {@link
+   * SegmentInfo#getMinVersion()} within the commit is strictly greater than the provided minimum
    * supported major version. If the commit's version is older, an {@link
    * IndexFormatTooOldException} will be thrown. Note that this may throw an IOException if a commit
    * is in process.
@@ -394,8 +406,20 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       byte[] segmentID = new byte[StringHelper.ID_LENGTH];
       input.readBytes(segmentID, 0, segmentID.length);
       Codec codec = readCodec(input);
-      SegmentInfo info =
-          codec.segmentInfoFormat().read(directory, segName, segmentID, IOContext.READONCE);
+      final SegmentInfo info;
+      try {
+        info = codec.segmentInfoFormat().read(directory, segName, segmentID, IOContext.READONCE);
+      } catch (ThreadInterruptedException e) {
+        throw e;
+      } catch (Exception | AssertionError e) {
+        // Corruption in a .si file can surface as almost anything the codec's reader happens to do
+        // with the bad bytes, so catch broadly, but keep the root cause: it is what names the file.
+        throw new CorruptSegmentInfoException(
+            segName,
+            "segment info file: " + segName + ".si cannot be read - it may be missing or corrupt",
+            input,
+            e);
+      }
       info.setCodec(codec);
       totalDocs += info.maxDoc();
       long delGen = CodecUtil.readBELong(input);
@@ -449,6 +473,19 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
         dvUpdateFiles = Collections.unmodifiableMap(map);
       }
       siPerCommit.setDocValuesUpdatesFiles(dvUpdateFiles);
+      if (format >= VERSION_10_6) {
+        final int numOverlayFields = CodecUtil.readBEInt(input);
+        for (int i = 0; i < numOverlayFields; i++) {
+          final int fieldNumber = CodecUtil.readBEInt(input);
+          final long baseGen = CodecUtil.readBELong(input);
+          final int numDeltas = CodecUtil.readBEInt(input);
+          final long[] deltaGens = new long[numDeltas];
+          for (int g = 0; g < numDeltas; g++) {
+            deltaGens[g] = CodecUtil.readBELong(input);
+          }
+          siPerCommit.setDocValuesOverlay(fieldNumber, baseGen, deltaGens);
+        }
+      }
       infos.add(siPerCommit);
 
       Version segmentVersion = info.getVersion();
@@ -693,6 +730,20 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       for (Entry<Integer, Set<String>> e : dvUpdatesFiles.entrySet()) {
         CodecUtil.writeBEInt(out, e.getKey());
         out.writeSetOfStrings(e.getValue());
+      }
+      // Doc-values overlays, part of the format since VERSION_10_6 (which VERSION_CURRENT always
+      // is).
+      // field -> {baseGen, deltaGenNewestFirst...}; empty for segments without overlays.
+      final Map<Integer, long[]> overlays = siPerCommit.getDocValuesOverlays();
+      CodecUtil.writeBEInt(out, overlays.size());
+      for (Entry<Integer, long[]> e : overlays.entrySet()) {
+        final long[] packed = e.getValue();
+        CodecUtil.writeBEInt(out, e.getKey());
+        CodecUtil.writeBELong(out, packed[0]); // baseGen
+        CodecUtil.writeBEInt(out, packed.length - 1); // number of delta generations
+        for (int g = 1; g < packed.length; g++) {
+          CodecUtil.writeBELong(out, packed[g]);
+        }
       }
     }
     out.writeMapOfStrings(userData);

@@ -38,13 +38,31 @@ public class TestIOContext extends LuceneTestCase {
       assertEquals(context.context(), newContext.context());
       assertEquals(context.mergeInfo(), newContext.mergeInfo());
       assertEquals(context.flushInfo(), newContext.flushInfo());
-      if (context != newContext) {
-        assertTrue(context.mergeInfo() == null && context.flushInfo() == null);
-        assertEquals(Set.of(newHint), newContext.hints());
-      } else {
-        assertTrue(context.mergeInfo() != null || context.flushInfo() != null);
-      }
+      assertEquals(Set.of(newHint), newContext.hints());
     }
+  }
+
+  /** Every context rejects two hints of one type, since a hint is looked up by its type. */
+  public void testRejectsRepeatedHintType() {
+    for (var context : getContexts()) {
+      expectThrows(
+          IllegalArgumentException.class,
+          () -> context.withHints(DataAccessHint.RANDOM, DataAccessHint.SEQUENTIAL));
+    }
+  }
+
+  /** A merge context with no MergeInfo, which is all a reader reopening a file can say. */
+  public void testMergeWithoutMergeInfo() {
+    IOContext context = IOContext.merge();
+    assertEquals(IOContext.Context.MERGE, context.context());
+    assertNull(context.mergeInfo());
+    assertNull(context.flushInfo());
+    assertEquals(Set.of(), context.hints());
+
+    IOContext withHint = context.withHints(DataAccessHint.SEQUENTIAL);
+    assertEquals(IOContext.Context.MERGE, withHint.context());
+    assertNull(withHint.mergeInfo());
+    assertEquals(Set.of(DataAccessHint.SEQUENTIAL), withHint.hints());
   }
 
   protected List<IOContext> getContexts() {
@@ -52,6 +70,7 @@ public class TestIOContext extends LuceneTestCase {
         IOContext.DEFAULT,
         IOContext.READONCE,
         IOContext.flush(new FlushInfo(1, 2)),
+        IOContext.merge(),
         IOContext.merge(new MergeInfo(1, 2, true, 4)));
   }
 

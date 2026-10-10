@@ -16,11 +16,20 @@
  */
 
 /**
- * De-duplicating HNSW vector format.
+ * De-duplicating HNSW vector formats.
  *
  * <p>Stores each distinct vector once and shares it across the documents and fields that reference
- * it, while reusing the Lucene 9.9 HNSW graph. See {@link
- * org.apache.lucene.sandbox.codecs.dedup.DedupHnswVectorsFormat} for the entry point and {@link
- * org.apache.lucene.sandbox.codecs.dedup.DedupFlatVectorsFormat} for the on-disk layout.
+ * it, while reusing the Lucene 9.9 HNSW graph. Two formats are provided:
+ *
+ * <ul>
+ *   <li>{@link org.apache.lucene.sandbox.codecs.dedup.DedupHnswVectorsFormat} stores and scores raw
+ *       vectors; see {@link org.apache.lucene.sandbox.codecs.dedup.DedupFlatVectorsFormat} for the
+ *       on-disk layout.
+ *   <li>{@link org.apache.lucene.sandbox.codecs.dedup.DedupHnswScalarQuantizedVectorsFormat}
+ *       additionally stores a scalar quantized copy of each distinct FLOAT32 vector, used for
+ *       scoring; see {@link
+ *       org.apache.lucene.sandbox.codecs.dedup.DedupScalarQuantizedVectorsFormat} for the on-disk
+ *       layout.
+ * </ul>
  */
 package org.apache.lucene.sandbox.codecs.dedup;

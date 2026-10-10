@@ -71,6 +71,11 @@ public class SegmentCommitInfo {
   // Track the per-field DocValues update files
   private final Map<Integer, Set<String>> dvUpdatesFiles = new HashMap<>();
 
+  // Per-field sparse doc-values overlay: field number -> {baseGen, deltaGenNewestFirst...}, where a
+  // baseGen of -1 is a sentinel for the core column. Absent for a field using the classic
+  // single-generation column.
+  private final Map<Integer, long[]> dvOverlays = new HashMap<>();
+
   // TODO should we add .files() to FieldInfosFormat, like we have on
   // LiveDocsFormat?
   // track the fieldInfos update files
@@ -132,6 +137,45 @@ public class SegmentCommitInfo {
       }
       this.dvUpdatesFiles.put(kv.getKey(), set);
     }
+  }
+
+  /**
+   * Per-field incremental doc-values overlay, as {@code field number -> {baseGen,
+   * deltaGenNewestFirst...}}. Empty for segments whose doc-values fields all use the classic
+   * single-generation column.
+   *
+   * @lucene.internal
+   */
+  public Map<Integer, long[]> getDocValuesOverlays() {
+    return Collections.unmodifiableMap(dvOverlays);
+  }
+
+  /**
+   * The {@code {baseGen, deltaGenNewestFirst...}} overlay for a field, or {@code null} if it has
+   * none.
+   */
+  long[] getDocValuesOverlay(int fieldNumber) {
+    return dvOverlays.get(fieldNumber);
+  }
+
+  /**
+   * Records the sparse doc-values overlay generations for a field (newest delta first, over {@code
+   * baseGen}), or clears it when {@code deltaGensNewestFirst} is empty.
+   */
+  void setDocValuesOverlay(int fieldNumber, long baseGen, long[] deltaGensNewestFirst) {
+    if (deltaGensNewestFirst.length == 0) {
+      dvOverlays.remove(fieldNumber);
+      return;
+    }
+    long[] packed = new long[deltaGensNewestFirst.length + 1];
+    packed[0] = baseGen;
+    System.arraycopy(deltaGensNewestFirst, 0, packed, 1, deltaGensNewestFirst.length);
+    dvOverlays.put(fieldNumber, packed);
+  }
+
+  /** True if any field in this commit carries a sparse doc-values overlay. */
+  public boolean hasDocValuesOverlays() {
+    return dvOverlays.isEmpty() == false;
   }
 
   /** Returns the FieldInfos file names. */
@@ -395,6 +439,10 @@ public class SegmentCommitInfo {
     // deep clone
     for (Entry<Integer, Set<String>> e : dvUpdatesFiles.entrySet()) {
       other.dvUpdatesFiles.put(e.getKey(), new HashSet<>(e.getValue()));
+    }
+
+    for (Entry<Integer, long[]> e : dvOverlays.entrySet()) {
+      other.dvOverlays.put(e.getKey(), e.getValue().clone());
     }
 
     other.fieldInfosFiles.addAll(fieldInfosFiles);

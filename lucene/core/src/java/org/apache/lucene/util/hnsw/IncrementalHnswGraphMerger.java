@@ -62,7 +62,7 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
    * <p>A value of 40 means that if more than 40% of the graph's original vectors have been deleted,
    * the graph will not be selected as the base.
    */
-  private final int DELETE_PCT_THRESHOLD = 40;
+  static final int DELETE_PCT_THRESHOLD = 40;
 
   /** Represents a vector reader that contains graph info. */
   protected record GraphReader(
@@ -177,7 +177,8 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
         graphs,
         ordMaps,
         maxOrd,
-        initializedNodes);
+        initializedNodes,
+        abortCheck);
   }
 
   protected final int[][] getNewOrdMapping(

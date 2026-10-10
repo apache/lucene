@@ -81,6 +81,15 @@ public class TestParentBlockJoinByteKnnVectorQuery extends ParentBlockJoinKnnVec
             new DiversifyingChildrenFloatKnnVectorQuery(
                 "field", new float[] {1, 2}, null, 2, parentFilter);
         assertThrows(IllegalStateException.class, () -> searcher.search(kvq, 3));
+
+        Query float16Kvq =
+            new DiversifyingChildrenFloat16KnnVectorQuery(
+                "field",
+                new short[] {Float.floatToFloat16(1), Float.floatToFloat16(2)},
+                null,
+                2,
+                parentFilter);
+        assertThrows(IllegalStateException.class, () -> searcher.search(float16Kvq, 3));
       }
     }
   }

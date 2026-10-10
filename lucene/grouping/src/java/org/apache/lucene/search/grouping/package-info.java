@@ -83,7 +83,6 @@
  * <pre><code class="language-java">
  *   GroupingSearch groupingSearch = new GroupingSearch("author");
  *   groupingSearch.setGroupSort(groupSort);
- *   groupingSearch.setFillSortFields(fillFields);
  *
  *   if (useCache) {
  *     // Sets cache in MB
@@ -111,9 +110,7 @@
  *   // Create Documents from your source:
  *   List&lt;Document&gt; oneGroup = ...;
  *
- *   Field groupEndField = new Field("groupEnd", "x", Field.Store.NO, Field.Index.NOT_ANALYZED);
- *   groupEndField.setIndexOptions(IndexOptions.DOCS_ONLY);
- *   groupEndField.setOmitNorms(true);
+ *   Field groupEndField = new StringField("groupEnd", "x", Field.Store.NO);
  *   oneGroup.get(oneGroup.size()-1).add(groupEndField);
  *
  *   // You can also use writer.updateDocuments(); just be sure you
@@ -149,7 +146,7 @@
  *   // Per search:
  *   GroupingSearch groupingSearch = new GroupingSearch(groupEndDocs);
  *   groupingSearch.setGroupSort(groupSort);
- *   groupingSearch.setIncludeScores(needsScores);
+ *   groupingSearch.setIncludeMaxScore(needsScores);
  *   TermQuery query = new TermQuery(new Term("content", searchTerm));
  *   TopGroups groupsResult = groupingSearch.search(indexSearcher, query, groupOffset, groupLimit);
  *
@@ -178,6 +175,22 @@
  *   // Return all group heads as FixedBitSet.
  *   int maxDoc = indexSearcher.getIndexReader().maxDoc();
  *   Bits groupHeadsBitSet = result.retrieveGroupHeads(maxDoc);
+ * </code></pre>
+ *
+ * <p>Grouped faceting is handled by {@link
+ * org.apache.lucene.search.grouping.TermGroupFacetCollectorManager}. For each facet value it counts
+ * how many distinct groups have at least one matching document with that value. The manager
+ * supports concurrent collection; groups that span multiple search slices are counted once.
+ *
+ * <pre><code class="language-java">
+ *   TermGroupFacetCollectorManager manager =
+ *       new TermGroupFacetCollectorManager(
+ *           "author", "category", false, null, offset + limit, minCount, orderByCount);
+ *   GroupedFacetResult facetResult =
+ *       indexSearcher.search(new TermQuery(new Term("content", searchTerm)), manager);
+ *   int totalCount = facetResult.getTotalCount();
+ *   int missingCount = facetResult.getTotalMissingCount();
+ *   List&lt;GroupedFacetResult.FacetEntry&gt; entries = facetResult.getFacetEntries(offset, limit);
  * </code></pre>
  */
 package org.apache.lucene.search.grouping;
