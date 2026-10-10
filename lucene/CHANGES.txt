@@ -201,6 +201,9 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#16806: HNSW graph builders clear only the visited bits that a search set, not a bit set
+  sized to the whole graph. This makes large merges faster. (Ankur Goel)
+
 * GITHUB#16431, GITHUB#16697: Add support for Block-Max WAND dynamic score skipping in FunctionScoreQuery
   and DoubleValuesSource using DocValuesSkipper. (Rajat Jain, Zhang Chao)
 

@@ -467,6 +467,41 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     return nodes;
   }
 
+  // the builder's visited set clears only the bits that it set; the graph must be the same as the
+  // one built with a FixedBitSet that is cleared in full before each search
+  public void testTrackingVisitedSetBuildsSameGraph() throws IOException {
+    int dim = random().nextInt(32) + 2;
+    // enough nodes that some searches visit more than 256 nodes and clear the set by words
+    int nDoc = atLeast(300) + random().nextInt(TEST_NIGHTLY ? 3000 : 300);
+    int M = random().nextInt(14) + 2;
+    int beamWidth = random().nextInt(50) + 20;
+    long seed = random().nextLong();
+    KnnVectorValues vectors = vectorValues(nDoc, dim);
+    // track from the first search: test graphs are smaller than the default threshold
+    HnswGraph tracking =
+        new HnswGraphBuilder(
+                buildScorerSupplier(vectors.copy()),
+                beamWidth,
+                seed,
+                new OnHeapHnswGraph(M, -1),
+                null,
+                new HnswGraphSearcher(
+                    new NeighborQueue(beamWidth, true), new TrackingVisitedBitSet(0, 0)))
+            .build(nDoc);
+    OnHeapHnswGraph hnsw = new OnHeapHnswGraph(M, -1);
+    HnswGraph fixed =
+        new HnswGraphBuilder(
+                buildScorerSupplier(vectors.copy()),
+                beamWidth,
+                seed,
+                hnsw,
+                null,
+                new HnswGraphSearcher(
+                    new NeighborQueue(beamWidth, true), new FixedBitSet(hnsw.size())))
+            .build(nDoc);
+    assertGraphEqual(fixed, tracking);
+  }
+
   void assertGraphEqual(HnswGraph g, HnswGraph h) throws IOException {
     // construct these up front since they call seek which will mess up our test loop
     String prettyG = prettyPrint(g);
