@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Semaphore;
@@ -284,6 +285,9 @@ public class IndexWriter
 
   private final SegmentInfos segmentInfos;
   final FieldNumbers globalFieldNumberMap;
+
+  // Fields that existing segments are sorted by, which may differ from the configured index sort
+  private final Map<String, Sort> segmentIndexSorts = new ConcurrentHashMap<>();
 
   final DocumentsWriter docWriter;
   private final EventQueue eventQueue = new EventQueue(this);
@@ -1131,6 +1135,9 @@ public class IndexWriter
       }
 
       validateIndexSort();
+      for (SegmentCommitInfo info : segmentInfos) {
+        trackIndexSort(info.info.getIndexSort());
+      }
 
       config.getFlushPolicy().init(config);
       bufferedUpdatesStream = new BufferedUpdatesStream(infoStream);
@@ -1225,6 +1232,34 @@ public class IndexWriter
                   + indexSort);
         }
       }
+    }
+  }
+
+  private void trackIndexSort(Sort sort) {
+    if (sort != null) {
+      for (SortField sortField : sort.getSort()) {
+        if (sortField.getField() != null) {
+          segmentIndexSorts.putIfAbsent(sortField.getField(), sort);
+        }
+      }
+    }
+  }
+
+  /**
+   * Doc values of a field that segments are sorted by cannot be updated, whether or not this writer
+   * was configured with that index sort.
+   */
+  private void ensureNotIndexSortField(String field) {
+    Sort sort =
+        config.getIndexSortFields().contains(field)
+            ? config.getIndexSort()
+            : segmentIndexSorts.get(field);
+    if (sort != null) {
+      throw new IllegalArgumentException(
+          "cannot update docvalues field involved in the index sort, field="
+              + field
+              + ", sort="
+              + sort);
     }
   }
 
@@ -1962,13 +1997,7 @@ public class IndexWriter
   public long updateNumericDocValue(Term term, String field, long value) throws IOException {
     ensureOpen();
     globalFieldNumberMap.verifyOrCreateDvOnlyField(field, DocValuesType.NUMERIC, true);
-    if (config.getIndexSortFields().contains(field)) {
-      throw new IllegalArgumentException(
-          "cannot update docvalues field involved in the index sort, field="
-              + field
-              + ", sort="
-              + config.getIndexSort());
-    }
+    ensureNotIndexSortField(field);
     try {
       return maybeProcessEvents(
           docWriter.updateDocValues(new NumericDocValuesUpdate(term, field, value)));
@@ -2000,13 +2029,7 @@ public class IndexWriter
     }
     // Checked before the doc-values-type check below: an index sort field is never binary, so this
     // would otherwise surface as a less clear doc-values-type mismatch.
-    if (config.getIndexSortFields().contains(field)) {
-      throw new IllegalArgumentException(
-          "cannot update docvalues field involved in the index sort, field="
-              + field
-              + ", sort="
-              + config.getIndexSort());
-    }
+    ensureNotIndexSortField(field);
     globalFieldNumberMap.verifyOrCreateDvOnlyField(field, DocValuesType.BINARY, true);
     try {
       return maybeProcessEvents(
@@ -2038,13 +2061,7 @@ public class IndexWriter
     ensureOpen();
     // Checked before the doc-values-type check below, mirroring updateNumericDocValue/
     // updateBinaryDocValue, so an index-sort field surfaces this clear message.
-    if (config.getIndexSortFields().contains(field)) {
-      throw new IllegalArgumentException(
-          "cannot update docvalues field involved in the index sort, field="
-              + field
-              + ", sort="
-              + config.getIndexSort());
-    }
+    ensureNotIndexSortField(field);
     globalFieldNumberMap.verifyOrCreateDvOnlyField(field, DocValuesType.SORTED_NUMERIC, true);
     try {
       return maybeProcessEvents(
@@ -2095,13 +2112,7 @@ public class IndexWriter
       // if it exists and the DV type doesn't match or it is not DV only field,
       // we will get an error.
       globalFieldNumberMap.verifyOrCreateDvOnlyField(f.name(), dvType, false);
-      if (config.getIndexSortFields().contains(f.name())) {
-        throw new IllegalArgumentException(
-            "cannot update docvalues field involved in the index sort, field="
-                + f.name()
-                + ", sort="
-                + config.getIndexSort());
-      }
+      ensureNotIndexSortField(f.name());
 
       switch (dvType) {
         case NUMERIC:
@@ -3207,6 +3218,9 @@ public class IndexWriter
           throw t;
         }
         segmentInfos.addAll(infos);
+        for (SegmentCommitInfo info : infos) {
+          trackIndexSort(info.info.getIndexSort());
+        }
         checkpoint();
       }
     } catch (Throwable t) {
