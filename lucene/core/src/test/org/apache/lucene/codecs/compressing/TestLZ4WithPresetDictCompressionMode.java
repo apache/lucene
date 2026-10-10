@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.codecs.compressing;
 
+import java.io.IOException;
 import org.apache.lucene.codecs.lucene90.LZ4WithPresetDictCompressionMode;
 
 public class TestLZ4WithPresetDictCompressionMode extends AbstractTestCompressionMode {
@@ -24,5 +25,15 @@ public class TestLZ4WithPresetDictCompressionMode extends AbstractTestCompressio
   public void setUp() throws Exception {
     super.setUp();
     mode = new LZ4WithPresetDictCompressionMode();
+  }
+
+  public void testCorruptHeader() throws IOException {
+    final int originalLength = 100;
+    assertCorruptHeader(originalLength, -1, 10);
+    assertCorruptHeader(originalLength, originalLength + 1, 10);
+    assertCorruptHeader(originalLength, Integer.MAX_VALUE - 64, 10);
+    assertCorruptHeader(originalLength, 10, 0);
+    assertCorruptHeader(originalLength, 10, -1);
+    assertCorruptHeader(originalLength, 10, originalLength + 1);
   }
 }
