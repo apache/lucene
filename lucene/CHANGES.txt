@@ -627,6 +627,8 @@ Optimizations
   pool instead of serially on the merge thread, so reusing a graph with deletes is no longer
   slower than a full rebuild. (Ethan Baker)
 
+* GITHUB#16089: Upgrade DocIdSetBuilder to use FixedBitSet eagerly once exceeding the threshold (Ke Wei)
+
 Bug Fixes
 ---------------------
 
