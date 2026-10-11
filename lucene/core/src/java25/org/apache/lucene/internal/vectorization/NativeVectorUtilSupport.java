@@ -56,6 +56,8 @@ import org.apache.lucene.util.Constants;
 final class NativeVectorUtilSupport implements VectorUtilSupport {
 
   private final VectorUtilSupport delegateVectorUtilSupport;
+  // Null selects the static final production handles, which the JIT can inline. Tests supply
+  // instance handles while exercising the same argument conversion, invocation and fallback code.
   private final NativeFunctions nativeFunctions;
 
   public static final AddressLayout POINTER = ValueLayout.ADDRESS;
@@ -64,7 +66,7 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
   public static final String NATIVE_VECTOR_LIBRARY_NAME = "dotProduct";
 
   public NativeVectorUtilSupport(VectorUtilSupport vectorUtilSupport) {
-    this(vectorUtilSupport, NativeLibrary.FUNCTIONS);
+    this(vectorUtilSupport, null);
   }
 
   // Visible for tests so Java-backed method handles can exercise dispatch without a native library.
@@ -187,6 +189,34 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
     private static final boolean LOADED = loadLibrary();
     private static final NativeFunctions FUNCTIONS = loadFunctions();
 
+    // Downcall handles must be constants at production call sites for the JIT to inline them.
+    private static final MethodHandle dotProduct = FUNCTIONS.dotProduct;
+    private static final MethodHandle squareDistance = FUNCTIONS.squareDistance;
+    private static final MethodHandle cosine = FUNCTIONS.cosine;
+    private static final MethodHandle dotProductFloat = FUNCTIONS.dotProductFloat;
+    private static final MethodHandle squareDistanceFloat = FUNCTIONS.squareDistanceFloat;
+    private static final MethodHandle cosineFloat = FUNCTIONS.cosineFloat;
+    private static final MethodHandle int4SquareDistance = FUNCTIONS.int4SquareDistance;
+    private static final MethodHandle int4SquareDistanceSinglePacked =
+        FUNCTIONS.int4SquareDistanceSinglePacked;
+    private static final MethodHandle int4SquareDistanceBothPacked =
+        FUNCTIONS.int4SquareDistanceBothPacked;
+    private static final MethodHandle uint8SquareDistance = FUNCTIONS.uint8SquareDistance;
+    private static final MethodHandle uint8DotProduct = FUNCTIONS.uint8DotProduct;
+    private static final MethodHandle int4DotProduct = FUNCTIONS.int4DotProduct;
+    private static final MethodHandle int4DotProductSinglePacked =
+        FUNCTIONS.int4DotProductSinglePacked;
+    private static final MethodHandle int4DotProductBothPacked = FUNCTIONS.int4DotProductBothPacked;
+    private static final MethodHandle int4BitDotProduct = FUNCTIONS.int4BitDotProduct;
+    private static final MethodHandle int4DibitDotProduct = FUNCTIONS.int4DibitDotProduct;
+    private static final MethodHandle minMaxScalarQuantize = FUNCTIONS.minMaxScalarQuantize;
+    private static final MethodHandle recalculateScalarQuantizationOffset =
+        FUNCTIONS.recalculateScalarQuantizationOffset;
+    private static final MethodHandle filterByScore = FUNCTIONS.filterByScore;
+    private static final MethodHandle l2normalize = FUNCTIONS.l2normalize;
+    private static final MethodHandle expand8 = FUNCTIONS.expand8;
+    private static final MethodHandle findNextGEQ = FUNCTIONS.findNextGEQ;
+
     private static boolean loadLibrary() {
       try {
         System.loadLibrary(NATIVE_VECTOR_LIBRARY_NAME);
@@ -266,190 +296,181 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
   }
 
   public static float cosine(byte[] a, MemorySegment b) {
-    NativeFunctions functions = NativeLibrary.FUNCTIONS;
-    return (functions.cosine != null)
-        ? invokeFloatMethodHandle(functions.cosine, MemorySegment.ofArray(a), b)
+    return (NativeLibrary.cosine != null)
+        ? invokeFloatMethodHandle(NativeLibrary.cosine, MemorySegment.ofArray(a), b)
         : PanamaVectorUtilSupport.cosine(a, b);
   }
 
   public static float cosine(MemorySegment a, MemorySegment b) {
-    NativeFunctions functions = NativeLibrary.FUNCTIONS;
-    return (functions.cosine != null)
-        ? invokeFloatMethodHandle(functions.cosine, a, b)
+    return (NativeLibrary.cosine != null)
+        ? invokeFloatMethodHandle(NativeLibrary.cosine, a, b)
         : PanamaVectorUtilSupport.cosine(a, b);
   }
 
   public static int dotProduct(byte[] a, MemorySegment b) {
-    NativeFunctions functions = NativeLibrary.FUNCTIONS;
-    return (functions.dotProduct != null)
-        ? invokeIntMethodHandle(functions.dotProduct, MemorySegment.ofArray(a), b)
+    return (NativeLibrary.dotProduct != null)
+        ? invokeIntMethodHandle(NativeLibrary.dotProduct, MemorySegment.ofArray(a), b)
         : PanamaVectorUtilSupport.dotProduct(a, b);
   }
 
   public static int dotProduct(MemorySegment a, MemorySegment b) {
-    NativeFunctions functions = NativeLibrary.FUNCTIONS;
-    return (functions.dotProduct != null)
-        ? invokeIntMethodHandle(functions.dotProduct, a, b)
+    return (NativeLibrary.dotProduct != null)
+        ? invokeIntMethodHandle(NativeLibrary.dotProduct, a, b)
         : PanamaVectorUtilSupport.dotProduct(a, b);
   }
 
   public static int squareDistance(byte[] a, MemorySegment b) {
-    NativeFunctions functions = NativeLibrary.FUNCTIONS;
-    return (functions.squareDistance != null)
-        ? invokeIntMethodHandle(functions.squareDistance, MemorySegment.ofArray(a), b)
+    return (NativeLibrary.squareDistance != null)
+        ? invokeIntMethodHandle(NativeLibrary.squareDistance, MemorySegment.ofArray(a), b)
         : PanamaVectorUtilSupport.squareDistance(a, b);
   }
 
   public static int squareDistance(MemorySegment a, MemorySegment b) {
-    NativeFunctions functions = NativeLibrary.FUNCTIONS;
-    return (functions.squareDistance != null)
-        ? invokeIntMethodHandle(functions.squareDistance, a, b)
+    return (NativeLibrary.squareDistance != null)
+        ? invokeIntMethodHandle(NativeLibrary.squareDistance, a, b)
         : PanamaVectorUtilSupport.squareDistance(a, b);
   }
 
   public static int int4SquareDistance(byte[] a, MemorySegment b) {
-    NativeFunctions functions = NativeLibrary.FUNCTIONS;
-    return (functions.int4SquareDistance != null)
-        ? invokeIntMethodHandle(functions.int4SquareDistance, MemorySegment.ofArray(a), b)
+    return (NativeLibrary.int4SquareDistance != null)
+        ? invokeIntMethodHandle(NativeLibrary.int4SquareDistance, MemorySegment.ofArray(a), b)
         : PanamaVectorUtilSupport.int4SquareDistance(a, b);
   }
 
   public static int int4SquareDistance(MemorySegment a, MemorySegment b) {
-    NativeFunctions functions = NativeLibrary.FUNCTIONS;
-    return (functions.int4SquareDistance != null)
-        ? invokeIntMethodHandle(functions.int4SquareDistance, a, b)
+    return (NativeLibrary.int4SquareDistance != null)
+        ? invokeIntMethodHandle(NativeLibrary.int4SquareDistance, a, b)
         : PanamaVectorUtilSupport.int4SquareDistance(a, b);
   }
 
   public static int int4SquareDistanceSinglePacked(byte[] a, MemorySegment b) {
-    NativeFunctions functions = NativeLibrary.FUNCTIONS;
-    return (functions.int4SquareDistanceSinglePacked != null)
+    return (NativeLibrary.int4SquareDistanceSinglePacked != null)
         ? invokeIntMethodHandle(
-            functions.int4SquareDistanceSinglePacked, MemorySegment.ofArray(a), b)
+            NativeLibrary.int4SquareDistanceSinglePacked, MemorySegment.ofArray(a), b)
         : PanamaVectorUtilSupport.int4SquareDistanceSinglePacked(a, b);
   }
 
   public static int uint8SquareDistance(byte[] a, MemorySegment b) {
-    NativeFunctions functions = NativeLibrary.FUNCTIONS;
-    return (functions.uint8SquareDistance != null)
-        ? invokeIntMethodHandle(functions.uint8SquareDistance, MemorySegment.ofArray(a), b)
+    return (NativeLibrary.uint8SquareDistance != null)
+        ? invokeIntMethodHandle(NativeLibrary.uint8SquareDistance, MemorySegment.ofArray(a), b)
         : PanamaVectorUtilSupport.uint8SquareDistance(a, b);
   }
 
   public static int uint8SquareDistance(MemorySegment a, MemorySegment b) {
-    NativeFunctions functions = NativeLibrary.FUNCTIONS;
-    return (functions.uint8SquareDistance != null)
-        ? invokeIntMethodHandle(functions.uint8SquareDistance, a, b)
+    return (NativeLibrary.uint8SquareDistance != null)
+        ? invokeIntMethodHandle(NativeLibrary.uint8SquareDistance, a, b)
         : PanamaVectorUtilSupport.uint8SquareDistance(a, b);
   }
 
   public static int uint8DotProduct(byte[] a, MemorySegment b) {
-    NativeFunctions functions = NativeLibrary.FUNCTIONS;
-    return (functions.uint8DotProduct != null)
-        ? invokeIntMethodHandle(functions.uint8DotProduct, MemorySegment.ofArray(a), b)
+    return (NativeLibrary.uint8DotProduct != null)
+        ? invokeIntMethodHandle(NativeLibrary.uint8DotProduct, MemorySegment.ofArray(a), b)
         : PanamaVectorUtilSupport.uint8DotProduct(a, b);
   }
 
   public static int uint8DotProduct(MemorySegment a, MemorySegment b) {
-    NativeFunctions functions = NativeLibrary.FUNCTIONS;
-    return (functions.uint8DotProduct != null)
-        ? invokeIntMethodHandle(functions.uint8DotProduct, a, b)
+    return (NativeLibrary.uint8DotProduct != null)
+        ? invokeIntMethodHandle(NativeLibrary.uint8DotProduct, a, b)
         : PanamaVectorUtilSupport.uint8DotProduct(a, b);
   }
 
   public static int int4DotProduct(byte[] a, MemorySegment b) {
-    NativeFunctions functions = NativeLibrary.FUNCTIONS;
-    return (functions.int4DotProduct != null)
-        ? invokeIntMethodHandle(functions.int4DotProduct, MemorySegment.ofArray(a), b)
+    return (NativeLibrary.int4DotProduct != null)
+        ? invokeIntMethodHandle(NativeLibrary.int4DotProduct, MemorySegment.ofArray(a), b)
         : PanamaVectorUtilSupport.int4DotProduct(a, b);
   }
 
   public static int int4DotProduct(MemorySegment a, MemorySegment b) {
-    NativeFunctions functions = NativeLibrary.FUNCTIONS;
-    return (functions.int4DotProduct != null)
-        ? invokeIntMethodHandle(functions.int4DotProduct, a, b)
+    return (NativeLibrary.int4DotProduct != null)
+        ? invokeIntMethodHandle(NativeLibrary.int4DotProduct, a, b)
         : PanamaVectorUtilSupport.int4DotProduct(a, b);
   }
 
   public static int int4DotProductSinglePacked(byte[] unpacked, MemorySegment packed) {
-    NativeFunctions functions = NativeLibrary.FUNCTIONS;
-    return (functions.int4DotProductSinglePacked != null)
+    return (NativeLibrary.int4DotProductSinglePacked != null)
         ? invokeIntMethodHandle(
-            functions.int4DotProductSinglePacked, MemorySegment.ofArray(unpacked), packed)
+            NativeLibrary.int4DotProductSinglePacked, MemorySegment.ofArray(unpacked), packed)
         : PanamaVectorUtilSupport.int4DotProductSinglePacked(unpacked, packed);
   }
 
   public static int int4SquareDistanceBothPacked(MemorySegment a, MemorySegment b) {
-    NativeFunctions functions = NativeLibrary.FUNCTIONS;
-    return (functions.int4SquareDistanceBothPacked != null)
-        ? invokeIntMethodHandle(functions.int4SquareDistanceBothPacked, a, b)
+    return (NativeLibrary.int4SquareDistanceBothPacked != null)
+        ? invokeIntMethodHandle(NativeLibrary.int4SquareDistanceBothPacked, a, b)
         : PanamaVectorUtilSupport.int4SquareDistanceBothPacked(a, b);
   }
 
   public static int int4DotProductBothPacked(MemorySegment a, MemorySegment b) {
-    NativeFunctions functions = NativeLibrary.FUNCTIONS;
-    return (functions.int4DotProductBothPacked != null)
-        ? invokeIntMethodHandle(functions.int4DotProductBothPacked, a, b)
+    return (NativeLibrary.int4DotProductBothPacked != null)
+        ? invokeIntMethodHandle(NativeLibrary.int4DotProductBothPacked, a, b)
         : PanamaVectorUtilSupport.int4DotProductBothPacked(a, b);
   }
 
   @Override
   public float dotProduct(float[] a, float[] b) {
-    return (nativeFunctions.dotProductFloat != null)
-        ? invokeFloatMethodHandle(
-            nativeFunctions.dotProductFloat, MemorySegment.ofArray(a), MemorySegment.ofArray(b))
+    MethodHandle mh =
+        nativeFunctions == null ? NativeLibrary.dotProductFloat : nativeFunctions.dotProductFloat;
+    return (mh != null)
+        ? invokeFloatMethodHandle(mh, MemorySegment.ofArray(a), MemorySegment.ofArray(b))
         : delegateVectorUtilSupport.dotProduct(a, b);
   }
 
   @Override
   public float cosine(float[] v1, float[] v2) {
-    return (nativeFunctions.cosineFloat != null)
-        ? invokeFloatMethodHandle(
-            nativeFunctions.cosineFloat, MemorySegment.ofArray(v1), MemorySegment.ofArray(v2))
+    MethodHandle mh =
+        nativeFunctions == null ? NativeLibrary.cosineFloat : nativeFunctions.cosineFloat;
+    return (mh != null)
+        ? invokeFloatMethodHandle(mh, MemorySegment.ofArray(v1), MemorySegment.ofArray(v2))
         : delegateVectorUtilSupport.cosine(v1, v2);
   }
 
   @Override
   public float squareDistance(float[] a, float[] b) {
-    return (nativeFunctions.squareDistanceFloat != null)
-        ? invokeFloatMethodHandle(
-            nativeFunctions.squareDistanceFloat, MemorySegment.ofArray(a), MemorySegment.ofArray(b))
+    MethodHandle mh =
+        nativeFunctions == null
+            ? NativeLibrary.squareDistanceFloat
+            : nativeFunctions.squareDistanceFloat;
+    return (mh != null)
+        ? invokeFloatMethodHandle(mh, MemorySegment.ofArray(a), MemorySegment.ofArray(b))
         : delegateVectorUtilSupport.squareDistance(a, b);
   }
 
   @Override
   public int dotProduct(byte[] a, byte[] b) {
-    return (nativeFunctions.dotProduct != null)
-        ? invokeIntMethodHandle(
-            nativeFunctions.dotProduct, MemorySegment.ofArray(a), MemorySegment.ofArray(b))
+    MethodHandle mh =
+        nativeFunctions == null ? NativeLibrary.dotProduct : nativeFunctions.dotProduct;
+    return (mh != null)
+        ? invokeIntMethodHandle(mh, MemorySegment.ofArray(a), MemorySegment.ofArray(b))
         : delegateVectorUtilSupport.dotProduct(a, b);
   }
 
   @Override
   public int int4DotProduct(byte[] a, byte[] b) {
-    return (nativeFunctions.int4DotProduct != null)
-        ? invokeIntMethodHandle(
-            nativeFunctions.int4DotProduct, MemorySegment.ofArray(a), MemorySegment.ofArray(b))
+    MethodHandle mh =
+        nativeFunctions == null ? NativeLibrary.int4DotProduct : nativeFunctions.int4DotProduct;
+    return (mh != null)
+        ? invokeIntMethodHandle(mh, MemorySegment.ofArray(a), MemorySegment.ofArray(b))
         : delegateVectorUtilSupport.int4DotProduct(a, b);
   }
 
   @Override
   public int int4DotProductSinglePacked(byte[] unpacked, byte[] packed) {
-    return nativeFunctions.int4DotProductSinglePacked != null
-        ? invokeIntMethodHandle(
-            nativeFunctions.int4DotProductSinglePacked,
-            MemorySegment.ofArray(unpacked),
-            MemorySegment.ofArray(packed))
+    MethodHandle mh =
+        nativeFunctions == null
+            ? NativeLibrary.int4DotProductSinglePacked
+            : nativeFunctions.int4DotProductSinglePacked;
+    return mh != null
+        ? invokeIntMethodHandle(mh, MemorySegment.ofArray(unpacked), MemorySegment.ofArray(packed))
         : delegateVectorUtilSupport.int4DotProductSinglePacked(unpacked, packed);
   }
 
   @Override
   public int int4DotProductBothPacked(byte[] a, byte[] b) {
-    return (nativeFunctions.int4DotProductBothPacked != null)
-        ? invokeIntMethodHandle(
-            nativeFunctions.int4DotProductBothPacked,
-            MemorySegment.ofArray(a),
-            MemorySegment.ofArray(b))
+    MethodHandle mh =
+        nativeFunctions == null
+            ? NativeLibrary.int4DotProductBothPacked
+            : nativeFunctions.int4DotProductBothPacked;
+    return (mh != null)
+        ? invokeIntMethodHandle(mh, MemorySegment.ofArray(a), MemorySegment.ofArray(b))
         : delegateVectorUtilSupport.int4DotProductBothPacked(a, b);
   }
 
@@ -460,90 +481,106 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public int uint8DotProduct(byte[] a, byte[] b) {
-    return (nativeFunctions.uint8DotProduct != null)
-        ? invokeIntMethodHandle(
-            nativeFunctions.uint8DotProduct, MemorySegment.ofArray(a), MemorySegment.ofArray(b))
+    MethodHandle mh =
+        nativeFunctions == null ? NativeLibrary.uint8DotProduct : nativeFunctions.uint8DotProduct;
+    return (mh != null)
+        ? invokeIntMethodHandle(mh, MemorySegment.ofArray(a), MemorySegment.ofArray(b))
         : delegateVectorUtilSupport.uint8DotProduct(a, b);
   }
 
   @Override
   public float cosine(byte[] a, byte[] b) {
-    return (nativeFunctions.cosine != null)
-        ? invokeFloatMethodHandle(
-            nativeFunctions.cosine, MemorySegment.ofArray(a), MemorySegment.ofArray(b))
+    MethodHandle mh = nativeFunctions == null ? NativeLibrary.cosine : nativeFunctions.cosine;
+    return (mh != null)
+        ? invokeFloatMethodHandle(mh, MemorySegment.ofArray(a), MemorySegment.ofArray(b))
         : delegateVectorUtilSupport.cosine(a, b);
   }
 
   @Override
   public int squareDistance(byte[] a, byte[] b) {
-    return (nativeFunctions.squareDistance != null)
-        ? invokeIntMethodHandle(
-            nativeFunctions.squareDistance, MemorySegment.ofArray(a), MemorySegment.ofArray(b))
+    MethodHandle mh =
+        nativeFunctions == null ? NativeLibrary.squareDistance : nativeFunctions.squareDistance;
+    return (mh != null)
+        ? invokeIntMethodHandle(mh, MemorySegment.ofArray(a), MemorySegment.ofArray(b))
         : delegateVectorUtilSupport.squareDistance(a, b);
   }
 
   @Override
   public int int4SquareDistance(byte[] a, byte[] b) {
-    return (nativeFunctions.int4SquareDistance != null)
-        ? invokeIntMethodHandle(
-            nativeFunctions.int4SquareDistance, MemorySegment.ofArray(a), MemorySegment.ofArray(b))
+    MethodHandle mh =
+        nativeFunctions == null
+            ? NativeLibrary.int4SquareDistance
+            : nativeFunctions.int4SquareDistance;
+    return (mh != null)
+        ? invokeIntMethodHandle(mh, MemorySegment.ofArray(a), MemorySegment.ofArray(b))
         : delegateVectorUtilSupport.int4SquareDistance(a, b);
   }
 
   @Override
   public int int4SquareDistanceSinglePacked(byte[] unpacked, byte[] packed) {
-    return (nativeFunctions.int4SquareDistanceSinglePacked != null)
-        ? invokeIntMethodHandle(
-            nativeFunctions.int4SquareDistanceSinglePacked,
-            MemorySegment.ofArray(unpacked),
-            MemorySegment.ofArray(packed))
+    MethodHandle mh =
+        nativeFunctions == null
+            ? NativeLibrary.int4SquareDistanceSinglePacked
+            : nativeFunctions.int4SquareDistanceSinglePacked;
+    return (mh != null)
+        ? invokeIntMethodHandle(mh, MemorySegment.ofArray(unpacked), MemorySegment.ofArray(packed))
         : delegateVectorUtilSupport.int4SquareDistanceSinglePacked(unpacked, packed);
   }
 
   @Override
   public int int4SquareDistanceBothPacked(byte[] a, byte[] b) {
-    return (nativeFunctions.int4SquareDistanceBothPacked != null)
-        ? invokeIntMethodHandle(
-            nativeFunctions.int4SquareDistanceBothPacked,
-            MemorySegment.ofArray(a),
-            MemorySegment.ofArray(b))
+    MethodHandle mh =
+        nativeFunctions == null
+            ? NativeLibrary.int4SquareDistanceBothPacked
+            : nativeFunctions.int4SquareDistanceBothPacked;
+    return (mh != null)
+        ? invokeIntMethodHandle(mh, MemorySegment.ofArray(a), MemorySegment.ofArray(b))
         : delegateVectorUtilSupport.int4SquareDistanceBothPacked(a, b);
   }
 
   @Override
   public int uint8SquareDistance(byte[] a, byte[] b) {
-    return (nativeFunctions.uint8SquareDistance != null)
-        ? invokeIntMethodHandle(
-            nativeFunctions.uint8SquareDistance, MemorySegment.ofArray(a), MemorySegment.ofArray(b))
+    MethodHandle mh =
+        nativeFunctions == null
+            ? NativeLibrary.uint8SquareDistance
+            : nativeFunctions.uint8SquareDistance;
+    return (mh != null)
+        ? invokeIntMethodHandle(mh, MemorySegment.ofArray(a), MemorySegment.ofArray(b))
         : delegateVectorUtilSupport.uint8SquareDistance(a, b);
   }
 
   @Override
   public long int4BitDotProduct(byte[] int4Quantized, byte[] binaryQuantized) {
-    if (nativeFunctions.int4BitDotProduct != null) {
+    MethodHandle mh =
+        nativeFunctions == null
+            ? NativeLibrary.int4BitDotProduct
+            : nativeFunctions.int4BitDotProduct;
+    if (mh != null) {
       return invokeLongMethodHandle(
-          nativeFunctions.int4BitDotProduct,
-          MemorySegment.ofArray(int4Quantized),
-          MemorySegment.ofArray(binaryQuantized));
+          mh, MemorySegment.ofArray(int4Quantized), MemorySegment.ofArray(binaryQuantized));
     }
     return delegateVectorUtilSupport.int4BitDotProduct(int4Quantized, binaryQuantized);
   }
 
   @Override
   public long int4DibitDotProduct(byte[] int4Quantized, byte[] dibitQuantized) {
-    if (nativeFunctions.int4DibitDotProduct != null) {
+    MethodHandle mh =
+        nativeFunctions == null
+            ? NativeLibrary.int4DibitDotProduct
+            : nativeFunctions.int4DibitDotProduct;
+    if (mh != null) {
       return invokeLongMethodHandle(
-          nativeFunctions.int4DibitDotProduct,
-          MemorySegment.ofArray(int4Quantized),
-          MemorySegment.ofArray(dibitQuantized));
+          mh, MemorySegment.ofArray(int4Quantized), MemorySegment.ofArray(dibitQuantized));
     }
     return delegateVectorUtilSupport.int4DibitDotProduct(int4Quantized, dibitQuantized);
   }
 
   @Override
   public int findNextGEQ(int[] buffer, int target, int from, int to) {
+    MethodHandle mh =
+        nativeFunctions == null ? NativeLibrary.findNextGEQ : nativeFunctions.findNextGEQ;
     return invokeOrDelegate(
-        nativeFunctions.findNextGEQ,
+        mh,
         () -> delegateVectorUtilSupport.findNextGEQ(buffer, target, from, to),
         MemorySegment.ofArray(buffer),
         target,
@@ -554,8 +591,12 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
   @Override
   public float minMaxScalarQuantize(
       float[] vector, byte[] dest, float scale, float alpha, float minQuantile, float maxQuantile) {
+    MethodHandle mh =
+        nativeFunctions == null
+            ? NativeLibrary.minMaxScalarQuantize
+            : nativeFunctions.minMaxScalarQuantize;
     return invokeOrDelegate(
-        nativeFunctions.minMaxScalarQuantize,
+        mh,
         () ->
             delegateVectorUtilSupport.minMaxScalarQuantize(
                 vector, dest, scale, alpha, minQuantile, maxQuantile),
@@ -577,8 +618,12 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
       float alpha,
       float minQuantile,
       float maxQuantile) {
+    MethodHandle mh =
+        nativeFunctions == null
+            ? NativeLibrary.recalculateScalarQuantizationOffset
+            : nativeFunctions.recalculateScalarQuantizationOffset;
     return invokeOrDelegate(
-        nativeFunctions.recalculateScalarQuantizationOffset,
+        mh,
         () ->
             delegateVectorUtilSupport.recalculateScalarQuantizationOffset(
                 vector, oldAlpha, oldMinQuantile, scale, alpha, minQuantile, maxQuantile),
@@ -595,8 +640,10 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
   @Override
   public int filterByScore(
       int[] docBuffer, double[] scoreBuffer, double minScoreInclusive, int upTo) {
+    MethodHandle mh =
+        nativeFunctions == null ? NativeLibrary.filterByScore : nativeFunctions.filterByScore;
     return invokeOrDelegate(
-        nativeFunctions.filterByScore,
+        mh,
         () ->
             delegateVectorUtilSupport.filterByScore(
                 docBuffer, scoreBuffer, minScoreInclusive, upTo),
@@ -608,8 +655,10 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public float[] l2normalize(float[] v, boolean throwOnZero) {
+    MethodHandle mh =
+        nativeFunctions == null ? NativeLibrary.l2normalize : nativeFunctions.l2normalize;
     invokeOrDelegate(
-        nativeFunctions.l2normalize,
+        mh,
         () -> delegateVectorUtilSupport.l2normalize(v, throwOnZero),
         MemorySegment.ofArray(v),
         (byte) (throwOnZero ? 1 : 0),
@@ -634,8 +683,9 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public void expand8(int[] arr) {
+    MethodHandle mh = nativeFunctions == null ? NativeLibrary.expand8 : nativeFunctions.expand8;
     invokeOrDelegate(
-        nativeFunctions.expand8,
+        mh,
         () -> {
           delegateVectorUtilSupport.expand8(arr);
           return null;
