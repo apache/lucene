@@ -201,6 +201,10 @@ Improvements
 
 Optimizations
 ---------------------
+
+* GITHUB#16811: Make filtered ENN fallback up to 2x faster for dense vectors and 7x faster
+  for sparse vectors. (Evan Darke)
+
 * GITHUB#16431, GITHUB#16697: Add support for Block-Max WAND dynamic score skipping in FunctionScoreQuery
   and DoubleValuesSource using DocValuesSkipper. (Rajat Jain, Zhang Chao)
 
