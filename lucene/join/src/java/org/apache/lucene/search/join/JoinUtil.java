@@ -150,7 +150,7 @@ public final class JoinUtil {
           (key, score) ->
               aggregatedScores.compute(
                   key,
-                  (k, cell) -> {
+                  (_, cell) -> {
                     if (cell == null) {
                       return new ScoreCell(score);
                     } else {
@@ -163,7 +163,7 @@ public final class JoinUtil {
           (key, score) ->
               aggregatedScores.compute(
                   key,
-                  (k, cell) -> {
+                  (_, cell) -> {
                     if (cell == null) {
                       return new ScoreCell(score);
                     } else {
@@ -176,7 +176,7 @@ public final class JoinUtil {
           (key, score) ->
               aggregatedScores.compute(
                   key,
-                  (k, cell) -> {
+                  (_, cell) -> {
                     if (cell == null) {
                       return new ScoreCell(score);
                     } else {

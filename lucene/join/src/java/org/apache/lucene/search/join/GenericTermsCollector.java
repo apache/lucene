@@ -129,7 +129,7 @@ interface GenericTermsCollector extends Collector {
     return switch (mode) {
       case None -> wrap(new TermsCollector.SV(svFunction));
       case Avg -> new SV.Avg(svFunction);
-      default -> new SV(svFunction, mode);
+      case Total, Min, Max -> new SV(svFunction, mode);
     };
   }
 
