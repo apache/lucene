@@ -19,9 +19,8 @@ package org.apache.lucene.search.join;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Locale;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.OrdinalMap;
@@ -34,7 +33,8 @@ import org.apache.lucene.util.LongBitSet;
 import org.apache.lucene.util.LongValues;
 
 class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collector, Void> {
-
+  // pick a number that reduces contention without creating too many locks
+  private static final int NUM_LOCKS = 32;
   final String field;
   final ScoreMode scoreMode;
   final boolean doMinMax;
@@ -42,8 +42,11 @@ class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collec
   final int max;
   final long valueCount;
   final OrdinalMap ordinalMap;
-  // FIXME: needs locking
   final LongBitSet collectedOrds;
+  // note: we only lock when collecting since the operation here is: do all the collection, and then
+  // become immutable
+  // when we can have any number of concurrent readers.
+  final Lock[] locks = new Lock[NUM_LOCKS];
 
   // also written concurrently
   protected final Scores scores;
@@ -73,6 +76,9 @@ class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collec
     } else {
       this.occurrences = null;
     }
+    for (int i = 0; i < locks.length; i++) {
+      locks[i] = new ReentrantLock();
+    }
   }
 
   @Override
@@ -83,15 +89,12 @@ class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collec
       case Max -> new Max();
       case Avg -> new Avg();
       case None -> new NoScore();
-      default ->
-          throw new IllegalArgumentException(
-              String.format(Locale.ROOT, "Score mode %s isn't supported.", scoreMode));
     };
   }
 
   @Override
   public Void reduce(Collection<Collector> collectors) {
-    // TODO?
+    // results are provided via side-effect
     return null;
   }
 
@@ -108,6 +111,9 @@ class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collec
   }
 
   public float score(int globalOrdinal) {
+    if (scoreMode == ScoreMode.Avg) {
+      return (float) (scores.getScore(globalOrdinal) / occurrences.getOccurrence(globalOrdinal));
+    }
     return (float) scores.getScore(globalOrdinal);
   }
 
@@ -149,12 +155,18 @@ class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collec
       public void collect(int doc) throws IOException {
         if (docTermOrds.advanceExact(doc)) {
           final int globalOrd = (int) segmentOrdToGlobalOrdLookup.get(docTermOrds.ordValue());
-          collectedOrds.set(globalOrd);
-          double existingScore = scores.getScore(globalOrd);
-          double newScore = scorer.score();
-          doScore(globalOrd, existingScore, newScore);
-          if (occurrences != null) {
-            occurrences.increment(globalOrd);
+          Lock lock = locks[globalOrd % locks.length];
+          lock.lock();
+          try {
+            collectedOrds.set(globalOrd);
+            double existingScore = scores.getScore(globalOrd);
+            double newScore = scorer.score();
+            doScore(globalOrd, existingScore, newScore);
+            if (occurrences != null) {
+              occurrences.increment(globalOrd);
+            }
+          } finally {
+            lock.unlock();
           }
         }
       }
@@ -221,11 +233,6 @@ class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collec
     protected void doScore(int globalOrd, double existingScore, double newScore) {
       scores.setScore(globalOrd, existingScore + newScore);
     }
-
-    @Override
-    public float score(int globalOrdinal) {
-      return (float) (scores.getScore(globalOrdinal) / occurrences.getOccurrence(globalOrdinal));
-    }
   }
 
   final class NoScore extends GlobalOrdinalsWithScoreCollector {
@@ -243,8 +250,14 @@ class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collec
           public void collect(int doc) throws IOException {
             if (docTermOrds.advanceExact(doc)) {
               final int globalOrd = (int) segmentOrdToGlobalOrdLookup.get(docTermOrds.ordValue());
-              collectedOrds.set(globalOrd);
-              occurrences.increment(globalOrd);
+              Lock lock = locks[globalOrd % locks.length];
+              lock.lock();
+              try {
+                collectedOrds.set(globalOrd);
+                occurrences.increment(globalOrd);
+              } finally {
+                lock.unlock();
+              }
             }
           }
         };
@@ -304,49 +317,33 @@ class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collec
     // same per-document scores in a different order may round to a different float.
     final double[][] blocks;
     final double unset;
-    final ReadWriteLock locks[];
 
     private Scores(long valueCount, double unset) {
       long blockSize = valueCount + arraySize - 1;
       blocks = new double[(int) ((blockSize) / arraySize)][];
-      locks = createLocks(blocks.length);
       this.unset = unset;
     }
 
     public void setScore(int globalOrdinal, double score) {
       int block = globalOrdinal / arraySize;
       int offset = globalOrdinal % arraySize;
-      locks[block].writeLock().lock();
-      try {
-        double[] scores = blocks[block];
-        if (scores == null) {
-          blocks[block] = scores = new double[arraySize];
-          if (unset != 0d) {
-            Arrays.fill(scores, unset);
-          }
+      double[] scores = blocks[block];
+      if (scores == null) {
+        blocks[block] = scores = new double[arraySize];
+        if (unset != 0d) {
+          Arrays.fill(scores, unset);
         }
-        scores[offset] = score;
-      } finally {
-        locks[block].writeLock().unlock();
       }
+      scores[offset] = score;
     }
 
     public double getScore(int globalOrdinal) {
-      if (locks == null) {
-        return unset;
-      }
       int block = globalOrdinal / arraySize;
       int offset = globalOrdinal % arraySize;
-      locks[block].readLock().lock();
-      try {
-        double[] scores = blocks[block];
-        if (scores != null) {
-          return scores[offset];
-        } else {
-          return unset;
-        }
-      } finally {
-        locks[block].readLock().unlock();
+      if (blocks.length > 0 && blocks[block] != null) {
+        return blocks[block][offset];
+      } else {
+        return unset;
       }
     }
   }
@@ -354,50 +351,27 @@ class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collec
   static final class Occurrences {
 
     final int[][] blocks;
-    final ReadWriteLock locks[];
 
     private Occurrences(long valueCount) {
       long blockSize = valueCount + arraySize - 1;
       blocks = new int[(int) (blockSize / arraySize)][];
-      locks = createLocks(blocks.length);
     }
 
     public void increment(int globalOrdinal) {
       int block = globalOrdinal / arraySize;
-      locks[block].writeLock().lock();
-      try {
-        int offset = globalOrdinal % arraySize;
-        int[] occurrences = blocks[block];
-        if (occurrences == null) {
-          blocks[block] = occurrences = new int[arraySize];
-        }
-        occurrences[offset]++;
-      } finally {
-        locks[block].writeLock().unlock();
+      int offset = globalOrdinal % arraySize;
+      int[] occurrences = blocks[block];
+      if (occurrences == null) {
+        blocks[block] = occurrences = new int[arraySize];
       }
+      occurrences[offset]++;
     }
 
     public int getOccurrence(int globalOrdinal) {
       int block = globalOrdinal / arraySize;
       int offset = globalOrdinal % arraySize;
-      locks[block].readLock().lock();
-      try {
-        int[] occurrences = blocks[block];
-        return occurrences[offset];
-      } finally {
-        locks[block].readLock().unlock();
-      }
+      int[] occurrences = blocks[block];
+      return occurrences[offset];
     }
-  }
-
-  private static ReadWriteLock[] createLocks(int size) {
-    if (size == 0) {
-      return null;
-    }
-    ReadWriteLock[] locks = new ReadWriteLock[size];
-    for (int i = 0; i < size; i++) {
-      locks[i] = new ReentrantReadWriteLock();
-    }
-    return locks;
   }
 }

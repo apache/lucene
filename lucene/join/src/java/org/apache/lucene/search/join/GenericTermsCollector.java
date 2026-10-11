@@ -19,7 +19,9 @@ package org.apache.lucene.search.join;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedDocValues;
@@ -37,9 +39,9 @@ interface GenericTermsCollector extends Collector {
 
   BytesRefHash getCollectedTerms();
 
-  float[] getScoresPerTerm();
+  double[] getScoresArray();
 
-  default int[] getTermCounts() {
+  default int[] getCountsArray() {
     return null;
   }
 
@@ -124,17 +126,11 @@ interface GenericTermsCollector extends Collector {
   static GenericTermsCollector createCollectorSV(
       Function<SortedDocValues> svFunction, ScoreMode mode) {
 
-    switch (mode) {
-      case None:
-        return wrap(new TermsCollector.SV(svFunction));
-      case Avg:
-        return new SV.Avg(svFunction);
-      case Max:
-      case Min:
-      case Total:
-      default:
-        return new SV(svFunction, mode);
-    }
+    return switch (mode) {
+      case None -> wrap(new TermsCollector.SV(svFunction));
+      case Avg -> new SV.Avg(svFunction);
+      default -> new SV(svFunction, mode);
+    };
   }
 
   static GenericTermsCollector wrap(final TermsCollector<?> collector) {
@@ -156,7 +152,7 @@ interface GenericTermsCollector extends Collector {
       }
 
       @Override
-      public float[] getScoresPerTerm() {
+      public double[] getScoresArray() {
         return null;
       }
     };
@@ -191,11 +187,7 @@ interface GenericTermsCollector extends Collector {
       if (collectors.isEmpty()) {
         return new TermsAndScores(new BytesRefHash(), new float[0]);
       }
-      GenericTermsCollector first = collectors.iterator().next();
-      if (collectors.size() == 1) {
-        return new TermsAndScores(first.getCollectedTerms(), first.getScoresPerTerm());
-      }
-      if (first.getScoresPerTerm() == null) {
+      if (scoreMode == ScoreMode.None) {
         return reduceWithoutScores(collectors);
       } else {
         return reduceWithScores(collectors);
@@ -223,10 +215,12 @@ interface GenericTermsCollector extends Collector {
       BytesRef term = new BytesRef();
       BytesRefHash terms = null;
       List<int[]> termIdMap = new ArrayList<>();
+      int firstCollectorNumTerms = 0;
       for (GenericTermsCollector collector : collectors) {
         if (terms == null) {
           terms = collector.getCollectedTerms();
-          termIdMap.add(null); // represent the identity map as null
+          firstCollectorNumTerms = terms.size();
+          termIdMap.add(null); // placeholder for the identity map
         } else {
           BytesRefHash collectorTerms = collector.getCollectedTerms();
           int[] idMap = new int[collectorTerms.size()];
@@ -234,7 +228,7 @@ interface GenericTermsCollector extends Collector {
           for (int i = 0; i < collectorTerms.size(); i++) {
             collectorTerms.get(i, term);
             int termId = terms.add(term);
-            if (termId > 0) {
+            if (termId >= 0) {
               idMap[i] = termId;
             } else {
               idMap[i] = -1 - termId;
@@ -249,8 +243,17 @@ interface GenericTermsCollector extends Collector {
       } else {
         counts = null;
       }
-      int i = 0;
-      for (GenericTermsCollector collector : collectors) {
+      Iterator<GenericTermsCollector> it = collectors.iterator();
+      GenericTermsCollector collector = it.next();
+      copyScores(collector, scores, counts, firstCollectorNumTerms);
+      if (scoreMode == ScoreMode.Min) {
+        Arrays.fill(scores, firstCollectorNumTerms, scores.length, Float.POSITIVE_INFINITY);
+      } else if (scoreMode == ScoreMode.Max) {
+        Arrays.fill(scores, firstCollectorNumTerms, scores.length, Float.NEGATIVE_INFINITY);
+      }
+      int i = 1;
+      while (it.hasNext()) {
+        collector = it.next();
         mergeScores(collector, scores, counts, termIdMap.get(i++));
       }
       if (scoreMode == ScoreMode.Avg) {
@@ -261,19 +264,24 @@ interface GenericTermsCollector extends Collector {
       return new TermsAndScores(terms, scores);
     }
 
+    void copyScores(
+        GenericTermsCollector collector, float[] allScores, int[] allCounts, int count) {
+      double[] collectorScores = collector.getScoresArray();
+      for (int i = 0; i < count; i++) {
+        allScores[i] = (float) collectorScores[i];
+      }
+      if (scoreMode == ScoreMode.Avg) {
+        System.arraycopy(collector.getCountsArray(), 0, allCounts, 0, count);
+      }
+    }
+
     void mergeScores(
         GenericTermsCollector collector, float[] allScores, int[] allCounts, int[] idMap) {
-      float[] collectorScores = collector.getScoresPerTerm();
-      if (idMap == null) {
-        System.arraycopy(collectorScores, 0, allScores, 0, collectorScores.length);
-        if (scoreMode == ScoreMode.Avg) {
-          System.arraycopy(collector.getTermCounts(), 0, allCounts, 0, collectorScores.length);
-        }
-        return;
-      }
+      double[] collectorScores = collector.getScoresArray();
       switch (scoreMode) {
         case Avg ->
-            mergeScoresAvg(collectorScores, allScores, collector.getTermCounts(), allCounts, idMap);
+            mergeScoresAvg(
+                collectorScores, allScores, collector.getCountsArray(), allCounts, idMap);
         case Total -> mergeScoresSum(collectorScores, allScores, idMap);
         case Min -> mergeScoresMin(collectorScores, allScores, idMap);
         case Max -> mergeScoresMax(collectorScores, allScores, idMap);
@@ -281,32 +289,32 @@ interface GenericTermsCollector extends Collector {
       }
     }
 
-    void mergeScoresMax(float[] collectorScores, float[] allScores, int[] idMap) {
+    void mergeScoresMax(double[] collectorScores, float[] allScores, int[] idMap) {
       for (int j = 0; j < idMap.length; j++) {
-        allScores[idMap[j]] = Math.max(collectorScores[j], allScores[idMap[j]]);
+        allScores[idMap[j]] = Math.max((float) collectorScores[j], allScores[idMap[j]]);
       }
     }
 
-    void mergeScoresMin(float[] collectorScores, float[] allScores, int[] idMap) {
+    void mergeScoresMin(double[] collectorScores, float[] allScores, int[] idMap) {
       for (int j = 0; j < idMap.length; j++) {
-        allScores[idMap[j]] = Math.min(collectorScores[j], allScores[idMap[j]]);
+        allScores[idMap[j]] = Math.min((float) collectorScores[j], allScores[idMap[j]]);
       }
     }
 
-    void mergeScoresSum(float[] collectorScores, float[] allScores, int[] idMap) {
+    void mergeScoresSum(double[] collectorScores, float[] allScores, int[] idMap) {
       for (int j = 0; j < idMap.length; j++) {
-        allScores[idMap[j]] += collectorScores[j];
+        allScores[idMap[j]] += (float) collectorScores[j];
       }
     }
 
     void mergeScoresAvg(
-        float[] collectorScores,
+        double[] collectorScores,
         float[] allScores,
         int[] collectorCounts,
         int[] allCounts,
         int[] idMap) {
       for (int j = 0; j < idMap.length; j++) {
-        allScores[idMap[j]] += collectorScores[j];
+        allScores[idMap[j]] += (float) collectorScores[j];
         allCounts[idMap[j]] += collectorCounts[j];
       }
     }

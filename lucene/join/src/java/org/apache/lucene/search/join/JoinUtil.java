@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Locale;
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.document.IntPoint;
@@ -36,8 +37,6 @@ import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.internal.hppc.LongArrayList;
 import org.apache.lucene.internal.hppc.LongCursor;
 import org.apache.lucene.internal.hppc.LongHashSet;
-import org.apache.lucene.internal.hppc.LongIntHashMap;
-import org.apache.lucene.internal.hppc.LongObjectHashMap;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.IndexSearcher;
@@ -142,61 +141,63 @@ public final class JoinUtil {
       throws IOException {
     LongHashSet joinValues = new LongHashSet();
     // Maps a join value to its aggregated score cell; see ScoreCell for why double precision.
-    LongObjectHashMap<ScoreCell> aggregatedScores = new LongObjectHashMap<>();
-    LongIntHashMap occurrences = new LongIntHashMap();
+    ConcurrentHashMap<Long, ScoreCell> aggregatedScores = new ConcurrentHashMap<>();
+    ConcurrentHashMap<Long, Integer> occurrences = new ConcurrentHashMap<>();
     boolean needsScore = scoreMode != ScoreMode.None;
     LongFloatProcedure scoreAggregator;
     if (scoreMode == ScoreMode.Max) {
       scoreAggregator =
-          (key, score) -> {
-            int index = aggregatedScores.indexOf(key);
-            if (index < 0) {
-              ScoreCell cell = new ScoreCell();
-              cell.value = score;
-              aggregatedScores.indexInsert(index, key, cell);
-            } else {
-              ScoreCell cell = aggregatedScores.indexGet(index);
-              cell.value = Math.max(cell.value, score);
-            }
-          };
+          (key, score) ->
+              aggregatedScores.compute(
+                  key,
+                  (k, cell) -> {
+                    if (cell == null) {
+                      return new ScoreCell(score);
+                    } else {
+                      cell.value = Math.max(cell.value, score);
+                      return cell;
+                    }
+                  });
     } else if (scoreMode == ScoreMode.Min) {
       scoreAggregator =
-          (key, score) -> {
-            int index = aggregatedScores.indexOf(key);
-            if (index < 0) {
-              ScoreCell cell = new ScoreCell();
-              cell.value = score;
-              aggregatedScores.indexInsert(index, key, cell);
-            } else {
-              ScoreCell cell = aggregatedScores.indexGet(index);
-              cell.value = Math.min(cell.value, score);
-            }
-          };
+          (key, score) ->
+              aggregatedScores.compute(
+                  key,
+                  (k, cell) -> {
+                    if (cell == null) {
+                      return new ScoreCell(score);
+                    } else {
+                      cell.value = Math.min(cell.value, score);
+                      return cell;
+                    }
+                  });
     } else if (scoreMode == ScoreMode.Total) {
       scoreAggregator =
-          (key, score) -> {
-            int index = aggregatedScores.indexOf(key);
-            if (index < 0) {
-              ScoreCell cell = new ScoreCell();
-              cell.value = score;
-              aggregatedScores.indexInsert(index, key, cell);
-            } else {
-              aggregatedScores.indexGet(index).value += score;
-            }
-          };
+          (key, score) ->
+              aggregatedScores.compute(
+                  key,
+                  (k, cell) -> {
+                    if (cell == null) {
+                      return new ScoreCell(score);
+                    } else {
+                      cell.value += score;
+                      return cell;
+                    }
+                  });
     } else if (scoreMode == ScoreMode.Avg) {
       scoreAggregator =
-          (key, score) -> {
-            int index = aggregatedScores.indexOf(key);
-            if (index < 0) {
-              ScoreCell cell = new ScoreCell();
-              cell.value = score;
-              aggregatedScores.indexInsert(index, key, cell);
-            } else {
-              aggregatedScores.indexGet(index).value += score;
-            }
-            occurrences.addTo(key, 1);
-          };
+          (key, score) ->
+              aggregatedScores.compute(
+                  key,
+                  (k, cell) -> {
+                    if (cell == null) {
+                      cell = new ScoreCell(score);
+                    } else {
+                      cell.value += score;
+                    }
+                    occurrences.merge(k, 1, (a, b) -> a + b);
+                    return cell;
+                  });
     } else {
       scoreAggregator =
           (_, _) -> {
@@ -602,6 +603,10 @@ public final class JoinUtil {
    */
   private static final class ScoreCell {
     double value;
+
+    ScoreCell(double value) {
+      this.value = value;
+    }
   }
 
   /** Similar to {@link java.util.function.LongFunction} for primitive argument and result. */

@@ -54,16 +54,8 @@ abstract class TermsWithScoreCollector<DV> extends DocValuesTermsCollector<DV>
   }
 
   @Override
-  public float[] getScoresPerTerm() {
-    float[] scores = new float[scoreSums.length];
-    for (int i = 0; i < scoreSums.length; i++) {
-      scores[i] = (float) scoreSums[i];
-    }
-    return scores;
-  }
-
-  int[] getCountsPerTerm() {
-    return null;
+  public double[] getScoresArray() {
+    return scoreSums;
   }
 
   @Override
@@ -124,15 +116,13 @@ abstract class TermsWithScoreCollector<DV> extends DocValuesTermsCollector<DV>
       int ord = collectedTerms.add(value);
       if (ord < 0) {
         ord = -ord - 1;
-      } else {
-        if (ord >= scoreSums.length) {
-          int begin = scoreSums.length;
-          scoreSums = ArrayUtil.grow(scoreSums);
-          if (scoreMode == ScoreMode.Min) {
-            Arrays.fill(scoreSums, begin, scoreSums.length, Double.POSITIVE_INFINITY);
-          } else if (scoreMode == ScoreMode.Max) {
-            Arrays.fill(scoreSums, begin, scoreSums.length, Double.NEGATIVE_INFINITY);
-          }
+      } else if (ord >= scoreSums.length) {
+        int begin = scoreSums.length;
+        scoreSums = ArrayUtil.grow(scoreSums);
+        if (scoreMode == ScoreMode.Min) {
+          Arrays.fill(scoreSums, begin, scoreSums.length, Double.POSITIVE_INFINITY);
+        } else if (scoreMode == ScoreMode.Max) {
+          Arrays.fill(scoreSums, begin, scoreSums.length, Double.NEGATIVE_INFINITY);
         }
       }
 
@@ -201,16 +191,7 @@ abstract class TermsWithScoreCollector<DV> extends DocValuesTermsCollector<DV>
       }
 
       @Override
-      public float[] getScoresPerTerm() {
-        float[] scores = new float[scoreSums.length];
-        for (int i = 0; i < scores.length; i++) {
-          scores[i] = (float) (scoreSums[i] / scoreCounts[i]);
-        }
-        return scores;
-      }
-
-      @Override
-      int[] getCountsPerTerm() {
+      public int[] getCountsArray() {
         return scoreCounts;
       }
     }
@@ -290,12 +271,8 @@ abstract class TermsWithScoreCollector<DV> extends DocValuesTermsCollector<DV>
       }
 
       @Override
-      public float[] getScoresPerTerm() {
-        float[] scores = new float[scoreSums.length];
-        for (int i = 0; i < scores.length; i++) {
-          scores[i] = (float) (scoreSums[i] / scoreCounts[i]);
-        }
-        return scores;
+      public int[] getCountsArray() {
+        return scoreCounts;
       }
     }
   }
