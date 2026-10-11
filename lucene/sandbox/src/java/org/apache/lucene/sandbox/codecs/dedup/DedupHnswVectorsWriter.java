@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsWriter;
@@ -52,29 +51,25 @@ import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
+import org.apache.lucene.util.packed.DirectWriter;
 
 /**
  * Writes a de-duplication-aware HNSW graph on top of a de-duplicating flat vectors format.
  *
- * <p>Unlike {@link org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsWriter}, which builds one
- * HNSW node per document, this writer builds a single graph node per <b>distinct</b> vector (group
- * ordinal). When many documents share the same vector, the graph is built once over the distinct
- * vectors, saving construction time and index size. To recover the documents at search time, the
- * writer also stores a {@code DistinctVectorPostings} list that maps each group ordinal to the
- * field ordinals (per-document ordinals) that reference it; {@link DedupHnswVectorsReader} expands
- * a matched group node back to those documents.
+ * <p>This writer picks a per-field layout to avoid duplicate nodes when documents share vectors:
  *
- * <h2>.vdhd (dedup HNSW data) file</h2>
+ * <ul>
+ *   <li>{@link DedupLayoutMode#DEDUP}: one node per distinct vector, plus a {@code
+ *       DistinctVectorPostings} mapping each group ordinal to its referencing documents.
+ *   <li>{@link DedupLayoutMode#PLAIN}: one node per document (no postings), when a field has no
+ *       effective de-duplication.
+ *   <li>{@link DedupLayoutMode#HYBRID}: promoted groups become one node each (with postings) while
+ *       small-group documents stay as per-document nodes.
+ * </ul>
  *
- * <p>Per field: the graph neighbor lists (delta-encoded, in group-ordinal space, laid out exactly
- * as {@link org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat}'s vector index), followed
- * by a {@code DistinctVectorPostings}, which maps each individual distinct vector to the field
- * ordinals that reference it.
- *
- * <h2>.vdhm (dedup HNSW metadata) file</h2>
- *
- * <p>Per field: field number, group count, field-ordinal (document) count, graph offset/length,
- * {@code M}, per-level node lists, node offsets metadata, and the postings offsets/data locations.
+ * <p>{@link DedupHnswVectorsReader} expands each matched node back to its document(s). The graph
+ * ({@code .vdhd}) and per-field metadata ({@code .vdhm}) are written in two files; the exact
+ * per-layout byte layout is documented on {@link #writeMeta} and {@link #writeHybridMeta}.
  *
  * @lucene.experimental
  */
@@ -100,7 +95,7 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
   // scheduler's intra-merge executor (from MergeState) is used when available.
   private final TaskExecutor mergeExec;
   // Set for the duration of a single mergeOneField build so maybeBuildGraph can pick a concurrent
-  // builder. null during flush (flush always builds single-threaded, like Lucene99).
+  // builder. null during flush (flush always builds single-threaded).
   private TaskExecutor activeMergeExecutor;
   private int activeMergeWorkers = 1;
   private final FlatVectorsFormat flatVectorsFormat;
@@ -119,12 +114,12 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
       SegmentWriteState state,
       int M,
       int beamWidth,
-      int tinySegmentsThreshold,
-      int hybridGroupThreshold,
-      int numMergeWorkers,
-      ExecutorService mergeExec,
       FlatVectorsFormat flatVectorsFormat,
-      FlatVectorsWriter flatVectorWriter)
+      FlatVectorsWriter flatVectorWriter,
+      int numMergeWorkers,
+      TaskExecutor mergeExec,
+      int tinySegmentsThreshold,
+      int hybridGroupThreshold)
       throws IOException {
     this.segmentWriteState = state;
     this.M = M;
@@ -132,7 +127,7 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
     this.tinySegmentsThreshold = tinySegmentsThreshold;
     this.hybridGroupThreshold = hybridGroupThreshold;
     this.numMergeWorkers = numMergeWorkers;
-    this.mergeExec = mergeExec == null ? null : new TaskExecutor(mergeExec);
+    this.mergeExec = mergeExec;
     this.flatVectorsFormat = flatVectorsFormat;
     this.flatVectorWriter = flatVectorWriter;
 
@@ -183,10 +178,10 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
     // Delegate the flat merge; it re-de-duplicates across the merged segments.
     fields.add(fieldInfo);
     flatVectorWriter.mergeOneFlatVectorField(fieldInfo, mergeState);
-    // Choose the executor for concurrent graph building during this merge, mirroring
-    // Lucene99HnswVectorsWriter: prefer the format's explicit mergeExec; otherwise fall back to the
-    // merge scheduler's intra-merge executor. Captured here (on the merge thread) and consumed by
-    // buildAndWriteGraph -> maybeBuildGraph in the returned IORunnable.
+    // Choose the executor for concurrent graph building during this merge: prefer the format's
+    // explicit mergeExec; otherwise fall back to the merge scheduler's intra-merge executor.
+    // Captured here (on the merge thread) and consumed by buildAndWriteGraph -> maybeBuildGraph in
+    // the returned IORunnable.
     final TaskExecutor chosenExec;
     final int chosenWorkers;
     if (mergeExec != null) {
@@ -195,7 +190,7 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
     } else if (mergeState.intraMergeTaskExecutor != null) {
       chosenExec = new TaskExecutor(mergeState.intraMergeTaskExecutor);
       // numMergeWorkers defaults to 1 unless the format was configured otherwise; use it to bound
-      // the intra-merge parallelism (matching Lucene99's numMergeWorkers argument).
+      // the intra-merge parallelism.
       chosenWorkers = numMergeWorkers;
     } else {
       chosenExec = null;
@@ -217,75 +212,106 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
 
   /** Builds and writes the HNSW graph for a field, choosing a per-field layout. */
   private void buildAndWriteGraph(FieldInfo fieldInfo) throws IOException {
-    // TODO: build incrementally as new distinct vectors are introduced, instead of all at once
-    //  here. Insert a node the first time each distinct vector appears (keyed by its first-seen
-    //  index) via HnswGraphBuilder#addGraphNode, then on flush remap first-seen ids to the final
-    //  group ordinals when writing neighbor lists and postings. This should smoothen the peak
-    //  memory and flush latency.
-    DedupVectorValues dedupValues = getDedupVectorValues(fieldInfo);
-    if (dedupValues == null || dedupValues.getGroupView().size() == 0) {
+    // TODO: build the graph incrementally as distinct vectors appear, instead of all at once here,
+    //  to smoothen peak memory and flush latency.
+    KnnVectorValues values = getVectorValues(fieldInfo);
+    if (values instanceof DedupVectorValues == false) {
+      throw new IllegalStateException(
+          "DedupHnswVectorsWriter requires a de-duplicating flat vectors format; got "
+              + (values == null ? "null" : values.getClass().getName())
+              + " for field \""
+              + fieldInfo.name
+              + "\"");
+    }
+    DedupVectorValues dedupValues = (DedupVectorValues) values;
+    if (dedupValues.getGroupView().size() == 0) {
       writeEmptyField(fieldInfo);
       return;
     }
 
     int groupCount = dedupValues.getGroupView().size();
-    int fieldOrdCount = ((KnnVectorValues) dedupValues).size();
+    int fieldOrdCount = values.size();
 
-    // Number of DISTINCT groups actually referenced BY THIS FIELD. The group view is shared across
-    // all of a segment's dedup fields, so groupCount (its global size) can exceed the groups a
-    // single field references (e.g. a filtered sub-field that indexes only a subset of documents).
-    // Deciding the layout from groupCount vs fieldOrdCount would then wrongly classify a field with
-    // NO within-field duplication as de-duplicated. The correct per-field test is: does this field
-    // reference as many distinct groups as it has documents? If so, there is nothing to de-dup.
-    int distinctGroupsReferenced =
-        countDistinctReferencedGroups(dedupValues.getFieldOrdToGroupOrd(), fieldOrdCount, groupCount);
+    FieldOrdToGroupOrd fieldOrdToGroupOrd = dedupValues.getFieldOrdToGroupOrd();
 
-    // When there is no effective de-duplication (every document references a distinct vector), the
-    // group machinery is pure overhead, so build a plain document-space graph; otherwise de-dup.
-    DedupLayoutMode mode = selectMode(distinctGroupsReferenced, fieldOrdCount);
-    if (mode == DedupLayoutMode.PLAIN) {
-      writePlainField(fieldInfo, dedupValues, fieldOrdCount);
-    } else if (hybridGroupThreshold > 0) {
-      // HYBRID is enabled and the field has some de-duplication: promote only the large groups.
-      writeHybridField(fieldInfo, dedupValues, groupCount, fieldOrdCount);
-    } else {
-      writeDedupField(fieldInfo, dedupValues, groupCount, fieldOrdCount);
+    // Count the documents per group, and number of distinct groups this field references to
+    // drive the layout choice for graph build
+    // TODO: persist the distinct count as metadata at flush/merge time instead of recomputing here.
+    GroupSizes groupSizes = computeGroupSizes(fieldOrdToGroupOrd, fieldOrdCount, groupCount);
+
+    LayoutSelection selection = selectMode(groupSizes, fieldOrdCount);
+    switch (selection.mode()) {
+      case PLAIN -> writePlainField(fieldInfo, values, fieldOrdCount);
+      case HYBRID ->
+          writeHybridField(
+              fieldInfo,
+              dedupValues,
+              groupSizes.sizes(),
+              selection.partition(),
+              groupCount,
+              fieldOrdCount);
+      case DEDUP -> writeDedupField(fieldInfo, dedupValues, groupCount, fieldOrdCount);
     }
   }
 
+  /** Per-group document counts and the number of groups referenced by at least one document. */
+  private record GroupSizes(int[] sizes, int distinctGroups) {}
+
   /**
-   * Counts the distinct group ordinals referenced by a field's documents. Returns a value in {@code
-   * [0, fieldOrdCount]}; when it equals {@code fieldOrdCount} the field has no within-field
-   * de-duplication (every document references a unique group). {@code groupCount} bounds the group
-   * ordinal space and sizes the membership bitset.
+   * Computes {@link GroupSizes} in a single pass over the field ordinals. {@code distinctGroups ==
+   * fieldOrdCount} means the field has no within-field de-duplication.
    */
-  private static int countDistinctReferencedGroups(
+  private static GroupSizes computeGroupSizes(
       FieldOrdToGroupOrd fieldOrdToGroupOrd, int fieldOrdCount, int groupCount) {
-    if (fieldOrdCount == 0) {
-      return 0;
-    }
-    FixedBitSet seen = new FixedBitSet(groupCount);
-    int distinct = 0;
-    for (int ord = 0; ord < fieldOrdCount; ord++) {
-      int groupOrd = fieldOrdToGroupOrd.get(ord);
-      if (seen.getAndSet(groupOrd) == false) {
-        distinct++;
-        // Early out: once we've seen one distinct group per document, it cannot grow further and
-        // the field is already known to be fully distinct.
-        if (distinct == fieldOrdCount) {
-          break;
-        }
+    int[] sizes = new int[groupCount];
+    int distinctGroups = 0;
+    for (int fieldOrd = 0; fieldOrd < fieldOrdCount; fieldOrd++) {
+      if (sizes[fieldOrdToGroupOrd.get(fieldOrd)]++ == 0) {
+        distinctGroups++;
       }
     }
-    return distinct;
+    return new GroupSizes(sizes, distinctGroups);
+  }
+
+  /**
+   * Partitions groups into promoted groups and the rest. {@code promotedGroups} marks the promoted
+   * groups; each is assigned a dense ordinal in {@code [0, numPromotedGroups)} held in {@code
+   * promotedGroupOrdinals} (only meaningful for groups in {@code promotedGroups}).
+   */
+  private record PromotedGroupPartition(
+      FixedBitSet promotedGroups, int[] promotedGroupOrdinals, int numPromotedGroups) {
+
+    /** Whether group {@code g} was promoted to its own node. */
+    boolean isPromoted(int g) {
+      return promotedGroups.get(g);
+    }
+
+    /** The dense promoted-group ordinal assigned to promoted group {@code g}. */
+    int promotedGroupOrdinal(int g) {
+      return promotedGroupOrdinals[g];
+    }
+  }
+
+  /** Promotes groups referenced by more than {@code threshold} documents to their own node. */
+  private static PromotedGroupPartition partitionPromotedGroups(int[] groupSizes, int threshold) {
+    FixedBitSet promotedGroups = new FixedBitSet(groupSizes.length);
+    int[] promotedGroupOrdinals = new int[groupSizes.length];
+    int numPromotedGroups = 0;
+    for (int g = 0; g < groupSizes.length; g++) {
+      if (groupSizes[g] > threshold) {
+        promotedGroups.set(g);
+        promotedGroupOrdinals[g] = numPromotedGroups++;
+      }
+    }
+    return new PromotedGroupPartition(promotedGroups, promotedGroupOrdinals, numPromotedGroups);
   }
 
   /**
    * PLAIN layout: one graph node per document (field ordinal), scored at full precision, with no
    * postings. Search then behaves like a vanilla HNSW search.
    */
-  private void writePlainField(
-      FieldInfo fieldInfo, DedupVectorValues dedupValues, int fieldOrdCount) throws IOException {
+  private void writePlainField(FieldInfo fieldInfo, KnnVectorValues values, int fieldOrdCount)
+      throws IOException {
     DedupFlatVectorsScorer scorer =
         (DedupFlatVectorsScorer) flatVectorsReader.getFlatVectorScorer(fieldInfo.name);
 
@@ -294,7 +320,7 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
         maybeBuildGraph(
             fieldOrdCount,
             scorer.getPlainRandomVectorScorerSupplier(
-                fieldInfo.getVectorSimilarityFunction(), dedupValues));
+                fieldInfo.getVectorSimilarityFunction(), values));
     int[][] graphLevelNodeOffsets = writeGraph(graph);
     long graphDataLength = graphData.getFilePointer() - graphDataOffset;
 
@@ -358,73 +384,62 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
   }
 
   /**
-   * HYBRID layout: one graph node per <b>large</b> group (a distinct vector referenced by more than
-   * {@link #hybridGroupThreshold} documents) and one graph node per document that belongs to a
-   * small group.
+   * HYBRID layout: one graph node per <b>promoted</b> group (a distinct vector referenced by more
+   * than {@link #hybridGroupThreshold} documents) and one graph node per document that belongs to a
+   * non-promoted group.
    *
    * <p>Node ordinals are laid out as:
    *
    * <ul>
-   *   <li>{@code [0, numLargeGroups)} — the promoted large groups, in ascending group-ordinal
-   *       order. Each carries a {@code DistinctVectorPostings} slice listing all its field ordinals
+   *   <li>{@code [0, numPromotedGroups)} — the promoted groups, in ascending group-ordinal order.
+   *       Each carries a {@code DistinctVectorPostings} slice listing all its field ordinals
    *       (documents).
-   *   <li>{@code [numLargeGroups, numLargeGroups + numSmallDocs)} — the documents of all small
-   *       groups, in ascending field-ordinal order. Each carries exactly one field ordinal.
+   *   <li>{@code [numPromotedGroups, numPromotedGroups + numSmallDocs)} — the documents of all
+   *       small groups, in ascending field-ordinal order. Each carries exactly one field ordinal.
    * </ul>
    *
    * <p>A {@code nodeToGroupOrd} map (one entry per node) resolves every node to a vector in the
    * group view so the HNSW graph can be built and searched uniformly in group-view scoring space.
    */
   private void writeHybridField(
-      FieldInfo fieldInfo, DedupVectorValues dedupValues, int groupCount, int fieldOrdCount)
+      FieldInfo fieldInfo,
+      DedupVectorValues dedupValues,
+      int[] groupSizes,
+      PromotedGroupPartition partition,
+      int groupCount,
+      int fieldOrdCount)
       throws IOException {
     DedupFlatVectorsScorer scorer =
         (DedupFlatVectorsScorer) flatVectorsReader.getFlatVectorScorer(fieldInfo.name);
     FieldOrdToGroupOrd fieldOrdToGroupOrd = dedupValues.getFieldOrdToGroupOrd();
+    int numPromotedGroups = partition.numPromotedGroups();
 
-    // 1. Count how many documents reference each group.
-    int[] groupSizes = new int[groupCount];
-    for (int fieldOrd = 0; fieldOrd < fieldOrdCount; fieldOrd++) {
-      groupSizes[fieldOrdToGroupOrd.get(fieldOrd)]++;
-    }
-
-    // 2. Partition groups: large (promoted to a group-node) vs small (kept as per-doc nodes).
-    //    largeGroupNode[g] = node ordinal of group g if promoted, else -1.
-    int[] largeGroupNode = new int[groupCount];
-    Arrays.fill(largeGroupNode, -1);
-    int numLargeGroups = 0;
-    for (int g = 0; g < groupCount; g++) {
-      if (groupSizes[g] > hybridGroupThreshold) {
-        largeGroupNode[g] = numLargeGroups++;
-      }
-    }
-
-    // Number of documents that remain as individual nodes (belong to small groups).
+    // Documents that remain as individual nodes (belong to small groups).
     int numSmallDocs = 0;
     for (int g = 0; g < groupCount; g++) {
-      if (largeGroupNode[g] == -1) {
+      if (partition.isPromoted(g) == false) {
         numSmallDocs += groupSizes[g];
       }
     }
-    int nodeCount = numLargeGroups + numSmallDocs;
+    int nodeCount = numPromotedGroups + numSmallDocs;
 
-    // 3. Build the per-node -> group-view-ordinal map and the per-small-node -> field ordinal map.
-    //    Node layout: large-group nodes first (ascending group ord), then small-group docs
+    // 1. Build the per-node -> group-view-ordinal map and the per-small-node -> field ordinal map.
+    //    Node layout: promoted-group nodes first (ascending group ord), then small-group docs
     //    (ascending field ord).
     int[] nodeToGroupOrd = new int[nodeCount];
     int[] smallNodeFieldOrd = new int[numSmallDocs];
-    // Large-group nodes score against the group's distinct vector.
+    // Promoted-group nodes score against the group's distinct vector.
     for (int g = 0; g < groupCount; g++) {
-      if (largeGroupNode[g] != -1) {
-        nodeToGroupOrd[largeGroupNode[g]] = g;
+      if (partition.isPromoted(g)) {
+        nodeToGroupOrd[partition.promotedGroupOrdinal(g)] = g;
       }
     }
     // Small-group doc nodes score against their doc's (shared) distinct vector.
     int smallNode = 0;
     for (int fieldOrd = 0; fieldOrd < fieldOrdCount; fieldOrd++) {
       int g = fieldOrdToGroupOrd.get(fieldOrd);
-      if (largeGroupNode[g] == -1) {
-        int node = numLargeGroups + smallNode;
+      if (partition.isPromoted(g) == false) {
+        int node = numPromotedGroups + smallNode;
         nodeToGroupOrd[node] = g;
         smallNodeFieldOrd[smallNode] = fieldOrd;
         smallNode++;
@@ -432,26 +447,28 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
     }
     assert smallNode == numSmallDocs;
 
-    // 4. Build the graph over the hybrid node space, scoring each node via nodeToGroupOrd.
+    // 2. Build the graph over the hybrid node space, scoring each node via nodeToGroupOrd.
     long graphDataOffset = graphData.getFilePointer();
     OnHeapHnswGraph graph =
         maybeBuildGraph(
             nodeCount,
             scorer.getHybridRandomVectorScorerSupplier(
-                fieldInfo.getVectorSimilarityFunction(), dedupValues, nodeToGroupOrd));
+                fieldInfo.getVectorSimilarityFunction(),
+                dedupValues,
+                new NodeToGroupOrd.NodeToGroupOrdArray(nodeToGroupOrd)));
     int[][] graphLevelNodeOffsets = writeGraph(graph);
     long graphDataLength = graphData.getFilePointer() - graphDataOffset;
 
-    // 5. Postings for the promoted (large) groups only, keyed by large-group node ordinal.
-    int[] largeGroupOffsets = new int[numLargeGroups + 1];
+    // 3. Postings for the promoted groups only, keyed by promoted-group ordinal.
+    int[] promotedGroupOffsets = new int[numPromotedGroups + 1];
     int[] flattenedFieldOrds = new int[fieldOrdCount - numSmallDocs];
-    computeLargeGroupPostings(
+    computePromotedGroupPostings(
         fieldOrdToGroupOrd,
         fieldOrdCount,
-        largeGroupNode,
-        numLargeGroups,
+        partition,
+        numPromotedGroups,
         groupSizes,
-        largeGroupOffsets,
+        promotedGroupOffsets,
         flattenedFieldOrds);
 
     writeHybridMeta(
@@ -459,65 +476,65 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
         groupCount,
         fieldOrdCount,
         nodeCount,
-        numLargeGroups,
+        numPromotedGroups,
         numSmallDocs,
         graphDataOffset,
         graphDataLength,
         graph,
         graphLevelNodeOffsets,
         nodeToGroupOrd,
-        largeGroupOffsets,
+        promotedGroupOffsets,
         flattenedFieldOrds,
         smallNodeFieldOrd);
   }
 
   /**
-   * Flattens the large (promoted) groups' field ordinals into contiguous slices keyed by large-group
-   * node ordinal. {@code largeGroupOffsets[n]..largeGroupOffsets[n+1]} delimits the documents of the
-   * group promoted to node {@code n}.
+   * Flattens the promoted groups' field ordinals into contiguous slices keyed by promoted-group
+   * ordinal. {@code promotedGroupOffsets[n]..promotedGroupOffsets[n+1]} delimits the documents of
+   * the group promoted to node {@code n}.
    */
-  private void computeLargeGroupPostings(
+  private void computePromotedGroupPostings(
       FieldOrdToGroupOrd fieldOrdToGroupOrd,
       int fieldOrdCount,
-      int[] largeGroupNode,
-      int numLargeGroups,
+      PromotedGroupPartition partition,
+      int numPromotedGroups,
       int[] groupSizes,
       int[] offsets,
       int[] flattened) {
-    for (int g = 0; g < largeGroupNode.length; g++) {
-      int node = largeGroupNode[g];
-      if (node != -1) {
-        offsets[node + 1] = groupSizes[g];
+    for (int g = 0; g < groupSizes.length; g++) {
+      if (partition.isPromoted(g)) {
+        offsets[partition.promotedGroupOrdinal(g) + 1] = groupSizes[g];
       }
     }
-    for (int n = 0; n < numLargeGroups; n++) {
+    for (int n = 0; n < numPromotedGroups; n++) {
       offsets[n + 1] += offsets[n];
     }
-    int[] cursor = ArrayUtil.copyOfSubArray(offsets, 0, numLargeGroups);
+    int[] cursor = ArrayUtil.copyOfSubArray(offsets, 0, numPromotedGroups);
     for (int fieldOrd = 0; fieldOrd < fieldOrdCount; fieldOrd++) {
-      int node = largeGroupNode[fieldOrdToGroupOrd.get(fieldOrd)];
-      if (node != -1) {
-        flattened[cursor[node]++] = fieldOrd;
+      int g = fieldOrdToGroupOrd.get(fieldOrd);
+      if (partition.isPromoted(g)) {
+        flattened[cursor[partition.promotedGroupOrdinal(g)]++] = fieldOrd;
       }
     }
   }
 
   /**
    * Builds an HNSW graph of {@code nodeCount} nodes from {@code scorerSupplier}, or returns {@code
-   * null} for tiny segments where a full scan is cheaper (mirrors {@link
-   * org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsWriter}).
+   * null} for tiny segments where a full scan is cheaper.
    */
   private OnHeapHnswGraph maybeBuildGraph(int nodeCount, RandomVectorScorerSupplier scorerSupplier)
       throws IOException {
     if (shouldCreateGraph(tinySegmentsThreshold, nodeCount) == false) {
       return null;
     }
-    // During a merge with an executor and more than one worker, build the graph concurrently
-    // (matching Lucene99HnswVectorsWriter). Flush, and single-worker merges, build single-threaded.
+    // During a merge with an executor and more than one worker, build the graph concurrently.
+    // Flush, and single-worker merges, build single-threaded.
     if (activeMergeExecutor != null && activeMergeWorkers > 1) {
-      // getGraph() returns the empty, pre-sized OnHeapHnswGraph that the concurrent workers fill in.
+      // getGraph() returns the empty, pre-sized OnHeapHnswGraph that the concurrent workers fill
+      // in.
       OnHeapHnswGraph empty =
-          HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed, nodeCount)
+          HnswGraphBuilder.create(
+                  scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed, nodeCount)
               .getGraph();
       HnswConcurrentMergeBuilder concurrentBuilder =
           new HnswConcurrentMergeBuilder(
@@ -536,26 +553,42 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
     return builder.build(nodeCount);
   }
 
+  /** The chosen layout and, for HYBRID, the promoted-group partition that drives it. */
+  private record LayoutSelection(DedupLayoutMode mode, PromotedGroupPartition partition) {}
+
   /**
-   * Chooses {@link DedupLayoutMode#PLAIN} when the field has no effective de-duplication (one
-   * distinct vector per document), otherwise {@link DedupLayoutMode#DEDUP}.
+   * Chooses the per-field layout:
+   *
+   * <ul>
+   *   <li>PLAIN when the field has no effective de-duplication (one distinct vector per document),
+   *       or when HYBRID is enabled but no group exceeds the threshold (nothing to promote).
+   *   <li>HYBRID when enabled (threshold > 0) and at least one group is big enough to promote.
+   *   <li>DEDUP otherwise.
+   * </ul>
    */
-  private static DedupLayoutMode selectMode(int distinctGroupsReferenced, int fieldOrdCount) {
-    return distinctGroupsReferenced == fieldOrdCount
-        ? DedupLayoutMode.PLAIN
-        : DedupLayoutMode.DEDUP;
+  private LayoutSelection selectMode(GroupSizes groupSizes, int fieldOrdCount) {
+    if (groupSizes.distinctGroups() == fieldOrdCount) {
+      return new LayoutSelection(DedupLayoutMode.PLAIN, null);
+    }
+    if (hybridGroupThreshold > 0) {
+      PromotedGroupPartition partition =
+          partitionPromotedGroups(groupSizes.sizes(), hybridGroupThreshold);
+      return partition.numPromotedGroups() == 0
+          ? new LayoutSelection(DedupLayoutMode.PLAIN, null)
+          : new LayoutSelection(DedupLayoutMode.HYBRID, partition);
+    }
+    return new LayoutSelection(DedupLayoutMode.DEDUP, null);
   }
 
   /**
    * Whether an HNSW graph is worth building for a segment with {@code numNodes} distinct vectors,
-   * given the tiny-segments threshold {@code k}. Mirrors {@code
-   * Lucene99HnswVectorsWriter#shouldCreateGraph}: {@code k <= 0} always builds; otherwise a graph
-   * is built only if it would visit fewer nodes than a full scan.
+   * given the tiny-segments threshold {@code k}: {@code k <= 0} always builds; otherwise a graph is
+   * built only if it would visit fewer nodes than a full scan.
    */
   private static boolean shouldCreateGraph(int k, int numNodes) {
-    // TODO: k is reused as-is from the per-document Lucene99HnswVectorsWriter, but here nodes are
-    //  distinct vectors, not documents. Revisit whether the threshold should scale with the
-    //  distinct-vector count (e.g. many docs but few distinct vectors).
+    // TODO: k is reused as-is from the per-document threshold, but here nodes are distinct vectors,
+    //  not documents. Revisit whether the threshold should scale with the distinct-vector count
+    //  (e.g. many docs but few distinct vectors).
     if (k <= 0) {
       return true;
     }
@@ -563,17 +596,12 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
     return numNodes > expectedVisitedNodes && expectedVisitedNodes > 0;
   }
 
-  private DedupVectorValues getDedupVectorValues(FieldInfo fieldInfo) throws IOException {
-    KnnVectorValues values =
-        switch (fieldInfo.getVectorEncoding()) {
-          case BYTE -> flatVectorsReader.getByteVectorValues(fieldInfo.name);
-          case FLOAT16 -> flatVectorsReader.getFloat16VectorValues(fieldInfo.name);
-          case FLOAT32 -> flatVectorsReader.getFloatVectorValues(fieldInfo.name);
-        };
-    if (values instanceof DedupVectorValues dedupValues) {
-      return dedupValues;
-    }
-    return null;
+  private KnnVectorValues getVectorValues(FieldInfo fieldInfo) throws IOException {
+    return switch (fieldInfo.getVectorEncoding()) {
+      case BYTE -> flatVectorsReader.getByteVectorValues(fieldInfo.name);
+      case FLOAT16 -> flatVectorsReader.getFloat16VectorValues(fieldInfo.name);
+      case FLOAT32 -> flatVectorsReader.getFloatVectorValues(fieldInfo.name);
+    };
   }
 
   /**
@@ -602,8 +630,7 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
 
   /**
    * Writes the graph's neighbor lists (in group-ordinal space) into {@code graphData} and returns
-   * the per-level byte length of each node's list. Neighbors are sorted and delta-encoded exactly
-   * as {@link org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsWriter}
+   * the per-level byte length of each node's list. Neighbors are sorted and delta-encoded.
    */
   private int[][] writeGraph(OnHeapHnswGraph graph) throws IOException {
     if (graph == null) {
@@ -649,6 +676,11 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
     meta.writeInt(0); // fieldOrdCount
   }
 
+  /**
+   * Writes PLAIN/DEDUP metadata: field number, group count, field-ordinal count, layout mode, graph
+   * offset/length, graph meta, and (DEDUP only) the {@code DistinctVectorPostings}. PLAIN writes no
+   * postings since its nodes are already documents.
+   */
   private void writeMeta(
       FieldInfo field,
       DedupLayoutMode mode,
@@ -717,7 +749,8 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
     meta.writeLong(start);
     meta.writeVInt(DIRECT_MONOTONIC_BLOCK_SHIFT);
     DirectMonotonicWriter memoryOffsetsWriter =
-        DirectMonotonicWriter.getInstance(meta, graphData, valueCount, DIRECT_MONOTONIC_BLOCK_SHIFT);
+        DirectMonotonicWriter.getInstance(
+            meta, graphData, valueCount, DIRECT_MONOTONIC_BLOCK_SHIFT);
     long cumulativeOffsetSum = 0;
     for (int[] levelOffsets : graphLevelNodeOffsets) {
       for (int v : levelOffsets) {
@@ -730,9 +763,9 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
   }
 
   /**
-   * Writes a {@code DistinctVectorPostings} block: a monotonic offsets table ({@code
-   * numEntries + 1}) followed by the flattened field ordinals. Used for DEDUP (keyed by group
-   * ordinal) and the large-group portion of HYBRID (keyed by large-group node ordinal).
+   * Writes a {@code DistinctVectorPostings} block: a monotonic offsets table ({@code numEntries +
+   * 1}) followed by the flattened field ordinals. Used for DEDUP (keyed by group ordinal) and the
+   * promoted-group portion of HYBRID (keyed by promoted-group ordinal).
    */
   private void writePostings(int numEntries, int[] offsets, int[] flattenedFieldOrds)
       throws IOException {
@@ -763,10 +796,11 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
    *
    * <ol>
    *   <li>graph meta (over {@code nodeCount} level-0 nodes)
-   *   <li>{@code numLargeGroups}, {@code numSmallDocs}
+   *   <li>{@code numPromotedGroups}, {@code numSmallDocs}
    *   <li>{@code nodeToGroupOrd} block (dense int in {@code graphData}): maps each node to a
    *       group-view ordinal for scoring
-   *   <li>large-group postings block (offsets + flattened field ords), keyed by large-group node
+   *   <li>promoted-group postings block (offsets + flattened field ords), keyed by promoted-group
+   *       ordinal
    *   <li>small-node field-ordinal block (dense int in {@code graphData}): one field ordinal per
    *       small-group doc node
    * </ol>
@@ -776,14 +810,14 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
       int groupCount,
       int fieldOrdCount,
       int nodeCount,
-      int numLargeGroups,
+      int numPromotedGroups,
       int numSmallDocs,
       long graphDataOffset,
       long graphDataLength,
       HnswGraph graph,
       int[][] graphLevelNodeOffsets,
       int[] nodeToGroupOrd,
-      int[] largeGroupOffsets,
+      int[] promotedGroupOffsets,
       int[] flattenedFieldOrds,
       int[] smallNodeFieldOrd)
       throws IOException {
@@ -794,24 +828,34 @@ final class DedupHnswVectorsWriter extends KnnVectorsWriter {
     meta.writeVLong(graphDataOffset);
     meta.writeVLong(graphDataLength);
 
-    // numLargeGroups/numSmallDocs come before the graph meta so the reader knows the level-0 node
-    // count (numLargeGroups + numSmallDocs) while parsing the graph meta.
-    meta.writeInt(numLargeGroups);
+    // numPromotedGroups/numSmallDocs come before the graph meta so the reader knows the level-0
+    // node
+    // count (numPromotedGroups + numSmallDocs) while parsing the graph meta.
+    meta.writeInt(numPromotedGroups);
     meta.writeInt(numSmallDocs);
 
     // Graph meta over the hybrid node space (level 0 has nodeCount nodes).
     writeGraphMeta(graph, nodeCount, graphLevelNodeOffsets);
 
-    // nodeToGroupOrd: dense int, nodeCount entries.
+    // nodeToGroupOrd: bit-packed, nodeCount entries.
+    int maxGroupOrd = 0;
+    for (int groupOrd : nodeToGroupOrd) {
+      maxGroupOrd = Math.max(maxGroupOrd, groupOrd);
+    }
+    int nodeToGroupOrdBitsPerValue = DirectWriter.bitsRequired(maxGroupOrd);
     long nodeToGroupStart = graphData.getFilePointer();
     meta.writeLong(nodeToGroupStart);
+    DirectWriter nodeToGroupWriter =
+        DirectWriter.getInstance(graphData, nodeCount, nodeToGroupOrdBitsPerValue);
     for (int groupOrd : nodeToGroupOrd) {
-      graphData.writeInt(groupOrd);
+      nodeToGroupWriter.add(groupOrd);
     }
+    nodeToGroupWriter.finish();
     meta.writeLong(graphData.getFilePointer() - nodeToGroupStart);
+    meta.writeInt(nodeToGroupOrdBitsPerValue);
 
-    // Large-group postings, keyed by large-group node ordinal (first numLargeGroups nodes).
-    writePostings(numLargeGroups, largeGroupOffsets, flattenedFieldOrds);
+    // Promoted-group postings, keyed by promoted-group ordinal (first numPromotedGroups nodes).
+    writePostings(numPromotedGroups, promotedGroupOffsets, flattenedFieldOrds);
 
     // Small-node field ordinals: dense int, numSmallDocs entries.
     long smallNodeStart = graphData.getFilePointer();

@@ -37,6 +37,7 @@ import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
@@ -198,107 +199,119 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
   @Override
   public void search(String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
-    FieldEntry entry = getFieldEntry(field, VectorEncoding.FLOAT32);
-    DedupVectorValues values = (DedupVectorValues) flatVectorsReader.getFloatVectorValues(field);
-    DedupFlatVectorsScorer scorer =
-        (DedupFlatVectorsScorer) flatVectorsReader.getFlatVectorScorer(field);
-    var similarity = fieldInfos.fieldInfo(field).getVectorSimilarityFunction();
-    if (entry.mode == DedupLayoutMode.PLAIN) {
-      searchPlainGraph(
-          entry,
-          scorer.getRandomVectorScorer(similarity, (KnnVectorValues) values, target),
-          knnCollector,
-          acceptDocs);
-    } else if (entry.mode == DedupLayoutMode.HYBRID) {
-      int[] nodeToGroupOrd = readNodeToGroupOrd(entry);
-      searchHybridGraph(
-          entry,
-          values,
-          scorer.getHybridRandomVectorScorer(similarity, values, target, nodeToGroupOrd),
-          nodeToGroupOrd,
-          knnCollector,
-          acceptDocs);
-    } else {
-      searchGroupGraph(
-          entry,
-          values,
-          scorer.getGroupRandomVectorScorer(similarity, values, target),
-          knnCollector,
-          acceptDocs);
-    }
+    KnnVectorValues values = flatVectorsReader.getFloatVectorValues(field);
+    searchField(
+        field,
+        VectorEncoding.FLOAT32,
+        values,
+        (scorer, similarity, dedupValues, nodeToGroupOrd) ->
+            nodeToGroupOrd == null
+                ? scorer.getGroupRandomVectorScorer(similarity, dedupValues, target)
+                : scorer.getHybridRandomVectorScorer(
+                    similarity, dedupValues, target, nodeToGroupOrd),
+        (scorer, similarity) -> scorer.getRandomVectorScorer(similarity, values, target),
+        knnCollector,
+        acceptDocs);
   }
 
   @Override
   public void search(String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
-    FieldEntry entry = getFieldEntry(field, VectorEncoding.BYTE);
-    DedupVectorValues values = (DedupVectorValues) flatVectorsReader.getByteVectorValues(field);
-    DedupFlatVectorsScorer scorer =
-        (DedupFlatVectorsScorer) flatVectorsReader.getFlatVectorScorer(field);
-    var similarity = fieldInfos.fieldInfo(field).getVectorSimilarityFunction();
-    if (entry.mode == DedupLayoutMode.PLAIN) {
-      searchPlainGraph(
-          entry,
-          scorer.getRandomVectorScorer(similarity, (KnnVectorValues) values, target),
-          knnCollector,
-          acceptDocs);
-    } else if (entry.mode == DedupLayoutMode.HYBRID) {
-      int[] nodeToGroupOrd = readNodeToGroupOrd(entry);
-      searchHybridGraph(
-          entry,
-          values,
-          scorer.getHybridRandomVectorScorer(similarity, values, target, nodeToGroupOrd),
-          nodeToGroupOrd,
-          knnCollector,
-          acceptDocs);
-    } else {
-      searchGroupGraph(
-          entry,
-          values,
-          scorer.getGroupRandomVectorScorer(similarity, values, target),
-          knnCollector,
-          acceptDocs);
-    }
+    KnnVectorValues values = flatVectorsReader.getByteVectorValues(field);
+    searchField(
+        field,
+        VectorEncoding.BYTE,
+        values,
+        (scorer, similarity, dedupValues, nodeToGroupOrd) ->
+            nodeToGroupOrd == null
+                ? scorer.getGroupRandomVectorScorer(similarity, dedupValues, target)
+                : scorer.getHybridRandomVectorScorer(
+                    similarity, dedupValues, target, nodeToGroupOrd),
+        (scorer, similarity) -> scorer.getRandomVectorScorer(similarity, values, target),
+        knnCollector,
+        acceptDocs);
   }
 
   @Override
   public void search(String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
-    FieldEntry entry = getFieldEntry(field, VectorEncoding.FLOAT16);
-    DedupVectorValues values = (DedupVectorValues) flatVectorsReader.getFloat16VectorValues(field);
+    KnnVectorValues values = flatVectorsReader.getFloat16VectorValues(field);
+    searchField(
+        field,
+        VectorEncoding.FLOAT16,
+        values,
+        (scorer, similarity, dedupValues, nodeToGroupOrd) ->
+            nodeToGroupOrd == null
+                ? scorer.getGroupRandomVectorScorer(similarity, dedupValues, target)
+                : scorer.getHybridRandomVectorScorer(
+                    similarity, dedupValues, target, nodeToGroupOrd),
+        (scorer, similarity) -> scorer.getRandomVectorScorer(similarity, values, target),
+        knnCollector,
+        acceptDocs);
+  }
+
+  /** Builds the group/hybrid (node-space) scorer for a given target type. */
+  @FunctionalInterface
+  private interface GroupScorerFactory {
+    RandomVectorScorer create(
+        DedupFlatVectorsScorer scorer,
+        VectorSimilarityFunction similarity,
+        DedupVectorValues dedupValues,
+        NodeToGroupOrd nodeToGroupOrd)
+        throws IOException;
+  }
+
+  /** Builds the plain (document-space) scorer for a given target type. */
+  @FunctionalInterface
+  private interface PlainScorerFactory {
+    RandomVectorScorer create(DedupFlatVectorsScorer scorer, VectorSimilarityFunction similarity)
+        throws IOException;
+  }
+
+  /**
+   * Shared search dispatch across float/byte/float16 targets: resolves the field's values and
+   * scorer, then routes to the PLAIN, HYBRID, or GROUP graph based on the stored layout. The
+   * target-type-specific scorer construction is supplied by the two factories.
+   */
+  private void searchField(
+      String field,
+      VectorEncoding encoding,
+      KnnVectorValues values,
+      GroupScorerFactory groupScorerFactory,
+      PlainScorerFactory plainScorerFactory,
+      KnnCollector knnCollector,
+      AcceptDocs acceptDocs)
+      throws IOException {
+    FieldEntry entry = getFieldEntry(field, encoding);
+    DedupVectorValues dedupValues = (DedupVectorValues) values;
     DedupFlatVectorsScorer scorer =
         (DedupFlatVectorsScorer) flatVectorsReader.getFlatVectorScorer(field);
     var similarity = fieldInfos.fieldInfo(field).getVectorSimilarityFunction();
     if (entry.mode == DedupLayoutMode.PLAIN) {
       searchPlainGraph(
-          entry,
-          scorer.getRandomVectorScorer(similarity, (KnnVectorValues) values, target),
-          knnCollector,
-          acceptDocs);
+          entry, plainScorerFactory.create(scorer, similarity), knnCollector, acceptDocs);
     } else if (entry.mode == DedupLayoutMode.HYBRID) {
-      int[] nodeToGroupOrd = readNodeToGroupOrd(entry);
+      NodeToGroupOrd nodeToGroupOrd = readNodeToGroupOrd(entry);
       searchHybridGraph(
           entry,
-          values,
-          scorer.getHybridRandomVectorScorer(similarity, values, target, nodeToGroupOrd),
+          dedupValues,
+          groupScorerFactory.create(scorer, similarity, dedupValues, nodeToGroupOrd),
           nodeToGroupOrd,
           knnCollector,
           acceptDocs);
     } else {
       searchGroupGraph(
           entry,
-          values,
-          scorer.getGroupRandomVectorScorer(similarity, values, target),
+          dedupValues,
+          groupScorerFactory.create(scorer, similarity, dedupValues, null),
           knnCollector,
           acceptDocs);
     }
   }
 
   /**
-   * Runs a vanilla HNSW search over a document-space graph (PLAIN mode). Node ordinals are field
-   * ordinals, so results map directly to documents via the scorer's {@code ordToDoc}; no group
-   * expansion or group-level accept filtering is needed. Mirrors {@link
-   * org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader}'s search.
+   * PLAIN search: a vanilla HNSW search whose nodes are field ordinals, mapped to docs by the
+   * scorer's {@code ordToDoc}.
    */
   private void searchPlainGraph(
       FieldEntry entry, RandomVectorScorer scorer, KnnCollector knnCollector, AcceptDocs acceptDocs)
@@ -321,7 +334,6 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
     if (doHnsw) {
       HnswGraphSearcher.search(scorer, collector, getGraph(entry), acceptedOrds, filteredDocCount);
     } else {
-      // Exhaustive: score every vector (document) directly.
       for (int ord = 0; ord < numVectors; ord++) {
         if (acceptedOrds != null && acceptedOrds.get(ord) == false) {
           continue;
@@ -336,14 +348,9 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
   }
 
   /**
-   * Runs an HNSW search over the group graph, then expands each collected group ordinal to all the
-   * documents that reference it. The {@code groupScorer} operates in group-ordinal space (its
-   * {@code maxOrd()} is the number of distinct vectors and {@code score(groupOrd)} scores the query
-   * against the distinct vector).
-   *
-   * <p>Groups are <b>not</b> pre-filtered against {@code acceptDocs}; traversal selects groups
-   * purely by similarity, and {@code acceptDocs} is applied lazily when a selected group is expanded
-   * to its documents. This avoids scanning every group's posting list up front.
+   * GROUP search: HNSW over the group graph, then expands each matched group ordinal to its
+   * referencing documents. Groups are not pre-filtered against {@code acceptDocs}; filtering is
+   * applied lazily at expansion time to avoid scanning every group's postings up front.
    */
   private void searchGroupGraph(
       FieldEntry entry,
@@ -358,10 +365,6 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
 
     KnnVectorValues fieldView = (KnnVectorValues) values;
     DistinctVectorPostings postings = new DistinctVectorPostings(entry, graphData);
-
-    // Do NOT pre-filter groups against acceptDocs: scanning every group's postings up front wastes
-    // CPU. Instead every group is traversable in the graph, and acceptDocs is applied only when a
-    // selected group is expanded to its documents (see DedupExpandingCollector).
     Bits acceptedDocs = acceptDocs.bits();
 
     KnnCollector expandingCollector =
@@ -371,8 +374,6 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
     int graphSize = entry.groupCount;
 
     int numGroups = groupScorer.maxOrd();
-    // Only use HNSW when a graph was actually built (tiny segments skip it, see the writer). When
-    // present, the graph has one node per group so graph.size() == groupCount.
     boolean hasGraph = entry.graphDataLength > 0;
     boolean doHnsw = hasGraph && knnCollector.k() < numGroups;
     int unfilteredVisit = HnswGraphSearcher.expectedVisitedNodes(knnCollector.k(), graphSize);
@@ -383,7 +384,6 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
     if (doHnsw) {
       HnswGraphSearcher.search(groupScorer, expandingCollector, graph, null, graphSize);
     } else {
-      // Exhaustive: score every group and expand.
       for (int g = 0; g < numGroups; g++) {
         if (knnCollector.earlyTerminated()) {
           break;
@@ -396,30 +396,26 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
   }
 
   /** Loads the HYBRID {@code nodeToGroupOrd} map (one group-view ordinal per graph node). */
-  private int[] readNodeToGroupOrd(FieldEntry entry) throws IOException {
-    int nodeCount = entry.graphNodeCount;
-    int[] nodeToGroupOrd = new int[nodeCount];
-    RandomAccessInput in =
-        graphData.randomAccessSlice(entry.nodeToGroupOrdOffset, entry.nodeToGroupOrdLength);
-    for (int node = 0; node < nodeCount; node++) {
-      nodeToGroupOrd[node] = in.readInt((long) node * Integer.BYTES);
-    }
-    return nodeToGroupOrd;
+  private NodeToGroupOrd readNodeToGroupOrd(FieldEntry entry) throws IOException {
+    return new NodeToGroupOrd.NodeToGroupOrdOffHeap(
+        graphData,
+        entry.nodeToGroupOrdOffset,
+        entry.nodeToGroupOrdLength,
+        entry.nodeToGroupOrdBitsPerValue,
+        entry.graphNodeCount);
   }
 
   /**
-   * Runs an HNSW search over a HYBRID graph, then maps each collected node to documents. Nodes in
-   * {@code [0, numLargeGroups)} are promoted large groups and expand (via the large-group postings)
-   * to all their referencing documents; nodes in {@code [numLargeGroups, nodeCount)} are individual
-   * small-group documents and map to a single document. Node scoring is handled by {@code
-   * hybridScorer} (node ordinal space); nodes are not pre-filtered against {@code acceptDocs} —
-   * traversal selects by similarity and {@code acceptDocs} is applied lazily at expansion time.
+   * HYBRID search: HNSW over the hybrid node space, then maps each matched node to documents.
+   * Promoted-group nodes ({@code [0, numPromotedGroups)}) expand to all referencing documents;
+   * small-group nodes map to a single document. Like GROUP, {@code acceptDocs} is applied lazily at
+   * expansion.
    */
   private void searchHybridGraph(
       FieldEntry entry,
       DedupVectorValues values,
       RandomVectorScorer hybridScorer,
-      int[] nodeToGroupOrd,
+      NodeToGroupOrd nodeToGroupOrd,
       KnnCollector knnCollector,
       AcceptDocs acceptDocs)
       throws IOException {
@@ -429,9 +425,6 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
 
     KnnVectorValues fieldView = (KnnVectorValues) values;
     HybridPostings postings = new HybridPostings(entry, graphData);
-    // Do NOT pre-filter nodes against acceptDocs: for large-group nodes this would scan every
-    // posting up front, wasting CPU. Every node is traversable; acceptDocs is applied only when a
-    // selected node is expanded/mapped to documents (see HybridExpandingCollector).
     Bits acceptedDocs = acceptDocs.bits();
 
     KnnCollector expandingCollector =
@@ -528,10 +521,8 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
   }
 
   /**
-   * A {@link KnnCollector} decorator that, on {@code collect(groupOrd, score)}, expands the group
-   * ordinal to all its referencing documents (via {@link DistinctVectorPostings}) and collects each
-   * accepted document with the group's score. Group ordinals map to documents through the flat
-   * reader's {@code ordToDoc}.
+   * On {@code collect(groupOrd, score)}, expands the group to its referencing documents (via {@link
+   * DistinctVectorPostings}) and collects each accepted document with the group's score.
    */
   private static final class DedupExpandingCollector extends KnnCollector.Decorator {
     private final DistinctVectorPostings postings;
@@ -551,8 +542,8 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
 
     @Override
     public boolean collect(int groupOrd, float similarity) {
-      // Once the top-k is full, a group whose (shared) score is below the current competitive
-      // threshold cannot contribute any result, so skip expanding/filtering its postings entirely.
+      // Below the competitive threshold the group cannot contribute, so skip expanding its
+      // postings.
       if (similarity < collector.minCompetitiveSimilarity()) {
         return false;
       }
@@ -575,10 +566,9 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
   }
 
   /**
-   * A {@link KnnCollector} decorator for HYBRID results. On {@code collect(node, score)}: a
-   * large-group node ({@code node < numLargeGroups}) is expanded to all referencing documents via
-   * the large-group postings; a small-group node maps to its single document via {@code
-   * smallNodeFieldOrd}. Field ordinals map to documents through the flat reader's {@code ordToDoc}.
+   * HYBRID variant of {@link DedupExpandingCollector}: a promoted-group node ({@code node <
+   * numPromotedGroups}) expands via the promoted-group postings; a small-group node maps to its
+   * single document via {@code smallNodeFieldOrd}.
    */
   private static final class HybridExpandingCollector extends KnnCollector.Decorator {
     private final FieldEntry entry;
@@ -601,14 +591,13 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
 
     @Override
     public boolean collect(int node, float similarity) {
-      // Once the top-k is full, a node whose (shared) score is below the current competitive
-      // threshold cannot contribute any result, so skip expanding/filtering it entirely.
+      // Below the competitive threshold the node cannot contribute, so skip expanding it.
       if (similarity < collector.minCompetitiveSimilarity()) {
         return false;
       }
       boolean collectedAny = false;
       try {
-        if (node < entry.numLargeGroups) {
+        if (node < entry.numPromotedGroups) {
           int start = postings.offset(node);
           int end = postings.offset(node + 1);
           for (int i = start; i < end; i++) {
@@ -618,7 +607,7 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
             }
           }
         } else {
-          int fieldOrd = postings.smallNodeFieldOrd(node - entry.numLargeGroups);
+          int fieldOrd = postings.smallNodeFieldOrd(node - entry.numPromotedGroups);
           int docId = fieldView.ordToDoc(fieldOrd);
           if (acceptedDocs == null || acceptedDocs.get(docId)) {
             collectedAny = super.collect(docId, similarity);
@@ -632,10 +621,9 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
   }
 
   /**
-   * HYBRID posting store. The large (promoted) groups' documents are stored exactly like {@link
-   * DistinctVectorPostings} (a monotonic {@code offsets} table keyed by large-group node ordinal
-   * plus a flattened array of field ordinals). The small-group document nodes carry a single field
-   * ordinal each, stored in a dense array indexed by {@code node - numLargeGroups}.
+   * HYBRID posting store. Promoted-group documents use the same offsets+flattened layout as {@link
+   * DistinctVectorPostings} (keyed by promoted-group ordinal); small-group nodes each carry one
+   * field ordinal in a dense array indexed by {@code node - numPromotedGroups}.
    */
   private static final class HybridPostings {
     private final DirectMonotonicReader offsets;
@@ -648,12 +636,11 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
       this.offsets = DirectMonotonicReader.getInstance(entry.groupOffsetsMeta, offsetsSlice);
       this.data = graphData.randomAccessSlice(entry.fieldOrdsDataOffset, entry.fieldOrdsDataLength);
       this.smallNodeData =
-          graphData.randomAccessSlice(
-              entry.smallNodeFieldOrdOffset, entry.smallNodeFieldOrdLength);
+          graphData.randomAccessSlice(entry.smallNodeFieldOrdOffset, entry.smallNodeFieldOrdLength);
     }
 
-    int offset(int largeGroupNode) {
-      return (int) offsets.get(largeGroupNode);
+    int offset(int promotedGroupOrdinal) {
+      return (int) offsets.get(promotedGroupOrdinal);
     }
 
     int fieldOrd(int index) throws IOException {
@@ -666,11 +653,9 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
   }
 
   /**
-   * Posting list keyed by group ordinal (distinct vector): each group's slice lists the field
-   * ordinals (documents) that reference that distinct vector. This is the inverse of {@code
-   * fieldOrdToGroupOrd}, stored in the data file as a monotonic {@code offsets} table plus a
-   * flattened array of field ordinals, where {@code offsets[g]..offsets[g+1]} delimits group {@code
-   * g}'s postings.
+   * Posting list keyed by group ordinal: each group's slice lists the field ordinals (documents)
+   * referencing that distinct vector. Stored as a monotonic {@code offsets} table plus a flattened
+   * field-ordinal array, where {@code offsets[g]..offsets[g+1]} delimits group {@code g}.
    */
   private static final class DistinctVectorPostings {
     private final DirectMonotonicReader offsets;
@@ -706,10 +691,11 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
       long groupOffsetsLength,
       long fieldOrdsDataOffset,
       long fieldOrdsDataLength,
-      int numLargeGroups,
+      int numPromotedGroups,
       int numSmallDocs,
       long nodeToGroupOrdOffset,
       long nodeToGroupOrdLength,
+      int nodeToGroupOrdBitsPerValue,
       long smallNodeFieldOrdOffset,
       long smallNodeFieldOrdLength,
       int M,
@@ -749,6 +735,7 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
             0,
             0,
             0,
+            0,
             new int[0][],
             null,
             0,
@@ -760,15 +747,16 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
       long graphDataOffset = input.readVLong();
       long graphDataLength = input.readVLong();
 
-      // For HYBRID, numLargeGroups/numSmallDocs precede the graph meta, so the level-0 node count
-      // (numLargeGroups + numSmallDocs) is known while parsing it.
-      int numLargeGroups = 0;
+      // For HYBRID, numPromotedGroups/numSmallDocs precede the graph meta, so the level-0 node
+      // count
+      // (numPromotedGroups + numSmallDocs) is known while parsing it.
+      int numPromotedGroups = 0;
       int numSmallDocs = 0;
       int graphNodeCount;
       if (mode == DedupLayoutMode.HYBRID) {
-        numLargeGroups = input.readInt();
+        numPromotedGroups = input.readInt();
         numSmallDocs = input.readInt();
-        graphNodeCount = numLargeGroups + numSmallDocs;
+        graphNodeCount = numPromotedGroups + numSmallDocs;
       } else {
         // PLAIN: one node per document (groupCount == fieldOrdCount). DEDUP: one node per group.
         graphNodeCount = groupCount;
@@ -810,7 +798,8 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
 
       // Postings. DEDUP: offsets (monotonic, groupCount + 1) then flattened field ordinals keyed by
       // group ordinal. HYBRID: a nodeToGroupOrd map (dense int, graphNodeCount), then the
-      // large-group postings (offsets monotonic numLargeGroups + 1, then flattened field ordinals),
+      // promoted-group postings (offsets monotonic numPromotedGroups + 1, then flattened field
+      // ordinals),
       // then the small-node field ordinals (dense int, numSmallDocs). PLAIN: none.
       long groupOffsetsOffset = 0;
       DirectMonotonicReader.Meta groupOffsetsMeta = null;
@@ -819,6 +808,7 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
       long fieldOrdsDataLength = 0;
       long nodeToGroupOrdOffset = 0;
       long nodeToGroupOrdLength = 0;
+      int nodeToGroupOrdBitsPerValue = 0;
       long smallNodeFieldOrdOffset = 0;
       long smallNodeFieldOrdLength = 0;
       if (mode == DedupLayoutMode.DEDUP) {
@@ -832,10 +822,11 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
       } else if (mode == DedupLayoutMode.HYBRID) {
         nodeToGroupOrdOffset = input.readLong();
         nodeToGroupOrdLength = input.readLong();
+        nodeToGroupOrdBitsPerValue = input.readInt();
         groupOffsetsOffset = input.readLong();
         int groupOffsetsBlockShift = input.readVInt();
         groupOffsetsMeta =
-            DirectMonotonicReader.loadMeta(input, numLargeGroups + 1L, groupOffsetsBlockShift);
+            DirectMonotonicReader.loadMeta(input, numPromotedGroups + 1L, groupOffsetsBlockShift);
         groupOffsetsLength = input.readLong();
         fieldOrdsDataOffset = input.readLong();
         fieldOrdsDataLength = input.readLong();
@@ -856,10 +847,11 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
           groupOffsetsLength,
           fieldOrdsDataOffset,
           fieldOrdsDataLength,
-          numLargeGroups,
+          numPromotedGroups,
           numSmallDocs,
           nodeToGroupOrdOffset,
           nodeToGroupOrdLength,
+          nodeToGroupOrdBitsPerValue,
           smallNodeFieldOrdOffset,
           smallNodeFieldOrdLength,
           M,
@@ -872,11 +864,7 @@ final class DedupHnswVectorsReader extends KnnVectorsReader implements HnswGraph
     }
   }
 
-  /**
-   * Off-heap HNSW graph over group ordinals; a direct adaptation of {@code
-   * Lucene99HnswVectorsReader.OffHeapHnswGraph}, reading delta-encoded neighbor lists from the data
-   * file.
-   */
+  /** Off-heap HNSW graph reading delta-encoded neighbor lists from the data file. */
   private static final class OffHeapHnswGraph extends HnswGraph {
     private final IndexInput dataIn;
     private final int[][] nodesByLevel;

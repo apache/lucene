@@ -236,8 +236,7 @@ public class TestDedupHnswVectorsFormat extends BaseKnnVectorsFormatTestCase {
     // tinySegmentsThreshold=0 forces graph construction; hybridGroupThreshold enables HYBRID.
     // (numMergeWorkers=1 with a null executor is allowed by the format.)
     Codec codec =
-        TestUtil.alwaysKnnVectorsFormat(
-            new DedupHnswVectorsFormat(16, 100, 1, null, 0, threshold));
+        TestUtil.alwaysKnnVectorsFormat(new DedupHnswVectorsFormat(16, 100, 1, null, 0, threshold));
 
     try (Directory dir = newDirectory();
         var w =
@@ -289,7 +288,9 @@ public class TestDedupHnswVectorsFormat extends BaseKnnVectorsFormatTestCase {
           }
         }
         assertTrue(
-            "expected large group to fan out to " + copiesPerLargeGroup + " docs, got "
+            "expected large group to fan out to "
+                + copiesPerLargeGroup
+                + " docs, got "
                 + exactMatches,
             exactMatches >= copiesPerLargeGroup);
 
@@ -307,8 +308,8 @@ public class TestDedupHnswVectorsFormat extends BaseKnnVectorsFormatTestCase {
    * against {@code acceptDocs} (the HNSW beam keeps only the top-k <b>groups</b> by similarity and
    * {@code acceptDocs} is applied lazily at expansion), a selective filter whose accepted documents
    * live in lower-scoring groups can be pruned by the beam before expansion. This test measures the
-   * recall of filtered KNN against brute-force ground truth and asserts a (loose) lower bound so the
-   * number is tracked rather than silently regressing.
+   * recall of filtered KNN against brute-force ground truth and asserts a (loose) lower bound so
+   * the number is tracked rather than silently regressing.
    */
   public void testFilteredRecallDedup() throws Exception {
     int dim = 16;
