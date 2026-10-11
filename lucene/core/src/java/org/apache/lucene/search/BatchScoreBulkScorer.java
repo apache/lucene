@@ -28,9 +28,13 @@ class BatchScoreBulkScorer extends BulkScorer {
   private final SimpleScorable scorable = new SimpleScorable();
   private final DocAndFloatFeatureBuffer buffer = new DocAndFloatFeatureBuffer();
   private final Scorer scorer;
+  private final boolean applyMinCompetitiveScore;
 
-  BatchScoreBulkScorer(Scorer scorer) {
+  BatchScoreBulkScorer(Scorer scorer, ScoreMode scoreMode) {
     this.scorer = scorer;
+    // Exhaustive collection (COMPLETE*) must visit every match even if a nested
+    // collector calls setMinCompetitiveScore (GITHUB#15239).
+    this.applyMinCompetitiveScore = scoreMode.isExhaustive() == false;
   }
 
   @Override
@@ -40,7 +44,9 @@ class BatchScoreBulkScorer extends BulkScorer {
     }
 
     collector.setScorer(scorable);
-    scorer.setMinCompetitiveScore(scorable.minCompetitiveScore);
+    if (applyMinCompetitiveScore) {
+      scorer.setMinCompetitiveScore(scorable.minCompetitiveScore);
+    }
 
     if (scorer.docID() < min) {
       scorer.iterator().advance(min);
@@ -51,11 +57,13 @@ class BatchScoreBulkScorer extends BulkScorer {
         scorer.nextDocsAndScores(max, acceptDocs, buffer)) {
       for (int i = 0, size = buffer.size; i < size; i++) {
         float score = scorable.score = buffer.features[i];
-        if (score >= scorable.minCompetitiveScore) {
+        if (applyMinCompetitiveScore == false || score >= scorable.minCompetitiveScore) {
           collector.collect(buffer.docs[i]);
         }
       }
-      scorer.setMinCompetitiveScore(scorable.minCompetitiveScore);
+      if (applyMinCompetitiveScore) {
+        scorer.setMinCompetitiveScore(scorable.minCompetitiveScore);
+      }
     }
 
     return scorer.docID();

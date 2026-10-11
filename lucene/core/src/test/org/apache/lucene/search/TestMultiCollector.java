@@ -25,11 +25,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field.Store;
+import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.DummyTotalHitCountCollector;
@@ -37,6 +41,65 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
 public class TestMultiCollector extends LuceneTestCase {
+
+  /**
+   * GITHUB#15239: wrapping TopScoreDocCollector in a COMPLETE SimpleCollector must still visit
+   * every match, even if the inner collector calls setMinCompetitiveScore.
+   */
+  public void testSimpleCollectorWrappingTopScoreDocCollector() throws Exception {
+    try (Directory dir = newDirectory();
+        RandomIndexWriter w = new RandomIndexWriter(random(), dir)) {
+      // The Document is deliberately reused and never cleared: document i ends up carrying
+      // bar0..bari, so "bar1" matches 999 documents, each with a different norm and therefore a
+      // different score. That is what makes the inner TopScoreDocCollector raise a competitive
+      // threshold part-way through collection.
+      final Document doc = new Document();
+      for (int i = 0; i < 1000; ++i) {
+        doc.add(new StringField("foo", "bar" + i, Store.NO));
+        w.addDocument(doc);
+      }
+      try (IndexReader reader = w.getReader()) {
+        // wrapWithAssertions must stay false: the collector below deliberately violates the
+        // Scorable#setMinCompetitiveScore contract (that is the whole point of the test), and
+        // AssertingScorer asserts that only TOP_SCORES may call it. Reader wrapping and
+        // intra-segment concurrency are still exercised.
+        final IndexSearcher searcher = newSearcher(reader, true, false, true);
+        final TopScoreDocCollector in = new TopScoreDocCollectorManager(1, 1).newCollector();
+        final AtomicInteger totalCalls = new AtomicInteger();
+        final Collector out =
+            new SimpleCollector() {
+              protected LeafCollector leafIn;
+
+              @Override
+              protected void doSetNextReader(LeafReaderContext context) throws IOException {
+                leafIn = in.getLeafCollector(context);
+              }
+
+              @Override
+              public void collect(int collectDoc) throws IOException {
+                int soFar = totalCalls.incrementAndGet();
+                if (soFar > 1) {
+                  leafIn.collect(collectDoc);
+                }
+              }
+
+              @Override
+              public void setScorer(Scorable scorer) throws IOException {
+                super.setScorer(scorer);
+                leafIn.setScorer(scorer);
+              }
+
+              @Override
+              public ScoreMode scoreMode() {
+                return ScoreMode.COMPLETE;
+              }
+            };
+        searcher.search(new TermQuery(new Term("foo", "bar1")), out);
+        assertEquals("not enough collect calls", 999, totalCalls.intValue());
+        assertEquals("not enough hits reported by inner collector", 998, in.getTotalHits());
+      }
+    }
+  }
 
   private static class TerminateAfterCollector extends FilterCollector {
 

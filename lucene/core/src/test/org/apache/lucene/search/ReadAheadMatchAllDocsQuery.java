@@ -78,7 +78,7 @@ public final class ReadAheadMatchAllDocsQuery extends Query {
             List<DocIdSetIterator> clauses =
                 Collections.singletonList(DocIdSetIterator.all(context.reader().maxDoc()));
             return new DenseConjunctionBulkScorer(
-                clauses, Collections.emptyList(), context.reader().maxDoc(), score());
+                clauses, Collections.emptyList(), context.reader().maxDoc(), score(), scoreMode);
           }
 
           @Override

@@ -47,7 +47,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
                 new BitSetIterator(clause3, clause3.approximateCardinality())),
             Collections.emptyList(),
             maxDoc,
-            0f);
+            0f,
+            ScoreMode.TOP_SCORES);
     // AssertingBulkScorer randomly splits the scored range into smaller ranges
     scorer = AssertingBulkScorer.wrap(random(), scorer, maxDoc);
     FixedBitSet result = new FixedBitSet(maxDoc);
@@ -76,7 +77,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
                 new BitSetIterator(clause3, clause3.approximateCardinality())),
             Collections.emptyList(),
             maxDoc,
-            0f);
+            0f,
+            ScoreMode.TOP_SCORES);
     CountingLeafCollector collector = new CountingLeafCollector();
     scorer.score(collector, null, 0, DocIdSetIterator.NO_MORE_DOCS);
     assertEquals(clause1.cardinality(), collector.count);
@@ -99,7 +101,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
                 new BitSetIterator(clause2, clause2.approximateCardinality())),
             Collections.emptyList(),
             maxDoc,
-            0f);
+            0f,
+            ScoreMode.TOP_SCORES);
     // AssertingBulkScorer randomly splits the scored range into smaller ranges
     scorer = AssertingBulkScorer.wrap(random(), scorer, maxDoc);
     FixedBitSet result = new FixedBitSet(maxDoc);
@@ -127,7 +130,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
                 new BitSetIterator(clause2, clause2.approximateCardinality())),
             Collections.emptyList(),
             maxDoc,
-            0f);
+            0f,
+            ScoreMode.TOP_SCORES);
     CountingLeafCollector collector = new CountingLeafCollector();
     scorer.score(collector, acceptDocs, 0, DocIdSetIterator.NO_MORE_DOCS);
     assertEquals(acceptDocs.cardinality(), collector.count);
@@ -148,7 +152,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
                 new BitSetIterator(clause2, clause2.approximateCardinality())),
             Collections.emptyList(),
             maxDoc,
-            0f);
+            0f,
+            ScoreMode.TOP_SCORES);
     // AssertingBulkScorer randomly splits the scored range into smaller ranges
     scorer = AssertingBulkScorer.wrap(random(), scorer, maxDoc);
     FixedBitSet result = new FixedBitSet(maxDoc);
@@ -176,7 +181,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
                 new BitSetIterator(clause2, clause2.approximateCardinality())),
             Collections.emptyList(),
             maxDoc,
-            0f);
+            0f,
+            ScoreMode.TOP_SCORES);
     CountingLeafCollector collector = new CountingLeafCollector();
     scorer.score(collector, null, 0, DocIdSetIterator.NO_MORE_DOCS);
     assertEquals(0, collector.count);
@@ -198,7 +204,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
                 new BitSetIterator(clause3, clause3.approximateCardinality())),
             Collections.emptyList(),
             maxDoc,
-            0f);
+            0f,
+            ScoreMode.TOP_SCORES);
     // AssertingBulkScorer randomly splits the scored range into smaller ranges
     scorer = AssertingBulkScorer.wrap(random(), scorer, maxDoc);
     FixedBitSet result = new FixedBitSet(maxDoc);
@@ -230,7 +237,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
                 new BitSetIterator(clause3, clause3.approximateCardinality())),
             Collections.emptyList(),
             maxDoc,
-            0f);
+            0f,
+            ScoreMode.TOP_SCORES);
     CountingLeafCollector collector = new CountingLeafCollector();
     scorer.score(collector, null, 0, DocIdSetIterator.NO_MORE_DOCS);
     assertEquals(expected.cardinality(), collector.count);
@@ -261,7 +269,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
                 new BitSetIterator(clause3, clause3.approximateCardinality())),
             Collections.emptyList(),
             maxDoc,
-            0f);
+            0f,
+            ScoreMode.TOP_SCORES);
     // AssertingBulkScorer randomly splits the scored range into smaller ranges
     scorer = AssertingBulkScorer.wrap(random(), scorer, maxDoc);
     FixedBitSet result = new FixedBitSet(maxDoc);
@@ -294,7 +303,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
                 new BitSetIterator(clause3, clause3.approximateCardinality())),
             Collections.emptyList(),
             maxDoc,
-            0f);
+            0f,
+            ScoreMode.TOP_SCORES);
     CountingLeafCollector collector = new CountingLeafCollector();
     scorer.score(collector, null, 0, DocIdSetIterator.NO_MORE_DOCS);
     assertEquals(expected.cardinality(), collector.count);
@@ -307,7 +317,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
             Collections.singletonList(DocIdSetIterator.all(maxDoc)),
             Collections.emptyList(),
             maxDoc,
-            0f);
+            0f,
+            ScoreMode.TOP_SCORES);
     // AssertingBulkScorer randomly splits the scored range into smaller ranges
     scorer = AssertingBulkScorer.wrap(random(), scorer, maxDoc);
     FixedBitSet result = new FixedBitSet(maxDoc);
@@ -334,7 +345,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
             Collections.singletonList(DocIdSetIterator.all(maxDoc)),
             Collections.emptyList(),
             maxDoc,
-            0f);
+            0f,
+            ScoreMode.TOP_SCORES);
     CountingLeafCollector collector = new CountingLeafCollector();
     scorer.score(collector, null, 0, DocIdSetIterator.NO_MORE_DOCS);
     assertEquals(maxDoc, collector.count);
@@ -347,7 +359,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
             Collections.singletonList(DocIdSetIterator.all(maxDoc)),
             Collections.emptyList(),
             maxDoc,
-            0f);
+            0f,
+            ScoreMode.TOP_SCORES);
     // AssertingBulkScorer randomly splits the scored range into smaller ranges
     scorer = AssertingBulkScorer.wrap(random(), scorer, maxDoc);
     FixedBitSet acceptDocs = new FixedBitSet(maxDoc);
@@ -378,7 +391,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
             Collections.singletonList(DocIdSetIterator.all(maxDoc)),
             Collections.emptyList(),
             maxDoc,
-            0f);
+            0f,
+            ScoreMode.TOP_SCORES);
     CountingLeafCollector collector = new CountingLeafCollector();
     scorer.score(collector, acceptDocs, 0, DocIdSetIterator.NO_MORE_DOCS);
     assertEquals(acceptDocs.cardinality(), collector.count);
@@ -396,7 +410,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
                 new BitSetIterator(clause1, clause1.approximateCardinality())),
             Collections.emptyList(),
             maxDoc,
-            0f);
+            0f,
+            ScoreMode.TOP_SCORES);
     // AssertingBulkScorer randomly splits the scored range into smaller ranges
     scorer = AssertingBulkScorer.wrap(random(), scorer, maxDoc);
     FixedBitSet result = new FixedBitSet(maxDoc);
@@ -423,7 +438,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
                 new BitSetIterator(clause1, clause1.approximateCardinality())),
             Collections.emptyList(),
             maxDoc,
-            0f);
+            0f,
+            ScoreMode.TOP_SCORES);
     CountingLeafCollector collector = new CountingLeafCollector();
     scorer.score(collector, null, 0, DocIdSetIterator.NO_MORE_DOCS);
     assertEquals(clause1.cardinality(), collector.count);
@@ -441,7 +457,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
                 new BitSetIterator(clause1, clause1.approximateCardinality())),
             Collections.emptyList(),
             maxDoc,
-            0f);
+            0f,
+            ScoreMode.TOP_SCORES);
     // AssertingBulkScorer randomly splits the scored range into smaller ranges
     scorer = AssertingBulkScorer.wrap(random(), scorer, maxDoc);
     FixedBitSet acceptDocs = new FixedBitSet(maxDoc);
@@ -476,7 +493,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
                 new BitSetIterator(clause1, clause1.approximateCardinality())),
             Collections.emptyList(),
             maxDoc,
-            0f);
+            0f,
+            ScoreMode.TOP_SCORES);
     CountingLeafCollector collector = new CountingLeafCollector();
     scorer.score(collector, acceptDocs, 0, DocIdSetIterator.NO_MORE_DOCS);
     assertEquals(expected.cardinality(), collector.count);
@@ -499,7 +517,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
                 new BitSetIterator(clause2, clause2.approximateCardinality())),
             Collections.emptyList(),
             maxDoc,
-            0f);
+            0f,
+            ScoreMode.TOP_SCORES);
     // AssertingBulkScorer randomly splits the scored range into smaller ranges
     scorer = AssertingBulkScorer.wrap(random(), scorer, maxDoc);
     FixedBitSet result = new FixedBitSet(maxDoc);
@@ -560,7 +579,11 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
         };
     BulkScorer scorer =
         new DenseConjunctionBulkScorer(
-            Collections.emptyList(), Collections.singletonList(twoPhase), maxDoc, 0f);
+            Collections.emptyList(),
+            Collections.singletonList(twoPhase),
+            maxDoc,
+            0f,
+            ScoreMode.TOP_SCORES);
     int[] collectedViaRange = {0};
     scorer.score(
         new LeafCollector() {
@@ -644,7 +667,11 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
           }
         };
     return new DenseConjunctionBulkScorer(
-        Collections.emptyList(), Collections.singletonList(twoPhase), maxDoc, 0f);
+        Collections.emptyList(),
+        Collections.singletonList(twoPhase),
+        maxDoc,
+        0f,
+        ScoreMode.TOP_SCORES);
   }
 
   /** A collector that records every collected doc, whichever collection path delivers it. */
@@ -691,7 +718,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
     Collections.shuffle(clauses, random());
 
     BulkScorer scorer =
-        new DenseConjunctionBulkScorer(clauses, Collections.emptyList(), maxDoc, 0f);
+        new DenseConjunctionBulkScorer(
+            clauses, Collections.emptyList(), maxDoc, 0f, ScoreMode.TOP_SCORES);
     // Matches are collected as a single DocIdStream
     scorer.score(
         new LeafCollector() {
@@ -730,7 +758,9 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
     clause2 = DocIdSetIterator.range(30_000, 80_000);
     clauses = Arrays.asList(clause1, clause2);
     Collections.shuffle(clauses, random());
-    scorer = new DenseConjunctionBulkScorer(clauses, Collections.emptyList(), maxDoc, 0f);
+    scorer =
+        new DenseConjunctionBulkScorer(
+            clauses, Collections.emptyList(), maxDoc, 0f, ScoreMode.TOP_SCORES);
     CountingLeafCollector collector = new CountingLeafCollector();
     scorer.score(collector, null, 0, DocIdSetIterator.NO_MORE_DOCS);
     assertEquals(30_000, collector.count);
@@ -749,7 +779,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
     }
 
     BulkScorer scorer =
-        new DenseConjunctionBulkScorer(clauses, Collections.emptyList(), maxDoc, 0f);
+        new DenseConjunctionBulkScorer(
+            clauses, Collections.emptyList(), maxDoc, 0f, ScoreMode.TOP_SCORES);
     // AssertingBulkScorer randomly splits the scored range into smaller ranges
     scorer = AssertingBulkScorer.wrap(random(), scorer, maxDoc);
     FixedBitSet result = new FixedBitSet(maxDoc);
@@ -778,7 +809,9 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
     clause2 = DocIdSetIterator.range(30_000, 80_000);
     clauses = Arrays.asList(clause1, clause2);
     Collections.shuffle(clauses, random());
-    scorer = new DenseConjunctionBulkScorer(clauses, Collections.emptyList(), maxDoc, 0f);
+    scorer =
+        new DenseConjunctionBulkScorer(
+            clauses, Collections.emptyList(), maxDoc, 0f, ScoreMode.TOP_SCORES);
     CountingLeafCollector collector = new CountingLeafCollector();
     scorer.score(collector, acceptDocs, 0, DocIdSetIterator.NO_MORE_DOCS);
     assertEquals(expected.cardinality(), collector.count);
@@ -807,7 +840,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
         Arrays.asList(rangeIterator, new BitSetIterator(clause2, 40_000));
     Collections.shuffle(clauses, random());
     BulkScorer scorer =
-        new DenseConjunctionBulkScorer(clauses, Collections.emptyList(), maxDoc, 0f);
+        new DenseConjunctionBulkScorer(
+            clauses, Collections.emptyList(), maxDoc, 0f, ScoreMode.TOP_SCORES);
     FixedBitSet result = new FixedBitSet(maxDoc);
     scorer.score(
         new LeafCollector() {
@@ -833,7 +867,9 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
     clauses =
         Arrays.asList(DocIdSetIterator.range(10_000, 50_000), new BitSetIterator(clause2, 40_000));
     Collections.shuffle(clauses, random());
-    scorer = new DenseConjunctionBulkScorer(clauses, Collections.emptyList(), maxDoc, 0f);
+    scorer =
+        new DenseConjunctionBulkScorer(
+            clauses, Collections.emptyList(), maxDoc, 0f, ScoreMode.TOP_SCORES);
     CountingLeafCollector collector = new CountingLeafCollector();
     scorer.score(collector, null, 0, DocIdSetIterator.NO_MORE_DOCS);
     assertEquals(expected.cardinality(), collector.count);
@@ -855,7 +891,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
     }
 
     BulkScorer scorer =
-        new DenseConjunctionBulkScorer(clauses, Collections.emptyList(), maxDoc, 0f);
+        new DenseConjunctionBulkScorer(
+            clauses, Collections.emptyList(), maxDoc, 0f, ScoreMode.TOP_SCORES);
     // AssertingBulkScorer randomly splits the scored range into smaller ranges
     scorer = AssertingBulkScorer.wrap(random(), scorer, maxDoc);
     FixedBitSet result = new FixedBitSet(maxDoc);
@@ -883,7 +920,9 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
     clauses =
         Arrays.asList(DocIdSetIterator.range(10_000, 60_000), new BitSetIterator(clause2, 50_000));
     Collections.shuffle(clauses, random());
-    scorer = new DenseConjunctionBulkScorer(clauses, Collections.emptyList(), maxDoc, 0f);
+    scorer =
+        new DenseConjunctionBulkScorer(
+            clauses, Collections.emptyList(), maxDoc, 0f, ScoreMode.TOP_SCORES);
     CountingLeafCollector collector = new CountingLeafCollector();
     scorer.score(collector, acceptDocs, 0, DocIdSetIterator.NO_MORE_DOCS);
     assertEquals(expected.cardinality(), collector.count);
@@ -914,7 +953,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
                 new RandomTwoPhaseView(
                     random(), new BitSetIterator(clause3, clause3.approximateCardinality()))),
             maxDoc,
-            0f);
+            0f,
+            ScoreMode.TOP_SCORES);
     scorer = AssertingBulkScorer.wrap(random(), scorer, maxDoc);
     FixedBitSet result = new FixedBitSet(maxDoc);
     scorer.score(
@@ -949,7 +989,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
                 new RandomTwoPhaseView(
                     random(), new BitSetIterator(clause3, clause3.approximateCardinality()))),
             maxDoc,
-            0f);
+            0f,
+            ScoreMode.TOP_SCORES);
     CountingLeafCollector collector = new CountingLeafCollector();
     scorer.score(collector, null, 0, DocIdSetIterator.NO_MORE_DOCS);
     assertEquals(expected.cardinality(), collector.count);
@@ -978,7 +1019,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
                 new RandomTwoPhaseView(
                     random(), new BitSetIterator(clause2, clause2.approximateCardinality()))),
             maxDoc,
-            0f);
+            0f,
+            ScoreMode.TOP_SCORES);
     scorer = AssertingBulkScorer.wrap(random(), scorer, maxDoc);
     FixedBitSet result = new FixedBitSet(maxDoc);
     scorer.score(
@@ -1011,7 +1053,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
                 new RandomTwoPhaseView(
                     random(), new BitSetIterator(clause2, clause2.approximateCardinality()))),
             maxDoc,
-            0f);
+            0f,
+            ScoreMode.TOP_SCORES);
     CountingLeafCollector collector = new CountingLeafCollector();
     scorer.score(collector, acceptDocs, 0, DocIdSetIterator.NO_MORE_DOCS);
     assertEquals(expected.cardinality(), collector.count);
@@ -1041,7 +1084,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
                 new RandomTwoPhaseView(
                     random(), new BitSetIterator(clause3, clause3.approximateCardinality()))),
             maxDoc,
-            0f);
+            0f,
+            ScoreMode.TOP_SCORES);
     scorer = AssertingBulkScorer.wrap(random(), scorer, maxDoc);
     FixedBitSet result = new FixedBitSet(maxDoc);
     scorer.score(
@@ -1075,7 +1119,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
                 new RandomTwoPhaseView(
                     random(), new BitSetIterator(clause3, clause3.approximateCardinality()))),
             maxDoc,
-            0f);
+            0f,
+            ScoreMode.TOP_SCORES);
     CountingLeafCollector collector = new CountingLeafCollector();
     scorer.score(collector, null, 0, DocIdSetIterator.NO_MORE_DOCS);
     assertEquals(expected.cardinality(), collector.count);
@@ -1094,7 +1139,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
     Collections.shuffle(clauses, random());
 
     BulkScorer scorer =
-        new DenseConjunctionBulkScorer(Collections.emptyList(), clauses, maxDoc, 0f);
+        new DenseConjunctionBulkScorer(
+            Collections.emptyList(), clauses, maxDoc, 0f, ScoreMode.TOP_SCORES);
     // Matches arrive in order, as ranges and/or bit-set windows.
     scorer.score(
         new LeafCollector() {
@@ -1136,7 +1182,9 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
             new RandomTwoPhaseView(random(), clause3));
     Collections.shuffle(clauses, random());
 
-    scorer = new DenseConjunctionBulkScorer(Collections.emptyList(), clauses, maxDoc, 0f);
+    scorer =
+        new DenseConjunctionBulkScorer(
+            Collections.emptyList(), clauses, maxDoc, 0f, ScoreMode.TOP_SCORES);
     CountingLeafCollector collector = new CountingLeafCollector();
     scorer.score(collector, null, 0, DocIdSetIterator.NO_MORE_DOCS);
     assertEquals(30_000, collector.count);
@@ -1193,7 +1241,11 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
 
     BulkScorer scorer =
         new DenseConjunctionBulkScorer(
-            Collections.singletonList(lead), Arrays.asList(expensive, cheap), maxDoc, 0f);
+            Collections.singletonList(lead),
+            Arrays.asList(expensive, cheap),
+            maxDoc,
+            0f,
+            ScoreMode.TOP_SCORES);
     FixedBitSet result = new FixedBitSet(maxDoc);
     scorer.score(
         new LeafCollector() {
@@ -1240,7 +1292,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
                 new RandomTwoPhaseView(random(), clause2),
                 new RandomTwoPhaseView(random(), clause3)),
             maxDoc,
-            0f);
+            0f,
+            ScoreMode.TOP_SCORES);
     // Matches arrive in order, as ranges and/or bit-set windows.
     scorer.score(
         new LeafCollector() {
@@ -1283,7 +1336,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
                 new RandomTwoPhaseView(random(), clause2),
                 new RandomTwoPhaseView(random(), clause3)),
             maxDoc,
-            0f);
+            0f,
+            ScoreMode.TOP_SCORES);
     CountingLeafCollector collector = new CountingLeafCollector();
     scorer.score(collector, null, 0, DocIdSetIterator.NO_MORE_DOCS);
     assertEquals(30_000, collector.count);
@@ -1302,7 +1356,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
             Collections.singletonList(new BitSetIterator(clause2, clause2.cardinality())),
             Collections.singletonList(new RandomTwoPhaseView(random(), clause1)),
             maxDoc,
-            0f);
+            0f,
+            ScoreMode.TOP_SCORES);
     // AssertingBulkScorer randomly splits the scored range into smaller ranges
     scorer = AssertingBulkScorer.wrap(random(), scorer, maxDoc);
     FixedBitSet result = new FixedBitSet(maxDoc);
@@ -1333,7 +1388,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
             Collections.singletonList(new BitSetIterator(clause2, clause2.cardinality())),
             Collections.singletonList(new RandomTwoPhaseView(random(), clause1)),
             maxDoc,
-            0f);
+            0f,
+            ScoreMode.TOP_SCORES);
     CountingLeafCollector collector = new CountingLeafCollector();
     scorer.score(collector, null, 0, DocIdSetIterator.NO_MORE_DOCS);
     assertEquals(expected.cardinality(), collector.count);
@@ -1355,7 +1411,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
                 new RandomTwoPhaseView(
                     random(), new BitSetIterator(clause2, clause2.cardinality()))),
             maxDoc,
-            0f);
+            0f,
+            ScoreMode.TOP_SCORES);
     // AssertingBulkScorer randomly splits the scored range into smaller ranges
     scorer = AssertingBulkScorer.wrap(random(), scorer, maxDoc);
     FixedBitSet result = new FixedBitSet(maxDoc);
@@ -1389,7 +1446,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
                 new RandomTwoPhaseView(
                     random(), new BitSetIterator(clause2, clause2.cardinality()))),
             maxDoc,
-            0f);
+            0f,
+            ScoreMode.TOP_SCORES);
     CountingLeafCollector collector = new CountingLeafCollector();
     scorer.score(collector, null, 0, DocIdSetIterator.NO_MORE_DOCS);
     assertEquals(expected.cardinality(), collector.count);
