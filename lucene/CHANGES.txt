@@ -237,6 +237,9 @@ Optimizations
 * GITHUB#16797: Stored fields data is written with DataAccessHint.SEQUENTIAL and NoReuseHint,
   matching how it is read. (Jim Ferenczi)
 
+* GITHUB#16796: Merges read inner files of compound files through a mapping of their own, so the
+  access they advise does not replace the advice of searches. (Jim Ferenczi)
+
 Bug Fixes
 ---------------------
 
