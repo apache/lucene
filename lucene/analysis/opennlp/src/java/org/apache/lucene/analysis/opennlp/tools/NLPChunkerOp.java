@@ -29,7 +29,7 @@ public class NLPChunkerOp {
     chunker = new ChunkerME(chunkerModel);
   }
 
-  public synchronized String[] getChunks(String[] words, String[] tags, double[] probs) {
+  public String[] getChunks(String[] words, String[] tags, double[] probs) {
     String[] chunks = chunker.chunk(words, tags);
     if (probs != null) chunker.probs(probs);
     return chunks;
