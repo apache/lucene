@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
@@ -66,6 +67,7 @@ import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.HnswGraphMerger;
 import org.apache.lucene.util.hnsw.IncrementalHnswGraphMerger;
+import org.apache.lucene.util.hnsw.OffHeapHnswGraph;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
 import org.apache.lucene.util.quantization.QuantizedVectorsReader;
@@ -551,6 +553,20 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     }
     try (BuildableHnswGraph graph =
         merger.merge(vectorValues, segmentWriteState.infoStream, totalVectorCount)) {
+      if (graph instanceof OffHeapHnswGraph offHeapGraph
+          && segmentWriteState.infoStream.isEnabled(HnswGraphBuilder.HNSW_COMPONENT)) {
+        segmentWriteState.infoStream.message(
+            HnswGraphBuilder.HNSW_COMPONENT,
+            String.format(
+                Locale.ROOT,
+                "off-heap graph for field %s: %d nodes, %d levels, %d bytes native reserved,"
+                    + " %d bytes heap",
+                fieldInfo.name,
+                offHeapGraph.size(),
+                offHeapGraph.numLevels(),
+                offHeapGraph.offHeapBytesUsed(),
+                offHeapGraph.ramBytesUsed() - offHeapGraph.offHeapBytesUsed()));
+      }
       int[][] vectorIndexNodeOffsets = writeGraph(graph);
       long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
       writeMeta(
