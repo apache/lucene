@@ -163,7 +163,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
   }
 
   /**
-   * Search {@link OnHeapHnswGraph}, this method is thread safe.
+   * Search a {@link BuildableHnswGraph}, this method is thread safe.
    *
    * @param scorer the scorer to compare the query with the nodes
    * @param topK the number of nodes to be returned
@@ -175,12 +175,20 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
    * @return a set of collected vectors holding the nearest neighbors found
    */
   public static KnnCollector search(
-      RandomVectorScorer scorer, int topK, OnHeapHnswGraph graph, Bits acceptOrds, int visitedLimit)
+      RandomVectorScorer scorer,
+      int topK,
+      BuildableHnswGraph graph,
+      Bits acceptOrds,
+      int visitedLimit)
       throws IOException {
     KnnCollector knnCollector = new TopKnnCollector(topK, visitedLimit, null);
-    OnHeapHnswGraphSearcher graphSearcher =
-        new OnHeapHnswGraphSearcher(
-            new NeighborQueue(topK, true), new SparseFixedBitSet(getGraphSize(graph)));
+    NeighborQueue candidates = new NeighborQueue(topK, true);
+    SparseFixedBitSet visited = new SparseFixedBitSet(getGraphSize(graph));
+    HnswGraphSearcher graphSearcher =
+        switch (graph) {
+          case OnHeapHnswGraph _ -> new OnHeapHnswGraphSearcher(candidates, visited);
+          case OffHeapHnswGraph g -> new OffHeapHnswGraphSearcher(candidates, visited, g);
+        };
     graphSearcher.search(knnCollector, scorer, graph, acceptOrds);
     return knnCollector;
   }
@@ -432,6 +440,37 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
     int graphNextNeighbor(HnswGraph graph) {
       if (++upto < cur.size()) {
         return cur.nodes()[upto];
+      }
+      return NO_MORE_DOCS;
+    }
+  }
+
+  /**
+   * Searches an {@link OffHeapHnswGraph} by copying each neighbor list into a buffer owned by the
+   * searcher, so that concurrent searches don't share the graph's iteration state.
+   */
+  private static class OffHeapHnswGraphSearcher extends HnswGraphSearcher {
+
+    private final int[] nodeBuffer;
+    private int size;
+    private int upto;
+
+    private OffHeapHnswGraphSearcher(
+        NeighborQueue candidates, BitSet visited, OffHeapHnswGraph graph) {
+      super(candidates, visited);
+      this.nodeBuffer = new int[graph.maxConn() * 2 + 1];
+    }
+
+    @Override
+    void graphSeek(HnswGraph graph, int level, int targetNode) {
+      size = ((OffHeapHnswGraph) graph).copyNeighbors(level, targetNode, nodeBuffer);
+      upto = -1;
+    }
+
+    @Override
+    int graphNextNeighbor(HnswGraph graph) {
+      if (++upto < size) {
+        return nodeBuffer[upto];
       }
       return NO_MORE_DOCS;
     }

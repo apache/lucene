@@ -132,7 +132,7 @@ public class TestHnswFloat16VectorGraph extends HnswGraphTestCase<short[]> {
     Float16VectorValues vectors = circularVectorValues(nDoc);
     RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
     HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, random().nextInt());
-    OnHeapHnswGraph hnsw = builder.build(vectors.size());
+    BuildableHnswGraph hnsw = builder.build(vectors.size());
 
     // Skip over half of the documents that are closest to the query vector
     FixedBitSet acceptOrds = new FixedBitSet(nDoc);

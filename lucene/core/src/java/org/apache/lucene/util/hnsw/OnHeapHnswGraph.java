@@ -20,10 +20,8 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
 import org.apache.lucene.internal.hppc.IntArrayList;
-import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.RamUsageEstimator;
 
@@ -31,15 +29,13 @@ import org.apache.lucene.util.RamUsageEstimator;
  * An {@link HnswGraph} where all nodes and connections are held in memory. This class is used to
  * construct the HNSW graph before it's written to the index.
  */
-public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
+public final class OnHeapHnswGraph extends BuildableHnswGraph {
 
   // shallow estimate of the statically used on-heap memory.
   private static final long RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(OnHeapHnswGraph.class);
 
   private static final int INIT_SIZE = 128;
-
-  private final AtomicReference<EntryNode> entryNode;
 
   // the internal graph representation where the first dimension is node id and second dimension is
   // level
@@ -74,7 +70,6 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
    *     growing itself (you cannot add a node with id >= numNodes)
    */
   OnHeapHnswGraph(int M, int numNodes) {
-    this.entryNode = new AtomicReference<>(new EntryNode(-1, 1));
     // Neighbours' size on upper levels (nsize) and level 0 (nsize0)
     // We allocate extra space for neighbours, but then prune them to keep allowed maximum
     this.nsize = M + 1;
@@ -133,15 +128,30 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
     }
   }
 
-  /**
-   * Add node on the given level. Nodes can be inserted out of order, but it requires that the nodes
-   * preceded by the node inserted out of order are eventually added.
-   *
-   * <p>NOTE: You must add a node starting from the node's top level
-   *
-   * @param level level to add a node on
-   * @param node the node to add, represented as an ordinal on the level 0.
-   */
+  @Override
+  public int copyNeighbors(int level, int node, int[] dst) {
+    NeighborArray neighbors = getNeighbors(level, node);
+    int size = neighbors.size();
+    System.arraycopy(neighbors.nodes(), 0, dst, 0, size);
+    return size;
+  }
+
+  @Override
+  NeighborArray newUpdateScratch(int level) {
+    return null;
+  }
+
+  @Override
+  NeighborArray beginUpdate(int level, int node, NeighborArray scratch) {
+    return getNeighbors(level, node);
+  }
+
+  @Override
+  void endUpdate(int level, int node, NeighborArray neighbors) {
+    // mutated in place
+  }
+
+  @Override
   public void addNode(int level, int node) {
 
     if (node >= graph.length) {
@@ -191,68 +201,14 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
     return NO_MORE_DOCS;
   }
 
-  /**
-   * Returns the current number of levels in the graph
-   *
-   * @return the current number of levels in the graph
-   */
-  @Override
-  public int numLevels() {
-    return entryNode.get().level + 1;
-  }
-
   @Override
   public int maxConn() {
     return nsize - 1;
   }
 
+  @Override
   public boolean nodeExistAtLevel(int level, int node) {
     return graph[node] != null && graph[node].length > level;
-  }
-
-  /**
-   * Returns the graph's current entry node on the top level shown as ordinals of the nodes on 0th
-   * level
-   *
-   * @return the graph's current entry node on the top level
-   */
-  @Override
-  public int entryNode() {
-    return entryNode.get().node;
-  }
-
-  /**
-   * Try to set the entry node if the graph does not have one
-   *
-   * @return True if the entry node is set to the provided node. False if the entry node already
-   *     exists
-   */
-  public boolean trySetNewEntryNode(int node, int level) {
-    EntryNode current = entryNode.get();
-    if (current.node == -1) {
-      return entryNode.compareAndSet(current, new EntryNode(node, level));
-    }
-    return false;
-  }
-
-  /**
-   * Try to promote the provided node to the entry node
-   *
-   * @param level should be larger than expectedOldLevel
-   * @param expectOldLevel is the old entry node level the caller expect to be, the actual graph
-   *     level can be different due to concurrent modification
-   * @return True if the entry node is set to the provided node. False if expectOldLevel is not the
-   *     same as the current entry node level. Even if the provided node's level is still higher
-   *     than the current entry node level, the new entry node will not be set and false will be
-   *     returned.
-   */
-  public boolean tryPromoteNewEntryNode(int node, int level, int expectOldLevel) {
-    assert level > expectOldLevel;
-    EntryNode currentEntry = entryNode.get();
-    if (currentEntry.level == expectOldLevel) {
-      return entryNode.compareAndSet(currentEntry, new EntryNode(node, level));
-    }
-    return false;
   }
 
   /**
@@ -323,6 +279,4 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
         + entryNode()
         + ")";
   }
-
-  private record EntryNode(int node, int level) {}
 }
