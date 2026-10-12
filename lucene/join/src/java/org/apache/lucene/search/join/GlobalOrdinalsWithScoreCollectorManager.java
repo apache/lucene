@@ -34,7 +34,6 @@ import org.apache.lucene.util.LongValues;
 
 class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collector, Void> {
   // pick a number that reduces contention without creating too many locks
-  private static final int NUM_LOCKS = 32;
   final String field;
   final ScoreMode scoreMode;
   final boolean doMinMax;
@@ -44,9 +43,10 @@ class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collec
   final OrdinalMap ordinalMap;
   final LongBitSet collectedOrds;
   // note: we only lock when collecting since the operation here is: do all the collection, and then
-  // become immutable
-  // when we can have any number of concurrent readers.
-  final Lock[] locks = new Lock[NUM_LOCKS];
+  // become immutable when we can have any number of concurrent readers.  Locks are per-block, so
+  // access to a single lock should generally be by one or two threads since global docids are handled
+  // by per-segment threads, which each get contiguous blocks of docids.
+  final Lock[] locks;
 
   // also written concurrently
   protected final Scores scores;
@@ -76,6 +76,7 @@ class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collec
     } else {
       this.occurrences = null;
     }
+    this.locks = new Lock[numBlocks(valueCount)];
     for (int i = 0; i < locks.length; i++) {
       locks[i] = new ReentrantLock();
     }
@@ -155,7 +156,7 @@ class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collec
       public void collect(int doc) throws IOException {
         if (docTermOrds.advanceExact(doc)) {
           final int globalOrd = (int) segmentOrdToGlobalOrdLookup.get(docTermOrds.ordValue());
-          Lock lock = locks[globalOrd % locks.length];
+          Lock lock = locks[globalOrd / arraySize];
           lock.lock();
           try {
             collectedOrds.set(globalOrd);
@@ -250,7 +251,7 @@ class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collec
           public void collect(int doc) throws IOException {
             if (docTermOrds.advanceExact(doc)) {
               final int globalOrd = (int) segmentOrdToGlobalOrdLookup.get(docTermOrds.ordValue());
-              Lock lock = locks[globalOrd % locks.length];
+              Lock lock = locks[globalOrd / arraySize];
               lock.lock();
               try {
                 collectedOrds.set(globalOrd);
@@ -319,8 +320,7 @@ class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collec
     final double unset;
 
     private Scores(long valueCount, double unset) {
-      long blockSize = valueCount + arraySize - 1;
-      blocks = new double[(int) ((blockSize) / arraySize)][];
+      blocks = new double[numBlocks(valueCount)][];
       this.unset = unset;
     }
 
@@ -353,8 +353,7 @@ class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collec
     final int[][] blocks;
 
     private Occurrences(long valueCount) {
-      long blockSize = valueCount + arraySize - 1;
-      blocks = new int[(int) (blockSize / arraySize)][];
+      blocks = new int[numBlocks(valueCount)][];
     }
 
     public void increment(int globalOrdinal) {
@@ -373,5 +372,10 @@ class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collec
       int[] occurrences = blocks[block];
       return occurrences[offset];
     }
+  }
+
+  private static int numBlocks(long valueCount) {
+    long blockSize = valueCount + arraySize - 1;
+    return (int) (blockSize / arraySize);
   }
 }
