@@ -30,7 +30,7 @@ API Changes
 
 * GITHUB#16647: Add KnnVectorsReader.getVectorCount to read vector counts from metadata (Chris Hegarty)
 
-* GITHUB#XXX: Deprecate unused VectorValueSource and MultiValueSource. (Luca Cavanna)
+* GITHUB#16813: Deprecate unused VectorValueSource and MultiValueSource. (Luca Cavanna)
 
 New Features
 ---------------------
