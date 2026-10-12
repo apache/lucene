@@ -100,7 +100,7 @@ GroupedFacetResult result = searcher.search(query, manager);
 List<GroupedFacetResult.FacetEntry> entries = result.getFacetEntries(offset, limit);
 ```
 
-### VectorValueSource and MultiValueSource have been removed (GITHUB#XXX)
+### VectorValueSource and MultiValueSource have been removed (GITHUB#16814)
 
 `VectorValueSource` and its base class `MultiValueSource` have been removed without a replacement
 
