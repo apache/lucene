@@ -224,6 +224,15 @@ public final class OffHeapHnswGraph extends BuildableHnswGraph {
   }
 
   @Override
+  public int numNeighbors(int level, int node) {
+    if (level == 0) {
+      return level0.get(INT, node * stride0);
+    }
+    int slot = upperSlot(level, node);
+    return upperChunk(slot).get(INT, upperOffset(slot));
+  }
+
+  @Override
   public int copyNeighbors(int level, int node, int[] dst) {
     MemorySegment segment;
     long offset;

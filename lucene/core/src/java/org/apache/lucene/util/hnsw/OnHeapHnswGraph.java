@@ -129,6 +129,11 @@ public final class OnHeapHnswGraph extends BuildableHnswGraph {
   }
 
   @Override
+  public int numNeighbors(int level, int node) {
+    return getNeighbors(level, node).size();
+  }
+
+  @Override
   public int copyNeighbors(int level, int node, int[] dst) {
     NeighborArray neighbors = getNeighbors(level, node);
     int size = neighbors.size();

@@ -32,7 +32,6 @@ import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.InfoStream;
@@ -89,8 +88,6 @@ public class HnswGraphBuilder implements HnswBuilder {
   // BuildableHnswGraph#beginUpdate; null for on-heap graphs
   private final NeighborArray updateScratch0;
   private final NeighborArray updateScratch;
-  // buffer for copying a node's neighbors, sized for level 0
-  private final int[] neighborsBuffer;
 
   protected InfoStream infoStream = InfoStream.getDefault();
   private IORunnable abortCheck;
@@ -207,7 +204,6 @@ public class HnswGraphBuilder implements HnswBuilder {
     this.graphSearcher = graphSearcher;
     this.updateScratch0 = hnsw.newUpdateScratch(0);
     this.updateScratch = hnsw.newUpdateScratch(1);
-    this.neighborsBuffer = new int[M * 2 + 1];
     // pick a number that keeps us from scoring TOO much for diversity checking
     // but enough to take advantage of bulk scoring
     this.bulkScoreNodes = new int[MAX_BULK_SCORE_NODES];
@@ -751,18 +747,17 @@ public class HnswGraphBuilder implements HnswBuilder {
       maybeAbort();
       scorer.setScoringOrdinal(node);
 
-      int size;
+      int[] entryPoints;
       if (hnswLock != null) {
         Lock readLock = hnswLock.read(level, node);
         try {
-          size = hnsw.copyNeighbors(level, node, neighborsBuffer);
+          entryPoints = copyNeighbors(level, node);
         } finally {
           readLock.unlock();
         }
       } else {
-        size = hnsw.copyNeighbors(level, node, neighborsBuffer);
+        entryPoints = copyNeighbors(level, node);
       }
-      int[] entryPoints = ArrayUtil.copyOfSubArray(neighborsBuffer, 0, size);
 
       // Use all existing neighbors as entry points for search
       if (entryPoints.length > 0) {
@@ -780,6 +775,13 @@ public class HnswGraphBuilder implements HnswBuilder {
       scratchArray.clear();
       candidates.clear();
     }
+  }
+
+  /** Returns an exact-size copy of the neighbors of a node */
+  private int[] copyNeighbors(int level, int node) {
+    int[] neighbors = new int[hnsw.numNeighbors(level, node)];
+    hnsw.copyNeighbors(level, node, neighbors);
+    return neighbors;
   }
 
   /**

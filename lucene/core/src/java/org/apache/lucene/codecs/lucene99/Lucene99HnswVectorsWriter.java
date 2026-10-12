@@ -68,6 +68,7 @@ import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.HnswGraphMerger;
 import org.apache.lucene.util.hnsw.IncrementalHnswGraphMerger;
 import org.apache.lucene.util.hnsw.OffHeapHnswGraph;
+import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
 import org.apache.lucene.util.quantization.QuantizedVectorsReader;
@@ -358,9 +359,14 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     levelNodeOffsets[0] = new int[nodesOnLevel0.size()];
     while (nodesOnLevel0.hasNext()) {
       int node = nodesOnLevel0.nextInt();
-      int size = graph.copyNeighbors(0, newToOldMap[node], neighbors);
+      int oldNode = newToOldMap[node];
       long offset = vectorIndex.getFilePointer();
-      reconstructAndWriteNeighbours(neighbors, size, oldToNewMap, scratch, maxOrd);
+      reconstructAndWriteNeighbours(
+          neighborsToWrite(graph, 0, oldNode, neighbors),
+          graph.numNeighbors(0, oldNode),
+          oldToNewMap,
+          scratch,
+          maxOrd);
       levelNodeOffsets[0][node] = Math.toIntExact(vectorIndex.getFilePointer() - offset);
     }
 
@@ -375,9 +381,14 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       levelNodeOffsets[level] = new int[newNodes.length];
       int nodeOffsetIndex = 0;
       for (int node : newNodes) {
-        int size = graph.copyNeighbors(level, newToOldMap[node], neighbors);
+        int oldNode = newToOldMap[node];
         long offset = vectorIndex.getFilePointer();
-        reconstructAndWriteNeighbours(neighbors, size, oldToNewMap, scratch, maxOrd);
+        reconstructAndWriteNeighbours(
+            neighborsToWrite(graph, level, oldNode, neighbors),
+            graph.numNeighbors(level, oldNode),
+            oldToNewMap,
+            scratch,
+            maxOrd);
         levelNodeOffsets[level][nodeOffsetIndex++] =
             Math.toIntExact(vectorIndex.getFilePointer() - offset);
       }
@@ -607,13 +618,15 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     int countOnLevel0 = graph.size();
     int[][] offsets = new int[graph.numLevels()][];
     int[] scratch = new int[graph.maxConn() * 2];
-    int[] nnodes = new int[graph.maxConn() * 2 + 1];
+    int[] buffer = new int[graph.maxConn() * 2 + 1];
     for (int level = 0; level < graph.numLevels(); level++) {
       NodesIterator sortedNodes = graph.getSortedNodes(level);
       offsets[level] = new int[sortedNodes.size()];
       int nodeOffsetId = 0;
       while (sortedNodes.hasNext()) {
-        int size = graph.copyNeighbors(level, sortedNodes.next(), nnodes);
+        int node = sortedNodes.next();
+        int size = graph.numNeighbors(level, node);
+        int[] nnodes = neighborsToWrite(graph, level, node, buffer);
         // Write size in VInt as the neighbors list is typically small
         long offsetStart = vectorIndex.getFilePointer();
         Arrays.sort(nnodes, 0, size);
@@ -646,6 +659,21 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       }
     }
     return offsets;
+  }
+
+  /**
+   * Returns an array whose first {@link BuildableHnswGraph#numNeighbors} entries are the neighbors
+   * of the node, for the caller to reorder in place. An on-heap graph returns its own array to save
+   * a copy, which is fine since the graph is discarded once it is written; other graphs copy into
+   * {@code buffer}.
+   */
+  private static int[] neighborsToWrite(
+      BuildableHnswGraph graph, int level, int node, int[] buffer) {
+    if (graph instanceof OnHeapHnswGraph onHeapGraph) {
+      return onHeapGraph.getNeighbors(level, node).nodes();
+    }
+    graph.copyNeighbors(level, node, buffer);
+    return buffer;
   }
 
   private void writeMeta(

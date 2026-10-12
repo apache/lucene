@@ -495,6 +495,8 @@ Improvements
   faceting, removing usages of the deprecated IndexSearcher#search(Query, Collector).
   (Luca Cavanna)
 
+* GITHUB#16815:  Add offHeapGraphBuild option to HNSW vector formats. (Navneet Verma)
+
 Optimizations
 ---------------------
 

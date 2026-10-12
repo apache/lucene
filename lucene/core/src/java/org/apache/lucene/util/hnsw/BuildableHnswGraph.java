@@ -83,10 +83,14 @@ public abstract sealed class BuildableHnswGraph extends HnswGraph implements Acc
   /** Returns true if the node has been added on the given level */
   public abstract boolean nodeExistAtLevel(int level, int node);
 
+  /** Returns the number of neighbors of a node on the given level */
+  public abstract int numNeighbors(int level, int node);
+
   /**
    * Copies the neighbors of a node into {@code dst}.
    *
-   * @param dst destination, must have room for at least {@code 2 * maxConn() + 1} entries
+   * @param dst destination, must have room for {@link #numNeighbors(int, int)} entries; {@code 2 *
+   *     maxConn() + 1} entries are always enough
    * @return the number of neighbors copied
    */
   public abstract int copyNeighbors(int level, int node, int[] dst);
