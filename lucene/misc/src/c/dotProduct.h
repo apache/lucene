@@ -15,14 +15,12 @@
   * limitations under the License.
   */
 
-/*
- * Functions that NativeVectorUtilSupport binds from the "dotProduct" library. A library may
- * implement any subset; Lucene uses its Java implementation for the others. Each function must
- * return what the VectorUtilSupport method it replaces returns.
- *
- * Where a function takes a single length argument `n`, it is the number of elements of its FIRST
- * array argument. The other array has the same number of elements unless stated otherwise.
- */
+// Functions that NativeVectorUtilSupport binds from the "dotProduct" library. A library may
+// implement any subset; Lucene uses its Java implementation for the others. Each function must
+// return what the VectorUtilSupport method it replaces returns.
+//
+// Where a function takes a single length argument `n`, it is the number of elements of its FIRST
+// array argument. The other array has the same number of elements unless stated otherwise.
 
 #include <stdint.h>
 
