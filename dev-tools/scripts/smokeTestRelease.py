@@ -53,11 +53,20 @@ cygwinWindowsRoot = os.popen("cygpath -w /").read().strip().replace("\\", "/") i
 def unshortenURL(url: str) -> str:
   parsed = urllib.parse.urlparse(url)
   if parsed[0] in ("http", "https"):
-    h = http.client.HTTPConnection(parsed.netloc)
-    h.request("HEAD", parsed.path)
-    response = h.getresponse()
-    if int(response.status / 100) == 3 and response.getheader("Location"):
-      return str(response.getheader("Location"))
+    proxy = os.environ.get("%s_proxy" % parsed.scheme) or os.environ.get("%s_PROXY" % parsed.scheme.upper())
+    try:
+      if proxy:
+        proxyParsed = urllib.parse.urlparse(proxy)
+        h = http.client.HTTPConnection(proxyParsed.hostname, proxyParsed.port or 80, timeout=30)
+        h.request("HEAD", url)
+      else:
+        h = http.client.HTTPConnection(parsed.netloc, timeout=30)
+        h.request("HEAD", parsed.path)
+      response = h.getresponse()
+      if int(response.status / 100) == 3 and response.getheader("Location"):
+        return str(response.getheader("Location"))
+    except OSError as e:
+      print("Could not unshorten URL %s via HEAD request (continuing with original URL): %s" % (url, e))
   return url
 
 
@@ -75,13 +84,26 @@ def getHREFs(urlString: str) -> list[tuple[str, str]]:
   # Deref any redirects
   while True:
     url = urllib.parse.urlparse(urlString)
+    proxy = os.environ.get("%s_proxy" % url.scheme) or os.environ.get("%s_PROXY" % url.scheme.upper())
     if url.scheme == "http":
-      h = http.client.HTTPConnection(url.netloc)
+      if proxy:
+        proxyParsed = urllib.parse.urlparse(proxy)
+        h = http.client.HTTPConnection(proxyParsed.hostname, proxyParsed.port or 80, timeout=30)
+        h.request("HEAD", urlString)
+      else:
+        h = http.client.HTTPConnection(url.netloc, timeout=30)
+        h.request("HEAD", url.path)
     elif url.scheme == "https":
-      h = http.client.HTTPSConnection(url.netloc)
+      if proxy:
+        proxyParsed = urllib.parse.urlparse(proxy)
+        h = http.client.HTTPSConnection(proxyParsed.hostname, proxyParsed.port or 80, timeout=30)
+        h.set_tunnel(url.hostname, url.port or 443)
+        h.request("HEAD", url.path)
+      else:
+        h = http.client.HTTPSConnection(url.netloc, timeout=30)
+        h.request("HEAD", url.path)
     else:
       raise RuntimeError("Unknown protocol: %s" % url.scheme)
-    h.request("HEAD", url.path)
     r = h.getresponse()
     newLoc = r.getheader("location")
     if newLoc is not None:
