@@ -387,8 +387,8 @@ public abstract class BaseCompoundFormatTestCase extends BaseIndexFileFormatTest
     dir.close();
   }
 
-  // Make sure we don't somehow use more than 1 descriptor
-  // when reading a CFS with many subs:
+  // Make sure we don't somehow use more than 1 descriptor when reading a CFS with many subs, plus
+  // 1 for the mapping merges may read through:
   public void testManySubFiles() throws IOException {
     final MockDirectoryWrapper dir = newMockFSDirectory(createTempDir("CFSManySubFiles"));
 
@@ -413,18 +413,24 @@ public abstract class BaseCompoundFormatTestCase extends BaseIndexFileFormatTest
     Directory cfs = si.getCodec().compoundFormat().getCompoundReader(dir, si);
 
     final IndexInput[] ins = new IndexInput[FILE_COUNT];
+    int maxHandles = 1;
     for (int fileIdx = 0; fileIdx < FILE_COUNT; fileIdx++) {
-      ins[fileIdx] = cfs.openInput("_123." + fileIdx, newIOContext(random()));
+      IOContext context = newIOContext(random());
+      if (context.context() == IOContext.Context.MERGE) {
+        maxHandles = 2;
+      }
+      ins[fileIdx] = cfs.openInput("_123." + fileIdx, context);
       CodecUtil.checkIndexHeader(ins[fileIdx], "Foo", 0, 0, si.getId(), "suffix");
     }
 
-    assertEquals(1, dir.getFileHandleCount());
+    long handles = dir.getFileHandleCount();
+    assertTrue("handles: " + handles, handles >= 1 && handles <= maxHandles);
 
     for (int fileIdx = 0; fileIdx < FILE_COUNT; fileIdx++) {
       assertEquals((byte) fileIdx, ins[fileIdx].readByte());
     }
 
-    assertEquals(1, dir.getFileHandleCount());
+    assertEquals(handles, dir.getFileHandleCount());
 
     for (int fileIdx = 0; fileIdx < FILE_COUNT; fileIdx++) {
       ins[fileIdx].close();
