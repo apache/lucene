@@ -102,8 +102,7 @@ List<GroupedFacetResult.FacetEntry> entries = result.getFacetEntries(offset, lim
 
 ### VectorValueSource and MultiValueSource have been removed (GITHUB#XXX)
 
-`VectorValueSource` and its base class `MultiValueSource` have been removed.
-They were deprecated. There is no replacement.
+`VectorValueSource` and its base class `MultiValueSource` have been removed without a replacement
 
 ### Directory#copyFrom is now abstract (GITHUB#16530)
 
