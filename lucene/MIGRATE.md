@@ -100,6 +100,11 @@ GroupedFacetResult result = searcher.search(query, manager);
 List<GroupedFacetResult.FacetEntry> entries = result.getFacetEntries(offset, limit);
 ```
 
+### VectorValueSource and MultiValueSource have been removed (GITHUB#XXX)
+
+`VectorValueSource` and its base class `MultiValueSource` have been removed.
+They were deprecated. There is no replacement.
+
 ### Directory#copyFrom is now abstract (GITHUB#16530)
 
 `Directory#copyFrom` no longer has a default implementation, so classes that extend
