@@ -134,6 +134,10 @@ API Changes
 
 New Features
 ---------------------
+* GITHUB#16666: Add IoUringUncachedDirectory to sandbox: it serves reads of the full-precision
+  vector file through io_uring, started by IndexInput#prefetch, so that rescoring from an index
+  larger than RAM needs far fewer system calls. Linux only, opt-in. (Ankur Goel)
+
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
   modern Hangul conjoining jamo before KoreanTokenizer. (Mingi Jeong)
 
