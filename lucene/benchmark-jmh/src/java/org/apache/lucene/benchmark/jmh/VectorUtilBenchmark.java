@@ -398,4 +398,27 @@ public class VectorUtilBenchmark {
   public float floatSquareVector() {
     return VectorUtil.squareDistance(floatsA, floatsB);
   }
+
+  @Benchmark
+  public int mixingUintVsIntScalar() {
+    int ret = 0;
+    ret += binaryDotProductScalar();
+    ret += binaryDotProductUint8Scalar();
+    ret += binarySquareScalar();
+    ret += binarySquareUint8Scalar();
+    return ret;
+  }
+
+  @Benchmark
+  @Fork(
+      value = 15,
+      jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public int mixingUintVsIntVector() {
+    int ret = 0;
+    ret += binaryDotProductVector();
+    ret += binaryDotProductUint8Vector();
+    ret += binarySquareVector();
+    ret += binarySquareUint8Vector();
+    return ret;
+  }
 }
