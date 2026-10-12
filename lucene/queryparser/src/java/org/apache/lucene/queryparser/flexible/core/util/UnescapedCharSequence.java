@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.queryparser.flexible.core.util;
 
+import java.util.BitSet;
 import java.util.Locale;
 
 /** CharsSequence with escaped chars information. */
@@ -89,21 +90,18 @@ public final class UnescapedCharSequence implements CharSequence {
    * @return a escaped String
    */
   public String toStringEscaped(char[] enabledChars) {
-    // TODO: non efficient implementation, refactor this code
     StringBuilder result = new StringBuilder(this.length());
-    for (int i = 0; i < this.length(); i++) {
-      if (this.chars[i] == '\\') {
-        result.append('\\');
-      } else {
-        for (char character : enabledChars) {
-          if (this.chars[i] == character && this.wasEscaped[i]) {
-            result.append('\\');
-            break;
-          }
-        }
-      }
+    BitSet enabled = new BitSet(1 << 16);
+    for (char character : enabledChars) {
+      enabled.set(character);
+    }
 
-      result.append(this.chars[i]);
+    for (int i = 0; i < this.length(); i++) {
+      char current = this.chars[i];
+      if (current == '\\' || (this.wasEscaped[i] && enabled.get(current))) {
+        result.append('\\');
+      }
+      result.append(current);
     }
     return result.toString();
   }
