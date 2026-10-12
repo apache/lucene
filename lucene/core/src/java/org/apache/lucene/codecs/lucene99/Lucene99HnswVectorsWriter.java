@@ -91,6 +91,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   private final TaskExecutor mergeExec;
   private final int tinySegmentsThreshold;
   private final int version;
+  private final boolean offHeapGraphBuild;
 
   private final List<FieldWriter<?>> fields = new ArrayList<>();
 
@@ -120,7 +121,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         numMergeWorkers,
         mergeExec,
         HNSW_GRAPH_THRESHOLD,
-        VERSION_CURRENT);
+        VERSION_CURRENT,
+        false);
   }
 
   public Lucene99HnswVectorsWriter(
@@ -142,7 +144,36 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         numMergeWorkers,
         mergeExec,
         tinySegmentsThreshold,
-        VERSION_CURRENT);
+        VERSION_CURRENT,
+        false);
+  }
+
+  /**
+   * @param offHeapGraphBuild whether to build the graphs of merged segments in native memory, see
+   *     {@link org.apache.lucene.util.hnsw.OffHeapHnswGraph}
+   */
+  public Lucene99HnswVectorsWriter(
+      SegmentWriteState state,
+      int M,
+      int beamWidth,
+      FlatVectorsFormat flatVectorsFormat,
+      FlatVectorsWriter flatVectorWriter,
+      int numMergeWorkers,
+      TaskExecutor mergeExec,
+      int tinySegmentsThreshold,
+      boolean offHeapGraphBuild)
+      throws IOException {
+    this(
+        state,
+        M,
+        beamWidth,
+        flatVectorsFormat,
+        flatVectorWriter,
+        numMergeWorkers,
+        mergeExec,
+        tinySegmentsThreshold,
+        VERSION_CURRENT,
+        offHeapGraphBuild);
   }
 
   Lucene99HnswVectorsWriter(
@@ -154,7 +185,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       int numMergeWorkers,
       TaskExecutor mergeExec,
       int tinySegmentsThreshold,
-      int version)
+      int version,
+      boolean offHeapGraphBuild)
       throws IOException {
     this.M = M;
     this.flatVectorWriter = flatVectorWriter;
@@ -164,6 +196,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     this.mergeExec = mergeExec;
     this.tinySegmentsThreshold = tinySegmentsThreshold;
     this.version = version;
+    this.offHeapGraphBuild = offHeapGraphBuild;
     segmentWriteState = state;
     String metaFileName =
         IndexFileNames.segmentFileName(
@@ -666,21 +699,25 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       TaskExecutor parallelMergeTaskExecutor,
       int numParallelMergeWorkers,
       IORunnable abortCheck) {
+    final IncrementalHnswGraphMerger merger;
     if (mergeExec != null) {
-      return new ConcurrentHnswMerger(
-          fieldInfo, scorerSupplier, M, beamWidth, mergeExec, numMergeWorkers, abortCheck);
+      merger =
+          new ConcurrentHnswMerger(
+              fieldInfo, scorerSupplier, M, beamWidth, mergeExec, numMergeWorkers, abortCheck);
+    } else if (parallelMergeTaskExecutor != null && numParallelMergeWorkers > 1) {
+      merger =
+          new ConcurrentHnswMerger(
+              fieldInfo,
+              scorerSupplier,
+              M,
+              beamWidth,
+              parallelMergeTaskExecutor,
+              numParallelMergeWorkers,
+              abortCheck);
+    } else {
+      merger = new IncrementalHnswGraphMerger(fieldInfo, scorerSupplier, M, beamWidth, abortCheck);
     }
-    if (parallelMergeTaskExecutor != null && numParallelMergeWorkers > 1) {
-      return new ConcurrentHnswMerger(
-          fieldInfo,
-          scorerSupplier,
-          M,
-          beamWidth,
-          parallelMergeTaskExecutor,
-          numParallelMergeWorkers,
-          abortCheck);
-    }
-    return new IncrementalHnswGraphMerger(fieldInfo, scorerSupplier, M, beamWidth, abortCheck);
+    return merger.setOffHeapGraph(offHeapGraphBuild);
   }
 
   @Override
