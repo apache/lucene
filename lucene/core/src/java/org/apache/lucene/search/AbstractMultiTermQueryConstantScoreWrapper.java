@@ -317,7 +317,11 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
             }
             return cost;
           }
-          return q.estimateCost(terms);
+          try {
+            return q.estimateCost(terms);
+          } catch (IOException _) {
+            return terms.getSumDocFreq();
+          }
         }
       };
     }

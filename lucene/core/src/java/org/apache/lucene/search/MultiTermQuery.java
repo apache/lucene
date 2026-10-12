@@ -321,15 +321,7 @@ public abstract class MultiTermQuery extends Query {
    * Return an upper-bound on the number of documents matched by this query. If not known,
    * terms.getSumDocFreq() will be returned.
    */
-  public final long estimateCost(Terms terms) {
-    try {
-      return innerEstimateCost(terms);
-    } catch (IOException _) {
-      return terms.getSumDocFreq();
-    }
-  }
-
-  protected long innerEstimateCost(Terms terms) throws IOException {
+  public long estimateCost(Terms terms) throws IOException {
     return terms.getSumDocFreq();
   }
 

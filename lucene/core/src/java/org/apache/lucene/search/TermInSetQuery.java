@@ -165,7 +165,7 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
   }
 
   @Override
-  public long innerEstimateCost(Terms terms) throws IOException {
+  public long estimateCost(Terms terms) throws IOException {
     // Estimate the cost. If the MTQ can provide its term count, we can do a better job
     // estimating.
     // Cost estimation reasoning is:

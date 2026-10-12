@@ -471,13 +471,10 @@ public class TestWildcardQuery extends LuceneTestCase {
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     for (int i = 0; i < 1000; i++) {
       Document doc = new Document();
-      doc.add(newStringField("body", "foo bar", Field.Store.NO));
-      writer.addDocument(doc);
-      doc = new Document();
-      doc.add(newStringField("body", "foo wuzzle", Field.Store.NO));
-      writer.addDocument(doc);
-      doc = new Document();
       doc.add(newStringField("body", "bar " + i, Field.Store.NO));
+      writer.addDocument(doc);
+      doc = new Document();
+      doc.add(newStringField("body", "foo " + i, Field.Store.NO));
       writer.addDocument(doc);
     }
     writer.flush();
@@ -488,17 +485,42 @@ public class TestWildcardQuery extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader);
     LeafReaderContext lrc = reader.leaves().get(0);
 
-    WildcardQuery query = new WildcardQuery(new Term("body", "foo*"));
+    WildcardQuery query = new WildcardQuery(new Term("body", "bar*"));
     Query rewritten = searcher.rewrite(query);
     Weight weight = rewritten.createWeight(searcher, ScoreMode.COMPLETE_NO_SCORES, 1.0f);
     ScorerSupplier supplier = weight.scorerSupplier(lrc);
+    // Return total sumDocFreq
     assertEquals(2000, supplier.cost());
 
-    query = new WildcardQuery(new Term("body", "bar*"));
-    rewritten = searcher.rewrite(query);
-    weight = rewritten.createWeight(searcher, ScoreMode.COMPLETE_NO_SCORES, 1.0f);
-    supplier = weight.scorerSupplier(lrc);
-    assertEquals(3000, supplier.cost()); // Too many terms, assume worst-case all terms match
+    reader.close();
+    dir.close();
+  }
+
+  public void testCostEstimateFewTerms() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+    for (int i = 0; i < 1000; i++) {
+      Document doc = new Document();
+      doc.add(newStringField("body", "foo bar", Field.Store.NO));
+      writer.addDocument(doc);
+      doc = new Document();
+      doc.add(newStringField("body", "foo wuzzle", Field.Store.NO));
+      writer.addDocument(doc);
+    }
+    writer.flush();
+    writer.forceMerge(1);
+    writer.close();
+
+    IndexReader reader = DirectoryReader.open(dir);
+    IndexSearcher searcher = newSearcher(reader);
+    LeafReaderContext lrc = reader.leaves().get(0);
+
+    WildcardQuery query = new WildcardQuery(new Term("body", "*bar*"));
+    Query rewritten = searcher.rewrite(query);
+    Weight weight = rewritten.createWeight(searcher, ScoreMode.COMPLETE_NO_SCORES, 1.0f);
+    ScorerSupplier supplier = weight.scorerSupplier(lrc);
+    // Return exact doc count
+    assertEquals(1000, supplier.cost());
 
     reader.close();
     dir.close();
