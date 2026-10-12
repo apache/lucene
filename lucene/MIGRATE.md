@@ -737,6 +737,10 @@ org.apache.lucene.backward_codecs.store.GroupVIntUtil.readGroupVInts(in, longDst
 The `-fast` and `-slow` CLI flags have been removed. Use `-level` (`1`-`3`;
 default `1`). Old `-fast` is the default (`1`); old `-slow` is `-level 3`.
 
+### `IndexSearcher.search()` requires a `CollectorManager` (GITHUB#16085)
+
+The search methods that accepted `Collector` have been removed. Collectors must be rewritten to be thread safe and provided by a wrapping `CollectorManager.newCollector()`. The manager will generally need to merge results from multiple Collectors in its `reduce()` method.
+
 ## Migration from Lucene 10.5 to Lucene 10.6
 
 ### Thai analysis: output of `ThaiAnalyzer`, its default stopwords and `ThaiTokenizer` changed
