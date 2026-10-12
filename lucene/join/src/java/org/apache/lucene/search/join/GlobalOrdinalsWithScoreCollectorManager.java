@@ -44,8 +44,8 @@ class GlobalOrdinalsWithScoreCollectorManager implements CollectorManager<Collec
   final LongBitSet collectedOrds;
   // note: we only lock when collecting since the operation here is: do all the collection, and then
   // become immutable when we can have any number of concurrent readers.  Locks are per-block, so
-  // access to a single lock should generally be by one or two threads since global docids are handled
-  // by per-segment threads, which each get contiguous blocks of docids.
+  // access to a single lock should generally be by one or two threads since global docids are
+  // handled by per-segment threads, which each get contiguous blocks of docids.
   final Lock[] locks;
 
   // also written concurrently
