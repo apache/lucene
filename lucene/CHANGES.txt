@@ -132,7 +132,7 @@ API Changes
 
 * GITHUB#16686: Make DocAndScoreQuery public (Trevor McCulloch)
 
-* GITHUB#XXX: Remove unused VectorValueSource and MultiValueSource. They were
+* GITHUB#16814: Remove unused VectorValueSource and MultiValueSource. They were
   deprecated in 10.x (GITHUB#16813). (Luca Cavanna)
 
 New Features
