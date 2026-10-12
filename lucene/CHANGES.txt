@@ -240,6 +240,9 @@ Optimizations
 * GITHUB#16796: Merges read inner files of compound files through a mapping of their own, so the
   access they advise does not replace the advice of searches. (Jim Ferenczi)
 
+* GITHUB#16783: Fix performance bug in DirectoryTaxonomyReader#getBulkOrdinals that broke its
+  ord -> FacetLabel cache such that it always missed when it should have hit. (Alex Baranov)
+
 Bug Fixes
 ---------------------
 
