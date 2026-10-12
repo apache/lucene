@@ -28,6 +28,7 @@ import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.IOSupplier;
+import org.apache.lucene.util.IOUtils;
 
 /** This merger merges graph in a concurrent manner, by using {@link HnswConcurrentMergeBuilder} */
 public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
@@ -71,8 +72,14 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
   protected HnswBuilder createBuilder(KnnVectorValues mergedVectorValues, int maxOrd)
       throws IOException {
     if (largestGraphReader == null) {
-      return new HnswConcurrentMergeBuilder(
-          taskExecutor, numWorker, scorerSupplier, beamWidth, new OnHeapHnswGraph(M, maxOrd), null);
+      BuildableHnswGraph graph = BuildableHnswGraph.create(M, maxOrd, offHeapGraph);
+      try {
+        return new HnswConcurrentMergeBuilder(
+            taskExecutor, numWorker, scorerSupplier, beamWidth, graph, null);
+      } catch (Throwable t) {
+        IOUtils.closeWhileSuppressingExceptions(t, graph);
+        throw t;
+      }
     }
     HnswGraph[] graphs = orderGraphReaders();
     BitSet initializedNodes = new FixedBitSet(maxOrd);
@@ -80,24 +87,29 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
     // only prune the base graph here: if it had deletes, the builder repairs it with all workers
     InitializedHnswGraphBuilder.PrunedGraph prunedGraph =
         InitializedHnswGraphBuilder.pruneGraph(
-            scorerSupplier, beamWidth, graphs[0], ordMaps[0], maxOrd, abortCheck);
-    // the remaining graphs have no deletions; join them into the base graph rather than inserting
-    // their nodes from scratch. Each call to getGraph returns a new instance, which is how every
-    // worker gets its own.
-    List<IOSupplier<HnswGraph>> otherGraphs = new ArrayList<>(graphs.length - 1);
-    for (int i = 1; i < graphReaders.size(); i++) {
-      HnswGraphProvider provider = (HnswGraphProvider) graphReaders.get(i).reader();
-      otherGraphs.add(() -> provider.getGraph(fieldInfo.name));
+            scorerSupplier, beamWidth, graphs[0], ordMaps[0], maxOrd, abortCheck, offHeapGraph);
+    try {
+      // the remaining graphs have no deletions; join them into the base graph rather than
+      // inserting their nodes from scratch. Each call to getGraph returns a new instance, which is
+      // how every worker gets its own.
+      List<IOSupplier<HnswGraph>> otherGraphs = new ArrayList<>(graphs.length - 1);
+      for (int i = 1; i < graphReaders.size(); i++) {
+        HnswGraphProvider provider = (HnswGraphProvider) graphReaders.get(i).reader();
+        otherGraphs.add(() -> provider.getGraph(fieldInfo.name));
+      }
+      return new HnswConcurrentMergeBuilder(
+          taskExecutor,
+          numWorker,
+          scorerSupplier,
+          beamWidth,
+          prunedGraph.graph(),
+          initializedNodes,
+          prunedGraph.hasDeletes() ? prunedGraph : null,
+          otherGraphs,
+          ArrayUtil.copyOfSubArray(ordMaps, 1, ordMaps.length));
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, prunedGraph.graph());
+      throw t;
     }
-    return new HnswConcurrentMergeBuilder(
-        taskExecutor,
-        numWorker,
-        scorerSupplier,
-        beamWidth,
-        prunedGraph.graph(),
-        initializedNodes,
-        prunedGraph.hasDeletes() ? prunedGraph : null,
-        otherGraphs,
-        ArrayUtil.copyOfSubArray(ordMaps, 1, ordMaps.length));
   }
 }

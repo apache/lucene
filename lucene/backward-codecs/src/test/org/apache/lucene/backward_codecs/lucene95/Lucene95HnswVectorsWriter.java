@@ -507,8 +507,9 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
           case FLOAT16 -> throw new UnsupportedOperationException("FLOAT16 is not supported");
         }
         graph =
-            merger.merge(
-                mergedVectorValues, segmentWriteState.infoStream, docsWithField.cardinality());
+            (OnHeapHnswGraph)
+                merger.merge(
+                    mergedVectorValues, segmentWriteState.infoStream, docsWithField.cardinality());
         vectorIndexNodeOffsets = writeGraph(graph);
       }
       long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
@@ -763,7 +764,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
 
     OnHeapHnswGraph getGraph() throws IOException {
       if (vectors.size() > 0) {
-        return hnswGraphBuilder.getCompletedGraph();
+        return (OnHeapHnswGraph) hnswGraphBuilder.getCompletedGraph();
       } else {
         return null;
       }

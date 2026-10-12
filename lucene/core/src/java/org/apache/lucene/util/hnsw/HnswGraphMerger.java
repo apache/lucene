@@ -24,7 +24,7 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.InfoStream;
 
 /**
- * Abstraction of merging multiple graphs into one on-heap graph
+ * Abstraction of merging multiple graphs into one graph
  *
  * @lucene.experimental
  */
@@ -43,7 +43,7 @@ public interface HnswGraphMerger {
       throws IOException;
 
   /**
-   * Merge and produce the on heap graph
+   * Merge and produce the graph; the caller must close it
    *
    * @param mergedVectorValues view of the vectors in the merged segment
    * @param infoStream optional info stream to set to builder
@@ -51,6 +51,6 @@ public interface HnswGraphMerger {
    * @return merged graph
    * @throws IOException during merge
    */
-  OnHeapHnswGraph merge(KnnVectorValues mergedVectorValues, InfoStream infoStream, int maxOrd)
+  BuildableHnswGraph merge(KnnVectorValues mergedVectorValues, InfoStream infoStream, int maxOrd)
       throws IOException;
 }
