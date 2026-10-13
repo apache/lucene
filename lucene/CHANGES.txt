@@ -135,6 +135,9 @@ API Changes
 * GITHUB#16814: Remove unused VectorValueSource and MultiValueSource. They were
   deprecated in 10.x (GITHUB#16813). (Luca Cavanna)
 
+* GITHUB#16834: Remove deprecated CharsRef.getUTF16SortedAsUTF8Comparator() method.
+  (Alan Woodward)
+
 New Features
 ---------------------
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
