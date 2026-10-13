@@ -38,6 +38,10 @@ import org.apache.lucene.util.automaton.CompiledAutomaton;
  * reduce the number of comparisons. For example: the regular expression of <code>[dl]og?</code>
  * will make approximately four comparisons: do, dog, lo, and log.
  *
+ * <p>If the compiled automaton matches no terms, all terms or a single term, then the built-in
+ * term-based rewrite methods are bypassed in favor of a {@link MatchNoDocsQuery}, {@link
+ * FieldExistsQuery} or {@link TermQuery} respectively, with the same scoring behavior.
+ *
  * @lucene.experimental
  */
 public class AutomatonQuery extends MultiTermQuery implements Accountable {
@@ -92,16 +96,91 @@ public class AutomatonQuery extends MultiTermQuery implements Accountable {
    */
   public AutomatonQuery(
       final Term term, Automaton automaton, boolean isBinary, RewriteMethod rewriteMethod) {
-    super(term.field(), rewriteMethod);
+    var compiled = new CompiledAutomaton(automaton, false, true, isBinary);
+    super(term.field(), specialCaseRewriteMethod(compiled, rewriteMethod));
     this.term = term;
     this.automaton = automaton;
     this.automatonIsBinary = isBinary;
-    this.compiled = new CompiledAutomaton(automaton, false, true, isBinary);
+    this.compiled = compiled;
 
     // compiled may already reference the same Automaton instance; only count its bytes once.
     long automatonBytes = compiled.sharesAutomaton(automaton) ? 0L : automaton.ramBytesUsed();
     this.ramBytesUsed =
         BASE_RAM_BYTES + term.ramBytesUsed() + automatonBytes + compiled.ramBytesUsed();
+  }
+
+  /**
+   * Returns a rewrite method that bypasses term enumeration when the compiled automaton matches no
+   * terms, all terms or a single term, if the given rewrite method is a built-in term-based one
+   * whose scoring we can reproduce. Otherwise, returns the given rewrite method.
+   */
+  private static RewriteMethod specialCaseRewriteMethod(
+      CompiledAutomaton compiled, RewriteMethod rewriteMethod) {
+    if (rewriteMethod instanceof SpecialCaseRewrite specialCaseRewrite) {
+      rewriteMethod = specialCaseRewrite.delegate;
+    }
+    boolean constantScore =
+        rewriteMethod == CONSTANT_SCORE_BLENDED_REWRITE
+            || rewriteMethod == CONSTANT_SCORE_REWRITE
+            || rewriteMethod == CONSTANT_SCORE_BOOLEAN_REWRITE;
+    // top-terms rewrites only visit a bounded number of terms, so they can't match ALL
+    boolean topTermsConstantScore = rewriteMethod instanceof TopTermsBoostOnlyBooleanQueryRewrite;
+    boolean scoring =
+        rewriteMethod == SCORING_BOOLEAN_REWRITE
+            || rewriteMethod instanceof TopTermsScoringBooleanQueryRewrite;
+    boolean applies =
+        switch (compiled.type) {
+          case NONE, SINGLE -> constantScore || topTermsConstantScore || scoring;
+          case ALL -> constantScore;
+          case NORMAL -> false;
+        };
+    return applies ? new SpecialCaseRewrite(rewriteMethod) : rewriteMethod;
+  }
+
+  /**
+   * Rewrites a query whose compiled automaton is NONE, ALL or SINGLE without enumerating terms.
+   * Other queries are rewritten by the delegate.
+   */
+  private static final class SpecialCaseRewrite extends RewriteMethod {
+    private final RewriteMethod delegate;
+    private final boolean constantScore;
+
+    SpecialCaseRewrite(RewriteMethod delegate) {
+      this.delegate = delegate;
+      this.constantScore =
+          delegate != SCORING_BOOLEAN_REWRITE
+              && delegate instanceof TopTermsScoringBooleanQueryRewrite == false;
+    }
+
+    @Override
+    public Query rewrite(IndexSearcher indexSearcher, MultiTermQuery query) throws IOException {
+      // may be handed a query other than the one it was created for via getRewriteMethod()
+      if (query instanceof AutomatonQuery == false) {
+        return delegate.rewrite(indexSearcher, query);
+      }
+      CompiledAutomaton compiled = ((AutomatonQuery) query).compiled;
+      String field = query.getField();
+      return switch (compiled.type) {
+        case NONE -> new MatchNoDocsQuery("automaton matches no terms");
+        case ALL ->
+            constantScore ? new FieldExistsQuery(field) : delegate.rewrite(indexSearcher, query);
+        case SINGLE -> {
+          Query termQuery = new TermQuery(new Term(field, compiled.term));
+          yield constantScore ? new ConstantScoreQuery(termQuery) : termQuery;
+        }
+        case NORMAL -> delegate.rewrite(indexSearcher, query);
+      };
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      return obj instanceof SpecialCaseRewrite other && delegate.equals(other.delegate);
+    }
+
+    @Override
+    public int hashCode() {
+      return 31 * SpecialCaseRewrite.class.hashCode() + delegate.hashCode();
+    }
   }
 
   @Override
