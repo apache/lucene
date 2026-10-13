@@ -636,6 +636,8 @@ Optimizations
 * GITHUB#16783: Fix performance bug in DirectoryTaxonomyReader#getBulkOrdinals that broke its
   ord -> FacetLabel cache such that it always missed when it should have hit. (Alex Baranov)
 
+* GITHUB#16835: Speed up rangeIntoBitSet for table-encoded numeric and sorted numeric DocValues. (Ke Wei)
+
 Bug Fixes
 ---------------------
 
