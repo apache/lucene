@@ -104,7 +104,7 @@ List<GroupedFacetResult.FacetEntry> entries = result.getFacetEntries(offset, lim
 
 `VectorValueSource` and its base class `MultiValueSource` have been removed without a replacement
 
-### `supportsConcurrency` constructors have been removed (GITHUB#XXX)
+### `supportsConcurrency` constructors have been removed (GITHUB#16833)
 
 The `TopFieldCollectorManager` and `TopScoreDocCollectorManager` constructors that
 took a `boolean supportsConcurrency` argument have been removed. The flag has been

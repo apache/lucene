@@ -135,7 +135,7 @@ API Changes
 * GITHUB#16814: Remove unused VectorValueSource and MultiValueSource. They were
   deprecated in 10.x (GITHUB#16813). (Luca Cavanna)
 
-* GITHUB#XXX: Remove deprecated supportsConcurrency constructors from
+* GITHUB#16833: Remove deprecated supportsConcurrency constructors from
   TopFieldCollectorManager and TopScoreDocCollectorManager. The flag has been a
   no-op since it was deprecated in 10.1. (Luca Cavanna)
 
