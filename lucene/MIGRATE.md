@@ -104,6 +104,22 @@ List<GroupedFacetResult.FacetEntry> entries = result.getFacetEntries(offset, lim
 
 `VectorValueSource` and its base class `MultiValueSource` have been removed without a replacement
 
+### `supportsConcurrency` constructors have been removed (GITHUB#XXX)
+
+The `TopFieldCollectorManager` and `TopScoreDocCollectorManager` constructors that
+took a `boolean supportsConcurrency` argument have been removed. The flag has been
+a no-op since Lucene 10.1. Drop the last argument.
+
+```java
+// Before
+new TopScoreDocCollectorManager(numHits, after, totalHitsThreshold, true);
+new TopFieldCollectorManager(sort, numHits, after, totalHitsThreshold, false);
+
+// After
+new TopScoreDocCollectorManager(numHits, after, totalHitsThreshold);
+new TopFieldCollectorManager(sort, numHits, after, totalHitsThreshold);
+```
+
 ### Directory#copyFrom is now abstract (GITHUB#16530)
 
 `Directory#copyFrom` no longer has a default implementation, so classes that extend
