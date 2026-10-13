@@ -94,7 +94,8 @@ public class AutomatonQuery extends MultiTermQuery implements Accountable {
    *     UTF32ToUTF8 conversion
    * @param rewriteMethod the rewriteMethod to use to build the final query from the automaton
    */
-  public AutomatonQuery(final Term term, Automaton automaton, boolean isBinary, RewriteMethod rewriteMethod) {
+  public AutomatonQuery(
+      final Term term, Automaton automaton, boolean isBinary, RewriteMethod rewriteMethod) {
     var compiled = new CompiledAutomaton(automaton, false, true, isBinary);
     super(term.field(), specialCaseRewriteMethod(compiled, rewriteMethod));
     this.term = term;

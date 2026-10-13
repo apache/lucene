@@ -165,7 +165,8 @@ public class FieldExistsQuery extends Query {
           allReadersRewritable = false;
           break;
         }
-      } else if (fieldInfo.getIndexOptions() != IndexOptions.NONE) { // the field only indexes terms
+      } else if (fieldInfo.getIndexOptions() != IndexOptions.NONE) {
+        // the field only indexes terms
         final Terms terms = leaf.terms(field);
         if (terms == null || terms.getDocCount() != leaf.maxDoc()) {
           allReadersRewritable = false;
