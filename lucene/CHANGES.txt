@@ -132,6 +132,9 @@ API Changes
 
 * GITHUB#16686: Make DocAndScoreQuery public (Trevor McCulloch)
 
+* GITHUB#16814: Remove unused VectorValueSource and MultiValueSource. They were
+  deprecated in 10.x (GITHUB#16813). (Luca Cavanna)
+
 New Features
 ---------------------
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
