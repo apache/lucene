@@ -28,8 +28,10 @@ import org.apache.lucene.search.IndexSearcher;
  * Converts individual ValueSource instances to leverage the FunctionValues *Val functions that work
  * with multiple values, i.e. {@link
  * org.apache.lucene.queries.function.FunctionValues#doubleVal(int, double[])}
+ *
+ * @deprecated unused and will be removed
  */
-// Not crazy about the name, but...
+@Deprecated
 public class VectorValueSource extends MultiValueSource {
   protected final List<ValueSource> sources;
 

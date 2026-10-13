@@ -21,7 +21,10 @@ import org.apache.lucene.queries.function.ValueSource;
 /**
  * A {@link ValueSource} that abstractly represents {@link ValueSource}s for poly fields, and other
  * things.
+ *
+ * @deprecated unused and will be removed
  */
+@Deprecated
 public abstract class MultiValueSource extends ValueSource {
 
   public abstract int dimension();
