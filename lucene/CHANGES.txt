@@ -717,6 +717,11 @@ Bug Fixes
   e.g. when searching UNSIGNED_BYTE and SEVEN_BIT scalar-quantized fields in one JVM.
   (Lantao Jin)
 
+* GITHUB#16829: Fix the off-heap scorer of legacy Lucene99 scalar-quantized vectors for vectors that
+  straddle an mmap chunk boundary. Scoring such a vector threw UnsupportedOperationException, and a
+  straddling scoring ordinal shared its scratch buffer with the vectors it was scored against.
+  (Lantao Jin)
+
 Build
 ---------------------
 
