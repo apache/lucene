@@ -75,27 +75,16 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
 
     private int readCompressedLengths(
         DataInput in, int originalLength, int dictLength, int blockLength) throws IOException {
-      dictCompressedLength = readCompressedLength(in, dictLength);
+      dictCompressedLength = in.readVInt();
       int totalLength = dictLength;
       int i = 0;
       compressedLengths = ArrayUtil.growNoCopy(compressedLengths, originalLength / blockLength + 1);
       while (totalLength < originalLength) {
 
-        compressedLengths[i++] = readCompressedLength(in, blockLength);
+        compressedLengths[i++] = in.readVInt();
         totalLength += blockLength;
       }
       return i;
-    }
-
-    // Compressed lengths size the buffer that compressed bytes are bulk-read into, so reject values
-    // that LZ4 cannot produce for the given input length.
-    private static int readCompressedLength(DataInput in, int length) throws IOException {
-      final int compressedLength = in.readVInt();
-      if (compressedLength < 0 || compressedLength > length + length / 255 + 16) {
-        throw new CorruptIndexException(
-            "Illegal compressed length " + compressedLength + " for " + length + " bytes", in);
-      }
-      return compressedLength;
     }
 
     @Override
