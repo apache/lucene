@@ -122,14 +122,13 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
 
       int offsetInBlock = dictLength;
       int offsetInBytesRef = offset;
-      int block = 0;
       if (offset >= dictLength) {
         offsetInBytesRef -= dictLength;
 
         // Skip unneeded blocks
         int numBytesToSkip = 0;
-        for (; block < numBlocks && offsetInBlock + blockLength < offset; ++block) {
-          int compressedBlockLength = compressedLengths[block];
+        for (int i = 0; i < numBlocks && offsetInBlock + blockLength < offset; ++i) {
+          int compressedBlockLength = compressedLengths[i];
           numBytesToSkip += compressedBlockLength;
           offsetInBlock += blockLength;
           offsetInBytesRef -= blockLength;
@@ -146,6 +145,7 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
       if (offsetInBlock < offset + length) {
         bytes.bytes = ArrayUtil.grow(bytes.bytes, bytes.length + offset + length - offsetInBlock);
       }
+      int block = (offsetInBlock - dictLength) / blockLength;
       while (offsetInBlock < offset + length) {
         final int bytesToDecompress = Math.min(blockLength, offset + length - offsetInBlock);
         decompress(
