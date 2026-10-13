@@ -633,6 +633,8 @@ Optimizations
 * GITHUB#16783: Fix performance bug in DirectoryTaxonomyReader#getBulkOrdinals that broke its
   ord -> FacetLabel cache such that it always missed when it should have hit. (Alex Baranov)
 
+* GITHUB#16832: Reuse address upper when scanning sparse sorted numeric & dense binary doc values. (Ke Wei)
+
 Bug Fixes
 ---------------------
 

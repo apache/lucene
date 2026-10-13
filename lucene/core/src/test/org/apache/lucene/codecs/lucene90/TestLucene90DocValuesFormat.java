@@ -32,6 +32,7 @@ import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.PostingsFormat;
+import org.apache.lucene.codecs.lucene104.Lucene104Codec;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
@@ -76,6 +77,7 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.FixedBitSet;
 
 /** Tests Lucene90DocValuesFormat */
 public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatTestCase {
@@ -1391,6 +1393,67 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
         assertEquals(0, skipper.minDocID(0));
         assertTrue(skipper.maxDocID(0) >= 0);
         assertTrue(skipper.minValue() <= skipper.maxValue());
+      }
+    }
+  }
+
+  public void testReuseAddressUpper() throws Exception {
+    BytesRef[] expectedBinaryValues = {
+      new BytesRef("a"),
+      new BytesRef("bb"),
+      new BytesRef("c"),
+      new BytesRef("d"),
+      new BytesRef("e"),
+      new BytesRef("f"),
+      new BytesRef("g"),
+      new BytesRef("h")
+    };
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig().setCodec(new Lucene104Codec());
+      int numDocs = expectedBinaryValues.length;
+      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+        for (int docID = 0; docID < numDocs; docID++) {
+          Document doc = new Document();
+          doc.add(new BinaryDocValuesField("binary", expectedBinaryValues[docID]));
+          if (docID == 1 || docID == 5) {
+            doc.add(SortedNumericDocValuesField.indexedField("field1", 1));
+            doc.add(SortedNumericDocValuesField.indexedField("field1", 2));
+          } else if (docID == 3) {
+            doc.add(SortedNumericDocValuesField.indexedField("field1", 4));
+            doc.add(SortedNumericDocValuesField.indexedField("field1", 5));
+          }
+          w.addDocument(doc);
+        }
+        w.forceMerge(1);
+      }
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        LeafReaderContext ctx = reader.leaves().get(0);
+        // test reuse address upper for sorted numeric doc values
+        {
+          SortedNumericDocValues values = ctx.reader().getSortedNumericDocValues("field1");
+          assertTrue(values.cost() < numDocs);
+          assertEquals(1, values.advance(0));
+
+          FixedBitSet actual = new FixedBitSet(numDocs - 1);
+          values.rangeIntoBitSet(1, numDocs, 1, 2, actual, 1);
+
+          FixedBitSet expected = new FixedBitSet(numDocs - 1);
+          expected.set(1 - 1);
+          expected.set(5 - 1);
+          assertEquals(expected, actual);
+        }
+
+        // test reuse address upper for binary doc values
+        {
+          BinaryDocValues values = reader.leaves().get(0).reader().getBinaryDocValues("binary");
+          int[] docs = {1, 2, 3};
+          BytesRef[] actual = new BytesRef[docs.length];
+          values.binaryValues(docs.length, docs, actual);
+          for (int i = 0; i < docs.length; i++) {
+            assertEquals(expectedBinaryValues[docs[i]], actual[i]);
+          }
+        }
       }
     }
   }
