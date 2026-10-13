@@ -572,7 +572,8 @@ public class TestFieldExistsQuery extends LuceneTestCase {
 
     assertNormsCountWithShortcut(searcher, "text", randomNumDocs);
     assertNormsCountWithShortcut(searcher, "doesNotExist", 0);
-    expectThrows(IllegalStateException.class, () -> searcher.count(new FieldExistsQuery("text_n")));
+    // text_n indexes terms but not norms, so every term's postings are visited
+    assertEquals(randomNumDocs, searcher.count(new FieldExistsQuery("text_n")));
 
     // docs that have a text field that analyzes to an empty token
     // stream still have a recorded norm value but don't show up in
@@ -604,6 +605,84 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     assertEquals(numMatchingDocs, searcher.count(testQuery));
     final Weight weight = searcher.createWeight(testQuery, ScoreMode.COMPLETE, 1);
     assertEquals(numMatchingDocs, weight.count(searcher.reader.leaves().get(0)));
+  }
+
+  public void testTermsRandom() throws IOException {
+    final int iters = atLeast(10);
+    for (int iter = 0; iter < iters; ++iter) {
+      Directory dir = newDirectory();
+      RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
+      final int numDocs = atLeast(100);
+      for (int i = 0; i < numDocs; ++i) {
+        Document doc = new Document();
+        if (random().nextBoolean()) {
+          int numValues = TestUtil.nextInt(random(), 1, 3);
+          for (int j = 0; j < numValues; ++j) {
+            doc.add(new StringField("str", TestUtil.randomSimpleString(random()), Store.NO));
+          }
+          doc.add(new StringField("has_value", "yes", Store.NO));
+        }
+        doc.add(new StringField("f", random().nextBoolean() ? "yes" : "no", Store.NO));
+        iw.addDocument(doc);
+      }
+      if (random().nextBoolean()) {
+        iw.deleteDocuments(new TermQuery(new Term("f", "no")));
+      }
+      iw.commit();
+      final IndexReader reader = iw.getReader();
+      final IndexSearcher searcher = newSearcher(reader);
+      iw.close();
+
+      assertSameMatches(
+          searcher,
+          new TermQuery(new Term("has_value", "yes")),
+          new FieldExistsQuery("str"),
+          false);
+      assertEquals(
+          searcher.count(new TermQuery(new Term("has_value", "yes"))),
+          searcher.count(new FieldExistsQuery("str")));
+
+      reader.close();
+      dir.close();
+    }
+  }
+
+  public void testTermsRewrite() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
+    Document doc = new Document();
+    doc.add(new StringField("str", "", Store.NO));
+    iw.addDocument(doc);
+    iw.commit();
+    final IndexReader reader = iw.getReader();
+    final IndexSearcher searcher = newSearcher(reader);
+    iw.close();
+
+    // the empty string is a term like any other
+    assertEquals(1, searcher.count(new FieldExistsQuery("str")));
+    assertEquals(MatchAllDocsQuery.INSTANCE, searcher.rewrite(new FieldExistsQuery("str")));
+    assertTrue(searcher.rewrite(new FieldExistsQuery("missing")) instanceof MatchNoDocsQuery);
+
+    reader.close();
+    dir.close();
+  }
+
+  public void testPointsOnlyFieldThrows() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
+    Document doc = new Document();
+    doc.add(new LongPoint("long", 1L));
+    iw.addDocument(doc);
+    iw.addDocument(new Document());
+    iw.commit();
+    final IndexReader reader = iw.getReader();
+    final IndexSearcher searcher = newSearcher(reader);
+    iw.close();
+
+    expectThrows(IllegalStateException.class, () -> searcher.count(new FieldExistsQuery("long")));
+
+    reader.close();
+    dir.close();
   }
 
   public void testKnnVectorRandom() throws IOException {

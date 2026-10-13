@@ -329,7 +329,7 @@ public abstract class MultiTermQuery extends Query {
   /**
    * @return the rewrite method used to build the final query
    */
-  public RewriteMethod getRewriteMethod() {
+  public final RewriteMethod getRewriteMethod() {
     return rewriteMethod;
   }
 

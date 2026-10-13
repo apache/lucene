@@ -33,11 +33,19 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PointValues;
+import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.util.DocIdSetBuilder;
 
 /**
  * A {@link Query} that matches documents that contain either a {@link KnnFloatVectorField}, {@link
- * org.apache.lucene.document.KnnByteVectorField} or a field that indexes norms or doc values.
+ * org.apache.lucene.document.KnnByteVectorField} or a field that indexes norms, doc values or
+ * terms.
+ *
+ * <p>Fields that index terms but neither norms nor doc values (e.g. {@link
+ * org.apache.lucene.document.StringField}) are matched by visiting the postings of every term,
+ * which is much slower than the other cases.
  */
 public class FieldExistsQuery extends Query {
   private final String field;
@@ -116,6 +124,7 @@ public class FieldExistsQuery extends Query {
   public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     IndexReader reader = indexSearcher.getIndexReader();
     boolean allReadersRewritable = true;
+    boolean fieldExists = false;
 
     for (LeafReaderContext context : reader.leaves()) {
       LeafReader leaf = context.reader();
@@ -124,6 +133,10 @@ public class FieldExistsQuery extends Query {
 
       if (fieldInfo == null) {
         allReadersRewritable = false;
+        continue;
+      }
+      fieldExists = true;
+      if (allReadersRewritable == false) {
         break;
       }
 
@@ -152,9 +165,18 @@ public class FieldExistsQuery extends Query {
           allReadersRewritable = false;
           break;
         }
+      } else if (fieldInfo.getIndexOptions() != IndexOptions.NONE) { // the field only indexes terms
+        final Terms terms = leaf.terms(field);
+        if (terms == null || terms.getDocCount() != leaf.maxDoc()) {
+          allReadersRewritable = false;
+          break;
+        }
       } else {
         throw new IllegalStateException(buildErrorMsg(fieldInfo));
       }
+    }
+    if (fieldExists == false) {
+      return new MatchNoDocsQuery("field '" + field + "' does not exist");
     }
     if (allReadersRewritable) {
       return MatchAllDocsQuery.INSTANCE;
@@ -207,6 +229,9 @@ public class FieldExistsQuery extends Query {
             default:
               throw new AssertionError();
           }
+        } else if (fieldInfo.getIndexOptions()
+            != IndexOptions.NONE) { // the field only indexes terms
+          return termsScorerSupplier(context.reader(), scoreMode);
         } else {
           throw new IllegalStateException(buildErrorMsg(fieldInfo));
         }
@@ -216,6 +241,36 @@ public class FieldExistsQuery extends Query {
         }
         return ConstantScoreScorerSupplier.fromIterator(
             iterator, score(), scoreMode, context.reader().maxDoc());
+      }
+
+      private ScorerSupplier termsScorerSupplier(LeafReader reader, ScoreMode scoreMode)
+          throws IOException {
+        final Terms terms = reader.terms(field);
+        if (terms == null) {
+          return null;
+        }
+        final int maxDoc = reader.maxDoc();
+        if (terms.getDocCount() == maxDoc) {
+          return ConstantScoreScorerSupplier.matchAll(score(), scoreMode, maxDoc);
+        }
+        return new ConstantScoreScorerSupplier(score(), scoreMode, maxDoc) {
+          @Override
+          public long cost() {
+            return terms.getDocCount();
+          }
+
+          @Override
+          public DocIdSetIterator iterator(long leadCost) throws IOException {
+            DocIdSetBuilder builder = new DocIdSetBuilder(maxDoc, terms);
+            TermsEnum termsEnum = terms.iterator();
+            PostingsEnum postings = null;
+            while (termsEnum.next() != null) {
+              postings = termsEnum.postings(postings, PostingsEnum.NONE);
+              builder.add(postings);
+            }
+            return builder.build().iterator();
+          }
+        };
       }
 
       @Override
@@ -254,6 +309,10 @@ public class FieldExistsQuery extends Query {
               count = (terms == null ? 0 : terms.getDocCount());
             }
           }
+        } else if (fieldInfo.getIndexOptions()
+            != IndexOptions.NONE) { // the field only indexes terms
+          Terms terms = reader.terms(field);
+          count = (terms == null ? 0 : terms.getDocCount());
         } else {
           throw new IllegalStateException(buildErrorMsg(fieldInfo));
         }
@@ -288,9 +347,9 @@ public class FieldExistsQuery extends Query {
   }
 
   private String buildErrorMsg(FieldInfo fieldInfo) {
-    return "FieldExistsQuery requires that the field indexes doc values, norms or vectors, but field '"
+    return "FieldExistsQuery requires that the field indexes doc values, norms, vectors or terms, but field '"
         + fieldInfo.name
-        + "' exists and indexes neither of these data structures";
+        + "' exists and indexes none of these data structures";
   }
 
   private int getVectorValuesSize(FieldInfo fi, LeafReader reader) throws IOException {

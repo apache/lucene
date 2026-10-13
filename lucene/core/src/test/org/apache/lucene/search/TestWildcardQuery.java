@@ -91,13 +91,13 @@ public class TestWildcardQuery extends LuceneTestCase {
         searcher.rewrite(
             new WildcardQuery(
                 new Term("field", "nowildcard"), MultiTermQuery.CONSTANT_SCORE_REWRITE));
-    assertThat(q, instanceOf(MultiTermQueryConstantScoreWrapper.class));
+    assertEquals(new ConstantScoreQuery(new TermQuery(new Term("field", "nowildcard"))), q);
 
     q =
         searcher.rewrite(
             new WildcardQuery(
                 new Term("field", "nowildcard"), MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE));
-    assertThat(q, instanceOf(MultiTermQueryConstantScoreBlendedWrapper.class));
+    assertEquals(new ConstantScoreQuery(new TermQuery(new Term("field", "nowildcard"))), q);
 
     q =
         searcher.rewrite(

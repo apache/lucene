@@ -135,6 +135,10 @@ API Changes
 * GITHUB#16814: Remove unused VectorValueSource and MultiValueSource. They were
   deprecated in 10.x (GITHUB#16813). (Luca Cavanna)
 
+* GITHUB#16816: AutomatonQuery rewrites automata that match no terms, all terms or a single term to
+  MatchNoDocsQuery, FieldExistsQuery or TermQuery. FieldExistsQuery now supports fields that only
+  index terms. MultiTermQuery#getRewriteMethod is now final. (Michael Froh)
+
 New Features
 ---------------------
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of

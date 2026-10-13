@@ -209,6 +209,65 @@ public class TestAutomatonQuery extends LuceneTestCase {
     assertEquals(0, automatonQueryNrHits(aq));
   }
 
+  public void testSpecialCaseRewrites() throws IOException {
+    Automaton none = Automata.makeEmpty();
+    Automaton all = Automata.makeAnyString();
+    Automaton single = Automata.makeString("piece");
+    Automaton normal = new RegExp("pi.*").toAutomaton();
+    Term singleTerm = new Term(FN, "piece");
+
+    for (MultiTermQuery.RewriteMethod method :
+        List.of(
+            MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE,
+            MultiTermQuery.CONSTANT_SCORE_REWRITE,
+            MultiTermQuery.CONSTANT_SCORE_BOOLEAN_REWRITE)) {
+      assertTrue(rewrite(none, method) instanceof MatchNoDocsQuery);
+      assertEquals(new FieldExistsQuery(FN), rewrite(all, method));
+      assertEquals(new ConstantScoreQuery(new TermQuery(singleTerm)), rewrite(single, method));
+    }
+
+    MultiTermQuery.RewriteMethod topTermsBoostOnly =
+        new MultiTermQuery.TopTermsBoostOnlyBooleanQueryRewrite(10);
+    assertTrue(rewrite(none, topTermsBoostOnly) instanceof MatchNoDocsQuery);
+    assertFalse(rewrite(all, topTermsBoostOnly) instanceof FieldExistsQuery);
+    assertEquals(
+        new ConstantScoreQuery(new TermQuery(singleTerm)), rewrite(single, topTermsBoostOnly));
+
+    for (MultiTermQuery.RewriteMethod method :
+        List.of(
+            MultiTermQuery.SCORING_BOOLEAN_REWRITE,
+            new MultiTermQuery.TopTermsScoringBooleanQueryRewrite(10))) {
+      assertTrue(rewrite(none, method) instanceof MatchNoDocsQuery);
+      assertFalse(rewrite(all, method) instanceof FieldExistsQuery);
+      assertEquals(new TermQuery(singleTerm), rewrite(single, method));
+    }
+
+    // DOC_VALUES_REWRITE doesn't use postings, so it is left alone
+    AutomatonQuery docValues =
+        new AutomatonQuery(newTerm("bogus"), single, false, MultiTermQuery.DOC_VALUES_REWRITE);
+    assertSame(MultiTermQuery.DOC_VALUES_REWRITE, docValues.getRewriteMethod());
+
+    // a special-case rewrite method can be reused for a query with a different automaton
+    AutomatonQuery singleQuery = new AutomatonQuery(newTerm("bogus"), single);
+    AutomatonQuery reused =
+        new AutomatonQuery(newTerm("bogus"), normal, false, singleQuery.getRewriteMethod());
+    assertEquals(new AutomatonQuery(newTerm("bogus"), normal), reused);
+    assertSame(MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE, reused.getRewriteMethod());
+    assertEquals(
+        new AutomatonQuery(newTerm("bogus"), single, false, singleQuery.getRewriteMethod()),
+        singleQuery);
+    assertFalse(
+        singleQuery.equals(
+            new AutomatonQuery(
+                newTerm("bogus"), single, false, MultiTermQuery.CONSTANT_SCORE_REWRITE)));
+  }
+
+  private Query rewrite(Automaton automaton, MultiTermQuery.RewriteMethod method)
+      throws IOException {
+    // a single rewrite step, since e.g. FieldExistsQuery may rewrite further
+    return new AutomatonQuery(newTerm("bogus"), automaton, false, method).rewrite(searcher);
+  }
+
   public void testHashCodeWithThreads() throws Exception {
     final AutomatonQuery[] queries = new AutomatonQuery[atLeast(100)];
     for (int i = 0; i < queries.length; i++) {

@@ -343,6 +343,27 @@ Automaton dfa = Operations.determinize(WildcardQuery.toAutomaton(new Term("myfie
 Query query = new AutomatonQuery(new Term("myfield", pattern), dfa);
 ```
 
+### `AutomatonQuery` rewrites special-case automata
+
+When the compiled automaton matches no terms, all terms or a single term, and the rewrite method is
+one of the built-in term-based rewrite methods, `AutomatonQuery` now rewrites to
+`MatchNoDocsQuery`, `FieldExistsQuery` or `TermQuery` (wrapped in `ConstantScoreQuery` for
+constant-score rewrite methods). `MultiTermQuery#getRewriteMethod()` is now final and returns the
+special-case rewrite method in these cases. Passing it to another `AutomatonQuery` behaves like
+passing the original rewrite method.
+
+### `FieldExistsQuery` supports fields that only index terms
+
+`FieldExistsQuery` no longer throws an `IllegalStateException` for fields that index terms but no
+norms, doc values or vectors (e.g. `StringField`). Such fields are matched by visiting the
+postings of every term. `FieldExistsQuery` also rewrites to `MatchNoDocsQuery` when no segment has
+the field.
+
+As a consequence of the `AutomatonQuery` change above, queries that match all terms (e.g.
+`new WildcardQuery(new Term("f", "*"))`) on a field with norms now also match documents whose
+value for that field produced no tokens (e.g. an empty string, or only stop words), and queries on
+a field that has doc values but is not indexed now match documents with doc values.
+
 ### `QueryVisitor.consumeTermsMatching` takes `Supplier<ByteRunnable>`
 
 Because automata may now be a DFA or an NFA, `consumeTermsMatching` takes
