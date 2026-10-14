@@ -16,8 +16,11 @@
  */
 package org.apache.lucene.facet;
 
+import java.io.IOException;
 import java.util.Arrays;
+import java.util.Set;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.facet.sortedset.SortedSetDocValuesFacetField;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
 import org.apache.lucene.index.DirectoryReader;
@@ -114,5 +117,22 @@ public class TestFacetsConfig extends FacetTestCase {
         };
 
     assertTrue(config.getDimConfig("foobar").hierarchical);
+  }
+
+  public void testGetFieldNames() throws IOException {
+    FacetsConfig config = new FacetsConfig();
+    config.setIndexFieldName("a", "not-$facets");
+    Document doc;
+
+    doc = new Document();
+    doc.add(new SortedSetDocValuesFacetField("a", "1"));
+    config.build(doc);
+    assertEquals(Set.of("not-$facets"), config.getFieldNames());
+
+    doc = new Document();
+    doc.add(new SortedSetDocValuesFacetField("b", "1"));
+    config.build(doc);
+    assertEquals(
+        Set.of("not-$facets", FacetsConfig.DEFAULT_INDEX_FIELD_NAME), config.getFieldNames());
   }
 }
