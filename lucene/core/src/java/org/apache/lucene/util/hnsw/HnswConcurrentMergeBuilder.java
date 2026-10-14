@@ -183,13 +183,9 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
       worker.setCumulativeWorkTimeNs(cumulativeWorkTimeNs);
     }
     // The join plans only read the graphs being joined, so they are computed while the repaired
-    // base graph is rebalanced, which runs on a single thread.
+    // base graph is rebalanced. The rebalance is one long single-threaded task and invokeAll starts
+    // tasks in list order, so it goes first.
     List<Callable<JoinPlan>> tasks = new ArrayList<>(graphs.size() + 1);
-    for (int g = 0; g < graphs.size(); g++) {
-      IOSupplier<HnswGraph> graph = graphs.get(g);
-      int[] ordMap = ordMaps[g];
-      tasks.add(() -> JoinPlan.create(graph.get(), ordMap));
-    }
     int repairedNodes = 0;
     long repairNs = 0;
     AtomicLong rebalanceNs = new AtomicLong();
@@ -205,11 +201,20 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
             return null;
           });
     }
+    int firstPlan = tasks.size();
+    for (int g = 0; g < graphs.size(); g++) {
+      IOSupplier<HnswGraph> graph = graphs.get(g);
+      int[] ordMap = ordMaps[g];
+      tasks.add(() -> JoinPlan.create(graph.get(), ordMap));
+    }
     long plansStartNs = System.nanoTime();
     JoinPlan[] plans =
         tasks.isEmpty()
             ? new JoinPlan[0]
-            : taskExecutor.invokeAll(tasks).subList(0, graphs.size()).toArray(JoinPlan[]::new);
+            : taskExecutor
+                .invokeAll(tasks)
+                .subList(firstPlan, tasks.size())
+                .toArray(JoinPlan[]::new);
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
       if (prunedGraph != null) {
         infoStream.message(
@@ -288,8 +293,12 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
               worker.addJoinSetNode(plan.ordMap[u], inserted);
             }
           });
-      for (ConcurrentMergeWorker worker : workers) {
-        worker.joinedGraph = graphs.get(g).get();
+      // every worker reads the graph being joined through its own instance
+      for (int w = 0; w < workers.length; w++) {
+        HnswGraph graph = graphs.get(g).get();
+        assert isNewInstance(graph, w)
+            : "HnswGraphProvider#getGraph must return a new instance on every call";
+        workers[w].joinedGraph = graph;
       }
       runInBatches(
           size,
@@ -305,6 +314,16 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
         worker.joinedGraph = null;
       }
     }
+  }
+
+  /** Whether none of the workers before {@code upTo} reads {@code graph} already. */
+  private boolean isNewInstance(HnswGraph graph, int upTo) {
+    for (int w = 0; w < upTo; w++) {
+      if (workers[w].joinedGraph == graph) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /**
