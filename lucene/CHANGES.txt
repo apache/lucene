@@ -135,6 +135,13 @@ API Changes
 * GITHUB#16814: Remove unused VectorValueSource and MultiValueSource. They were
   deprecated in 10.x (GITHUB#16813). (Luca Cavanna)
 
+* GITHUB#16834: Remove deprecated CharsRef.getUTF16SortedAsUTF8Comparator() method.
+  (Alan Woodward)
+
+* GITHUB#16833: Remove deprecated supportsConcurrency constructors from
+  TopFieldCollectorManager and TopScoreDocCollectorManager. The flag has been a
+  no-op since it was deprecated in 10.1. (Luca Cavanna)
+
 New Features
 ---------------------
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
@@ -387,6 +394,32 @@ Other
 
 * GITHUB#16170: Add JMH benchmarks for int4BitDotProduct and int4DibitDotProduct. (Vignesh)
 
+======================= Lucene 10.7.0 =======================
+
+API Changes
+---------------------
+(No changes)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+(No changes)
+
+Optimizations
+---------------------
+(No changes)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+(No changes)
+
 ======================= Lucene 10.6.0 =======================
 
 API Changes
@@ -635,6 +668,8 @@ Optimizations
 
 * GITHUB#16783: Fix performance bug in DirectoryTaxonomyReader#getBulkOrdinals that broke its
   ord -> FacetLabel cache such that it always missed when it should have hit. (Alex Baranov)
+
+* GITHUB#16089: Upgrade DocIdSetBuilder to use FixedBitSet eagerly once exceeding the threshold (Ke Wei)
 
 Bug Fixes
 ---------------------
