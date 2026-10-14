@@ -87,8 +87,6 @@ public abstract class SortingStrategy {
             ByteSequencesReader reader =
                 new ByteSequencesReader(tempDir.openChecksumInput(sortedFile), sortedFile);
             return new EntrySupplier() {
-              boolean success = false;
-
               @Override
               public int wordCount() {
                 return wordCount;
@@ -98,7 +96,6 @@ public abstract class SortingStrategy {
               public String next() throws IOException {
                 BytesRef scratch = reader.next();
                 if (scratch == null) {
-                  success = true;
                   return null;
                 }
                 return scratch.utf8ToString();
@@ -107,11 +104,7 @@ public abstract class SortingStrategy {
               @Override
               public void close() throws IOException {
                 reader.close();
-                if (success) {
-                  tempDir.deleteFile(sortedFile);
-                } else {
-                  IOUtils.deleteFilesIgnoringExceptions(tempDir, sortedFile);
-                }
+                tempDir.deleteFile(sortedFile);
               }
             };
           }

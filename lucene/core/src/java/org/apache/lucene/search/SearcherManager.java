@@ -31,7 +31,7 @@ import org.apache.lucene.store.Directory;
  * <p>Use {@link #acquire} to obtain the current searcher, and {@link #release} to release it, like
  * this:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * IndexSearcher s = manager.acquire();
  * try {
  *   // Do searching, doc retrieval, etc. with s
@@ -40,7 +40,7 @@ import org.apache.lucene.store.Directory;
  * }
  * // Do not use s after this!
  * s = null;
- * </pre>
+ * </code></pre>
  *
  * <p>In addition you should periodically call {@link #maybeRefresh}. While it's possible to call
  * this just before running each query, this is discouraged since it penalizes the unlucky queries

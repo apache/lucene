@@ -30,6 +30,7 @@ import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.KnnVectorValues;
@@ -181,6 +182,12 @@ public final class Lucene92HnswVectorsWriter extends BufferingKnnVectorsWriter {
     throw new UnsupportedOperationException("byte vectors not supported in this version");
   }
 
+  @Override
+  protected void writeField(
+      FieldInfo fieldInfo, Float16VectorValues float16VectorValues, int maxDoc) {
+    throw new UnsupportedOperationException("float16 vectors not supported in this version");
+  }
+
   /**
    * Writes the vector values to the output and returns a set of documents that contains vectors.
    */
@@ -267,11 +274,11 @@ public final class Lucene92HnswVectorsWriter extends BufferingKnnVectorsWriter {
     } else {
       meta.writeInt(graph.numLevels());
       for (int level = 0; level < graph.numLevels(); level++) {
-        int[] sortedNodes = HnswGraph.NodesIterator.getSortedNodes(graph.getNodesOnLevel(level));
-        meta.writeInt(sortedNodes.length); // number of nodes on a level
+        HnswGraph.NodesIterator sortedNodes = graph.getSortedNodes(level);
+        meta.writeInt(sortedNodes.size()); // number of nodes on a level
         if (level > 0) {
-          for (int node : sortedNodes) {
-            meta.writeInt(node); // list of nodes on a level
+          while (sortedNodes.hasNext()) {
+            meta.writeInt(sortedNodes.next()); // list of nodes on a level
           }
         }
       }
@@ -295,9 +302,9 @@ public final class Lucene92HnswVectorsWriter extends BufferingKnnVectorsWriter {
     int countOnLevel0 = graph.size();
     for (int level = 0; level < graph.numLevels(); level++) {
       int maxConnOnLevel = level == 0 ? (M * 2) : M;
-      int[] sortedNodes = HnswGraph.NodesIterator.getSortedNodes(graph.getNodesOnLevel(level));
-      for (int node : sortedNodes) {
-        NeighborArray neighbors = graph.getNeighbors(level, node);
+      HnswGraph.NodesIterator sortedNodes = graph.getSortedNodes(level);
+      while (sortedNodes.hasNext()) {
+        NeighborArray neighbors = graph.getNeighbors(level, sortedNodes.next());
         int size = neighbors.size();
         vectorIndex.writeInt(size);
         // Destructively modify; it's ok we are discarding it after this

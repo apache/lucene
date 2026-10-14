@@ -46,7 +46,7 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
     if (numBitsSet == numBits) {
       set.set(0, numBits);
     } else {
-      Random random = random();
+      Random random = nonAssertingRandom(random());
       for (int i = 0; i < numBitsSet; ++i) {
         while (true) {
           final int o = random.nextInt(numBits);
@@ -343,6 +343,15 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
     @Override
     public int nextSetBit(int start, int upperBound) {
       int next = bitSet.nextSetBit(start);
+      if (next == -1 || next >= upperBound) {
+        next = DocIdSetIterator.NO_MORE_DOCS;
+      }
+      return next;
+    }
+
+    @Override
+    public int nextClearBit(int start, int upperBound) {
+      int next = bitSet.nextClearBit(start);
       if (next == -1 || next >= upperBound) {
         next = DocIdSetIterator.NO_MORE_DOCS;
       }

@@ -29,19 +29,16 @@ import java.nio.file.Path;
 import org.apache.commons.compress.compressors.CompressorStreamFactory;
 import org.apache.lucene.benchmark.BenchmarkTestCase;
 import org.junit.Before;
-import org.junit.Test;
 
 public class TestStreamUtils extends BenchmarkTestCase {
   private static final String TEXT = "Some-Text...";
   private Path testDir;
 
-  @Test
   public void testGetInputStreamPlainText() throws Exception {
     assertReadText(rawTextFile("txt"));
     assertReadText(rawTextFile("TXT"));
   }
 
-  @Test
   public void testGetInputStreamGzip() throws Exception {
     assertReadText(rawGzipFile("gz"));
     assertReadText(rawGzipFile("gzip"));
@@ -49,7 +46,6 @@ public class TestStreamUtils extends BenchmarkTestCase {
     assertReadText(rawGzipFile("GZIP"));
   }
 
-  @Test
   public void testGetInputStreamBzip2() throws Exception {
     assertReadText(rawBzip2File("bz2"));
     assertReadText(rawBzip2File("bzip"));
@@ -57,7 +53,6 @@ public class TestStreamUtils extends BenchmarkTestCase {
     assertReadText(rawBzip2File("BZIP"));
   }
 
-  @Test
   public void testGetOutputStreamBzip2() throws Exception {
     assertReadText(autoOutFile("bz2"));
     assertReadText(autoOutFile("bzip"));
@@ -65,7 +60,6 @@ public class TestStreamUtils extends BenchmarkTestCase {
     assertReadText(autoOutFile("BZIP"));
   }
 
-  @Test
   public void testGetOutputStreamGzip() throws Exception {
     assertReadText(autoOutFile("gz"));
     assertReadText(autoOutFile("gzip"));
@@ -73,7 +67,6 @@ public class TestStreamUtils extends BenchmarkTestCase {
     assertReadText(autoOutFile("GZIP"));
   }
 
-  @Test
   public void testGetOutputStreamPlain() throws Exception {
     assertReadText(autoOutFile("txt"));
     assertReadText(autoOutFile("text"));

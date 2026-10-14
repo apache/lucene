@@ -65,9 +65,7 @@ import org.apache.lucene.util.automaton.LevenshteinAutomata;
  * will evaluate {@code token1 OR token2} first, then {@code AND} with {@code token3}:
  *
  * <blockquote>
- *
  * token1 | token2 + token3
- *
  * </blockquote>
  *
  * <b>Escaping</b>
@@ -159,7 +157,7 @@ public class SimpleQueryParser extends QueryBuilder {
   /** Parses the query text and returns parsed query */
   public Query parse(String queryText) {
     if ("*".equals(queryText.trim())) {
-      return new MatchAllDocsQuery();
+      return MatchAllDocsQuery.INSTANCE;
     }
 
     char[] data = queryText.toCharArray();
@@ -453,7 +451,7 @@ public class SimpleQueryParser extends QueryBuilder {
       if (state.not % 2 == 1) {
         BooleanQuery.Builder nq = new BooleanQuery.Builder();
         nq.add(branch, BooleanClause.Occur.MUST_NOT);
-        nq.add(new MatchAllDocsQuery(), BooleanClause.Occur.SHOULD);
+        nq.add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.SHOULD);
         branch = nq.build();
       }
 

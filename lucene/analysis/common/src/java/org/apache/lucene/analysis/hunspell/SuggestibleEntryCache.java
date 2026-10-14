@@ -27,7 +27,7 @@ import org.apache.lucene.util.IntsRef;
  * used for suggestions. The words and the form data are stored in plain contiguous arrays with no
  * compression.
  */
-class SuggestibleEntryCache {
+public class SuggestibleEntryCache {
   private static final short LOWER_CASE = (short) WordCase.LOWER.ordinal();
   private static final short NEUTRAL_CASE = (short) WordCase.NEUTRAL.ordinal();
   private static final short TITLE_CASE = (short) WordCase.TITLE.ordinal();
@@ -42,7 +42,7 @@ class SuggestibleEntryCache {
     }
   }
 
-  static SuggestibleEntryCache buildCache(WordStorage storage) {
+  static SuggestibleEntryCache buildCache(WordStorage storage, Runnable checkCanceled) {
     var consumer =
         new Consumer<FlyweightEntry>() {
           final IntObjectHashMap<SectionBuilder> builders = new IntObjectHashMap<>();
@@ -50,6 +50,7 @@ class SuggestibleEntryCache {
 
           @Override
           public void accept(FlyweightEntry entry) {
+            checkCanceled.run();
             CharsRef root = entry.root();
             if (root.length > Short.MAX_VALUE) {
               throw new UnsupportedOperationException(
@@ -120,7 +121,13 @@ class SuggestibleEntryCache {
     return rootCase != LOWER_CASE && rootCase != NEUTRAL_CASE;
   }
 
-  void processSuggestibleWords(int minLength, int maxLength, Consumer<FlyweightEntry> processor) {
+  /**
+   * Calls the processor for every cached dictionary entry with length between {@code minLength} and
+   * {@code maxLength}, both ends inclusive. The callback entry is reused and may not be saved for
+   * later.
+   */
+  public void processSuggestibleWords(
+      int minLength, int maxLength, Consumer<FlyweightEntry> processor) {
     maxLength = Math.min(maxLength, sections.length - 1);
     for (int i = Math.min(minLength, sections.length); i <= maxLength; i++) {
       Section section = sections[i];
@@ -147,22 +154,22 @@ class SuggestibleEntryCache {
             short wordCase;
 
             @Override
-            CharsRef root() {
+            public CharsRef root() {
               return hasUpperCase(wordCase) ? chars : lowerChars;
             }
 
             @Override
-            boolean hasTitleCase() {
+            public boolean hasTitleCase() {
               return wordCase == TITLE_CASE;
             }
 
             @Override
-            CharSequence lowerCaseRoot() {
+            public CharSequence lowerCaseRoot() {
               return lowerChars;
             }
 
             @Override
-            IntsRef forms() {
+            public IntsRef forms() {
               return forms;
             }
           };

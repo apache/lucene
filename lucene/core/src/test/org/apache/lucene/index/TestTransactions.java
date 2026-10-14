@@ -125,41 +125,29 @@ public class TestTransactions extends LuceneTestCase {
         synchronized (lock) {
           try {
             writer1.prepareCommit();
-          } catch (
-              @SuppressWarnings("unused")
-              Throwable t) {
+          } catch (Throwable _) {
             // release resources
             try {
               writer1.rollback();
-            } catch (
-                @SuppressWarnings("unused")
-                Throwable ignore) {
+            } catch (Throwable _) {
             }
             try {
               writer2.rollback();
-            } catch (
-                @SuppressWarnings("unused")
-                Throwable ignore) {
+            } catch (Throwable _) {
             }
             return;
           }
           try {
             writer2.prepareCommit();
-          } catch (
-              @SuppressWarnings("unused")
-              Throwable t) {
+          } catch (Throwable _) {
             // release resources
             try {
               writer1.rollback();
-            } catch (
-                @SuppressWarnings("unused")
-                Throwable ignore) {
+            } catch (Throwable _) {
             }
             try {
               writer2.rollback();
-            } catch (
-                @SuppressWarnings("unused")
-                Throwable ignore) {
+            } catch (Throwable _) {
             }
             return;
           }
@@ -218,7 +206,10 @@ public class TestTransactions extends LuceneTestCase {
         } catch (Exception e) {
           // can be rethrown as RuntimeException if it happens during a close listener
           if (!e.getMessage().contains("on purpose")) {
-            throw e;
+            // Caught "on-purpose" IOException can be rethrown as CorruptSegmentInfoException
+            if (e instanceof CorruptSegmentInfoException == false) {
+              throw e;
+            }
           }
           // release resources
           IOUtils.closeWhileHandlingException(r1, r2);
@@ -243,6 +234,8 @@ public class TestTransactions extends LuceneTestCase {
     writer.close();
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testTransactions() throws Throwable {
     // we cant use non-ramdir on windows, because this test needs to double-write.
     MockDirectoryWrapper dir1 = new MockDirectoryWrapper(random(), new ByteBuffersDirectory());

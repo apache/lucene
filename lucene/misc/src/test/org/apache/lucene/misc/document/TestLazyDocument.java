@@ -60,9 +60,7 @@ public class TestLazyDocument extends LuceneTestCase {
       try {
         dir.close();
         dir = null;
-      } catch (
-          @SuppressWarnings("unused")
-          Exception e) {
+      } catch (Exception _) {
         /* NOOP */
       }
     }

@@ -91,9 +91,10 @@ class ContainedByIntervalsSource extends ConjunctionIntervalsSource {
 
   @Override
   public boolean equals(Object other) {
-    if (other instanceof ContainedByIntervalsSource == false) return false;
-    ContainedByIntervalsSource o = (ContainedByIntervalsSource) other;
-    return Objects.equals(this.subSources, o.subSources);
+    if (other instanceof ContainedByIntervalsSource o) {
+      return Objects.equals(this.subSources, o.subSources);
+    }
+    return false;
   }
 
   @Override

@@ -48,7 +48,7 @@ public class TestReaderClosed extends LuceneTestCase {
     Field field = newStringField("field", "", Field.Store.NO);
     doc.add(field);
 
-    // we generate aweful prefixes: good for testing.
+    // we generate awful prefixes: good for testing.
     // but for preflex codec, the test can be very slow, so use less iterations.
     int num = atLeast(10);
     for (int i = 0; i < num; i++) {
@@ -68,13 +68,9 @@ public class TestReaderClosed extends LuceneTestCase {
     reader.close();
     try {
       searcher.search(query, 5);
-    } catch (
-        @SuppressWarnings("unused")
-        AlreadyClosedException ace) {
+    } catch (AlreadyClosedException _) {
       // expected
-    } catch (
-        @SuppressWarnings("unused")
-        RejectedExecutionException ree) {
+    } catch (RejectedExecutionException _) {
       // expected if the searcher has been created with threads since LuceneTestCase
       // closes the thread-pool in a reader close listener
     }

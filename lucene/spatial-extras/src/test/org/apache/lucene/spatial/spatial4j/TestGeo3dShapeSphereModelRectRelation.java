@@ -43,7 +43,6 @@ public class TestGeo3dShapeSphereModelRectRelation extends ShapeRectRelationTest
     this.ctx = factory.newSpatialContext();
   }
 
-  @Test
   public void testFailure1() {
     final GeoBBox rect =
         GeoBBoxFactory.makeGeoBBox(
@@ -81,7 +80,6 @@ public class TestGeo3dShapeSphereModelRectRelation extends ShapeRectRelationTest
     assertFalse(rect.isWithin(point));
   }
 
-  @Test
   public void testFailure2_LUCENE6475() {
     GeoCircle geo3dCircle =
         GeoCircleFactory.makeGeoCircle(

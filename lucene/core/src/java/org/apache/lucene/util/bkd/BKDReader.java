@@ -1009,17 +1009,17 @@ public class BKDReader extends PointValues {
   }
 
   @Override
-  public int getNumDimensions() throws IOException {
+  public int getNumDimensions() {
     return config.numDims();
   }
 
   @Override
-  public int getNumIndexDimensions() throws IOException {
+  public int getNumIndexDimensions() {
     return config.numIndexDims();
   }
 
   @Override
-  public int getBytesPerDimension() throws IOException {
+  public int getBytesPerDimension() {
     return config.bytesPerDim();
   }
 

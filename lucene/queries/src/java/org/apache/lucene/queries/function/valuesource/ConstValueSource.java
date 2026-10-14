@@ -85,8 +85,7 @@ public class ConstValueSource extends ConstNumberSource {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof ConstValueSource)) return false;
-    ConstValueSource other = (ConstValueSource) o;
+    if (!(o instanceof ConstValueSource other)) return false;
     return this.constant == other.constant;
   }
 

@@ -22,11 +22,23 @@ import com.google.googlejavaformat.java.FormatterException;
 import com.google.googlejavaformat.java.ImportOrderer;
 import com.google.googlejavaformat.java.JavaFormatterOptions;
 import com.google.googlejavaformat.java.RemoveUnusedImports;
+import groovy.json.JsonOutput;
+import groovy.json.JsonSlurper;
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import javax.inject.Inject;
 import org.gradle.api.DefaultTask;
+import org.gradle.api.GradleException;
+import org.gradle.api.JavaVersion;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.FileType;
 import org.gradle.api.file.ProjectLayout;
@@ -57,16 +69,31 @@ abstract class ParentGoogleJavaFormatTask extends DefaultTask {
   @PathSensitive(PathSensitivity.RELATIVE)
   public abstract ConfigurableFileCollection getSourceFiles();
 
+  /**
+   * The formatter's coordinates (module and version). Any change invalidates all cached file states
+   * so that every source file is processed again with the new formatter.
+   */
+  @Input
+  public abstract Property<String> getFormatterVersion();
+
   @OutputFile
   public abstract RegularFileProperty getOutputChangeListFile();
 
   @Inject
   protected abstract WorkerExecutor getWorkerExecutor();
 
+  @Internal
+  protected abstract RegularFileProperty getFileStateCache();
+
+  private final Function<File, String> fileToKey;
+
   public ParentGoogleJavaFormatTask(ProjectLayout layout, String gjfTask) {
     getOutputChangeListFile()
         .convention(layout.getBuildDirectory().file("gjf-" + gjfTask + ".txt"));
     getBatchSize().convention(1);
+
+    var projectPath = layout.getProjectDirectory().getAsFile().toPath();
+    fileToKey = file -> projectPath.relativize(file.toPath()).toString();
   }
 
   protected Iterable<List<File>> batchSourceFiles(List<File> sourceFiles) {
@@ -111,19 +138,113 @@ abstract class ParentGoogleJavaFormatTask extends DefaultTask {
       input = input + "\n";
     }
 
-    input = ImportOrderer.reorderImports(input, JavaFormatterOptions.Style.GOOGLE);
-    input = RemoveUnusedImports.removeUnusedImports(input);
-    input = formatter.formatSource(input);
+    try {
+      input = ImportOrderer.reorderImports(input, JavaFormatterOptions.Style.GOOGLE);
+      input = RemoveUnusedImports.removeUnusedImports(input);
+      input = formatter.formatSource(input);
+      // intentionally left out.
+      // input = StringWrapper.wrap(input, formatter);
+    } catch (FormatterException e) {
+      String details;
+      if (e.getMessage().contains("com.sun")) {
+        details =
+            "It is likely that this version does not support Java "
+                + JavaVersion.current().getMajorVersion()
+                + ". ";
+      } else {
+        details = "";
+      }
 
-    // input = StringWrapper.wrap(input, formatter);
+      throw new GradleException(
+          "google-java-formatter threw an exception. "
+              + details
+              + "Rerun with gradle's --stacktrace option and report the problem.",
+          e);
+    }
 
     return input;
   }
 
+  protected void writeFileStates(
+      RegularFileProperty pathProvider, TreeMap<String, FileState> fileStates) throws IOException {
+    if (pathProvider.isPresent()) {
+      Files.writeString(
+          pathProvider.get().getAsFile().toPath(),
+          JsonOutput.prettyPrint(
+              JsonOutput.toJson(
+                  Map.of("formatter", getFormatterVersion().get(), "files", fileStates))));
+    }
+  }
+
+  protected final TreeMap<String, FileState> readFileStatesFrom(RegularFileProperty pathProvider) {
+    var checksums = new TreeMap<String, FileState>();
+    if (pathProvider.isPresent()) {
+      Path path = pathProvider.get().getAsFile().toPath();
+      if (Files.exists(path)) {
+        try {
+          @SuppressWarnings("unchecked")
+          var root = (Map<String, Object>) new JsonSlurper().parse(path);
+          if (!getFormatterVersion().get().equals(root.get("formatter"))) {
+            // The formatter changed, ignore all stored file states.
+            return checksums;
+          }
+          @SuppressWarnings("unchecked")
+          var saved = (Map<String, Map<String, Object>>) root.get("files");
+          var restored =
+              saved.entrySet().stream()
+                  .collect(
+                      Collectors.toMap(
+                          Map.Entry::getKey,
+                          e ->
+                              new FileState(
+                                  ((Number) e.getValue().get("size")).longValue(),
+                                  ((Number) e.getValue().get("lastUpdate")).longValue())));
+          checksums.putAll(restored);
+        } catch (Exception _) {
+          getLogger().warn("Could not deserialize changes file: {}, ignoring it.", path);
+        }
+      }
+    }
+
+    return checksums;
+  }
+
+  protected final List<File> maybeRefilter(
+      TreeMap<String, FileState> fileStates, List<File> sourceFiles) throws IOException {
+    if (!fileStates.isEmpty()) {
+      List<File> filteredSourceFiles = new ArrayList<>(sourceFiles);
+      for (var it = filteredSourceFiles.iterator(); it.hasNext(); ) {
+        var file = it.next();
+        var p = file.toPath();
+        var state = fileStates.get(fileToKey.apply(file));
+        if (state != null && FileState.of(p).equals(state)) {
+          it.remove();
+        }
+      }
+
+      if (sourceFiles.size() != filteredSourceFiles.size()) {
+        getLogger()
+            .info(
+                "Reduced the number of files to check from {} to {} based on stored file states.",
+                sourceFiles.size(),
+                filteredSourceFiles.size());
+      }
+
+      sourceFiles = filteredSourceFiles;
+    }
+    return sourceFiles;
+  }
+
+  protected final void updateFileStates(
+      TreeMap<String, FileState> fileStates, List<File> sourceFiles) throws IOException {
+    for (var file : sourceFiles) {
+      fileStates.put(fileToKey.apply(file), FileState.of(file.toPath()));
+    }
+  }
+
   @Internal
   protected WorkQueue getWorkQueue() {
-    // TODO: maybe fork a separate jvm so that we can pass open-module settings there and fine-tune
-    // the jvm for the task?
+    // Keep workers within the same JVM.
     return getWorkerExecutor().noIsolation();
   }
 }

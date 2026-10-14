@@ -143,14 +143,14 @@ public abstract class DocIdSetIterator {
    *
    * <p>When <code> target &gt; current</code> it behaves as if written:
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * int advance(int target) {
    *   int doc;
    *   while ((doc = nextDoc()) &lt; target) {
    *   }
    *   return doc;
    * }
-   * </pre>
+   * </code></pre>
    *
    * Some implementations are considerably more efficient than that.
    *
@@ -187,11 +187,11 @@ public abstract class DocIdSetIterator {
    * Load doc IDs into a {@link FixedBitSet}. This should behave exactly as if implemented as below,
    * which is the default implementation:
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * for (int doc = docID(); doc &lt; upTo; doc = nextDoc()) {
    *   bitSet.set(doc - offset);
    * }
-   * </pre>
+   * </code></pre>
    *
    * <p><b>Note</b>: {@code offset} must be less than or equal to the {@link #docID() current doc
    * ID}. Behaviour is undefined if this iterator is unpositioned.
@@ -207,6 +207,39 @@ public abstract class DocIdSetIterator {
     for (int doc = docID(); doc < upTo; doc = nextDoc()) {
       bitSet.set(doc - offset);
     }
+  }
+
+  /**
+   * Copy doc IDs of this iterator into the given array, starting at the current {@link #docID()}
+   * and stopping before {@code upTo}, and return the number of copied doc IDs. At most {@code
+   * docs.length} doc IDs are copied, so callers must call this method repeatedly in order to
+   * consume all doc IDs below {@code upTo}. Upon return, this iterator is positioned on the first
+   * doc ID that has not been copied.
+   *
+   * <p>A return value of {@code 0} means that this iterator has no doc ID left below {@code upTo}.
+   * Implementations must never return {@code 0} while doc IDs below {@code upTo} remain.
+   *
+   * <p>This should behave exactly as if implemented as below, which is the default implementation:
+   *
+   * <pre><code class="language-java">
+   * int size = 0;
+   * for (int doc = docID(); doc &lt; upTo &amp;&amp; size &lt; docs.length; doc = nextDoc()) {
+   *   docs[size++] = doc;
+   * }
+   * return size;
+   * </code></pre>
+   *
+   * <p><b>Note</b>: The given array must not be empty. Behaviour is undefined if this iterator is
+   * unpositioned.
+   *
+   * @lucene.internal
+   */
+  public int intoArray(int upTo, int[] docs) throws IOException {
+    int size = 0;
+    for (int doc = docID(); doc < upTo && size < docs.length; doc = nextDoc()) {
+      docs[size++] = doc;
+    }
+    return size;
   }
 
   /**

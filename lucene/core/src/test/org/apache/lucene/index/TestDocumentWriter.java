@@ -556,7 +556,7 @@ public class TestDocumentWriter extends LuceneTestCase {
         {
           Terms terms = leafReader.terms("field");
           assertEquals(1, terms.getSumDocFreq());
-          if (ft.indexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0) {
+          if (ft.indexOptions().subsumes(IndexOptions.DOCS_AND_FREQS)) {
             assertEquals(2, terms.getSumTotalTermFreq());
           } else {
             assertEquals(1, terms.getSumTotalTermFreq());
@@ -565,7 +565,7 @@ public class TestDocumentWriter extends LuceneTestCase {
           assertTrue(termsEnum.seekExact(new BytesRef("a")));
           PostingsEnum pe = termsEnum.postings(null, PostingsEnum.ALL);
           assertEquals(0, pe.nextDoc());
-          if (ft.indexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0) {
+          if (ft.indexOptions().subsumes(IndexOptions.DOCS_AND_FREQS)) {
             assertEquals(2, pe.freq());
           } else {
             assertEquals(1, pe.freq());

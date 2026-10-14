@@ -88,7 +88,7 @@ public class TestBlockWriter extends LuceneTestCase {
     // at least one block was flushed
     assertTrue(blockOutput.getFilePointer() > 0);
 
-    // last term is always the last term to be writen
+    // last term is always the last term to be written
     assertEquals(new BytesRef(terms[terms.length - 1]), blockWriter.lastTerm);
 
     // remains 'large' to be flushed

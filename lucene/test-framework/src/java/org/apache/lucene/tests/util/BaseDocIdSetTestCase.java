@@ -63,7 +63,7 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
 
   /** Compare the content of the set against a {@link BitSet}. */
   public void testAgainstBitSet() throws IOException {
-    Random random = random();
+    Random random = nonAssertingRandom(random());
     final int numBits = TestUtil.nextInt(random, 100, 1 << 20);
     // test various random sets with various load factors
     for (float percentSet : new float[] {0f, 0.0001f, random.nextFloat(), 0.9f, 1f}) {
@@ -109,11 +109,19 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
       final int numDocs =
           TestUtil.nextInt(random, 0, Math.min(maxDoc, 1 << TestUtil.nextInt(random, 0, pow)));
       final BitSet set = randomSet(maxDoc, numDocs);
-      final DocIdSet copy = copyOf(set, maxDoc);
-      final long actualBytes = ramBytesUsed(copy, maxDoc);
-      final long expectedBytes = copy.ramBytesUsed();
-      assertEquals(expectedBytes, actualBytes);
+      assertRamBytesUsed(set, maxDoc);
     }
+  }
+
+  /**
+   * Assert that {@link DocIdSet#ramBytesUsed()} of a copy of the given {@link BitSet} matches its
+   * measured heap usage.
+   */
+  protected void assertRamBytesUsed(BitSet set, int length) throws IOException {
+    final DocIdSet copy = copyOf(set, length);
+    final long actualBytes = ramBytesUsed(copy, length);
+    final long expectedBytes = copy.ramBytesUsed();
+    assertEquals(expectedBytes, actualBytes);
   }
 
   /**
@@ -165,7 +173,7 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
 
   private static class Dummy {
     @SuppressWarnings("unused")
-    Object o1, o2;
+    Object o1, o2, o3;
   }
 
   // same as RamUsageTester.sizeOf but tries to not take into account resources
@@ -173,15 +181,18 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
   private long ramBytesUsed(DocIdSet set, int length) throws IOException {
     Dummy dummy = new Dummy();
     dummy.o1 = copyOf(new BitSet(length), length);
-    dummy.o2 = set;
+    final BitSet full = new BitSet(length);
+    full.set(0, length);
+    dummy.o2 = copyOf(full, length);
+    dummy.o3 = set;
     long bytes1 = RamUsageTester.ramUsed(dummy);
-    dummy.o2 = null;
+    dummy.o3 = null;
     long bytes2 = RamUsageTester.ramUsed(dummy);
     return bytes1 - bytes2;
   }
 
   public void testIntoBitSet() throws IOException {
-    Random random = random();
+    Random random = nonAssertingRandom(random());
     final int numBits = TestUtil.nextInt(random, 100, 1 << 20);
     // test various random sets with various load factors
     for (float percentSet : new float[] {0f, 0.0001f, random.nextFloat(), 0.9f, 1f}) {
@@ -238,12 +249,16 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
     it2.advance(from);
     // This call is not legal, since there is one bit that is set beyond the end of the target bit
     // set
-    expectThrows(Throwable.class, () -> it2.intoBitSet(to, dest2, offset));
+    if (TEST_ASSERTS_ENABLED) {
+      expectThrows(Throwable.class, () -> it2.intoBitSet(to, dest2, offset));
+    }
 
     FixedBitSet dest3 = new FixedBitSet(42 - offset + 1);
     DocIdSetIterator it3 = copy.iterator();
     it3.advance(from);
     // This call is not legal, since offset is greater than the current doc
-    expectThrows(Throwable.class, () -> it3.intoBitSet(to, dest3, 21));
+    if (TEST_ASSERTS_ENABLED) {
+      expectThrows(Throwable.class, () -> it3.intoBitSet(to, dest3, 21));
+    }
   }
 }

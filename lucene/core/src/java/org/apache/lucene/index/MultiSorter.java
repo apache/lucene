@@ -43,8 +43,37 @@ final class MultiSorter {
     // TODO: optimize if only 1 reader is incoming, though that's a rare case
 
     SortField[] fields = sort.getSort();
-    final IndexSorter.ComparableProvider[][] comparables =
-        new IndexSorter.ComparableProvider[fields.length][];
+    int leafCount = readers.size();
+
+    // Per-reader parent bitset (used when index sorting with document blocks). Shared across all
+    // sort fields; null when the reader does not use blocks. A document's sort value is the value
+    // of
+    // the parent (last) document of its block.
+    final BitSet[] parents = new BitSet[leafCount];
+    for (int j = 0; j < leafCount; j++) {
+      CodecReader codecReader = readers.get(j);
+      FieldInfos fieldInfos = codecReader.getFieldInfos();
+      LeafMetaData metaData = codecReader.getMetaData();
+      if (metaData.hasBlocks() && fieldInfos.getParentField() != null) {
+        NumericDocValues parentDocs = codecReader.getNumericDocValues(fieldInfos.getParentField());
+        assert parentDocs != null
+            : "parent field: "
+                + fieldInfos.getParentField()
+                + " must be present if index sorting is used with blocks";
+        parents[j] = BitSet.of(parentDocs, codecReader.maxDoc());
+      }
+      if (metaData.hasBlocks()
+          && fieldInfos.getParentField() == null
+          && metaData.createdVersionMajor() >= Version.LUCENE_10_0_0.major) {
+        throw new CorruptIndexException(
+            "parent field is not set but the index has blocks and uses index sorting. indexCreatedVersionMajor: "
+                + metaData.createdVersionMajor(),
+            "IndexingChain");
+      }
+    }
+
+    final IndexSorter.ComparableValues[] comparables =
+        new IndexSorter.ComparableValues[fields.length];
     final int[] reverseMuls = new int[fields.length];
     for (int i = 0; i < fields.length; i++) {
       IndexSorter sorter = fields[i].getIndexSorter();
@@ -52,35 +81,9 @@ final class MultiSorter {
         throw new IllegalArgumentException(
             "Cannot use sort field " + fields[i] + " for index sorting");
       }
-      comparables[i] = sorter.getComparableProviders(readers);
-      for (int j = 0; j < readers.size(); j++) {
-        CodecReader codecReader = readers.get(j);
-        FieldInfos fieldInfos = codecReader.getFieldInfos();
-        LeafMetaData metaData = codecReader.getMetaData();
-        if (metaData.hasBlocks() && fieldInfos.getParentField() != null) {
-          NumericDocValues parentDocs =
-              codecReader.getNumericDocValues(fieldInfos.getParentField());
-          assert parentDocs != null
-              : "parent field: "
-                  + fieldInfos.getParentField()
-                  + " must be present if index sorting is used with blocks";
-          BitSet parents = BitSet.of(parentDocs, codecReader.maxDoc());
-          IndexSorter.ComparableProvider[] providers = comparables[i];
-          IndexSorter.ComparableProvider provider = providers[j];
-          providers[j] = docId -> provider.getAsComparableLong(parents.nextSetBit(docId));
-        }
-        if (metaData.hasBlocks()
-            && fieldInfos.getParentField() == null
-            && metaData.createdVersionMajor() >= Version.LUCENE_10_0_0.major) {
-          throw new CorruptIndexException(
-              "parent field is not set but the index has blocks and uses index sorting. indexCreatedVersionMajor: "
-                  + metaData.createdVersionMajor(),
-              "IndexingChain");
-        }
-      }
+      comparables[i] = sorter.getComparableValues(readers);
       reverseMuls[i] = fields[i].getReverse() ? -1 : 1;
     }
-    int leafCount = readers.size();
 
     PriorityQueue<LeafAndDocID> queue =
         PriorityQueue.usingComparator(
@@ -88,9 +91,7 @@ final class MultiSorter {
             ((Comparator<LeafAndDocID>)
                     (a, b) -> {
                       for (int i = 0; i < comparables.length; i++) {
-                        int cmp =
-                            Long.compare(
-                                a.valuesAsComparableLongs[i], b.valuesAsComparableLongs[i]);
+                        int cmp = comparables[i].compare(a.readerIndex, b.readerIndex);
                         if (cmp != 0) {
                           return reverseMuls[i] * cmp;
                         }
@@ -104,11 +105,8 @@ final class MultiSorter {
 
     for (int i = 0; i < leafCount; i++) {
       CodecReader reader = readers.get(i);
-      LeafAndDocID leaf =
-          new LeafAndDocID(i, reader.getLiveDocs(), reader.maxDoc(), comparables.length);
-      for (int j = 0; j < comparables.length; j++) {
-        leaf.valuesAsComparableLongs[j] = comparables[j][i].getAsComparableLong(leaf.docID);
-      }
+      LeafAndDocID leaf = new LeafAndDocID(i, reader.getLiveDocs(), reader.maxDoc());
+      setComparableValues(comparables, parents[i], i, leaf.docID);
       queue.add(leaf);
       builders[i] = PackedLongValues.monotonicBuilder(PackedInts.COMPACT);
     }
@@ -130,10 +128,7 @@ final class MultiSorter {
       }
       top.docID++;
       if (top.docID < top.maxDoc) {
-        for (int j = 0; j < comparables.length; j++) {
-          top.valuesAsComparableLongs[j] =
-              comparables[j][top.readerIndex].getAsComparableLong(top.docID);
-        }
+        setComparableValues(comparables, parents[top.readerIndex], top.readerIndex, top.docID);
         queue.updateTop();
       } else {
         queue.pop();
@@ -160,18 +155,30 @@ final class MultiSorter {
     return docMaps;
   }
 
+  /**
+   * Caches, for every sort field, the value of the given document of the given segment so that the
+   * priority queue can compare it. When the segment uses document blocks, the value of the parent
+   * (last) document of {@code docID}'s block is used instead.
+   */
+  private static void setComparableValues(
+      IndexSorter.ComparableValues[] comparables, BitSet parents, int readerIndex, int docID)
+      throws IOException {
+    final int effectiveDocID = parents == null ? docID : parents.nextSetBit(docID);
+    for (IndexSorter.ComparableValues comparable : comparables) {
+      comparable.setTopValue(readerIndex, effectiveDocID);
+    }
+  }
+
   private static class LeafAndDocID {
     final int readerIndex;
     final Bits liveDocs;
     final int maxDoc;
-    final long[] valuesAsComparableLongs;
     int docID;
 
-    public LeafAndDocID(int readerIndex, Bits liveDocs, int maxDoc, int numComparables) {
+    public LeafAndDocID(int readerIndex, Bits liveDocs, int maxDoc) {
       this.readerIndex = readerIndex;
       this.liveDocs = liveDocs;
       this.maxDoc = maxDoc;
-      this.valuesAsComparableLongs = new long[numComparables];
     }
   }
 }

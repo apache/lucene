@@ -181,7 +181,7 @@ public class TestWFSTCompletion extends LuceneTestCase {
   public void testRandom() throws Exception {
     int numWords = atLeast(1000);
 
-    final TreeMap<String, Long> slowCompletor = new TreeMap<>();
+    final TreeMap<String, Long> slowCompleter = new TreeMap<>();
     final TreeSet<String> allPrefixes = new TreeSet<>();
 
     Input[] keys = new Input[numWords];
@@ -189,10 +189,10 @@ public class TestWFSTCompletion extends LuceneTestCase {
     for (int i = 0; i < numWords; i++) {
       String s;
       while (true) {
-        // TODO: would be nice to fix this slowCompletor/comparator to
+        // TODO: would be nice to fix this slowCompleter/comparator to
         // use full range, but we might lose some coverage too...
         s = TestUtil.randomSimpleString(random());
-        if (!slowCompletor.containsKey(s)) {
+        if (!slowCompleter.containsKey(s)) {
           break;
         }
       }
@@ -202,7 +202,7 @@ public class TestWFSTCompletion extends LuceneTestCase {
       }
       // we can probably do Integer.MAX_VALUE here, but why worry.
       int weight = random().nextInt(1 << 24);
-      slowCompletor.put(s, (long) weight);
+      slowCompleter.put(s, (long) weight);
       keys[i] = new Input(s, weight);
     }
 
@@ -217,11 +217,11 @@ public class TestWFSTCompletion extends LuceneTestCase {
       List<LookupResult> r =
           suggester.lookup(TestUtil.stringToCharSequence(prefix, random), false, topN);
 
-      // 2. go thru whole treemap (slowCompletor) and check it's actually the best suggestion
+      // 2. go thru whole treemap (slowCompleter) and check it's actually the best suggestion
       final List<LookupResult> matches = new ArrayList<>();
 
-      // TODO: could be faster... but it's slowCompletor for a reason
-      for (Map.Entry<String, Long> e : slowCompletor.entrySet()) {
+      // TODO: could be faster... but it's slowCompleter for a reason
+      for (Map.Entry<String, Long> e : slowCompleter.entrySet()) {
         if (e.getKey().startsWith(prefix)) {
           matches.add(new LookupResult(e.getKey(), e.getValue().longValue()));
         }

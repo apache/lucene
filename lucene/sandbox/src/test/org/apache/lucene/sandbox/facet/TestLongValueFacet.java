@@ -70,7 +70,7 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
     CountFacetRecorder countRecorder = new CountFacetRecorder();
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(longValuesFacetCutter, countRecorder);
-    s.search(new MatchAllDocsQuery(), collectorManager);
+    s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
 
     FacetResult result = getAllChildrenSortByValue("field", longValuesFacetCutter, countRecorder);
     assertEquals(
@@ -118,7 +118,7 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
     CountFacetRecorder countRecorder = new CountFacetRecorder();
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(longValuesFacetCutter, countRecorder);
-    s.search(new MatchAllDocsQuery(), collectorManager);
+    s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
 
     FacetResult result = getAllChildrenSortByValue("field", longValuesFacetCutter, countRecorder);
 
@@ -221,7 +221,7 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
       CountFacetRecorder countRecorder = new CountFacetRecorder();
       FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
           new FacetFieldCollectorManager<>(longValuesFacetCutter, countRecorder);
-      s.search(new MatchAllDocsQuery(), collectorManager);
+      s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
       /* TODO: uncomment and adjust when LongValueFacetCutter supports value sources
       if (random().nextBoolean()) {
         if (VERBOSE) {
@@ -497,7 +497,7 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
       CountFacetRecorder countRecorder = new CountFacetRecorder();
       FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
           new FacetFieldCollectorManager<>(longValuesFacetCutter, countRecorder);
-      s.search(new MatchAllDocsQuery(), collectorManager);
+      s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
       if (VERBOSE) {
         System.out.println("  use doc values");
       }
@@ -727,7 +727,7 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
     CountFacetRecorder countRecorder = new CountFacetRecorder();
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(longValuesFacetCutter, countRecorder);
-    s.search(new MatchAllDocsQuery(), collectorManager);
+    s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
 
     FacetResult fr = getAllChildrenSortByValue("field", longValuesFacetCutter, countRecorder);
     for (LabelAndValue labelAndValue : fr.labelValues) {
@@ -775,7 +775,7 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
         fieldName,
         new String[0],
         VALUE_CANT_BE_COMPUTED,
-        labelsAndValues.toArray(new LabelAndValue[0]),
+        labelsAndValues.toArray(LabelAndValue[]::new),
         childCount);
   }
 
@@ -810,7 +810,7 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
         field,
         new String[0],
         VALUE_CANT_BE_COMPUTED,
-        labelsAndValues.toArray(new LabelAndValue[0]),
+        labelsAndValues.toArray(LabelAndValue[]::new),
         childCount);
   }
 
@@ -836,7 +836,7 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
         field,
         new String[0],
         VALUE_CANT_BE_COMPUTED,
-        labelsAndValues.toArray(new LabelAndValue[0]),
+        labelsAndValues.toArray(LabelAndValue[]::new),
         childCount);
   }
 }

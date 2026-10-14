@@ -91,8 +91,8 @@ public class MultiPhraseQueryNode extends QueryNodeImpl implements FieldableNode
 
       for (QueryNode child : children) {
 
-        if (child instanceof FieldableNode) {
-          ((FieldableNode) child).setField(fieldName);
+        if (child instanceof FieldableNode fieldableNode) {
+          fieldableNode.setField(fieldName);
         }
       }
     }

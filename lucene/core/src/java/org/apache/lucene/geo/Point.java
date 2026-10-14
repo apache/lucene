@@ -63,8 +63,9 @@ public final class Point extends LatLonGeometry {
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    if (!(o instanceof Point)) return false;
-    Point point = (Point) o;
+    if (!(o instanceof Point point)) {
+      return false;
+    }
     return Double.compare(point.lat, lat) == 0 && Double.compare(point.lon, lon) == 0;
   }
 

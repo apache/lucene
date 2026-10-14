@@ -39,7 +39,7 @@
  *
  * <p>Lazy loading of Message Strings
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   public class MessagesTestBundle extends NLS {
  *
  *     private static final String BUNDLE_NAME = MessagesTestBundle.class.getName();
@@ -71,17 +71,17 @@
  *
  *     String message1 = invalidSyntax.getLocalizedMessage();
  *     String message2 = invalidSyntax.getLocalizedMessage(Locale.JAPANESE);
- * </pre>
+ * </code></pre>
  *
  * <br>
  * <br>
  *
  * <p>Normal loading of Message Strings
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   String message1 = NLS.getLocalizedMessage(MessagesTestBundle.Q0004E_INVALID_SYNTAX_ESCAPE_UNICODE_TRUNCATION);
  *   String message2 = NLS.getLocalizedMessage(MessagesTestBundle.Q0004E_INVALID_SYNTAX_ESCAPE_UNICODE_TRUNCATION, Locale.JAPANESE);
- * </pre>
+ * </code></pre>
  *
  * <p>The org.apache.lucene.messages.TestNLS junit contains several other examples. The TestNLS java
  * code is available from the Apache Lucene code repository.

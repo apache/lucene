@@ -111,14 +111,14 @@ public class DirContentSource extends ContentSource {
             found.add(p);
           }
         }
-        push(found.toArray(new Path[found.size()]));
+        push(found.toArray(Path[]::new));
       }
       try (DirectoryStream<Path> stream = Files.newDirectoryStream(f, "*.txt")) {
         List<Path> found = new ArrayList<>();
         for (Path p : stream) {
           found.add(p);
         }
-        push(found.toArray(new Path[found.size()]));
+        push(found.toArray(Path[]::new));
       }
       find();
     }

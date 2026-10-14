@@ -21,4 +21,4 @@ Integrated desktop GUI tool: a utility for browsing, searching and maintaining i
 
 ## Older releases
 
-Older releases of Luke (prior to 8.1) can be found at https://github.com/DmitryKey/luke
+Older releases of Luke (prior to 8.1) can be found at <https://github.com/DmitryKey/luke>

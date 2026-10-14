@@ -32,12 +32,16 @@ import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataAccessHint;
@@ -48,18 +52,18 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.PreloadHint;
 import org.apache.lucene.store.RandomAccessInput;
-import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.GroupVIntUtil;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.OrdinalTranslatedKnnCollector;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
-import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.BaseQuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.QuantizedVectorsReader;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
@@ -74,7 +78,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   private static final long SHALLOW_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(Lucene99HnswVectorsFormat.class);
   // Number of ordinals to score at a time when scoring exhaustively rather than using HNSW.
-  private static final int EXHAUSTIVE_BULK_SCORE_ORDS = 64;
+  public static final int EXHAUSTIVE_BULK_SCORE_ORDS = 64;
 
   private final FlatVectorsReader flatVectorsReader;
   private final FieldInfos fieldInfos;
@@ -138,13 +142,17 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   }
 
   @Override
-  public KnnVectorsReader getMergeInstance() {
+  public KnnVectorsReader getMergeInstance() throws IOException {
     return new Lucene99HnswVectorsReader(this, this.flatVectorsReader.getMergeInstance());
   }
 
   @Override
   public void finishMerge() throws IOException {
     flatVectorsReader.finishMerge();
+  }
+
+  public FlatVectorsReader getFlatVectorsReader() {
+    return flatVectorsReader;
   }
 
   private static IndexInput openDataInput(
@@ -260,9 +268,9 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    flatVectorsReader.checkIntegrity();
-    CodecUtil.checksumEntireFile(vectorIndex);
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+    flatVectorsReader.checkIntegrity(merge);
+    CodecUtil.checksumEntireFile(vectorIndex, merge);
   }
 
   @Override
@@ -273,6 +281,11 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   @Override
   public ByteVectorValues getByteVectorValues(String field) throws IOException {
     return flatVectorsReader.getByteVectorValues(field);
+  }
+
+  @Override
+  public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+    return flatVectorsReader.getFloat16VectorValues(field);
   }
 
   private FieldEntry getFieldEntryOrThrow(String field) {
@@ -299,7 +312,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   }
 
   @Override
-  public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
+  public void search(String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.FLOAT32);
     search(
@@ -310,9 +323,20 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   }
 
   @Override
-  public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
+  public void search(String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.BYTE);
+    search(
+        fieldEntry,
+        knnCollector,
+        acceptDocs,
+        () -> flatVectorsReader.getRandomVectorScorer(field, target));
+  }
+
+  @Override
+  public void search(String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
+    final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.FLOAT16);
     search(
         fieldEntry,
         knnCollector,
@@ -323,7 +347,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   private void search(
       FieldEntry fieldEntry,
       KnnCollector knnCollector,
-      Bits acceptDocs,
+      AcceptDocs acceptDocs,
       IOSupplier<RandomVectorScorer> scorerSupplier)
       throws IOException {
     if (fieldEntry.size() == 0 || knnCollector.k() == 0) {
@@ -332,20 +356,19 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     final RandomVectorScorer scorer = scorerSupplier.get();
     final KnnCollector collector =
         new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
-    final Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs);
-    HnswGraph graph = getGraph(fieldEntry);
-    boolean doHnsw = knnCollector.k() < scorer.maxOrd();
     // Take into account if quantized? E.g. some scorer cost?
-    int filteredDocCount = 0;
+    // Use approximate cardinality as this is good enough, but ensure we don't exceed the graph
+    // size as that is illogical
+    int graphSize = (fieldEntry.vectorIndexLength() == 0) ? 0 : fieldEntry.size();
+    int filteredDocCount = Math.min(acceptDocs.cost(), graphSize);
+    Bits accepted = acceptDocs.bits();
+    final Bits acceptedOrds = scorer.getAcceptOrds(accepted);
+    int numVectors = scorer.maxOrd();
+    boolean doHnsw = knnCollector.k() < numVectors;
     // The approximate number of vectors that would be visited if we did not filter
-    int unfilteredVisit = HnswGraphSearcher.expectedVisitedNodes(knnCollector.k(), graph.size());
-    if (acceptDocs instanceof BitSet bitSet) {
-      // Use approximate cardinality as this is good enough, but ensure we don't exceed the graph
-      // size as that is illogical
-      filteredDocCount = Math.min(bitSet.approximateCardinality(), graph.size());
-      if (unfilteredVisit >= filteredDocCount) {
-        doHnsw = false;
-      }
+    int unfilteredVisit = HnswGraphSearcher.expectedVisitedNodes(knnCollector.k(), graphSize);
+    if (unfilteredVisit >= filteredDocCount || graphSize == 0) {
+      doHnsw = false;
     }
     if (doHnsw) {
       HnswGraphSearcher.search(
@@ -356,17 +379,18 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       int[] ords = new int[EXHAUSTIVE_BULK_SCORE_ORDS];
       float[] scores = new float[EXHAUSTIVE_BULK_SCORE_ORDS];
       int numOrds = 0;
-      for (int i = 0; i < scorer.maxOrd(); i++) {
+      for (int i = 0; i < numVectors; i++) {
         if (acceptedOrds == null || acceptedOrds.get(i)) {
           if (knnCollector.earlyTerminated()) {
             break;
           }
           ords[numOrds++] = i;
           if (numOrds == ords.length) {
-            scorer.bulkScore(ords, scores, numOrds);
-            for (int j = 0; j < numOrds; j++) {
-              knnCollector.incVisitedCount(1);
-              knnCollector.collect(scorer.ordToDoc(ords[j]), scores[j]);
+            knnCollector.incVisitedCount(numOrds);
+            if (scorer.bulkScore(ords, scores, numOrds) > knnCollector.minCompetitiveSimilarity()) {
+              for (int j = 0; j < numOrds; j++) {
+                knnCollector.collect(scorer.ordToDoc(ords[j]), scores[j]);
+              }
             }
             numOrds = 0;
           }
@@ -374,10 +398,11 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       }
 
       if (numOrds > 0) {
-        scorer.bulkScore(ords, scores, numOrds);
-        for (int j = 0; j < numOrds; j++) {
-          knnCollector.incVisitedCount(1);
-          knnCollector.collect(scorer.ordToDoc(ords[j]), scores[j]);
+        knnCollector.incVisitedCount(numOrds);
+        if (scorer.bulkScore(ords, scores, numOrds) > knnCollector.minCompetitiveSimilarity()) {
+          for (int j = 0; j < numOrds; j++) {
+            knnCollector.collect(scorer.ordToDoc(ords[j]), scores[j]);
+          }
         }
       }
     }
@@ -398,6 +423,9 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   }
 
   private HnswGraph getGraph(FieldEntry entry) throws IOException {
+    if (entry.vectorIndexLength == 0) {
+      return HnswGraph.EMPTY;
+    }
     return new OffHeapHnswGraph(entry, vectorIndex);
   }
 
@@ -410,22 +438,36 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   }
 
   @Override
+  public int getVectorCount(FieldInfo fieldInfo) {
+    return getFieldEntryOrThrow(fieldInfo.name).size();
+  }
+
+  @Override
   public void close() throws IOException {
     IOUtils.close(flatVectorsReader, vectorIndex);
   }
 
   @Override
-  public QuantizedByteVectorValues getQuantizedVectorValues(String field) throws IOException {
-    if (flatVectorsReader instanceof QuantizedVectorsReader) {
-      return ((QuantizedVectorsReader) flatVectorsReader).getQuantizedVectorValues(field);
+  public BaseQuantizedByteVectorValues getQuantizedVectorValues(String field) throws IOException {
+    if (flatVectorsReader instanceof QuantizedVectorsReader qvr) {
+      return qvr.getQuantizedVectorValues(field);
     }
     return null;
   }
 
   @Override
   public ScalarQuantizer getQuantizationState(String field) {
-    if (flatVectorsReader instanceof QuantizedVectorsReader) {
-      return ((QuantizedVectorsReader) flatVectorsReader).getQuantizationState(field);
+    if (flatVectorsReader instanceof QuantizedVectorsReader qvr) {
+      return qvr.getQuantizationState(field);
+    }
+    return null;
+  }
+
+  @Override
+  public CloseableRandomVectorScorerSupplier getRandomVectorScorerSupplierForMerge(
+      FieldInfo fieldInfo, SegmentWriteState segmentWriteState) throws IOException {
+    if (flatVectorsReader instanceof QuantizedVectorsReader qvr) {
+      return qvr.getRandomVectorScorerSupplierForMerge(fieldInfo, segmentWriteState);
     }
     return null;
   }
@@ -557,15 +599,17 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       arcCount = dataIn.readVInt();
       assert arcCount <= currentNeighborsBuffer.length : "too many neighbors: " + arcCount;
       if (arcCount > 0) {
+        int sum = 0;
         if (version >= VERSION_GROUPVARINT) {
           GroupVIntUtil.readGroupVInts(dataIn, currentNeighborsBuffer, arcCount);
-          for (int i = 1; i < arcCount; i++) {
-            currentNeighborsBuffer[i] = currentNeighborsBuffer[i - 1] + currentNeighborsBuffer[i];
+          for (int i = 0; i < arcCount; i++) {
+            sum += currentNeighborsBuffer[i];
+            currentNeighborsBuffer[i] = sum;
           }
         } else {
-          currentNeighborsBuffer[0] = dataIn.readVInt();
-          for (int i = 1; i < arcCount; i++) {
-            currentNeighborsBuffer[i] = currentNeighborsBuffer[i - 1] + dataIn.readVInt();
+          for (int i = 0; i < arcCount; i++) {
+            sum += dataIn.readVInt();
+            currentNeighborsBuffer[i] = sum;
           }
         }
       }
@@ -611,9 +655,9 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     @Override
     public NodesIterator getNodesOnLevel(int level) {
       if (level == 0) {
-        return new ArrayNodesIterator(size());
+        return new DenseNodesIterator(size());
       } else {
-        return new ArrayNodesIterator(nodesByLevel[level], nodesByLevel[level].length);
+        return new ArrayNodesIterator(nodesByLevel[level]);
       }
     }
   }

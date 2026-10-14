@@ -119,9 +119,8 @@ public class SpanPayloadCheckQuery extends SpanQuery {
   @Override
   public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     Query matchRewritten = match.rewrite(indexSearcher);
-    if (match != matchRewritten && matchRewritten instanceof SpanQuery) {
-      return new SpanPayloadCheckQuery(
-          (SpanQuery) matchRewritten, payloadToMatch, payloadType, operation);
+    if (match != matchRewritten && matchRewritten instanceof SpanQuery sq) {
+      return new SpanPayloadCheckQuery(sq, payloadToMatch, payloadType, operation);
     }
     return super.rewrite(indexSearcher);
   }

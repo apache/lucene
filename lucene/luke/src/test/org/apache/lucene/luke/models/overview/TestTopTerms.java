@@ -18,11 +18,9 @@
 package org.apache.lucene.luke.models.overview;
 
 import java.util.List;
-import org.junit.Test;
 
 public class TestTopTerms extends OverviewTestBase {
 
-  @Test
   public void testGetTopTerms() throws Exception {
     TopTerms topTerms = new TopTerms(reader);
     List<TermStats> result = topTerms.getTopTerms("f2", 2);

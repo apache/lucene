@@ -21,7 +21,6 @@
  * storage formats or scoring without significant changes to the HNSW code. Some examples for
  * scoring include {@link org.apache.lucene.codecs.hnsw.ScalarQuantizedVectorScorer} and {@link
  * org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer}. Some examples for storing include {@link
- * org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat} and {@link
- * org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat}.
+ * org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat}.
  */
 package org.apache.lucene.codecs.hnsw;

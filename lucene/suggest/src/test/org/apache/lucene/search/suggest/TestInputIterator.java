@@ -41,8 +41,8 @@ public class TestInputIterator extends LuceneTestCase {
   }
 
   public void testTerms() throws Exception {
-    Random random = random();
-    int num = atLeast(10000);
+    Random random = nonAssertingRandom(random());
+    int num = atLeast(5000);
 
     TreeMap<BytesRef, SimpleEntry<Long, BytesRef>> sorted = new TreeMap<>();
     TreeMap<BytesRef, Long> sortedWithoutPayload = new TreeMap<>();

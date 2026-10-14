@@ -18,6 +18,7 @@ package org.apache.lucene.analysis.compound.hyphenation;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Locale;
 import javax.xml.parsers.SAXParserFactory;
 import org.xml.sax.Attributes;
 import org.xml.sax.InputSource;
@@ -125,8 +126,8 @@ public class PatternParser extends DefaultHandler {
     }
     if (space) {
       // chars.delete(0,i);
-      for (int countr = i; countr < chars.length(); countr++) {
-        chars.setCharAt(countr - i, chars.charAt(countr));
+      for (int counter = i; counter < chars.length(); counter++) {
+        chars.setCharAt(counter - i, chars.charAt(counter));
       }
       chars.setLength(chars.length() - i);
       if (token.length() > 0) {
@@ -144,8 +145,8 @@ public class PatternParser extends DefaultHandler {
     }
     token.append(chars, 0, i);
     // chars.delete(0,i);
-    for (int countr = i; countr < chars.length(); countr++) {
-      chars.setCharAt(countr - i, chars.charAt(countr));
+    for (int counter = i; counter < chars.length(); counter++) {
+      chars.setCharAt(counter - i, chars.charAt(counter));
     }
     chars.setLength(chars.length() - i);
     if (space) {
@@ -202,8 +203,8 @@ public class PatternParser extends DefaultHandler {
     StringBuilder res = new StringBuilder();
     for (int i = 0; i < ex.size(); i++) {
       Object item = ex.get(i);
-      if (item instanceof String) {
-        res.append((String) item);
+      if (item instanceof String s) {
+        res.append(s);
       } else {
         if (((Hyphen) item).noBreak != null) {
           res.append(((Hyphen) item).noBreak);
@@ -233,14 +234,19 @@ public class PatternParser extends DefaultHandler {
   // EntityResolver methods
   //
   @Override
-  public InputSource resolveEntity(String publicId, String systemId) {
+  public InputSource resolveEntity(String publicId, String systemId) throws SAXException {
     // supply the internal hyphenation.dtd if possible
     if ((systemId != null && systemId.matches("(?i).*\\bhyphenation.dtd\\b.*"))
         || ("hyphenation-info".equals(publicId))) {
       // System.out.println(this.getClass().getResource("hyphenation.dtd").toExternalForm());
       return new InputSource(this.getClass().getResource("hyphenation.dtd").toExternalForm());
     }
-    return null;
+    throw new SAXException(
+        String.format(
+            Locale.ENGLISH,
+            "External Entity resolving unsupported:  publicId=\"%s\" systemId=\"%s\"",
+            publicId,
+            systemId));
   }
 
   //

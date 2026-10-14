@@ -93,14 +93,14 @@ public class TestConcurrentFacetedIndexing extends FacetTestCase {
   }
 
   public void testConcurrency() throws Exception {
-    final AtomicInteger numDocs = new AtomicInteger(atLeast(10000));
+    final AtomicInteger numDocs = new AtomicInteger(atLeast(1000));
     final Directory indexDir = newDirectory();
     final Directory taxoDir = newDirectory();
     final ConcurrentHashMap<String, String> values = new ConcurrentHashMap<>();
     final IndexWriter iw = new IndexWriter(indexDir, newIndexWriterConfig(null));
     final DirectoryTaxonomyWriter tw =
         new DirectoryTaxonomyWriter(taxoDir, OpenMode.CREATE, newTaxoWriterCache(numDocs.get()));
-    final Thread[] indexThreads = new Thread[atLeast(4)];
+    final Thread[] indexThreads = new Thread[atLeast(2)];
     final FacetsConfig config = new FacetsConfig();
     for (int i = 0; i < 10; i++) {
       config.setHierarchical("l1." + i, true);

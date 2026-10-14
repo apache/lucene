@@ -1733,7 +1733,11 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
 
   public void testDeleteUnusedUpdatesFiles() throws Exception {
     Directory dir = newDirectory();
-    IndexWriterConfig conf = newIndexWriterConfig(new MockAnalyzer(random()));
+    // Asserts the dense-rewrite behavior of superseding a field's prior generation, so it disables
+    // the sparse incremental path, which intentionally retains prior overlays to layer them at read
+    // time.
+    IndexWriterConfig conf =
+        newIndexWriterConfig(new MockAnalyzer(random())).setMaxDocValuesOverlays(0);
     IndexWriter writer = new IndexWriter(dir, conf);
 
     Document doc = new Document();

@@ -18,12 +18,10 @@ package org.apache.lucene.search;
 
 import java.util.Random;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 /** Tests for {@link HnswQueueSaturationCollector} */
 public class TestHnswQueueSaturationCollector extends LuceneTestCase {
 
-  @Test
   public void testDelegate() {
     Random random = random();
     int numDocs = 100;
@@ -43,7 +41,6 @@ public class TestHnswQueueSaturationCollector extends LuceneTestCase {
         1e-3);
   }
 
-  @Test
   public void testEarlyExpectedExit() {
     int numDocs = 1000;
     int k = 10;
@@ -62,7 +59,6 @@ public class TestHnswQueueSaturationCollector extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testDelegateVsSaturateEarlyExit() {
     Random random = random();
     int numDocs = 10000;
@@ -81,12 +77,11 @@ public class TestHnswQueueSaturationCollector extends LuceneTestCase {
     }
   }
 
-  @Test
-  public void testEarlyExitRelation() {
+  public void testEarlyExitRelationOnSaturation() {
     Random random = random();
     int numDocs = 10000;
     int k = random.nextInt(1, 100);
-    KnnCollector delegate = new TopKnnCollector(k, random.nextInt(numDocs));
+    KnnCollector delegate = new TopKnnCollector(k, random.nextInt(1, numDocs));
     HnswQueueSaturationCollector queueSaturationCollector =
         new HnswQueueSaturationCollector(delegate, 0.5, 1);
     for (int i = 0; i < random.nextInt(numDocs); i++) {
@@ -94,15 +89,32 @@ public class TestHnswQueueSaturationCollector extends LuceneTestCase {
       if (i % 10 == 0) {
         queueSaturationCollector.nextCandidate();
       }
-      if (delegate.earlyTerminated()) {
-        TopDocs topDocs = queueSaturationCollector.topDocs();
-        assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation());
-      }
       if (queueSaturationCollector.earlyTerminated()) {
         TopDocs topDocs = queueSaturationCollector.topDocs();
         assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation());
         break;
       }
     }
+  }
+
+  public void testEarlyExitRelationOnExhaustedVisitLimit() {
+    Random random = random();
+    int k = random.nextInt(1, 100);
+    int visitLimit = random.nextInt(1, 100);
+    KnnCollector delegate = new TopKnnCollector(k, visitLimit);
+    HnswQueueSaturationCollector queueSaturationCollector =
+        new HnswQueueSaturationCollector(delegate, 0.5, 1);
+    for (int i = 0; i < k; i++) {
+      queueSaturationCollector.collect(i, random.nextFloat(1.0f));
+    }
+    queueSaturationCollector.nextCandidate();
+    queueSaturationCollector.nextCandidate();
+    queueSaturationCollector.nextCandidate();
+    queueSaturationCollector.incVisitedCount(visitLimit);
+
+    assertTrue(delegate.earlyTerminated());
+    assertTrue(queueSaturationCollector.earlyTerminated());
+    TopDocs topDocs = queueSaturationCollector.topDocs();
+    assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation());
   }
 }

@@ -147,7 +147,6 @@ public class TestInetAddrSsDvMultiRangeQuery extends LuceneTestCase {
                 true),
             BooleanClause.Occur.SHOULD);
       }
-      // InetAddress[] addr = ranges.toArray(new InetAddress[0]);
       Query multiRange = qbuilder.build();
       long cnt;
       BooleanQuery orRanges = bq.build();

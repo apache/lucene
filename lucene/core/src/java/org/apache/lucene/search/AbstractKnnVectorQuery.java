@@ -35,10 +35,7 @@ import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.search.knn.TopKnnCollectorManager;
-import org.apache.lucene.util.BitSet;
-import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.FixedBitSet;
 
 /**
  * Uses {@link KnnVectorsReader#search} to perform nearest neighbour search.
@@ -106,14 +103,16 @@ abstract class AbstractKnnVectorQuery extends Query {
       filterWeight = null;
     }
 
-    KnnCollectorManager knnCollectorManagerInner = getKnnCollectorManager(k, indexSearcher);
-    TimeLimitingKnnCollectorManager knnCollectorManager =
-        new TimeLimitingKnnCollectorManager(knnCollectorManagerInner, indexSearcher.getTimeout());
+    KnnCollectorManager knnCollectorManager = getKnnCollectorManager(k, indexSearcher);
+    OptimisticKnnCollectorManager optimisticCollectorManager =
+        new OptimisticKnnCollectorManager(k, knnCollectorManager);
+    TimeLimitingKnnCollectorManager timeLimitingKnnCollectorManager =
+        new TimeLimitingKnnCollectorManager(optimisticCollectorManager, indexSearcher.getTimeout());
     TaskExecutor taskExecutor = indexSearcher.getTaskExecutor();
     List<LeafReaderContext> leafReaderContexts = new ArrayList<>(reader.leaves());
     List<Callable<TopDocs>> tasks = new ArrayList<>(leafReaderContexts.size());
     for (LeafReaderContext context : leafReaderContexts) {
-      tasks.add(() -> searchLeaf(context, filterWeight, knnCollectorManager));
+      tasks.add(() -> searchLeaf(context, filterWeight, timeLimitingKnnCollectorManager));
     }
     Map<Integer, TopDocs> perLeafResults = new HashMap<>();
     TopDocs topK = runSearchTasks(tasks, taskExecutor, perLeafResults, leafReaderContexts);
@@ -121,14 +120,14 @@ abstract class AbstractKnnVectorQuery extends Query {
     if (topK.scoreDocs.length > 0
         && perLeafResults.size() > 1
         // only re-enter if we used the optimistic collection
-        && knnCollectorManagerInner instanceof OptimisticKnnCollectorManager
+        && knnCollectorManager.isOptimistic()
         // don't re-enter the search if we early terminated
         && topK.totalHits.relation() == TotalHits.Relation.EQUAL_TO) {
       float minTopKScore = topK.scoreDocs[topK.scoreDocs.length - 1].score;
       TimeLimitingKnnCollectorManager knnCollectorManagerPhase2 =
           new TimeLimitingKnnCollectorManager(
               new ReentrantKnnCollectorManager(
-                  new TopKnnCollectorManager(k, indexSearcher), perLeafResults),
+                  getKnnCollectorManager(k, indexSearcher), perLeafResults),
               indexSearcher.getTimeout());
       Iterator<LeafReaderContext> ctxIter = leafReaderContexts.iterator();
       while (ctxIter.hasNext()) {
@@ -147,12 +146,70 @@ abstract class AbstractKnnVectorQuery extends Query {
       }
       assert leafReaderContexts.size() == tasks.size();
       assert perLeafResults.size() == reader.leaves().size();
-      topK = runSearchTasks(tasks, taskExecutor, perLeafResults, leafReaderContexts);
+      if (tasks.size() > 0) {
+        topK = runSearchTasks(tasks, taskExecutor, perLeafResults, leafReaderContexts);
+      }
     }
     if (topK.scoreDocs.length == 0) {
-      return new MatchNoDocsQuery();
+      return new MatchNoDocsQuery("No documents matched the nearest-neighbor search");
     }
-    return DocAndScoreQuery.createDocAndScoreQuery(reader, topK, reentryCount);
+    return DocAndScoreQuery.createDocAndScoreQuery(
+        reader, topK, reentryCount, noMatchExplainer(topK, filterWeight));
+  }
+
+  /** Builds the explainer for documents this query did not collect, capturing minTopKScore. */
+  private DocAndScoreQuery.NoMatchExplainer noMatchExplainer(TopDocs topK, Weight filterWeight) {
+    // topK is score-descending, so the lowest collected score is the last entry.
+    final float minTopKScore = topK.scoreDocs[topK.scoreDocs.length - 1].score;
+    return (context, doc, topN) ->
+        explainNotCollected(context, doc, topN, filterWeight, minTopKScore);
+  }
+
+  /** Explains why a doc was not collected, by recomputing its score. null when no vectors. */
+  private Explanation explainNotCollected(
+      LeafReaderContext context, int doc, int topN, Weight filterWeight, float minTopKScore)
+      throws IOException {
+    String prefix = "Not in top " + topN + " doc(s): ";
+    FieldInfo fi = context.reader().getFieldInfos().fieldInfo(field);
+    if (fi == null || fi.getVectorDimension() == 0) {
+      return null;
+    }
+    VectorScorer vectorScorer = createVectorScorer(context, fi);
+    if (vectorScorer == null) {
+      return null;
+    }
+    if (vectorScorer.iterator().advance(doc) != doc) {
+      return Explanation.noMatch(prefix + "no vector value in field \"" + field + "\"");
+    }
+    if (filterWeight != null && docPassesFilter(filterWeight, context, doc) == false) {
+      return Explanation.noMatch(prefix + "excluded by filter");
+    }
+    float score = vectorScorer.score();
+    if (score < minTopKScore) {
+      return Explanation.noMatch(
+          prefix + "score " + score + " < minimum top-K score " + minTopKScore);
+    }
+    // Score meets the cutoff but the doc was not collected (tie-break, recall miss, or rescoring).
+    return Explanation.noMatch(
+        prefix
+            + "score "
+            + score
+            + " >= minimum top-K score "
+            + minTopKScore
+            + " (tie-break or approximate-search miss)");
+  }
+
+  private static boolean docPassesFilter(Weight filterWeight, LeafReaderContext context, int doc)
+      throws IOException {
+    Scorer scorer = filterWeight.scorer(context);
+    if (scorer == null) {
+      return false;
+    }
+    TwoPhaseIterator twoPhase = scorer.twoPhaseIterator();
+    if (twoPhase != null) {
+      return twoPhase.approximation().advance(doc) == doc && twoPhase.matches();
+    }
+    return scorer.iterator().advance(doc) == doc;
   }
 
   private TopDocs runSearchTasks(
@@ -193,25 +250,39 @@ abstract class AbstractKnnVectorQuery extends Query {
     final Bits liveDocs = reader.getLiveDocs();
 
     if (filterWeight == null) {
-      return approximateSearch(ctx, liveDocs, Integer.MAX_VALUE, timeLimitingKnnCollectorManager);
+      AcceptDocs acceptDocs = AcceptDocs.fromLiveDocs(liveDocs, reader.maxDoc());
+      return approximateSearch(ctx, acceptDocs, Integer.MAX_VALUE, timeLimitingKnnCollectorManager);
     }
 
-    Scorer scorer = filterWeight.scorer(ctx);
-    if (scorer == null) {
-      return NO_RESULTS;
-    }
-
-    BitSet acceptDocs = createBitSet(scorer.iterator(), liveDocs, reader.maxDoc());
-    final int cost = acceptDocs.cardinality();
+    AcceptDocs acceptDocs =
+        AcceptDocs.fromIteratorSupplier(
+            () -> {
+              Scorer scorer = filterWeight.scorer(ctx);
+              if (scorer == null) {
+                return DocIdSetIterator.empty();
+              } else {
+                return scorer.iterator();
+              }
+            },
+            liveDocs,
+            reader.maxDoc());
+    final int cost = acceptDocs.cost();
     QueryTimeout queryTimeout = timeLimitingKnnCollectorManager.getQueryTimeout();
 
-    float leafProportion = ctx.reader().maxDoc() / (float) ctx.parent.reader().maxDoc();
-    int perLeafTopK = perLeafTopKCalculation(k, leafProportion);
+    final int perLeafTopK;
+    // ctx.parent could be null if this is a MemoryIndex
+    if (ctx.parent != null) {
+      float leafProportion = ctx.reader().maxDoc() / (float) ctx.parent.reader().maxDoc();
+      perLeafTopK = perLeafTopKCalculation(k, leafProportion);
+      // We don't have a good way to estimate perLeafTopK here, so just do approximate search
+    } else {
+      perLeafTopK = k;
+    }
 
     if (cost <= perLeafTopK) {
       // If there are <= perLeafTopK possible matches, short-circuit and perform exact search, since
       // HNSW must always visit at least perLeafTopK documents
-      return exactSearch(ctx, new BitSetIterator(acceptDocs, cost), queryTimeout);
+      return exactSearch(ctx, acceptDocs.iterator(), queryTimeout);
     }
 
     // Perform the approximate kNN search
@@ -227,59 +298,39 @@ abstract class AbstractKnnVectorQuery extends Query {
       return results;
     } else {
       // We stopped the kNN search because it visited too many nodes, so fall back to exact search
-      return exactSearch(ctx, new BitSetIterator(acceptDocs, cost), queryTimeout);
-    }
-  }
-
-  private BitSet createBitSet(DocIdSetIterator iterator, Bits liveDocs, int maxDoc)
-      throws IOException {
-    if (liveDocs == null && iterator instanceof BitSetIterator bitSetIterator) {
-      // If we already have a BitSet and no deletions, reuse the BitSet
-      return bitSetIterator.getBitSet();
-    } else {
-      int threshold = maxDoc >> 7; // same as BitSet#of
-      if (iterator.cost() >= threshold) {
-        // take advantage of Disi#intoBitset and Bits#applyMask
-        FixedBitSet bitSet = new FixedBitSet(maxDoc);
-        bitSet.or(iterator);
-        if (liveDocs != null) {
-          liveDocs.applyMask(bitSet, 0);
-        }
-        return bitSet;
-      } else {
-        FilteredDocIdSetIterator filterIterator =
-            new FilteredDocIdSetIterator(iterator) {
-              @Override
-              protected boolean match(int doc) {
-                return liveDocs == null || liveDocs.get(doc);
-              }
-            };
-        return BitSet.of(filterIterator, maxDoc); // create a sparse bitset
-      }
+      return exactSearch(ctx, acceptDocs.iterator(), queryTimeout);
     }
   }
 
   protected KnnCollectorManager getKnnCollectorManager(int k, IndexSearcher searcher) {
-    return new OptimisticKnnCollectorManager(k);
+    return new TopKnnCollectorManager(k, searcher);
   }
 
   static class OptimisticKnnCollectorManager implements KnnCollectorManager {
     private final int k;
+    private final KnnCollectorManager delegate;
 
-    OptimisticKnnCollectorManager(int k) {
+    OptimisticKnnCollectorManager(int k, KnnCollectorManager delegate) {
       this.k = k;
+      this.delegate = delegate;
     }
 
     @Override
     public KnnCollector newCollector(
         int visitedLimit, KnnSearchStrategy searchStrategy, LeafReaderContext context)
         throws IOException {
-      @SuppressWarnings("resource")
-      float leafProportion = context.reader().maxDoc() / (float) context.parent.reader().maxDoc();
-      int perLeafTopK = perLeafTopKCalculation(k, leafProportion);
-      // if we divided by zero above, leafProportion can be NaN and then this would be 0
-      assert perLeafTopK > 0;
-      return new TopKnnCollector(perLeafTopK, visitedLimit, searchStrategy);
+      // The delegate supports optimistic collection
+      // ctx.parent could be null if this is a MemoryIndex
+      if (delegate.isOptimistic() && context.parent != null) {
+        @SuppressWarnings("resource")
+        float leafProportion = context.reader().maxDoc() / (float) context.parent.reader().maxDoc();
+        int perLeafTopK = perLeafTopKCalculation(k, leafProportion);
+        // if we divided by zero above, leafProportion can be NaN and then this would be 0
+        assert perLeafTopK > 0;
+        return delegate.newOptimisticCollector(visitedLimit, searchStrategy, context, perLeafTopK);
+      }
+      // We don't support optimistic collection, so just do regular execution path
+      return delegate.newCollector(visitedLimit, searchStrategy, context);
     }
   }
 
@@ -297,7 +348,7 @@ abstract class AbstractKnnVectorQuery extends Query {
 
   protected abstract TopDocs approximateSearch(
       LeafReaderContext context,
-      Bits acceptDocs,
+      AcceptDocs acceptDocs,
       int visitedLimit,
       KnnCollectorManager knnCollectorManager)
       throws IOException;
@@ -323,22 +374,28 @@ abstract class AbstractKnnVectorQuery extends Query {
     HitQueue queue = new HitQueue(queueSize, true);
     TotalHits.Relation relation = TotalHits.Relation.EQUAL_TO;
     ScoreDoc topDoc = queue.top();
-    DocIdSetIterator vectorIterator = vectorScorer.iterator();
-    DocIdSetIterator conjunction =
-        ConjunctionDISI.createConjunction(List.of(vectorIterator, acceptIterator), List.of());
-    int doc;
-    while ((doc = conjunction.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+    DocAndFloatFeatureBuffer buffer = new DocAndFloatFeatureBuffer();
+    VectorScorer.Bulk bulkScorer = vectorScorer.bulk(acceptIterator);
+    for (float maxScore = bulkScorer.nextDocsAndScores(DocIdSetIterator.NO_MORE_DOCS, null, buffer);
+        buffer.size > 0;
+        maxScore = bulkScorer.nextDocsAndScores(DocIdSetIterator.NO_MORE_DOCS, null, buffer)) {
       // Mark results as partial if timeout is met
       if (queryTimeout != null && queryTimeout.shouldExit()) {
         relation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
         break;
       }
-      assert vectorIterator.docID() == doc;
-      float score = vectorScorer.score();
-      if (score > topDoc.score) {
-        topDoc.score = score;
-        topDoc.doc = doc;
-        topDoc = queue.updateTop();
+      if (maxScore < topDoc.score) {
+        // all the scores in this batch are too low, skip
+        continue;
+      }
+      for (int i = 0; i < buffer.size; i++) {
+        float score = buffer.features[i];
+        int doc = buffer.docs[i];
+        if (score > topDoc.score) {
+          topDoc.score = score;
+          topDoc.doc = doc;
+          topDoc = queue.updateTop();
+        }
       }
     }
 

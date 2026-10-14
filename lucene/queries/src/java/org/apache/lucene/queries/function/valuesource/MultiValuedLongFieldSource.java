@@ -37,10 +37,16 @@ import org.apache.lucene.search.SortedNumericSortField;
 public class MultiValuedLongFieldSource extends LongFieldSource {
 
   protected final SortedNumericSelector.Type selector;
+  private final Long missingValue;
 
-  public MultiValuedLongFieldSource(String field, Type selector) {
+  public MultiValuedLongFieldSource(String field, SortedNumericSelector.Type selector) {
+    this(field, selector, null);
+  }
+
+  public MultiValuedLongFieldSource(String field, Type selector, Long missingValue) {
     super(field);
     this.selector = selector;
+    this.missingValue = missingValue;
     Objects.requireNonNull(field, "Field is required to create a MultiValuedLongFieldSource");
     Objects.requireNonNull(
         selector, "SortedNumericSelector is required to create a MultiValuedLongFieldSource");
@@ -48,7 +54,7 @@ public class MultiValuedLongFieldSource extends LongFieldSource {
 
   @Override
   public SortField getSortField(boolean reverse) {
-    return new SortedNumericSortField(field, SortField.Type.LONG, reverse, selector);
+    return new SortedNumericSortField(field, SortField.Type.LONG, reverse, selector, missingValue);
   }
 
   @Override

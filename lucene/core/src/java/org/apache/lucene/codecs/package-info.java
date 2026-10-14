@@ -41,7 +41,7 @@
  * codec, extend {@link org.apache.lucene.codecs.Codec} and pass the new codec's name to the super()
  * constructor:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * public class MyCodec extends Codec {
  *
  *     public MyCodec() {
@@ -50,7 +50,7 @@
  *
  *     ...
  * }
- * </pre>
+ * </code></pre>
  *
  * You will need to register the Codec class so that the {@link java.util.ServiceLoader
  * ServiceLoader} can find it, by including a META-INF/services/org.apache.lucene.codecs.Codec file

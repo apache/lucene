@@ -52,7 +52,7 @@ public class TestXYMultiPointShapeQueries extends BaseXYShapeTestCase {
       Field[] fields = XYShape.createIndexableFields(name, point.getX(), point.getY());
       Collections.addAll(allFields, fields);
     }
-    return allFields.toArray(new Field[0]);
+    return allFields.toArray(Field[]::new);
   }
 
   @Override

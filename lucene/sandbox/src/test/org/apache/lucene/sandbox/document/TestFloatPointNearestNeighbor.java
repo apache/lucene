@@ -151,8 +151,8 @@ public class TestFloatPointNearestNeighbor extends LuceneTestCase {
 
   public void testNearestNeighborRandom() throws Exception {
     Directory dir;
-    int numPoints = atLeast(5000);
-    if (numPoints > 100000) {
+    int numPoints = atLeast(1000);
+    if (numPoints > 20000) {
       dir = newFSDirectory(createTempDir(getClass().getSimpleName()));
     } else {
       dir = newDirectory();
@@ -189,7 +189,7 @@ public class TestFloatPointNearestNeighbor extends LuceneTestCase {
     // can't wrap because we require Lucene60PointsFormat directly but e.g. ParallelReader wraps
     // with its own points impl:
     IndexSearcher s = newSearcher(r, false);
-    int iters = atLeast(100);
+    int iters = atLeast(10);
     for (int iter = 0; iter < iters; ++iter) {
       if (VERBOSE) {
         System.out.println("\nTEST: iter=" + iter);

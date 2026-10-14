@@ -920,8 +920,11 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
       final float centerX = nextX();
       final float centerY = nextY();
 
-      // So the query can cover at most 50% of the cartesian space:
-      final float radius = random().nextFloat() * Float.MAX_VALUE / 2;
+      float radius = 0f;
+      while (radius == 0f) {
+        // So the query can cover at most 50% of the cartesian space:
+        radius = random().nextFloat() * Float.MAX_VALUE / 2;
+      }
 
       if (VERBOSE) {
         final DecimalFormat df =
@@ -953,6 +956,7 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
         }
 
         if (hits.get(docID) != expected) {
+          final float finalRadius = radius;
           Consumer<StringBuilder> explain =
               (b) -> {
                 if (Double.isNaN(xs[id]) == false) {
@@ -964,7 +968,7 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
                       .append(" distance=")
                       .append(distance)
                       .append(" vs radius=")
-                      .append(radius);
+                      .append(finalRadius);
                 }
               };
           buildError(docID, expected, id, xs, ys, query, liveDocs, explain);

@@ -19,6 +19,7 @@ package org.apache.lucene.search.vectorhighlight;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -812,6 +813,48 @@ public class TestFieldQuery extends AbstractTestCase {
     assertTrue(qpm2.terminal);
     assertEquals(1F, qpm2.boost, 0);
     assertEquals(0, qpm2.subMap.size());
+  }
+
+  public void testQueryPhraseMapDuplicate() throws IOException {
+    BooleanQuery.Builder query = new BooleanQuery.Builder();
+    Query bq = toPhraseQuery(analyze("a b c", F, analyzerB), F);
+    bq = new BoostQuery(bq, 100);
+    query.add(bq, Occur.SHOULD);
+
+    bq = toPhraseQuery(analyze("a b", F, analyzerB), F);
+    bq = new BoostQuery(bq, 20);
+    query.add(bq, Occur.SHOULD);
+
+    bq = toPhraseQuery(analyze("b c", F, analyzerB), F);
+    bq = new BoostQuery(bq, 50);
+    query.add(bq, Occur.SHOULD);
+
+    bq = query.build();
+    FieldQuery fq = new FieldQuery(bq, true, true);
+    Set<Query> flatQueries = new LinkedHashSet<>();
+    fq.flatten(bq, searcher, flatQueries, 1f);
+
+    assertCollectionQueries(
+        fq.expand(flatQueries),
+        pqF(100, "a", "b", "c"),
+        pqF(20, "a", "b"),
+        //  "a b c": 1 -> expanded from "a b" + "b c"
+        new BoostQuery(pqF(1f, "a", "b", "c"), 1f),
+        pqF(50, "b", "c"));
+
+    Map<String, QueryPhraseMap> map = fq.rootMaps;
+    QueryPhraseMap a_qpm = map.get("f").subMap.get("a");
+    assertEquals(0, a_qpm.boost, 0.0);
+    QueryPhraseMap b_qpm = a_qpm.subMap.get("b");
+    assertEquals(20, b_qpm.boost, 0.0);
+    QueryPhraseMap c_qpm = b_qpm.subMap.get("c");
+    // make sure final boost is from the query and not the expanded boost 1
+    assertEquals(100, c_qpm.boost, 0.0);
+
+    b_qpm = map.get("f").subMap.get("b");
+    assertEquals(0, b_qpm.boost, 0.0);
+    c_qpm = b_qpm.subMap.get("c");
+    assertEquals(50, c_qpm.boost, 0.0);
   }
 
   public void testSearchPhrase() throws Exception {

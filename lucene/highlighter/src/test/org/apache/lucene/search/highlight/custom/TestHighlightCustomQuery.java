@@ -97,6 +97,31 @@ public class TestHighlightCustomQuery extends LuceneTestCase {
     assertEquals(Collections.singleton("quux"), terms.keySet());
   }
 
+  public void testHighlightQueryRequiringMetadata()
+      throws IOException, InvalidTokenOffsetsException {
+    String text = "The blue galaxy contains many bright stars";
+
+    // Anonymous subclass of the existing CustomQuery to inject the metadata call
+    CustomQuery q =
+        new CustomQuery(new Term(FIELD_NAME, "galaxy")) {
+          @Override
+          public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+            if (indexSearcher.getIndexReader() instanceof org.apache.lucene.index.LeafReader) {
+              ((org.apache.lucene.index.LeafReader) indexSearcher.getIndexReader()).getFieldInfos();
+            }
+            return super.rewrite(indexSearcher);
+          }
+        };
+
+    String expected = "The blue <B>galaxy</B> contains many bright stars";
+    String observed = highlightField(q, FIELD_NAME, text);
+
+    assertEquals(
+        "Highlighter should support queries that perform schema/metadata lookups during rewrite",
+        expected,
+        observed);
+  }
+
   /** This method intended for use with <code>testHighlightingWithDefaultField()</code> */
   private String highlightField(Query query, String fieldName, String text)
       throws IOException, InvalidTokenOffsetsException {

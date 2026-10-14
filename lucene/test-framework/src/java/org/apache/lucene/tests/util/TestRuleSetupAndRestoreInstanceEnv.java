@@ -22,16 +22,16 @@ import org.apache.lucene.search.IndexSearcher;
  * Prepares and restores {@link LuceneTestCase} at instance level (fine grained junk that doesn't
  * fit anywhere else).
  */
-final class TestRuleSetupAndRestoreInstanceEnv extends AbstractBeforeAfterRule {
+final class TestRuleSetupAndRestoreInstanceEnv implements BeforeAfterCallback {
   private int savedBoolMaxClauseCount;
 
   @Override
-  protected void before() {
+  public void before() {
     savedBoolMaxClauseCount = IndexSearcher.getMaxClauseCount();
   }
 
   @Override
-  protected void after() {
+  public void after() {
     IndexSearcher.setMaxClauseCount(savedBoolMaxClauseCount);
   }
 }

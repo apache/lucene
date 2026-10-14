@@ -19,11 +19,9 @@ package org.apache.lucene.demo.facet;
 import java.util.List;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 public class TestAssociationsFacetsExample extends LuceneTestCase {
 
-  @Test
   public void testExamples() throws Exception {
     List<FacetResult> res = new AssociationsFacetsExample().runSumAssociations();
     assertEquals("Wrong number of results", 2, res.size());
@@ -35,7 +33,6 @@ public class TestAssociationsFacetsExample extends LuceneTestCase {
         res.get(1).toString());
   }
 
-  @Test
   public void testDrillDown() throws Exception {
     FacetResult result = new AssociationsFacetsExample().runDrillDown();
     assertEquals(

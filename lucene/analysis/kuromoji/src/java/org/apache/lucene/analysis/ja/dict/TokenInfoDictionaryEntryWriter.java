@@ -45,7 +45,7 @@ class TokenInfoDictionaryEntryWriter extends DictionaryEntryWriter {
    * 4-9 - pos
    * 10  - base form
    * 11  - reading
-   * 12  - pronounciation
+   * 12  - pronunciation
    * </pre>
    */
   @Override

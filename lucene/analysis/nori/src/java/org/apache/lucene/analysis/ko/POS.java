@@ -118,7 +118,7 @@ public class POS {
     SF(160, "Terminal punctuation"),
 
     /** Chinese character */
-    SH(161, "Chinese Characeter"),
+    SH(161, "Chinese Character"),
 
     /** Foreign language */
     SL(162, "Foreign language"),

@@ -189,7 +189,7 @@ public class TestCharTermAttributeImpl extends LuceneTestCase {
     assertEquals("123456789012341234567890123456", t.toString());
     t.append((CharSequence) new StringBuffer(t));
     assertEquals("123456789012341234567890123456123456789012341234567890123456", t.toString());
-    // very wierd, to test if a subSlice is wrapped correct :)
+    // very weird, to test if a subSlice is wrapped correct :)
     CharBuffer buf = CharBuffer.wrap("0123456789".toCharArray(), 3, 5);
     assertEquals("34567", buf.toString());
     t.setEmpty().append((CharSequence) buf, 1, 2);
@@ -233,13 +233,13 @@ public class TestCharTermAttributeImpl extends LuceneTestCase {
     assertEquals((CharSequence) "567890123456", t.toString());
     t.append(new StringBuffer(t));
     assertEquals((CharSequence) "567890123456567890123456", t.toString());
-    // very wierd, to test if a subSlice is wrapped correct :)
+    // very weird, to test if a subSlice is wrapped correct :)
     CharBuffer buf = CharBuffer.wrap("012345678901234567890123456789".toCharArray(), 3, 15);
     assertEquals("345678901234567", buf.toString());
     t.setEmpty().append(buf, 1, 14);
     assertEquals("4567890123456", t.toString());
 
-    // finally use a completely custom CharSequence that is not catched by instanceof checks
+    // finally use a completely custom CharSequence that is not caught by instanceof checks
     final String longTestString = "012345678901234567890123456789";
     t.append(
         new CharSequence() {

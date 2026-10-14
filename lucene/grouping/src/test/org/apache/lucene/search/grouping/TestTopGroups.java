@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.search.grouping;
 
+import java.util.List;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TotalHits;
@@ -172,7 +173,7 @@ public class TestTopGroups extends LuceneTestCase {
 
     final TopGroups<String> mergedTopGroups =
         TopGroups.<String>merge(
-            combineTopGroups(shard1TopGroups, shard2TopGroups),
+            List.of(shard1TopGroups, shard2TopGroups),
             sort /* groupSort */,
             sort /* docSort */,
             0 /* docOffset */,
@@ -250,15 +251,6 @@ public class TestTopGroups extends LuceneTestCase {
       GroupDocs<String> group0, GroupDocs<String> group1) {
     @SuppressWarnings({"unchecked", "rawtypes"})
     final GroupDocs<String>[] groups = new GroupDocs[2];
-    groups[0] = group0;
-    groups[1] = group1;
-    return groups;
-  }
-
-  private static TopGroups<String>[] combineTopGroups(
-      TopGroups<String> group0, TopGroups<String> group1) {
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    final TopGroups<String>[] groups = new TopGroups[2];
     groups[0] = group0;
     groups[1] = group1;
     return groups;

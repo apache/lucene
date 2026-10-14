@@ -18,6 +18,8 @@
 package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
+import org.apache.lucene.internal.hppc.IntHashSet;
+import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.InfoStream;
 
 /**
@@ -34,16 +36,33 @@ public interface HnswBuilder {
    */
   OnHeapHnswGraph build(int maxOrd) throws IOException;
 
-  /** Inserts a doc with vector value to the graph */
+  /** Inserts a doc with a vector value to the graph */
   void addGraphNode(int node) throws IOException;
+
+  /**
+   * Inserts a doc with a vector value to the graph, searching on level 0 with provided entry points
+   */
+  void addGraphNode(int node, IntHashSet eps) throws IOException;
 
   /** Set info-stream to output debugging information */
   void setInfoStream(InfoStream infoStream);
 
+  /**
+   * Sets a check that is invoked before every node insertion during graph construction. The check
+   * may throw an exception to abort the build promptly, e.g. {@link
+   * org.apache.lucene.index.MergePolicy.MergeAbortedException} when the merge that triggered the
+   * build has been aborted.
+   *
+   * <p>The check must be non-null and can be set at most once.
+   *
+   * @throws IllegalStateException if the check was already set
+   */
+  void setAbortCheck(IORunnable abortCheck);
+
   OnHeapHnswGraph getGraph();
 
   /**
-   * Once this method is called no further updates to the graph are accepted (addGraphNode will
+   * Once this method is called, no further updates to the graph are accepted (addGraphNode will
    * throw IllegalStateException). Final modifications to the graph (eg patching up disconnected
    * components, re-ordering node ids for better delta compression) may be triggered, so callers
    * should expect this call to take some time.

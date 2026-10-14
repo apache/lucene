@@ -20,11 +20,15 @@ import static com.carrotsearch.randomizedtesting.RandomizedTest.frequently;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
+import static org.hamcrest.Matchers.not;
 
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -166,6 +170,8 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       assertMatches(searcher, kvq, 0);
       Query q = searcher.rewrite(kvq);
       assertTrue(q instanceof MatchNoDocsQuery);
+      assertEquals(
+          "MatchNoDocsQuery(\"No documents matched the nearest-neighbor search\")", q.toString());
     }
   }
 
@@ -258,7 +264,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
 
       // make sure we don't drop to exact search, even though the filter matches fewer than k docs
       Query kvq =
-          getThrowingKnnVectorQuery("field", new float[] {0, 0}, 10, new MatchAllDocsQuery());
+          getThrowingKnnVectorQuery("field", new float[] {0, 0}, 10, MatchAllDocsQuery.INSTANCE);
       TopDocs topDocs = searcher.search(kvq, 3);
       assertEquals(3, topDocs.totalHits.value());
     }
@@ -430,13 +436,16 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         // scores vary widely due to quantization
         assertEquals(1 / 2f, matched.getValue().doubleValue(), 0.5);
         assertEquals(0, matched.getDetails().length);
-        assertEquals("within top 3 docs", matched.getDescription());
+        assertEquals("Within top 3 doc(s)", matched.getDescription());
 
-        Explanation nomatch = searcher.explain(query, 5);
+        // Doc 0 ({0,0}) is farthest from the query {2,3}, so it is reliably ranked out.
+        Explanation nomatch = searcher.explain(query, 0);
         assertFalse(nomatch.isMatch());
         assertEquals(0f, nomatch.getValue());
         assertEquals(0, matched.getDetails().length);
-        assertEquals("not in top 3 docs", nomatch.getDescription());
+        assertTrue(
+            nomatch.getDescription(),
+            nomatch.getDescription().startsWith("Not in top 3 doc(s): score "));
       }
     }
   }
@@ -459,13 +468,86 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         // scores vary widely due to quantization
         assertEquals(1 / 2f, matched.getValue().doubleValue(), 0.5);
         assertEquals(0, matched.getDetails().length);
-        assertEquals("within top 3 docs", matched.getDescription());
+        assertEquals("Within top 3 doc(s)", matched.getDescription());
 
-        Explanation nomatch = searcher.explain(query, 4);
+        // Doc 0 ({0,0}) is farthest from the query {2,3}, so it is reliably ranked out.
+        Explanation nomatch = searcher.explain(query, 0);
         assertFalse(nomatch.isMatch());
         assertEquals(0f, nomatch.getValue());
         assertEquals(0, matched.getDetails().length);
-        assertEquals("not in top 3 docs", nomatch.getDescription());
+        assertTrue(
+            nomatch.getDescription(),
+            nomatch.getDescription().startsWith("Not in top 3 doc(s): score "));
+      }
+    }
+  }
+
+  public void testExplainFiltered() throws IOException {
+    try (Directory d = newDirectoryForTest()) {
+      try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
+        for (int j = 0; j < 5; j++) {
+          Document doc = new Document();
+          doc.add(getKnnVectorField("field", new float[] {j, j}));
+          doc.add(new IntPoint("tag", j));
+          w.addDocument(doc);
+        }
+        // Doc 5 passes the filter (tag in range) but has no vector.
+        Document noVector = new Document();
+        noVector.add(new IntPoint("tag", 1));
+        w.addDocument(noVector);
+      }
+      try (IndexReader reader = DirectoryReader.open(d)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        // Filter to docs 0-2, so docs 3 and 4 cannot be collected.
+        Query filter = IntPoint.newRangeQuery("tag", 0, 2);
+        AbstractKnnVectorQuery query = getKnnVectorQuery("field", new float[] {2, 3}, 3, filter);
+
+        // Doc 4 has a vector but fails the filter.
+        Explanation filtered = searcher.explain(query, 4);
+        assertFalse(filtered.isMatch());
+        assertEquals("Not in top 3 doc(s): excluded by filter", filtered.getDescription());
+
+        // Doc 5 passes the filter but has no vector, so blame the missing vector, not the filter.
+        Explanation noVector = searcher.explain(query, 5);
+        assertFalse(noVector.isMatch());
+        assertEquals(
+            "Not in top 3 doc(s): no vector value in field \"field\"", noVector.getDescription());
+      }
+    }
+  }
+
+  public void testExplainTieBreak() throws IOException {
+    try (Directory d = newDirectoryForTest()) {
+      // All five docs share one vector, so they all score equally. With top k = 3, two are dropped
+      // due to tie-break.
+      try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
+        for (int j = 0; j < 5; j++) {
+          Document doc = new Document();
+          doc.add(getKnnVectorField("field", new float[] {1, 1}));
+          w.addDocument(doc);
+        }
+        w.forceMerge(1);
+      }
+      try (IndexReader reader = DirectoryReader.open(d)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        AbstractKnnVectorQuery query = getKnnVectorQuery("field", new float[] {1, 1}, 3);
+
+        Set<Integer> collected = new HashSet<>();
+        for (ScoreDoc sd : searcher.search(query, 3).scoreDocs) {
+          collected.add(sd.doc);
+        }
+        int dropped = -1;
+        for (int doc = 0; doc < 5; doc++) {
+          if (collected.contains(doc) == false) {
+            dropped = doc;
+            break;
+          }
+        }
+        Explanation nomatch = searcher.explain(query, dropped);
+        assertFalse(nomatch.isMatch());
+        String description = nomatch.getDescription();
+        assertTrue(description, description.startsWith("Not in top 3 doc(s): score "));
+        assertTrue(description, description.endsWith(" (tie-break or approximate-search miss)"));
       }
     }
   }
@@ -756,7 +838,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         int index = random().nextInt(numDocs);
         toDelete.add(new Term("index", String.valueOf(index)));
       }
-      w.deleteDocuments(toDelete.toArray(new Term[0]));
+      w.deleteDocuments(toDelete.toArray(Term[]::new));
       w.commit();
 
       int hits = 50;
@@ -791,7 +873,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       }
       w.commit();
 
-      w.deleteDocuments(new MatchAllDocsQuery());
+      w.deleteDocuments(MatchAllDocsQuery.INSTANCE);
       w.commit();
 
       try (IndexReader reader = DirectoryReader.open(dir)) {
@@ -827,6 +909,9 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         switch (fi.getVectorEncoding()) {
           case BYTE:
             vectorValues = leafReader.getByteVectorValues("field");
+            break;
+          case FLOAT16:
+            vectorValues = leafReader.getFloat16VectorValues("field");
             break;
           case FLOAT32:
             vectorValues = leafReader.getFloatVectorValues("field");
@@ -914,8 +999,9 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           noTimeoutManager.newCollector(Integer.MAX_VALUE, null, searcher.leafContexts.get(0));
 
       // Check that a normal collector is created without timeout
-      assertFalse(
-          noTimeoutCollector instanceof TimeLimitingKnnCollectorManager.TimeLimitingKnnCollector);
+      assertThat(
+          noTimeoutCollector,
+          not(instanceOf(TimeLimitingKnnCollectorManager.TimeLimitingKnnCollector.class)));
       noTimeoutCollector.collect(0, 0);
       assertFalse(noTimeoutCollector.earlyTerminated());
 
@@ -931,7 +1017,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           timeoutManager.newCollector(Integer.MAX_VALUE, null, searcher.leafContexts.get(0));
 
       // Check that a time limiting collector is created, which returns partial results
-      assertFalse(timeoutCollector instanceof TopKnnCollector);
+      assertThat(timeoutCollector, not(instanceOf(TopKnnCollector.class)));
       timeoutCollector.collect(0, 0);
       assertTrue(timeoutCollector.earlyTerminated());
 
@@ -952,7 +1038,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
 
       AbstractKnnVectorQuery query = getKnnVectorQuery("field", new float[] {0.0f, 1.0f}, 2);
       AbstractKnnVectorQuery exactQuery =
-          getKnnVectorQuery("field", new float[] {0.0f, 1.0f}, 10, new MatchAllDocsQuery());
+          getKnnVectorQuery("field", new float[] {0.0f, 1.0f}, 10, MatchAllDocsQuery.INSTANCE);
 
       assertEquals(2, searcher.count(query)); // Expect some results without timeout
       assertEquals(3, searcher.count(exactQuery)); // Same for exact search
@@ -964,10 +1050,10 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       searcher.setTimeout(new CountingQueryTimeout(1)); // Only score 1 doc
       // Note: We get partial results when the HNSW graph has 1 layer, but no results for > 1 layer
       // because the timeout is exhausted while finding the best entry node for the last level
-      assertTrue(searcher.count(query) <= 1); // Expect at most 1 result
+      assertThat(searcher.count(query), lessThanOrEqualTo(1));
 
       searcher.setTimeout(new CountingQueryTimeout(1)); // Only score 1 doc
-      assertEquals(1, searcher.count(exactQuery)); // Expect only 1 result
+      assertThat(searcher.count(exactQuery), lessThanOrEqualTo(1));
     }
   }
 
@@ -1068,7 +1154,8 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     // Since a forceMerge could occur in this test, we must not assert that a specific doc_id is
     // matched
     // But that instead the string format is expected and that the max score is 1.0
-    assertTrue(queryString.matches("DocAndScoreQuery\\[\\d+,...]\\[\\d+.\\d+,...],1.0"));
+    assertTrue(
+        queryString, queryString.matches("DocAndScoreQuery\\[\\d+ doc\\(s\\), maxScore=1.0]"));
   }
 
   /**
@@ -1218,20 +1305,17 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     }
   }
 
+  /** Must be thread-safe: per-segment kNN searches may call it concurrently. */
   private static class CountingQueryTimeout implements QueryTimeout {
-    private int remaining;
+    private final AtomicInteger remaining;
 
     public CountingQueryTimeout(int count) {
-      remaining = count;
+      remaining = new AtomicInteger(count);
     }
 
     @Override
     public boolean shouldExit() {
-      if (remaining > 0) {
-        remaining--;
-        return false;
-      }
-      return true;
+      return remaining.getAndUpdate(r -> r > 0 ? r - 1 : 0) == 0;
     }
   }
 

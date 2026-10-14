@@ -31,7 +31,6 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.PrintStreamInfoStream;
-import org.junit.Test;
 
 /** Test adding to the info stream when there's an exception thrown during field analysis. */
 public class TestDocInverterPerFieldErrorInfo extends LuceneTestCase {
@@ -62,7 +61,6 @@ public class TestDocInverterPerFieldErrorInfo extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testInfoStreamGetsFieldName() throws Exception {
     Directory dir = newDirectory();
     IndexWriter writer;
@@ -83,7 +81,6 @@ public class TestDocInverterPerFieldErrorInfo extends LuceneTestCase {
     dir.close();
   }
 
-  @Test
   public void testNoExtraNoise() throws Exception {
     Directory dir = newDirectory();
     IndexWriter writer;

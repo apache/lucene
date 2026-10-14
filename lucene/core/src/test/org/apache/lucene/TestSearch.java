@@ -29,7 +29,6 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
@@ -80,8 +79,7 @@ public class TestSearch extends LuceneTestCase {
     Directory directory = newDirectory();
     Analyzer analyzer = new MockAnalyzer(random);
     IndexWriterConfig conf = newIndexWriterConfig(analyzer);
-    MergePolicy mp = conf.getMergePolicy();
-    mp.setNoCFSRatio(useCompoundFile ? 1.0 : 0.0);
+    conf.getCodec().compoundFormat().setShouldUseCompoundFile(useCompoundFile);
     IndexWriter writer = new IndexWriter(directory, conf);
 
     String[] docs = {

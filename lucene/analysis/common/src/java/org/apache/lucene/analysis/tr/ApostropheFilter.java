@@ -39,7 +39,7 @@ public final class ApostropheFilter extends TokenFilter {
   }
 
   @Override
-  public final boolean incrementToken() throws IOException {
+  public boolean incrementToken() throws IOException {
     if (!input.incrementToken()) return false;
 
     final char[] buffer = termAtt.buffer();

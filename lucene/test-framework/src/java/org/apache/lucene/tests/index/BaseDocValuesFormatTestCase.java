@@ -22,6 +22,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.BinaryDocValuesField;
@@ -52,34 +53,22 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.TermsEnum.SeekStatus;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.DocValuesRangeIterator;
+import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IOBooleanSupplier;
+import org.apache.lucene.util.IOFunction;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.LongBitSet;
 
 /**
  * Extends {@link LegacyBaseDocValuesFormatTestCase} and adds checks for {@link DocValuesSkipper}.
  */
 public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFormatTestCase {
-
-  /**
-   * Override and return {@code false} if the {@link DocValuesSkipper} produced by this format
-   * sometimes returns documents in {@link DocValuesSkipper#minDocID(int)} or {@link
-   * DocValuesSkipper#maxDocID(int)} that may not have a value.
-   */
-  protected boolean skipperHasAccurateDocBounds() {
-    return true;
-  }
-
-  /**
-   * Override and return {@code false} if the {@link DocValuesSkipper} produced by this format
-   * sometimes returns values in {@link DocValuesSkipper#minValue(int)} or {@link
-   * DocValuesSkipper#maxValue(int)} that none of the documents in the range have.
-   */
-  protected boolean skipperHasAccurateValueBounds() {
-    return true;
-  }
 
   public void testSortedMergeAwayAllValuesWithSkipper() throws IOException {
     Directory directory = newDirectory();
@@ -107,6 +96,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
 
     DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
     assertEquals(0, skipper.docCount());
+    assertEquals(0, skipper.maxValueCount());
     skipper.advance(0);
     assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
 
@@ -145,6 +135,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
 
     DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
     assertEquals(0, skipper.docCount());
+    assertEquals(0, skipper.maxValueCount());
     skipper.advance(0);
     assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
 
@@ -183,6 +174,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
 
     DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
     assertEquals(0, skipper.docCount());
+    assertEquals(0, skipper.maxValueCount());
     skipper.advance(0);
     assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
 
@@ -216,6 +208,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
 
     DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
     assertEquals(0, skipper.docCount());
+    assertEquals(0, skipper.maxValueCount());
     skipper.advance(0);
     assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
 
@@ -251,6 +244,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
 
     DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
     assertEquals(0, skipper.docCount());
+    assertEquals(0, skipper.maxValueCount());
     skipper.advance(0);
     assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
 
@@ -291,6 +285,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
 
     DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
     assertEquals(0, skipper.docCount());
+    assertEquals(0, skipper.maxValueCount());
     skipper.advance(0);
     assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
 
@@ -331,6 +326,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
 
     DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
     assertEquals(0, skipper.docCount());
+    assertEquals(0, skipper.maxValueCount());
     skipper.advance(0);
     assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
 
@@ -367,10 +363,46 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
 
     DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
     assertEquals(0, skipper.docCount());
+    assertEquals(0, skipper.maxValueCount());
     skipper.advance(0);
     assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
 
     ireader.close();
+    directory.close();
+  }
+
+  public void testMaxValueCountWithSkipper() throws IOException {
+    Directory directory = newDirectory();
+    RandomIndexWriter writer = new RandomIndexWriter(random(), directory);
+
+    Document doc = new Document();
+    doc.add(NumericDocValuesField.indexedField("numeric", 1));
+    doc.add(SortedDocValuesField.indexedField("sorted", newBytesRef("a")));
+    doc.add(SortedNumericDocValuesField.indexedField("sorted_numeric", 1));
+    doc.add(SortedSetDocValuesField.indexedField("sorted_set", newBytesRef("a")));
+    writer.addDocument(doc);
+
+    doc = new Document();
+    doc.add(NumericDocValuesField.indexedField("numeric", 2));
+    doc.add(SortedDocValuesField.indexedField("sorted", newBytesRef("b")));
+    doc.add(SortedNumericDocValuesField.indexedField("sorted_numeric", 1));
+    doc.add(SortedNumericDocValuesField.indexedField("sorted_numeric", 2));
+    doc.add(SortedNumericDocValuesField.indexedField("sorted_numeric", 3));
+    doc.add(SortedSetDocValuesField.indexedField("sorted_set", newBytesRef("a")));
+    doc.add(SortedSetDocValuesField.indexedField("sorted_set", newBytesRef("b")));
+    writer.addDocument(doc);
+
+    writer.forceMerge(1);
+    DirectoryReader reader = writer.getReader();
+    writer.close();
+
+    LeafReader leafReader = getOnlyLeafReader(reader);
+    assertEquals(1, leafReader.getDocValuesSkipper("numeric").maxValueCount());
+    assertEquals(1, leafReader.getDocValuesSkipper("sorted").maxValueCount());
+    assertEquals(3, leafReader.getDocValuesSkipper("sorted_numeric").maxValueCount());
+    assertEquals(2, leafReader.getDocValuesSkipper("sorted_set").maxValueCount());
+
+    reader.close();
     directory.close();
   }
 
@@ -379,7 +411,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
   }
 
   public void testNumericDocValuesWithSkipperMedium() throws Exception {
-    doTestNumericDocValuesWithSkipper(random().nextInt(1000, 20000));
+    doTestNumericDocValuesWithSkipper(random().nextInt(1000, 1500));
   }
 
   @Nightly
@@ -425,6 +457,11 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
               public int docID() {
                 return numericDocValues.docID();
               }
+
+              @Override
+              public int docValueCount() {
+                return 1;
+              }
             };
           }
 
@@ -440,7 +477,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
   }
 
   public void testSortedNumericDocValuesWithSkipperMedium() throws Exception {
-    doTestSortedNumericDocValuesWithSkipper(random().nextInt(1000, 20000));
+    doTestSortedNumericDocValuesWithSkipper(random().nextInt(1000, 1500));
   }
 
   @Nightly
@@ -454,7 +491,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
         new TestDocValueSkipper() {
           @Override
           public void populateDoc(Document doc) {
-            for (int j = 0; j < random().nextInt(1, 5); j++) {
+            for (int j = 0; j < random().nextInt(1, 3); j++) {
               doc.add(SortedNumericDocValuesField.indexedField("test", random().nextLong()));
             }
           }
@@ -509,6 +546,11 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
               public int docID() {
                 return sortedNumericDocValues.docID();
               }
+
+              @Override
+              public int docValueCount() {
+                return sortedNumericDocValues.docValueCount();
+              }
             };
           }
 
@@ -524,7 +566,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
   }
 
   public void testSortedDocValuesWithSkipperMedium() throws Exception {
-    doTestSortedDocValuesWithSkipper(random().nextInt(1000, 20000));
+    doTestSortedDocValuesWithSkipper(random().nextInt(1000, 1500));
   }
 
   @Nightly
@@ -570,6 +612,11 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
               public int docID() {
                 return sortedDocValues.docID();
               }
+
+              @Override
+              public int docValueCount() {
+                return 1;
+              }
             };
           }
 
@@ -585,7 +632,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
   }
 
   public void testSortedSetDocValuesWithSkipperMedium() throws Exception {
-    doTestSortedSetDocValuesWithSkipper(random().nextInt(10000, 20000));
+    doTestSortedSetDocValuesWithSkipper(random().nextInt(1000, 1500));
   }
 
   @Nightly
@@ -599,7 +646,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
         new TestDocValueSkipper() {
           @Override
           public void populateDoc(Document doc) {
-            for (int j = 0; j < random().nextInt(1, 5); j++) {
+            for (int j = 0; j < random().nextInt(1, 3); j++) {
               doc.add(
                   SortedSetDocValuesField.indexedField(
                       "test", TestUtil.randomBinaryTerm(random())));
@@ -654,6 +701,11 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
               @Override
               public int docID() {
                 return sortedSetDocValues.docID();
+              }
+
+              @Override
+              public int docValueCount() {
+                return sortedSetDocValues.docValueCount();
               }
             };
           }
@@ -731,17 +783,12 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
 
     iterator.advance(0);
     int docCount = 0;
+    int maxValueCount = 0;
     while (true) {
       int previousMaxDoc = skipper.maxDocID(0);
       skipper.advance(previousMaxDoc + 1);
       assertTrue(skipper.minDocID(0) > previousMaxDoc);
-      if (skipperHasAccurateDocBounds()) {
-        assertEquals(iterator.docID(), skipper.minDocID(0));
-      } else {
-        assertTrue(
-            "Expected: " + iterator.docID() + " but got " + skipper.minDocID(0),
-            skipper.minDocID(0) <= iterator.docID());
-      }
+      assertEquals(iterator.docID(), skipper.minDocID(0));
 
       if (skipper.minDocID(0) == NO_MORE_DOCS) {
         assertEquals(NO_MORE_DOCS, skipper.maxDocID(0));
@@ -757,26 +804,12 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
         maxDoc = Math.max(maxDoc, iterator.docID());
         minVal = Math.min(minVal, iterator.minValue());
         maxVal = Math.max(maxVal, iterator.maxValue());
+        maxValueCount = Math.max(maxValueCount, iterator.docValueCount());
         iterator.advance(iterator.docID() + 1);
       }
-      if (skipperHasAccurateDocBounds()) {
-        assertEquals(maxDoc, skipper.maxDocID(0));
-      } else {
-        assertTrue(
-            "Expected: " + maxDoc + " but got " + skipper.maxDocID(0),
-            skipper.maxDocID(0) >= maxDoc);
-      }
-      if (skipperHasAccurateValueBounds()) {
-        assertEquals(minVal, skipper.minValue(0));
-        assertEquals(maxVal, skipper.maxValue(0));
-      } else {
-        assertTrue(
-            "Expected: " + minVal + " but got " + skipper.minValue(0),
-            minVal >= skipper.minValue(0));
-        assertTrue(
-            "Expected: " + maxVal + " but got " + skipper.maxValue(0),
-            maxVal <= skipper.maxValue(0));
-      }
+      assertEquals(maxDoc, skipper.maxDocID(0));
+      assertEquals(minVal, skipper.minValue(0));
+      assertEquals(maxVal, skipper.maxValue(0));
       docCount += skipper.docCount(0);
       for (int level = 1; level < skipper.numLevels(); level++) {
         assertTrue(skipper.minDocID(0) >= skipper.minDocID(level));
@@ -788,6 +821,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
     }
 
     assertEquals(docCount, skipper.docCount());
+    assertEquals(maxValueCount, skipper.maxValueCount());
     return docCount;
   }
 
@@ -836,6 +870,8 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
     long minValue() throws IOException;
 
     int docID();
+
+    int docValueCount();
   }
 
   public void testMismatchedFields() throws Exception {
@@ -906,5 +942,393 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, ssdv.nextDoc());
 
     IOUtils.close(reader, w2, dir1, dir2);
+  }
+
+  public void testRandomDenseNumericIntoBitSet() throws IOException {
+    doTestRandomIntoBitSet(
+        doc -> doc.add(new NumericDocValuesField("num", random().nextLong())),
+        reader -> reader.getNumericDocValues("num"),
+        () -> true);
+  }
+
+  public void testRandomSparseNumericIntoBitSet() throws IOException {
+    doTestRandomIntoBitSet(
+        doc -> doc.add(new NumericDocValuesField("num", random().nextLong())),
+        reader -> reader.getNumericDocValues("num"),
+        () -> random().nextBoolean() ? random().nextBoolean() : random().nextInt(50) == 0);
+  }
+
+  public void testRandomDenseSortedNumericIntoBitSet() throws IOException {
+    doTestRandomIntoBitSet(
+        doc -> {
+          doc.add(new SortedNumericDocValuesField("num", random().nextLong()));
+          doc.add(new SortedNumericDocValuesField("num", random().nextLong()));
+        },
+        reader -> reader.getSortedNumericDocValues("num"),
+        () -> true);
+  }
+
+  public void testRandomSparseSortedNumericIntoBitSet() throws IOException {
+    int n = random().nextInt(50) + 1;
+    doTestRandomIntoBitSet(
+        doc -> {
+          doc.add(new SortedNumericDocValuesField("num", random().nextLong()));
+          doc.add(new SortedNumericDocValuesField("num", random().nextLong()));
+        },
+        reader -> reader.getSortedNumericDocValues("num"),
+        () -> random().nextInt(n) == 0);
+  }
+
+  public void testRandomDenseSortedIntoBitSet() throws IOException {
+    doTestRandomIntoBitSet(
+        doc -> doc.add(new SortedDocValuesField("num", new BytesRef("" + random().nextLong()))),
+        reader -> reader.getSortedDocValues("num"),
+        () -> true);
+  }
+
+  public void testRandomSparseSortedIntoBitSet() throws IOException {
+    int n = random().nextInt(50) + 1;
+    doTestRandomIntoBitSet(
+        doc -> doc.add(new SortedDocValuesField("num", new BytesRef("" + random().nextLong()))),
+        reader -> reader.getSortedDocValues("num"),
+        () -> random().nextInt(n) == 0);
+  }
+
+  public void testRandomDenseSortedSetIntoBitSet() throws IOException {
+    doTestRandomIntoBitSet(
+        doc -> {
+          doc.add(new SortedSetDocValuesField("num", new BytesRef("" + random().nextLong())));
+          doc.add(new SortedSetDocValuesField("num", new BytesRef("" + random().nextLong())));
+        },
+        reader -> reader.getSortedSetDocValues("num"),
+        () -> true);
+  }
+
+  public void testRandomSparseSortedSetIntoBitSet() throws IOException {
+    int n = random().nextInt(50) + 1;
+    doTestRandomIntoBitSet(
+        doc -> {
+          doc.add(new SortedSetDocValuesField("num", new BytesRef("" + random().nextLong())));
+          doc.add(new SortedSetDocValuesField("num", new BytesRef("" + random().nextLong())));
+        },
+        reader -> reader.getSortedSetDocValues("num"),
+        () -> random().nextInt(n) == 0);
+  }
+
+  public void testRandomDenseBinaryIntoBitSet() throws IOException {
+    doTestRandomIntoBitSet(
+        doc -> {
+          byte[] bytes = new byte[10];
+          random().nextBytes(bytes);
+          doc.add(new BinaryDocValuesField("num", new BytesRef(bytes)));
+        },
+        reader -> reader.getBinaryDocValues("num"),
+        () -> true);
+  }
+
+  public void testRandomSparseBinaryIntoBitSet() throws IOException {
+    int n = random().nextInt(50) + 1;
+    doTestRandomIntoBitSet(
+        doc -> {
+          byte[] bytes = new byte[10];
+          random().nextBytes(bytes);
+          doc.add(new BinaryDocValuesField("num", new BytesRef(bytes)));
+        },
+        reader -> reader.getBinaryDocValues("num"),
+        () -> random().nextInt(n) == 0);
+  }
+
+  public void doTestRandomIntoBitSet(
+      Consumer<Document> consumer,
+      IOFunction<LeafReader, DocIdSetIterator> producer,
+      Supplier<Boolean> addDocument)
+      throws IOException {
+    int numDocs = atLeast(100);
+    int docsWithField = 0;
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+
+        for (int i = 0; i < numDocs; i++) {
+          Document doc = new Document();
+          if (addDocument.get()) {
+            docsWithField++;
+            consumer.accept(doc);
+          }
+          w.addDocument(doc);
+        }
+        w.commit();
+        w.forceMerge(1);
+
+        try (DirectoryReader reader = DirectoryReader.open(w)) {
+          LeafReader leaf = getOnlyLeafReader(reader);
+          for (int i = 0; i < 20; i++) {
+            int start = random().nextInt(numDocs - 1);
+            int upTo = random().nextInt(start, numDocs);
+
+            int offset = start == 0 ? 0 : random().nextInt(start);
+            FixedBitSet bitSet = new FixedBitSet(numDocs - offset);
+            FixedBitSet expectedBitSet = new FixedBitSet(numDocs - offset);
+
+            DocIdSetIterator values = producer.apply(leaf);
+            DocIdSetIterator expected = producer.apply(leaf);
+            if (docsWithField == 0) {
+              assertNull(values);
+              return; // no more to be tested
+            }
+            assertNotNull(values);
+            values.advance(start);
+            expected.advance(start);
+            assertEquals(expected.docID(), values.docID());
+            if (values.docID() == NO_MORE_DOCS) {
+              continue;
+            }
+            values.intoBitSet(upTo, bitSet, offset);
+            for (int doc = expected.docID(); doc < upTo; doc = expected.nextDoc()) {
+              expectedBitSet.set(doc - offset);
+            }
+            assertEquals(expected.docID(), values.docID());
+            assertEquals(expectedBitSet, bitSet);
+          }
+        }
+      }
+    }
+  }
+
+  public void testDocIDRunEndNumericRange() throws Exception {
+    doTestDocIDRunEnd(
+        false,
+        (doc, v) -> doc.add(NumericDocValuesField.indexedField("f", v)),
+        (leaf, domain) -> {
+          NumericDocValues values = leaf.getNumericDocValues("f");
+          if (values == null) {
+            return;
+          }
+          long a = TestUtil.nextLong(random(), 0, domain);
+          long b = TestUtil.nextLong(random(), 0, domain);
+          long min = Math.min(a, b);
+          long max = Math.max(a, b);
+          TwoPhaseIterator tpi =
+              DocValuesRangeIterator.forRange(values, leaf.getDocValuesSkipper("f"), min, max);
+          NumericDocValues truth = leaf.getNumericDocValues("f");
+          FixedBitSet expected =
+              expectedMatches(
+                  truth, () -> truth.longValue() >= min && truth.longValue() <= max, leaf.maxDoc());
+          assertDocIDRunEnds(tpi, expected, leaf.maxDoc());
+        });
+  }
+
+  public void testDocIDRunEndSortedNumericRange() throws Exception {
+    doTestDocIDRunEnd(
+        true,
+        (doc, v) -> doc.add(SortedNumericDocValuesField.indexedField("f", v)),
+        (leaf, domain) -> {
+          SortedNumericDocValues values = leaf.getSortedNumericDocValues("f");
+          if (values == null) {
+            return;
+          }
+          long a = TestUtil.nextLong(random(), 0, domain);
+          long b = TestUtil.nextLong(random(), 0, domain);
+          long min = Math.min(a, b);
+          long max = Math.max(a, b);
+          TwoPhaseIterator tpi =
+              DocValuesRangeIterator.forRange(values, leaf.getDocValuesSkipper("f"), min, max);
+          SortedNumericDocValues truth = leaf.getSortedNumericDocValues("f");
+          FixedBitSet expected =
+              expectedMatches(
+                  truth,
+                  () -> {
+                    for (int j = 0; j < truth.docValueCount(); j++) {
+                      long v = truth.nextValue();
+                      if (v >= min && v <= max) {
+                        return true;
+                      }
+                    }
+                    return false;
+                  },
+                  leaf.maxDoc());
+          assertDocIDRunEnds(tpi, expected, leaf.maxDoc());
+        });
+  }
+
+  public void testDocIDRunEndSortedOrdinalRange() throws Exception {
+    doTestDocIDRunEnd(
+        false,
+        (doc, v) -> doc.add(SortedDocValuesField.indexedField("f", fixedWidthTerm(v))),
+        (leaf, _) -> {
+          SortedDocValues values = leaf.getSortedDocValues("f");
+          if (values == null || values.getValueCount() == 0) {
+            return;
+          }
+          int a = random().nextInt(values.getValueCount());
+          int b = random().nextInt(values.getValueCount());
+          int minOrd = Math.min(a, b);
+          int maxOrd = Math.max(a, b);
+          TwoPhaseIterator tpi =
+              DocValuesRangeIterator.forOrdinalRange(
+                  values, leaf.getDocValuesSkipper("f"), minOrd, maxOrd);
+          SortedDocValues truth = leaf.getSortedDocValues("f");
+          FixedBitSet expected =
+              expectedMatches(
+                  truth,
+                  () -> truth.ordValue() >= minOrd && truth.ordValue() <= maxOrd,
+                  leaf.maxDoc());
+          assertDocIDRunEnds(tpi, expected, leaf.maxDoc());
+        });
+  }
+
+  public void testDocIDRunEndSortedSetOrdinalRange() throws Exception {
+    doTestDocIDRunEnd(
+        true,
+        (doc, v) -> doc.add(SortedSetDocValuesField.indexedField("f", fixedWidthTerm(v))),
+        (leaf, _) -> checkSortedSetRunEnds(leaf, false));
+  }
+
+  public void testDocIDRunEndSortedSetOrdinalSet() throws Exception {
+    doTestDocIDRunEnd(
+        true,
+        (doc, v) -> doc.add(SortedSetDocValuesField.indexedField("f", fixedWidthTerm(v))),
+        (leaf, _) -> checkSortedSetRunEnds(leaf, true));
+  }
+
+  private void checkSortedSetRunEnds(LeafReader leaf, boolean ordinalSet) throws IOException {
+    SortedSetDocValues values = leaf.getSortedSetDocValues("f");
+    if (values == null || values.getValueCount() == 0) {
+      return;
+    }
+    long valueCount = values.getValueCount();
+    LongBitSet ords = new LongBitSet(valueCount);
+    long minOrd = -1;
+    long maxOrd = -1;
+    if (ordinalSet) {
+      // every other ordinal: non-contiguous, the GH#16450 shape
+      for (long o = random().nextInt(2); o < valueCount; o += 2) {
+        ords.set(o);
+        if (minOrd == -1) {
+          minOrd = o;
+        }
+        maxOrd = o;
+      }
+      if (minOrd == -1) {
+        return;
+      }
+    } else {
+      long a = TestUtil.nextLong(random(), 0, valueCount - 1);
+      long b = TestUtil.nextLong(random(), 0, valueCount - 1);
+      minOrd = Math.min(a, b);
+      maxOrd = Math.max(a, b);
+      ords.set(minOrd, maxOrd + 1);
+    }
+    TwoPhaseIterator tpi =
+        ordinalSet
+            ? DocValuesRangeIterator.forOrdinalSet(
+                values, leaf.getDocValuesSkipper("f"), minOrd, maxOrd, ords)
+            : DocValuesRangeIterator.forOrdinalRange(
+                values, leaf.getDocValuesSkipper("f"), minOrd, maxOrd);
+    SortedSetDocValues truth = leaf.getSortedSetDocValues("f");
+    FixedBitSet expected =
+        expectedMatches(
+            truth,
+            () -> {
+              for (int j = 0; j < truth.docValueCount(); j++) {
+                if (ords.get(truth.nextOrd())) {
+                  return true;
+                }
+              }
+              return false;
+            },
+            leaf.maxDoc());
+    assertDocIDRunEnds(tpi, expected, leaf.maxDoc());
+  }
+
+  /** Brute-force oracle: walks {@code truth} and records every doc where {@code matches} holds. */
+  private static FixedBitSet expectedMatches(
+      DocIdSetIterator truth, IOBooleanSupplier matches, int maxDoc) throws IOException {
+    FixedBitSet expected = new FixedBitSet(maxDoc);
+    for (int d = truth.nextDoc(); d != NO_MORE_DOCS; d = truth.nextDoc()) {
+      if (matches.get()) {
+        expected.set(d);
+      }
+    }
+    return expected;
+  }
+
+  private interface RunEndDocPopulator {
+    void addValue(Document doc, long value);
+  }
+
+  private interface RunEndChecker {
+    void check(LeafReader leaf, long domain) throws IOException;
+  }
+
+  /**
+   * Indexes a random skip-indexed field whose values are drawn from a small domain (random or
+   * clustered in doc-ID order, with random gaps) and runs {@code checker} against every leaf.
+   */
+  private void doTestDocIDRunEnd(
+      boolean multiValued, RunEndDocPopulator populate, RunEndChecker checker) throws Exception {
+    int totalDocs = TestUtil.nextInt(random(), 1, 1500);
+    long domain = TestUtil.nextInt(random(), 5, 100);
+    boolean clustered = random().nextBoolean();
+    int missingOneIn = TestUtil.nextInt(random(), 0, 4);
+    try (Directory dir = newDirectory();
+        RandomIndexWriter w = new RandomIndexWriter(random(), dir)) {
+      for (int i = 0; i < totalDocs; i++) {
+        Document doc = new Document();
+        if (missingOneIn == 0 || random().nextInt(missingOneIn + 1) != 0) {
+          int count = multiValued ? TestUtil.nextInt(random(), 1, 2) : 1;
+          for (int j = 0; j < count; j++) {
+            long v =
+                clustered && j == 0
+                    ? i * domain / totalDocs
+                    : TestUtil.nextLong(random(), 0, domain);
+            populate.addValue(doc, v);
+          }
+        }
+        w.addDocument(doc);
+      }
+      if (random().nextBoolean()) {
+        w.forceMerge(1);
+      }
+      try (IndexReader r = w.getReader()) {
+        for (LeafReaderContext ctx : r.leaves()) {
+          for (int iter = 0; iter < 10; iter++) {
+            checker.check(ctx.reader(), domain);
+          }
+        }
+      }
+    }
+  }
+
+  private static BytesRef fixedWidthTerm(long value) {
+    // offset keeps the string width fixed so ordinal order matches value order
+    return new BytesRef(Long.toString(1000000L + value));
+  }
+
+  /**
+   * Verifies the {@link TwoPhaseIterator#docIDRunEnd()} contract: every doc in a reported run
+   * {@code [docID, runEnd)} truly matches, the call does not move the approximation, and outside
+   * runs {@link TwoPhaseIterator#matches()} agrees with brute force.
+   */
+  private static void assertDocIDRunEnds(TwoPhaseIterator tpi, FixedBitSet expected, int maxDoc)
+      throws IOException {
+    DocIdSetIterator approx = tpi.approximation();
+    for (int doc = approx.nextDoc(); doc != NO_MORE_DOCS; ) {
+      int runEnd = tpi.docIDRunEnd();
+      assertEquals("docIDRunEnd() must not move the approximation", doc, approx.docID());
+      assertTrue("docIDRunEnd() " + runEnd + " is below the current doc " + doc, runEnd >= doc);
+      assertTrue("docIDRunEnd() " + runEnd + " is beyond maxDoc " + maxDoc, runEnd <= maxDoc);
+      for (int d = doc; d < runEnd; d++) {
+        assertTrue(
+            "doc " + d + " in reported run [" + doc + ", " + runEnd + ") is not a true match",
+            expected.get(d));
+      }
+      if (runEnd > doc) {
+        doc = approx.advance(runEnd);
+      } else {
+        assertEquals(
+            "matches() disagrees with brute force on doc " + doc, expected.get(doc), tpi.matches());
+        doc = approx.nextDoc();
+      }
+    }
   }
 }

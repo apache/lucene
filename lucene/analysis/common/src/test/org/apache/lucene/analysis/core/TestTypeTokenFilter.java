@@ -40,7 +40,7 @@ public class TestTypeTokenFilter extends BaseTokenStreamTestCase {
   }
 
   /** Test Position increments applied by TypeTokenFilter with and without enabling this option. */
-  public void testStopPositons() throws IOException {
+  public void testStopPositions() throws IOException {
     StringBuilder sb = new StringBuilder();
     for (int i = 10; i < 20; i++) {
       if (i % 3 != 0) {
@@ -59,10 +59,10 @@ public class TestTypeTokenFilter extends BaseTokenStreamTestCase {
     final StandardTokenizer input = new StandardTokenizer();
     input.setReader(reader);
     TypeTokenFilter typeTokenFilter = new TypeTokenFilter(input, stopSet);
-    testPositons(typeTokenFilter);
+    testPositions(typeTokenFilter);
   }
 
-  private void testPositons(TypeTokenFilter stpf) throws IOException {
+  private void testPositions(TypeTokenFilter stpf) throws IOException {
     TypeAttribute typeAtt = stpf.getAttribute(TypeAttribute.class);
     CharTermAttribute termAttribute = stpf.getAttribute(CharTermAttribute.class);
     PositionIncrementAttribute posIncrAtt = stpf.getAttribute(PositionIncrementAttribute.class);

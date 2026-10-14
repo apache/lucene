@@ -245,10 +245,9 @@ class GeoDegenerateHorizontalLine extends GeoBaseBBox {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof GeoDegenerateHorizontalLine)) {
+    if (!(o instanceof GeoDegenerateHorizontalLine other)) {
       return false;
     }
-    GeoDegenerateHorizontalLine other = (GeoDegenerateHorizontalLine) o;
     return super.equals(other) && other.LHC.equals(LHC) && other.RHC.equals(RHC);
   }
 

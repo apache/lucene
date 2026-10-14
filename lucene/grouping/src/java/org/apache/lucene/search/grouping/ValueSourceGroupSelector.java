@@ -35,6 +35,7 @@ public class ValueSourceGroupSelector extends GroupSelector<MutableValue> {
   private final Map<Object, Object> context;
 
   private Set<MutableValue> secondPassGroups;
+  private boolean includeEmpty;
 
   /**
    * Create a new ValueSourceGroupSelector
@@ -61,8 +62,12 @@ public class ValueSourceGroupSelector extends GroupSelector<MutableValue> {
   @Override
   public State advanceTo(int doc) throws IOException {
     this.filler.fillValue(doc);
+    MutableValue value = filler.getValue();
+    if (value.exists() == false) {
+      return includeEmpty ? State.ACCEPT : State.SKIP;
+    }
     if (secondPassGroups != null) {
-      if (secondPassGroups.contains(filler.getValue()) == false) {
+      if (secondPassGroups.contains(value) == false) {
         return State.SKIP;
       }
     }
@@ -83,7 +88,11 @@ public class ValueSourceGroupSelector extends GroupSelector<MutableValue> {
   public void setGroups(Collection<SearchGroup<MutableValue>> searchGroups) {
     secondPassGroups = new HashSet<>();
     for (SearchGroup<MutableValue> group : searchGroups) {
-      secondPassGroups.add(group.groupValue);
+      if (group.groupValue.exists() == false) {
+        includeEmpty = true;
+      } else {
+        secondPassGroups.add(group.groupValue);
+      }
     }
   }
 }

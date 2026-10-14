@@ -29,9 +29,12 @@ import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.store.DataAccessHint;
+import org.apache.lucene.store.FileDataHint;
+import org.apache.lucene.store.FileTypeHint;
 
 /**
- * A Faiss-based format to create and search vector indexes, using {@link LibFaissC} to interact
+ * A Faiss-based format to create and search vector indexes, using {@link FaissLibrary} to interact
  * with the native library.
  *
  * <p>The Faiss index is configured using its flexible <a
@@ -104,7 +107,10 @@ public final class FaissKnnVectorsFormat extends KnnVectorsFormat {
 
   @Override
   public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new FaissKnnVectorsReader(state, rawVectorsFormat.fieldsReader(state));
+    return new FaissKnnVectorsReader(
+        state,
+        rawVectorsFormat.fieldsReader(
+            state.withHints(FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM)));
   }
 
   @Override

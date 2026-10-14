@@ -113,15 +113,14 @@ public final class UnescapedCharSequence implements CharSequence {
   }
 
   public static boolean wasEscaped(CharSequence text, int index) {
-    if (text instanceof UnescapedCharSequence)
-      return ((UnescapedCharSequence) text).wasEscaped[index];
+    if (text instanceof UnescapedCharSequence ucs) return ucs.wasEscaped[index];
     else return false;
   }
 
   public static CharSequence toLowerCase(CharSequence text, Locale locale) {
-    if (text instanceof UnescapedCharSequence) {
+    if (text instanceof UnescapedCharSequence ucs) {
       char[] chars = text.toString().toLowerCase(locale).toCharArray();
-      boolean[] wasEscaped = ((UnescapedCharSequence) text).wasEscaped;
+      boolean[] wasEscaped = ucs.wasEscaped;
       return new UnescapedCharSequence(chars, wasEscaped, 0, chars.length);
     } else return new UnescapedCharSequence(text.toString().toLowerCase(locale));
   }

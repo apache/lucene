@@ -55,7 +55,7 @@
  * <p>For example, a span query which matches "John Kerry" within ten words of "George Bush" within
  * the first 100 words of the document could be constructed with:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * SpanQuery john   = new SpanTermQuery(new Term("content", "john"));
  * SpanQuery kerry  = new SpanTermQuery(new Term("content", "kerry"));
  * SpanQuery george = new SpanTermQuery(new Term("content", "george"));
@@ -72,15 +72,15 @@
  *
  * SpanQuery johnKerryNearGeorgeBushAtStart =
  *    new SpanFirstQuery(johnKerryNearGeorgeBush, 100);
- * </pre>
+ * </code></pre>
  *
  * <p>Span queries may be freely intermixed with other Lucene queries. So, for example, the above
  * query can be restricted to documents which also use the word "iraq" with:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * Query query = new BooleanQuery();
  * query.add(johnKerryNearGeorgeBushAtStart, true, false);
  * query.add(new TermQuery("content", "iraq"), true, false);
- * </pre>
+ * </code></pre>
  */
 package org.apache.lucene.queries.spans;

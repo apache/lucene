@@ -17,6 +17,8 @@
 
 package org.apache.lucene.util.hnsw;
 
+import org.apache.lucene.util.ArrayUtil;
+
 /**
  * A bounded min heap that stores floats. The top element is the lowest value of the heap.
  *
@@ -59,9 +61,7 @@ public final class FloatHeap {
   }
 
   public float[] getHeap() {
-    float[] result = new float[size];
-    System.arraycopy(this.heap, 1, result, 0, size);
-    return result;
+    return ArrayUtil.copyOfSubArray(this.heap, 1, 1 + size);
   }
 
   /**

@@ -166,7 +166,7 @@ public class SolrSynonymParser extends SynonymMap.Parser {
       list.add(sb.toString());
     }
 
-    return list.toArray(new String[list.size()]);
+    return list.toArray(String[]::new);
   }
 
   private String unescape(String s) {

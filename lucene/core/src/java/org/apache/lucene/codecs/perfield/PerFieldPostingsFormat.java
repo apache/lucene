@@ -39,11 +39,11 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.FilterLeafReader.FilterFields;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Terms;
-import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.MergedIterator;
 
@@ -245,12 +245,16 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
 
         groupBuilder.addField(field);
 
-        fieldInfo.putAttribute(PER_FIELD_FORMAT_KEY, formatName);
-        fieldInfo.putAttribute(PER_FIELD_SUFFIX_KEY, Integer.toString(groupBuilder.suffix));
+        fieldInfo.putAttributes(
+            Map.of(
+                PER_FIELD_FORMAT_KEY,
+                formatName,
+                PER_FIELD_SUFFIX_KEY,
+                Integer.toString(groupBuilder.suffix)));
       }
 
       Map<PostingsFormat, FieldsGroup> formatToGroups =
-          CollectionUtil.newHashMap(formatToGroupBuilders.size());
+          HashMap.newHashMap(formatToGroupBuilders.size());
       formatToGroupBuilders.forEach(
           (postingsFormat, builder) -> formatToGroups.put(postingsFormat, builder.build()));
       return formatToGroups;
@@ -329,7 +333,7 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       FieldsProducer fieldsProducer = fields.get(field);
       return fieldsProducer == null ? null : fieldsProducer.terms(field);
     }
@@ -345,9 +349,9 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
       for (FieldsProducer producer : formats.values()) {
-        producer.checkIntegrity();
+        producer.checkIntegrity(merge);
       }
     }
 

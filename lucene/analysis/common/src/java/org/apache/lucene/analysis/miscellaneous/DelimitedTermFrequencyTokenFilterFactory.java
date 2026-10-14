@@ -25,13 +25,13 @@ import org.apache.lucene.analysis.TokenStream;
  * Factory for {@link DelimitedTermFrequencyTokenFilter}. The field must have {@code
  * omitPositions=true}.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_tfdl" class="solr.TextField" omitPositions="true"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.WhitespaceTokenizerFactory"/&gt;
  *     &lt;filter class="solr.DelimitedTermFrequencyTokenFilterFactory" delimiter="|"/&gt;
  *   &lt;/analyzer&gt;
- * &lt;/fieldType&gt;</pre>
+ * &lt;/fieldType&gt;</code></pre>
  *
  * @since 7.0.0
  * @lucene.spi {@value #NAME}

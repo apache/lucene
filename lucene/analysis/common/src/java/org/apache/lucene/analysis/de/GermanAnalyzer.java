@@ -64,7 +64,7 @@ public final class GermanAnalyzer extends StopwordAnalyzerBase {
    *
    * @return a set of default German-stopwords
    */
-  public static final CharArraySet getDefaultStopSet() {
+  public static CharArraySet getDefaultStopSet() {
     return DefaultSetHolder.DEFAULT_SET;
   }
 

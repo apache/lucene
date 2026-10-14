@@ -228,9 +228,7 @@ public abstract class BaseXYShapeTestCase extends BaseSpatialTestCase {
           try {
             Tessellator.tessellate(p, true);
             return p;
-          } catch (
-              @SuppressWarnings("unused")
-              IllegalArgumentException e) {
+          } catch (IllegalArgumentException _) {
             // if we can't tessellate; then random polygon generator created a malformed shape
           }
         }

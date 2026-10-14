@@ -51,7 +51,7 @@ public class TestMonitorErrorHandling extends MonitorTestBase {
             () -> {
               Map<String, String> metadata2 = new HashMap<>();
               metadata2.put("key", null);
-              new MonitorQuery("id", new MatchAllDocsQuery(), null, metadata2);
+              new MonitorQuery("id", MatchAllDocsQuery.INSTANCE, null, metadata2);
             });
     assertEquals("Null value for key key in metadata map", e.getMessage());
   }

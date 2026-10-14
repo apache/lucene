@@ -34,15 +34,17 @@ abstract class TermsWithScoreCollector<DV> extends DocValuesTermsCollector<DV>
   final ScoreMode scoreMode;
 
   Scorable scorer;
-  float[] scoreSums = new float[INITIAL_ARRAY_SIZE];
+  // Accumulated in double precision because float addition isn't associative, so summing the
+  // same per-document scores in a different order may round to a different float.
+  double[] scoreSums = new double[INITIAL_ARRAY_SIZE];
 
   TermsWithScoreCollector(Function<DV> docValuesCall, ScoreMode scoreMode) {
     super(docValuesCall);
     this.scoreMode = scoreMode;
     if (scoreMode == ScoreMode.Min) {
-      Arrays.fill(scoreSums, Float.POSITIVE_INFINITY);
+      Arrays.fill(scoreSums, Double.POSITIVE_INFINITY);
     } else if (scoreMode == ScoreMode.Max) {
-      Arrays.fill(scoreSums, Float.NEGATIVE_INFINITY);
+      Arrays.fill(scoreSums, Double.NEGATIVE_INFINITY);
     }
   }
 
@@ -53,7 +55,11 @@ abstract class TermsWithScoreCollector<DV> extends DocValuesTermsCollector<DV>
 
   @Override
   public float[] getScoresPerTerm() {
-    return scoreSums;
+    float[] scores = new float[scoreSums.length];
+    for (int i = 0; i < scoreSums.length; i++) {
+      scores[i] = (float) scoreSums[i];
+    }
+    return scores;
   }
 
   @Override
@@ -119,16 +125,16 @@ abstract class TermsWithScoreCollector<DV> extends DocValuesTermsCollector<DV>
           int begin = scoreSums.length;
           scoreSums = ArrayUtil.grow(scoreSums);
           if (scoreMode == ScoreMode.Min) {
-            Arrays.fill(scoreSums, begin, scoreSums.length, Float.POSITIVE_INFINITY);
+            Arrays.fill(scoreSums, begin, scoreSums.length, Double.POSITIVE_INFINITY);
           } else if (scoreMode == ScoreMode.Max) {
-            Arrays.fill(scoreSums, begin, scoreSums.length, Float.NEGATIVE_INFINITY);
+            Arrays.fill(scoreSums, begin, scoreSums.length, Double.NEGATIVE_INFINITY);
           }
         }
       }
 
       float current = scorer.score();
-      float existing = scoreSums[ord];
-      if (Float.compare(existing, 0.0f) == 0) {
+      double existing = scoreSums[ord];
+      if (Double.compare(existing, 0.0d) == 0) {
         scoreSums[ord] = current;
       } else {
         switch (scoreMode) {
@@ -180,8 +186,8 @@ abstract class TermsWithScoreCollector<DV> extends DocValuesTermsCollector<DV>
         }
 
         float current = scorer.score();
-        float existing = scoreSums[ord];
-        if (Float.compare(existing, 0.0f) == 0) {
+        double existing = scoreSums[ord];
+        if (Double.compare(existing, 0.0d) == 0) {
           scoreSums[ord] = current;
           scoreCounts[ord] = 1;
         } else {
@@ -192,13 +198,11 @@ abstract class TermsWithScoreCollector<DV> extends DocValuesTermsCollector<DV>
 
       @Override
       public float[] getScoresPerTerm() {
-        if (scoreCounts != null) {
-          for (int i = 0; i < scoreCounts.length; i++) {
-            scoreSums[i] = scoreSums[i] / scoreCounts[i];
-          }
-          scoreCounts = null;
+        float[] scores = new float[scoreSums.length];
+        for (int i = 0; i < scores.length; i++) {
+          scores[i] = (float) (scoreSums[i] / scoreCounts[i]);
         }
-        return scoreSums;
+        return scores;
       }
     }
   }
@@ -222,9 +226,9 @@ abstract class TermsWithScoreCollector<DV> extends DocValuesTermsCollector<DV>
               int begin = scoreSums.length;
               scoreSums = ArrayUtil.grow(scoreSums);
               if (scoreMode == ScoreMode.Min) {
-                Arrays.fill(scoreSums, begin, scoreSums.length, Float.POSITIVE_INFINITY);
+                Arrays.fill(scoreSums, begin, scoreSums.length, Double.POSITIVE_INFINITY);
               } else if (scoreMode == ScoreMode.Max) {
-                Arrays.fill(scoreSums, begin, scoreSums.length, Float.NEGATIVE_INFINITY);
+                Arrays.fill(scoreSums, begin, scoreSums.length, Double.NEGATIVE_INFINITY);
               }
             }
           }
@@ -278,13 +282,11 @@ abstract class TermsWithScoreCollector<DV> extends DocValuesTermsCollector<DV>
 
       @Override
       public float[] getScoresPerTerm() {
-        if (scoreCounts != null) {
-          for (int i = 0; i < scoreCounts.length; i++) {
-            scoreSums[i] = scoreSums[i] / scoreCounts[i];
-          }
-          scoreCounts = null;
+        float[] scores = new float[scoreSums.length];
+        for (int i = 0; i < scores.length; i++) {
+          scores[i] = (float) (scoreSums[i] / scoreCounts[i]);
         }
-        return scoreSums;
+        return scores;
       }
     }
   }

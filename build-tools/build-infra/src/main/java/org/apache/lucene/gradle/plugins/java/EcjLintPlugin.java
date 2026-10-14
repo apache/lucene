@@ -35,6 +35,8 @@ import org.gradle.api.Task;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
+import org.gradle.api.tasks.ClasspathNormalizer;
+import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.process.CommandLineArgumentProvider;
@@ -47,18 +49,13 @@ import org.gradle.process.CommandLineArgumentProvider;
  */
 public class EcjLintPlugin extends LuceneGradlePlugin {
   public static final String TASK_PREFIX = "ecjLint";
-
-  /*
-   * Using an explicit dependency means we can't be as flexible in using interim "drops" of ecj,
-   * as previously implemented in lucene.validation.ecj-lint.gradle. Defer the solution
-   * until it really becomes a problem.
-   */
+  public static final String ECJ_LINT_PREFS_PATH = "validation/ecj-lint/ecj.javadocs.prefs";
 
   @Override
   public void apply(Project project) {
     requiresAppliedPlugin(project, JavaPlugin.class);
 
-    Path javadocPrefsPath = gradlePluginResource(project, "validation/ecj-lint/ecj.javadocs.prefs");
+    Path javadocPrefsPath = gradlePluginResource(project, ECJ_LINT_PREFS_PATH);
 
     // Create a [sourceSetName]EcjLint task for each source set
     // with a non-empty java.srcDirs. These tasks are then
@@ -125,25 +122,34 @@ public class EcjLintPlugin extends LuceneGradlePlugin {
     args.add("-proc:none");
     args.add("-nowarn");
     args.add("-enableJavadoc");
-    args.addAll(List.of("-properties", javadocPrefsPath.toAbsolutePath().toString()));
+    // Note: -properties path is added at execution time (in doFirst) to avoid
+    // absolute paths in the cache key. The file content is tracked separately.
 
     // We depend on modular paths.
-    ModularPathsExtensionApi modularPaths =
-        (ModularPathsExtensionApi) sourceSet.getExtensions().getByName("modularPathsForEcj");
+    ModularPathsExtension modularPaths =
+        (ModularPathsExtension)
+            sourceSet
+                .getExtensions()
+                .getByName(ModularPathsPlugin.MODULAR_PATHS_EXTENSION_ECJ_NAME);
     task.dependsOn(modularPaths);
 
     // Collect modular dependencies and their transitive dependencies to module path.
     CommandLineArgumentProvider compilationArguments = modularPaths.getCompilationArguments();
     // this isn't exactly right but the returned CommandLineArgumentProvider isn't serializable...
-    task.getInputs().files(sourceSet.getCompileClasspath());
+    task.getInputs()
+        .files(sourceSet.getCompileClasspath())
+        .withNormalizer(ClasspathNormalizer.class);
 
     // Collect classpath locations
     FileCollection classpathArguments = modularPaths.getCompilationClasspath().filter(File::exists);
-    task.getInputs().files(classpathArguments);
+    task.getInputs().files(classpathArguments).withNormalizer(ClasspathNormalizer.class);
 
     // Input sources.
     var inputSources = sourceSet.getJava().getAsFileTree();
-    task.getInputs().files(inputSources);
+    task.getInputs().files(inputSources).withPathSensitivity(PathSensitivity.RELATIVE);
+
+    // Track the javadoc prefs file as an input with relative path sensitivity.
+    task.getInputs().file(javadocPrefsPath.toFile()).withPathSensitivity(PathSensitivity.RELATIVE);
 
     // Add all arguments so far as inputs.
     task.getInputs().property("args", args);
@@ -165,6 +171,7 @@ public class EcjLintPlugin extends LuceneGradlePlugin {
     task.doFirst(
         _ -> {
           List<String> allArgs = new ArrayList<>(args);
+          allArgs.addAll(List.of("-properties", javadocPrefsPath.toAbsolutePath().toString()));
 
           compilationArguments.asArguments().forEach(allArgs::add);
           if (!classpathArguments.isEmpty()) {

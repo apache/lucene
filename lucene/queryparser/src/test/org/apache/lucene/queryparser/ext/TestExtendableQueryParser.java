@@ -61,7 +61,7 @@ public class TestExtendableQueryParser extends TestQueryParser {
         });
   }
 
-  public void testExtFieldUnqoted() throws Exception {
+  public void testExtFieldUnquoted() throws Exception {
     for (int i = 0; i < DELIMITERS.length; i++) {
       Extensions ext = newExtensions(DELIMITERS[i]);
       ext.add("testExt", new ExtensionStub());
@@ -72,7 +72,7 @@ public class TestExtendableQueryParser extends TestQueryParser {
           "expected instance of BooleanQuery but was " + query.getClass(),
           query instanceof BooleanQuery);
       BooleanQuery bquery = (BooleanQuery) query;
-      BooleanClause[] clauses = bquery.clauses().toArray(new BooleanClause[0]);
+      BooleanClause[] clauses = bquery.clauses().toArray(BooleanClause[]::new);
       assertEquals(2, clauses.length);
       BooleanClause booleanClause = clauses[0];
       query = booleanClause.query();

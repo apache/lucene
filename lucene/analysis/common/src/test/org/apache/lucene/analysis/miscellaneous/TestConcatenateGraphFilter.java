@@ -29,13 +29,11 @@ import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.CharsRefBuilder;
-import org.junit.Test;
 
 public class TestConcatenateGraphFilter extends BaseTokenStreamTestCase {
 
   private static final char SEP_LABEL = (char) ConcatenateGraphFilter.SEP_LABEL;
 
-  @Test
   public void testBasic() throws Exception {
     Tokenizer tokenStream = new MockTokenizer(MockTokenizer.WHITESPACE, true);
     String input = "mykeyword";
@@ -44,7 +42,6 @@ public class TestConcatenateGraphFilter extends BaseTokenStreamTestCase {
     assertTokenStreamContents(stream, new String[] {input}, null, null, new int[] {1});
   }
 
-  @Test
   public void testWithNoPreserveSep() throws Exception {
     Tokenizer tokenStream = new MockTokenizer(MockTokenizer.WHITESPACE, true);
     String input = "mykeyword another keyword";
@@ -54,7 +51,6 @@ public class TestConcatenateGraphFilter extends BaseTokenStreamTestCase {
         stream, new String[] {"mykeywordanotherkeyword"}, null, null, new int[] {1});
   }
 
-  @Test
   public void testWithMultipleTokens() throws Exception {
     Tokenizer tokenStream = new MockTokenizer(MockTokenizer.WHITESPACE, true);
     String input = "mykeyword another keyword";
@@ -70,7 +66,6 @@ public class TestConcatenateGraphFilter extends BaseTokenStreamTestCase {
         stream, new String[] {builder.toCharsRef().toString()}, null, null, new int[] {1});
   }
 
-  @Test
   public void testWithSynonym() throws Exception {
     SynonymMap.Builder builder = new SynonymMap.Builder(true);
     builder.add(new CharsRef("mykeyword"), new CharsRef("mysynonym"), true);
@@ -83,7 +78,6 @@ public class TestConcatenateGraphFilter extends BaseTokenStreamTestCase {
         stream, new String[] {"mykeyword", "mysynonym"}, null, null, new int[] {1, 0});
   }
 
-  @Test
   public void testWithSynonyms() throws Exception {
     SynonymMap.Builder builder = new SynonymMap.Builder(true);
     builder.add(new CharsRef("mykeyword"), new CharsRef("mysynonym"), true);
@@ -111,7 +105,6 @@ public class TestConcatenateGraphFilter extends BaseTokenStreamTestCase {
     assertTokenStreamContents(stream, expectedOutputs, null, null, new int[] {1, 0});
   }
 
-  @Test
   public void testWithStopword() throws Exception {
     for (boolean preservePosInc : new boolean[] {true, false}) {
       Tokenizer tokenStream = new MockTokenizer(MockTokenizer.WHITESPACE, true);
@@ -137,7 +130,6 @@ public class TestConcatenateGraphFilter extends BaseTokenStreamTestCase {
     }
   }
 
-  @Test
   public void testValidNumberOfExpansions() throws IOException {
     SynonymMap.Builder builder = new SynonymMap.Builder(true);
     for (int i = 0; i < 256; i++) {
@@ -174,7 +166,6 @@ public class TestConcatenateGraphFilter extends BaseTokenStreamTestCase {
     assertTokenStreamContents(filter, new String[0]);
   }
 
-  @Test
   public void testSeparator() throws IOException {
     Tokenizer tokenStream = new MockTokenizer(MockTokenizer.SIMPLE, true);
     String input = "...mykeyword.another.keyword.";
@@ -185,7 +176,6 @@ public class TestConcatenateGraphFilter extends BaseTokenStreamTestCase {
         stream, new String[] {"mykeyword another keyword"}, null, null, new int[] {1});
   }
 
-  @Test
   public void testSeparatorWithStopWords() throws IOException {
     Tokenizer tokenStream = new MockTokenizer(MockTokenizer.WHITESPACE, false);
     String input = "A B C D E F J H";
@@ -197,7 +187,6 @@ public class TestConcatenateGraphFilter extends BaseTokenStreamTestCase {
     assertTokenStreamContents(stream, new String[] {"B-C-F-H"}, null, null, new int[] {1});
   }
 
-  @Test
   public void testSeparatorWithStopWordsAndPreservePositionIncrements() throws IOException {
     Tokenizer tokenStream = new MockTokenizer(MockTokenizer.WHITESPACE, false);
     String input = "A B C D E F J H";
@@ -209,7 +198,6 @@ public class TestConcatenateGraphFilter extends BaseTokenStreamTestCase {
     assertTokenStreamContents(stream, new String[] {"-B-C---F--H"}, null, null, new int[] {1});
   }
 
-  @Test
   public void testSeparatorWithSynonyms() throws IOException {
     SynonymMap.Builder builder = new SynonymMap.Builder(true);
     builder.add(new CharsRef("mykeyword"), new CharsRef("mysynonym"), true);

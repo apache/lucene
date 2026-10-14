@@ -254,7 +254,7 @@ public class CompiledAutomaton implements Accountable {
       this.automaton = null;
       this.runAutomaton = null;
       this.sinkState = -1;
-      this.nfaRunAutomaton = new NFARunAutomaton(binary, 0xff);
+      this.nfaRunAutomaton = new NFARunAutomaton(binary, 0x100);
     } else {
       // We already had a DFA (or threw exception), according to mike UTF32toUTF8 won't "blow up"
       binary = Operations.determinize(binary, Integer.MAX_VALUE);
@@ -366,7 +366,7 @@ public class CompiledAutomaton implements Accountable {
     if (visitor.acceptField(field)) {
       switch (type) {
         case NORMAL:
-          visitor.consumeTermsMatching(parent, field, () -> runAutomaton);
+          visitor.consumeTermsMatching(parent, field, this::getByteRunnable);
           break;
         case NONE:
           break;
@@ -493,6 +493,23 @@ public class CompiledAutomaton implements Accountable {
   }
 
   /**
+   * Returns {@code true} if this {@link CompiledAutomaton} internally holds the given {@link
+   * Automaton} instance. This is only the case on the {@link AUTOMATON_TYPE#NORMAL} paths built
+   * without a UTF-8 conversion (typically {@code isBinary=true} construction): the DFA path retains
+   * it as {@link #automaton}, and the NFA path retains it inside the internal NFA runner. Returns
+   * {@code false} for {@link AUTOMATON_TYPE#NONE}, {@link AUTOMATON_TYPE#ALL} and {@link
+   * AUTOMATON_TYPE#SINGLE} -- those short-circuit and keep no reference -- and for {@code
+   * isBinary=false} construction, where the internal automaton is a distinct UTF-8 conversion of
+   * the input.
+   *
+   * <p>Useful for callers that keep their own reference to the same {@link Automaton} and want to
+   * avoid double-counting it in their own {@link Accountable#ramBytesUsed()} calculation.
+   */
+  public boolean sharesAutomaton(Automaton a) {
+    return a == automaton || (nfaRunAutomaton != null && nfaRunAutomaton.getAutomaton() == a);
+  }
+
+  /**
    * Get a {@link TransitionAccessor} instance, it will be different depending on whether a NFA or
    * DFA is passed in, and does not guarantee returning non-null object
    */
@@ -535,8 +552,8 @@ public class CompiledAutomaton implements Accountable {
 
   @Override
   public long ramBytesUsed() {
+    // this.automaton is accounted via runAutomaton.ramBytesUsed()
     return BASE_RAM_BYTES
-        + RamUsageEstimator.sizeOfObject(automaton)
         + RamUsageEstimator.sizeOfObject(commonSuffixRef)
         + RamUsageEstimator.sizeOfObject(runAutomaton)
         + RamUsageEstimator.sizeOfObject(nfaRunAutomaton)

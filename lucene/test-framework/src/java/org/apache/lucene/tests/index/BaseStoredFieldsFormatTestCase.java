@@ -97,7 +97,7 @@ public abstract class BaseStoredFieldsFormatTestCase extends BaseIndexFileFormat
 
   public void testRandomStoredFields() throws IOException {
     Directory dir = newDirectory();
-    Random rand = random();
+    Random rand = nonAssertingRandom(random());
     RandomIndexWriter w =
         new RandomIndexWriter(
             rand,
@@ -161,7 +161,7 @@ public abstract class BaseStoredFieldsFormatTestCase extends BaseIndexFileFormat
       System.out.println("TEST: " + docs.size() + " docs in index; now load fields");
     }
     if (docs.size() > 0) {
-      String[] idsList = docs.keySet().toArray(new String[0]);
+      String[] idsList = docs.keySet().toArray(String[]::new);
 
       for (int x = 0; x < 2; x++) {
         DirectoryReader r = maybeWrapWithMergingReader(w.getReader());
@@ -1014,7 +1014,12 @@ public abstract class BaseStoredFieldsFormatTestCase extends BaseIndexFileFormat
     IOUtils.close(iw, dir);
   }
 
-  /** Test realistic data, which typically compresses better than random data. */
+  /**
+   * Test realistic data, which typically compresses better than random data.
+   *
+   * <p>TODO: incredibly slow
+   */
+  @Nightly
   public void testLineFileDocs() throws IOException {
     // Use an FS dir and a non-randomized IWC to not slow down indexing
     try (Directory dir = newFSDirectory(createTempDir())) {

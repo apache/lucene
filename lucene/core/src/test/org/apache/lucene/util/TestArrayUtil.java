@@ -372,9 +372,11 @@ public class TestArrayUtil extends LuceneTestCase {
     int[] array = new int[] {1, 2, 3};
 
     // If minLength is negative, maxLength does not matter
-    expectThrows(AssertionError.class, () -> growInRange(array, -1, 4));
-    expectThrows(AssertionError.class, () -> growInRange(array, -1, 0));
-    expectThrows(AssertionError.class, () -> growInRange(array, -1, -1));
+    if (TEST_ASSERTS_ENABLED) {
+      expectThrows(AssertionError.class, () -> growInRange(array, -1, 4));
+      expectThrows(AssertionError.class, () -> growInRange(array, -1, 0));
+      expectThrows(AssertionError.class, () -> growInRange(array, -1, -1));
+    }
 
     // If minLength > maxLength, we throw an exception
     expectThrows(IllegalArgumentException.class, () -> growInRange(array, 1, 0));
@@ -402,9 +404,11 @@ public class TestArrayUtil extends LuceneTestCase {
     float[] array = new float[] {1f, 2f, 3f};
 
     // If minLength is negative, maxLength does not matter
-    expectThrows(AssertionError.class, () -> growInRange(array, -1, 4));
-    expectThrows(AssertionError.class, () -> growInRange(array, -1, 0));
-    expectThrows(AssertionError.class, () -> growInRange(array, -1, -1));
+    if (TEST_ASSERTS_ENABLED) {
+      expectThrows(AssertionError.class, () -> growInRange(array, -1, 4));
+      expectThrows(AssertionError.class, () -> growInRange(array, -1, 0));
+      expectThrows(AssertionError.class, () -> growInRange(array, -1, -1));
+    }
 
     // If minLength > maxLength, we throw an exception
     expectThrows(IllegalArgumentException.class, () -> growInRange(array, 1, 0));

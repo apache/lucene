@@ -93,12 +93,14 @@ public class TestCollectorManager extends LuceneTestCase {
   private static <C extends Collector> Object collectAll(
       LeafReaderContext ctx, Collection<Integer> values, CollectorManager<C, ?> collectorManager)
       throws IOException {
+    var rnd = nonAssertingRandom(random());
+
     List<C> collectors = new ArrayList<>();
     C collector = collectorManager.newCollector();
     collectors.add(collector);
     LeafCollector leafCollector = collector.getLeafCollector(ctx);
     for (Integer v : values) {
-      if (random().nextInt(10) == 1) {
+      if (rnd.nextInt(10) == 1) {
         collector = collectorManager.newCollector();
         collectors.add(collector);
         leafCollector = collector.getLeafCollector(ctx);

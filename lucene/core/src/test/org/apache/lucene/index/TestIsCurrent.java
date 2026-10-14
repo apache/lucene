@@ -22,7 +22,6 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 public class TestIsCurrent extends LuceneTestCase {
 
@@ -53,7 +52,6 @@ public class TestIsCurrent extends LuceneTestCase {
   }
 
   /** Failing testcase showing the trouble */
-  @Test
   public void testDeleteByTermIsCurrent() throws IOException {
 
     // get reader
@@ -76,7 +74,6 @@ public class TestIsCurrent extends LuceneTestCase {
   }
 
   /** Testcase for example to show that writer.deleteAll() is working as expected */
-  @Test
   public void testDeleteAllIsCurrent() throws IOException {
 
     // get reader

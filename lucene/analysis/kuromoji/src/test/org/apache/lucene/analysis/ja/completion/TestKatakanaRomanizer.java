@@ -19,12 +19,10 @@ package org.apache.lucene.analysis.ja.completion;
 import java.util.List;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.CharsRef;
-import org.junit.Test;
 
 public class TestKatakanaRomanizer extends LuceneTestCase {
   private final KatakanaRomanizer romanizer = KatakanaRomanizer.getInstance();
 
-  @Test
   public void testRomanize() {
     assertCharsRefListEqualsUnordered(
         List.of(new CharsRef("hasi"), new CharsRef("hashi")),
@@ -47,7 +45,6 @@ public class TestKatakanaRomanizer extends LuceneTestCase {
         romanizer.romanize(new CharsRef("ヴォルテール")));
   }
 
-  @Test
   public void testRomanizeWithAlphabets() {
     assertCharsRefListEqualsUnordered(
         List.of(new CharsRef("toukyout")), romanizer.romanize(new CharsRef("トウキョウt")));

@@ -58,7 +58,7 @@ public final class Document implements Iterable<IndexableField> {
    * achieve this, a document has to be deleted from an index and a new changed version of that
    * document has to be added.
    */
-  public final void add(IndexableField field) {
+  public void add(IndexableField field) {
     fields.add(field);
   }
 
@@ -72,7 +72,7 @@ public final class Document implements Iterable<IndexableField> {
    * In order to achieve this, a document has to be deleted from an index and a new changed version
    * of that document has to be added.
    */
-  public final void removeField(String name) {
+  public void removeField(String name) {
     Iterator<IndexableField> it = fields.iterator();
     while (it.hasNext()) {
       IndexableField field = it.next();
@@ -92,14 +92,8 @@ public final class Document implements Iterable<IndexableField> {
    * In order to achieve this, a document has to be deleted from an index and a new changed version
    * of that document has to be added.
    */
-  public final void removeFields(String name) {
-    Iterator<IndexableField> it = fields.iterator();
-    while (it.hasNext()) {
-      IndexableField field = it.next();
-      if (field.name().equals(name)) {
-        it.remove();
-      }
-    }
+  public void removeFields(String name) {
+    fields.removeIf(field -> field.name().equals(name));
   }
 
   /**
@@ -110,7 +104,7 @@ public final class Document implements Iterable<IndexableField> {
    * @param name the name of the field
    * @return a <code>BytesRef[]</code> of binary field values
    */
-  public final BytesRef[] getBinaryValues(String name) {
+  public BytesRef[] getBinaryValues(String name) {
     final List<BytesRef> result = new ArrayList<>();
     for (IndexableField field : fields) {
       if (field.name().equals(name)) {
@@ -121,7 +115,7 @@ public final class Document implements Iterable<IndexableField> {
       }
     }
 
-    return result.toArray(new BytesRef[result.size()]);
+    return result.toArray(BytesRef[]::new);
   }
 
   /**
@@ -132,7 +126,7 @@ public final class Document implements Iterable<IndexableField> {
    * @param name the name of the field.
    * @return a <code>BytesRef</code> containing the binary field value or <code>null</code>
    */
-  public final BytesRef getBinaryValue(String name) {
+  public BytesRef getBinaryValue(String name) {
     for (IndexableField field : fields) {
       if (field.name().equals(name)) {
         final BytesRef bytes = field.binaryValue();
@@ -148,7 +142,7 @@ public final class Document implements Iterable<IndexableField> {
    * Returns a field with the given name if any exist in this document, or null. If multiple fields
    * exists with this name, this method returns the first value added.
    */
-  public final IndexableField getField(String name) {
+  public IndexableField getField(String name) {
     for (IndexableField field : fields) {
       if (field.name().equals(name)) {
         return field;
@@ -172,7 +166,7 @@ public final class Document implements Iterable<IndexableField> {
       }
     }
 
-    return result.toArray(new IndexableField[result.size()]);
+    return result.toArray(IndexableField[]::new);
   }
 
   /**
@@ -183,7 +177,7 @@ public final class Document implements Iterable<IndexableField> {
    *
    * @return an immutable <code>List&lt;Field&gt;</code>
    */
-  public final List<IndexableField> getFields() {
+  public List<IndexableField> getFields() {
     return Collections.unmodifiableList(fields);
   }
 
@@ -198,7 +192,7 @@ public final class Document implements Iterable<IndexableField> {
    * @param name the name of the field
    * @return a <code>String[]</code> of field values
    */
-  public final String[] getValues(String name) {
+  public String[] getValues(String name) {
     List<String> result = new ArrayList<>();
     for (IndexableField field : fields) {
       if (field.name().equals(name) && field.stringValue() != null) {
@@ -210,7 +204,7 @@ public final class Document implements Iterable<IndexableField> {
       return NO_STRINGS;
     }
 
-    return result.toArray(new String[result.size()]);
+    return result.toArray(String[]::new);
   }
 
   /**
@@ -220,7 +214,7 @@ public final class Document implements Iterable<IndexableField> {
    * returns the string value of the number. If you want the actual numeric field instance back, use
    * {@link #getField}.
    */
-  public final String get(String name) {
+  public String get(String name) {
     for (IndexableField field : fields) {
       if (field.name().equals(name) && field.stringValue() != null) {
         return field.stringValue();
@@ -231,7 +225,7 @@ public final class Document implements Iterable<IndexableField> {
 
   /** Prints the fields of a document for human consumption. */
   @Override
-  public final String toString() {
+  public String toString() {
     StringBuilder buffer = new StringBuilder();
     buffer.append("Document<");
     for (int i = 0; i < fields.size(); i++) {

@@ -17,13 +17,11 @@
 package org.apache.lucene.facet.taxonomy;
 
 import org.apache.lucene.facet.FacetTestCase;
-import org.junit.Test;
 
 public class TestLRUHashMap extends FacetTestCase {
   // testLRU() tests that the specified size limit is indeed honored, and
   // the remaining objects in the map are indeed those that have been most
   // recently used
-  @Test
   public void testLRU() throws Exception {
     LRUHashMap<String, String> lru = new LRUHashMap<>(3);
     assertEquals(0, lru.size());

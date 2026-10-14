@@ -72,7 +72,7 @@ abstract class QueryIndex implements Closeable {
   }
 
   public void scan(QueryCollector matcher) throws IOException {
-    search(new MatchAllDocsQuery(), matcher);
+    search(MatchAllDocsQuery.INSTANCE, matcher);
   }
 
   long search(final Query query, QueryCollector matcher) throws IOException {

@@ -228,7 +228,7 @@ public class TestNearest extends LuceneTestCase {
       // Also test with MatchAllDocsQuery, sorting by distance:
       TopFieldDocs fieldDocs =
           s.search(
-              new MatchAllDocsQuery(),
+              MatchAllDocsQuery.INSTANCE,
               topN,
               new Sort(LatLonDocValuesField.newDistanceSort("point", pointLat, pointLon)));
 

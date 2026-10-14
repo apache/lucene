@@ -100,6 +100,11 @@ public class RandomApproximationQuery extends Query {
       }
       return new DefaultScorerSupplier(scorer);
     }
+
+    @Override
+    public int count(LeafReaderContext context) {
+      return -1;
+    }
   }
 
   private static class RandomApproximationScorer extends Scorer {

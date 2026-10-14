@@ -45,8 +45,8 @@ public class SentenceAttributeImpl extends AttributeImpl implements SentenceAttr
       return true;
     }
 
-    if (other instanceof SentenceAttributeImpl) {
-      return ((SentenceAttributeImpl) other).index == index;
+    if (other instanceof SentenceAttributeImpl sai) {
+      return sai.index == index;
     }
 
     return false;

@@ -431,7 +431,7 @@ public final class HalfFloatPoint extends Field {
    * @param values all values to match
    */
   public static Query newSetQuery(String field, Collection<Float> values) {
-    Float[] boxed = values.toArray(new Float[0]);
+    Float[] boxed = values.toArray(Float[]::new);
     float[] unboxed = new float[boxed.length];
     for (int i = 0; i < boxed.length; i++) {
       unboxed[i] = boxed[i];

@@ -36,7 +36,6 @@ import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.random
 import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.randomShapeType;
 
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 /** Random test to check relationship between GeoAreaShapes and GeoShapes. */
 public class TestRandomGeoShapeRelationship extends LuceneTestCase {
@@ -44,7 +43,6 @@ public class TestRandomGeoShapeRelationship extends LuceneTestCase {
    * Test for WITHIN points. We build a WITHIN shape with respect the geoAreaShape and create a
    * point WITHIN the shape. The resulting shape should be WITHIN the original shape.
    */
-  @Test
   public void testRandomPointWithin() {
     int referenceShapeType = CONVEX_POLYGON;
     PlanetModel planetModel = randomPlanetModel();
@@ -104,7 +102,6 @@ public class TestRandomGeoShapeRelationship extends LuceneTestCase {
    *
    * <p>Note that both shapes cannot be concave.
    */
-  @Test
   public void testRandomDisjoint() {
     int referenceShapeType = CONVEX_SIMPLE_POLYGON;
     PlanetModel planetModel = randomPlanetModel();
@@ -141,7 +138,6 @@ public class TestRandomGeoShapeRelationship extends LuceneTestCase {
    *
    * <p>Note that if the geoAreaShape is not concave the other shape must be not concave.
    */
-  @Test
   public void testRandomWithIn() {
     PlanetModel planetModel = randomPlanetModel();
     int geoAreaShapeType = randomGeoAreaShapeType();
@@ -189,7 +185,6 @@ public class TestRandomGeoShapeRelationship extends LuceneTestCase {
    * concave, the shape for reference should be concave as well.
    */
   // TODO: this test seems to hit pathological cases that cause it to run for many minutes?!
-  @Test
   @Nightly
   public void testRandomContains() {
     int referenceShapeType = CONVEX_SIMPLE_POLYGON;
@@ -238,7 +233,6 @@ public class TestRandomGeoShapeRelationship extends LuceneTestCase {
    * disjoint to other part and contains a disjoint shape. We create shapes according the criteria.
    * The resulting shape should OVERLAP the geoAreaShape.
    */
-  @Test
   public void testRandomOverlaps() {
     PlanetModel planetModel = randomPlanetModel();
     int geoAreaShapeType = randomGeoAreaShapeType();

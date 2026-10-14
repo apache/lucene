@@ -265,7 +265,10 @@ public abstract class ValueSource {
   }
 
   public static ValueSource fromDoubleValuesSource(DoubleValuesSource in) {
-    return new FromDoubleValuesSource(in);
+    return switch (in) {
+      case WrappedDoubleValuesSource wrapped -> wrapped.in;
+      default -> new FromDoubleValuesSource(in);
+    };
   }
 
   private static class FromDoubleValuesSource extends ValueSource {
@@ -274,6 +277,12 @@ public abstract class ValueSource {
 
     private FromDoubleValuesSource(DoubleValuesSource in) {
       this.in = in;
+    }
+
+    /** Return the original DoubleValuesSource */
+    @Override
+    public DoubleValuesSource asDoubleValuesSource() {
+      return in;
     }
 
     @Override

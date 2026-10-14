@@ -1,0 +1,50 @@
+# Checks for github actions
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/yaml_rule.json
+id: missing-job-timeout
+language: yaml
+files:
+  - ".github/workflows/**.yml"
+rule:
+  kind: block_mapping_pair
+  all:
+    - has:
+        kind: flow_node
+        field: key
+        pattern: $JOBNAME
+    - has:
+        kind: block_node
+        field: value
+        has:
+          kind: block_mapping
+          # doesn't have timeout minutes
+          not:
+            has:
+              kind: block_mapping_pair
+              has:
+                field: key
+                kind: flow_node
+                has:
+                  pattern: timeout-minutes
+                  stopBy: end
+  inside:
+    kind: block_mapping
+    inside:
+      kind: block_node
+      inside:
+        # top-level "jobs:"
+        kind: block_mapping_pair
+        inside:
+          kind: block_mapping
+          inside:
+            kind: block_node
+            inside:
+              kind: document
+        has:
+          field: key
+          kind: flow_node
+          has:
+            pattern: jobs
+            stopBy: end
+severity: error
+message: workflow job `$JOBNAME` missing `timeout-minutes:`

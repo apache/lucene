@@ -17,11 +17,9 @@
 package org.apache.lucene.spatial3d.geom;
 
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 public class TestGeoCircle extends LuceneTestCase {
 
-  @Test
   public void testCircleDistance() {
     GeoCircle c;
     GeoPoint gp;
@@ -40,7 +38,6 @@ public class TestGeoCircle extends LuceneTestCase {
     assertEquals(0.049979, c.computeDistance(DistanceStyle.NORMAL, gp), 0.000001);
   }
 
-  @Test
   public void testCircleFullWorld() {
     GeoCircle c;
     GeoPoint gp;
@@ -64,7 +61,6 @@ public class TestGeoCircle extends LuceneTestCase {
     assertTrue(b.checkNoBottomLatitudeBound());
   }
 
-  @Test
   public void testCirclePointWithin() {
     GeoCircle c;
     GeoPoint gp;
@@ -86,7 +82,6 @@ public class TestGeoCircle extends LuceneTestCase {
     assertFalse(c.isWithin(gp));
   }
 
-  @Test
   public void testCircleBounds() {
     GeoCircle c;
     LatLonBounds b;
@@ -510,7 +505,6 @@ public class TestGeoCircle extends LuceneTestCase {
     assertEquals(-0.4, b.getRightLongitude(), 0.00001);
   }
 
-  @Test
   public void testBoundsFailureCase1() {
     // lat=2.7399499693409367E-13, lon=-3.141592653589793([X=-1.0011188539924791,
     // Y=-1.226017000107956E-16, Z=2.743015573303327E-13])], radius=2.1814042682464985
@@ -539,7 +533,6 @@ public class TestGeoCircle extends LuceneTestCase {
     assertTrue(solid.isWithin(gp));
   }
 
-  @Test
   public void testBoundsFailureCase2() {
     final GeoCircle gc =
         GeoCircleFactory.makeGeoCircle(
@@ -562,7 +555,6 @@ public class TestGeoCircle extends LuceneTestCase {
     assert gc.isWithin(gp) ? solid.isWithin(gp) : true;
   }
 
-  @Test
   public void testWholeWorld() {
     final GeoCircle circle1 =
         GeoCircleFactory.makeGeoCircle(PlanetModel.SPHERE, 0.0, 0.0, 3.1415926535897913);

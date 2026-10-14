@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search;
 
+import static org.hamcrest.Matchers.instanceOf;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -61,7 +63,7 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
   public void testSearcherManager() throws Exception {
     pruner =
         new SearcherLifetimeManager.PruneByAge(
-            TEST_NIGHTLY ? TestUtil.nextInt(random(), 1, 20) : 1);
+            TEST_NIGHTLY ? TestUtil.nextInt(random(), 1, 10) : 1);
     runTest("TestSearcherManager");
   }
 
@@ -241,9 +243,7 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
                 awaitEnterWarm.countDown();
                 awaitClose.await();
               }
-            } catch (
-                @SuppressWarnings("unused")
-                InterruptedException e) {
+            } catch (InterruptedException _) {
               //
             }
             return new IndexSearcher(r, es);
@@ -278,9 +278,7 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
                   }
                   searcherManager.maybeRefresh();
                   success.set(true);
-                } catch (
-                    @SuppressWarnings("unused")
-                    AlreadyClosedException e) {
+                } catch (AlreadyClosedException _) {
                   // expected
                 } catch (Throwable e) {
                   if (VERBOSE) {
@@ -472,7 +470,7 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
     t.join();
 
     // if maybeRefreshBlocking didn't release the lock, this will fail.
-    assertTrue("failde to obtain the refreshLock!", sm.maybeRefresh());
+    assertTrue("failed to obtain the refreshLock!", sm.maybeRefresh());
 
     sm.close();
     dir.close();
@@ -535,9 +533,9 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
       mgr.maybeRefresh();
       IndexSearcher s = mgr.acquire();
       try {
-        assertTrue(s.getIndexReader() instanceof MyFilterDirectoryReader);
+        assertThat(s.getIndexReader(), instanceOf(MyFilterDirectoryReader.class));
         for (LeafReaderContext ctx : s.getIndexReader().leaves()) {
-          assertTrue(ctx.reader() instanceof MyFilterLeafReader);
+          assertThat(ctx.reader(), instanceOf(MyFilterLeafReader.class));
         }
       } finally {
         mgr.release(s);
@@ -609,7 +607,7 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
           @Override
           public void run() {
             try {
-              int numDocs = TEST_NIGHTLY ? atLeast(20000) : atLeast(200);
+              int numDocs = TEST_NIGHTLY ? atLeast(10000) : atLeast(200);
               for (int i = 0; i < numDocs; i++) {
                 IndexWriter w = writerRef.get();
                 Document doc = new Document();
@@ -652,9 +650,7 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
                   IndexSearcher searcher;
                   try {
                     searcher = mgr.acquire();
-                  } catch (
-                      @SuppressWarnings("unused")
-                      AlreadyClosedException ace) {
+                  } catch (AlreadyClosedException _) {
                     // ok
                     continue;
                   }
@@ -684,9 +680,7 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
                   refreshCount++;
                   try {
                     mgr.maybeRefreshBlocking();
-                  } catch (
-                      @SuppressWarnings("unused")
-                      AlreadyClosedException ace) {
+                  } catch (AlreadyClosedException _) {
                     // ok
                     aceCount++;
                     continue;
@@ -718,9 +712,7 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
                   try {
                     mgrRef.set(new SearcherManager(writerRef.get(), null));
                     break;
-                  } catch (
-                      @SuppressWarnings("unused")
-                      AlreadyClosedException ace) {
+                  } catch (AlreadyClosedException _) {
                     // ok
                     aceCount++;
                   }

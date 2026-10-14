@@ -87,6 +87,23 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
     assertEquals(new BitDocIdSet(ref), result);
   }
 
+  public void testExpectMoreUpgradesToBitSet() throws IOException {
+    final int maxDoc = 1 << 14;
+    DocIdSetBuilder builder = new DocIdSetBuilder(maxDoc);
+    builder.grow(1).add(7);
+
+    builder.expectMore((maxDoc >>> 7) + 1L);
+    builder.grow(1).add(11);
+
+    DocIdSet result = builder.build();
+    assertTrue(result instanceof BitDocIdSet);
+    DocIdSetIterator iterator = result.iterator();
+    assertEquals(7, iterator.nextDoc());
+    assertEquals(11, iterator.nextDoc());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, iterator.nextDoc());
+    assertEquals(2, iterator.cost());
+  }
+
   public void testRandom() throws IOException {
     final int maxDoc =
         TEST_NIGHTLY
@@ -283,17 +300,17 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
     }
 
     @Override
-    public long getSumTotalTermFreq() throws IOException {
+    public long getSumTotalTermFreq() {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public long getSumDocFreq() throws IOException {
+    public long getSumDocFreq() {
       return numValues;
     }
 
     @Override
-    public int getDocCount() throws IOException {
+    public int getDocCount() {
       return docCount;
     }
 
@@ -334,27 +351,27 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
     }
 
     @Override
-    public byte[] getMinPackedValue() throws IOException {
+    public byte[] getMinPackedValue() {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public byte[] getMaxPackedValue() throws IOException {
+    public byte[] getMaxPackedValue() {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public int getNumDimensions() throws IOException {
+    public int getNumDimensions() {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public int getNumIndexDimensions() throws IOException {
+    public int getNumIndexDimensions() {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public int getBytesPerDimension() throws IOException {
+    public int getBytesPerDimension() {
       throw new UnsupportedOperationException();
     }
 

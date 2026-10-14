@@ -19,7 +19,6 @@ package org.apache.lucene.search;
 import java.util.Arrays;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.tests.search.BaseExplanationTestCase;
-import org.junit.Test;
 
 /** TestExplanations subclass focusing on basic query types */
 public class TestSimpleExplanations extends BaseExplanationTestCase {
@@ -42,11 +41,11 @@ public class TestSimpleExplanations extends BaseExplanationTestCase {
   /* MatchAllDocs */
 
   public void testMA1() throws Exception {
-    qtest(new MatchAllDocsQuery(), new int[] {0, 1, 2, 3});
+    qtest(MatchAllDocsQuery.INSTANCE, new int[] {0, 1, 2, 3});
   }
 
   public void testMA2() throws Exception {
-    Query q = new MatchAllDocsQuery();
+    Query q = MatchAllDocsQuery.INSTANCE;
     qtest(new BoostQuery(q, 1000), new int[] {0, 1, 2, 3});
   }
 
@@ -747,7 +746,6 @@ public class TestSimpleExplanations extends BaseExplanationTestCase {
     qtest(query, new int[] {0, 1, 2, 3});
   }
 
-  @Test
   public void testEquality() {
 
     Explanation e1 = Explanation.match(1f, "an explanation");

@@ -102,7 +102,7 @@ public final class Lucene90HnswGraphBuilder {
    * enables efficient retrieval without extra data copying, while avoiding collision of the
    * returned values.
    *
-   * @param vectors the vectors for which to build a nearest neighbors graph. Must be an independet
+   * @param vectors the vectors for which to build a nearest neighbors graph. Must be an independent
    *     accessor for the vectors
    */
   public Lucene90OnHeapHnswGraph build(FloatVectorValues vectors) throws IOException {

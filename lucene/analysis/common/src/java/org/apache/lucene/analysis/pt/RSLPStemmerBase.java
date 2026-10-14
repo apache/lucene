@@ -46,9 +46,7 @@ import org.apache.lucene.analysis.CharArraySet;
  * <p>The general rule format is:
  *
  * <blockquote>
- *
  * { "suffix", N, "replacement", { "exception1", "exception2", ...}}
- *
  * </blockquote>
  *
  * where:
@@ -67,9 +65,7 @@ import org.apache.lucene.analysis.CharArraySet;
  * <p>A step is an ordered list of rules, with a structure in this format:
  *
  * <blockquote>
- *
  * { "name", N, B, { "cond1", "cond2", ... } ... rules ... };
- *
  * </blockquote>
  *
  * where:
@@ -321,7 +317,7 @@ public abstract class RSLPStemmerBase {
           }
         }
       }
-      if (line.endsWith(";")) return rules.toArray(new Rule[rules.size()]);
+      if (line.endsWith(";")) return rules.toArray(Rule[]::new);
     }
     return null;
   }

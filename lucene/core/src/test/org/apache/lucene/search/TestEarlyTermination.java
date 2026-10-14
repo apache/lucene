@@ -58,7 +58,7 @@ public class TestEarlyTermination extends LuceneTestCase {
     for (int i = 0; i < iters; ++i) {
       final IndexSearcher searcher = newSearcher(reader);
       searcher.search(
-          new MatchAllDocsQuery(),
+          MatchAllDocsQuery.INSTANCE,
           new CollectorManager<SimpleCollector, Void>() {
             @Override
             public SimpleCollector newCollector() {

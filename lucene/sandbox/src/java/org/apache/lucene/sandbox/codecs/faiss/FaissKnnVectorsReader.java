@@ -22,14 +22,8 @@ import static org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormat.META_
 import static org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormat.META_EXTENSION;
 import static org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormat.VERSION_CURRENT;
 import static org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormat.VERSION_START;
-import static org.apache.lucene.sandbox.codecs.faiss.LibFaissC.FAISS_IO_FLAG_MMAP;
-import static org.apache.lucene.sandbox.codecs.faiss.LibFaissC.FAISS_IO_FLAG_READ_ONLY;
-import static org.apache.lucene.sandbox.codecs.faiss.LibFaissC.indexRead;
-import static org.apache.lucene.sandbox.codecs.faiss.LibFaissC.indexSearch;
 
 import java.io.IOException;
-import java.lang.foreign.Arena;
-import java.lang.foreign.MemorySegment;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -41,16 +35,17 @@ import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentReadState;
-import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 
 /**
@@ -61,16 +56,23 @@ import org.apache.lucene.util.IOUtils;
 final class FaissKnnVectorsReader extends KnnVectorsReader {
   private final FlatVectorsReader rawVectorsReader;
   private final IndexInput data;
-  private final Map<String, IndexEntry> indexMap;
-  private final Arena arena;
+  private final Map<String, FaissLibrary.Index> indexMap;
   private boolean closed;
+
+  /**
+   * Reads the same indexes as {@code reader}, with the raw vectors read by {@code
+   * rawVectorsReader}.
+   */
+  private FaissKnnVectorsReader(FaissKnnVectorsReader reader, FlatVectorsReader rawVectorsReader) {
+    this.rawVectorsReader = rawVectorsReader;
+    this.data = reader.data;
+    this.indexMap = reader.indexMap;
+  }
 
   public FaissKnnVectorsReader(SegmentReadState state, FlatVectorsReader rawVectorsReader)
       throws IOException {
     this.rawVectorsReader = rawVectorsReader;
     this.indexMap = new HashMap<>();
-    this.arena = Arena.ofShared();
-    this.closed = false;
 
     List<FieldMeta> fieldMetaList = new ArrayList<>();
     String metaFileName =
@@ -125,9 +127,14 @@ final class FaissKnnVectorsReader extends KnnVectorsReader {
       CodecUtil.retrieveChecksum(data);
 
       for (FieldMeta fieldMeta : fieldMetaList) {
-        if (indexMap.put(fieldMeta.fieldInfo.name, loadField(data, arena, fieldMeta)) != null) {
-          throw new CorruptIndexException("Duplicate field: " + fieldMeta.fieldInfo.name, meta);
+        if (indexMap.containsKey(fieldMeta.name)) {
+          throw new CorruptIndexException("Duplicate field: " + fieldMeta.name, meta);
         }
+        IndexInput indexInput = data.slice(fieldMeta.name, fieldMeta.offset, fieldMeta.length);
+        FieldInfo fi = state.fieldInfos.fieldInfo(fieldMeta.name);
+        indexMap.put(
+            fieldMeta.name,
+            FaissLibrary.INSTANCE.readIndex(indexInput, fi.getVectorSimilarityFunction()));
       }
     } catch (Throwable t) {
       IOUtils.closeWhileSuppressingExceptions(t, this);
@@ -150,28 +157,14 @@ final class FaissKnnVectorsReader extends KnnVectorsReader {
     long dataOffset = meta.readLong();
     long dataLength = meta.readLong();
 
-    return new FieldMeta(fieldInfo, dataOffset, dataLength);
-  }
-
-  @SuppressWarnings("restricted") // TODO: encapsulate the unsafeness into the LibFaissC
-  private static IndexEntry loadField(IndexInput data, Arena arena, FieldMeta fieldMeta)
-      throws IOException {
-    int ioFlags = FAISS_IO_FLAG_MMAP | FAISS_IO_FLAG_READ_ONLY;
-
-    // Read index into memory
-    MemorySegment indexPointer =
-        indexRead(data.slice(fieldMeta.fieldInfo.name, fieldMeta.offset, fieldMeta.length), ioFlags)
-            // Ensure timely cleanup
-            .reinterpret(arena, LibFaissC::freeIndex);
-
-    return new IndexEntry(indexPointer, fieldMeta.fieldInfo.getVectorSimilarityFunction());
+    return new FieldMeta(fieldInfo.name, dataOffset, dataLength);
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    rawVectorsReader.checkIntegrity();
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+    rawVectorsReader.checkIntegrity(merge);
     // TODO: Evaluate if we need an explicit check for validity of Faiss indexes
-    CodecUtil.checksumEntireFile(data);
+    CodecUtil.checksumEntireFile(data, merge);
   }
 
   @Override
@@ -187,18 +180,31 @@ final class FaissKnnVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public void search(String field, float[] vector, KnnCollector knnCollector, Bits acceptDocs) {
-    IndexEntry entry = indexMap.get(field);
-    if (entry != null) {
-      indexSearch(entry.indexPointer, entry.function, vector, knnCollector, acceptDocs);
+  public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+    throw new UnsupportedOperationException("Float16 vectors not supported");
+  }
+
+  @Override
+  public void search(
+      String field, float[] vector, KnnCollector knnCollector, AcceptDocs acceptDocs) {
+    FaissLibrary.Index index = indexMap.get(field);
+    if (index != null) {
+      index.search(vector, knnCollector, acceptDocs);
     }
   }
 
   @Override
-  public void search(String field, byte[] vector, KnnCollector knnCollector, Bits acceptDocs) {
+  public void search(
+      String field, byte[] vector, KnnCollector knnCollector, AcceptDocs acceptDocs) {
     // TODO: Support using SQ8 quantization, see:
     //  - https://github.com/opensearch-project/k-NN/pull/2425
     throw new UnsupportedOperationException("Byte vectors not supported");
+  }
+
+  @Override
+  public void search(String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
+    throw new UnsupportedOperationException("Float16 vectors not supported");
   }
 
   @Override
@@ -208,14 +214,41 @@ final class FaissKnnVectorsReader extends KnnVectorsReader {
   }
 
   @Override
+  public int getVectorCount(FieldInfo fieldInfo) throws IOException {
+    return rawVectorsReader.getVectorCount(fieldInfo);
+  }
+
+  /**
+   * A merge rebuilds the index from the raw vectors, so it reads them the way the raw reader's
+   * merge instance does. The index itself is not read by a merge.
+   */
+  @Override
+  public KnnVectorsReader getMergeInstance() throws IOException {
+    FlatVectorsReader rawMergeInstance = rawVectorsReader.getMergeInstance();
+    if (rawMergeInstance == rawVectorsReader) {
+      return this;
+    }
+    return new FaissKnnVectorsReader(this, rawMergeInstance);
+  }
+
+  @Override
+  public void finishMerge() throws IOException {
+    rawVectorsReader.finishMerge();
+  }
+
+  @Override
   public void close() throws IOException {
     if (closed == false) {
+      // Close all indexes
+      for (FaissLibrary.Index index : indexMap.values()) {
+        index.close();
+      }
+      indexMap.clear();
+
+      IOUtils.close(rawVectorsReader, data);
       closed = true;
-      IOUtils.close(rawVectorsReader, arena::close, data, indexMap::clear);
     }
   }
 
-  private record FieldMeta(FieldInfo fieldInfo, long offset, long length) {}
-
-  private record IndexEntry(MemorySegment indexPointer, VectorSimilarityFunction function) {}
+  private record FieldMeta(String name, long offset, long length) {}
 }

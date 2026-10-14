@@ -30,7 +30,6 @@ import java.util.Random;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IOConsumer;
-import org.junit.Test;
 
 public abstract class BaseDataOutputTestCase<T extends DataOutput> extends LuceneTestCase {
   protected abstract T newInstance();
@@ -42,7 +41,6 @@ public abstract class BaseDataOutputTestCase<T extends DataOutput> extends Lucen
     R apply(T t, U u) throws IOException;
   }
 
-  @Test
   public void testRandomizedWrites() throws IOException {
     T dst = newInstance();
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -58,6 +56,7 @@ public abstract class BaseDataOutputTestCase<T extends DataOutput> extends Lucen
   protected static List<IOConsumer<DataInput>> addRandomData(
       DataOutput dst, Random rnd, int maxAddCalls) throws IOException {
     try {
+      rnd = LuceneTestCase.nonAssertingRandom(rnd);
       List<IOConsumer<DataInput>> reply = new ArrayList<>();
       for (int i = 0; i < maxAddCalls; i++) {
         reply.add(RandomPicks.randomFrom(rnd, GENERATORS).apply(dst, rnd));

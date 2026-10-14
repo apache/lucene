@@ -128,6 +128,8 @@ public class TestDirectPacked extends LuceneTestCase {
       writer.finish();
       output.close();
       IndexInput input = directory.openInput(name, IOContext.DEFAULT);
+      assertEquals(
+          input.length() - offset, DirectWriter.bytesRequired(original.length, bitsRequired));
       LongValues reader;
       if (merge) {
         reader =

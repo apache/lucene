@@ -19,6 +19,13 @@ on:
       - '.github/workflows/run-checks-mod-analysis-common.yml'
       - 'lucene/analysis/common/**'
 
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  # speed up feedback on pull request builds by cancelling outdated builds
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
+
 env:
   DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
 
@@ -27,11 +34,16 @@ jobs:
     name: Extra Hunspell regression tests
     timeout-minutes: 15
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04-arm
 
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: ./.github/actions/prepare-for-build
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Configure tools
+        uses: ./.github/actions/prepare-for-build
 
       - name: Run Hunspell regression tests
         run: ./gradlew -p lucene/analysis/common -Ptests.hunspell.regressions=true -Ptests.verbose=true test --tests "TestAllDictionaries"

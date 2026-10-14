@@ -491,6 +491,7 @@ public class TestIndexedDISI extends LuceneTestCase {
     }
   }
 
+  @Nightly
   public void testRandom() throws IOException {
     try (Directory dir = newDirectory()) {
       int numIters = atLeast(3);

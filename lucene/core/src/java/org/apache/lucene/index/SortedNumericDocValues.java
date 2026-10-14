@@ -17,6 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import org.apache.lucene.util.FixedBitSet;
 
 /** A list of per-document numeric values, sorted according to {@link Long#compare(long, long)}. */
 public abstract class SortedNumericDocValues extends DocValuesIterator {
@@ -35,4 +36,40 @@ public abstract class SortedNumericDocValues extends DocValuesIterator {
    * It is illegal to call this method after {@link #advanceExact(int)} returned {@code false}.
    */
   public abstract int docValueCount();
+
+  /**
+   * Fills a {@link FixedBitSet} with the doc IDs in {@code [fromDoc, toDoc)} whose sorted numeric
+   * values contain at least one value in {@code [minValue, maxValue]}.
+   *
+   * <p>The default implementation falls back to per-doc evaluation via {@link #advanceExact(int)},
+   * {@link #docValueCount()}, and {@link #nextValue()}. Subclasses with random-access storage can
+   * override this to avoid per-doc virtual dispatch.
+   *
+   * <p>Callers should not rely on the final iterator position after this method returns.
+   * Implementations may advance through some or all of the requested range.
+   *
+   * @param fromDoc first doc ID to evaluate (inclusive)
+   * @param toDoc last doc ID to evaluate (exclusive)
+   * @param minValue lower bound of the range (inclusive)
+   * @param maxValue upper bound of the range (inclusive)
+   * @param bitSet the bitset to fill
+   * @param offset subtracted from each doc ID before setting the bit
+   */
+  public void rangeIntoBitSet(
+      int fromDoc, int toDoc, long minValue, long maxValue, FixedBitSet bitSet, int offset)
+      throws IOException {
+    for (int doc = fromDoc; doc < toDoc; doc++) {
+      if (advanceExact(doc)) {
+        for (int i = 0, count = docValueCount(); i < count; i++) {
+          long value = nextValue();
+          if (value >= minValue) {
+            if (value <= maxValue) {
+              bitSet.set(doc - offset);
+            }
+            break;
+          }
+        }
+      }
+    }
+  }
 }

@@ -30,12 +30,12 @@ See them as binary blobs with encoded information also provided through the publ
 class library. They contain **no** program code.
 
 This allows Lucene developers to compile the code without downloading a copy of all
-supported JDK versions (Java 24, Java 25,...).
+supported JDK versions.
 
 To regenerate those files call `gradlew :lucene:core:regenerate`. While doing this
 you need to either have
 [Gradle toolchain auto-provisioning](https://docs.gradle.org/current/userguide/toolchains.html#sec:provisioning)
-enabled (this is the default for Lucene) or use environment variables like `JAVA24_HOME`
+enabled (this is the default for Lucene) or use environment variables like `JAVA25_HOME`
 to point the Lucene build system to missing JDK versions. The regeneration task prints
 a warning if a specific JDK is missing, leaving the already existing `.apijar` file
 untouched.

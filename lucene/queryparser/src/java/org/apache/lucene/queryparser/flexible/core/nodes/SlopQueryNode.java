@@ -88,8 +88,8 @@ public class SlopQueryNode extends QueryNodeImpl implements FieldableNode {
   public CharSequence getField() {
     QueryNode child = getChild();
 
-    if (child instanceof FieldableNode) {
-      return ((FieldableNode) child).getField();
+    if (child instanceof FieldableNode fieldableNode) {
+      return fieldableNode.getField();
     }
 
     return null;
@@ -99,8 +99,8 @@ public class SlopQueryNode extends QueryNodeImpl implements FieldableNode {
   public void setField(CharSequence fieldName) {
     QueryNode child = getChild();
 
-    if (child instanceof FieldableNode) {
-      ((FieldableNode) child).setField(fieldName);
+    if (child instanceof FieldableNode fieldableNode) {
+      fieldableNode.setField(fieldName);
     }
   }
 }

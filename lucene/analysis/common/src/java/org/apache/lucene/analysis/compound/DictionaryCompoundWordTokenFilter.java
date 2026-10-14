@@ -51,7 +51,7 @@ public class DictionaryCompoundWordTokenFilter extends CompoundWordTokenFilterBa
    * @param minWordSize only words longer than this get processed
    * @param minSubwordSize only subwords longer than this get to the output stream
    * @param maxSubwordSize only subwords shorter than this get to the output stream
-   * @param onlyLongestMatchIgnoreSubwords Subwords are igored, e.g. if a word contains 'schwein',
+   * @param onlyLongestMatchIgnoreSubwords Subwords are ignored, e.g. if a word contains 'schwein',
    *     only the longer word 'schwein' will be extracted, the subword 'wein' will be ignored.
    *     Supersede parameter onlyLongestMatch
    */

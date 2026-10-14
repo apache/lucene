@@ -55,7 +55,7 @@ public final class QueryTermExtractor {
    * @param query Query to extract term texts from
    * @return an array of the terms used in a query, plus their weights.
    */
-  public static final WeightedTerm[] getTerms(Query query) {
+  public static WeightedTerm[] getTerms(Query query) {
     return getTerms(query, false);
   }
 
@@ -68,7 +68,7 @@ public final class QueryTermExtractor {
    * @param fieldName the field on which Inverse Document Frequency (IDF) calculations are based
    * @return an array of the terms used in a query, plus their weights.
    */
-  public static final WeightedTerm[] getIdfWeightedTerms(
+  public static WeightedTerm[] getIdfWeightedTerms(
       Query query, IndexReader reader, String fieldName) {
     WeightedTerm[] terms = getTerms(query, false, fieldName);
     int totalNumDocs = reader.maxDoc();
@@ -78,9 +78,7 @@ public final class QueryTermExtractor {
         // IDF algorithm taken from ClassicSimilarity class
         float idf = (float) (Math.log(totalNumDocs / (double) (docFreq + 1)) + 1.0);
         terms[i].weight *= idf;
-      } catch (
-          @SuppressWarnings("unused")
-          IOException e) {
+      } catch (IOException _) {
         // ignore
       }
     }
@@ -99,7 +97,7 @@ public final class QueryTermExtractor {
     HashSet<WeightedTerm> terms = new HashSet<>();
     Predicate<String> fieldSelector = fieldName == null ? _ -> true : fieldName::equals;
     query.visit(new BoostedTermExtractor(1, terms, prohibited, fieldSelector));
-    return terms.toArray(new WeightedTerm[0]);
+    return terms.toArray(WeightedTerm[]::new);
   }
 
   /**
@@ -109,7 +107,7 @@ public final class QueryTermExtractor {
    * @param prohibited <code>true</code> to extract "prohibited" terms, too
    * @return an array of the terms used in a query, plus their weights.
    */
-  public static final WeightedTerm[] getTerms(Query query, boolean prohibited) {
+  public static WeightedTerm[] getTerms(Query query, boolean prohibited) {
     return getTerms(query, prohibited, null);
   }
 
@@ -145,8 +143,8 @@ public final class QueryTermExtractor {
 
     @Override
     public QueryVisitor getSubVisitor(BooleanClause.Occur occur, Query parent) {
-      if (parent instanceof BoostQuery) {
-        float newboost = boost * ((BoostQuery) parent).getBoost();
+      if (parent instanceof BoostQuery bq) {
+        float newboost = boost * bq.getBoost();
         return new BoostedTermExtractor(newboost, terms, includeProhibited, fieldSelector);
       }
       if (occur == BooleanClause.Occur.MUST_NOT && includeProhibited == false) {

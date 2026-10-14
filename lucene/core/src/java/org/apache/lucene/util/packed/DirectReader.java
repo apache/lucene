@@ -26,14 +26,14 @@ import org.apache.lucene.util.LongValues;
  *
  * <p>Example usage:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   int bitsPerValue = DirectWriter.bitsRequired(100);
  *   IndexInput in = dir.openInput("packed", IOContext.DEFAULT);
  *   LongValues values = DirectReader.getInstance(in.randomAccessSlice(start, end), bitsPerValue);
  *   for (int i = 0; i &lt; numValues; i++) {
  *     long value = values.get(i);
  *   }
- * </pre>
+ * </code></pre>
  *
  * @see DirectWriter
  */

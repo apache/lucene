@@ -109,9 +109,16 @@ public final class LZ4 {
         break;
       }
 
-      // matchs
+      // matches
       final int matchDec = compressed.readShort() & 0xFFFF;
-      assert matchDec > 0;
+      if (matchDec == 0) {
+        throw new IOException("offset 0 is invalid");
+      }
+      if (matchDec > dOff) {
+        // The match would reference bytes before dest[0], which this call never wrote.
+        throw new IOException(
+            "match offset " + matchDec + " is invalid, only " + dOff + " bytes are available");
+      }
 
       int matchLen = token & 0x0F;
       if (matchLen == 0x0F) {
@@ -294,7 +301,7 @@ public final class LZ4 {
   }
 
   /**
-   * Simple lossy {@link HashTable} that only stores the last ocurrence for each hash on {@code
+   * Simple lossy {@link HashTable} that only stores the last occurrence for each hash on {@code
    * 2^14} bytes of memory.
    */
   public static final class FastCompressionHashTable extends HashTable {

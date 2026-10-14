@@ -37,11 +37,13 @@ import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.StoredFieldDataInput;
 import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
+import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.NoReuseHint;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
@@ -135,7 +137,8 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
 
       fieldsStream =
           directory.createOutput(
-              IndexFileNames.segmentFileName(segment, segmentSuffix, FIELDS_EXTENSION), context);
+              IndexFileNames.segmentFileName(segment, segmentSuffix, FIELDS_EXTENSION),
+              context.union(DataAccessHint.SEQUENTIAL, NoReuseHint.INSTANCE));
       CodecUtil.writeIndexHeader(
           fieldsStream, formatName, VERSION_CURRENT, si.getId(), segmentSuffix);
       assert CodecUtil.indexHeaderLength(formatName, segmentSuffix)
@@ -497,9 +500,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     boolean v = true;
     try {
       v = Boolean.parseBoolean(System.getProperty(BULK_MERGE_ENABLED_SYSPROP, "true"));
-    } catch (
-        @SuppressWarnings("unused")
-        SecurityException ignored) {
+    } catch (SecurityException _) {
     }
     BULK_MERGE_ENABLED = v;
   }
@@ -603,7 +604,8 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
         new ArrayList<>(mergeState.storedFieldsReaders.length);
     for (int i = 0; i < mergeState.storedFieldsReaders.length; i++) {
       final StoredFieldsReader reader = mergeState.storedFieldsReaders[i];
-      reader.checkIntegrity();
+      mergeState.checkAborted();
+      reader.checkIntegrity(mergeState.oneMerge);
       MergeStrategy mergeStrategy = getMergeStrategy(mergeState, matchingReaders, i);
       if (mergeStrategy == MergeStrategy.VISITOR) {
         visitors[i] = new MergeVisitor(mergeState, i);

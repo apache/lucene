@@ -25,8 +25,8 @@ import org.apache.lucene.misc.util.MemoryTracker;
  * memory limit per collector
  */
 public class CollectorMemoryTracker implements MemoryTracker {
-  private String name;
-  private AtomicLong memoryUsage;
+  private final String name;
+  private final AtomicLong memoryUsage;
   private final long memoryLimit;
 
   public CollectorMemoryTracker(String name, long memoryLimit) {

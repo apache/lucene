@@ -71,7 +71,7 @@ public class TestDeterminism extends LuceneTestCase {
     assertTrue(AutomatonTestUtil.sameLanguage(a, equivalent));
 
     // a minus a = empty
-    Automaton empty = Operations.minus(a, a, DEFAULT_DETERMINIZE_WORK_LIMIT);
+    Automaton empty = AutomatonTestUtil.minus(a, a, DEFAULT_DETERMINIZE_WORK_LIMIT);
     assertTrue(Operations.isEmpty(empty));
 
     // as long as don't accept the empty string
@@ -81,7 +81,8 @@ public class TestDeterminism extends LuceneTestCase {
       Automaton optional = Operations.optional(a);
       // System.out.println("optional " + optional);
       equivalent =
-          Operations.minus(optional, Automata.makeEmptyString(), DEFAULT_DETERMINIZE_WORK_LIMIT);
+          AutomatonTestUtil.minus(
+              optional, Automata.makeEmptyString(), DEFAULT_DETERMINIZE_WORK_LIMIT);
       // System.out.println("equiv " + equivalent);
       assertTrue(AutomatonTestUtil.sameLanguage(a, equivalent));
     }

@@ -30,7 +30,6 @@ import org.apache.lucene.spatial.prefix.tree.SpatialPrefixTree;
 import org.apache.lucene.spatial.query.SpatialArgs;
 import org.apache.lucene.spatial.query.SpatialOperation;
 import org.apache.lucene.spatial.vector.PointVectorStrategy;
-import org.junit.Test;
 import org.locationtech.spatial4j.context.SpatialContext;
 import org.locationtech.spatial4j.distance.DistanceUtils;
 import org.locationtech.spatial4j.shape.Point;
@@ -95,7 +94,6 @@ public class TestPortedSolr3 extends StrategyTestCase {
     commit();
   }
 
-  @Test
   public void testIntersections() throws Exception {
     setupDocs();
     // Try some edge cases

@@ -119,10 +119,9 @@ class GeoDegeneratePoint extends GeoPoint implements GeoPointShape {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof GeoDegeneratePoint)) {
+    if (!(o instanceof GeoDegeneratePoint other)) {
       return false;
     }
-    GeoDegeneratePoint other = (GeoDegeneratePoint) o;
     return super.equals(other) && other.latitude == latitude && other.longitude == longitude;
   }
 

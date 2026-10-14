@@ -94,7 +94,7 @@ public class TestMultiSliceMerge extends LuceneTestCase {
           new IndexSearcher(reader1, executor1), new IndexSearcher(reader2, executor2)
         };
 
-    Query query = new MatchAllDocsQuery();
+    Query query = MatchAllDocsQuery.INSTANCE;
 
     TopDocs topDocs1 = searchers[0].search(query, Integer.MAX_VALUE);
     TopDocs topDocs2 = searchers[1].search(query, Integer.MAX_VALUE);
@@ -111,7 +111,7 @@ public class TestMultiSliceMerge extends LuceneTestCase {
           new IndexSearcher(reader1, executor1), new IndexSearcher(reader2, executor2)
         };
 
-    Query query = new MatchAllDocsQuery();
+    Query query = MatchAllDocsQuery.INSTANCE;
 
     TopDocs topDocs1 = searchers[0].search(query, Integer.MAX_VALUE);
     TopDocs topDocs2 = searchers[1].search(query, Integer.MAX_VALUE);

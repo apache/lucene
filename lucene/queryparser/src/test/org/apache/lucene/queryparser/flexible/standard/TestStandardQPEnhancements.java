@@ -31,7 +31,6 @@ import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
-import org.junit.Test;
 
 /** Test interval sub-query support in {@link StandardQueryParser}. */
 public class TestStandardQPEnhancements extends LuceneTestCase {
@@ -53,7 +52,6 @@ public class TestStandardQPEnhancements extends LuceneTestCase {
     return qp;
   }
 
-  @Test
   public void testMinShouldMatchOperator() throws Exception {
     Query parsed =
         parsedQuery(
@@ -68,42 +66,34 @@ public class TestStandardQPEnhancements extends LuceneTestCase {
         ((BooleanQuery) parsed).getMinimumNumberShouldMatch(), Matchers.equalTo(2));
   }
 
-  @Test
   public void testAtLeast() throws Exception {
     checkIntervalQueryNode("fn:atleast(3 FOO BAR baz)");
   }
 
-  @Test
   public void testMaxWidth() throws Exception {
     checkIntervalQueryNode("fn:maxwidth(3 fn:atleast(2 foo bar baz))");
   }
 
-  @Test
   public void testQuotedTerm() throws Exception {
     checkIntervalQueryNode("fn:atleast(2 \"foo\" \"BAR baz\")");
   }
 
-  @Test
   public void testMaxGaps() throws Exception {
     checkIntervalQueryNode("fn:maxgaps(2 fn:unordered(foo BAR baz))");
   }
 
-  @Test
   public void testOrdered() throws Exception {
     checkIntervalQueryNode("fn:ordered(foo BAR baz)");
   }
 
-  @Test
   public void testUnordered() throws Exception {
     checkIntervalQueryNode("fn:unordered(foo BAR baz)");
   }
 
-  @Test
   public void testOr() throws Exception {
     checkIntervalQueryNode("fn:or(foo baz)");
   }
 
-  @Test
   public void testWildcard() throws Exception {
     checkIntervalQueryNode("fn:wildcard(foo*)");
 
@@ -111,72 +101,58 @@ public class TestStandardQPEnhancements extends LuceneTestCase {
     checkIntervalQueryNode("fn:wildcard(foo* 128)");
   }
 
-  @Test
   public void testPhrase() throws Exception {
     checkIntervalQueryNode("fn:phrase(abc def fn:or(baz boo))");
   }
 
-  @Test
   public void testBefore() throws Exception {
     checkIntervalQueryNode("fn:before(abc fn:ordered(foo bar))");
   }
 
-  @Test
   public void testAfter() throws Exception {
     checkIntervalQueryNode("fn:after(abc fn:ordered(foo bar))");
   }
 
-  @Test
   public void testContaining() throws Exception {
     checkIntervalQueryNode("fn:containing(big small)");
   }
 
-  @Test
   public void testContainedBy() throws Exception {
     checkIntervalQueryNode("fn:containedBy(small big)");
   }
 
-  @Test
   public void testNotContaining() throws Exception {
     checkIntervalQueryNode("fn:notContaining(minuend subtrahend)");
   }
 
-  @Test
   public void testNotContainedBy() throws Exception {
     checkIntervalQueryNode("fn:notContainedBy(small big)");
   }
 
-  @Test
   public void testWithin() throws Exception {
     checkIntervalQueryNode("fn:within(small 2 fn:ordered(big foo))");
   }
 
-  @Test
   public void testNotWithin() throws Exception {
     checkIntervalQueryNode("fn:notWithin(small 2 fn:ordered(big foo))");
   }
 
-  @Test
   public void testOverlapping() throws Exception {
     checkIntervalQueryNode("fn:overlapping(fn:ordered(big foo) small)");
   }
 
-  @Test
   public void testNonOverlapping() throws Exception {
     checkIntervalQueryNode("fn:nonOverlapping(fn:ordered(big foo) small)");
   }
 
-  @Test
   public void testUnorderedNoOverlaps() throws Exception {
     checkIntervalQueryNode("fn:unorderedNoOverlaps(fn:ordered(big foo) small)");
   }
 
-  @Test
   public void testExtend() throws Exception {
     checkIntervalQueryNode("fn:extend(fn:ordered(big foo) 2 5)");
   }
 
-  @Test
   public void testFuzzy() throws Exception {
     checkIntervalQueryNode("fn:fuzzyTerm(dfe)");
     // Explicit maxEdits

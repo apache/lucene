@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.queryparser.classic;
 
-import static org.apache.lucene.util.automaton.Operations.DEFAULT_DETERMINIZE_WORK_LIMIT;
-
 import java.io.StringReader;
 import java.text.DateFormat;
 import java.util.Calendar;
@@ -100,7 +98,6 @@ public abstract class QueryParserBase extends QueryBuilder
   Map<String, DateTools.Resolution> fieldToDateResolution = null;
 
   boolean autoGeneratePhraseQueries;
-  int determinizeWorkLimit = DEFAULT_DETERMINIZE_WORK_LIMIT;
 
   // So the generated QueryParser(CharStream) won't error out
   protected QueryParserBase() {
@@ -347,22 +344,6 @@ public abstract class QueryParserBase extends QueryBuilder
     return resolution;
   }
 
-  /**
-   * @param determinizeWorkLimit the maximum effort that determinizing a regexp query can spend. If
-   *     the query requires more effort, a TooComplexToDeterminizeException is thrown.
-   */
-  public void setDeterminizeWorkLimit(int determinizeWorkLimit) {
-    this.determinizeWorkLimit = determinizeWorkLimit;
-  }
-
-  /**
-   * @return the maximum effort that determinizing a regexp query can spend. If the query requires
-   *     more effort, a TooComplexToDeterminizeException is thrown.
-   */
-  public int getDeterminizeWorkLimit() {
-    return determinizeWorkLimit;
-  }
-
   protected void addClause(List<BooleanClause> clauses, int conj, int mods, Query q) {
     boolean required, prohibited;
 
@@ -425,9 +406,9 @@ public abstract class QueryParserBase extends QueryBuilder
       return;
     }
     boolean allNestedTermQueries = false;
-    if (q instanceof BooleanQuery) {
+    if (q instanceof BooleanQuery bq) {
       allNestedTermQueries = true;
-      for (BooleanClause clause : ((BooleanQuery) q).clauses()) {
+      for (BooleanClause clause : bq.clauses()) {
         if (!(clause.query() instanceof TermQuery)) {
           allNestedTermQueries = false;
           break;
@@ -439,8 +420,8 @@ public abstract class QueryParserBase extends QueryBuilder
     } else {
       BooleanClause.Occur occur =
           operator == OR_OPERATOR ? BooleanClause.Occur.SHOULD : BooleanClause.Occur.MUST;
-      if (q instanceof BooleanQuery) {
-        for (BooleanClause clause : ((BooleanQuery) q).clauses()) {
+      if (q instanceof BooleanQuery bq) {
+        for (BooleanClause clause : bq.clauses()) {
           clauses.add(newBooleanClause(clause.query(), occur));
         }
       } else {
@@ -480,8 +461,8 @@ public abstract class QueryParserBase extends QueryBuilder
   protected Query getFieldQuery(String field, String queryText, int slop) throws ParseException {
     Query query = getFieldQuery(field, queryText, true);
 
-    if (query instanceof PhraseQuery) {
-      query = addSlopToPhrase((PhraseQuery) query, slop);
+    if (query instanceof PhraseQuery pq) {
+      query = addSlopToPhrase(pq, slop);
     } else if (query instanceof MultiPhraseQuery mpq) {
       if (slop != mpq.getSlop()) {
         query = new MultiPhraseQuery.Builder(mpq).setSlop(slop).build();
@@ -570,12 +551,7 @@ public abstract class QueryParserBase extends QueryBuilder
    */
   protected Query newRegexpQuery(Term regexp) {
     return new RegexpQuery(
-        regexp,
-        RegExp.ALL,
-        0,
-        RegexpQuery.DEFAULT_PROVIDER,
-        determinizeWorkLimit,
-        multiTermRewriteMethod);
+        regexp, RegExp.ALL, 0, RegexpQuery.DEFAULT_PROVIDER, multiTermRewriteMethod);
   }
 
   /**
@@ -631,7 +607,7 @@ public abstract class QueryParserBase extends QueryBuilder
    * @return new MatchAllDocsQuery instance
    */
   protected Query newMatchAllDocsQuery() {
-    return new MatchAllDocsQuery();
+    return MatchAllDocsQuery.INSTANCE;
   }
 
   /**
@@ -641,7 +617,7 @@ public abstract class QueryParserBase extends QueryBuilder
    * @return new WildcardQuery instance
    */
   protected Query newWildcardQuery(Term t) {
-    return new WildcardQuery(t, determinizeWorkLimit, multiTermRewriteMethod);
+    return new WildcardQuery(t, multiTermRewriteMethod);
   }
 
   /**

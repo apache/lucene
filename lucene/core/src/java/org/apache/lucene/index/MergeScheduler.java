@@ -84,11 +84,11 @@ public abstract class MergeScheduler implements Closeable {
    * Returns true if infoStream messages are enabled. This method is usually used in conjunction
    * with {@link #message(String)}:
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * if (verbose()) {
    *   message(&quot;your message&quot;);
    * }
-   * </pre>
+   * </code></pre>
    */
   protected boolean verbose() {
     return infoStream != null && infoStream.isEnabled("MS");

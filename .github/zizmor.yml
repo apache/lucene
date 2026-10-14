@@ -1,0 +1,5 @@
+---
+rules:
+  # disable until all runners in the wild really support it
+  self-repository:
+    disable: true

@@ -45,7 +45,7 @@ public final class FieldValuesPaneProvider implements FieldValuesTabOperator {
 
   private final JTable fieldsTable = new JTable();
 
-  private ListenerFunctions listners = new ListenerFunctions();
+  private ListenerFunctions listeners = new ListenerFunctions();
 
   public FieldValuesPaneProvider() {
     ComponentOperatorRegistry.getInstance().register(FieldValuesTabOperator.class, this);
@@ -75,7 +75,7 @@ public final class FieldValuesPaneProvider implements FieldValuesTabOperator {
     header.add(new JLabel(MessageUtils.getLocalizedMessage("search_values.label.description")));
     loadAllCB.setText(MessageUtils.getLocalizedMessage("search_values.checkbox.load_all"));
     loadAllCB.setSelected(true);
-    loadAllCB.addActionListener(listners::loadAllFields);
+    loadAllCB.addActionListener(listeners::loadAllFields);
     loadAllCB.setOpaque(false);
     header.add(loadAllCB);
     panel.add(header, BorderLayout.PAGE_START);
@@ -104,7 +104,7 @@ public final class FieldValuesPaneProvider implements FieldValuesTabOperator {
         .getColumnModel()
         .getColumn(FieldsTableModel.Column.LOAD.getIndex())
         .setMaxWidth(FieldsTableModel.Column.LOAD.getColumnWidth());
-    fieldsTable.getModel().addTableModelListener(listners::tableDataChenged);
+    fieldsTable.getModel().addTableModelListener(listeners::tableDataChanged);
   }
 
   @Override
@@ -133,7 +133,7 @@ public final class FieldValuesPaneProvider implements FieldValuesTabOperator {
       }
     }
 
-    void tableDataChenged(TableModelEvent e) {
+    void tableDataChanged(TableModelEvent e) {
       int row = e.getFirstRow();
       int col = e.getColumn();
       if (col == FieldsTableModel.Column.LOAD.getIndex()) {

@@ -284,15 +284,21 @@ final class FrozenBufferedUpdates {
           }
           if (dvUpdates == null) {
             if (isNumeric) {
+              DocValuesType dvType = value.getType();
               if (value.hasSingleValue()) {
                 dvUpdates =
                     new NumericDocValuesFieldUpdates.SingleValueNumericDocValuesFieldUpdates(
-                        delGen, updateField, segState.reader.maxDoc(), value.getNumericValue(0));
+                        delGen,
+                        updateField,
+                        dvType,
+                        segState.reader.maxDoc(),
+                        value.getNumericValue(0));
               } else {
                 dvUpdates =
                     new NumericDocValuesFieldUpdates(
                         delGen,
                         updateField,
+                        dvType,
                         value.getMinNumeric(),
                         value.getMaxNumeric(),
                         segState.reader.maxDoc());
@@ -583,7 +589,7 @@ final class FrozenBufferedUpdates {
     DocIdSetIterator nextTerm(String field, BytesRef term) throws IOException {
       setField(field);
       if (termsEnum != null) {
-        if (sortedTerms) {
+        if (sortedTerms && !termsEnum.preferSeekExact()) {
           assert assertSorted(term);
           // in the sorted case we can take advantage of the "seeking forward" property
           // this allows us depending on the term dict impl to reuse data-structures internally

@@ -28,8 +28,7 @@ public class TestSimpleTextKnnVectorsFormat extends BaseKnnVectorsFormatTestCase
 
   @Override
   protected VectorEncoding randomVectorEncoding() {
-    // TODO: Should SimpleTextKnnVectorsFormat support all encodings?
-    return VectorEncoding.FLOAT32;
+    return random().nextBoolean() ? VectorEncoding.FLOAT32 : VectorEncoding.FLOAT16;
   }
 
   @Override
@@ -40,5 +39,10 @@ public class TestSimpleTextKnnVectorsFormat extends BaseKnnVectorsFormatTestCase
   @Override
   public void testSortedIndexBytes() throws Exception {
     // unimplemented
+  }
+
+  @Override
+  protected boolean supportsFloatVectorFallback() {
+    return false;
   }
 }

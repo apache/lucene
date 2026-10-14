@@ -150,7 +150,7 @@ public class TestSearchMode extends BaseTokenStreamTestCase {
         assertAnalyzesTo(
             analyzerNoOriginal,
             sourceText,
-            expectedTokenList.toArray(new String[0]),
+            expectedTokenList.toArray(String[]::new),
             null,
             null,
             null,

@@ -31,7 +31,6 @@ import org.apache.lucene.search.TopDocs;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Test;
 
 public class TestFunctionRangeQuery extends FunctionTestSetup {
 
@@ -54,23 +53,19 @@ public class TestFunctionRangeQuery extends FunctionTestSetup {
     indexReader.close();
   }
 
-  @Test
   public void testRangeInt() throws IOException {
     doTestRange(INT_VALUESOURCE);
   }
 
-  @Test
   public void testRangeIntMultiValued() throws IOException {
     doTestRange(INT_MV_MAX_VALUESOURCE);
     doTestRange(INT_MV_MIN_VALUESOURCE);
   }
 
-  @Test
   public void testRangeFloat() throws IOException {
     doTestRange(FLOAT_VALUESOURCE);
   }
 
-  @Test
   public void testRangeFloatMultiValued() throws IOException {
     doTestRange(FLOAT_MV_MAX_VALUESOURCE);
     doTestRange(FLOAT_MV_MIN_VALUESOURCE);
@@ -86,12 +81,10 @@ public class TestFunctionRangeQuery extends FunctionTestSetup {
     expectScores(scoreDocs, 4, 3);
   }
 
-  @Test
   public void testDeleted() throws IOException {
     doTestDeleted(INT_VALUESOURCE);
   }
 
-  @Test
   public void testDeletedMultiValued() throws IOException {
     doTestDeleted(INT_MV_MAX_VALUESOURCE);
     doTestDeleted(INT_MV_MIN_VALUESOURCE);
@@ -117,7 +110,6 @@ public class TestFunctionRangeQuery extends FunctionTestSetup {
     }
   }
 
-  @Test
   public void testExplain() throws IOException {
     Query rangeQuery = new FunctionRangeQuery(INT_VALUESOURCE, 2, 2, true, true);
     ScoreDoc[] scoreDocs = indexSearcher.search(rangeQuery, N_DOCS).scoreDocs;
@@ -128,7 +120,6 @@ public class TestFunctionRangeQuery extends FunctionTestSetup {
         explain.toString());
   }
 
-  @Test
   public void testExplainMultiValued() throws IOException {
     Query rangeQuery = new FunctionRangeQuery(INT_MV_MIN_VALUESOURCE, 2, 2, true, true);
     ScoreDoc[] scoreDocs = indexSearcher.search(rangeQuery, N_DOCS).scoreDocs;
@@ -144,7 +135,6 @@ public class TestFunctionRangeQuery extends FunctionTestSetup {
         explain.toString());
   }
 
-  @Test
   public void testTwoRangeQueries() throws IOException {
     Query rq1 = new FunctionRangeQuery(INT_VALUESOURCE, 2, 4, true, true);
     Query rq2 = new FunctionRangeQuery(INT_VALUESOURCE, 8, 10, true, true);

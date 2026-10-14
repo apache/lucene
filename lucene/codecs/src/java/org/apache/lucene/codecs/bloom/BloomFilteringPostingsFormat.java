@@ -34,6 +34,7 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
@@ -151,10 +152,8 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
       String bloomFileName =
           IndexFileNames.segmentFileName(
               state.segmentInfo.name, state.segmentSuffix, BLOOM_EXTENSION);
-      ChecksumIndexInput bloomIn = null;
-      boolean success = false;
-      try {
-        bloomIn = state.directory.openChecksumInput(bloomFileName);
+
+      try (ChecksumIndexInput bloomIn = state.directory.openChecksumInput(bloomFileName)) {
         CodecUtil.checkIndexHeader(
             bloomIn,
             BLOOM_CODEC_NAME,
@@ -176,12 +175,9 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
           bloomsByFieldName.put(fieldInfo.name, bloom);
         }
         CodecUtil.checkFooter(bloomIn);
-        IOUtils.close(bloomIn);
-        success = true;
-      } finally {
-        if (!success) {
-          IOUtils.closeWhileHandlingException(bloomIn, delegateFieldsProducer);
-        }
+      } catch (Throwable t) {
+        IOUtils.closeWhileSuppressingExceptions(t, delegateFieldsProducer);
+        throw t;
       }
     }
 
@@ -196,7 +192,7 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       FuzzySet filter = bloomsByFieldName.get(field);
       if (filter == null) {
         return delegateFieldsProducer.terms(field);
@@ -240,17 +236,17 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
       }
 
       @Override
-      public long getSumTotalTermFreq() throws IOException {
+      public long getSumTotalTermFreq() {
         return delegateTerms.getSumTotalTermFreq();
       }
 
       @Override
-      public long getSumDocFreq() throws IOException {
+      public long getSumDocFreq() {
         return delegateTerms.getSumDocFreq();
       }
 
       @Override
-      public int getDocCount() throws IOException {
+      public int getDocCount() {
         return delegateTerms.getDocCount();
       }
 
@@ -303,7 +299,7 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
       private TermsEnum delegate() throws IOException {
         if (delegateTermsEnum == null) {
           /* pull the iterator only if we really need it -
-           * this can be a relativly heavy operation depending on the
+           * this can be a relatively heavy operation depending on the
            * delegate postings format and they underlying directory
            * (clone IndexInput) */
           delegateTermsEnum = delegateTerms.iterator();
@@ -379,14 +375,21 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
       }
 
       @Override
+      public boolean preferSeekExact() {
+        // Prefer seekExact() to seekCeil() when processing updates and deletes,
+        // since seekExact() passes through the bloom filter.
+        return true;
+      }
+
+      @Override
       public String toString() {
         return getClass().getSimpleName() + "(filter=" + filter.toString() + ")";
       }
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
-      delegateFieldsProducer.checkIntegrity();
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+      delegateFieldsProducer.checkIntegrity(merge);
     }
 
     @Override

@@ -149,10 +149,9 @@ class GeoNorthLatitudeZone extends GeoBaseBBox {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof GeoNorthLatitudeZone)) {
+    if (!(o instanceof GeoNorthLatitudeZone other)) {
       return false;
     }
-    GeoNorthLatitudeZone other = (GeoNorthLatitudeZone) o;
     return super.equals(other) && other.bottomBoundaryPoint.equals(bottomBoundaryPoint);
   }
 

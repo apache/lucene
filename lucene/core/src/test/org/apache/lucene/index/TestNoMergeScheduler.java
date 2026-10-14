@@ -22,18 +22,15 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 public class TestNoMergeScheduler extends LuceneTestCase {
 
-  @Test
   public void testNoMergeScheduler() throws Exception {
     MergeScheduler ms = NoMergeScheduler.INSTANCE;
     ms.close();
     ms.merge(null, RandomPicks.randomFrom(random(), MergeTrigger.values()));
   }
 
-  @Test
   public void testFinalSingleton() throws Exception {
     assertTrue(Modifier.isFinal(NoMergeScheduler.class.getModifiers()));
     Constructor<?>[] ctors = NoMergeScheduler.class.getDeclaredConstructors();
@@ -42,7 +39,6 @@ public class TestNoMergeScheduler extends LuceneTestCase {
         "that 1 should be private: " + ctors[0], Modifier.isPrivate(ctors[0].getModifiers()));
   }
 
-  @Test
   public void testMethodsOverridden() throws Exception {
     // Ensures that all methods of MergeScheduler are overridden. That's
     // important to ensure that NoMergeScheduler overrides everything, so that

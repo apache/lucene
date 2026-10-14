@@ -46,7 +46,7 @@ public class TestPatienceFloatVectorQuery extends BaseKnnVectorQueryTestCase {
     KnnFloatVectorQuery knnQuery = new KnnFloatVectorQuery(field, query, k, queryFilter);
     return wrapSeeded
         ? PatienceKnnVectorQuery.fromSeededQuery(
-            SeededKnnVectorQuery.fromFloatQuery(knnQuery, new MatchNoDocsQuery()))
+            SeededKnnVectorQuery.fromFloatQuery(knnQuery, MatchNoDocsQuery.INSTANCE))
         : PatienceKnnVectorQuery.fromFloatQuery(knnQuery);
   }
 

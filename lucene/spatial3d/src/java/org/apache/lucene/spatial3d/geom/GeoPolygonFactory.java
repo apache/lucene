@@ -235,9 +235,7 @@ public class GeoPolygonFactory {
         }
         throw new IllegalArgumentException(
             "cannot find a point that is inside the polygon " + filteredPointList);
-      } catch (
-          @SuppressWarnings("unused")
-          TileException e) {
+      } catch (TileException _) {
         // Couldn't tile the polygon; use GeoComplexPolygon instead, if we can.
       }
     }
@@ -518,9 +516,7 @@ public class GeoPolygonFactory {
                 new GeoPoint(-testPoint.x, -testPoint.y, -testPoint.z),
                 !isTestPointInside);
           }
-        } catch (
-            @SuppressWarnings("unused")
-            IllegalArgumentException e) {
+        } catch (IllegalArgumentException _) {
           // Probably bad choice of test point.
           return null;
         }
@@ -1867,8 +1863,8 @@ public class GeoPolygonFactory {
         // Build the new edge
         // We need to know the sidedness of the new plane.  The point we're going to be presenting
         // to it has a certain relationship with the sided plane we already have for the current
-        // edge.  If the current edge is colinear with the new edge, then we want to maintain the
-        // same relationship.  If the new edge is not colinear, then we can use the new point's
+        // edge.  If the current edge is collinear with the new edge, then we want to maintain the
+        // same relationship.  If the new edge is not collinear, then we can use the new point's
         // relationship with the current edge as our guide.
 
         final boolean isNewPointWithin = currentEdge.plane.isWithin(newPoint);

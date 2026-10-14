@@ -19,9 +19,9 @@ package org.apache.lucene.search.similarities;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.index.FieldInvertState;
-import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.Explanation;
-import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.FieldStats;
+import org.apache.lucene.search.TermStats;
 
 /**
  * Implements the CombSUM method for combining evidence from multiple similarity values described
@@ -44,11 +44,10 @@ public class MultiSimilarity extends Similarity {
   }
 
   @Override
-  public SimScorer scorer(
-      float boost, CollectionStatistics collectionStats, TermStatistics... termStats) {
+  public SimScorer scorer(float boost, FieldStats fieldStats, TermStats... termStats) {
     SimScorer[] subScorers = new SimScorer[sims.length];
     for (int i = 0; i < subScorers.length; i++) {
-      subScorers[i] = sims[i].scorer(boost, collectionStats, termStats);
+      subScorers[i] = sims[i].scorer(boost, fieldStats, termStats);
     }
     return new MultiSimScorer(subScorers);
   }

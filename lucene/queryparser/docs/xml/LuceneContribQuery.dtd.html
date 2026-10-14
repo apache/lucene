@@ -25,7 +25,7 @@ Influence score of a query's matches in a subtle way which can't be achieved usi
 &lt;BooleanQuery&gt;</td><td class='rightElementTitle'>
 Child of <a href='#BoostQuery'>BoostQuery</a>, <a href='#Clause'>Clause</a>, <a href='#CachedFilter'>CachedFilter</a>, <a href='#Query'>Query</a>
 </td></tr></table>
-<p>BooleanQuerys implement Boolean logic which controls how multiple Clauses should be interpreted.
+<p>BooleanQuery implements Boolean logic which controls how multiple Clauses should be interpreted.
 Some clauses may represent optional Query criteria while others represent mandatory criteria.</p><p><span class='inTextTitle'>Example:</span> <em>Find articles about banks, preferably talking about mergers but nothing to do with "sumitomo"</em>
 </p><pre>
   &lt;BooleanQuery fieldName="contents"&gt;
@@ -713,7 +713,7 @@ Attribute of <a href='#SpanNear'>SpanNear</a>
 &lt;SpanFirst&gt;</td><td class='rightElementTitle'>
 Child of <a href='#BoostQuery'>BoostQuery</a>, <a href='#Clause'>Clause</a>, <a href='#Include'>Include</a>, <a href='#CachedFilter'>CachedFilter</a>, <a href='#SpanOr'>SpanOr</a>, <a href='#SpanNear'>SpanNear</a>, <a href='#Exclude'>Exclude</a>, <a href='#Query'>Query</a>
 </td></tr></table>
-<p>Looks for a SpanQuery match occuring near the beginning of a document</p><p><span class='inTextTitle'>Example:</span> <em>Find letters where the first 50 words talk about a resignation:</em>
+<p>Looks for a SpanQuery match occurring near the beginning of a document</p><p><span class='inTextTitle'>Example:</span> <em>Find letters where the first 50 words talk about a resignation:</em>
 </p><pre>
   &lt;SpanFirst end="50"&gt;
     &lt;SpanOrTerms fieldName="text"&gt;resigning resign leave&lt;/SpanOrTerms&gt;
@@ -906,7 +906,7 @@ Attribute of <a href='#FuzzyLikeThisQuery'>FuzzyLikeThisQuery</a>
 @ignoreTF</td><td class='rightAttributeTitle'>
 Attribute of <a href='#FuzzyLikeThisQuery'>FuzzyLikeThisQuery</a>
 </td></tr></table>
-<p>Ignore "Term Frequency" - a boost factor which rewards multiple occurences of the same term in a document</p><p><span class='inTextTitle'>Possible values</span>: true, false - <span class='inTextTitle'>Default value</span>: false</p><a name='Field'></a>
+<p>Ignore "Term Frequency" - a boost factor which rewards multiple occurrences of the same term in a document</p><p><span class='inTextTitle'>Possible values</span>: true, false - <span class='inTextTitle'>Default value</span>: false</p><a name='Field'></a>
 <br /><table class='elementTitle' summary="Field"><tr><td class='leftElementTitle'>
 &lt;Field&gt;</td><td class='rightElementTitle'>
 Child of <a href='#FuzzyLikeThisQuery'>FuzzyLikeThisQuery</a>
@@ -1131,7 +1131,7 @@ Attribute of <a href='#DuplicateFilter'>DuplicateFilter</a>
 @keepMode</td><td class='rightAttributeTitle'>
 Attribute of <a href='#DuplicateFilter'>DuplicateFilter</a>
 </td></tr></table>
-<p>Determines if the first or last document occurence is the one to return when presented with duplicated field values</p><p><span class='inTextTitle'>Possible values</span>: first, last - <span class='inTextTitle'>Default value</span>: first</p><a name='DuplicateFilter_processingMode'></a>
+<p>Determines if the first or last document occurrence is the one to return when presented with duplicated field values</p><p><span class='inTextTitle'>Possible values</span>: first, last - <span class='inTextTitle'>Default value</span>: first</p><a name='DuplicateFilter_processingMode'></a>
 <br /><table class='attributeTitle' summary="processingMode"><tr><td class='leftAttributeTitle'>
 @processingMode</td><td class='rightAttributeTitle'>
 Attribute of <a href='#DuplicateFilter'>DuplicateFilter</a>

@@ -85,6 +85,16 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
     return value;
   }
 
+  @Override
+  public boolean prefetch(int ord, int count) throws IOException {
+    if (ord < 0 || ord >= size || count <= 0) {
+      return false;
+    }
+    // Vectors are laid out contiguously by ordinal, so a run of them is a single read.
+    final int runLength = Math.min(count, size - ord);
+    return slice.prefetch((long) ord * byteSize, (long) runLength * byteSize);
+  }
+
   public static OffHeapFloatVectorValues load(
       VectorSimilarityFunction vectorSimilarityFunction,
       FlatVectorsScorer flatVectorsScorer,
@@ -172,6 +182,11 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
         @Override
         public DocIdSetIterator iterator() {
           return iterator;
+        }
+
+        @Override
+        public VectorScorer.Bulk bulk(DocIdSetIterator matchingDocs) {
+          return Bulk.fromRandomScorerDense(randomVectorScorer, iterator, matchingDocs);
         }
       };
     }
@@ -265,6 +280,11 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
         @Override
         public DocIdSetIterator iterator() {
           return iterator;
+        }
+
+        @Override
+        public VectorScorer.Bulk bulk(DocIdSetIterator matchingDocs) {
+          return Bulk.fromRandomScorerSparse(randomVectorScorer, iterator, matchingDocs);
         }
       };
     }

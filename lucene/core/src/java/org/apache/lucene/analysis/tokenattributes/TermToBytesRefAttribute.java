@@ -25,7 +25,7 @@ import org.apache.lucene.util.BytesRef;
  *
  * <p>Consumers of this attribute call {@link #getBytesRef()} for each term. Example:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   final TermToBytesRefAttribute termAtt = tokenStream.getAttribute(TermToBytesRefAttribute.class);
  *
  *   while (tokenStream.incrementToken() {
@@ -41,7 +41,7 @@ import org.apache.lucene.util.BytesRef;
  *     }
  *   }
  *   ...
- * </pre>
+ * </code></pre>
  *
  * @lucene.internal This is a very expert and internal API, please use {@link CharTermAttribute} and
  *     its implementation for UTF-8 terms; to index binary terms, use {@link BytesTermAttribute} and

@@ -21,14 +21,8 @@ import static org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormat.DATA_
 import static org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormat.META_CODEC_NAME;
 import static org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormat.META_EXTENSION;
 import static org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormat.VERSION_CURRENT;
-import static org.apache.lucene.sandbox.codecs.faiss.LibFaissC.FAISS_IO_FLAG_MMAP;
-import static org.apache.lucene.sandbox.codecs.faiss.LibFaissC.FAISS_IO_FLAG_READ_ONLY;
-import static org.apache.lucene.sandbox.codecs.faiss.LibFaissC.createIndex;
-import static org.apache.lucene.sandbox.codecs.faiss.LibFaissC.indexWrite;
 
 import java.io.IOException;
-import java.lang.foreign.Arena;
-import java.lang.foreign.MemorySegment;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,9 +37,9 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.IntToIntFunction;
 
@@ -103,19 +97,21 @@ final class FaissKnnVectorsWriter extends KnnVectorsWriter {
   }
 
   @Override
-  public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-    rawVectorsWriter.mergeOneField(fieldInfo, mergeState);
+  public IORunnable mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+    rawVectorsWriter.mergeOneFlatVectorField(fieldInfo, mergeState);
     switch (fieldInfo.getVectorEncoding()) {
       case BYTE ->
           // TODO: Support using SQ8 quantization, see:
           //  - https://github.com/opensearch-project/k-NN/pull/2425
           throw new UnsupportedOperationException("Byte vectors not supported");
+      case FLOAT16 -> throw new UnsupportedOperationException("Float16 vectors not supported");
       case FLOAT32 -> {
         FloatVectorValues merged =
             KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
         writeFloatField(fieldInfo, merged, doc -> doc);
       }
     }
+    return null;
   }
 
   @Override
@@ -136,6 +132,8 @@ final class FaissKnnVectorsWriter extends KnnVectorsWriter {
             //  - https://github.com/opensearch-project/k-NN/pull/2425
             throw new UnsupportedOperationException("Byte vectors not supported");
 
+        case FLOAT16 -> throw new UnsupportedOperationException("Float16 vectors not supported");
+
         case FLOAT32 -> {
           @SuppressWarnings("unchecked")
           FlatFieldVectorsWriter<float[]> rawWriter =
@@ -154,26 +152,23 @@ final class FaissKnnVectorsWriter extends KnnVectorsWriter {
     }
   }
 
-  @SuppressWarnings("restricted") // TODO: encapsulate the unsafeness into the LibFaissC
   private void writeFloatField(
       FieldInfo fieldInfo, FloatVectorValues floatVectorValues, IntToIntFunction oldToNewDocId)
       throws IOException {
     int number = fieldInfo.number;
     meta.writeInt(number);
 
-    // Write index to temp file and deallocate from memory
-    try (Arena temp = Arena.ofConfined()) {
-      VectorSimilarityFunction function = fieldInfo.getVectorSimilarityFunction();
-      MemorySegment indexPointer =
-          createIndex(description, indexParams, function, floatVectorValues, oldToNewDocId)
-              // Ensure timely cleanup
-              .reinterpret(temp, LibFaissC::freeIndex);
-
-      int ioFlags = FAISS_IO_FLAG_MMAP | FAISS_IO_FLAG_READ_ONLY;
+    try (FaissLibrary.Index index =
+        FaissLibrary.INSTANCE.createIndex(
+            description,
+            indexParams,
+            fieldInfo.getVectorSimilarityFunction(),
+            floatVectorValues,
+            oldToNewDocId)) {
 
       // Write index
       long dataOffset = data.getFilePointer();
-      indexWrite(indexPointer, data, ioFlags);
+      index.write(data);
       long dataLength = data.getFilePointer() - dataOffset;
 
       meta.writeLong(dataOffset);
@@ -233,7 +228,7 @@ final class FaissKnnVectorsWriter extends KnnVectorsWriter {
 
     @Override
     public FloatVectorValues copy() {
-      return new BufferedFloatVectorValues(floats, dimension, docIdSet);
+      throw new AssertionError("Should not be called");
     }
 
     @Override

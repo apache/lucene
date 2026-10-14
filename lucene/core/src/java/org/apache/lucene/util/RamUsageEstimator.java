@@ -102,7 +102,15 @@ public final class RamUsageEstimator {
     primitiveSizes = Collections.unmodifiableMap(primitiveSizesMap);
   }
 
-  static final int INTEGER_SIZE, LONG_SIZE, STRING_SIZE;
+  static final int BOOLEAN_SIZE,
+      BYTE_SIZE,
+      CHARACTER_SIZE,
+      SHORT_SIZE,
+      INTEGER_SIZE,
+      FLOAT_SIZE,
+      LONG_SIZE,
+      DOUBLE_SIZE,
+      STRING_SIZE;
 
   /** For testing only */
   static final boolean JVM_IS_HOTSPOT_64BIT;
@@ -133,8 +141,14 @@ public final class RamUsageEstimator {
       NUM_BYTES_ARRAY_HEADER = NUM_BYTES_OBJECT_HEADER + Integer.BYTES;
     }
 
+    BOOLEAN_SIZE = (int) shallowSizeOfInstance(Boolean.class);
+    BYTE_SIZE = (int) shallowSizeOfInstance(Byte.class);
+    CHARACTER_SIZE = (int) shallowSizeOfInstance(Character.class);
+    SHORT_SIZE = (int) shallowSizeOfInstance(Short.class);
     INTEGER_SIZE = (int) shallowSizeOfInstance(Integer.class);
+    FLOAT_SIZE = (int) shallowSizeOfInstance(Float.class);
     LONG_SIZE = (int) shallowSizeOfInstance(Long.class);
+    DOUBLE_SIZE = (int) shallowSizeOfInstance(Double.class);
     STRING_SIZE = (int) shallowSizeOfInstance(String.class);
   }
 
@@ -331,8 +345,8 @@ public final class RamUsageEstimator {
       if (query == root) {
         return;
       }
-      if (query instanceof Accountable) {
-        total += ((Accountable) query).ramBytesUsed();
+      if (query instanceof Accountable a) {
+        total += a.ramBytesUsed();
       } else {
         if (defSize > 0) {
           total += defSize;
@@ -362,8 +376,8 @@ public final class RamUsageEstimator {
    * greater than 0.
    */
   public static long sizeOf(Query q, long defSize) {
-    if (q instanceof Accountable) {
-      return ((Accountable) q).ramBytesUsed();
+    if (q instanceof Accountable a) {
+      return a.ramBytesUsed();
     } else {
       RamUsageQueryVisitor visitor = new RamUsageQueryVisitor(q, defSize);
       q.visit(visitor);
@@ -395,43 +409,35 @@ public final class RamUsageEstimator {
       return 0;
     }
     long size;
-    if (o instanceof Accountable) {
-      size = ((Accountable) o).ramBytesUsed();
-    } else if (o instanceof String) {
-      size = sizeOf((String) o);
-    } else if (o instanceof boolean[]) {
-      size = sizeOf((boolean[]) o);
-    } else if (o instanceof byte[]) {
-      size = sizeOf((byte[]) o);
-    } else if (o instanceof char[]) {
-      size = sizeOf((char[]) o);
-    } else if (o instanceof double[]) {
-      size = sizeOf((double[]) o);
-    } else if (o instanceof float[]) {
-      size = sizeOf((float[]) o);
-    } else if (o instanceof int[]) {
-      size = sizeOf((int[]) o);
-    } else if (o instanceof Integer) {
-      size = sizeOf((Integer) o);
-    } else if (o instanceof Long) {
-      size = sizeOf((Long) o);
-    } else if (o instanceof long[]) {
-      size = sizeOf((long[]) o);
-    } else if (o instanceof short[]) {
-      size = sizeOf((short[]) o);
-    } else if (o instanceof String[]) {
-      size = sizeOf((String[]) o);
-    } else if (o instanceof Query) {
-      size = sizeOf((Query) o, defSize);
-    } else if (o instanceof Map) {
-      size = sizeOfMap((Map<?, ?>) o, ++depth, defSize);
-    } else if (o instanceof Collection) {
-      size = sizeOfCollection((Collection<?>) o, ++depth, defSize);
-    } else {
-      if (defSize > 0) {
-        size = defSize;
-      } else {
-        size = shallowSizeOf(o);
+    switch (o) {
+      case Accountable a -> size = a.ramBytesUsed();
+      case String s -> size = sizeOf(s);
+      case boolean[] ba -> size = sizeOf(ba);
+      case Boolean _ -> size = BOOLEAN_SIZE;
+      case byte[] ba -> size = sizeOf(ba);
+      case Byte _ -> size = BYTE_SIZE;
+      case char[] ca -> size = sizeOf(ca);
+      case Character _ -> size = CHARACTER_SIZE;
+      case double[] da -> size = sizeOf(da);
+      case Double _ -> size = DOUBLE_SIZE;
+      case float[] fa -> size = sizeOf(fa);
+      case Float _ -> size = FLOAT_SIZE;
+      case int[] ia -> size = sizeOf(ia);
+      case Integer _ -> size = INTEGER_SIZE;
+      case Long _ -> size = LONG_SIZE;
+      case long[] la -> size = sizeOf(la);
+      case short[] sa -> size = sizeOf(sa);
+      case Short _ -> size = SHORT_SIZE;
+      case String[] sa -> size = sizeOf(sa);
+      case Query q -> size = sizeOf(q, defSize);
+      case Map<?, ?> m -> size = sizeOfMap(m, ++depth, defSize);
+      case Collection<?> c -> size = sizeOfCollection(c, ++depth, defSize);
+      default -> {
+        if (defSize > 0) {
+          size = defSize;
+        } else {
+          size = shallowSizeOf(o);
+        }
       }
     }
     return size;
@@ -439,9 +445,12 @@ public final class RamUsageEstimator {
 
   /**
    * Returns the size in bytes of the {@link Accountable} object, using its {@link
-   * Accountable#ramBytesUsed()} method.
+   * Accountable#ramBytesUsed()} method. Returns 0, if the {@link Accountable} object is null.
    */
   public static long sizeOf(Accountable accountable) {
+    if (accountable == null) {
+      return 0;
+    }
     return accountable.ramBytesUsed();
   }
 

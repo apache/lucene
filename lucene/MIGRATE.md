@@ -19,21 +19,809 @@
 
 ## Migration from Lucene 10.x to Lucene 11.0
 
+### Java 25 is the minimum required JDK (GITHUB#14229, GITHUB#15215)
+
+Lucene 11 requires Java 25. Rebuild and run on JDK 25 or newer before upgrading
+library versions.
+
+### Security Manager support has been removed (GITHUB#14801)
+
+All Security Manager and `java.security` related code has been removed. That machinery is
+effectively dead on Java 24+. Drop any `java.security.manager` flags or policy
+files that existed only for Lucene.
+
+### JUnit5/jupiter support in the test-framework
+
+Lucene 11 brings initial support for writing test cases
+using JUnit Jupiter.
+
+The test-framework module exports both junit4 and junit5/jupiter
+modules. `LuceneTestCase` remains the parent abstract class for JUnit4 tests.
+`LuceneTestCaseJupiter` is the parent class to extend from for JUnit5
+support.
+
+#### Key changes
+
+These apply if you extend `LuceneTestCaseJupiter`. `LuceneTestCase` (JUnit4) is
+unchanged.
+
+- Methods must be annotated with `@Test`. Method prefix
+`test*` is not sufficient. Methods that are named `test*` but are not tests
+will cause validation errors.
+- You can use parameterized tests, dynamic tests, etc. All these are supported.
+- You *must not* call the static `random()` method on the parent
+class, even though it is there. Add a `Random` parameter to your test methods
+or callbacks - it will
+be automatically injected by the test framework. See the `memory`
+module tests for examples.
+- Use `@BeforeEach`, `@AfterEach` and other junit5-specific callback
+annotations instead of `setUp` and `tearDown` methods.
+- Static utility methods have been pulled up to a parent class
+called `LuceneTestCaseParent` but you should reference them either
+without an explicit type or via the type of the parent class
+for your test framework. The parent class may be removed in the future.
+
+### TermGroupFacetCollector and GroupFacetCollector removed (GITHUB#16292, GITHUB#16779)
+
+`TermGroupFacetCollector` and its base class `GroupFacetCollector` have been removed.
+Use `TermGroupFacetCollectorManager` with `IndexSearcher#search(Query, CollectorManager)`
+instead. `size`, `minCount`, and `orderByCount` are now constructor arguments; merging
+happens in `reduce()`.
+
+`GroupedFacetResult` and `FacetEntry` are now top-level types in
+`org.apache.lucene.search.grouping`. `FacetEntry` is nested in `GroupedFacetResult`
+(`GroupedFacetResult.FacetEntry`).
+
+Before:
+
+```java
+TermGroupFacetCollector collector =
+    TermGroupFacetCollector.createTermGroupFacetCollector(
+        groupField, facetField, facetFieldMultivalued, facetPrefix, initialSize);
+searcher.search(query, collector);
+TermGroupFacetCollector.GroupedFacetResult result =
+    collector.mergeSegmentResults(offset + limit, minCount, orderByCount);
+List<TermGroupFacetCollector.FacetEntry> entries = result.getFacetEntries(offset, limit);
+```
+
+After:
+
+```java
+TermGroupFacetCollectorManager manager =
+    new TermGroupFacetCollectorManager(
+        groupField,
+        facetField,
+        facetFieldMultivalued,
+        facetPrefix,
+        offset + limit,
+        minCount,
+        orderByCount);
+GroupedFacetResult result = searcher.search(query, manager);
+List<GroupedFacetResult.FacetEntry> entries = result.getFacetEntries(offset, limit);
+```
+
+### VectorValueSource and MultiValueSource have been removed (GITHUB#16814)
+
+`VectorValueSource` and its base class `MultiValueSource` have been removed without a replacement
+
+### Directory#copyFrom is now abstract (GITHUB#16530)
+
+`Directory#copyFrom` no longer has a default implementation, so classes that extend
+`Directory` directly must now implement it. Subclasses of `BaseDirectory` inherit the
+standard implementation, which routes the copy through `createOutput`; it is also
+available to subclasses as the protected final helper `Directory#copyThroughCreateOutput`.
+
+`FilterDirectory#copyFrom` no longer delegates to the wrapped directory's `copyFrom`.
+It instead routes through `createOutput`, so filter directories that override
+`createOutput` for per-file bookkeeping now see copied files as well. Filter directories
+that relied on the wrapped directory's optimized copy should override `copyFrom` and
+delegate explicitly, as `HardlinkCopyDirectoryWrapper` does.
+
+### Relaxed Index Upgrade Policy (GITHUB#13797)
+
+Starting with Lucene 11.0.0, the index upgrade policy has been relaxed to allow safe upgrades across multiple major version numbers without reindexing when no format breaks occur.
+
+#### Key Changes
+
+- `Version.MIN_SUPPORTED_MAJOR` is now manually maintained instead of auto-computed as `LATEST.major-1`
+- Set to 10 for Lucene 11.0.0, allowing indexes created with Lucene 10.x to be opened directly
+- Will only be bumped when actual incompatible format changes are introduced
+
+#### Two-Tier Version Policy
+
+1. **Index opening policy**: An index can be opened if its creation version >= `MIN_SUPPORTED_MAJOR`
+2. **Codec reader policy**: Segments can only be read directly if written by current or previous major version number
+
+#### Upgrade Scenarios
+
+##### Scenario 1: No format breaks (wider upgrade span)
+
+- Index created with Lucene 10.x can be opened directly in Lucene 11.x, 12.x, 13.x, 14.x (as long as MIN_SUPPORTED_MAJOR stays ≤ 10)
+- Simply open the index with the new version; segments will be upgraded gradually through normal merging
+- Optional: Call `forceMerge()` or use `UpgradeIndexMergePolicy` to upgrade segment formats immediately
+- **Important**: You still only get one upgrade per index lifetime. Once MIN_SUPPORTED_MAJOR is bumped above 10, the index becomes unopenable and must be reindexed.
+
+##### Scenario 2: Format breaks occur
+
+- If a major version introduces incompatible format changes, `MIN_SUPPORTED_MAJOR` will be bumped
+- Indexes created before the new minimum will throw `IndexFormatTooOldException`
+- Full reindexing is required for such indexes
+
+##### Scenario 3: After using your upgrade
+
+- Index created with Lucene 10.x, successfully opened with Lucene 14.x
+- The index's creation version is still 10 (this never changes)
+- When Lucene 15+ bumps MIN_SUPPORTED_MAJOR above 10, this index becomes unopenable
+- Must reindex to continue using newer Lucene versions
+
+#### Upgrade Example
+
+```java
+// Opening a 10.x index in 11 still works (MIN_SUPPORTED_MAJOR is 10).
+// Later majors may keep that minimum if no format break occurs.
+try (Directory dir = FSDirectory.open(indexPath)) {
+    try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        // Index can be read normally
+    }
+    // Optional: Upgrade segment formats
+    try (IndexWriter writer = new IndexWriter(dir, config)) {
+        writer.forceMerge(1); // Rewrites all segments to latest format
+    }
+}
+```
+
+#### Error Handling
+
+Enhanced error messages will clearly indicate:
+
+- Whether the index creation version is below `MIN_SUPPORTED_MAJOR` (reindex required)
+- Whether segments are too old to read directly (sequential upgrade required)
+
 ### TieredMergePolicy#setMaxMergeAtOnce removed
 
 This parameter has no replacement, TieredMergePolicy no longer bounds the
 number of segments that may be merged together.
+
+### Snowball dependency upgrade (GITHUB#15505)
+
+Lucene 11 upgrades the bundled Snowball stemmers
+([GITHUB#15505](https://github.com/apache/lucene/pull/15505)). Several
+algorithms emit different stems than Lucene 10 (English, French, German,
+Dutch, and others). Existing indexes that used Snowball stemming should
+be reindexed so search-time analysis matches indexed tokens.
+
+#### Dutch stemmer
+
+Snowball replaced the "Dutch" stemmer with the "Kraaij-Pohlmann" stemmer
+(previously called dutch-kp). Lucene now ships two Dutch stemmers:
+
+- `DutchStemmer`, which is now the Kraaij-Pohlmann stemmer.
+  `DutchAnalyzer` and `language="Dutch"` use this.
+- `Dutch_porterStemmer`, which is the Dutch stemmer from Lucene 10 and
+  earlier.
+
+A pre-Lucene-11 index that used `DutchStemmer` can still be opened, but
+search will not match until you reindex, or switch the query analyzer to
+`Dutch_porterStemmer` / `language="Dutch_porter"` to keep the old stems.
+
+#### New stemmers
+
+- `PolishStemmer`, plus `PolishSnowballAnalyzer` in the stempel module
+  (an alternative to the Stempel-based `PolishAnalyzer`).
+- `EsperantoStemmer`
+
+Select them with `SnowballFilter` / `SnowballPorterFilterFactory` using
+`language="Polish"` or `language="Esperanto"`.
 
 ### Query caching is now disabled by default
 
 Query caching is now disabled by default. To enable caching back, do something
 like below in a static initialization block:
 
-```
+```java
 int maxCachedQueries = 1_000;
 long maxRamBytesUsed = 50 * 1024 * 1024; // 50MB
 IndexSearcher.setDefaultQueryCache(new LRUQueryCache(maxCachedQueries, maxRamBytesUsed));
 ```
+
+### Filtered HNSW search default threshold (GITHUB#14160)
+
+Filter-optimized HNSW search now runs when 60% or fewer vectors pass the
+pre-filter (`KnnSearchStrategy.DEFAULT_FILTERED_SEARCH_THRESHOLD`). Recall and
+latency for filtered kNN can change with no API change. To pick a different
+cutoff, pass `new KnnSearchStrategy.Hnsw(threshold)` to the vector query
+constructor (`0` never uses the filtered path, `100` always does).
+
+### Expressions compiler no longer depends on ASM (GITHUB#14597)
+
+The expressions module compiles with the JDK Classfile API instead of ASM.
+Do not rely on Lucene to put ASM on the classpath.
+
+### Possibility to optimize `readGroupVInt()` in `DataInput` subclasses removed (GITHUB#15116)
+
+Any subclass of `DataInput` that has implemented `readGroupVInt()` needs to remove that implementation.
+
+Instead make sure that subclasses of `IndexInput` implement `RandomAccessInput`.
+Pure `DataInput` subclasses cannot be optimized anymore as they cannot offer random access and seeking.
+
+### SortField.setMissingValue() has been removed
+
+Missing values should be configured in SortField constructor methods, as they are now final.
+`SortedNumericSortField` and `SortedSetSortField` take the missing value after a
+selector argument, not in the same position as `SortField`.
+
+```java
+// Before
+SortField sf = new SortField("price", SortField.Type.LONG);
+sf.setMissingValue(0L);
+
+// After
+SortField sf = new SortField("price", SortField.Type.LONG, false, 0L);
+
+// SortedNumericSortField
+new SortedNumericSortField(
+    "price", SortField.Type.LONG, false, SortedNumericSelector.Type.MIN, 0L);
+// SortedSetSortField
+new SortedSetSortField(
+    "category", false, SortedSetSelector.Type.MIN, SortField.STRING_LAST);
+```
+
+### MatchAllDocs and MatchNoDocs are singletons
+
+MatchAllDocs and MatchNoDocs queries should use the INSTANCE final field instead of creating
+new objects. The constructors will be removed in the future.
+
+```java
+Query all = MatchAllDocsQuery.INSTANCE; // not new MatchAllDocsQuery()
+Query none = MatchNoDocsQuery.INSTANCE; // not new MatchNoDocsQuery()
+```
+
+### APIs for configuring compound file creation thresholds have been updated and moved
+
+APIs for configuring compound file creation thresholds were part of merge policies before.
+They are now part of `CompoundFormat`. Previously, the compound file creation depended upon the size of the merged
+segment with respect to the total index size (determined by `CFSRatio` which was 10% by default). Lucene now uses fixed
+thresholds to decide whether a merged segment should be written as a compound file, the default thresholds are:
+
+- **64 MB** for size-based merge policies (e.g., `TieredMergePolicy`)
+- **65,536 documents** for document-count based merge policies (e.g., `LogDocMergePolicy`)
+
+These thresholds could be changed using `setCfsThresholdByteSize` and `setCfsThresholdDocSize` respectively.
+
+#### Migration
+
+If your code previously configured `getNoCFSRatio`, `getMaxCFSSegmentSizeMB`, `setMaxCFSSegmentSizeMB` and `setNoCFSRatio`
+on merge policies, you should change it as follows:
+
+##### Before
+
+```java
+TieredMergePolicy mp = new TieredMergePolicy();
+mp.setNoCFSRatio(0.0);
+mp.setMaxCFSSegmentSizeMB(512);
+IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
+iwc.setMergePolicy(mp);
+mp.getNoCFSRatio();
+mp.getMaxCFSSegmentSizeMB();
+```
+
+##### After
+
+```java
+IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
+CompoundFormat cfs = iwc.getCodec().compoundFormat();
+cfs.setShouldUseCompoundFile(false);
+cfs.setMaxCFSSegmentSizeMB(512);
+cfs.getShouldUseCompoundFile();
+cfs.getMaxCFSSegmentSizeMB();
+```
+
+### Implicit determinization removed from RegexpQuery and WildcardQuery
+
+Previously, RegexpQuery and WildcardQuery would use DFA execution by default, even if it might be inefficient.
+
+RegexpQuery will now only [determinize as-needed](https://swtch.com/~rsc/regexp/regexp1.html). This might be
+faster or slower depending upon your queries.
+
+If you'd like to force the previous behavior, use `determinize()` and `AutomatonQuery`:
+
+```java
+String re = "a(b+|c+)d";
+Automaton dfa = Operations.determinize(new RegExp(re).toAutomaton(), 10000);
+Query query = new AutomatonQuery(new Term("myfield", re), dfa);
+```
+
+Similarly for WildcardQuery, the `determinizeWorkLimit` parameter has been removed from `WildcardQuery` constructors and from
+`WildcardQuery.toAutomaton`. `QueryParserBase.setDeterminizeWorkLimit` and `getDeterminizeWorkLimit`
+have also been removed.
+
+To force the previous behavior, use:
+
+```java
+String pattern = "foo*bar";
+Automaton dfa = Operations.determinize(WildcardQuery.toAutomaton(new Term("myfield", pattern)), 10000);
+Query query = new AutomatonQuery(new Term("myfield", pattern), dfa);
+```
+
+### `QueryVisitor.consumeTermsMatching` takes `Supplier<ByteRunnable>`
+
+Because automata may now be a DFA or an NFA, `consumeTermsMatching` takes
+`Supplier<ByteRunnable>` instead of `ByteRunAutomaton`. `ByteRunAutomaton` still
+implements `ByteRunnable`. `QueryVisitor` implementers must update the override.
+
+```java
+// Before
+@Override
+public void consumeTermsMatching(Query query, String field, ByteRunAutomaton automaton) {
+    // ...
+}
+
+// After
+@Override
+public void consumeTermsMatching(Query query, String field, Supplier<ByteRunnable> automaton) {
+    ByteRunnable runnable = automaton.get();
+    // ...
+}
+```
+
+### CollectionStatistics and TermStatistics have been renamed to FieldStats and TermStats (GITHUB#15929)
+
+Corresponding methods and parameters have been renamed accordingly:
+`IndexSearcher.collectionStatistics` is now `fieldStats`,
+`IndexSearcher.termStatistics` is now `termStats`.
+
+```java
+// Before (IndexSearcher)
+@Override
+public CollectionStatistics collectionStatistics(String field) throws IOException { ... }
+
+@Override
+public TermStatistics termStatistics(Term term, int docFreq, long totalTermFreq) throws IOException { ... }
+
+// Before (Similarity)
+public SimScorer scorer(float boost, CollectionStatistics collectionStats, TermStatistics... termStats) { ... }
+
+// After (IndexSearcher)
+@Override
+public FieldStats fieldStats(String field) throws IOException { ... }
+
+@Override
+public TermStats termStats(Term term, int docFreq, long totalTermFreq) throws IOException { ... }
+
+// After (Similarity)
+public SimScorer scorer(float boost, FieldStats fieldStats, TermStats... termStats) { ... }
+```
+
+### RegExp optional complement syntax has been removed (GITHUB#15750)
+
+The `~` complement syntax (`RegExp.DEPRECATED_COMPLEMENT` int flag and
+`RegExp.Kind.REGEXP_DEPRECATED_COMPLEMENT` enum value) was deprecated in Lucene
+10 and removed in 11. `RegExp.ALL` no longer includes that flag. Prefer
+complement bracket expressions (`[^...]`) instead; for example, `[^fo]` matches
+any character that is not an `f` or `o`.
+
+### `PriorityQueue` now takes a `LessThan` (GITHUB#14873)
+
+The one-arg constructor and overridable `lessThan` method were removed
+([GITHUB#14871](https://github.com/apache/lucene/pull/14871),
+[GITHUB#14873](https://github.com/apache/lucene/pull/14873)). Callers that do
+not need a named subclass should use `PriorityQueue.usingLessThan` or
+`usingComparator`. Named subclasses that still need heap access pass
+`LessThan` into `super`.
+
+```java
+// Before
+PriorityQueue<ScoreDoc> pq = new PriorityQueue<ScoreDoc>(numHits) {
+    @Override
+    protected boolean lessThan(ScoreDoc a, ScoreDoc b) {
+        return a.score < b.score;
+    }
+};
+
+// After: no subclass needed
+PriorityQueue<ScoreDoc> pq = PriorityQueue.usingLessThan(numHits, (a, b) -> a.score < b.score);
+
+// After: named subclass that still needs heap access
+class HitQueue extends PriorityQueue<ScoreDoc> {
+    HitQueue(int size) {
+        super(size, (a, b) -> a.score < b.score);
+    }
+}
+```
+
+### `PriorityQueue.remove` has been removed (GITHUB#15493)
+
+`remove` did a linear identity scan, not `equals`
+([GITHUB#15309](https://github.com/apache/lucene/issues/15309),
+[GITHUB#15493](https://github.com/apache/lucene/pull/15493)). Implement it on a
+subclass if you still need it (`getHeapArray`, `size`, `upHeap`, and `downHeap`
+stay protected).
+
+### `CollectionUtil.newHashMap` / `newHashSet` have been removed (GITHUB#15517)
+
+Use `HashMap.newHashMap` / `HashSet.newHashSet`.
+
+```java
+// Before
+Map<String, Integer> map = CollectionUtil.newHashMap(expectedSize);
+Set<String> set = CollectionUtil.newHashSet(expectedSize);
+
+// After
+Map<String, Integer> map = HashMap.newHashMap(expectedSize);
+Set<String> set = HashSet.newHashSet(expectedSize);
+```
+
+### Two-arg `Operations.concatenate` / `union` have been removed (GITHUB#15762)
+
+`Operations.concatenate(Automaton, Automaton)` and
+`Operations.union(Automaton, Automaton)` were removed (deprecated in 10.2,
+[GITHUB#14209](https://github.com/apache/lucene/pull/14209)). Use the
+`List` / `Collection` overloads.
+
+```java
+// Before
+Automaton u = Operations.union(a, b);
+Automaton c = Operations.concatenate(a, b);
+
+// After
+Automaton u = Operations.union(List.of(a, b));
+Automaton c = Operations.concatenate(List.of(a, b));
+```
+
+### `Operations.complement()` and `minus()` are deprecated (GITHUB#15763, GITHUB#15755)
+
+These methods are slow and will be removed in Lucene 12. Prefer other automaton
+operations in production. For tests, `minus` is available as
+`AutomatonTestUtil.minus()`.
+
+### Cheap reader getters no longer throw `IOException` (GITHUB#16057)
+
+[GITHUB#16052](https://github.com/apache/lucene/issues/16052) /
+[GITHUB#16057](https://github.com/apache/lucene/pull/16057) /
+[GITHUB#16059](https://github.com/apache/lucene/pull/16059) /
+[GITHUB#16060](https://github.com/apache/lucene/pull/16060): `LeafReader.terms`
+/ `getPointValues` / `getDocValuesSkipper`, `Fields.terms`,
+`Terms.getSumTotalTermFreq` / `getSumDocFreq` / `getDocCount`, and
+`PointValues` min/max/dimension getters no longer throw. Overrides must drop
+`throws IOException`. Remaining I/O inside those getters should be wrapped as
+`UncheckedIOException`.
+
+```java
+// Before
+@Override
+public Terms terms(String field) throws IOException {
+    return in.terms(field);
+}
+
+// After
+@Override
+public Terms terms(String field) {
+    return in.terms(field);
+}
+```
+
+### `LRUQueryCache.clearCoreCacheKey` now takes `CacheKey` (GITHUB#15558)
+
+[GITHUB#15558](https://github.com/apache/lucene/pull/15558)
+([GITHUB#14222](https://github.com/apache/lucene/issues/14222)) partitions the
+query cache; keys are `(query, segment)`. `clearCoreCacheKey` takes
+`IndexReader.CacheKey` instead of `Object`. The old `onQueryCache` /
+`onDocIdSetCache` / eviction hooks still compile but now fire once per
+`(segment, query)` entry. Prefer `onCacheEntryInserted` /
+`onCacheEntryEvicted`.
+
+```java
+cache.clearCoreCacheKey(reader.getCoreCacheHelper().getKey());
+
+class MyQueryCache extends LRUQueryCache {
+    MyQueryCache(int maxSize, long maxRamBytesUsed) {
+        super(maxSize, maxRamBytesUsed);
+    }
+
+    @Override
+    protected void onCacheEntryInserted(Object readerCoreKey, Query query, long ramBytesUsed) {
+        // called once per (segment, query) insertion
+    }
+
+    @Override
+    protected void onCacheEntryEvicted(Object readerCoreKey, Query query, long ramBytesUsed) {
+        // called once per (segment, query) eviction
+    }
+}
+```
+
+### `checkIntegrity` now takes `MergePolicy.OneMerge` (GITHUB#16281)
+
+Codec `checkIntegrity()` on `DocValuesProducer`, `FieldsProducer`,
+`KnnVectorsReader` / `FlatVectorsReader`, `StoredFieldsReader`,
+`PostingsReaderBase`, and `PointsReader` is now
+`checkIntegrity(MergePolicy.OneMerge)` so checksums can abort with the merge.
+Pass `null` when there is no merge. `LeafReader.checkIntegrity()` is still
+no-arg.
+
+```java
+// During a merge, pass the merge so checksums can abort
+producer.checkIntegrity(oneMerge);
+
+// Outside a merge
+producer.checkIntegrity(null);
+
+// LeafReader is unchanged
+leafReader.checkIntegrity();
+```
+
+### `PerFieldKnnVectorsFormat.FieldsReader` is hidden (GITHUB#15187)
+
+`FieldsReader` is no longer a public type. Use
+`KnnVectorsReader.unwrapReaderForField(String)` (default: `return this`)
+instead of `instanceof FieldsReader` + `getFieldReader`.
+
+```java
+// Before
+if (reader instanceof PerFieldKnnVectorsFormat.FieldsReader perField) {
+    reader = perField.getFieldReader(field);
+}
+
+// After
+reader = reader.unwrapReaderForField(field);
+```
+
+### `ScorerSupplier.cost()` throws `IOException` (GITHUB#16518)
+
+Overrides that wrap another supplier must declare `throws IOException`.
+
+### `ScorerSupplier.setTopLevelScoringClause` no longer throws (GITHUB#14291)
+
+Drop `throws IOException` from overrides.
+
+```java
+@Override
+public long cost() throws IOException {
+    return in.cost();
+}
+
+@Override
+public void setTopLevelScoringClause() {
+    in.setTopLevelScoringClause();
+}
+```
+
+### `IndexInput.prefetch` returns `boolean` (GITHUB#15627)
+
+[GITHUB#15627](https://github.com/apache/lucene/pull/15627)
+([GITHUB#15515](https://github.com/apache/lucene/issues/15515)):
+`IndexInput.prefetch` / `RandomAccessInput.prefetch` return `true` when
+something was actually prefetched (callers can defer the read). The default
+implementation returns `false` (no-op). Overrides must return that flag.
+
+```java
+if (in.prefetch(offset, length)) {
+    // the implementation actually prefetched; the read can be deferred
+}
+```
+
+### `CheckedIntConsumer` renamed to `IOIntConsumer` (GITHUB#14973)
+
+`org.apache.lucene.search.CheckedIntConsumer` is now
+`org.apache.lucene.util.IOIntConsumer`.
+
+```java
+// Before
+import org.apache.lucene.search.CheckedIntConsumer;
+CheckedIntConsumer consumer = doc -> { ... };
+
+// After
+import org.apache.lucene.util.IOIntConsumer;
+IOIntConsumer consumer = doc -> { ... };
+```
+
+### IEEE FLOAT16 vector APIs (GITHUB#16383)
+
+Custom `LeafReader` / knn codec authors must implement the new `FLOAT16` APIs.
+Typical application code is unaffected unless it switches on `VectorEncoding`.
+
+`LeafReader.getFloat16VectorValues` is abstract (`FilterLeafReader` already
+delegates). `KnnVectorsReader` / `FlatVectorsReader` /
+`FlatVectorsScorer` gained `getFloat16VectorValues`, `search(short[])`, and
+`getRandomVectorScorer(..., short[])`. Custom readers and exhaustive
+`VectorEncoding` switches need a `FLOAT16` arm.
+
+```java
+switch (fieldInfo.getVectorEncoding()) {
+    case BYTE -> reader.getByteVectorValues(field);
+    case FLOAT32 -> reader.getFloatVectorValues(field);
+    case FLOAT16 -> reader.getFloat16VectorValues(field);
+}
+```
+
+### `DictionaryCompoundWordTokenFilter` deprecated constructor removed (GITHUB#14356)
+
+The deprecated constructor that took both `onlyLongestMatch` and
+`onlyLongestMatchIgnoreSubwords` has been removed. Lucene 10 already added the
+replacement that takes only `onlyLongestMatchIgnoreSubwords`
+([GITHUB#14278](https://github.com/apache/lucene/pull/14278),
+[GITHUB#14311](https://github.com/apache/lucene/pull/14311)). Remaining
+constructors are `(TokenStream, CharArraySet)` and
+`(TokenStream, CharArraySet, minWordSize, minSubwordSize, maxSubwordSize,
+onlyLongestMatchIgnoreSubwords)`.
+
+```java
+// Before (deprecated in 10.x)
+new DictionaryCompoundWordTokenFilter(
+    input, dictionary, minWordSize, minSubwordSize, maxSubwordSize,
+    onlyLongestMatch, onlyLongestMatchIgnoreSubwords);
+
+// After
+new DictionaryCompoundWordTokenFilter(
+    input, dictionary, minWordSize, minSubwordSize, maxSubwordSize,
+    onlyLongestMatchIgnoreSubwords);
+```
+
+### `DocIdSet` API changes (GITHUB#14284, GITHUB#14288, GITHUB#14290, GITHUB#14297)
+
+`DocIdSet.iterator()` no longer throws `IOException`. The unused
+`DocIdSet.all()` factory was removed. `DocIdSet.bits()` and
+`BitDocIdSet.bits()` were removed: wrapping a `BitSet` just to unwrap it was
+redundant.
+
+```java
+// Before
+@Override
+public DocIdSetIterator iterator() throws IOException {
+    return in.iterator();
+}
+
+BitSet bits = new BitDocIdSet(bitSet).bits();
+
+// After
+@Override
+public DocIdSetIterator iterator() {
+    return in.iterator();
+}
+
+BitSet bits = bitSet; // keep the BitSet you already have
+// or, if you have a DocIdSetIterator and need a BitSet:
+BitSet fromIterator = BitSet.of(iterator, maxDoc);
+```
+
+If you used `DocIdSet.all(maxDoc)`, iterate with `DocIdSetIterator.all(maxDoc)`
+instead.
+
+### `HnswConcurrentMergeBuilder` dropped `maxConn` (GITHUB#14097)
+
+The constructor no longer takes `M` / `maxConn`; `OnHeapHnswGraph` already
+has it.
+
+```java
+// Before
+new HnswConcurrentMergeBuilder(
+    taskExecutor, numWorkers, scorerSupplier, maxConn, beamWidth, hnsw, initializedNodes);
+
+// After
+new HnswConcurrentMergeBuilder(
+    taskExecutor, numWorkers, scorerSupplier, beamWidth, hnsw, initializedNodes);
+```
+
+### `TopGroups.merge` now takes a `List` (GITHUB#15897)
+
+```java
+// Before
+TopGroups<BytesRef> merged =
+    TopGroups.merge(shardGroups, groupSort, docSort, docOffset, docTopN, scoreMergeMode);
+
+// After (shardGroups is a TopGroups[])
+TopGroups<BytesRef> merged =
+    TopGroups.merge(Arrays.asList(shardGroups), groupSort, docSort, docOffset, docTopN, scoreMergeMode);
+```
+
+If you already have a `List`, pass it directly.
+
+### `TopFieldCollectorManager.getCollectors()` has been removed (GITHUB#15605)
+
+Internal collector tracking was removed. There is no replacement.
+`IndexSearcher.search(query, manager)` is unchanged. Only code that called
+`getCollectors()` needs to change.
+
+### `long[]` GroupVInt APIs moved to backward-codecs (GITHUB#15113)
+
+`int[]` group-varint encoding stays in core (`DataOutput.writeGroupVInts`,
+`org.apache.lucene.util.GroupVIntUtil`). The legacy `long[]` APIs were removed
+from core and now live in `org.apache.lucene.backward_codecs.store.GroupVIntUtil`.
+
+```java
+// Before (core)
+org.apache.lucene.util.GroupVIntUtil.readGroupVInts(in, longDst, limit);
+
+// After (backward-codecs only)
+org.apache.lucene.backward_codecs.store.GroupVIntUtil.readGroupVInts(in, longDst, limit);
+```
+
+### Deprecated CheckIndex parameters have been removed (GITHUB#11023)
+
+The `-fast` and `-slow` CLI flags have been removed. Use `-level` (`1`-`3`;
+default `1`). Old `-fast` is the default (`1`); old `-slow` is `-level 3`.
+
+## Migration from Lucene 10.5 to Lucene 10.6
+
+### Thai analysis: output of `ThaiAnalyzer`, its default stopwords and `ThaiTokenizer` changed
+
+Lucene 10.6 improves Thai analysis (GITHUB#16717, GITHUB#16718, GITHUB#16720, GITHUB#16722,
+GITHUB#16727). Most of it is additive: `ThaiCharFilter`, `ThaiNormalizationFilter`,
+`ThaiRepeatFilter` (SPI names `thai`, `thaiNormalization`, `thaiRepeat`), a user dictionary and a
+configurable buffer size for `ThaiTokenizer`. Three existing defaults also produce different terms
+than in 10.5 for some input. An index built with 10.5 may therefore stop matching queries analyzed
+with 10.6 until it is reindexed.
+
+- `ThaiAnalyzer` applies `ThaiCharFilter` to the input and runs `ThaiNormalizationFilter` and
+  `ThaiRepeatFilter` between `DecimalDigitFilter` and the stop filter. `normalize()` applies the
+  char filter and `ThaiNormalizationFilter` too. Text with decomposed Sara Am (`น` + `ํ` + `้` + `า`),
+  doubled Sara E (`เเ`), repeated or misordered vowel and tone marks, zero-width characters, or the
+  repetition mark `ๆ` is analyzed differently.
+- `ThaiAnalyzer.getDefaultStopSet()` returns a different list: 87 entries instead of 115. 30 words
+  that are common content words (for example `ผล`, `เปิด`, `ส่ง`, `ทาง`) were removed and `ทำให้` and
+  `สำหรับ` were added. Words that used to be dropped from the index are now indexed.
+- `ThaiTokenizer` treats whitespace as a safe place to cut when its 1024-character buffer fills,
+  in addition to line and paragraph separators. Only text with no sentence break for 1024 or more
+  characters is affected: a word that used to be split at the end of the buffer is no longer split,
+  and the cut points for the following text can move.
+
+Example (10.5 behavior built by hand, compared with `new ThaiAnalyzer()` from 10.6):
+
+| Input | 10.5 | 10.6 |
+|---|---|---|
+| `น` `ํ` `้` `า` + `ตาลทราย` | `นํ้าตาลทราย` | `น้ำตาล`, `ทราย` |
+| `เเมวนอนหลับ` | `เเมวน`, `อ`, `น`, `หลับ` | `แมว`, `นอน`, `หลับ` |
+| `ผลไม้และการเปิดตัวสินค้า` | `ผลไม้`, `ตัว`, `สินค้า` | `ผลไม้`, `เปิด`, `ตัว`, `สินค้า` |
+| `สวัสดีๆ` | `สวัสดี`, `ๆ` | `สวัสดี`, `สวัสดี` |
+
+To keep the 10.5 output (for example to search an existing index without reindexing), build the
+analyzer from the previous components. `legacyStopSet` is the `stopwords.txt` shipped with 10.5:
+
+```java
+Analyzer legacyThai =
+    new StopwordAnalyzerBase(legacyStopSet) {
+      @Override
+      protected TokenStreamComponents createComponents(String fieldName) {
+        Tokenizer source = new ThaiTokenizer();
+        TokenStream result = new LowerCaseFilter(source);
+        result = new DecimalDigitFilter(result);
+        result = new StopFilter(result, stopwords);
+        return new TokenStreamComponents(source, result);
+      }
+
+      @Override
+      protected TokenStream normalize(String fieldName, TokenStream in) {
+        return new DecimalDigitFilter(new LowerCaseFilter(in));
+      }
+    };
+```
+
+To restore the 10.5 buffer cut points as well, subclass `ThaiTokenizer` and override `isSafeEnd(char)`
+so that it only accepts U+000A, U+000D, U+0085, U+2028 and U+2029.
+
+## Migration from Lucene 10.4 to Lucene 10.5
+
+### `[Byte|Float]VectorSimilarityQuery` now performs adaptive HNSW graph traversal
+
+GITHUB#12679 added `[Byte|Float]VectorSimilarityQuery` to perform similarity-based vector searches, which match all
+(approximate) vectors above a similarity score to the query vector (specified by `resultSimilarity`). For Euclidean
+distance, this can be visualized as matching all vectors within a radius of the query vector.
+
+This query traversed and collected results from existing HNSW graphs. In Lucene 10.4, graph traversal was controlled by
+an explicit parameter (specified by `traversalSimilarity`), where all nodes scoring above this value were traversed, and
+all traversed nodes scoring above `resultSimilarity` were collected as results. To protect against adversarial cases of
+the entry node being far away from the query vector, traversal continued as long as better scoring nodes were available.
+Picking the right value for traversal could be a challenge, and search was susceptible to being stuck in a local maxima,
+terminating before reaching the vicinity of the query vector.
+
+GITHUB#15784: With Lucene 10.5, graph traversal is now adaptive: starts with a high buffer, which decays towards scores
+of nodes traversed but not collected, with a provided factor. The decay factor should lie in `[0, 1]`; with higher
+values producing better recall using more graph exploration. This gives a better recall v/s latency tradeoff than before
+in most cases, while still providing a knob for advanced users to tune quality and performance if needed (using the
+`decay` factor).
+
+For Lucene 10.4 behavior, use `[Byte|Float]VectorSimilarityQuery.Explicit` (deprecated, and will be removed in a future
+release). For Lucene 10.5 behavior, use `[Byte|Float]VectorSimilarityQuery.Adaptive`.
 
 ## Migration from Lucene 9.x to Lucene 10.0
 
@@ -50,13 +838,24 @@ As part of GITHUB#13820, GITHUB#13825, GITHUB#13830, this issue corrects DataInp
 to be public and not-final, allowing subclasses to override it. This change also removes the protected
 DataInput.readGroupVInt method: subclasses should delegate or reimplement it entirely.
 
+### Scoring and ranking across major versions
+
+Lucene does not guarantee identical scoring or document ranking behavior across
+major version upgrades. Changes may occur due to improvements or modifications
+in Similarity implementations, query execution, or related internals.
+
+Applications that require stable ranking behavior across upgrades should
+explicitly configure the Similarity used for indexing and searching rather than
+relying on defaults. Reviewing `CHANGES.txt` for intervening major versions is
+recommended when upgrading.
+
 ### OpenNLP dependency upgrade
 
-[Apache OpenNLP](https://opennlp.apache.org) 2.x opens the door to accessing various models via the ONNX runtime.  To migrate you will need to update any deprecated OpenNLP methods that you may be using.
+[Apache OpenNLP](https://opennlp.apache.org) 2.x opens the door to accessing various models via the ONNX runtime. To migrate you will need to update any deprecated OpenNLP methods that you may be using.
 
 ### Snowball dependency upgrade
 
-Snowball has folded the "German2" stemmer into their "German" stemmer, so there's no "German2" anymore.  For Lucene APIs (TokenFilter, TokenFilterFactory) that accept String, "German2" will be mapped to "German" to avoid breaking users. If you were previously creating German2Stemmer instances, you'll need to change your code to create GermanStemmer instances instead.  For more information see https://snowballstem.org/algorithms/german2/stemmer.html
+Snowball has folded the "German2" stemmer into their "German" stemmer, so there's no "German2" anymore. For Lucene APIs (TokenFilter, TokenFilterFactory) that accept String, "German2" will be mapped to "German" to avoid breaking users. If you were previously creating German2Stemmer instances, you'll need to change your code to create GermanStemmer instances instead. For more information see <https://snowballstem.org/algorithms/german2/stemmer.html>
 
 ### Romanian analysis
 
@@ -83,6 +882,7 @@ Instead, call storedFields()/termVectors() to return an instance which can fetch
 and will be garbage-collected as usual.
 
 For example:
+
 ```java
 TopDocs hits = searcher.search(query, 10);
 StoredFields storedFields = reader.storedFields();
@@ -116,16 +916,9 @@ behind the scenes. It is the responsibility of the caller to call
 
 ### RegExp optional complement syntax has been deprecated
 
-Support for the optional complement syntax (`~`) has been deprecated.
-The `COMPLEMENT` syntax flag has been removed and replaced by the
-`DEPRECATED_COMPLEMENT` flag. Users wanting to enable the deprecated
-complement support can do so by explicitly passing a syntax flags that
-has `DEPRECATED_COMPLEMENT` when creating a `RegExp`. For example:
-`new RegExp("~(foo)", RegExp.DEPRECATED_COMPLEMENT)`.
-
-Alternatively, and quite commonly, a more simple _complement bracket expression_,
-`[^...]`, may be a suitable replacement, For example, `[^fo]` matches any
-character that is not an `f` or `o`.
+The optional complement syntax (`~`) is deprecated. Prefer complement bracket
+expressions (`[^...]`) instead. For example, `[^fo]` matches any character that
+is not an `f` or `o`.
 
 ### DocValuesFieldExistsQuery, NormsFieldExistsQuery and KnnVectorFieldExistsQuery removed in favor of FieldExistsQuery (LUCENE-10436)
 
@@ -157,7 +950,6 @@ for the currently-positioned document (doing so will result in undefined behavio
 `Directory#openChecksumInput` no longer takes in `IOContext` as a parameter, and will always use value
 `IOContext.READONCE` for opening internally, as that's the only valid usage pattern for checksum input.
 Callers should remove the parameter when calling this method.
-
 
 ### DaciukMihovAutomatonBuilder is renamed to StringsToAutomaton and made package-private
 
@@ -228,7 +1020,7 @@ access the members using method calls instead of field accesses. Affected classe
 - `TermAndVector` (GITHUB#13772)
 - Many basic Lucene classes, including `CollectionStatistics`, `TermStatistics` and `LeafMetadata` (GITHUB#13328)
 
-### Boolean flags on IOContext replaced with a new ReadAdvice enum.
+### Boolean flags on IOContext replaced with a new ReadAdvice enum
 
 The `readOnce`, `load` and `random` flags on `IOContext` have been replaced with a new `ReadAdvice`
 enum.
@@ -252,6 +1044,7 @@ To migrate, use a provided `CollectorManager` implementation that suits your use
 to follow the new API pattern. The straight forward approach would be to instantiate the single-threaded `Collector` in a wrapper `CollectorManager`.
 
 For example
+
 ```java
 public class CustomCollectorManager implements CollectorManager<CustomCollector, List<Object>> {
     @Override
@@ -282,12 +1075,12 @@ List<Object> results = searcher.search(query, new CustomCollectorManager());
 
 1. `IntField(String name, int value)`. Use `IntField(String, int, Field.Store)` with `Field.Store#NO` instead.
 2. `DoubleField(String name, double value)`. Use `DoubleField(String, double, Field.Store)` with `Field.Store#NO` instead.
-2. `FloatField(String name, float value)`. Use `FloatField(String, float, Field.Store)` with `Field.Store#NO` instead.
-3. `LongField(String name, long value)`. Use `LongField(String, long, Field.Store)` with `Field.Store#NO` instead.
-4. `LongPoint#newDistanceFeatureQuery(String field, float weight, long origin, long pivotDistance)`. Use `LongField#newDistanceFeatureQuery` instead
-5. `BooleanQuery#TooManyClauses`, `BooleanQuery#getMaxClauseCount()`, `BooleanQuery#setMaxClauseCount()`. Use `IndexSearcher#TooManyClauses`, `IndexSearcher#getMaxClauseCount()`, `IndexSearcher#setMaxClauseCount()` instead
-6. `ByteBuffersDataInput#size()`. Use `ByteBuffersDataInput#length()` instead
-7. `SortedSetDocValuesFacetField#label`. `FacetsConfig#pathToString(String[])` can be applied to path as a replacement if string path is desired.
+3. `FloatField(String name, float value)`. Use `FloatField(String, float, Field.Store)` with `Field.Store#NO` instead.
+4. `LongField(String name, long value)`. Use `LongField(String, long, Field.Store)` with `Field.Store#NO` instead.
+5. `LongPoint#newDistanceFeatureQuery(String field, float weight, long origin, long pivotDistance)`. Use `LongField#newDistanceFeatureQuery` instead
+6. `BooleanQuery#TooManyClauses`, `BooleanQuery#getMaxClauseCount()`, `BooleanQuery#setMaxClauseCount()`. Use `IndexSearcher#TooManyClauses`, `IndexSearcher#getMaxClauseCount()`, `IndexSearcher#setMaxClauseCount()` instead
+7. `ByteBuffersDataInput#size()`. Use `ByteBuffersDataInput#length()` instead
+8. `SortedSetDocValuesFacetField#label`. `FacetsConfig#pathToString(String[])` can be applied to path as a replacement if string path is desired.
 
 ### Auto I/O throttling disabled by default in ConcurrentMergeScheduler (GITHUB#13293)
 
@@ -366,7 +1159,6 @@ to the new coordinates:
 |org.apache.lucene:lucene-analyzers-phonetic  |org.apache.lucene:lucene-analysis-phonetic  |
 |org.apache.lucene:lucene-analyzers-smartcn   |org.apache.lucene:lucene-analysis-smartcn   |
 |org.apache.lucene:lucene-analyzers-stempel   |org.apache.lucene:lucene-analysis-stempel   |
-
 
 ### LucenePackage class removed (LUCENE-10260)
 
@@ -491,7 +1283,7 @@ User dictionary now strictly validates if the (concatenated) segment is the same
 unexpected runtime exceptions or behaviours.
 For example, these entries are not allowed at all and an exception is thrown when loading the dictionary file.
 
-```
+```text
 # concatenated "日本経済新聞" does not match the surface form "日経新聞"
 日経新聞,日本 経済 新聞,ニホン ケイザイ シンブン,カスタム名詞
 
@@ -559,7 +1351,7 @@ is discouraged in favor of the default `MMapDirectory`.
 ### Similarity.SimScorer.computeXXXFactor methods removed (LUCENE-8014)
 
 `SpanQuery` and `PhraseQuery` now always calculate their slops as
-`(1.0 / (1.0 + distance))`.  Payload factor calculation is performed by
+`(1.0 / (1.0 + distance))`. Payload factor calculation is performed by
 `PayloadDecoder` in the `lucene-queries` module.
 
 ### Scorer must produce positive scores (LUCENE-7996)
@@ -573,9 +1365,9 @@ As a side-effect of this change, negative boosts are now rejected and
 
 ### CustomScoreQuery, BoostedQuery and BoostingQuery removed (LUCENE-8099)
 
-Instead use `FunctionScoreQuery` and a `DoubleValuesSource` implementation.  `BoostedQuery`
+Instead use `FunctionScoreQuery` and a `DoubleValuesSource` implementation. `BoostedQuery`
 and `BoostingQuery` may be replaced by calls to `FunctionScoreQuery.boostByValue()` and
-`FunctionScoreQuery.boostByQuery()`.  To replace more complex calculations in
+`FunctionScoreQuery.boostByQuery()`. To replace more complex calculations in
 `CustomScoreQuery`, use the `lucene-expressions` module:
 
 ```java
@@ -593,7 +1385,6 @@ Changing `IndexOptions` for a field on the fly will now result into an
 `IllegalArgumentException`. If a field is indexed
 (`FieldType.indexOptions() != IndexOptions.NONE`) then all documents must have
 the same index options for that field.
-
 
 ### IndexSearcher.createNormalizedWeight() removed (LUCENE-8242)
 
@@ -672,7 +1463,7 @@ Lucene.
 ### LeafCollector.setScorer() now takes a Scorable rather than a Scorer (LUCENE-6228)
 
 `Scorer` has a number of methods that should never be called from `Collector`s, for example
-those that advance the underlying iterators.  To hide these, `LeafCollector.setScorer()`
+those that advance the underlying iterators. To hide these, `LeafCollector.setScorer()`
 now takes a `Scorable`, an abstract class that scorers can extend, with methods
 `docId()` and `score()`.
 
@@ -826,7 +1617,7 @@ classes were `@Deprecated` starting with 9.0. Users are encouraged to rely on th
 taxonomy facet encodings where possible. If custom formats are needed, users will need
 to manage the indexed data on their own and create new `Facet` implementations to use it.
 
-### `Weight#scorerSupplier` is declared abstract, and `Weight#scorer` methd is marked final
+### `Weight#scorerSupplier` is declared abstract, and `Weight#scorer` method is marked final
 
 The `Weight#scorerSupplier` method is now declared abstract, compelling child classes to implement the ScorerSupplier
 interface. Additionally, `Weight#scorer` is now declared final, with its implementation being delegated to
@@ -909,10 +1700,10 @@ removed in favour of the newly introduced `search(LeafReaderContextPartition[] p
 ### Indexing vectors with 8 bit scalar quantization is no longer supported but 7 and 4 bit quantization still work (GITHUB#13519)
 
 8 bit scalar vector quantization is no longer supported: it was buggy
-starting in 9.11 (GITHUB#13197).  4 and 7 bit quantization are still
-supported.  Existing (9.11) Lucene indices that previously used 8 bit
+starting in 9.11 (GITHUB#13197). 4 and 7 bit quantization are still
+supported. Existing (9.11) Lucene indices that previously used 8 bit
 quantization can still be read/searched but the results from
-`KNN*VectorQuery` are silently buggy.  Further 8 bit quantized vector
+`KNN*VectorQuery` are silently buggy. Further 8 bit quantized vector
 indexing into such (9.11) indices is not permitted, so your path
 forward if you wish to continue using the same 9.11 index is to index
 additional vectors into the same field with either 4 or 7 bit

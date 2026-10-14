@@ -25,7 +25,6 @@ import org.apache.lucene.monitor.CandidateMatcher;
 import org.apache.lucene.monitor.QueryMatch;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.TermQuery;
-import org.junit.Test;
 
 public class TestCandidateMatcherVisibility {
 
@@ -36,7 +35,6 @@ public class TestCandidateMatcherVisibility {
     return QueryMatch.SIMPLE_MATCHER.createMatcher(searcher);
   }
 
-  @Test
   public void testMatchQueryVisibleOutsidePackage() throws IOException {
     CandidateMatcher<QueryMatch> matcher = newCandidateMatcher();
     // This should compile from outside org.apache.lucene.monitor package
@@ -45,7 +43,6 @@ public class TestCandidateMatcherVisibility {
     matcher.matchQuery("test", new TermQuery(new Term("test_field")), Collections.emptyMap());
   }
 
-  @Test
   public void testReportErrorVisibleOutsidePackage() {
     CandidateMatcher<QueryMatch> matcher = newCandidateMatcher();
     // This should compile from outside org.apache.lucene.monitor package
@@ -54,7 +51,6 @@ public class TestCandidateMatcherVisibility {
     matcher.reportError("test", new RuntimeException("test exception"));
   }
 
-  @Test
   public void testFinishVisibleOutsidePackage() {
     CandidateMatcher<QueryMatch> matcher = newCandidateMatcher();
     // This should compile from outside org.apache.lucene.monitor package

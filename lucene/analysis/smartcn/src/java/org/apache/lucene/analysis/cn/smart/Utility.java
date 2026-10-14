@@ -44,7 +44,7 @@ public class Utility {
   public static final String SPACES = " 　\t\r\n";
 
   /** Maximum bigram frequency (used in the smoothing function). */
-  public static final int MAX_FREQUENCE = 2079997 + 80000;
+  public static final int MAX_FREQUENCY = 2079997 + 80000;
 
   /**
    * compare two arrays starting at the specified offsets.

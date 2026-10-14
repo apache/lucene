@@ -183,6 +183,11 @@ public class TestDateRangePrefixTree extends LuceneTestCase {
   };
 
   private void roundTrip(Calendar calOrig) throws ParseException {
+    if (!TEST_ASSERTS_ENABLED) {
+      // If we're running without assertions, this test won't trigger.
+      return;
+    }
+
     Calendar cal = (Calendar) calOrig.clone();
     while (true) {
       String calString;
@@ -227,7 +232,9 @@ public class TestDateRangePrefixTree extends LuceneTestCase {
       try {
         tree.clearFieldsAfter(cal, prevPrecField);
       } catch (AssertionError e) {
-        if (e.getMessage().equals("Calendar underflow")) return;
+        if (e.getMessage().equals("Calendar underflow")) {
+          return;
+        }
         throw e;
       }
     }
@@ -297,8 +304,8 @@ public class TestDateRangePrefixTree extends LuceneTestCase {
                   })
               .getCause()
               .getMessage();
-      assertTrue(causeMessage + " has actual delimeter", causeMessage.contains("Z"));
-      assertTrue(causeMessage + " has expected delimeter", causeMessage.contains(":"));
+      assertTrue(causeMessage + " has actual delimiter", causeMessage.contains("Z"));
+      assertTrue(causeMessage + " has expected delimiter", causeMessage.contains(":"));
       assertFalse(causeMessage + " has no input", causeMessage.contains("2000-11-10"));
     }
     expectThrows(

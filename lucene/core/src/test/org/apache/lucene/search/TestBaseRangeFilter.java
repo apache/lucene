@@ -36,7 +36,6 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Test;
 
 public class TestBaseRangeFilter extends LuceneTestCase {
 
@@ -209,7 +208,6 @@ public class TestBaseRangeFilter extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testPad() {
 
     int[] tests = new int[] {-9999999, -99560, -100, -3, -1, 0, 3, 9, 10, 1000, 999999999};

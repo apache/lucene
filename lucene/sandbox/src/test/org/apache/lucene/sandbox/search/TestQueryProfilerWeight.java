@@ -149,7 +149,7 @@ public class TestQueryProfilerWeight extends LuceneTestCase {
   }
 
   public void testPropagateMatches() throws IOException {
-    Query query = new MatchAllDocsQuery();
+    Query query = MatchAllDocsQuery.INSTANCE;
     Weight fakeWeight = new FakeWeight(query);
     QueryProfilerBreakdown profile = new QueryProfilerBreakdown();
     QueryProfilerWeight profileWeight = new QueryProfilerWeight(fakeWeight, profile);
@@ -157,7 +157,7 @@ public class TestQueryProfilerWeight extends LuceneTestCase {
   }
 
   public void testPropagateExplain() throws IOException {
-    Query query = new MatchAllDocsQuery();
+    Query query = MatchAllDocsQuery.INSTANCE;
     Weight fakeWeight = new FakeWeight(query);
     QueryProfilerBreakdown profile = new QueryProfilerBreakdown();
     QueryProfilerWeight profileWeight = new QueryProfilerWeight(fakeWeight, profile);
@@ -165,7 +165,7 @@ public class TestQueryProfilerWeight extends LuceneTestCase {
   }
 
   public void testPropagateScorer() throws IOException {
-    Query query = new MatchAllDocsQuery();
+    Query query = MatchAllDocsQuery.INSTANCE;
     Weight fakeWeight = new FakeWeight(query);
     QueryProfilerBreakdown profile = new QueryProfilerBreakdown();
     QueryProfilerWeight profileWeight = new QueryProfilerWeight(fakeWeight, profile);
@@ -173,7 +173,7 @@ public class TestQueryProfilerWeight extends LuceneTestCase {
   }
 
   public void testPropagateTopLevelScoringClause() throws IOException {
-    Query query = new MatchAllDocsQuery();
+    Query query = MatchAllDocsQuery.INSTANCE;
     Weight fakeWeight = new FakeWeight(query);
     QueryProfilerBreakdown profile = new QueryProfilerBreakdown();
     QueryProfilerWeight profileWeight = new QueryProfilerWeight(fakeWeight, profile);

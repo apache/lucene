@@ -22,6 +22,7 @@ import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -477,7 +478,47 @@ public class TestDisjunctionMaxQuery extends LuceneTestCase {
   public void testRewriteEmpty() throws Exception {
     DisjunctionMaxQuery q = new DisjunctionMaxQuery(Collections.emptyList(), 0.0f);
     Query rewritten = s.rewrite(q);
-    Query expected = new MatchNoDocsQuery();
+    Query expected = MatchNoDocsQuery.INSTANCE;
+    assertEquals(expected, rewritten);
+  }
+
+  public void testRewriteAllMatchNoDocs() throws Exception {
+    // All disjuncts rewrite to MatchNoDocsQuery -> should return MatchNoDocsQuery
+    Query sub1 = new MatchNoDocsQuery("test1");
+    Query sub2 = new MatchNoDocsQuery("test2");
+    DisjunctionMaxQuery q = new DisjunctionMaxQuery(Arrays.asList(sub1, sub2), 0.0f);
+    Query rewritten = s.rewrite(q);
+    assertEquals(MatchNoDocsQuery.INSTANCE, rewritten);
+  }
+
+  public void testRewriteSingleSurvivor() throws Exception {
+    // One disjunct rewrites to MatchNoDocsQuery, other matches -> should return the matching one
+    Query sub = tq("hed", "albino");
+    DisjunctionMaxQuery q =
+        new DisjunctionMaxQuery(Arrays.asList(sub, new MatchNoDocsQuery("test")), 0.0f);
+    Query rewritten = s.rewrite(q);
+    assertEquals(sub, rewritten);
+  }
+
+  public void testRewriteFilterMatchNoDocs() throws Exception {
+    // Mixed: some MatchNoDocsQuery, some real queries -> should filter out MatchNoDocsQuery
+    Query sub1 = tq("hed", "albino");
+    Query sub2 = tq("hed", "elephant");
+    DisjunctionMaxQuery q =
+        new DisjunctionMaxQuery(Arrays.asList(sub1, sub2, new MatchNoDocsQuery("test")), 0.0f);
+    Query rewritten = s.rewrite(q);
+    DisjunctionMaxQuery expected = new DisjunctionMaxQuery(Arrays.asList(sub1, sub2), 0.0f);
+    assertEquals(expected, rewritten);
+  }
+
+  public void testRewriteFilterMatchNoDocsWithTieBreaker() throws Exception {
+    // Verify tie breaker multiplier is preserved when filtering MatchNoDocsQuery
+    Query sub1 = tq("hed", "albino");
+    Query sub2 = tq("hed", "elephant");
+    DisjunctionMaxQuery q =
+        new DisjunctionMaxQuery(Arrays.asList(sub1, sub2, new MatchNoDocsQuery("test")), 0.1f);
+    Query rewritten = s.rewrite(q);
+    DisjunctionMaxQuery expected = new DisjunctionMaxQuery(Arrays.asList(sub1, sub2), 0.1f);
     assertEquals(expected, rewritten);
   }
 
@@ -491,7 +532,7 @@ public class TestDisjunctionMaxQuery extends LuceneTestCase {
   }
 
   /* Inspired from TestIntervals.testIntervalDisjunctionToStringStability */
-  public void testToStringOrderMatters() {
+  public void testCasesWhenDisjunctOrderMatters() {
     final int clauseNbr =
         random().nextInt(22) + 4; // ensure a reasonably large minimum number of clauses
     final String[] terms = new String[clauseNbr];
@@ -509,6 +550,13 @@ public class TestDisjunctionMaxQuery extends LuceneTestCase {
             Arrays.stream(terms).map((term) -> tq("test", term)).toList(), 1.0f);
 
     assertEquals(expected, source.toString(""));
+    Collection<Query> disjuncts = source.getDisjuncts();
+    assertEquals(terms.length, disjuncts.size());
+    int i = 0;
+    for (Query query : disjuncts) {
+      assertEquals(terms[i], ((TermQuery) query).getTerm().text());
+      i++;
+    }
   }
 
   public void testRandomTopDocs() throws Exception {

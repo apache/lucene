@@ -49,6 +49,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.PhraseQuery;
+import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
@@ -234,6 +235,8 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
     }
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testRandomExceptions() throws Throwable {
     if (VERBOSE) {
       System.out.println("\nTEST: start testRandomExceptions");
@@ -472,18 +475,14 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
     for (int i = 0; i < 10; i++) {
       try {
         w.addDocument(doc);
-      } catch (
-          @SuppressWarnings("unused")
-          RuntimeException re) {
+      } catch (RuntimeException _) {
         break;
       }
     }
 
     try {
       ((ConcurrentMergeScheduler) w.getConfig().getMergeScheduler()).sync();
-    } catch (
-        @SuppressWarnings("unused")
-        IllegalStateException ise) {
+    } catch (IllegalStateException _) {
       // OK: merge exc causes tragedy
     }
     assertTrue(testPoint.failed);
@@ -663,14 +662,12 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       writer.addDocument(doc);
       doc.add(newField("crash", "this should crash after 4 terms", DocCopyIterator.custom5));
       doc.add(newField("other", "this will not get indexed", DocCopyIterator.custom5));
-      try {
-        writer.addDocument(doc);
-        fail("did not hit expected exception");
-      } catch (IOException ioe) {
-        if (VERBOSE) {
-          System.out.println("TEST: hit expected exception");
-          ioe.printStackTrace(System.out);
-        }
+      IndexWriter finalWriter = writer;
+      Document finalDoc = doc;
+      IOException ioe = expectThrows(IOException.class, () -> finalWriter.addDocument(finalDoc));
+      if (VERBOSE) {
+        System.out.println("TEST: hit expected exception");
+        ioe.printStackTrace(System.out);
       }
 
       if (0 == i) {
@@ -960,13 +957,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
     for (int i = 0; i < 23; i++) {
       addDoc(writer);
       if ((i - 1) % 2 == 0) {
-        try {
-          writer.commit();
-        } catch (
-            @SuppressWarnings("unused")
-            IOException ioe) {
-          // expected
-        }
+        expectThrows(IOException.class, () -> writer.commit());
       }
     }
     ((ConcurrentMergeScheduler) writer.getConfig().getMergeScheduler()).sync();
@@ -1097,9 +1088,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       dir.setRandomIOExceptionRate(0.5);
       try {
         w.forceMerge(1);
-      } catch (
-          @SuppressWarnings("unused")
-          IllegalStateException ise) {
+      } catch (IllegalStateException _) {
         // expected
       } catch (IOException ioe) {
         if (ioe.getCause() == null) {
@@ -1110,9 +1099,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       // System.out.println("TEST: now close IW");
       try {
         w.close();
-      } catch (
-          @SuppressWarnings("unused")
-          IllegalStateException ise) {
+      } catch (IllegalStateException _) {
         // ok
       }
       dir.close();
@@ -1196,9 +1183,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
 
     try {
       writer.close();
-    } catch (
-        @SuppressWarnings("unused")
-        IllegalArgumentException ok) {
+    } catch (IllegalArgumentException _) {
       // ok
     }
 
@@ -1344,12 +1329,11 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
         new IndexWriter(
             dir,
             newIndexWriterConfig(new MockAnalyzer(random()))
-                .setMergePolicy(newLogMergePolicy(true))
+                .setMergePolicy(newLogMergePolicy())
                 .setUseCompoundFile(true));
-    MergePolicy lmp = writer.getConfig().getMergePolicy();
     // Force creation of CFS:
-    lmp.setNoCFSRatio(1.0);
-    lmp.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
+    writer.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(true);
+    writer.getConfig().getCodec().compoundFormat().setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
 
     // add 100 documents
     for (int i = 0; i < 100; i++) {
@@ -1731,7 +1715,6 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
           Field theField = new StoredField("foo", v);
           doc.add(theField);
           iw.addDocument(doc);
-          fail("didn't get expected exception");
         });
 
     assertNull(iw.getTragicException());
@@ -1760,7 +1743,6 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
           BytesRef v = null;
           theField.setBytesValue(v);
           iw.addDocument(doc);
-          fail("didn't get expected exception");
         });
 
     assertNull(iw.getTragicException());
@@ -1789,7 +1771,6 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
           Field theField = new StoredField("foo", v);
           doc.add(theField);
           iw.addDocument(doc);
-          fail("didn't get expected exception");
         });
 
     assertNull(iw.getTragicException());
@@ -1925,12 +1906,10 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       } catch (AssertionError ex) {
         // This is fine: we tripped IW's assert that all files it's about to fsync do exist:
         assertTrue(ex.getMessage().matches("file .* does not exist; files=\\[.*\\]"));
-      } catch (
-          @SuppressWarnings("unused")
-          CorruptIndexException ex) {
+      } catch (CorruptIndexException _) {
         // Exceptions are fine - we are running out of file handlers here
         continue;
-      } catch (@SuppressWarnings("unused") FileNotFoundException | NoSuchFileException ex) {
+      } catch (FileNotFoundException | NoSuchFileException _) {
         continue;
       }
       failure.clearDoFail();
@@ -2116,9 +2095,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
 
       try {
         iw.rollback();
-      } catch (
-          @SuppressWarnings("unused")
-          FakeIOException expected) {
+      } catch (FakeIOException _) {
         // ok, we randomly hit exc here
       }
 
@@ -2189,19 +2166,13 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
           // Flush new segment:
           DirectoryReader.open(w).close();
         }
-      } catch (
-          @SuppressWarnings("unused")
-          AlreadyClosedException ace) {
+      } catch (AlreadyClosedException _) {
         // OK: e.g. CMS hit the exc in BG thread and closed the writer
         break;
-      } catch (
-          @SuppressWarnings("unused")
-          FakeIOException fioe) {
+      } catch (FakeIOException _) {
         // OK: e.g. SMS hit the exception
         break;
-      } catch (
-          @SuppressWarnings("unused")
-          IllegalStateException ise) {
+      } catch (IllegalStateException _) {
         // OK: Merge-on-refresh refuses to run because IndexWriter hit a tragedy
         break;
       }
@@ -2252,16 +2223,14 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
               return true;
             }
           }) {
-        writer.rollback();
-        fail();
+        RuntimeException e = expectThrows(RuntimeException.class, () -> writer.rollback());
+        assertEquals("boom", e.getMessage());
+        assertEquals(
+            "has suppressed exceptions: " + Arrays.toString(e.getSuppressed()),
+            0,
+            e.getSuppressed().length);
+        assertNull(e.getCause());
       }
-    } catch (RuntimeException e) {
-      assertEquals("boom", e.getMessage());
-      assertEquals(
-          "has suppressed exceptions: " + Arrays.toString(e.getSuppressed()),
-          0,
-          e.getSuppressed().length);
-      assertNull(e.getCause());
     }
   }
 
@@ -2313,12 +2282,14 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
         doc.add(new IntPoint("point2d", random().nextInt(), random().nextInt()));
         writer.addDocument(new Document());
       }
-      try {
-        writer.commit();
-        fail();
-      } catch (RuntimeException e) {
-        assertEquals("boom", e.getMessage());
-      }
+      RuntimeException expected =
+          expectThrows(
+              RuntimeException.class,
+              () -> {
+                writer.commit();
+              });
+      assertEquals("boom", expected.getMessage());
+
       try {
         maybeFailDelete.set(true);
         writer.rollback();
@@ -2330,6 +2301,27 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       assertTrue(DirectoryReader.indexExists(dir));
       DirectoryReader.open(dir).close();
     }
+  }
+
+  public void testPerFieldFinishExceptionDoesNotCorruptStoredFields() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    iwc.setSimilarity(
+        new BM25Similarity() {
+          @Override
+          public long computeNorm(FieldInvertState state) {
+            return 0; // invalid return that triggers an exception
+          }
+        });
+    IndexWriter w = new IndexWriter(dir, iwc);
+
+    Document bad = new Document();
+    bad.add(new TextField("text", "hello world", Field.Store.NO));
+    expectThrows(IllegalStateException.class, () -> w.addDocument(bad));
+
+    w.commit();
+    w.close();
+    dir.close();
   }
 
   public void testExceptionJustBeforeFlushWithPointValues() throws Exception {

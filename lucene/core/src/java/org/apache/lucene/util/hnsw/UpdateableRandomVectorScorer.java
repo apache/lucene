@@ -37,7 +37,8 @@ public interface UpdateableRandomVectorScorer extends RandomVectorScorer {
   void setScoringOrdinal(int node) throws IOException;
 
   /** Creates a default scorer for random access vectors. */
-  abstract class AbstractUpdateableRandomVectorScorer implements UpdateableRandomVectorScorer {
+  abstract class AbstractUpdateableRandomVectorScorer
+      implements UpdateableRandomVectorScorer, HasKnnVectorValues {
     private final KnnVectorValues values;
 
     /**
@@ -62,6 +63,11 @@ public interface UpdateableRandomVectorScorer extends RandomVectorScorer {
     @Override
     public Bits getAcceptOrds(Bits acceptDocs) {
       return values.getAcceptOrds(acceptDocs);
+    }
+
+    @Override
+    public KnnVectorValues values() {
+      return values;
     }
   }
 }

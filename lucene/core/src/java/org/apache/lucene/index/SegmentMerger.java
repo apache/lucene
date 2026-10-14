@@ -23,10 +23,12 @@ import java.util.concurrent.TimeUnit;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.FieldsConsumer;
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.NormsConsumer;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsWriter;
+import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.StoredFieldsWriter;
 import org.apache.lucene.codecs.TermVectorsWriter;
 import org.apache.lucene.store.Directory;
@@ -59,18 +61,20 @@ final class SegmentMerger {
       Directory dir,
       FieldInfos.FieldNumbers fieldNumbers,
       IOContext context,
-      Executor intraMergeTaskExecutor)
+      Executor intraMergeTaskExecutor,
+      MergePolicy.OneMerge oneMerge)
       throws IOException {
     if (context.context() != IOContext.Context.MERGE) {
       throw new IllegalArgumentException(
           "IOContext.context should be MERGE; got: " + context.context());
     }
-    mergeState = new MergeState(readers, segmentInfo, infoStream, intraMergeTaskExecutor);
     mergeStateCreationThread = Thread.currentThread();
     directory = dir;
     this.codec = segmentInfo.getCodec();
     this.context = context;
     this.fieldInfosBuilder = new FieldInfos.Builder(fieldNumbers);
+    this.mergeState =
+        new MergeState(readers, segmentInfo, infoStream, intraMergeTaskExecutor, oneMerge);
     Version minVersion = Version.LATEST;
     for (CodecReader reader : readers) {
       Version leafMinVersion = reader.getMetaData().minVersion();
@@ -225,7 +229,7 @@ final class SegmentMerger {
     }
   }
 
-  public void mergeFieldInfos() {
+  private void mergeFieldInfos() {
     for (FieldInfos readerFieldInfos : mergeState.fieldInfos) {
       for (FieldInfo fi : readerFieldInfos) {
         fieldInfosBuilder.add(fi);
@@ -322,6 +326,19 @@ final class SegmentMerger {
               + " ["
               + numMerged
               + " docs]");
+    }
+  }
+
+  void cleanupMerge() throws IOException {
+    for (KnnVectorsReader reader : mergeState.knnVectorsReaders) {
+      if (reader != null) {
+        reader.finishMerge();
+      }
+    }
+    for (StoredFieldsReader reader : mergeState.storedFieldsReaders) {
+      if (reader != null) {
+        reader.finishMerge();
+      }
     }
   }
 }

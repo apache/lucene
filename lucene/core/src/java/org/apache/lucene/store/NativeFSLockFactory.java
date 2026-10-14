@@ -106,20 +106,13 @@ public final class NativeFSLockFactory extends FSLockFactory {
         Files.readAttributes(realPath, BasicFileAttributes.class).creationTime();
 
     if (LOCK_HELD.add(realPath.toString())) {
-      FileChannel channel = null;
-      FileLock lock = null;
+      NativeFSLock lock = null;
       try {
-        channel = FileChannel.open(realPath, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
-        lock = channel.tryLock();
-        if (lock != null) {
-          return new NativeFSLock(lock, channel, realPath, creationTime);
-        } else {
-          throw new LockObtainFailedException("Lock held by another program: " + realPath);
-        }
+        lock = tryLock(realPath, creationTime);
+        return lock;
       } finally {
-        if (lock == null) { // not successful - clear up and move out
-          IOUtils.closeWhileHandlingException(channel); // TODO: addSuppressed
-          clearLockHeld(realPath); // clear LOCK_HELD last
+        if (lock == null) {
+          clearLockHeld(realPath);
         }
       }
     } else {
@@ -127,7 +120,29 @@ public final class NativeFSLockFactory extends FSLockFactory {
     }
   }
 
-  private static final void clearLockHeld(Path path) throws IOException {
+  /**
+   * Attempts to obtain the lock without blocking.
+   *
+   * @return a NativeFSLock if successful
+   * @throws IOException if not successful
+   */
+  private static NativeFSLock tryLock(Path path, FileTime creationTime) throws IOException {
+    FileChannel channel = null;
+    try {
+      channel = FileChannel.open(path, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+      FileLock lock = channel.tryLock();
+      if (lock != null) {
+        return new NativeFSLock(lock, channel, path, creationTime);
+      } else {
+        throw new LockObtainFailedException("Lock held by another program: " + path);
+      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, channel);
+      throw t;
+    }
+  }
+
+  private static void clearLockHeld(Path path) throws IOException {
     boolean remove = LOCK_HELD.remove(path.toString());
     if (remove == false) {
       throw new AlreadyClosedException("Lock path was cleared but never marked as held: " + path);

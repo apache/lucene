@@ -182,7 +182,7 @@ public abstract class AbstractTestCase extends LuceneTestCase {
   }
 
   protected PhraseQuery toPhraseQuery(List<BytesRef> bytesRefs, String field) {
-    return new PhraseQuery(field, bytesRefs.toArray(new BytesRef[0]));
+    return new PhraseQuery(field, bytesRefs.toArray(BytesRef[]::new));
   }
 
   static final class BigramAnalyzer extends Analyzer {

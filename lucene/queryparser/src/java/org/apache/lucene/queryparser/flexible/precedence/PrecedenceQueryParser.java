@@ -44,8 +44,8 @@ public class PrecedenceQueryParser extends StandardQueryParser {
   /**
    * @see StandardQueryParser#StandardQueryParser(Analyzer)
    */
-  public PrecedenceQueryParser(Analyzer analyer) {
-    super(analyer);
+  public PrecedenceQueryParser(Analyzer analyzer) {
+    super(analyzer);
 
     setQueryNodeProcessor(new PrecedenceQueryNodeProcessorPipeline(getQueryConfigHandler()));
   }

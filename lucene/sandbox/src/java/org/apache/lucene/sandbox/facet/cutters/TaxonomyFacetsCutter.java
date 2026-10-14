@@ -130,7 +130,7 @@ public final class TaxonomyFacetsCutter implements FacetCutter {
       }
     }
 
-    int[] dimOrdToRollup = taxoReader.getBulkOrdinals(dimsToRollup.toArray(new FacetLabel[0]));
+    int[] dimOrdToRollup = taxoReader.getBulkOrdinals(dimsToRollup.toArray(FacetLabel[]::new));
 
     return new OrdinalIterator() {
       int currentIndex = 0;

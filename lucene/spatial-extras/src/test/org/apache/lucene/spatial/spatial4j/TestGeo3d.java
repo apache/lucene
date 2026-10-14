@@ -18,14 +18,12 @@
 package org.apache.lucene.spatial.spatial4j;
 
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 import org.locationtech.spatial4j.context.SpatialContext;
 import org.locationtech.spatial4j.exception.InvalidShapeException;
 import org.locationtech.spatial4j.shape.Shape;
 
 public class TestGeo3d extends LuceneTestCase {
 
-  @Test
   public void testWKT() throws Exception {
     Geo3dSpatialContextFactory factory = new Geo3dSpatialContextFactory();
     SpatialContext ctx = factory.newSpatialContext();
@@ -65,7 +63,6 @@ public class TestGeo3d extends LuceneTestCase {
     // assertTrue(s instanceof  Geo3dShape<?>);
   }
 
-  @Test
   public void testPolygonWithCoplanarPoints() {
     Geo3dSpatialContextFactory factory = new Geo3dSpatialContextFactory();
     SpatialContext ctx = factory.newSpatialContext();

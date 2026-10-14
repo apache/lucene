@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.search.highlight;
 
-import com.carrotsearch.randomizedtesting.annotations.Repeat;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.analysis.TokenStream;
@@ -360,8 +359,6 @@ public class TestTokenSources extends BaseTokenStreamTestCase {
     dir.close();
   }
 
-  @Repeat(iterations = 10)
-  // @Seed("947083AB20AB2D4F")
   public void testRandomizedRoundTrip() throws Exception {
     final int distinct = TestUtil.nextInt(random(), 1, 10);
 

@@ -17,7 +17,8 @@
 package org.apache.lucene.analysis.phonetic;
 
 import java.io.IOException;
-import java.util.LinkedList;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import org.apache.commons.codec.language.DoubleMetaphone;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
@@ -27,7 +28,7 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 /** Filter for DoubleMetaphone (supporting secondary codes) */
 public final class DoubleMetaphoneFilter extends TokenFilter {
 
-  private final LinkedList<State> remainingTokens = new LinkedList<>();
+  private final Deque<State> remainingTokens = new ArrayDeque<>();
   private final DoubleMetaphone encoder = new DoubleMetaphone();
   private final boolean inject;
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
@@ -52,7 +53,7 @@ public final class DoubleMetaphoneFilter extends TokenFilter {
 
       if (!remainingTokens.isEmpty()) {
         // clearAttributes();  // not currently necessary
-        restoreState(remainingTokens.removeFirst());
+        restoreState(remainingTokens.poll());
         return true;
       }
 

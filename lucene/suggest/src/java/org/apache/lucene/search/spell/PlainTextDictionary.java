@@ -78,7 +78,6 @@ public class PlainTextDictionary implements Dictionary {
       if (done) {
         return null;
       }
-      boolean success = false;
       BytesRef result;
       try {
         String line;
@@ -90,11 +89,9 @@ public class PlainTextDictionary implements Dictionary {
           IOUtils.close(in);
           result = null;
         }
-        success = true;
-      } finally {
-        if (!success) {
-          IOUtils.closeWhileHandlingException(in);
-        }
+      } catch (Throwable t) {
+        IOUtils.closeWhileSuppressingExceptions(t, in);
+        throw t;
       }
       return result;
     }

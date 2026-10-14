@@ -24,6 +24,6 @@ import org.apache.lucene.store.IndexInput;
  */
 public interface HasIndexSlice {
 
-  /** Returns an IndexInput from which to read this instance's values. */
+  /** Returns an IndexInput from which to read this instance's values, or null if not available. */
   IndexInput getSlice();
 }

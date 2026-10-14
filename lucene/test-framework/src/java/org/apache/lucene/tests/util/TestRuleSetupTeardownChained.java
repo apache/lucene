@@ -23,9 +23,9 @@ import org.junit.runners.model.Statement;
 
 /**
  * Make sure {@link LuceneTestCase#setUp()} and {@link LuceneTestCase#tearDown()} were invoked even
- * if they have been overriden. We assume nobody will call these out of non-overriden methods (they
- * have to be public by contract, unfortunately). The top-level methods just set a flag that is
- * checked upon successful execution of each test case.
+ * if they have been overridden. We assume nobody will call these out of non-overridden methods
+ * (they have to be public by contract, unfortunately). The top-level methods just set a flag that
+ * is checked upon successful execution of each test case.
  */
 class TestRuleSetupTeardownChained implements TestRule {
   /**

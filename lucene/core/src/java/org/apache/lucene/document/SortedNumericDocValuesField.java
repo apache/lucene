@@ -25,17 +25,17 @@ import org.apache.lucene.search.Query;
  * Field that stores a per-document <code>long</code> values for scoring, sorting or value
  * retrieval. Here's an example usage:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   document.add(new SortedNumericDocValuesField(name, 5L));
  *   document.add(new SortedNumericDocValuesField(name, 14L));
- * </pre>
+ * </code></pre>
  *
  * <p>Note that if you want to encode doubles or floats with proper sort order, you will need to
  * encode them with {@link org.apache.lucene.util.NumericUtils}:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   document.add(new SortedNumericDocValuesField(name, NumericUtils.floatToSortableInt(-5.3f)));
- * </pre>
+ * </code></pre>
  *
  * <p>If you also need to store the value, you should add a separate {@link StoredField} instance.
  */

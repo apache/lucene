@@ -276,10 +276,9 @@ class GeoWideNorthRectangle extends GeoBaseBBox {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof GeoWideNorthRectangle)) {
+    if (!(o instanceof GeoWideNorthRectangle other)) {
       return false;
     }
-    GeoWideNorthRectangle other = (GeoWideNorthRectangle) o;
     return super.equals(other) && other.LLHC.equals(LLHC) && other.LRHC.equals(LRHC);
   }
 

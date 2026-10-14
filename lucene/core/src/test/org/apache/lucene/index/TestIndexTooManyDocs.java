@@ -43,7 +43,7 @@ public class TestIndexTooManyDocs extends LuceneTestCase {
     IndexWriter writer = new IndexWriter(dir, config);
     try {
       IndexWriter.setMaxDocs(numMaxDoc);
-      int numThreads = 5 + random().nextInt(5);
+      int numThreads = atLeast(2);
       Thread[] threads = new Thread[numThreads];
       CountDownLatch latch = new CountDownLatch(numThreads);
       CountDownLatch indexingDone = new CountDownLatch(numThreads - 2);

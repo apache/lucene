@@ -92,15 +92,14 @@ public class TestHalfFloatPoint extends LuceneTestCase {
     values = ArrayUtil.copyOfSubArray(values, 0, o);
 
     int iters = atLeast(1000000);
+    var rnd = nonAssertingRandom(random());
     for (int iter = 0; iter < iters; ++iter) {
       float f;
-      if (random().nextBoolean()) {
-        int floatBits = random().nextInt();
+      if (rnd.nextBoolean()) {
+        int floatBits = rnd.nextInt();
         f = Float.intBitsToFloat(floatBits);
       } else {
-        f =
-            (float)
-                ((2 * random().nextFloat() - 1) * Math.pow(2, TestUtil.nextInt(random(), -16, 16)));
+        f = (float) ((2 * rnd.nextFloat() - 1) * Math.pow(2, TestUtil.nextInt(rnd, -16, 16)));
       }
       float rounded = HalfFloatPoint.shortBitsToHalfFloat(HalfFloatPoint.halfFloatToShortBits(f));
       if (Float.isFinite(f) == false) {

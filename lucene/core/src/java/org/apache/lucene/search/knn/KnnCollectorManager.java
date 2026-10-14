@@ -38,4 +38,25 @@ public interface KnnCollectorManager {
   KnnCollector newCollector(
       int visitedLimit, KnnSearchStrategy searchStrategy, LeafReaderContext context)
       throws IOException;
+
+  /**
+   * Return a new {@link KnnCollector} instance, generally with a specific k value, scaled per leaf
+   * statistics
+   *
+   * @param visitedLimit the maximum number of nodes that the search is allowed to visit
+   * @param searchStrategy the optional search strategy configuration
+   * @param context the leaf reader context
+   * @param k the number of neighbors to collect, this is the expected number of results
+   * @return a new KnnCollector instance
+   * @throws IOException if there is an error creating the collector
+   */
+  default KnnCollector newOptimisticCollector(
+      int visitedLimit, KnnSearchStrategy searchStrategy, LeafReaderContext context, int k)
+      throws IOException {
+    return null;
+  }
+
+  default boolean isOptimistic() {
+    return false;
+  }
 }

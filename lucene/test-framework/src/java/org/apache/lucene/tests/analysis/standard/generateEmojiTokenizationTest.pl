@@ -30,7 +30,7 @@ unless (GetOptions("version=s" => \$version) && $version =~ /\d+\.\d+/) {
         if ($version);
     exit 1;
 }
-my $url = "http://www.unicode.org/Public/emoji/${version}/emoji-test.txt";
+my $url = "https://www.unicode.org/Public/emoji/${version}/emoji-test.txt";
 my $underscore_version = $version;
 $underscore_version =~ s/\./_/g;
 my $class_name = "EmojiTokenizationTestUnicode_${underscore_version}";
@@ -133,10 +133,11 @@ sub get_URL_content {
     my $url = shift;
     print STDERR "Retrieving '$url'...";
     my $user_agent = LWP::UserAgent->new;
+    $user_agent->agent("curl");
     my $request = HTTP::Request->new(GET => $url);
     my $response = $user_agent->request($request);
     unless ($response->is_success) {
-        print STDERR "Failed to download '$url':\n\t",$response->status_line,"\n";
+        print STDERR "Failed to download '$url':\n\t",$response->status_line,$response->content,"\n";
         exit 1;
     }
     print STDERR "done.\n";

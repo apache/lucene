@@ -113,7 +113,7 @@ public class ParentChildrenBlockJoinQuery extends Query {
 
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-        // Childs docs only reside in a single segment, so no need to evaluate all segments
+        // Child docs only reside in a single segment, so no need to evaluate all segments
         if (context.ord != readerIndex) {
           return null;
         }

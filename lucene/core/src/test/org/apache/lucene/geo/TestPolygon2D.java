@@ -417,7 +417,7 @@ public class TestPolygon2D extends LuceneTestCase {
       for (int j = 1; j < numVertices; ++j) {
         double[] a = new double[] {0d, 0d}; // center of poly
         double[] b = new double[] {polygon.getPolyLat(j - 1), polygon.getPolyLon(j - 1)};
-        // occassionally test pancake triangles
+        // occasionally test pancake triangles
         double[] c =
             random().nextBoolean()
                 ? new double[] {polygon.getPolyLat(j), polygon.getPolyLon(j)}

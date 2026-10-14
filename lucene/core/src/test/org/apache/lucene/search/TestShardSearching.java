@@ -70,6 +70,7 @@ public class TestShardSearching extends ShardSearchingTestBase {
     }
   }
 
+  @Nightly // TODO: -Ptests.seed=A148FC8983CFA7A - takes 12 seconds. very slow. wall-clock dependent
   public void testSimple() throws Exception {
     final int numNodes = TestUtil.nextInt(random(), 1, 10);
 

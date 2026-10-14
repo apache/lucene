@@ -30,6 +30,7 @@ import org.apache.lucene.codecs.simpletext.SimpleTextCodec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
+import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -41,21 +42,12 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.InfoStream;
 
-/*
-  Verify we can read the pre-2.1 file format, do searches
-  against it, and add documents to it.
-*/
-
 public class TestIndexFileDeleter extends LuceneTestCase {
 
   public void testDeleteLeftoverFiles() throws IOException {
     Directory dir = newDirectory();
 
-    MergePolicy mergePolicy = newLogMergePolicy(true, 10);
-
-    // This test expects all of its segments to be in CFS
-    mergePolicy.setNoCFSRatio(1.0);
-    mergePolicy.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
+    MergePolicy mergePolicy = newLogMergePolicy(10);
 
     IndexWriter writer =
         new IndexWriter(
@@ -64,12 +56,15 @@ public class TestIndexFileDeleter extends LuceneTestCase {
                 .setMaxBufferedDocs(10)
                 .setMergePolicy(mergePolicy)
                 .setUseCompoundFile(true));
+    // This test expects all of its segments to be in CFS
+    writer.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(true);
+    writer.getConfig().getCodec().compoundFormat().setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
 
     int i;
     for (i = 0; i < 35; i++) {
       addDoc(writer, i);
     }
-    writer.getConfig().getMergePolicy().setNoCFSRatio(0.0);
+    writer.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(false);
     writer.getConfig().setUseCompoundFile(false);
     for (; i < 45; i++) {
       addDoc(writer, i);
@@ -440,7 +435,6 @@ public class TestIndexFileDeleter extends LuceneTestCase {
         });
 
     IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random()));
-    // iwc.setMergeScheduler(new SerialMergeScheduler());
     MergeScheduler ms = iwc.getMergeScheduler();
     if (ms instanceof ConcurrentMergeScheduler) {
       final ConcurrentMergeScheduler suppressFakeFail =
@@ -486,8 +480,12 @@ public class TestIndexFileDeleter extends LuceneTestCase {
         }
       } catch (Throwable t) {
         if (t.toString().contains("fake fail")
-            || (t.getCause() != null && t.getCause().toString().contains("fake fail"))) {
-          // ok
+            || (t.getCause() != null && t.getCause().toString().contains("fake fail"))
+            || t instanceof AlreadyClosedException) {
+          // All these conditions are fine.
+          // AlreadyClosedException can happen if the injected exception (RuntimeException("fake
+          // fail")) happened inside the concurrent merges and this closed the index writer's
+          // reader pool.
         } else {
           throw t;
         }

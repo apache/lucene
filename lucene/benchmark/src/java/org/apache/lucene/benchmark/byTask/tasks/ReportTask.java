@@ -112,7 +112,7 @@ public abstract class ReportTask extends PerfTask {
     StringBuilder sb = new StringBuilder();
     sb.append(Format.format(task.getName(), longestOp));
     String round = (stat.getRound() >= 0 ? "" + stat.getRound() : "-");
-    sb.append(Format.formatPaddLeft(round, ROUND));
+    sb.append(Format.formatPadLeft(round, ROUND));
     sb.append(getRunData().getConfig().getColsValuesForValsByRound(stat.getRound()));
     sb.append(Format.format(stat.getNumRuns(), RUNCNT));
     sb.append(Format.format(stat.getCount() / stat.getNumRuns(), RECCNT));
@@ -126,10 +126,10 @@ public abstract class ReportTask extends PerfTask {
 
   protected Report genPartialReport(
       int reported, LinkedHashMap<String, TaskStats> partOfTasks, int totalSize) {
-    String longetOp = longestOp(partOfTasks.values());
+    String longest = longestOp(partOfTasks.values());
     boolean first = true;
     StringBuilder sb = new StringBuilder();
-    sb.append(tableTitle(longetOp));
+    sb.append(tableTitle(longest));
     sb.append(newline);
     int lineNum = 0;
     for (final TaskStats stat : partOfTasks.values()) {
@@ -137,7 +137,7 @@ public abstract class ReportTask extends PerfTask {
         sb.append(newline);
       }
       first = false;
-      String line = taskReportLine(longetOp, stat);
+      String line = taskReportLine(longest, stat);
       lineNum++;
       if (partOfTasks.size() > 2 && lineNum % 2 == 0) {
         line = line.replace("   ", " - ");

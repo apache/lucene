@@ -91,8 +91,9 @@ public final class Circle extends LatLonGeometry {
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    if (!(o instanceof Circle)) return false;
-    Circle circle = (Circle) o;
+    if (!(o instanceof Circle circle)) {
+      return false;
+    }
     return Double.compare(lat, circle.lat) == 0
         && Double.compare(lon, circle.lon) == 0
         && Double.compare(radiusMeters, circle.radiusMeters) == 0;

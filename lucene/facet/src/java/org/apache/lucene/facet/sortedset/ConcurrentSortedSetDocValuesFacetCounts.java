@@ -33,7 +33,6 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiDocValues;
-import org.apache.lucene.index.MultiDocValues.MultiSortedSetDocValues;
 import org.apache.lucene.index.OrdinalMap;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.SortedDocValues;
@@ -281,8 +280,8 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends AbstractSortedSetDo
     // TODO: is this right?  really, we need a way to
     // verify that this ordinalMap "matches" the leaves in
     // matchingDocs...
-    if (dv instanceof MultiDocValues.MultiSortedSetDocValues && matchingDocs.size() > 1) {
-      ordinalMap = ((MultiSortedSetDocValues) dv).mapping;
+    if (dv instanceof MultiDocValues.MultiSortedSetDocValues multiDv && matchingDocs.size() > 1) {
+      ordinalMap = multiDv.mapping;
     } else {
       ordinalMap = null;
     }
@@ -324,8 +323,8 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends AbstractSortedSetDo
     // TODO: is this right?  really, we need a way to
     // verify that this ordinalMap "matches" the leaves in
     // matchingDocs...
-    if (dv instanceof MultiDocValues.MultiSortedSetDocValues) {
-      ordinalMap = ((MultiSortedSetDocValues) dv).mapping;
+    if (dv instanceof MultiDocValues.MultiSortedSetDocValues multiDv) {
+      ordinalMap = multiDv.mapping;
     } else {
       ordinalMap = null;
     }

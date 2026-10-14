@@ -26,7 +26,7 @@ import org.gradle.api.Project;
  * Configure dependency checks plugin which validates and updates the top-level {@code
  * versions.lock}, taking care of cross-configuration consistency of transitive dependencies.
  *
- * @see "https://github.com/apache/lucene/blob/main/help/dependencies.txt"
+ * @see "https://github.com/apache/lucene/blob/main/help/dependencies.md"
  * @see
  *     "https://github.com/carrotsearch/gradle-build-infra#plugin-comcarrotsearchgradlebuildinfradependencychecksdependencychecksplugin"
  */
@@ -39,7 +39,7 @@ public class ConfigureLockFilePlugin extends LuceneGradlePlugin {
     rootProject.allprojects(
         project -> {
           // We don't care about the build infra deps in the lock file.
-          if (project.getPath().equals(":lucene:build-tools:build-infra-shadow")) {
+          if (project.getPath().equals(":build-tools:build-infra-shadow")) {
             return;
           }
 

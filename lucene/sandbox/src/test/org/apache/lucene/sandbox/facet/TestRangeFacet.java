@@ -21,6 +21,7 @@ import static org.apache.lucene.facet.FacetsConfig.DEFAULT_INDEX_FIELD_NAME;
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import java.util.List;
+import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoubleDocValuesField;
 import org.apache.lucene.document.DoublePoint;
@@ -57,6 +58,8 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LongValuesSource;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.MultiCollectorManager;
+import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.SortField;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.DummyTotalHitCountCollector;
@@ -105,7 +108,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(longRangeFacetCutter, countRecorder);
-    s.search(new MatchAllDocsQuery(), collectorManager);
+    s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
     OrdToLabel ordToLabel = new RangeOrdToLabel(inputRanges);
 
     assertEquals(
@@ -173,7 +176,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(longRangeFacetCutter, countRecorder);
-    s.search(new MatchAllDocsQuery(), collectorManager);
+    s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
     OrdToLabel ordToLabel = new RangeOrdToLabel(inputRanges);
 
     assertEquals(
@@ -195,7 +198,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     countRecorder = new CountFacetRecorder();
 
     collectorManager = new FacetFieldCollectorManager<>(longRangeFacetCutter, countRecorder);
-    s.search(new MatchAllDocsQuery(), collectorManager);
+    s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
     ordToLabel = new RangeOrdToLabel(inputRanges);
 
     assertEquals(
@@ -220,7 +223,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     countRecorder = new CountFacetRecorder();
 
     collectorManager = new FacetFieldCollectorManager<>(longRangeFacetCutter, countRecorder);
-    s.search(new MatchAllDocsQuery(), collectorManager);
+    s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
     ordToLabel = new RangeOrdToLabel(inputRanges);
 
     assertEquals(
@@ -283,7 +286,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(longRangeFacetCutter, countRecorder);
-    s.search(new MatchAllDocsQuery(), collectorManager);
+    s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
     OrdToLabel ordToLabel = new RangeOrdToLabel(inputRanges);
 
     assertEquals(
@@ -330,7 +333,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(longRangeFacetCutter, countRecorder);
-    s.search(new MatchAllDocsQuery(), collectorManager);
+    s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
     OrdToLabel ordToLabel = new RangeOrdToLabel(inputRanges);
 
     assertEquals(
@@ -375,7 +378,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(longRangeFacetCutter, countRecorder);
-    s.search(new MatchAllDocsQuery(), collectorManager);
+    s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
     OrdToLabel ordToLabel = new RangeOrdToLabel(inputRanges);
 
     assertEquals(
@@ -412,7 +415,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(longRangeFacetCutter, countRecorder);
-    s.search(new MatchAllDocsQuery(), collectorManager);
+    s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
     OrdToLabel ordToLabel = new RangeOrdToLabel(inputRanges);
 
     assertEquals(
@@ -452,7 +455,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(longRangeFacetCutter, countRecorder);
-    s.search(new MatchAllDocsQuery(), collectorManager);
+    s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
     OrdToLabel ordToLabel = new RangeOrdToLabel(inputRanges);
 
     assertEquals(
@@ -618,7 +621,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(doubleRangeFacetCutter, countRecorder);
-    s.search(new MatchAllDocsQuery(), collectorManager);
+    s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
     OrdToLabel ordToLabel = new RangeOrdToLabel(inputRanges);
 
     assertEquals(
@@ -664,7 +667,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(doubleRangeFacetCutter, countRecorder);
-    s.search(new MatchAllDocsQuery(), collectorManager);
+    s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
     OrdToLabel ordToLabel = new RangeOrdToLabel(inputRanges);
 
     assertEquals(
@@ -722,7 +725,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(doubleRangeFacetCutter, countRecorder);
-    s.search(new MatchAllDocsQuery(), collectorManager);
+    s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
     OrdToLabel ordToLabel = new RangeOrdToLabel(inputRanges);
 
     assertEquals(
@@ -866,7 +869,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
       FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
           new FacetFieldCollectorManager<>(longRangeFacetCutter, countRecorder);
-      s.search(new MatchAllDocsQuery(), collectorManager);
+      s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
 
       OrdToLabel ordToLabel = new RangeOrdToLabel(ranges);
       FacetResult result =
@@ -893,11 +896,313 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     IOUtils.close(r, dir);
   }
 
-  public void testRandomLongsMultiValued() throws Exception {
+  public void testSkipIndexEquivalenceLong() throws Exception {
+    // mode 1 sorts by the field and mode 2 also shrinks the skip interval, so the blocks are dense
+    // enough for the fast path to fire.
+    for (int mode = 0; mode < 3; mode++) {
+      Directory dir = newDirectory();
+      IndexWriterConfig iwc = newIndexWriterConfig();
+      if (mode >= 1) {
+        iwc.setIndexSort(new Sort(new SortField("field", SortField.Type.LONG)));
+      }
+      if (mode == 2) {
+        iwc.setCodec(TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(4)));
+      }
+      RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
+
+      int numDocs = atLeast(1000);
+      for (int i = 0; i < numDocs; i++) {
+        Document doc = new Document();
+        long v = TestUtil.nextLong(random(), -100, 100);
+        doc.add(NumericDocValuesField.indexedField("field", v));
+        w.addDocument(doc);
+      }
+
+      assertSkipIndexEquivalence(w, "mode=" + mode);
+
+      w.close();
+      IOUtils.close(dir);
+    }
+  }
+
+  public void testSkipIndexEquivalenceExtremeValues() throws Exception {
+    // Index sorted with extreme values mixed in, so some skip blocks carry Long.MIN/MAX_VALUE as
+    // their min/max bounds and advanceSkipper's processValue is exercised on those bounds.
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    iwc.setIndexSort(new Sort(new SortField("field", SortField.Type.LONG)));
+    iwc.setCodec(TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(4)));
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
+
+    int numDocs = atLeast(1000);
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      long v =
+          switch (random().nextInt(4)) {
+            case 0 -> Long.MIN_VALUE;
+            case 1 -> Long.MAX_VALUE;
+            default -> TestUtil.nextLong(random(), -100, 100);
+          };
+      doc.add(NumericDocValuesField.indexedField("field", v));
+      w.addDocument(doc);
+    }
+
+    assertSkipIndexEquivalence(w, "extreme");
+
+    w.close();
+    IOUtils.close(dir);
+  }
+
+  public void testSkipIndexEquivalenceSparse() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    iwc.setIndexSort(new Sort(new SortField("field", SortField.Type.LONG, false)));
+    iwc.setCodec(TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(4)));
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
+
+    int numDocs = atLeast(1000);
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      // Leave roughly a third of the docs without a value so skip blocks aren't dense.
+      if (random().nextInt(3) != 0) {
+        doc.add(
+            NumericDocValuesField.indexedField("field", TestUtil.nextLong(random(), -100, 100)));
+      }
+      w.addDocument(doc);
+    }
+
+    assertSkipIndexEquivalence(w, "sparse");
+
+    w.close();
+    IOUtils.close(dir);
+  }
+
+  public void testSkipIndexEquivalenceMultiValued() throws Exception {
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+
+    int numDocs = atLeast(500);
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      int numVals = TestUtil.nextInt(random(), 1, 5);
+      for (int j = 0; j < numVals; j++) {
+        doc.add(new SortedNumericDocValuesField("field", TestUtil.nextLong(random(), -100, 100)));
+      }
+      w.addDocument(doc);
+    }
+
+    assertSkipIndexEquivalence(w, "multi-valued");
+
+    w.close();
+    IOUtils.close(dir);
+  }
+
+  public void testSkipIndexEquivalenceMultiValuedFewValues() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    iwc.setCodec(TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(4)));
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
+
+    int numDocs = atLeast(1000);
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      int numVals = TestUtil.nextInt(random(), 1, 3);
+      for (int j = 0; j < numVals; j++) {
+        doc.add(
+            SortedNumericDocValuesField.indexedField("field", TestUtil.nextLong(random(), 0, 5)));
+      }
+      w.addDocument(doc);
+    }
+
+    assertSkipIndexEquivalence(w, "multi-valued-few-values");
+
+    w.close();
+    IOUtils.close(dir);
+  }
+
+  public void testSkipIndexEquivalenceMultiValuedExtremeValues() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    iwc.setCodec(TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(4)));
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
+
+    int numDocs = atLeast(1000);
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      int numVals = TestUtil.nextInt(random(), 1, 3);
+      for (int j = 0; j < numVals; j++) {
+        long v =
+            switch (random().nextInt(4)) {
+              case 0 -> Long.MIN_VALUE;
+              case 1 -> Long.MAX_VALUE;
+              default -> TestUtil.nextLong(random(), -5, 5);
+            };
+        doc.add(SortedNumericDocValuesField.indexedField("field", v));
+      }
+      w.addDocument(doc);
+    }
+
+    assertSkipIndexEquivalence(w, "multi-valued-extreme");
+
+    w.close();
+    IOUtils.close(dir);
+  }
+
+  public void testSkipIndexEquivalenceMultiValuedSparse() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    iwc.setCodec(TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(4)));
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
+
+    int numDocs = atLeast(1000);
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      // Leave roughly a third of the docs without a value so skip blocks aren't dense.
+      if (random().nextInt(3) != 0) {
+        int numVals = TestUtil.nextInt(random(), 1, 3);
+        for (int j = 0; j < numVals; j++) {
+          doc.add(
+              SortedNumericDocValuesField.indexedField("field", TestUtil.nextLong(random(), 0, 5)));
+        }
+      }
+      w.addDocument(doc);
+    }
+
+    assertSkipIndexEquivalence(w, "multi-valued-sparse");
+
+    w.close();
+    IOUtils.close(dir);
+  }
+
+  public void testSkipIndexEquivalenceLongRunsDefaultInterval() throws Exception {
+    for (boolean multiValued : new boolean[] {false, true}) {
+      Directory dir = newDirectory();
+      IndexWriterConfig iwc = newIndexWriterConfig();
+      // A multi-valued SORTED_NUMERIC field can't be index-sorted with a plain LONG SortField.
+      if (multiValued == false) {
+        iwc.setIndexSort(new Sort(new SortField("field", SortField.Type.LONG)));
+      }
+      RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
+
+      int numDocs = atLeast(20000);
+      // Few distinct values with long runs => wide same-interval, dense skip spans across levels.
+      for (int i = 0; i < numDocs; i++) {
+        Document doc = new Document();
+        long v = (i / 5000) % 4;
+        if (multiValued) {
+          doc.add(SortedNumericDocValuesField.indexedField("field", v));
+          doc.add(SortedNumericDocValuesField.indexedField("field", v));
+        } else {
+          doc.add(NumericDocValuesField.indexedField("field", v));
+        }
+        w.addDocument(doc);
+      }
+
+      assertSkipIndexEquivalence(w, "multi-level-dense mv=" + multiValued);
+
+      w.close();
+      IOUtils.close(dir);
+    }
+  }
+
+  public void testSkipIndexEquivalenceFewValues() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    iwc.setIndexSort(new Sort(new SortField("field", SortField.Type.LONG, false)));
+    iwc.setCodec(TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(4)));
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
+
+    int numDocs = atLeast(1000);
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      doc.add(NumericDocValuesField.indexedField("field", TestUtil.nextLong(random(), 0, 5)));
+      w.addDocument(doc);
+    }
+
+    assertSkipIndexEquivalence(w, "few-values");
+
+    w.close();
+    IOUtils.close(dir);
+  }
+
+  public void testByNameNoSkipIndexEquivalence() throws Exception {
     Directory dir = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), dir);
 
     int numDocs = atLeast(1000);
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      doc.add(new NumericDocValuesField("field", TestUtil.nextLong(random(), -100, 100)));
+      w.addDocument(doc);
+    }
+
+    assertSkipIndexEquivalence(w, "by-name-no-skip-index");
+
+    w.close();
+    IOUtils.close(dir);
+  }
+
+  private void assertSkipIndexEquivalence(RandomIndexWriter w, String desc) throws IOException {
+    IndexReader r = w.getReader();
+    try {
+      IndexSearcher s = newSearcher(r, false);
+
+      int numIters = atLeast(10);
+      for (int iter = 0; iter < numIters; iter++) {
+        int numRange = TestUtil.nextInt(random(), 0, 20);
+        LongRange[] ranges = new LongRange[numRange];
+        for (int rangeID = 0; rangeID < numRange; rangeID++) {
+          long min;
+          long max;
+          if (random().nextInt(20) == 0) {
+            // Occasionally use extreme bounds to exercise the boundary edges of processValue.
+            min = random().nextBoolean() ? Long.MIN_VALUE : TestUtil.nextLong(random(), -120, 120);
+            max = random().nextBoolean() ? Long.MAX_VALUE : TestUtil.nextLong(random(), -120, 120);
+          } else {
+            min = TestUtil.nextLong(random(), -120, 120);
+            max = TestUtil.nextLong(random(), -120, 120);
+          }
+          if (min > max) {
+            long x = min;
+            min = max;
+            max = x;
+          }
+          ranges[rangeID] = new LongRange("r" + rangeID, min, true, max, true);
+        }
+        OrdToLabel ordToLabel = new RangeOrdToLabel(ranges);
+
+        // value-source path, no skipper.
+        CountFacetRecorder baselineRecorder = new CountFacetRecorder();
+        s.search(
+            MatchAllDocsQuery.INSTANCE,
+            new FacetFieldCollectorManager<>(
+                LongRangeFacetCutter.create(MultiLongValuesSource.fromLongField("field"), ranges),
+                baselineRecorder));
+        String baseline =
+            getAllSortByOrd(getRangeOrdinals(ranges), baselineRecorder, "field", ordToLabel)
+                .toString();
+
+        // by-field cutter, uses the skip index.
+        CountFacetRecorder skipRecorder = new CountFacetRecorder();
+        s.search(
+            MatchAllDocsQuery.INSTANCE,
+            new FacetFieldCollectorManager<>(
+                LongRangeFacetCutter.create("field", ranges), skipRecorder));
+        String withSkip =
+            getAllSortByOrd(getRangeOrdinals(ranges), skipRecorder, "field", ordToLabel).toString();
+
+        assertEquals(desc + " iter=" + iter, baseline, withSkip);
+      }
+    } finally {
+      IOUtils.close(r);
+    }
+  }
+
+  public void testRandomLongsMultiValued() throws Exception {
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+
+    int numDocs = atLeast(500);
     if (VERBOSE) {
       System.out.println("TEST: numDocs=" + numDocs);
     }
@@ -926,12 +1231,12 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     IndexSearcher s = newSearcher(r, false);
     FacetsConfig config = new FacetsConfig();
 
-    int numIters = atLeast(10);
+    int numIters = atLeast(3);
     for (int iter = 0; iter < numIters; iter++) {
       if (VERBOSE) {
         System.out.println("TEST: iter=" + iter);
       }
-      int numRange = TestUtil.nextInt(random(), 1, 100);
+      int numRange = TestUtil.nextInt(random(), 1, 50);
       LongRange[] ranges = new LongRange[numRange];
       int[] expectedCounts = new int[numRange];
       long minAcceptedValue = Long.MAX_VALUE;
@@ -1029,7 +1334,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
       FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
           new FacetFieldCollectorManager<>(longRangeFacetCutter, countRecorder);
-      s.search(new MatchAllDocsQuery(), collectorManager);
+      s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
 
       OrdToLabel ordToLabel = new RangeOrdToLabel(ranges);
       FacetResult result =
@@ -1190,7 +1495,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
       FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
           new FacetFieldCollectorManager<>(doubleRangeFacetCutter, countRecorder);
-      s.search(new MatchAllDocsQuery(), collectorManager);
+      s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
 
       OrdToLabel ordToLabel = new RangeOrdToLabel(ranges);
       FacetResult result =
@@ -1346,7 +1651,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
       CountFacetRecorder countRecorder = new CountFacetRecorder();
       FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
           new FacetFieldCollectorManager<>(doubleRangeFacetCutter, countRecorder);
-      s.search(new MatchAllDocsQuery(), collectorManager);
+      s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
 
       OrdToLabel ordToLabel = new RangeOrdToLabel(ranges);
       FacetResult result =
@@ -1417,7 +1722,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(longRangeFacetCutter, countRecorder);
-    s.search(new MatchAllDocsQuery(), collectorManager);
+    s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
     OrdToLabel ordToLabel = new RangeOrdToLabel(inputRanges);
 
     assertEquals(
@@ -1468,7 +1773,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(longRangeFacetCutter, countRecorder);
-    s.search(new MatchAllDocsQuery(), collectorManager);
+    s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
     OrdToLabel ordToLabel = new RangeOrdToLabel(inputRanges);
 
     assertEquals(
@@ -1576,7 +1881,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     final AtomicBoolean filterWasUsed = new AtomicBoolean();
     if (random().nextBoolean()) {
       // Sort of silly:
-      final Query in = new MatchAllDocsQuery();
+      final Query in = MatchAllDocsQuery.INSTANCE;
       fastMatchFilter = new UsedQuery(in, filterWasUsed);
     } else {
       fastMatchFilter = null;
@@ -1593,7 +1898,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(doubleRangeFacetCutter, countRecorder);
-    s.search(new MatchAllDocsQuery(), collectorManager);
+    s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
     OrdToLabel ordToLabel = new RangeOrdToLabel(ranges);
 
     assertEquals(

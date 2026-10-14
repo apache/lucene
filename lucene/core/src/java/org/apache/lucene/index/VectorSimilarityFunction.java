@@ -19,6 +19,7 @@ package org.apache.lucene.index;
 import static org.apache.lucene.util.VectorUtil.cosine;
 import static org.apache.lucene.util.VectorUtil.dotProduct;
 import static org.apache.lucene.util.VectorUtil.dotProductScore;
+import static org.apache.lucene.util.VectorUtil.normalizeDistanceToUnitInterval;
 import static org.apache.lucene.util.VectorUtil.normalizeToUnitInterval;
 import static org.apache.lucene.util.VectorUtil.scaleMaxInnerProductScore;
 import static org.apache.lucene.util.VectorUtil.squareDistance;
@@ -34,12 +35,17 @@ public enum VectorSimilarityFunction {
   EUCLIDEAN {
     @Override
     public float compare(float[] v1, float[] v2) {
-      return 1 / (1 + squareDistance(v1, v2));
+      return normalizeDistanceToUnitInterval(squareDistance(v1, v2));
     }
 
     @Override
     public float compare(byte[] v1, byte[] v2) {
       return 1 / (1f + squareDistance(v1, v2));
+    }
+
+    @Override
+    public float compare(short[] v1, short[] v2) {
+      return normalizeDistanceToUnitInterval(squareDistance(v1, v2));
     }
   },
 
@@ -60,6 +66,11 @@ public enum VectorSimilarityFunction {
     public float compare(byte[] v1, byte[] v2) {
       return dotProductScore(v1, v2);
     }
+
+    @Override
+    public float compare(short[] v1, short[] v2) {
+      return normalizeToUnitInterval(dotProduct(v1, v2));
+    }
   },
 
   /**
@@ -78,6 +89,11 @@ public enum VectorSimilarityFunction {
     public float compare(byte[] v1, byte[] v2) {
       return (1 + cosine(v1, v2)) / 2;
     }
+
+    @Override
+    public float compare(short[] v1, short[] v2) {
+      return normalizeToUnitInterval(cosine(v1, v2));
+    }
   },
 
   /**
@@ -93,6 +109,11 @@ public enum VectorSimilarityFunction {
 
     @Override
     public float compare(byte[] v1, byte[] v2) {
+      return scaleMaxInnerProductScore(dotProduct(v1, v2));
+    }
+
+    @Override
+    public float compare(short[] v1, short[] v2) {
       return scaleMaxInnerProductScore(dotProduct(v1, v2));
     }
   };
@@ -117,4 +138,14 @@ public enum VectorSimilarityFunction {
    * @return the value of the similarity function applied to the two vectors
    */
   public abstract float compare(byte[] v1, byte[] v2);
+
+  /**
+   * Calculates a similarity score between the two vectors with a specified function. Higher
+   * similarity scores correspond to closer vectors. Each short represents a vector dimension.
+   *
+   * @param v1 a vector
+   * @param v2 another vector, of the same dimension
+   * @return the value of the similarity function applied to the two vectors
+   */
+  public abstract float compare(short[] v1, short[] v2);
 }

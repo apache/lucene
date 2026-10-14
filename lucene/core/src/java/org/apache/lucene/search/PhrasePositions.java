@@ -31,6 +31,7 @@ final class PhrasePositions {
   int rptGroup = -1; // >=0 indicates that this is a repeating PP
   int rptInd; // index in the rptGroup
   final Term[] terms; // for repetitions initialization
+  int freq; // cached frequency for the current document
 
   PhrasePositions(PostingsEnum postings, int o, int ord, Term[] terms) {
     this.postings = postings;
@@ -39,8 +40,8 @@ final class PhrasePositions {
     this.terms = terms;
   }
 
-  final void firstPosition() throws IOException {
-    count = postings.freq(); // read first pos
+  void firstPosition() throws IOException {
+    count = freq; // use cached frequency
     nextPosition();
   }
 
@@ -49,7 +50,7 @@ final class PhrasePositions {
    * location - offset</code>, so that a matching exact phrase is easily identified when all
    * PhrasePositions have exactly the same <code>position</code>.
    */
-  final boolean nextPosition() throws IOException {
+  boolean nextPosition() throws IOException {
     if (count-- > 0) { // read subsequent pos's
       position = postings.nextPosition() - offset;
       return true;

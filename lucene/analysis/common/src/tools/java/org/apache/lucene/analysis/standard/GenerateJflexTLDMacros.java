@@ -119,7 +119,7 @@ public class GenerateJflexTLDMacros {
 
   private final SortedMap<String, Boolean> processedTLDsLongestFirst =
       new TreeMap<>(
-          Comparator.comparing(String::length).reversed().thenComparing(String::compareTo));
+          Comparator.comparingInt(String::length).reversed().thenComparing(String::compareTo));
 
   // list position indicates suffix length
   private final List<SortedSet<String>> TLDsBySuffixLength = new ArrayList<>();
@@ -226,10 +226,11 @@ public class GenerateJflexTLDMacros {
   private void writeOutput() throws IOException {
     Files.writeString(
         tldListFile,
-        "# Generated from IANA TLD Database (gradlew generateTlds)."
+        "# Generated from IANA TLD Database (gradlew generateTlds).\n"
             + processedTLDsLongestFirst.keySet().stream()
                 .sorted()
-                .collect(Collectors.joining("\n")),
+                .map(v -> v + "\n")
+                .collect(Collectors.joining()),
         StandardCharsets.UTF_8);
 
     final DateFormat dateFormat =

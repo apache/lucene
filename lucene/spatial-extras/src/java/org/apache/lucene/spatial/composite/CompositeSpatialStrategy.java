@@ -87,7 +87,7 @@ public class CompositeSpatialStrategy extends SpatialStrategy {
     List<Field> fields = new ArrayList<>();
     Collections.addAll(fields, indexStrategy.createIndexableFields(shape));
     Collections.addAll(fields, geometryStrategy.createIndexableFields(shape));
-    return fields.toArray(new Field[fields.size()]);
+    return fields.toArray(Field[]::new);
   }
 
   @Override

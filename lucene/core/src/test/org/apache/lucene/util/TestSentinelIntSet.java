@@ -18,12 +18,10 @@ package org.apache.lucene.util;
 
 import java.util.HashSet;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 /** */
 public class TestSentinelIntSet extends LuceneTestCase {
 
-  @Test
   public void test() throws Exception {
     SentinelIntSet set = new SentinelIntSet(10, -1);
     assertFalse(set.exists(50));
@@ -43,7 +41,6 @@ public class TestSentinelIntSet extends LuceneTestCase {
     assertEquals(24, set.rehashCount);
   }
 
-  @Test
   public void testRandom() throws Exception {
     for (int i = 0; i < 10000; i++) {
       int initSz = random().nextInt(20);
@@ -51,7 +48,7 @@ public class TestSentinelIntSet extends LuceneTestCase {
       int maxVal =
           (random().nextBoolean() ? random().nextInt(50) : random().nextInt(Integer.MAX_VALUE)) + 1;
 
-      HashSet<Integer> a = CollectionUtil.newHashSet(initSz);
+      HashSet<Integer> a = HashSet.newHashSet(initSz);
       SentinelIntSet b = new SentinelIntSet(initSz, -1);
 
       for (int j = 0; j < num; j++) {

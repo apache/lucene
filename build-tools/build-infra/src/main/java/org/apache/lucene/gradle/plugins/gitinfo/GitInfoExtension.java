@@ -17,6 +17,7 @@
 package org.apache.lucene.gradle.plugins.gitinfo;
 
 import org.gradle.api.file.FileSystemLocation;
+import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
 
@@ -32,4 +33,10 @@ public abstract class GitInfoExtension {
    * @return Return the location of {@code .git} directory (or file, if worktrees are used).
    */
   public abstract Property<FileSystemLocation> getDotGitDir();
+
+  /**
+   * @return Return a set of all versioned and non-versioned files (that are not ignored by {@code
+   *     .gitignore}).
+   */
+  public abstract ListProperty<String> getAllNonIgnoredProjectFiles();
 }

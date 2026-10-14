@@ -20,7 +20,6 @@ package org.apache.lucene.analysis.core;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 import org.apache.lucene.analysis.Analyzer;
@@ -728,7 +727,7 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
    */
   public void testPathsNotLost() throws IOException {
     int wordCount = random().nextInt(5) + 5;
-    List<BytesRef> acceptStrings = new LinkedList<>();
+    List<BytesRef> acceptStrings = new ArrayList<>();
     for (int i = 0; i < wordCount; i++) {
       int wordLen = random().nextInt(5) + 5;
       BytesRef ref = new BytesRef(wordLen);
@@ -815,167 +814,4 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
     }
     return accept;
   }
-
-  /*
-   * This method checks if strings that lead to the accept state of the not flattened TokenStream
-   * also lead to the accept state in the flattened TokenStream. This gets complicated when you
-   * factor in holes. The FlattenGraphFilter will remove alternate paths that are made entirely of
-   * holes. An alternate path of Holes is indistinguishable from a path that just has long
-   * lengths(ex: testStrangelyNumberedNodes). Also alternate paths that end in multiple holes could
-   * be interpreted as sequential holes after the branching has converged during flattening. This
-   * leads to a lot of weird logic about navigating around holes that may compromise the accuracy of
-   * this test.
-   *
-   * @param flattened flattened TokenStream
-   * @param notFlattened not flattened TokenStream
-   * @throws IOException on error creating Automata
-   */
-  /* private void checkGeneralization(TokenStream flattened, TokenStream notFlattened)
-      throws IOException {
-    TokenStreamToAutomaton tsta = new TokenStreamToAutomaton();
-
-    List<LinkedList<Integer>> acceptStrings = getAcceptStrings(tsta.toAutomaton(notFlattened));
-    checkAcceptStrings(acceptStrings, tsta.toAutomaton(flattened));
-    flattened.close();
-    notFlattened.close();
-  }*/
-
-  /*
-   * gets up to 10000 strings that lead to accept state in the given automaton.
-   *
-   * @param automaton automaton
-   * @return list of accept sequences
-   */
-  /* private List<LinkedList<Integer>> getAcceptStrings(Automaton automaton) {
-    List<LinkedList<Integer>> acceptedSequences = new LinkedList<>();
-    LinkedList<Integer> prefix = new LinkedList<>();
-    // state 0 is always the start node
-    // Particularly branching automatons can create lots of possible acceptable strings. limit to
-    // the first 10K
-    buildAcceptStringRecursive(automaton, 0, prefix, acceptedSequences, 10000);
-    return acceptedSequences;
-  }*/
-
-  /*
-   * @param automaton automaton to generate strings from
-   * @param state state to start at
-   * @param prefix string prefix
-   * @param acceptedSequences List of strings build so far.
-   * @param limit maximum number of acceptedSequences.
-   */
-  /*private void buildAcceptStringRecursive(
-      Automaton automaton,
-      int state,
-      LinkedList<Integer> prefix,
-      List<LinkedList<Integer>> acceptedSequences,
-      int limit) {
-    if (acceptedSequences.size() == limit) {
-      return;
-    }
-    if (automaton.isAccept(state)) {
-      acceptedSequences.add(new LinkedList<>(prefix));
-      return;
-    }
-    int numTransitions = automaton.getNumTransitions(state);
-    Transition transition = new Transition();
-    for (int i = 0; i < numTransitions; i++) {
-      automaton.getTransition(state, i, transition);
-      // min and max are the same transitions made from TokenStreamToAutomaton
-      prefix.addLast(transition.min);
-      buildAcceptStringRecursive(automaton, transition.dest, prefix, acceptedSequences, limit);
-      prefix.removeLast();
-    }
-  }
-
-  private void checkAcceptStrings(List<LinkedList<Integer>> acceptSequence, Automaton automaton) {
-    for (LinkedList<Integer> acceptString : acceptSequence) {
-      assertTrue(
-          "String did not lead to accept state " + acceptString,
-          recursivelyValidateWithHoles(acceptString, 0, automaton));
-    }
-  }
-
-  private boolean recursivelyValidateWithHoles(
-      LinkedList<Integer> acceptSequence, int state, Automaton automaton) {
-    if (acceptSequence.isEmpty()) {
-      return automaton.isAccept(state);
-    }
-
-    Integer curr = acceptSequence.pop();
-    int numTransitions = automaton.getNumTransitions(state);
-    Transition transition = new Transition();
-
-    boolean accept = false;
-    // Automaton can be NFA, so we need to check all matching transitions
-    for (int i = 0; i < numTransitions; i++) {
-      automaton.getTransition(state, i, transition);
-      if (transition.min <= curr && transition.max >= curr) {
-        accept = recursivelyValidateWithHoles(acceptSequence, transition.dest, automaton);
-        // Factoring in flattened graphs the space covered by a hole may be bigger in the flattened
-        // graph.
-        // Try consuming more steps with holes.
-        if (accept == false
-            && transition.min == TokenStreamToAutomaton.HOLE
-            && transition.max == TokenStreamToAutomaton.HOLE) {
-          acceptSequence.push(TokenStreamToAutomaton.HOLE);
-          acceptSequence.push(TokenStreamToAutomaton.POS_SEP);
-          accept = recursivelyValidateWithHoles(acceptSequence, transition.dest, automaton);
-          acceptSequence.pop();
-          acceptSequence.pop();
-        }
-      } else if (transition.min == TokenStreamToAutomaton.HOLE
-          && transition.max == TokenStreamToAutomaton.HOLE
-          && automaton.getNumTransitions(transition.dest) > 0) {
-        //consume multiple holes in the automaton
-        // clear POS_INC
-        automaton.getTransition(transition.dest, 0, transition);
-        acceptSequence.push(curr);
-        accept = recursivelyValidateWithHoles(acceptSequence, transition.dest, automaton);
-        acceptSequence.pop();
-      } else if(curr == TokenStreamToAutomaton.HOLE) {
-        //consume non-holes in the automaton with holes
-        while (transition.min != TokenStreamToAutomaton.POS_SEP
-                && automaton.getNumTransitions(transition.dest) > 0) {
-          automaton.getTransition(transition.dest, 0, transition);
-        }
-        acceptSequence.push(curr);
-        accept = recursivelyValidateWithHoles(acceptSequence, transition.dest, automaton);
-        acceptSequence.pop();
-      }
-      if (accept) {
-        break;
-      }
-    }
-    // Flatten graph filter will remove side paths that are only Holes. Gaps may also change size as
-    // graph is flattened.
-    // Traverse over them if curr is a hole to make sure the gap is kept
-    if (accept == false && curr == TokenStreamToAutomaton.HOLE && acceptSequence.size() > 0) {
-      // get rid of the separator
-      acceptSequence.pop();
-
-      for (int i = 0; i < numTransitions; i++) {
-        automaton.getTransition(state, i, transition);
-        //advance to the next POS_SEP in automaton
-        while (transition.min != TokenStreamToAutomaton.POS_SEP
-            && automaton.getNumTransitions(transition.dest) > 0) {
-          automaton.getTransition(transition.dest, 0, transition);
-        }
-        accept = recursivelyValidateWithHoles(acceptSequence, transition.dest, automaton);
-        if (accept) {
-          break;
-        }
-      }
-
-      // might be multiple holes squashed under a one step path. Try burning remaining holes
-      if (accept == false) {
-        accept = recursivelyValidateWithHoles(acceptSequence, state, automaton);
-      }
-
-      acceptSequence.push(TokenStreamToAutomaton.POS_SEP);
-    }
-    acceptSequence.push(curr);
-    return accept;
-  } */
-
-  // NOTE: TestSynonymGraphFilter's testRandomSyns also tests FlattenGraphFilter
 }

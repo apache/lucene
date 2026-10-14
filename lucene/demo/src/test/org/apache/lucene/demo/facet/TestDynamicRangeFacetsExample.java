@@ -19,10 +19,8 @@ package org.apache.lucene.demo.facet;
 import java.util.List;
 import org.apache.lucene.facet.range.DynamicRangeUtil;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 public class TestDynamicRangeFacetsExample extends LuceneTestCase {
-  @Test
   public void testExample() throws Exception {
     List<DynamicRangeUtil.DynamicRangeInfo> res = new DynamicRangeFacetsExample().runSearch();
     assertEquals(

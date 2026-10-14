@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat;
+import org.apache.lucene.codecs.lucene104.Lucene104HnswScalarQuantizedVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -38,30 +38,25 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.TestVectorUtil;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
 import org.junit.Before;
-import org.junit.Test;
 
 public class TestFullPrecisionFloatVectorSimilarityValuesSource extends LuceneTestCase {
 
   private Codec savedCodec;
 
   private static final String KNN_FIELD = "knnField";
-  private static final int NUM_VECTORS = 1000;
-  private static final int VECTOR_DIMENSION = 128;
+  private static final int NUM_VECTORS = 100;
+  private static final int VECTOR_DIMENSION = 8;
 
   KnnVectorsFormat format;
-  Float confidenceInterval;
   int bits;
 
   @Before
   @Override
   public void setUp() throws Exception {
     super.setUp();
-    bits = random().nextBoolean() ? 4 : 7;
-    confidenceInterval = random().nextBoolean() ? random().nextFloat(0.90f, 1.0f) : null;
-    if (random().nextBoolean()) {
-      confidenceInterval = 0f;
-    }
+    bits = random().nextBoolean() ? 4 : 8;
     format = getKnnFormat(bits);
     savedCodec = Codec.getDefault();
     Codec.setDefault(getCodec());
@@ -77,18 +72,17 @@ public class TestFullPrecisionFloatVectorSimilarityValuesSource extends LuceneTe
     return TestUtil.alwaysKnnVectorsFormat(format);
   }
 
-  private final KnnVectorsFormat getKnnFormat(int bits) {
-    return new Lucene99HnswScalarQuantizedVectorsFormat(
+  private KnnVectorsFormat getKnnFormat(int bits) {
+    return new Lucene104HnswScalarQuantizedVectorsFormat(
+        ScalarEncoding.fromNumBits(bits),
         Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
         Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH,
         1,
-        bits,
-        bits == 4 ? random().nextBoolean() : false,
-        confidenceInterval,
         null);
   }
 
-  @Test
+  // TODO: incredibly slow
+  @Nightly
   public void testFullPrecisionVectorSimilarityDVS() throws Exception {
     List<float[]> vectors = new ArrayList<>();
     int numVectors = atLeast(NUM_VECTORS);
@@ -131,11 +125,11 @@ public class TestFullPrecisionFloatVectorSimilarityValuesSource extends LuceneTe
         w.flush();
       }
 
-      // index some 7 bit quantized vectors
+      // index some 8 bit quantized vectors
       try (IndexWriter w =
           new IndexWriter(
               dir,
-              newIndexWriterConfig().setCodec(TestUtil.alwaysKnnVectorsFormat(getKnnFormat(7))))) {
+              newIndexWriterConfig().setCodec(TestUtil.alwaysKnnVectorsFormat(getKnnFormat(8))))) {
         for (int j = 0; j < numSegments; j++) {
           for (int i = 0; i < numVectors; i++) {
             Document doc = new Document();

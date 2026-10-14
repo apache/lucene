@@ -113,7 +113,7 @@ public final class FieldInfo {
       this.omitNorms = false;
     }
     this.dvGen = dvGen;
-    this.attributes = Objects.requireNonNull(attributes);
+    this.attributes = Map.copyOf(Objects.requireNonNull(attributes));
     this.pointDimensionCount = pointDimensionCount;
     this.pointIndexDimensionCount = pointIndexDimensionCount;
     this.pointNumBytes = pointNumBytes;
@@ -136,7 +136,7 @@ public final class FieldInfo {
     }
     if (indexOptions != IndexOptions.NONE) {
       // Cannot store payloads unless positions are indexed:
-      if (indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) < 0 && storePayloads) {
+      if (!indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) && storePayloads) {
         throw new IllegalArgumentException(
             "indexed field '" + name + "' cannot have payloads without positions");
       }
@@ -614,7 +614,7 @@ public final class FieldInfo {
   }
 
   void setStorePayloads() {
-    if (indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0) {
+    if (indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS)) {
       storePayloads = true;
     }
     this.checkConsistency();
@@ -679,6 +679,20 @@ public final class FieldInfo {
     return oldValue;
   }
 
+  /**
+   * Puts some codec attribute values.
+   *
+   * <p>If multiples attributes need to be added {@code putAttributes} is more efficient than
+   * calling {@code putAttribute} multiple times as it avoid unnecessary copies and synchronisation.
+   */
+  public synchronized void putAttributes(Map<String, String> map) {
+    HashMap<String, String> newMap = new HashMap<>(attributes);
+    newMap.putAll(map);
+    // This needs to be thread-safe as multiple threads may be updating (different) attributes
+    // concurrently due to concurrent merging.
+    attributes = Collections.unmodifiableMap(newMap);
+  }
+
   /** Returns internal codec attributes map. */
   public synchronized Map<String, String> attributes() {
     return attributes;
@@ -698,5 +712,13 @@ public final class FieldInfo {
    */
   public boolean isParentField() {
     return isParentField;
+  }
+
+  /**
+   * Returns true if the field has custom term frequencies indexed that are to be treated as opaque
+   * values, while the term frequency for statistical and scoring purposes is treated as 1.
+   */
+  public boolean isTermDocField() {
+    return indexOptions == IndexOptions.DOCS_AND_CUSTOM_FREQS;
   }
 }

@@ -329,7 +329,7 @@ public class TestHighlightingMatcher extends MonitorTestBase {
     assertNotEquals(m1, m4);
   }
 
-  public void testMutliValuedFieldWithNonDefaultGaps() throws IOException {
+  public void testMultiValuedFieldWithNonDefaultGaps() throws IOException {
 
     Analyzer analyzer =
         new Analyzer() {

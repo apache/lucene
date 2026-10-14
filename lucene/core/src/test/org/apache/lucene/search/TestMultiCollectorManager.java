@@ -60,16 +60,16 @@ public class TestMultiCollectorManager extends LuceneTestCase {
       Object[] results = (Object[]) collectAll(ctx, expected, mcm);
       assertEquals(1, results.length);
       List<Integer> intResults = (List<Integer>) results[0];
-      assertArrayEquals(expectedEven.toArray(new Integer[0]), intResults.toArray(new Integer[0]));
+      assertArrayEquals(expectedEven.toArray(Integer[]::new), intResults.toArray(Integer[]::new));
 
       // Test wrapping both collector managers:
       mcm = new MultiCollectorManager(cm1, cm2);
       results = (Object[]) collectAll(ctx, expected, mcm);
       assertEquals(2, results.length);
       intResults = (List<Integer>) results[0];
-      assertArrayEquals(expectedEven.toArray(new Integer[0]), intResults.toArray(new Integer[0]));
+      assertArrayEquals(expectedEven.toArray(Integer[]::new), intResults.toArray(Integer[]::new));
       intResults = (List<Integer>) results[1];
-      assertArrayEquals(expectedOdd.toArray(new Integer[0]), intResults.toArray(new Integer[0]));
+      assertArrayEquals(expectedOdd.toArray(Integer[]::new), intResults.toArray(Integer[]::new));
     }
 
     reader.close();
@@ -166,7 +166,7 @@ public class TestMultiCollectorManager extends LuceneTestCase {
     Object[] results = (Object[]) collectAll(ctx, expected, mcm);
     assertEquals(2, results.length);
     List<Integer> intResults = (List<Integer>) results[0];
-    assertArrayEquals(expected.toArray(new Integer[0]), intResults.toArray(new Integer[0]));
+    assertArrayEquals(expected.toArray(Integer[]::new), intResults.toArray(Integer[]::new));
     assertNull(results[1]);
 
     // If we wrap multiple collector managers that throw CollectionTerminatedException, the
@@ -197,8 +197,9 @@ public class TestMultiCollectorManager extends LuceneTestCase {
     C collector = collectorManager.newCollector();
     collectors.add(collector);
     LeafCollector leafCollector = collector.getLeafCollector(ctx);
+    Random random = nonAssertingRandom(random());
     for (Integer v : values) {
-      if (random().nextInt(10) == 1) {
+      if (random.nextInt(10) == 1) {
         collector = collectorManager.newCollector();
         collectors.add(collector);
         leafCollector = collector.getLeafCollector(ctx);

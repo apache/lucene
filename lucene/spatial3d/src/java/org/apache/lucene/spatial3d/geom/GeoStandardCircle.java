@@ -227,10 +227,9 @@ class GeoStandardCircle extends GeoBaseCircle {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof GeoStandardCircle)) {
+    if (!(o instanceof GeoStandardCircle other)) {
       return false;
     }
-    GeoStandardCircle other = (GeoStandardCircle) o;
     return super.equals(other) && other.center.equals(center) && other.cutoffAngle == cutoffAngle;
   }
 

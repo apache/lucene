@@ -739,13 +739,6 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
       }
 
       @Override
-      public boolean useCompoundFile(
-          SegmentInfos segments, SegmentCommitInfo newSegment, MergeContext mergeContext)
-          throws IOException {
-        return in.useCompoundFile(segments, newSegment, mergeContext);
-      }
-
-      @Override
       public String toString() {
         return "ReindexingMergePolicy(" + in + ")";
       }
@@ -1563,7 +1556,9 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
     // Confirm we can sort by the new DV field:
     TopDocs hits =
         s.search(
-            new MatchAllDocsQuery(), 100, new Sort(new SortField("number", SortField.Type.LONG)));
+            MatchAllDocsQuery.INSTANCE,
+            100,
+            new Sort(new SortField("number", SortField.Type.LONG)));
     StoredFields storedFields = s.storedFields();
     long last = Long.MIN_VALUE;
     for (ScoreDoc scoreDoc : hits.scoreDocs) {

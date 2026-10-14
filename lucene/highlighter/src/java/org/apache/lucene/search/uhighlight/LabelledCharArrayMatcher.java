@@ -18,7 +18,7 @@
 package org.apache.lucene.search.uhighlight;
 
 import org.apache.lucene.util.UnicodeUtil;
-import org.apache.lucene.util.automaton.ByteRunAutomaton;
+import org.apache.lucene.util.automaton.ByteRunnable;
 
 /**
  * Associates a label with a CharArrayMatcher to distinguish different sources for terms in
@@ -49,7 +49,7 @@ public interface LabelledCharArrayMatcher extends CharArrayMatcher {
   }
 
   /** Returns a representation of the automaton that matches char[] instead of byte[] */
-  static LabelledCharArrayMatcher wrap(String label, ByteRunAutomaton runAutomaton) {
+  static LabelledCharArrayMatcher wrap(String label, ByteRunnable runAutomaton) {
     return wrap(
         label,
         (chars, offset, length) -> {

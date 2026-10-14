@@ -30,12 +30,10 @@ import org.apache.lucene.index.IndexNotFoundException;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.FSDirectory;
-import org.junit.Test;
 
 public class TestMonitorReadonly extends MonitorTestBase {
   private static final Analyzer ANALYZER = new WhitespaceAnalyzer();
 
-  @Test
   public void testReadonlyMonitorThrowsOnInexistentIndex() {
     Path indexDirectory = createTempDir();
     MonitorConfiguration config =
@@ -51,7 +49,6 @@ public class TestMonitorReadonly extends MonitorTestBase {
         });
   }
 
-  @Test
   public void testReadonlyMonitorThrowsWhenCallingWriteRequests() throws IOException {
     Path indexDirectory = createTempDir();
     MonitorConfiguration writeConfig =
@@ -92,7 +89,6 @@ public class TestMonitorReadonly extends MonitorTestBase {
     }
   }
 
-  @Test
   public void testSettingCustomDirectory() throws IOException {
     Path indexDirectory = createTempDir();
     Document doc = new Document();
@@ -118,7 +114,6 @@ public class TestMonitorReadonly extends MonitorTestBase {
     }
   }
 
-  @Test
   public void testMonitorReadOnlyCouldReadOnTheSameIndex() throws IOException {
     Path indexDirectory = createTempDir();
     Document doc = new Document();
@@ -166,7 +161,6 @@ public class TestMonitorReadonly extends MonitorTestBase {
     }
   }
 
-  @Test
   public void testReadonlyMonitorGetsRefreshed() throws IOException, InterruptedException {
     Path indexDirectory = createTempDir();
     Document doc = new Document();

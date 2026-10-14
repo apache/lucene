@@ -36,8 +36,8 @@ public class FilterIndexOutput extends IndexOutput {
    * returns it
    */
   public static IndexOutput unwrap(IndexOutput out) {
-    while (out instanceof FilterIndexOutput) {
-      out = ((FilterIndexOutput) out).out;
+    while (out instanceof FilterIndexOutput fio) {
+      out = fio.out;
     }
     return out;
   }

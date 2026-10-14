@@ -36,7 +36,6 @@ import org.apache.lucene.analysis.miscellaneous.SetKeywordMarkerFilter;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.junit.Ignore;
-import org.junit.Test;
 
 public class TestKoreanNumberFilter extends BaseTokenStreamTestCase {
   private Analyzer analyzer;
@@ -86,7 +85,6 @@ public class TestKoreanNumberFilter extends BaseTokenStreamTestCase {
     super.tearDown();
   }
 
-  @Test
   public void testBasics() throws IOException {
 
     assertAnalyzesTo(
@@ -113,7 +111,6 @@ public class TestKoreanNumberFilter extends BaseTokenStreamTestCase {
         new int[] {2, 3, 8, 10, 11});
   }
 
-  @Test
   public void testVariants() throws IOException {
     // Test variants of three
     assertAnalyzesTo(analyzer, "3", new String[] {"3"});
@@ -137,7 +134,6 @@ public class TestKoreanNumberFilter extends BaseTokenStreamTestCase {
     assertAnalyzesTo(analyzer, "１０백", new String[] {"1000"}); // Strange, but supported
   }
 
-  @Test
   public void testLargeVariants() throws IOException {
     // Test large numbers
     assertAnalyzesTo(analyzer, "삼오칠팔구", new String[] {"35789"});
@@ -149,19 +145,16 @@ public class TestKoreanNumberFilter extends BaseTokenStreamTestCase {
     assertAnalyzesTo(analyzer, "해경조억만천백십일", new String[] {"100010001000100011111"});
   }
 
-  @Test
   public void testNegative() throws IOException {
     assertAnalyzesTo(analyzer, "-백만", new String[] {"-", "1000000"});
   }
 
-  @Test
   public void testMixed() throws IOException {
     // Test mixed numbers
     assertAnalyzesTo(analyzer, "삼천2백２십삼", new String[] {"3223"});
     assertAnalyzesTo(analyzer, "３２이삼", new String[] {"3223"});
   }
 
-  @Test
   public void testFunny() throws IOException {
     // Test some oddities for inconsistent input
     assertAnalyzesTo(analyzer, "십십", new String[] {"20"}); // 100?
@@ -169,7 +162,6 @@ public class TestKoreanNumberFilter extends BaseTokenStreamTestCase {
     assertAnalyzesTo(analyzer, "천천천천", new String[] {"4000"}); // 1,000,000,000,000?
   }
 
-  @Test
   public void testHangulArabic() throws IOException {
     // Test kanji numerals used as Arabic numbers (with head zero)
     assertAnalyzesTo(analyzer, "영일이삼사오육칠팔구구팔칠육오사삼이일영", new String[] {"1234567899876543210"});
@@ -178,13 +170,11 @@ public class TestKoreanNumberFilter extends BaseTokenStreamTestCase {
     assertAnalyzesTo(analyzer, "영영칠", new String[] {"7"});
   }
 
-  @Test
   public void testDoubleZero() throws IOException {
     assertAnalyzesTo(
         analyzer, "영영", new String[] {"0"}, new int[] {0}, new int[] {2}, new int[] {1});
   }
 
-  @Test
   public void testName() throws IOException {
     // Test name that normalises to number
     assertAnalyzesTo(
@@ -228,61 +218,50 @@ public class TestKoreanNumberFilter extends BaseTokenStreamTestCase {
     keywordMarkingAnalyzer.close();
   }
 
-  @Test
   public void testDecimal() throws IOException {
     // Test Arabic numbers with punctuation, i.e. 3.2 thousands
     assertAnalyzesTo(analyzer, "１．２만３４５．６７", new String[] {"12345.67"});
   }
 
-  @Test
   public void testDecimalPunctuation() throws IOException {
     // Test Arabic numbers with punctuation, i.e. 3.2 thousands won
     assertAnalyzesTo(analyzer, "３．２천 원", new String[] {"3200", "원"});
   }
 
-  @Test
   public void testThousandSeparator() throws IOException {
     assertAnalyzesTo(analyzer, "4,647", new String[] {"4647"});
   }
 
-  @Test
   public void testDecimalThousandSeparator() throws IOException {
     assertAnalyzesTo(analyzer, "4,647.0010", new String[] {"4647.001"});
   }
 
-  @Test
   public void testCommaDecimalSeparator() throws IOException {
     assertAnalyzesTo(analyzer, "15,7", new String[] {"157"});
   }
 
-  @Test
   public void testTrailingZeroStripping() throws IOException {
     assertAnalyzesTo(analyzer, "1000.1000", new String[] {"1000.1"});
     assertAnalyzesTo(analyzer, "1000.0000", new String[] {"1000"});
   }
 
-  @Test
   public void testEmpty() throws IOException {
     assertAnalyzesTo(analyzer, "", new String[] {});
   }
 
-  @Test
   public void testRandomHugeStrings() throws Exception {
     checkRandomData(random(), analyzer, RANDOM_MULTIPLIER, 4096);
   }
 
-  @Test
   @Nightly
   public void testRandomHugeStringsAtNight() throws Exception {
     checkRandomData(random(), analyzer, 5 * RANDOM_MULTIPLIER, 8192);
   }
 
-  @Test
   public void testRandomSmallStrings() throws Exception {
     checkRandomData(random(), analyzer, 100 * RANDOM_MULTIPLIER, 128);
   }
 
-  @Test
   public void testFunnyIssue() throws Exception {
     BaseTokenStreamTestCase.checkAnalysisConsistency(
         random(), analyzer, true, "영영\u302f\u3029\u3039\u3023\u3033\u302bB", true);
@@ -290,7 +269,6 @@ public class TestKoreanNumberFilter extends BaseTokenStreamTestCase {
 
   @Ignore(
       "This test is used during development when analyze normalizations in large amounts of text")
-  @Test
   public void testLargeData() throws IOException {
     Path input = Paths.get("/tmp/test.txt");
     Path tokenizedOutput = Paths.get("/tmp/test.tok.txt");

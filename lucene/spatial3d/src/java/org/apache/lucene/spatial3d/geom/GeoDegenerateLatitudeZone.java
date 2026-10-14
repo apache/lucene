@@ -148,10 +148,9 @@ class GeoDegenerateLatitudeZone extends GeoBaseBBox {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof GeoDegenerateLatitudeZone)) {
+    if (!(o instanceof GeoDegenerateLatitudeZone other)) {
       return false;
     }
-    GeoDegenerateLatitudeZone other = (GeoDegenerateLatitudeZone) o;
     return super.equals(other) && other.latitude == latitude;
   }
 

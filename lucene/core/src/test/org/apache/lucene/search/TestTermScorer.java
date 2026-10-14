@@ -16,6 +16,12 @@
  */
 package org.apache.lucene.search;
 
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.oneOf;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -86,7 +92,7 @@ public class TestTermScorer extends LuceneTestCase {
     TermQuery termQuery = new TermQuery(allTerm);
 
     Weight weight = indexSearcher.createWeight(termQuery, ScoreMode.COMPLETE, 1);
-    assertTrue(indexSearcher.getTopReaderContext() instanceof LeafReaderContext);
+    assertThat(indexSearcher.getTopReaderContext(), instanceOf(LeafReaderContext.class));
     LeafReaderContext context = (LeafReaderContext) indexSearcher.getTopReaderContext();
     BulkScorer ts = weight.bulkScorer(context);
     // we have 2 documents with the term all in them, one document for all the
@@ -109,9 +115,8 @@ public class TestTermScorer extends LuceneTestCase {
             float score = scorer.score();
             doc = doc + base;
             docs.add(new TestHit(doc, score));
-            assertTrue("score " + score + " is not greater than 0", score > 0);
-            assertTrue(
-                "Doc: " + doc + " does not equal 0 or doc does not equal 5", doc == 0 || doc == 5);
+            assertThat(score, greaterThan(0f));
+            assertThat(doc, oneOf(0, 5));
           }
 
           @Override
@@ -127,11 +132,11 @@ public class TestTermScorer extends LuceneTestCase {
         null,
         0,
         DocIdSetIterator.NO_MORE_DOCS);
-    assertTrue("docs Size: " + docs.size() + " is not: " + 2, docs.size() == 2);
+    assertThat(docs, hasSize(2));
     TestHit doc0 = docs.get(0);
     TestHit doc5 = docs.get(1);
     // The scores should be the same
-    assertTrue(doc0.score + " does not equal: " + doc5.score, doc0.score == doc5.score);
+    assertEquals(doc5.score, doc0.score, 0);
   }
 
   public void testNext() throws Exception {
@@ -140,7 +145,7 @@ public class TestTermScorer extends LuceneTestCase {
     TermQuery termQuery = new TermQuery(allTerm);
 
     Weight weight = indexSearcher.createWeight(termQuery, ScoreMode.COMPLETE, 1);
-    assertTrue(indexSearcher.getTopReaderContext() instanceof LeafReaderContext);
+    assertThat(indexSearcher.getTopReaderContext(), instanceOf(LeafReaderContext.class));
     LeafReaderContext context = (LeafReaderContext) indexSearcher.getTopReaderContext();
     Scorer ts = weight.scorer(context);
     assertTrue(
@@ -158,12 +163,12 @@ public class TestTermScorer extends LuceneTestCase {
     TermQuery termQuery = new TermQuery(allTerm);
 
     Weight weight = indexSearcher.createWeight(termQuery, ScoreMode.COMPLETE, 1);
-    assertTrue(indexSearcher.getTopReaderContext() instanceof LeafReaderContext);
+    assertThat(indexSearcher.getTopReaderContext(), instanceOf(LeafReaderContext.class));
     LeafReaderContext context = (LeafReaderContext) indexSearcher.getTopReaderContext();
     Scorer ts = weight.scorer(context);
     assertTrue("Didn't skip", ts.iterator().advance(3) != DocIdSetIterator.NO_MORE_DOCS);
     // The next doc should be doc 5
-    assertTrue("doc should be number 5", ts.docID() == 5);
+    assertThat(ts.docID(), equalTo(5));
   }
 
   private static class TestHit {
@@ -208,11 +213,13 @@ public class TestTermScorer extends LuceneTestCase {
     IndexSearcher indexSearcher = new IndexSearcher(forbiddenNorms);
 
     Weight weight = indexSearcher.createWeight(termQuery, ScoreMode.COMPLETE, 1);
-    expectThrows(
-        AssertionError.class,
-        () -> {
-          weight.scorer(forbiddenNorms.getContext()).iterator().nextDoc();
-        });
+    if (TEST_ASSERTS_ENABLED) {
+      expectThrows(
+          AssertionError.class,
+          () -> {
+            weight.scorer(forbiddenNorms.getContext()).iterator().nextDoc();
+          });
+    }
 
     Weight weight2 = indexSearcher.createWeight(termQuery, ScoreMode.COMPLETE_NO_SCORES, 1);
     // should not fail this time since norms are not necessary

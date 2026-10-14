@@ -27,7 +27,6 @@ import java.util.Map;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.junit.Test;
 
 public class TestFileDictionary extends LuceneTestCase {
 
@@ -74,7 +73,6 @@ public class TestFileDictionary extends LuceneTestCase {
     return new SimpleEntry<>(entries, sb.toString());
   }
 
-  @Test
   public void testFileWithTerm() throws IOException {
     Map.Entry<List<List<String>>, String> fileInput =
         generateFileInput(atLeast(100), FileDictionary.DEFAULT_FIELD_DELIMITER, false, false);
@@ -98,7 +96,6 @@ public class TestFileDictionary extends LuceneTestCase {
     assertEquals(count, entries.size());
   }
 
-  @Test
   public void testFileWithWeight() throws IOException {
     Map.Entry<List<List<String>>, String> fileInput =
         generateFileInput(atLeast(100), FileDictionary.DEFAULT_FIELD_DELIMITER, true, false);
@@ -122,7 +119,6 @@ public class TestFileDictionary extends LuceneTestCase {
     assertEquals(count, entries.size());
   }
 
-  @Test
   public void testFileWithWeightAndPayload() throws IOException {
     Map.Entry<List<List<String>>, String> fileInput =
         generateFileInput(atLeast(100), FileDictionary.DEFAULT_FIELD_DELIMITER, true, true);
@@ -150,7 +146,6 @@ public class TestFileDictionary extends LuceneTestCase {
     assertEquals(count, entries.size());
   }
 
-  @Test
   public void testFileWithOneEntry() throws IOException {
     Map.Entry<List<List<String>>, String> fileInput =
         generateFileInput(1, FileDictionary.DEFAULT_FIELD_DELIMITER, true, true);
@@ -178,7 +173,6 @@ public class TestFileDictionary extends LuceneTestCase {
     assertEquals(count, entries.size());
   }
 
-  @Test
   public void testFileWithDifferentDelimiter() throws IOException {
     Map.Entry<List<List<String>>, String> fileInput =
         generateFileInput(atLeast(100), " , ", true, true);

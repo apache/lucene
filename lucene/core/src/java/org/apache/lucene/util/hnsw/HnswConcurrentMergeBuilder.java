@@ -22,13 +22,18 @@ import static org.apache.lucene.util.hnsw.HnswGraphBuilder.HNSW_COMPONENT;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
+import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.InfoStream;
+import org.apache.lucene.util.IntsRef;
 
 /**
  * A graph builder that manages multiple workers, it only supports adding the whole graph all at
@@ -36,12 +41,16 @@ import org.apache.lucene.util.InfoStream;
  */
 public class HnswConcurrentMergeBuilder implements HnswBuilder {
 
-  private static final int DEFAULT_BATCH_SIZE =
-      2048; // number of vectors the worker handles sequentially at one batch
+  // Number of vectors the worker handles sequentially at one batch.
+  private static final int DEFAULT_BATCH_SIZE = 2048;
+
+  // Number of disconnected nodes a repair worker claims at a time.
+  private static final int REPAIR_BATCH_SIZE = 64;
 
   private final TaskExecutor taskExecutor;
   private final ConcurrentMergeWorker[] workers;
   private final HnswLock hnswLock;
+  private final InitializedHnswGraphBuilder.PrunedGraph prunedGraph;
   private InfoStream infoStream = InfoStream.getDefault();
   private boolean frozen;
 
@@ -52,6 +61,24 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
       int beamWidth,
       OnHeapHnswGraph hnsw,
       BitSet initializedNodes)
+      throws IOException {
+    this(taskExecutor, numWorker, scorerSupplier, beamWidth, hnsw, initializedNodes, null);
+  }
+
+  /**
+   * Creates a builder that, when the pruned source graph had deletes, repairs its disconnected
+   * nodes across the worker pool and rebalances it before inserting the remaining vectors.
+   *
+   * @param prunedGraph the deferred repair state, or null when the reused graph had no deletes
+   */
+  HnswConcurrentMergeBuilder(
+      TaskExecutor taskExecutor,
+      int numWorker,
+      RandomVectorScorerSupplier scorerSupplier,
+      int beamWidth,
+      OnHeapHnswGraph hnsw,
+      BitSet initializedNodes,
+      InitializedHnswGraphBuilder.PrunedGraph prunedGraph)
       throws IOException {
     this.taskExecutor = taskExecutor;
     AtomicInteger workProgress = new AtomicInteger(0);
@@ -68,6 +95,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
               initializedNodes,
               workProgress);
     }
+    this.prunedGraph = prunedGraph;
   }
 
   @Override
@@ -75,10 +103,34 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     if (frozen) {
       throw new IllegalStateException("graph has already been built");
     }
+    long mergeStartTimeNs = System.nanoTime();
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
       infoStream.message(
           HNSW_COMPONENT,
           "build graph from " + maxOrd + " vectors, with " + workers.length + " workers");
+    }
+    AtomicLong cumulativeWorkTimeNs = new AtomicLong();
+    for (ConcurrentMergeWorker worker : workers) {
+      worker.setMergeStartTimeNs(mergeStartTimeNs);
+      worker.setCumulativeWorkTimeNs(cumulativeWorkTimeNs);
+    }
+    if (prunedGraph != null) {
+      long repairStartNs = System.nanoTime();
+      int repairedNodes = repairDisconnectedNodes();
+      long rebalanceStartNs = System.nanoTime();
+      prunedGraph.builder().rebalanceGraph();
+      long rebalanceEndNs = System.nanoTime();
+      if (infoStream.isEnabled(HNSW_COMPONENT)) {
+        infoStream.message(
+            HNSW_COMPONENT,
+            String.format(
+                Locale.ROOT,
+                "repaired reused graph: %d nodes in %.2f ms with %d workers, %.2f ms rebalance",
+                repairedNodes,
+                (rebalanceStartNs - repairStartNs) / 1_000_000.0,
+                workers.length,
+                (rebalanceEndNs - rebalanceStartNs) / 1_000_000.0));
+      }
     }
     List<Callable<Void>> futures = new ArrayList<>();
     for (int i = 0; i < workers.length; i++) {
@@ -90,7 +142,64 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
           });
     }
     taskExecutor.invokeAll(futures);
+    if (infoStream.isEnabled(HNSW_COMPONENT)) {
+      double wallClockMs = (System.nanoTime() - mergeStartTimeNs) / 1_000_000.0;
+      double totalWorkerMs = cumulativeWorkTimeNs.get() / 1_000_000.0;
+      double effectiveConcurrency = wallClockMs > 0 ? totalWorkerMs / wallClockMs : 0;
+      infoStream.message(
+          HNSW_COMPONENT,
+          String.format(
+              Locale.ROOT,
+              "merge completed: %d vectors, %.2f ms wall clock, %.2f ms cumulative worker time, %.2fx effective concurrency",
+              maxOrd,
+              wallClockMs,
+              totalWorkerMs,
+              effectiveConcurrency));
+    }
     return getCompletedGraph();
+  }
+
+  /**
+   * Repairs the pruned graph's disconnected nodes across the worker pool, one level at a time from
+   * the top down.
+   *
+   * @return the number of nodes repaired, counting a node once per level it was repaired on
+   */
+  private int repairDisconnectedNodes() throws IOException {
+    int repairedNodes = 0;
+    for (int level = prunedGraph.numLevels() - 1; level >= 0; level--) {
+      IntsRef disconnectedNodes = prunedGraph.disconnectedNodesByLevel()[level];
+      if (disconnectedNodes == null) {
+        continue;
+      }
+      int total = disconnectedNodes.length;
+      repairedNodes += total;
+      // Use at most one task per worker and no more tasks than repair batches; each task
+      // dynamically claims batches below.
+      int taskCount = Math.min(workers.length, Math.ceilDiv(total, REPAIR_BATCH_SIZE));
+      AtomicInteger repairProgress = new AtomicInteger(0);
+      int repairLevel = level;
+      List<Callable<Void>> tasks = new ArrayList<>(taskCount);
+      for (int t = 0; t < taskCount; t++) {
+        ConcurrentMergeWorker worker = workers[t];
+        tasks.add(
+            () -> {
+              int from;
+              while ((from = repairProgress.getAndAdd(REPAIR_BATCH_SIZE)) < total) {
+                int length = Math.min(REPAIR_BATCH_SIZE, total - from);
+                worker.fixDisconnectedNodes(
+                    new IntsRef(disconnectedNodes.ints, disconnectedNodes.offset + from, length),
+                    repairLevel,
+                    worker.scorer);
+              }
+              return null;
+            });
+      }
+      // Finish every repair task at this level before repairing the next lower level, because
+      // addConnections descends through the already-repaired upper levels.
+      taskExecutor.invokeAll(tasks);
+    }
+    return repairedNodes;
   }
 
   @Override
@@ -99,10 +208,22 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
   }
 
   @Override
+  public void addGraphNode(int node, IntHashSet eps) throws IOException {
+    throw new UnsupportedOperationException("This builder is for merge only");
+  }
+
+  @Override
   public void setInfoStream(InfoStream infoStream) {
     this.infoStream = infoStream;
     for (HnswBuilder worker : workers) {
       worker.setInfoStream(infoStream);
+    }
+  }
+
+  @Override
+  public void setAbortCheck(IORunnable abortCheck) {
+    for (HnswBuilder worker : workers) {
+      worker.setAbortCheck(abortCheck);
     }
   }
 
@@ -142,7 +263,6 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
 
     private final BitSet initializedNodes;
     private int batchSize = DEFAULT_BATCH_SIZE;
-    private final UpdateableRandomVectorScorer scorer;
 
     private ConcurrentMergeWorker(
         RandomVectorScorerSupplier scorerSupplier,
@@ -163,7 +283,6 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
               new NeighborQueue(beamWidth, true), hnswLock, new FixedBitSet(hnsw.maxNodeId() + 1)));
       this.workProgress = workProgress;
       this.initializedNodes = initializedNodes;
-      this.scorer = scorerSupplier.scorer();
     }
 
     /**
@@ -193,20 +312,11 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     }
 
     @Override
-    public void addGraphNode(int node, UpdateableRandomVectorScorer scorer) throws IOException {
-      if (initializedNodes != null && initializedNodes.get(node)) {
-        return;
-      }
-      super.addGraphNode(node, scorer);
-    }
-
-    @Override
     public void addGraphNode(int node) throws IOException {
       if (initializedNodes != null && initializedNodes.get(node)) {
         return;
       }
-      scorer.setScoringOrdinal(node);
-      addGraphNode(node, scorer);
+      super.addGraphNode(node);
     }
   }
 

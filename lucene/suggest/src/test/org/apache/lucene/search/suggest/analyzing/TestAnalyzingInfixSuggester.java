@@ -50,7 +50,6 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.junit.Test;
 
 public class TestAnalyzingInfixSuggester extends LuceneTestCase {
 
@@ -1332,7 +1331,6 @@ public class TestAnalyzingInfixSuggester extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testAddPrefixMatch() throws IOException {
     Analyzer a = new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false);
     Directory dir = newDirectory();

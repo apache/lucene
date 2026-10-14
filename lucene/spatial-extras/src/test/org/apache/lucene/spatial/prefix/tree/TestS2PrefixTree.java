@@ -17,21 +17,17 @@
 
 package org.apache.lucene.spatial.prefix.tree;
 
-import com.carrotsearch.randomizedtesting.annotations.Repeat;
 import com.google.common.geometry.S2CellId;
 import com.google.common.geometry.S2Projections;
 import org.apache.lucene.spatial.spatial4j.Geo3dSpatialContextFactory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.junit.Test;
 import org.locationtech.spatial4j.context.SpatialContext;
 import org.locationtech.spatial4j.shape.Point;
 
 /** Test for S2 Spatial prefix tree. */
 public class TestS2PrefixTree extends LuceneTestCase {
 
-  @Test
-  @Repeat(iterations = 10)
   public void testCells() {
     int face = random().nextInt(6);
     S2CellId id = S2CellId.fromFacePosLevel(face, 0, 0);
@@ -69,8 +65,6 @@ public class TestS2PrefixTree extends LuceneTestCase {
     assertEquals(cell, cell2);
   }
 
-  @Test
-  @Repeat(iterations = 10)
   public void testDistanceAndLevels() {
     S2PrefixTree tree =
         new S2PrefixTree(
@@ -98,8 +92,6 @@ public class TestS2PrefixTree extends LuceneTestCase {
     assertTrue(randomDist > distanceLevel);
   }
 
-  @Test
-  @Repeat(iterations = 10)
   public void testPrecision() {
     int arity = random().nextInt(3) + 1;
     SpatialContext context = new Geo3dSpatialContextFactory().newSpatialContext();

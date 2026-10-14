@@ -37,8 +37,11 @@ public class VerifyTestClassNamingConvention extends AbstractBeforeAfterRule {
       return;
     }
 
-    String suiteName = RandomizedContext.current().getTargetClass().getName();
+    check(RandomizedContext.current().getTargetClass());
+  }
 
+  public void check(Class<?> clazz) {
+    String suiteName = clazz.getName();
     Matcher matcher = namingConvention.matcher(suiteName);
     if (suiteName.startsWith(packagePrefix) && !matcher.matches()) {
       throw new AssertionError(

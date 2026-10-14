@@ -99,13 +99,11 @@
  * DocMaker and implementing QueryMaker.
  *
  * <blockquote>
- *
  * <b>Note:</b> since 2.9, DocMaker is a concrete class which accepts a ContentSource. In most
  * cases, you can use the DocMaker class to create Documents, while providing your own ContentSource
  * implementation. For example, the current Benchmark package includes ContentSource implementations
  * for TREC, Enwiki and Reuters collections, as well as others like LineDocSource which reads a
  * 'line' file produced by WriteLineDocTask.
- *
  * </blockquote>
  *
  * <p>Benchmark .alg file contains the benchmark "algorithm". The syntax is described below. Within
@@ -117,7 +115,7 @@
  * should be added to it one by one but not faster than 20 docs a minute, and, in parallel with
  * this, some N queries should be searched against that index, again, no more than 2 queries a
  * second. You can have the searches all share an index reader, or have them each open its own
- * reader and close it afterwords.
+ * reader and close it afterwards.
  *
  * <p>If the commands available for use in the algorithm do not meet your needs, you can add
  * commands by adding a new task under org.apache.lucene.benchmark.byTask.tasks - you should extend

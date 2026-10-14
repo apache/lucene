@@ -22,6 +22,7 @@ import org.apache.lucene.codecs.NormsFormat;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.index.EmptyDocValuesProducer;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
@@ -73,8 +74,8 @@ public class SimpleTextNormsFormat extends NormsFormat {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
-      impl.checkIntegrity();
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+      impl.checkIntegrity(merge);
     }
 
     @Override

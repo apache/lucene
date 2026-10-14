@@ -222,59 +222,69 @@ abstract class Packed64SingleBlock extends PackedInts.MutableImpl {
 
 FOOTER = "}"
 
-if __name__ == '__main__':
-
-  f = open("Packed64SingleBlock.java", 'w')
-  f.write(HEADER)
-  f.write("  public static Packed64SingleBlock create(int valueCount, int bitsPerValue) {\n")
-  f.write("    switch (bitsPerValue) {\n")
-  for bpv in SUPPORTED_BITS_PER_VALUE:
-    f.write("      case %d:\n" % bpv)
-    f.write("        return new Packed64SingleBlock%d(valueCount);\n" % bpv)
-  f.write("      default:\n")
-  f.write("        throw new IllegalArgumentException(\"Unsupported number of bits per value: \" + %d);\n" % bpv)
-  f.write("    }\n")
-  f.write("  }\n\n")
-
-  for bpv in SUPPORTED_BITS_PER_VALUE:
-    log_2 = 0
-    while (1 << log_2) < bpv:
-      log_2 = log_2 + 1
-    if (1 << log_2) != bpv:
-      log_2 = None
-
-    f.write("  static class Packed64SingleBlock%d extends Packed64SingleBlock {\n\n" % bpv)
-
-    f.write("    Packed64SingleBlock%d(int valueCount) {\n" % bpv)
-    f.write("      super(valueCount, %d);\n" % bpv)
-    f.write("    }\n\n")
-
-    f.write("    @Override\n")
-    f.write("    public long get(int index) {\n")
-    if log_2 is not None:
-      f.write("      final int o = index >>> %d;\n" % (6 - log_2))
-      f.write("      final int b = index & %d;\n" % ((1 << (6 - log_2)) - 1))
-      f.write("      final int shift = b << %d;\n" % log_2)
-    else:
-      f.write("      final int o = index / %d;\n" % (64 / bpv))
-      f.write("      final int b = index %% %d;\n" % (64 / bpv))
-      f.write("      final int shift = b * %d;\n" % bpv)
-    f.write("      return (blocks[o] >>> shift) & %dL;\n" % ((1 << bpv) - 1))
-    f.write("    }\n\n")
-
-    f.write("    @Override\n")
-    f.write("    public void set(int index, long value) {\n")
-    if log_2 is not None:
-      f.write("      final int o = index >>> %d;\n" % (6 - log_2))
-      f.write("      final int b = index & %d;\n" % ((1 << (6 - log_2)) - 1))
-      f.write("      final int shift = b << %d;\n" % log_2)
-    else:
-      f.write("      final int o = index / %d;\n" % (64 / bpv))
-      f.write("      final int b = index %% %d;\n" % (64 / bpv))
-      f.write("      final int shift = b * %d;\n" % bpv)
-    f.write("      blocks[o] = (blocks[o] & ~(%dL << shift)) | (value << shift);\n" % ((1 << bpv) - 1))
-    f.write("    }\n\n")
+if __name__ == "__main__":
+    f = open("Packed64SingleBlock.java", "w")
+    f.write(HEADER)
+    f.write(
+        "  public static Packed64SingleBlock create(int valueCount, int bitsPerValue) {\n"
+    )
+    f.write("    switch (bitsPerValue) {\n")
+    for bpv in SUPPORTED_BITS_PER_VALUE:
+        f.write("      case %d:\n" % bpv)
+        f.write("        return new Packed64SingleBlock%d(valueCount);\n" % bpv)
+    f.write("      default:\n")
+    f.write(
+        '        throw new IllegalArgumentException("Unsupported number of bits per value: " + %d);\n'
+        % bpv
+    )
+    f.write("    }\n")
     f.write("  }\n\n")
 
-  f.write(FOOTER)
-  f.close()
+    for bpv in SUPPORTED_BITS_PER_VALUE:
+        log_2 = 0
+        while (1 << log_2) < bpv:
+            log_2 = log_2 + 1
+        if (1 << log_2) != bpv:
+            log_2 = None
+
+        f.write(
+            "  static class Packed64SingleBlock%d extends Packed64SingleBlock {\n\n"
+            % bpv
+        )
+
+        f.write("    Packed64SingleBlock%d(int valueCount) {\n" % bpv)
+        f.write("      super(valueCount, %d);\n" % bpv)
+        f.write("    }\n\n")
+
+        f.write("    @Override\n")
+        f.write("    public long get(int index) {\n")
+        if log_2 is not None:
+            f.write("      final int o = index >>> %d;\n" % (6 - log_2))
+            f.write("      final int b = index & %d;\n" % ((1 << (6 - log_2)) - 1))
+            f.write("      final int shift = b << %d;\n" % log_2)
+        else:
+            f.write("      final int o = index / %d;\n" % (64 / bpv))
+            f.write("      final int b = index %% %d;\n" % (64 / bpv))
+            f.write("      final int shift = b * %d;\n" % bpv)
+        f.write("      return (blocks[o] >>> shift) & %dL;\n" % ((1 << bpv) - 1))
+        f.write("    }\n\n")
+
+        f.write("    @Override\n")
+        f.write("    public void set(int index, long value) {\n")
+        if log_2 is not None:
+            f.write("      final int o = index >>> %d;\n" % (6 - log_2))
+            f.write("      final int b = index & %d;\n" % ((1 << (6 - log_2)) - 1))
+            f.write("      final int shift = b << %d;\n" % log_2)
+        else:
+            f.write("      final int o = index / %d;\n" % (64 / bpv))
+            f.write("      final int b = index %% %d;\n" % (64 / bpv))
+            f.write("      final int shift = b * %d;\n" % bpv)
+        f.write(
+            "      blocks[o] = (blocks[o] & ~(%dL << shift)) | (value << shift);\n"
+            % ((1 << bpv) - 1)
+        )
+        f.write("    }\n\n")
+        f.write("  }\n\n")
+
+    f.write(FOOTER)
+    f.close()

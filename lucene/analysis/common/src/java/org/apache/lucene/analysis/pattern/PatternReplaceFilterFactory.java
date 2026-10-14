@@ -25,14 +25,14 @@ import org.apache.lucene.analysis.TokenStream;
 /**
  * Factory for {@link PatternReplaceFilter}.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_ptnreplace" class="solr.TextField" positionIncrementGap="100"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.KeywordTokenizerFactory"/&gt;
  *     &lt;filter class="solr.PatternReplaceFilterFactory" pattern="([^a-z])" replacement=""
  *             replace="all"/&gt;
  *   &lt;/analyzer&gt;
- * &lt;/fieldType&gt;</pre>
+ * &lt;/fieldType&gt;</code></pre>
  *
  * @see PatternReplaceFilter
  * @since 3.1
@@ -46,6 +46,7 @@ public class PatternReplaceFilterFactory extends TokenFilterFactory {
   final Pattern pattern;
   final String replacement;
   final boolean replaceAll;
+  final boolean ignoreKeywords;
 
   /** Creates a new PatternReplaceFilterFactory */
   public PatternReplaceFilterFactory(Map<String, String> args) {
@@ -53,6 +54,7 @@ public class PatternReplaceFilterFactory extends TokenFilterFactory {
     pattern = getPattern(args, "pattern");
     replacement = get(args, "replacement");
     replaceAll = "all".equals(get(args, "replace", Arrays.asList("all", "first"), "all"));
+    ignoreKeywords = getBoolean(args, "ignoreKeywords", false);
     if (!args.isEmpty()) {
       throw new IllegalArgumentException("Unknown parameters: " + args);
     }
@@ -65,6 +67,6 @@ public class PatternReplaceFilterFactory extends TokenFilterFactory {
 
   @Override
   public PatternReplaceFilter create(TokenStream input) {
-    return new PatternReplaceFilter(input, pattern, replacement, replaceAll);
+    return new PatternReplaceFilter(input, pattern, replacement, replaceAll, ignoreKeywords);
   }
 }

@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.search;
 
+import static org.hamcrest.Matchers.emptyArray;
+import static org.hamcrest.Matchers.not;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -122,11 +125,11 @@ public class TestTopDocsMerge extends LuceneTestCase {
 
     // passing false here means TopDocs.merge uses the incoming ScoreDoc.shardIndex
     // that we already set, instead of the position of that TopDocs in the array:
-    TopDocs merge = TopDocs.merge(from, size, topDocs.toArray(new TopDocs[0]));
+    TopDocs merge = TopDocs.merge(from, size, topDocs.toArray(TopDocs[]::new));
 
-    assertTrue(merge.scoreDocs.length > 0);
+    assertThat(merge.scoreDocs, not(emptyArray()));
     for (ScoreDoc scoreDoc : merge.scoreDocs) {
-      assertTrue(scoreDoc.shardIndex != -1);
+      assertNotEquals(-1, scoreDoc.shardIndex);
       TopDocs shardTopDocs = shardResultMapping.get(scoreDoc.shardIndex);
       assertNotNull(shardTopDocs);
       boolean found = false;
@@ -141,7 +144,7 @@ public class TestTopDocsMerge extends LuceneTestCase {
 
     // now ensure merge is stable even if we use our own shard IDs
     Collections.shuffle(topDocs, random());
-    TopDocs merge2 = TopDocs.merge(from, size, topDocs.toArray(new TopDocs[0]));
+    TopDocs merge2 = TopDocs.merge(from, size, topDocs.toArray(TopDocs[]::new));
     assertArrayEquals(merge.scoreDocs, merge2.scoreDocs);
   }
 

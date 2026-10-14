@@ -19,13 +19,27 @@ package org.apache.lucene.analysis.hunspell;
 import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.IntsRef;
 
-/** A mutable entry object used when enumerating the dictionary internally */
-abstract class FlyweightEntry {
-  abstract boolean hasTitleCase();
+/** A mutable entry object used when enumerating dictionary entries. */
+public abstract class FlyweightEntry {
+  FlyweightEntry() {}
 
-  abstract CharsRef root();
+  /**
+   * @return whether this entry's root is title-cased
+   */
+  public abstract boolean hasTitleCase();
 
-  abstract CharSequence lowerCaseRoot();
+  /**
+   * @return the dictionary root
+   */
+  public abstract CharsRef root();
 
-  abstract IntsRef forms();
+  /**
+   * @return the lower-case dictionary root
+   */
+  public abstract CharSequence lowerCaseRoot();
+
+  /**
+   * @return encoded form data for this entry
+   */
+  public abstract IntsRef forms();
 }

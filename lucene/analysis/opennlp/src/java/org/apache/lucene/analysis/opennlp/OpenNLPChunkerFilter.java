@@ -71,8 +71,8 @@ public final class OpenNLPChunkerFilter extends TokenFilter {
       termList.add(attributeSource.getAttribute(CharTermAttribute.class).toString());
       posTagList.add(attributeSource.getAttribute(TypeAttribute.class).type());
     }
-    String[] sentenceTerms = termList.toArray(new String[0]);
-    String[] sentenceTermPOSTags = posTagList.toArray(new String[0]);
+    String[] sentenceTerms = termList.toArray(String[]::new);
+    String[] sentenceTermPOSTags = posTagList.toArray(String[]::new);
     assignTokenTypes(chunkerOp.getChunks(sentenceTerms, sentenceTermPOSTags, null));
     return sentenceAttributeExtractor.getSentenceAttributes();
   }

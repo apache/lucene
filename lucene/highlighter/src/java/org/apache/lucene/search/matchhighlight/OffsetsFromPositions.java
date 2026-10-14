@@ -66,6 +66,11 @@ public final class OffsetsFromPositions implements OffsetsRetrievalStrategy {
       return positionRanges;
     }
 
+    // If values are not stored, there is nothing to highlight...
+    if (values.isEmpty()) {
+      return List.of();
+    }
+
     class PositionSpan extends OffsetRange {
       int leftOffset = Integer.MAX_VALUE;
       int rightOffset = Integer.MIN_VALUE;

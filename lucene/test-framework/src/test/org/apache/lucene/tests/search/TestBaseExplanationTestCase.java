@@ -29,7 +29,7 @@ import org.apache.lucene.search.Weight;
 
 /**
  * Tests that the {@link BaseExplanationTestCase} helper code, as well as {@link
- * CheckHits#checkNoMatchExplanations} are checking what they are suppose to.
+ * CheckHits#checkNoMatchExplanations} are checking what they are supposed to.
  */
 public class TestBaseExplanationTestCase extends BaseExplanationTestCase {
 

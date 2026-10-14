@@ -19,6 +19,7 @@ package org.apache.lucene.expressions.js;
 import java.io.IOException;
 import org.apache.lucene.expressions.Expression;
 import org.apache.lucene.search.DoubleValues;
+import org.junit.jupiter.api.Test;
 
 /** Some sanity checks with API as those are not detected by {@link JavascriptCompiler} */
 public class TestAPISanity extends CompilerTestCase {
@@ -37,6 +38,7 @@ public class TestAPISanity extends CompilerTestCase {
     }
   }
 
+  @Test
   public void testBytecodeExceptions() throws Exception {
     Expression expr = compile("1");
     assertArrayEquals(

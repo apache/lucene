@@ -36,7 +36,7 @@ final class BlockMaxConjunctionScorer extends Scorer {
 
   /** Create a new {@link BlockMaxConjunctionScorer} from scoring clauses. */
   BlockMaxConjunctionScorer(Collection<Scorer> scorersList) throws IOException {
-    this.scorers = scorersList.toArray(new Scorer[scorersList.size()]);
+    this.scorers = scorersList.toArray(Scorer[]::new);
     // Sort scorer by cost
     Arrays.sort(this.scorers, Comparator.comparingLong(s -> s.iterator().cost()));
     this.scorables =
@@ -56,7 +56,7 @@ final class BlockMaxConjunctionScorer extends Scorer {
       approximations[i] = ScorerUtil.likelyImpactsEnum(approximations[i]);
       scorer.advanceShallow(0);
     }
-    this.twoPhases = twoPhaseList.toArray(new TwoPhaseIterator[twoPhaseList.size()]);
+    this.twoPhases = twoPhaseList.toArray(TwoPhaseIterator[]::new);
     Arrays.sort(this.twoPhases, Comparator.comparingDouble(TwoPhaseIterator::matchCost));
   }
 

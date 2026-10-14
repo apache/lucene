@@ -14,17 +14,3 @@ valid:
 id: javascript-syntax
 valid:
   - x = 1;
----
-id: json-syntax
-valid:
-  - |
-    []
----
-id: python-syntax
-valid:
-  - x = 1
----
-id: yaml-syntax
-valid:
-  - |
-    foo: bar

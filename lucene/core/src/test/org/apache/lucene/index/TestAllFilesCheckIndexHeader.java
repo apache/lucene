@@ -47,7 +47,7 @@ public class TestAllFilesCheckIndexHeader extends LuceneTestCase {
     // time we test truncation of .cfs/.cfe too:
     if (random().nextInt(5) != 1) {
       conf.setUseCompoundFile(false);
-      conf.getMergePolicy().setNoCFSRatio(0.0);
+      conf.getCodec().compoundFormat().setShouldUseCompoundFile(false);
     }
 
     RandomIndexWriter riw = new RandomIndexWriter(random(), dir, conf);
@@ -85,8 +85,8 @@ public class TestAllFilesCheckIndexHeader extends LuceneTestCase {
   }
 
   private void checkOneFile(Directory dir, String victim) throws IOException {
-    // use ramdir explicit, as we do evil things like try to generate broken files, deletes must
-    // work.
+    // use ramdir explicitly, as we do evil things like trying to generate broken files, deletes
+    // must work.
     try (BaseDirectoryWrapper dirCopy =
         new MockDirectoryWrapper(random(), new ByteBuffersDirectory())) {
       dirCopy.setCheckIndexOnClose(false);

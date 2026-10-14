@@ -59,7 +59,7 @@ public class TestParallelReaderEmptyIndex extends LuceneTestCase {
     for (LeafReaderContext leaf : cpr.leaves()) {
       leaves.add(SlowCodecReaderWrapper.wrap(leaf.reader()));
     }
-    iwOut.addIndexes(leaves.toArray(new CodecReader[0]));
+    iwOut.addIndexes(leaves.toArray(CodecReader[]::new));
     iwOut.forceMerge(1);
 
     iwOut.close();

@@ -61,6 +61,7 @@ tasks.named("compileJava").configure {
 }
 
 // Process UTF8 property files to unicode escapes.
+
 tasks.withType(ProcessResources).configureEach { task ->
   task.filesMatching("**/messages*.properties", {
     filteringCharset = 'UTF-8'
@@ -143,10 +144,10 @@ tasks.register("run", {
   doFirst {
     logger.lifecycle("Launching Luke ${project.version} right now...")
     ant.exec(
-        executable: rootProject.getExtensions().getByType(AlternativeJdkSupportPlugin.AltJvmExtension).compilationJvm.get().javaExecutable.toString(),
-        spawn: true,
-        vmlauncher: true
-        ) {
+            executable: rootProject.getExtensions().getByType(AlternativeJdkSupportPlugin.AltJvmExtension).compilationJvm.get().javaExecutable.toString(),
+            spawn: true,
+            vmlauncher: true
+            ) {
           arg(value: '-jar')
           arg(value: file("${standaloneDistDir}/${standaloneJar.archiveFileName.get()}").absolutePath)
         }

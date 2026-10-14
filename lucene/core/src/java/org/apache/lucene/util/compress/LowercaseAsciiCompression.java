@@ -28,7 +28,7 @@ import org.apache.lucene.util.BytesRef;
  */
 public final class LowercaseAsciiCompression {
 
-  private static final boolean isCompressible(int b) {
+  private static boolean isCompressible(int b) {
     final int high3Bits = (b + 1) & ~0x1F;
     return high3Bits == 0x20 || high3Bits == 0x60;
   }

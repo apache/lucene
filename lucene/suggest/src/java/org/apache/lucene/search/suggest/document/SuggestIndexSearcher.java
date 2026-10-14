@@ -63,7 +63,7 @@ public class SuggestIndexSearcher extends IndexSearcher {
    */
   public void suggest(CompletionQuery query, TopSuggestDocsCollector collector) throws IOException {
     // TODO use IndexSearcher.rewrite instead
-    // have to implement equals() and hashCode() in CompletionQuerys and co
+    // have to implement equals() and hashCode() in CompletionQuery and co
     query = (CompletionQuery) query.rewrite(this);
     Weight weight = query.createWeight(this, collector.scoreMode(), 1f);
     for (LeafReaderContext context : getIndexReader().leaves()) {
@@ -74,9 +74,7 @@ public class SuggestIndexSearcher extends IndexSearcher {
           leafCollector = collector.getLeafCollector(context);
           scorer.score(
               leafCollector, context.reader().getLiveDocs(), 0, DocIdSetIterator.NO_MORE_DOCS);
-        } catch (
-            @SuppressWarnings("unused")
-            CollectionTerminatedException e) {
+        } catch (CollectionTerminatedException _) {
           // collection was terminated prematurely
           // continue with the following leaf
         }

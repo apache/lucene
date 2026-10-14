@@ -162,8 +162,8 @@ class SpanishPluralStemmer {
             "bojes",
             "contrarreloj",
             "carcajes");
-    final CharArraySet sepecialSet = new CharArraySet(specialCasesList, true);
-    specialCases = CharArraySet.unmodifiableSet(sepecialSet);
+    final CharArraySet specialSet = new CharArraySet(specialCasesList, true);
+    specialCases = CharArraySet.unmodifiableSet(specialSet);
   }
 
   int stem(char s[], int len) {

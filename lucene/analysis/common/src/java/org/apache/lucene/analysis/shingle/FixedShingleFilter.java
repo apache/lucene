@@ -57,6 +57,11 @@ public final class FixedShingleFilter extends GraphTokenFilter {
 
   private final CharTermAttribute buffer = new CharTermAttributeImpl();
 
+  // Accumulates position increments from base tokens until a shingle is emitted.  This is needed
+  // when a base token cannot produce a shingle but a later token, possibly stacked at the same
+  // position, can.
+  private int pendingPosInc;
+
   /**
    * Creates a FixedShingleFilter over an input token stream
    *
@@ -91,20 +96,25 @@ public final class FixedShingleFilter extends GraphTokenFilter {
   @Override
   public boolean incrementToken() throws IOException {
 
-    int shinglePosInc, startOffset, endOffset;
+    int startOffset, endOffset;
+    // reset pendingPosInc to 0, since we are about to emit a shingle and any pending position
+    // increments
+    // have been accounted for in the position increment of previous shingle
+    pendingPosInc = 0;
 
     outer:
     while (true) {
       if (incrementGraph() == false) {
+        // no more routes from the base token, so move base token to next token in the input stream
         if (incrementBaseToken() == false) {
+          // no more base tokens, we are done
           return false;
         }
-        // starting a shingle at a new base position, use base position increment
-        shinglePosInc = incAtt.getPositionIncrement();
-      } else {
-        // starting a new shingle at the same base with a different graph, use a 0
-        // position increment
-        shinglePosInc = 0;
+        // Accumulate into pendingPosInc, the position increment of the new token read from input
+        // stream.
+        // pendingPosInc could be non-zero when we reach here without emitting a new token (from
+        // `continue outer` path).
+        pendingPosInc += incAtt.getPositionIncrement();
       }
 
       startOffset = offsetAtt.startOffset();
@@ -156,9 +166,21 @@ public final class FixedShingleFilter extends GraphTokenFilter {
     }
     clearAttributes();
     this.offsetAtt.setOffset(startOffset, endOffset);
-    this.incAtt.setPositionIncrement(shinglePosInc);
+    this.incAtt.setPositionIncrement(pendingPosInc);
     this.termAtt.setEmpty().append(buffer);
     this.typeAtt.setType("shingle");
     return true;
+  }
+
+  @Override
+  public void end() throws IOException {
+    super.end();
+    this.incAtt.setPositionIncrement(this.incAtt.getPositionIncrement() + pendingPosInc);
+  }
+
+  @Override
+  public void reset() throws IOException {
+    super.reset();
+    pendingPosInc = 0;
   }
 }

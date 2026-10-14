@@ -327,12 +327,10 @@ public class LatLonPoint extends Field {
   public static Query newGeometryQuery(
       String field, ShapeField.QueryRelation queryRelation, LatLonGeometry... latLonGeometries) {
     if (queryRelation == ShapeField.QueryRelation.INTERSECTS && latLonGeometries.length == 1) {
-      if (latLonGeometries[0] instanceof Rectangle) {
-        final Rectangle rect = (Rectangle) latLonGeometries[0];
+      if (latLonGeometries[0] instanceof Rectangle rect) {
         return newBoxQuery(field, rect.minLat, rect.maxLat, rect.minLon, rect.maxLon);
       }
-      if (latLonGeometries[0] instanceof Circle) {
-        final Circle circle = (Circle) latLonGeometries[0];
+      if (latLonGeometries[0] instanceof Circle circle) {
         return newDistanceQuery(field, circle.getLat(), circle.getLon(), circle.getRadius());
       }
     }

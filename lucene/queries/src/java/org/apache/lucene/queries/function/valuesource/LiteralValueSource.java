@@ -74,9 +74,7 @@ public class LiteralValueSource extends ValueSource {
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    if (!(o instanceof LiteralValueSource)) return false;
-
-    LiteralValueSource that = (LiteralValueSource) o;
+    if (!(o instanceof LiteralValueSource that)) return false;
 
     return string.equals(that.string);
   }

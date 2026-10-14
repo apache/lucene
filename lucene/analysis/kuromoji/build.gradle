@@ -1,3 +1,6 @@
+import de.undercouch.gradle.tasks.download.Download
+import org.apache.lucene.gradle.plugins.globals.LuceneBuildGlobalsExtension
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -25,3 +28,126 @@ dependencies {
 
   moduleTestImplementation project(':lucene:test-framework')
 }
+
+//
+// This configures regeneration of Kuromoji dictionaries.
+//
+
+static void recompileDictionary(Project project, String dictionaryName, Closure closure) {
+  project.getExtensions().getByType(LuceneBuildGlobalsExtension).execOps.javaexec {
+    mainClass = "org.apache.lucene.analysis.ja.dict.DictionaryBuilder"
+    classpath = project.sourceSets.main.runtimeClasspath
+
+    jvmArgs '-Xmx1G'
+
+    with closure
+  }
+  project.logger.lifecycle("Automaton regenerated from dictionary: ${dictionaryName}")
+}
+
+def targetDir = project.file("src/resources")
+
+def mecabDictionaryName = "mecab-ipadic-2.7.0-20070801"
+// original source: "https://jaist.dl.sourceforge.net/project/mecab/mecab-ipadic/2.7.0-20070801/${mecabDictionaryName}.tar.gz"
+def mecabDictionarySource = "https://s3.amazonaws.com/lucene-testdata/mecab/${mecabDictionaryName}.tar.gz"
+
+def compileMecab = tasks.register("compileMecab", Download, {
+  dependsOn sourceSets.main.runtimeClasspath
+
+  def dictionaryFile = file("${buildDir}/generate/${mecabDictionaryName}.tar.gz")
+  def unpackedDir = file("${buildDir}/generate/${mecabDictionaryName}")
+
+  src mecabDictionarySource
+  dest dictionaryFile
+  onlyIfModified true
+
+  doLast {
+    buildGlobals.fileOps.delete(sourceSets.main.resources.srcDirs.collect {File location ->
+      fileTree(dir: location, include: "org/apache/lucene/analysis/ja/dict/*.dat")
+    })
+
+    // Unpack the downloaded archive.
+    delete unpackedDir
+    ant.untar(src: dictionaryFile, dest: unpackedDir, compression: "gzip") {
+      ant.cutdirsmapper(dirs: "1")
+    }
+
+    // Apply patch via local git.
+    buildGlobals.quietExec(it, {
+      workingDir = unpackedDir
+      executable "git"
+      args += [
+        "apply",
+        project.file("src/tools/patches/Noun.proper.csv.patch").absolutePath
+      ]
+    })
+
+    // Compile the dictionary
+    recompileDictionary(project, mecabDictionaryName, {
+      args += [
+        "ipadic",
+        unpackedDir,
+        targetDir,
+        "euc-jp",
+        false
+      ]
+    })
+  }
+})
+
+tasks.register("regenerateDictionariesFromMecab", {
+  description = "Regenerate dictionaries from Mecab data"
+
+  dependsOn compileMecab
+
+  inputs.property("dictionarySource", mecabDictionarySource)
+  outputs.files(fileTree(dir: "src/resources/org/apache/lucene/analysis/ja/dict", include: "*.dat"))
+
+  regenerate {
+    // No need to run any follow-ups, we generate binary files (not sources).
+    followedUpBy = []
+    ifSkippedAlsoSkip = [compileMecab.name]
+  }
+})
+
+// TODO: this regenerates data files over the same files as mecab, above. This seems odd and inconsistent?
+// https://github.com/apache/lucene/issues/15365
+
+// original source (down): https://rwthaachen.dl.osdn.jp/naist-jdic/53500/mecab-naist-jdic-0.6.3b-20111013.tar.gz
+def naistDictionaryName = "mecab-naist-jdic-0.6.3b-20111013"
+def naistDictionarySource = "https://s3.amazonaws.com/lucene-testdata/mecab/${naistDictionaryName}.tar.gz"
+tasks.register("compileNaist", Download, {
+  description = "Recompile dictionaries from Naist data."
+
+  dependsOn sourceSets.main.runtimeClasspath
+
+  def dictionaryFile = file("${buildDir}/generate/${naistDictionaryName}.tar.gz")
+  def unpackedDir = file("${buildDir}/generate/${naistDictionaryName}")
+
+  src naistDictionarySource
+  dest dictionaryFile
+  onlyIfModified true
+
+  doLast {
+    buildGlobals.fileOps.delete(sourceSets.main.resources.srcDirs.collect {File location ->
+      fileTree(dir: location, include: "org/apache/lucene/analysis/ja/dict/*.dat")
+    })
+
+    // Unpack the downloaded archive.
+    delete unpackedDir
+    ant.untar(src: dictionaryFile, dest: unpackedDir, compression: "gzip") {
+      ant.cutdirsmapper(dirs: "1")
+    }
+
+    // Compile the dictionary
+    recompileDictionary(project, naistDictionaryName, {
+      args += [
+        "ipadic",
+        unpackedDir,
+        targetDir,
+        "euc-jp",
+        false
+      ]
+    })
+  }
+})

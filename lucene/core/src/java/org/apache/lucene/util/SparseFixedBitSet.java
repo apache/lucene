@@ -18,6 +18,7 @@ package org.apache.lucene.util;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Objects;
 import org.apache.lucene.search.DocIdSetIterator;
 
 /**
@@ -41,12 +42,12 @@ public class SparseFixedBitSet extends BitSet {
   private static final long SINGLE_ELEMENT_ARRAY_BYTES_USED = RamUsageEstimator.sizeOf(new long[1]);
   private static final int MASK_4096 = (1 << 12) - 1;
 
-  private static int blockCount(int length) {
+  static int blockCount(int length) {
     int blockCount = length >>> 12;
     if ((blockCount << 12) < length) {
       ++blockCount;
     }
-    assert (blockCount << 12) >= length;
+    assert ((long) blockCount << 12) >= length;
     return blockCount;
   }
 
@@ -214,6 +215,10 @@ public class SparseFixedBitSet extends BitSet {
   }
 
   private void insertLong(int i4096, long i64bit, int i, long index) {
+    insertLongValue(i4096, i64bit, 1L << i, index);
+  }
+
+  private void insertLongValue(int i4096, long i64bit, long value, long index) {
     indices[i4096] |= i64bit;
     // we count the number of bits that are set on the right of i64
     // this gives us the index at which to perform the insertion
@@ -223,19 +228,45 @@ public class SparseFixedBitSet extends BitSet {
       // since we only store non-zero longs, if the last value is 0, it means
       // that we already have extra space, make use of it
       System.arraycopy(bitArray, o, bitArray, o + 1, bitArray.length - o - 1);
-      bitArray[o] = 1L << i;
+      bitArray[o] = value;
     } else {
       // we don't have extra space so we need to resize to insert the new long
       final int newSize = oversize(bitArray.length + 1);
       final long[] newBitArray = new long[newSize];
       System.arraycopy(bitArray, 0, newBitArray, 0, o);
-      newBitArray[o] = 1L << i;
+      newBitArray[o] = value;
       System.arraycopy(bitArray, o, newBitArray, o + 1, bitArray.length - o);
       bits[i4096] = newBitArray;
       // we may slightly overestimate size here, but keep it cheap
       ramBytesUsed += (newBitArray.length - bitArray.length) << 3;
     }
     ++nonZeroLongCount;
+  }
+
+  /**
+   * Sets a range of bits
+   *
+   * @param startIndex lower index
+   * @param endIndex one-past the last bit to set
+   */
+  public void set(int startIndex, int endIndex) {
+    assert startIndex >= 0 && startIndex < length
+        : "startIndex=" + startIndex + ", length=" + length;
+    assert endIndex >= 0 && endIndex <= length : "endIndex=" + endIndex + ", length=" + length;
+    if (endIndex <= startIndex) {
+      return;
+    }
+    final int firstBlock = startIndex >>> 12;
+    final int lastBlock = (endIndex - 1) >>> 12;
+    if (firstBlock == lastBlock) {
+      setWithinBlock(firstBlock, startIndex & MASK_4096, (endIndex - 1) & MASK_4096);
+    } else {
+      setWithinBlock(firstBlock, startIndex & MASK_4096, MASK_4096);
+      for (int i = firstBlock + 1; i < lastBlock; ++i) {
+        setWithinBlock(i, 0, MASK_4096);
+      }
+      setWithinBlock(lastBlock, 0, (endIndex - 1) & MASK_4096);
+    }
   }
 
   /** Clear the bit at index <code>i</code>. */
@@ -258,6 +289,26 @@ public class SparseFixedBitSet extends BitSet {
       } else {
         this.bits[i4096][o] = bits;
       }
+    }
+  }
+
+  private void orLong(int i4096, int i64, long newBits) {
+    if (newBits == 0) {
+      return;
+    }
+    final long index = indices[i4096];
+    final long i64bit = 1L << i64;
+    if ((index & i64bit) != 0) {
+      final int o = Long.bitCount(index & (i64bit - 1));
+      this.bits[i4096][o] |= newBits;
+    } else if (index == 0) {
+      indices[i4096] = i64bit;
+      assert bits[i4096] == null;
+      bits[i4096] = new long[] {newBits};
+      ++nonZeroLongCount;
+      ramBytesUsed += SINGLE_ELEMENT_ARRAY_BYTES_USED;
+    } else {
+      insertLongValue(i4096, i64bit, newBits, index);
     }
   }
 
@@ -319,6 +370,22 @@ public class SparseFixedBitSet extends BitSet {
     }
   }
 
+  private void setWithinBlock(int i4096, int from, int to) {
+    int firstLong = from >>> 6;
+    int lastLong = to >>> 6;
+
+    if (firstLong == lastLong) {
+      orLong(i4096, firstLong, mask(from, to));
+    } else {
+      assert firstLong < lastLong;
+      orLong(i4096, lastLong, mask(0, to));
+      for (int i = firstLong + 1; i <= lastLong - 1; ++i) {
+        orLong(i4096, i, -1L);
+      }
+      orLong(i4096, firstLong, mask(from, 63));
+    }
+  }
+
   /** Return the first document that occurs on or after the provided block index. */
   private int firstDoc(int i4096, int i4096upper) {
     assert i4096upper <= indices.length
@@ -346,6 +413,90 @@ public class SparseFixedBitSet extends BitSet {
   public int nextSetBit(int start, int upperBound) {
     int res = nextSetBitInRange(start, upperBound);
     return res < upperBound ? res : DocIdSetIterator.NO_MORE_DOCS;
+  }
+
+  @Override
+  public int nextClearBit(int index) {
+    int res = nextClearBitInRange(index, length);
+    return res < length ? res : DocIdSetIterator.NO_MORE_DOCS;
+  }
+
+  @Override
+  public int nextClearBit(int start, int upperBound) {
+    int res = nextClearBitInRange(start, upperBound);
+    return res < upperBound ? res : DocIdSetIterator.NO_MORE_DOCS;
+  }
+
+  /**
+   * First unset bit in {@code [fromGlobal, upperBound)} within block {@code i4096}, or {@link
+   * DocIdSetIterator#NO_MORE_DOCS} if none.
+   */
+  private int firstClearInBlock(int i4096, int fromGlobal, int upperBound) {
+    final int blockBase = i4096 << 12;
+    final int blockEnd = Math.min(blockBase + 4096, length);
+    int from = Math.max(fromGlobal, blockBase);
+    final int blockCap = Math.min(upperBound, blockEnd);
+    if (from >= blockCap) {
+      return DocIdSetIterator.NO_MORE_DOCS;
+    }
+    if (indices[i4096] == 0) {
+      return from;
+    }
+    final long index = indices[i4096];
+    final long[] bitArray = bits[i4096];
+    int pos = from;
+    while (pos < blockCap) {
+      final int i64 = pos >>> 6;
+      final long i64bit = 1L << i64;
+      final int wStart = i64 << 6;
+      if (wStart >= blockEnd) {
+        break;
+      }
+      if ((index & i64bit) == 0) {
+        if (pos < blockCap) {
+          return pos;
+        }
+        pos = wStart + 64;
+        continue;
+      }
+      final int o = Long.bitCount(index & (i64bit - 1));
+      final long wordBits = bitArray[o];
+      final int sub = pos - wStart;
+      final long tail = wordBits >>> sub;
+      final int span = 64 - sub;
+      final long spanMask = (sub == 0) ? -1L : ((1L << span) - 1);
+      final long inv = (~tail) & spanMask;
+      if (inv != 0) {
+        final int cand = pos + Long.numberOfTrailingZeros(inv);
+        if (cand < blockCap) {
+          return cand;
+        }
+      }
+      pos = wStart + 64;
+    }
+    return DocIdSetIterator.NO_MORE_DOCS;
+  }
+
+  /**
+   * Returns the next unset bit in {@code [start, upperBound)}, or {@link
+   * DocIdSetIterator#NO_MORE_DOCS} if there is none.
+   */
+  private int nextClearBitInRange(int start, int upperBound) {
+    assert start < length;
+    assert upperBound > start && upperBound <= length
+        : "upperBound=" + upperBound + ", start=" + start + ", length=" + length;
+    int i4096 = start >>> 12;
+    final int i4096Upper = upperBound == length ? indices.length : blockCount(upperBound);
+    int from = start;
+    while (i4096 < i4096Upper) {
+      final int res = firstClearInBlock(i4096, from, upperBound);
+      if (res != DocIdSetIterator.NO_MORE_DOCS) {
+        return res;
+      }
+      i4096++;
+      from = i4096 << 12;
+    }
+    return DocIdSetIterator.NO_MORE_DOCS;
   }
 
   /**
@@ -559,6 +710,96 @@ public class SparseFixedBitSet extends BitSet {
       super.or(it);
     } else {
       orDense(it);
+    }
+  }
+
+  /**
+   * Clears bits of {@code dest} wherever {@code source} has a set bit, for {@code length} aligned
+   * indices starting at {@code sourceFrom} in {@code source} and {@code destFrom} in {@code dest}:
+   * for each {@code j} in {@code [0, length)}, {@code dest.clear(destFrom + j)} is performed when
+   * {@code source.get(sourceFrom + j)} is set; other bits of {@code dest} are unchanged. Only
+   * {@code dest} is modified.
+   *
+   * <p>Only non-zero longs of {@code source} overlapping the range are visited, so cost is bounded
+   * by {@code length / 64} and does not depend on how many bits of {@code dest} are set. This is
+   * the AND-NOT counterpart of {@link FixedBitSet#andRange}.
+   *
+   * @throws IndexOutOfBoundsException if {@code sourceFrom + length} exceeds {@code
+   *     source.length()} or {@code destFrom + length} exceeds {@code dest.length()}
+   */
+  public static void andNotRange(
+      SparseFixedBitSet source, int sourceFrom, FixedBitSet dest, int destFrom, int length) {
+    assert length >= 0 : length;
+    Objects.checkFromIndexSize(sourceFrom, length, source.length());
+    Objects.checkFromIndexSize(destFrom, length, dest.length());
+
+    if (length == 0) {
+      return;
+    }
+
+    final long[] destBits = dest.getBits();
+    final int sourceTo = sourceFrom + length;
+    final int firstLong = sourceFrom >>> 6;
+    final int lastLong = (sourceTo - 1) >>> 6;
+    final int firstBlock = sourceFrom >>> 12;
+    final int lastBlock = (sourceTo - 1) >>> 12;
+    // The long of source that holds bit i64<<6 maps to the bits of dest that start at
+    // (i64<<6) + delta, that is to dest longs i64 + (delta >> 6) and the one after it, with the
+    // bits shifted left by delta modulo 64.
+    final int delta = destFrom - sourceFrom;
+    final int destLongDelta = delta >> 6;
+    final int shift = delta & 0x3F;
+
+    for (int i4096 = firstBlock; i4096 <= lastBlock; ++i4096) {
+      final long index = source.indices[i4096];
+      if (index == 0) {
+        continue;
+      }
+      final long[] bitArray = source.bits[i4096];
+      // Restrict the index to the longs of this block that overlap with [sourceFrom, sourceTo).
+      long inRange = index;
+      if (i4096 == firstBlock) {
+        inRange &= -1L << firstLong; // shifts are mod 64
+      }
+      if (i4096 == lastBlock) {
+        inRange &= -1L >>> -(lastLong + 1); // shifts are mod 64
+      }
+
+      for (long remaining = inRange; remaining != 0; remaining &= remaining - 1) {
+        final int i = Long.numberOfTrailingZeros(remaining);
+        final int i64 = (i4096 << 6) | i;
+        long word = bitArray[Long.bitCount(index & ((1L << i) - 1))];
+        if (i64 == firstLong) {
+          word &= -1L << sourceFrom; // shifts are mod 64
+        }
+        if (i64 == lastLong) {
+          word &= -1L >>> -sourceTo; // shifts are mod 64
+        }
+        if (word == 0) {
+          continue;
+        }
+
+        final int destLong = i64 + destLongDelta;
+        assert destLong < destBits.length;
+        final long lowBits = word << shift;
+        if (destLong >= 0) {
+          destBits[destLong] &= ~lowBits;
+        } else {
+          // The first long of the range starts before the first long of dest, so it may only
+          // contribute to the long after it.
+          assert lowBits == 0;
+        }
+        if (shift != 0) {
+          final long highBits = word >>> -shift;
+          if (destLong + 1 < destBits.length) {
+            destBits[destLong + 1] &= ~highBits;
+          } else {
+            // The last long of the range ends after the last long of dest, so it may only
+            // contribute to the long before it.
+            assert highBits == 0;
+          }
+        }
+      }
     }
   }
 

@@ -57,8 +57,6 @@ public class TestMoreTermsBackwardsCompatibility extends BackwardsCompatibilityT
   @Override
   protected void createIndex(Directory directory) throws IOException {
     LogByteSizeMergePolicy mp = new LogByteSizeMergePolicy();
-    mp.setNoCFSRatio(1.0);
-    mp.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
     MockAnalyzer analyzer = new MockAnalyzer(random());
     analyzer.setMaxTokenLength(TestUtil.nextInt(random(), 1, IndexWriter.MAX_TERM_LENGTH));
 
@@ -67,6 +65,8 @@ public class TestMoreTermsBackwardsCompatibility extends BackwardsCompatibilityT
             .setMergePolicy(mp)
             .setCodec(TestUtil.getDefaultCodec())
             .setUseCompoundFile(false);
+    conf.getCodec().compoundFormat().setShouldUseCompoundFile(true);
+    conf.getCodec().compoundFormat().setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
     IndexWriter writer = new IndexWriter(directory, conf);
     LineFileDocs docs = new LineFileDocs(new Random(0));
     for (int i = 0; i < 50; i++) {

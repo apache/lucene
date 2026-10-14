@@ -42,6 +42,8 @@ import org.apache.lucene.util.BytesRef;
   "Direct"
 }) // at night this makes like 200k/300k docs and will make Direct's heart beat!
 public class TestBagOfPostings extends LuceneTestCase {
+  // TODO: incredibly slow (sometimes, maybe simpletext)
+  @Nightly
   public void test() throws Exception {
     List<String> postingsList = new ArrayList<>();
     int numTerms = atLeast(300);

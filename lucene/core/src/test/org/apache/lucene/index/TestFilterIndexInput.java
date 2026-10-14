@@ -26,7 +26,6 @@ import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
-import org.junit.Test;
 
 public class TestFilterIndexInput extends TestIndexInput {
 
@@ -59,7 +58,6 @@ public class TestFilterIndexInput extends TestIndexInput {
     }
   }
 
-  @Test
   public void testOverrides() {
     for (Method m : FilterIndexInput.class.getMethods()) {
       if (m.getName().contains("clone")) {

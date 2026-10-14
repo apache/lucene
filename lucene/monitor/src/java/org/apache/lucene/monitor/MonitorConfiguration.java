@@ -65,7 +65,7 @@ public class MonitorConfiguration {
    * @param directoryProvider lambda to provide the index Directory implementation
    * @param serializer the serializer used to store the queries
    * @param readOnly set the monitor as read-only
-   * @return MonitorCOnfiguration
+   * @return MonitorConfiguration
    */
   public MonitorConfiguration setDirectoryProvider(
       IOSupplier<Directory> directoryProvider,

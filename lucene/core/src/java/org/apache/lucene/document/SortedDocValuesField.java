@@ -29,9 +29,9 @@ import org.apache.lucene.util.BytesRef;
  * Field that stores a per-document {@link BytesRef} value, indexed for sorting. Here's an example
  * usage:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   document.add(new SortedDocValuesField(name, new BytesRef("hello")));
- * </pre>
+ * </code></pre>
  *
  * <p>If you also need to store the value, you should add a separate {@link StoredField} instance.
  *

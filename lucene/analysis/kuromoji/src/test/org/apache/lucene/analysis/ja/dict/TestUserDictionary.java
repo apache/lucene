@@ -20,11 +20,9 @@ import java.io.IOException;
 import java.io.StringReader;
 import org.apache.lucene.analysis.ja.TestJapaneseTokenizer;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 public class TestUserDictionary extends LuceneTestCase {
 
-  @Test
   public void testLookup() throws IOException {
     UserDictionary dictionary = TestJapaneseTokenizer.readDict();
     String s = "関西国際空港に行った";
@@ -48,7 +46,6 @@ public class TestUserDictionary extends LuceneTestCase {
     assertEquals(6, dictionaryEntryResult2.length);
   }
 
-  @Test
   public void testReadings() throws IOException {
     UserDictionary dictionary = TestJapaneseTokenizer.readDict();
     int[][] result = dictionary.lookup("日本経済新聞".toCharArray(), 0, 6);
@@ -65,7 +62,6 @@ public class TestUserDictionary extends LuceneTestCase {
         dictionary.getMorphAttributes().getReading(wordIdAsashoryu, "朝青龍".toCharArray(), 0, 3));
   }
 
-  @Test
   public void testPartOfSpeech() throws IOException {
     UserDictionary dictionary = TestJapaneseTokenizer.readDict();
     int[][] result = dictionary.lookup("日本経済新聞".toCharArray(), 0, 6);
@@ -74,13 +70,11 @@ public class TestUserDictionary extends LuceneTestCase {
     assertEquals("カスタム名詞", dictionary.getMorphAttributes().getPartOfSpeech(wordIdKeizai));
   }
 
-  @Test
   public void testRead() throws IOException {
     UserDictionary dictionary = TestJapaneseTokenizer.readDict();
     assertNotNull(dictionary);
   }
 
-  @Test
   public void testReadInvalid1() throws IOException {
     // the concatenated segment must be the same as the surface form
     String invalidEntry = "日経新聞,日本 経済 新聞,ニホン ケイザイ シンブン,カスタム名詞";
@@ -92,7 +86,6 @@ public class TestUserDictionary extends LuceneTestCase {
     assertTrue(e.getMessage().contains("does not match the surface form"));
   }
 
-  @Test
   public void testReadInvalid2() throws IOException {
     // the concatenated segment must be the same as the surface form
     String invalidEntry = "日本経済新聞,日経 新聞,ニッケイ シンブン,カスタム名詞";
@@ -104,7 +97,6 @@ public class TestUserDictionary extends LuceneTestCase {
     assertTrue(e.getMessage().contains("does not match the surface form"));
   }
 
-  @Test
   public void testSharp() throws IOException {
     String[] inputs = {"テスト#", "テスト#テスト"};
     UserDictionary dictionary = TestJapaneseTokenizer.readDict();

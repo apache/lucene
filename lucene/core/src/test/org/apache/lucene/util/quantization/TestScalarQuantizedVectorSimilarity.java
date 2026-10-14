@@ -37,7 +37,7 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
       if (random().nextBoolean()) {
         multiplier = -multiplier;
       }
-      for (byte bits : new byte[] {4, 7}) {
+      for (byte bits : new byte[] {4, 7, 8}) {
         ScalarQuantizedVectorSimilarity quantizedSimilarity =
             ScalarQuantizedVectorSimilarity.fromVectorSimilarity(
                 similarityFunction, multiplier, bits);

@@ -56,9 +56,10 @@ public final class HardlinkCopyDirectoryWrapper extends FilterDirectory {
     // the entire file.
     Exception suppressedException = null;
     boolean tryCopy = true;
-    if (fromUnwrapped instanceof FSDirectory && toUnwrapped instanceof FSDirectory) {
-      final Path fromPath = ((FSDirectory) fromUnwrapped).getDirectory();
-      final Path toPath = ((FSDirectory) toUnwrapped).getDirectory();
+    if (fromUnwrapped instanceof FSDirectory fromFsDir
+        && toUnwrapped instanceof FSDirectory toFsDir) {
+      final Path fromPath = fromFsDir.getDirectory();
+      final Path toPath = toFsDir.getDirectory();
 
       if (Files.isReadable(fromPath.resolve(srcFile)) && Files.isWritable(toPath)) {
         // only try hardlinks if we have permission to access the files

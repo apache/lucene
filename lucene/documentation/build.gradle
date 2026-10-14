@@ -1,3 +1,5 @@
+import org.apache.lucene.gradle.plugins.globals.LuceneBuildGlobalsExtension
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -15,4 +17,34 @@
  * limitations under the License.
  */
 
+import org.apache.lucene.gradle.plugins.documentation.ChangesToHtmlTask
+
 description = 'Lucene HTML documentation'
+
+var docroot = layout.buildDirectory.dir("site")
+
+var changesToHtmlTask = tasks.register("changesToHtml", ChangesToHtmlTask, {
+  var productProject = getProject().project(":lucene")
+  var name = productProject.getName()
+
+  productName = name
+  changesFile = productProject.getLayout().getProjectDirectory().file("CHANGES.txt")
+  changesDoapFile = rootProject.layout.projectDirectory.file("dev-tools/doap/${name}.rdf")
+
+  siteDir = rootProject.layout.projectDirectory.dir("gradle/documentation/changes-to-html")
+  targetDir = docroot.map {dir -> dir.dir("changes")}
+
+  conversionScript = siteDir.file("changes2html.pl")
+})
+
+// Make the rendered HTML of changes available as a separate
+// artifact for the distribution.
+configurations {
+  changesHtml
+}
+
+artifacts {
+  changesHtml changesToHtmlTask.get().targetDir, {
+    builtBy changesToHtmlTask
+  }
+}

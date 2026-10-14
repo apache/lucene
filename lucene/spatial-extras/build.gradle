@@ -42,5 +42,5 @@ dependencies {
 }
 
 sourceSets.test.extensions.configure("modularPaths", {
-  it.patchModule("spatial4j", project.providers.provider({ configurations.spatial4jTestPatch.singleFile }))
+  it.patchModule("spatial4j", configurations.spatial4jTestPatch)
 })

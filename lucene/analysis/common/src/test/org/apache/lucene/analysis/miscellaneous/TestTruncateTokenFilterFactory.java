@@ -19,22 +19,80 @@ package org.apache.lucene.analysis.miscellaneous;
 import java.io.Reader;
 import java.io.StringReader;
 import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
 import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.util.Version;
 
 /** Simple tests to ensure the simple truncation filter factory is working. */
 public class TestTruncateTokenFilterFactory extends BaseTokenStreamFactoryTestCase {
-  /** Ensure the filter actually truncates text. */
-  public void testTruncating() throws Exception {
-    Reader reader = new StringReader("abcdefg 1234567 ABCDEFG abcde abc 12345 123");
-    TokenStream stream = new MockTokenizer(MockTokenizer.WHITESPACE, false);
-    ((Tokenizer) stream).setReader(reader);
-    stream =
-        tokenFilterFactory("Truncate", TruncateTokenFilterFactory.PREFIX_LENGTH_KEY, "5")
-            .create(stream);
+
+  public void testCharTruncating() throws Exception {
+    testCharTruncating(TruncateTokenFilterFactory.TRUNCATE_AFTER_CHARS_KEY);
+    testCharTruncating(TruncateTokenFilterFactory.PREFIX_LENGTH_KEY);
+    testCharTruncating(null);
+  }
+
+  private void testCharTruncating(String param) throws Exception {
+    Reader reader = new StringReader("abcdefg 1234567 ABCDEFG abcde abc 12345 123 1234567 1234😃5");
+    var tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
+    tokenizer.setReader(reader);
+    TokenStream stream =
+        (param == null
+                ? tokenFilterFactory("truncate", Version.LUCENE_10_0_0)
+                : tokenFilterFactory("Truncate", Version.LUCENE_10_0_0, param, "5"))
+            .create(tokenizer);
     assertTokenStreamContents(
-        stream, new String[] {"abcde", "12345", "ABCDE", "abcde", "abc", "12345", "123"});
+        stream,
+        new String[] {
+          "abcde",
+          "12345",
+          "ABCDE",
+          "abcde",
+          "abc",
+          "12345",
+          "123",
+          "12345",
+          "1234" + "😃".charAt(0)
+        });
+  }
+
+  public void testCodePointTruncating() throws Exception {
+    testCodePointTruncating(TruncateTokenFilterFactory.TRUNCATE_AFTER_CODEPOINTS_KEY);
+    testCodePointTruncating(TruncateTokenFilterFactory.PREFIX_LENGTH_KEY);
+    testCodePointTruncating(null);
+  }
+
+  public void testCodePointTruncating(String param) throws Exception {
+    Reader reader =
+        new StringReader(
+            "abcdefg 1234567 ABCDEFG abcde abc 12345 123 1234😃5 1 😃 😃12345 😃😃 😃😃😃 😃😃😃😃 😃😃😃😃😃 😃😃😃😃😃😃");
+    var tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
+    tokenizer.setReader(reader);
+    TokenStream stream =
+        (param == null
+                ? tokenFilterFactory("truncate", Version.LATEST)
+                : tokenFilterFactory("Truncate", Version.LATEST, param, "5"))
+            .create(tokenizer);
+    assertTokenStreamContents(
+        stream,
+        new String[] {
+          "abcde",
+          "12345",
+          "ABCDE",
+          "abcde",
+          "abc",
+          "12345",
+          "123",
+          "1234😃",
+          "1",
+          "😃",
+          "😃1234",
+          "😃😃",
+          "😃😃😃",
+          "😃😃😃😃",
+          "😃😃😃😃😃",
+          "😃😃😃😃😃"
+        });
   }
 
   /** Test that bogus arguments result in exception */
@@ -45,12 +103,25 @@ public class TestTruncateTokenFilterFactory extends BaseTokenStreamFactoryTestCa
             () -> {
               tokenFilterFactory(
                   "Truncate",
-                  TruncateTokenFilterFactory.PREFIX_LENGTH_KEY,
+                  TruncateTokenFilterFactory.TRUNCATE_AFTER_CODEPOINTS_KEY,
                   "5",
                   "bogusArg",
                   "bogusValue");
             });
     assertTrue(expected.getMessage().contains("Unknown parameter(s):"));
+
+    expected =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              tokenFilterFactory(
+                  "Truncate",
+                  TruncateTokenFilterFactory.TRUNCATE_AFTER_CODEPOINTS_KEY,
+                  "5",
+                  TruncateTokenFilterFactory.TRUNCATE_AFTER_CHARS_KEY,
+                  "6");
+            });
+    assertTrue(expected.getMessage().contains("Can only give one of the following parameters:"));
   }
 
   /** Test that negative prefix length result in exception */
@@ -59,32 +130,14 @@ public class TestTruncateTokenFilterFactory extends BaseTokenStreamFactoryTestCa
         expectThrows(
             IllegalArgumentException.class,
             () -> {
-              tokenFilterFactory("Truncate", TruncateTokenFilterFactory.PREFIX_LENGTH_KEY, "-5");
+              tokenFilterFactory(
+                  "Truncate", TruncateTokenFilterFactory.TRUNCATE_AFTER_CODEPOINTS_KEY, "-5");
             });
     assertTrue(
         expected
             .getMessage()
             .contains(
-                TruncateTokenFilterFactory.PREFIX_LENGTH_KEY
+                TruncateTokenFilterFactory.TRUNCATE_AFTER_CODEPOINTS_KEY
                     + " parameter must be a positive number: -5"));
-  }
-
-  /** Test that takes length greater than byte limit accepts it */
-  public void testLengthGreaterThanByteLimitArgument() throws Exception {
-    Reader reader =
-        new StringReader(
-            "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvw128characters From here");
-    TokenStream stream = new MockTokenizer(MockTokenizer.WHITESPACE, false);
-    ((Tokenizer) stream).setReader(reader);
-    stream =
-        tokenFilterFactory("Truncate", TruncateTokenFilterFactory.PREFIX_LENGTH_KEY, "128")
-            .create(stream);
-    assertTokenStreamContents(
-        stream,
-        new String[] {
-          "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvw1",
-          "From",
-          "here"
-        });
   }
 }

@@ -74,6 +74,10 @@ public abstract class FunctionValues {
     throw new UnsupportedOperationException();
   }
 
+  public short[] float16VectorVal(int doc) throws IOException {
+    throw new UnsupportedOperationException();
+  }
+
   public byte[] byteVectorVal(int doc) throws IOException {
     throw new UnsupportedOperationException();
   }

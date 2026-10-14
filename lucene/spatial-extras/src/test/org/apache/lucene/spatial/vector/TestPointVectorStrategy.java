@@ -27,7 +27,6 @@ import org.apache.lucene.spatial.StrategyTestCase;
 import org.apache.lucene.spatial.query.SpatialArgs;
 import org.apache.lucene.spatial.query.SpatialOperation;
 import org.junit.Before;
-import org.junit.Test;
 import org.locationtech.spatial4j.context.SpatialContext;
 import org.locationtech.spatial4j.shape.Circle;
 import org.locationtech.spatial4j.shape.Point;
@@ -41,7 +40,6 @@ public class TestPointVectorStrategy extends StrategyTestCase {
     this.ctx = SpatialContext.GEO;
   }
 
-  @Test
   public void testCircleShapeSupport() {
     this.strategy = PointVectorStrategy.newInstance(ctx, getClass().getSimpleName());
     Circle circle = ctx.makeCircle(ctx.makePoint(0, 0), 10);
@@ -51,15 +49,13 @@ public class TestPointVectorStrategy extends StrategyTestCase {
     assertNotNull(query);
   }
 
-  @Test(expected = UnsupportedOperationException.class)
   public void testInvalidQueryShape() {
     this.strategy = PointVectorStrategy.newInstance(ctx, getClass().getSimpleName());
     Point point = ctx.makePoint(0, 0);
     SpatialArgs args = new SpatialArgs(SpatialOperation.Intersects, point);
-    this.strategy.makeQuery(args);
+    expectThrows(UnsupportedOperationException.class, () -> this.strategy.makeQuery(args));
   }
 
-  @Test
   public void testCitiesIntersectsBBox() throws IOException {
     // note: does not require docValues
     this.strategy = PointVectorStrategy.newInstance(ctx, getClass().getSimpleName());
@@ -67,13 +63,12 @@ public class TestPointVectorStrategy extends StrategyTestCase {
     executeQueries(SpatialMatchConcern.FILTER, QTEST_Cities_Intersects_BBox);
   }
 
-  @Test
   public void testFieldOptions() throws IOException, ParseException {
     // It's not stored; test it isn't.
     this.strategy = PointVectorStrategy.newInstance(ctx, getClass().getSimpleName());
     adoc("99", "POINT(-5.0 8.2)");
     commit();
-    SearchResults results = executeQuery(new MatchAllDocsQuery(), 1);
+    SearchResults results = executeQuery(MatchAllDocsQuery.INSTANCE, 1);
     Document document = results.results.get(0).document;
     assertNull(
         "not stored", document.getField(strategy.getFieldName() + PointVectorStrategy.SUFFIX_X));
@@ -88,7 +83,7 @@ public class TestPointVectorStrategy extends StrategyTestCase {
     this.strategy = new PointVectorStrategy(ctx, getClass().getSimpleName(), fieldType);
     adoc("99", "POINT(-5.0 8.2)");
     commit();
-    results = executeQuery(new MatchAllDocsQuery(), 1);
+    results = executeQuery(MatchAllDocsQuery.INSTANCE, 1);
     document = results.results.get(0).document;
     assertEquals(
         "stored",

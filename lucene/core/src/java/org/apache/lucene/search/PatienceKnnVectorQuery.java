@@ -23,7 +23,6 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
-import org.apache.lucene.util.Bits;
 
 /**
  * This is a version of knn vector query that exits early when HNSW queue saturates over a {@code
@@ -191,18 +190,17 @@ public class PatienceKnnVectorQuery extends AbstractKnnVectorQuery {
 
   @Override
   protected KnnCollectorManager getKnnCollectorManager(int k, IndexSearcher searcher) {
-    return delegate.getKnnCollectorManager(k, searcher);
+    return new PatienceCollectorManager(delegate.getKnnCollectorManager(k, searcher));
   }
 
   @Override
   protected TopDocs approximateSearch(
       LeafReaderContext context,
-      Bits acceptDocs,
+      AcceptDocs acceptDocs,
       int visitedLimit,
       KnnCollectorManager knnCollectorManager)
       throws IOException {
-    return delegate.approximateSearch(
-        context, acceptDocs, visitedLimit, new PatienceCollectorManager(knnCollectorManager));
+    return delegate.approximateSearch(context, acceptDocs, visitedLimit, knnCollectorManager);
   }
 
   @Override
@@ -273,6 +271,25 @@ public class PatienceKnnVectorQuery extends AbstractKnnVectorQuery {
           knnCollectorManager.newCollector(visitLimit, searchStrategy, ctx),
           saturationThreshold,
           patience);
+    }
+
+    @Override
+    public KnnCollector newOptimisticCollector(
+        int visitLimit, KnnSearchStrategy searchStrategy, LeafReaderContext ctx, int k)
+        throws IOException {
+      if (knnCollectorManager.isOptimistic()) {
+        return new HnswQueueSaturationCollector(
+            knnCollectorManager.newOptimisticCollector(visitLimit, searchStrategy, ctx, k),
+            saturationThreshold,
+            patience);
+      } else {
+        return null;
+      }
+    }
+
+    @Override
+    public boolean isOptimistic() {
+      return knnCollectorManager.isOptimistic();
     }
   }
 

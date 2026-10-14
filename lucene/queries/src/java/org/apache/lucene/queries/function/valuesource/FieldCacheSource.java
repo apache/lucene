@@ -40,8 +40,7 @@ public abstract class FieldCacheSource extends ValueSource {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof FieldCacheSource)) return false;
-    FieldCacheSource other = (FieldCacheSource) o;
+    if (!(o instanceof FieldCacheSource other)) return false;
     return this.field.equals(other.field);
   }
 

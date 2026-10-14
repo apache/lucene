@@ -77,7 +77,7 @@ public class TestMultiPassIndexSplitter extends LuceneTestCase {
     assertEquals("0", doc.get("id"));
     TermsEnum te = MultiTerms.getTerms(ir, "id").iterator();
     assertEquals(TermsEnum.SeekStatus.NOT_FOUND, te.seekCeil(new BytesRef("1")));
-    assertNotSame("1", te.term().utf8ToString());
+    assertNotEquals("1", te.term().utf8ToString());
     ir.close();
     ir = DirectoryReader.open(dirs[1]);
     assertTrue(ir.numDocs() - NUM_DOCS / 3 <= 1);
@@ -86,7 +86,7 @@ public class TestMultiPassIndexSplitter extends LuceneTestCase {
     te = MultiTerms.getTerms(ir, "id").iterator();
     assertEquals(TermsEnum.SeekStatus.NOT_FOUND, te.seekCeil(new BytesRef("0")));
 
-    assertNotSame("0", te.term().utf8ToString());
+    assertNotEquals("0", te.term().utf8ToString());
     ir.close();
     ir = DirectoryReader.open(dirs[2]);
     assertTrue(ir.numDocs() - NUM_DOCS / 3 <= 1);
@@ -95,10 +95,10 @@ public class TestMultiPassIndexSplitter extends LuceneTestCase {
 
     te = MultiTerms.getTerms(ir, "id").iterator();
     assertEquals(TermsEnum.SeekStatus.NOT_FOUND, te.seekCeil(new BytesRef("1")));
-    assertNotSame("1", te.term());
+    assertNotEquals("1", te.term().utf8ToString());
 
     assertEquals(TermsEnum.SeekStatus.NOT_FOUND, te.seekCeil(new BytesRef("0")));
-    assertNotSame("0", te.term().utf8ToString());
+    assertNotEquals("0", te.term().utf8ToString());
     ir.close();
     for (Directory d : dirs) d.close();
   }
@@ -129,7 +129,7 @@ public class TestMultiPassIndexSplitter extends LuceneTestCase {
     TermsEnum te = MultiTerms.getTerms(ir, "id").iterator();
     Term t = new Term("id", (NUM_DOCS - 1) + "");
     assertEquals(TermsEnum.SeekStatus.NOT_FOUND, te.seekCeil(new BytesRef(t.text())));
-    assertNotSame(t.text(), te.term().utf8ToString());
+    assertNotEquals(t.text(), te.term().utf8ToString());
     ir.close();
     for (Directory d : dirs) d.close();
   }

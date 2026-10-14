@@ -319,6 +319,11 @@ public abstract class PointRangeQuery extends Query {
                 return new BitSetIterator(result, cost[0]);
               }
 
+              if (cost != -1 && numDims == 1) {
+                // A 1D range has at most two crossing leaves, so its estimate is accurate enough
+                // to choose the builder representation up front.
+                result.expectMore(cost);
+              }
               values.intersect(visitor);
               return result.build().iterator();
             }
@@ -548,35 +553,26 @@ public abstract class PointRangeQuery extends Query {
     byte[] globalMaxPacked = PointValues.getMaxPackedValue(reader, getField());
 
     if (globalMinPacked == null || globalMaxPacked == null) {
-      return new MatchNoDocsQuery();
+      return MatchNoDocsQuery.INSTANCE;
     }
 
     return switch (relate(globalMinPacked, globalMaxPacked)) {
       case CELL_INSIDE_QUERY -> {
         if (canRewriteToMatchAllQuery(reader)) {
-          yield new MatchAllDocsQuery();
+          yield MatchAllDocsQuery.INSTANCE;
         } else if (canRewriteToFieldExistsQuery(reader)) {
           yield new FieldExistsQuery(field);
         } else {
           yield super.rewrite(searcher);
         }
       }
-      case CELL_OUTSIDE_QUERY -> new MatchNoDocsQuery();
+      case CELL_OUTSIDE_QUERY -> MatchNoDocsQuery.INSTANCE;
       case CELL_CROSSES_QUERY -> super.rewrite(searcher);
     };
   }
 
-  private boolean canRewriteToMatchAllQuery(IndexReader reader) throws IOException {
-    for (LeafReaderContext context : reader.leaves()) {
-      LeafReader leaf = context.reader();
-      PointValues values = leaf.getPointValues(field);
-
-      if (values == null || values.getDocCount() != leaf.maxDoc()) {
-        return false;
-      }
-    }
-
-    return true;
+  private boolean canRewriteToMatchAllQuery(IndexReader reader) {
+    return reader.maxDoc() == PointValues.getDocCount(reader, field);
   }
 
   private boolean canRewriteToFieldExistsQuery(IndexReader reader) {

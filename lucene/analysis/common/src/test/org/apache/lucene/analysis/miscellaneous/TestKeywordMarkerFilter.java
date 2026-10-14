@@ -25,12 +25,10 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
-import org.junit.Test;
 
 /** Testcase for {@link KeywordMarkerFilter} */
 public class TestKeywordMarkerFilter extends BaseTokenStreamTestCase {
 
-  @Test
   public void testSetFilterIncrementToken() throws IOException {
     CharArraySet set = new CharArraySet(5, true);
     set.add("lucenefox");
@@ -54,7 +52,6 @@ public class TestKeywordMarkerFilter extends BaseTokenStreamTestCase {
         output);
   }
 
-  @Test
   public void testPatternFilterIncrementToken() throws IOException {
     String[] output = new String[] {"the", "quick", "brown", "LuceneFox", "jumps"};
     assertTokenStreamContents(

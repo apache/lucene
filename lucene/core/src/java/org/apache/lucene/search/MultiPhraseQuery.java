@@ -141,7 +141,7 @@ public class MultiPhraseQuery extends Query {
 
     /** Builds a {@link MultiPhraseQuery}. */
     public MultiPhraseQuery build() {
-      Term[][] termArraysArray = termArrays.toArray(new Term[termArrays.size()][]);
+      Term[][] termArraysArray = termArrays.toArray(Term[][]::new);
       return new MultiPhraseQuery(field, termArraysArray, positions.toArray(), slop);
     }
   }
@@ -216,7 +216,7 @@ public class MultiPhraseQuery extends Query {
       protected Similarity.SimScorer getStats(IndexSearcher searcher) throws IOException {
 
         // compute idf
-        ArrayList<TermStatistics> allTermStats = new ArrayList<>();
+        ArrayList<TermStats> allTermStats = new ArrayList<>();
         for (final Term[] terms : termArrays) {
           for (Term term : terms) {
             TermStates ts = termStates.get(term);
@@ -225,7 +225,7 @@ public class MultiPhraseQuery extends Query {
               termStates.put(term, ts);
             }
             if (scoreMode.needsScores() && ts.docFreq() > 0) {
-              allTermStats.add(searcher.termStatistics(term, ts.docFreq(), ts.totalTermFreq()));
+              allTermStats.add(searcher.termStats(term, ts.docFreq(), ts.totalTermFreq()));
             }
           }
         }
@@ -233,9 +233,7 @@ public class MultiPhraseQuery extends Query {
           return null; // none of the terms were found, we won't use sim at all
         } else {
           return similarity.scorer(
-              boost,
-              searcher.collectionStatistics(field),
-              allTermStats.toArray(new TermStatistics[allTermStats.size()]));
+              boost, searcher.fieldStats(field), allTermStats.toArray(TermStats[]::new));
         }
       }
 
@@ -436,7 +434,7 @@ public class MultiPhraseQuery extends Query {
         cost += sub.cost();
       }
       this.cost = cost;
-      this.subs = subs.toArray(new PostingsEnum[subs.size()]);
+      this.subs = subs.toArray(PostingsEnum[]::new);
     }
 
     @Override

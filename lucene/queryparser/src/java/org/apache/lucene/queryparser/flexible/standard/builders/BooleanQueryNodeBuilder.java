@@ -81,8 +81,7 @@ public class BooleanQueryNodeBuilder implements StandardQueryBuilder {
 
   private static BooleanClause.Occur getModifierValue(QueryNode node) {
 
-    if (node instanceof ModifierQueryNode) {
-      ModifierQueryNode mNode = ((ModifierQueryNode) node);
+    if (node instanceof ModifierQueryNode mNode) {
       switch (mNode.getModifier()) {
         case MOD_REQ:
           return BooleanClause.Occur.MUST;

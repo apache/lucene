@@ -169,6 +169,8 @@ public abstract class BaseCompoundFormatTestCase extends BaseIndexFileFormatTest
   }
 
   // LUCENE-5724: actually test we play nice with NRTCachingDir and massive file
+  // TODO: very slow with SimpleText
+  @Nightly
   public void testLargeCFS() throws IOException {
     final String testfile = "_123.test";
     IOContext context = IOContext.flush(new FlushInfo(0, 512 * 1024 * 1024));
@@ -385,8 +387,8 @@ public abstract class BaseCompoundFormatTestCase extends BaseIndexFileFormatTest
     dir.close();
   }
 
-  // Make sure we don't somehow use more than 1 descriptor
-  // when reading a CFS with many subs:
+  // Make sure we don't somehow use more than 1 descriptor when reading a CFS with many subs, plus
+  // 1 for the mapping merges may read through:
   public void testManySubFiles() throws IOException {
     final MockDirectoryWrapper dir = newMockFSDirectory(createTempDir("CFSManySubFiles"));
 
@@ -411,18 +413,24 @@ public abstract class BaseCompoundFormatTestCase extends BaseIndexFileFormatTest
     Directory cfs = si.getCodec().compoundFormat().getCompoundReader(dir, si);
 
     final IndexInput[] ins = new IndexInput[FILE_COUNT];
+    int maxHandles = 1;
     for (int fileIdx = 0; fileIdx < FILE_COUNT; fileIdx++) {
-      ins[fileIdx] = cfs.openInput("_123." + fileIdx, newIOContext(random()));
+      IOContext context = newIOContext(random());
+      if (context.context() == IOContext.Context.MERGE) {
+        maxHandles = 2;
+      }
+      ins[fileIdx] = cfs.openInput("_123." + fileIdx, context);
       CodecUtil.checkIndexHeader(ins[fileIdx], "Foo", 0, 0, si.getId(), "suffix");
     }
 
-    assertEquals(1, dir.getFileHandleCount());
+    long handles = dir.getFileHandleCount();
+    assertTrue("handles: " + handles, handles >= 1 && handles <= maxHandles);
 
     for (int fileIdx = 0; fileIdx < FILE_COUNT; fileIdx++) {
       assertEquals((byte) fileIdx, ins[fileIdx].readByte());
     }
 
-    assertEquals(1, dir.getFileHandleCount());
+    assertEquals(handles, dir.getFileHandleCount());
 
     for (int fileIdx = 0; fileIdx < FILE_COUNT; fileIdx++) {
       ins[fileIdx].close();
@@ -680,8 +688,8 @@ public abstract class BaseCompoundFormatTestCase extends BaseIndexFileFormatTest
   /** Creates a file of the specified size with random data. */
   protected static void createRandomFile(Directory dir, String name, int size, byte[] segId)
       throws IOException {
-    Random rnd = random();
-    try (IndexOutput os = dir.createOutput(name, newIOContext(random()))) {
+    Random rnd = nonAssertingRandom(random());
+    try (IndexOutput os = dir.createOutput(name, newIOContext(rnd))) {
       CodecUtil.writeIndexHeader(os, "Foo", 0, segId, "suffix");
       for (int i = 0; i < size; i++) {
         byte b = (byte) rnd.nextInt(256);

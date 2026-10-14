@@ -32,7 +32,6 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 public class TestSpanCollection extends LuceneTestCase {
 
@@ -104,7 +103,6 @@ public class TestSpanCollection extends LuceneTestCase {
     assertEquals("Unexpected terms found", expectedTerms.length, collector.terms.size());
   }
 
-  @Test
   public void testNestedNearQuery() throws IOException {
 
     // near(w1, near(w2, or(w3, w4)))
@@ -136,7 +134,6 @@ public class TestSpanCollection extends LuceneTestCase {
         spans, collector, new Term(FIELD, "w1"), new Term(FIELD, "w2"), new Term(FIELD, "w3"));
   }
 
-  @Test
   public void testOrQuery() throws IOException {
     SpanTermQuery q2 = new SpanTermQuery(new Term(FIELD, "w2"));
     SpanTermQuery q3 = new SpanTermQuery(new Term(FIELD, "w3"));
@@ -165,7 +162,6 @@ public class TestSpanCollection extends LuceneTestCase {
     checkCollectedTerms(spans, collector, new Term(FIELD, "w3"));
   }
 
-  @Test
   public void testSpanNotQuery() throws IOException {
 
     SpanTermQuery q1 = new SpanTermQuery(new Term(FIELD, "w1"));

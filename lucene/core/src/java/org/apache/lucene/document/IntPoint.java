@@ -273,7 +273,7 @@ public final class IntPoint extends Field {
    * @param values all values to match
    */
   public static Query newSetQuery(String field, Collection<Integer> values) {
-    Integer[] boxed = values.toArray(new Integer[0]);
+    Integer[] boxed = values.toArray(Integer[]::new);
     int[] unboxed = new int[boxed.length];
     for (int i = 0; i < boxed.length; i++) {
       unboxed[i] = boxed[i];

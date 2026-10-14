@@ -25,7 +25,6 @@ import java.util.Set;
 import java.util.TreeSet;
 import org.junit.Assert;
 import org.junit.AssumptionViolatedException;
-import org.junit.Test;
 import org.junit.function.ThrowingRunnable;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -74,7 +73,6 @@ public class TestHunspellRepositoryTestCases {
     return names.stream().map(s -> new Object[] {s, tests.resolve(s)}).toList();
   }
 
-  @Test
   public void test() throws Throwable {
     ThrowingRunnable test = () -> TestSpellChecking.checkSpellCheckerExpectations(pathPrefix);
     if (EXPECTED_FAILURES.contains(testName)) {

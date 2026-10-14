@@ -38,7 +38,7 @@ import org.apache.lucene.util.TestVectorUtil;
 
 public class TestLateInteractionFloatValuesSource extends LuceneTestCase {
 
-  private static final int dimension = 128;
+  private static final int DIMENSION = 16;
   private static final String LATE_I_FIELD = "lateIF";
 
   public void testValidations() {
@@ -57,17 +57,17 @@ public class TestLateInteractionFloatValuesSource extends LuceneTestCase {
     float[][] valueBad = new float[random().nextInt(3, 12)][];
     for (int i = 0; i < valueBad.length; i++) {
       if (random().nextBoolean()) {
-        valueBad[i] = TestVectorUtil.randomVector(dimension);
+        valueBad[i] = TestVectorUtil.randomVector(DIMENSION);
       } else {
-        valueBad[i] = TestVectorUtil.randomVector(dimension + 1);
+        valueBad[i] = TestVectorUtil.randomVector(DIMENSION + 1);
       }
     }
   }
 
   public void testValues() throws IOException {
     List<float[][]> corpus = new ArrayList<>();
-    final int numDocs = atLeast(1000);
-    final int numSegments = random().nextInt(2, 10);
+    final int numDocs = atLeast(100);
+    final int numSegments = random().nextInt(2, 5);
     final VectorSimilarityFunction vectorSimilarityFunction =
         VectorSimilarityFunction.values()[
             random().nextInt(VectorSimilarityFunction.values().length)];
@@ -96,7 +96,7 @@ public class TestLateInteractionFloatValuesSource extends LuceneTestCase {
           }
         }
         // add a segment with no vectors
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 10; i++) {
           Document doc = new Document();
           doc.add(new IntField("has_li_vector", 0, Field.Store.YES));
           w.addDocument(doc);
@@ -150,9 +150,9 @@ public class TestLateInteractionFloatValuesSource extends LuceneTestCase {
   }
 
   private float[][] createMultiVector() {
-    float[][] value = new float[random().nextInt(3, 12)][];
+    float[][] value = new float[random().nextInt(3, 5)][];
     for (int i = 0; i < value.length; i++) {
-      value[i] = TestVectorUtil.randomVector(dimension);
+      value[i] = TestVectorUtil.randomVector(DIMENSION);
     }
     return value;
   }

@@ -151,8 +151,9 @@ class GeoSouthLatitudeZone extends GeoBaseBBox {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof GeoSouthLatitudeZone)) return false;
-    GeoSouthLatitudeZone other = (GeoSouthLatitudeZone) o;
+    if (!(o instanceof GeoSouthLatitudeZone other)) {
+      return false;
+    }
     return super.equals(other) && other.topBoundaryPoint.equals(topBoundaryPoint);
   }
 

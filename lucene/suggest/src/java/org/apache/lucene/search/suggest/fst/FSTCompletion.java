@@ -145,7 +145,7 @@ public class FSTCompletion {
       }
 
       Collections.reverse(rootArcs); // we want highest weights first.
-      return rootArcs.toArray(new Arc[0]);
+      return rootArcs.toArray(Arc[]::new);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }

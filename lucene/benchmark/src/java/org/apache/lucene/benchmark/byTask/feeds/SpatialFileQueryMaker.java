@@ -82,14 +82,12 @@ public class SpatialFileQueryMaker extends AbstractQueryMaker {
           i--; // skip
         }
       }
-    } catch (
-        @SuppressWarnings("unused")
-        NoMoreDataException e) {
+    } catch (NoMoreDataException _) {
       // all-done
     } finally {
       src.close();
     }
-    return queries.toArray(new Query[queries.size()]);
+    return queries.toArray(Query[]::new);
   }
 
   protected Query makeQueryFromShape(Shape shape) {

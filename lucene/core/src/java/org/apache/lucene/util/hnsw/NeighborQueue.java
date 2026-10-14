@@ -17,13 +17,13 @@
 
 package org.apache.lucene.util.hnsw;
 
-import org.apache.lucene.util.LongHeap;
 import org.apache.lucene.util.NumericUtils;
+import org.apache.lucene.util.TernaryLongHeap;
 
 /**
- * NeighborQueue uses a {@link LongHeap} to store lists of arcs in an HNSW graph, represented as a
- * neighbor node id with an associated score packed together as a sortable long, which is sorted
- * primarily by score. The queue provides both fixed-size and unbounded operations via {@link
+ * NeighborQueue uses a {@link TernaryLongHeap} to store lists of arcs in an HNSW graph, represented
+ * as a neighbor node id with an associated score packed together as a sortable long, which is
+ * sorted primarily by score. The queue provides both fixed-size and unbounded operations via {@link
  * #insertWithOverflow(int, float)} and {@link #add(int, float)}, and provides MIN and MAX heap
  * subclasses.
  */
@@ -48,7 +48,7 @@ public class NeighborQueue {
     abstract long apply(long v);
   }
 
-  private final LongHeap heap;
+  private final TernaryLongHeap heap;
   private final Order order;
 
   // Used to track the number of neighbors visited during a single graph traversal
@@ -57,7 +57,7 @@ public class NeighborQueue {
   private boolean incomplete;
 
   public NeighborQueue(int initialSize, boolean maxHeap) {
-    this.heap = new LongHeap(initialSize);
+    this.heap = new TernaryLongHeap(initialSize);
     this.order = maxHeap ? Order.MAX_HEAP : Order.MIN_HEAP;
   }
 

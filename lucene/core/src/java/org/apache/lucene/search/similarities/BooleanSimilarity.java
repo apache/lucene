@@ -16,9 +16,9 @@
  */
 package org.apache.lucene.search.similarities;
 
-import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.Explanation;
-import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.FieldStats;
+import org.apache.lucene.search.TermStats;
 
 /**
  * Simple similarity that gives terms a score that is equal to their query boost. This similarity is
@@ -34,8 +34,7 @@ public class BooleanSimilarity extends Similarity {
   public BooleanSimilarity() {}
 
   @Override
-  public SimScorer scorer(
-      float boost, CollectionStatistics collectionStats, TermStatistics... termStats) {
+  public SimScorer scorer(float boost, FieldStats fieldStats, TermStats... termStats) {
     return new BooleanWeight(boost);
   }
 

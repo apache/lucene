@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +34,7 @@ import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.store.ChecksumIndexInput;
@@ -41,7 +43,6 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.PreloadHint;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Accountables;
-import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.IOUtils;
 
 /**
@@ -72,7 +73,6 @@ final class CompletionFieldsProducer extends FieldsProducer implements Accountab
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, INDEX_EXTENSION);
     delegateFieldsProducer = null;
-    boolean success = false;
 
     try (ChecksumIndexInput index = state.directory.openChecksumInput(indexFile)) {
       // open up dict file containing all fsts
@@ -106,7 +106,7 @@ final class CompletionFieldsProducer extends FieldsProducer implements Accountab
 
       // read suggest field numbers and their offsets in the terms file from index
       int numFields = index.readVInt();
-      readers = CollectionUtil.newHashMap(numFields);
+      readers = HashMap.newHashMap(numFields);
       for (int i = 0; i < numFields; i++) {
         int fieldNumber = index.readVInt();
         long offset = index.readVLong();
@@ -119,31 +119,20 @@ final class CompletionFieldsProducer extends FieldsProducer implements Accountab
             fieldInfo.name, new CompletionsTermsReader(dictIn, offset, minWeight, maxWeight, type));
       }
       CodecUtil.checkFooter(index);
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(delegateFieldsProducer, dictIn);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, delegateFieldsProducer, dictIn);
+      throw t;
     }
   }
 
   @Override
   public void close() throws IOException {
-    boolean success = false;
-    try {
-      delegateFieldsProducer.close();
-      IOUtils.close(dictIn);
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(delegateFieldsProducer, dictIn);
-      }
-    }
+    IOUtils.close(delegateFieldsProducer, dictIn);
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    delegateFieldsProducer.checkIntegrity();
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+    delegateFieldsProducer.checkIntegrity(merge);
     // TODO: checkIntegrity should checksum the dictionary and index
   }
 
@@ -177,7 +166,7 @@ final class CompletionFieldsProducer extends FieldsProducer implements Accountab
   }
 
   @Override
-  public Terms terms(String field) throws IOException {
+  public Terms terms(String field) {
     Terms terms = delegateFieldsProducer.terms(field);
     if (terms == null) {
       return null;

@@ -300,7 +300,7 @@ public class TestIndexWriterCommit extends LuceneTestCase {
             dir, newIndexWriterConfig(new MockAnalyzer(random())).setOpenMode(OpenMode.APPEND));
     writer.forceMerge(1);
 
-    // Open a reader before closing (commiting) the writer:
+    // Open a reader before closing (committing) the writer:
     DirectoryReader reader = DirectoryReader.open(dir);
 
     // Reader should see index as multi-seg at this
@@ -345,6 +345,8 @@ public class TestIndexWriterCommit extends LuceneTestCase {
   // LUCENE-2095: make sure with multiple threads commit
   // doesn't return until all changes are in fact in the
   // index
+  // TODO: incredibly slow (can we just use 2 threads?)
+  @Nightly
   public void testCommitThreadSafety() throws Throwable {
     final int NUM_THREADS = 5;
     final int maxIterations = 10;

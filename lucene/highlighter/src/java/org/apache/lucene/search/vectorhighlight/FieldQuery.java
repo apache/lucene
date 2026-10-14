@@ -80,8 +80,7 @@ public class FieldQuery {
       QueryPhraseMap rootMap = getRootMap(flatQuery);
       rootMap.add(flatQuery, reader);
       float boost = 1f;
-      while (flatQuery instanceof BoostQuery) {
-        BoostQuery bq = (BoostQuery) flatQuery;
+      while (flatQuery instanceof BoostQuery bq) {
         flatQuery = bq.getQuery();
         boost *= bq.getBoost();
       }
@@ -153,7 +152,7 @@ public class FieldQuery {
         rewritten = sourceQuery.rewrite(searcher);
       }
       if (rewritten != sourceQuery) {
-        // only rewrite once and then flatten again - the rewritten query could have a speacial
+        // only rewrite once and then flatten again - the rewritten query could have a special
         // treatment
         // if this method is overwritten in a subclass.
         flatten(rewritten, searcher, flatQueries, boost);
@@ -429,7 +428,7 @@ public class FieldQuery {
     private void markTerminal(int slop, float boost) {
       this.terminal = true;
       this.slop = slop;
-      this.boost = boost;
+      this.boost = Math.max(this.boost, boost);
       this.termOrPhraseNumber = fieldQuery.nextTermOrPhraseNumber();
     }
 

@@ -47,6 +47,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.NoReuseHint;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
@@ -269,7 +270,8 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
 
       vectorsStream =
           directory.createOutput(
-              IndexFileNames.segmentFileName(segment, segmentSuffix, VECTORS_EXTENSION), context);
+              IndexFileNames.segmentFileName(segment, segmentSuffix, VECTORS_EXTENSION),
+              context.union(NoReuseHint.INSTANCE));
       CodecUtil.writeIndexHeader(
           vectorsStream, formatName, VERSION_CURRENT, si.getId(), segmentSuffix);
       assert CodecUtil.indexHeaderLength(formatName, segmentSuffix)
@@ -796,9 +798,7 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
     boolean v = true;
     try {
       v = Boolean.parseBoolean(System.getProperty(BULK_MERGE_ENABLED_SYSPROP, "true"));
-    } catch (
-        @SuppressWarnings("unused")
-        SecurityException ignored) {
+    } catch (SecurityException _) {
     }
     BULK_MERGE_ENABLED = v;
   }
@@ -900,7 +900,8 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
     for (int i = 0; i < numReaders; i++) {
       final TermVectorsReader reader = mergeState.termVectorsReaders[i];
       if (reader != null) {
-        reader.checkIntegrity();
+        mergeState.checkAborted();
+        reader.checkIntegrity(mergeState.oneMerge);
       }
       final boolean bulkMerge = canPerformBulkMerge(mergeState, matchingReaders, i);
       subs.add(new CompressingTermVectorsSub(mergeState, bulkMerge, i));
@@ -952,9 +953,7 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
   private boolean canPerformBulkMerge(
       MergeState mergeState, MatchingReaders matchingReaders, int readerIndex) {
     if (mergeState.termVectorsReaders[readerIndex]
-        instanceof Lucene90CompressingTermVectorsReader) {
-      final Lucene90CompressingTermVectorsReader reader =
-          (Lucene90CompressingTermVectorsReader) mergeState.termVectorsReaders[readerIndex];
+        instanceof Lucene90CompressingTermVectorsReader reader) {
       return BULK_MERGE_ENABLED
           && matchingReaders.matchingReaders[readerIndex]
           && reader.getCompressionMode() == compressionMode

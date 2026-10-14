@@ -38,7 +38,7 @@ public class TestBrazilianAnalyzer extends BaseTokenStreamTestCase {
     check("boa", "boa");
     check("boainain", "boainain");
     check("boas", "boas");
-    check("bôas", "boas"); // removes diacritic: different from snowball portugese
+    check("bôas", "boas"); // removes diacritic: different from snowball portuguese
     check("boassu", "boassu");
     check("boataria", "boat");
     check("boate", "boat");
@@ -48,7 +48,7 @@ public class TestBrazilianAnalyzer extends BaseTokenStreamTestCase {
     check("boba", "bob");
     check("bobagem", "bobag");
     check("bobagens", "bobagens");
-    check("bobalhões", "bobalho"); // removes diacritic: different from snowball portugese
+    check("bobalhões", "bobalho"); // removes diacritic: different from snowball portuguese
     check("bobear", "bob");
     check("bobeira", "bobeir");
     check("bobinho", "bobinh");
@@ -86,8 +86,8 @@ public class TestBrazilianAnalyzer extends BaseTokenStreamTestCase {
     check("quilombo", "quilomb");
     check("quilométricas", "quilometr"); // removes diacritic: different from snowball portuguese
     check("quilométricos", "quilometr"); // removes diacritic: different from snowball portuguese
-    check("quilômetro", "quilometr"); // removes diacritic: different from snowball portoguese
-    check("quilômetros", "quilometr"); // removes diacritic: different from snowball portoguese
+    check("quilômetro", "quilometr"); // removes diacritic: different from snowball portuguese
+    check("quilômetros", "quilometr"); // removes diacritic: different from snowball portuguese
     check("quilos", "quil");
     check("quimica", "quimic");
     check("quilos", "quil");
@@ -97,10 +97,10 @@ public class TestBrazilianAnalyzer extends BaseTokenStreamTestCase {
     check("quimicos", "quimic");
     check("quimioterapia", "quimioterap");
     check(
-        "quimioterápicos", "quimioterap"); // removes diacritic: different from snowball portoguese
+        "quimioterápicos", "quimioterap"); // removes diacritic: different from snowball portuguese
     check("quimono", "quimon");
     check("quincas", "quinc");
-    check("quinhão", "quinha"); // removes diacritic: different from snowball portoguese
+    check("quinhão", "quinha"); // removes diacritic: different from snowball portuguese
     check("quinhentos", "quinhent");
     check("quinn", "quinn");
     check("quino", "quin");
@@ -108,7 +108,7 @@ public class TestBrazilianAnalyzer extends BaseTokenStreamTestCase {
     check("quintal", "quintal");
     check("quintana", "quintan");
     check("quintanilha", "quintanilh");
-    check("quintão", "quinta"); // removes diacritic: different from snowball portoguese
+    check("quintão", "quinta"); // removes diacritic: different from snowball portuguese
     check("quintessência", "quintessente"); // versus snowball portuguese 'quintessent'
     check("quintino", "quintin");
     check("quinto", "quint");
@@ -134,7 +134,7 @@ public class TestBrazilianAnalyzer extends BaseTokenStreamTestCase {
     checkReuse(a, "boa", "boa");
     checkReuse(a, "boainain", "boainain");
     checkReuse(a, "boas", "boas");
-    checkReuse(a, "bôas", "boas"); // removes diacritic: different from snowball portugese
+    checkReuse(a, "bôas", "boas"); // removes diacritic: different from snowball portuguese
     a.close();
   }
 

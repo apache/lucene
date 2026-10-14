@@ -177,9 +177,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
         if (value != null) {
           coreCount = Integer.parseInt(value);
         }
-      } catch (
-          @SuppressWarnings("unused")
-          Throwable ignored) {
+      } catch (Throwable _) {
       }
 
       // If you are indexing at full throttle, how many merge threads do you need to keep up? It
@@ -498,9 +496,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
         if (toSync != null) {
           try {
             toSync.join();
-          } catch (
-              @SuppressWarnings("unused")
-              InterruptedException ie) {
+          } catch (InterruptedException _) {
             // ignore this Exception, we will retry until all threads are dead
             interrupted = true;
           }
@@ -674,7 +670,13 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
     return thread;
   }
 
-  synchronized void runOnMergeFinished(MergeSource mergeSource) {
+  /**
+   * Called when a merge thread finishes.
+   *
+   * @lucene.experimental
+   */
+  protected synchronized void runOnMergeFinished(
+      MergeSource mergeSource, OneMerge merge, MergeRateLimiter rateLimiter) {
     // the merge call as well as the merge thread handling in the finally
     // block must be sync'd on CMS otherwise stalling decisions might cause
     // us to miss pending merges
@@ -682,9 +684,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
     // Let CMS run new merges if necessary:
     try {
       merge(mergeSource, MergeTrigger.MERGE_FINISHED);
-    } catch (
-        @SuppressWarnings("unused")
-        AlreadyClosedException ace) {
+    } catch (AlreadyClosedException _) {
       // OK
     } catch (IOException ioe) {
       throw new UncheckedIOException(ioe);
@@ -692,7 +692,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
       removeMergeThread();
       updateMergeThreads();
       // In case we had stalled indexing, we can now wake up
-      // and possibly unstall:
+      // and possibly un-stall:
       notifyAll();
     }
   }
@@ -739,7 +739,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
                   rateToString(rateLimiter.getMBPerSec())));
         }
 
-        runOnMergeFinished(mergeSource);
+        runOnMergeFinished(mergeSource, merge, rateLimiter);
 
         if (verbose()) {
           message(String.format(Locale.ROOT, "merge thread %s end", this.getName()));

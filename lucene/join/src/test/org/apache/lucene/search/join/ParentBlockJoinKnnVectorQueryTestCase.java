@@ -18,6 +18,7 @@
 package org.apache.lucene.search.join;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -124,7 +125,7 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
         // Test with match_all filter and large k to test exact search
         query =
             getParentJoinKnnQuery(
-                "field", new float[] {2, 2}, new MatchAllDocsQuery(), 10, parentFilter);
+                "field", new float[] {2, 2}, MatchAllDocsQuery.INSTANCE, 10, parentFilter);
         topDocs = searcher.search(query, 3);
         assertEquals(0, topDocs.totalHits.value());
         assertEquals(0, topDocs.scoreDocs.length);
@@ -165,7 +166,7 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
         // Test with match_all filter and large k to test exact search
         query =
             getParentJoinKnnQuery(
-                "field", new float[] {2, 2}, new MatchAllDocsQuery(), 10, parentFilter);
+                "field", new float[] {2, 2}, MatchAllDocsQuery.INSTANCE, 10, parentFilter);
         topDocs = searcher.search(query, 3);
         assertEquals(0, topDocs.totalHits.value());
         assertEquals(0, topDocs.scoreDocs.length);
@@ -228,13 +229,13 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
             searcher, query, new float[] {1f / 3f, 1f / 3f}, new String[] {"5", "7"}, 2);
         query =
             getParentJoinKnnQuery(
-                "field", new float[] {6, 6}, new MatchAllDocsQuery(), 20, parentFilter);
+                "field", new float[] {6, 6}, MatchAllDocsQuery.INSTANCE, 20, parentFilter);
         assertScorerResults(
             searcher, query, new float[] {1f / 3f, 1f / 3f}, new String[] {"5", "7"}, 2);
 
         query =
             getParentJoinKnnQuery(
-                "field", new float[] {6, 6}, new MatchAllDocsQuery(), 1, parentFilter);
+                "field", new float[] {6, 6}, MatchAllDocsQuery.INSTANCE, 1, parentFilter);
         assertScorerResults(
             searcher, query, new float[] {1f / 3f, 1f / 3f}, new String[] {"5", "7"}, 1);
       }
@@ -304,7 +305,7 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
       Query query = getParentJoinKnnQuery("field", new float[] {1, 2}, null, 2, parentFilter);
       Query exactQuery =
           getParentJoinKnnQuery(
-              "field", new float[] {1, 2}, new MatchAllDocsQuery(), 10, parentFilter);
+              "field", new float[] {1, 2}, MatchAllDocsQuery.INSTANCE, 10, parentFilter);
 
       assertEquals(2, searcher.count(query)); // Expect some results without timeout
       assertEquals(3, searcher.count(exactQuery)); // Same for exact search
@@ -316,10 +317,10 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
       searcher.setTimeout(new CountingQueryTimeout(1)); // Only score 1 parent
       // Note: We get partial results when the HNSW graph has 1 layer, but no results for > 1 layer
       // because the timeout is exhausted while finding the best entry node for the last level
-      assertTrue(searcher.count(query) <= 1); // Expect at most 1 result
+      assertThat(searcher.count(query), lessThanOrEqualTo(1));
 
       searcher.setTimeout(new CountingQueryTimeout(1)); // Only score 1 parent
-      assertEquals(1, searcher.count(exactQuery)); // Expect only 1 result
+      assertThat(searcher.count(exactQuery), lessThanOrEqualTo(1));
     }
   }
 

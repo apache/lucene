@@ -54,7 +54,7 @@ public class TestMatchAllDocsQuery extends LuceneTestCase {
     IndexSearcher is = newSearcher(ir);
     ScoreDoc[] hits;
 
-    hits = is.search(new MatchAllDocsQuery(), 1000).scoreDocs;
+    hits = is.search(MatchAllDocsQuery.INSTANCE, 1000).scoreDocs;
     assertEquals(3, hits.length);
     assertEquals("one", is.storedFields().document(hits[0].doc).get("key"));
     assertEquals("two", is.storedFields().document(hits[1].doc).get("key"));
@@ -63,13 +63,13 @@ public class TestMatchAllDocsQuery extends LuceneTestCase {
     // some artificial queries to trigger the use of skipTo():
 
     BooleanQuery.Builder bq = new BooleanQuery.Builder();
-    bq.add(new MatchAllDocsQuery(), BooleanClause.Occur.MUST);
-    bq.add(new MatchAllDocsQuery(), BooleanClause.Occur.MUST);
+    bq.add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.MUST);
+    bq.add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.MUST);
     hits = is.search(bq.build(), 1000).scoreDocs;
     assertEquals(3, hits.length);
 
     bq = new BooleanQuery.Builder();
-    bq.add(new MatchAllDocsQuery(), BooleanClause.Occur.MUST);
+    bq.add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.MUST);
     bq.add(new TermQuery(new Term("key", "three")), BooleanClause.Occur.MUST);
     hits = is.search(bq.build(), 1000).scoreDocs;
     assertEquals(1, hits.length);
@@ -79,7 +79,7 @@ public class TestMatchAllDocsQuery extends LuceneTestCase {
     ir = DirectoryReader.open(iw);
     is = newSearcher(ir);
 
-    hits = is.search(new MatchAllDocsQuery(), 1000).scoreDocs;
+    hits = is.search(MatchAllDocsQuery.INSTANCE, 1000).scoreDocs;
     assertEquals(2, hits.length);
 
     iw.close();
@@ -88,8 +88,8 @@ public class TestMatchAllDocsQuery extends LuceneTestCase {
   }
 
   public void testEquals() {
-    Query q1 = new MatchAllDocsQuery();
-    Query q2 = new MatchAllDocsQuery();
+    Query q1 = MatchAllDocsQuery.INSTANCE;
+    Query q2 = MatchAllDocsQuery.INSTANCE;
     assertTrue(q1.equals(q2));
   }
 
@@ -120,14 +120,14 @@ public class TestMatchAllDocsQuery extends LuceneTestCase {
     TopScoreDocCollectorManager collectorManager =
         new TopScoreDocCollectorManager(10, totalHitsThreshold);
 
-    TopDocs topDocs = singleThreadedSearcher.search(new MatchAllDocsQuery(), collectorManager);
+    TopDocs topDocs = singleThreadedSearcher.search(MatchAllDocsQuery.INSTANCE, collectorManager);
     assertEquals(totalHitsThreshold + 1, topDocs.totalHits.value());
     assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation());
 
     IndexSearcher is = newSearcher(ir);
     collectorManager = new TopScoreDocCollectorManager(10, numDocs);
 
-    topDocs = is.search(new MatchAllDocsQuery(), collectorManager);
+    topDocs = is.search(MatchAllDocsQuery.INSTANCE, collectorManager);
     assertEquals(numDocs, topDocs.totalHits.value());
     assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation());
 

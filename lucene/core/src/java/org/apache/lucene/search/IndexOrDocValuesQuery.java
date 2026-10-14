@@ -29,13 +29,13 @@ import org.apache.lucene.index.LeafReaderContext;
  * SortedNumericDocValuesField}s with the same values, an efficient range query could be created by
  * doing:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   String field;
  *   long minValue, maxValue;
  *   Query pointQuery = LongPoint.newRangeQuery(field, minValue, maxValue);
  *   Query dvQuery = SortedNumericDocValuesField.newSlowRangeQuery(field, minValue, maxValue);
  *   Query query = new IndexOrDocValuesQuery(pointQuery, dvQuery);
- * </pre>
+ * </code></pre>
  *
  * The above query will be efficient as it will use points in the case that they perform better, ie.
  * when we need a good lead iterator that will be almost entirely consumed; and doc values
@@ -115,11 +115,21 @@ public final class IndexOrDocValuesQuery extends Query {
     Query dvRewrite = dvQuery.rewrite(indexSearcher);
     if (indexRewrite.getClass() == MatchAllDocsQuery.class
         || dvRewrite.getClass() == MatchAllDocsQuery.class) {
-      return new MatchAllDocsQuery();
+      return MatchAllDocsQuery.INSTANCE;
     }
     if (indexRewrite.getClass() == MatchNoDocsQuery.class
         || dvRewrite.getClass() == MatchNoDocsQuery.class) {
-      return new MatchNoDocsQuery();
+      return MatchNoDocsQuery.INSTANCE;
+    }
+    if (dvRewrite.getClass() == FieldExistsQuery.class) {
+      return dvRewrite;
+    } else if (indexRewrite.getClass() == FieldExistsQuery.class) {
+      return indexRewrite;
+    }
+    // If both sides rewrite to the same query there is no longer a choice to make between an
+    // index-based and a doc-values-based execution, so drop the wrapper.
+    if (indexRewrite.equals(dvRewrite)) {
+      return indexRewrite;
     }
     if (indexQuery != indexRewrite || dvQuery != dvRewrite) {
       return new IndexOrDocValuesQuery(indexRewrite, dvRewrite);
@@ -191,7 +201,7 @@ public final class IndexOrDocValuesQuery extends Query {
           }
 
           @Override
-          public long cost() {
+          public long cost() throws IOException {
             return indexScorerSupplier.cost();
           }
         };

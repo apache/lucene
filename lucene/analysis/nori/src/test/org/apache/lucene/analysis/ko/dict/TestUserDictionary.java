@@ -21,10 +21,8 @@ import java.util.List;
 import org.apache.lucene.analysis.ko.POS;
 import org.apache.lucene.analysis.ko.TestKoreanTokenizer;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 public class TestUserDictionary extends LuceneTestCase {
-  @Test
   public void testLookup() throws IOException {
     UserDictionary dictionary = TestKoreanTokenizer.readDict();
     String s = "세종";
@@ -55,7 +53,6 @@ public class TestUserDictionary extends LuceneTestCase {
     assertNull(dictionary.getMorphAttributes().getMorphemes(wordIds.get(0), sArray, 0, s.length()));
   }
 
-  @Test
   public void testRead() {
     UserDictionary dictionary = TestKoreanTokenizer.readDict();
     assertNotNull(dictionary);

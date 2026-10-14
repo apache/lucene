@@ -1,0 +1,70 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: Validate Actions (online checks)
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '22 2 * * *'
+  pull_request:
+    paths:
+      - ".github/**"
+  push:
+    branches: [ main ]
+    paths:
+      - ".github/**"
+
+permissions: {}
+
+# publishes SARIF to github, only need one at a time
+concurrency:
+  group: ${{ github.workflow }}
+
+jobs:
+  zizmor:
+    name: Run zizmor
+    runs-on: ubuntu-26.04-arm
+    timeout-minutes: 15
+    permissions:
+      security-events: write # integration with github advanced security
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version-file: dev-tools/pyproject.toml
+          enable-cache: true
+          save-cache: false
+          cache-dependency-glob: dev-tools/uv.lock
+          cache-suffix: dev-tools
+
+      - name: Run zizmor
+        run: uv run zizmor --pedantic --format=sarif . > results.sarif
+        env:
+          UV_PROJECT: dev-tools
+          UV_FROZEN: "1"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+        with:
+          sarif_file: results.sarif
+          category: zizmor
+
+  allowlist:
+    name: ASF Allowlist Check
+    runs-on: ubuntu-26.04-arm
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check Actions Allowlist
+        uses: apache/infrastructure-actions/allowlist-check@47b297bbe90f580139129bee531bd84bd95b7f5d  # allowlist-check/v1.0.4

@@ -120,6 +120,13 @@ public class TestRamUsageEstimator extends LuceneTestCase {
     assertEquals(actual, estimated);
   }
 
+  public void testBoxedPrimitives() {
+    for (Object value : new Object[] {true, (byte) 1, 'c', (short) 1, 1, 1.0f, 1L, 1.0d}) {
+      assertEquals(
+          value.getClass().getName(), ramUsed(value), RamUsageEstimator.sizeOfObject(value));
+    }
+  }
+
   public void testBytesRefHash() {
     BytesRefHash bytes = new BytesRefHash();
     for (int i = 0; i < 100; i++) {
@@ -148,6 +155,11 @@ public class TestRamUsageEstimator extends LuceneTestCase {
     actual = ramUsed(map);
     estimated = RamUsageEstimator.sizeOfObject(map);
     assertEquals((double) actual, (double) estimated, (double) actual * errorFactor);
+  }
+
+  public void testAccountable() {
+    assertEquals(0L, RamUsageEstimator.sizeOf((Accountable) null));
+    assertEquals(1L, RamUsageEstimator.sizeOf(new DummyAccountable()));
   }
 
   public void testCollection() {
@@ -251,5 +263,12 @@ public class TestRamUsageEstimator extends LuceneTestCase {
 
   private static class HolderSubclass2 extends Holder {
     // empty, only inherits all fields -> size should be identical to superclass
+  }
+
+  private static class DummyAccountable implements Accountable {
+    @Override
+    public long ramBytesUsed() {
+      return 1L;
+    }
   }
 }

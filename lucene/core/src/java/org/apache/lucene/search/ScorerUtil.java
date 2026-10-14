@@ -20,7 +20,7 @@ import java.io.IOException;
 import java.util.Comparator;
 import java.util.stream.LongStream;
 import java.util.stream.StreamSupport;
-import org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat;
+import org.apache.lucene.codecs.lucene104.Lucene104PostingsFormat;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
@@ -32,7 +32,7 @@ import org.apache.lucene.util.VectorUtil;
 class ScorerUtil {
 
   private static final Class<?> DEFAULT_IMPACTS_ENUM_CLASS =
-      Lucene103PostingsFormat.getImpactsEnumImpl();
+      Lucene104PostingsFormat.getImpactsEnumImpl();
   private static final Class<?> DEFAULT_ACCEPT_DOCS_CLASS =
       new FixedBitSet(1).asReadOnlyBits().getClass();
 
@@ -92,6 +92,9 @@ class ScorerUtil {
     if (acceptDocs == null) {
       return acceptDocs;
     } else if (acceptDocs.getClass() == DEFAULT_ACCEPT_DOCS_CLASS) {
+      return acceptDocs;
+    } else if (acceptDocs instanceof org.apache.lucene.util.SparseLiveDocs
+        || acceptDocs instanceof org.apache.lucene.util.DenseLiveDocs) {
       return acceptDocs;
     } else {
       return new FilterBits(acceptDocs);

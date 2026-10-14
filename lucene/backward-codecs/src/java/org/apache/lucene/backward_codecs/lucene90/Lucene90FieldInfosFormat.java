@@ -270,7 +270,7 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
     // We "mirror" IndexOptions enum values with the constants below; let's try to ensure if we add
     // a new IndexOption while this format is
     // still used for writing, we remember to fix this encoding:
-    assert IndexOptions.values().length == 5;
+    assert IndexOptions.values().length == 6;
   }
 
   private static byte indexOptionsByte(IndexOptions indexOptions) {
@@ -285,6 +285,8 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
         return 3;
       case DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS:
         return 4;
+      case DOCS_AND_CUSTOM_FREQS:
+        return 5;
       default:
         // BUG:
         throw new AssertionError("unhandled IndexOptions: " + indexOptions);
@@ -303,6 +305,8 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
         return IndexOptions.DOCS_AND_FREQS_AND_POSITIONS;
       case 4:
         return IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS;
+      case 5:
+        return IndexOptions.DOCS_AND_CUSTOM_FREQS;
       default:
         // BUG
         throw new CorruptIndexException("invalid IndexOptions byte: " + b, input);

@@ -233,7 +233,7 @@ public final class DocValuesDialogFactory implements DialogOpener.DialogFactory 
   private void copyValues() {
     List<String> values = valueList.getSelectedValuesList();
     if (values.isEmpty()) {
-      values = getAllVlues();
+      values = getAllValues();
     }
 
     Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
@@ -241,7 +241,7 @@ public final class DocValuesDialogFactory implements DialogOpener.DialogFactory 
     clipboard.setContents(selection, null);
   }
 
-  private List<String> getAllVlues() {
+  private List<String> getAllValues() {
     List<String> values = new ArrayList<>();
     for (int i = 0; i < valueList.getModel().getSize(); i++) {
       values.add(valueList.getModel().getElementAt(i));

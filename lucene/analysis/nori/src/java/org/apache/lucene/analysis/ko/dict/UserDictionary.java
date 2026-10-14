@@ -137,7 +137,7 @@ public final class UserDictionary implements Dictionary<UserMorphData> {
     }
     this.fst =
         new TokenInfoFST(FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader()));
-    int[][] segmentations = _segmentations.toArray(new int[_segmentations.size()][]);
+    int[][] segmentations = _segmentations.toArray(int[][]::new);
     this.morphAtts = new UserMorphData(segmentations, rightIds);
   }
 

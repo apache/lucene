@@ -101,7 +101,18 @@ abstract class DisjunctionScorer extends Scorer {
         }
       }
       unverifiedMatches.clear();
+      assert assertVerifiedMatchesApproximationDocID();
       return verifiedMatches;
+    }
+
+    private boolean assertVerifiedMatchesApproximationDocID() {
+      int docID = docID();
+      for (DisiWrapper w = verifiedMatches; w != null; w = w.next) {
+        if (w.doc != docID) {
+          return false;
+        }
+      }
+      return true;
     }
 
     @Override

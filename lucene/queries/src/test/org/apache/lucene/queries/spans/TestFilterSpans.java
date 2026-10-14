@@ -18,11 +18,9 @@ package org.apache.lucene.queries.spans;
 
 import java.lang.reflect.Method;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 public class TestFilterSpans extends LuceneTestCase {
 
-  @Test
   public void testOverrides() throws Exception {
     // verify that all methods of Spans are overridden by FilterSpans,
     for (Method m : FilterSpans.class.getMethods()) {

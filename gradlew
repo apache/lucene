@@ -1,7 +1,7 @@
-#!/usr/bin/env sh
+#!/bin/sh
 
 #
-# Copyright © 2015-2021 the original authors.
+# Copyright © 2015 the original authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -114,7 +114,6 @@ case "$( uname )" in                #(
   NONSTOP* )        nonstop=true ;;
 esac
 
-CLASSPATH="\\\"\\\""
 
 
 # Determine the Java command to use to start the JVM.
@@ -172,7 +171,6 @@ fi
 # For Cygwin or MSYS, switch paths to Windows format before running java
 if "$cygwin" || "$msys" ; then
     APP_HOME=$( cygpath --path --mixed "$APP_HOME" )
-    CLASSPATH=$( cygpath --path --mixed "$CLASSPATH" )
 
     JAVACMD=$( cygpath --unix "$JAVACMD" )
 
@@ -213,25 +211,38 @@ if [ "$cygwin" = "true" -o "$msys" = "true" ] ; then
 fi
 DEFAULT_JVM_OPTS="$DEFAULT_JVM_OPTS \"-Djava.io.tmpdir=$GRADLE_TEMPDIR\""
 
-# LUCENE-9266: verify and download the gradle wrapper jar if we don't have one.
 if [ "$cygwin" = "true" -o "$msys" = "true" ] ; then
     APP_HOME=`cygpath --path --mixed "$APP_HOME"`
 fi
 
-GRADLE_WRAPPER_JAR="$APP_HOME/gradle/wrapper/gradle-wrapper.jar"
-if "$darwin"; then
-    shasumcmd=shasum
-else
-    shasumcmd=sha256sum
+# Intranet mirrors for gradle-wrapper.jar and the gradle distribution, see GradleMirrorSetup.java
+# and 'gradlew helpLocalSettings'.
+if [ -n "$LUCENE_GRADLE_DISTRIBUTION_URL" ] || [ -n "$LUCENE_GRADLE_WRAPPER_URL" ]; then
+    "$JAVACMD" $JAVA_OPTS "$APP_HOME/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/GradleMirrorSetup.java" "$APP_HOME" "$@"
+    SETUP_STATUS=$?
+    if [ "$SETUP_STATUS" -ne 0 ]; then
+        exit $SETUP_STATUS
+    fi
 fi
-if [ ! -e "$GRADLE_WRAPPER_JAR" ] || ! ( cd "$APP_HOME/gradle/wrapper" && "$shasumcmd" --status -c "${GRADLE_WRAPPER_JAR}.sha256" ); then
-    "$JAVACMD" $JAVA_OPTS "$APP_HOME/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/WrapperDownloader.java" "$GRADLE_WRAPPER_JAR"
-    WRAPPER_STATUS=$?
-    if [ "$WRAPPER_STATUS" -eq 1 ]; then
-        echo "ERROR: Something went wrong. Make sure you're using Java version of exactly 23."
-        exit $WRAPPER_STATUS
-    elif [ "$WRAPPER_STATUS" -ne 0 ]; then
-        exit $WRAPPER_STATUS
+
+# LUCENE-9266: verify and download the gradle wrapper jar if we don't have one.
+# Skipped entirely if LUCENE_GRADLE_VERIFY_CHECKSUMS=false, see 'gradlew helpLocalSettings'.
+GRADLE_WRAPPER_JAR="$APP_HOME/gradle/wrapper/gradle-wrapper.jar"
+if [ "$LUCENE_GRADLE_VERIFY_CHECKSUMS" != "false" ]; then
+    if "$darwin"; then
+        shasumcmd=shasum
+    else
+        shasumcmd=sha256sum
+    fi
+    if [ ! -e "$GRADLE_WRAPPER_JAR" ] || ! ( cd "$APP_HOME/gradle/wrapper" && "$shasumcmd" --status -c "${GRADLE_WRAPPER_JAR}.sha256" ); then
+        "$JAVACMD" $JAVA_OPTS "$APP_HOME/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/GradleWrapperDownloader.java" "$GRADLE_WRAPPER_JAR"
+        WRAPPER_STATUS=$?
+        if [ "$WRAPPER_STATUS" -eq 1 ]; then
+            echo "ERROR: Something went wrong. Make sure you're using Java version of exactly 25."
+            exit $WRAPPER_STATUS
+        elif [ "$WRAPPER_STATUS" -ne 0 ]; then
+            exit $WRAPPER_STATUS
+        fi
     fi
 fi
 
@@ -253,7 +264,6 @@ fi
 
 set -- \
         "-Dorg.gradle.appname=$APP_BASE_NAME" \
-        -classpath "$CLASSPATH" \
         -jar "$APP_HOME/gradle/wrapper/gradle-wrapper.jar" \
         "$@"
 

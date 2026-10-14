@@ -1,0 +1,18 @@
+---
+id: missing-job-timeout
+invalid:
+  - |
+    jobs:
+      foobar:
+        runs-on: supercomputer
+valid:
+  - |
+    jobs:
+      foobar:
+        runs-on: supercomputer
+        timeout-minutes: 30
+  - |
+    somethingelse:
+      jobs:
+        foobar:
+          unrelated: stuff

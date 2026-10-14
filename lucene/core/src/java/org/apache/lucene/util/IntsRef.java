@@ -85,8 +85,8 @@ public final class IntsRef implements Comparable<IntsRef>, Cloneable {
     if (other == null) {
       return false;
     }
-    if (other instanceof IntsRef) {
-      return this.intsEquals((IntsRef) other);
+    if (other instanceof IntsRef ir) {
+      return this.intsEquals(ir);
     }
     return false;
   }

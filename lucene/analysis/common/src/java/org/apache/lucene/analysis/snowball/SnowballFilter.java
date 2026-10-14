@@ -89,7 +89,7 @@ public final class SnowballFilter extends TokenFilter {
 
   /** Returns the next input Token, after being stemmed */
   @Override
-  public final boolean incrementToken() throws IOException {
+  public boolean incrementToken() throws IOException {
     if (input.incrementToken()) {
       if (!keywordAttr.isKeyword()) {
         char[] termBuffer = termAtt.buffer();

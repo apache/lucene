@@ -104,13 +104,13 @@ public class TestMultiAnalyzer extends BaseTokenStreamTestCase {
     DumbQueryParser qp = new DumbQueryParser("", new MultiAnalyzer());
     qp.setPhraseSlop(99); // modified default slop
 
-    // direct call to (super's) getFieldQuery to demonstrate differnce
+    // direct call to (super's) getFieldQuery to demonstrate difference
     // between phrase and multiphrase with modified default slop
     assertEquals("\"foo bar\"~99", qp.getSuperFieldQuery("", "foo bar", true).toString());
     assertEquals(
         "\"(multi multi2) bar\"~99", qp.getSuperFieldQuery("", "multi bar", true).toString());
 
-    // ask sublcass to parse phrase with modified default slop
+    // ask subclass to parse phrase with modified default slop
     assertEquals("\"(multi multi2) foo\"~99 bar", qp.parse("\"multi foo\" bar").toString());
   }
 

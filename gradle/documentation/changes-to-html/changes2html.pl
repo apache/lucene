@@ -50,7 +50,7 @@ if ($product !~ /^(LUCENE|SOLR)$/) {
   exit(1);
 }
 my %release_dates = &setup_release_dates($ARGV[1]);
-my $lucene_javadoc_url = ($product eq 'SOLR' ? $ARGV[2] : ''); # Only Solr supplies this on the cmdline
+my $lucene_javadoc_url = ''; # Only Solr used to supply this on the cmdline
 my $in_major_component_versions_section = 0;
 
 

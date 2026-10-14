@@ -193,13 +193,15 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
     // term text into textStart address
     // Get the text & hash of this term.
     int termID = bytesHash.add(termBytes);
-    // System.out.println("add term=" + termBytesRef.utf8ToString() + " doc=" + docState.docID + "
-    // termID=" + termID);
     if (termID >= 0) { // New posting
       // Init stream slices
       initStreamSlices(termID, docID);
     } else {
-      termID = positionStreamSlice(termID, docID);
+      try {
+        termID = positionStreamSlice(termID, docID);
+      } catch (DuplicateTermException e) {
+        throw new DuplicateTermException(e.getMessage() + " '" + termBytes.utf8ToString() + "'");
+      }
     }
     if (doNextCall) {
       nextPerField.add(postingsArray.textStarts[termID], docID);
@@ -360,4 +362,10 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
 
   /** Creates a new postings array of the specified size. */
   abstract ParallelPostingsArray createPostingsArray(int size);
+
+  static class DuplicateTermException extends IllegalStateException {
+    DuplicateTermException(String msg) {
+      super(msg);
+    }
+  }
 }

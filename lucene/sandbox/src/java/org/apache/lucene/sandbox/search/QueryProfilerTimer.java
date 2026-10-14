@@ -33,9 +33,21 @@ package org.apache.lucene.sandbox.search;
  *  </pre>
  */
 class QueryProfilerTimer {
-
   private boolean doTiming;
-  private long timing, count, lastCount, start;
+  private long timing, count, lastCount, start, earliestTimerStartTime;
+
+  public QueryProfilerTimer() {
+    this(0, 0, 0, 0, 0);
+  }
+
+  public QueryProfilerTimer(
+      long timing, long count, long lastCount, long start, long earliestTimerStartTime) {
+    this.timing = timing;
+    this.count = count;
+    this.lastCount = lastCount;
+    this.start = start;
+    this.earliestTimerStartTime = earliestTimerStartTime;
+  }
 
   /** pkg-private for testing */
   long nanoTime() {
@@ -55,6 +67,9 @@ class QueryProfilerTimer {
     doTiming = (count - lastCount) >= Math.min(lastCount >>> 8, 1024);
     if (doTiming) {
       start = nanoTime();
+      if (count == 0) {
+        earliestTimerStartTime = start;
+      }
     }
     count++;
   }
@@ -74,6 +89,14 @@ class QueryProfilerTimer {
       throw new IllegalStateException("#start call misses a matching #stop call");
     }
     return count;
+  }
+
+  /** Return the timer start time in nanoseconds. */
+  public final long getEarliestTimerStartTime() {
+    if (start != 0) {
+      throw new IllegalStateException("#start call misses a matching #stop call");
+    }
+    return earliestTimerStartTime;
   }
 
   /**

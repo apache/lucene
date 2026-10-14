@@ -16,6 +16,10 @@
  */
 package org.apache.lucene.tests.codecs.asserting;
 
+import com.carrotsearch.randomizedtesting.RandomizedContext;
+import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.stream.Collectors;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
@@ -28,10 +32,27 @@ import org.apache.lucene.codecs.TermVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
 /** Acts like the default codec but with additional asserts. */
 public class AssertingCodec extends FilterCodec {
+
+  /** Enum representing asserting format types that can be suppressed. */
+  public enum Format {
+    STORED_FIELDS,
+    TERM_VECTORS,
+    NORMS,
+    LIVE_DOCS,
+    POINTS,
+    KNN_VECTORS
+  }
+
+  private final EnumSet<Format> suppressedFormats;
+
+  private boolean isSuppressed(Format format) {
+    return suppressedFormats.contains(format);
+  }
 
   static void assertThread(String object, Thread creationThread) {
     if (creationThread != Thread.currentThread()) {
@@ -81,6 +102,24 @@ public class AssertingCodec extends FilterCodec {
 
   public AssertingCodec() {
     super("Asserting", TestUtil.getDefaultCodec());
+
+    var suppressedFormats = EnumSet.noneOf(AssertingCodec.Format.class);
+    Class<?> targetClass;
+    try {
+      targetClass = RandomizedContext.current().getTargetClass();
+    } catch (IllegalStateException _) {
+      // Not under any randomized context.
+      targetClass = null;
+    }
+
+    if (targetClass != null
+        && targetClass.isAnnotationPresent(LuceneTestCase.SuppressAssertingFormats.class)) {
+      suppressedFormats.addAll(
+          Arrays.asList(
+              targetClass.getAnnotation(LuceneTestCase.SuppressAssertingFormats.class).value()));
+    }
+
+    this.suppressedFormats = suppressedFormats;
   }
 
   @Override
@@ -90,12 +129,12 @@ public class AssertingCodec extends FilterCodec {
 
   @Override
   public TermVectorsFormat termVectorsFormat() {
-    return vectors;
+    return isSuppressed(Format.TERM_VECTORS) ? delegate.termVectorsFormat() : vectors;
   }
 
   @Override
   public StoredFieldsFormat storedFieldsFormat() {
-    return storedFields;
+    return isSuppressed(Format.STORED_FIELDS) ? delegate.storedFieldsFormat() : storedFields;
   }
 
   @Override
@@ -105,27 +144,33 @@ public class AssertingCodec extends FilterCodec {
 
   @Override
   public NormsFormat normsFormat() {
-    return norms;
+    return isSuppressed(Format.NORMS) ? delegate.normsFormat() : norms;
   }
 
   @Override
   public LiveDocsFormat liveDocsFormat() {
-    return liveDocs;
+    return isSuppressed(Format.LIVE_DOCS) ? delegate.liveDocsFormat() : liveDocs;
   }
 
   @Override
   public PointsFormat pointsFormat() {
-    return pointsFormat;
+    return isSuppressed(Format.POINTS) ? delegate.pointsFormat() : pointsFormat;
   }
 
   @Override
   public KnnVectorsFormat knnVectorsFormat() {
-    return knnVectorsFormat;
+    return isSuppressed(Format.KNN_VECTORS) ? delegate.knnVectorsFormat() : knnVectorsFormat;
   }
 
   @Override
   public String toString() {
-    return "Asserting(" + delegate + ")";
+    return "Asserting("
+        + delegate
+        + (suppressedFormats.isEmpty()
+            ? ""
+            : ", suppressed: "
+                + suppressedFormats.stream().map(Enum::toString).collect(Collectors.joining(", ")))
+        + ")";
   }
 
   /**

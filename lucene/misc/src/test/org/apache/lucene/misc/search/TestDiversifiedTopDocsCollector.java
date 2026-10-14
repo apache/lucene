@@ -29,11 +29,13 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiDocValues;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
@@ -50,6 +52,7 @@ import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -76,9 +79,8 @@ public class TestDiversifiedTopDocsCollector extends LuceneTestCase {
     // any one artist.
     int requiredMaxHitsPerArtist = 2;
     int numberOfTracksOnCompilation = 10;
-    DiversifiedTopDocsCollector tdc =
-        doDiversifiedSearch(numberOfTracksOnCompilation, requiredMaxHitsPerArtist);
-    ScoreDoc[] sd = tdc.topDocs(0).scoreDocs;
+    TopDocs results = doDiversifiedSearch(numberOfTracksOnCompilation, requiredMaxHitsPerArtist);
+    ScoreDoc[] sd = results.scoreDocs;
     assertEquals(numberOfTracksOnCompilation, sd.length);
     assertTrue(getMaxNumRecordsPerArtist(sd) <= requiredMaxHitsPerArtist);
   }
@@ -89,59 +91,77 @@ public class TestDiversifiedTopDocsCollector extends LuceneTestCase {
     int requiredMaxHitsPerArtist = 1;
 
     // Volume 2 of our hits compilation - start at position 10
-    DiversifiedTopDocsCollector tdc =
+    TopDocs td =
         doDiversifiedSearch(
             numberOfTracksPerCompilation * numberOfCompilations, requiredMaxHitsPerArtist);
     ScoreDoc[] volume2 =
-        tdc.topDocs(numberOfTracksPerCompilation, numberOfTracksPerCompilation).scoreDocs;
+        ArrayUtil.copyOfSubArray(
+            td.scoreDocs,
+            numberOfTracksPerCompilation,
+            numberOfTracksPerCompilation * numberOfCompilations);
     assertEquals(numberOfTracksPerCompilation, volume2.length);
     assertTrue(getMaxNumRecordsPerArtist(volume2) <= requiredMaxHitsPerArtist);
   }
 
   public void testInvalidArguments() throws Exception {
     int numResults = 5;
-    DiversifiedTopDocsCollector tdc = doDiversifiedSearch(numResults, 15);
+    // Create an empty collector to exercise topDocs() argument validation
+    DiversifiedTopDocsCollector tdc =
+        new HashedDocValuesDiversifiedCollector(numResults, 15, "artist");
 
-    // start < 0
+    // start < 0 throws
     IllegalArgumentException expected =
-        expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              tdc.topDocs(-1);
-            });
-
+        expectThrows(IllegalArgumentException.class, () -> tdc.topDocs(-1));
     assertEquals(
-        "Expected value of starting position is between 0 and 5, got -1", expected.getMessage());
+        "Expected value of starting position is between 0 and 0, got -1", expected.getMessage());
 
-    // start > pq.size()
+    // start > pq.size() (pq is empty; any positive start is out of range)
     assertEquals(0, tdc.topDocs(numResults + 1).scoreDocs.length);
 
-    // start == pq.size()
-    assertEquals(0, tdc.topDocs(numResults).scoreDocs.length);
+    // start == pq.size() == 0
+    assertEquals(0, tdc.topDocs(0).scoreDocs.length);
 
     // howMany < 0
-    expected =
-        expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              tdc.topDocs(0, -1);
-            });
-
+    expected = expectThrows(IllegalArgumentException.class, () -> tdc.topDocs(0, -1));
     assertEquals(
         "Number of hits requested must be greater than 0 but value was -1", expected.getMessage());
 
     // howMany == 0
     assertEquals(0, tdc.topDocs(0, 0).scoreDocs.length);
+
+    // Verify start == pq.size() returns empty with a non-empty collector
+    HashedDocValuesDiversifiedCollector populated =
+        new HashedDocValuesDiversifiedCollector(numResults, 15, "artist");
+    Weight w = searcher.createWeight(searcher.rewrite(getTestQuery()), ScoreMode.COMPLETE, 1f);
+    for (LeafReaderContext ctx : searcher.getIndexReader().leaves()) {
+      LeafCollector lc = populated.getLeafCollector(ctx);
+      BulkScorer bs = w.bulkScorer(ctx);
+      if (bs != null) {
+        bs.score(lc, ctx.reader().getLiveDocs(), 0, DocIdSetIterator.NO_MORE_DOCS);
+      }
+    }
+    int collectedCount = populated.topDocs().scoreDocs.length;
+    assertTrue(collectedCount > 0);
+    assertEquals(0, populated.topDocs(collectedCount).scoreDocs.length);
   }
 
   // Diversifying collector that looks up de-dup keys using SortedDocValues
   // from a top-level Reader
   private static final class DocValuesDiversifiedCollector extends DiversifiedTopDocsCollector {
-    private final SortedDocValues sdv;
+    private SortedDocValues sdv;
 
-    public DocValuesDiversifiedCollector(int size, int maxHitsPerKey, SortedDocValues sdv) {
+    public DocValuesDiversifiedCollector(int size, int maxHitsPerKey) {
       super(size, maxHitsPerKey);
-      this.sdv = sdv;
+    }
+
+    @Override
+    public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
+      if (sdv == null) {
+        sdv =
+            MultiDocValues.getSortedValues(
+                ReaderUtil.getTopLevelContext(context).reader(), "artist");
+      }
+      return super.getLeafCollector(context);
     }
 
     @Override
@@ -322,7 +342,6 @@ public class TestDiversifiedTopDocsCollector extends LuceneTestCase {
   private Directory dir;
   private IndexReader reader;
   private IndexSearcher searcher;
-  private SortedDocValues artistDocValues;
 
   static class Record {
     String year;
@@ -356,8 +375,7 @@ public class TestDiversifiedTopDocsCollector extends LuceneTestCase {
     }
   }
 
-  private DiversifiedTopDocsCollector doDiversifiedSearch(int numResults, int maxResultsPerArtist)
-      throws IOException {
+  private TopDocs doDiversifiedSearch(int numResults, int maxResultsPerArtist) throws IOException {
     // Alternate between implementations used for key lookups
     if (random().nextBoolean()) {
       // Faster key lookup but with potential for collisions on larger datasets
@@ -368,20 +386,31 @@ public class TestDiversifiedTopDocsCollector extends LuceneTestCase {
     }
   }
 
-  private DiversifiedTopDocsCollector doFuzzyDiversifiedSearch(
-      int numResults, int maxResultsPerArtist) throws IOException {
-    DiversifiedTopDocsCollector tdc =
-        new HashedDocValuesDiversifiedCollector(numResults, maxResultsPerArtist, "artist");
-    searcher.search(getTestQuery(), tdc);
-    return tdc;
+  private TopDocs doFuzzyDiversifiedSearch(int numResults, int maxResultsPerArtist)
+      throws IOException {
+    return searcher.search(
+        getTestQuery(),
+        new DiversifiedTopDocsCollectorManager<HashedDocValuesDiversifiedCollector>(
+            numResults, maxResultsPerArtist) {
+          @Override
+          public HashedDocValuesDiversifiedCollector newCollector() {
+            return new HashedDocValuesDiversifiedCollector(
+                numResults, maxResultsPerArtist, "artist");
+          }
+        });
   }
 
-  private DiversifiedTopDocsCollector doAccurateDiversifiedSearch(
-      int numResults, int maxResultsPerArtist) throws IOException {
-    DiversifiedTopDocsCollector tdc =
-        new DocValuesDiversifiedCollector(numResults, maxResultsPerArtist, artistDocValues);
-    searcher.search(getTestQuery(), tdc);
-    return tdc;
+  private TopDocs doAccurateDiversifiedSearch(int numResults, int maxResultsPerArtist)
+      throws IOException {
+    return searcher.search(
+        getTestQuery(),
+        new DiversifiedTopDocsCollectorManager<DocValuesDiversifiedCollector>(
+            numResults, maxResultsPerArtist) {
+          @Override
+          public DocValuesDiversifiedCollector newCollector() {
+            return new DocValuesDiversifiedCollector(numResults, maxResultsPerArtist);
+          }
+        });
   }
 
   private Query getTestQuery() {
@@ -440,7 +469,6 @@ public class TestDiversifiedTopDocsCollector extends LuceneTestCase {
     reader = writer.getReader();
     writer.close();
     searcher = newSearcher(reader);
-    artistDocValues = MultiDocValues.getSortedValues(reader, "artist");
   }
 
   @Override

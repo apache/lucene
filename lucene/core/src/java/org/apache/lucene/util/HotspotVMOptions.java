@@ -61,14 +61,12 @@ final class HotspotVMOptions {
               try {
                 final Object vmOption = getVMOptionMethod.invoke(hotSpotBean, name);
                 return Optional.of(getValueMethod.invoke(vmOption).toString());
-              } catch (@SuppressWarnings("unused")
-                  ReflectiveOperationException
-                  | RuntimeException e) {
+              } catch (ReflectiveOperationException | RuntimeException _) {
                 return Optional.empty();
               }
             };
       }
-    } catch (@SuppressWarnings("unused") ReflectiveOperationException | RuntimeException e) {
+    } catch (ReflectiveOperationException | RuntimeException _) {
       isHotspot = false;
       final Logger log = Logger.getLogger(HotspotVMOptions.class.getName());
       final Module module = HotspotVMOptions.class.getModule();

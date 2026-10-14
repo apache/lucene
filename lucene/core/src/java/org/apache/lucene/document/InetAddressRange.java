@@ -20,6 +20,7 @@ import java.net.InetAddress;
 import java.util.Arrays;
 import org.apache.lucene.document.RangeFieldQuery.QueryType;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -182,10 +183,8 @@ public class InetAddressRange extends Field {
    * @return The string representation for the range at the provided dimension
    */
   private static String toString(byte[] ranges, int dimension) {
-    byte[] min = new byte[BYTES];
-    System.arraycopy(ranges, 0, min, 0, BYTES);
-    byte[] max = new byte[BYTES];
-    System.arraycopy(ranges, BYTES, max, 0, BYTES);
+    byte[] min = ArrayUtil.copyOfSubArray(ranges, 0, BYTES);
+    byte[] max = ArrayUtil.copyOfSubArray(ranges, BYTES, BYTES + BYTES);
     return "[" + InetAddressPoint.decode(min) + " : " + InetAddressPoint.decode(max) + "]";
   }
 }

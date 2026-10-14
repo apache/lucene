@@ -53,7 +53,7 @@ public class TestXYMultiPolygonShapeQueries extends BaseXYShapeTestCase {
       Field[] fields = XYShape.createIndexableFields(name, polygon);
       Collections.addAll(allFields, fields);
     }
-    return allFields.toArray(new Field[0]);
+    return allFields.toArray(Field[]::new);
   }
 
   @Override

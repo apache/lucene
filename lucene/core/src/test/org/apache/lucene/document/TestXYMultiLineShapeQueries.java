@@ -51,7 +51,7 @@ public class TestXYMultiLineShapeQueries extends BaseXYShapeTestCase {
       Field[] fields = XYShape.createIndexableFields(name, line);
       Collections.addAll(allFields, fields);
     }
-    return allFields.toArray(new Field[0]);
+    return allFields.toArray(Field[]::new);
   }
 
   @Override

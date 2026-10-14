@@ -18,10 +18,12 @@ package org.apache.lucene.util;
 
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
-import static org.hamcrest.Matchers.lessThanOrEqualTo;
 
+import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -30,7 +32,6 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.hamcrest.Matchers;
 
-@SuppressWarnings("BoxedPrimitiveEquality")
 public class TestPriorityQueue extends LuceneTestCase {
 
   private static class IntegerQueue extends PriorityQueue<Integer> {
@@ -159,6 +160,63 @@ public class TestPriorityQueue extends LuceneTestCase {
     assertThat(pq.top(), equalTo(2));
   }
 
+  public void testAddAllWithStream() {
+    PriorityQueue<Integer> pq = new IntegerQueue(6);
+    List<String> elements = new ArrayList<>();
+    for (String s : Arrays.asList("a", "b", "c", "d", "e", "f")) {
+      if (random().nextBoolean()) {
+        elements.addFirst(s);
+      } else {
+        elements.addLast(s);
+      }
+    }
+
+    pq.addAll(elements.stream().map(String::hashCode));
+    assertEquals("a".hashCode(), pq.top().intValue());
+  }
+
+  public void testAddAllWithStreamNotFitIntoQueue() {
+    PriorityQueue<Integer> pq = new IntegerQueue(10);
+    List<String> elements = new ArrayList<>();
+    for (String s : Arrays.asList("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k")) {
+      if (random().nextBoolean()) {
+        elements.addFirst(s);
+      } else {
+        elements.addLast(s);
+      }
+    }
+
+    assertThrows(
+        "Cannot add 11 elements to a queue with remaining capacity: 10",
+        ArrayIndexOutOfBoundsException.class,
+        () -> pq.addAll(elements.stream().map(String::hashCode)));
+    // Partly added.
+    assertEquals(10, pq.size());
+    assertTrue(assertHeap(pq));
+  }
+
+  private boolean assertHeap(PriorityQueue<Integer> pq) {
+    Object[] heapArray = pq.getHeapArray();
+    // The loop goes down to 1 as heap is 1-based not 0-based.
+    for (int i = (heapArray.length >>> 1); i >= 1; i--) {
+      int left = i << 1;
+      int right = left + 1;
+      if (right < heapArray.length) {
+        if ((Integer) heapArray[i] > (Integer) heapArray[right]) {
+          return false;
+        }
+        if ((Integer) heapArray[i] > (Integer) heapArray[left]) {
+          return false;
+        }
+      } else if (left < heapArray.length) {
+        if ((Integer) heapArray[i] > (Integer) heapArray[left]) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
   public void testAddAllToEmptyQueue() {
     Random random = random();
     int size = 10;
@@ -202,63 +260,51 @@ public class TestPriorityQueue extends LuceneTestCase {
       pq.add(random.nextInt());
     }
 
+    assertEquals(11, pq.size());
     assertThrows(
         "Cannot add 11 elements to a queue with remaining capacity: 9",
         ArrayIndexOutOfBoundsException.class,
         () -> pq.addAll(list));
+    // Partly added.
+    assertEquals(20, pq.size());
+    assertTrue(assertHeap(pq));
   }
 
-  public void testRemovalsAndInsertions() {
-    Random random = random();
-    int numDocsInPQ = TestUtil.nextInt(random, 1, 100);
-    IntegerQueue pq = new IntegerQueue(numDocsInPQ);
-    Integer lastLeast = null;
+  /** Randomly add some elements, comparing against the reference java.util.PriorityQueue. */
+  public void testRandomAdditionsAgainstJavaPq() {
+    int maxElement = RandomNumbers.randomIntBetween(random(), 1, 500);
+    int size = maxElement / 2 + 1;
 
-    // Basic insertion of new content
-    ArrayList<Integer> sds = new ArrayList<>(numDocsInPQ);
-    for (int i = 0; i < numDocsInPQ * 10; i++) {
-      Integer newEntry = Math.abs(random.nextInt());
-      sds.add(newEntry);
-      Integer evicted = pq.insertWithOverflow(newEntry);
-      pq.checkValidity();
-      if (evicted != null) {
-        assertTrue(sds.remove(evicted));
-        if (evicted != newEntry) {
-          assertSame(evicted, lastLeast);
-        }
+    var reference = new java.util.PriorityQueue<Integer>();
+    var pq = new IntegerQueue(size);
+
+    Random localRandom = nonAssertingRandom(random());
+
+    // Lucene's PriorityQueue.remove uses reference equality, not .equals to determine which
+    // elements
+    // to remove (!).
+    HashMap<Integer, Integer> ints = new HashMap<>();
+
+    for (int i = 0, iters = size * 2; i < iters; i++) {
+      Integer element = ints.computeIfAbsent(localRandom.nextInt(maxElement), k -> k);
+
+      // additions.
+      var dropped = pq.insertWithOverflow(element);
+
+      reference.add(element);
+      Integer droppedReference;
+      if (reference.size() > size) {
+        droppedReference = reference.remove();
+      } else {
+        droppedReference = null;
       }
-      Integer newLeast = pq.top();
-      if ((lastLeast != null) && (newLeast != newEntry) && (newLeast != lastLeast)) {
-        // If there has been a change of least entry and it wasn't our new
-        // addition we expect the scores to increase
-        assertThat(newLeast, lessThanOrEqualTo(newEntry));
-        assertThat(newLeast, greaterThanOrEqualTo(lastLeast));
-      }
-      lastLeast = newLeast;
+
+      assertEquals("insertWithOverflow() difference.", dropped, droppedReference);
+      assertEquals("insertWithOverflow() size difference?", reference.size(), pq.size());
+      assertEquals("top() difference?", reference.peek(), pq.top());
     }
 
-    // Try many random additions to existing entries - we should always see
-    // increasing scores in the lowest entry in the PQ
-    for (int p = 0; p < 500000; p++) {
-      int element = (int) (random.nextFloat() * (sds.size() - 1));
-      Integer objectToRemove = sds.get(element);
-      assertSame(sds.remove(element), objectToRemove);
-      assertTrue(pq.remove(objectToRemove));
-      pq.checkValidity();
-      Integer newEntry = Math.abs(random.nextInt());
-      sds.add(newEntry);
-      assertNull(pq.insertWithOverflow(newEntry));
-      pq.checkValidity();
-      Integer newLeast = pq.top();
-      if ((objectToRemove != lastLeast) && (lastLeast != null) && (newLeast != newEntry)) {
-        // If there has been a change of least entry and it wasn't our new
-        // addition or the loss of our randomly removed entry we expect the
-        // scores to increase
-        assertThat(newLeast, lessThanOrEqualTo(newEntry));
-        assertThat(newLeast, greaterThanOrEqualTo(lastLeast));
-      }
-      lastLeast = newLeast;
-    }
+    pq.checkValidity();
   }
 
   public void testIteratorEmpty() {

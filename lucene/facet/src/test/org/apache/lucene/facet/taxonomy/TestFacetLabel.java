@@ -21,18 +21,15 @@ import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.sortedset.SortedSetDocValuesFacetField;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.junit.Test;
 
 public class TestFacetLabel extends FacetTestCase {
 
-  @Test
   public void testBasic() {
     assertEquals(0, new FacetLabel().length);
     assertEquals(1, new FacetLabel("hello").length);
     assertEquals(2, new FacetLabel("hello", "world").length);
   }
 
-  @Test
   public void testToString() {
     // When the category is empty, we expect an empty string
     assertEquals("FacetLabel: []", new FacetLabel().toString());
@@ -42,7 +39,6 @@ public class TestFacetLabel extends FacetTestCase {
     assertEquals("FacetLabel: [hello, world]", new FacetLabel("hello", "world").toString());
   }
 
-  @Test
   public void testGetComponent() {
     String[] components = new String[atLeast(10)];
     for (int i = 0; i < components.length; i++) {
@@ -54,7 +50,6 @@ public class TestFacetLabel extends FacetTestCase {
     }
   }
 
-  @Test
   public void testDefaultConstructor() {
     // test that the default constructor (no parameters) currently
     // defaults to creating an object with a 0 initial capacity.
@@ -65,7 +60,6 @@ public class TestFacetLabel extends FacetTestCase {
     assertEquals("FacetLabel: []", p.toString());
   }
 
-  @Test
   public void testSubPath() {
     final FacetLabel p = new FacetLabel("hi", "there", "man");
     assertEquals(p.length, 3);
@@ -93,7 +87,6 @@ public class TestFacetLabel extends FacetTestCase {
   }
 
   @SuppressWarnings("unlikely-arg-type")
-  @Test
   public void testEquals() {
     assertEquals(new FacetLabel(), new FacetLabel());
     assertFalse(new FacetLabel().equals(new FacetLabel("hi")));
@@ -101,7 +94,6 @@ public class TestFacetLabel extends FacetTestCase {
     assertEquals(new FacetLabel("hello", "world"), new FacetLabel("hello", "world"));
   }
 
-  @Test
   public void testHashCode() {
     assertEquals(new FacetLabel().hashCode(), new FacetLabel().hashCode());
     assertFalse(new FacetLabel().hashCode() == new FacetLabel("hi").hashCode());
@@ -109,7 +101,6 @@ public class TestFacetLabel extends FacetTestCase {
         new FacetLabel("hello", "world").hashCode(), new FacetLabel("hello", "world").hashCode());
   }
 
-  @Test
   public void testLongHashCode() {
     assertEquals(new FacetLabel().longHashCode(), new FacetLabel().longHashCode());
     assertFalse(new FacetLabel().longHashCode() == new FacetLabel("hi").longHashCode());
@@ -118,14 +109,12 @@ public class TestFacetLabel extends FacetTestCase {
         new FacetLabel("hello", "world").longHashCode());
   }
 
-  @Test
   public void testArrayConstructor() {
     FacetLabel p = new FacetLabel("hello", "world", "yo");
     assertEquals(3, p.length);
     assertEquals("FacetLabel: [hello, world, yo]", p.toString());
   }
 
-  @Test
   public void testCompareTo() {
     FacetLabel p = new FacetLabel("a", "b", "c", "d");
     FacetLabel pother = new FacetLabel("a", "b", "c", "d");
@@ -145,7 +134,6 @@ public class TestFacetLabel extends FacetTestCase {
     assertTrue(p.compareTo(pother) < 0);
   }
 
-  @Test
   public void testEmptyNullComponents() throws Exception {
     // LUCENE-4724: CategoryPath should not allow empty or null components
     String[][] components_tests =
@@ -199,7 +187,6 @@ public class TestFacetLabel extends FacetTestCase {
     expectThrows(IllegalArgumentException.class, () -> new SortedSetDocValuesFacetField("dim", ""));
   }
 
-  @Test
   public void testLongPath() throws Exception {
     String bigComp = null;
     while (true) {

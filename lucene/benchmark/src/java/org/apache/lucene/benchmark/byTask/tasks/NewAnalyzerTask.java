@@ -79,9 +79,7 @@ public class NewAnalyzerTask extends PerfTask {
             String coreClassName = "org.apache.lucene.analysis.core." + analyzerName;
             analyzer = createAnalyzer(coreClassName);
             analyzerName = coreClassName;
-          } catch (
-              @SuppressWarnings("unused")
-              ClassNotFoundException e) {
+          } catch (ClassNotFoundException _) {
             // If not a core analyzer, try the base analysis package
             analyzerName = "org.apache.lucene.analysis." + analyzerName;
             analyzer = createAnalyzer(analyzerName);

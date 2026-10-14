@@ -21,11 +21,9 @@ import java.util.BitSet;
 import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 public class TestGeoPolygon extends LuceneTestCase {
 
-  @Test
   public void testH3CellsWrongIntersection() {
     final List<GeoPoint> points1 = new ArrayList<>();
     addToList(points1, PlanetModel.SPHERE, -64.2102198418716, -39.14233318389477);
@@ -52,7 +50,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     points.add(new GeoPoint(planetModel, Geo3DUtil.fromDegrees(lat), Geo3DUtil.fromDegrees(lon)));
   }
 
-  @Test
   public void testPolygonPointFiltering() {
     final GeoPoint point1 = new GeoPoint(PlanetModel.WGS84, 1.0, 2.0);
     final GeoPoint point2 = new GeoPoint(PlanetModel.WGS84, 0.5, 2.5);
@@ -119,7 +116,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testPolygonPointFiltering2() {
     // all coplanar
     GeoPoint point1 = new GeoPoint(PlanetModel.SPHERE, 1.1264101919629863, -0.9108307879480759);
@@ -134,7 +130,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertEquals(null, filteredPoints);
   }
 
-  @Test
   public void testPolygonClockwise() {
     GeoPolygon c;
     GeoPoint gp;
@@ -184,7 +179,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(c.isWithin(gp));
   }
 
-  @Test
   public void testPolygonIntersects() {
     GeoPolygon c;
     List<GeoPoint> points;
@@ -277,7 +271,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertEquals(GeoArea.DISJOINT, xyzSolid.getRelationship(c));
   }
 
-  @Test
   public void testPolygonPointWithin() {
     GeoPolygon c;
     GeoPoint gp;
@@ -437,7 +430,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertFalse(c.isWithin(gp));
   }
 
-  @Test
   public void testPolygonBounds() {
     GeoMembershipShape c;
     LatLonBounds b;
@@ -489,7 +481,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertEquals(0.1, b.getMaxLatitude(), 0.000001);
   }
 
-  @Test
   public void testPolygonBoundsCase1() {
     GeoPolygon c;
     List<GeoPoint> points;
@@ -536,7 +527,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(area.isWithin(point2));
   }
 
-  @Test
   public void testGeoPolygonBoundsCase2() {
     // [junit4]   1> TEST: iter=23 shape=GeoCompositeMembershipShape: {[GeoConvexPolygon:
     // {planetmodel=PlanetModel(xyScaling=0.7563871189161702 zScaling=1.2436128810838298), points=
@@ -593,7 +583,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(area.isWithin(pointQuantized));
   }
 
-  @Test
   public void testGeoConcaveRelationshipCase1() {
     /*
      *  [junit4]   1> doc=906 matched but should not
@@ -647,7 +636,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(xyzSolid.getRelationship(c) == GeoArea.OVERLAPS);
   }
 
-  @Test
   public void testPolygonFactoryCase1() {
     /*
      * [junit4]   1> Initial points:
@@ -693,7 +681,6 @@ public class TestGeoPolygon extends LuceneTestCase {
         });
   }
 
-  @Test
   public void testPolygonFactoryCase2() {
     /*
     [[lat=-0.48522750470337056, lon=-1.7370471071224087([X=-0.14644023172524287, Y=-0.8727091042681705, Z=-0.4665895520487907])],
@@ -724,7 +711,6 @@ public class TestGeoPolygon extends LuceneTestCase {
         });
   }
 
-  @Test
   public void testPolygonFactoryCase3() throws Exception {
     /*
      * This one failed to be detected as convex:
@@ -762,7 +748,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertFalse(mutableBoolean.value);
   }
 
-  @Test
   public void testPolygonFactoryCase4() {
     // [[lat=0.897812132711355, lon=0.0025364171887532795([X=0.6227358672251874,
     // Y=0.0015795213449218714, Z=0.7812318690127594])],
@@ -789,7 +774,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     GeoPolygonFactory.makeLargeGeoPolygon(PlanetModel.WGS84, shapeList);
   }
 
-  @Test
   public void testPolygonFactoryCase5() {
     /*
      * [junit4]   1> points=[[lat=0.0425265613312593, lon=0.0([X=1.0002076326868337, Y=0.0, Z=0.042561051669501374])],
@@ -874,7 +858,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(p.isWithin(point) ? solid.isWithin(point) : true);
   }
 
-  @Test
   public void testLargePolygonFailureCase1() {
     /*
      * [junit4]    >   shape=GeoComplexPolygon: {planetmodel=PlanetModel.WGS84, number of shapes=1, address=65f193fc,
@@ -942,7 +925,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertEquals(referenceBounds.getMaximumZ(), actualBounds.getMaximumZ(), 0.0000001);
   }
 
-  @Test
   public void testLargePolygonFailureCase2() {
     /*
      * [junit4]    > Throwable #1: java.lang.AssertionError: FAIL: id=2 should have matched but did not
@@ -1042,7 +1024,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(solid.isWithin(checkPoint));
   }
 
-  @Test
   public void testPolygonFailureCase1() {
     final List<GeoPoint> poly2List = new ArrayList<>();
     poly2List.add(new GeoPoint(PlanetModel.WGS84, -0.6370451769779303, 2.5318373679431616));
@@ -1059,7 +1040,6 @@ public class TestGeoPolygon extends LuceneTestCase {
         });
   }
 
-  @Test
   public void testPolygonFailureCase2() {
     /*
     [junit4]   1>   shape=GeoCompositeMembershipShape: {[GeoConvexPolygon: {planetmodel=PlanetModel.WGS84, points=[
@@ -1096,7 +1076,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(poly1.isWithin(point) ? solid.isWithin(point) : true);
   }
 
-  @Test
   public void testConcavePolygon() {
     ArrayList<GeoPoint> points = new ArrayList<>();
     points.add(new GeoPoint(PlanetModel.SPHERE, -0.1, -0.5));
@@ -1110,7 +1089,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertEquals(polygon, polygonConcave);
   }
 
-  @Test
   public void testPolygonWithHole() {
     ArrayList<GeoPoint> points = new ArrayList<>();
     points.add(new GeoPoint(PlanetModel.SPHERE, -1.1, -1.5));
@@ -1158,7 +1136,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertEquals(holeSimplePolygon.isWithin(gp), holeComplexPolygon.isWithin(gp));
   }
 
-  @Test
   public void testConvexPolygon() {
     ArrayList<GeoPoint> points = new ArrayList<>();
     points.add(new GeoPoint(PlanetModel.SPHERE, 0, 0));
@@ -1172,7 +1149,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertEquals(polygon, polygon2);
   }
 
-  @Test
   public void testConvexPolygonWithHole() {
     ArrayList<GeoPoint> points = new ArrayList<>();
     points.add(new GeoPoint(PlanetModel.SPHERE, -1, -1));
@@ -1197,7 +1173,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertEquals(polygon, polygon2);
   }
 
-  @Test
   public void testLUCENE8133() {
     GeoPoint point1 =
         new GeoPoint(
@@ -1244,7 +1219,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testLUCENE8140() throws Exception {
     // POINT(15.426026 68.35078) is coplanar
     // "POLYGON((15.426411 68.35069,15.4261 68.35078,15.426026 68.35078,15.425868 68.35078,15.425745
@@ -1270,7 +1244,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(GeoPolygonFactory.makeGeoPolygon(PlanetModel.SPHERE, points) != null);
   }
 
-  @Test
   public void testLUCENE8211() {
     // We need to handle the situation where the check point is parallel to
     // the test point.
@@ -1301,7 +1274,6 @@ public class TestGeoPolygon extends LuceneTestCase {
             PlanetModel.SPHERE.createSurfacePoint(-testPoint.x, -testPoint.y, testPoint.z)));
   }
 
-  @Test
   public void testCoplanarityTileConvex() throws Exception {
     // This test has been disabled because it is possible that the polygon specified actually
     // intersects itself.
@@ -1364,7 +1336,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(polygon != null);
   }
 
-  @Test
   public void testCoplanarityConcave() throws Exception {
     // POLYGON((-52.18851 64.53777,-52.18853 64.53828,-52.18675 64.53829,-52.18676
     // 64.53855,-52.18736 64.53855,-52.18737 64.53881,-52.18677 64.53881,-52.18683
@@ -1412,7 +1383,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     GeoPolygonFactory.makeGeoPolygon(PlanetModel.SPHERE, points);
   }
 
-  @Test
   public void testCoplanarityConvex2() throws Exception {
     // POLYGON((-3.488658 50.45564,-3.4898987 50.455627,-3.489865 50.455585,-3.489833
     // 50.45551,-3.489808 50.455433,-3.489806 50.455406,-3.4898643 50.45525,-3.4892037
@@ -1520,7 +1490,6 @@ public class TestGeoPolygon extends LuceneTestCase {
    * [junit4]   1>       unquantized=[lat=-3.1780051348770987E-74, lon=-3.032608859187692([X=-0.9951793580358298, Y=-0.1088898762907205, Z=-3.181560858610375E-74])]
    * [junit4]   1>       quantized=[X=-0.9951793580415914, Y=-0.10888987641797832, Z=-2.3309121299774915E-10]
    */
-  @Test
   public void testLUCENE8227() throws Exception {
     List<GeoPoint> points = new ArrayList<>();
     points.add(new GeoPoint(PlanetModel.WGS84, -0.63542308910253, 0.9853722928232957));
@@ -1574,7 +1543,6 @@ public class TestGeoPolygon extends LuceneTestCase {
    * [lat=0.0, lon=0.0([X=1.0011188539924791, Y=0.0, Z=0.0])],
    * [lat=0.2839194570254642, lon=-1.2434404554202965([X=0.30893121415043073, Y=-0.9097632721627391, Z=0.2803596238536593])]}}
    */
-  @Test
   public void testLUCENE8227_case2() {
     List<GeoPoint> points = new ArrayList<>();
     points.add(new GeoPoint(PlanetModel.WGS84, -1.5707963267948966, -1.0755217966112058));
@@ -1620,7 +1588,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(standard.isWithin(quantized) ? standardSolid.isWithin(quantized) : true);
   }
 
-  @Test
   public void testLUCENE7642() {
     // Construct XYZ solid
     final XYZSolid solid =
@@ -1755,7 +1722,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(intersection == largeIntersection);
   }
 
-  @Test
   public void testComplexPolygonPlaneOutsideWorld() {
     List<GeoPoint> points = new ArrayList<>();
     points.add(new GeoPoint(PlanetModel.SPHERE, -0.5, -0.5));
@@ -1781,7 +1747,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(polygon.isWithin(point1) == largePolygon.isWithin(point1));
   }
 
-  @Test
   public void testComplexPolygonDegeneratedVector() {
     List<GeoPoint> points = new ArrayList<>();
     points.add(new GeoPoint(PlanetModel.SPHERE, -0.5, -0.5));
@@ -1807,7 +1772,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(polygon.isWithin(point3) == largePolygon.isWithin(point3));
   }
 
-  @Test
   public void testAboveBelowCrossingDifferentEdges() {
     // POLYGON((130.846821906638 -5.066128831305991,134.5635278421427
     // 21.75703481126756,156.31803093908155 44.5755831677161,0.0
@@ -1848,7 +1812,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(polygon.isWithin(point1) == largePolygon.isWithin(point1));
   }
 
-  @Test
   public void testBelowCrossingTwiceEdgePoint() {
     // POLYGON((162.9024012378976 -0.17652184258966092,162.56882659034474
     // -0.009075185910497524,162.52932263918404 1.6235907240799453E-189,162.17731099253956
@@ -1889,7 +1852,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(polygon.isWithin(point) == largePolygon.isWithin(point));
   }
 
-  @Test
   public void testLUCENE8245() {
     // POLYGON((-70.19447784626787 -83.117346007187,0.0 2.8E-322,-139.99870438810106
     // 7.994601469571884,-143.14292702670522 -18.500141088122664,-158.7373186858464
@@ -1933,7 +1895,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(polygon.isWithin(point) == largePolygon.isWithin(point));
   }
 
-  @Test
   public void testLUCENE8245_case2() {
     // POLYGON((5.512285089810178 -26.833721534785912,12.13983320542565
     // -16.085163683089583,4.868755337835201 -9.167423203860656,0.0
@@ -1980,7 +1941,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(polygon.isWithin(point) == largePolygon.isWithin(point));
   }
 
-  @Test
   public void testLUCENE8245_case3() {
     // POLYGON((144.76249846857021 8.828705232593283,166.00162989841027 -8.5E-322,157.03429484830787
     // 64.92565566857392,108.64696979831984 39.10241638996957,102.54234512410089
@@ -2026,7 +1986,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(polygon.isWithin(point) == largePolygon.isWithin(point));
   }
 
-  @Test
   public void testLUCENE8245_case4() {
     // POLYGON((-3.728795716978514 -10.354090605548162,-137.97868338527985
     // 0.05602723926521642,-113.87317441507611 -76.2471400450585,-162.64032677742279
@@ -2073,7 +2032,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(polygon.isWithin(point) == largePolygon.isWithin(point));
   }
 
-  @Test
   public void testLUCENE8251() {
     // POLYGON((135.63207358036593 -51.43541696593334,113.00782694696038 -58.984559858566556,0.0
     // -3.68E-321,-66.33598777585381 -7.382056816201731,135.63207358036593 -51.43541696593334))
@@ -2117,7 +2075,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(polygon.isWithin(point) == largePolygon.isWithin(point));
   }
 
-  @Test
   public void testLUCENE8257() {
     // POLYGON((12.9610296281349 -8.35317290232106,15.448601008878832
     // -3.990004427754539,22.375905319231205 0.2308875600810982,-13.473550791109867
@@ -2175,7 +2132,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(polygon.isWithin(point) == largePolygon.isWithin(point));
   }
 
-  @Test
   public void testLUCENE8258() {
     // POLYGON((0.004541088101890366 2.457524007073783E-4,0.003771467014711204
     // 0.0011493732122651466,0.003975546116981415 0.002208372357731988,0.0010780690991920934
@@ -2232,7 +2188,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(polygon.isWithin(point) == largePolygon.isWithin(point));
   }
 
-  @Test
   public void testLUCENE8266_case1() {
     // POLYGON((-6.35093158794635E-11 -4.965517818537545E-11,0.0 3.113E-321,-60.23538585411111
     // 18.46706692248612, 162.37100340450482 -25.988383239097754,-6.35093158794635E-11
@@ -2273,7 +2228,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertFalse(largePolygon.isWithin(point));
   }
 
-  @Test
   public void testLUCENE8266_case2() {
     // POLYGON((7.885596306952593 -42.25131029665893,1.5412637897085604
     // -6.829581354691802,34.03338913004999 27.583811665797796,0.0 5.7E-322,-8.854664233194431E-12
@@ -2325,7 +2279,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertFalse(largePolygon.isWithin(point));
   }
 
-  @Test
   public void testLUCENE8266_case3() {
     // POLYGON((-98.38897266664411 7.286530349760722,-169.07259176302364
     // -7.410435277740526,8E-123,-179.9999999999438 -1.298973436027626E-10,66.2759716901292
@@ -2373,7 +2326,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertFalse(largePolygon.isWithin(point));
   }
 
-  @Test
   public void testLUCENE8276_case1() {
     // POLYGON((1.0517792672527197E-4 -1.592702733911458E-5,1.0324192726355287E-4
     // 2.5741558803919037E-5,7.879018764391666E-5 7.192932029677136E-5,0.0
@@ -2421,7 +2373,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(polygon.isWithin(point) == largePolygon.isWithin(point));
   }
 
-  @Test
   public void testLUCENE8276_case2() {
     // POLYGON((0.05925400271049228 -0.08922986460239596,0.07309863706879852
     // -0.07813330646578831,0.07411491387725304 -0.07715685640120272,0.0
@@ -2478,7 +2429,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(polygon.isWithin(point) == largePolygon.isWithin(point));
   }
 
-  @Test
   public void testLUCENE8276_case3() {
     // POLYGON((2.693381024483753E-4 -0.001073608118084019,1.5848404608659423E-4
     // -2.6378130512803985E-4,8.981079660799132E-4 -6.4697719116416E-4,-7.934854852157693E-5
@@ -2531,7 +2481,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(polygon.isWithin(point) == largePolygon.isWithin(point));
   }
 
-  @Test
   public void testLUCENE8281() {
     /*
      * [junit4]    > Standard polygon: GeoCompositePolygon: {[GeoConvexPolygon: {planetmodel=PlanetModel.WGS84, points=[[lat=-3.89514302068452E-6, lon=6.597839410815709E-6([X=1.0011188539630433, Y=6.605221429683868E-6, Z=-3.89950111699443E-6])], [lat=-2.8213942160840002E-6, lon=1.608008770581648E-5([X=1.0011188538590383, Y=1.60980789753873E-5, Z=-2.8245509442632E-6])], [lat=3.8977187534179774E-6, lon=1.9713406091526053E-5([X=1.0011188537902969, Y=1.973546251320774E-5, Z=3.902079731596721E-6])], [lat=1.980614928404974E-5, lon=4.069266235973146E-6([X=1.0011188537865057, Y=4.07381914993205E-6, Z=1.982830947192924E-5])], [lat=7.4E-323, lon=0.0([X=1.0011188539924791, Y=0.0, Z=7.4E-323])]], internalEdges={4}}, GeoConvexPolygon: {planetmodel=PlanetModel.WGS84, points=[[lat=-3.89514302068452E-6, lon=6.597839410815709E-6([X=1.0011188539630433, Y=6.605221429683868E-6, Z=-3.89950111699443E-6])], [lat=7.4E-323, lon=0.0([X=1.0011188539924791, Y=0.0, Z=7.4E-323])], [lat=-1.261719663233924E-5, lon=-1.5701544210600105E-5([X=1.001118853788849, Y=-1.5719111944122703E-5, Z=-1.2631313432823314E-5])]], internalEdges={0}}]}
@@ -2597,7 +2546,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(polygon.isWithin(point) == largePolygon.isWithin(point));
   }
 
-  @Test
   public void testLUCENE8280() {
     /*
      * [junit4]   1>       unquantized=[lat=0.16367268756896675, lon=-3.141592653589793([X=-0.9876510422569805, Y=-1.2095236875745584E-16, Z=0.16311061810965483])]
@@ -2644,7 +2592,6 @@ public class TestGeoPolygon extends LuceneTestCase {
 
   }
 
-  @Test
   public void testLUCENE8337() {
     /*
      *  {planetmodel=PlanetModel.WGS84, number of shapes=1, address=c865f21d,
@@ -2681,7 +2628,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(largePolygon.isWithin(thePoint) == smallPolygon.isWithin(thePoint));
   }
 
-  @Test
   public void testLUCENE8444() {
     // POLYGON((0.0 -67.68132244526963,-1.2477695347678826E-95 -88.11137674490907,
     // 1.7059188343238906E-9 7.009654350320916,0.0 -67.68132244526963))
@@ -2718,7 +2664,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(false == largePolygon.isWithin(point));
   }
 
-  @Test
   public void testLUCENE8445() {
     // POLYGON((32.18017946378854 -17.397683785381247,49.51018758330871
     // -9.870219317504647,58.77903721991479 33.90553510354402,2.640604559432277
@@ -2775,7 +2720,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(polygon.isWithin(point) == largePolygon.isWithin(point));
   }
 
-  @Test
   public void testLUCENE8451() {
     // POLYGON((-2.5185339401969213 -24.093993739745027,0.0
     // 8.828539494442529E-27,5.495998489568957E-11 -8.321407453133E-11,2.7174659198424288E-11

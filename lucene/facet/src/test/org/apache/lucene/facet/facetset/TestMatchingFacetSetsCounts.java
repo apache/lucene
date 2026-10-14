@@ -53,7 +53,7 @@ public class TestMatchingFacetSetsCounts extends FacetTestCase {
     w.close();
 
     IndexSearcher s = newSearcher(r);
-    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+    FacetsCollector fc = s.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
     Facets facets =
         new MatchingFacetSetsCounts(
@@ -69,6 +69,8 @@ public class TestMatchingFacetSetsCounts extends FacetTestCase {
   }
 
   public void testInconsistentNumOfIndexedDimensions() throws IOException {
+    assumeTrue("Test designed to work only with assertions enabled.", TEST_ASSERTS_ENABLED);
+
     Directory d = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), d);
 
@@ -84,7 +86,7 @@ public class TestMatchingFacetSetsCounts extends FacetTestCase {
     w.close();
 
     IndexSearcher s = newSearcher(r);
-    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+    FacetsCollector fc = s.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
     expectThrows(
         AssertionError.class,
@@ -140,7 +142,7 @@ public class TestMatchingFacetSetsCounts extends FacetTestCase {
     w.close();
 
     IndexSearcher s = newSearcher(r);
-    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+    FacetsCollector fc = s.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
     Facets facets =
         new MatchingFacetSetsCounts("field", fc, FacetSetDecoder::decodeLongs, facetSetMatchers);
