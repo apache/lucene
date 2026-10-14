@@ -132,6 +132,12 @@ API Changes
 
 * GITHUB#16686: Make DocAndScoreQuery public (Trevor McCulloch)
 
+* GITHUB#16814: Remove unused VectorValueSource and MultiValueSource. They were
+  deprecated in 10.x (GITHUB#16813). (Luca Cavanna)
+
+* GITHUB#16834: Remove deprecated CharsRef.getUTF16SortedAsUTF8Comparator() method.
+  (Alan Woodward)
+
 New Features
 ---------------------
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
@@ -627,6 +633,12 @@ Optimizations
   pool instead of serially on the merge thread, so reusing a graph with deletes is no longer
   slower than a full rebuild. (Ethan Baker)
 
+* GITHUB#16796: Merges read inner files of compound files through a mapping of their own, so the
+  access they advise does not replace the advice of searches. (Jim Ferenczi)
+
+* GITHUB#16783: Fix performance bug in DirectoryTaxonomyReader#getBulkOrdinals that broke its
+  ord -> FacetLabel cache such that it always missed when it should have hit. (Alex Baranov)
+
 * GITHUB#16089: Upgrade DocIdSetBuilder to use FixedBitSet eagerly once exceeding the threshold (Ke Wei)
 
 Bug Fixes
@@ -707,6 +719,11 @@ Bug Fixes
 * GITHUB#16755: UkrainianMorfologikAnalyzer no longer reloads the Ukrainian dictionary when
   threads race to initialize it, which could leave each analyzer holding its own ~7 MB copy.
   (Eugene Rizhkov)
+
+* GITHUB#16807: Fix byte vector dot products and square distances staying several times slower
+  for the life of the JVM once both their signed and unsigned (uint8) variants have been used,
+  e.g. when searching UNSIGNED_BYTE and SEVEN_BIT scalar-quantized fields in one JVM.
+  (Lantao Jin)
 
 Build
 ---------------------
