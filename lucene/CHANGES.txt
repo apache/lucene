@@ -639,6 +639,8 @@ Optimizations
 * GITHUB#16783: Fix performance bug in DirectoryTaxonomyReader#getBulkOrdinals that broke its
   ord -> FacetLabel cache such that it always missed when it should have hit. (Alex Baranov)
 
+* GITHUB#16089: Upgrade DocIdSetBuilder to use FixedBitSet eagerly once exceeding the threshold (Ke Wei)
+
 Bug Fixes
 ---------------------
 
