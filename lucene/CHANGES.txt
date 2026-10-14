@@ -207,6 +207,9 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#14397: Reuse the LZ4 preset dictionary when reading stored fields or term vectors
+  from the same compressed chunk. (kkewwei)
+
 * GITHUB#16431, GITHUB#16697: Add support for Block-Max WAND dynamic score skipping in FunctionScoreQuery
   and DoubleValuesSource using DocValuesSkipper. (Rajat Jain, Zhang Chao)
 
@@ -1908,8 +1911,6 @@ Optimizations
 * GITHUB#14393: Pack file pointers using the packed monotonic builder when building BKD trees. (Ignacio Vera)
 
 * GITHUB#14304: Add SIMD optimizations for scalar quantized queries and indexing. (Simon Cooper)
-
-* GITHUB#14397: Cache preset dict for LZ4WithPresetDictDecompressor. (kkewwei)
 
 Bug Fixes
 ---------------------

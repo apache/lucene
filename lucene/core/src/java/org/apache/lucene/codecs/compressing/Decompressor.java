@@ -42,8 +42,24 @@ public abstract class Decompressor implements Cloneable {
   public abstract void decompress(
       DataInput in, int originalLength, int offset, int length, BytesRef bytes) throws IOException;
 
+  /**
+   * Decompresses bytes, optionally reusing state from a previous successful decompression of the
+   * same compressed block. Callers must only set {@code reuseIfPossible} when the compressed block
+   * has not changed. Implementations may ignore this hint.
+   *
+   * @see #decompress(DataInput, int, int, int, BytesRef)
+   */
+  public void decompress(
+      DataInput in,
+      int originalLength,
+      int offset,
+      int length,
+      BytesRef bytes,
+      boolean reuseIfPossible)
+      throws IOException {
+    decompress(in, originalLength, offset, length, bytes);
+  }
+
   @Override
   public abstract Decompressor clone();
-
-  public void reset() {}
 }

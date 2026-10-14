@@ -64,7 +64,7 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
 
     private int[] compressedLengths;
     private byte[] buffer;
-    private boolean reused = false;
+    private boolean dictionaryLoaded;
 
     LZ4WithPresetDictDecompressor() {
       compressedLengths = new int[0];
@@ -87,8 +87,22 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
     @Override
     public void decompress(DataInput in, int originalLength, int offset, int length, BytesRef bytes)
         throws IOException {
+      decompress(in, originalLength, offset, length, bytes, false);
+    }
+
+    @Override
+    public void decompress(
+        DataInput in,
+        int originalLength,
+        int offset,
+        int length,
+        BytesRef bytes,
+        boolean reuseIfPossible)
+        throws IOException {
       assert offset + length <= originalLength;
 
+      boolean reuseDictionary = reuseIfPossible && dictionaryLoaded;
+      dictionaryLoaded = false;
       if (length == 0) {
         bytes.length = 0;
         return;
@@ -99,7 +113,7 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
 
       final int numBlocks = readCompressedLengths(in, originalLength, dictLength, blockLength);
       bytes.length = 0;
-      if (reused) {
+      if (reuseDictionary) {
         assert buffer.length >= dictLength + blockLength;
         in.skipBytes(compressedLengths[0]);
       } else {
@@ -108,7 +122,6 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
         if (LZ4.decompress(in, dictLength, buffer, 0) != dictLength) {
           throw new CorruptIndexException("Illegal dict length", in);
         }
-        reused = true;
       }
 
       int offsetInBlock = dictLength;
@@ -147,16 +160,12 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
       bytes.offset = offsetInBytesRef;
       bytes.length = length;
       assert bytes.isValid();
+      dictionaryLoaded = true;
     }
 
     @Override
     public Decompressor clone() {
       return new LZ4WithPresetDictDecompressor();
-    }
-
-    @Override
-    public void reset() {
-      reused = false;
     }
   }
 

@@ -344,6 +344,8 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
 
   private record BlockState(long startPointer, int docBase, int chunkDocs) {}
 
+  private long decompressedStartPointer = -1;
+
   @Override
   public void prefetch(int docID) throws IOException {
     final long blockID = indexReader.getBlockID(docID);
@@ -371,7 +373,6 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
       startPointer = blockState.startPointer; // avoid searching the start pointer
     } else {
       startPointer = indexReader.getStartPointer(doc);
-      decompressor.reset();
     }
     vectorsStream.seek(startPointer);
 
@@ -707,12 +708,18 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
 
     // decompress data
     final BytesRef suffixBytes = new BytesRef();
+    boolean reuseIfPossible = startPointer == decompressedStartPointer;
+    decompressedStartPointer = -1;
     decompressor.decompress(
         vectorsStream,
         totalLen + totalPayloadLength,
         docOff + payloadOff,
         docLen + payloadLen,
-        suffixBytes);
+        suffixBytes,
+        reuseIfPossible);
+    if (docLen + payloadLen > 0) {
+      decompressedStartPointer = startPointer;
+    }
     suffixBytes.length = docLen;
     final BytesRef payloadBytes =
         new BytesRef(suffixBytes.bytes, suffixBytes.offset + docLen, payloadLen);
