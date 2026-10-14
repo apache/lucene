@@ -648,6 +648,9 @@ Optimizations
 Bug Fixes
 ---------------------
 
+* GITHUB#XXXXX: ReplicaNode now rejects file names from the primary node that are not plain file
+  names, so they can never resolve outside the replica's index directory. (Soma Aishwarya)
+
 * GITHUB#16764: Fix Lucene104ScalarQuantizedVectorsWriter to exclude deleted docs when recomputing the
   merge centroid and correct the vector count so that it reflects the live docs after deletions, preventing
   query-side data from being prepared for merged fields that are too small to build a graph. (Pranshu Shukla)
