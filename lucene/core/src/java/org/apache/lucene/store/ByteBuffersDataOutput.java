@@ -343,6 +343,21 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
     }
   }
 
+  /** Copy the current content of this object into {@code dest} starting at {@code offset}. */
+  public void copyTo(byte[] dest, int offset) {
+    Objects.checkFromIndexSize(offset, Math.toIntExact(size()), dest.length);
+    for (ByteBuffer bb : blocks) {
+      int len = bb.position();
+      if (bb.hasArray()) {
+        System.arraycopy(bb.array(), bb.arrayOffset(), dest, offset, len);
+      } else {
+        bb = bb.asReadOnlyBuffer().flip();
+        bb.get(dest, offset, len);
+      }
+      offset += len;
+    }
+  }
+
   /**
    * @return The number of bytes written to this output so far.
    */
