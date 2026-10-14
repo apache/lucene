@@ -111,7 +111,7 @@ final class DedupScalarQuantizedVectorValues {
             encoding,
             function,
             vectorsScorer,
-            new float[dimension],
+            new float[dimension], // always a zero centroid, quantization is data-blind
             0,
             0,
             0,

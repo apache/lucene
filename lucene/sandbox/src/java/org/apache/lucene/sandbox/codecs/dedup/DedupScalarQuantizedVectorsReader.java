@@ -44,6 +44,7 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.sandbox.codecs.dedup.DedupQuantizer.QuantizedBlock;
 import org.apache.lucene.sandbox.codecs.dedup.DedupScalarQuantizedVectorValues.FieldValues;
+import org.apache.lucene.sandbox.codecs.dedup.DedupScalarQuantizedVectorValues.Float16RawAndQuantizedValues;
 import org.apache.lucene.sandbox.codecs.dedup.DedupScalarQuantizedVectorValues.Float32RawAndQuantizedValues;
 import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.GroupInfo;
 import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.ReadFieldInfo;
@@ -432,7 +433,7 @@ final class DedupScalarQuantizedVectorsReader extends FlatVectorsReader
   @Override
   public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
     FieldEntry entry = getEntry(field, FLOAT16);
-    return new DedupScalarQuantizedVectorValues.Float16RawAndQuantizedValues(
+    return new Float16RawAndQuantizedValues(
         getRawFloat16VectorValues(entry), getQuantizedVectorValues(entry));
   }
 
