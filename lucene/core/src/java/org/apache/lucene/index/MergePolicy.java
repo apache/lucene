@@ -213,8 +213,13 @@ public abstract class MergePolicy {
 
     volatile long mergeStartNS = -1;
 
-    /** Total number of documents in segments to be merged, not accounting for deletions. */
-    final int totalMaxDoc;
+    /**
+     * Total number of documents in segments to be merged, not accounting for deletions. This is a
+     * {@code long} because the segments being merged may, together, hold more than {@link
+     * Integer#MAX_VALUE} documents (only the merged result is bounded by {@link
+     * IndexWriter#MAX_DOCS} once deletions are dropped).
+     */
+    final long totalMaxDoc;
 
     Throwable error;
 
@@ -229,7 +234,7 @@ public abstract class MergePolicy {
       }
       // clone the list, as the in list may be based off original SegmentInfos and may be modified
       this.segments = List.copyOf(segments);
-      totalMaxDoc = segments.stream().mapToInt(i -> i.info.maxDoc()).sum();
+      totalMaxDoc = segments.stream().mapToLong(i -> i.info.maxDoc()).sum();
       mergeProgress = new OneMergeProgress();
       mergeReaders = List.of();
       usesPooledReaders = true;
@@ -244,7 +249,7 @@ public abstract class MergePolicy {
      */
     public OneMerge(CodecReader... codecReaders) {
       List<MergeReader> readers = new ArrayList<>(codecReaders.length);
-      int totalDocs = 0;
+      long totalDocs = 0;
       for (CodecReader r : codecReaders) {
         readers.add(new MergeReader(r, r.getLiveDocs()));
         totalDocs += r.numDocs();
@@ -388,13 +393,19 @@ public abstract class MergePolicy {
      * Returns the total number of documents that are included with this merge. Note that this does
      * not indicate the number of documents after the merge.
      */
-    public int totalNumDocs() {
+    public long totalNumDocs() {
       return totalMaxDoc;
     }
 
     /** Return {@link MergeInfo} describing this merge. */
     public MergeInfo getStoreMergeInfo() {
-      return new MergeInfo(totalMaxDoc, estimatedMergeBytes, isExternal, maxNumSegments);
+      // MergeInfo#totalMaxDoc is only an I/O sizing hint; saturate rather than overflow when the
+      // inputs (including deletions) exceed Integer.MAX_VALUE docs.
+      return new MergeInfo(
+          (int) Math.min(totalMaxDoc, Integer.MAX_VALUE),
+          estimatedMergeBytes,
+          isExternal,
+          maxNumSegments);
     }
 
     /** Returns true if this merge was or should be aborted. */

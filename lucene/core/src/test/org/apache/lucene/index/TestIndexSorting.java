@@ -1817,7 +1817,8 @@ public class TestIndexSorting extends LuceneTestCase {
       } else {
         assertEquals(1, topDocs.totalHits.value());
         NumericDocValues values = MultiDocValues.getNumericValues(reader, "id");
-        assertEquals(topDocs.scoreDocs[0].doc, values.advance(topDocs.scoreDocs[0].doc));
+        assertEquals(
+            topDocs.scoreDocs[0].doc, values.advance(Math.toIntExact(topDocs.scoreDocs[0].doc)));
         assertEquals(i, values.longValue());
         Document document = storedFields.document(topDocs.scoreDocs[0].doc);
         assertEquals(Integer.toString(i), document.get("id"));
@@ -1869,7 +1870,8 @@ public class TestIndexSorting extends LuceneTestCase {
       } else {
         assertEquals(1, topDocs.totalHits.value());
         NumericDocValues values = MultiDocValues.getNumericValues(reader, "id");
-        assertEquals(topDocs.scoreDocs[0].doc, values.advance(topDocs.scoreDocs[0].doc));
+        assertEquals(
+            topDocs.scoreDocs[0].doc, values.advance(Math.toIntExact(topDocs.scoreDocs[0].doc)));
         assertEquals(i, values.longValue());
         Document document = storedFields.document(topDocs.scoreDocs[0].doc);
         assertEquals(Integer.toString(i), document.get("id"));
@@ -1974,7 +1976,7 @@ public class TestIndexSorting extends LuceneTestCase {
       } else {
         assertEquals(1, topDocs.totalHits.value());
         NumericDocValues dvs = MultiDocValues.getNumericValues(reader, "foo");
-        int docID = topDocs.scoreDocs[0].doc;
+        int docID = Math.toIntExact(topDocs.scoreDocs[0].doc);
         assertEquals(docID, dvs.advance(docID));
         assertEquals(values.get(i).longValue(), dvs.longValue());
       }
@@ -2123,7 +2125,7 @@ public class TestIndexSorting extends LuceneTestCase {
           searcher.search(new TermQuery(new Term("id", Integer.toString(i))), 1);
       assertEquals(1, topDocs.totalHits.value());
       NumericDocValues dvs = MultiDocValues.getNumericValues(reader, "bar");
-      int hitDoc = topDocs.scoreDocs[0].doc;
+      int hitDoc = Math.toIntExact(topDocs.scoreDocs[0].doc);
       assertEquals(hitDoc, dvs.advance(hitDoc));
       assertEquals(values.get(i).longValue(), dvs.longValue());
     }
@@ -2231,11 +2233,11 @@ public class TestIndexSorting extends LuceneTestCase {
       assertEquals(topDocs.totalHits.value(), topDocs2.totalHits.value());
       if (topDocs.totalHits.value() == 1) {
         NumericDocValues dvs1 = MultiDocValues.getNumericValues(reader, "foo");
-        int hitDoc1 = topDocs.scoreDocs[0].doc;
+        int hitDoc1 = Math.toIntExact(topDocs.scoreDocs[0].doc);
         assertEquals(hitDoc1, dvs1.advance(hitDoc1));
         long value1 = dvs1.longValue();
         NumericDocValues dvs2 = MultiDocValues.getNumericValues(reader2, "foo");
-        int hitDoc2 = topDocs2.scoreDocs[0].doc;
+        int hitDoc2 = Math.toIntExact(topDocs2.scoreDocs[0].doc);
         assertEquals(hitDoc2, dvs2.advance(hitDoc2));
         long value2 = dvs2.longValue();
         assertEquals(value1, value2);
