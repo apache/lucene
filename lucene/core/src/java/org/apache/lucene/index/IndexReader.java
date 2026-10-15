@@ -294,6 +294,10 @@ public abstract sealed class IndexReader implements Closeable permits CompositeR
    *
    * <p><b>NOTE</b>: This operation may run in O(maxDoc). Implementations that can't return this
    * number in constant-time should cache it.
+   *
+   * <p><b>NOTE</b>: for a composite reader whose segments together hold more than {@link
+   * Integer#MAX_VALUE} documents this throws {@link ArithmeticException}; use {@link
+   * #totalNumDocs()} instead, which returns the count as a {@code long}.
    */
   public abstract int numDocs();
 
@@ -301,8 +305,31 @@ public abstract sealed class IndexReader implements Closeable permits CompositeR
    * Returns one greater than the largest possible document number. This may be used to, e.g.,
    * determine how big to allocate an array which will have an element for every document number in
    * an index.
+   *
+   * <p><b>NOTE</b>: for a composite reader whose segments together hold more than {@link
+   * Integer#MAX_VALUE} documents this throws {@link ArithmeticException}; use {@link
+   * #totalMaxDoc()} instead, which returns the value as a {@code long}.
    */
   public abstract int maxDoc();
+
+  /**
+   * Returns the number of documents in this index as a {@code long}. A composite/directory reader's
+   * doc-id space may exceed {@link Integer#MAX_VALUE} (each segment is still capped at {@link
+   * IndexWriter#MAX_DOCS}), in which case {@link #numDocs()} throws; this returns the full count. A
+   * leaf reader returns the same value as {@link #numDocs()}.
+   */
+  public long totalNumDocs() {
+    return numDocs();
+  }
+
+  /**
+   * Returns one greater than the largest document number as a {@code long}. A composite/directory
+   * reader's doc-id space may exceed {@link Integer#MAX_VALUE}, in which case {@link #maxDoc()}
+   * throws; this returns the full value. A leaf reader returns the same value as {@link #maxDoc()}.
+   */
+  public long totalMaxDoc() {
+    return maxDoc();
+  }
 
   /**
    * Returns the number of deleted documents.

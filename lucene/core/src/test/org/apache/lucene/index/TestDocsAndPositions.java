@@ -170,7 +170,7 @@ public class TestDocsAndPositions extends LuceneTestCase {
           if (docID == DocIdSetIterator.NO_MORE_DOCS) {
             break;
           }
-          Integer[] pos = positionsInDoc[leafReaderContext.docBase + docID];
+          Integer[] pos = positionsInDoc[Math.toIntExact(leafReaderContext.docBase + docID)];
           assertEquals(pos.length, docsAndPosEnum.freq());
           // number of positions read should be random - don't read all of them
           // always
@@ -245,20 +245,28 @@ public class TestDocsAndPositions extends LuceneTestCase {
         int maxDoc = context.reader().maxDoc();
         PostingsEnum postingsEnum =
             TestUtil.docs(random(), context.reader(), fieldName, bytes, null, PostingsEnum.FREQS);
-        if (findNext(freqInDoc, context.docBase, context.docBase + maxDoc) == Integer.MAX_VALUE) {
+        if (findNext(
+                freqInDoc,
+                Math.toIntExact(context.docBase),
+                Math.toIntExact(context.docBase + maxDoc))
+            == Integer.MAX_VALUE) {
           assertNull(postingsEnum);
           continue;
         }
         assertNotNull(postingsEnum);
         postingsEnum.nextDoc();
         for (int j = 0; j < maxDoc; j++) {
-          if (freqInDoc[context.docBase + j] != 0) {
+          if (freqInDoc[Math.toIntExact(context.docBase + j)] != 0) {
             assertEquals(j, postingsEnum.docID());
-            assertEquals(postingsEnum.freq(), freqInDoc[context.docBase + j]);
+            assertEquals(postingsEnum.freq(), freqInDoc[Math.toIntExact(context.docBase + j)]);
             if (i % 2 == 0 && random().nextInt(10) == 0) {
               int next =
-                  findNext(freqInDoc, context.docBase + j + 1, context.docBase + maxDoc)
-                      - context.docBase;
+                  Math.toIntExact(
+                      findNext(
+                              freqInDoc,
+                              Math.toIntExact(context.docBase + j + 1),
+                              Math.toIntExact(context.docBase + maxDoc))
+                          - context.docBase);
               int advancedTo = postingsEnum.advance(next);
               if (next >= maxDoc) {
                 assertEquals(DocIdSetIterator.NO_MORE_DOCS, advancedTo);

@@ -21,7 +21,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Base class for implementing {@link CompositeReader}s based on an array of sub-readers. The
@@ -51,9 +51,9 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
   /** A comparator for sorting sub-readers */
   protected final Comparator<R> subReadersSorter;
 
-  private final int[] starts; // 1st docno for each reader
-  private final int maxDoc;
-  private AtomicInteger numDocs = new AtomicInteger(-1); // computed lazily
+  private final long[] starts; // 1st docno for each reader
+  private final long maxDoc;
+  private final AtomicLong numDocs = new AtomicLong(-1); // computed lazily
 
   /**
    * List view solely for {@link #getSequentialSubReaders()}, for effectiveness the array is used
@@ -78,12 +78,13 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
     this.subReaders = subReaders;
     this.subReadersSorter = subReadersSorter;
     this.subReadersList = Collections.unmodifiableList(Arrays.asList(subReaders));
-    starts = new int[subReaders.length + 1]; // build starts array
+    starts = new long[subReaders.length + 1]; // build starts array
     long maxDoc = 0;
     for (int i = 0; i < subReaders.length; i++) {
-      starts[i] = (int) maxDoc;
+      starts[i] = maxDoc;
       final IndexReader r = subReaders[i];
-      maxDoc += r.maxDoc(); // compute maxDocs
+      // A leaf is limited to Integer.MAX_VALUE docs, but the composite doc-id space is long.
+      maxDoc += r.totalMaxDoc(); // compute maxDocs
     }
 
     if (maxDoc > IndexWriter.getActualMaxDocs()) {
@@ -107,7 +108,7 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
       }
     }
 
-    this.maxDoc = Math.toIntExact(maxDoc);
+    this.maxDoc = maxDoc;
     starts[subReaders.length] = this.maxDoc;
   }
 
@@ -116,8 +117,15 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
     ensureOpen();
     TermVectors[] subVectors = new TermVectors[subReaders.length];
     return new TermVectors() {
+      // Composite readers are addressed by a global doc id, which may exceed Integer.MAX_VALUE, so
+      // dispatch lives in the long-typed methods; the int-typed ones just widen.
       @Override
       public void prefetch(int docID) throws IOException {
+        prefetch((long) docID);
+      }
+
+      @Override
+      public void prefetch(long docID) throws IOException {
         final int i = readerIndex(docID); // find subreader num
         if (subVectors[i] == null) {
           subVectors[i] = subReaders[i].termVectors();
@@ -127,18 +135,23 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
 
       @Override
       public Fields get(int docID) throws IOException {
+        return get((long) docID);
+      }
+
+      @Override
+      public Fields get(long docID) throws IOException {
         final int i = readerIndex(docID); // find subreader num
         // dispatch to subreader, reusing if possible
         if (subVectors[i] == null) {
           subVectors[i] = subReaders[i].termVectors();
         }
+        // the difference is leaf-local and fits an int
         return subVectors[i].get(docID - starts[i]);
       }
     };
   }
 
-  @Override
-  public final int numDocs() {
+  private long computeNumDocs() {
     // Don't call ensureOpen() here (it could affect performance)
     // We want to compute numDocs() lazily so that creating a wrapper that hides
     // some documents isn't slow at wrapping time, but on the first time that
@@ -148,11 +161,11 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
     // than once on the sub readers, since they likely cache numDocs() anyway,
     // hence the opaque read.
     // http://gee.cs.oswego.edu/dl/html/j9mm.html#opaquesec.
-    int numDocs = this.numDocs.getOpaque();
+    long numDocs = this.numDocs.getOpaque();
     if (numDocs == -1) {
       numDocs = 0;
       for (IndexReader r : subReaders) {
-        numDocs += r.numDocs();
+        numDocs += r.totalNumDocs();
       }
       assert numDocs >= 0;
       this.numDocs.set(numDocs);
@@ -161,7 +174,23 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
   }
 
   @Override
+  public final int numDocs() {
+    return Math.toIntExact(computeNumDocs());
+  }
+
+  @Override
+  public final long totalNumDocs() {
+    return computeNumDocs();
+  }
+
+  @Override
   public final int maxDoc() {
+    // Don't call ensureOpen() here (it could affect performance)
+    return Math.toIntExact(maxDoc);
+  }
+
+  @Override
+  public final long totalMaxDoc() {
     // Don't call ensureOpen() here (it could affect performance)
     return maxDoc;
   }
@@ -171,8 +200,15 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
     ensureOpen();
     StoredFields[] subFields = new StoredFields[subReaders.length];
     return new StoredFields() {
+      // Composite readers are addressed by a global doc id, which may exceed Integer.MAX_VALUE, so
+      // dispatch lives in the long-typed methods; the int-typed ones just widen.
       @Override
       public void prefetch(int docID) throws IOException {
+        prefetch((long) docID);
+      }
+
+      @Override
+      public void prefetch(long docID) throws IOException {
         final int i = readerIndex(docID); // find subreader num
         if (subFields[i] == null) {
           subFields[i] = subReaders[i].storedFields();
@@ -182,11 +218,17 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
 
       @Override
       public void document(int docID, StoredFieldVisitor visitor) throws IOException {
+        document((long) docID, visitor);
+      }
+
+      @Override
+      public void document(long docID, StoredFieldVisitor visitor) throws IOException {
         final int i = readerIndex(docID); // find subreader num
         // dispatch to subreader, reusing if possible
         if (subFields[i] == null) {
           subFields[i] = subReaders[i].storedFields();
         }
+        // the difference is leaf-local and fits an int
         subFields[i].document(docID - starts[i], visitor);
       }
     };
@@ -258,7 +300,7 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
   }
 
   /** Helper method for subclasses to get the corresponding reader for a doc ID */
-  protected final int readerIndex(int docID) {
+  protected final int readerIndex(long docID) {
     if (docID < 0 || docID >= maxDoc) {
       throw new IllegalArgumentException(
           "docID must be >= 0 and < maxDoc=" + maxDoc + " (got docID=" + docID + ")");
@@ -267,7 +309,7 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
   }
 
   /** Helper method for subclasses to get the docBase of the given sub-reader index. */
-  protected final int readerBase(int readerIndex) {
+  protected final long readerBase(int readerIndex) {
     if (readerIndex < 0 || readerIndex >= subReaders.length) {
       throw new IllegalArgumentException(
           "readerIndex must be >= 0 and < getSequentialSubReaders().size()");

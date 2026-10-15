@@ -32,8 +32,11 @@ public abstract sealed class IndexReaderContext permits CompositeReaderContext, 
    */
   public final boolean isTopLevel;
 
-  /** the doc base for this reader in the parent, {@code 0} if parent is null */
-  public final int docBaseInParent;
+  /**
+   * the doc base for this reader in the parent, {@code 0} if parent is null. This is a {@code long}
+   * because the composite doc-id space may exceed {@link Integer#MAX_VALUE}.
+   */
+  public final long docBaseInParent;
 
   /** the ord for this reader in the parent, {@code 0} if parent is null */
   public final int ordInParent;
@@ -43,7 +46,7 @@ public abstract sealed class IndexReaderContext permits CompositeReaderContext, 
   // identity object, even after the index reader has been closed
   final Object identity = new Object();
 
-  IndexReaderContext(CompositeReaderContext parent, int ordInParent, int docBaseInParent) {
+  IndexReaderContext(CompositeReaderContext parent, int ordInParent, long docBaseInParent) {
     this.parent = parent;
     this.docBaseInParent = docBaseInParent;
     this.ordInParent = ordInParent;

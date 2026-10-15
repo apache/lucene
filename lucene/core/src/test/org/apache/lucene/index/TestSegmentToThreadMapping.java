@@ -409,12 +409,12 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
     assertNotNull(slices);
 
     for (IndexSearcher.LeafSlice leafSlice : slices) {
-      int previousDocBase = leafSlice.partitions[0].ctx.docBase;
+      int previousDocBase = Math.toIntExact(leafSlice.partitions[0].ctx.docBase);
 
       for (IndexSearcher.LeafReaderContextPartition leafReaderContextPartition :
           leafSlice.partitions) {
         assertTrue(previousDocBase <= leafReaderContextPartition.ctx.docBase);
-        previousDocBase = leafReaderContextPartition.ctx.docBase;
+        previousDocBase = Math.toIntExact(leafReaderContextPartition.ctx.docBase);
       }
     }
     IOUtils.close(r, dir);
@@ -444,12 +444,12 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
     assertNotNull(slices);
 
     for (IndexSearcher.LeafSlice leafSlice : slices) {
-      int previousDocBase = leafSlice.partitions[0].ctx.docBase;
+      int previousDocBase = Math.toIntExact(leafSlice.partitions[0].ctx.docBase);
 
       for (IndexSearcher.LeafReaderContextPartition leafReaderContextPartition :
           leafSlice.partitions) {
         assertTrue(previousDocBase <= leafReaderContextPartition.ctx.docBase);
-        previousDocBase = leafReaderContextPartition.ctx.docBase;
+        previousDocBase = Math.toIntExact(leafReaderContextPartition.ctx.docBase);
       }
     }
     IOUtils.close(r, dir);

@@ -47,6 +47,7 @@ public class MultiDocValues {
   public static NumericDocValues getNormValues(final IndexReader r, final String field)
       throws IOException {
     final List<LeafReaderContext> leaves = r.leaves();
+    ReaderUtil.ensureIntDocIdSpace(r.totalMaxDoc(), "composite doc values (MultiDocValues)");
     final int size = leaves.size();
     if (size == 0) {
       return null;
@@ -93,7 +94,7 @@ public class MultiDocValues {
           if (newDocID == NO_MORE_DOCS) {
             currentValues = null;
           } else {
-            docID = currentLeaf.docBase + newDocID;
+            docID = (int) (currentLeaf.docBase + newDocID);
             return docID;
           }
         }
@@ -127,12 +128,12 @@ public class MultiDocValues {
           }
           nextLeaf = readerIndex + 1;
         }
-        int newDocID = currentValues.advance(targetDocID - currentLeaf.docBase);
+        int newDocID = currentValues.advance((int) (targetDocID - currentLeaf.docBase));
         if (newDocID == NO_MORE_DOCS) {
           currentValues = null;
           return nextDoc();
         } else {
-          docID = currentLeaf.docBase + newDocID;
+          docID = (int) (currentLeaf.docBase + newDocID);
           return docID;
         }
       }
@@ -159,7 +160,7 @@ public class MultiDocValues {
         if (currentValues == null) {
           return false;
         }
-        return currentValues.advanceExact(targetDocID - currentLeaf.docBase);
+        return currentValues.advanceExact((int) (targetDocID - currentLeaf.docBase));
       }
 
       @Override
@@ -179,6 +180,7 @@ public class MultiDocValues {
   public static NumericDocValues getNumericValues(final IndexReader r, final String field)
       throws IOException {
     final List<LeafReaderContext> leaves = r.leaves();
+    ReaderUtil.ensureIntDocIdSpace(r.totalMaxDoc(), "composite doc values (MultiDocValues)");
     final int size = leaves.size();
     if (size == 0) {
       return null;
@@ -231,7 +233,7 @@ public class MultiDocValues {
           if (newDocID == NO_MORE_DOCS) {
             currentValues = null;
           } else {
-            docID = currentLeaf.docBase + newDocID;
+            docID = (int) (currentLeaf.docBase + newDocID);
             return docID;
           }
         }
@@ -260,12 +262,12 @@ public class MultiDocValues {
             return nextDoc();
           }
         }
-        int newDocID = currentValues.advance(targetDocID - currentLeaf.docBase);
+        int newDocID = currentValues.advance((int) (targetDocID - currentLeaf.docBase));
         if (newDocID == NO_MORE_DOCS) {
           currentValues = null;
           return nextDoc();
         } else {
-          docID = currentLeaf.docBase + newDocID;
+          docID = (int) (currentLeaf.docBase + newDocID);
           return docID;
         }
       }
@@ -292,7 +294,7 @@ public class MultiDocValues {
         if (currentValues == null) {
           return false;
         }
-        return currentValues.advanceExact(targetDocID - currentLeaf.docBase);
+        return currentValues.advanceExact((int) (targetDocID - currentLeaf.docBase));
       }
 
       @Override
@@ -312,6 +314,7 @@ public class MultiDocValues {
   public static BinaryDocValues getBinaryValues(final IndexReader r, final String field)
       throws IOException {
     final List<LeafReaderContext> leaves = r.leaves();
+    ReaderUtil.ensureIntDocIdSpace(r.totalMaxDoc(), "composite doc values (MultiDocValues)");
     final int size = leaves.size();
     if (size == 0) {
       return null;
@@ -359,7 +362,7 @@ public class MultiDocValues {
           if (newDocID == NO_MORE_DOCS) {
             currentValues = null;
           } else {
-            docID = currentLeaf.docBase + newDocID;
+            docID = (int) (currentLeaf.docBase + newDocID);
             return docID;
           }
         }
@@ -393,12 +396,12 @@ public class MultiDocValues {
             return nextDoc();
           }
         }
-        int newDocID = currentValues.advance(targetDocID - currentLeaf.docBase);
+        int newDocID = currentValues.advance((int) (targetDocID - currentLeaf.docBase));
         if (newDocID == NO_MORE_DOCS) {
           currentValues = null;
           return nextDoc();
         } else {
-          docID = currentLeaf.docBase + newDocID;
+          docID = (int) (currentLeaf.docBase + newDocID);
           return docID;
         }
       }
@@ -425,7 +428,7 @@ public class MultiDocValues {
         if (currentValues == null) {
           return false;
         }
-        return currentValues.advanceExact(targetDocID - currentLeaf.docBase);
+        return currentValues.advanceExact((int) (targetDocID - currentLeaf.docBase));
       }
 
       @Override
@@ -450,6 +453,7 @@ public class MultiDocValues {
   public static SortedNumericDocValues getSortedNumericValues(
       final IndexReader r, final String field) throws IOException {
     final List<LeafReaderContext> leaves = r.leaves();
+    ReaderUtil.ensureIntDocIdSpace(r.totalMaxDoc(), "composite doc values (MultiDocValues)");
     final int size = leaves.size();
     if (size == 0) {
       return null;
@@ -502,7 +506,7 @@ public class MultiDocValues {
           if (newDocID == NO_MORE_DOCS) {
             currentValues = null;
           } else {
-            docID = currentLeaf.docBase + newDocID;
+            docID = (int) (currentLeaf.docBase + newDocID);
             return docID;
           }
         }
@@ -533,12 +537,12 @@ public class MultiDocValues {
           currentValues = values[readerIndex];
           nextLeaf = readerIndex + 1;
         }
-        int newDocID = currentValues.advance(targetDocID - currentLeaf.docBase);
+        int newDocID = currentValues.advance((int) (targetDocID - currentLeaf.docBase));
         if (newDocID == NO_MORE_DOCS) {
           currentValues = null;
           return nextDoc();
         } else {
-          docID = currentLeaf.docBase + newDocID;
+          docID = (int) (currentLeaf.docBase + newDocID);
           return docID;
         }
       }
@@ -565,7 +569,7 @@ public class MultiDocValues {
         if (currentValues == null) {
           return false;
         }
-        return currentValues.advanceExact(targetDocID - currentLeaf.docBase);
+        return currentValues.advanceExact((int) (targetDocID - currentLeaf.docBase));
       }
 
       @Override
@@ -594,6 +598,7 @@ public class MultiDocValues {
   public static SortedDocValues getSortedValues(final IndexReader r, final String field)
       throws IOException {
     final List<LeafReaderContext> leaves = r.leaves();
+    ReaderUtil.ensureIntDocIdSpace(r.totalMaxDoc(), "composite doc values (MultiDocValues)");
     final int size = leaves.size();
 
     if (size == 0) {
@@ -616,7 +621,7 @@ public class MultiDocValues {
         totalCost += v.cost();
       }
       values[i] = v;
-      starts[i] = context.docBase;
+      starts[i] = (int) context.docBase;
     }
     starts[size] = r.maxDoc();
 
@@ -640,6 +645,7 @@ public class MultiDocValues {
   public static SortedSetDocValues getSortedSetValues(final IndexReader r, final String field)
       throws IOException {
     final List<LeafReaderContext> leaves = r.leaves();
+    ReaderUtil.ensureIntDocIdSpace(r.totalMaxDoc(), "composite doc values (MultiDocValues)");
     final int size = leaves.size();
 
     if (size == 0) {
@@ -662,7 +668,7 @@ public class MultiDocValues {
         totalCost += v.cost();
       }
       values[i] = v;
-      starts[i] = context.docBase;
+      starts[i] = (int) context.docBase;
     }
     starts[size] = r.maxDoc();
 

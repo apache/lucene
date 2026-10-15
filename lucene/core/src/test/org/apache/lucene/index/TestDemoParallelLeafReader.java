@@ -1583,20 +1583,24 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
       TopDocs hits = s.search(LongPoint.newRangeQuery("number", min, max), 100);
       StoredFields storedFields = s.storedFields();
       for (ScoreDoc scoreDoc : hits.scoreDocs) {
-        long value = Long.parseLong(storedFields.document(scoreDoc.doc).get("text").split(" ")[1]);
+        long value =
+            Long.parseLong(
+                storedFields.document(Math.toIntExact(scoreDoc.doc)).get("text").split(" ")[1]);
         assertTrue(value >= min);
         assertTrue(value <= max);
       }
 
-      Arrays.sort(hits.scoreDocs, Comparator.comparingInt(a -> a.doc));
+      Arrays.sort(hits.scoreDocs, Comparator.comparingLong(a -> a.doc));
 
       NumericDocValues numbers = MultiDocValues.getNumericValues(s.getIndexReader(), "number");
       for (ScoreDoc hit : hits.scoreDocs) {
         if (numbers.docID() < hit.doc) {
-          numbers.advance(hit.doc);
+          numbers.advance(Math.toIntExact(hit.doc));
         }
         assertEquals(hit.doc, numbers.docID());
-        long value = Long.parseLong(storedFields.document(hit.doc).get("text").split(" ")[1]);
+        long value =
+            Long.parseLong(
+                storedFields.document(Math.toIntExact(hit.doc)).get("text").split(" ")[1]);
         assertEquals(value, numbers.longValue());
       }
     }
