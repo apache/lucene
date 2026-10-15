@@ -43,6 +43,8 @@ import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.store.FileDataHint;
+import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IOFunction;
@@ -115,7 +117,10 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
 
     try {
       meta = state.directory.createOutput(metaFileName, state.context);
-      vectorData = state.directory.createOutput(vectorDataFileName, state.context);
+      // how these are read is up to whoever wraps this format
+      vectorData =
+          state.directory.createOutput(
+              vectorDataFileName, state.context.union(FileTypeHint.DATA, FileDataHint.KNN_VECTORS));
 
       CodecUtil.writeIndexHeader(
           meta,

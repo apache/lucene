@@ -14,15 +14,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.queries.function.valuesource;
+package org.apache.lucene.tests.util;
 
-import org.apache.lucene.queries.function.ValueSource;
+import org.apache.lucene.index.ConcurrentMergeScheduler;
 
 /**
- * A {@link ValueSource} that abstractly represents {@link ValueSource}s for poly fields, and other
- * things.
+ * Randomizes the CPU core count seen by {@link ConcurrentMergeScheduler} so that it varies its
+ * dynamic defaults. This also "fixes" the core count from the master seed so it will always be the
+ * same on reproduce.
  */
-public abstract class MultiValueSource extends ValueSource {
+final class SetupAndRestoreCpuCoreCount implements BeforeAfterCallback {
+  @Override
+  public void before() {
+    int numCores = TestUtil.nextInt(LuceneTestCaseParent.random(), 1, 4);
+    System.setProperty(
+        ConcurrentMergeScheduler.DEFAULT_CPU_CORE_COUNT_PROPERTY, Integer.toString(numCores));
+  }
 
-  public abstract int dimension();
+  @Override
+  public void after() {
+    System.clearProperty(ConcurrentMergeScheduler.DEFAULT_CPU_CORE_COUNT_PROPERTY);
+  }
 }

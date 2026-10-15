@@ -54,7 +54,7 @@ at the location the gradle wrapper expects for the "official" distribution.
 Local URLs work too, for example:
 
 ```bash
-LUCENE_GRADLE_DISTRIBUTION_URL=file:///path/to/gradle-9.7.1-bin.zip
+LUCENE_GRADLE_DISTRIBUTION_URL=file:///path/to/gradle-9.8.0-bin.zip
 ```
 
 Setting `LUCENE_GRADLE_VERIFY_CHECKSUMS=false` disables checksum verification in these bootstrap steps. Use this only if
