@@ -2219,7 +2219,7 @@ public class TestJoinUtil extends LuceneTestCase {
     @Override
     protected void doSetNextReader(LeafReaderContext ctx) throws IOException {
       terms = DocValues.getSorted(ctx.reader(), toField);
-      docBase = ctx.docBase;
+      docBase = Math.toIntExact(ctx.docBase);
     }
 
     @Override

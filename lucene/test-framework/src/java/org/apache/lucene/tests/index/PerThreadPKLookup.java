@@ -99,7 +99,7 @@ public class PerThreadPKLookup {
           enumIndexes.put(cacheKey, numEnums);
         }
 
-        docBases[numEnums] = context.docBase;
+        docBases[numEnums] = Math.toIntExact(context.docBase);
         liveDocs[numEnums] = leafReader.getLiveDocs();
         hasDeletions |= leafReader.hasDeletions();
 

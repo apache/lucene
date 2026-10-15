@@ -1358,7 +1358,7 @@ public abstract class BaseXYPointTestCase extends LuceneTestCase {
               newDistanceQuery("field", x, y, radius), reader.maxDoc(), Sort.INDEXORDER);
       BitSet actual = new BitSet();
       for (ScoreDoc doc : topDocs.scoreDocs) {
-        actual.set(doc.doc);
+        actual.set(Math.toIntExact(doc.doc));
       }
 
       try {

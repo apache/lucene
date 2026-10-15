@@ -100,7 +100,7 @@ public class TopSuggestDocsCollector extends SimpleCollector {
 
   @Override
   protected void doSetNextReader(LeafReaderContext context) throws IOException {
-    docBase = context.docBase;
+    docBase = Math.toIntExact(context.docBase);
   }
 
   @Override
@@ -158,7 +158,7 @@ public class TopSuggestDocsCollector extends SimpleCollector {
               cmp = Lookup.CHARSEQUENCE_COMPARATOR.compare(a.key, b.key);
               if (cmp == 0) {
                 // prefer smaller doc id, in case of a tie
-                cmp = Integer.compare(a.doc, b.doc);
+                cmp = Long.compare(a.doc, b.doc);
               }
             }
             return cmp;

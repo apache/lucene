@@ -47,7 +47,10 @@ public class MaxDocValueSource extends ValueSource {
   public FunctionValues getValues(Map<Object, Object> context, LeafReaderContext readerContext)
       throws IOException {
     IndexSearcher searcher = (IndexSearcher) context.get("searcher");
-    return new DocFreqValueSource.ConstIntDocValues(searcher.getIndexReader().maxDoc(), this);
+    // A composite reader may hold more than Integer.MAX_VALUE docs, so expose the count as a double
+    // (exact for the whole doc-id space) rather than truncating it to an int.
+    return new DocFreqValueSource.ConstDoubleDocValues(
+        searcher.getIndexReader().totalMaxDoc(), this);
   }
 
   @Override

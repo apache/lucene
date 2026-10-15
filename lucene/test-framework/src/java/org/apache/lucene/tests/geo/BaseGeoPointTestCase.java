@@ -1512,7 +1512,7 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
               newDistanceQuery("field", lat, lon, radius), reader.maxDoc(), Sort.INDEXORDER);
       BitSet actual = new BitSet();
       for (ScoreDoc doc : topDocs.scoreDocs) {
-        actual.set(doc.doc);
+        actual.set(Math.toIntExact(doc.doc));
       }
 
       try {

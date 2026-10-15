@@ -157,7 +157,7 @@ public class CheckHits {
 
     @Override
     protected void doSetNextReader(LeafReaderContext context) throws IOException {
-      base = context.docBase;
+      base = Math.toIntExact(context.docBase);
     }
 
     @Override
@@ -191,7 +191,7 @@ public class CheckHits {
 
     Set<Integer> actual = new TreeSet<>();
     for (ScoreDoc hit : hits) {
-      actual.add(hit.doc);
+      actual.add(Math.toIntExact(hit.doc));
     }
 
     assertEquals(query.toString(defaultFieldName), correct, actual);
@@ -628,7 +628,7 @@ public class CheckHits {
 
     @Override
     protected void doSetNextReader(LeafReaderContext context) throws IOException {
-      base = context.docBase;
+      base = Math.toIntExact(context.docBase);
     }
 
     @Override

@@ -1938,7 +1938,7 @@ public class TestGeo3DPoint extends LuceneTestCase {
             targetDocPoint,
             scaledDocPoint,
             new PointInShapeIntersectVisitor(hits, shape, bounds),
-            docID - reader.leaves().get(subIndex).docBase,
+            docID - Math.toIntExact(reader.leaves().get(subIndex).docBase),
             3,
             Integer.BYTES,
             b);

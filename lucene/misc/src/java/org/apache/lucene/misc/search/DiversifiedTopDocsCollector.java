@@ -129,7 +129,7 @@ public abstract class DiversifiedTopDocsCollector extends TopDocsCollector<Score
     return new TopDocs(new TotalHits(totalHits, TotalHits.Relation.EQUAL_TO), results);
   }
 
-  protected ScoreDocKey insert(ScoreDocKey addition, int docBase, NumericDocValues keys)
+  protected ScoreDocKey insert(ScoreDocKey addition, long docBase, NumericDocValues keys)
       throws IOException {
     if (globalQueue.size() >= numHits && KEY_COMPARATOR.compare(addition, globalQueue.top()) < 0) {
       // Queue is full and proposed addition is not a globally
@@ -141,7 +141,7 @@ public abstract class DiversifiedTopDocsCollector extends TopDocsCollector<Score
     // We delay fetching the key until we are certain the score is globally
     // competitive. We need to adjust the ScoreDoc's global doc value to be
     // a leaf reader value when looking up keys
-    int leafDocID = addition.doc - docBase;
+    int leafDocID = (int) (addition.doc - docBase);
     long value;
     if (keys.advanceExact(leafDocID)) {
       value = keys.longValue();
@@ -203,7 +203,7 @@ public abstract class DiversifiedTopDocsCollector extends TopDocsCollector<Score
 
   @Override
   public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
-    final int base = context.docBase;
+    final long base = context.docBase;
     final NumericDocValues keySource = getKeys(context);
 
     return new LeafCollector() {
@@ -223,12 +223,12 @@ public abstract class DiversifiedTopDocsCollector extends TopDocsCollector<Score
 
         totalHits++;
 
-        doc += base;
+        long globalDoc = doc + base;
 
         if (spare == null) {
-          spare = new ScoreDocKey(doc, score);
+          spare = new ScoreDocKey(globalDoc, score);
         } else {
-          spare.doc = doc;
+          spare.doc = globalDoc;
           spare.score = score;
         }
         spare = insert(spare, base, keySource);
@@ -238,14 +238,14 @@ public abstract class DiversifiedTopDocsCollector extends TopDocsCollector<Score
 
   private static final Comparator<ScoreDocKey> KEY_COMPARATOR =
       FloatComparator.<ScoreDocKey>comparing(sd -> sd.score)
-          .thenComparing(Comparator.<ScoreDocKey>comparingInt(sd -> sd.doc).reversed());
+          .thenComparing(Comparator.<ScoreDocKey>comparingLong(sd -> sd.doc).reversed());
 
   //
   /** An extension to ScoreDoc that includes a key used for grouping purposes */
   public static class ScoreDocKey extends ScoreDoc {
     Long key;
 
-    protected ScoreDocKey(int doc, float score) {
+    protected ScoreDocKey(long doc, float score) {
       super(doc, score);
     }
 

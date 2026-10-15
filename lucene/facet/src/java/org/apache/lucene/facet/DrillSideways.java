@@ -192,11 +192,11 @@ public class DrillSideways {
       query = new DrillDownQuery(config, filter, query);
     }
     if (sort != null) {
-      int limit = searcher.getIndexReader().maxDoc();
+      long limit = searcher.getIndexReader().totalMaxDoc();
       if (limit == 0) {
         limit = 1; // the collector does not allow numHits = 0
       }
-      final int fTopN = Math.min(topN, limit);
+      final int fTopN = (int) Math.min(topN, limit);
       final TopFieldCollectorManager collectorManager =
           new TopFieldCollectorManager(sort, fTopN, after, Integer.MAX_VALUE);
       final ConcurrentDrillSidewaysResult<TopFieldDocs> r = search(query, collectorManager);
@@ -224,11 +224,11 @@ public class DrillSideways {
   /** Search, sorting by score, and computing drill down and sideways counts. */
   public DrillSidewaysResult search(ScoreDoc after, DrillDownQuery query, int topN)
       throws IOException {
-    int limit = searcher.getIndexReader().maxDoc();
+    long limit = searcher.getIndexReader().totalMaxDoc();
     if (limit == 0) {
       limit = 1; // the collector does not allow numHits = 0
     }
-    final int fTopN = Math.min(topN, limit);
+    final int fTopN = (int) Math.min(topN, limit);
     final TopScoreDocCollectorManager collectorManager =
         new TopScoreDocCollectorManager(fTopN, after, Integer.MAX_VALUE);
     final ConcurrentDrillSidewaysResult<TopDocs> r = search(query, collectorManager);

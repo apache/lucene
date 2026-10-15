@@ -476,11 +476,11 @@ public class TestCommonTermsQuery extends LuceneTestCase {
       assertEquals(verifySearch.totalHits.value(), cqSearch.totalHits.value());
       Set<Integer> hits = new HashSet<>();
       for (ScoreDoc doc : verifySearch.scoreDocs) {
-        hits.add(doc.doc);
+        hits.add(Math.toIntExact(doc.doc));
       }
 
       for (ScoreDoc doc : cqSearch.scoreDocs) {
-        assertTrue(hits.remove(doc.doc));
+        assertTrue(hits.remove(Math.toIntExact(doc.doc)));
       }
 
       assertTrue(hits.isEmpty());

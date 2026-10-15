@@ -546,7 +546,8 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
   }
 
   protected int docID(IndexReader reader, String id) throws IOException {
-    return new IndexSearcher(reader).search(new TermQuery(new Term("id", id)), 1).scoreDocs[0].doc;
+    return Math.toIntExact(
+        new IndexSearcher(reader).search(new TermQuery(new Term("id", id)), 1).scoreDocs[0].doc);
   }
 
   // only one doc with vectors

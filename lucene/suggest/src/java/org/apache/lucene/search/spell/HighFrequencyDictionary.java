@@ -60,7 +60,7 @@ public class HighFrequencyDictionary implements Dictionary {
   final class HighFrequencyIterator implements InputIterator {
     private final BytesRefBuilder spare = new BytesRefBuilder();
     private final TermsEnum termsEnum;
-    private int minNumDocs;
+    private long minNumDocs;
     private long freq;
 
     HighFrequencyIterator() throws IOException {
@@ -70,7 +70,7 @@ public class HighFrequencyDictionary implements Dictionary {
       } else {
         termsEnum = null;
       }
-      minNumDocs = (int) (thresh * (float) reader.numDocs());
+      minNumDocs = (long) (thresh * (double) reader.totalNumDocs());
     }
 
     private boolean isFrequent(int freq) {

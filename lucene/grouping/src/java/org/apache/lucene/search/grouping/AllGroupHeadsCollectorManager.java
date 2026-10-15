@@ -19,14 +19,16 @@ package org.apache.lucene.search.grouping;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 
 /**
@@ -42,7 +44,7 @@ import org.apache.lucene.util.FixedBitSet;
  *     new AllGroupHeadsCollectorManager&lt;&gt;(
  *         () -&gt; new TermGroupSelector("category"), Sort.RELEVANCE);
  * GroupHeadsResult result = searcher.search(new MatchAllDocsQuery(), manager);
- * Bits groupHeadsBits = result.retrieveGroupHeads(searcher.getIndexReader().maxDoc());
+ * FixedBitSet[] groupHeadsPerLeaf = result.retrieveGroupHeads(searcher.getIndexReader().leaves());
  * </pre>
  *
  * @param <T> the type of the group value
@@ -52,39 +54,47 @@ public class AllGroupHeadsCollectorManager<T>
     implements CollectorManager<
         AllGroupHeadsCollector<T>, AllGroupHeadsCollectorManager.GroupHeadsResult> {
 
-  /** Holds the merged group heads and provides access as an {@code int[]} or {@link Bits}. */
+  /**
+   * Holds the merged group heads and provides access as a {@code long[]} of global doc ids or as
+   * one per-leaf {@link FixedBitSet}.
+   */
   public static class GroupHeadsResult {
-    private final int[] groupHeads;
+    private final long[] groupHeads;
 
-    private GroupHeadsResult(int[] groupHeads) {
+    private GroupHeadsResult(long[] groupHeads) {
       this.groupHeads = groupHeads;
     }
 
-    /** Returns the group head document IDs as an array. */
-    public int[] retrieveGroupHeads() {
+    /** Returns the group head global doc ids as an array. */
+    public long[] retrieveGroupHeads() {
       return groupHeads;
     }
 
     /**
-     * Returns the group head document IDs as a {@link Bits} set of size {@code maxDoc}, suitable
-     * for use as a filter.
+     * Returns the group heads as one {@link FixedBitSet} per leaf (indexed by {@link
+     * LeafReaderContext#ord}), each marking that leaf's heads by their leaf-local doc id. Splitting
+     * per segment keeps every bit set int-addressable even when the whole index exceeds 2^31 docs.
      *
-     * @param maxDoc The maxDoc of the top level {@link IndexReader}.
+     * @param leaves the leaf contexts of the top-level {@link IndexReader} that was searched
      */
-    public Bits retrieveGroupHeads(int maxDoc) {
-      FixedBitSet result = new FixedBitSet(maxDoc);
-      for (int docId : groupHeads) {
-        result.set(docId);
+    public FixedBitSet[] retrieveGroupHeads(List<LeafReaderContext> leaves) {
+      FixedBitSet[] result = new FixedBitSet[leaves.size()];
+      for (LeafReaderContext ctx : leaves) {
+        result[ctx.ord] = new FixedBitSet(ctx.reader().maxDoc());
+      }
+      for (long docId : groupHeads) {
+        int ord = ReaderUtil.subIndex(docId, leaves);
+        result[ord].set(leaves.get(ord).toLeafDocId(docId));
       }
       return result;
     }
   }
 
   private static final class GroupHeadWithValues {
-    int doc;
+    long doc;
     final Object[] sortValues;
 
-    GroupHeadWithValues(int doc, Object[] sortValues) {
+    GroupHeadWithValues(long doc, Object[] sortValues) {
       this.doc = doc;
       this.sortValues = sortValues;
     }
@@ -119,7 +129,7 @@ public class AllGroupHeadsCollectorManager<T>
       mergeCollectorHeads(collector, mergedHeads, sortFields);
     }
 
-    return new GroupHeadsResult(mergedHeads.values().stream().mapToInt(h -> h.doc).toArray());
+    return new GroupHeadsResult(mergedHeads.values().stream().mapToLong(h -> h.doc).toArray());
   }
 
   private void mergeCollectorHeads(

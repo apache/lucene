@@ -111,7 +111,7 @@ public class TestDVUpdateBackwardsCompatibility extends BackwardsCompatibilityTe
     IndexWriterConfig conf = new IndexWriterConfig(new MockAnalyzer(random()));
     IndexWriter writer = new IndexWriter(directory, conf);
 
-    int maxDoc = writer.getDocStats().maxDoc;
+    int maxDoc = Math.toIntExact(writer.getDocStats().maxDoc);
     writer.deleteDocuments(new Term("id", "1"));
     if (random().nextBoolean()) {
       writer.commit();
@@ -128,7 +128,7 @@ public class TestDVUpdateBackwardsCompatibility extends BackwardsCompatibilityTe
     IndexWriterConfig conf =
         new IndexWriterConfig(new MockAnalyzer(random())).setSoftDeletesField("__soft_delete");
     IndexWriter writer = new IndexWriter(directory, conf);
-    int maxDoc = writer.getDocStats().maxDoc;
+    int maxDoc = Math.toIntExact(writer.getDocStats().maxDoc);
     writer.updateDocValues(new Term("id", "1"), new NumericDocValuesField("__soft_delete", 1));
 
     if (random().nextBoolean()) {

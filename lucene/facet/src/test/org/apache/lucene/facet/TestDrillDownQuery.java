@@ -208,7 +208,7 @@ public class TestDrillDownQuery extends FacetTestCase {
     Query q = new TermQuery(new Term("content", "foo"));
     TopDocs docs = searcher.search(q, reader.maxDoc()); // fetch all available docs to this query
     for (ScoreDoc sd : docs.scoreDocs) {
-      scores[sd.doc] = sd.score;
+      scores[Math.toIntExact(sd.doc)] = sd.score;
     }
 
     // create a drill-down query with category "a", scores should not change
@@ -216,7 +216,8 @@ public class TestDrillDownQuery extends FacetTestCase {
     q2.add("a");
     docs = searcher.search(q2, reader.maxDoc()); // fetch all available docs to this query
     for (ScoreDoc sd : docs.scoreDocs) {
-      assertEquals("score of doc=" + sd.doc + " modified", scores[sd.doc], sd.score, 0f);
+      assertEquals(
+          "score of doc=" + sd.doc + " modified", scores[Math.toIntExact(sd.doc)], sd.score, 0f);
     }
   }
 

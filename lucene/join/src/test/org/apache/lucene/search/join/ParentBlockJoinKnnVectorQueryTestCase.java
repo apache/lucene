@@ -274,8 +274,8 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
                     "field", new float[] {0, 0}, null, 8, parentFilter(searcher.getIndexReader())),
                 10);
         assertEquals(8, results.scoreDocs.length);
-        assertIdMatches(reader, "0", results.scoreDocs[0].doc);
-        assertIdMatches(reader, "7", results.scoreDocs[7].doc);
+        assertIdMatches(reader, "0", Math.toIntExact(results.scoreDocs[0].doc));
+        assertIdMatches(reader, "7", Math.toIntExact(results.scoreDocs[7].doc));
 
         // test some results in the middle of the sequence - also tests docid tiebreaking
         results =
@@ -288,8 +288,8 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
                     parentFilter(searcher.getIndexReader())),
                 10);
         assertEquals(8, results.scoreDocs.length);
-        assertIdMatches(reader, "10", results.scoreDocs[0].doc);
-        assertIdMatches(reader, "6", results.scoreDocs[7].doc);
+        assertIdMatches(reader, "10", Math.toIntExact(results.scoreDocs[0].doc));
+        assertIdMatches(reader, "6", Math.toIntExact(results.scoreDocs[7].doc));
       }
     }
   }
