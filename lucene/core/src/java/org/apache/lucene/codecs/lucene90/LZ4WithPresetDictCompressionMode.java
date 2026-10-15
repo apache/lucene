@@ -64,7 +64,6 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
 
     private int[] compressedLengths;
     private byte[] buffer;
-    private boolean dictionaryLoaded;
 
     LZ4WithPresetDictDecompressor() {
       compressedLengths = new int[0];
@@ -101,8 +100,6 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
         throws IOException {
       assert offset + length <= originalLength;
 
-      boolean reuseDictionary = reuseIfPossible && dictionaryLoaded;
-      dictionaryLoaded = false;
       if (length == 0) {
         bytes.length = 0;
         return;
@@ -113,7 +110,7 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
 
       final int numBlocks = readCompressedLengths(in, originalLength, dictLength, blockLength);
       bytes.length = 0;
-      if (reuseDictionary) {
+      if (reuseIfPossible) {
         assert buffer.length >= dictLength + blockLength;
         in.skipBytes(compressedLengths[0]);
       } else {
@@ -160,7 +157,6 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
       bytes.offset = offsetInBytesRef;
       bytes.length = length;
       assert bytes.isValid();
-      dictionaryLoaded = true;
     }
 
     @Override

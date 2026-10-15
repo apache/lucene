@@ -207,9 +207,6 @@ Improvements
 
 Optimizations
 ---------------------
-* GITHUB#14397: Reuse the LZ4 preset dictionary when reading stored fields or term vectors
-  from the same compressed chunk. (kkewwei)
-
 * GITHUB#16431, GITHUB#16697: Add support for Block-Max WAND dynamic score skipping in FunctionScoreQuery
   and DoubleValuesSource using DocValuesSkipper. (Rajat Jain, Zhang Chao)
 
@@ -643,6 +640,9 @@ Optimizations
   ord -> FacetLabel cache such that it always missed when it should have hit. (Alex Baranov)
 
 * GITHUB#16089: Upgrade DocIdSetBuilder to use FixedBitSet eagerly once exceeding the threshold (Ke Wei)
+
+* GITHUB#14397: Reuse the LZ4 preset dictionary when reading stored fields or term vectors
+  from the same compressed chunk. (Ke Wei)
 
 Bug Fixes
 ---------------------

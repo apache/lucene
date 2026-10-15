@@ -51,37 +51,42 @@ public class TestCompressingTermVectorsFormat extends BaseTermVectorsFormatTestC
     }
   }
 
-  public void testDictionaryReuseAfterEmptyDocument() throws IOException {
+  public void testDictionaryReuse() throws IOException {
     FieldType type = new FieldType(TextField.TYPE_NOT_STORED);
     type.setStoreTermVectors(true);
     type.freeze();
-    try (Directory dir = newDirectory();
-        IndexWriter writer =
-            new IndexWriter(
-                dir,
-                newIndexWriterConfig()
-                    .setCodec(new LZ4WithPresetCompressingCodec(4096, 2, false, 8))
-                    .setMergePolicy(NoMergePolicy.INSTANCE))) {
-      String[] values = {"a".repeat(128), "b".repeat(128), null, "c".repeat(128)};
-      for (String value : values) {
-        Document doc = new Document();
-        if (value != null) {
-          doc.add(new Field("text", value, type));
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter writer =
+          new IndexWriter(
+              dir,
+              newIndexWriterConfig()
+                  .setCodec(new LZ4WithPresetCompressingCodec(4096, 2, false, 8))
+                  .setMergePolicy(NoMergePolicy.INSTANCE))) {
+        String[] values = {
+          "a".repeat(128), "b".repeat(128), null, "c".repeat(128), "d".repeat(128), "e".repeat(128)
+        };
+        for (String value : values) {
+          Document doc = new Document();
+          if (value != null) {
+            doc.add(new Field("text", value, type));
+          }
+          writer.addDocument(doc);
         }
-        writer.addDocument(doc);
-      }
-      try (DirectoryReader reader = DirectoryReader.open(writer)) {
-        assertEquals(1, reader.leaves().size());
-        var vectors = reader.termVectors();
-        for (int doc : new int[] {0, 1, 2, 3, 3, 0, 2, 3}) {
-          Terms terms = vectors.get(doc, "text");
-          if (values[doc] == null) {
-            assertNull(terms);
-          } else {
-            assertNotNull(terms);
-            TermsEnum iterator = terms.iterator();
-            assertEquals(new BytesRef(values[doc]), iterator.next());
-            assertNull(iterator.next());
+        try (DirectoryReader reader = DirectoryReader.open(writer)) {
+          assertEquals(1, reader.leaves().size());
+          var vectors = reader.termVectors();
+          // Docs 0 and 1 share one chunk; docs 2 (empty) and 3 share the next; docs 4 and 5 share
+          // the next.
+          for (int doc : new int[] {0, 1, 2, 3, 4, 5, 3, 0, 2, 3}) {
+            Terms terms = vectors.get(doc, "text");
+            if (values[doc] == null) {
+              assertNull(terms);
+            } else {
+              assertNotNull(terms);
+              TermsEnum iterator = terms.iterator();
+              assertEquals(new BytesRef(values[doc]), iterator.next());
+              assertNull(iterator.next());
+            }
           }
         }
       }

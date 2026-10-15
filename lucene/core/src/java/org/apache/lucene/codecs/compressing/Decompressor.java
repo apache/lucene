@@ -44,10 +44,7 @@ public abstract class Decompressor implements Cloneable {
 
   /**
    * Decompresses bytes, optionally reusing state from a previous successful decompression of the
-   * same compressed block. Callers must only set {@code reuseIfPossible} when the compressed block
-   * has not changed. Implementations may ignore this hint.
-   *
-   * @see #decompress(DataInput, int, int, int, BytesRef)
+   * same compressed block.
    */
   public void decompress(
       DataInput in,
