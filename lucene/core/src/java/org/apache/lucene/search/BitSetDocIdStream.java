@@ -73,4 +73,12 @@ final class BitSetDocIdStream extends DocIdStream {
     }
     return 0;
   }
+
+  int orInto(FixedBitSet dest) {
+    int sourceFrom = upTo - offset;
+    int length = Math.min(bitSet.length() - sourceFrom, dest.length() - upTo);
+    FixedBitSet.orRange(bitSet, sourceFrom, dest, upTo, length);
+    upTo = max;
+    return bitSet.cardinality(sourceFrom, bitSet.length());
+  }
 }

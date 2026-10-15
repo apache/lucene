@@ -636,6 +636,13 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
 
           @Override
           public void collect(DocIdStream stream) {
+            if (stream instanceof BitSetDocIdStream bitSetStream) {
+              count[0] += bitSetStream.orInto(bitSet);
+              return;
+            }
+            // RangeDocIdStream is only created by LeafCollector's default collectRange
+            // implementation, which this collector overrides above. Normal collection paths never
+            // reach this per-doc fallback; keep it for custom DocIdStream implementations.
             if (buffer == null) {
               buffer = new int[128];
             }

@@ -676,6 +676,8 @@ Optimizations
 
 * GITHUB#16089: Upgrade DocIdSetBuilder to use FixedBitSet eagerly once exceeding the threshold (Ke Wei)
 
+* GITHUB#16757: Speed up building cached bit sets in LRUQueryCache. (Ke Wei)
+
 Bug Fixes
 ---------------------
 
