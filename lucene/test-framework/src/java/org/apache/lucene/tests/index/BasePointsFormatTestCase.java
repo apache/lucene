@@ -478,7 +478,7 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
             continue;
           }
 
-          final int docBase = ctx.docBase;
+          final int docBase = Math.toIntExact(ctx.docBase);
 
           dimValues.intersect(
               new IntersectVisitor() {
@@ -934,7 +934,7 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
             continue;
           }
 
-          final int docBase = ctx.docBase;
+          final int docBase = Math.toIntExact(ctx.docBase);
 
           dimValues.intersect(
               new PointValues.IntersectVisitor() {

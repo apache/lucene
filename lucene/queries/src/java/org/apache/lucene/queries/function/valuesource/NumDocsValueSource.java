@@ -41,9 +41,10 @@ public class NumDocsValueSource extends ValueSource {
   @Override
   public FunctionValues getValues(Map<Object, Object> context, LeafReaderContext readerContext)
       throws IOException {
-    // Searcher has no numdocs so we must use the reader instead
-    return new DocFreqValueSource.ConstIntDocValues(
-        ReaderUtil.getTopLevelContext(readerContext).reader().numDocs(), this);
+    // Searcher has no numdocs so we must use the reader instead. A composite reader may hold more
+    // than Integer.MAX_VALUE docs, so expose the count as a double rather than truncating to int.
+    return new DocFreqValueSource.ConstDoubleDocValues(
+        ReaderUtil.getTopLevelContext(readerContext).reader().totalNumDocs(), this);
   }
 
   @Override

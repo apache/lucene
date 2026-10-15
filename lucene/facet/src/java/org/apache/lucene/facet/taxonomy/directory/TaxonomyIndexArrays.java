@@ -209,12 +209,12 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
             leafContext.reader().toString());
       }
 
-      for (int doc = Math.max(first - leafContext.docBase, 0); doc < leafDocNum; doc++) {
+      for (int doc = (int) Math.max(first - leafContext.docBase, 0); doc < leafDocNum; doc++) {
         if (parentValues.advanceExact(doc) == false) {
           throw new CorruptIndexException(
               "Missing parent data for category " + (doc + leafContext.docBase), reader.toString());
         }
-        int pos = doc + leafContext.docBase;
+        int pos = doc + Math.toIntExact(leafContext.docBase);
         parentsArray[pos >> CHUNK_SIZE_BITS][pos & CHUNK_MASK] =
             Math.toIntExact(parentValues.longValue());
       }

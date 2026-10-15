@@ -67,7 +67,7 @@ public class ReindexingEnrichedDirectoryTaxonomyWriter extends DirectoryTaxonomy
       LeafReader leafReader = ctx.reader();
       int[] ordinals = new int[leafReader.maxDoc()];
       for (int i = 0; i < ordinals.length; i++) {
-        ordinals[i] = ctx.docBase + i;
+        ordinals[i] = Math.toIntExact(ctx.docBase) + i;
       }
       FacetLabel[] labels = taxoReader.getBulkPath(ordinals);
       for (FacetLabel label : labels) {

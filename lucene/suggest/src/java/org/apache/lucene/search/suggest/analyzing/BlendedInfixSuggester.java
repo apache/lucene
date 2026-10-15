@@ -229,12 +229,15 @@ public class BlendedInfixSuggester extends AnalyzingInfixSuggester {
     TermVectors termVectors = searcher.getIndexReader().termVectors();
     for (int i = 0; i < hits.scoreDocs.length; i++) {
       FieldDoc fd = (FieldDoc) hits.scoreDocs[i];
+      // The suggester index is bounded well below Integer.MAX_VALUE docs, so the global doc id
+      // narrows safely to int for the composite (MultiDocValues) lookups below.
+      int docID = Math.toIntExact(fd.doc);
 
       BinaryDocValues textDV =
           MultiDocValues.getBinaryValues(searcher.getIndexReader(), TEXT_FIELD_NAME);
       assert textDV != null;
 
-      textDV.advance(fd.doc);
+      textDV.advance(docID);
 
       final String text = textDV.binaryValue().utf8ToString();
       long weight = (Long) fd.fields[0];
@@ -246,7 +249,7 @@ public class BlendedInfixSuggester extends AnalyzingInfixSuggester {
 
       BytesRef payload;
       if (payloadsDV != null) {
-        if (payloadsDV.advance(fd.doc) == fd.doc) {
+        if (payloadsDV.advance(docID) == docID) {
           payload = BytesRef.deepCopyOf(payloadsDV.binaryValue());
         } else {
           payload = new BytesRef(BytesRef.EMPTY_BYTES);
@@ -260,7 +263,7 @@ public class BlendedInfixSuggester extends AnalyzingInfixSuggester {
         // if hit starts with the key, we don't change the score
         coefficient = 1;
       } else {
-        coefficient = createCoefficient(termVectors, fd.doc, matchedTokens, prefixToken);
+        coefficient = createCoefficient(termVectors, docID, matchedTokens, prefixToken);
       }
       if (weight == 0) {
         weight = 1;

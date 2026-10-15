@@ -158,12 +158,16 @@ public class TestInetAddrSsDvMultiRangeQuery extends LuceneTestCase {
       boolRes = searcher.search(orRanges, reader.maxDoc()); // ).scoreDocs));
 
       Set<Integer> boolDocs =
-          Stream.of(boolRes.scoreDocs).map((sd) -> sd.doc).collect(Collectors.toSet());
+          Stream.of(boolRes.scoreDocs)
+              .map((sd) -> Math.toIntExact(sd.doc))
+              .collect(Collectors.toSet());
       TopDocs mulRes;
       // System.out.println(Arrays.toString((
       mulRes = searcher.search(multiRange, reader.maxDoc()); // ).scoreDocs));
       Set<Integer> mulDocs =
-          Stream.of(mulRes.scoreDocs).map((sd) -> sd.doc).collect(Collectors.toSet());
+          Stream.of(mulRes.scoreDocs)
+              .map((sd) -> Math.toIntExact(sd.doc))
+              .collect(Collectors.toSet());
       Set<Integer> falsePos = new HashSet<>(mulDocs);
       falsePos.removeAll(boolDocs);
       if (!falsePos.isEmpty()) {

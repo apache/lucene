@@ -41,7 +41,7 @@ public class ParentChildrenBlockJoinQuery extends Query {
 
   private final BitSetProducer parentFilter;
   private final Query childQuery;
-  private final int parentDocId;
+  private final long parentDocId;
 
   /**
    * Creates a <code>ParentChildrenBlockJoinQuery</code> instance
@@ -51,7 +51,7 @@ public class ParentChildrenBlockJoinQuery extends Query {
    * @param parentDocId The top level doc id of that parent to return children documents for
    */
   public ParentChildrenBlockJoinQuery(
-      BitSetProducer parentFilter, Query childQuery, int parentDocId) {
+      BitSetProducer parentFilter, Query childQuery, long parentDocId) {
     this.parentFilter = parentFilter;
     this.childQuery = childQuery;
     this.parentDocId = parentDocId;
@@ -73,7 +73,7 @@ public class ParentChildrenBlockJoinQuery extends Query {
     int hash = classHash();
     hash = 31 * hash + parentFilter.hashCode();
     hash = 31 * hash + childQuery.hashCode();
-    hash = 31 * hash + parentDocId;
+    hash = 31 * hash + Long.hashCode(parentDocId);
     return hash;
   }
 
@@ -118,7 +118,7 @@ public class ParentChildrenBlockJoinQuery extends Query {
           return null;
         }
 
-        final int localParentDocId = parentDocId - context.docBase;
+        final int localParentDocId = context.toLeafDocId(parentDocId);
         // If parentDocId == 0 then a parent doc doesn't have child docs, because child docs are
         // stored
         // before the parent doc and because parent doc is 0 we can safely assume that there are no

@@ -56,7 +56,7 @@ public class TestToParentJoinKnnResults extends LuceneTestCase {
     int[] sortedNodes = new int[topDocs.scoreDocs.length];
     float[] sortedScores = new float[topDocs.scoreDocs.length];
     for (int i = 0; i < topDocs.scoreDocs.length; i++) {
-      sortedNodes[i] = topDocs.scoreDocs[i].doc;
+      sortedNodes[i] = Math.toIntExact(topDocs.scoreDocs[i].doc);
       sortedScores[i] = topDocs.scoreDocs[i].score;
     }
     assertArrayEquals(new int[] {2, 7, 10, 4}, sortedNodes);
@@ -78,7 +78,7 @@ public class TestToParentJoinKnnResults extends LuceneTestCase {
     float[] sortedScores = new float[5];
     TopDocs topDocs = results.topDocs();
     for (int i = 0; i < topDocs.scoreDocs.length; i++) {
-      sortedNodes[i] = topDocs.scoreDocs[i].doc;
+      sortedNodes[i] = Math.toIntExact(topDocs.scoreDocs[i].doc);
       sortedScores[i] = topDocs.scoreDocs[i].score;
     }
     assertArrayEquals(new int[] {2, 10, 7, 4, 12}, sortedNodes);

@@ -211,12 +211,12 @@ public abstract class SearchEquivalenceTestBase extends LuceneTestCase {
       // fill the superset into a bitset
       BitSet bitset = new BitSet();
       for (int i = 0; i < td2.scoreDocs.length; i++) {
-        bitset.set(td2.scoreDocs[i].doc);
+        bitset.set(Math.toIntExact(td2.scoreDocs[i].doc));
       }
 
       // check in the subset, that every bit was set by the super
       for (int i = 0; i < td1.scoreDocs.length; i++) {
-        assertTrue(bitset.get(td1.scoreDocs[i].doc));
+        assertTrue(bitset.get(Math.toIntExact(td1.scoreDocs[i].doc)));
       }
     }
   }

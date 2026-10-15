@@ -250,11 +250,11 @@ public class FacetsCollectorManager implements CollectorManager<FacetsCollector,
       FacetsCollectorManager fcm)
       throws IOException {
 
-    int limit = searcher.getIndexReader().maxDoc();
+    long limit = searcher.getIndexReader().totalMaxDoc();
     if (limit == 0) {
       limit = 1;
     }
-    n = Math.min(n, limit);
+    n = (int) Math.min(n, limit);
 
     if (after != null && after.doc >= limit) {
       throw new IllegalArgumentException(

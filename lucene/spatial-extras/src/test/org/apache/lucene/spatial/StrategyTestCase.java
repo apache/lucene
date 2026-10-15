@@ -219,7 +219,7 @@ public abstract class StrategyTestCase extends SpatialTestCase {
       int count = ctx.reader().maxDoc();
       for (int i = 0; i < count; i++) {
         assertTrue(v.advanceExact(i));
-        int doc = i + ctx.docBase;
+        int doc = i + Math.toIntExact(ctx.docBase);
         assertEquals("Not equal for doc " + doc, v.doubleValue(), scores[doc], delta);
       }
     }

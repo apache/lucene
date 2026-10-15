@@ -42,7 +42,7 @@ public class TopSuggestDocs extends TopDocs {
         if (cmp != 0) return cmp;
         cmp = Lookup.CHARSEQUENCE_COMPARATOR.compare(b.key, a.key);
         if (cmp != 0) return cmp;
-        return Integer.compare(b.doc, a.doc);
+        return Long.compare(b.doc, a.doc);
       };
 
   /** {@link org.apache.lucene.search.ScoreDoc} with an additional CharSequence key */

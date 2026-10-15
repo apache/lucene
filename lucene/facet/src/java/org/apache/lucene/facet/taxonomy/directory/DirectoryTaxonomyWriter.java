@@ -171,7 +171,8 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
 
     fullPathField = new StringField(Consts.FULL, "", Field.Store.NO);
 
-    nextID.set(indexWriter.getDocStats().maxDoc);
+    // taxonomy ordinals are int (a taxonomy has fewer than Integer.MAX_VALUE categories)
+    nextID.set(Math.toIntExact(indexWriter.getDocStats().maxDoc));
 
     if (cache == null) {
       cache = defaultTaxonomyWriterCache();
@@ -364,7 +365,7 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
           // liveDocs=null because the taxonomy has no deletes
           docs = termsEnum.postings(docs, 0 /* freqs not required */);
           // if the term was found, we know it has exactly one document.
-          doc = docs.nextDoc() + ctx.docBase;
+          doc = docs.nextDoc() + Math.toIntExact(ctx.docBase);
           break;
         }
       }
@@ -632,7 +633,7 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
             // 'validation' checks.
             FacetLabel cp = new FacetLabel(FacetsConfig.stringToPath(t.utf8ToString()));
             postingsEnum = termsEnum.postings(postingsEnum, PostingsEnum.NONE);
-            boolean res = cache.put(cp, postingsEnum.nextDoc() + ctx.docBase);
+            boolean res = cache.put(cp, postingsEnum.nextDoc() + Math.toIntExact(ctx.docBase));
             assert !res : "entries should not have been evicted from the cache";
           } else {
             // the cache is full and the next put() will evict entries from it, therefore abort
@@ -876,7 +877,8 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     shouldRefreshReaderManager = true;
     initReaderManager(); // ensure that it's initialized
     refreshReaderManager();
-    nextID.set(indexWriter.getDocStats().maxDoc);
+    // taxonomy ordinals are int (a taxonomy has fewer than Integer.MAX_VALUE categories)
+    nextID.set(Math.toIntExact(indexWriter.getDocStats().maxDoc));
     taxoArrays = null; // must nullify so that it's re-computed next time it's needed
 
     // need to clear the cache, so that addCategory won't accidentally return

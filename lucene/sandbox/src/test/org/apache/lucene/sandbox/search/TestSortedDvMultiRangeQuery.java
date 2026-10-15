@@ -317,7 +317,7 @@ public class TestSortedDvMultiRangeQuery extends LuceneTestCase {
   private static Set<Integer> docIds(TopDocs docs) {
     Set<Integer> ids = new TreeSet<>();
     for (var sd : docs.scoreDocs) {
-      ids.add(sd.doc);
+      ids.add(Math.toIntExact(sd.doc));
     }
     return ids;
   }
@@ -360,7 +360,7 @@ public class TestSortedDvMultiRangeQuery extends LuceneTestCase {
     List<LeafReaderContext> leaves = reader.leaves();
     for (int docId : allDiff) {
       LeafReaderContext ctx = leaves.get(ReaderUtil.subIndex(docId, leaves));
-      int localDoc = docId - ctx.docBase;
+      int localDoc = ctx.toLeafDocId(docId);
       LeafReader leaf = ctx.reader();
 
       sb.append("  doc=")

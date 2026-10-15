@@ -692,7 +692,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
           int lastDocID = -1;
           int startDocID = -1;
           for (ScoreDoc scoreDoc : hits.scoreDocs) {
-            final int docID = scoreDoc.doc;
+            final int docID = Math.toIntExact(scoreDoc.doc);
             if (lastDocID != -1) {
               assertEquals(1 + lastDocID, docID);
             } else {
@@ -707,7 +707,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
           for (String subID : subDocs.subIDs) {
             hits = s.search(new TermQuery(new Term("docid", subID)), 1);
             assertEquals(1, hits.totalHits.value());
-            final int docID = hits.scoreDocs[0].doc;
+            final int docID = Math.toIntExact(hits.scoreDocs[0].doc);
             if (lastDocID != -1) {
               assertEquals(1 + lastDocID, docID);
             }
