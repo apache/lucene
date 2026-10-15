@@ -353,7 +353,7 @@ public class TestShardSearching extends ShardSearchingTestBase {
     assertEquals(numNodes, subs.size());
 
     for (int nodeID = 0; nodeID < numNodes; nodeID++) {
-      base[nodeID] = subs.get(nodeID).docBaseInParent;
+      base[nodeID] = Math.toIntExact(subs.get(nodeID).docBaseInParent);
     }
 
     if (VERBOSE) {

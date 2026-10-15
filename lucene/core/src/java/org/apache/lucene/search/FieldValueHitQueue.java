@@ -33,7 +33,7 @@ public class FieldValueHitQueue<T extends FieldValueHitQueue.Entry> extends Prio
   public static class Entry extends ScoreDoc {
     public int slot;
 
-    public Entry(int slot, int doc) {
+    public Entry(int slot, long doc) {
       super(doc, Float.NaN);
       this.slot = slot;
     }

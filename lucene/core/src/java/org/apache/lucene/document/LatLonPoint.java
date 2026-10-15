@@ -424,7 +424,9 @@ public class LatLonPoint extends Field {
       if (points != null) {
         totalHits += points.getDocCount();
         readers.add(points);
-        docBases.add(leaf.docBase);
+        // NearestNeighbor addresses the composite doc space with int; point-nearest does not
+        // support a reader with more than Integer.MAX_VALUE docs.
+        docBases.add(Math.toIntExact(leaf.docBase));
         liveDocs.add(leaf.reader().getLiveDocs());
       }
     }

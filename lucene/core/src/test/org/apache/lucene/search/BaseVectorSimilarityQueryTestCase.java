@@ -302,7 +302,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
 
       ScoreDoc[] scoreDocs = searcher.search(query, numDocs).scoreDocs;
       for (ScoreDoc scoreDoc : scoreDocs) {
-        int id = getId(searcher, scoreDoc.doc);
+        int id = getId(searcher, Math.toIntExact(scoreDoc.doc));
 
         // Check that returned document is in selected range
         assertTrue(id >= startIndex && id <= endIndex);
@@ -423,7 +423,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
 
         ScoreDoc[] scoreDocs = searcher.search(query, numDocs).scoreDocs;
         for (ScoreDoc scoreDoc : scoreDocs) {
-          int id = getId(searcher, scoreDoc.doc);
+          int id = getId(searcher, Math.toIntExact(scoreDoc.doc));
 
           // Check that returned document is not deleted
           assertThat(id, either(lessThan(startIndex)).or(greaterThan(endIndex)));
@@ -523,7 +523,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
 
       ScoreDoc[] scoreDocs = searcher.search(query, numDocs).scoreDocs;
       for (ScoreDoc scoreDoc : scoreDocs) {
-        int id = getId(searcher, scoreDoc.doc);
+        int id = getId(searcher, Math.toIntExact(scoreDoc.doc));
 
         // Check that the collected result is above accepted similarity
         assertTrue(scores.containsKey(id));

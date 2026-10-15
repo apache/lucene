@@ -585,7 +585,7 @@ public class IndexSearcher {
    *     clauses.
    */
   public TopDocs searchAfter(ScoreDoc after, Query query, int numHits) throws IOException {
-    final int limit = Math.max(1, reader.maxDoc());
+    final long limit = Math.max(1L, reader.totalMaxDoc());
     if (after != null && after.doc >= limit) {
       throw new IllegalArgumentException(
           "after.doc exceeds the number of documents in the reader: after.doc="
@@ -594,7 +594,7 @@ public class IndexSearcher {
               + limit);
     }
 
-    final int cappedNumHits = Math.min(numHits, limit);
+    final int cappedNumHits = (int) Math.min(numHits, limit);
     CollectorManager<TopScoreDocCollector, TopDocs> manager =
         new TopScoreDocCollectorManager(cappedNumHits, after, TOTAL_HITS_THRESHOLD);
 
@@ -718,7 +718,7 @@ public class IndexSearcher {
 
   private TopFieldDocs searchAfter(
       FieldDoc after, Query query, int numHits, Sort sort, boolean doDocScores) throws IOException {
-    final int limit = Math.max(1, reader.maxDoc());
+    final long limit = Math.max(1L, reader.totalMaxDoc());
     if (after != null && after.doc >= limit) {
       throw new IllegalArgumentException(
           "after.doc exceeds the number of documents in the reader: after.doc="
@@ -726,7 +726,7 @@ public class IndexSearcher {
               + " limit="
               + limit);
     }
-    final int cappedNumHits = Math.min(numHits, limit);
+    final int cappedNumHits = (int) Math.min(numHits, limit);
     final Sort rewrittenSort = sort.rewrite(this);
 
     final CollectorManager<TopFieldCollector, TopFieldDocs> manager =
@@ -938,7 +938,7 @@ public class IndexSearcher {
    * performance, should not be displayed with every hit. Computing an explanation is as expensive
    * as executing the query over the entire index.
    */
-  public Explanation explain(Query query, int doc) throws IOException {
+  public Explanation explain(Query query, long doc) throws IOException {
     query = rewrite(query);
     return explain(createWeight(query, ScoreMode.COMPLETE, 1), doc);
   }
@@ -951,15 +951,17 @@ public class IndexSearcher {
    * performance, should not be displayed with every hit. Computing an explanation is as expensive
    * as executing the query over the entire index.
    *
-   * <p>Applications should call {@link IndexSearcher#explain(Query, int)}.
+   * <p>Applications should call {@link IndexSearcher#explain(Query, long)}.
    *
    * @throws TooManyClauses If a query would exceed {@link IndexSearcher#getMaxClauseCount()}
    *     clauses.
    */
-  protected Explanation explain(Weight weight, int doc) throws IOException {
+  protected Explanation explain(Weight weight, long doc) throws IOException {
     int n = ReaderUtil.subIndex(doc, leafContexts);
     final LeafReaderContext ctx = leafContexts.get(n);
-    int deBasedDoc = doc - ctx.docBase;
+    // Not toLeafDocId(): explain accepts any doc id, including one past this leaf's end (handled
+    // below as a non-match), so the leaf-membership assertion would not hold here.
+    int deBasedDoc = (int) (doc - ctx.docBase);
     final Bits liveDocs = ctx.reader().getLiveDocs();
     if (liveDocs != null && liveDocs.get(deBasedDoc) == false) {
       return Explanation.noMatch("Document " + doc + " is deleted");
@@ -1002,7 +1004,7 @@ public class IndexSearcher {
   public static class LeafSlice {
 
     private static final Comparator<LeafReaderContextPartition> COMPARATOR =
-        Comparator.<LeafReaderContextPartition>comparingInt(l -> l.ctx.docBase)
+        Comparator.<LeafReaderContextPartition>comparingLong(l -> l.ctx.docBase)
             .thenComparingInt(l -> l.minDocId);
 
     /**
@@ -1155,7 +1157,7 @@ public class IndexSearcher {
     if (docCount == 0) {
       return null;
     }
-    return new FieldStats(field, reader.maxDoc(), docCount, sumTotalTermFreq, sumDocFreq);
+    return new FieldStats(field, reader.totalMaxDoc(), docCount, sumTotalTermFreq, sumDocFreq);
   }
 
   /**

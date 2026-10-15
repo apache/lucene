@@ -109,7 +109,7 @@ public class TestSimilarity extends LuceneTestCase {
 
               @Override
               protected void doSetNextReader(LeafReaderContext context) {
-                base = context.docBase;
+                base = Math.toIntExact(context.docBase);
               }
             };
           }
@@ -190,7 +190,7 @@ public class TestSimilarity extends LuceneTestCase {
 
               @Override
               protected void doSetNextReader(LeafReaderContext context) {
-                base = context.docBase;
+                base = Math.toIntExact(context.docBase);
               }
             };
           }
@@ -285,7 +285,7 @@ public class TestSimilarity extends LuceneTestCase {
 
               @Override
               protected void doSetNextReader(LeafReaderContext context) {
-                base = context.docBase;
+                base = Math.toIntExact(context.docBase);
               }
             };
           }

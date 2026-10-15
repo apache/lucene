@@ -259,7 +259,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
       // reset the minimum competitive score
       minCompetitiveScore = 0f;
       docBase = context.docBase;
-      final int afterDoc = after.doc - docBase;
+      final long afterDoc = after.doc - docBase;
 
       LeafCollector collector =
           new TopFieldLeafCollector(queue, sort, context) {
@@ -316,7 +316,8 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
   final int numComparators;
   FieldValueHitQueue.Entry bottom = null;
   boolean queueFull;
-  int docBase;
+  // The leaf's global doc base (docBase + leaf-local doc is a global doc id, possibly > 2^31).
+  long docBase;
   final boolean needsScores;
   final ScoreMode scoreMode;
 
@@ -366,10 +367,9 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
       // we can start checking the global maximum score even if the local queue is not full or if
       // the threshold is not reached on the local competitor: the fact that there is a shared min
       // competitive score implies that one of the collectors hit its totalHitsThreshold already
-      long maxMinScore = minScoreAcc.getRaw();
+      MaxScoreAccumulator.DocAndScore maxMinScore = minScoreAcc.get();
       float score;
-      if (maxMinScore != Long.MIN_VALUE
-          && (score = DocScoreEncoder.toScore(maxMinScore)) > minCompetitiveScore) {
+      if (maxMinScore != null && (score = maxMinScore.score()) > minCompetitiveScore) {
         scorer.setMinCompetitiveScore(score);
         minCompetitiveScore = score;
         totalHitsRelation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
@@ -386,7 +386,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
         minCompetitiveScore = minScore;
         totalHitsRelation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
         if (minScoreAcc != null) {
-          minScoreAcc.accumulate(DocScoreEncoder.encode(docBase, minScore));
+          minScoreAcc.accumulate(docBase, minScore);
         }
       }
     }
@@ -406,7 +406,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
       throws IOException {
     // Get the score docs sorted in doc id order
     topDocs = topDocs.clone();
-    Arrays.sort(topDocs, Comparator.comparingInt(scoreDoc -> scoreDoc.doc));
+    Arrays.sort(topDocs, Comparator.comparingLong(scoreDoc -> scoreDoc.doc));
 
     final Weight weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE, 1);
     List<LeafReaderContext> contexts = searcher.getIndexReader().leaves();
@@ -415,7 +415,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
     for (ScoreDoc scoreDoc : topDocs) {
       if (currentContext == null
           || scoreDoc.doc >= currentContext.docBase + currentContext.reader().maxDoc()) {
-        Objects.checkIndex(scoreDoc.doc, searcher.getIndexReader().maxDoc());
+        Objects.checkIndex(scoreDoc.doc, searcher.getIndexReader().totalMaxDoc());
         int newContextIndex = ReaderUtil.subIndex(scoreDoc.doc, contexts);
         currentContext = contexts.get(newContextIndex);
         final ScorerSupplier scorerSupplier = weight.scorerSupplier(currentContext);
@@ -424,7 +424,8 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
         }
         currentScorer = scorerSupplier.get(1); // random-access
       }
-      final int leafDoc = scoreDoc.doc - currentContext.docBase;
+      // The difference is leaf-local and fits an int.
+      final int leafDoc = currentContext.toLeafDocId(scoreDoc.doc);
       assert leafDoc >= 0;
       final int advanced = currentScorer.iterator().advance(leafDoc);
       if (leafDoc != advanced) {
