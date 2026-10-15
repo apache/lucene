@@ -716,4 +716,22 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     r1.close();
     src.close();
   }
+
+  public void testGetBulkOrdinalsAllCached() throws Exception {
+    Directory dir = newDirectory();
+    DirectoryTaxonomyWriter taxoWriter = new DirectoryTaxonomyWriter(dir);
+    FacetLabel a = new FacetLabel("a");
+    FacetLabel b = new FacetLabel("b");
+    int[] ords = {taxoWriter.addCategory(a), taxoWriter.addCategory(b)};
+    taxoWriter.close();
+
+    DirectoryTaxonomyReader taxoReader = new DirectoryTaxonomyReader(dir);
+    taxoReader.getBulkOrdinals(a, b); // fills the ordinal cache
+    // all ordinals are cached now, so the lookup must not touch the index reader at all
+    taxoReader.getInternalIndexReader().close();
+    assertArrayEquals(ords, taxoReader.getBulkOrdinals(a, b));
+
+    taxoReader.close();
+    dir.close();
+  }
 }

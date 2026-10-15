@@ -33,27 +33,202 @@ import org.apache.lucene.util.VectorUtil;
  *
  * @lucene.experimental
  */
-public class FloatVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
+public abstract sealed class FloatVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
   private final float[] target;
 
+  /** A {@link FloatVectorSimilarityQuery} with an adaptive threshold for graph traversal. */
+  public static non-sealed class Adaptive extends FloatVectorSimilarityQuery {
+    /**
+     * Search for all (approximate) float vectors above a similarity threshold using {@link
+     * VectorSimilarityCollector}, with a caller-supplied {@link KnnSearchStrategy}. If a filter is
+     * applied, it traverses as many nodes as the cost of the filter, and then falls back to exact
+     * search if results are incomplete.
+     *
+     * @param field a field that has been indexed as a {@link KnnFloatVectorField}.
+     * @param target the target of the search.
+     * @param resultSimilarity similarity score for result collection.
+     * @param decay decay factor for graph traversal buffer.
+     * @param filter a filter applied before the vector search.
+     * @param searchStrategy the {@link KnnSearchStrategy} to use during graph search. If {@code
+     *     null}, this query's own default is used: an {@link Hnsw} with {@code
+     *     filteredSearchThreshold == 0}, which preserves this query's filter handling. Note this
+     *     differs from {@link Hnsw#DEFAULT}, which uses a threshold of 60. The underlying format
+     *     may not support all strategies and is free to ignore the requested strategy.
+     */
+    public Adaptive(
+        String field,
+        float[] target,
+        float resultSimilarity,
+        float decay,
+        Query filter,
+        KnnSearchStrategy searchStrategy) {
+      super(field, target, resultSimilarity, decay, filter, searchStrategy);
+    }
+
+    /**
+     * Search for all (approximate) float vectors above a similarity threshold using {@link
+     * VectorSimilarityCollector}, with the default {@link KnnSearchStrategy}. If a filter is
+     * applied, it traverses as many nodes as the cost of the filter, and then falls back to exact
+     * search if results are incomplete.
+     *
+     * @param field a field that has been indexed as a {@link KnnFloatVectorField}.
+     * @param target the target of the search.
+     * @param resultSimilarity similarity score for result collection.
+     * @param decay decay factor for graph traversal buffer.
+     * @param filter a filter applied before the vector search.
+     */
+    public Adaptive(
+        String field, float[] target, float resultSimilarity, float decay, Query filter) {
+      this(field, target, resultSimilarity, decay, filter, DEFAULT_STRATEGY);
+    }
+
+    /**
+     * Search for all (approximate) float vectors above a similarity threshold using {@link
+     * VectorSimilarityCollector}. If a filter is applied, it traverses as many nodes as the cost of
+     * the filter, and then falls back to exact search if results are incomplete.
+     *
+     * @param field a field that has been indexed as a {@link KnnFloatVectorField}.
+     * @param target the target of the search.
+     * @param resultSimilarity similarity score for result collection.
+     * @param filter a filter applied before the vector search.
+     */
+    public Adaptive(String field, float[] target, float resultSimilarity, Query filter) {
+      this(field, target, resultSimilarity, DEFAULT_DECAY, filter);
+    }
+
+    /**
+     * Search for all (approximate) float vectors above a similarity threshold using {@link
+     * VectorSimilarityCollector}.
+     *
+     * @param field a field that has been indexed as a {@link KnnFloatVectorField}.
+     * @param target the target of the search.
+     * @param resultSimilarity similarity score for result collection.
+     */
+    public Adaptive(String field, float[] target, float resultSimilarity) {
+      this(field, target, resultSimilarity, null);
+    }
+
+    @Override
+    public String toString(String field) {
+      return String.format(
+          Locale.ROOT,
+          "FloatVectorSimilarityQuery.Adaptive[field=%s target=[%f...] resultSimilarity=%f decay=%f filter=%s]",
+          field,
+          super.target[0],
+          resultSimilarity,
+          decay,
+          filter);
+    }
+  }
+
   /**
-   * Search for all (approximate) float vectors above a similarity threshold using {@link
-   * VectorSimilarityCollector}, with a caller-supplied {@link KnnSearchStrategy}. If a filter is
-   * applied, it traverses as many nodes as the cost of the filter, and then falls back to exact
-   * search if results are incomplete.
+   * A {@link FloatVectorSimilarityQuery} with an explicit threshold for graph traversal.
    *
-   * @param field a field that has been indexed as a {@link KnnFloatVectorField}.
-   * @param target the target of the search.
-   * @param resultSimilarity similarity score for result collection.
-   * @param decay decay factor for graph traversal buffer.
-   * @param filter a filter applied before the vector search.
-   * @param searchStrategy the {@link KnnSearchStrategy} to use during graph search. If {@code
-   *     null}, this query's own default is used: an {@link Hnsw} with {@code
-   *     filteredSearchThreshold == 0}, which preserves this query's filter handling. Note this
-   *     differs from {@link Hnsw#DEFAULT}, which uses a threshold of 60. The underlying format may
-   *     not support all strategies and is free to ignore the requested strategy.
+   * @deprecated Equivalent to the {@link FloatVectorSimilarityQuery} constructors in Lucene 10.4
+   *     and earlier, use {@link Adaptive} for a more performant version.
    */
-  public FloatVectorSimilarityQuery(
+  @Deprecated
+  public static non-sealed class Explicit extends FloatVectorSimilarityQuery {
+    private final float traversalSimilarity;
+
+    /**
+     * Search for all (approximate) float vectors above a similarity threshold using {@link
+     * ExplicitVectorSimilarityCollector}. If a filter is applied, it traverses as many nodes as the
+     * cost of the filter, and then falls back to exact search if results are incomplete.
+     *
+     * @param field a field that has been indexed as a {@link KnnFloatVectorField}.
+     * @param target the target of the search.
+     * @param traversalSimilarity (lower) similarity score for graph traversal.
+     * @param resultSimilarity (higher) similarity score for result collection.
+     * @param filter a filter applied before the vector search.
+     */
+    public Explicit(
+        String field,
+        float[] target,
+        float traversalSimilarity,
+        float resultSimilarity,
+        Query filter) {
+      super(field, target, resultSimilarity, 0f, filter, DEFAULT_STRATEGY);
+      if (traversalSimilarity > resultSimilarity) {
+        throw new IllegalArgumentException("traversalSimilarity should be <= resultSimilarity");
+      }
+      this.traversalSimilarity = traversalSimilarity;
+    }
+
+    /**
+     * Search for all (approximate) float vectors above a similarity threshold using {@link
+     * ExplicitVectorSimilarityCollector}.
+     *
+     * @param field a field that has been indexed as a {@link KnnFloatVectorField}.
+     * @param target the target of the search.
+     * @param traversalSimilarity (lower) similarity score for graph traversal.
+     * @param resultSimilarity (higher) similarity score for result collection.
+     */
+    public Explicit(
+        String field, float[] target, float traversalSimilarity, float resultSimilarity) {
+      this(field, target, traversalSimilarity, resultSimilarity, null);
+    }
+
+    /**
+     * Search for all (approximate) float vectors above a similarity threshold using {@link
+     * ExplicitVectorSimilarityCollector}. If a filter is applied, it traverses as many nodes as the
+     * cost of the filter, and then falls back to exact search if results are incomplete.
+     *
+     * @param field a field that has been indexed as a {@link KnnFloatVectorField}.
+     * @param target the target of the search.
+     * @param resultSimilarity similarity score for result collection.
+     * @param filter a filter applied before the vector search.
+     */
+    public Explicit(String field, float[] target, float resultSimilarity, Query filter) {
+      this(field, target, resultSimilarity, resultSimilarity, filter);
+    }
+
+    /**
+     * Search for all (approximate) float vectors above a similarity threshold using {@link
+     * ExplicitVectorSimilarityCollector}.
+     *
+     * @param field a field that has been indexed as a {@link KnnFloatVectorField}.
+     * @param target the target of the search.
+     * @param resultSimilarity similarity score for result collection.
+     */
+    public Explicit(String field, float[] target, float resultSimilarity) {
+      this(field, target, resultSimilarity, resultSimilarity, null);
+    }
+
+    @Override
+    protected KnnCollectorManager getKnnCollectorManager() {
+      return (visitedLimit, _, _) ->
+          new ExplicitVectorSimilarityCollector(
+              traversalSimilarity, resultSimilarity, visitedLimit);
+    }
+
+    @Override
+    public String toString(String field) {
+      return String.format(
+          Locale.ROOT,
+          "FloatVectorSimilarityQuery.Explicit[field=%s target=[%f...] traversalSimilarity=%f resultSimilarity=%f filter=%s]",
+          field,
+          super.target[0],
+          traversalSimilarity,
+          resultSimilarity,
+          filter);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      return super.equals(o)
+          && Float.compare(traversalSimilarity, ((Explicit) o).traversalSimilarity) == 0;
+    }
+
+    @Override
+    public int hashCode() {
+      int result = super.hashCode();
+      result = 31 * result + Float.hashCode(traversalSimilarity);
+      return result;
+    }
+  }
+
+  private FloatVectorSimilarityQuery(
       String field,
       float[] target,
       float resultSimilarity,
@@ -62,50 +237,6 @@ public class FloatVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
       KnnSearchStrategy searchStrategy) {
     super(field, resultSimilarity, decay, filter, searchStrategy);
     this.target = VectorUtil.checkFinite(Objects.requireNonNull(target, "target"));
-  }
-
-  /**
-   * Search for all (approximate) float vectors above a similarity threshold using {@link
-   * VectorSimilarityCollector}, with the default {@link KnnSearchStrategy}. If a filter is applied,
-   * it traverses as many nodes as the cost of the filter, and then falls back to exact search if
-   * results are incomplete.
-   *
-   * @param field a field that has been indexed as a {@link KnnFloatVectorField}.
-   * @param target the target of the search.
-   * @param resultSimilarity similarity score for result collection.
-   * @param decay decay factor for graph traversal buffer.
-   * @param filter a filter applied before the vector search.
-   */
-  public FloatVectorSimilarityQuery(
-      String field, float[] target, float resultSimilarity, float decay, Query filter) {
-    this(field, target, resultSimilarity, decay, filter, DEFAULT_STRATEGY);
-  }
-
-  /**
-   * Search for all (approximate) float vectors above a similarity threshold using {@link
-   * VectorSimilarityCollector}. If a filter is applied, it traverses as many nodes as the cost of
-   * the filter, and then falls back to exact search if results are incomplete.
-   *
-   * @param field a field that has been indexed as a {@link KnnFloatVectorField}.
-   * @param target the target of the search.
-   * @param resultSimilarity similarity score for result collection.
-   * @param filter a filter applied before the vector search.
-   */
-  public FloatVectorSimilarityQuery(
-      String field, float[] target, float resultSimilarity, Query filter) {
-    this(field, target, resultSimilarity, DEFAULT_DECAY, filter);
-  }
-
-  /**
-   * Search for all (approximate) float vectors above a similarity threshold using {@link
-   * VectorSimilarityCollector}.
-   *
-   * @param field a field that has been indexed as a {@link KnnFloatVectorField}.
-   * @param target the target of the search.
-   * @param resultSimilarity similarity score for result collection.
-   */
-  public FloatVectorSimilarityQuery(String field, float[] target, float resultSimilarity) {
-    this(field, target, resultSimilarity, null);
   }
 
   @Override
@@ -129,19 +260,6 @@ public class FloatVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
     KnnCollector collector = knnCollectorManager.newCollector(visitLimit, null, context);
     context.reader().searchNearestVectors(field, target, collector, acceptDocs);
     return collector.topDocs();
-  }
-
-  @Override
-  public String toString(String field) {
-    return String.format(
-        Locale.ROOT,
-        "%s[field=%s target=[%f...] resultSimilarity=%f decay=%f filter=%s]",
-        getClass().getSimpleName(),
-        field,
-        target[0],
-        resultSimilarity,
-        decay,
-        filter);
   }
 
   @Override

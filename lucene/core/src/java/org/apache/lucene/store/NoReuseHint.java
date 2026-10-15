@@ -14,43 +14,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.util.fst;
+package org.apache.lucene.store;
 
-// TODO: can we use just ByteArrayDataInput...?  need to
-// add a .skipBytes to DataInput.. hmm and .setPosition
-
-/** Reads from a single byte[]. */
-final class ForwardBytesReader extends FST.BytesReader {
-  private final byte[] bytes;
-  private int pos;
-
-  public ForwardBytesReader(byte[] bytes) {
-    this.bytes = bytes;
-  }
-
-  @Override
-  public byte readByte() {
-    return bytes[pos++];
-  }
-
-  @Override
-  public void readBytes(byte[] b, int offset, int len) {
-    System.arraycopy(bytes, pos, b, offset, len);
-    pos += len;
-  }
-
-  @Override
-  public void skipBytes(long count) {
-    pos += count;
-  }
-
-  @Override
-  public long getPosition() {
-    return pos;
-  }
-
-  @Override
-  public void setPosition(long pos) {
-    this.pos = (int) pos;
-  }
+/**
+ * A hint that a file is not worth keeping in memory. It may be read often; what it lacks is reuse
+ * worth caching for, because its reads repeat in no pattern a cache can exploit, or because it is
+ * large enough next to the rest of the index that holding it would push out data that does benefit.
+ *
+ * <p>Close to {@link ReadOnceHint}, and weaker: it does not claim the file is read once, or in
+ * order, or even that a read never revisits bytes another read has touched.
+ */
+public enum NoReuseHint implements IOContext.FileOpenHint {
+  INSTANCE
 }

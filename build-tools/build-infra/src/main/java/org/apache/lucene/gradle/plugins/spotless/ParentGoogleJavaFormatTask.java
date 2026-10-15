@@ -37,6 +37,8 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import javax.inject.Inject;
 import org.gradle.api.DefaultTask;
+import org.gradle.api.GradleException;
+import org.gradle.api.JavaVersion;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.FileType;
 import org.gradle.api.file.ProjectLayout;
@@ -66,6 +68,13 @@ abstract class ParentGoogleJavaFormatTask extends DefaultTask {
   @InputFiles
   @PathSensitive(PathSensitivity.RELATIVE)
   public abstract ConfigurableFileCollection getSourceFiles();
+
+  /**
+   * The formatter's coordinates (module and version). Any change invalidates all cached file states
+   * so that every source file is processed again with the new formatter.
+   */
+  @Input
+  public abstract Property<String> getFormatterVersion();
 
   @OutputFile
   public abstract RegularFileProperty getOutputChangeListFile();
@@ -129,11 +138,29 @@ abstract class ParentGoogleJavaFormatTask extends DefaultTask {
       input = input + "\n";
     }
 
-    input = ImportOrderer.reorderImports(input, JavaFormatterOptions.Style.GOOGLE);
-    input = RemoveUnusedImports.removeUnusedImports(input);
-    input = formatter.formatSource(input);
+    try {
+      input = ImportOrderer.reorderImports(input, JavaFormatterOptions.Style.GOOGLE);
+      input = RemoveUnusedImports.removeUnusedImports(input);
+      input = formatter.formatSource(input);
+      // intentionally left out.
+      // input = StringWrapper.wrap(input, formatter);
+    } catch (FormatterException e) {
+      String details;
+      if (e.getMessage().contains("com.sun")) {
+        details =
+            "It is likely that this version does not support Java "
+                + JavaVersion.current().getMajorVersion()
+                + ". ";
+      } else {
+        details = "";
+      }
 
-    // input = StringWrapper.wrap(input, formatter);
+      throw new GradleException(
+          "google-java-formatter threw an exception. "
+              + details
+              + "Rerun with gradle's --stacktrace option and report the problem.",
+          e);
+    }
 
     return input;
   }
@@ -143,7 +170,9 @@ abstract class ParentGoogleJavaFormatTask extends DefaultTask {
     if (pathProvider.isPresent()) {
       Files.writeString(
           pathProvider.get().getAsFile().toPath(),
-          JsonOutput.prettyPrint(JsonOutput.toJson(fileStates)));
+          JsonOutput.prettyPrint(
+              JsonOutput.toJson(
+                  Map.of("formatter", getFormatterVersion().get(), "files", fileStates))));
     }
   }
 
@@ -154,7 +183,13 @@ abstract class ParentGoogleJavaFormatTask extends DefaultTask {
       if (Files.exists(path)) {
         try {
           @SuppressWarnings("unchecked")
-          var saved = (Map<String, Map<String, Object>>) new JsonSlurper().parse(path);
+          var root = (Map<String, Object>) new JsonSlurper().parse(path);
+          if (!getFormatterVersion().get().equals(root.get("formatter"))) {
+            // The formatter changed, ignore all stored file states.
+            return checksums;
+          }
+          @SuppressWarnings("unchecked")
+          var saved = (Map<String, Map<String, Object>>) root.get("files");
           var restored =
               saved.entrySet().stream()
                   .collect(
