@@ -929,7 +929,15 @@ public class TestAddIndexes extends LuceneTestCase {
   public void testAddIndexesHittingMaxDocsLimit() throws Exception {
     final int writerMaxDocs = 15;
     IndexWriter.setMaxDocs(writerMaxDocs);
+    try {
+      doTestAddIndexesHittingMaxDocsLimit(writerMaxDocs);
+    } finally {
+      // restore the whole-index cap so we don't leak a lowered limit into other tests in this JVM
+      IndexWriter.setMaxDocs(IndexWriter.MAX_TOTAL_DOCS);
+    }
+  }
 
+  private void doTestAddIndexesHittingMaxDocsLimit(int writerMaxDocs) throws Exception {
     // create destination writer
     Directory destDir = newDirectory();
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
