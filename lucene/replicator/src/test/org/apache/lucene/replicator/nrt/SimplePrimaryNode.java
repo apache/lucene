@@ -34,6 +34,10 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.document.Document;
@@ -66,6 +70,7 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.ThreadInterruptedException;
 
@@ -167,10 +172,42 @@ class SimplePrimaryNode extends PrimaryNode {
       lmp.setMergeFactor(3);
     }
 
+    // Randomly warm newly merged segments asynchronously on a bounded executor, to exercise the
+    // async merged-segment warming path (back-pressure falls back to synchronous warming):
+    if (random.nextBoolean()) {
+      iwc.setMergedSegmentWarmerExecutor(
+          new ThreadPoolExecutor(
+              1,
+              TestUtil.nextInt(random, 1, 4),
+              1,
+              TimeUnit.SECONDS,
+              new ArrayBlockingQueue<>(4),
+              new NamedThreadFactory("SimplePrimaryNode"),
+              new ThreadPoolExecutor.AbortPolicy()));
+    }
+
     IndexWriter writer = new IndexWriter(dir, iwc);
 
     TestUtil.reduceOpenFiles(writer);
     return writer;
+  }
+
+  @Override
+  public void close() throws IOException {
+    // Grab the (possibly null) warming executor before rollback so we can shut it down afterwards:
+    Executor warmerExecutor = writer.getConfig().getMergedSegmentWarmerExecutor();
+    try {
+      super.close();
+    } finally {
+      if (warmerExecutor instanceof ExecutorService executorService) {
+        executorService.shutdown();
+        try {
+          executorService.awaitTermination(30, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+          throw new ThreadInterruptedException(e);
+        }
+      }
+    }
   }
 
   @SuppressForbidden(reason = "Thread sleep")

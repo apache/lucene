@@ -37,8 +37,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -90,6 +94,7 @@ import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.IOConsumer;
 import org.apache.lucene.util.IOFunction;
+import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.StringHelper;
@@ -5063,22 +5068,80 @@ public class IndexWriter
    * @lucene.experimental
    */
   protected void merge(MergePolicy.OneMerge merge) throws IOException {
-
-    boolean success = false;
-
     final long t0 = System.currentTimeMillis();
-
     final MergePolicy mergePolicy = config.getMergePolicy();
+
+    CompletableFuture<Void> published;
+    try {
+      mergeInit(merge);
+      if (infoStream.isEnabled("IW")) {
+        infoStream.message(
+            "IW", "now merge\n  merge=" + segString(merge.segments) + "\n  index=" + segString());
+      }
+      published = mergeMiddle(merge, mergePolicy);
+    } catch (Throwable t) {
+      published = CompletableFuture.failedFuture(t);
+    }
+
+    if (published.isDone() == false && merge.isExternal) {
+      // callers of external merges expect the merge to be done when we return
+      failureOf(published);
+    }
+
+    if (published.isDone()) {
+      // Completed synchronously: failures are thrown to the caller, like the merge scheduler
+      // expects
+      finishMerge(merge, mergePolicy, t0, failureOf(published), false);
+    } else {
+      // The merge stays in runningMerges until its warming and publication are done. There is no
+      // caller to rethrow to: finishMerge handles failures as tragic events.
+      published.whenComplete(
+          (_, failure) -> {
+            try {
+              finishMerge(merge, mergePolicy, t0, failure, true);
+            } catch (Throwable t) {
+              if (infoStream.isEnabled("IW")) {
+                infoStream.message("IW", "hit exception finishing asynchronous merge: " + t);
+              }
+            }
+          });
+    }
+  }
+
+  /** Waits for the future, and returns the cause of its failure, or null if it succeeded. */
+  private static Throwable failureOf(CompletableFuture<Void> future) {
+    try {
+      future.join();
+      return null;
+    } catch (CompletionException | CancellationException e) {
+      return e;
+    }
+  }
+
+  /**
+   * Called once the merge is done, successfully ({@code failure == null}) or not. Releases the
+   * merge's resources and triggers follow-up merges. {@code async} is true if this does not run in
+   * the thread of {@link #merge}: the merge scheduler looks for follow-up merges when {@link
+   * #merge} returns, which happened before this merge was published.
+   */
+  private void finishMerge(
+      MergePolicy.OneMerge merge,
+      MergePolicy mergePolicy,
+      long t0,
+      Throwable failure,
+      boolean async)
+      throws IOException {
+    boolean success = false;
+    boolean mayHaveNewMerges = false;
     try {
       try {
         try {
-          mergeInit(merge);
-          if (infoStream.isEnabled("IW")) {
-            infoStream.message(
-                "IW",
-                "now merge\n  merge=" + segString(merge.segments) + "\n  index=" + segString());
+          if (failure != null) {
+            while (failure instanceof CompletionException && failure.getCause() != null) {
+              failure = failure.getCause();
+            }
+            throw failure;
           }
-          mergeMiddle(merge, mergePolicy);
           mergeSuccess(merge);
           success = true;
         } catch (Throwable t) {
@@ -5103,6 +5166,7 @@ public class IndexWriter
             // segments) may now enable new merges, so we call
             // merge policy & update pending merges.
             updatePendingMerges(mergePolicy, MergeTrigger.MERGE_FINISHED, merge.maxNumSegments);
+            mayHaveNewMerges = true;
           }
         }
       }
@@ -5123,6 +5187,15 @@ public class IndexWriter
                 + " ms for "
                 + merge.info.info.maxDoc()
                 + " docs");
+      }
+    }
+
+    if (async && mayHaveNewMerges) {
+      // Without holding our lock
+      try {
+        mergeScheduler.merge(mergeSource, MergeTrigger.MERGE_FINISHED);
+      } catch (AlreadyClosedException _) {
+        // OK
       }
     }
   }
@@ -5464,7 +5537,8 @@ public class IndexWriter
    * Does the actual (time-consuming) work of the merge, but without holding synchronized lock on
    * IndexWriter instance
    */
-  private int mergeMiddle(MergePolicy.OneMerge merge, MergePolicy mergePolicy) throws IOException {
+  private CompletableFuture<Void> mergeMiddle(MergePolicy.OneMerge merge, MergePolicy mergePolicy)
+      throws IOException {
     testPoint("mergeMiddleStart");
     merge.checkAborted();
 
@@ -5672,7 +5746,7 @@ public class IndexWriter
         // all the 0-doc segments that we "merged":
         assert merge.info.info.maxDoc() == 0;
         success = commitMerge(merge, docMaps);
-        return 0;
+        return CompletableFuture.completedFuture(null);
       }
 
       assert merge.info.info.maxDoc() > 0;
@@ -5711,7 +5785,7 @@ public class IndexWriter
                   infoStream.message(
                       "IW", "hit merge abort exception creating compound file during merge: " + t);
                 }
-                return 0;
+                return CompletableFuture.completedFuture(null);
               } else {
                 handleMergeException(t, merge);
               }
@@ -5742,7 +5816,7 @@ public class IndexWriter
             }
             // Safe: these files must exist
             deleteNewFiles(merge.info.files());
-            return 0;
+            return CompletableFuture.completedFuture(null);
           }
         }
 
@@ -5782,27 +5856,26 @@ public class IndexWriter
                 merge.estimatedMergeBytes / 1024. / 1024.));
       }
 
-      final IndexReaderWarmer mergedSegmentWarmer = config.getMergedSegmentWarmer();
-      if (readerPool.isReaderPoolingEnabled() && mergedSegmentWarmer != null) {
-        final ReadersAndUpdates rld = getPooledInstance(merge.info, true);
-        final SegmentReader sr = rld.getReader(IOContext.DEFAULT);
-        try {
-          mergedSegmentWarmer.warm(sr);
-        } finally {
-          synchronized (this) {
-            rld.release(sr);
-            release(rld);
-          }
-        }
-      }
+      final CompletableFuture<Void> warmed = warmingFuture(merge);
 
-      if (!commitMerge(merge, docMaps)) {
-        // commitMerge will return false if this merge was
-        // aborted
-        return 0;
-      }
-
+      final MergeState.DocMap[] finalDocMaps = docMaps;
+      // Runs on the thread that completed the warming, which is the current one unless a warmer
+      // executor is configured
+      final CompletableFuture<Void> published =
+          warmed.thenAccept(
+              _ -> {
+                try {
+                  // commitMerge will return false if this merge was aborted
+                  if (!commitMerge(merge, finalDocMaps)) {
+                    closeMergeReaders(merge, true, false);
+                  }
+                } catch (Throwable t) {
+                  throw new CompletionException(t);
+                }
+              });
+      // From now on, the readers are closed by commitMerge, or by finishMerge on failure
       success = true;
+      return published;
     } catch (Throwable t) {
       throw t;
     } finally {
@@ -5812,8 +5885,73 @@ public class IndexWriter
         closeMergeReaders(merge, true, false);
       }
     }
+  }
 
-    return merge.info.info.maxDoc();
+  private CompletableFuture<Void> warmingFuture(final MergePolicy.OneMerge merge)
+      throws IOException {
+    final IndexReaderWarmer mergedSegmentWarmer = config.getMergedSegmentWarmer();
+    if (mergedSegmentWarmer == null || readerPool.isReaderPoolingEnabled() == false) {
+      return CompletableFuture.completedFuture(null);
+    }
+
+    final ReadersAndUpdates rld = getPooledInstance(merge.info, true);
+    final SegmentReader sr = rld.getReader(IOContext.DEFAULT);
+    final IORunnable warm =
+        () -> {
+          try {
+            merge.checkAborted();
+            mergedSegmentWarmer.warm(sr, merge::checkAborted);
+          } finally {
+            synchronized (this) {
+              rld.release(sr);
+              release(rld);
+            }
+          }
+        };
+
+    final Executor warmerExecutor = config.getMergedSegmentWarmerExecutor();
+    if (warmerExecutor != null) {
+      try {
+        final Object monitor = this;
+        return CompletableFuture.runAsync(
+            () -> {
+              try {
+                assert Thread.holdsLock(monitor) == false;
+                warm.run();
+              } catch (Throwable t) {
+                throw new CompletionException(t);
+              }
+            },
+            warmerExecutor);
+      } catch (RejectedExecutionException e) {
+        // The executor rejected the task: catch the exception and let it warm synchronously,
+        // which slows this merge thread down
+        if (infoStream.isEnabled("IW")) {
+          infoStream.message(
+              "IW",
+              "warmer executor rejected task ["
+                  + e
+                  + "], warming "
+                  + merge.info
+                  + " synchronously");
+        }
+
+      } catch (Throwable t) {
+        // The task may never run: don't leak the reader
+        try {
+          synchronized (this) {
+            rld.release(sr);
+            release(rld);
+          }
+        } catch (Throwable suppressed) {
+          t.addSuppressed(suppressed);
+        }
+        throw t;
+      }
+    }
+
+    warm.run();
+    return CompletableFuture.completedFuture(null);
   }
 
   private synchronized void addMergeException(MergePolicy.OneMerge merge) {
@@ -6054,6 +6192,20 @@ public class IndexWriter
      * visible to near-real-time readers.
      */
     void warm(LeafReader reader) throws IOException;
+
+    /**
+     * Variant of {@link #warm(LeafReader)} that is given a way to find out whether the merge was
+     * aborted (for instance by {@link IndexWriter#rollback()}) while warming. {@code abortCheck}
+     * throws {@link MergePolicy.MergeAbortedException} if so; implementations running long warmups
+     * may call it periodically to stop early, and should propagate the exception.
+     *
+     * <p>This is the method called by the {@link IndexWriter}, possibly from the thread of the
+     * {@link LiveIndexWriterConfig#getMergedSegmentWarmerExecutor() warming executor}. The default
+     * implementation ignores {@code abortCheck} and delegates to {@link #warm(LeafReader)}.
+     */
+    default void warm(LeafReader reader, IORunnable abortCheck) throws IOException {
+      warm(reader);
+    }
   }
 
   /**
