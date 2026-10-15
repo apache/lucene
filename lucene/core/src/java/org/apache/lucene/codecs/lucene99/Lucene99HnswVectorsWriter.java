@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
@@ -58,6 +59,7 @@ import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.hnsw.BuildableHnswGraph;
 import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.ConcurrentHnswMerger;
 import org.apache.lucene.util.hnsw.HnswGraph;
@@ -65,7 +67,7 @@ import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.HnswGraphMerger;
 import org.apache.lucene.util.hnsw.IncrementalHnswGraphMerger;
-import org.apache.lucene.util.hnsw.NeighborArray;
+import org.apache.lucene.util.hnsw.OffHeapHnswGraph;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
@@ -92,6 +94,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   private final TaskExecutor mergeExec;
   private final int tinySegmentsThreshold;
   private final int version;
+  private final boolean offHeapGraphBuild;
 
   private final List<FieldWriter<?>> fields = new ArrayList<>();
 
@@ -121,7 +124,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         numMergeWorkers,
         mergeExec,
         HNSW_GRAPH_THRESHOLD,
-        VERSION_CURRENT);
+        VERSION_CURRENT,
+        false);
   }
 
   public Lucene99HnswVectorsWriter(
@@ -143,7 +147,36 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         numMergeWorkers,
         mergeExec,
         tinySegmentsThreshold,
-        VERSION_CURRENT);
+        VERSION_CURRENT,
+        false);
+  }
+
+  /**
+   * @param offHeapGraphBuild whether to build the graphs of merged segments in native memory, see
+   *     {@link org.apache.lucene.util.hnsw.OffHeapHnswGraph}
+   */
+  public Lucene99HnswVectorsWriter(
+      SegmentWriteState state,
+      int M,
+      int beamWidth,
+      FlatVectorsFormat flatVectorsFormat,
+      FlatVectorsWriter flatVectorWriter,
+      int numMergeWorkers,
+      TaskExecutor mergeExec,
+      int tinySegmentsThreshold,
+      boolean offHeapGraphBuild)
+      throws IOException {
+    this(
+        state,
+        M,
+        beamWidth,
+        flatVectorsFormat,
+        flatVectorWriter,
+        numMergeWorkers,
+        mergeExec,
+        tinySegmentsThreshold,
+        VERSION_CURRENT,
+        offHeapGraphBuild);
   }
 
   Lucene99HnswVectorsWriter(
@@ -155,7 +188,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       int numMergeWorkers,
       TaskExecutor mergeExec,
       int tinySegmentsThreshold,
-      int version)
+      int version,
+      boolean offHeapGraphBuild)
       throws IOException {
     this.M = M;
     this.flatVectorWriter = flatVectorWriter;
@@ -165,6 +199,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     this.mergeExec = mergeExec;
     this.tinySegmentsThreshold = tinySegmentsThreshold;
     this.version = version;
+    this.offHeapGraphBuild = offHeapGraphBuild;
     segmentWriteState = state;
     String metaFileName =
         IndexFileNames.segmentFileName(
@@ -260,7 +295,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   private void writeField(FieldWriter<?> fieldData) throws IOException {
     // write graph
     long vectorIndexOffset = vectorIndex.getFilePointer();
-    OnHeapHnswGraph graph = fieldData.getGraph();
+    BuildableHnswGraph graph = fieldData.getGraph();
     int[][] graphLevelNodeOffsets = writeGraph(graph);
     long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
 
@@ -283,7 +318,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     mapOldOrdToNewOrd(fieldData.getDocsWithFieldSet(), sortMap, oldOrdMap, ordMap, null);
     // write graph
     long vectorIndexOffset = vectorIndex.getFilePointer();
-    OnHeapHnswGraph graph = fieldData.getGraph();
+    BuildableHnswGraph graph = fieldData.getGraph();
     int[][] graphLevelNodeOffsets = graph == null ? new int[0][] : new int[graph.numLevels()][];
     HnswGraph mockGraph = reconstructAndWriteGraph(graph, ordMap, oldOrdMap, graphLevelNodeOffsets);
     long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
@@ -310,7 +345,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
    * @throws IOException if writing to vectorIndex fails
    */
   private HnswGraph reconstructAndWriteGraph(
-      OnHeapHnswGraph graph, int[] newToOldMap, int[] oldToNewMap, int[][] levelNodeOffsets)
+      BuildableHnswGraph graph, int[] newToOldMap, int[] oldToNewMap, int[][] levelNodeOffsets)
       throws IOException {
     if (graph == null) return null;
 
@@ -319,13 +354,19 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
 
     int maxOrd = graph.size();
     int[] scratch = new int[graph.maxConn() * 2];
+    int[] neighbors = new int[graph.maxConn() * 2 + 1];
     NodesIterator nodesOnLevel0 = graph.getNodesOnLevel(0);
     levelNodeOffsets[0] = new int[nodesOnLevel0.size()];
     while (nodesOnLevel0.hasNext()) {
       int node = nodesOnLevel0.nextInt();
-      NeighborArray neighbors = graph.getNeighbors(0, newToOldMap[node]);
+      int oldNode = newToOldMap[node];
       long offset = vectorIndex.getFilePointer();
-      reconstructAndWriteNeighbours(neighbors, oldToNewMap, scratch, maxOrd);
+      reconstructAndWriteNeighbours(
+          neighborsToWrite(graph, 0, oldNode, neighbors),
+          graph.numNeighbors(0, oldNode),
+          oldToNewMap,
+          scratch,
+          maxOrd);
       levelNodeOffsets[0][node] = Math.toIntExact(vectorIndex.getFilePointer() - offset);
     }
 
@@ -340,9 +381,14 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       levelNodeOffsets[level] = new int[newNodes.length];
       int nodeOffsetIndex = 0;
       for (int node : newNodes) {
-        NeighborArray neighbors = graph.getNeighbors(level, newToOldMap[node]);
+        int oldNode = newToOldMap[node];
         long offset = vectorIndex.getFilePointer();
-        reconstructAndWriteNeighbours(neighbors, oldToNewMap, scratch, maxOrd);
+        reconstructAndWriteNeighbours(
+            neighborsToWrite(graph, level, oldNode, neighbors),
+            graph.numNeighbors(level, oldNode),
+            oldToNewMap,
+            scratch,
+            maxOrd);
         levelNodeOffsets[level][nodeOffsetIndex++] =
             Math.toIntExact(vectorIndex.getFilePointer() - offset);
       }
@@ -395,10 +441,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   }
 
   private void reconstructAndWriteNeighbours(
-      NeighborArray neighbors, int[] oldToNewMap, int[] scratch, int maxOrd) throws IOException {
-    int size = neighbors.size();
-    // Destructively modify; it's ok we are discarding it after this
-    int[] nnodes = neighbors.nodes();
+      int[] nnodes, int size, int[] oldToNewMap, int[] scratch, int maxOrd) throws IOException {
     for (int i = 0; i < size; i++) {
       nnodes[i] = oldToNewMap[nnodes[i]];
     }
@@ -504,8 +547,6 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       int totalVectorCount)
       throws IOException {
     long vectorIndexOffset = vectorIndex.getFilePointer();
-    OnHeapHnswGraph graph = null;
-    int[][] vectorIndexNodeOffsets = null;
     HnswGraphMerger merger =
         createGraphMerger(
             fieldInfo,
@@ -521,16 +562,32 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
             mergeState.knnVectorsReaders[i], mergeState.docMaps[i], mergeState.liveDocs[i]);
       }
     }
-    graph = merger.merge(vectorValues, segmentWriteState.infoStream, totalVectorCount);
-    vectorIndexNodeOffsets = writeGraph(graph);
-    long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
-    writeMeta(
-        fieldInfo,
-        vectorIndexOffset,
-        vectorIndexLength,
-        totalVectorCount,
-        graph,
-        vectorIndexNodeOffsets);
+    try (BuildableHnswGraph graph =
+        merger.merge(vectorValues, segmentWriteState.infoStream, totalVectorCount)) {
+      if (graph instanceof OffHeapHnswGraph offHeapGraph
+          && segmentWriteState.infoStream.isEnabled(HnswGraphBuilder.HNSW_COMPONENT)) {
+        segmentWriteState.infoStream.message(
+            HnswGraphBuilder.HNSW_COMPONENT,
+            String.format(
+                Locale.ROOT,
+                "off-heap graph for field %s: %d nodes, %d levels, %d bytes native reserved,"
+                    + " %d bytes heap",
+                fieldInfo.name,
+                offHeapGraph.size(),
+                offHeapGraph.numLevels(),
+                offHeapGraph.offHeapBytesUsed(),
+                offHeapGraph.ramBytesUsed() - offHeapGraph.offHeapBytesUsed()));
+      }
+      int[][] vectorIndexNodeOffsets = writeGraph(graph);
+      long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
+      writeMeta(
+          fieldInfo,
+          vectorIndexOffset,
+          vectorIndexLength,
+          totalVectorCount,
+          graph,
+          vectorIndexNodeOffsets);
+    }
   }
 
   private void ensureFlatReaderOpen() throws IOException {
@@ -555,22 +612,23 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
    * @return The non-cumulative offsets for the nodes. Should be used to create cumulative offsets.
    * @throws IOException if writing to vectorIndex fails
    */
-  private int[][] writeGraph(OnHeapHnswGraph graph) throws IOException {
+  private int[][] writeGraph(BuildableHnswGraph graph) throws IOException {
     if (graph == null) return new int[0][0];
     // write vectors' neighbours on each level into the vectorIndex file
     int countOnLevel0 = graph.size();
     int[][] offsets = new int[graph.numLevels()][];
     int[] scratch = new int[graph.maxConn() * 2];
+    int[] buffer = new int[graph.maxConn() * 2 + 1];
     for (int level = 0; level < graph.numLevels(); level++) {
       NodesIterator sortedNodes = graph.getSortedNodes(level);
       offsets[level] = new int[sortedNodes.size()];
       int nodeOffsetId = 0;
       while (sortedNodes.hasNext()) {
-        NeighborArray neighbors = graph.getNeighbors(level, sortedNodes.next());
-        int size = neighbors.size();
+        int node = sortedNodes.next();
+        int size = graph.numNeighbors(level, node);
+        int[] nnodes = neighborsToWrite(graph, level, node, buffer);
         // Write size in VInt as the neighbors list is typically small
         long offsetStart = vectorIndex.getFilePointer();
-        int[] nnodes = neighbors.nodes();
         Arrays.sort(nnodes, 0, size);
         // Now that we have sorted, do delta encoding to minimize the required bits to store the
         // information
@@ -601,6 +659,21 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       }
     }
     return offsets;
+  }
+
+  /**
+   * Returns an array whose first {@link BuildableHnswGraph#numNeighbors} entries are the neighbors
+   * of the node, for the caller to reorder in place. An on-heap graph returns its own array to save
+   * a copy, which is fine since the graph is discarded once it is written; other graphs copy into
+   * {@code buffer}.
+   */
+  private static int[] neighborsToWrite(
+      BuildableHnswGraph graph, int level, int node, int[] buffer) {
+    if (graph instanceof OnHeapHnswGraph onHeapGraph) {
+      return onHeapGraph.getNeighbors(level, node).nodes();
+    }
+    graph.copyNeighbors(level, node, buffer);
+    return buffer;
   }
 
   private void writeMeta(
@@ -670,21 +743,25 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       TaskExecutor parallelMergeTaskExecutor,
       int numParallelMergeWorkers,
       IORunnable abortCheck) {
+    final IncrementalHnswGraphMerger merger;
     if (mergeExec != null) {
-      return new ConcurrentHnswMerger(
-          fieldInfo, scorerSupplier, M, beamWidth, mergeExec, numMergeWorkers, abortCheck);
+      merger =
+          new ConcurrentHnswMerger(
+              fieldInfo, scorerSupplier, M, beamWidth, mergeExec, numMergeWorkers, abortCheck);
+    } else if (parallelMergeTaskExecutor != null && numParallelMergeWorkers > 1) {
+      merger =
+          new ConcurrentHnswMerger(
+              fieldInfo,
+              scorerSupplier,
+              M,
+              beamWidth,
+              parallelMergeTaskExecutor,
+              numParallelMergeWorkers,
+              abortCheck);
+    } else {
+      merger = new IncrementalHnswGraphMerger(fieldInfo, scorerSupplier, M, beamWidth, abortCheck);
     }
-    if (parallelMergeTaskExecutor != null && numParallelMergeWorkers > 1) {
-      return new ConcurrentHnswMerger(
-          fieldInfo,
-          scorerSupplier,
-          M,
-          beamWidth,
-          parallelMergeTaskExecutor,
-          numParallelMergeWorkers,
-          abortCheck);
-    }
-    return new IncrementalHnswGraphMerger(fieldInfo, scorerSupplier, M, beamWidth, abortCheck);
+    return merger.setOffHeapGraph(offHeapGraphBuild);
   }
 
   @Override
@@ -850,7 +927,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       throw new UnsupportedOperationException();
     }
 
-    OnHeapHnswGraph getGraph() throws IOException {
+    BuildableHnswGraph getGraph() throws IOException {
       assert flatFieldVectorsWriter.isFinished();
       if (hnswGraphBuilder != null && node > 0) {
         return hnswGraphBuilder.getCompletedGraph();

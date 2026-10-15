@@ -117,7 +117,8 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
       MockVectorValues vectors =
           MockVectorValues.fromValues(createRandomFloatVectors(size, dim, new Random(42)));
       RandomVectorScorerSupplier supplier = buildScorerSupplier(vectors);
-      OnHeapHnswGraph graph = HnswGraphBuilder.create(supplier, M, beamWidth, 42).build(size);
+      OnHeapHnswGraph graph =
+          (OnHeapHnswGraph) HnswGraphBuilder.create(supplier, M, beamWidth, 42).build(size);
 
       int entry = graph.entryNode();
       int target = entry == 0 ? 1 : 0;
@@ -140,13 +141,13 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
       }
       newOrdMap[deleted] = -1;
 
-      OnHeapHnswGraph merged =
+      BuildableHnswGraph merged =
           InitializedHnswGraphBuilder.initGraph(graph, newOrdMap, size, beamWidth, supplier);
 
       // Old per-merge-only check leaves the target at 9; the cumulative check reconnects it.
       assertTrue(
           "target below the cumulative floor should be reconnected during merge",
-          merged.getNeighbors(0, target).size() >= degreeBefore);
+          neighbors(merged, 0, target).length >= degreeBefore);
     } finally {
       HnswGraphBuilder.randSeed = savedRandSeed;
     }
@@ -170,7 +171,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
       MockVectorValues vectors =
           MockVectorValues.fromValues(createRandomFloatVectors(size, dim, new Random(42)));
       RandomVectorScorerSupplier supplier = buildScorerSupplier(vectors);
-      OnHeapHnswGraph graph = HnswGraphBuilder.create(supplier, M, beamWidth, 42).build(size);
+      BuildableHnswGraph graph = HnswGraphBuilder.create(supplier, M, beamWidth, 42).build(size);
 
       // Delete every other document (never the entry node) so the merge takes the graph-join path
       // with deletes: many survivors lose neighbors and get repaired by fixDisconnectedNodes.
@@ -213,7 +214,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
                   graph, newOrdMap, size, beamWidth, supplier, abortDuringRepair));
 
       // Test that the graph can be correctly initialized
-      OnHeapHnswGraph merged =
+      BuildableHnswGraph merged =
           InitializedHnswGraphBuilder.initGraph(graph, newOrdMap, size, beamWidth, supplier, null);
       assertNotNull(merged);
     } finally {
@@ -241,7 +242,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
       MockVectorValues vectors =
           MockVectorValues.fromValues(createRandomFloatVectors(size, dim, new Random(42)));
       RandomVectorScorerSupplier supplier = buildScorerSupplier(vectors);
-      OnHeapHnswGraph base = HnswGraphBuilder.create(supplier, M, beamWidth, 42).build(size);
+      BuildableHnswGraph base = HnswGraphBuilder.create(supplier, M, beamWidth, 42).build(size);
 
       // Delete ~33%, compacting survivors into a dense ordinal space so the merged graph has no
       // holes. pruneGraph is called directly here, so the merger's reuse threshold does not apply.
@@ -251,12 +252,12 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
         newOrdMap[old] = (old % 3 == 1) ? -1 : liveCount++;
       }
 
-      OnHeapHnswGraph serial =
+      BuildableHnswGraph serial =
           InitializedHnswGraphBuilder.initGraph(base, newOrdMap, liveCount, beamWidth, supplier);
 
       InitializedHnswGraphBuilder.PrunedGraph prunedGraph =
           InitializedHnswGraphBuilder.pruneGraph(
-              supplier, beamWidth, base, newOrdMap, liveCount, null);
+              supplier, beamWidth, base, newOrdMap, liveCount, null, false);
       assertTrue(
           "deletes must trigger repair for this test to be meaningful", prunedGraph.hasDeletes());
       IntsRef flaggedAtLevel0 = prunedGraph.disconnectedNodesByLevel()[0];
@@ -276,7 +277,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
               initialized,
               prunedGraph);
       builder.build(liveCount);
-      OnHeapHnswGraph concurrent = builder.getCompletedGraph();
+      BuildableHnswGraph concurrent = builder.getCompletedGraph();
 
       assertEquals(serial.size(), concurrent.size());
       assertEquals(serial.numLevels(), concurrent.numLevels());
@@ -322,7 +323,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
       MockVectorValues vectors =
           MockVectorValues.fromValues(createRandomFloatVectors(size, dim, new Random(42)));
       RandomVectorScorerSupplier supplier = buildScorerSupplier(vectors);
-      OnHeapHnswGraph base = HnswGraphBuilder.create(supplier, M, beamWidth, 42).build(size);
+      BuildableHnswGraph base = HnswGraphBuilder.create(supplier, M, beamWidth, 42).build(size);
 
       int[] newOrdMap = new int[size];
       int liveCount = 0;
@@ -332,7 +333,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
 
       InitializedHnswGraphBuilder.PrunedGraph prunedGraph =
           InitializedHnswGraphBuilder.pruneGraph(
-              supplier, beamWidth, base, newOrdMap, liveCount, null);
+              supplier, beamWidth, base, newOrdMap, liveCount, null, false);
       assertTrue("deletes must trigger repair", prunedGraph.hasDeletes());
 
       // Snapshot the flagged nodes and their pre-repair degrees, and confirm repair partitions
@@ -349,7 +350,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
         for (int i = nodesAtLevel.offset; i < nodesAtLevel.offset + nodesAtLevel.length; i++) {
           int node = nodesAtLevel.ints[i];
           flaggedBefore.add(
-              new int[] {level, node, prunedGraph.graph().getNeighbors(level, node).size()});
+              new int[] {level, node, neighbors(prunedGraph.graph(), level, node).length});
         }
       }
       assertTrue(
@@ -378,7 +379,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
               initialized,
               prunedGraph);
       builder.build(liveCount);
-      OnHeapHnswGraph merged = builder.getCompletedGraph();
+      BuildableHnswGraph merged = builder.getCompletedGraph();
 
       assertEquals("merged graph should contain every live node", liveCount, merged.size());
       // No isolated nodes: level 0 is a single rooted component after concurrent repair.
@@ -392,7 +393,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
         int level = fb[0];
         int node = fb[1];
         int before = fb[2];
-        int after = merged.getNeighbors(level, node).size();
+        int after = neighbors(merged, level, node).length;
         assertTrue(
             "flagged node "
                 + node
@@ -506,12 +507,11 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
     }
   }
 
-  private static List<Integer> sortedNeighbors(OnHeapHnswGraph graph, int level, int node) {
-    NeighborArray arr = graph.getNeighbors(level, node);
-    List<Integer> neighbors = new ArrayList<>(arr.size());
-    int[] nodes = arr.nodes();
-    for (int i = 0; i < arr.size(); i++) {
-      neighbors.add(nodes[i]);
+  private static List<Integer> sortedNeighbors(BuildableHnswGraph graph, int level, int node) {
+    int[] nodes = neighbors(graph, level, node);
+    List<Integer> neighbors = new ArrayList<>(nodes.length);
+    for (int n : nodes) {
+      neighbors.add(n);
     }
     Collections.sort(neighbors);
     return neighbors;
@@ -572,7 +572,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
     FloatVectorValues vectors = circularVectorValues(nDoc);
     RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
     HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, random().nextInt());
-    OnHeapHnswGraph hnsw = builder.build(vectors.size());
+    BuildableHnswGraph hnsw = builder.build(vectors.size());
 
     // Skip over half of the documents that are closest to the query vector
     FixedBitSet acceptOrds = new FixedBitSet(nDoc);
