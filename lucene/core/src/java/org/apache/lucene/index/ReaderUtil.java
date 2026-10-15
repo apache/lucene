@@ -42,6 +42,26 @@ public final class ReaderUtil {
   }
 
   /**
+   * Fails fast if a composite helper that addresses the whole doc space through int-based APIs
+   * (e.g. {@code Bits}, {@code DocIdSetIterator}) is used on an index with more than {@link
+   * Integer#MAX_VALUE} documents; such an index must be consumed per-leaf.
+   *
+   * @param totalDocCount the composite reader's {@link IndexReader#totalMaxDoc()}
+   * @param feature short description of the helper, for the error message
+   */
+  static void ensureIntDocIdSpace(long totalDocCount, String feature) {
+    if (totalDocCount > Integer.MAX_VALUE) {
+      throw new UnsupportedOperationException(
+          feature
+              + " is not supported for an index with more than "
+              + Integer.MAX_VALUE
+              + " documents (has "
+              + totalDocCount
+              + "); consume the index per-leaf instead");
+    }
+  }
+
+  /**
    * Returns index of the searcher/reader for document <code>n</code> in the array used to construct
    * this searcher/reader.
    */
@@ -69,16 +89,43 @@ public final class ReaderUtil {
 
   /**
    * Returns index of the searcher/reader for document <code>n</code> in the array used to construct
+   * this searcher/reader. This variant supports a {@code long} doc-id space, as used by a composite
+   * reader whose segments together hold more than {@link Integer#MAX_VALUE} documents.
+   */
+  public static int subIndex(long n, long[] docStarts) {
+    // find searcher/reader for doc n:
+    int size = docStarts.length;
+    int lo = 0; // search starts array
+    int hi = size - 1; // for first element less than n, return its index
+    while (hi >= lo) {
+      int mid = (lo + hi) >>> 1;
+      long midValue = docStarts[mid];
+      if (n < midValue) {
+        hi = mid - 1;
+      } else if (n > midValue) {
+        lo = mid + 1;
+      } else { // found a match
+        while (mid + 1 < size && docStarts[mid + 1] == midValue) {
+          mid++; // scan to last match
+        }
+        return mid;
+      }
+    }
+    return hi;
+  }
+
+  /**
+   * Returns index of the searcher/reader for document <code>n</code> in the array used to construct
    * this searcher/reader.
    */
-  public static int subIndex(int n, List<LeafReaderContext> leaves) {
+  public static int subIndex(long n, List<LeafReaderContext> leaves) {
     // find searcher/reader for doc n:
     int size = leaves.size();
     int lo = 0; // search starts array
     int hi = size - 1; // for first element less than n, return its index
     while (hi >= lo) {
       int mid = (lo + hi) >>> 1;
-      int midValue = leaves.get(mid).docBase;
+      long midValue = leaves.get(mid).docBase;
       if (n < midValue) {
         hi = mid - 1;
       } else if (n > midValue) {
@@ -119,7 +166,8 @@ public final class ReaderUtil {
    * input order. Callers that do not need the ordinals can simply ignore {@link
    * PartitionedHits#ordinalsByLeaf()} and use {@link PartitionedHits#docIdsByLeaf()}.
    *
-   * <p>The input array is not mutated.
+   * <p>The input array is not mutated. Doc IDs are {@code int}, so this does not support an index
+   * whose doc-id space exceeds {@link Integer#MAX_VALUE}; partition such a reader per-leaf instead.
    *
    * @param globalDocIds global doc IDs in any order (e.g., ranking order)
    * @param leaves the index reader's leaves
@@ -152,7 +200,7 @@ public final class ReaderUtil {
     int leafIdx = 0;
     for (; leafIdx < numLeaves && from < packed.length; leafIdx++) {
       LeafReaderContext leaf = leaves.get(leafIdx);
-      long leafEndPacked = ((long) (leaf.docBase + leaf.reader().maxDoc())) << 32;
+      long leafEndPacked = (leaf.docBase + leaf.reader().maxDoc()) << 32;
       if (packed[from] >= leafEndPacked) {
         docIdsByLeaf[leafIdx] = EMPTY_INT_ARRAY;
         ordinalsByLeaf[leafIdx] = EMPTY_INT_ARRAY;

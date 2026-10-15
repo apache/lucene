@@ -39,7 +39,7 @@ public final class CompositeReaderContext extends IndexReaderContext {
       CompositeReaderContext parent,
       CompositeReader reader,
       int ordInParent,
-      int docbaseInParent,
+      long docbaseInParent,
       List<IndexReaderContext> children) {
     this(parent, reader, ordInParent, docbaseInParent, children, null);
   }
@@ -57,7 +57,7 @@ public final class CompositeReaderContext extends IndexReaderContext {
       CompositeReaderContext parent,
       CompositeReader reader,
       int ordInParent,
-      int docbaseInParent,
+      long docbaseInParent,
       List<IndexReaderContext> children,
       List<LeafReaderContext> leaves) {
     super(parent, ordInParent, docbaseInParent);
@@ -86,7 +86,7 @@ public final class CompositeReaderContext extends IndexReaderContext {
   private static final class Builder {
     private final CompositeReader reader;
     private final List<LeafReaderContext> leaves = new ArrayList<>();
-    private int leafDocBase = 0;
+    private long leafDocBase = 0;
 
     public Builder(CompositeReader reader) {
       this.reader = reader;
@@ -97,12 +97,12 @@ public final class CompositeReaderContext extends IndexReaderContext {
     }
 
     private IndexReaderContext build(
-        CompositeReaderContext parent, IndexReader reader, int ord, int docBase) {
+        CompositeReaderContext parent, IndexReader reader, int ord, long docBase) {
       if (reader instanceof LeafReader ar) {
         final LeafReaderContext atomic =
             new LeafReaderContext(parent, ar, ord, docBase, leaves.size(), leafDocBase);
         leaves.add(atomic);
-        leafDocBase += reader.maxDoc();
+        leafDocBase += reader.totalMaxDoc();
         return atomic;
       } else {
         final CompositeReader cr = (CompositeReader) reader;
@@ -115,13 +115,13 @@ public final class CompositeReaderContext extends IndexReaderContext {
         } else {
           newParent = new CompositeReaderContext(parent, cr, ord, docBase, children);
         }
-        int newDocBase = 0;
+        long newDocBase = 0;
         for (int i = 0, c = sequentialSubReaders.size(); i < c; i++) {
           final IndexReader r = sequentialSubReaders.get(i);
           children.set(i, build(newParent, r, i, newDocBase));
-          newDocBase += r.maxDoc();
+          newDocBase += r.totalMaxDoc();
         }
-        assert newDocBase == cr.maxDoc();
+        assert newDocBase == cr.totalMaxDoc();
         return newParent;
       }
     }
