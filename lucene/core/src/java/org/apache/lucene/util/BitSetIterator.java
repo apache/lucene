@@ -51,9 +51,12 @@ public class BitSetIterator extends AbstractDocIdSetIterator {
     return getBitSet(iterator, SparseFixedBitSet.class);
   }
 
+  static final int MAX_RUN_END_SCAN = 1 << 16;
+
   private final BitSet bits;
   private final int length;
   private final long cost;
+  private int runStart = -1, runEnd = -1;
 
   /** Sole constructor. */
   public BitSetIterator(BitSet bits, long cost) {
@@ -96,12 +99,18 @@ public class BitSetIterator extends AbstractDocIdSetIterator {
   @Override
   public int docIDRunEnd() {
     assert doc != NO_MORE_DOCS;
-    int next = doc + 1;
-    if (next >= length) {
-      return length;
+    // Called once per window by DenseConjunctionBulkScorer: resume from the known run end and
+    // bound the scan, otherwise a long run is rescanned on every call, which is quadratic.
+    if (doc < runStart || doc >= runEnd) {
+      runStart = doc;
+      runEnd = doc + 1;
     }
-    int end = bits.nextClearBit(next);
-    return end == NO_MORE_DOCS ? length : end;
+    int upTo = doc + Math.min(length - doc, MAX_RUN_END_SCAN);
+    if (runEnd < upTo) {
+      int end = bits.nextClearBit(runEnd, upTo);
+      runEnd = end == NO_MORE_DOCS ? upTo : end;
+    }
+    return runEnd;
   }
 
   @Override
