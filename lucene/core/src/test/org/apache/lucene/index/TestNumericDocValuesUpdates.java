@@ -274,7 +274,7 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
       NumericDocValues ndv = r.getNumericDocValues("val");
       assertNotNull(ndv);
       for (int i = 0; i < r.maxDoc(); i++) {
-        long expected = expectedValues[i + context.docBase];
+        long expected = expectedValues[Math.toIntExact(i + context.docBase)];
         assertEquals(i, ndv.nextDoc());
         long actual = ndv.longValue();
         assertEquals(expected, actual);

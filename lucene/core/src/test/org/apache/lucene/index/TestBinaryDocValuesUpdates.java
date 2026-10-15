@@ -187,7 +187,7 @@ public class TestBinaryDocValuesUpdates extends LuceneTestCase {
       assertNotNull(bdv);
       for (int i = 0; i < r.maxDoc(); i++) {
         assertEquals(i, bdv.nextDoc());
-        long expected = expectedValues[i + context.docBase];
+        long expected = expectedValues[Math.toIntExact(i + context.docBase)];
         long actual = getValue(bdv);
         assertEquals(expected, actual);
       }

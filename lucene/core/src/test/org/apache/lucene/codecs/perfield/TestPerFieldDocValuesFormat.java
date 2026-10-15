@@ -123,7 +123,7 @@ public class TestPerFieldDocValuesFormat extends BaseDocValuesFormatTestCase {
     StoredFields storedFields = isearcher.storedFields();
     // Iterate through the results:
     for (int i = 0; i < hits.scoreDocs.length; i++) {
-      int hitDocID = hits.scoreDocs[i].doc;
+      int hitDocID = Math.toIntExact(hits.scoreDocs[i].doc);
       Document hitDoc = storedFields.document(hitDocID);
       assertEquals(text, hitDoc.get("fieldname"));
       assert ireader.leaves().size() == 1;
