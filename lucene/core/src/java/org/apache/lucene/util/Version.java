@@ -125,6 +125,7 @@ public final class Version {
 
   /**
    * Match settings and bugs in Lucene's 10.7.0 release.
+   *
    * @deprecated Use latest
    */
   @Deprecated public static final Version LUCENE_10_7_0 = new Version(10, 7, 0);
