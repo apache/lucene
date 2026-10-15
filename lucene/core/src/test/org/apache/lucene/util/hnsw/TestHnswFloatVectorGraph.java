@@ -583,7 +583,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
         HnswGraphSearcher.search(
             buildScorer(vectors, getTargetVector()), 10, hnsw, acceptOrds, Integer.MAX_VALUE);
 
-    TopDocs nodes = nn.topDocs();
+    TopDocs nodes = nn.topDocs().topDocs();
     assertEquals("Number of found results is not equal to [10].", 10, nodes.scoreDocs.length);
     int sum = 0;
     for (ScoreDoc node : nodes.scoreDocs) {

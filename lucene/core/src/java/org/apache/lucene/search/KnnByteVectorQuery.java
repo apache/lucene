@@ -46,8 +46,6 @@ import org.apache.lucene.util.ArrayUtil;
  */
 public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
 
-  private static final TopDocs NO_RESULTS = TopDocsCollector.EMPTY_TOPDOCS;
-
   protected final byte[] target;
 
   /**
@@ -97,7 +95,7 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
   }
 
   @Override
-  protected TopDocs approximateSearch(
+  protected KnnResult approximateSearch(
       LeafReaderContext context,
       AcceptDocs acceptDocs,
       int visitedLimit,
@@ -109,14 +107,14 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
     ByteVectorValues byteVectorValues = reader.getByteVectorValues(field);
     if (byteVectorValues == null) {
       ByteVectorValues.checkField(reader, field);
-      return NO_RESULTS;
+      return KnnResult.NO_RESULT;
     }
     if (Math.min(knnCollector.k(), byteVectorValues.size()) == 0) {
-      return NO_RESULTS;
+      return KnnResult.NO_RESULT;
     }
     reader.searchNearestVectors(field, target, knnCollector, acceptDocs);
-    TopDocs results = knnCollector.topDocs();
-    return results != null ? results : NO_RESULTS;
+    KnnResult results = knnCollector.topDocs();
+    return results != null ? results : KnnResult.NO_RESULT;
   }
 
   @Override

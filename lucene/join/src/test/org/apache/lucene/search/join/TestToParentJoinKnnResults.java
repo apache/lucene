@@ -38,7 +38,7 @@ public class TestToParentJoinKnnResults extends LuceneTestCase {
     assertTrue(nn.collect(0, 0.2f));
     assertTrue(nn.collect(4, 1f));
     assertEquals(0.5f, nn.minCompetitiveSimilarity(), 0);
-    TopDocs topDocs = nn.topDocs();
+    TopDocs topDocs = nn.topDocs().topDocs();
     assertEquals(topDocs.scoreDocs[0].score, 1f, 0);
     assertEquals(topDocs.scoreDocs[1].score, 0.5f, 0);
   }
@@ -52,7 +52,7 @@ public class TestToParentJoinKnnResults extends LuceneTestCase {
     for (int i = 0; i < nodes.length; i++) {
       results.collect(nodes[i], scores[i]);
     }
-    TopDocs topDocs = results.topDocs();
+    TopDocs topDocs = results.topDocs().topDocs();
     int[] sortedNodes = new int[topDocs.scoreDocs.length];
     float[] sortedScores = new float[topDocs.scoreDocs.length];
     for (int i = 0; i < topDocs.scoreDocs.length; i++) {
@@ -76,7 +76,7 @@ public class TestToParentJoinKnnResults extends LuceneTestCase {
     assertFalse(results.collect(nodes[nodes.length - 1], scores[nodes.length - 1]));
     int[] sortedNodes = new int[5];
     float[] sortedScores = new float[5];
-    TopDocs topDocs = results.topDocs();
+    TopDocs topDocs = results.topDocs().topDocs();
     for (int i = 0; i < topDocs.scoreDocs.length; i++) {
       sortedNodes[i] = topDocs.scoreDocs[i].doc;
       sortedScores[i] = topDocs.scoreDocs[i].score;

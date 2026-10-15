@@ -124,7 +124,7 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
     }
 
     @Override
-    protected TopDocs exactSearch(
+    protected KnnResult exactSearch(
         LeafReaderContext context, DocIdSetIterator acceptIterator, QueryTimeout queryTimeout) {
       throw new UnsupportedOperationException("exact search is not supported");
     }
@@ -146,19 +146,24 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
     }
 
     @Override
-    protected TopDocs approximateSearch(
+    protected KnnResult approximateSearch(
         LeafReaderContext context,
         AcceptDocs acceptDocs,
         int visitedLimit,
         KnnCollectorManager knnCollectorManager)
         throws IOException {
-      TopDocs topDocs =
+      KnnResult knnResult =
           super.approximateSearch(context, acceptDocs, Integer.MAX_VALUE, knnCollectorManager);
-      long results = Math.min(topDocs.totalHits.value(), maxResults);
+      TopDocs topDocs = knnResult.topDocs();
+      long results = Math.min(topDocs.scoreDocs.length, maxResults);
       ScoreDoc[] scoreDocs = new ScoreDoc[(int) results];
       System.arraycopy(topDocs.scoreDocs, 0, scoreDocs, 0, scoreDocs.length);
 
-      return new TopDocs(new TotalHits(results, TotalHits.Relation.EQUAL_TO), scoreDocs);
+      // a deliberately truncated result is an incomplete approximate search, whatever the format
+      // did, so the query must fall back to exact search
+      return new KnnResult(
+          KnnResult.Strategy.APPROXIMATE,
+          new TopDocs(new TotalHits(results, TotalHits.Relation.EQUAL_TO), scoreDocs));
     }
   }
 }

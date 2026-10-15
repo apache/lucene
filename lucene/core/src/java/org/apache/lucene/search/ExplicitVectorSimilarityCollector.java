@@ -68,15 +68,16 @@ class ExplicitVectorSimilarityCollector extends AbstractKnnCollector {
   }
 
   @Override
-  public TopDocs topDocs() {
+  public KnnResult topDocs() {
     // Results are not returned in a sorted order to prevent unnecessary calculations (because we do
     // not need to maintain the topK)
     TotalHits.Relation relation =
         earlyTerminated()
             ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
             : TotalHits.Relation.EQUAL_TO;
-    return new TopDocs(
-        new TotalHits(visitedCount(), relation), scoreDocList.toArray(ScoreDoc[]::new));
+    TopDocs td =
+        new TopDocs(new TotalHits(visitedCount(), relation), scoreDocList.toArray(ScoreDoc[]::new));
+    return new KnnResult(super.strategy, td);
   }
 
   @Override

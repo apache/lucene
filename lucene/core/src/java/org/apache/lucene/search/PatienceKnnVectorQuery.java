@@ -17,6 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Objects;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReaderContext;
@@ -194,7 +195,7 @@ public class PatienceKnnVectorQuery extends AbstractKnnVectorQuery {
   }
 
   @Override
-  protected TopDocs approximateSearch(
+  protected KnnResult approximateSearch(
       LeafReaderContext context,
       AcceptDocs acceptDocs,
       int visitedLimit,
@@ -204,14 +205,14 @@ public class PatienceKnnVectorQuery extends AbstractKnnVectorQuery {
   }
 
   @Override
-  protected TopDocs exactSearch(
+  protected KnnResult exactSearch(
       LeafReaderContext context, DocIdSetIterator acceptIterator, QueryTimeout queryTimeout)
       throws IOException {
     return delegate.exactSearch(context, acceptIterator, queryTimeout);
   }
 
   @Override
-  protected TopDocs mergeLeafResults(TopDocs[] perLeafResults) {
+  protected TopDocs mergeLeafResults(Collection<KnnResult> perLeafResults) {
     return delegate.mergeLeafResults(perLeafResults);
   }
 
@@ -275,11 +276,11 @@ public class PatienceKnnVectorQuery extends AbstractKnnVectorQuery {
 
     @Override
     public KnnCollector newOptimisticCollector(
-        int visitLimit, KnnSearchStrategy searchStrategy, LeafReaderContext ctx, int k)
+        int visitLimit, KnnSearchStrategy searchStrategy, LeafReaderContext ctx, int k, int globalK)
         throws IOException {
       if (knnCollectorManager.isOptimistic()) {
         return new HnswQueueSaturationCollector(
-            knnCollectorManager.newOptimisticCollector(visitLimit, searchStrategy, ctx, k),
+            knnCollectorManager.newOptimisticCollector(visitLimit, searchStrategy, ctx, k, globalK),
             saturationThreshold,
             patience);
       } else {

@@ -87,7 +87,7 @@ public class TestHnswBitVectorsFormat extends BaseIndexFileFormatTestCase {
         TopKnnCollector collector = new TopKnnCollector(3, Integer.MAX_VALUE);
         r.searchNearestVectors(
             "v1", vectors[0], collector, AcceptDocs.fromLiveDocs(null, r.maxDoc()));
-        TopDocs topDocs = collector.topDocs();
+        TopDocs topDocs = collector.topDocs().topDocs();
         assertEquals(3, topDocs.scoreDocs.length);
 
         StoredFields fields = r.storedFields();

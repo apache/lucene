@@ -257,7 +257,7 @@ public abstract sealed class ByteVectorSimilarityQuery extends AbstractVectorSim
       throws IOException {
     KnnCollector collector = knnCollectorManager.newCollector(visitLimit, null, context);
     context.reader().searchNearestVectors(field, target, collector, acceptDocs);
-    return collector.topDocs();
+    return collector.topDocs().topDocs();
   }
 
   @Override

@@ -373,7 +373,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
         ords[numOrds++] = i;
         if (numOrds == ords.length) {
           knnCollector.incVisitedCount(numOrds);
-          if (scorer.bulkScore(ords, scores, numOrds) > knnCollector.minCompetitiveSimilarity()) {
+          if (scorer.bulkScore(ords, scores, numOrds) > knnCollector.minCollectableSimilarity()) {
             for (int j = 0; j < numOrds; j++) {
               knnCollector.collect(scorer.ordToDoc(ords[j]), scores[j]);
             }
@@ -385,7 +385,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
 
     if (numOrds > 0) {
       knnCollector.incVisitedCount(numOrds);
-      if (scorer.bulkScore(ords, scores, numOrds) > knnCollector.minCompetitiveSimilarity()) {
+      if (scorer.bulkScore(ords, scores, numOrds) > knnCollector.minCollectableSimilarity()) {
         for (int j = 0; j < numOrds; j++) {
           knnCollector.collect(scorer.ordToDoc(ords[j]), scores[j]);
         }

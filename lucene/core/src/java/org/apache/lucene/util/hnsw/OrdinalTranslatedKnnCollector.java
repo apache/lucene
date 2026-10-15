@@ -18,6 +18,7 @@
 package org.apache.lucene.util.hnsw;
 
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.search.KnnResult;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 
@@ -40,14 +41,16 @@ public final class OrdinalTranslatedKnnCollector extends KnnCollector.Decorator 
   }
 
   @Override
-  public TopDocs topDocs() {
-    TopDocs td = super.topDocs();
-    return new TopDocs(
-        new TotalHits(
-            visitedCount(),
-            this.earlyTerminated()
-                ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
-                : TotalHits.Relation.EQUAL_TO),
-        td.scoreDocs);
+  public KnnResult topDocs() {
+    KnnResult td = super.topDocs();
+    var topDocs =
+        new TopDocs(
+            new TotalHits(
+                visitedCount(),
+                this.earlyTerminated()
+                    ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
+                    : TotalHits.Relation.EQUAL_TO),
+            td.topDocs().scoreDocs);
+    return new KnnResult(td.strategy(), topDocs, td.strongResultCount());
   }
 }

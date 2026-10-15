@@ -43,13 +43,17 @@ public class TopKnnCollectorManager implements KnnCollectorManager {
   public KnnCollector newCollector(
       int visitedLimit, KnnSearchStrategy searchStrategy, LeafReaderContext context)
       throws IOException {
-    return new TopKnnCollector(k, visitedLimit, searchStrategy);
+    return new TopKnnCollector(k, k, visitedLimit, searchStrategy);
   }
 
   @Override
   public KnnCollector newOptimisticCollector(
-      int visitedLimit, KnnSearchStrategy searchStrategy, LeafReaderContext context, int k) {
-    return new TopKnnCollector(k, visitedLimit, searchStrategy);
+      int visitedLimit,
+      KnnSearchStrategy searchStrategy,
+      LeafReaderContext context,
+      int k,
+      int globalK) {
+    return new TopKnnCollector(k, Math.max(k, globalK), visitedLimit, searchStrategy);
   }
 
   @Override

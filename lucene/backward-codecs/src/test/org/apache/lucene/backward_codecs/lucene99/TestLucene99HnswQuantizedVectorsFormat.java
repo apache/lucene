@@ -205,7 +205,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
             new float[] {0.6f, 0.8f},
             topKnnCollector,
             AcceptDocs.fromLiveDocs(null, r.maxDoc()));
-        TopDocs topDocs = topKnnCollector.topDocs();
+        TopDocs topDocs = topKnnCollector.topDocs().topDocs();
         assertEquals(3, topDocs.totalHits.value());
         for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
           assertTrue(scoreDoc.score >= 0f);

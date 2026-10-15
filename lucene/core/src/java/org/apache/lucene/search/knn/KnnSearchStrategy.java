@@ -44,6 +44,10 @@ public abstract class KnnSearchStrategy {
   /** Signal processing of the next block of vectors. */
   public abstract void nextVectorsBlock();
 
+  public double getFilteredSearchPenality(float selectivity) {
+    return 1.0 / Math.sqrt(selectivity);
+  }
+
   /**
    * A strategy for kNN search that uses HNSW
    *
@@ -80,6 +84,14 @@ public abstract class KnnSearchStrategy {
     public final boolean useFilteredSearch(float ratioPassingFilter) {
       assert ratioPassingFilter >= 0 && ratioPassingFilter <= 1;
       return ratioPassingFilter * 100 < filteredSearchThreshold;
+    }
+
+    @Override
+    public double getFilteredSearchPenality(float selectivity) {
+      if (useFilteredSearch(selectivity)) {
+        return 1.0 / Math.sqrt(selectivity);
+      }
+      return 1.0 / Math.sqrt(selectivity);
     }
 
     @Override

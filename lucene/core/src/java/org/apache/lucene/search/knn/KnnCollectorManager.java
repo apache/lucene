@@ -47,11 +47,16 @@ public interface KnnCollectorManager {
    * @param searchStrategy the optional search strategy configuration
    * @param context the leaf reader context
    * @param k the number of neighbors to collect, this is the expected number of results
+   * @param globalK the number of neighbors requested across all segments
    * @return a new KnnCollector instance
    * @throws IOException if there is an error creating the collector
    */
   default KnnCollector newOptimisticCollector(
-      int visitedLimit, KnnSearchStrategy searchStrategy, LeafReaderContext context, int k)
+      int visitedLimit,
+      KnnSearchStrategy searchStrategy,
+      LeafReaderContext context,
+      int k,
+      int globalK)
       throws IOException {
     return null;
   }

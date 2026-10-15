@@ -59,16 +59,19 @@ public class TimeLimitingKnnCollectorManager implements KnnCollectorManager {
     }
 
     @Override
-    public TopDocs topDocs() {
-      TopDocs docs = super.topDocs();
+    public KnnResult topDocs() {
+      KnnResult docs = super.topDocs();
 
       // Mark results as partial if timeout is met
       TotalHits.Relation relation =
           queryTimeout.shouldExit()
               ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
-              : docs.totalHits.relation();
+              : docs.topDocs().totalHits.relation();
 
-      return new TopDocs(new TotalHits(docs.totalHits.value(), relation), docs.scoreDocs);
+      TopDocs td =
+          new TopDocs(
+              new TotalHits(docs.topDocs().totalHits.value(), relation), docs.topDocs().scoreDocs);
+      return new KnnResult(docs.strategy(), td, docs.strongResultCount());
     }
   }
 }

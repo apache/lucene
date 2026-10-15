@@ -29,9 +29,8 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnByteVectorQuery;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.search.KnnResult;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TopDocsCollector;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
@@ -51,7 +50,6 @@ import org.apache.lucene.util.BitSet;
  * </code></pre>
  */
 public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
-  private static final TopDocs NO_RESULTS = TopDocsCollector.EMPTY_TOPDOCS;
 
   private final BitSetProducer parentsFilter;
   private final Query childFilter;
@@ -100,26 +98,28 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
   }
 
   @Override
-  protected TopDocs exactSearch(
+  protected KnnResult exactSearch(
       LeafReaderContext context, DocIdSetIterator acceptIterator, QueryTimeout queryTimeout)
       throws IOException {
     ByteVectorValues byteVectorValues = context.reader().getByteVectorValues(field);
     if (byteVectorValues == null) {
       ByteVectorValues.checkField(context.reader(), field);
-      return NO_RESULTS;
+      return KnnResult.NO_RESULT;
     }
 
     BitSet parentBitSet = parentsFilter.getBitSet(context);
     if (parentBitSet == null) {
-      return NO_RESULTS;
+      return KnnResult.NO_RESULT;
     }
 
     VectorScorer scorer = byteVectorValues.scorer(query);
     if (scorer == null) {
-      return NO_RESULTS;
+      return KnnResult.NO_RESULT;
     }
-    return new DiversifyingChildrenVectorScorer(acceptIterator, parentBitSet, scorer)
-        .collect(k, queryTimeout);
+    return new KnnResult(
+        KnnResult.Strategy.EXACT,
+        new DiversifyingChildrenVectorScorer(acceptIterator, parentBitSet, scorer)
+            .collect(k, queryTimeout));
   }
 
   @Override
@@ -128,7 +128,7 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
   }
 
   @Override
-  protected TopDocs approximateSearch(
+  protected KnnResult approximateSearch(
       LeafReaderContext context,
       AcceptDocs acceptDocs,
       int visitedLimit,
@@ -138,7 +138,7 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
     KnnCollector collector =
         knnCollectorManager.newCollector(visitedLimit, searchStrategy, context);
     if (collector == null) {
-      return NO_RESULTS;
+      return KnnResult.NO_RESULT;
     }
     context.reader().searchNearestVectors(field, query, collector, acceptDocs);
     return collector.topDocs();

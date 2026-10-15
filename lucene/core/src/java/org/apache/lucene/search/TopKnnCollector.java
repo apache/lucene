@@ -29,35 +29,64 @@ import org.apache.lucene.util.hnsw.NeighborQueue;
 public class TopKnnCollector extends AbstractKnnCollector {
 
   protected final NeighborQueue queue;
+  private final int globalK;
+  // Tracks only the best k() hits when collecting more than k() (globalK > k), so the search stops
+  // exploring at the same point as a plain top-k() search; null when globalK == k()
+  private final NeighborQueue strongQueue;
 
   /** Constructor, with default search strategy */
   public TopKnnCollector(int k, int visitLimit) {
-    this(k, visitLimit, null);
+    this(k, k, visitLimit, null);
+  }
+
+  /** Constructor, with default search strategy */
+  public TopKnnCollector(int k, int globalK, int visitLimit) {
+    this(k, globalK, visitLimit, null);
   }
 
   /**
-   * @param k the number of neighbors to collect
+   * @param k the number of neighbors to search for; this controls how far the search explores
+   * @param globalK the maximum number of neighbors to collect, at least {@code k}. Hits beyond the
+   *     best {@code k} are kept if they were visited anyway, but do not make the search explore
+   *     further
    * @param visitLimit how many vector nodes the results are allowed to visit
    * @param searchStrategy the search strategy to use
    */
-  public TopKnnCollector(int k, int visitLimit, KnnSearchStrategy searchStrategy) {
+  public TopKnnCollector(int k, int globalK, int visitLimit, KnnSearchStrategy searchStrategy) {
     super(k, visitLimit, searchStrategy);
-    this.queue = new NeighborQueue(k, false);
+    if (globalK < k) {
+      throw new IllegalArgumentException(
+          "globalK must be >= k, got globalK=" + globalK + " k=" + k);
+    }
+    this.globalK = globalK;
+    this.queue = new NeighborQueue(globalK, false);
+    this.strongQueue = globalK > k ? new NeighborQueue(k, false) : null;
   }
 
   @Override
   public boolean collect(int docId, float similarity) {
-    return queue.insertWithOverflow(docId, similarity);
+    if (strongQueue == null) {
+      return queue.insertWithOverflow(docId, similarity);
+    }
+    queue.insertWithOverflow(docId, similarity);
+    return strongQueue.insertWithOverflow(docId, similarity);
   }
 
   @Override
   public float minCompetitiveSimilarity() {
-    return queue.size() >= k() ? queue.topScore() : Float.NEGATIVE_INFINITY;
+    NeighborQueue q = strongQueue == null ? queue : strongQueue;
+    return q.size() >= k() ? q.topScore() : Float.NEGATIVE_INFINITY;
   }
 
   @Override
-  public TopDocs topDocs() {
-    assert queue.size() <= k() : "Tried to collect more results than the maximum number allowed";
+  public float minCollectableSimilarity() {
+    return queue.size() >= globalK ? queue.topScore() : Float.NEGATIVE_INFINITY;
+  }
+
+  @Override
+  public KnnResult topDocs() {
+    assert queue.size() <= this.globalK
+        : "Tried to collect more results than the maximum number allowed";
     ScoreDoc[] scoreDocs = new ScoreDoc[queue.size()];
     for (int i = 1; i <= scoreDocs.length; i++) {
       scoreDocs[scoreDocs.length - i] = new ScoreDoc(queue.topNode(), queue.topScore());
@@ -67,7 +96,10 @@ public class TopKnnCollector extends AbstractKnnCollector {
         earlyTerminated()
             ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
             : TotalHits.Relation.EQUAL_TO;
-    return new TopDocs(new TotalHits(visitedCount(), relation), scoreDocs);
+    return new KnnResult(
+        strategy,
+        new TopDocs(new TotalHits(visitedCount(), relation), scoreDocs),
+        Math.min(k(), scoreDocs.length));
   }
 
   @Override

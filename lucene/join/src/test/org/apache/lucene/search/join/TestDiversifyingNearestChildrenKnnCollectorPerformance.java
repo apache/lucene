@@ -52,7 +52,7 @@ public class TestDiversifyingNearestChildrenKnnCollectorPerformance extends Luce
     for (int i = 0; i < childIds.length; i++) {
       collector.collect(childIds[i], scores[i]);
     }
-    return collector.topDocs();
+    return collector.topDocs().topDocs();
   }
 
   private int[] buildChildIds(int numParents, int childrenPerParent) {

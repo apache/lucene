@@ -19,6 +19,7 @@ package org.apache.lucene.search.join;
 
 import org.apache.lucene.internal.hppc.IntIntHashMap;
 import org.apache.lucene.search.AbstractKnnCollector;
+import org.apache.lucene.search.KnnResult;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
@@ -91,7 +92,7 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
   }
 
   @Override
-  public TopDocs topDocs() {
+  public KnnResult topDocs() {
     assert heap.size() <= k() : "Tried to collect more results than the maximum number allowed";
     while (heap.size() > k()) {
       heap.popToDrain();
@@ -106,7 +107,8 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
         earlyTerminated()
             ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
             : TotalHits.Relation.EQUAL_TO;
-    return new TopDocs(new TotalHits(visitedCount(), relation), scoreDocs);
+    return new KnnResult(
+        super.strategy, new TopDocs(new TotalHits(visitedCount(), relation), scoreDocs));
   }
 
   @Override

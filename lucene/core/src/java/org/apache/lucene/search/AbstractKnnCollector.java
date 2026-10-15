@@ -26,6 +26,7 @@ import org.apache.lucene.search.knn.KnnSearchStrategy;
 public abstract class AbstractKnnCollector implements KnnCollector {
 
   protected long visitedCount;
+  protected KnnResult.Strategy strategy = KnnResult.Strategy.APPROXIMATE;
   private final long visitLimit;
   private final KnnSearchStrategy searchStrategy;
   private final int k;
@@ -75,10 +76,15 @@ public abstract class AbstractKnnCollector implements KnnCollector {
   public abstract float minCompetitiveSimilarity();
 
   @Override
-  public abstract TopDocs topDocs();
+  public abstract KnnResult topDocs();
 
   @Override
   public KnnSearchStrategy getSearchStrategy() {
     return searchStrategy;
+  }
+
+  @Override
+  public void setStrategy(KnnResult.Strategy strategy) {
+    this.strategy = strategy;
   }
 }

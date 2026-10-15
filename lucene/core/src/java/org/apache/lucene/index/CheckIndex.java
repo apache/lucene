@@ -3129,7 +3129,7 @@ public final class CheckIndex implements Closeable {
                   values.vectorValue(count),
                   collector,
                   AcceptDocs.fromLiveDocs(null, codecReader.maxDoc()));
-          TopDocs docs = collector.topDocs();
+          TopDocs docs = collector.topDocs().topDocs();
           if (docs.scoreDocs.length == 0) {
             throw new CheckIndexException(
                 "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
@@ -3181,7 +3181,7 @@ public final class CheckIndex implements Closeable {
                   values.vectorValue(count),
                   collector,
                   AcceptDocs.fromLiveDocs(null, codecReader.maxDoc()));
-          TopDocs docs = collector.topDocs();
+          TopDocs docs = collector.topDocs().topDocs();
           if (docs.scoreDocs.length == 0) {
             throw new CheckIndexException(
                 "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
@@ -3225,7 +3225,7 @@ public final class CheckIndex implements Closeable {
     while (count < values.size()) {
       // search the first maxNumSearches vectors to exercise the graph
       if (supportsSearch && values.ordToDoc(count) % everyNdoc == 0) {
-        KnnCollector collector = new TopKnnCollector(10, Integer.MAX_VALUE);
+        KnnCollector collector = new TopKnnCollector(10, 10, Integer.MAX_VALUE);
         codecReader
             .getVectorReader()
             .search(
@@ -3233,7 +3233,7 @@ public final class CheckIndex implements Closeable {
                 values.vectorValue(count),
                 collector,
                 AcceptDocs.fromLiveDocs(null, codecReader.maxDoc()));
-        TopDocs docs = collector.topDocs();
+        TopDocs docs = collector.topDocs().topDocs();
         if (docs.scoreDocs.length == 0) {
           throw new CheckIndexException(
               "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");

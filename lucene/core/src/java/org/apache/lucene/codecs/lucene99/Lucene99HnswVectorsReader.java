@@ -43,6 +43,8 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.search.KnnResult;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.DataInput;
@@ -366,14 +368,30 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     int numVectors = scorer.maxOrd();
     boolean doHnsw = knnCollector.k() < numVectors;
     // The approximate number of vectors that would be visited if we did not filter
-    int unfilteredVisit = HnswGraphSearcher.expectedVisitedNodes(knnCollector.k(), graphSize);
-    if (unfilteredVisit >= filteredDocCount || graphSize == 0) {
+    if (graphSize == 0 || filteredDocCount == 0) {
+      // no graph to search, or nothing passes the filter: the exhaustive scan is trivially cheaper
       doHnsw = false;
+    } else {
+      float selectivity = (float) (filteredDocCount / (double) graphSize);
+      KnnSearchStrategy strat = collector.getSearchStrategy();
+      if (strat == null) {
+        strat = KnnSearchStrategy.Hnsw.DEFAULT;
+      }
+      double filterPenalty = strat.getFilteredSearchPenality(selectivity);
+      int unfilteredVisit =
+          (int)
+              (filterPenalty
+                  * HnswGraphSearcher.expectedVisitedNodes(
+                      knnCollector.k(), graphSize, fieldEntry.M));
+      if (unfilteredVisit >= filteredDocCount) {
+        doHnsw = false;
+      }
     }
     if (doHnsw) {
       HnswGraphSearcher.search(
           scorer, collector, getGraph(fieldEntry), acceptedOrds, filteredDocCount);
     } else {
+      knnCollector.setStrategy(KnnResult.Strategy.EXACT);
       // if k is larger than the number of vectors we expect to visit in an HNSW search,
       // we can just iterate over all vectors and collect them.
       int[] ords = new int[EXHAUSTIVE_BULK_SCORE_ORDS];
@@ -387,7 +405,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
           ords[numOrds++] = i;
           if (numOrds == ords.length) {
             knnCollector.incVisitedCount(numOrds);
-            if (scorer.bulkScore(ords, scores, numOrds) > knnCollector.minCompetitiveSimilarity()) {
+            if (scorer.bulkScore(ords, scores, numOrds) > knnCollector.minCollectableSimilarity()) {
               for (int j = 0; j < numOrds; j++) {
                 knnCollector.collect(scorer.ordToDoc(ords[j]), scores[j]);
               }
@@ -399,7 +417,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
 
       if (numOrds > 0) {
         knnCollector.incVisitedCount(numOrds);
-        if (scorer.bulkScore(ords, scores, numOrds) > knnCollector.minCompetitiveSimilarity()) {
+        if (scorer.bulkScore(ords, scores, numOrds) > knnCollector.minCollectableSimilarity()) {
           for (int j = 0; j < numOrds; j++) {
             knnCollector.collect(scorer.ordToDoc(ords[j]), scores[j]);
           }

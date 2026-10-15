@@ -760,16 +760,19 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           assertEquals(10, results.totalHits.value());
           assertEquals(results.totalHits.value(), results.scoreDocs.length);
         }
-        // Test a filter that exhausts visitedLimit in upper levels, and switches to exact search
-        // due to extreme edge cases, removing the randomness
+        // Test a filter so restrictive that an HNSW search would exhaust its visitedLimit: the
+        // result must still be exact, whether the vectors format scans the few filtered vectors
+        // itself or the query falls back to exact search
         float[] vector = new float[dimension];
         for (int i = 0; i < dimension; i++) {
           vector[i] = i % 2 == 0 ? 42 : 7;
         }
         Query filter4 = IntPoint.newRangeQuery("tag", 250, 256);
-        expectThrows(
-            UnsupportedOperationException.class,
-            () -> searcher.search(getThrowingKnnVectorQuery("field", vector, 1, filter4), numDocs));
+        TopDocs approx = searcher.search(getKnnVectorQuery("field", vector, 1, filter4), numDocs);
+        // k equal to the filter's 7 matches returns them all, so its best hit is the true nearest
+        TopDocs exact = searcher.search(getKnnVectorQuery("field", vector, 7, filter4), 1);
+        assertEquals(1, approx.scoreDocs.length);
+        assertEquals(exact.scoreDocs[0].doc, approx.scoreDocs[0].doc);
       }
     }
   }
@@ -1006,7 +1009,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       assertFalse(noTimeoutCollector.earlyTerminated());
 
       // Check that results are complete
-      TopDocs noTimeoutTopDocs = noTimeoutCollector.topDocs();
+      TopDocs noTimeoutTopDocs = noTimeoutCollector.topDocs().topDocs();
       assertEquals(TotalHits.Relation.EQUAL_TO, noTimeoutTopDocs.totalHits.relation());
       assertEquals(1, noTimeoutTopDocs.scoreDocs.length);
 
@@ -1022,7 +1025,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       assertTrue(timeoutCollector.earlyTerminated());
 
       // Check that partial results are returned
-      TopDocs timeoutTopDocs = timeoutCollector.topDocs();
+      TopDocs timeoutTopDocs = timeoutCollector.topDocs().topDocs();
       assertEquals(
           TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, timeoutTopDocs.totalHits.relation());
       assertEquals(1, timeoutTopDocs.scoreDocs.length);

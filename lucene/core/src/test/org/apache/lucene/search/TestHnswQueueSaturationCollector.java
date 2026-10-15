@@ -90,7 +90,7 @@ public class TestHnswQueueSaturationCollector extends LuceneTestCase {
         queueSaturationCollector.nextCandidate();
       }
       if (queueSaturationCollector.earlyTerminated()) {
-        TopDocs topDocs = queueSaturationCollector.topDocs();
+        TopDocs topDocs = queueSaturationCollector.topDocs().topDocs();
         assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation());
         break;
       }
@@ -114,7 +114,7 @@ public class TestHnswQueueSaturationCollector extends LuceneTestCase {
 
     assertTrue(delegate.earlyTerminated());
     assertTrue(queueSaturationCollector.earlyTerminated());
-    TopDocs topDocs = queueSaturationCollector.topDocs();
+    TopDocs topDocs = queueSaturationCollector.topDocs().topDocs();
     assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation());
   }
 }

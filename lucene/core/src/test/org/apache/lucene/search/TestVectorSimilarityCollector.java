@@ -36,7 +36,7 @@ public class TestVectorSimilarityCollector extends LuceneTestCase {
       collector.collect(nodes[i], scores[i]);
     }
 
-    ScoreDoc[] scoreDocs = collector.topDocs().scoreDocs;
+    ScoreDoc[] scoreDocs = collector.topDocs().topDocs().scoreDocs;
     int[] resultNodes = new int[scoreDocs.length];
     float[] resultScores = new float[scoreDocs.length];
     for (int i = 0; i < scoreDocs.length; i++) {
@@ -65,7 +65,7 @@ public class TestVectorSimilarityCollector extends LuceneTestCase {
       minCompetitiveSimilarities[i] = collector.minCompetitiveSimilarity();
     }
 
-    ScoreDoc[] scoreDocs = collector.topDocs().scoreDocs;
+    ScoreDoc[] scoreDocs = collector.topDocs().topDocs().scoreDocs;
     int[] resultNodes = new int[scoreDocs.length];
     float[] resultScores = new float[scoreDocs.length];
     for (int i = 0; i < scoreDocs.length; i++) {

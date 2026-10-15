@@ -58,6 +58,30 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
   }
 
   /**
+   * Estimates the number of distinct nodes a search visits, accounting for maxConn and bounded by
+   * the graph size. Used to decide between an HNSW search and an exhaustive scan.
+   *
+   * @param k neighbors to find
+   * @param graphSize size of the graph
+   * @param m maxConn used to build the graph
+   * @return expected number of distinct visited nodes, in [0, graphSize]
+   */
+  public static int expectedVisitedNodes(int k, int graphSize, int m) {
+    return squash(graphSize, 1.0 / 16 * m / Math.log1p(m) * Math.log(graphSize) * k);
+  }
+
+  /**
+   * Expected number of distinct values hit by {@code draws} uniform draws from {@code max} values,
+   * i.e. {@code max * (1 - (1 - 1/max)^draws)}. Maps [0, inf) to [0, max] and is monotonic in both.
+   */
+  private static int squash(int max, double draws) {
+    if (max <= 1) {
+      return draws > 0 ? max : 0;
+    }
+    return (int) (max * -Math.expm1(draws * Math.log1p(-1.0 / max)));
+  }
+
+  /**
    * Follows similar logic to {@link FixedBitSet#of(DocIdSetIterator, int)} to determine the best
    * bit set given the expected number of visited nodes vs total graph size.
    *
@@ -177,7 +201,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
   public static KnnCollector search(
       RandomVectorScorer scorer, int topK, OnHeapHnswGraph graph, Bits acceptOrds, int visitedLimit)
       throws IOException {
-    KnnCollector knnCollector = new TopKnnCollector(topK, visitedLimit, null);
+    KnnCollector knnCollector = new TopKnnCollector(topK, topK, visitedLimit, null);
     OnHeapHnswGraphSearcher graphSearcher =
         new OnHeapHnswGraphSearcher(
             new NeighborQueue(topK, true), new SparseFixedBitSet(getGraphSize(graph)));

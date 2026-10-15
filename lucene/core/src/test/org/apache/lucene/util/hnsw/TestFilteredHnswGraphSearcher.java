@@ -55,12 +55,12 @@ public class TestFilteredHnswGraphSearcher extends LuceneTestCase {
     acceptOrds.set(0);
     acceptOrds.set(1);
     KnnCollector collector =
-        new TopKnnCollector(1, Integer.MAX_VALUE, KnnSearchStrategy.Hnsw.DEFAULT);
+        new TopKnnCollector(1, 1, Integer.MAX_VALUE, KnnSearchStrategy.Hnsw.DEFAULT);
 
     FilteredHnswGraphSearcher.create(collector.k(), graph, 2, acceptOrds)
         .search(collector, scorer, graph, acceptOrds);
 
-    TopDocs results = collector.topDocs();
+    TopDocs results = collector.topDocs().topDocs();
     assertEquals(1, results.scoreDocs.length);
     assertEquals(1, results.scoreDocs[0].doc);
     assertEquals(betterScore, results.scoreDocs[0].score, 0f);
@@ -94,7 +94,7 @@ public class TestFilteredHnswGraphSearcher extends LuceneTestCase {
       acceptOrds.set(node);
     }
     KnnCollector collector =
-        new TopKnnCollector(1, Integer.MAX_VALUE, KnnSearchStrategy.Hnsw.DEFAULT);
+        new TopKnnCollector(1, 1, Integer.MAX_VALUE, KnnSearchStrategy.Hnsw.DEFAULT);
 
     FilteredHnswGraphSearcher.create(collector.k(), graph, 4, acceptOrds)
         .search(collector, scorer, graph, acceptOrds);
@@ -102,7 +102,7 @@ public class TestFilteredHnswGraphSearcher extends LuceneTestCase {
     // One candidate tied with the current minimum may be explored, then the search must stop
     // instead of walking the rest of the equal-scored chain.
     assertEquals(2, collector.visitedCount());
-    TopDocs results = collector.topDocs();
+    TopDocs results = collector.topDocs().topDocs();
     assertEquals(1, results.scoreDocs.length);
     assertEquals(0, results.scoreDocs[0].doc);
     assertEquals(0.5f, results.scoreDocs[0].score, 0f);
