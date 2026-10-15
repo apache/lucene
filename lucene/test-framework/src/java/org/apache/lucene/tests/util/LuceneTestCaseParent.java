@@ -1067,7 +1067,7 @@ public abstract sealed class LuceneTestCaseParent extends Assert
 
             @Override
             public void visit(int docID, byte[] packedValue) throws IOException {
-              int topDocID = ctx.docBase + docID;
+              int topDocID = Math.toIntExact(ctx.docBase) + docID;
               if (docValues.containsKey(topDocID) == false) {
                 docValues.put(topDocID, new HashSet<>());
               }
@@ -1643,9 +1643,9 @@ public abstract sealed class LuceneTestCaseParent extends Assert
     INDEX_PACKAGE_ACCESS.setIndexWriterMaxDocs(limit);
   }
 
-  /** Returns to the default {@link IndexWriter#MAX_DOCS} limit. */
+  /** Returns to the default {@link IndexWriter#MAX_TOTAL_DOCS} whole-index limit. */
   public void restoreIndexWriterMaxDocs() {
-    INDEX_PACKAGE_ACCESS.setIndexWriterMaxDocs(IndexWriter.MAX_DOCS);
+    INDEX_PACKAGE_ACCESS.setIndexWriterMaxDocs(IndexWriter.MAX_TOTAL_DOCS);
   }
 
   private static final IndexPackageAccess INDEX_PACKAGE_ACCESS =
