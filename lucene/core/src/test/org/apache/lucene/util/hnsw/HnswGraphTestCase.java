@@ -439,7 +439,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
             if (j < searchSize) {
               Document doc = storedFields.document(scoreDoc.doc, Set.of("id"));
               ids1.add(doc.get("id"));
-              docs1.add(scoreDoc.doc);
+              docs1.add(Math.toIntExact(scoreDoc.doc));
             }
           }
           TopDocs topDocs2 = searcher2.search(query, searchSize);
@@ -447,7 +447,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
           for (ScoreDoc scoreDoc : topDocs2.scoreDocs) {
             Document doc = storedFields2.document(scoreDoc.doc, Set.of("id"));
             ids2.add(doc.get("id"));
-            docs2.add(scoreDoc.doc);
+            docs2.add(Math.toIntExact(scoreDoc.doc));
           }
           assertEquals(ids1, ids2);
           // doc IDs are not equal, as in the second sorted index docs are organized differently
@@ -577,7 +577,9 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     assertEquals("Number of found results is not equal to [10].", 10, nodes.scoreDocs.length);
     int sum = 0;
     for (ScoreDoc node : nodes.scoreDocs) {
-      assertTrue("the results include a deleted document: " + node, acceptOrds.get(node.doc));
+      assertTrue(
+          "the results include a deleted document: " + node,
+          acceptOrds.get(Math.toIntExact(node.doc)));
       sum += node.doc;
     }
     // We expect to get approximately 100% recall;
@@ -611,7 +613,9 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     TopDocs nodes = nn.topDocs();
     assertEquals(numAccepted, nodes.scoreDocs.length);
     for (ScoreDoc node : nodes.scoreDocs) {
-      assertTrue("the results include a deleted document: " + node, acceptOrds.get(node.doc));
+      assertTrue(
+          "the results include a deleted document: " + node,
+          acceptOrds.get(Math.toIntExact(node.doc)));
     }
   }
 
@@ -1079,7 +1083,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
       }
       int[] actualTopKDocs = new int[topK];
       for (int j = 0; j < topK; j++) {
-        actualTopKDocs[j] = topDocs.scoreDocs[j].doc;
+        actualTopKDocs[j] = Math.toIntExact(topDocs.scoreDocs[j].doc);
       }
       totalMatches += computeOverlap(actualTopKDocs, expected.nodes());
     }
@@ -1140,11 +1144,11 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
       TopDocs actual = actuals.get(i).topDocs();
       int[] expectedDocs = new int[expect.scoreDocs.length];
       for (int j = 0; j < expect.scoreDocs.length; j++) {
-        expectedDocs[j] = expect.scoreDocs[j].doc;
+        expectedDocs[j] = Math.toIntExact(expect.scoreDocs[j].doc);
       }
       int[] actualDocs = new int[actual.scoreDocs.length];
       for (int j = 0; j < actual.scoreDocs.length; j++) {
-        actualDocs[j] = actual.scoreDocs[j].doc;
+        actualDocs[j] = Math.toIntExact(actual.scoreDocs[j].doc);
       }
       assertArrayEquals(expectedDocs, actualDocs);
     }

@@ -399,7 +399,7 @@ public class TestTopDocsMerge extends LuceneTestCase {
           final ScoreDoc sd = mergedHits.scoreDocs[hitIDX];
           assertEquals(
               "doc=" + sd.doc + " wrong shard",
-              ReaderUtil.subIndex(sd.doc, docStarts),
+              ReaderUtil.subIndex(Math.toIntExact(sd.doc), docStarts),
               sd.shardIndex);
         }
       }

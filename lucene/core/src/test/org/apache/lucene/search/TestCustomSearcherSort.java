@@ -110,7 +110,7 @@ public class TestCustomSearcherSort extends LuceneTestCase {
     // entries are silently overwritten
     for (int hitid = 0; hitid < hitsByRank.length; ++hitid) {
       resultMap.put(
-          Integer.valueOf(hitsByRank[hitid].doc), // Key: Lucene
+          Integer.valueOf(Math.toIntExact(hitsByRank[hitid].doc)), // Key: Lucene
           // Document ID
           Integer.valueOf(hitid)); // Value: Hits-Object Index
     }
@@ -121,7 +121,7 @@ public class TestCustomSearcherSort extends LuceneTestCase {
 
     // besides the sorting both sets of hits must be identical
     for (int hitid = 0; hitid < resultSort.length; ++hitid) {
-      Integer idHitDate = Integer.valueOf(resultSort[hitid].doc); // document ID
+      Integer idHitDate = Integer.valueOf(Math.toIntExact(resultSort[hitid].doc)); // document ID
       // from sorted
       // search
       if (!resultMap.containsKey(idHitDate)) {
@@ -150,7 +150,7 @@ public class TestCustomSearcherSort extends LuceneTestCase {
       for (int docnum = 0; docnum < hits.length; ++docnum) {
         Integer luceneId = null;
 
-        luceneId = Integer.valueOf(hits[docnum].doc);
+        luceneId = Integer.valueOf(Math.toIntExact(hits[docnum].doc));
         if (idMap.containsKey(luceneId)) {
           StringBuilder message = new StringBuilder(prefix);
           message.append("Duplicate key for hit index = ");

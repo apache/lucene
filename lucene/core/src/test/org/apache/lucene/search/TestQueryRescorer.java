@@ -330,10 +330,12 @@ public class TestQueryRescorer extends LuceneTestCase {
 
     // Resorting changed the order:
     assertEquals(2, hits2.totalHits.value());
-    assertEquals("1", searcher.storedFields().document(hits2.scoreDocs[0].doc).get("id"));
-    assertEquals("0", searcher.storedFields().document(hits2.scoreDocs[1].doc).get("id"));
+    assertEquals(
+        "1", searcher.storedFields().document(Math.toIntExact(hits2.scoreDocs[0].doc)).get("id"));
+    assertEquals(
+        "0", searcher.storedFields().document(Math.toIntExact(hits2.scoreDocs[1].doc)).get("id"));
 
-    int docID = hits2.scoreDocs[0].doc;
+    long docID = hits2.scoreDocs[0].doc;
     Explanation explain = rescorer.explain(searcher, searcher.explain(bq.build(), docID), docID);
     String s = explain.toString();
     assertThat(s, containsString("TestQueryRescorer$"));
@@ -438,7 +440,7 @@ public class TestQueryRescorer extends LuceneTestCase {
 
     Integer[] expected = new Integer[numHits];
     for (int i = 0; i < numHits; i++) {
-      expected[i] = hits.scoreDocs[i].doc;
+      expected[i] = Math.toIntExact(hits.scoreDocs[i].doc);
     }
 
     final int reverseInt = reverse ? -1 : 1;

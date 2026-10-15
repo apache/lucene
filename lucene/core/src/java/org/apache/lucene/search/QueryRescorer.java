@@ -50,7 +50,7 @@ public abstract class QueryRescorer extends Rescorer {
       throws IOException {
     ScoreDoc[] hits = firstPassTopDocs.scoreDocs.clone();
 
-    Arrays.sort(hits, (a, b) -> a.doc - b.doc);
+    Arrays.sort(hits, (a, b) -> Long.compare(a.doc, b.doc));
 
     List<LeafReaderContext> leaves = searcher.getIndexReader().leaves();
 
@@ -60,13 +60,13 @@ public abstract class QueryRescorer extends Rescorer {
     // Now merge sort docIDs from hits, with reader's leaves:
     int hitUpto = 0;
     int readerUpto = -1;
-    int endDoc = 0;
-    int docBase = 0;
+    long endDoc = 0;
+    long docBase = 0;
     Scorer scorer = null;
 
     while (hitUpto < hits.length) {
       ScoreDoc hit = hits[hitUpto];
-      int docID = hit.doc;
+      long docID = hit.doc;
       LeafReaderContext readerContext = null;
       while (docID >= endDoc) {
         readerUpto++;
@@ -81,7 +81,8 @@ public abstract class QueryRescorer extends Rescorer {
       }
 
       if (scorer != null) {
-        int targetDoc = docID - docBase;
+        // targetDoc is leaf-local and fits an int
+        int targetDoc = (int) (docID - docBase);
         int actualDoc = scorer.docID();
         if (actualDoc < targetDoc) {
           actualDoc = scorer.iterator().advance(targetDoc);
@@ -111,9 +112,7 @@ public abstract class QueryRescorer extends Rescorer {
           } else if (a.score < b.score) {
             return 1;
           } else {
-            // This subtraction can't overflow int
-            // because docIDs are >= 0:
-            return a.doc - b.doc;
+            return Long.compare(a.doc, b.doc);
           }
         };
 
@@ -128,7 +127,7 @@ public abstract class QueryRescorer extends Rescorer {
   }
 
   @Override
-  public Explanation explain(IndexSearcher searcher, Explanation firstPassExplanation, int docID)
+  public Explanation explain(IndexSearcher searcher, Explanation firstPassExplanation, long docID)
       throws IOException {
     Explanation secondPassExplanation = searcher.explain(query, docID);
 

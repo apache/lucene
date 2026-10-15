@@ -36,7 +36,7 @@ public class DocAndScoreQuery extends Query {
     Explanation explain(LeafReaderContext context, int doc, int topN) throws IOException;
   }
 
-  private final int[] docs;
+  private final long[] docs;
   private final float[] scores;
   private final float maxScore;
   private final int[] segmentStarts;
@@ -62,7 +62,7 @@ public class DocAndScoreQuery extends Query {
    *     query
    */
   DocAndScoreQuery(
-      int[] docs,
+      long[] docs,
       float[] scores,
       float maxScore,
       int[] segmentStarts,
@@ -73,7 +73,7 @@ public class DocAndScoreQuery extends Query {
   }
 
   DocAndScoreQuery(
-      int[] docs,
+      long[] docs,
       float[] scores,
       float maxScore,
       int[] segmentStarts,
@@ -123,8 +123,8 @@ public class DocAndScoreQuery extends Query {
     int len = topK.scoreDocs.length;
     assert len > 0;
     float maxScore = topK.scoreDocs[0].score;
-    Arrays.sort(topK.scoreDocs, Comparator.comparingInt(a -> a.doc));
-    int[] docs = new int[len];
+    Arrays.sort(topK.scoreDocs, Comparator.comparingLong(a -> a.doc));
+    long[] docs = new long[len];
     float[] scores = new float[len];
     for (int i = 0; i < len; i++) {
       docs[i] = topK.scoreDocs[i].doc;
@@ -142,7 +142,7 @@ public class DocAndScoreQuery extends Query {
         noMatchExplainer);
   }
 
-  static int[] findSegmentStarts(List<LeafReaderContext> leaves, int[] docs) {
+  static int[] findSegmentStarts(List<LeafReaderContext> leaves, long[] docs) {
     int[] starts = new int[leaves.size() + 1];
     starts[starts.length - 1] = docs.length;
     if (starts.length == 2) {
@@ -150,7 +150,7 @@ public class DocAndScoreQuery extends Query {
     }
     int resultIndex = 0;
     for (int i = 1; i < starts.length - 1; i++) {
-      int upper = leaves.get(i).docBase;
+      long upper = leaves.get(i).docBase;
       resultIndex = Arrays.binarySearch(docs, resultIndex, docs.length, upper);
       if (resultIndex < 0) {
         resultIndex = -1 - resultIndex;
@@ -258,7 +258,8 @@ public class DocAndScoreQuery extends Query {
                 if (upTo >= upper) {
                   return NO_MORE_DOCS;
                 }
-                return docs[upTo] - context.docBase;
+                // leaf-local doc id: fits an int
+                return context.toLeafDocId(docs[upTo]);
               }
 
               @Override

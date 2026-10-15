@@ -574,7 +574,7 @@ abstract class BaseExplicitVectorSimilarityQueryTestCase<
     return accepted.stream().mapToInt(Integer::intValue).toArray();
   }
 
-  private int getId(IndexSearcher searcher, int doc) throws IOException {
+  private int getId(IndexSearcher searcher, long doc) throws IOException {
     return Objects.requireNonNull(searcher.storedFields().document(doc).getField(idField))
         .numericValue()
         .intValue();

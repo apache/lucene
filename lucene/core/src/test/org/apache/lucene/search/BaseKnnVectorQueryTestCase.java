@@ -534,7 +534,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
 
         Set<Integer> collected = new HashSet<>();
         for (ScoreDoc sd : searcher.search(query, 3).scoreDocs) {
-          collected.add(sd.doc);
+          collected.add(Math.toIntExact(sd.doc));
         }
         int dropped = -1;
         for (int doc = 0; doc < 5; doc++) {
