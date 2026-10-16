@@ -21,6 +21,7 @@ import java.util.Random;
 import java.util.Set;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.lucene104.Lucene104Codec;
+import org.apache.lucene.codecs.lucene90.Lucene90StoredFieldsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.index.CodecReader;
@@ -335,12 +336,16 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
   }
 
   public void testSkipLZ4WithUnslicedChunk() throws IOException {
-    byte[] payload1 = new byte[TestUtil.nextInt(random(), 1 << 14, 1 << 15)];
+    int chunkSize = Lucene90StoredFieldsFormat.BEST_SPEED_BLOCK_LENGTH;
+    // Reserve space for the string fields, field headers and length prefixes, and stay below
+    // the slicing threshold (2 * chunkSize).
+    int totalLength = 2 * chunkSize - 128;
+    byte[] payload1 = new byte[TestUtil.nextInt(random(), 1 << 14, chunkSize)];
     for (int i = 0; i < payload1.length; i++) {
       payload1[i] = (byte) i;
     }
 
-    byte[] payload2 = new byte[TestUtil.nextInt(random(), 1 << 14, 1 << 15)];
+    byte[] payload2 = new byte[totalLength - payload1.length];
     for (int i = 0; i < payload2.length; i++) {
       payload2[i] = (byte) i;
     }
@@ -423,12 +428,16 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
   }
 
   public void testSkipDeflateWithUnslicedChunk() throws IOException {
-    byte[] payload1 = new byte[TestUtil.nextInt(random(), 1 << 18, 1 << 19)];
+    int chunkSize = Lucene90StoredFieldsFormat.BEST_COMPRESSION_BLOCK_LENGTH;
+    // Reserve space for the string fields, field headers and length prefixes, and stay below
+    // the slicing threshold (2 * chunkSize).
+    int totalLength = 2 * chunkSize - 128;
+    byte[] payload1 = new byte[TestUtil.nextInt(random(), 1 << 18, chunkSize)];
     for (int i = 0; i < payload1.length; i++) {
       payload1[i] = (byte) i;
     }
 
-    byte[] payload2 = new byte[TestUtil.nextInt(random(), 1 << 18, 1 << 19)];
+    byte[] payload2 = new byte[totalLength - payload1.length];
     for (int i = 0; i < payload2.length; i++) {
       payload2[i] = (byte) i;
     }
