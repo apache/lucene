@@ -200,8 +200,23 @@ public final class SegmentReader extends CodecReader {
       // updates always outside of CFS
       FieldInfosFormat fisFormat = si.info.getCodec().fieldInfosFormat();
       final String segmentSuffix = Long.toString(si.getFieldInfosGen(), Character.MAX_RADIX);
-      return fisFormat.read(si.info.dir, si.info, segmentSuffix, IOContext.READONCE);
+      FieldInfos updated = fisFormat.read(si.info.dir, si.info, segmentSuffix, IOContext.READONCE);
+      return reuseUnchangedCoreFieldInfos(updated);
     }
+  }
+
+  /**
+   * Replaces each {@link FieldInfo} that is identical to the core one with the core instance, so
+   * fields that were not updated are not held twice.
+   */
+  private FieldInfos reuseUnchangedCoreFieldInfos(FieldInfos updated) {
+    FieldInfo[] infos = new FieldInfo[updated.size()];
+    int i = 0;
+    for (FieldInfo fi : updated) {
+      FieldInfo coreFi = core.coreFieldInfos.fieldInfo(fi.number);
+      infos[i++] = coreFi != null && coreFi.hasSameState(fi) ? coreFi : fi;
+    }
+    return new FieldInfos(infos);
   }
 
   @Override
