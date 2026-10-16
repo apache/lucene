@@ -156,6 +156,83 @@ public class TestSparseFixedBitSet extends BaseBitSetTestCase<SparseFixedBitSet>
     }
   }
 
+  public void testAndNotRange() {
+    // Three 4096-bit blocks: the first one has all 64 words of its `indices` set, the second one is
+    // strided, and the third one is empty so that the block scan has to skip it.
+    final int numBits = 3 * 4096;
+    SparseFixedBitSet source = new SparseFixedBitSet(numBits);
+    for (int i = 0; i < 4096; ++i) {
+      source.set(i);
+    }
+    for (int i = 4096; i < 2 * 4096; i += 3) {
+      source.set(i);
+    }
+
+    // Test all possible alignments, and both a "short" (less than 64) and a long length, with the
+    // range sweeping the last word before a 4096-bit block boundary across that boundary: first
+    // into a block that has bits set, then into an empty one.
+    for (int blockBoundary : new int[] {4096, 2 * 4096}) {
+      for (int sourceFrom = blockBoundary - 64; sourceFrom < blockBoundary; ++sourceFrom) {
+        for (int alignment = 0; alignment < 64; ++alignment) {
+          for (int length :
+              new int[] {
+                0,
+                TestUtil.nextInt(random(), 1, Long.SIZE - 1),
+                TestUtil.nextInt(random(), Long.SIZE, 512),
+                blockBoundary - sourceFrom, // ends exactly on the block boundary
+                blockBoundary - sourceFrom + 64 // one word past it
+              }) {
+            // The general case: dest starts a few words in and ends well after the range.
+            assertAndNotRange(source, sourceFrom, 256 + alignment, length, 1_000);
+            // destFrom in dest's first word: a word of source may map before dest's first word.
+            assertAndNotRange(source, sourceFrom, alignment, length, 1_000);
+            if (length > 0) {
+              // dest ends exactly where the range ends: a word of source may map past dest's last
+              // word.
+              assertAndNotRange(source, sourceFrom, alignment, length, alignment + length);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Sets every other bit of a {@code destLength}-bit set, and-nots the given range of {@code
+   * source} into it, and checks every bit of the result.
+   */
+  private static void assertAndNotRange(
+      SparseFixedBitSet source, int sourceFrom, int destFrom, int length, int destLength) {
+    FixedBitSet dest = new FixedBitSet(destLength);
+    for (int i = 0; i < dest.length(); i += 2) {
+      dest.set(i);
+    }
+    SparseFixedBitSet.andNotRange(source, sourceFrom, dest, destFrom, length);
+    for (int i = 0; i < dest.length(); ++i) {
+      boolean destSet = i % 2 == 0;
+      boolean expected;
+      if (i < destFrom || i >= destFrom + length) {
+        // Outside of the range, unmodified
+        expected = destSet;
+      } else {
+        expected = destSet && source.get(sourceFrom + (i - destFrom)) == false;
+      }
+      if (expected != dest.get(i)) {
+        fail(
+            "sourceFrom="
+                + sourceFrom
+                + ", destFrom="
+                + destFrom
+                + ", length="
+                + length
+                + ", destLength="
+                + destLength
+                + ", bit="
+                + i);
+      }
+    }
+  }
+
   public void testLargeValuesDoNotOverflow() {
     assertEquals(524288, SparseFixedBitSet.blockCount(2147479553));
   }

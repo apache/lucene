@@ -1736,14 +1736,14 @@ public class IndexWriter
                       k -> {
                         switch (update.type) {
                           case NUMERIC:
+                          case SORTED_NUMERIC:
                             return new NumericDocValuesFieldUpdates(
-                                nextGen, k, rld.info.info.maxDoc());
+                                nextGen, k, update.type, rld.info.info.maxDoc());
                           case BINARY:
                             return new BinaryDocValuesFieldUpdates(
                                 nextGen, k, rld.info.info.maxDoc());
                           case NONE:
                           case SORTED:
-                          case SORTED_NUMERIC:
                           case SORTED_SET:
                           default:
                             throw new AssertionError("type: " + update.type + " is not supported");
@@ -1752,6 +1752,7 @@ public class IndexWriter
               if (update.hasValue()) {
                 switch (update.type) {
                   case NUMERIC:
+                  case SORTED_NUMERIC:
                     docValuesFieldUpdates.add(
                         leafDocId, ((NumericDocValuesUpdate) update).getValue());
                     break;
@@ -1762,7 +1763,6 @@ public class IndexWriter
                   case NONE:
                   case SORTED:
                   case SORTED_SET:
-                  case SORTED_NUMERIC:
                   default:
                     throw new AssertionError("type: " + update.type + " is not supported");
                 }
@@ -1998,12 +1998,60 @@ public class IndexWriter
     if (value == null) {
       throw new IllegalArgumentException("cannot update a field to a null value: " + field);
     }
+    // Checked before the doc-values-type check below: an index sort field is never binary, so this
+    // would otherwise surface as a less clear doc-values-type mismatch.
+    if (config.getIndexSortFields().contains(field)) {
+      throw new IllegalArgumentException(
+          "cannot update docvalues field involved in the index sort, field="
+              + field
+              + ", sort="
+              + config.getIndexSort());
+    }
     globalFieldNumberMap.verifyOrCreateDvOnlyField(field, DocValuesType.BINARY, true);
     try {
       return maybeProcessEvents(
           docWriter.updateDocValues(new BinaryDocValuesUpdate(term, field, value)));
     } catch (Error tragedy) {
       tragicEvent(tragedy, "updateBinaryDocValue");
+      throw tragedy;
+    }
+  }
+
+  /**
+   * Updates a document's {@link org.apache.lucene.index.SortedNumericDocValues} for <code>field
+   * </code> to the given <code>value</code>. You can only update fields that already exist in the
+   * index, not add new fields through this method. You can only update fields that were indexed
+   * only with doc values.
+   *
+   * <p><b>NOTE:</b> the update sets a single value per matched document, replacing all values that
+   * document previously had. The field itself may be single- or multi-valued; documents not matched
+   * by <code>term</code> keep their existing (possibly multiple) values.
+   *
+   * @param term the term to identify the document(s) to be updated
+   * @param field field name of the {@link org.apache.lucene.index.SortedNumericDocValues} field
+   * @param value new value for the field
+   * @return The <a href="#sequence_number">sequence number</a> for this operation
+   * @throws CorruptIndexException if the index is corrupt
+   * @throws IOException if there is a low-level IO error
+   */
+  public long updateSortedNumericDocValue(Term term, String field, long value) throws IOException {
+    ensureOpen();
+    // Checked before the doc-values-type check below, mirroring updateNumericDocValue/
+    // updateBinaryDocValue, so an index-sort field surfaces this clear message.
+    if (config.getIndexSortFields().contains(field)) {
+      throw new IllegalArgumentException(
+          "cannot update docvalues field involved in the index sort, field="
+              + field
+              + ", sort="
+              + config.getIndexSort());
+    }
+    globalFieldNumberMap.verifyOrCreateDvOnlyField(field, DocValuesType.SORTED_NUMERIC, true);
+    try {
+      return maybeProcessEvents(
+          docWriter.updateDocValues(
+              new NumericDocValuesUpdate(DocValuesType.SORTED_NUMERIC, term, field, value)));
+    } catch (Error tragedy) {
+      tragicEvent(tragedy, "updateSortedNumericDocValue");
       throw tragedy;
     }
   }
@@ -2057,19 +2105,22 @@ public class IndexWriter
 
       switch (dvType) {
         case NUMERIC:
+        case SORTED_NUMERIC:
           Long value = (Long) f.numericValue();
-          dvUpdates[i] = new NumericDocValuesUpdate(term, f.name(), value);
+          dvUpdates[i] = new NumericDocValuesUpdate(dvType, term, f.name(), value);
           break;
         case BINARY:
           dvUpdates[i] = new BinaryDocValuesUpdate(term, f.name(), f.binaryValue());
           break;
         case NONE:
         case SORTED:
-        case SORTED_NUMERIC:
         case SORTED_SET:
         default:
           throw new IllegalArgumentException(
-              "can only update NUMERIC or BINARY fields: field=" + f.name() + ", type=" + dvType);
+              "can only update NUMERIC, BINARY or SORTED_NUMERIC fields: field="
+                  + f.name()
+                  + ", type="
+                  + dvType);
       }
     }
     return dvUpdates;
@@ -4032,10 +4083,6 @@ public class IndexWriter
           merge.initMergeReaders(
               sci -> {
                 final ReadersAndUpdates rld = getPooledInstance(sci, true);
-                // calling setIsMerging is important since it causes the RaU to record all DV
-                // updates
-                // in a separate map in order to be applied to the merged segment after it's done
-                rld.setIsMerging();
                 return rld.getReaderForMerge(
                     context, mr -> deleter.incRef(mr.reader.getSegmentInfo().files()));
               });
@@ -4456,10 +4503,6 @@ public class IndexWriter
     final ReadersAndUpdates mergedDeletesAndUpdates = getPooledInstance(merge.info, true);
     int numDeletesBefore = mergedDeletesAndUpdates.getDelCount();
     // field -> delGen -> dv field updates
-    Map<String, LongObjectHashMap<DocValuesFieldUpdates>> mappedDVUpdates = new HashMap<>();
-
-    boolean anyDVUpdates = false;
-
     assert sourceSegments.size() == docMaps.length;
     for (int i = 0; i < sourceSegments.size(); i++) {
       SegmentCommitInfo info = sourceSegments.get(i);
@@ -4478,79 +4521,22 @@ public class IndexWriter
           merge.getMergeReader().get(i).hardLiveDocs,
           rld.getHardLiveDocs(),
           segDocMap);
-
-      // Now carry over all doc values updates that were resolved while we were merging, remapping
-      // the docIDs to the newly merged docIDs.
-      // We only carry over packets that finished resolving; if any are still running (concurrently)
-      // they will detect that our merge completed
-      // and re-resolve against the newly merged segment:
-      Map<String, List<DocValuesFieldUpdates>> mergingDVUpdates = rld.getMergingDVUpdates();
-      for (Map.Entry<String, List<DocValuesFieldUpdates>> ent : mergingDVUpdates.entrySet()) {
-
-        String field = ent.getKey();
-
-        LongObjectHashMap<DocValuesFieldUpdates> mappedField = mappedDVUpdates.get(field);
-        if (mappedField == null) {
-          mappedField = new LongObjectHashMap<>();
-          mappedDVUpdates.put(field, mappedField);
-        }
-
-        for (DocValuesFieldUpdates updates : ent.getValue()) {
-
-          if (bufferedUpdatesStream.stillRunning(updates.delGen)) {
-            continue;
-          }
-
-          // sanity check:
-          assert field.equals(updates.field);
-
-          DocValuesFieldUpdates mappedUpdates = mappedField.get(updates.delGen);
-          if (mappedUpdates == null) {
-            switch (updates.type) {
-              case NUMERIC:
-                mappedUpdates =
-                    new NumericDocValuesFieldUpdates(
-                        updates.delGen, updates.field, merge.info.info.maxDoc());
-                break;
-              case BINARY:
-                mappedUpdates =
-                    new BinaryDocValuesFieldUpdates(
-                        updates.delGen, updates.field, merge.info.info.maxDoc());
-                break;
-              case NONE:
-              case SORTED:
-              case SORTED_SET:
-              case SORTED_NUMERIC:
-              default:
-                throw new AssertionError();
-            }
-            mappedField.put(updates.delGen, mappedUpdates);
-          }
-
-          DocValuesFieldUpdates.Iterator it = updates.iterator();
-          int doc;
-          while ((doc = it.nextDoc()) != NO_MORE_DOCS) {
-            int mappedDoc = segDocMap.get(doc);
-            if (mappedDoc != -1) {
-              if (it.hasValue()) {
-                // not deleted
-                mappedUpdates.add(mappedDoc, it);
-              } else {
-                mappedUpdates.reset(mappedDoc);
-              }
-              anyDVUpdates = true;
-            }
-          }
-        }
-      }
     }
 
-    if (anyDVUpdates) {
-      // Persist the merged DV updates onto the RAU for the merged segment:
+    // Carry over the doc-values updates that resolved while merging, remapping to the merged
+    // docIDs.
+    // Updates still resolving concurrently are skipped; they re-resolve against the merged segment
+    // once they complete.
+    Map<String, LongObjectHashMap<DocValuesFieldUpdates>> mappedDVUpdates =
+        buildMappedDVUpdatesFromDisk(merge, docMaps, minGen);
+
+    boolean anyDVUpdates = false;
+    if (mappedDVUpdates.isEmpty() == false) {
+      // Persist the merged DV updates onto the RAU for the merged segment (already finished):
       for (LongObjectHashMap<DocValuesFieldUpdates> d : mappedDVUpdates.values()) {
         for (ObjectCursor<DocValuesFieldUpdates> updates : d.values()) {
-          updates.value.finish();
           mergedDeletesAndUpdates.addDVUpdate(updates.value);
+          anyDVUpdates = true;
         }
       }
     }
@@ -4568,6 +4554,277 @@ public class IndexWriter
     merge.info.setBufferedDeletesGen(minGen);
 
     return mergedDeletesAndUpdates;
+  }
+
+  /**
+   * Builds the doc-values-update merge carry-over from the source segments' on-disk state plus
+   * their residual (resolved but not-yet-written) pending updates, remapping to merged docIDs.
+   * Returns {@code field -> delGen -> updates} for the merged {@link ReadersAndUpdates} to apply.
+   *
+   * <p>Per source segment and updated field, the written changes are read back from disk
+   * (current-vs-baseline diff) and collapsed into one packet, while the residual updates keep their
+   * real delGens. Flushing advances {@code completedDelGen} as a prefix, so every residual delGen
+   * is greater than any written one; the collapsed packet therefore uses {@code minResidualDelGen -
+   * 1} (or {@code completedDelGen} when there is no residual), a gen below all residual and
+   * still-running ones so newest-wins ordering holds on the merged segment.
+   */
+  private Map<String, LongObjectHashMap<DocValuesFieldUpdates>> buildMappedDVUpdatesFromDisk(
+      MergePolicy.OneMerge merge, MergeState.DocMap[] docMaps, long minGen) throws IOException {
+    final int mergedMaxDoc = merge.info.info.maxDoc();
+    Map<String, LongObjectHashMap<DocValuesFieldUpdates>> mapped = new HashMap<>();
+    for (int i = 0; i < merge.segments.size(); i++) {
+      SegmentCommitInfo info = merge.segments.get(i);
+      final ReadersAndUpdates rld = getPooledInstance(info, false);
+      final MergeState.DocMap segDocMap = docMaps[i];
+      final CodecReader baseline = merge.getMergeReader().get(i).codecReader;
+      final SegmentReader current = rld.getReader(IOContext.DEFAULT);
+      try {
+        // Residual finished-but-unflushed updates for this segment, per field, skipping any packet
+        // still globally running (those re-resolve against the merged segment).
+        Map<String, List<DocValuesFieldUpdates>> residualByField = new HashMap<>();
+        for (Map.Entry<String, List<DocValuesFieldUpdates>> e :
+            rld.getPendingDVUpdatesSnapshot().entrySet()) {
+          List<DocValuesFieldUpdates> keep = new ArrayList<>();
+          for (DocValuesFieldUpdates u : e.getValue()) {
+            if (bufferedUpdatesStream.stillRunning(u.delGen) == false) {
+              keep.add(u);
+            }
+          }
+          if (keep.isEmpty() == false) {
+            residualByField.put(e.getKey(), keep);
+          }
+        }
+        // Updated fields = those whose on-disk DV generation advanced vs the merge-reader baseline
+        // (gen advances for both classic and overlay writes), plus any field with residual updates.
+        Set<String> updatedFields = new HashSet<>(residualByField.keySet());
+        FieldInfos baseFieldInfos = baseline.getFieldInfos();
+        for (FieldInfo fi : current.getFieldInfos()) {
+          DocValuesType t = fi.getDocValuesType();
+          if (t != DocValuesType.NUMERIC
+              && t != DocValuesType.BINARY
+              && t != DocValuesType.SORTED_NUMERIC) {
+            continue;
+          }
+          FieldInfo baseFi = baseFieldInfos.fieldInfo(fi.name);
+          if (baseFi == null || baseFi.getDocValuesGen() != fi.getDocValuesGen()) {
+            updatedFields.add(fi.name);
+          }
+        }
+
+        for (String field : updatedFields) {
+          List<DocValuesFieldUpdates> residual = residualByField.getOrDefault(field, List.of());
+          long minResidual = Long.MAX_VALUE;
+          for (DocValuesFieldUpdates u : residual) {
+            minResidual = Math.min(minResidual, u.delGen);
+          }
+          final long diskDelGen =
+              minResidual != Long.MAX_VALUE
+                  ? minResidual - 1
+                  : bufferedUpdatesStream.getCompletedDelGen();
+          LongObjectHashMap<DocValuesFieldUpdates> byGen =
+              mapped.computeIfAbsent(field, _ -> new LongObjectHashMap<>());
+
+          // (A) flushed changes since baseline, collapsed at diskDelGen. Only when the field has
+          // on-disk doc values; a field whose only updates are still pending is absent from the
+          // reader (e.g. a soft-deletes field on its first, not-yet-written update).
+          FieldInfo fi = current.getFieldInfos().fieldInfo(field);
+          if (fi != null) {
+            addDiskDiffToPacket(fi, baseline, current, segDocMap, diskDelGen, mergedMaxDoc, byGen);
+            assert byGen.containsKey(diskDelGen) == false || diskDelGen > minGen
+                : "diskDelGen " + diskDelGen + " <= minGen " + minGen;
+          }
+
+          // (B) residual updates at their real delGens, typed from the packet itself since the
+          // field
+          // need not exist on disk yet.
+          for (DocValuesFieldUpdates u : residual) {
+            DocValuesFieldUpdates.Iterator it = u.iterator();
+            int doc;
+            while ((doc = it.nextDoc()) != NO_MORE_DOCS) {
+              int md = segDocMap.get(doc);
+              if (md == -1) {
+                continue;
+              }
+              DocValuesFieldUpdates p = byGen.get(u.delGen);
+              if (p == null) {
+                p =
+                    u.type == DocValuesType.BINARY
+                        ? new BinaryDocValuesFieldUpdates(u.delGen, u.field, mergedMaxDoc)
+                        : new NumericDocValuesFieldUpdates(u.delGen, u.field, u.type, mergedMaxDoc);
+                byGen.put(u.delGen, p);
+              }
+              if (it.hasValue()) {
+                p.add(md, it);
+              } else {
+                p.reset(md);
+              }
+            }
+          }
+        }
+      } finally {
+        current.decRef();
+      }
+    }
+    for (LongObjectHashMap<DocValuesFieldUpdates> byGen : mapped.values()) {
+      for (ObjectCursor<DocValuesFieldUpdates> c : byGen.values()) {
+        c.value.finish();
+      }
+    }
+    return mapped;
+  }
+
+  private static DocValuesFieldUpdates getOrCreatePacket(
+      LongObjectHashMap<DocValuesFieldUpdates> byGen, long delGen, FieldInfo fi, int mergedMaxDoc) {
+    DocValuesFieldUpdates p = byGen.get(delGen);
+    if (p == null) {
+      p =
+          fi.getDocValuesType() == DocValuesType.BINARY
+              ? new BinaryDocValuesFieldUpdates(delGen, fi.name, mergedMaxDoc)
+              : new NumericDocValuesFieldUpdates(
+                  delGen, fi.name, fi.getDocValuesType(), mergedMaxDoc);
+      byGen.put(delGen, p);
+    }
+    return p;
+  }
+
+  /**
+   * Emits, into a single {@code diskDelGen} packet, each merged doc of {@code fi} whose current
+   * on-disk value differs from the merge-reader baseline (i.e. an update flushed during the merge),
+   * remapping source docIDs to merged docIDs.
+   */
+  private static void addDiskDiffToPacket(
+      FieldInfo fi,
+      CodecReader baseline,
+      CodecReader current,
+      MergeState.DocMap segDocMap,
+      long diskDelGen,
+      int mergedMaxDoc,
+      LongObjectHashMap<DocValuesFieldUpdates> byGen)
+      throws IOException {
+    switch (fi.getDocValuesType()) {
+      case NUMERIC ->
+          addNumericDiskDiffToPacket(
+              fi, baseline, current, segDocMap, diskDelGen, mergedMaxDoc, byGen);
+      case BINARY ->
+          addBinaryDiskDiffToPacket(
+              fi, baseline, current, segDocMap, diskDelGen, mergedMaxDoc, byGen);
+      case SORTED_NUMERIC ->
+          addSortedNumericDiskDiffToPacket(
+              fi, baseline, current, segDocMap, diskDelGen, mergedMaxDoc, byGen);
+      // $CASES-OMITTED$
+      default ->
+          throw new AssertionError(
+              "unexpected doc-values type for update carry-over: " + fi.getDocValuesType());
+    }
+  }
+
+  private static void addNumericDiskDiffToPacket(
+      FieldInfo fi,
+      CodecReader baseline,
+      CodecReader current,
+      MergeState.DocMap segDocMap,
+      long diskDelGen,
+      int mergedMaxDoc,
+      LongObjectHashMap<DocValuesFieldUpdates> byGen)
+      throws IOException {
+    final int maxDoc = current.maxDoc();
+    NumericDocValues cur = current.getNumericDocValues(fi.name);
+    NumericDocValues base = baseline.getNumericDocValues(fi.name);
+    for (int doc = 0; doc < maxDoc; doc++) {
+      int md = segDocMap.get(doc);
+      if (md == -1) {
+        continue;
+      }
+      boolean hasCur = cur != null && cur.advanceExact(doc);
+      boolean hasBase = base != null && base.advanceExact(doc);
+      long curVal = hasCur ? cur.longValue() : 0;
+      if (hasCur == hasBase && (hasCur == false || curVal == base.longValue())) {
+        continue; // unchanged: both absent, or both present with an equal value
+      }
+      DocValuesFieldUpdates p = getOrCreatePacket(byGen, diskDelGen, fi, mergedMaxDoc);
+      if (hasCur == false) {
+        p.reset(md);
+      } else {
+        p.add(md, curVal);
+      }
+    }
+  }
+
+  private static void addBinaryDiskDiffToPacket(
+      FieldInfo fi,
+      CodecReader baseline,
+      CodecReader current,
+      MergeState.DocMap segDocMap,
+      long diskDelGen,
+      int mergedMaxDoc,
+      LongObjectHashMap<DocValuesFieldUpdates> byGen)
+      throws IOException {
+    final int maxDoc = current.maxDoc();
+    BinaryDocValues cur = current.getBinaryDocValues(fi.name);
+    BinaryDocValues base = baseline.getBinaryDocValues(fi.name);
+    for (int doc = 0; doc < maxDoc; doc++) {
+      int md = segDocMap.get(doc);
+      if (md == -1) {
+        continue;
+      }
+      // cur and base are independent readers, so their live BytesRefs can be compared directly; a
+      // changed value is deep-copied only when it is stored below.
+      boolean hasCur = cur != null && cur.advanceExact(doc);
+      BytesRef curVal = hasCur ? cur.binaryValue() : null;
+      boolean hasBase = base != null && base.advanceExact(doc);
+      if (hasCur == hasBase && (hasCur == false || curVal.bytesEquals(base.binaryValue()))) {
+        continue; // unchanged: both absent, or both present with an equal value
+      }
+      DocValuesFieldUpdates p = getOrCreatePacket(byGen, diskDelGen, fi, mergedMaxDoc);
+      if (hasCur == false) {
+        p.reset(md);
+      } else {
+        p.add(md, BytesRef.deepCopyOf(curVal));
+      }
+    }
+  }
+
+  /**
+   * The sorted-numeric analog: a doc whose whole value set changed during the merge was updated,
+   * and an update always sets a single value (an unchanged multi-valued doc compares equal and is
+   * skipped), so a changed doc is emitted as either a single value or a reset.
+   */
+  private static void addSortedNumericDiskDiffToPacket(
+      FieldInfo fi,
+      CodecReader baseline,
+      CodecReader current,
+      MergeState.DocMap segDocMap,
+      long diskDelGen,
+      int mergedMaxDoc,
+      LongObjectHashMap<DocValuesFieldUpdates> byGen)
+      throws IOException {
+    final int maxDoc = current.maxDoc();
+    SortedNumericDocValues cur = current.getSortedNumericDocValues(fi.name);
+    SortedNumericDocValues base = baseline.getSortedNumericDocValues(fi.name);
+    for (int doc = 0; doc < maxDoc; doc++) {
+      int md = segDocMap.get(doc);
+      if (md == -1) {
+        continue;
+      }
+      boolean hasCur = cur != null && cur.advanceExact(doc);
+      if (hasCur && cur.docValueCount() > 1) {
+        // Updates are always single-valued, so a still-multi-valued doc cannot have been updated.
+        continue;
+      }
+      long curVal = hasCur ? cur.nextValue() : 0;
+      boolean hasBase = base != null && base.advanceExact(doc);
+      if (hasCur == false && hasBase == false) {
+        continue;
+      } else if (hasCur && hasBase && base.docValueCount() == 1 && base.nextValue() == curVal) {
+        continue;
+      }
+      DocValuesFieldUpdates p = getOrCreatePacket(byGen, diskDelGen, fi, mergedMaxDoc);
+      if (hasCur == false) {
+        p.reset(md);
+      } else {
+        p.add(md, curVal);
+      }
+    }
   }
 
   /**
@@ -5151,8 +5408,6 @@ public class IndexWriter
               assert rld != null;
               if (drop) {
                 rld.dropChanges();
-              } else {
-                rld.dropMergingUpdates();
               }
               rld.release(sr);
               release(rld);
@@ -5229,7 +5484,6 @@ public class IndexWriter
       merge.initMergeReaders(
           sci -> {
             final ReadersAndUpdates rld = getPooledInstance(sci, true);
-            rld.setIsMerging();
             synchronized (this) {
               return rld.getReaderForMerge(
                   context, mr -> deleter.incRef(mr.reader.getSegmentInfo().files()));

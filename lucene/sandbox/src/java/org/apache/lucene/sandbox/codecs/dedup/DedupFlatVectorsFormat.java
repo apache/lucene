@@ -81,6 +81,7 @@ import org.apache.lucene.index.SegmentWriteState;
  *       org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration#writeStoredMeta}
  *   <li><b>[int64]</b> offset to this field's {@code fieldOrdToGroupOrd} map in the .vdd file
  *   <li><b>[int64]</b> length of this field's {@code fieldOrdToGroupOrd} map, in bytes
+ *   <li><b>[int32]</b> bits per value used to pack this field's {@code fieldOrdToGroupOrd} map
  * </ul>
  *
  * <p>also terminated by <b>[int32]</b> {@code -1}.
@@ -110,14 +111,14 @@ import org.apache.lucene.index.SegmentWriteState;
 final class DedupFlatVectorsFormat extends FlatVectorsFormat {
   static final String NAME = "DedupFlatVectorsFormat";
 
-  static final String META_CODEC_NAME = "DedupFlatVectorsFormatMeta";
-  static final String META_EXTENSION = "vdm";
+  private static final String META_CODEC_NAME = "DedupFlatVectorsFormatMeta";
+  private static final String META_EXTENSION = "vdm";
 
-  static final String VECTOR_DATA_CODEC_NAME = "DedupFlatVectorsFormatVectorData";
-  static final String VECTOR_DATA_EXTENSION = "vdd";
+  private static final String VECTOR_DATA_CODEC_NAME = "DedupFlatVectorsFormatVectorData";
+  private static final String VECTOR_DATA_EXTENSION = "vdd";
 
-  static final int VERSION_START = 0;
-  static final int VERSION_CURRENT = VERSION_START;
+  private static final int VERSION_START = 0;
+  private static final int VERSION_CURRENT = VERSION_START;
 
   private static final DedupFlatVectorsScorer FLAT_VECTORS_SCORER = new DedupFlatVectorsScorer();
 
@@ -127,11 +128,29 @@ final class DedupFlatVectorsFormat extends FlatVectorsFormat {
 
   @Override
   public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new DedupFlatVectorsWriter(state, FLAT_VECTORS_SCORER);
+    return new DedupFlatVectorsWriter(
+        state,
+        FLAT_VECTORS_SCORER,
+        null,
+        META_CODEC_NAME,
+        META_EXTENSION,
+        VECTOR_DATA_CODEC_NAME,
+        VECTOR_DATA_EXTENSION,
+        null,
+        null,
+        VERSION_CURRENT);
   }
 
   @Override
   public FlatVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new DedupFlatVectorsReader(state, FLAT_VECTORS_SCORER);
+    return new DedupFlatVectorsReader(
+        state,
+        FLAT_VECTORS_SCORER,
+        META_CODEC_NAME,
+        META_EXTENSION,
+        VECTOR_DATA_CODEC_NAME,
+        VECTOR_DATA_EXTENSION,
+        VERSION_START,
+        VERSION_CURRENT);
   }
 }

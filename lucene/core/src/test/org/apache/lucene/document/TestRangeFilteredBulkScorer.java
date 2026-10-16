@@ -51,6 +51,14 @@ public class TestRangeFilteredBulkScorer extends LuceneTestCase {
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, next);
   }
 
+  public void testEmptyScoringWindowInsideRange() throws Exception {
+    BulkScorer bs = newBulkScorer(20, 80);
+    var collector = new RangeRecordingCollector();
+    int next = bs.score(collector, null, 40, 40);
+    assertTrue(collector.ranges.isEmpty());
+    assertEquals(40, next);
+  }
+
   public void testCost() {
     assertEquals(30L, newBulkScorer(10, 40).cost());
   }

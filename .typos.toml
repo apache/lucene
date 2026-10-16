@@ -56,7 +56,7 @@ check-file = true
 
 [type.help]
 check-file = true
-extend-glob = [ "help/*.txt"]
+extend-glob = [ "help/*.md"]
 
 [type.html]
 check-file = true
