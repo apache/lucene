@@ -336,6 +336,11 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
+  public int getVectorCount(FieldInfo fieldInfo) {
+    return getFieldEntryOrThrow(fieldInfo.name).size();
+  }
+
+  @Override
   public void close() throws IOException {
     IOUtils.close(vectorData, vectorIndex);
   }

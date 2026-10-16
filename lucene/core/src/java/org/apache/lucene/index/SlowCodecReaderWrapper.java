@@ -213,15 +213,34 @@ public final class SlowCodecReaderWrapper {
         return vectorsReader.getOffHeapByteSize(fieldInfo);
       }
 
+      @Override
+      public int getVectorCount(FieldInfo fieldInfo) throws IOException {
+        SegmentReader segmentReader = unwrapSegmentReader(reader);
+        if (segmentReader != null) {
+          var vectorsReader = segmentReader.getVectorReader();
+          vectorsReader = vectorsReader.unwrapReaderForField(fieldInfo.name);
+          return vectorsReader.getVectorCount(fieldInfo);
+        }
+        return super.getVectorCount(fieldInfo);
+      }
+
       static SegmentReader segmentReader(LeafReader reader) {
+        SegmentReader segmentReader = unwrapSegmentReader(reader);
+        if (segmentReader == null) {
+          throw new AssertionError("unexpected reader [" + reader + "]");
+        }
+        return segmentReader;
+      }
+
+      static SegmentReader unwrapSegmentReader(LeafReader reader) {
         if (reader instanceof SegmentReader sr) {
           return sr;
         } else if (reader instanceof final FilterLeafReader fReader) {
-          return segmentReader(FilterLeafReader.unwrap(fReader));
+          return unwrapSegmentReader(FilterLeafReader.unwrap(fReader));
         } else if (reader instanceof final FilterCodecReader fReader) {
-          return segmentReader(FilterCodecReader.unwrap(fReader));
+          return unwrapSegmentReader(FilterCodecReader.unwrap(fReader));
         }
-        throw new AssertionError("unexpected reader [" + reader + "]");
+        return null;
       }
 
       @Override

@@ -264,6 +264,11 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
+    public int getVectorCount(FieldInfo fieldInfo) throws IOException {
+      return delegate.getVectorCount(fieldInfo);
+    }
+
+    @Override
     public void close() throws IOException {
       delegate.close();
       delegate.close(); // impls should be able to handle multiple closes

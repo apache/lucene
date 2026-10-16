@@ -49,6 +49,11 @@ import org.apache.lucene.util.Constants;
  * <p>It Uses <code>Linker.Option.critical(true)</code> for optimal performance by eliminating the
  * overhead of ensuring MemorySegments are allocated off-heap before native calls.
  *
+ * <p>The native functions are looked up by their name prefixed with {@value #SYMBOL_PREFIX}, only
+ * in libraries loaded by this class's class loader. Their signatures are declared in {@code
+ * lucene/misc/src/c/dotProduct.h}: where a function takes a single length argument, it is the
+ * element count of its first array argument.
+ *
  * @lucene.experimental
  */
 @SuppressWarnings("restricted")
@@ -66,6 +71,9 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
 
   // TODO: Make this dynamic?
   public static final String NATIVE_VECTOR_LIBRARY_NAME = "dotProduct";
+
+  /** Prefix of the native symbol names, so that an unrelated library cannot supply them. */
+  public static final String SYMBOL_PREFIX = "lucene_";
 
   public NativeVectorUtilSupport(VectorUtilSupport vectorUtilSupport) {
     this.delegateVectorUtilSupport = vectorUtilSupport;
@@ -161,13 +169,12 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
 
   static {
     if (isLibraryLoaded) {
-      SymbolLookup loaderLookup = SymbolLookup.loaderLookup();
-      SYMBOL_LOOKUP = name -> loaderLookup.find(name).or(() -> LINKER.defaultLookup().find(name));
+      SYMBOL_LOOKUP = SymbolLookup.loaderLookup();
 
       // Each method handle with a unique native method name
       dotProduct$MH = getMethodHandle("dotProduct", twoPointerIntToInt);
       squareDistance$MH = getMethodHandle("squareDistance", twoPointerIntToInt);
-      cosine$MH = getMethodHandle("cosine", twoPointerIntToInt);
+      cosine$MH = getMethodHandle("cosine", twoPointerIntToFloat);
       dotProductFloat$MH = getMethodHandle("dotProductFloat", twoPointerIntToFloat);
       squareDistanceFloat$MH = getMethodHandle("squareDistanceFloat", twoPointerIntToFloat);
       cosineFloat$MH = getMethodHandle("cosineFloat", twoPointerIntToFloat);
@@ -221,18 +228,21 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
   }
 
   private static MethodHandle getMethodHandle(String methodName, FunctionDescriptor descriptor) {
+    String symbolName = SYMBOL_PREFIX + methodName;
     MethodHandle mh =
         SYMBOL_LOOKUP
-            .find(methodName)
+            .find(symbolName)
             .map(addr -> LINKER.downcallHandle(addr, descriptor, Linker.Option.critical(true)))
             .orElse(null);
     if (mh == null && Constants.NATIVE_STRICT_MODE) {
-      throw new RuntimeException("C code for " + methodName + " was not linked!");
+      throw new RuntimeException("C code for " + symbolName + " was not linked!");
     }
     return mh;
   }
 
-  // Reusable invoke helpers for signatures used multiple times
+  // Reusable invoke helpers for signatures used multiple times. The length argument is the element
+  // count of the first array; the int and long helpers are only used for byte arrays, where it
+  // equals the byte size.
   private static int invokeIntMethodHandle(MethodHandle mh, MemorySegment a, MemorySegment b) {
     try {
       return (int) mh.invokeExact(a, b, (int) a.byteSize());
@@ -249,9 +259,10 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
     }
   }
 
-  private static float invokeFloatMethodHandle(MethodHandle mh, MemorySegment a, MemorySegment b) {
+  private static float invokeFloatMethodHandle(
+      MethodHandle mh, MemorySegment a, MemorySegment b, int length) {
     try {
-      return (float) mh.invokeExact(a, b, (int) a.byteSize());
+      return (float) mh.invokeExact(a, b, length);
     } catch (Throwable ex) {
       throw new AssertionError("should not reach here", ex);
     }
@@ -279,7 +290,7 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
 
   public static float cosine(MemorySegment a, MemorySegment b) {
     return (cosine$MH != null)
-        ? invokeIntMethodHandle(cosine$MH, a, b)
+        ? invokeFloatMethodHandle(cosine$MH, a, b, (int) a.byteSize())
         : PanamaVectorUtilSupport.cosine(a, b);
   }
 
@@ -384,7 +395,7 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
   public float dotProduct(float[] a, float[] b) {
     return (dotProductFloat$MH != null)
         ? invokeFloatMethodHandle(
-            dotProductFloat$MH, MemorySegment.ofArray(a), MemorySegment.ofArray(b))
+            dotProductFloat$MH, MemorySegment.ofArray(a), MemorySegment.ofArray(b), a.length)
         : delegateVectorUtilSupport.dotProduct(a, b);
   }
 
@@ -392,7 +403,7 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
   public float cosine(float[] v1, float[] v2) {
     return (cosineFloat$MH != null)
         ? invokeFloatMethodHandle(
-            cosineFloat$MH, MemorySegment.ofArray(v1), MemorySegment.ofArray(v2))
+            cosineFloat$MH, MemorySegment.ofArray(v1), MemorySegment.ofArray(v2), v1.length)
         : delegateVectorUtilSupport.cosine(v1, v2);
   }
 
@@ -400,7 +411,7 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
   public float squareDistance(float[] a, float[] b) {
     return (squareDistanceFloat$MH != null)
         ? invokeFloatMethodHandle(
-            squareDistanceFloat$MH, MemorySegment.ofArray(a), MemorySegment.ofArray(b))
+            squareDistanceFloat$MH, MemorySegment.ofArray(a), MemorySegment.ofArray(b), a.length)
         : delegateVectorUtilSupport.squareDistance(a, b);
   }
 
@@ -430,6 +441,11 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
     return (int4DotProductBothPacked$MH != null)
         ? int4DotProductBothPacked(MemorySegment.ofArray(a), MemorySegment.ofArray(b))
         : delegateVectorUtilSupport.int4DotProductBothPacked(a, b);
+  }
+
+  @Override
+  public void int4Unpack(byte[] packed, byte[] unpacked) {
+    delegateVectorUtilSupport.int4Unpack(packed, unpacked);
   }
 
   @Override
@@ -571,12 +587,22 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public float[] l2normalize(float[] v, boolean throwOnZero) {
-    invokeOrDelegate(
-        l2normalize$MH,
-        () -> delegateVectorUtilSupport.l2normalize(v, throwOnZero),
-        MemorySegment.ofArray(v),
-        (byte) (throwOnZero ? 1 : 0),
-        v.length);
+    if (l2normalize$MH == null) {
+      return delegateVectorUtilSupport.l2normalize(v, throwOnZero);
+    }
+    final MemorySegment result;
+    try {
+      result =
+          (MemorySegment)
+              l2normalize$MH.invokeExact(
+                  MemorySegment.ofArray(v), (byte) (throwOnZero ? 1 : 0), v.length);
+    } catch (Throwable ex) {
+      throw new AssertionError("should not reach here", ex);
+    }
+    // the native function returns NULL for a zero vector, which it leaves unchanged
+    if (result.address() == 0 && throwOnZero) {
+      throw new IllegalArgumentException("Cannot normalize a zero-length vector");
+    }
     return v;
   }
 
