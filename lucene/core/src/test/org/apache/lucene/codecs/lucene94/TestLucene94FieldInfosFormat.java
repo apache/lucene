@@ -17,8 +17,19 @@
 package org.apache.lucene.codecs.lucene94;
 
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.index.DocValuesSkipIndexType;
+import org.apache.lucene.index.DocValuesType;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.SegmentInfo;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.tests.index.BaseFieldInfoFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
@@ -36,5 +47,61 @@ public class TestLucene94FieldInfosFormat extends BaseFieldInfoFormatTestCase {
     var expectedValues = Arrays.stream(VectorSimilarityFunction.values()).toList();
 
     assertEquals(Lucene94FieldInfosFormat.SIMILARITY_FUNCTIONS, expectedValues);
+  }
+
+  public void testEqualAttributesAreSharedAcrossNonAdjacentFields() throws Exception {
+    Map<String, String> first = Map.of("format", "x", "suffix", "0");
+    Map<String, String> second = Map.of("format", "y", "suffix", "0");
+    try (Directory dir = newDirectory()) {
+      Codec codec = getCodec();
+      SegmentInfo segmentInfo = newSegmentInfo(dir, "_123");
+      FieldInfos written =
+          new FieldInfos(
+              new FieldInfo[] {
+                fieldWithAttributes("a", 0, first),
+                fieldWithAttributes("b", 1, second),
+                fieldWithAttributes("c", 2, first),
+                fieldWithAttributes("d", 3, Map.of())
+              });
+      codec.fieldInfosFormat().write(dir, segmentInfo, "", written, IOContext.DEFAULT);
+      FieldInfos read = codec.fieldInfosFormat().read(dir, segmentInfo, "", IOContext.DEFAULT);
+
+      FieldInfo a = read.fieldInfo("a");
+      FieldInfo b = read.fieldInfo("b");
+      FieldInfo c = read.fieldInfo("c");
+      assertEquals(first, a.attributes());
+      assertEquals(second, b.attributes());
+      assertEquals(Map.of(), read.fieldInfo("d").attributes());
+      assertSame(a.attributes(), c.attributes());
+      assertNotSame(a.attributes(), b.attributes());
+
+      a.putAttribute("extra", "1");
+      assertEquals("1", a.getAttribute("extra"));
+      assertNull(c.getAttribute("extra"));
+      assertEquals(first, c.attributes());
+    }
+  }
+
+  private static FieldInfo fieldWithAttributes(
+      String name, int number, Map<String, String> attributes) {
+    return new FieldInfo(
+        name,
+        number,
+        false,
+        false,
+        false,
+        IndexOptions.DOCS,
+        DocValuesType.NONE,
+        DocValuesSkipIndexType.NONE,
+        -1,
+        new HashMap<>(attributes),
+        0,
+        0,
+        0,
+        0,
+        VectorEncoding.FLOAT32,
+        VectorSimilarityFunction.EUCLIDEAN,
+        false,
+        false);
   }
 }
