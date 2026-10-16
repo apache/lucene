@@ -39,6 +39,14 @@ public class TestTeluguNormalizer extends BaseTokenStreamTestCase {
     check("ఔఐఆఈఊ", "ఓఏఅఇఉ");
   }
 
+  /** Test that 'vu' and 'ma' are not incorrectly normalized. */
+  public void testVuAndMaNormalization() throws IOException {
+    check("వు", "వు"); // vu
+    check("మ", "మ"); // ma
+    check("వెంకటరావు", "వెంకటరావు"); // VenkataRao (contains vu)
+    check("వెంకటరామ", "వెంకటరామ"); // VenkataRama (contains ma)
+  }
+
   private void check(String input, String output) throws IOException {
     Tokenizer tokenizer = whitespaceMockTokenizer(input);
     TokenFilter tf = new TeluguNormalizationFilter(tokenizer);
