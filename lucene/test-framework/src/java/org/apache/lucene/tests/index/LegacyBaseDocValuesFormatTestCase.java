@@ -152,7 +152,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
       assertEquals(text, hitDoc.get("fieldname"));
       assert ireader.leaves().size() == 1;
       NumericDocValues dv = ireader.leaves().get(0).reader().getNumericDocValues("dv");
-      int docID = hits.scoreDocs[i].doc;
+      int docID = Math.toIntExact(hits.scoreDocs[i].doc);
       assertEquals(docID, dv.advance(docID));
       assertEquals(5, dv.longValue());
     }
@@ -185,7 +185,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
     assertEquals(1, hits.totalHits.value());
     // Iterate through the results:
     for (int i = 0; i < hits.scoreDocs.length; i++) {
-      int docID = hits.scoreDocs[i].doc;
+      int docID = Math.toIntExact(hits.scoreDocs[i].doc);
       Document hitDoc = storedFields.document(docID);
       assertEquals(text, hitDoc.get("fieldname"));
       assert ireader.leaves().size() == 1;
@@ -224,7 +224,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
     assertEquals(1, hits.totalHits.value());
     // Iterate through the results:
     for (int i = 0; i < hits.scoreDocs.length; i++) {
-      int docID = hits.scoreDocs[i].doc;
+      int docID = Math.toIntExact(hits.scoreDocs[i].doc);
       Document hitDoc = storedFields.document(docID);
       assertEquals(text, hitDoc.get("fieldname"));
       assert ireader.leaves().size() == 1;
@@ -265,7 +265,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
     assertEquals(1, hits.totalHits.value());
     // Iterate through the results:
     for (int i = 0; i < hits.scoreDocs.length; i++) {
-      int hitDocID = hits.scoreDocs[i].doc;
+      int hitDocID = Math.toIntExact(hits.scoreDocs[i].doc);
       Document hitDoc = storedFields.document(hitDocID);
       assertEquals(text, hitDoc.get("fieldname"));
       assert ireader.leaves().size() == 1;
@@ -322,7 +322,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
       TopDocs hits = isearcher.search(query, 1);
       assertEquals(1, hits.totalHits.value());
       // Iterate through the results:
-      int hitDocID = hits.scoreDocs[0].doc;
+      int hitDocID = Math.toIntExact(hits.scoreDocs[0].doc);
       Document hitDoc = storedFields.document(hitDocID);
       assertEquals(id, hitDoc.get("id"));
       assert ireader.leaves().size() == 1;
@@ -361,7 +361,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
     assertEquals(1, hits.totalHits.value());
     // Iterate through the results:
     for (int i = 0; i < hits.scoreDocs.length; i++) {
-      int docID = hits.scoreDocs[i].doc;
+      int docID = Math.toIntExact(hits.scoreDocs[i].doc);
       Document hitDoc = storedFields.document(docID);
       assertEquals(text, hitDoc.get("fieldname"));
       assert ireader.leaves().size() == 1;
@@ -403,7 +403,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
     assertEquals(1, hits.totalHits.value());
     // Iterate through the results:
     for (int i = 0; i < hits.scoreDocs.length; i++) {
-      int docID = hits.scoreDocs[i].doc;
+      int docID = Math.toIntExact(hits.scoreDocs[i].doc);
       Document hitDoc = storedFields.document(docID);
       assertEquals(text, hitDoc.get("fieldname"));
       assert ireader.leaves().size() == 1;
@@ -451,7 +451,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
     BytesRef scratch;
     // Iterate through the results:
     for (int i = 0; i < hits.scoreDocs.length; i++) {
-      int docID = hits.scoreDocs[i].doc;
+      int docID = Math.toIntExact(hits.scoreDocs[i].doc);
       Document hitDoc = storedFields.document(docID);
       assertEquals(text, hitDoc.get("fieldname"));
       assert ireader.leaves().size() == 1;
@@ -630,7 +630,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
     assertEquals(1, hits.totalHits.value());
     // Iterate through the results:
     for (int i = 0; i < hits.scoreDocs.length; i++) {
-      int hitDocID = hits.scoreDocs[i].doc;
+      int hitDocID = Math.toIntExact(hits.scoreDocs[i].doc);
       Document hitDoc = storedFields.document(hitDocID);
       assertEquals(text, hitDoc.get("fieldname"));
       assert ireader.leaves().size() == 1;
@@ -740,7 +740,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
     // Iterate through the results:
     StoredFields storedFields = isearcher.storedFields();
     for (int i = 0; i < hits.scoreDocs.length; i++) {
-      int docID = hits.scoreDocs[i].doc;
+      int docID = Math.toIntExact(hits.scoreDocs[i].doc);
       Document hitDoc = storedFields.document(docID);
       assertEquals(text, hitDoc.get("fieldname"));
       assert ireader.leaves().size() == 1;

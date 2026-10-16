@@ -47,12 +47,12 @@ public abstract class DoubleValuesSourceRescorer extends Rescorer {
     DoubleValuesSource source = valuesSource.rewrite(searcher);
     // this will still alter scores, we clone to retain hits ordering in firstPassTopDocs
     ScoreDoc[] hits = firstPassTopDocs.scoreDocs.clone();
-    Arrays.sort(hits, (a, b) -> a.doc - b.doc);
+    Arrays.sort(hits, (a, b) -> Long.compare(a.doc, b.doc));
 
     List<LeafReaderContext> leaves = searcher.getIndexReader().leaves();
     LeafReaderContext ctx = leaves.getFirst();
     int currLeaf = 0;
-    int leafEnd = ctx.docBase + ctx.reader().maxDoc();
+    long leafEnd = ctx.docBase + ctx.reader().maxDoc();
 
     // find leaf holding this doc
     for (ScoreDoc hit : hits) {
@@ -69,7 +69,8 @@ public abstract class DoubleValuesSourceRescorer extends Rescorer {
         leafEnd = ctx.docBase + ctx.reader().maxDoc();
       }
 
-      int targetDoc = hit.doc - ctx.docBase;
+      // leaf-local doc id: fits an int
+      int targetDoc = ctx.toLeafDocId(hit.doc);
       DoubleValues values = source.getValues(ctx, null);
       boolean scorePresent = values.advanceExact(targetDoc);
       double secondPassScore = scorePresent ? values.doubleValue() : 0.0f;
@@ -86,7 +87,7 @@ public abstract class DoubleValuesSourceRescorer extends Rescorer {
   }
 
   @Override
-  public Explanation explain(IndexSearcher searcher, Explanation firstPassExplanation, int docID)
+  public Explanation explain(IndexSearcher searcher, Explanation firstPassExplanation, long docID)
       throws IOException {
     Explanation first =
         Explanation.match(
@@ -108,7 +109,7 @@ public abstract class DoubleValuesSourceRescorer extends Rescorer {
     Explanation doubleValuesMatch =
         source.explain(
             leafWithDoc,
-            docID - leafWithDoc.docBase,
+            leafWithDoc.toLeafDocId(docID),
             Explanation.noMatch("DoubleValuesSource was not initialized with query scores"));
     Explanation second =
         doubleValuesMatch.isMatch()

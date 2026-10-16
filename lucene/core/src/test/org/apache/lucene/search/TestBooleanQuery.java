@@ -374,7 +374,7 @@ public class TestBooleanQuery extends LuceneTestCase {
             // advance
             int inc = TestUtil.nextInt(random(), 1, left - 1);
             nextUpto = inc + upto;
-            nextDoc = scorer.iterator().advance(hits.get(nextUpto).doc);
+            nextDoc = scorer.iterator().advance(Math.toIntExact(hits.get(nextUpto).doc));
           }
 
           if (nextUpto == hits.size()) {
@@ -490,7 +490,7 @@ public class TestBooleanQuery extends LuceneTestCase {
               @Override
               protected void doSetNextReader(LeafReaderContext context) throws IOException {
                 super.doSetNextReader(context);
-                docBase = context.docBase;
+                docBase = Math.toIntExact(context.docBase);
               }
 
               @Override

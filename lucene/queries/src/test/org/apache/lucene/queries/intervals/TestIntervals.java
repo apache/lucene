@@ -230,7 +230,7 @@ public class TestIntervals extends LuceneTestCase {
       throws IOException {
     int ord = ReaderUtil.subIndex(doc, searcher.getIndexReader().leaves());
     LeafReaderContext ctx = searcher.getIndexReader().leaves().get(ord);
-    return source.matches(field, ctx, doc - ctx.docBase);
+    return source.matches(field, ctx, doc - Math.toIntExact(ctx.docBase));
   }
 
   private void assertMatch(MatchesIterator mi, int start, int end, int startOffset, int endOffset)
@@ -247,7 +247,7 @@ public class TestIntervals extends LuceneTestCase {
     int ord = ReaderUtil.subIndex(doc, searcher.getIndexReader().leaves());
     LeafReaderContext ctx = searcher.getIndexReader().leaves().get(ord);
     IntervalIterator it = source.intervals(field, ctx);
-    doc = doc - ctx.docBase;
+    doc = doc - Math.toIntExact(ctx.docBase);
     assertEquals(doc, it.advance(doc));
     for (int expectedGap : expectedGaps) {
       if (it.nextInterval() == IntervalIterator.NO_MORE_INTERVALS) {

@@ -402,7 +402,8 @@ public class TestBlockJoin extends LuceneTestCase {
     // System.out.println("CHILD = " + childDoc + " docID=" + hits.scoreDocs[0].doc);
     assertEquals("java", childDoc.get("skill"));
     assertEquals(2007, childDoc.getField("year").numericValue());
-    assertEquals("Lisa", getParentDoc(r, parentsFilter, hits.scoreDocs[0].doc).get("name"));
+    assertEquals(
+        "Lisa", getParentDoc(r, parentsFilter, Math.toIntExact(hits.scoreDocs[0].doc)).get("name"));
 
     // Test with filter on child docs:
     fullChildQuery.add(new TermQuery(new Term("skill", "foosball")), Occur.FILTER);
@@ -548,7 +549,9 @@ public class TestBlockJoin extends LuceneTestCase {
     final int subIndex = ReaderUtil.subIndex(childDocID, leaves);
     final LeafReaderContext leaf = leaves.get(subIndex);
     final BitSet bits = parents.getBitSet(leaf);
-    return leaf.reader().storedFields().document(bits.nextSetBit(childDocID - leaf.docBase));
+    return leaf.reader()
+        .storedFields()
+        .document(bits.nextSetBit(childDocID - Math.toIntExact(leaf.docBase)));
   }
 
   public void testBoostBug() throws Exception {
@@ -1167,7 +1170,7 @@ public class TestBlockJoin extends LuceneTestCase {
         System.out.println("  " + joinResults2.totalHits.value() + " totalHits:");
         for (ScoreDoc sd : joinResults2.scoreDocs) {
           final Document doc = joinS.storedFields().document(sd.doc);
-          final Document parentDoc = getParentDoc(joinR, parentsFilter, sd.doc);
+          final Document parentDoc = getParentDoc(joinR, parentsFilter, Math.toIntExact(sd.doc));
           System.out.println(
               "  childID="
                   + doc.get("childID")

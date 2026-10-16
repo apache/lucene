@@ -92,7 +92,7 @@ public class PrefixTreeFacetCounter {
             new Bits() {
               @Override
               public boolean get(int index) {
-                return topAcceptDocs.get(leafCtx.docBase + index);
+                return topAcceptDocs.get(Math.toIntExact(leafCtx.docBase + index));
               }
 
               @Override

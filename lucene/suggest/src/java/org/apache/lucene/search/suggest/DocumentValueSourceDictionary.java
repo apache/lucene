@@ -112,7 +112,7 @@ public class DocumentValueSourceDictionary extends DocumentDictionary {
       leaves = reader.leaves();
       starts = new int[leaves.size() + 1];
       for (int i = 0; i < leaves.size(); i++) {
-        starts[i] = leaves.get(i).docBase;
+        starts[i] = Math.toIntExact(leaves.get(i).docBase);
       }
       starts[leaves.size()] = reader.maxDoc();
       currentWeightValues =

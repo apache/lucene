@@ -326,7 +326,8 @@ class WritableQueryIndex extends QueryIndex {
 
   @Override
   public int numDocs() throws IOException {
-    return writer.getDocStats().numDocs;
+    // the monitor query registry is bounded well below Integer.MAX_VALUE
+    return Math.toIntExact(writer.getDocStats().numDocs);
   }
 
   @Override

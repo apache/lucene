@@ -278,7 +278,7 @@ public class StringValueFacetCounts extends Facets {
       LeafReaderContext context = leaves.get(i);
       SortedSetDocValues dv = DocValues.getSortedSet(context.reader(), field);
       docValues[i] = dv;
-      starts[i] = context.docBase;
+      starts[i] = Math.toIntExact(context.docBase);
       cost += dv.cost();
     }
     starts[leafCount] = reader.maxDoc();

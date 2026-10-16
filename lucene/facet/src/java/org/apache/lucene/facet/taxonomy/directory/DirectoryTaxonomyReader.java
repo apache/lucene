@@ -448,7 +448,8 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
     FacetLabel ret;
 
     if (values == null
-        || values.advanceExact(ordinal - indexReader.leaves().get(readerIndex).docBase) == false) {
+        || values.advanceExact(indexReader.leaves().get(readerIndex).toLeafDocId(ordinal))
+            == false) {
       throw new IllegalStateException();
     } else {
       // The index uses the BinaryDocValuesField format to store the mapping
@@ -567,7 +568,7 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
         leafReaderContext = indexReader.leaves().get(readerIndex);
         leafReader = leafReaderContext.reader();
         leafReaderMaxDoc = leafReader.maxDoc();
-        leafReaderDocBase = leafReaderContext.docBase;
+        leafReaderDocBase = Math.toIntExact(leafReaderContext.docBase);
         values = leafReader.getBinaryDocValues(Consts.FULL);
       }
       // values is leaf specific, so you only advance till you reach the target within the leaf

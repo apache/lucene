@@ -57,12 +57,12 @@ public class AssertingCollector extends FilterCollector {
   public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
     assert weightSet : "Set the weight first";
     assert context.docBase >= previousLeafMaxDoc;
-    previousLeafMaxDoc = context.docBase + context.reader().maxDoc();
+    previousLeafMaxDoc = Math.toIntExact(context.docBase) + context.reader().maxDoc();
 
     assert hasFinishedCollectingPreviousLeaf;
     final LeafCollector in = super.getLeafCollector(context);
     hasFinishedCollectingPreviousLeaf = false;
-    final int docBase = context.docBase;
+    final int docBase = Math.toIntExact(context.docBase);
     return new AssertingLeafCollector(in, 0, DocIdSetIterator.NO_MORE_DOCS) {
       @Override
       public void collect(int doc) throws IOException {

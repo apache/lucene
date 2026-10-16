@@ -289,9 +289,9 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
         return false;
       }
       final IndexReaderContext topLevelContext = ReaderUtil.getTopLevelContext(context);
-      final int averageTotalDocs =
-          topLevelContext.reader().maxDoc() / topLevelContext.leaves().size();
-      return maxDoc * 2 > averageTotalDocs;
+      final long averageTotalDocs =
+          topLevelContext.reader().totalMaxDoc() / topLevelContext.leaves().size();
+      return (long) maxDoc * 2 > averageTotalDocs;
     }
   }
 
@@ -789,7 +789,7 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
       return in.matches(context, doc);
     }
 
-    private boolean cacheEntryHasReasonableWorstCaseSize(int maxDoc) {
+    private boolean cacheEntryHasReasonableWorstCaseSize(long maxDoc) {
       // The worst-case (dense) is a bit set which needs one bit per document
       final long worstCaseRamUsage = maxDoc / 8;
       // Imagine the worst-case that a cache entry is large than the size of
@@ -803,7 +803,7 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
     /** Check whether this segment is eligible for caching, regardless of the query. */
     private boolean shouldCache(LeafReaderContext context) throws IOException {
       return cacheEntryHasReasonableWorstCaseSize(
-              ReaderUtil.getTopLevelContext(context).reader().maxDoc())
+              ReaderUtil.getTopLevelContext(context).reader().totalMaxDoc())
           && leavesToCache.test(context);
     }
 

@@ -733,8 +733,8 @@ public final class CheckIndex implements Closeable {
     }
 
     if (infoStream != null) {
-      int maxDoc = 0;
-      int delCount = 0;
+      long maxDoc = 0;
+      long delCount = 0;
       for (SegmentCommitInfo info : lastCommit) {
         maxDoc += info.info.maxDoc();
         delCount += info.getDelCount();

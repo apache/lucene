@@ -785,7 +785,7 @@ public class TestSoftDeletesRetentionMergePolicy extends LuceneTestCase {
         TopDocs topDocs =
             new IndexSearcher(new IncludeSoftDeletesWrapper(reader)).search(new TermQuery(doc), 10);
         assertEquals(1, topDocs.totalHits.value());
-        int theDoc = topDocs.scoreDocs[0].doc;
+        int theDoc = Math.toIntExact(topDocs.scoreDocs[0].doc);
         seqId = writer.tryUpdateDocValue(reader, theDoc, fields);
       }
     } while (seqId == -1);
@@ -798,7 +798,7 @@ public class TestSoftDeletesRetentionMergePolicy extends LuceneTestCase {
         TopDocs topDocs =
             new IndexSearcher(new IncludeSoftDeletesWrapper(reader)).search(new TermQuery(doc), 10);
         assertEquals(1, topDocs.totalHits.value());
-        int theDoc = topDocs.scoreDocs[0].doc;
+        int theDoc = Math.toIntExact(topDocs.scoreDocs[0].doc);
         seqId = writer.tryDeleteDocument(reader, theDoc);
       }
     } while (seqId == -1);

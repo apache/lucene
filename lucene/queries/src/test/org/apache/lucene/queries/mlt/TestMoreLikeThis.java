@@ -452,7 +452,7 @@ public class TestMoreLikeThis extends LuceneTestCase {
       doc.add(newTextField(NOT_FOR_SALE, item, Field.Store.YES));
     }
     writer.addDocument(doc);
-    return writer.getDocStats().numDocs - 1;
+    return Math.toIntExact(writer.getDocStats().numDocs) - 1;
   }
 
   @AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/LUCENE-7161")

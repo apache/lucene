@@ -47,14 +47,14 @@ class ExpressionRescorer extends SortRescorer {
   }
 
   @Override
-  public Explanation explain(IndexSearcher searcher, Explanation firstPassExplanation, int docID)
+  public Explanation explain(IndexSearcher searcher, Explanation firstPassExplanation, long docID)
       throws IOException {
     Explanation superExpl = super.explain(searcher, firstPassExplanation, docID);
 
     List<LeafReaderContext> leaves = searcher.getIndexReader().leaves();
     int subReader = ReaderUtil.subIndex(docID, leaves);
     LeafReaderContext readerContext = leaves.get(subReader);
-    int docIDInSegment = docID - readerContext.docBase;
+    int docIDInSegment = readerContext.toLeafDocId(docID);
 
     return expression
         .getDoubleValuesSource(bindings)

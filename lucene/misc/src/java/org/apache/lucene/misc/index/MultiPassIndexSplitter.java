@@ -203,7 +203,9 @@ public class MultiPassIndexSplitter {
 
     public void deleteDocument(int docID) {
       final int i = readerIndex(docID);
-      getSequentialSubReaders().get(i).deleteDocument(docID - readerBase(i));
+      // This splitter operates on a single sub-index (< Integer.MAX_VALUE docs), so the leaf-local
+      // doc id fits an int.
+      getSequentialSubReaders().get(i).deleteDocument((int) (docID - readerBase(i)));
     }
 
     public void undeleteAll() {

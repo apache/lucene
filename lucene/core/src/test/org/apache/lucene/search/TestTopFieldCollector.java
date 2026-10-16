@@ -165,7 +165,8 @@ public class TestTopFieldCollector extends LuceneTestCase {
       if (i % 2 == 0) {
         manager = new TopFieldCollectorManager(sort, 10, 1);
       } else {
-        FieldDoc fieldDoc = new FieldDoc(1, Float.NaN, new Object[] {1});
+        // _doc sort values are Long now (the global doc-id space is long)
+        FieldDoc fieldDoc = new FieldDoc(1, Float.NaN, new Object[] {1L});
         manager = new TopFieldCollectorManager(sort, 10, fieldDoc, 1);
       }
 
@@ -518,7 +519,7 @@ public class TestTopFieldCollector extends LuceneTestCase {
       Query query = new TermQuery(new Term("f", queryText));
       for (boolean reverse : new boolean[] {false, true}) {
         ScoreDoc[] sortedByDoc = searcher.search(query, 10).scoreDocs;
-        Arrays.sort(sortedByDoc, Comparator.comparingInt(sd -> sd.doc));
+        Arrays.sort(sortedByDoc, Comparator.comparingLong(sd -> sd.doc));
 
         Sort sort = new Sort(new SortField("sort", SortField.Type.LONG, reverse));
         ScoreDoc[] sortedByField = searcher.search(query, 10, sort).scoreDocs;
@@ -532,7 +533,7 @@ public class TestTopFieldCollector extends LuceneTestCase {
               sortedByFieldClone[i].score,
               sortedByDoc[
                   Arrays.binarySearch(
-                      sortedByDoc, sortedByFieldClone[i], Comparator.comparingInt(sd -> sd.doc))]
+                      sortedByDoc, sortedByFieldClone[i], Comparator.comparingLong(sd -> sd.doc))]
                   .score,
               0f);
         }
@@ -578,45 +579,45 @@ public class TestTopFieldCollector extends LuceneTestCase {
 
     scorer.score = 3;
     leafCollector.collect(0);
-    assertEquals(Long.MIN_VALUE, minValueChecker.getRaw());
+    assertNull(minValueChecker.get());
     assertNull(scorer.minCompetitiveScore);
 
     scorer2.score = 6;
     leafCollector2.collect(0);
-    assertEquals(Long.MIN_VALUE, minValueChecker.getRaw());
+    assertNull(minValueChecker.get());
     assertNull(scorer2.minCompetitiveScore);
 
     scorer.score = 2;
     leafCollector.collect(1);
-    assertEquals(Long.MIN_VALUE, minValueChecker.getRaw());
+    assertNull(minValueChecker.get());
     assertNull(scorer.minCompetitiveScore);
 
     scorer2.score = 9;
     leafCollector2.collect(1);
-    assertEquals(Long.MIN_VALUE, minValueChecker.getRaw());
+    assertNull(minValueChecker.get());
     assertNull(scorer2.minCompetitiveScore);
 
     scorer2.score = 7;
     leafCollector2.collect(2);
-    assertEquals(7f, DocScoreEncoder.toScore(minValueChecker.getRaw()), 0f);
+    assertEquals(7f, minValueChecker.get().score(), 0f);
     assertNull(scorer.minCompetitiveScore);
     assertEquals(7f, scorer2.minCompetitiveScore, 0f);
 
     scorer2.score = 1;
     leafCollector2.collect(3);
-    assertEquals(7f, DocScoreEncoder.toScore(minValueChecker.getRaw()), 0f);
+    assertEquals(7f, minValueChecker.get().score(), 0f);
     assertNull(scorer.minCompetitiveScore);
     assertEquals(7f, scorer2.minCompetitiveScore, 0f);
 
     scorer.score = 10;
     leafCollector.collect(2);
-    assertEquals(7f, DocScoreEncoder.toScore(minValueChecker.getRaw()), 0f);
+    assertEquals(7f, minValueChecker.get().score(), 0f);
     assertEquals(7f, scorer.minCompetitiveScore, 0f);
     assertEquals(7f, scorer2.minCompetitiveScore, 0f);
 
     scorer.score = 11;
     leafCollector.collect(3);
-    assertEquals(10f, DocScoreEncoder.toScore(minValueChecker.getRaw()), 0f);
+    assertEquals(10f, minValueChecker.get().score(), 0f);
     assertEquals(10f, scorer.minCompetitiveScore, 0f);
     assertEquals(7f, scorer2.minCompetitiveScore, 0f);
 
@@ -628,19 +629,19 @@ public class TestTopFieldCollector extends LuceneTestCase {
 
     scorer3.score = 1f;
     leafCollector3.collect(0);
-    assertEquals(10f, DocScoreEncoder.toScore(minValueChecker.getRaw()), 0f);
+    assertEquals(10f, minValueChecker.get().score(), 0f);
     assertEquals(10f, scorer3.minCompetitiveScore, 0f);
 
     scorer.score = 11;
     leafCollector.collect(4);
-    assertEquals(11f, DocScoreEncoder.toScore(minValueChecker.getRaw()), 0f);
+    assertEquals(11f, minValueChecker.get().score(), 0f);
     assertEquals(11f, scorer.minCompetitiveScore, 0f);
     assertEquals(7f, scorer2.minCompetitiveScore, 0f);
     assertEquals(10f, scorer3.minCompetitiveScore, 0f);
 
     scorer3.score = 2f;
     leafCollector3.collect(1);
-    assertEquals(11f, DocScoreEncoder.toScore(minValueChecker.getRaw()), 0f);
+    assertEquals(11f, minValueChecker.get().score(), 0f);
     assertEquals(11f, scorer.minCompetitiveScore, 0f);
     assertEquals(7f, scorer2.minCompetitiveScore, 0f);
     assertEquals(11f, scorer3.minCompetitiveScore, 0f);

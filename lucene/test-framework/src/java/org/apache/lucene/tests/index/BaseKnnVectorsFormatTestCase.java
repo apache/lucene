@@ -2463,7 +2463,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                     + " "
                     + scoreDoc);
           }
-          resultDocs.add(scoreDoc.doc);
+          resultDocs.add(Math.toIntExact(scoreDoc.doc));
         }
         TopDocs expected = searcher.search(exactQuery, topK);
         i = 0;
@@ -2477,7 +2477,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                     + " "
                     + scoreDoc);
           }
-          if (resultDocs.contains(scoreDoc.doc)) {
+          if (resultDocs.contains(Math.toIntExact(scoreDoc.doc))) {
             ++recalled;
           }
         }

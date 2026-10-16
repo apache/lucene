@@ -121,7 +121,7 @@ public class TestTermScorer extends LuceneTestCase {
 
           @Override
           protected void doSetNextReader(LeafReaderContext context) throws IOException {
-            base = context.docBase;
+            base = Math.toIntExact(context.docBase);
           }
 
           @Override

@@ -337,7 +337,7 @@ public class TestMatchesIterator extends MatchesTestBase {
 
     LeafReaderContext ctx =
         searcher.leafContexts.get(ReaderUtil.subIndex(1, searcher.leafContexts));
-    Matches m = w.matches(ctx, 1 - ctx.docBase);
+    Matches m = w.matches(ctx, ctx.toLeafDocId(1));
     assertNotNull(m);
     checkFieldMatches(m.getMatches("id"), new int[] {-1, 0, 0, -1, -1});
     checkFieldMatches(m.getMatches(FIELD_WITH_OFFSETS), new int[] {-1, 1, 1, 3, 5, 3, 3, 9, 11});

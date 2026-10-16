@@ -26,6 +26,8 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.TextField;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
@@ -38,8 +40,8 @@ import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.tests.index.RandomIndexWriter;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
 
 public abstract class BaseGroupSelectorTestCase<T> extends AbstractGroupingTestCase {
 
@@ -196,12 +198,10 @@ public abstract class BaseGroupSelectorTestCase<T> extends AbstractGroupingTestC
     }
     assertEquals(totalHits, groupHits);
 
-    Bits groupHeads = grouping.getAllGroupHeads();
+    FixedBitSet[] groupHeads = grouping.getAllGroupHeads();
     int cardinality = 0;
-    for (int i = 0; i < groupHeads.length(); i++) {
-      if (groupHeads.get(i)) {
-        cardinality++;
-      }
+    for (FixedBitSet bits : groupHeads) {
+      cardinality += bits.cardinality();
     }
     assertEquals(
         matchingGroups.size(), cardinality); // We should have one set bit per matching group
@@ -215,7 +215,7 @@ public abstract class BaseGroupSelectorTestCase<T> extends AbstractGroupingTestC
               .add(filterQuery(groupValue), BooleanClause.Occur.FILTER)
               .build();
       TopDocs td = searcher.search(filtered, 1);
-      assertTrue(groupHeads.get(td.scoreDocs[0].doc));
+      assertTrue(isGroupHead(searcher, groupHeads, td.scoreDocs[0].doc));
     }
 
     shard.close();
@@ -242,12 +242,10 @@ public abstract class BaseGroupSelectorTestCase<T> extends AbstractGroupingTestC
     grouping.search(searcher, topLevel, 0, 1);
     Collection<T> matchingGroups = grouping.getAllMatchingGroups();
 
-    Bits groupHeads = grouping.getAllGroupHeads();
+    FixedBitSet[] groupHeads = grouping.getAllGroupHeads();
     int cardinality = 0;
-    for (int i = 0; i < groupHeads.length(); i++) {
-      if (groupHeads.get(i)) {
-        cardinality++;
-      }
+    for (FixedBitSet bits : groupHeads) {
+      cardinality += bits.cardinality();
     }
     assertEquals(
         matchingGroups.size(), cardinality); // We should have one set bit per matching group
@@ -261,7 +259,7 @@ public abstract class BaseGroupSelectorTestCase<T> extends AbstractGroupingTestC
               .add(filterQuery(groupValue), BooleanClause.Occur.FILTER)
               .build();
       TopDocs td = searcher.search(filtered, 1, sort);
-      assertTrue(groupHeads.get(td.scoreDocs[0].doc));
+      assertTrue(isGroupHead(searcher, groupHeads, td.scoreDocs[0].doc));
     }
 
     shard.close();
@@ -440,6 +438,14 @@ public abstract class BaseGroupSelectorTestCase<T> extends AbstractGroupingTestC
     for (int i = 0; i < expected.length; i++) {
       assertEquals(expected[i].score, actual[i].score, 0);
     }
+  }
+
+  /** Whether {@code globalDoc} is set in the per-leaf group-heads bit sets. */
+  private static boolean isGroupHead(
+      IndexSearcher searcher, FixedBitSet[] groupHeads, long globalDoc) {
+    List<LeafReaderContext> leaves = searcher.getIndexReader().leaves();
+    int ord = ReaderUtil.subIndex(globalDoc, leaves);
+    return groupHeads[ord].get(leaves.get(ord).toLeafDocId(globalDoc));
   }
 
   private void assertSortsBefore(GroupDocs<T> first, GroupDocs<T> second) {

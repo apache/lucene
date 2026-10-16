@@ -147,7 +147,9 @@ public class TestHnswFloat16VectorGraph extends HnswGraphTestCase<short[]> {
     assertEquals("Number of found results is not equal to [10].", 10, nodes.scoreDocs.length);
     int sum = 0;
     for (ScoreDoc node : nodes.scoreDocs) {
-      assertTrue("the results include a deleted document: " + node, acceptOrds.get(node.doc));
+      assertTrue(
+          "the results include a deleted document: " + node,
+          acceptOrds.get(Math.toIntExact(node.doc)));
       sum += node.doc;
     }
     // We still expect to get reasonable recall. The lowest non-skipped docIds

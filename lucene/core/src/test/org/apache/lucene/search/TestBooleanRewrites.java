@@ -594,14 +594,15 @@ public class TestBooleanRewrites extends LuceneTestCase {
     assertEquals(td1.totalHits.value(), td2.totalHits.value());
     assertEquals(td1.scoreDocs.length, td2.scoreDocs.length);
     Map<Integer, Float> expectedScores =
-        Arrays.stream(td1.scoreDocs).collect(Collectors.toMap(sd -> sd.doc, sd -> sd.score));
+        Arrays.stream(td1.scoreDocs)
+            .collect(Collectors.toMap(sd -> Math.toIntExact(sd.doc), sd -> sd.score));
     Set<Integer> actualResultSet =
-        Arrays.stream(td2.scoreDocs).map(sd -> sd.doc).collect(Collectors.toSet());
+        Arrays.stream(td2.scoreDocs).map(sd -> Math.toIntExact(sd.doc)).collect(Collectors.toSet());
 
     assertEquals("Set of matching documents differs", expectedScores.keySet(), actualResultSet);
 
     for (ScoreDoc scoreDoc : td2.scoreDocs) {
-      final float expectedScore = expectedScores.get(scoreDoc.doc);
+      final float expectedScore = expectedScores.get(Math.toIntExact(scoreDoc.doc));
       final float actualScore = scoreDoc.score;
       assertEquals(expectedScore, actualScore, expectedScore / 100); // error under 1%
     }

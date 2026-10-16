@@ -775,9 +775,12 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
     List<LookupResult> results = new ArrayList<>();
     for (int i = 0; i < hits.scoreDocs.length; i++) {
       FieldDoc fd = (FieldDoc) hits.scoreDocs[i];
+      // The suggester index is bounded well below Integer.MAX_VALUE docs, so the global doc id
+      // narrows safely to int for the composite (MultiDocValues) lookups below.
+      int docID = Math.toIntExact(fd.doc);
       BinaryDocValues textDV =
           MultiDocValues.getBinaryValues(searcher.getIndexReader(), TEXT_FIELD_NAME);
-      textDV.advance(fd.doc);
+      textDV.advance(docID);
       BytesRef term = textDV.binaryValue();
       String text = term.utf8ToString();
       long score = (Long) fd.fields[0];
@@ -789,7 +792,7 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
 
       BytesRef payload;
       if (payloadsDV != null) {
-        if (payloadsDV.advance(fd.doc) == fd.doc) {
+        if (payloadsDV.advance(docID) == docID) {
           payload = BytesRef.deepCopyOf(payloadsDV.binaryValue());
         } else {
           payload = new BytesRef(BytesRef.EMPTY_BYTES);
@@ -799,13 +802,13 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
       }
 
       // Must look up sorted-set by segment:
-      int segment = ReaderUtil.subIndex(fd.doc, leaves);
+      int segment = ReaderUtil.subIndex(docID, leaves);
       SortedSetDocValues contextsDV =
           leaves.get(segment).reader().getSortedSetDocValues(CONTEXTS_FIELD_NAME);
       Set<BytesRef> contexts;
       if (contextsDV != null) {
         contexts = new HashSet<>();
-        int targetDocID = fd.doc - leaves.get(segment).docBase;
+        int targetDocID = docID - Math.toIntExact(leaves.get(segment).docBase);
         if (contextsDV.advance(targetDocID) == targetDocID) {
           for (int j = 0; j < contextsDV.docValueCount(); j++) {
             BytesRef context = BytesRef.deepCopyOf(contextsDV.lookupOrd(contextsDV.nextOrd()));
@@ -973,7 +976,7 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
       searcherMgrReadLock.unlock();
     }
     try {
-      return searcher.getIndexReader().numDocs();
+      return searcher.getIndexReader().totalNumDocs();
     } finally {
       mgr.release(searcher);
     }

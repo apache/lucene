@@ -17,15 +17,22 @@
 
 package org.apache.lucene.search;
 
-import java.util.concurrent.atomic.LongAccumulator;
+import java.util.concurrent.atomic.AtomicReference;
 
-/** Maintains the maximum score and its corresponding document id concurrently */
+/**
+ * Maintains the maximum score and its corresponding document id concurrently across leaves/threads,
+ * so that a leaf can raise its own minimum competitive score based on the progress of others.
+ *
+ * <p>The doc id is a global doc id, which may exceed {@link Integer#MAX_VALUE}, so the {@code
+ * (score, doc)} pair is held in an {@link AtomicReference} updated with a compare-and-set max (by
+ * score descending, then doc ascending). Updates happen only when a leaf raises its min competitive
+ * score, so the extra allocation is off the per-hit hot path.
+ */
 final class MaxScoreAccumulator {
   // we use 2^10-1 to check the remainder with a bitwise operation
   private static final int DEFAULT_INTERVAL = 0x3ff;
 
-  // scores are always positive
-  final LongAccumulator acc = new LongAccumulator(Math::max, Long.MIN_VALUE);
+  private final AtomicReference<DocAndScore> acc = new AtomicReference<>(null);
 
   // non-final and visible for tests
   long modInterval;
@@ -34,11 +41,33 @@ final class MaxScoreAccumulator {
     this.modInterval = DEFAULT_INTERVAL;
   }
 
-  void accumulate(long code) {
-    acc.accumulate(code);
+  void accumulate(long docId, float score) {
+    final DocAndScore update = new DocAndScore(docId, score);
+    for (DocAndScore prev = acc.get(); update.isMoreCompetitiveThan(prev); prev = acc.get()) {
+      if (acc.compareAndSet(prev, update)) {
+        return;
+      }
+    }
   }
 
-  long getRaw() {
+  DocAndScore get() {
     return acc.get();
+  }
+
+  /**
+   * A (score, global doc) pair. {@link #isMoreCompetitiveThan} defines the ordering the accumulator
+   * maximizes: higher score wins, and among equal scores the lower doc id wins (top-N search favors
+   * lower doc ids on score ties).
+   */
+  record DocAndScore(long docId, float score) {
+    boolean isMoreCompetitiveThan(DocAndScore other) {
+      if (other == null) {
+        return true;
+      }
+      if (score != other.score) {
+        return score > other.score;
+      }
+      return docId < other.docId;
+    }
   }
 }

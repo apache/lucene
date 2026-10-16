@@ -496,7 +496,7 @@ public abstract class LogMergePolicy extends MergePolicy {
 
     final Set<SegmentCommitInfo> mergingSegments = mergeContext.getMergingSegments();
 
-    int totalDocCount = 0;
+    long totalDocCount = 0;
     for (int i = 0; i < numSegments; i++) {
       final SegmentCommitInfo info = infos.info(i);
       totalDocCount += sizeDocs(info, mergeContext);
@@ -589,8 +589,12 @@ public abstract class LogMergePolicy extends MergePolicy {
             mergeContext);
       }
 
-      final int maxMergeDocs =
-          Math.min(this.maxMergeDocs, Math.ceilDiv(totalDocCount, targetSearchConcurrency));
+      // Never let a merged segment exceed the per-segment doc limit (int document numbers), even if
+      // the configured maxMergeDocs or the concurrency target would otherwise allow it.
+      final long maxMergeDocs =
+          Math.min(
+              Math.min((long) this.maxMergeDocs, IndexWriter.getActualMaxDocsPerSegment()),
+              Math.ceilDiv(totalDocCount, targetSearchConcurrency));
 
       // Finally, record all merges that are viable at this level:
       int end = start + mergeFactor;

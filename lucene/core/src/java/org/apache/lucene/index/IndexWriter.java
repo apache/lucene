@@ -199,34 +199,66 @@ public class IndexWriter
     implements Closeable, TwoPhaseCommit, Accountable, MergePolicy.MergeContext {
 
   /**
-   * Hard limit on the maximum number of documents that may be added to the index. If you try to add
-   * more than this you'll hit {@code IllegalArgumentException}.
+   * Hard limit on the maximum number of documents that may be stored in a single segment. Document
+   * numbers within a segment (leaf) are {@code int}, so a segment can never exceed this many
+   * documents. The index as a whole may hold more (see {@link #MAX_TOTAL_DOCS}), spread across
+   * multiple segments.
    */
   // We defensively subtract 128 to be well below the lowest
   // ArrayUtil.MAX_ARRAY_LENGTH on "typical" JVMs.  We don't just use
   // ArrayUtil.MAX_ARRAY_LENGTH here because this can vary across JVMs:
   public static final int MAX_DOCS = Integer.MAX_VALUE - 128;
 
+  /**
+   * Hard limit on the number of documents that may be added across all segments of an index; adding
+   * more throws {@code IllegalArgumentException}. Unlike the per-segment {@link #MAX_DOCS}, the
+   * composite doc-id space is a {@code long}, so this limit is above {@link Integer#MAX_VALUE}. It
+   * is bounded ({@code 2^37}, ~137 billion) rather than {@link Long#MAX_VALUE} so that per-segment
+   * merges and the writer's doc accounting stay tractable.
+   */
+  public static final long MAX_TOTAL_DOCS = 1L << 37;
+
   /** Maximum value of the token position in an indexed field. */
   public static final int MAX_POSITION = Integer.MAX_VALUE - 128;
 
-  // Use package-private instance var to enforce the limit so testing
+  // Use package-private instance vars to enforce the limits so testing
   // can use less electricity:
   @SuppressWarnings("NonFinalStaticField")
-  private static int actualMaxDocs = MAX_DOCS;
+  private static long actualMaxDocs = MAX_TOTAL_DOCS;
 
-  /** Used only for testing. */
-  static void setMaxDocs(int maxDocs) {
-    if (maxDocs > MAX_DOCS) {
+  @SuppressWarnings("NonFinalStaticField")
+  private static int actualMaxDocsPerSegment = MAX_DOCS;
+
+  /** Used only for testing: lowers the total (whole-index) document limit. */
+  static void setMaxDocs(long maxDocs) {
+    if (maxDocs > MAX_TOTAL_DOCS) {
       // Cannot go higher than the hard max:
       throw new IllegalArgumentException(
-          "maxDocs must be <= IndexWriter.MAX_DOCS=" + MAX_DOCS + "; got: " + maxDocs);
+          "maxDocs must be <= IndexWriter.MAX_TOTAL_DOCS=" + MAX_TOTAL_DOCS + "; got: " + maxDocs);
     }
     IndexWriter.actualMaxDocs = maxDocs;
   }
 
-  static int getActualMaxDocs() {
+  /** Used only for testing: lowers the per-segment document limit. */
+  static void setMaxDocsPerSegment(int maxDocsPerSegment) {
+    if (maxDocsPerSegment > MAX_DOCS) {
+      throw new IllegalArgumentException(
+          "maxDocsPerSegment must be <= IndexWriter.MAX_DOCS="
+              + MAX_DOCS
+              + "; got: "
+              + maxDocsPerSegment);
+    }
+    IndexWriter.actualMaxDocsPerSegment = maxDocsPerSegment;
+  }
+
+  /** Returns the enforced total (whole-index) document limit. */
+  static long getActualMaxDocs() {
     return IndexWriter.actualMaxDocs;
+  }
+
+  /** Returns the enforced per-segment document limit. */
+  static int getActualMaxDocsPerSegment() {
+    return IndexWriter.actualMaxDocsPerSegment;
   }
 
   /** Used only for testing. */
@@ -1685,7 +1717,7 @@ public class IndexWriter
    * If you need to delete documents indexed after opening the NRT reader you must use {@link
    * #deleteDocuments(Term...)}).
    */
-  public synchronized long tryDeleteDocument(IndexReader readerIn, int docID) throws IOException {
+  public synchronized long tryDeleteDocument(IndexReader readerIn, long docID) throws IOException {
     // NOTE: DON'T use docID inside the closure
     return tryModifyDocument(
         readerIn,
@@ -1718,7 +1750,7 @@ public class IndexWriter
    * If you need to update documents indexed after opening the NRT reader you must use {@link
    * #updateDocValues(Term, Field...)}.
    */
-  public synchronized long tryUpdateDocValue(IndexReader readerIn, int docID, Field... fields)
+  public synchronized long tryUpdateDocValue(IndexReader readerIn, long docID, Field... fields)
       throws IOException {
     // NOTE: DON'T use docID inside the closure
     final DocValuesUpdate[] dvUpdates = buildDocValuesUpdate(null, fields);
@@ -1788,20 +1820,22 @@ public class IndexWriter
     void run(int docId, ReadersAndUpdates readersAndUpdates) throws IOException;
   }
 
-  private synchronized long tryModifyDocument(IndexReader readerIn, int docID, DocModifier toApply)
+  private synchronized long tryModifyDocument(IndexReader readerIn, long docID, DocModifier toApply)
       throws IOException {
     final LeafReader reader;
+    // The global docID may exceed Integer.MAX_VALUE for a composite reader, but the leaf-local id
+    // always fits an int.
+    final int leafDocId;
     if (readerIn instanceof LeafReader lr) {
       // Reader is already atomic: use the incoming docID:
       reader = lr;
+      leafDocId = Math.toIntExact(docID);
     } else {
       // Composite reader: lookup sub-reader and re-base docID:
       List<LeafReaderContext> leaves = readerIn.leaves();
       int subIndex = ReaderUtil.subIndex(docID, leaves);
       reader = leaves.get(subIndex).reader();
-      docID -= leaves.get(subIndex).docBase;
-      assert docID >= 0;
-      assert docID < reader.maxDoc();
+      leafDocId = leaves.get(subIndex).toLeafDocId(docID);
     }
 
     if (!(reader instanceof SegmentReader)) {
@@ -1820,7 +1854,7 @@ public class IndexWriter
       ReadersAndUpdates rld = getPooledInstance(info, false);
       if (rld != null) {
         synchronized (bufferedUpdatesStream) {
-          toApply.run(docID, rld);
+          toApply.run(leafDocId, rld);
           return docWriter.getNextSequenceNumber();
         }
       }
@@ -2648,12 +2682,12 @@ public class IndexWriter
             notifyAll();
           }
         }
-        final int totalMaxDoc = segmentInfos.totalMaxDoc();
+        final long totalMaxDoc = segmentInfos.totalMaxDoc();
         // Keep the same segmentInfos instance but replace all
         // of its SegmentInfo instances so IFD below will remove
         // any segments we flushed since the last commit:
         segmentInfos.rollbackSegmentInfos(rollbackSegments);
-        int rollbackMaxDoc = segmentInfos.totalMaxDoc();
+        long rollbackMaxDoc = segmentInfos.totalMaxDoc();
         // now we need to adjust this back to the rolled back SI but don't set it to the absolute
         // value, otherwise we might hide internal bugs
         adjustPendingNumDocs(-(totalMaxDoc - rollbackMaxDoc));
@@ -3294,6 +3328,17 @@ public class IndexWriter
         numDocs += leaf.numDocs();
       }
       testReserveDocs(numDocs);
+      // addIndexes(CodecReader...) merges all readers into a single segment, so the result cannot
+      // exceed the per-segment limit even though the index as a whole may (document numbers within
+      // a segment are int).
+      if (numDocs > getActualMaxDocsPerSegment()) {
+        throw new IllegalArgumentException(
+            "number of documents in a single segment cannot exceed "
+                + getActualMaxDocsPerSegment()
+                + " (addIndexes readers have total numDocs="
+                + numDocs
+                + ")");
+      }
 
       synchronized (this) {
         ensureOpen();
@@ -4987,7 +5032,7 @@ public class IndexWriter
 
     // Now deduct the deleted docs that we just reclaimed from this
     // merge:
-    int delDocCount;
+    long delDocCount;
     if (dropSegment) {
       // if we drop the segment we have to reduce the pendingNumDocs by merge.totalMaxDocs since we
       // never drop
@@ -6823,8 +6868,8 @@ public class IndexWriter
    */
   public synchronized DocStats getDocStats() {
     ensureOpen();
-    int numDocs = docWriter.getNumDocs();
-    int maxDoc = numDocs;
+    long numDocs = docWriter.getNumDocs();
+    long maxDoc = numDocs;
     for (final SegmentCommitInfo info : segmentInfos) {
       maxDoc += info.info.maxDoc();
       numDocs += info.info.maxDoc() - numDeletedDocs(info);
@@ -6839,16 +6884,19 @@ public class IndexWriter
      * The total number of docs in this index, counting docs not yet flushed (still in the RAM
      * buffer), and also counting deleted docs. <b>NOTE:</b> buffered deletions are not counted. If
      * you really need these to be counted you should call {@link IndexWriter#commit()} first.
+     *
+     * <p>This is a {@code long} because an index may hold more than {@link Integer#MAX_VALUE}
+     * documents across its segments (a single segment stays bounded by {@link #MAX_DOCS}).
      */
-    public final int maxDoc;
+    public final long maxDoc;
 
     /**
      * The total number of docs in this index, counting docs not yet flushed (still in the RAM
      * buffer), but not counting deleted docs.
      */
-    public final int numDocs;
+    public final long numDocs;
 
-    private DocStats(int maxDoc, int numDocs) {
+    private DocStats(long maxDoc, long numDocs) {
       this.maxDoc = maxDoc;
       this.numDocs = numDocs;
     }
@@ -6960,7 +7008,7 @@ public class IndexWriter
           }
 
           @Override
-          public void setIndexWriterMaxDocs(int limit) {
+          public void setIndexWriterMaxDocs(long limit) {
             IndexWriter.setMaxDocs(limit);
           }
 
