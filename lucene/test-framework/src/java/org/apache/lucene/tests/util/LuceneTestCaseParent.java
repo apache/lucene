@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.tests.util;
 
-import static com.carrotsearch.randomizedtesting.RandomizedTest.frequently;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.systemPropertyAsBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.systemPropertyAsInt;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
@@ -57,9 +56,6 @@ import java.util.TimeZone;
 import java.util.TreeSet;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import junit.framework.AssertionFailedError;
 import org.apache.lucene.analysis.Analyzer;
@@ -121,7 +117,6 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LRUQueryCache;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.QueryCache;
 import org.apache.lucene.search.QueryCachingPolicy;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
@@ -157,7 +152,6 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CommandLineUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
-import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
@@ -165,10 +159,7 @@ import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 import org.hamcrest.Matcher;
 import org.hamcrest.MatcherAssert;
-import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.internal.AssumptionViolatedException;
 
 /**
@@ -1155,7 +1146,7 @@ public abstract sealed class LuceneTestCaseParent extends Assert
         leaves,
         maxDocsPerSlice,
         maxSegmentsPerSlice,
-        concurrency == Concurrency.INTRA_SEGMENT && frequently());
+        concurrency == Concurrency.INTRA_SEGMENT && TestUtil.nextInt(random(), 0, 100) < 90);
   }
 
   /**
@@ -2533,79 +2524,27 @@ public abstract sealed class LuceneTestCaseParent extends Assert
     }
   }
 
-  private static final QueryCache DEFAULT_QUERY_CACHE = IndexSearcher.getDefaultQueryCache();
-  private static final QueryCachingPolicy DEFAULT_CACHING_POLICY =
-      IndexSearcher.getDefaultQueryCachingPolicy();
-  private static final List<LRUQueryCache> queryCacheList = new ArrayList<>();
+  /** A before-after hook providing {@link ExecutorService}. */
+  private static final SharedExecutorService sharedExecutor = new SharedExecutorService();
 
-  @Before
-  public void overrideTestDefaultQueryCache() {
-    // Make sure each test method has its own cache
-    overrideDefaultQueryCache();
+  /**
+   * Suite-level setup and cleanup of the shared state used by this class. Test framework-specific
+   * subclasses must call these, in order, from their suite-level before/after hooks, after {@link
+   * #setTestFrameworkInfra} has been called.
+   */
+  static List<BeforeAfterCallback> suiteCallbacks() {
+    // we need to reset the query cache at suite level so that tests that instantiate an
+    // IndexSearcher in suite-level hooks use a fresh new cache
+    return List.of(
+        new SetupAndRestoreQueryCache(), new SetupAndRestoreCpuCoreCount(), sharedExecutor);
   }
 
-  @BeforeClass
-  public static void overrideDefaultQueryCache() {
-    // we need to reset the query cache in an @BeforeClass so that tests that
-    // instantiate an IndexSearcher in an @BeforeClass method use a fresh new cache
-    LRUQueryCache queryCacheTemp =
-        new LRUQueryCache(10000, 1 << 25, _ -> true, Float.POSITIVE_INFINITY);
-    queryCacheList.add(queryCacheTemp);
-    IndexSearcher.setDefaultQueryCache(queryCacheTemp);
-    IndexSearcher.setDefaultQueryCachingPolicy(MAYBE_CACHE_POLICY);
-  }
-
-  @AfterClass
-  public static void resetDefaultQueryCache() {
-    IndexSearcher.setDefaultQueryCache(DEFAULT_QUERY_CACHE);
-    IndexSearcher.setDefaultQueryCachingPolicy(DEFAULT_CACHING_POLICY);
-    for (int i = 0; i < queryCacheList.size(); i++) {
-      try {
-        queryCacheList.get(i).close();
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
-    }
-  }
-
-  @BeforeClass
-  public static void setupCPUCoreCount() {
-    // Randomize core count so CMS varies its dynamic defaults, and this also "fixes" core
-    // count from the master seed so it will always be the same on reproduce:
-    int numCores = TestUtil.nextInt(random(), 1, 4);
-    System.setProperty(
-        ConcurrentMergeScheduler.DEFAULT_CPU_CORE_COUNT_PROPERTY, Integer.toString(numCores));
-  }
-
-  @AfterClass
-  public static void restoreCPUCoreCount() {
-    System.clearProperty(ConcurrentMergeScheduler.DEFAULT_CPU_CORE_COUNT_PROPERTY);
-  }
-
-  private static ExecutorService executor;
-
-  @BeforeClass
-  public static void setUpExecutorService() {
-    int threads = TestUtil.nextInt(random(), 1, 2);
-    executor =
-        new ThreadPoolExecutor(
-            threads,
-            threads,
-            0L,
-            TimeUnit.MILLISECONDS,
-            new LinkedBlockingQueue<>(),
-            new NamedThreadFactory("LuceneTestCase"));
-    // uncomment to intensify LUCENE-3840
-    // executor.prestartAllCoreThreads();
-    if (VERBOSE) {
-      System.out.println("NOTE: Created shared ExecutorService with " + threads + " threads");
-    }
-  }
-
-  @AfterClass
-  public static void shutdownExecutorService() {
-    TestUtil.shutdownExecutorService(executor);
-    executor = null;
+  /**
+   * Test-level setup and cleanup of the shared state used by this class. Test framework-specific
+   * subclasses must call these, in order, from their test-level before/after hooks.
+   */
+  static List<BeforeAfterCallback> testCallbacks() {
+    return List.of(new SetupAndRestoreQueryCache());
   }
 
   /** Create a new searcher over the reader. This searcher might randomly use threads. */
@@ -2703,7 +2642,7 @@ public abstract sealed class LuceneTestCaseParent extends Assert
       if (random.nextBoolean()) {
         ex = null;
       } else {
-        ex = executor;
+        ex = sharedExecutor.get();
         if (VERBOSE) {
           System.out.println("NOTE: newSearcher using shared ExecutorService");
         }

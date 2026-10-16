@@ -155,7 +155,7 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   @Override
   public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
     return new Lucene104ScalarQuantizedVectorsWriter(
-        state, encoding, rawVectorFormat.fieldsWriter(state), scorer);
+        state, encoding, rawVectorFormat.fieldsWriter(rescoreOnly(state)), scorer);
   }
 
   @Override
@@ -185,5 +185,9 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   /** The raw vectors are only read back to rescore. */
   private static SegmentReadState rescoreOnly(SegmentReadState state) {
     return new SegmentReadState(state, state.context.union(NoReuseHint.INSTANCE));
+  }
+
+  private static SegmentWriteState rescoreOnly(SegmentWriteState state) {
+    return new SegmentWriteState(state, state.context.union(NoReuseHint.INSTANCE));
   }
 }

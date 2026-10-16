@@ -87,26 +87,18 @@ public abstract class OffHeapFloat16VectorValues extends Float16VectorValues
   }
 
   @Override
-  public VectorEncoding getEncoding() {
-    return VectorEncoding.FLOAT16;
+  public boolean prefetch(int ord, int count) throws IOException {
+    if (ord < 0 || ord >= size || count <= 0) {
+      return false;
+    }
+    // Vectors are laid out contiguously by ordinal, so a run of them is a single read.
+    final int runLength = Math.min(count, size - ord);
+    return slice.prefetch((long) ord * byteSize, (long) runLength * byteSize);
   }
 
   @Override
-  public void prefetch(final int[] ordsToPrefetch, int numOrds) throws IOException {
-    if (ordsToPrefetch == null) {
-      return;
-    }
-
-    int finalNumOrds = Math.min(numOrds, ordsToPrefetch.length);
-    if (finalNumOrds <= 1) {
-      return;
-    }
-
-    // calculate offset and prefetch immediately
-    for (int i = 0; i < finalNumOrds; i++) {
-      long offset = (long) ordsToPrefetch[i] * byteSize;
-      slice.prefetch(offset, byteSize);
-    }
+  public VectorEncoding getEncoding() {
+    return VectorEncoding.FLOAT16;
   }
 
   public static OffHeapFloat16VectorValues load(

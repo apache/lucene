@@ -26,8 +26,8 @@
  *       vectors; see {@link org.apache.lucene.sandbox.codecs.dedup.DedupFlatVectorsFormat} for the
  *       on-disk layout.
  *   <li>{@link org.apache.lucene.sandbox.codecs.dedup.DedupHnswScalarQuantizedVectorsFormat}
- *       additionally stores a scalar quantized copy of each distinct FLOAT32 vector, used for
- *       scoring; see {@link
+ *       additionally stores a scalar quantized copy of each distinct FLOAT32 or FLOAT16 vector,
+ *       used for scoring; see {@link
  *       org.apache.lucene.sandbox.codecs.dedup.DedupScalarQuantizedVectorsFormat} for the on-disk
  *       layout.
  * </ul>

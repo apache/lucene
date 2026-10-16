@@ -51,11 +51,26 @@ public class TestIOContext extends LuceneTestCase {
     }
   }
 
+  /** A merge context with no MergeInfo, which is all a reader reopening a file can say. */
+  public void testMergeWithoutMergeInfo() {
+    IOContext context = IOContext.merge();
+    assertEquals(IOContext.Context.MERGE, context.context());
+    assertNull(context.mergeInfo());
+    assertNull(context.flushInfo());
+    assertEquals(Set.of(), context.hints());
+
+    IOContext withHint = context.withHints(DataAccessHint.SEQUENTIAL);
+    assertEquals(IOContext.Context.MERGE, withHint.context());
+    assertNull(withHint.mergeInfo());
+    assertEquals(Set.of(DataAccessHint.SEQUENTIAL), withHint.hints());
+  }
+
   protected List<IOContext> getContexts() {
     return List.of(
         IOContext.DEFAULT,
         IOContext.READONCE,
         IOContext.flush(new FlushInfo(1, 2)),
+        IOContext.merge(),
         IOContext.merge(new MergeInfo(1, 2, true, 4)));
   }
 
