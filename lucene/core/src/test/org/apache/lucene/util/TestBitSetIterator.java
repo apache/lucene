@@ -151,6 +151,17 @@ public class TestBitSetIterator extends LuceneTestCase {
     assertEquals(100, it.docIDRunEnd());
   }
 
+  public void testDocIDRunEndAfterSetDocIdOnModifiedBitSet() {
+    final FixedBitSet fbs = new FixedBitSet(1_000);
+    fbs.set(0, 300);
+    final BitSetIterator it = new BitSetIterator(fbs, fbs.cardinality());
+    assertEquals(50, it.advance(50));
+    assertEquals(300, it.docIDRunEnd());
+    fbs.clear(100);
+    it.setDocId(it.docID());
+    assertEquals(100, it.docIDRunEnd());
+  }
+
   public void testRandomDocIDRunEndLongRuns() {
     final Random r = random();
     final int iters = TEST_NIGHTLY ? 50 : 10;
