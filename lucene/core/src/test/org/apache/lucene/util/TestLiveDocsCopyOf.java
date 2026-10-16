@@ -108,6 +108,19 @@ public class TestLiveDocsCopyOf extends LuceneTestCase {
     assertEquals(dense.length() - dense.deletedCount(), copy.cardinality());
   }
 
+  public void testCopyOfPaddedSparseLiveDocsPreservesLength() {
+    int maxDoc = 100;
+    SparseFixedBitSet backing = new SparseFixedBitSet(256);
+    backing.set(7);
+    SparseLiveDocs sparse = SparseLiveDocs.builder(backing, maxDoc).build();
+    assertEquals(maxDoc, sparse.length());
+
+    FixedBitSet copy = FixedBitSet.copyOf(sparse);
+
+    assertEquals(sparse.length(), copy.length());
+    assertEquals(sparse.length() - sparse.deletedCount(), copy.cardinality());
+  }
+
   public void testRandomized() {
     int iters = atLeast(50);
     for (int iter = 0; iter < iters; iter++) {
