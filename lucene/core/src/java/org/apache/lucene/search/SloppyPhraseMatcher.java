@@ -446,8 +446,8 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
       if (pp.position > end) {
         end = pp.position;
       }
-      pq.add(pp);
     }
+    pq.addAll(Arrays.asList(phrasePositions));
   }
 
   /**

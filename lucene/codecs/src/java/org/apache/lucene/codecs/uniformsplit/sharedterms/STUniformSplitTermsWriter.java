@@ -23,6 +23,7 @@ import static org.apache.lucene.codecs.uniformsplit.sharedterms.STUniformSplitPo
 import static org.apache.lucene.codecs.uniformsplit.sharedterms.STUniformSplitPostingsFormat.VERSION_CURRENT;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -247,11 +248,19 @@ public class STUniformSplitTermsWriter extends UniformSplitTermsWriter {
       List<? extends TermIterator<T>> termIterators,
       PriorityQueue<TermIterator<T>> termIteratorQueue)
       throws IOException {
-    for (TermIterator<T> termIterator : termIterators) {
-      if (termIterator.nextTerm()) {
-        // There is a next term for the iterator. Add it to the priority queue.
-        termIteratorQueue.add(termIterator);
-      }
+    try {
+      termIteratorQueue.addAll(
+          termIterators.stream()
+              .filter(
+                  t -> {
+                    try {
+                      return t.nextTerm();
+                    } catch (IOException e) {
+                      throw new UncheckedIOException(e);
+                    }
+                  }));
+    } catch (UncheckedIOException e) {
+      throw e.getCause();
     }
   }
 
