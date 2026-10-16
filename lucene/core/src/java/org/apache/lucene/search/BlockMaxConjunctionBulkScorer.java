@@ -85,6 +85,11 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
 
   @Override
   public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
+    // There are no docs at or beyond maxDoc. Without this, windows that are skipped as
+    // non-competitive
+    // at the end of the segment would keep being iterated up to max (NO_MORE_DOCS when scoring an
+    // entire segment), since the lead is not advanced when a window is skipped.
+    max = Math.min(max, maxDoc);
     collector.setScorer(scorable);
 
     int windowMin = Math.max(lead.docID(), min);
