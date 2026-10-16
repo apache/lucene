@@ -58,7 +58,8 @@ sealed interface DedupVectorValues
         DedupVectorValues.FloatImpl,
         DedupVectorValues.Float16Impl,
         DedupScalarQuantizedVectorValues.FieldValues,
-        DedupScalarQuantizedVectorValues.RawAndQuantizedValues {
+        DedupScalarQuantizedVectorValues.Float32RawAndQuantizedValues,
+        DedupScalarQuantizedVectorValues.Float16RawAndQuantizedValues {
 
   /** The dense view over distinct vectors, indexed by group ordinal. */
   KnnVectorValues getGroupView();
@@ -160,6 +161,11 @@ sealed interface DedupVectorValues
         scratch[i] = fieldOrdToGroupOrd.get(ordsToPrefetch[i]);
       }
       groupView.prefetch(scratch, numOrds);
+    }
+
+    @Override
+    public boolean prefetch(int ord, int count) throws IOException {
+      return DedupUtil.prefetchRemapped(groupView, fieldOrdToGroupOrd, ord, count, size());
     }
 
     @Override
@@ -288,6 +294,11 @@ sealed interface DedupVectorValues
     }
 
     @Override
+    public boolean prefetch(int ord, int count) throws IOException {
+      return DedupUtil.prefetchRemapped(groupView, fieldOrdToGroupOrd, ord, count, size());
+    }
+
+    @Override
     public float[] vectorValue(int ord) throws IOException {
       return groupView.vectorValue(fieldOrdToGroupOrd.get(ord));
     }
@@ -410,6 +421,11 @@ sealed interface DedupVectorValues
         scratch[i] = fieldOrdToGroupOrd.get(ordsToPrefetch[i]);
       }
       groupView.prefetch(scratch, numOrds);
+    }
+
+    @Override
+    public boolean prefetch(int ord, int count) throws IOException {
+      return DedupUtil.prefetchRemapped(groupView, fieldOrdToGroupOrd, ord, count, size());
     }
 
     @Override

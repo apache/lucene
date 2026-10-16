@@ -19,7 +19,10 @@ package org.apache.lucene.index;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import java.io.ByteArrayOutputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.PrintStream;
+import java.nio.file.NoSuchFileException;
 import java.util.List;
 import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.Document;
@@ -34,6 +37,9 @@ import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.analysis.CannedTokenStream;
 import org.apache.lucene.tests.analysis.Token;
 import org.apache.lucene.tests.index.BaseTestCheckIndex;
@@ -291,6 +297,79 @@ public class TestCheckIndex extends BaseTestCheckIndex {
         CheckIndex.Status checkIndexStatus = checkers.checkIndex();
         assertFalse(checkIndexStatus.clean);
       }
+    }
+  }
+
+  public void testCorruptSegmentInfoNamesTheSegment() throws Exception {
+    for (String corruption : List.of("delete-si", "truncate-si")) {
+      try (MockDirectoryWrapper dir = newMockDirectory()) {
+        // this test intentionally leaves a broken index behind
+        dir.setCheckIndexOnClose(false);
+
+        IndexWriterConfig iwc = new IndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE);
+        try (IndexWriter iw = new IndexWriter(dir, iwc)) {
+          for (int seg = 0; seg < 2; seg++) {
+            Document doc = new Document();
+            doc.add(new StringField("id", "d" + seg, Field.Store.NO));
+            iw.addDocument(doc);
+            iw.commit();
+          }
+        }
+
+        // NOTE: relying on precise file naming, as testPriorBrokenCommitPoint above already does.
+        if (corruption.equals("delete-si")) {
+          dir.deleteFile("_1.si");
+        } else {
+          truncate(dir, "_1.si");
+        }
+
+        // Reading the commit point names the segment whose .si could not be read, and keeps the
+        // root cause: it is what names the file on disk.
+        CorruptSegmentInfoException e =
+            expectThrows(
+                CorruptSegmentInfoException.class,
+                () ->
+                    SegmentInfos.readCommit(
+                        dir, SegmentInfos.getLastCommitSegmentsFileName(dir), 0));
+        assertEquals(corruption, "_1", e.getSegmentName());
+        // the root cause must be the codec's own failure, since that is what names the file on disk
+        Throwable cause = e.getCause();
+        assertNotNull(corruption, cause);
+        if (corruption.equals("delete-si")) {
+          assertTrue(
+              corruption + ": " + cause,
+              cause instanceof NoSuchFileException || cause instanceof FileNotFoundException);
+        } else {
+          assertTrue(corruption + ": " + cause, cause instanceof IOException);
+        }
+        assertTrue(corruption + ": " + cause, cause.toString().contains("_1.si"));
+
+        // ... and CheckIndex reports it rather than only that something was unreadable
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        try (CheckIndex checker = new CheckIndex(dir)) {
+          checker.setInfoStream(new PrintStream(out, false, UTF_8), false);
+          CheckIndex.Status status = checker.checkIndex();
+
+          assertFalse(corruption, status.clean);
+          assertTrue(corruption, status.missingSegments);
+          assertEquals(corruption, "_1", status.brokenSegmentName);
+        }
+        assertTrue(
+            out.toString(UTF_8), out.toString(UTF_8).contains("could not read segment \"_1\""));
+      }
+    }
+  }
+
+  /** Rewrites {@code name} keeping only its first 70% of bytes. */
+  private static void truncate(Directory dir, String name) throws IOException {
+    byte[] bytes;
+    try (IndexInput in = dir.openInput(name, IOContext.READONCE)) {
+      bytes = new byte[(int) (in.length() * 0.7)];
+      in.readBytes(bytes, 0, bytes.length);
+    }
+    dir.deleteFile(name);
+    try (IndexOutput out = dir.createOutput(name, IOContext.DEFAULT)) {
+      out.writeBytes(bytes, bytes.length);
     }
   }
 }
