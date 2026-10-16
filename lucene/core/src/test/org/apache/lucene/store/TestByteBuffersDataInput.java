@@ -227,6 +227,26 @@ public final class TestByteBuffersDataInput extends LuceneTestCase {
         });
   }
 
+  public void testEofOnRandomAccessReadPastBufferSize() throws Exception {
+    ByteBuffersDataOutput dst = new ByteBuffersDataOutput();
+    byte[] data = new byte[10];
+    for (int i = 0; i < data.length; i++) {
+      data[i] = (byte) i;
+    }
+    dst.writeBytes(data);
+
+    // Assert that we know throw EOFException
+    LuceneTestCase.expectThrows(
+        EOFException.class, () -> dst.toDataInput().readBytes(5L, new byte[100], 0, 100));
+
+    // A valid random-access read that ends exactly at the last (partial) block's limit must still
+    // succeed and return the right bytes.
+    ByteBuffersDataInput in = dst.toDataInput();
+    byte[] tail = new byte[5];
+    in.readBytes(5L, tail, 0, 5);
+    assertArrayEquals(new byte[] {5, 6, 7, 8, 9}, tail);
+  }
+
   // https://issues.apache.org/jira/browse/LUCENE-8625
   public void testSlicingLargeBuffers() throws IOException {
     // Simulate a "large" (> 4GB) input by duplicating
