@@ -93,9 +93,7 @@ public final class LargeNumHitsTopDocsCollector implements Collector {
           assert pqTop == null;
           pq = new HitQueue(requestedHitCount, false);
 
-          for (ScoreDoc scoreDoc : hits) {
-            pq.add(scoreDoc);
-          }
+          pq.addAll(hits);
 
           pqTop = pq.top();
           hits = null;
