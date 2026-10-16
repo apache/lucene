@@ -34,6 +34,10 @@ import org.apache.lucene.search.DocIdSetIterator;
  *   <li>Dense deletions: Use {@link FixedBitSet} to store live docs, maintaining current behavior
  * </ul>
  *
+ * <p>Implementations are expected to override {@link Bits#applyMask(FixedBitSet, int)} with a bulk
+ * implementation: {@link FixedBitSet#copyOf(Bits)} relies on it to copy live docs, and the default
+ * implementation is slower than testing every bit.
+ *
  * @lucene.experimental
  */
 public interface LiveDocs extends Bits {
