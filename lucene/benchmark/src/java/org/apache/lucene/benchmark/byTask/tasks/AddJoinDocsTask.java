@@ -19,15 +19,18 @@ package org.apache.lucene.benchmark.byTask.tasks;
 import java.util.List;
 import org.apache.lucene.benchmark.byTask.PerfRunData;
 import org.apache.lucene.benchmark.byTask.feeds.JoinDocMaker;
+import org.apache.lucene.benchmark.byTask.feeds.JoinDocMaker.Dataset;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.index.IndexWriter;
 
 /**
- * Adds the next {@link JoinDocMaker} product group via {@link
- * org.apache.lucene.index.IndexWriter#addDocuments}, which keeps a block join block contiguous.
+ * Adds the next {@link JoinDocMaker} product group via {@link IndexWriter#addDocuments}, which
+ * keeps a block join block contiguous, and records the {@link Dataset} in the commit user data.
  */
 public class AddJoinDocsTask extends PerfTask {
 
   private List<Document> group;
+  private IndexWriter writer;
 
   public AddJoinDocsTask(PerfRunData runData) {
     super(runData);
@@ -36,12 +39,18 @@ public class AddJoinDocsTask extends PerfTask {
   @Override
   public void setup() throws Exception {
     super.setup();
-    group = ((JoinDocMaker) getRunData().getDocMaker()).makeGroup();
+    JoinDocMaker docMaker = (JoinDocMaker) getRunData().getDocMaker();
+    group = docMaker.makeGroup();
+    IndexWriter current = getRunData().getIndexWriter();
+    if (current != writer) {
+      writer = current;
+      writer.setLiveCommitData(docMaker.getDataset().toUserData().entrySet());
+    }
   }
 
   @Override
   public int doLogic() throws Exception {
-    getRunData().getIndexWriter().addDocuments(group);
+    writer.addDocuments(group);
     return group.size();
   }
 

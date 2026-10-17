@@ -15,13 +15,14 @@
 # * limitations under the License.
 # */
 # -------------------------------------------------------------------------------------
-# Builds the 1:M products/skus indices for join-search.alg and join-update.alg, one layout per round:
+# Builds the 1:M products/skus indices for join-search.alg and join-update-search.alg, one layout per round:
 #   products, skus - one side per index;   mixed - both sides in one index;   block - skus+product blocks
 # Run: ./gradlew -p lucene/benchmark run -PtaskAlg=conf/join-index.alg -PmaxHeapSize=4G
 
 doc.maker=org.apache.lucene.benchmark.byTask.feeds.JoinDocMaker
 # 1/100 scale for a quick run; for the full scale (1M products, 10M skus) set
-# join.products=1000000 here and in join-update.alg, then re-run this alg
+# join.products=1000000 and re-run this alg. Size and seed are recorded in each index,
+# so join-update-search.alg picks them up.
 join.products=10000
 join.skusPerProduct=10
 join.layout=layout:products:skus:mixed:block

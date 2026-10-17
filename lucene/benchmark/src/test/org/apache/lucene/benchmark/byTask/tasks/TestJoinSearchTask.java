@@ -72,10 +72,8 @@ public class TestJoinSearchTask extends BenchmarkTestCase {
 
   private PerfRunData runData(String side) throws Exception {
     Properties props = new Properties();
-    props.setProperty("doc.maker", JoinDocMaker.class.getName());
-    props.setProperty("join.products", Integer.toString(PRODUCTS));
-    props.setProperty("join.skusPerProduct", Integer.toString(SKUS_PER_PRODUCT));
     props.setProperty("join.dir", getWorkDirPath());
+    props.setProperty("join.searchThreads", Integer.toString(random().nextInt(3)));
     props.setProperty("join.update.side", side);
     props.setProperty("join.update.batch", "50");
     props.setProperty("print.props", "false");

@@ -19,16 +19,14 @@
 # Each round overrides existing products, skus or both (join.update.side), then searches;
 # block rewrites the whole block on every update (update amplification).
 # Updates are never committed, so the indices stay intact for reruns.
-# Run: ./gradlew -p lucene/benchmark run -PtaskAlg=conf/join-update.alg -PmaxHeapSize=4G
+# Run: ./gradlew -p lucene/benchmark run -PtaskAlg=conf/join-update-search.alg -PmaxHeapSize=4G
 
-# must match join-index.alg
-doc.maker=org.apache.lucene.benchmark.byTask.feeds.JoinDocMaker
-# 1/100 scale; full scale is join.products=1000000, see join-index.alg
-join.products=10000
-join.skusPerProduct=10
-
+# data size and seed are read from the indices, see join-index.alg
 join.dir=work/join
 join.scoreMode=None
+# segment parallel search threads, 0 - sequential; term and numeric collect the from side
+# sequentially anyway (JoinUtil)
+join.searchThreads=0
 join.update.side=side:products:skus:both
 join.update.batch=100
 # -------------------------------------------------------------------------------------

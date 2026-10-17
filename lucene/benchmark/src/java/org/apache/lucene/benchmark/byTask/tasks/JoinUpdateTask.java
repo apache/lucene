@@ -27,13 +27,15 @@ import java.util.Map;
 import java.util.Random;
 import org.apache.lucene.benchmark.byTask.PerfRunData;
 import org.apache.lucene.benchmark.byTask.feeds.JoinDocMaker;
+import org.apache.lucene.benchmark.byTask.feeds.JoinDocMaker.Dataset;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.Term;
 
 /**
  * Overrides a batch of random existing products and/or skus with new versions of their values (see
  * {@link JoinDocMaker}), then refreshes the {@link JoinIndices} searchers, so it measures update
- * plus NRT reopen. Requires <b>doc.maker</b>=JoinDocMaker configured as for indexing.
+ * plus NRT reopen. Data size and seed come from the {@link Dataset} recorded in the index at
+ * indexing time.
  *
  * <p>The parameter is the layout group: <b>split</b> (products and skus indices), <b>mixed</b> or
  * <b>block</b>. The block layout rewrites the whole product block on any update, i.e. suffers
@@ -63,6 +65,7 @@ public class JoinUpdateTask extends PerfTask {
   private JoinIndices.Index productIndex;
   private JoinIndices.Index skuIndex;
   private Versions versions;
+  private Dataset docs;
 
   public JoinUpdateTask(PerfRunData runData) {
     super(runData);
@@ -81,6 +84,11 @@ public class JoinUpdateTask extends PerfTask {
       JoinIndices indices = JoinIndices.get(runData);
       productIndex = indices.index(group.equals("split") ? "products" : group);
       skuIndex = indices.index(group.equals("split") ? "skus" : group);
+      docs = Dataset.fromUserData(productIndex.writer().getLiveCommitData());
+      Dataset skus = Dataset.fromUserData(skuIndex.writer().getLiveCommitData());
+      if (!docs.equals(skus)) {
+        throw new IllegalStateException("products " + docs + " but skus " + skus);
+      }
       synchronized (runData) {
         String key = JoinUpdateTask.class.getName() + "." + group;
         versions = (Versions) runData.getPerfObject(key);
@@ -94,7 +102,6 @@ public class JoinUpdateTask extends PerfTask {
 
   @Override
   public int doLogic() throws Exception {
-    JoinDocMaker docs = (JoinDocMaker) getRunData().getDocMaker();
     String productLayout = group.equals("split") ? "products" : group;
     String skuLayout = group.equals("split") ? "skus" : group;
     IndexWriter productWriter = productIndex.writer();
@@ -103,9 +110,8 @@ public class JoinUpdateTask extends PerfTask {
     boolean skus = !side.equals("products");
     synchronized (versions) {
       for (int i = 0; i < batch; i++) {
-        long product = versions.random.nextLong(docs.getProducts());
-        long sku =
-            product * docs.getSkusPerProduct() + versions.random.nextInt(docs.getSkusPerProduct());
+        long product = versions.random.nextLong(docs.products());
+        long sku = product * docs.skusPerProduct() + versions.random.nextInt(docs.skusPerProduct());
         long version = ++versions.version;
         if (products) {
           versions.products.put(product, version);

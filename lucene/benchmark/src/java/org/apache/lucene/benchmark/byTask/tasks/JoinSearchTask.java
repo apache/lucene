@@ -68,8 +68,8 @@ import org.apache.lucene.util.BytesRef;
  *   <li><b>block</b> - {@link ToParentBlockJoinQuery} (block)
  * </ul>
  *
- * <p>Other config properties: <b>join.dir</b>, see {@link JoinIndices}; <b>join.scoreMode</b> -
- * Default: None.
+ * <p>Other config properties: <b>join.dir</b> and <b>join.searchThreads</b>, see {@link
+ * JoinIndices}; <b>join.scoreMode</b> - Default: None.
  */
 public class JoinSearchTask extends PerfTask {
 

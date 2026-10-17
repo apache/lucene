@@ -21,6 +21,9 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.apache.lucene.benchmark.byTask.PerfRunData;
 import org.apache.lucene.benchmark.byTask.feeds.JoinDocMaker;
 import org.apache.lucene.index.IndexReader;
@@ -35,11 +38,16 @@ import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.NamedThreadFactory;
 
 /**
  * Writers and NRT searchers over the join indices at <b>join.dir</b>/{layout}/index (Default:
  * work/join), shared by join tasks and closed with {@link PerfRunData}. Updates are never
  * committed, so the indices stay intact for the next run.
+ *
+ * <p><b>join.searchThreads</b> - size of the executor shared by all searchers, i.e. segment
+ * parallel search on both join sides. Fixed per run, since searchers are only recreated on refresh.
+ * Default: 0, search segments sequentially.
  */
 final class JoinIndices implements Closeable {
 
@@ -53,8 +61,8 @@ final class JoinIndices implements Closeable {
     private OrdinalMap ordinalMap;
     private boolean built;
 
-    JoinSearcher(IndexReader reader, boolean ordinals) {
-      super(reader);
+    JoinSearcher(IndexReader reader, Executor executor, boolean ordinals) {
+      super(reader, executor);
       this.ordinals = ordinals;
     }
 
@@ -73,17 +81,25 @@ final class JoinIndices implements Closeable {
   record Index(Directory dir, IndexWriter writer, SearcherManager manager) {}
 
   private final Path root;
+  private final ExecutorService executor;
   private final Map<String, Index> indices = new HashMap<>();
 
-  private JoinIndices(Path root) {
+  private JoinIndices(Path root, int searchThreads) {
     this.root = root;
+    executor =
+        searchThreads > 0
+            ? Executors.newFixedThreadPool(searchThreads, new NamedThreadFactory("join-search"))
+            : null;
   }
 
   static JoinIndices get(PerfRunData runData) {
     synchronized (runData) {
       JoinIndices indices = (JoinIndices) runData.getPerfObject(JoinIndices.class.getName());
       if (indices == null) {
-        indices = new JoinIndices(Path.of(runData.getConfig().get("join.dir", "work/join")));
+        indices =
+            new JoinIndices(
+                Path.of(runData.getConfig().get("join.dir", "work/join")),
+                runData.getConfig().get("join.searchThreads", 0));
         runData.setPerfObject(JoinIndices.class.getName(), indices);
       }
       return indices;
@@ -104,7 +120,7 @@ final class JoinIndices implements Closeable {
               new SearcherFactory() {
                 @Override
                 public IndexSearcher newSearcher(IndexReader reader, IndexReader previous) {
-                  return new JoinSearcher(reader, ordinals);
+                  return new JoinSearcher(reader, executor, ordinals);
                 }
               });
       index = new Index(dir, writer, manager);
@@ -117,6 +133,9 @@ final class JoinIndices implements Closeable {
   public synchronized void close() throws IOException {
     for (Index index : indices.values()) {
       IOUtils.close(index.manager(), index.writer()::rollback, index.dir());
+    }
+    if (executor != null) {
+      executor.shutdown();
     }
   }
 }
