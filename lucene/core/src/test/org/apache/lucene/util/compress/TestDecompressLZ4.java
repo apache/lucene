@@ -18,6 +18,7 @@ package org.apache.lucene.util.compress;
 
 import java.io.IOException;
 import org.apache.lucene.store.ByteArrayDataInput;
+import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestDecompressLZ4 extends LuceneTestCase {
@@ -48,6 +49,12 @@ public class TestDecompressLZ4 extends LuceneTestCase {
         assertThrows(
             IOException.class,
             () -> LZ4.decompress(new ByteArrayDataInput(input), output.length, output, 0));
+    assertEquals("offset 0 is invalid", e.getMessage());
+
+    e =
+        assertThrows(
+            IOException.class,
+            () -> LZ4.decompress(input, 0, input.length, output.length, output, 0));
     assertEquals("offset 0 is invalid", e.getMessage());
   }
 
@@ -80,6 +87,12 @@ public class TestDecompressLZ4 extends LuceneTestCase {
         assertThrows(
             IOException.class,
             () -> LZ4.decompress(new ByteArrayDataInput(input), output.length, output, 0));
+    assertEquals("match offset 8 is invalid, only 0 bytes are available", e.getMessage());
+
+    e =
+        assertThrows(
+            IOException.class,
+            () -> LZ4.decompress(input, 0, input.length, output.length, output, 0));
     assertEquals("match offset 8 is invalid, only 0 bytes are available", e.getMessage());
   }
 
@@ -115,5 +128,34 @@ public class TestDecompressLZ4 extends LuceneTestCase {
             IOException.class,
             () -> LZ4.decompress(new ByteArrayDataInput(input), 18, output, dictLen));
     assertEquals("match offset 5 is invalid, only 4 bytes are available", e.getMessage());
+
+    e =
+        assertThrows(
+            IOException.class, () -> LZ4.decompress(input, 0, input.length, 18, output, dictLen));
+    assertEquals("match offset 5 is invalid, only 4 bytes are available", e.getMessage());
+  }
+
+  public void testDecompressTruncatedInput() throws IOException {
+    byte[] data = new byte[1024];
+    for (int i = 0; i < data.length; ++i) {
+      data[i] = (byte) (i % 7 == 0 ? random().nextInt() : i);
+    }
+    ByteBuffersDataOutput out = new ByteBuffersDataOutput();
+    LZ4.compress(data, 0, data.length, out, new LZ4.FastCompressionHashTable());
+    byte[] compressed = out.toArrayCopy();
+    byte[] restored = new byte[data.length];
+    assertEquals(
+        data.length, LZ4.decompress(compressed, 0, compressed.length, data.length, restored, 0));
+    assertArrayEquals(data, restored);
+
+    // Bytes past cLen must never be read, even if the array has them
+    for (int cLen = 0; cLen < compressed.length; ++cLen) {
+      final int len = cLen;
+      var e =
+          assertThrows(
+              IOException.class,
+              () -> LZ4.decompress(compressed, 0, len, data.length, new byte[data.length], 0));
+      assertEquals("compressed input is truncated", e.getMessage());
+    }
   }
 }
