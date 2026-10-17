@@ -1666,11 +1666,6 @@ public class TestGrouping extends LuceneTestCase {
     }
 
     @Override
-    public void search(Query query, Collector collector) {
-      throw new UnsupportedOperationException("Use search(Weight, CollectorManager) instead");
-    }
-
-    @Override
     public TopDocs search(Query query, int n) {
       throw new UnsupportedOperationException("Use search(Weight, CollectorManager) instead");
     }
