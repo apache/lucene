@@ -347,6 +347,7 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
       }
     }
     // add back to queue
+    // TODO: Since addAll need adjusts all heap, and pq may not empty here. we use add here.
     for (int i = n - 1; i >= 0; i--) {
       pq.add(rptStack[i]);
     }

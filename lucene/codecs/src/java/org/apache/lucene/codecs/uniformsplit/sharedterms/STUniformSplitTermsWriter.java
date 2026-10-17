@@ -248,19 +248,12 @@ public class STUniformSplitTermsWriter extends UniformSplitTermsWriter {
       List<? extends TermIterator<T>> termIterators,
       PriorityQueue<TermIterator<T>> termIteratorQueue)
       throws IOException {
-    try {
-      termIteratorQueue.addAll(
-          termIterators.stream()
-              .filter(
-                  termIterator -> {
-                    try {
-                      return termIterator.nextTerm();
-                    } catch (IOException e) {
-                      throw new UncheckedIOException(e);
-                    }
-                  }));
-    } catch (UncheckedIOException e) {
-      throw e.getCause();
+    // TODO: Since addAll need adjusts all heap, and pq may not empty here. we use add here.
+    for (TermIterator<T> termIterator : termIterators) {
+      if (termIterator.nextTerm()) {
+        // There is a next term for the iterator. Add it to the priority queue.
+        termIteratorQueue.add(termIterator);
+      }
     }
   }
 
