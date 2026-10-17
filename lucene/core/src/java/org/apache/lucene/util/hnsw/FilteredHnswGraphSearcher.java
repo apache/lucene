@@ -193,22 +193,23 @@ public class FilteredHnswGraphSearcher extends HnswGraphSearcher {
           }
         }
       }
-      // Score the vectors and add them to the candidate list
-      if (bulkScores == null || bulkScores.length < toScore.count()) {
-        bulkScores = new float[toScore.count()];
-      }
+      // Score the vectors and add them to the candidate list, without exceeding the visit limit
       assert toScore.upto == 0;
+      int numToScore =
+          (int) Math.min(toScore.count(), results.visitLimit() - results.visitedCount());
+      if (bulkScores == null || bulkScores.length < numToScore) {
+        bulkScores = new float[numToScore];
+      }
       float maxScore =
-          toScore.count() > 0
-              ? scorer.bulkScore(toScore.nodes, bulkScores, toScore.size)
+          numToScore > 0
+              ? scorer.bulkScore(toScore.nodes, bulkScores, numToScore)
               : Float.NEGATIVE_INFINITY;
-      results.incVisitedCount(toScore.count());
+      results.incVisitedCount(Math.max(numToScore, 0));
       if (maxScore > results.minCompetitiveSimilarity()) {
-        for (int i = 0; i < toScore.count(); i++) {
-          int idx = i + toScore.upto;
-          float friendSimilarity = bulkScores[idx];
+        for (int i = 0; i < numToScore; i++) {
+          float friendSimilarity = bulkScores[i];
           if (friendSimilarity >= minAcceptedSimilarity) {
-            int ord = toScore.nodes[idx];
+            int ord = toScore.nodes[i];
             candidates.add(ord, friendSimilarity);
             if (results.collect(ord, friendSimilarity)) {
               float oldMinAcceptedSimilarity = minAcceptedSimilarity;
