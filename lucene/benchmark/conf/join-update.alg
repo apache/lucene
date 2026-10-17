@@ -39,18 +39,31 @@ join.update.batch=100
 }
 ClearStats
 
+# cold-* is the first search after each update batch, i.e. it pays for per-searcher caches
+# (global ordinals, block join parent bitsets); warm-* are the next ones
 { "Rounds"
     { "split"
-        { "update-split" JoinUpdate(split) > JoinSearch(term) JoinSearch(numeric)
+        { "update-split" JoinUpdate(split) >
+        { "cold-term" JoinSearch(term) >
+        { "cold-numeric" JoinSearch(numeric) >
+        { "warm-term" JoinSearch(term) > : 2
+        { "warm-numeric" JoinSearch(numeric) > : 2
     } : 50
     { "mixed"
-        { "update-mixed" JoinUpdate(mixed) > JoinSearch(globalOrd)
+        { "update-mixed" JoinUpdate(mixed) >
+        { "cold-globalOrd" JoinSearch(globalOrd) >
+        { "warm-globalOrd" JoinSearch(globalOrd) > : 2
     } : 50
     { "block"
-        { "update-block" JoinUpdate(block) > JoinSearch(block)
+        { "update-block" JoinUpdate(block) >
+        { "cold-block" JoinSearch(block) >
+        { "warm-block" JoinSearch(block) > : 2
     } : 50
     NewRound
 } : 3
 
 RepSumByNameRound
 RepSumByName
+RepSumByPrefRound update-
+RepSumByPrefRound cold-
+RepSumByPrefRound warm-

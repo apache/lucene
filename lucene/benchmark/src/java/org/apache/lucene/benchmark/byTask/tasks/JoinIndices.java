@@ -43,18 +43,30 @@ import org.apache.lucene.util.IOUtils;
  */
 final class JoinIndices implements Closeable {
 
-  /** Searcher that carries the global ordinals of {@link JoinDocMaker#FK} for the mixed index. */
+  /**
+   * Searcher that carries the global ordinals of {@link JoinDocMaker#FK} for the mixed index. They
+   * are built by the first query on each new searcher, so a cold search after refresh pays for
+   * them.
+   */
   static final class JoinSearcher extends IndexSearcher {
-    final OrdinalMap ordinalMap;
+    private final boolean ordinals;
+    private OrdinalMap ordinalMap;
+    private boolean built;
 
-    JoinSearcher(IndexReader reader, boolean ordinals) throws IOException {
+    JoinSearcher(IndexReader reader, boolean ordinals) {
       super(reader);
-      ordinalMap =
-          ordinals
-                  && MultiDocValues.getSortedValues(reader, JoinDocMaker.FK)
-                      instanceof MultiDocValues.MultiSortedDocValues multi
-              ? multi.mapping
-              : null; // a single segment needs no ordinal map
+      this.ordinals = ordinals;
+    }
+
+    synchronized OrdinalMap ordinalMap() throws IOException {
+      if (ordinals && !built) {
+        if (MultiDocValues.getSortedValues(getIndexReader(), JoinDocMaker.FK)
+            instanceof MultiDocValues.MultiSortedDocValues multi) {
+          ordinalMap = multi.mapping; // a single segment needs no ordinal map
+        }
+        built = true;
+      }
+      return ordinalMap;
     }
   }
 
@@ -91,8 +103,7 @@ final class JoinIndices implements Closeable {
               writer,
               new SearcherFactory() {
                 @Override
-                public IndexSearcher newSearcher(IndexReader reader, IndexReader previous)
-                    throws IOException {
+                public IndexSearcher newSearcher(IndexReader reader, IndexReader previous) {
                   return new JoinSearcher(reader, ordinals);
                 }
               });

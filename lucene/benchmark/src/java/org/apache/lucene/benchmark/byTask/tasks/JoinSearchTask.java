@@ -122,7 +122,7 @@ public class JoinSearchTask extends PerfTask {
                   new TermQuery(new Term(TYPE, PRODUCT)),
                   from,
                   scoreMode,
-                  ((JoinIndices.JoinSearcher) from).ordinalMap);
+                  ((JoinIndices.JoinSearcher) from).ordinalMap());
           default -> new ToParentBlockJoinQuery(skus, PRODUCTS, scoreMode);
         };
     totalHits +=
