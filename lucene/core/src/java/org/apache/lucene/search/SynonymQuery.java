@@ -527,9 +527,7 @@ public final class SynonymQuery extends Query {
                       }
                       return Long.compareUnsigned(a.norm, b.norm);
                     });
-            for (FreqAndNormBuffer impacts : toMerge) {
-              pq.add(new SubIterator(impacts));
-            }
+            pq.addAll(toMerge.stream().map(SubIterator::new));
 
             // Idea: merge impacts by norm. The tricky thing is that we need to
             // consider norm values that are not in the impacts too. For

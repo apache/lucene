@@ -17,6 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -596,13 +597,23 @@ public class MultiPhraseQuery extends Query {
       freq = 0;
       started = false;
       posQueue.clear();
-      for (PostingsAndPosition pp : subs) {
-        if (pp.pe.docID() == doc) {
-          pp.pos = pp.pe.nextPosition();
-          pp.upto = pp.pe.freq();
-          posQueue.add(pp);
-          freq += pp.upto;
-        }
+      try {
+        posQueue.addAll(
+            subs.stream()
+                .filter(pp -> pp.pe.docID() == doc)
+                .map(
+                    pp -> {
+                      try {
+                        pp.pos = pp.pe.nextPosition();
+                        pp.upto = pp.pe.freq();
+                        freq += pp.upto;
+                        return pp;
+                      } catch (IOException e) {
+                        throw new UncheckedIOException(e);
+                      }
+                    }));
+      } catch (UncheckedIOException e) {
+        throw e.getCause();
       }
       return freq;
     }
