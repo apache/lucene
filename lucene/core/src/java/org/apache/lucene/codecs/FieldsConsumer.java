@@ -59,6 +59,8 @@ public abstract class FieldsConsumer implements Closeable {
    *   <li>The provided Fields instance is limited: you cannot call any methods that return
    *       statistics/counts; you cannot pass a non-null live docs when pulling docs/positions
    *       enums.
+   *   <li>Field names arrive in ascending natural order, as {@link Fields#iterator()} requires, so
+   *       an implementation may rely on that and must preserve it in what it writes.
    * </ul>
    */
   public abstract void write(Fields fields, NormsProducer norms) throws IOException;
