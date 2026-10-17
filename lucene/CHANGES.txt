@@ -682,6 +682,9 @@ Optimizations
 
 * GITHUB#16089: Upgrade DocIdSetBuilder to use FixedBitSet eagerly once exceeding the threshold (Ke Wei)
 
+* GITHUB#14397: Reuse the LZ4 preset dictionary when reading stored fields or term vectors
+  from the same compressed chunk. (Ke Wei)
+
 Bug Fixes
 ---------------------
 
