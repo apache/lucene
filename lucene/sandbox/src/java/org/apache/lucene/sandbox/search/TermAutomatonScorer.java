@@ -17,6 +17,7 @@
 package org.apache.lucene.sandbox.search;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Comparator;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.sandbox.search.TermAutomatonQuery.EnumAndScorer;
@@ -214,9 +215,7 @@ class TermAutomatonScorer extends Scorer {
 
   private void countMatches() throws IOException {
     freq = 0;
-    for (int i = 0; i < numSubsOnDoc; i++) {
-      posQueue.add(subsOnDoc[i]);
-    }
+    posQueue.addAll(Arrays.stream(subsOnDoc, 0, numSubsOnDoc));
     // System.out.println("\ncountMatches: " + numSubsOnDoc + " terms in doc=" + docID + "
     // anyTermID=" + anyTermID + " id=" + reader.document(docID).get("id"));
     // System.out.println("\ncountMatches: " + numSubsOnDoc + " terms in doc=" + docID + "

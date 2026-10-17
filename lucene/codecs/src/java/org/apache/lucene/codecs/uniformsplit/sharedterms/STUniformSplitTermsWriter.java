@@ -23,6 +23,7 @@ import static org.apache.lucene.codecs.uniformsplit.sharedterms.STUniformSplitPo
 import static org.apache.lucene.codecs.uniformsplit.sharedterms.STUniformSplitPostingsFormat.VERSION_CURRENT;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -247,6 +248,7 @@ public class STUniformSplitTermsWriter extends UniformSplitTermsWriter {
       List<? extends TermIterator<T>> termIterators,
       PriorityQueue<TermIterator<T>> termIteratorQueue)
       throws IOException {
+    // TODO: Since addAll need adjusts all heap, and pq may not empty here. we use add here.
     for (TermIterator<T> termIterator : termIterators) {
       if (termIterator.nextTerm()) {
         // There is a next term for the iterator. Add it to the priority queue.
@@ -371,11 +373,19 @@ public class STUniformSplitTermsWriter extends UniformSplitTermsWriter {
       List<TermIterator<SegmentTerms>> segmentTermsList) throws IOException {
     PriorityQueue<TermIterator<SegmentTerms>> segmentQueue =
         PriorityQueue.usingComparator(segmentTermsList.size(), Comparator.naturalOrder());
-    for (TermIterator<SegmentTerms> segmentTerms : segmentTermsList) {
-      if (segmentTerms.nextTerm()) {
-        // There is at least one term in the segment
-        segmentQueue.add(segmentTerms);
-      }
+    try {
+      segmentQueue.addAll(
+          segmentTermsList.stream()
+              .filter(
+                  segmentTerms -> {
+                    try {
+                      return segmentTerms.nextTerm();
+                    } catch (IOException e) {
+                      throw new UncheckedIOException(e);
+                    }
+                  }));
+    } catch (UncheckedIOException e) {
+      throw e.getCause();
     }
     return segmentQueue;
   }

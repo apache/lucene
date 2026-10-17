@@ -181,6 +181,7 @@ class UnorderedIntervalsSource extends MinimizingConjunctionIntervalsSource {
     protected void reset() throws IOException {
       queueEnd = start = end = -1;
       this.queue.clear();
+      // TODO: If use queue.addAll, we need use takeWhile.
       for (IntervalIterator it : subIterators) {
         if (it.nextInterval() == NO_MORE_INTERVALS) {
           break;
