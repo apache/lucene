@@ -425,7 +425,8 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+* GITHUB#16860: Fix HistogramCollector counting deleted documents when it collects a point range
+  query through the point tree. (Salvatore Campagna)
 
 Other
 ---------------------
