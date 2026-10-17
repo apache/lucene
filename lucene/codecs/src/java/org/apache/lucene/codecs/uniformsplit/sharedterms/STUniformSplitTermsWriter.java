@@ -252,9 +252,9 @@ public class STUniformSplitTermsWriter extends UniformSplitTermsWriter {
       termIteratorQueue.addAll(
           termIterators.stream()
               .filter(
-                  t -> {
+                  termIterator -> {
                     try {
-                      return t.nextTerm();
+                      return termIterator.nextTerm();
                     } catch (IOException e) {
                       throw new UncheckedIOException(e);
                     }

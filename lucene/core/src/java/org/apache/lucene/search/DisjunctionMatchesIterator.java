@@ -210,9 +210,9 @@ final class DisjunctionMatchesIterator implements MatchesIterator {
       queue.addAll(
           matches.stream()
               .filter(
-                  m -> {
+                  match -> {
                     try {
-                      return m.next();
+                      return match.next();
                     } catch (IOException e) {
                       throw new UncheckedIOException(e);
                     }

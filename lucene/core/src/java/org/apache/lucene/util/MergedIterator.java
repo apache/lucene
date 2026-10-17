@@ -19,6 +19,7 @@ package org.apache.lucene.util;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.stream.IntStream;
 
 /**
  * Provides a merged sorted view from several sorted iterators.
@@ -64,16 +65,17 @@ public final class MergedIterator<T extends Comparable<T>> implements Iterator<T
             Comparator.<SubIterator<T>, T>comparing(it -> it.current)
                 .thenComparingInt(it -> it.index));
     top = new SubIterator[iterators.length];
-    int index = 0;
-    for (Iterator<T> iterator : iterators) {
-      if (iterator.hasNext()) {
-        SubIterator<T> sub = new SubIterator<>();
-        sub.current = iterator.next();
-        sub.iterator = iterator;
-        sub.index = index++;
-        queue.add(sub);
-      }
-    }
+    queue.addAll(
+        IntStream.range(0, iterators.length)
+            .filter(i -> iterators[i].hasNext())
+            .mapToObj(
+                i -> {
+                  SubIterator<T> sub = new SubIterator<>();
+                  sub.current = iterators[i].next();
+                  sub.iterator = iterators[i];
+                  sub.index = i;
+                  return sub;
+                }));
   }
 
   @Override
