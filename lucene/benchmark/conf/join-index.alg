@@ -20,7 +20,9 @@
 # Run: ./gradlew -p lucene/benchmark run -PtaskAlg=conf/join-index.alg -PmaxHeapSize=4G
 
 doc.maker=org.apache.lucene.benchmark.byTask.feeds.JoinDocMaker
-join.products=1000000
+# 1/100 scale for a quick run; for the full scale (1M products, 10M skus) set
+# join.products=1000000 here and in join-update.alg, then re-run this alg
+join.products=10000
 join.skusPerProduct=10
 join.layout=layout:products:skus:mixed:block
 work.dir=dir:work/join/products:work/join/skus:work/join/mixed:work/join/block

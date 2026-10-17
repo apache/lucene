@@ -23,7 +23,8 @@
 
 # must match join-index.alg
 doc.maker=org.apache.lucene.benchmark.byTask.feeds.JoinDocMaker
-join.products=1000000
+# 1/100 scale; full scale is join.products=1000000, see join-index.alg
+join.products=10000
 join.skusPerProduct=10
 
 join.dir=work/join
