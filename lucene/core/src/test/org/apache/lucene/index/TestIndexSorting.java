@@ -2028,6 +2028,74 @@ public class TestIndexSorting extends LuceneTestCase {
     dir.close();
   }
 
+  // the segments stay sorted even if a later writer is opened without the index sort
+  public void testBadDVUpdateWithoutIndexSort() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    iwc.setIndexSort(new Sort(new SortField("foo", SortField.Type.LONG)));
+    IndexWriter w = new IndexWriter(dir, iwc);
+    Document doc = new Document();
+    doc.add(new StringField("id", newBytesRef("0"), Store.NO));
+    doc.add(new NumericDocValuesField("foo", random().nextInt()));
+    w.addDocument(doc);
+    w.close();
+
+    IndexWriter unsorted = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
+    String message =
+        "cannot update docvalues field involved in the index sort, field=foo, sort=<long: \"foo\">";
+    IllegalArgumentException exc =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> unsorted.updateNumericDocValue(new Term("id", "0"), "foo", -1));
+    assertEquals(message, exc.getMessage());
+    exc =
+        expectThrows(
+            IllegalArgumentException.class,
+            () ->
+                unsorted.updateDocValues(
+                    new Term("id", "0"), new NumericDocValuesField("foo", -1)));
+    assertEquals(message, exc.getMessage());
+    exc =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> unsorted.updateBinaryDocValue(new Term("id", "0"), "foo", newBytesRef("bar")));
+    assertEquals(message, exc.getMessage());
+    exc =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> unsorted.updateSortedNumericDocValue(new Term("id", "0"), "foo", -1));
+    assertEquals(message, exc.getMessage());
+    unsorted.close();
+    dir.close();
+  }
+
+  // sorted segments copied in by addIndexes keep their sort in a writer without an index sort
+  public void testBadDVUpdateAfterAddIndexes() throws Exception {
+    Directory sortedDir = newDirectory();
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    iwc.setIndexSort(new Sort(new SortField("foo", SortField.Type.LONG)));
+    IndexWriter sorted = new IndexWriter(sortedDir, iwc);
+    Document doc = new Document();
+    doc.add(new StringField("id", newBytesRef("0"), Store.NO));
+    doc.add(new NumericDocValuesField("foo", random().nextInt()));
+    sorted.addDocument(doc);
+    sorted.close();
+
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
+    w.addIndexes(sortedDir);
+    IllegalArgumentException exc =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> w.updateNumericDocValue(new Term("id", "0"), "foo", -1));
+    assertEquals(
+        "cannot update docvalues field involved in the index sort, field=foo, sort=<long: \"foo\">",
+        exc.getMessage());
+    w.close();
+    dir.close();
+    sortedDir.close();
+  }
+
   static class DVUpdateRunnable implements Runnable {
 
     private final int numDocs;
