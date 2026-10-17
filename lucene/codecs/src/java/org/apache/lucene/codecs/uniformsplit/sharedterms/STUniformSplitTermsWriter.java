@@ -380,11 +380,19 @@ public class STUniformSplitTermsWriter extends UniformSplitTermsWriter {
       List<TermIterator<SegmentTerms>> segmentTermsList) throws IOException {
     PriorityQueue<TermIterator<SegmentTerms>> segmentQueue =
         PriorityQueue.usingComparator(segmentTermsList.size(), Comparator.naturalOrder());
-    for (TermIterator<SegmentTerms> segmentTerms : segmentTermsList) {
-      if (segmentTerms.nextTerm()) {
-        // There is at least one term in the segment
-        segmentQueue.add(segmentTerms);
-      }
+    try {
+      segmentQueue.addAll(
+          segmentTermsList.stream()
+              .filter(
+                  segmentTerms -> {
+                    try {
+                      return segmentTerms.nextTerm();
+                    } catch (IOException e) {
+                      throw new UncheckedIOException(e);
+                    }
+                  }));
+    } catch (UncheckedIOException e) {
+      throw e.getCause();
     }
     return segmentQueue;
   }
