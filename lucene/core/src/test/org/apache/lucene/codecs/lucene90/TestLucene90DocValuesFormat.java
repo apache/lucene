@@ -32,6 +32,7 @@ import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.PostingsFormat;
+import org.apache.lucene.codecs.lucene104.Lucene104Codec;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
@@ -76,6 +77,7 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.FixedBitSet;
 
 /** Tests Lucene90DocValuesFormat */
 public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatTestCase {
@@ -1345,6 +1347,70 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
     assertNull(termsEnum.next());
     reader.close();
     directory.close();
+  }
+
+  public void testTableEncodedRangeIntoBitSet() throws Exception {
+    long[] table = {0, 10, 21, 35, 36, 48};
+    String[] fields = {
+      "numeric_dense", "numeric_sparse", "sorted_numeric_dense", "sorted_numeric_sparse"
+    };
+    int numDocs = 100;
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter writer =
+          new IndexWriter(dir, new IndexWriterConfig().setCodec(new Lucene104Codec()))) {
+        for (int docID = 0; docID < numDocs; docID++) {
+          Document doc = new Document();
+          long value = table[docID % table.length];
+          long nextValue = table[(docID + 1) % table.length];
+          doc.add(NumericDocValuesField.indexedField("numeric_dense", value));
+          doc.add(SortedNumericDocValuesField.indexedField("sorted_numeric_dense", value));
+          doc.add(SortedNumericDocValuesField.indexedField("sorted_numeric_dense", nextValue));
+          if (docID % 2 != 0) {
+            doc.add(NumericDocValuesField.indexedField("numeric_sparse", value));
+            doc.add(SortedNumericDocValuesField.indexedField("sorted_numeric_sparse", value));
+            doc.add(SortedNumericDocValuesField.indexedField("sorted_numeric_sparse", nextValue));
+          }
+          writer.addDocument(doc);
+        }
+        writer.forceMerge(1);
+      }
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        LeafReader leaf = getOnlyLeafReader(reader);
+        long[][] ranges = {{0, 21}, {0, 0}, {21, 21}, {1, 20}, {1, 9}, {22, 23}, {21, 0}};
+        int fixedRangeCount = ranges.length;
+        ranges = Arrays.copyOf(ranges, fixedRangeCount + 10);
+        for (int i = fixedRangeCount; i < ranges.length; i++) {
+          ranges[i] = new long[] {random().nextInt(-5, 50), random().nextInt(-5, 50)};
+        }
+        for (String field : fields) {
+          for (long[] range : ranges) {
+            assertTableEncodedRange(leaf, field, 0, numDocs, range[0], range[1]);
+          }
+        }
+      }
+    }
+  }
+
+  private void assertTableEncodedRange(
+      LeafReader leaf, String field, int fromDoc, int toDoc, long minValue, long maxValue)
+      throws IOException {
+    FixedBitSet expected = new FixedBitSet(toDoc - fromDoc);
+    SortedNumericDocValues slow = DocValues.getSortedNumeric(leaf, field);
+    for (int docID = fromDoc; docID < toDoc; docID++) {
+      if (slow.advanceExact(docID)) {
+        for (int i = 0, count = slow.docValueCount(); i < count; i++) {
+          long value = slow.nextValue();
+          if (value >= minValue && value <= maxValue) {
+            expected.set(docID - fromDoc);
+          }
+        }
+      }
+    }
+    FixedBitSet actual = new FixedBitSet(toDoc - fromDoc);
+    SortedNumericDocValues fast = DocValues.getSortedNumeric(leaf, field);
+    fast.advanceExact(fromDoc);
+    fast.rangeIntoBitSet(fromDoc, toDoc, minValue, maxValue, actual, fromDoc);
+    assertEquals(field + " range=[" + minValue + "," + maxValue + "]", expected, actual);
   }
 
   public void testSkipIndexStoredSeparately() throws IOException {
