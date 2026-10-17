@@ -49,6 +49,11 @@ public class TestLucene912PostingsFormat extends BasePostingsFormatTestCase {
     return TestUtil.alwaysPostingsFormat(new Lucene912RWPostingsFormat());
   }
 
+  @Override
+  protected boolean indexFakeImpacts() {
+    return true;
+  }
+
   public void testVInt15() throws IOException {
     byte[] bytes = new byte[5];
     ByteArrayDataOutput out = new ByteArrayDataOutput(bytes);
