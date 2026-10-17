@@ -17,6 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -413,12 +414,31 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
     // System.err.println("initSimple: doc: "+min.doc);
     pq.clear();
     // position pps and build queue from list
-    for (PhrasePositions pp : phrasePositions) {
-      pp.firstPosition();
-      if (pp.position > end) {
-        end = pp.position;
-      }
-      pq.add(pp);
+    // TODO: Maybe use pq.addAll(Arrays.asList(phrasePositions)) to clean code:
+    // for (PhrasePositions pp : phrasePositions) {
+    //      pp.firstPosition();
+    //      if (pp.position > end) {
+    //        end = pp.position;
+    //      }
+    //    }
+    // pq.addAll(Arrays.asList(phrasePositions));
+    try {
+      pq.addAll(
+          Arrays.stream(phrasePositions)
+              .map(
+                  pp -> {
+                    try {
+                      pp.firstPosition();
+                      if (pp.position > end) {
+                        end = pp.position;
+                      }
+                      return pp;
+                    } catch (IOException e) {
+                      throw new UncheckedIOException(e);
+                    }
+                  }));
+    } catch (UncheckedIOException e) {
+      throw e.getCause();
     }
   }
 
