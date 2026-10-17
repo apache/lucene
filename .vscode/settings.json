@@ -1,6 +1,17 @@
 {
   "java.server.launchMode": "Standard",
+  "jdk.jdkhome": "/home/mikhail-khludnev/.jdks/jdk-25.0.3+9",
+  "jdk.project.jdkhome": "/home/mikhail-khludnev/.jdks/jdk-25.0.3+9",
+  "java.jdt.ls.java.home": "/home/mikhail-khludnev/.jdks/jdk-25.0.3+9",
+  "java.configuration.runtimes": [
+    {
+      "name": "JavaSE-25",
+      "path": "/home/mikhail-khludnev/.jdks/jdk-25.0.3+9",
+      "default": true
+    }
+  ],
   "java.import.gradle.enabled": false,
+  "java.import.gradle.java.home": "/home/mikhail-khludnev/.jdks/jdk-25.0.3+9",
   "java.import.maven.enabled": false,
   "java.jdt.ls.lombokSupport.enabled": false,
   "java.compile.nullAnalysis.mode": "disabled",
@@ -9,5 +20,9 @@
   "java.inlayHints.parameterNames.enabled": "all",
   "java.inlayHints.parameterTypes.enabled": true,
   "java.inlayHints.variableTypes.enabled": true,
-  "redhat.telemetry.enabled": false
+  "java.test.config": {
+    "vmArgs": ["-ea", "-esa"]
+  },
+  "redhat.telemetry.enabled": false,
+  "java.format.settings.url": ".vscode/java-formatter.xml"
 }
