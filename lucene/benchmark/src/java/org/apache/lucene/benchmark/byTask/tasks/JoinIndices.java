@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 import org.apache.lucene.benchmark.byTask.PerfRunData;
 import org.apache.lucene.benchmark.byTask.feeds.JoinDocMaker;
 import org.apache.lucene.index.IndexReader;
@@ -86,9 +87,17 @@ final class JoinIndices implements Closeable {
 
   private JoinIndices(Path root, int searchThreads) {
     this.root = root;
+    ThreadFactory named = new NamedThreadFactory("join-search");
+    // daemon, since Benchmark never closes PerfRunData, and the pool must not keep the JVM alive
     executor =
         searchThreads > 0
-            ? Executors.newFixedThreadPool(searchThreads, new NamedThreadFactory("join-search"))
+            ? Executors.newFixedThreadPool(
+                searchThreads,
+                r -> {
+                  Thread thread = named.newThread(r);
+                  thread.setDaemon(true);
+                  return thread;
+                })
             : null;
   }
 

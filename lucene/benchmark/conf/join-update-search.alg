@@ -26,7 +26,7 @@ join.dir=work/join
 join.scoreMode=None
 # segment parallel search threads, 0 - sequential; term and numeric collect the from side
 # sequentially anyway (JoinUtil)
-join.searchThreads=0
+join.searchThreads=4
 join.update.side=side:products:skus:both
 join.update.batch=100
 # -------------------------------------------------------------------------------------
