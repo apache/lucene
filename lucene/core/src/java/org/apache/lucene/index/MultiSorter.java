@@ -111,8 +111,7 @@ final class MultiSorter {
               .mapToObj(
                   i -> {
                     CodecReader reader = readers.get(i);
-                    LeafAndDocID leaf =
-                        new LeafAndDocID(i, reader.getLiveDocs(), reader.maxDoc());
+                    LeafAndDocID leaf = new LeafAndDocID(i, reader.getLiveDocs(), reader.maxDoc());
                     try {
                       setComparableValues(comparables, parents[i], i, leaf.docID);
                     } catch (IOException e) {
