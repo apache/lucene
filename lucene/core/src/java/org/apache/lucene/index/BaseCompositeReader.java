@@ -224,11 +224,11 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
   }
 
   @Override
-  public final int docFreq(Term term) throws IOException {
+  public final long docFreq(Term term) throws IOException {
     ensureOpen();
-    int total = 0; // sum freqs in subreaders
+    long total = 0; // sum freqs in subreaders
     for (int i = 0; i < subReaders.length; i++) {
-      int sub = subReaders[i].docFreq(term);
+      long sub = subReaders[i].docFreq(term);
       assert sub >= 0;
       assert sub <= subReaders[i].getDocCount(term.field());
       total += sub;
@@ -263,11 +263,11 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
   }
 
   @Override
-  public final int getDocCount(String field) throws IOException {
+  public final long getDocCount(String field) throws IOException {
     ensureOpen();
-    int total = 0; // sum doc counts in subreaders
+    long total = 0; // sum doc counts in subreaders
     for (R reader : subReaders) {
-      int sub = reader.getDocCount(field);
+      long sub = reader.getDocCount(field);
       assert sub >= 0;
       assert sub <= reader.maxDoc();
       total += sub;

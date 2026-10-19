@@ -643,7 +643,7 @@ public final class MoreLikeThis {
           continue; // filter out words that don't occur enough times in the source
         }
 
-        int docFreq = ir.docFreq(new Term(fieldName, word));
+        long docFreq = ir.docFreq(new Term(fieldName, word));
 
         if (minDocFreq > 0 && docFreq < minDocFreq) {
           continue; // filter out words that don't occur in enough docs

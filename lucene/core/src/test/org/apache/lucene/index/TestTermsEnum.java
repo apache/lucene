@@ -409,7 +409,7 @@ public class TestTermsEnum extends LuceneTestCase {
     d.close();
   }
 
-  private int docFreq(IndexReader r, String term) throws Exception {
+  private long docFreq(IndexReader r, String term) throws Exception {
     return r.docFreq(new Term(FIELD, term));
   }
 

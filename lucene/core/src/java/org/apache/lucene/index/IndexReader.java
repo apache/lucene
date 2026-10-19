@@ -406,9 +406,11 @@ public abstract sealed class IndexReader implements Closeable permits CompositeR
    * term or field does not exists. This method does not take into account deleted documents that
    * have not yet been merged away.
    *
+   * <p>Access the per-segment {@code int} count with {@link LeafReader#leafDocFreq(Term)}.
+   *
    * @see TermsEnum#docFreq()
    */
-  public abstract int docFreq(Term term) throws IOException;
+  public abstract long docFreq(Term term) throws IOException;
 
   /**
    * Returns the total number of occurrences of {@code term} across all documents (the sum of the
@@ -429,9 +431,11 @@ public abstract sealed class IndexReader implements Closeable permits CompositeR
    * Returns the number of documents that have at least one term for this field. Note that, just
    * like other term measures, this measure does not take deleted documents into account.
    *
+   * <p>Access the per-segment {@code int} count with {@link LeafReader#getLeafDocCount(String)}.
+   *
    * @see Terms#getDocCount()
    */
-  public abstract int getDocCount(String field) throws IOException;
+  public abstract long getDocCount(String field) throws IOException;
 
   /**
    * Returns the sum of {@link TermsEnum#totalTermFreq} for all terms in this field. Note that, just

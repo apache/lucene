@@ -1129,7 +1129,7 @@ public class IndexSearcher {
    * @return A {@link TermStats} (never null).
    * @lucene.experimental
    */
-  public TermStats termStats(Term term, int docFreq, long totalTermFreq) throws IOException {
+  public TermStats termStats(Term term, long docFreq, long totalTermFreq) throws IOException {
     // This constructor will throw an exception if docFreq <= 0.
     return new TermStats(term.bytes(), docFreq, totalTermFreq);
   }

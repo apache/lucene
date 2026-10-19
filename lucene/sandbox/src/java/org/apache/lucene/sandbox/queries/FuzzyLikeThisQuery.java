@@ -216,7 +216,7 @@ public class FuzzyLikeThisQuery extends Query {
           FuzzyTermsEnum fe =
               new FuzzyTermsEnum(terms, startTerm, f.maxEdits, f.prefixLength, true);
           // store the df so all variants use same idf
-          int df = reader.docFreq(startTerm);
+          long df = reader.docFreq(startTerm);
           int numVariants = 0;
           int totalVariantDocFreqs = 0;
           BytesRef possibleMatch;
@@ -269,7 +269,7 @@ public class FuzzyLikeThisQuery extends Query {
         Terms terms = Terms.getTerms(leafContext.reader(), term.field());
         TermsEnum termsEnum = terms.iterator();
         if (termsEnum.seekExact(term.bytes())) {
-          int freq = 1 - context.docFreq(); // we want the total df and ttf to be 1
+          int freq = Math.toIntExact(1 - context.docFreq()); // we want the total df and ttf to be 1
           context.register(termsEnum.termState(), leafContext.ord, freq, freq);
         }
       }

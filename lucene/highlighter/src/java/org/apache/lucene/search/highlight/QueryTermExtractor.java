@@ -74,7 +74,7 @@ public final class QueryTermExtractor {
     long totalNumDocs = reader.maxDoc();
     for (int i = 0; i < terms.length; i++) {
       try {
-        int docFreq = reader.docFreq(new Term(fieldName, terms[i].term));
+        long docFreq = reader.docFreq(new Term(fieldName, terms[i].term));
         // IDF algorithm taken from ClassicSimilarity class
         float idf = (float) (Math.log(totalNumDocs / (double) (docFreq + 1)) + 1.0);
         terms[i].weight *= idf;

@@ -325,7 +325,8 @@ public class SpellChecker implements java.io.Closeable {
 
       final int lengthWord = word.length();
 
-      final int freq = (ir != null && field != null) ? ir.docFreq(new Term(field, word)) : 0;
+      final int freq =
+          (ir != null && field != null) ? Math.toIntExact(ir.docFreq(new Term(field, word))) : 0;
       final int goalFreq = suggestMode == SuggestMode.SUGGEST_MORE_POPULAR ? freq : 0;
       // if the word exists in the real index and we don't care for word frequency, return the word
       // itself
@@ -385,7 +386,8 @@ public class SpellChecker implements java.io.Closeable {
         }
 
         if (ir != null && field != null) { // use the user index
-          sugWord.freq = ir.docFreq(new Term(field, sugWord.string)); // freq in the index
+          sugWord.freq =
+              Math.toIntExact(ir.docFreq(new Term(field, sugWord.string))); // freq in the index
           // don't suggest a word that is not present in the field
           if ((suggestMode == SuggestMode.SUGGEST_MORE_POPULAR && goalFreq > sugWord.freq)
               || sugWord.freq < 1) {

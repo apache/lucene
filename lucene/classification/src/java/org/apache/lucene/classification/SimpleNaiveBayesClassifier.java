@@ -245,7 +245,7 @@ public class SimpleNaiveBayesClassifier implements Classifier<BytesRef> {
       avgNumberOfUniqueTerms +=
           numPostings / (double) terms.getDocCount(); // avg # of unique terms per doc
     }
-    int docsWithC = indexReader.docFreq(term);
+    long docsWithC = indexReader.docFreq(term);
     return avgNumberOfUniqueTerms
         * docsWithC; // avg # of unique terms in text fields per doc * # docs with c
   }
@@ -276,10 +276,10 @@ public class SimpleNaiveBayesClassifier implements Classifier<BytesRef> {
   }
 
   private double calculateLogPrior(Term term, int docsWithClassSize) throws IOException {
-    return Math.log(docCount(term)) - Math.log(docsWithClassSize);
+    return Math.log((double) docCount(term)) - Math.log(docsWithClassSize);
   }
 
-  private int docCount(Term term) throws IOException {
+  private long docCount(Term term) throws IOException {
     return indexReader.docFreq(term);
   }
 

@@ -247,7 +247,7 @@ public class CachingNaiveBayesClassifier extends SimpleNaiveBayesClassifier {
         long numPostings = terms.getSumDocFreq(); // number of term/doc pairs
         avgNumberOfUniqueTerms += numPostings / (double) terms.getDocCount();
       }
-      int docsWithC = indexReader.docFreq(new Term(classFieldName, cclass));
+      long docsWithC = indexReader.docFreq(new Term(classFieldName, cclass));
       classTermFreq.put(cclass, avgNumberOfUniqueTerms * docsWithC);
     }
   }

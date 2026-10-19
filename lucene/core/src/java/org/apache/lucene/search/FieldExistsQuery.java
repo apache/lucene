@@ -230,7 +230,7 @@ public class FieldExistsQuery extends Query {
 
         if (fieldInfo.hasNorms()) { // the field indexes norms
           // If every field has a value then we can shortcut
-          if (reader.getDocCount(field) == reader.maxDoc()) {
+          if (reader.getLeafDocCount(field) == reader.maxLeafDoc()) {
             return reader.numLeafDocs();
           }
           return super.count(context);

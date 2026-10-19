@@ -96,7 +96,7 @@ public class WordBreakSpellChecker {
     Queue<SuggestWordArrayWrapper> suggestions =
         new PriorityQueue<>(queueInitialCapacity, queueComparator);
 
-    int origFreq = ir.docFreq(term);
+    int origFreq = Math.toIntExact(ir.docFreq(term));
     if (origFreq > 0 && suggestMode == SuggestMode.SUGGEST_WHEN_NOT_IN_INDEX) {
       return new SuggestWord[0][];
     }
@@ -156,7 +156,7 @@ public class WordBreakSpellChecker {
     if (suggestMode != SuggestMode.SUGGEST_ALWAYS) {
       origFreqs = new int[terms.length];
       for (int i = 0; i < terms.length; i++) {
-        origFreqs[i] = ir.docFreq(terms[i]);
+        origFreqs[i] = Math.toIntExact(ir.docFreq(terms[i]));
       }
     }
 
@@ -201,7 +201,7 @@ public class WordBreakSpellChecker {
         }
 
         Term combinedTerm = new Term(terms[0].field(), combinedTermText);
-        int combinedTermFreq = ir.docFreq(combinedTerm);
+        int combinedTermFreq = Math.toIntExact(ir.docFreq(combinedTerm));
 
         if (suggestMode != SuggestMode.SUGGEST_MORE_POPULAR || combinedTermFreq >= maxFreq) {
           if (suggestMode != SuggestMode.SUGGEST_WHEN_NOT_IN_INDEX || minFreq == 0) {
@@ -357,7 +357,7 @@ public class WordBreakSpellChecker {
   private SuggestWord generateSuggestWord(IndexReader ir, String fieldname, String text)
       throws IOException {
     Term term = new Term(fieldname, text);
-    int freq = ir.docFreq(term);
+    int freq = Math.toIntExact(ir.docFreq(term));
     SuggestWord word = new SuggestWord();
     word.freq = freq;
     word.score = 1;
