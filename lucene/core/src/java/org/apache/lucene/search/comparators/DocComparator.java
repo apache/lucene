@@ -153,10 +153,12 @@ public class DocComparator extends FieldComparator<Long> {
         if (docBase + maxDoc <= minDoc) {
           competitiveIterator.update(DocIdSetIterator.empty()); // skip this segment
         } else {
-          // minDoc - docBase is leaf-local here (the segment was not skipped above) and fits an int
-          int segmentMinDoc = Math.max(competitiveIterator.docID(), (int) (minDoc - docBase));
+          // The after-doc may precede this leaf, so minDoc - docBase can be negative; clamp it in
+          // long before narrowing. The segment was not skipped above, so the result is in
+          // [0, maxDoc) and fits an int.
+          long leafLocalMin = Math.max(0L, minDoc - docBase);
           // The competitive iterator may not be positioned yet.
-          segmentMinDoc = Math.max(0, segmentMinDoc);
+          int segmentMinDoc = Math.max(competitiveIterator.docID(), (int) leafLocalMin);
           competitiveIterator.update(DocIdSetIterator.range(segmentMinDoc, maxDoc));
         }
       }

@@ -176,6 +176,10 @@ public final class ReaderUtil {
   public static PartitionedHits partitionByLeaf(
       int[] globalDocIds, List<LeafReaderContext> leaves) {
     int numLeaves = leaves.size();
+    if (numLeaves > 0) {
+      LeafReaderContext last = leaves.get(numLeaves - 1);
+      ensureIntDocIdSpace(last.docBase + last.maxLeafDoc(), "ReaderUtil#partitionByLeaf");
+    }
     if (globalDocIds.length == 0) {
       int[][] docIdsByLeaf = new int[numLeaves][];
       int[][] ordinalsByLeaf = new int[numLeaves][];
