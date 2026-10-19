@@ -51,9 +51,23 @@ public class TestPrefetchBackoff extends LuceneTestCase {
     assertEquals(1, Integer.bitCount(SKIP));
   }
 
-  public void testStartsColdThenSamples() {
+  // A new file starts one hit short of sampling: the first call probes, and a hit switches to
+  // sampling.
+  public void testFirstHitStartsSampling() {
     PrefetchBackoff backoff = new PrefetchBackoff();
     int seed = backoff.nextCounterStart();
+    // the first call probes whatever its counter value
+    assertTrue(backoff.shouldProbe(1));
+    backoff.onHit();
+    assertSampling(backoff, seed);
+  }
+
+  // A first-call miss resets to zero, so the file has to earn N hits before sampling.
+  public void testFirstMissThenSamplesAfterNHits() {
+    PrefetchBackoff backoff = new PrefetchBackoff();
+    int seed = backoff.nextCounterStart();
+    assertTrue(backoff.shouldProbe(1));
+    backoff.onMiss();
     for (int i = 0; i < N; i++) {
       assertTrue("call " + i, backoff.shouldProbe(++seed));
       backoff.onHit();
