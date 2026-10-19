@@ -142,7 +142,7 @@ public class SimpleNaiveBayesClassifier implements Classifier<BytesRef> {
       TermsEnum classesEnum = classes.iterator();
       BytesRef next;
       String[] tokenizedText = tokenize(inputDocument);
-      int docsWithClassSize = countDocsWithClass();
+      long docsWithClassSize = countDocsWithClass();
       while ((next = classesEnum.next()) != null) {
         if (next.length > 0) {
           Term term = new Term(this.classFieldName, next);
@@ -163,9 +163,9 @@ public class SimpleNaiveBayesClassifier implements Classifier<BytesRef> {
    * @return the no. of documents having a value for the 'class' field
    * @throws IOException if accessing to term vectors or search fails
    */
-  protected int countDocsWithClass() throws IOException {
+  protected long countDocsWithClass() throws IOException {
     Terms terms = MultiTerms.getTerms(this.indexReader, this.classFieldName);
-    int docCount;
+    long docCount;
     if (terms == null || terms.getDocCount() == -1) { // in case codec doesn't support getDocCount
       BooleanQuery.Builder q = new BooleanQuery.Builder();
       q.add(
@@ -205,16 +205,16 @@ public class SimpleNaiveBayesClassifier implements Classifier<BytesRef> {
     return result.toArray(String[]::new);
   }
 
-  private double calculateLogLikelihood(String[] tokenizedText, Term term, int docsWithClass)
+  private double calculateLogLikelihood(String[] tokenizedText, Term term, long docsWithClass)
       throws IOException {
     // for each word
     double result = 0d;
     for (String word : tokenizedText) {
       // search with text:word AND class:c
-      int hits = getWordFreqForClass(word, term);
+      long hits = getWordFreqForClass(word, term);
 
       // num : count the no of times the word appears in documents of class c (+1)
-      double num = hits + 1; // +1 is added because of add 1 smoothing
+      double num = hits + 1.0; // +1 is added because of add 1 smoothing
 
       // den : for the whole dictionary, count the no of times a word appears in documents of class
       // c (+|V|)
@@ -259,7 +259,7 @@ public class SimpleNaiveBayesClassifier implements Classifier<BytesRef> {
    * @return the number of documents of the input class
    * @throws IOException if a low level I/O problem happens
    */
-  private int getWordFreqForClass(String word, Term term) throws IOException {
+  private long getWordFreqForClass(String word, Term term) throws IOException {
     BooleanQuery.Builder booleanQuery = new BooleanQuery.Builder();
     BooleanQuery.Builder subQuery = new BooleanQuery.Builder();
     for (String textFieldName : textFieldNames) {
@@ -275,8 +275,8 @@ public class SimpleNaiveBayesClassifier implements Classifier<BytesRef> {
     return indexSearcher.count(booleanQuery.build());
   }
 
-  private double calculateLogPrior(Term term, int docsWithClassSize) throws IOException {
-    return Math.log((double) docCount(term)) - Math.log(docsWithClassSize);
+  private double calculateLogPrior(Term term, long docsWithClassSize) throws IOException {
+    return Math.log((double) docCount(term)) - Math.log((double) docsWithClassSize);
   }
 
   private long docCount(Term term) throws IOException {

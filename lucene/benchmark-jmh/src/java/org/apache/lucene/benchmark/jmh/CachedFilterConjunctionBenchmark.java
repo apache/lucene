@@ -115,7 +115,7 @@ public class CachedFilterConjunctionBenchmark {
   private Weight cachedWeight;
   private Weight uncachedWeight;
   private boolean cachedFilterUsesBitSet;
-  private int expectedHitCount;
+  private long expectedHitCount;
 
   @State(Scope.Benchmark)
   public static class Params {

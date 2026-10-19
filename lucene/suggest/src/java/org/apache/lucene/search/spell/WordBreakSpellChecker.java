@@ -96,12 +96,12 @@ public class WordBreakSpellChecker {
     Queue<SuggestWordArrayWrapper> suggestions =
         new PriorityQueue<>(queueInitialCapacity, queueComparator);
 
-    int origFreq = Math.toIntExact(ir.docFreq(term));
+    long origFreq = ir.docFreq(term);
     if (origFreq > 0 && suggestMode == SuggestMode.SUGGEST_WHEN_NOT_IN_INDEX) {
       return new SuggestWord[0][];
     }
 
-    int useMinSuggestionFrequency = minSuggestionFrequency;
+    long useMinSuggestionFrequency = minSuggestionFrequency;
     if (suggestMode == SuggestMode.SUGGEST_MORE_POPULAR) {
       useMinSuggestionFrequency = (origFreq == 0 ? 1 : origFreq);
     }
@@ -152,11 +152,11 @@ public class WordBreakSpellChecker {
       return new CombineSuggestion[0];
     }
 
-    int[] origFreqs = null;
+    long[] origFreqs = null;
     if (suggestMode != SuggestMode.SUGGEST_ALWAYS) {
-      origFreqs = new int[terms.length];
+      origFreqs = new long[terms.length];
       for (int i = 0; i < terms.length; i++) {
-        origFreqs[i] = Math.toIntExact(ir.docFreq(terms[i]));
+        origFreqs[i] = ir.docFreq(terms[i]);
       }
     }
 
@@ -175,8 +175,8 @@ public class WordBreakSpellChecker {
       if (leftTermLength > maxCombineWordLength) {
         continue;
       }
-      int maxFreq = 0;
-      int minFreq = Integer.MAX_VALUE;
+      long maxFreq = 0;
+      long minFreq = Long.MAX_VALUE;
       if (origFreqs != null) {
         maxFreq = origFreqs[i];
         minFreq = origFreqs[i];
@@ -201,7 +201,7 @@ public class WordBreakSpellChecker {
         }
 
         Term combinedTerm = new Term(terms[0].field(), combinedTermText);
-        int combinedTermFreq = Math.toIntExact(ir.docFreq(combinedTerm));
+        long combinedTermFreq = ir.docFreq(combinedTerm);
 
         if (suggestMode != SuggestMode.SUGGEST_MORE_POPULAR || combinedTermFreq >= maxFreq) {
           if (suggestMode != SuggestMode.SUGGEST_WHEN_NOT_IN_INDEX || minFreq == 0) {
@@ -243,7 +243,7 @@ public class WordBreakSpellChecker {
       IndexReader ir,
       int numberBreaks,
       int maxSuggestions,
-      int useMinSuggestionFrequency,
+      long useMinSuggestionFrequency,
       SuggestWord[] prefix,
       Queue<SuggestWordArrayWrapper> suggestions,
       int totalEvaluations,
@@ -357,7 +357,7 @@ public class WordBreakSpellChecker {
   private SuggestWord generateSuggestWord(IndexReader ir, String fieldname, String text)
       throws IOException {
     Term term = new Term(fieldname, text);
-    int freq = Math.toIntExact(ir.docFreq(term));
+    long freq = ir.docFreq(term);
     SuggestWord word = new SuggestWord();
     word.freq = freq;
     word.score = 1;
@@ -465,7 +465,7 @@ public class WordBreakSpellChecker {
         return o2.suggestWords.length - o1.suggestWords.length;
       }
       if (o1.freqMax != o2.freqMax) {
-        return o1.freqMax - o2.freqMax;
+        return Long.compare(o1.freqMax, o2.freqMax);
       }
       return 0;
     }
@@ -478,7 +478,7 @@ public class WordBreakSpellChecker {
         return o2.suggestWords.length - o1.suggestWords.length;
       }
       if (o1.freqSum != o2.freqSum) {
-        return o1.freqSum - o2.freqSum;
+        return Long.compare(o1.freqSum, o2.freqSum);
       }
       return 0;
     }
@@ -492,7 +492,8 @@ public class WordBreakSpellChecker {
         return o2.numCombinations - o1.numCombinations;
       }
       if (o1.combineSuggestion.suggestion().freq != o2.combineSuggestion.suggestion().freq) {
-        return o1.combineSuggestion.suggestion().freq - o2.combineSuggestion.suggestion().freq;
+        return Long.compare(
+            o1.combineSuggestion.suggestion().freq, o2.combineSuggestion.suggestion().freq);
       }
       return 0;
     }
@@ -500,13 +501,13 @@ public class WordBreakSpellChecker {
 
   private static class SuggestWordArrayWrapper {
     final SuggestWord[] suggestWords;
-    final int freqMax;
-    final int freqSum;
+    final long freqMax;
+    final long freqSum;
 
     SuggestWordArrayWrapper(SuggestWord[] suggestWords) {
       this.suggestWords = suggestWords;
-      int aFreqSum = 0;
-      int aFreqMax = 0;
+      long aFreqSum = 0;
+      long aFreqMax = 0;
       for (SuggestWord sw : suggestWords) {
         aFreqSum += sw.freq;
         aFreqMax = Math.max(aFreqMax, sw.freq);

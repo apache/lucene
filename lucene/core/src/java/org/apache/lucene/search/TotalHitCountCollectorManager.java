@@ -34,7 +34,7 @@ import org.apache.lucene.util.ThreadInterruptedException;
  * faster whenever the count can be returned directly from the index statistics.
  */
 public class TotalHitCountCollectorManager
-    implements CollectorManager<TotalHitCountCollector, Integer> {
+    implements CollectorManager<TotalHitCountCollector, Long> {
 
   private final boolean hasSegmentPartitions;
 
@@ -82,7 +82,7 @@ public class TotalHitCountCollectorManager
   }
 
   @Override
-  public Integer reduce(Collection<TotalHitCountCollector> collectors) throws IOException {
+  public Long reduce(Collection<TotalHitCountCollector> collectors) throws IOException {
     // Make the same collector manager instance reusable across multiple searches. It isn't a strict
     // requirement but it is generally supported as collector managers normally don't hold state, as
     // opposed to collectors.
@@ -90,7 +90,7 @@ public class TotalHitCountCollectorManager
     if (hasSegmentPartitions) {
       earlyTerminatedMap.clear();
     }
-    int totalHits = 0;
+    long totalHits = 0;
     for (TotalHitCountCollector collector : collectors) {
       totalHits += collector.getTotalHits();
     }

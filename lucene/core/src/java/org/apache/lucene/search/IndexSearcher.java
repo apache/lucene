@@ -492,7 +492,7 @@ public class IndexSearcher {
    * collecting all matches, as the number of hits is retrieved from the index statistics when
    * possible.
    */
-  public int count(Query query) throws IOException {
+  public long count(Query query) throws IOException {
     // CSQ.rewrite may simplify the query -- don't need scores
     query = rewrite(new ConstantScoreQuery(query));
 
@@ -508,8 +508,8 @@ public class IndexSearcher {
           && this.reader.hasDeletions() == false
           && booleanQuery.isTwoClausePureDisjunctionWithTerms()) {
         Query[] queries = booleanQuery.rewriteTwoClauseDisjunctionWithTermsForCount(this);
-        int countTerm1 = count(queries[0]);
-        int countTerm2 = count(queries[1]);
+        long countTerm1 = count(queries[0]);
+        long countTerm2 = count(queries[1]);
         if (countTerm1 == 0 || countTerm2 == 0) {
           return Math.max(countTerm1, countTerm2);
           // Only apply optimization if the intersection is significantly smaller than the union

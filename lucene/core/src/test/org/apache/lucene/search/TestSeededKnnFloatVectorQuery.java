@@ -187,7 +187,7 @@ public class TestSeededKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
 
           // Restrictive seed query -- 6 documents
           Query seed2 = IntPoint.newRangeQuery("tag", 1, 6);
-          int seedCount =
+          long seedCount =
               searcher.count(
                   new BooleanQuery.Builder()
                       .add(seed2, BooleanClause.Occur.MUST)

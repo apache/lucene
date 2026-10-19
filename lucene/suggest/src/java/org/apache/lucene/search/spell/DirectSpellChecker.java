@@ -333,7 +333,7 @@ public class DirectSpellChecker {
       term = new Term(term.field(), text.toLowerCase(Locale.ROOT));
     }
 
-    int docfreq = Math.toIntExact(ir.docFreq(term));
+    long docfreq = ir.docFreq(term);
 
     if (suggestMode == SuggestMode.SUGGEST_WHEN_NOT_IN_INDEX && docfreq > 0) {
       return new SuggestWord[0];
@@ -411,7 +411,7 @@ public class DirectSpellChecker {
       Term term,
       int numSug,
       IndexReader ir,
-      int docfreq,
+      long docfreq,
       int editDistance,
       float accuracy,
       final CharsRefBuilder spare)

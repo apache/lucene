@@ -47,11 +47,11 @@ public class CachingNaiveBayesClassifier extends SimpleNaiveBayesClassifier {
   private final ArrayList<BytesRef> cclasses = new ArrayList<>();
   // it's a term-inmap style map, where the inmap contains class-hit pairs to the
   // upper term
-  private final Map<String, Map<BytesRef, Integer>> termCClassHitCache = new HashMap<>();
+  private final Map<String, Map<BytesRef, Long>> termCClassHitCache = new HashMap<>();
   // the term frequency in classes
   private final Map<BytesRef, Double> classTermFreq = new HashMap<>();
   private boolean justCachedTerms;
-  private int docsWithClassSize;
+  private long docsWithClassSize;
 
   /**
    * Creates a new NaiveBayes classifier with inside caching. If you want less memory usage you
@@ -103,17 +103,17 @@ public class CachingNaiveBayesClassifier extends SimpleNaiveBayesClassifier {
     // for each word
     for (String word : tokenizedText) {
       // search with text:word for all class:c
-      Map<BytesRef, Integer> hitsInClasses = getWordFreqForClasses(word);
+      Map<BytesRef, Long> hitsInClasses = getWordFreqForClasses(word);
       // for each class
       for (BytesRef cclass : cclasses) {
-        Integer hitsI = hitsInClasses.get(cclass);
+        Long hitsI = hitsInClasses.get(cclass);
         // if the word is out of scope hitsI could be null
-        int hits = 0;
+        long hits = 0;
         if (hitsI != null) {
           hits = hitsI;
         }
         // num : count the no of times the word appears in documents of class c(+1)
-        double num = hits + 1; // +1 is added because of add 1 smoothing
+        double num = hits + 1.0; // +1 is added because of add 1 smoothing
 
         // den : for the whole dictionary, count the no of times a word appears in documents of
         // class c (+|V|)
@@ -147,9 +147,9 @@ public class CachingNaiveBayesClassifier extends SimpleNaiveBayesClassifier {
     return ret;
   }
 
-  private Map<BytesRef, Integer> getWordFreqForClasses(String word) throws IOException {
+  private Map<BytesRef, Long> getWordFreqForClasses(String word) throws IOException {
 
-    Map<BytesRef, Integer> insertPoint;
+    Map<BytesRef, Long> insertPoint;
     insertPoint = termCClassHitCache.get(word);
 
     // if we get the answer from the cache
@@ -159,7 +159,7 @@ public class CachingNaiveBayesClassifier extends SimpleNaiveBayesClassifier {
       }
     }
 
-    Map<BytesRef, Integer> searched = new ConcurrentHashMap<>();
+    Map<BytesRef, Long> searched = new ConcurrentHashMap<>();
 
     // if we dont get the answer, but it's relevant we must search it and insert to the cache
     if (insertPoint != null || !justCachedTerms) {
@@ -179,7 +179,7 @@ public class CachingNaiveBayesClassifier extends SimpleNaiveBayesClassifier {
           booleanQuery.add(query, BooleanClause.Occur.MUST);
         }
 
-        int ret = indexSearcher.count(booleanQuery.build());
+        long ret = indexSearcher.count(booleanQuery.build());
         if (ret != 0) {
           searched.put(cclass, ret);
         }

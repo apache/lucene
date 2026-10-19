@@ -186,7 +186,7 @@ public abstract class BaseGroupSelectorTestCase<T> extends AbstractGroupingTestC
 
     // The number of hits from the top-level query should equal the sum of
     // the number of hits from the query filtered by each group value in turn
-    int totalHits = searcher.count(topLevel);
+    long totalHits = searcher.count(topLevel);
     int groupHits = 0;
     for (T groupValue : matchingGroups) {
       Query filtered =

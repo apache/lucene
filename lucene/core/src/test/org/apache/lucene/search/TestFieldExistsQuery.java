@@ -706,7 +706,7 @@ public class TestFieldExistsQuery extends LuceneTestCase {
       try (IndexReader reader = iw.getReader()) {
         final IndexSearcher searcher = newSearcher(reader);
 
-        final int count = searcher.count(new FieldExistsQuery("vector"));
+        final long count = searcher.count(new FieldExistsQuery("vector"));
         assertEquals(docWithVector.cardinality(), count);
       }
     }
@@ -737,8 +737,8 @@ public class TestFieldExistsQuery extends LuceneTestCase {
                 .add(new FieldExistsQuery("vector"), Occur.FILTER)
                 .build();
 
-        int count = searcher.count(booleanQuery);
-        assertThat(count, lessThanOrEqualTo(numVectors));
+        long count = searcher.count(booleanQuery);
+        assertThat(count, lessThanOrEqualTo((long) numVectors));
         if (allDocsHaveVector) {
           assertEquals(numDocs / 2, count);
         }
@@ -801,7 +801,7 @@ public class TestFieldExistsQuery extends LuceneTestCase {
       try (IndexReader reader = iw.getReader()) {
         final IndexSearcher searcher = newSearcher(reader);
 
-        final int count = searcher.count(new FieldExistsQuery("num"));
+        final long count = searcher.count(new FieldExistsQuery("num"));
         assertEquals(docWithValue.cardinality(), count);
       }
     }

@@ -104,7 +104,7 @@ public class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
       public void collect(int doc) throws IOException {
         float score = scorer.score();
 
-        int hitCountSoFar = ++totalHits;
+        long hitCountSoFar = ++totalHits;
 
         if (minScoreAcc != null && (hitCountSoFar & minScoreAcc.modInterval) == 0) {
           updateGlobalMinCompetitiveScore(scorer);

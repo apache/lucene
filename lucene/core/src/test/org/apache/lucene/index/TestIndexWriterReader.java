@@ -1009,7 +1009,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
                 .setMergedSegmentWarmer(
                     (r) -> {
                       IndexSearcher s = newSearcher(r);
-                      int count = s.count(new TermQuery(new Term("foo", "bar")));
+                      long count = s.count(new TermQuery(new Term("foo", "bar")));
                       assertEquals(20, count);
                       didWarm.set(true);
                     })

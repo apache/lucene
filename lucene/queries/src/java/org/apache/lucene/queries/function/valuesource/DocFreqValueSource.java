@@ -58,6 +58,8 @@ public class DocFreqValueSource extends ValueSource {
   public FunctionValues getValues(Map<Object, Object> context, LeafReaderContext readerContext)
       throws IOException {
     IndexSearcher searcher = (IndexSearcher) context.get("searcher");
+    // ConstIntDocValues exposes the doc frequency as an int, so a count beyond Integer.MAX_VALUE is
+    // not representable by this value source.
     int docfreq =
         Math.toIntExact(searcher.getIndexReader().docFreq(new Term(indexedField, indexedBytes)));
     return new ConstIntDocValues(docfreq, this);

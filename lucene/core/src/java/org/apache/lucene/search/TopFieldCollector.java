@@ -75,7 +75,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
     }
 
     void countHit() throws IOException {
-      int hitCountSoFar = ++totalHits;
+      long hitCountSoFar = ++totalHits;
 
       if (minScoreAcc != null && (hitCountSoFar & minScoreAcc.modInterval) == 0) {
         updateGlobalMinCompetitiveScore(scorer);
@@ -208,7 +208,8 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
                 }
                 collectCompetitiveHit(doc);
               } else {
-                collectAnyHit(doc, totalHits);
+                // queue not full yet, so totalHits <= numHits and fits the int slot index
+                collectAnyHit(doc, (int) totalHits);
               }
             }
           };

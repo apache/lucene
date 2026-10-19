@@ -229,4 +229,20 @@ public class TestSearchBeyondMaxInt extends LuceneTestCase {
       assertTrue(dv.getMessage(), dv.getMessage().contains("per-leaf"));
     }
   }
+
+  /**
+   * {@link IndexSearcher#count} returns a {@code long}: a whole-index match count can exceed {@link
+   * Integer#MAX_VALUE}. {@link MatchAllDocsQuery} answers via {@link Weight#count} (the inflated
+   * leaf sizes), so the count clears 2^31 without ever iterating billions of docs.
+   */
+  public void testCountBeyondMaxInt() throws IOException {
+    try (BeyondMaxInt b = buildReaderBeyondMaxInt()) {
+      MultiReader reader = b.reader();
+      IndexSearcher searcher = new IndexSearcher(reader);
+      long count = searcher.count(new MatchAllDocsQuery());
+      assertTrue("count should exceed Integer.MAX_VALUE: " + count, count > Integer.MAX_VALUE);
+      // Every doc is live across the inflated leaves and the real one, so the count is maxDoc.
+      assertEquals(reader.maxDoc(), count);
+    }
+  }
 }

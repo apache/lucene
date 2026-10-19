@@ -273,7 +273,7 @@ public class FacetsCollectorManager implements CollectorManager<FacetsCollector,
       Object[] result = searcher.search(q, multiCollectorManager);
       topDocs =
           new TopDocs(
-              new TotalHits((Integer) result[0], TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
+              new TotalHits((Long) result[0], TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
       facetsCollector = (FacetsCollector) result[1];
     } else {
       final MultiCollectorManager multiCollectorManager;

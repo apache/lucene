@@ -194,7 +194,7 @@ public class SortedNumericDocValuesRangeQueryBenchmark {
   }
 
   @Benchmark
-  public int searchSortedNumericRange() throws IOException {
+  public long searchSortedNumericRange() throws IOException {
     IndexSearcher searcher = new IndexSearcher(reader);
     return searcher.count(query);
   }

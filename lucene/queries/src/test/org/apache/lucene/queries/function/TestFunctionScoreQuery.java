@@ -373,7 +373,7 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
     FunctionScoreQuery fq =
         FunctionScoreQuery.boostByValue(query, DoubleValuesSource.fromIntField("iii"));
 
-    final int searchCount = searcher.count(fq);
+    final long searchCount = searcher.count(fq);
     final Weight weight = searcher.createWeight(fq, ScoreMode.COMPLETE, 1);
     int weightCount = 0;
     for (LeafReaderContext leafReaderContext : reader.leaves()) {

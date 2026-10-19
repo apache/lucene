@@ -172,8 +172,8 @@ public class TestDocValuesRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
             .add(SortedNumericDocValuesField.newSlowRangeQuery("score", 100, 500), Occur.FILTER)
             .build();
 
-    int count1 = searcher.count(q);
-    int count2 = searcher.count(q);
+    long count1 = searcher.count(q);
+    long count2 = searcher.count(q);
     assertEquals("Results must be deterministic", count1, count2);
   }
 

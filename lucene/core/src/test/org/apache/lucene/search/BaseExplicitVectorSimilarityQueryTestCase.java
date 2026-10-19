@@ -518,7 +518,7 @@ abstract class BaseExplicitVectorSimilarityQueryTestCase<
       assertEquals(0, searcher.count(query)); // Expect no results with the timeout
 
       searcher.setTimeout(new CountingQueryTimeout(numDocs - 1)); // Do not score all docs
-      int count = searcher.count(query);
+      long count = searcher.count(query);
       assertTrue(
           "0 < count=" + count + " < numDocs=" + numDocs,
           count > 0 && count < numDocs); // Expect partial results
@@ -540,7 +540,7 @@ abstract class BaseExplicitVectorSimilarityQueryTestCase<
 
       searcher.setTimeout(
           new CountingQueryTimeout(numFiltered - 1)); // Timeout before scoring all filtered docs
-      int filteredCount = searcher.count(filteredQuery);
+      long filteredCount = searcher.count(filteredQuery);
       assertTrue(
           "0 < filteredCount=" + filteredCount + " < numFiltered=" + numFiltered,
           filteredCount > 0 && filteredCount < numFiltered); // Expect partial results

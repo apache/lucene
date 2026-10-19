@@ -269,7 +269,8 @@ public class FuzzyLikeThisQuery extends Query {
         Terms terms = Terms.getTerms(leafContext.reader(), term.field());
         TermsEnum termsEnum = terms.iterator();
         if (termsEnum.seekExact(term.bytes())) {
-          int freq = Math.toIntExact(1 - context.docFreq()); // we want the total df and ttf to be 1
+          // register() takes the per-leaf df as an int; this artificial df sums to a total of 1.
+          int freq = Math.toIntExact(1 - context.docFreq());
           context.register(termsEnum.termState(), leafContext.ord, freq, freq);
         }
       }

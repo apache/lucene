@@ -660,7 +660,7 @@ public class TestIndexingSequenceNumbers extends LuceneTestCase {
       for (int id = 0; id < idCount; id++) {
         // System.out.println("TEST: check id=" + id + " expectedThreadID=" +
         // expectedThreadIDs[id]);
-        int actualCount = s.count(new TermQuery(new Term("id", "" + id)));
+        int actualCount = Math.toIntExact(s.count(new TermQuery(new Term("id", "" + id))));
         if (expectedCounts[id] != actualCount) {
           System.out.println("TEST: FAIL r=" + r + " id=" + id + " commitSeqNo=" + commitSeqNo);
           for (int threadID = 0; threadID < threadOps.size(); threadID++) {

@@ -236,9 +236,12 @@ public class RandomSamplingFacetsCollector extends FacetsCollector {
     for (int i = 0; i < res.labelValues.length; i++) {
       childPath[res.path.length + 1] = res.labelValues[i].label;
       String fullPath = FacetsConfig.pathToString(childPath, childPath.length);
-      int max = Math.toIntExact(reader.docFreq(new Term(dimConfig.indexFieldName, fullPath)));
       int correctedCount = (int) (res.labelValues[i].value.doubleValue() / samplingRate);
-      correctedCount = Math.min(max, correctedCount);
+      // Cap by the term's whole-index doc frequency (a long); the min stays within the int count.
+      correctedCount =
+          (int)
+              Math.min(
+                  reader.docFreq(new Term(dimConfig.indexFieldName, fullPath)), correctedCount);
       fixedLabelValues[i] = new LabelAndValue(res.labelValues[i].label, correctedCount);
     }
 

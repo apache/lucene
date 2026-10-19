@@ -317,10 +317,10 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
       searcher.setTimeout(new CountingQueryTimeout(1)); // Only score 1 parent
       // Note: We get partial results when the HNSW graph has 1 layer, but no results for > 1 layer
       // because the timeout is exhausted while finding the best entry node for the last level
-      assertThat(searcher.count(query), lessThanOrEqualTo(1));
+      assertThat(searcher.count(query), lessThanOrEqualTo(1L));
 
       searcher.setTimeout(new CountingQueryTimeout(1)); // Only score 1 parent
-      assertThat(searcher.count(exactQuery), lessThanOrEqualTo(1));
+      assertThat(searcher.count(exactQuery), lessThanOrEqualTo(1L));
     }
   }
 

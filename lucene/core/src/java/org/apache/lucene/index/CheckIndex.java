@@ -169,7 +169,7 @@ public final class CheckIndex implements Closeable {
     SegmentInfos newSegments;
 
     /** How many documents will be lost to bad segments. */
-    public int totLoseDocCount;
+    public long totLoseDocCount;
 
     /** How many bad segments were found. */
     public int numBadSegments;

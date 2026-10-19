@@ -217,7 +217,7 @@ public class TestIndexOrDocValuesQuery extends LuceneTestCase {
             SortedNumericDocValuesField.newSlowRangeQuery("f2", 42, 42L));
     QueryUtils.check(random(), query, searcher);
 
-    final int searchCount = searcher.count(query);
+    final long searchCount = searcher.count(query);
     final Weight weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1);
     int weightCount = 0;
     for (LeafReaderContext leafReaderContext : reader.leaves()) {
