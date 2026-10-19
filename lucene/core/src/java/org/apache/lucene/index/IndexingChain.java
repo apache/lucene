@@ -58,7 +58,9 @@ import org.apache.lucene.document.column.ObjectTupleCursor;
 import org.apache.lucene.document.column.OrdinalsCursor;
 import org.apache.lucene.document.column.OrdinalsTupleCursor;
 import org.apache.lucene.document.column.TokenStreamColumn;
+import org.apache.lucene.document.column.ValidatingVectorValuesCursor;
 import org.apache.lucene.document.column.VectorColumn;
+import org.apache.lucene.document.column.VectorValuesCursor;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
@@ -1258,12 +1260,17 @@ final class IndexingChain implements Accountable {
   private static void processVectorColumn(
       int baseDocID, int numDocs, VectorColumn<?> column, PerField pf, IndexableFieldType fieldType)
       throws IOException {
+    // Dense fast path: hand the writer a values cursor for the whole batch.
+    if (column.density() == Column.Density.DENSE) {
+      processDenseVectorColumn(baseDocID, numDocs, column, pf, fieldType);
+      return;
+    }
+
     final VectorEncoding encoding = fieldType.vectorEncoding();
     final int dimension = fieldType.vectorDimension();
     final VectorSimilarityFunction similarityFunction = fieldType.vectorSimilarityFunction();
     final ObjectTupleCursor<?> cursor = column.tuples();
     int prevBatchDocID = -1;
-    int consumed = 0;
     int batchDocID;
     switch (encoding) {
       case BYTE -> {
@@ -1277,7 +1284,6 @@ final class IndexingChain implements Accountable {
           ColumnValidation.checkByteVectorValue(column, vec, similarityFunction, batchDocID);
           writer.addValue(baseDocID + batchDocID, vec);
           prevBatchDocID = batchDocID;
-          consumed++;
         }
       }
       case FLOAT16 -> {
@@ -1291,7 +1297,6 @@ final class IndexingChain implements Accountable {
           ColumnValidation.checkFloat16VectorValue(column, vec, similarityFunction, batchDocID);
           writer.addValue(baseDocID + batchDocID, vec);
           prevBatchDocID = batchDocID;
-          consumed++;
         }
       }
       case FLOAT32 -> {
@@ -1305,12 +1310,62 @@ final class IndexingChain implements Accountable {
           ColumnValidation.checkFloatVectorValue(column, vec, similarityFunction, batchDocID);
           writer.addValue(baseDocID + batchDocID, vec);
           prevBatchDocID = batchDocID;
-          consumed++;
         }
       }
     }
-    if (column.density() == Column.Density.DENSE) {
-      ColumnValidation.checkDenseCount(column, consumed, numDocs);
+  }
+
+  /**
+   * Feeds a DENSE {@link VectorColumn} to the field's vectors writer through a single {@link
+   * KnnFieldVectorsWriter#addDenseValues} call. The count and dimension are checked once per batch;
+   * the per-value checks run as the writer consumes vectors from the cursor, through {@link
+   * ValidatingVectorValuesCursor}.
+   */
+  @SuppressWarnings("unchecked")
+  private static void processDenseVectorColumn(
+      int baseDocID, int numDocs, VectorColumn<?> column, PerField pf, IndexableFieldType fieldType)
+      throws IOException {
+    final VectorValuesCursor<?> cursor = column.values();
+    ColumnValidation.checkDenseCount(column, cursor.size(), numDocs);
+    ColumnValidation.checkVectorCursorDimension(
+        column, cursor.dimension(), fieldType.vectorDimension());
+    final VectorSimilarityFunction similarityFunction = fieldType.vectorSimilarityFunction();
+    final ValidatingVectorValuesCursor<?> validating =
+        switch (fieldType.vectorEncoding()) {
+          case BYTE -> {
+            ValidatingVectorValuesCursor<byte[]> values =
+                ValidatingVectorValuesCursor.ofBytes(
+                    column, (VectorValuesCursor<byte[]>) cursor, similarityFunction);
+            ((KnnFieldVectorsWriter<byte[]>) pf.knnFieldVectorsWriter)
+                .addDenseValues(baseDocID, values);
+            yield values;
+          }
+          case FLOAT16 -> {
+            ValidatingVectorValuesCursor<short[]> values =
+                ValidatingVectorValuesCursor.ofFloat16s(
+                    column, (VectorValuesCursor<short[]>) cursor, similarityFunction);
+            ((KnnFieldVectorsWriter<short[]>) pf.knnFieldVectorsWriter)
+                .addDenseValues(baseDocID, values);
+            yield values;
+          }
+          case FLOAT32 -> {
+            ValidatingVectorValuesCursor<float[]> values =
+                ValidatingVectorValuesCursor.ofFloats(
+                    column, (VectorValuesCursor<float[]>) cursor, similarityFunction);
+            ((KnnFieldVectorsWriter<float[]>) pf.knnFieldVectorsWriter)
+                .addDenseValues(baseDocID, values);
+            yield values;
+          }
+        };
+    if (validating.consumed() != numDocs) {
+      throw new IllegalStateException(
+          "vectors writer for field \""
+              + column.name()
+              + "\" consumed "
+              + validating.consumed()
+              + " of "
+              + numDocs
+              + " dense vectors");
     }
   }
 
