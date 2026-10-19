@@ -422,7 +422,8 @@ public class TestBooleanQuery extends LuceneTestCase {
   }
 
   private static FixedBitSet getMatches(IndexSearcher searcher, Query query) throws IOException {
-    return searcher.search(query, FixedBitSetCollector.createManager(searcher.reader.maxDoc()));
+    return searcher.search(
+        query, FixedBitSetCollector.createManager(Math.toIntExact(searcher.reader.maxDoc())));
   }
 
   public void testFILTERClauseBehavesLikeMUST() throws IOException {

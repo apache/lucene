@@ -217,12 +217,12 @@ public class TermVectorLeafReader extends LeafReader {
   }
 
   @Override
-  public int numDocs() {
+  public int numLeafDocs() {
     return 1;
   }
 
   @Override
-  public int maxDoc() {
+  public int maxLeafDoc() {
     return 1;
   }
 

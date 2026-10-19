@@ -348,7 +348,7 @@ public class IndexSearcher {
     List<LeafReaderContext> sortedLeaves = new ArrayList<>(leaves);
 
     // Sort by maxDoc, descending:
-    sortedLeaves.sort(Collections.reverseOrder(Comparator.comparingInt(l -> l.reader().maxDoc())));
+    sortedLeaves.sort(Collections.reverseOrder(Comparator.comparingInt(l -> l.maxLeafDoc())));
 
     if (allowSegmentPartitions) {
       return slicesWithSegmentPartitions(maxDocsPerSlice, maxSegmentsPerSlice, sortedLeaves);
@@ -358,7 +358,7 @@ public class IndexSearcher {
     long docSum = 0;
     List<LeafReaderContext> group = null;
     for (LeafReaderContext ctx : sortedLeaves) {
-      if (ctx.reader().maxDoc() > maxDocsPerSlice) {
+      if (ctx.maxLeafDoc() > maxDocsPerSlice) {
         assert group == null;
         groupedLeaves.add(Collections.singletonList(ctx));
       } else {
@@ -371,7 +371,7 @@ public class IndexSearcher {
           group.add(ctx);
         }
 
-        docSum += ctx.reader().maxDoc();
+        docSum += ctx.maxLeafDoc();
         if (group.size() >= maxSegmentsPerSlice || docSum > maxDocsPerSlice) {
           group = null;
           docSum = 0;
@@ -395,12 +395,12 @@ public class IndexSearcher {
     int currentSliceNumDocs = 0;
     List<LeafReaderContextPartition> group = null;
     for (LeafReaderContext ctx : sortedLeaves) {
-      if (ctx.reader().maxDoc() > maxDocsPerSlice) {
+      if (ctx.maxLeafDoc() > maxDocsPerSlice) {
         assert group == null;
         // if the segment does not fit in a single slice, we split it into maximum 5 partitions of
         // equal size
-        int numSlices = Math.min(5, Math.ceilDiv(ctx.reader().maxDoc(), maxDocsPerSlice));
-        int numDocs = ctx.reader().maxDoc() / numSlices;
+        int numSlices = Math.min(5, Math.ceilDiv(ctx.maxLeafDoc(), maxDocsPerSlice));
+        int numDocs = ctx.maxLeafDoc() / numSlices;
         int maxDocId = numDocs;
         int minDocId = 0;
         for (int i = 0; i < numSlices - 1; i++) {
@@ -413,7 +413,7 @@ public class IndexSearcher {
         // the last slice gets all the remaining docs
         groupedLeafPartitions.add(
             Collections.singletonList(
-                LeafReaderContextPartition.createFromAndTo(ctx, minDocId, ctx.reader().maxDoc())));
+                LeafReaderContextPartition.createFromAndTo(ctx, minDocId, ctx.maxLeafDoc())));
       } else {
         if (group == null) {
           group = new ArrayList<>();
@@ -421,7 +421,7 @@ public class IndexSearcher {
         }
         group.add(LeafReaderContextPartition.createForEntireSegment(ctx));
 
-        currentSliceNumDocs += ctx.reader().maxDoc();
+        currentSliceNumDocs += ctx.maxLeafDoc();
         // We only split a segment when it does not fit entirely in a slice. We don't partition
         // the
         // segment that makes the current slice (which holds multiple segments) go over
@@ -585,7 +585,7 @@ public class IndexSearcher {
    *     clauses.
    */
   public TopDocs searchAfter(ScoreDoc after, Query query, int numHits) throws IOException {
-    final long limit = Math.max(1L, reader.totalMaxDoc());
+    final long limit = Math.max(1L, reader.maxDoc());
     if (after != null && after.doc >= limit) {
       throw new IllegalArgumentException(
           "after.doc exceeds the number of documents in the reader: after.doc="
@@ -718,7 +718,7 @@ public class IndexSearcher {
 
   private TopFieldDocs searchAfter(
       FieldDoc after, Query query, int numHits, Sort sort, boolean doDocScores) throws IOException {
-    final long limit = Math.max(1L, reader.totalMaxDoc());
+    final long limit = Math.max(1L, reader.maxDoc());
     if (after != null && after.doc >= limit) {
       throw new IllegalArgumentException(
           "after.doc exceeds the number of documents in the reader: after.doc="
@@ -1080,12 +1080,12 @@ public class IndexSearcher {
       if (minDocId < 0) {
         throw new IllegalArgumentException("minDocId is lower than 0: [" + minDocId + "]");
       }
-      if (minDocId >= leafReaderContext.reader().maxDoc()) {
+      if (minDocId >= leafReaderContext.maxLeafDoc()) {
         throw new IllegalArgumentException(
             "minDocId is greater than than maxDoc: ["
                 + minDocId
                 + "] > ["
-                + leafReaderContext.reader().maxDoc()
+                + leafReaderContext.maxLeafDoc()
                 + "]");
       }
 
@@ -1098,7 +1098,7 @@ public class IndexSearcher {
     /** Creates a partition of the provided leaf context that targets the entire segment */
     public static LeafReaderContextPartition createForEntireSegment(LeafReaderContext ctx) {
       return new LeafReaderContextPartition(
-          ctx, 0, DocIdSetIterator.NO_MORE_DOCS, ctx.reader().maxDoc());
+          ctx, 0, DocIdSetIterator.NO_MORE_DOCS, ctx.maxLeafDoc());
     }
 
     /**
@@ -1157,7 +1157,7 @@ public class IndexSearcher {
     if (docCount == 0) {
       return null;
     }
-    return new FieldStats(field, reader.totalMaxDoc(), docCount, sumTotalTermFreq, sumDocFreq);
+    return new FieldStats(field, reader.maxDoc(), docCount, sumTotalTermFreq, sumDocFreq);
   }
 
   /**

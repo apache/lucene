@@ -69,12 +69,12 @@ public class TestSearchBeyondMaxInt extends LuceneTestCase {
     }
 
     @Override
-    public int maxDoc() {
+    public int maxLeafDoc() {
       return inflatedMaxDoc;
     }
 
     @Override
-    public int numDocs() {
+    public int numLeafDocs() {
       // claim all inflated docs are live so numDeletedDocs()==0 stays consistent with a null
       // liveDocs
       return inflatedMaxDoc;
@@ -134,7 +134,7 @@ public class TestSearchBeyondMaxInt extends LuceneTestCase {
     wrapped.add(new InflatedLeafReader(dr.leaves().get(1).reader(), INFLATED));
     wrapped.add(dr.leaves().get(2).reader()); // real leaf, untouched
     MultiReader reader = new MultiReader(wrapped.toArray(new LeafReader[0]), false);
-    assertTrue(reader.totalMaxDoc() > Integer.MAX_VALUE);
+    assertTrue(reader.maxDoc() > Integer.MAX_VALUE);
     return new BeyondMaxInt(reader, dr, dir, 2L * INFLATED);
   }
 
@@ -143,10 +143,8 @@ public class TestSearchBeyondMaxInt extends LuceneTestCase {
       MultiReader reader = b.reader();
       long expectedDocBase = b.docBase();
       List<LeafReaderContext> leaves = reader.leaves();
-      assertEquals(expectedDocBase + NUM_MATCHES, reader.totalMaxDoc());
+      assertEquals(expectedDocBase + NUM_MATCHES, reader.maxDoc());
       assertEquals(expectedDocBase, leaves.get(2).docBase);
-      // The legacy int accessor must refuse to represent a > 2^31 doc-id space.
-      expectThrows(ArithmeticException.class, reader::maxDoc);
 
       IndexSearcher searcher = new IndexSearcher(reader);
       TopDocs topDocs = searcher.search(new TermQuery(new Term("body", "match")), NUM_MATCHES);

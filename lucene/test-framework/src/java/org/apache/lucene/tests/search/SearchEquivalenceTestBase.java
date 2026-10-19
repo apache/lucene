@@ -202,8 +202,8 @@ public abstract class SearchEquivalenceTestBase extends LuceneTestCase {
     // we test both INDEXORDER and RELEVANCE because we want to test needsScores=true/false
     for (Sort sort : new Sort[] {Sort.INDEXORDER, Sort.RELEVANCE}) {
       // not efficient, but simple!
-      TopDocs td1 = s1.search(q1, reader.maxDoc(), sort);
-      TopDocs td2 = s2.search(q2, reader.maxDoc(), sort);
+      TopDocs td1 = s1.search(q1, Math.toIntExact(reader.maxDoc()), sort);
+      TopDocs td2 = s2.search(q2, Math.toIntExact(reader.maxDoc()), sort);
       assertTrue(
           "too many hits: " + td1.totalHits.value() + " > " + td2.totalHits.value(),
           td1.totalHits.value() <= td2.totalHits.value());
@@ -242,8 +242,8 @@ public abstract class SearchEquivalenceTestBase extends LuceneTestCase {
       q1 = new BooleanQuery.Builder().add(q1, Occur.MUST).add(filter, Occur.FILTER).build();
       q2 = new BooleanQuery.Builder().add(q2, Occur.MUST).add(filter, Occur.FILTER).build();
     }
-    TopDocs td1 = s1.search(q1, reader.maxDoc());
-    TopDocs td2 = s2.search(q2, reader.maxDoc());
+    TopDocs td1 = s1.search(q1, Math.toIntExact(reader.maxDoc()));
+    TopDocs td2 = s2.search(q2, Math.toIntExact(reader.maxDoc()));
     assertEquals(td1.totalHits.value(), td2.totalHits.value());
     for (int i = 0; i < td1.scoreDocs.length; ++i) {
       assertEquals(td1.scoreDocs[i].doc, td2.scoreDocs[i].doc);

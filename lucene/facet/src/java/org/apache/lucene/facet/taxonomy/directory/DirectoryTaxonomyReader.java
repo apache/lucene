@@ -567,7 +567,7 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
         readerIndex = ReaderUtil.subIndex(ord, indexReader.leaves());
         leafReaderContext = indexReader.leaves().get(readerIndex);
         leafReader = leafReaderContext.reader();
-        leafReaderMaxDoc = leafReader.maxDoc();
+        leafReaderMaxDoc = leafReader.maxLeafDoc();
         leafReaderDocBase = Math.toIntExact(leafReaderContext.docBase);
         values = leafReader.getBinaryDocValues(Consts.FULL);
       }
@@ -591,7 +591,7 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
   @Override
   public int getSize() {
     ensureOpen();
-    return indexReader.numDocs();
+    return Math.toIntExact(indexReader.numDocs());
   }
 
   @Override
@@ -660,7 +660,7 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
   public String toString(int max) {
     ensureOpen();
     StringBuilder sb = new StringBuilder();
-    int limit = Math.min(max, indexReader.maxDoc());
+    int limit = (int) Math.min(max, indexReader.maxDoc());
     for (int i = 0; i < limit; i++) {
       try {
         FacetLabel category = this.getPath(i);

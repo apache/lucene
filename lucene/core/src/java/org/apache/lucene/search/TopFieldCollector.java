@@ -414,8 +414,8 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
     Scorer currentScorer = null;
     for (ScoreDoc scoreDoc : topDocs) {
       if (currentContext == null
-          || scoreDoc.doc >= currentContext.docBase + currentContext.reader().maxDoc()) {
-        Objects.checkIndex(scoreDoc.doc, searcher.getIndexReader().totalMaxDoc());
+          || scoreDoc.doc >= currentContext.docBase + currentContext.maxLeafDoc()) {
+        Objects.checkIndex(scoreDoc.doc, searcher.getIndexReader().maxDoc());
         int newContextIndex = ReaderUtil.subIndex(scoreDoc.doc, contexts);
         currentContext = contexts.get(newContextIndex);
         final ScorerSupplier scorerSupplier = weight.scorerSupplier(currentContext);

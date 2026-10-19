@@ -243,7 +243,7 @@ public class TestTermsEnum extends LuceneTestCase {
     final IndexReader r = w.getReader();
     w.close();
 
-    int[] docIDToID = new int[r.maxDoc()];
+    int[] docIDToID = new int[Math.toIntExact(r.maxDoc())];
     NumericDocValues values = MultiDocValues.getNumericValues(r, "id");
     for (int i = 0; i < r.maxDoc(); i++) {
       assertEquals(i, values.nextDoc());

@@ -589,7 +589,7 @@ public class BpVectorReorderer extends AbstractBPReorderer {
     }
     FloatVectorValues floats = reader.getFloatVectorValues(partitionField);
     Sorter.DocMap valueMap = computeValueMap(floats, vectorScore, taskExecutor);
-    return valueMapToDocMap(valueMap, floats, reader.maxDoc());
+    return valueMapToDocMap(valueMap, floats, reader.maxLeafDoc());
   }
 
   /** Expert: Compute the {@link DocMap} that holds the new vector ordinal numbering. */

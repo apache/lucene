@@ -954,7 +954,7 @@ public class TestGrouping extends LuceneTestCase {
       w.close();
 
       NumericDocValues values = MultiDocValues.getNumericValues(r, "id");
-      int[] docIDToID = new int[r.maxDoc()];
+      int[] docIDToID = new int[Math.toIntExact(r.maxDoc())];
       for (int i = 0; i < r.maxDoc(); i++) {
         assertEquals(i, values.nextDoc());
         docIDToID[i] = (int) values.longValue();
@@ -1019,7 +1019,7 @@ public class TestGrouping extends LuceneTestCase {
 
       values = MultiDocValues.getNumericValues(rBlocks, "id");
       assertNotNull(values);
-      int[] docIDToIDBlocks = new int[rBlocks.maxDoc()];
+      int[] docIDToIDBlocks = new int[Math.toIntExact(rBlocks.maxDoc())];
       for (int i = 0; i < rBlocks.maxDoc(); i++) {
         assertEquals(i, values.nextDoc());
         docIDToIDBlocks[i] = (int) values.longValue();

@@ -715,7 +715,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     // we expect
     List<Term> ret = new ArrayList<>(100);
 
-    double numDocs = ctx.reader().numDocs();
+    double numDocs = ctx.numLeafDocs();
     double tmp = (numDocs * (double) pct) / 100.0;
 
     if (tmp <= 1.0) { // Calculations break down for segments with very few documents, the "tail end
@@ -818,7 +818,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
 
     // Make sure TMP always merged equal-number-of-docs segments:
     for (LeafReaderContext ctx : r.leaves()) {
-      int numDocs = ctx.reader().numDocs();
+      int numDocs = ctx.numLeafDocs();
       assertTrue("got numDocs=" + numDocs, numDocs == 100 || numDocs == 800 || numDocs == 6400);
     }
     r.close();

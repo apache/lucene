@@ -80,7 +80,7 @@ public class TestHnswFloat16VectorGraph extends HnswGraphTestCase<short[]> {
   @Override
   MockFloat16VectorValues vectorValues(LeafReader reader, String fieldName) throws IOException {
     Float16VectorValues vectorValues = reader.getFloat16VectorValues(fieldName);
-    short[][] vectors = new short[reader.maxDoc()][];
+    short[][] vectors = new short[reader.maxLeafDoc()][];
     for (int i = 0; i < vectorValues.size(); i++) {
       vectors[vectorValues.ordToDoc(i)] =
           ArrayUtil.copyOfSubArray(vectorValues.vectorValue(i), 0, vectorValues.dimension());

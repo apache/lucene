@@ -506,7 +506,7 @@ public class TestMatchesIterator extends MatchesTestBase {
     int[] expectedSeeks = new int[] {1, 1, 1, 1, 6, 6};
     int i = 0;
     for (LeafReaderContext ctx : reader.leaves()) {
-      for (int doc = 0; doc < ctx.reader().maxDoc(); doc++) {
+      for (int doc = 0; doc < ctx.maxLeafDoc(); doc++) {
         reader.seeks = 0;
         w.matches(ctx, doc);
         assertEquals("Unexpected seek count on doc " + doc, expectedSeeks[i], reader.seeks);

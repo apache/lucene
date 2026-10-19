@@ -84,7 +84,7 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
       starts[i] = maxDoc;
       final IndexReader r = subReaders[i];
       // A leaf is limited to Integer.MAX_VALUE docs, but the composite doc-id space is long.
-      maxDoc += r.totalMaxDoc(); // compute maxDocs
+      maxDoc += r.maxDoc(); // compute maxDocs
     }
 
     if (maxDoc > IndexWriter.getActualMaxDocs()) {
@@ -165,7 +165,7 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
     if (numDocs == -1) {
       numDocs = 0;
       for (IndexReader r : subReaders) {
-        numDocs += r.totalNumDocs();
+        numDocs += r.numDocs();
       }
       assert numDocs >= 0;
       this.numDocs.set(numDocs);
@@ -174,23 +174,12 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
   }
 
   @Override
-  public final int numDocs() {
-    return Math.toIntExact(computeNumDocs());
-  }
-
-  @Override
-  public final long totalNumDocs() {
+  public final long numDocs() {
     return computeNumDocs();
   }
 
   @Override
-  public final int maxDoc() {
-    // Don't call ensureOpen() here (it could affect performance)
-    return Math.toIntExact(maxDoc);
-  }
-
-  @Override
-  public final long totalMaxDoc() {
+  public final long maxDoc() {
     // Don't call ensureOpen() here (it could affect performance)
     return maxDoc;
   }

@@ -65,7 +65,7 @@ public class ReindexingEnrichedDirectoryTaxonomyWriter extends DirectoryTaxonomy
 
     for (LeafReaderContext ctx : taxoIndexReader.leaves()) {
       LeafReader leafReader = ctx.reader();
-      int[] ordinals = new int[leafReader.maxDoc()];
+      int[] ordinals = new int[leafReader.maxLeafDoc()];
       for (int i = 0; i < ordinals.length; i++) {
         ordinals[i] = Math.toIntExact(ctx.docBase) + i;
       }

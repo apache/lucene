@@ -921,7 +921,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                 "v",
                 randomNormalizedVector(4),
                 1,
-                AcceptDocs.fromLiveDocs(leafReader.getLiveDocs(), leafReader.maxDoc()),
+                AcceptDocs.fromLiveDocs(leafReader.getLiveDocs(), leafReader.maxLeafDoc()),
                 Integer.MAX_VALUE);
         assertEquals(0, results.scoreDocs.length);
       }
@@ -1717,7 +1717,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                       fieldName,
                       randomNormalizedVector(dimension),
                       k,
-                      AcceptDocs.fromLiveDocs(liveDocs, ctx.reader().maxDoc()),
+                      AcceptDocs.fromLiveDocs(liveDocs, ctx.maxLeafDoc()),
                       visitedLimit);
           assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, results.totalHits.relation());
           int size = Lucene99HnswVectorsReader.EXHAUSTIVE_BULK_SCORE_ORDS;
@@ -1738,7 +1738,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                       fieldName,
                       randomNormalizedVector(dimension),
                       k,
-                      AcceptDocs.fromLiveDocs(liveDocs, ctx.reader().maxDoc()),
+                      AcceptDocs.fromLiveDocs(liveDocs, ctx.maxLeafDoc()),
                       visitedLimit);
           assertEquals(TotalHits.Relation.EQUAL_TO, results.totalHits.relation());
           assertTrue(results.totalHits.value() <= visitedLimit);
@@ -1824,7 +1824,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                       fieldName,
                       randomNormalizedVector(dimension),
                       k,
-                      AcceptDocs.fromLiveDocs(liveDocs, ctx.reader().maxDoc()),
+                      AcceptDocs.fromLiveDocs(liveDocs, ctx.maxLeafDoc()),
                       Integer.MAX_VALUE);
           assertEquals(Math.min(k, size), results.scoreDocs.length);
           for (int i = 0; i < k - 1; i++) {

@@ -667,7 +667,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           AbstractKnnVectorQuery query = getKnnVectorQuery("field", randomVector(dimension), k);
           int n = random().nextInt(100) + 1;
           TopDocs results = searcher.search(query, n);
-          int expected = Math.min(Math.min(n, k), reader.numDocs());
+          int expected = (int) Math.min(Math.min(n, k), reader.numDocs());
           // we may get fewer results than requested if there are deletions, but this test doesn't
           // test that
           assert reader.hasDeletions() == false;
@@ -1192,13 +1192,13 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     }
 
     @Override
-    public int numDocs() {
+    public int numLeafDocs() {
       return 0;
     }
 
     @Override
     public Bits getLiveDocs() {
-      return new Bits.MatchNoBits(in.maxDoc());
+      return new Bits.MatchNoBits(in.maxLeafDoc());
     }
 
     @Override

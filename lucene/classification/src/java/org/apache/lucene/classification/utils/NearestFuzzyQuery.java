@@ -137,7 +137,7 @@ public class NearestFuzzyQuery extends Query {
     try (TokenStream ts = analyzer.tokenStream(f.fieldName, f.queryString)) {
       CharTermAttribute termAtt = ts.addAttribute(CharTermAttribute.class);
 
-      long corpusNumDocs = reader.totalNumDocs();
+      long corpusNumDocs = reader.numDocs();
       HashSet<String> processedTerms = new HashSet<>();
       ts.reset();
       while (ts.incrementToken()) {

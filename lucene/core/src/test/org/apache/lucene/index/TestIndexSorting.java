@@ -2938,7 +2938,7 @@ public class TestIndexSorting extends LuceneTestCase {
           continue;
         }
         StoredFields storedFields = leafCtx.reader().storedFields();
-        for (int id = 0; id < leafCtx.reader().maxDoc(); id++) {
+        for (int id = 0; id < leafCtx.maxLeafDoc(); id++) {
           if (liveDocs != null && liveDocs.get(id) == false) {
             continue;
           }

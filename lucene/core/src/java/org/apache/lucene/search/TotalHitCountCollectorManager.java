@@ -52,8 +52,7 @@ public class TotalHitCountCollectorManager
   private static boolean hasSegmentPartitions(IndexSearcher.LeafSlice[] leafSlices) {
     for (IndexSearcher.LeafSlice leafSlice : leafSlices) {
       for (IndexSearcher.LeafReaderContextPartition leafPartition : leafSlice.partitions) {
-        if (leafPartition.minDocId > 0
-            || leafPartition.maxDocId < leafPartition.ctx.reader().maxDoc()) {
+        if (leafPartition.minDocId > 0 || leafPartition.maxDocId < leafPartition.ctx.maxLeafDoc()) {
           return true;
         }
       }

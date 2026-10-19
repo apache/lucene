@@ -105,11 +105,12 @@ public class ParallelCompositeReader extends BaseCompositeReader<LeafReader> {
       final List<? extends LeafReaderContext> firstLeaves = readers[0].leaves();
 
       // check compatibility:
-      final int maxDoc = readers[0].maxDoc(), noLeaves = firstLeaves.size();
+      final long maxDoc = readers[0].maxDoc();
+      final int noLeaves = firstLeaves.size();
       final int[] leafMaxDoc = new int[noLeaves];
       for (int i = 0; i < noLeaves; i++) {
         final LeafReader r = firstLeaves.get(i).reader();
-        leafMaxDoc[i] = r.maxDoc();
+        leafMaxDoc[i] = r.maxLeafDoc();
       }
       validate(readers, maxDoc, leafMaxDoc);
       validate(storedFieldsReaders, maxDoc, leafMaxDoc);
@@ -139,7 +140,7 @@ public class ParallelCompositeReader extends BaseCompositeReader<LeafReader> {
     }
   }
 
-  private static void validate(CompositeReader[] readers, int maxDoc, int[] leafMaxDoc) {
+  private static void validate(CompositeReader[] readers, long maxDoc, int[] leafMaxDoc) {
     for (int i = 0; i < readers.length; i++) {
       final CompositeReader reader = readers[i];
       final List<? extends LeafReaderContext> subs = reader.leaves();
@@ -153,7 +154,7 @@ public class ParallelCompositeReader extends BaseCompositeReader<LeafReader> {
       }
       for (int subIDX = 0; subIDX < noSubs; subIDX++) {
         final LeafReader r = subs.get(subIDX).reader();
-        if (r.maxDoc() != leafMaxDoc[subIDX]) {
+        if (r.maxLeafDoc() != leafMaxDoc[subIDX]) {
           throw new IllegalArgumentException(
               "All leaf readers must have same corresponding subReader maxDoc");
         }

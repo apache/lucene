@@ -55,7 +55,7 @@ public class IDFValueSource extends DocFreqValueSource {
           "requires a TFIDFSimilarity (such as ClassicSimilarity)");
     }
     int docfreq = searcher.getIndexReader().docFreq(new Term(indexedField, indexedBytes));
-    float idf = sim.idf(docfreq, searcher.getIndexReader().totalMaxDoc());
+    float idf = sim.idf(docfreq, searcher.getIndexReader().maxDoc());
     return new DocFreqValueSource.ConstDoubleDocValues(idf, this);
   }
 

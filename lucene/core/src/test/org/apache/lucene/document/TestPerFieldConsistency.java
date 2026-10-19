@@ -159,8 +159,8 @@ public class TestPerFieldConsistency extends LuceneTestCase {
       writer.flush();
       try (IndexReader reader = DirectoryReader.open(writer)) {
         assertEquals(1, reader.leaves().size());
-        assertEquals(1, reader.leaves().get(0).reader().numDocs());
-        assertEquals(numNotIndexedDocs, reader.leaves().get(0).reader().numDeletedDocs());
+        assertEquals(1, reader.leaves().get(0).numLeafDocs());
+        assertEquals(numNotIndexedDocs, reader.leaves().get(0).reader().numDeletedLeafDocs());
       }
 
       // diff segment, same index: indexing a doc with a missing field throws error
@@ -174,8 +174,8 @@ public class TestPerFieldConsistency extends LuceneTestCase {
       writer.flush();
       try (IndexReader reader = DirectoryReader.open(writer)) {
         assertEquals(2, reader.leaves().size());
-        assertEquals(1, reader.leaves().get(1).reader().numDocs());
-        assertEquals(numNotIndexedDocs, reader.leaves().get(1).reader().numDeletedDocs());
+        assertEquals(1, reader.leaves().get(1).numLeafDocs());
+        assertEquals(numNotIndexedDocs, reader.leaves().get(1).reader().numDeletedLeafDocs());
       }
     }
   }
@@ -207,8 +207,8 @@ public class TestPerFieldConsistency extends LuceneTestCase {
       writer.flush();
       try (IndexReader reader = DirectoryReader.open(writer)) {
         assertEquals(1, reader.leaves().size());
-        assertEquals(1, reader.leaves().get(0).reader().numDocs());
-        assertEquals(numNotIndexedDocs, reader.leaves().get(0).reader().numDeletedDocs());
+        assertEquals(1, reader.leaves().get(0).numLeafDocs());
+        assertEquals(numNotIndexedDocs, reader.leaves().get(0).reader().numDeletedLeafDocs());
       }
 
       // diff segment, same index: indexing a field with extra field indexing options returns error
@@ -226,8 +226,8 @@ public class TestPerFieldConsistency extends LuceneTestCase {
       writer.flush();
       try (IndexReader reader = DirectoryReader.open(writer)) {
         assertEquals(2, reader.leaves().size());
-        assertEquals(1, reader.leaves().get(1).reader().numDocs());
-        assertEquals(numNotIndexedDocs, reader.leaves().get(1).reader().numDeletedDocs());
+        assertEquals(1, reader.leaves().get(1).numLeafDocs());
+        assertEquals(numNotIndexedDocs, reader.leaves().get(1).reader().numDeletedLeafDocs());
       }
     }
   }

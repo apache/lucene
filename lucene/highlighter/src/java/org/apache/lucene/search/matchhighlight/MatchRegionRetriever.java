@@ -468,7 +468,7 @@ public class MatchRegionRetriever {
       LeafReaderContext prev = leaves.get(i - 1);
       LeafReaderContext next = leaves.get(i);
       assert prev.docBase <= next.docBase;
-      assert prev.docBase + prev.reader().maxDoc() == next.docBase;
+      assert prev.docBase + prev.maxLeafDoc() == next.docBase;
     }
     return true;
   }

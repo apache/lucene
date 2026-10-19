@@ -45,7 +45,7 @@ public abstract class ValueSourceScorer extends Scorer {
   protected ValueSourceScorer(LeafReaderContext readerContext, FunctionValues values) {
     this.values = values;
     final DocIdSetIterator approximation =
-        DocIdSetIterator.all(readerContext.reader().maxDoc()); // no approximation!
+        DocIdSetIterator.all(readerContext.maxLeafDoc()); // no approximation!
     this.twoPhaseIterator =
         new TwoPhaseIterator(approximation) {
           @Override

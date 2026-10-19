@@ -52,7 +52,7 @@ final class MultiTermQueryConstantScoreWrapper<Q extends MultiTermQuery>
           List<TermAndState> collectedTerms,
           long leadCost)
           throws IOException {
-        DocIdSetBuilder builder = new DocIdSetBuilder(context.reader().maxDoc(), terms);
+        DocIdSetBuilder builder = new DocIdSetBuilder(context.maxLeafDoc(), terms);
         PostingsEnum docs = null;
 
         // Handle the already-collected terms:

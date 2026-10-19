@@ -1308,8 +1308,7 @@ public class TestDrillSideways extends FacetTestCase {
                   @Override
                   public ScorerSupplier scorerSupplier(LeafReaderContext context)
                       throws IOException {
-                    DocIdSetIterator approximation =
-                        DocIdSetIterator.all(context.reader().maxDoc());
+                    DocIdSetIterator approximation = DocIdSetIterator.all(context.maxLeafDoc());
                     final var scorer =
                         new ConstantScoreScorer(
                             score(),
@@ -1486,8 +1485,7 @@ public class TestDrillSideways extends FacetTestCase {
         // context, which happens as part of #finish getting called:
         assertEquals(1, result.drillDownFacetsCollector.getMatchingDocs().size());
         assertEquals(
-            1,
-            result.drillDownFacetsCollector.getMatchingDocs().get(0).context().reader().maxDoc());
+            1, result.drillDownFacetsCollector.getMatchingDocs().get(0).context().maxLeafDoc());
         assertEquals(1, result.drillSidewaysFacetsCollector.length);
         assertEquals(1, result.drillSidewaysFacetsCollector[0].getMatchingDocs().size());
         assertEquals(

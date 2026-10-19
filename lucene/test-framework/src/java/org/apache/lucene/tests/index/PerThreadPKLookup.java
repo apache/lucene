@@ -64,7 +64,7 @@ public class PerThreadPKLookup {
 
     List<LeafReaderContext> leaves = new ArrayList<>(reader.leaves());
     // Larger segments are more likely to have the id, so we sort largest to smallest by numDocs:
-    leaves.sort((c1, c2) -> c2.reader().numDocs() - c1.reader().numDocs());
+    leaves.sort((c1, c2) -> c2.numLeafDocs() - c1.numLeafDocs());
 
     termsEnums = new TermsEnum[leaves.size()];
     postingsEnums = new PostingsEnum[leaves.size()];

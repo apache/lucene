@@ -199,7 +199,7 @@ public class CachedFilterConjunctionBenchmark {
             cachedSearcher.rewrite(filterQuery), ScoreMode.COMPLETE_NO_SCORES, 1f);
     ScorerSupplier filterScorerSupplier = filterWeight.scorerSupplier(context);
     if (filterScorerSupplier != null) {
-      cachedFilterUsesBitSet = filterScorerSupplier.cost() * 100 >= context.reader().maxDoc();
+      cachedFilterUsesBitSet = filterScorerSupplier.cost() * 100 >= context.maxLeafDoc();
       filterScorerSupplier.get(Long.MAX_VALUE).iterator().nextDoc();
     }
     if (queryCache.getCacheSize() == 0) {
@@ -265,7 +265,7 @@ public class CachedFilterConjunctionBenchmark {
 
   private int scorePerDoc(Scorer scorer) throws IOException {
     DocIdSetIterator iterator = scorer.iterator();
-    int maxDoc = context.reader().maxDoc();
+    int maxDoc = context.maxLeafDoc();
     return scorePerDoc(iterator, maxDoc);
   }
 
@@ -283,7 +283,7 @@ public class CachedFilterConjunctionBenchmark {
       return 0;
     }
     CountingLeafCollector collector = new CountingLeafCollector();
-    bulkScorer.score(collector, context.reader().getLiveDocs(), 0, context.reader().maxDoc());
+    bulkScorer.score(collector, context.reader().getLiveDocs(), 0, context.maxLeafDoc());
     return collector.count;
   }
 

@@ -79,7 +79,7 @@ public class MultiPassIndexSplitter {
     // this way we don't have to preserve original deletions because neither
     // deleteDocument(int) or undeleteAll() is applied to the wrapped input index.
     FakeDeleteIndexReader input = new FakeDeleteIndexReader(in);
-    int maxDoc = input.maxDoc();
+    int maxDoc = Math.toIntExact(input.maxDoc());
     int partLen = maxDoc / numParts;
     for (int i = 0; i < numParts; i++) {
       input.undeleteAll();
@@ -239,13 +239,13 @@ public class MultiPassIndexSplitter {
     }
 
     @Override
-    public int numDocs() {
+    public int numLeafDocs() {
       return liveDocs.cardinality();
     }
 
     public void undeleteAll() {
-      final int maxDoc = in.maxDoc();
-      liveDocs = new FixedBitSet(in.maxDoc());
+      final int maxDoc = in.maxLeafDoc();
+      liveDocs = new FixedBitSet(in.maxLeafDoc());
       if (in.hasDeletions()) {
         final Bits oldLiveDocs = in.getLiveDocs();
         assert oldLiveDocs != null;

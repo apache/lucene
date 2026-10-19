@@ -193,7 +193,7 @@ abstract class AbstractVectorSimilarityQuery extends Query {
             // With DECAY_MAX_QUALITY, the intent is to find all vectors above
             // resultSimilarity. The approximate graph search may miss nodes,
             // so use exact search to guarantee completeness.
-            AcceptDocs acceptDocs = AcceptDocs.fromLiveDocs(liveDocs, leafReader.maxDoc());
+            AcceptDocs acceptDocs = AcceptDocs.fromLiveDocs(liveDocs, leafReader.maxLeafDoc());
             return VectorSimilarityScorerSupplier.fromAcceptDocs(
                 boost, createVectorScorer(context), acceptDocs.iterator(), resultSimilarity);
           }
@@ -201,7 +201,7 @@ abstract class AbstractVectorSimilarityQuery extends Query {
           TopDocs results =
               approximateSearch(
                   context,
-                  AcceptDocs.fromLiveDocs(liveDocs, leafReader.maxDoc()),
+                  AcceptDocs.fromLiveDocs(liveDocs, leafReader.maxLeafDoc()),
                   Integer.MAX_VALUE,
                   timeLimitingKnnCollectorManager);
           return VectorSimilarityScorerSupplier.fromScoreDocs(boost, results.scoreDocs);
@@ -217,7 +217,7 @@ abstract class AbstractVectorSimilarityQuery extends Query {
                     }
                   },
                   liveDocs,
-                  leafReader.maxDoc());
+                  leafReader.maxLeafDoc());
 
           int cardinality = acceptDocs.cost();
           if (cardinality == 0) {

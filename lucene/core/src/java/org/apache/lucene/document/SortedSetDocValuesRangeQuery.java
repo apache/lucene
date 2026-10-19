@@ -130,7 +130,7 @@ final class SortedSetDocValuesRangeQuery extends Query {
           }
         }
         // implement ScorerSupplier, since we do some expensive stuff to make a scorer
-        return new ConstantScoreScorerSupplier(score(), scoreMode, context.reader().maxDoc()) {
+        return new ConstantScoreScorerSupplier(score(), scoreMode, context.maxLeafDoc()) {
           @Override
           public DocIdSetIterator iterator(long leadCost) throws IOException {
 
@@ -146,7 +146,7 @@ final class SortedSetDocValuesRangeQuery extends Query {
 
             // all terms matched in this segment
             if (skipper != null
-                && skipper.docCount() == context.reader().maxDoc()
+                && skipper.docCount() == context.maxLeafDoc()
                 && skipper.minValue() >= minOrd
                 && skipper.maxValue() <= maxOrd) {
               return DocIdSetIterator.all(skipper.docCount());
@@ -187,10 +187,10 @@ final class SortedSetDocValuesRangeQuery extends Query {
           if (minOrd > skipper.maxValue() || maxOrd < skipper.minValue()) {
             return 0;
           }
-          if (skipper.docCount() == context.reader().maxDoc()
+          if (skipper.docCount() == context.maxLeafDoc()
               && skipper.minValue() >= minOrd
               && skipper.maxValue() <= maxOrd) {
-            return context.reader().numDocs();
+            return context.numLeafDocs();
           }
         }
         return -1;

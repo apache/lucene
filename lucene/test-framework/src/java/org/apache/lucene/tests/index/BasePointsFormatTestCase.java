@@ -204,7 +204,7 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
         // doc segment
         continue;
       }
-      int[] docIDToID = new int[ctx.reader().maxDoc()];
+      int[] docIDToID = new int[ctx.maxLeafDoc()];
       int docID;
       while ((docID = idValues.nextDoc()) != NO_MORE_DOCS) {
         docIDToID[docID] = (int) idValues.longValue();
@@ -821,7 +821,7 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
       }
 
       NumericDocValues idValues = MultiDocValues.getNumericValues(r, "id");
-      int[] docIDToID = new int[r.maxDoc()];
+      int[] docIDToID = new int[Math.toIntExact(r.maxDoc())];
       {
         int docID;
         while ((docID = idValues.nextDoc()) != NO_MORE_DOCS) {

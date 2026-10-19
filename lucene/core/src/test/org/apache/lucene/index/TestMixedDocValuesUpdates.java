@@ -146,7 +146,7 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
             assertNull(ndv);
             assertNotNull(bdv);
           }
-          int maxDoc = r.maxDoc();
+          int maxDoc = r.maxLeafDoc();
           for (int doc = 0; doc < maxDoc; doc++) {
             if (liveDocs == null || liveDocs.get(doc)) {
               //              System.out.println("doc=" + (doc + context.docBase) + " f='" + f + "'

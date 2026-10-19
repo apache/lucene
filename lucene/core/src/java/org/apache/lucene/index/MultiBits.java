@@ -59,7 +59,7 @@ public final class MultiBits implements Bits {
       }
       // MultiBits addresses the composite doc space through the int Bits contract, so it cannot
       // represent a reader holding more than Integer.MAX_VALUE docs; fail fast here.
-      ReaderUtil.ensureIntDocIdSpace(reader.totalMaxDoc(), "composite live docs (MultiBits)");
+      ReaderUtil.ensureIntDocIdSpace(reader.maxDoc(), "composite live docs (MultiBits)");
       final Bits[] liveDocs = new Bits[size];
       final int[] starts = new int[size + 1];
       for (int i = 0; i < size; i++) {
@@ -68,7 +68,7 @@ public final class MultiBits implements Bits {
         liveDocs[i] = ctx.reader().getLiveDocs();
         starts[i] = (int) ctx.docBase; // safe: guarded above
       }
-      starts[size] = (int) reader.totalMaxDoc();
+      starts[size] = (int) reader.maxDoc();
       return new MultiBits(liveDocs, starts, true);
     } else {
       return null;

@@ -80,7 +80,7 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
   }
 
   public TaxonomyIndexArrays(IndexReader reader) throws IOException {
-    int[][] parentArray = allocateChunkedArray(reader.maxDoc(), 0);
+    int[][] parentArray = allocateChunkedArray(Math.toIntExact(reader.maxDoc()), 0);
     assert parentArray.length > 0;
     if (parentArray[0].length > 0) {
       initParents(parentArray, reader, 0);
@@ -96,7 +96,8 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
     // it may be caused if e.g. the taxonomy segments were merged, and so an updated
     // NRT reader was obtained, even though nothing was changed. this is not very likely
     // to happen.
-    int[][] parentArray = allocateChunkedArray(reader.maxDoc(), copyFrom.parents.values.length - 1);
+    int[][] parentArray =
+        allocateChunkedArray(Math.toIntExact(reader.maxDoc()), copyFrom.parents.values.length - 1);
     assert parentArray.length > 0;
 
     copyChunkedArray(copyFrom.parents.values, parentArray);
@@ -196,7 +197,7 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
     }
 
     for (LeafReaderContext leafContext : reader.leaves()) {
-      int leafDocNum = leafContext.reader().maxDoc();
+      int leafDocNum = leafContext.maxLeafDoc();
       if (leafContext.docBase + leafDocNum <= first) {
         // skip this leaf if it does not contain new categories
         continue;

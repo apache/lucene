@@ -71,7 +71,7 @@ public final class QueryTermExtractor {
   public static WeightedTerm[] getIdfWeightedTerms(
       Query query, IndexReader reader, String fieldName) {
     WeightedTerm[] terms = getTerms(query, false, fieldName);
-    int totalNumDocs = reader.maxDoc();
+    long totalNumDocs = reader.maxDoc();
     for (int i = 0; i < terms.length; i++) {
       try {
         int docFreq = reader.docFreq(new Term(fieldName, terms[i].term));

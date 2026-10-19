@@ -90,7 +90,7 @@ public class DocComparator extends FieldComparator<Long> {
         // in a distributed search where there are docs from different indices
         // with the same docID.
         this.minDoc = topValue;
-        this.maxDoc = context.reader().maxDoc();
+        this.maxDoc = context.maxLeafDoc();
         this.competitiveIterator = new UpdateableDocIdSetIterator();
         this.competitiveIterator.update(DocIdSetIterator.all(maxDoc));
       } else {

@@ -872,7 +872,7 @@ public class TestBinaryDocValuesUpdates extends LuceneTestCase {
           String f = "f" + field;
           BinaryDocValues bdv = r.getBinaryDocValues(f);
           assertNotNull(bdv);
-          int maxDoc = r.maxDoc();
+          int maxDoc = r.maxLeafDoc();
           for (int doc = 0; doc < maxDoc; doc++) {
             if (liveDocs == null || liveDocs.get(doc)) {
               assertEquals(doc, bdv.advance(doc));

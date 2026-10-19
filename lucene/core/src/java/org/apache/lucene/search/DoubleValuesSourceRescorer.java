@@ -52,7 +52,7 @@ public abstract class DoubleValuesSourceRescorer extends Rescorer {
     List<LeafReaderContext> leaves = searcher.getIndexReader().leaves();
     LeafReaderContext ctx = leaves.getFirst();
     int currLeaf = 0;
-    long leafEnd = ctx.docBase + ctx.reader().maxDoc();
+    long leafEnd = ctx.docBase + ctx.maxLeafDoc();
 
     // find leaf holding this doc
     for (ScoreDoc hit : hits) {
@@ -66,7 +66,7 @@ public abstract class DoubleValuesSourceRescorer extends Rescorer {
                   + " Ensure firstPassTopDocs were produced by the searcher provided to rescore.");
         }
         ctx = leaves.get(++currLeaf);
-        leafEnd = ctx.docBase + ctx.reader().maxDoc();
+        leafEnd = ctx.docBase + ctx.maxLeafDoc();
       }
 
       // leaf-local doc id: fits an int
@@ -95,7 +95,7 @@ public abstract class DoubleValuesSourceRescorer extends Rescorer {
 
     LeafReaderContext leafWithDoc = null;
     for (LeafReaderContext ctx : searcher.getIndexReader().leaves()) {
-      if (docID >= ctx.docBase && docID < (ctx.docBase + ctx.reader().maxDoc())) {
+      if (docID >= ctx.docBase && docID < (ctx.docBase + ctx.maxLeafDoc())) {
         leafWithDoc = ctx;
         break;
       }

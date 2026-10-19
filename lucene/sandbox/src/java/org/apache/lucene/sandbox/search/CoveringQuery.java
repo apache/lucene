@@ -248,7 +248,7 @@ public final class CoveringQuery extends Query implements Accountable {
       }
       final var scorer =
           new CoveringScorer(
-              scorers, minimumNumberMatch.getValues(context, null), context.reader().maxDoc());
+              scorers, minimumNumberMatch.getValues(context, null), context.maxLeafDoc());
       return new DefaultScorerSupplier(scorer);
     }
 

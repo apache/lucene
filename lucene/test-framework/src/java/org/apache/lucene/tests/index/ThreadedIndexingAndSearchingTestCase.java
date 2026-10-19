@@ -542,7 +542,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
           }
           var core = SEGMENT_READER_ACCESS.getCore((SegmentReader) reader);
           warmed.put(core, Boolean.TRUE);
-          final int maxDoc = reader.maxDoc();
+          final int maxDoc = reader.maxLeafDoc();
           final Bits liveDocs = reader.getLiveDocs();
           int sum = 0;
           final int inc = Math.max(1, maxDoc / 50);

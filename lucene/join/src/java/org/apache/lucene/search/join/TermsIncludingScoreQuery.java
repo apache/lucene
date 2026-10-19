@@ -179,13 +179,13 @@ class TermsIncludingScoreQuery extends Query implements Accountable {
         }
 
         // what is the runtime...seems ok?
-        final long cost = context.reader().maxDoc() * terms.size();
+        final long cost = context.maxLeafDoc() * terms.size();
 
         TermsEnum segmentTermsEnum = terms.iterator();
         if (multipleValuesPerDocument) {
-          scorer = new MVInOrderScorer(segmentTermsEnum, context.reader().maxDoc(), cost, boost);
+          scorer = new MVInOrderScorer(segmentTermsEnum, context.maxLeafDoc(), cost, boost);
         } else {
-          scorer = new SVInOrderScorer(segmentTermsEnum, context.reader().maxDoc(), cost, boost);
+          scorer = new SVInOrderScorer(segmentTermsEnum, context.maxLeafDoc(), cost, boost);
         }
         return new DefaultScorerSupplier(scorer);
       }

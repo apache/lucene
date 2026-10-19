@@ -606,7 +606,7 @@ public abstract sealed class LuceneTestCaseParent extends Assert
       return;
     }
     int docid = -1;
-    int averageGap = leftReader.maxDoc() / (1 + docFreq);
+    int averageGap = (int) (leftReader.maxDoc() / (1 + docFreq));
     int skipInterval = 16;
 
     while (true) {
@@ -646,7 +646,7 @@ public abstract sealed class LuceneTestCaseParent extends Assert
     }
 
     int docid = -1;
-    int averageGap = leftReader.maxDoc() / (1 + docFreq);
+    int averageGap = (int) (leftReader.maxDoc() / (1 + docFreq));
     int skipInterval = 16;
 
     while (true) {
@@ -771,7 +771,7 @@ public abstract sealed class LuceneTestCaseParent extends Assert
       NumericDocValues leftNorms = MultiDocValues.getNormValues(leftReader, field);
       NumericDocValues rightNorms = MultiDocValues.getNormValues(rightReader, field);
       if (leftNorms != null && rightNorms != null) {
-        assertDocValuesEquals(info, leftReader.maxDoc(), leftNorms, rightNorms);
+        assertDocValuesEquals(info, Math.toIntExact(leftReader.maxDoc()), leftNorms, rightNorms);
       } else {
         assertNull(info, leftNorms);
         assertNull(info, rightNorms);
@@ -877,7 +877,8 @@ public abstract sealed class LuceneTestCaseParent extends Assert
         NumericDocValues leftValues = MultiDocValues.getNumericValues(leftReader, field);
         NumericDocValues rightValues = MultiDocValues.getNumericValues(rightReader, field);
         if (leftValues != null && rightValues != null) {
-          assertDocValuesEquals(info, leftReader.maxDoc(), leftValues, rightValues);
+          assertDocValuesEquals(
+              info, Math.toIntExact(leftReader.maxDoc()), leftValues, rightValues);
         } else {
           assertTrue(
               info + ": left numeric doc values for field=\"" + field + "\" are not null",

@@ -546,7 +546,7 @@ public class WeightedSpanTermExtractor {
     Map<String, WeightedSpanTerm> terms = new PositionCheckingMap<>();
     extract(query, boost, terms);
 
-    int totalNumDocs = reader.maxDoc();
+    long totalNumDocs = reader.maxDoc();
     Set<String> weightedTerms = terms.keySet();
     Iterator<String> it = weightedTerms.iterator();
 

@@ -70,7 +70,7 @@ public class HighFrequencyDictionary implements Dictionary {
       } else {
         termsEnum = null;
       }
-      minNumDocs = (long) (thresh * (double) reader.totalNumDocs());
+      minNumDocs = (long) (thresh * (double) reader.numDocs());
     }
 
     private boolean isFrequent(int freq) {

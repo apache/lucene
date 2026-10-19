@@ -186,8 +186,8 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
               }
 
               @Override
-              public int numDocs() {
-                return getParallelReaders()[1].numDocs();
+              public int numLeafDocs() {
+                return getParallelReaders()[1].numLeafDocs();
               }
             };
 
@@ -783,7 +783,7 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
         // The order of our docIDs must precisely match incoming reader:
         iwc.setMergePolicy(new LogByteSizeMergePolicy());
         IndexWriter w = new IndexWriter(parallelDir, iwc);
-        int maxDoc = reader.maxDoc();
+        int maxDoc = reader.maxLeafDoc();
         StoredFields storedFields = reader.storedFields();
 
         // Slowly parse the stored field into a new doc values field:
@@ -840,7 +840,7 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
         // The order of our docIDs must precisely match incoming reader:
         iwc.setMergePolicy(new LogByteSizeMergePolicy());
         IndexWriter w = new IndexWriter(parallelDir, iwc);
-        int maxDoc = reader.maxDoc();
+        int maxDoc = reader.maxLeafDoc();
         StoredFields storedFields = reader.storedFields();
 
         if (oldSchemaGen <= 0) {
@@ -895,7 +895,7 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
         if (numbers == null) {
           return;
         }
-        int maxDoc = r.maxDoc();
+        int maxDoc = r.maxLeafDoc();
         StoredFields storedFields = r.storedFields();
         boolean failed = false;
         for (int i = 0; i < maxDoc; i++) {
@@ -970,7 +970,7 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
         // The order of our docIDs must precisely match incoming reader:
         iwc.setMergePolicy(new LogByteSizeMergePolicy());
         IndexWriter w = new IndexWriter(parallelDir, iwc);
-        int maxDoc = reader.maxDoc();
+        int maxDoc = reader.maxLeafDoc();
         StoredFields storedFields = reader.storedFields();
 
         if (oldSchemaGen <= 0) {
@@ -1028,7 +1028,7 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
         if (numbers == null) {
           return;
         }
-        int maxDoc = r.maxDoc();
+        int maxDoc = r.maxLeafDoc();
         StoredFields storedFields = r.storedFields();
         boolean failed = false;
         for (int i = 0; i < maxDoc; i++) {
@@ -1342,7 +1342,7 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
         LeafReader leaf = ctx.reader();
         NumericDocValues numbers = leaf.getNumericDocValues("number");
         if (numbers != null) {
-          int maxDoc = leaf.maxDoc();
+          int maxDoc = leaf.maxLeafDoc();
           StoredFields storedFields = leaf.storedFields();
           for (int i = 0; i < maxDoc; i++) {
             Document doc = storedFields.document(i);
@@ -1511,7 +1511,7 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
   private static void checkAllNumberDVs(
       IndexReader r, String fieldName, boolean doThrow, int multiplier) throws IOException {
     NumericDocValues numbers = MultiDocValues.getNumericValues(r, fieldName);
-    int maxDoc = r.maxDoc();
+    int maxDoc = Math.toIntExact(r.maxDoc());
     StoredFields storedFields = r.storedFields();
     boolean failed = false;
     for (int i = 0; i < maxDoc; i++) {

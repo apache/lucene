@@ -74,7 +74,7 @@ public class FieldTermStack {
     PostingsEnum dpEnum = null;
     BytesRef text;
 
-    int numDocs = reader.maxDoc();
+    long numDocs = reader.maxDoc();
 
     while ((text = termsEnum.next()) != null) {
       spare.copyUTF8Bytes(text);

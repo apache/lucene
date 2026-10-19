@@ -685,7 +685,7 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
 
       Query query = newRectQuery(FIELD_NAME, rect.minLat, rect.maxLat, rect.minLon, rect.maxLon);
 
-      final FixedBitSet hits = searchIndex(s, query, r.maxDoc());
+      final FixedBitSet hits = searchIndex(s, query, Math.toIntExact(r.maxDoc()));
 
       boolean fail = false;
 
@@ -930,7 +930,7 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
     int iters = atLeast(25);
 
     Bits liveDocs = MultiBits.getLiveDocs(s.getIndexReader());
-    int maxDoc = s.getIndexReader().maxDoc();
+    int maxDoc = Math.toIntExact(s.getIndexReader().maxDoc());
 
     for (int iter = 0; iter < iters; iter++) {
 
@@ -1015,7 +1015,7 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
     int iters = atLeast(25);
 
     Bits liveDocs = MultiBits.getLiveDocs(s.getIndexReader());
-    int maxDoc = s.getIndexReader().maxDoc();
+    int maxDoc = Math.toIntExact(s.getIndexReader().maxDoc());
 
     for (int iter = 0; iter < iters; iter++) {
 
@@ -1121,7 +1121,7 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
     final int iters = atLeast(75);
 
     Bits liveDocs = MultiBits.getLiveDocs(s.getIndexReader());
-    int maxDoc = s.getIndexReader().maxDoc();
+    int maxDoc = Math.toIntExact(s.getIndexReader().maxDoc());
 
     for (int iter = 0; iter < iters; iter++) {
 
@@ -1208,7 +1208,7 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
     final int iters = atLeast(75);
 
     Bits liveDocs = MultiBits.getLiveDocs(s.getIndexReader());
-    int maxDoc = s.getIndexReader().maxDoc();
+    int maxDoc = Math.toIntExact(s.getIndexReader().maxDoc());
 
     for (int iter = 0; iter < iters; iter++) {
 
@@ -1509,7 +1509,9 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
 
       TopDocs topDocs =
           searcher.search(
-              newDistanceQuery("field", lat, lon, radius), reader.maxDoc(), Sort.INDEXORDER);
+              newDistanceQuery("field", lat, lon, radius),
+              Math.toIntExact(reader.maxDoc()),
+              Sort.INDEXORDER);
       BitSet actual = new BitSet();
       for (ScoreDoc doc : topDocs.scoreDocs) {
         actual.set(Math.toIntExact(doc.doc));

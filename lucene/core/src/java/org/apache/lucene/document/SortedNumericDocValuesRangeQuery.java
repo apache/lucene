@@ -101,7 +101,7 @@ final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery 
     }
     if (lowerValue <= globalMin && upperValue >= globalMax) {
       if (DocValuesSkipper.globalDocCount(indexSearcher.getIndexReader(), field)
-          == indexSearcher.getIndexReader().totalMaxDoc()) {
+          == indexSearcher.getIndexReader().maxDoc()) {
         return MatchAllDocsQuery.INSTANCE;
       } else {
         return new FieldExistsQuery(field);
@@ -126,7 +126,7 @@ final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery 
           return null;
         }
 
-        int maxDoc = context.reader().maxDoc();
+        int maxDoc = context.maxLeafDoc();
         int count = docCountIgnoringDeletes(context);
         if (count == 0) {
           return null;
@@ -166,11 +166,11 @@ final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery 
 
       @Override
       public int count(LeafReaderContext context) {
-        int maxDoc = context.reader().maxDoc();
+        int maxDoc = context.maxLeafDoc();
         int cnt = docCountIgnoringDeletes(context);
         if (cnt == maxDoc) {
           // Return LeafReader#numDocs that accounts for deleted documents as well
-          return context.reader().numDocs();
+          return context.numLeafDocs();
         }
         return cnt;
       }
@@ -185,10 +185,10 @@ final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery 
           if (skipper.minValue() > upperValue || skipper.maxValue() < lowerValue) {
             return 0;
           }
-          if (skipper.docCount() == context.reader().maxDoc()
+          if (skipper.docCount() == context.maxLeafDoc()
               && skipper.minValue() >= lowerValue
               && skipper.maxValue() <= upperValue) {
-            return context.reader().maxDoc();
+            return context.maxLeafDoc();
           }
         }
         return -1;

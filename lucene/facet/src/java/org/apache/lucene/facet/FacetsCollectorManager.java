@@ -139,8 +139,7 @@ public class FacetsCollectorManager implements CollectorManager<FacetsCollector,
         }
       }
     }
-    DocIdSetBuilder docIdSetBuilder =
-        new DocIdSetBuilder(matchingDocs1.context().reader().maxDoc());
+    DocIdSetBuilder docIdSetBuilder = new DocIdSetBuilder(matchingDocs1.context().maxLeafDoc());
     try {
       docIdSetBuilder.add(matchingDocs1.bits().iterator());
       docIdSetBuilder.add(matchingDocs2.bits().iterator());
@@ -250,7 +249,7 @@ public class FacetsCollectorManager implements CollectorManager<FacetsCollector,
       FacetsCollectorManager fcm)
       throws IOException {
 
-    long limit = searcher.getIndexReader().totalMaxDoc();
+    long limit = searcher.getIndexReader().maxDoc();
     if (limit == 0) {
       limit = 1;
     }

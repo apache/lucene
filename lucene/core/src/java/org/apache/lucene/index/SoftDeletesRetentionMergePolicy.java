@@ -84,7 +84,7 @@ public final class SoftDeletesRetentionMergePolicy extends OneMergeWrappingMerge
     Scorer scorer =
         getScorer(
             retentionQuerySupplier.get(),
-            FilterCodecReader.wrapLiveDocs(reader, null, reader.maxDoc()));
+            FilterCodecReader.wrapLiveDocs(reader, null, reader.maxLeafDoc()));
     if (scorer != null) {
       DocIdSetIterator iterator = scorer.iterator();
       boolean atLeastOneHit = iterator.nextDoc() != DocIdSetIterator.NO_MORE_DOCS;
@@ -114,7 +114,7 @@ public final class SoftDeletesRetentionMergePolicy extends OneMergeWrappingMerge
                 return liveDocs.length();
               }
             },
-            reader.maxDoc() - reader.numDocs());
+            reader.maxLeafDoc() - reader.numLeafDocs());
     BooleanQuery.Builder builder = new BooleanQuery.Builder();
     builder.add(new FieldExistsQuery(softDeleteField), BooleanClause.Occur.FILTER);
     builder.add(retentionQuery, BooleanClause.Occur.FILTER);
@@ -137,7 +137,7 @@ public final class SoftDeletesRetentionMergePolicy extends OneMergeWrappingMerge
               + " maxDoc: "
               + reader.maxDoc();
       return FilterCodecReader.wrapLiveDocs(
-          reader, cloneLiveDocs, reader.numDocs() + numExtraLiveDocs);
+          reader, cloneLiveDocs, reader.numLeafDocs() + numExtraLiveDocs);
     } else {
       return reader;
     }
@@ -163,11 +163,11 @@ public final class SoftDeletesRetentionMergePolicy extends OneMergeWrappingMerge
         builder.add(retentionQuerySupplier.get(), BooleanClause.Occur.FILTER);
         Scorer scorer =
             getScorer(
-                builder.build(), FilterCodecReader.wrapLiveDocs(reader, null, reader.maxDoc()));
+                builder.build(), FilterCodecReader.wrapLiveDocs(reader, null, reader.maxLeafDoc()));
         if (scorer != null) {
           DocIdSetIterator iterator = scorer.iterator();
           Bits liveDocs = reader.getLiveDocs();
-          int numDeletedDocs = reader.numDeletedDocs();
+          int numDeletedDocs = reader.numDeletedLeafDocs();
           while (iterator.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
             if (liveDocs.get(iterator.docID()) == false) {
               numDeletedDocs--;

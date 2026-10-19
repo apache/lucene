@@ -55,8 +55,8 @@ public class TestMaxDocsAcrossSegments extends LuceneTestCase {
 
         try (DirectoryReader reader = DirectoryReader.open(w)) {
           // The index holds more docs than any single segment is allowed to.
-          assertEquals(numDocs, reader.totalMaxDoc());
-          assertEquals(numDocs, reader.totalNumDocs());
+          assertEquals(numDocs, reader.maxDoc());
+          assertEquals(numDocs, reader.numDocs());
           assertTrue(
               "expected the docs to be split across multiple segments", reader.leaves().size() > 1);
           assertPerSegmentLimit(reader, perSegment);
@@ -69,7 +69,7 @@ public class TestMaxDocsAcrossSegments extends LuceneTestCase {
       }
 
       try (DirectoryReader reader = DirectoryReader.open(dir)) {
-        assertEquals(numDocs, reader.totalNumDocs());
+        assertEquals(numDocs, reader.numDocs());
         final int minSegments = (numDocs + perSegment - 1) / perSegment;
         assertTrue(
             "force-merge must not coalesce below "
@@ -87,8 +87,8 @@ public class TestMaxDocsAcrossSegments extends LuceneTestCase {
   private static void assertPerSegmentLimit(DirectoryReader reader, int perSegment) {
     for (LeafReaderContext ctx : reader.leaves()) {
       assertTrue(
-          "segment maxDoc=" + ctx.reader().maxDoc() + " exceeds per-segment cap " + perSegment,
-          ctx.reader().maxDoc() <= perSegment);
+          "segment maxDoc=" + ctx.maxLeafDoc() + " exceeds per-segment cap " + perSegment,
+          ctx.maxLeafDoc() <= perSegment);
     }
   }
 }

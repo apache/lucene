@@ -216,7 +216,7 @@ public abstract class StrategyTestCase extends SpatialTestCase {
 
     for (LeafReaderContext ctx : indexSearcher.getTopReaderContext().leaves()) {
       DoubleValues v = vs.getValues(ctx, null);
-      int count = ctx.reader().maxDoc();
+      int count = ctx.maxLeafDoc();
       for (int i = 0; i < count; i++) {
         assertTrue(v.advanceExact(i));
         int doc = i + Math.toIntExact(ctx.docBase);

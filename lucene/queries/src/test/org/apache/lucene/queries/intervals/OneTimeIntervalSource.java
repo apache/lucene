@@ -32,7 +32,7 @@ public class OneTimeIntervalSource extends IntervalsSource {
     return new IntervalIterator() {
       int doc = -1;
       boolean flag;
-      final int maxDoc = ctx.reader().maxDoc();
+      final int maxDoc = ctx.maxLeafDoc();
 
       @Override
       public int start() {

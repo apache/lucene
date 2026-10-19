@@ -157,6 +157,6 @@ public class MaxScoreBulkScorerFilterBenchmark {
         },
         leaf.reader().getLiveDocs(),
         0,
-        leaf.reader().maxDoc());
+        leaf.maxLeafDoc());
   }
 }

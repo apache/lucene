@@ -132,7 +132,7 @@ public class TestTermOrdValComparatorAdaptiveSkipping extends LuceneTestCase {
       try (IndexReader reader = DirectoryReader.open(dir)) {
         assertEquals(1, reader.leaves().size());
         LeafReaderContext leafContext = reader.leaves().get(0);
-        int maxDoc = leafContext.reader().maxDoc();
+        int maxDoc = leafContext.maxLeafDoc();
 
         TermOrdValComparator comparator =
             new TermOrdValComparator(1, SORT_FIELD_SKIP, false, false, Pruning.GREATER_THAN);
@@ -179,7 +179,7 @@ public class TestTermOrdValComparatorAdaptiveSkipping extends LuceneTestCase {
       try (IndexReader reader = DirectoryReader.open(dir)) {
         assertEquals(1, reader.leaves().size());
         LeafReaderContext leafContext = reader.leaves().get(0);
-        int maxDoc = leafContext.reader().maxDoc();
+        int maxDoc = leafContext.maxLeafDoc();
 
         TermOrdValComparator comparator =
             new TermOrdValComparator(1, SORT_FIELD_SKIP, false, false, Pruning.GREATER_THAN);

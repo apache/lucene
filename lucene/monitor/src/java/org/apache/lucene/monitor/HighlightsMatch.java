@@ -52,7 +52,7 @@ public class HighlightsMatch extends QueryMatch {
                   searcher.createWeight(
                       searcher.rewrite(matchQuery), ScoreMode.COMPLETE_NO_SCORES, 1);
               for (LeafReaderContext ctx : searcher.getIndexReader().leaves()) {
-                for (int i = 0; i < ctx.reader().maxDoc(); i++) {
+                for (int i = 0; i < ctx.maxLeafDoc(); i++) {
                   Matches matches = w.matches(ctx, i);
                   if (matches != null) {
                     addMatch(buildMatch(matches, queryId), i);

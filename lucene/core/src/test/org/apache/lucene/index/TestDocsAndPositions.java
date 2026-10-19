@@ -70,11 +70,11 @@ public class TestDocsAndPositions extends LuceneTestCase {
       for (LeafReaderContext leafReaderContext : topReaderContext.leaves()) {
         PostingsEnum docsAndPosEnum = getDocsAndPositions(leafReaderContext.reader(), bytes);
         assertNotNull(docsAndPosEnum);
-        if (leafReaderContext.reader().maxDoc() == 0) {
+        if (leafReaderContext.maxLeafDoc() == 0) {
           continue;
         }
         final int advance =
-            docsAndPosEnum.advance(random().nextInt(leafReaderContext.reader().maxDoc()));
+            docsAndPosEnum.advance(random().nextInt(leafReaderContext.maxLeafDoc()));
         do {
           String msg =
               "Advanced to: "
@@ -157,7 +157,7 @@ public class TestDocsAndPositions extends LuceneTestCase {
         PostingsEnum docsAndPosEnum = getDocsAndPositions(leafReaderContext.reader(), bytes);
         assertNotNull(docsAndPosEnum);
         int initDoc = 0;
-        int maxDoc = leafReaderContext.reader().maxDoc();
+        int maxDoc = leafReaderContext.maxLeafDoc();
         // initially advance or do next doc
         if (random().nextBoolean()) {
           initDoc = docsAndPosEnum.nextDoc();
@@ -242,7 +242,7 @@ public class TestDocsAndPositions extends LuceneTestCase {
       BytesRef bytes = newBytesRef("" + term);
       IndexReaderContext topReaderContext = reader.getContext();
       for (LeafReaderContext context : topReaderContext.leaves()) {
-        int maxDoc = context.reader().maxDoc();
+        int maxDoc = context.maxLeafDoc();
         PostingsEnum postingsEnum =
             TestUtil.docs(random(), context.reader(), fieldName, bytes, null, PostingsEnum.FREQS);
         if (findNext(
@@ -338,7 +338,7 @@ public class TestDocsAndPositions extends LuceneTestCase {
         assertNotNull(docsAndPosEnum);
 
         int initDoc = 0;
-        int maxDoc = leafReaderContext.reader().maxDoc();
+        int maxDoc = leafReaderContext.maxLeafDoc();
         // initially advance or do next doc
         if (random().nextBoolean()) {
           initDoc = docsAndPosEnum.nextDoc();

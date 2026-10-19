@@ -918,7 +918,8 @@ public class TestBlockJoin extends LuceneTestCase {
       sortFields.addAll(Arrays.asList(childSort.getSort()));
       final Sort parentAndChildSort = new Sort(sortFields.toArray(SortField[]::new));
 
-      final TopDocs results = s.search(parentQuery, r.numDocs(), parentAndChildSort);
+      final TopDocs results =
+          s.search(parentQuery, Math.toIntExact(r.numDocs()), parentAndChildSort);
 
       if (VERBOSE) {
         System.out.println(
@@ -1145,7 +1146,7 @@ public class TestBlockJoin extends LuceneTestCase {
       if (VERBOSE) {
         System.out.println("TEST: run top down query=" + childQuery2 + " sort=" + childSort2);
       }
-      final TopDocs results2 = s.search(childQuery2, r.numDocs(), childSort2);
+      final TopDocs results2 = s.search(childQuery2, Math.toIntExact(r.numDocs()), childSort2);
       if (VERBOSE) {
         System.out.println("  " + results2.totalHits.value() + " totalHits:");
         for (ScoreDoc sd : results2.scoreDocs) {
@@ -1165,7 +1166,8 @@ public class TestBlockJoin extends LuceneTestCase {
         System.out.println(
             "TEST: run top down join query=" + childJoinQuery2 + " sort=" + childSort2);
       }
-      TopDocs joinResults2 = joinS.search(childJoinQuery2, joinR.numDocs(), childSort2);
+      TopDocs joinResults2 =
+          joinS.search(childJoinQuery2, Math.toIntExact(joinR.numDocs()), childSort2);
       if (VERBOSE) {
         System.out.println("  " + joinResults2.totalHits.value() + " totalHits:");
         for (ScoreDoc sd : joinResults2.scoreDocs) {

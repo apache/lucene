@@ -155,7 +155,7 @@ public class TestInetAddrSsDvMultiRangeQuery extends LuceneTestCase {
       }
       TopDocs boolRes;
       // System.out.println(Arrays.toString((
-      boolRes = searcher.search(orRanges, reader.maxDoc()); // ).scoreDocs));
+      boolRes = searcher.search(orRanges, Math.toIntExact(reader.maxDoc())); // ).scoreDocs));
 
       Set<Integer> boolDocs =
           Stream.of(boolRes.scoreDocs)
@@ -163,7 +163,7 @@ public class TestInetAddrSsDvMultiRangeQuery extends LuceneTestCase {
               .collect(Collectors.toSet());
       TopDocs mulRes;
       // System.out.println(Arrays.toString((
-      mulRes = searcher.search(multiRange, reader.maxDoc()); // ).scoreDocs));
+      mulRes = searcher.search(multiRange, Math.toIntExact(reader.maxDoc())); // ).scoreDocs));
       Set<Integer> mulDocs =
           Stream.of(mulRes.scoreDocs)
               .map((sd) -> Math.toIntExact(sd.doc))

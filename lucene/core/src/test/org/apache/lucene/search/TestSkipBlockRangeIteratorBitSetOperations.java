@@ -249,7 +249,7 @@ public class TestSkipBlockRangeIteratorBitSetOperations extends BaseDocValuesSki
 
   private void doTestIntoBitSetMatchesLinearScan(DirectoryReader r) throws Exception {
     LeafReaderContext ctx = r.leaves().get(0);
-    int maxDoc = ctx.reader().maxDoc();
+    int maxDoc = ctx.maxLeafDoc();
     int windowSize = DenseConjunctionBulkScorer.WINDOW_SIZE; // 4096
 
     FixedBitSet expected = new FixedBitSet(windowSize);
@@ -296,7 +296,7 @@ public class TestSkipBlockRangeIteratorBitSetOperations extends BaseDocValuesSki
 
   private void doTestIntoBitSetAllMatchRange(DirectoryReader r) throws Exception {
     LeafReaderContext ctx = r.leaves().get(0);
-    int maxDoc = ctx.reader().maxDoc();
+    int maxDoc = ctx.maxLeafDoc();
 
     DocValuesSkipper skipper = ctx.reader().getDocValuesSkipper("age");
     NumericDocValues dv = ctx.reader().getNumericDocValues("age");
@@ -328,7 +328,7 @@ public class TestSkipBlockRangeIteratorBitSetOperations extends BaseDocValuesSki
 
   private void doTestIntoBitSetNoMatchRange(DirectoryReader r) throws Exception {
     LeafReaderContext ctx = r.leaves().get(0);
-    int maxDoc = ctx.reader().maxDoc();
+    int maxDoc = ctx.maxLeafDoc();
 
     DocValuesSkipper skipper = ctx.reader().getDocValuesSkipper("age");
     NumericDocValues dv = ctx.reader().getNumericDocValues("age");
@@ -414,7 +414,7 @@ public class TestSkipBlockRangeIteratorBitSetOperations extends BaseDocValuesSki
 
     List<Integer> expected = new ArrayList<>();
     NumericDocValues refValues = ctx.reader().getNumericDocValues("age");
-    for (int d = 0; d < ctx.reader().maxDoc(); d++) {
+    for (int d = 0; d < ctx.maxLeafDoc(); d++) {
       if (refValues.advanceExact(d) && refValues.longValue() >= 20 && refValues.longValue() <= 40) {
         expected.add(d);
       }
@@ -478,7 +478,7 @@ public class TestSkipBlockRangeIteratorBitSetOperations extends BaseDocValuesSki
     dv = ctx.reader().getNumericDocValues("age");
     iter =
         TwoPhaseIterator.asDocIdSetIterator(DocValuesRangeIterator.forRange(dv, skipper, 20, 40));
-    int doc = iter.advance(ctx.reader().maxDoc());
+    int doc = iter.advance(ctx.maxLeafDoc());
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, doc);
   }
 

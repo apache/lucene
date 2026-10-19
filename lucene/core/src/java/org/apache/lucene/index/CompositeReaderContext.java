@@ -102,7 +102,7 @@ public final class CompositeReaderContext extends IndexReaderContext {
         final LeafReaderContext atomic =
             new LeafReaderContext(parent, ar, ord, docBase, leaves.size(), leafDocBase);
         leaves.add(atomic);
-        leafDocBase += reader.totalMaxDoc();
+        leafDocBase += reader.maxDoc();
         return atomic;
       } else {
         final CompositeReader cr = (CompositeReader) reader;
@@ -119,9 +119,9 @@ public final class CompositeReaderContext extends IndexReaderContext {
         for (int i = 0, c = sequentialSubReaders.size(); i < c; i++) {
           final IndexReader r = sequentialSubReaders.get(i);
           children.set(i, build(newParent, r, i, newDocBase));
-          newDocBase += r.totalMaxDoc();
+          newDocBase += r.maxDoc();
         }
-        assert newDocBase == cr.totalMaxDoc();
+        assert newDocBase == cr.maxDoc();
         return newParent;
       }
     }

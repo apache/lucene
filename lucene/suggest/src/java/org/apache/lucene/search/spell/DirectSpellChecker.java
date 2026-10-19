@@ -339,7 +339,7 @@ public class DirectSpellChecker {
       return new SuggestWord[0];
     }
 
-    long maxDoc = ir.totalMaxDoc();
+    long maxDoc = ir.maxDoc();
 
     if (maxQueryFrequency >= 1f && docfreq > maxQueryFrequency) {
       return new SuggestWord[0];

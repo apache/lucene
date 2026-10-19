@@ -1359,7 +1359,7 @@ public class TestSortOptimization extends LuceneTestCase {
   }
 
   private void doTestStringSortOptimization(DirectoryReader reader) throws IOException {
-    final int numDocs = reader.numDocs();
+    final int numDocs = Math.toIntExact(reader.numDocs());
     final int numHits = 5;
 
     { // simple ascending sort
@@ -1468,7 +1468,7 @@ public class TestSortOptimization extends LuceneTestCase {
     sortField.setOptimizeSortWithIndexedData(false);
 
     Sort sort = new Sort(sortField);
-    final int numDocs = reader.numDocs();
+    final int numDocs = Math.toIntExact(reader.numDocs());
     final int numHits = 5;
 
     TopDocs topDocs = assertSearchHits(reader, sort, numHits, null);

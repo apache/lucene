@@ -74,8 +74,8 @@ public final class MultiTerms extends Terms {
 
     // ReaderSlice spans the composite doc space with int fields, so MultiTerms cannot represent a
     // reader holding more than Integer.MAX_VALUE docs; fail fast here.
-    ReaderUtil.ensureIntDocIdSpace(r.totalMaxDoc(), "composite terms (MultiTerms)");
-    final int maxDoc = (int) r.totalMaxDoc(); // safe: guarded above
+    ReaderUtil.ensureIntDocIdSpace(r.maxDoc(), "composite terms (MultiTerms)");
+    final int maxDoc = (int) r.maxDoc(); // safe: guarded above
     final List<Terms> termsPerLeaf = new ArrayList<>(leaves.size());
     final List<ReaderSlice> slicePerLeaf = new ArrayList<>(leaves.size());
 

@@ -1034,7 +1034,7 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
           String f = "f" + field;
           NumericDocValues ndv = r.getNumericDocValues(f);
           assertNotNull(ndv);
-          int maxDoc = r.maxDoc();
+          int maxDoc = r.maxLeafDoc();
           for (int doc = 0; doc < maxDoc; doc++) {
             if (liveDocs == null || liveDocs.get(doc)) {
               assertEquals("advanced to wrong doc in seg=" + r, doc, ndv.advance(doc));

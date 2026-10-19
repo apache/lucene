@@ -38,12 +38,12 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
   private static LeafReader dummyIndexReader(final int maxDoc) {
     return new LeafReader() {
       @Override
-      public int maxDoc() {
+      public int maxLeafDoc() {
         return maxDoc;
       }
 
       @Override
-      public int numDocs() {
+      public int numLeafDocs() {
         return maxDoc;
       }
 

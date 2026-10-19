@@ -976,7 +976,7 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
       searcherMgrReadLock.unlock();
     }
     try {
-      return searcher.getIndexReader().totalNumDocs();
+      return searcher.getIndexReader().numDocs();
     } finally {
       mgr.release(searcher);
     }

@@ -407,7 +407,7 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
         var scorer = scorerSupplier.get(Long.MAX_VALUE);
         assertNotNull(scorer);
 
-        int maxDoc = ctx.reader().maxDoc();
+        int maxDoc = ctx.maxLeafDoc();
         int shallowEnd = scorer.advanceShallow(0);
         assertTrue(shallowEnd >= 0);
 
@@ -477,7 +477,7 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
         assertNotNull(supplier);
         Scorer scorer = supplier.get(Long.MAX_VALUE);
 
-        int maxDoc = ctx.reader().maxDoc();
+        int maxDoc = ctx.maxLeafDoc();
         scorer.advanceShallow(0);
         float maxScore = scorer.getMaxScore(maxDoc);
 
@@ -578,7 +578,7 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
         assertNotNull(supplier);
         Scorer scorer = supplier.get(Long.MAX_VALUE);
         scorer.advanceShallow(0);
-        float maxScore = scorer.getMaxScore(ctx.reader().maxDoc());
+        float maxScore = scorer.getMaxScore(ctx.maxLeafDoc());
 
         if (ctx.reader().getDocValuesSkipper("val") != null) {
           // Raw max is 500, sqrt(500) ~ 22.36
@@ -619,7 +619,7 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
         assertNotNull(supplier);
         Scorer scorer = supplier.get(Long.MAX_VALUE);
 
-        int maxDoc = ctx.reader().maxDoc();
+        int maxDoc = ctx.maxLeafDoc();
         scorer.advanceShallow(0);
         float maxScore = scorer.getMaxScore(maxDoc);
 
@@ -688,19 +688,19 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
         Weight wInc = qIncreasing.createWeight(searcher, ScoreMode.TOP_SCORES, 1f);
         Scorer scorerInc = wInc.scorerSupplier(ctx).get(Long.MAX_VALUE);
         scorerInc.advanceShallow(0);
-        float maxScoreInc = scorerInc.getMaxScore(ctx.reader().maxDoc());
+        float maxScoreInc = scorerInc.getMaxScore(ctx.maxLeafDoc());
 
         // DECREASING
         Weight wDec = qDecreasing.createWeight(searcher, ScoreMode.TOP_SCORES, 1f);
         Scorer scorerDec = wDec.scorerSupplier(ctx).get(Long.MAX_VALUE);
         scorerDec.advanceShallow(0);
-        float maxScoreDec = scorerDec.getMaxScore(ctx.reader().maxDoc());
+        float maxScoreDec = scorerDec.getMaxScore(ctx.maxLeafDoc());
 
         // NONE
         Weight wNone = qNone.createWeight(searcher, ScoreMode.TOP_SCORES, 1f);
         Scorer scorerNone = wNone.scorerSupplier(ctx).get(Long.MAX_VALUE);
         scorerNone.advanceShallow(0);
-        float maxScoreNone = scorerNone.getMaxScore(ctx.reader().maxDoc());
+        float maxScoreNone = scorerNone.getMaxScore(ctx.maxLeafDoc());
 
         if (ctx.reader().getDocValuesSkipper("val") != null) {
           // If skipper exists, INCREASING and DECREASING should compute a tight finite max score

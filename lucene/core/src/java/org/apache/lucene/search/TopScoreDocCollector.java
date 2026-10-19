@@ -67,7 +67,7 @@ public class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
   public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
     if (heap == null) {
       // All leaves share one heap; pick it once from the whole reader's doc-id space.
-      long totalMaxDoc = ReaderUtil.getTopLevelContext(context).reader().totalMaxDoc();
+      long totalMaxDoc = ReaderUtil.getTopLevelContext(context).reader().maxDoc();
       heap = DocScoreHeap.create(numHits, totalMaxDoc <= Integer.MAX_VALUE);
     }
     // The leaf's global doc base; a global doc id is docBase + leaf-local doc and may exceed

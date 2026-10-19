@@ -333,7 +333,7 @@ public final class StandardDirectoryReader extends DirectoryReader {
                     oldReader,
                     oldReader.getLiveDocs(),
                     oldReader.getHardLiveDocs(),
-                    oldReader.numDocs(),
+                    oldReader.numLeafDocs(),
                     false); // this is not an NRT reader!
           } else {
             // both DV and liveDocs have changed

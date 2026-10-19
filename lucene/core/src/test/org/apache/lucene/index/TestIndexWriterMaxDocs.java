@@ -354,7 +354,7 @@ public class TestIndexWriterMaxDocs extends LuceneTestCase {
     int remainder = IndexWriter.MAX_DOCS % 100000;
 
     // Push the composite total a bit past Integer.MAX_VALUE (MAX_DOCS == Integer.MAX_VALUE - 128),
-    // so the legacy int maxDoc() overflows while totalMaxDoc() stays exact.
+    // so the long maxDoc() must report a value larger than an int can hold.
     remainder += 200;
 
     Directory dir2 = newDirectory();
@@ -372,13 +372,11 @@ public class TestIndexWriterMaxDocs extends LuceneTestCase {
     Arrays.fill(subReaders, ir);
     subReaders[subReaders.length - 1] = ir2;
 
-    // A composite reader may now hold more than the per-segment MAX_DOCS limit: its doc-id space is
-    // long (this used to throw). Only a single segment stays bounded by MAX_DOCS.
+    // A composite reader may hold more than the per-segment MAX_DOCS limit: its doc-id space is a
+    // long. Only a single segment stays bounded by MAX_DOCS.
     MultiReader mr = new MultiReader(subReaders, false);
-    assertTrue(mr.totalMaxDoc() > Integer.MAX_VALUE);
-    assertEquals((long) IndexWriter.MAX_DOCS + 200, mr.totalMaxDoc());
-    // the legacy int accessor cannot represent a doc-id space beyond Integer.MAX_VALUE
-    expectThrows(ArithmeticException.class, mr::maxDoc);
+    assertTrue(mr.maxDoc() > Integer.MAX_VALUE);
+    assertEquals((long) IndexWriter.MAX_DOCS + 200, mr.maxDoc());
     mr.close();
 
     ir.close();

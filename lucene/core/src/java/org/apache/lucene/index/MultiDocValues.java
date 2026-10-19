@@ -47,7 +47,7 @@ public class MultiDocValues {
   public static NumericDocValues getNormValues(final IndexReader r, final String field)
       throws IOException {
     final List<LeafReaderContext> leaves = r.leaves();
-    ReaderUtil.ensureIntDocIdSpace(r.totalMaxDoc(), "composite doc values (MultiDocValues)");
+    ReaderUtil.ensureIntDocIdSpace(r.maxDoc(), "composite doc values (MultiDocValues)");
     final int size = leaves.size();
     if (size == 0) {
       return null;
@@ -180,7 +180,7 @@ public class MultiDocValues {
   public static NumericDocValues getNumericValues(final IndexReader r, final String field)
       throws IOException {
     final List<LeafReaderContext> leaves = r.leaves();
-    ReaderUtil.ensureIntDocIdSpace(r.totalMaxDoc(), "composite doc values (MultiDocValues)");
+    ReaderUtil.ensureIntDocIdSpace(r.maxDoc(), "composite doc values (MultiDocValues)");
     final int size = leaves.size();
     if (size == 0) {
       return null;
@@ -314,7 +314,7 @@ public class MultiDocValues {
   public static BinaryDocValues getBinaryValues(final IndexReader r, final String field)
       throws IOException {
     final List<LeafReaderContext> leaves = r.leaves();
-    ReaderUtil.ensureIntDocIdSpace(r.totalMaxDoc(), "composite doc values (MultiDocValues)");
+    ReaderUtil.ensureIntDocIdSpace(r.maxDoc(), "composite doc values (MultiDocValues)");
     final int size = leaves.size();
     if (size == 0) {
       return null;
@@ -453,7 +453,7 @@ public class MultiDocValues {
   public static SortedNumericDocValues getSortedNumericValues(
       final IndexReader r, final String field) throws IOException {
     final List<LeafReaderContext> leaves = r.leaves();
-    ReaderUtil.ensureIntDocIdSpace(r.totalMaxDoc(), "composite doc values (MultiDocValues)");
+    ReaderUtil.ensureIntDocIdSpace(r.maxDoc(), "composite doc values (MultiDocValues)");
     final int size = leaves.size();
     if (size == 0) {
       return null;
@@ -598,7 +598,7 @@ public class MultiDocValues {
   public static SortedDocValues getSortedValues(final IndexReader r, final String field)
       throws IOException {
     final List<LeafReaderContext> leaves = r.leaves();
-    ReaderUtil.ensureIntDocIdSpace(r.totalMaxDoc(), "composite doc values (MultiDocValues)");
+    ReaderUtil.ensureIntDocIdSpace(r.maxDoc(), "composite doc values (MultiDocValues)");
     final int size = leaves.size();
 
     if (size == 0) {
@@ -623,7 +623,7 @@ public class MultiDocValues {
       values[i] = v;
       starts[i] = (int) context.docBase;
     }
-    starts[size] = r.maxDoc();
+    starts[size] = (int) r.maxDoc(); // safe: guarded above
 
     if (anyReal == false) {
       return null;
@@ -645,7 +645,7 @@ public class MultiDocValues {
   public static SortedSetDocValues getSortedSetValues(final IndexReader r, final String field)
       throws IOException {
     final List<LeafReaderContext> leaves = r.leaves();
-    ReaderUtil.ensureIntDocIdSpace(r.totalMaxDoc(), "composite doc values (MultiDocValues)");
+    ReaderUtil.ensureIntDocIdSpace(r.maxDoc(), "composite doc values (MultiDocValues)");
     final int size = leaves.size();
 
     if (size == 0) {
@@ -670,7 +670,7 @@ public class MultiDocValues {
       values[i] = v;
       starts[i] = (int) context.docBase;
     }
-    starts[size] = r.maxDoc();
+    starts[size] = (int) r.maxDoc(); // safe: guarded above
 
     if (anyReal == false) {
       return null;

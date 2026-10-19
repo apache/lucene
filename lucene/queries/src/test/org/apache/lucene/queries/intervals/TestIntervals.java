@@ -137,7 +137,7 @@ public class TestIntervals extends LuceneTestCase {
       if (intervals == null) {
         continue;
       }
-      for (int doc = 0; doc < ctx.reader().maxDoc(); doc++) {
+      for (int doc = 0; doc < ctx.maxLeafDoc(); doc++) {
         ids.advance(doc);
         MatchesIterator mi = source.matches(field, ctx, doc);
         int id = (int) ids.longValue();

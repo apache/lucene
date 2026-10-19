@@ -480,7 +480,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
           "expected the concurrent reuse+repair path to run",
           infoBytes.toString(StandardCharsets.UTF_8).contains("repaired reused graph"));
       try (IndexReader reader = DirectoryReader.open(dir)) {
-        int liveCount = reader.numDocs();
+        int liveCount = Math.toIntExact(reader.numDocs());
         assertTrue("expected some docs to be deleted", liveCount < total);
         for (LeafReaderContext ctx : reader.leaves()) {
           HnswGraph graph =
@@ -520,7 +520,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
   @Override
   MockVectorValues vectorValues(LeafReader reader, String fieldName) throws IOException {
     FloatVectorValues vectorValues = reader.getFloatVectorValues(fieldName);
-    float[][] vectors = new float[reader.maxDoc()][];
+    float[][] vectors = new float[reader.maxLeafDoc()][];
     for (int i = 0; i < vectorValues.size(); i++) {
       vectors[vectorValues.ordToDoc(i)] =
           ArrayUtil.copyOfSubArray(vectorValues.vectorValue(i), 0, vectorValues.dimension());

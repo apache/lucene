@@ -525,7 +525,7 @@ public class TestQueryRescorer extends LuceneTestCase {
                     @Override
                     public int nextDoc() {
                       docID++;
-                      if (docID >= context.reader().maxDoc()) {
+                      if (docID >= context.maxLeafDoc()) {
                         return NO_MORE_DOCS;
                       }
                       return docID;

@@ -1580,7 +1580,7 @@ public class TestAddIndexes extends LuceneTestCase {
     w.close();
     DirectoryReader dr = DirectoryReader.open(d1);
     for (LeafReaderContext ctx : dr.leaves()) {
-      assertTrue("empty segments should be dropped by addIndexes", ctx.reader().maxDoc() > 0);
+      assertTrue("empty segments should be dropped by addIndexes", ctx.maxLeafDoc() > 0);
     }
     dr.close();
     d1.close();
@@ -1603,7 +1603,7 @@ public class TestAddIndexes extends LuceneTestCase {
     w.close();
     DirectoryReader dr = DirectoryReader.open(src);
     for (LeafReaderContext ctx : dr.leaves()) {
-      assertTrue("empty segments should be dropped by addIndexes", ctx.reader().maxDoc() > 0);
+      assertTrue("empty segments should be dropped by addIndexes", ctx.maxLeafDoc() > 0);
     }
     dr.close();
     allDeletedReader.close();
@@ -1794,8 +1794,8 @@ public class TestAddIndexes extends LuceneTestCase {
     // wrappedReader filters out soft deleted docs
     DirectoryReader wrappedReader = new SoftDeletesDirectoryReaderWrapper(reader, "soft_delete");
     Directory dir2 = newDirectory();
-    int numDocs = reader.numDocs();
-    int maxDoc = reader.maxDoc();
+    int numDocs = Math.toIntExact(reader.numDocs());
+    int maxDoc = Math.toIntExact(reader.maxDoc());
     assertEquals(numDocs, maxDoc);
     iwc1 = newIndexWriterConfig(new MockAnalyzer(random())).setSoftDeletesField("soft_delete");
     writer = new IndexWriter(dir2, iwc1);

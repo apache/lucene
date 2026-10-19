@@ -697,7 +697,7 @@ public class TestIndexingSequenceNumbers extends LuceneTestCase {
             System.out.println("  sub=" + ctx.reader());
             Bits liveDocs = ctx.reader().getLiveDocs();
             storedFields = ctx.reader().storedFields();
-            for (int docID = 0; docID < ctx.reader().maxDoc(); docID++) {
+            for (int docID = 0; docID < ctx.maxLeafDoc(); docID++) {
               System.out.println(
                   "    docID="
                       + docID

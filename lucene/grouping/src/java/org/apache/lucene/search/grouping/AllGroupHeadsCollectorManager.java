@@ -80,7 +80,7 @@ public class AllGroupHeadsCollectorManager<T>
     public FixedBitSet[] retrieveGroupHeads(List<LeafReaderContext> leaves) {
       FixedBitSet[] result = new FixedBitSet[leaves.size()];
       for (LeafReaderContext ctx : leaves) {
-        result[ctx.ord] = new FixedBitSet(ctx.reader().maxDoc());
+        result[ctx.ord] = new FixedBitSet(ctx.maxLeafDoc());
       }
       for (long docId : groupHeads) {
         int ord = ReaderUtil.subIndex(docId, leaves);

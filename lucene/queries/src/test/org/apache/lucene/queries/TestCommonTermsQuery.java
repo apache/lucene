@@ -470,9 +470,9 @@ public class TestCommonTermsQuery extends LuceneTestCase {
         cq.add(new Term(field, termAndFreq.term));
       }
 
-      TopDocs cqSearch = searcher.search(cq, reader.maxDoc());
+      TopDocs cqSearch = searcher.search(cq, Math.toIntExact(reader.maxDoc()));
 
-      TopDocs verifySearch = searcher.search(verifyQuery.build(), reader.maxDoc());
+      TopDocs verifySearch = searcher.search(verifyQuery.build(), Math.toIntExact(reader.maxDoc()));
       assertEquals(verifySearch.totalHits.value(), cqSearch.totalHits.value());
       Set<Integer> hits = new HashSet<>();
       for (ScoreDoc doc : verifySearch.scoreDocs) {

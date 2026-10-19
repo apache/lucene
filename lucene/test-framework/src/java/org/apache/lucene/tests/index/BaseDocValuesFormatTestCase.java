@@ -764,7 +764,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
         assertDocValuesSkipRandom(
             testDocValueSkipper.docValuesWrapper(reader),
             testDocValueSkipper.docValuesSkipper(reader),
-            reader.maxDoc());
+            reader.maxLeafDoc());
       }
     }
     assertEquals(numDocs, readDocs);
@@ -1112,8 +1112,10 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
           NumericDocValues truth = leaf.getNumericDocValues("f");
           FixedBitSet expected =
               expectedMatches(
-                  truth, () -> truth.longValue() >= min && truth.longValue() <= max, leaf.maxDoc());
-          assertDocIDRunEnds(tpi, expected, leaf.maxDoc());
+                  truth,
+                  () -> truth.longValue() >= min && truth.longValue() <= max,
+                  leaf.maxLeafDoc());
+          assertDocIDRunEnds(tpi, expected, leaf.maxLeafDoc());
         });
   }
 
@@ -1145,8 +1147,8 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
                     }
                     return false;
                   },
-                  leaf.maxDoc());
-          assertDocIDRunEnds(tpi, expected, leaf.maxDoc());
+                  leaf.maxLeafDoc());
+          assertDocIDRunEnds(tpi, expected, leaf.maxLeafDoc());
         });
   }
 
@@ -1171,8 +1173,8 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
               expectedMatches(
                   truth,
                   () -> truth.ordValue() >= minOrd && truth.ordValue() <= maxOrd,
-                  leaf.maxDoc());
-          assertDocIDRunEnds(tpi, expected, leaf.maxDoc());
+                  leaf.maxLeafDoc());
+          assertDocIDRunEnds(tpi, expected, leaf.maxLeafDoc());
         });
   }
 
@@ -1236,8 +1238,8 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
               }
               return false;
             },
-            leaf.maxDoc());
-    assertDocIDRunEnds(tpi, expected, leaf.maxDoc());
+            leaf.maxLeafDoc());
+    assertDocIDRunEnds(tpi, expected, leaf.maxLeafDoc());
   }
 
   /** Brute-force oracle: walks {@code truth} and records every doc where {@code matches} holds. */

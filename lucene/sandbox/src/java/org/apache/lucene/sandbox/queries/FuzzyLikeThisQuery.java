@@ -201,7 +201,7 @@ public class FuzzyLikeThisQuery extends Query {
     try (TokenStream ts = analyzer.tokenStream(f.fieldName, f.queryString)) {
       CharTermAttribute termAtt = ts.addAttribute(CharTermAttribute.class);
 
-      int corpusNumDocs = reader.numDocs();
+      long corpusNumDocs = reader.numDocs();
       HashSet<String> processedTerms = new HashSet<>();
       ts.reset();
       while (ts.incrementToken()) {

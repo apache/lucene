@@ -73,6 +73,16 @@ public final class LeafReaderContext extends IndexReaderContext {
     return reader;
   }
 
+  /** Returns the number of documents in this leaf, as an {@code int}. */
+  public int numLeafDocs() {
+    return reader.numLeafDocs();
+  }
+
+  /** Returns one greater than the largest document number in this leaf, as an {@code int}. */
+  public int maxLeafDoc() {
+    return reader.maxLeafDoc();
+  }
+
   /**
    * Converts a global doc id — from the top-level composite reader, whose space is {@code long} —
    * to a leaf-local doc id in this segment, which always fits an {@code int}. Prefer this to a raw

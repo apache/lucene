@@ -46,7 +46,7 @@ public final class ReaderUtil {
    * (e.g. {@code Bits}, {@code DocIdSetIterator}) is used on an index with more than {@link
    * Integer#MAX_VALUE} documents; such an index must be consumed per-leaf.
    *
-   * @param totalDocCount the composite reader's {@link IndexReader#totalMaxDoc()}
+   * @param totalDocCount the composite reader's {@link IndexReader#maxDoc()}
    * @param feature short description of the helper, for the error message
    */
   static void ensureIntDocIdSpace(long totalDocCount, String feature) {
@@ -200,7 +200,7 @@ public final class ReaderUtil {
     int leafIdx = 0;
     for (; leafIdx < numLeaves && from < packed.length; leafIdx++) {
       LeafReaderContext leaf = leaves.get(leafIdx);
-      long leafEndPacked = (leaf.docBase + leaf.reader().maxDoc()) << 32;
+      long leafEndPacked = (leaf.docBase + leaf.maxLeafDoc()) << 32;
       if (packed[from] >= leafEndPacked) {
         docIdsByLeaf[leafIdx] = EMPTY_INT_ARRAY;
         ordinalsByLeaf[leafIdx] = EMPTY_INT_ARRAY;

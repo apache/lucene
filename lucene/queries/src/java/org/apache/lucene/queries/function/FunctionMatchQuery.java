@@ -90,7 +90,7 @@ public final class FunctionMatchQuery extends Query {
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         DoubleValues values = vs.getValues(context, null);
-        DocIdSetIterator approximation = DocIdSetIterator.all(context.reader().maxDoc());
+        DocIdSetIterator approximation = DocIdSetIterator.all(context.maxLeafDoc());
         TwoPhaseIterator twoPhase =
             new TwoPhaseIterator(approximation) {
               @Override

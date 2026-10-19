@@ -203,10 +203,12 @@ public class TestDrillDownQuery extends FacetTestCase {
     // verify that drill-down queries do not modify scores
     IndexSearcher searcher = newSearcher(reader);
 
-    float[] scores = new float[reader.maxDoc()];
+    float[] scores = new float[Math.toIntExact(reader.maxDoc())];
 
     Query q = new TermQuery(new Term("content", "foo"));
-    TopDocs docs = searcher.search(q, reader.maxDoc()); // fetch all available docs to this query
+    TopDocs docs =
+        searcher.search(
+            q, Math.toIntExact(reader.maxDoc())); // fetch all available docs to this query
     for (ScoreDoc sd : docs.scoreDocs) {
       scores[Math.toIntExact(sd.doc)] = sd.score;
     }
@@ -214,7 +216,9 @@ public class TestDrillDownQuery extends FacetTestCase {
     // create a drill-down query with category "a", scores should not change
     DrillDownQuery q2 = new DrillDownQuery(config, q);
     q2.add("a");
-    docs = searcher.search(q2, reader.maxDoc()); // fetch all available docs to this query
+    docs =
+        searcher.search(
+            q2, Math.toIntExact(reader.maxDoc())); // fetch all available docs to this query
     for (ScoreDoc sd : docs.scoreDocs) {
       assertEquals(
           "score of doc=" + sd.doc + " modified", scores[Math.toIntExact(sd.doc)], sd.score, 0f);
@@ -227,7 +231,9 @@ public class TestDrillDownQuery extends FacetTestCase {
 
     DrillDownQuery q = new DrillDownQuery(config);
     q.add("a");
-    TopDocs docs = searcher.search(q, reader.maxDoc()); // fetch all available docs to this query
+    TopDocs docs =
+        searcher.search(
+            q, Math.toIntExact(reader.maxDoc())); // fetch all available docs to this query
     for (ScoreDoc sd : docs.scoreDocs) {
       assertEquals(0f, sd.score, 0f);
     }

@@ -71,7 +71,7 @@ public abstract class QueryRescorer extends Rescorer {
       while (docID >= endDoc) {
         readerUpto++;
         readerContext = leaves.get(readerUpto);
-        endDoc = readerContext.docBase + readerContext.reader().maxDoc();
+        endDoc = readerContext.docBase + readerContext.maxLeafDoc();
       }
 
       if (readerContext != null) {

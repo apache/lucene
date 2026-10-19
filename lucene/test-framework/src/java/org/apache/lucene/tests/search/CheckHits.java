@@ -70,7 +70,7 @@ public class CheckHits {
       ignore.add(Integer.valueOf(results[i]));
     }
 
-    int maxDoc = searcher.getIndexReader().maxDoc();
+    int maxDoc = Math.toIntExact(searcher.getIndexReader().maxDoc());
     for (int doc = 0; doc < maxDoc; doc++) {
       if (ignore.contains(Integer.valueOf(doc))) continue;
 

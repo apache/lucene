@@ -228,7 +228,7 @@ public class TestTopDocsMerge extends LuceneTestCase {
         final LeafReaderContext leave = compCTX.leaves().get(searcherIDX);
         subSearchers[searcherIDX] = new ShardSearcher(leave, compCTX);
         docStarts[searcherIDX] = docBase;
-        docBase += leave.reader().maxDoc();
+        docBase += leave.maxLeafDoc();
       }
     }
 

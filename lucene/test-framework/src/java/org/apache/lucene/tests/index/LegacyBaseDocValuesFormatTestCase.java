@@ -1454,7 +1454,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
       int iters = 1 + random().nextInt(3);
       for (int i = 0; i < iters; i++) {
         docValues = reader.getSortedNumericDocValues(dvField);
-        for (int doc = random().nextInt(leaf.reader().maxDoc()); doc < reader.maxDoc(); doc++) {
+        for (int doc = random().nextInt(leaf.maxLeafDoc()); doc < reader.maxLeafDoc(); doc++) {
           String[] storedValues = storedFields.document(doc).getValues(storedField);
           if (docValues.advanceExact(doc)) {
             assertEquals(doc, docValues.docID());
@@ -1477,7 +1477,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
       // jump with advance
       for (int i = 0; i < iters; i++) {
         docValues = reader.getSortedNumericDocValues(dvField);
-        int doc = random().nextInt(leaf.reader().maxDoc());
+        int doc = random().nextInt(leaf.maxLeafDoc());
         while (doc != NO_MORE_DOCS) {
           int nextDoc = docValues.advance(doc);
           // no stored fields in between
@@ -2383,7 +2383,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
       int iters = 1 + random().nextInt(3);
       for (int i = 0; i < iters; i++) {
         docValues = reader.getSortedSetDocValues(dvField);
-        for (int doc = random().nextInt(leaf.reader().maxDoc()); doc < reader.maxDoc(); doc++) {
+        for (int doc = random().nextInt(leaf.maxLeafDoc()); doc < reader.maxLeafDoc(); doc++) {
           String[] storedValues = storedFields.document(doc).getValues(storedField);
           if (docValues.advanceExact(doc)) {
             assertEquals(doc, docValues.docID());
@@ -2407,7 +2407,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
       // jump with advance
       for (int i = 0; i < iters; i++) {
         docValues = reader.getSortedSetDocValues(dvField);
-        int doc = random().nextInt(leaf.reader().maxDoc());
+        int doc = random().nextInt(leaf.maxLeafDoc());
         while (doc != NO_MORE_DOCS) {
           int nextDoc = docValues.advance(doc);
           // no stored fields in between
@@ -3772,7 +3772,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
     // Now search the index:
     IndexReader r = w.getReader();
     StoredFields storedFields = r.storedFields();
-    BitSet missing = new FixedBitSet(r.maxDoc());
+    BitSet missing = new FixedBitSet(Math.toIntExact(r.maxDoc()));
     for (int docID = 0; docID < r.maxDoc(); docID++) {
       Document doc = storedFields.document(docID);
       if (missingSet.contains(doc.getField("id").numericValue())) {
@@ -3793,7 +3793,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
           int range;
           if (random().nextInt(10) == 7) {
             // big jump
-            range = r.maxDoc() - values.docID();
+            range = Math.toIntExact(r.maxDoc()) - values.docID();
           } else {
             // small jump
             range = 25;

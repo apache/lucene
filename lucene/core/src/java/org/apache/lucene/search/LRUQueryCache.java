@@ -284,13 +284,13 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
 
     @Override
     public boolean test(LeafReaderContext context) {
-      final int maxDoc = context.reader().maxDoc();
+      final int maxDoc = context.maxLeafDoc();
       if (maxDoc < minSize) {
         return false;
       }
       final IndexReaderContext topLevelContext = ReaderUtil.getTopLevelContext(context);
       final long averageTotalDocs =
-          topLevelContext.reader().totalMaxDoc() / topLevelContext.leaves().size();
+          topLevelContext.reader().maxDoc() / topLevelContext.leaves().size();
       return (long) maxDoc * 2 > averageTotalDocs;
     }
   }
@@ -606,7 +606,7 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
       ScorerSupplier scorerSupplier,
       LeafReaderContext context)
       throws IOException {
-    final CacheAndCount cached = cacheImpl(scorerSupplier.bulkScorer(), context.reader().maxDoc());
+    final CacheAndCount cached = cacheImpl(scorerSupplier.bulkScorer(), context.maxLeafDoc());
     putIfAbsent(weight.getQuery(), cached, cacheKey);
     return cached;
   }
@@ -803,7 +803,7 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
     /** Check whether this segment is eligible for caching, regardless of the query. */
     private boolean shouldCache(LeafReaderContext context) throws IOException {
       return cacheEntryHasReasonableWorstCaseSize(
-              ReaderUtil.getTopLevelContext(context).reader().totalMaxDoc())
+              ReaderUtil.getTopLevelContext(context).reader().maxDoc())
           && leavesToCache.test(context);
     }
 
@@ -833,7 +833,7 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
       CacheAndCount cached;
       cached = get(in.getQuery(), cacheHelper);
 
-      int maxDoc = context.reader().maxDoc();
+      int maxDoc = context.maxLeafDoc();
       if (cached == null) {
         if (policy.shouldCache(in.getQuery())) {
           final ScorerSupplier supplier = in.scorerSupplier(context);

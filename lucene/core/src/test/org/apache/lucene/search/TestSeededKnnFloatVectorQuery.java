@@ -198,7 +198,7 @@ public class TestSeededKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
                   knnFloatVectorQuery, seed2, null, seedCount > 0 ? seedCalls : null);
           results = searcher.search(query, n);
           assertEquals(seedCalls.get(), seedCount > 0 ? 2 : 1);
-          expected = Math.min(Math.min(n, k), reader.numDocs());
+          expected = (int) Math.min(Math.min(n, k), reader.numDocs());
           assertEquals(expected, results.scoreDocs.length);
           assertTrue(results.totalHits.value() >= results.scoreDocs.length);
           // verify the results are in descending score order
@@ -214,7 +214,7 @@ public class TestSeededKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
               new TestSeededKnnByteVectorQuery.AssertingSeededKnnVectorQuery(
                   knnFloatVectorQuery, seed3, null, null);
           results = searcher.search(query, n);
-          expected = Math.min(Math.min(n, k), reader.numDocs());
+          expected = (int) Math.min(Math.min(n, k), reader.numDocs());
           assertEquals(expected, results.scoreDocs.length);
           assertTrue(results.totalHits.value() >= results.scoreDocs.length);
           // verify the results are in descending score order

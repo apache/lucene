@@ -379,8 +379,8 @@ public class TestSoftDeletesRetentionMergePolicy extends LuceneTestCase {
               }
 
               @Override
-              public int numDocs() {
-                return maxDoc();
+              public int numLeafDocs() {
+                return maxLeafDoc();
               }
             });
     TopDocs seq_id =
@@ -814,7 +814,7 @@ public class TestSoftDeletesRetentionMergePolicy extends LuceneTestCase {
       Bits hardLiveDocs = ((SegmentReader) reader).getHardLiveDocs();
       final int numDocs;
       if (hardLiveDocs == null) {
-        numDocs = reader.maxDoc();
+        numDocs = reader.maxLeafDoc();
       } else {
         int bits = 0;
         for (int i = 0; i < hardLiveDocs.length(); i++) {
@@ -826,7 +826,7 @@ public class TestSoftDeletesRetentionMergePolicy extends LuceneTestCase {
       }
       return new FilterLeafReader(reader) {
         @Override
-        public int numDocs() {
+        public int numLeafDocs() {
           return numDocs;
         }
 

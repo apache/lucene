@@ -706,7 +706,7 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
   public void addTaxonomy(Directory taxoDir, OrdinalMap map) throws IOException {
     ensureOpen();
     try (DirectoryReader r = DirectoryReader.open(taxoDir)) {
-      final int size = r.numDocs();
+      final int size = Math.toIntExact(r.numDocs());
       map.setSize(size);
       int base = 0;
       PostingsEnum docs = null;

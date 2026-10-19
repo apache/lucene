@@ -588,7 +588,8 @@ public class TestPointQueries extends LuceneTestCase {
                 }
 
                 final FixedBitSet hits =
-                    s.search(query, FixedBitSetCollector.createManager(r.maxDoc()));
+                    s.search(
+                        query, FixedBitSetCollector.createManager(Math.toIntExact(r.maxDoc())));
 
                 if (VERBOSE) {
                   System.out.println(
@@ -867,7 +868,8 @@ public class TestPointQueries extends LuceneTestCase {
                 }
 
                 final FixedBitSet hits =
-                    s.search(query, FixedBitSetCollector.createManager(r.maxDoc()));
+                    s.search(
+                        query, FixedBitSetCollector.createManager(Math.toIntExact(r.maxDoc())));
 
                 if (VERBOSE) {
                   System.out.println(

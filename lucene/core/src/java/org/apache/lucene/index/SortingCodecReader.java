@@ -722,7 +722,7 @@ public final class SortingCodecReader extends FilterCodecReader {
                 field.name,
                 () ->
                     new BinaryDocValuesWriter.BinaryDVs(
-                        maxDoc(), docMap, delegate.getBinary(field))));
+                        maxLeafDoc(), docMap, delegate.getBinary(field))));
       }
 
       @Override
@@ -733,7 +733,7 @@ public final class SortingCodecReader extends FilterCodecReader {
             getOrCreateDV(
                 field.name,
                 () -> {
-                  int[] ords = new int[maxDoc()];
+                  int[] ords = new int[maxLeafDoc()];
                   Arrays.fill(ords, -1);
                   int docID;
                   while ((docID = oldDocValues.nextDoc()) != NO_MORE_DOCS) {
@@ -753,7 +753,7 @@ public final class SortingCodecReader extends FilterCodecReader {
                 field.name,
                 () ->
                     new SortedNumericDocValuesWriter.LongValues(
-                        maxDoc(), docMap, oldDocValues, PackedInts.FAST)));
+                        maxLeafDoc(), docMap, oldDocValues, PackedInts.FAST)));
       }
 
       @Override
@@ -765,7 +765,7 @@ public final class SortingCodecReader extends FilterCodecReader {
                 field.name,
                 () ->
                     new SortedSetDocValuesWriter.DocOrds(
-                        maxDoc(),
+                        maxLeafDoc(),
                         docMap,
                         oldDocValues,
                         PackedInts.FAST,
@@ -792,8 +792,8 @@ public final class SortingCodecReader extends FilterCodecReader {
 
   private NumericDocValuesWriter.NumericDVs getNumericDocValues(NumericDocValues oldNumerics)
       throws IOException {
-    FixedBitSet docsWithField = new FixedBitSet(maxDoc());
-    long[] values = new long[maxDoc()];
+    FixedBitSet docsWithField = new FixedBitSet(maxLeafDoc());
+    long[] values = new long[maxLeafDoc()];
     int docID;
     while ((docID = oldNumerics.nextDoc()) != NO_MORE_DOCS) {
       int newDocID = docMap.oldToNew(docID);

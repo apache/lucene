@@ -128,7 +128,7 @@ public class DocumentDictionary implements Dictionary {
     public DocumentInputIterator(boolean hasPayloads, boolean hasContexts) throws IOException {
       this.hasPayloads = hasPayloads;
       this.hasContexts = hasContexts;
-      docCount = reader.maxDoc() - 1;
+      docCount = Math.toIntExact(reader.maxDoc()) - 1;
       weightValues =
           (weightField != null) ? MultiDocValues.getNumericValues(reader, weightField) : null;
       liveDocs = (reader.leaves().size() > 0) ? MultiBits.getLiveDocs(reader) : null;

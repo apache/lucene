@@ -250,7 +250,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     final Bits liveDocs = reader.getLiveDocs();
 
     if (filterWeight == null) {
-      AcceptDocs acceptDocs = AcceptDocs.fromLiveDocs(liveDocs, reader.maxDoc());
+      AcceptDocs acceptDocs = AcceptDocs.fromLiveDocs(liveDocs, reader.maxLeafDoc());
       return approximateSearch(ctx, acceptDocs, Integer.MAX_VALUE, timeLimitingKnnCollectorManager);
     }
 
@@ -265,14 +265,14 @@ abstract class AbstractKnnVectorQuery extends Query {
               }
             },
             liveDocs,
-            reader.maxDoc());
+            reader.maxLeafDoc());
     final int cost = acceptDocs.cost();
     QueryTimeout queryTimeout = timeLimitingKnnCollectorManager.getQueryTimeout();
 
     final int perLeafTopK;
     // ctx.parent could be null if this is a MemoryIndex
     if (ctx.parent != null) {
-      float leafProportion = ctx.reader().maxDoc() / (float) ctx.parent.reader().maxDoc();
+      float leafProportion = ctx.maxLeafDoc() / (float) ctx.parent.reader().maxDoc();
       perLeafTopK = perLeafTopKCalculation(k, leafProportion);
       // We don't have a good way to estimate perLeafTopK here, so just do approximate search
     } else {
@@ -323,7 +323,7 @@ abstract class AbstractKnnVectorQuery extends Query {
       // ctx.parent could be null if this is a MemoryIndex
       if (delegate.isOptimistic() && context.parent != null) {
         @SuppressWarnings("resource")
-        float leafProportion = context.reader().maxDoc() / (float) context.parent.reader().maxDoc();
+        float leafProportion = context.maxLeafDoc() / (float) context.parent.reader().maxDoc();
         int perLeafTopK = perLeafTopKCalculation(k, leafProportion);
         // if we divided by zero above, leafProportion can be NaN and then this would be 0
         assert perLeafTopK > 0;

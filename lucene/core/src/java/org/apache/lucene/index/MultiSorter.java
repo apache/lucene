@@ -60,7 +60,7 @@ final class MultiSorter {
             : "parent field: "
                 + fieldInfos.getParentField()
                 + " must be present if index sorting is used with blocks";
-        parents[j] = BitSet.of(parentDocs, codecReader.maxDoc());
+        parents[j] = BitSet.of(parentDocs, codecReader.maxLeafDoc());
       }
       if (metaData.hasBlocks()
           && fieldInfos.getParentField() == null
@@ -105,7 +105,7 @@ final class MultiSorter {
 
     for (int i = 0; i < leafCount; i++) {
       CodecReader reader = readers.get(i);
-      LeafAndDocID leaf = new LeafAndDocID(i, reader.getLiveDocs(), reader.maxDoc());
+      LeafAndDocID leaf = new LeafAndDocID(i, reader.getLiveDocs(), reader.maxLeafDoc());
       setComparableValues(comparables, parents[i], i, leaf.docID);
       queue.add(leaf);
       builders[i] = PackedLongValues.monotonicBuilder(PackedInts.COMPACT);

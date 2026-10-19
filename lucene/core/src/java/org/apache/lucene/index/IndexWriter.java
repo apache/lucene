@@ -3546,7 +3546,7 @@ public class IndexWriter
     boolean hasBlocks = false;
     for (MergePolicy.MergeReader reader : merge.getMergeReader()) {
       CodecReader leaf = reader.codecReader;
-      numDocs += leaf.numDocs();
+      numDocs += leaf.numLeafDocs();
       for (LeafReaderContext context : reader.codecReader.leaves()) {
         hasBlocks |= context.reader().getMetaData().hasBlocks();
       }
@@ -4772,7 +4772,7 @@ public class IndexWriter
       int mergedMaxDoc,
       LongObjectHashMap<DocValuesFieldUpdates> byGen)
       throws IOException {
-    final int maxDoc = current.maxDoc();
+    final int maxDoc = current.maxLeafDoc();
     NumericDocValues cur = current.getNumericDocValues(fi.name);
     NumericDocValues base = baseline.getNumericDocValues(fi.name);
     for (int doc = 0; doc < maxDoc; doc++) {
@@ -4804,7 +4804,7 @@ public class IndexWriter
       int mergedMaxDoc,
       LongObjectHashMap<DocValuesFieldUpdates> byGen)
       throws IOException {
-    final int maxDoc = current.maxDoc();
+    final int maxDoc = current.maxLeafDoc();
     BinaryDocValues cur = current.getBinaryDocValues(fi.name);
     BinaryDocValues base = baseline.getBinaryDocValues(fi.name);
     for (int doc = 0; doc < maxDoc; doc++) {
@@ -4843,7 +4843,7 @@ public class IndexWriter
       int mergedMaxDoc,
       LongObjectHashMap<DocValuesFieldUpdates> byGen)
       throws IOException {
-    final int maxDoc = current.maxDoc();
+    final int maxDoc = current.maxLeafDoc();
     SortedNumericDocValues cur = current.getSortedNumericDocValues(fi.name);
     SortedNumericDocValues base = baseline.getSortedNumericDocValues(fi.name);
     for (int doc = 0; doc < maxDoc; doc++) {
@@ -5570,11 +5570,11 @@ public class IndexWriter
                         };
                 wrappedReader =
                     FilterCodecReader.wrapLiveDocs(
-                        wrappedReader, liveDocs, wrappedReader.numDocs() - hardDeleteCount);
+                        wrappedReader, liveDocs, wrappedReader.numLeafDocs() - hardDeleteCount);
               }
             } else {
               final int carryOverSoftDeletes =
-                  reader.getSegmentInfo().getSoftDelCount() - wrappedReader.numDeletedDocs();
+                  reader.getSegmentInfo().getSoftDelCount() - wrappedReader.numDeletedLeafDocs();
               assert carryOverSoftDeletes >= 0 : "carry-over soft-deletes must be positive";
               assert assertSoftDeletesCount(wrappedReader, carryOverSoftDeletes);
               softDeleteCount.addAndGet(carryOverSoftDeletes);

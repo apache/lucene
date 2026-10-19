@@ -156,7 +156,7 @@ public class RandomSamplingFacetsCollector extends FacetsCollector {
 
   /** Create a sampled of the given hits. */
   private MatchingDocs createSample(MatchingDocs docs) {
-    int maxdoc = docs.context().reader().maxDoc();
+    int maxdoc = docs.context().maxLeafDoc();
 
     // TODO: we could try the WAH8DocIdSet here as well, as the results will be sparse
     FixedBitSet sampleDocs = new FixedBitSet(maxdoc);
@@ -246,7 +246,8 @@ public class RandomSamplingFacetsCollector extends FacetsCollector {
     int correctedTotalCount = res.value.intValue();
     if (correctedTotalCount > 0) {
       correctedTotalCount =
-          Math.min(reader.numDocs(), (int) (res.value.doubleValue() / samplingRate));
+          Math.min(
+              Math.toIntExact(reader.numDocs()), (int) (res.value.doubleValue() / samplingRate));
     }
 
     return new FacetResult(

@@ -1034,7 +1034,8 @@ public class TestGeo3DPoint extends LuceneTestCase {
         System.err.println("  using query: " + query);
       }
 
-      final FixedBitSet hits = s.search(query, FixedBitSetCollector.createManager(r.maxDoc()));
+      final FixedBitSet hits =
+          s.search(query, FixedBitSetCollector.createManager(Math.toIntExact(r.maxDoc())));
 
       if (VERBOSE) {
         System.err.println("  hitCount: " + hits.cardinality());
@@ -1931,7 +1932,7 @@ public class TestGeo3DPoint extends LuceneTestCase {
     StringBuilder b = new StringBuilder();
     b.append("target is in leaf " + leafReader + " of full reader " + reader + "\n");
 
-    DocIdSetBuilder hits = new DocIdSetBuilder(leafReader.maxDoc());
+    DocIdSetBuilder hits = new DocIdSetBuilder(leafReader.maxLeafDoc());
     ExplainingVisitor visitor =
         new ExplainingVisitor(
             shape,

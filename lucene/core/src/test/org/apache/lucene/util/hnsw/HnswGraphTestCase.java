@@ -355,8 +355,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
           KnnVectorValues values = vectorValues(ctx.reader(), "field");
           assertEquals(dim, values.dimension());
           assertEquals(nVec, values.size());
-          assertEquals(indexedDoc, ctx.reader().maxDoc());
-          assertEquals(indexedDoc, ctx.reader().numDocs());
+          assertEquals(indexedDoc, ctx.maxLeafDoc());
+          assertEquals(indexedDoc, ctx.numLeafDocs());
           assertVectorsEqual(v3, values);
           HnswGraph graphValues =
               ((Lucene99HnswVectorsReader)

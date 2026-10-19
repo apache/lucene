@@ -192,7 +192,7 @@ public class DrillSideways {
       query = new DrillDownQuery(config, filter, query);
     }
     if (sort != null) {
-      long limit = searcher.getIndexReader().totalMaxDoc();
+      long limit = searcher.getIndexReader().maxDoc();
       if (limit == 0) {
         limit = 1; // the collector does not allow numHits = 0
       }
@@ -224,7 +224,7 @@ public class DrillSideways {
   /** Search, sorting by score, and computing drill down and sideways counts. */
   public DrillSidewaysResult search(ScoreDoc after, DrillDownQuery query, int topN)
       throws IOException {
-    long limit = searcher.getIndexReader().totalMaxDoc();
+    long limit = searcher.getIndexReader().maxDoc();
     if (limit == 0) {
       limit = 1; // the collector does not allow numHits = 0
     }

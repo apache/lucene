@@ -51,7 +51,7 @@ public class TestComparatorSubclassing extends LuceneTestCase {
               @Override
               protected NumericComparator<Long>.CompetitiveDISIBuilder buildCompetitiveDISIBuilder()
                   throws IOException {
-                int maxDoc = context.reader().maxDoc();
+                int maxDoc = context.maxLeafDoc();
                 int jumpTo = Math.max(0, maxDoc - 10);
                 return new CompetitiveDISIBuilder(this) {
                   @Override

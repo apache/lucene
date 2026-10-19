@@ -61,6 +61,27 @@ public abstract non-sealed class LeafReader extends IndexReader {
     return readerContext;
   }
 
+  /** Returns the number of documents in this leaf, as an {@code int}. */
+  public abstract int numLeafDocs();
+
+  /** Returns one greater than the largest document number in this leaf, as an {@code int}. */
+  public abstract int maxLeafDoc();
+
+  @Override
+  public final long numDocs() {
+    return numLeafDocs();
+  }
+
+  @Override
+  public final long maxDoc() {
+    return maxLeafDoc();
+  }
+
+  /** Returns the number of deleted documents in this leaf. */
+  public final int numDeletedLeafDocs() {
+    return maxLeafDoc() - numLeafDocs();
+  }
+
   /**
    * Optional method: Return a {@link IndexReader.CacheHelper} that can be used to cache based on
    * the content of this leaf regardless of deletions. Two readers that have the same data but
