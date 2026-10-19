@@ -215,6 +215,8 @@ class TermAutomatonScorer extends Scorer {
 
   private void countMatches() throws IOException {
     freq = 0;
+    // posQueue is empty since we pop it until its size is 0 later.
+    assert posQueue.size() == 0;
     posQueue.addAll(Arrays.stream(subsOnDoc, 0, numSubsOnDoc));
     // System.out.println("\ncountMatches: " + numSubsOnDoc + " terms in doc=" + docID + "
     // anyTermID=" + anyTermID + " id=" + reader.document(docID).get("id"));
