@@ -212,9 +212,8 @@ public class IndexWriter
   /**
    * Hard limit on the number of documents that may be added across all segments of an index; adding
    * more throws {@code IllegalArgumentException}. Unlike the per-segment {@link #MAX_DOCS}, the
-   * composite doc-id space is a {@code long}, so this limit is above {@link Integer#MAX_VALUE}. It
-   * is bounded ({@code 2^37}, ~137 billion) rather than {@link Long#MAX_VALUE} so that per-segment
-   * merges and the writer's doc accounting stay tractable.
+   * composite doc-id space is a {@code long}, so this is above {@link Integer#MAX_VALUE}. The value
+   * ({@code 2^37}) is an arbitrary bound for now; it may be raised, or made configurable, later.
    */
   public static final long MAX_TOTAL_DOCS = 1L << 37;
 

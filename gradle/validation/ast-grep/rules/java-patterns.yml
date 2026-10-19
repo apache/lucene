@@ -157,8 +157,3 @@ ignores:
   - "**/MultiDocValues.java"
   # explain() accepts any doc id, including one past a leaf's end
   - "**/IndexSearcher.java"
-  # relative min-doc arithmetic that may go negative
-  - "**/comparators/DocComparator.java"
-  # cached long docBase without a context in scope (candidate for a follow-up refactor)
-  - "**/QueryRescorer.java"
-  - "**/DiversifiedTopDocsCollector.java"

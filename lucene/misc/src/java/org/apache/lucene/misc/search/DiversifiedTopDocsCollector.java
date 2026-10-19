@@ -129,7 +129,7 @@ public abstract class DiversifiedTopDocsCollector extends TopDocsCollector<Score
     return new TopDocs(new TotalHits(totalHits, TotalHits.Relation.EQUAL_TO), results);
   }
 
-  protected ScoreDocKey insert(ScoreDocKey addition, long docBase, NumericDocValues keys)
+  protected ScoreDocKey insert(ScoreDocKey addition, int leafDocID, NumericDocValues keys)
       throws IOException {
     if (globalQueue.size() >= numHits && KEY_COMPARATOR.compare(addition, globalQueue.top()) < 0) {
       // Queue is full and proposed addition is not a globally
@@ -138,10 +138,8 @@ public abstract class DiversifiedTopDocsCollector extends TopDocsCollector<Score
     }
     // The addition stands a chance of being entered - check the
     // key-specific restrictions.
-    // We delay fetching the key until we are certain the score is globally
-    // competitive. We need to adjust the ScoreDoc's global doc value to be
-    // a leaf reader value when looking up keys
-    int leafDocID = (int) (addition.doc - docBase);
+    // We delay fetching the key until we are certain the score is globally competitive. The caller
+    // passes the leaf-local doc id (the ScoreDocKey itself carries the global doc).
     long value;
     if (keys.advanceExact(leafDocID)) {
       value = keys.longValue();
@@ -231,7 +229,7 @@ public abstract class DiversifiedTopDocsCollector extends TopDocsCollector<Score
           spare.doc = globalDoc;
           spare.score = score;
         }
-        spare = insert(spare, base, keySource);
+        spare = insert(spare, doc, keySource);
       }
     };
   }

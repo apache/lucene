@@ -61,7 +61,7 @@ public abstract class QueryRescorer extends Rescorer {
     int hitUpto = 0;
     int readerUpto = -1;
     long endDoc = 0;
-    long docBase = 0;
+    LeafReaderContext currentContext = null;
     Scorer scorer = null;
 
     while (hitUpto < hits.length) {
@@ -76,13 +76,12 @@ public abstract class QueryRescorer extends Rescorer {
 
       if (readerContext != null) {
         // We advanced to another segment:
-        docBase = readerContext.docBase;
+        currentContext = readerContext;
         scorer = weight.scorer(readerContext);
       }
 
       if (scorer != null) {
-        // targetDoc is leaf-local and fits an int
-        int targetDoc = (int) (docID - docBase);
+        int targetDoc = currentContext.toLeafDocId(docID);
         int actualDoc = scorer.docID();
         if (actualDoc < targetDoc) {
           actualDoc = scorer.iterator().advance(targetDoc);
