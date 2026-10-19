@@ -2313,7 +2313,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
       if (ordsEntry.docsWithFieldOffset == -1) { // dense
         return new BaseSortedSetDocValues(entry, data) {
-
+          final int denseFixedCardinality = fixedCardinality(ordsEntry, skippers.get(field.number));
           private final int maxDoc = Lucene90DocValuesProducer.this.maxDoc;
           private int doc = -1;
           private long curr;
@@ -2376,6 +2376,22 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
             if (upTo > doc) {
               bitSet.set(doc - offset, upTo - offset);
               advance(upTo);
+            }
+          }
+
+          @Override
+          public void ordinalRangeIntoBitSet(
+              int fromDoc, int toDoc, long minOrd, long maxOrd, FixedBitSet bitSet, int offset)
+              throws IOException {
+            int endDoc = Math.min(toDoc, maxDoc);
+            if (fromDoc >= endDoc) {
+              return;
+            }
+            if (denseFixedCardinality > 1) {
+              DOC_VALUES_RANGE_SUPPORT.sortedNumericRangeIntoBitSet(
+                  values, fromDoc, endDoc, denseFixedCardinality, minOrd, maxOrd, bitSet, offset);
+            } else {
+              super.ordinalRangeIntoBitSet(fromDoc, endDoc, minOrd, maxOrd, bitSet, offset);
             }
           }
         };
@@ -2458,7 +2474,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       }
     }
 
-    final SortedNumericDocValues ords = getSortedNumeric(ordsEntry, null);
+    final SortedNumericDocValues ords = getSortedNumeric(ordsEntry, skippers.get(field.number));
     return new BaseSortedSetDocValues(entry, data) {
 
       @Override
@@ -2504,6 +2520,13 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       @Override
       public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
         ords.intoBitSet(upTo, bitSet, offset);
+      }
+
+      @Override
+      public void ordinalRangeIntoBitSet(
+          int fromDoc, int toDoc, long minOrd, long maxOrd, FixedBitSet bitSet, int offset)
+          throws IOException {
+        ords.rangeIntoBitSet(fromDoc, toDoc, minOrd, maxOrd, bitSet, offset);
       }
     };
   }

@@ -76,6 +76,7 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.FixedBitSet;
 
 /** Tests Lucene90DocValuesFormat */
 public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatTestCase {
@@ -185,6 +186,41 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
     doTestDenseNumericLongValuesBulkFetch(48);
     doTestDenseNumericLongValuesBulkFetch(56);
     doTestDenseNumericLongValuesBulkFetch(64);
+  }
+
+  public void testSortedSetOrdinalRangeIntoBitSetMultiBlock() throws Exception {
+    int numDocs = Lucene90DocValuesFormat.NUMERIC_BLOCK_SIZE;
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig config = new IndexWriterConfig(new MockAnalyzer(random()));
+      config.setCodec(getCodec());
+      // block 0: [0,1] × 8192 docs
+      // block 1: [5,6] × 8192 docs
+      FixedBitSet expected = new FixedBitSet(numDocs);
+      try (IndexWriter writer = new IndexWriter(dir, config)) {
+        for (int docID = 0; docID < numDocs; docID++) {
+          Document doc = new Document();
+          int firstValue = docID < numDocs / 2 ? 0 : 5;
+          if (firstValue == 0) {
+            expected.set(docID);
+          }
+          doc.add(SortedSetDocValuesField.indexedField("field", new BytesRef("a" + firstValue)));
+          doc.add(
+              SortedSetDocValuesField.indexedField("field", new BytesRef("a" + (firstValue + 1))));
+          writer.addDocument(doc);
+        }
+        writer.forceMerge(1);
+      }
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        LeafReader leaf = getOnlyLeafReader(reader);
+        SortedSetDocValues values = leaf.getSortedSetDocValues("field");
+        long ord = values.lookupTerm(new BytesRef("a1"));
+        FixedBitSet actual = new FixedBitSet(numDocs);
+        values.ordinalRangeIntoBitSet(0, numDocs, ord, ord, actual, 0);
+
+        assertEquals(expected, actual);
+      }
+    }
   }
 
   private void doTestDenseNumericLongValuesBulkFetch(int bitsPerValue) throws Exception {

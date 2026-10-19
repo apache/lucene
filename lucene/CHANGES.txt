@@ -682,6 +682,8 @@ Optimizations
 
 * GITHUB#16089: Upgrade DocIdSetBuilder to use FixedBitSet eagerly once exceeding the threshold (Ke Wei)
 
+* GITHUB#16869: add ordinalRangeIntoBitSet for SortedSetDocValues ordinal ranges (Ke Wei)
+
 Bug Fixes
 ---------------------
 

@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 
 /**
@@ -48,6 +49,40 @@ public abstract class SortedSetDocValues extends DocValuesIterator {
    * false}.
    */
   public abstract int docValueCount();
+
+  /**
+   * Fills {@code bitSet} with the doc IDs in {@code [fromDoc, toDoc)} whose ordinals contain at
+   * least one value in {@code [minOrd, maxOrd]}. This is a bulk operation that avoids per-doc
+   * virtual dispatch overhead.
+   *
+   * <p>The default implementation falls back to per-doc evaluation via {@link #advanceExact},
+   * {@link #docValueCount}, and {@link #nextOrd}. Subclasses with random-access storage (e.g.,
+   * dense fixed-bitsPerValue fields) can override this for significantly better performance.
+   *
+   * @param fromDoc first doc ID to evaluate (inclusive)
+   * @param toDoc last doc ID to evaluate (exclusive)
+   * @param minOrd lower bound of the ordinal range (inclusive)
+   * @param maxOrd upper bound of the ordinal range (inclusive)
+   * @param bitSet the bitset to fill
+   * @param offset subtracted from each doc ID before setting the bit
+   */
+  public void ordinalRangeIntoBitSet(
+      int fromDoc, int toDoc, long minOrd, long maxOrd, FixedBitSet bitSet, int offset)
+      throws IOException {
+    for (int doc = fromDoc; doc < toDoc; doc++) {
+      if (advanceExact(doc)) {
+        for (int i = 0, count = docValueCount(); i < count; i++) {
+          long ord = nextOrd();
+          if (ord >= minOrd) {
+            if (ord <= maxOrd) {
+              bitSet.set(doc - offset);
+            }
+            break;
+          }
+        }
+      }
+    }
+  }
 
   /**
    * Retrieves the value for the specified ordinal. The returned {@link BytesRef} may be re-used

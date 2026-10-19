@@ -129,7 +129,7 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
     return skipper == null
         ? new DocValuesValueRangeIterator(values, check, 5)
         : new BulkOrdinalRangeIterator(
-            values, new SkipBlockRangeIterator(skipper, min, max), check, 5);
+            values, new SkipBlockRangeIterator(skipper, min, max), check, 5, min, max);
   }
 
   /**
@@ -520,31 +520,36 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
   }
 
   /**
-   * Bulk range iterator over ordinal (sorted-set) doc values. There is no columnar range-decode
-   * like the numeric path, and for multi-valued we must check the predicate (which walks the
-   * per-doc ords), so MAYBE blocks confirm by visiting only docs that have a value.
+   * Bulk range iterator over multi-valued sorted (ordinal) doc values. Delegates MAYBE blocks to
+   * {@link SortedSetDocValues#ordinalRangeIntoBitSet} so that dense packed implementations can use
+   * direct (SIMD) range evaluation over the ordinal array.
    */
   private static final class BulkOrdinalRangeIterator extends BulkBlockRangeIterator {
 
+    private final SortedSetDocValues sortedSetValues;
+    private final long minOrd;
+    private final long maxOrd;
+
     private BulkOrdinalRangeIterator(
-        DocIdSetIterator values,
+        SortedSetDocValues values,
         SkipBlockRangeIterator blockIterator,
         IOBooleanSupplier predicate,
-        float matchCost) {
+        float matchCost,
+        long minOrd,
+        long maxOrd) {
       super(values, blockIterator, predicate, matchCost);
+      this.sortedSetValues = values;
+      this.minOrd = minOrd;
+      this.maxOrd = maxOrd;
     }
 
     @Override
     void intoMaybeBlock(int blockStart, int blockEnd, FixedBitSet bitSet, int offset)
         throws IOException {
-      if (disi.docID() < blockStart) {
-        disi.advance(blockStart);
-      }
-      for (int doc = disi.docID(); doc < blockEnd; doc = disi.nextDoc()) {
-        if (predicate.get()) {
-          bitSet.set(doc - offset);
-        }
-      }
+      // sortedSetValues is the same instance as disi, so a preceding matches() call may have
+      // moved it beyond blockStart. Adjust the starting point.
+      int from = Math.max(blockStart, sortedSetValues.docID());
+      sortedSetValues.ordinalRangeIntoBitSet(from, blockEnd, minOrd, maxOrd, bitSet, offset);
     }
   }
 

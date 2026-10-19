@@ -27,6 +27,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
+import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesSkipper;
@@ -946,6 +947,52 @@ public class TestDocValuesRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
   public void testSortedNumericRangeIntoBitSetVaryingCardinality() throws Exception {
     for (int cardinality : new int[] {2, 3, 4, 5, 7, 8}) {
       doTestSortedNumericRangeIntoBitSet(true, true, cardinality);
+    }
+  }
+
+  public void testSortedSetOrdinalRangeIntoMaybeBlock() throws Exception {
+    int numDocs = 4096 * 2;
+    int cardinality = 4;
+    String lowerValue = "a5";
+    String upperValue = "a9";
+    FixedBitSet expected = new FixedBitSet(numDocs);
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig().setCodec(new Lucene104Codec());
+      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+        for (int docID = 0; docID < numDocs; docID++) {
+          Document doc = new Document();
+          for (int i = 0; i < cardinality; i++) {
+            String value = "a" + (1 + (docID + i) % 100);
+            doc.add(SortedSetDocValuesField.indexedField("val", new BytesRef(value)));
+            if (value.compareTo(lowerValue) >= 0 && value.compareTo(upperValue) <= 0) {
+              expected.set(docID);
+            }
+          }
+          w.addDocument(doc);
+        }
+        w.forceMerge(1);
+      }
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        LeafReaderContext ctx = reader.leaves().get(0);
+        IndexSearcher searcher = newSearcher(reader);
+        Query query =
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "val", new BytesRef(lowerValue), new BytesRef(upperValue), true, true);
+        assertEquals(expected.cardinality(), searcher.count(query));
+
+        Weight weight = query.createWeight(searcher, ScoreMode.COMPLETE_NO_SCORES, 1f);
+        ScorerSupplier scorerSupplier = weight.scorerSupplier(ctx);
+        assertTrue(scorerSupplier instanceof ConstantScoreScorerSupplier);
+        DocIdSetIterator iterator =
+            ((ConstantScoreScorerSupplier) scorerSupplier).iterator(Long.MAX_VALUE);
+        TwoPhaseIterator twoPhase = TwoPhaseIterator.unwrap(iterator);
+        DocValuesRangeIterator rangeIterator = (DocValuesRangeIterator) twoPhase;
+        rangeIterator.approximation().nextDoc();
+        FixedBitSet actual = new FixedBitSet(numDocs);
+        rangeIterator.intoBitSet(numDocs, actual, 0);
+        assertEquals(expected, actual);
+      }
     }
   }
 
