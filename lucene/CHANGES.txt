@@ -598,7 +598,7 @@ Optimizations
 * GITHUB#16268: LongRangeFacetCutter: doc-values skip index for single + multi-valued fields,
   single-valued segment unwrapping, and interval tracker rewind. (Jakub Slowinski)
 
-* GITHUB#XXXXX: LongRangeFacetCutter: use the single-valued leaf cutter for single-valued segments,
+* GITHUB#16868: LongRangeFacetCutter: use the single-valued leaf cutter for single-valued segments,
   with or without a doc-values skip index. (Jakub Slowinski)
 
 * GITHUB#16285: Apply GCD bound transform to sorted numeric rangeIntoBitSet, comparing raw
