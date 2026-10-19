@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FieldsProducer;
@@ -195,15 +196,25 @@ public class STUniformSplitTermsWriter extends UniformSplitTermsWriter {
       Fields fields, List<FieldMetadata> fieldMetadataList) throws IOException {
     PriorityQueue<TermIterator<FieldTerms>> fieldQueue =
         PriorityQueue.usingComparator(fieldMetadataList.size(), Comparator.naturalOrder());
-    for (FieldMetadata fieldMetadata : fieldMetadataList) {
-      Terms terms = fields.terms(fieldMetadata.getFieldInfo().name);
-      if (terms != null) {
-        FieldTerms fieldTerms = new FieldTerms(fieldMetadata, terms.iterator());
-        if (fieldTerms.nextTerm()) {
-          // There is at least one term for the field.
-          fieldQueue.add(fieldTerms);
-        }
-      }
+    try {
+      fieldQueue.addAll(
+          fieldMetadataList.stream()
+              .map(
+                  fieldMetadata -> {
+                    try {
+                      Terms terms = fields.terms(fieldMetadata.getFieldInfo().name);
+                      if (terms == null) {
+                        return null;
+                      }
+                      FieldTerms fieldTerms = new FieldTerms(fieldMetadata, terms.iterator());
+                      return fieldTerms.nextTerm() ? fieldTerms : null;
+                    } catch (IOException e) {
+                      throw new UncheckedIOException(e);
+                    }
+                  })
+              .filter(Objects::nonNull));
+    } catch (UncheckedIOException e) {
+      throw e.getCause();
     }
     return fieldQueue;
   }
