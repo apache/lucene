@@ -18,18 +18,19 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.tests.util.TestUtil;
 
 public class TestBlockMaxConjunctionBulkScorer extends LuceneTestCase {
 
@@ -40,12 +41,11 @@ public class TestBlockMaxConjunctionBulkScorer extends LuceneTestCase {
    */
   public void testDoesNotIterateWindowsBeyondMaxDoc() throws IOException {
     try (Directory dir = newDirectory()) {
-      final int numDocs = 200_000;
+      final int numDocs = 70_000;
       final String longTail = " w w w w w w w w w w w w w w w w w w w w";
-      // impacts-based max scores are needed to reproduce, so use the default codec rather than a
-      // random one
-      try (IndexWriter w =
-          new IndexWriter(dir, newIndexWriterConfig().setCodec(TestUtil.getDefaultCodec()))) {
+      // impacts-based max scores and doc order are needed to reproduce, so use the default codec
+      // and merge policy rather than random ones
+      try (IndexWriter w = new IndexWriter(dir, new IndexWriterConfig())) {
         for (int i = 0; i < numDocs; i++) {
           // f1 is a short field: these docs fill the top-k with high scores
           String f1 = i < 1000 ? "a b" : "x";
@@ -130,7 +130,7 @@ public class TestBlockMaxConjunctionBulkScorer extends LuceneTestCase {
         return;
       }
       if (size == topK.length) {
-        java.util.Arrays.sort(topK);
+        Arrays.sort(topK);
         scorer.setMinCompetitiveScore(Math.nextUp(topK[0]));
       }
     }
