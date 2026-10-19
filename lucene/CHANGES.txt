@@ -7,6 +7,9 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
+* GITHUB#16741: Lower the minimum supported major version from 10 to 9. Indexes created with 9.x
+  remain fully supported in Lucene 11, no reindexing required. (Luca Cavanna)
+
 * GITHUB#16705: KnnVectorValues#prefetch(int ord, int count) replaces prefetch(int ord). It prefetches
   a run of consecutive vectors with a single read and returns true if a prefetch was issued, like
   IndexInput#prefetch. The int[] form now coalesces ordinals that are consecutive in the array over
@@ -213,6 +216,12 @@ Improvements
 
 Optimizations
 ---------------------
+
+* GITHUB#16771: Lucene99FlatVectorsWriter now aligns vector data to 4096 bytes for all encodings
+  (previously 64 for float32 and 4 for float16 and byte), so a vector whose size divides a page or is
+  a multiple of it no longer straddles a page boundary and a rescoring read touches no extra page.
+  (Ankur Goel)
+
 * GITHUB#16431, GITHUB#16697: Add support for Block-Max WAND dynamic score skipping in FunctionScoreQuery
   and DoubleValuesSource using DocValuesSkipper. (Rajat Jain, Zhang Chao)
 
@@ -756,6 +765,10 @@ Bug Fixes
   for the life of the JVM once both their signed and unsigned (uint8) variants have been used,
   e.g. when searching UNSIGNED_BYTE and SEVEN_BIT scalar-quantized fields in one JVM.
   (Lantao Jin)
+
+* GITHUB#16849: Fix quadratic cost of BitSetIterator#docIDRunEnd() over long runs of set bits,
+  e.g. a dense cached filter on a segment with deletions, which made DenseConjunctionBulkScorer
+  rescan the run for every 4096-doc window since 10.5.0 (Costin Leau)
 
 Build
 ---------------------
