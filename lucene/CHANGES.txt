@@ -685,6 +685,11 @@ Optimizations
 Bug Fixes
 ---------------------
 
+* GITHUB#16830: Fix the backward-codecs Lucene99 OffHeapQuantizedByteVectorValues returning another
+  vector's score correction from getScoreCorrectionConstant after reading a different ordinal's score
+  correction, which made the compressed int4 scorer mis-score a node against itself or after
+  resetting the same scoring ordinal. (Lantao Jin)
+
 * GITHUB#16764: Fix Lucene104ScalarQuantizedVectorsWriter to exclude deleted docs when recomputing the
   merge centroid and correct the vector count so that it reflects the live docs after deletions, preventing
   query-side data from being prepared for merged fields that are too small to build a graph. (Pranshu Shukla)
