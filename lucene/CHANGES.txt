@@ -261,7 +261,7 @@ Optimizations
 
 Bug Fixes
 ---------------------
-* GITHUB#TODO: Apply buffered soft-update/delete terms before the global delete buffer reaches the 2GB
+* GITHUB#16867: Apply buffered soft-update/delete terms before the global delete buffer reaches the 2GB
   addressing limit of its ByteBlockPool, and stall indexing if the limit is hit during a full flush.
   (Alan Woodward)
 
