@@ -428,6 +428,7 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
       }
       dir.setPreload(MMapDirectory.NO_FILES);
       try (var in = (MemorySegmentIndexInput) dir.openInput("test", IOContext.DEFAULT)) {
+        in.backoff.onMiss(); // a cold file probes on every call until it earns N hits
         for (int i = 0; i < PrefetchBackoff.N; i++) {
           assertTrue("call " + i, in.backoff.shouldProbe(++in.prefetchCalls));
           in.backoff.onHit();
@@ -445,6 +446,30 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
         assertTrue("expected sampling, got " + probes + " probes in " + calls, probes < calls / 16);
       }
     }
+  }
+
+  // A non-preloaded file starts at N - 1: the first call probes, a hit switches to sampling, and a
+  // miss makes the file earn N hits again.
+  public void testFirstProbeDecides() {
+    PrefetchBackoff warm = new PrefetchBackoff();
+    assertTrue(warm.shouldProbe(1));
+    warm.onHit();
+    int probes = 0;
+    for (int i = 0; i < PrefetchBackoff.SKIP * 4; i++) {
+      if (warm.shouldProbe(i + 1)) {
+        probes++;
+      }
+    }
+    assertEquals(4, probes);
+
+    PrefetchBackoff cold = new PrefetchBackoff();
+    assertTrue(cold.shouldProbe(1));
+    cold.onMiss();
+    for (int i = 0; i < PrefetchBackoff.N; i++) {
+      assertTrue("call " + i, cold.shouldProbe(i + 1));
+      cold.onHit();
+    }
+    assertFalse(cold.shouldProbe(1));
   }
 
   // Each input seeds its call counter from a shared sequence, so among SKIP consecutive clones of

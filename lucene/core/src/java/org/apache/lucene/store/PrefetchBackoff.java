@@ -23,9 +23,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  * calling madvise. One instance is shared by all clones and slices of an input.
  *
  * <p>Probe on every call until {@link #N} consecutive hits, then every {@link #SKIP}th call; a miss
- * goes back to probing on every call. Files start cold unless preloaded: a wrong warm guess costs
- * up to SKIP unprefetched reads with no feedback, a wrong cold guess costs N cheap probes. While
- * sampling, an eviction goes unnoticed for at most SKIP - 1 reads.
+ * goes back to probing on every call. Files start one hit short of sampling ({@code N - 1}), so the
+ * first prefetch always probes: a hit on a warm file switches to sampling immediately, while a miss
+ * resets the count to zero and the file has to earn N hits. Preloaded files start in sampling mode.
+ * While sampling, an eviction goes unnoticed for at most SKIP - 1 reads.
  *
  * <p>Each input counts its own calls, seeded from a sequence number taken when it is created, so
  * consecutive clones sample at different offsets and short-lived clones still sample collectively,
@@ -55,9 +56,12 @@ final class PrefetchBackoff {
     this(false);
   }
 
-  /** A preloaded file was touched page by page at open, so it starts in sampling mode. */
+  /**
+   * A preloaded file was touched page by page at open, so it starts in sampling mode. Any other
+   * file starts at {@code N - 1} so that the first call probes and decides.
+   */
   PrefetchBackoff(boolean preloaded) {
-    consecutiveHits = new AtomicInteger(preloaded ? N : 0);
+    consecutiveHits = new AtomicInteger(preloaded ? N : N - 1);
     inputs = new AtomicInteger();
   }
 
