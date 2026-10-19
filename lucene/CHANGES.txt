@@ -361,6 +361,10 @@ Bug Fixes
   threads race to initialize it, which could leave each analyzer holding its own ~7 MB copy.
   (Eugene Rizhkov)
 
+* GITHUB#16849: Fix quadratic cost of BitSetIterator#docIDRunEnd() over long runs of set bits,
+  e.g. a dense cached filter on a segment with deletions, which made DenseConjunctionBulkScorer
+  rescan the run for every 4096-doc window since 10.5.0 (Costin Leau)
+
 Build
 ---------------------
 
