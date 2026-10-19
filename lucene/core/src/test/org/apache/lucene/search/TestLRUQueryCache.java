@@ -1244,7 +1244,13 @@ public class TestLRUQueryCache extends LuceneTestCase {
     assertEquals(maxDocId - minDocId, cacheAndCount.count());
     DocIdSetIterator iterator = cacheAndCount.iterator();
     assertEquals(minDocId, iterator.advance(0));
-    assertEquals(maxDocId, iterator.docIDRunEnd());
+    // docIDRunEnd may return a prefix of the run
+    int runEnd = iterator.docIDRunEnd();
+    while (runEnd < maxDocId) {
+      assertEquals(runEnd, iterator.advance(runEnd));
+      runEnd = iterator.docIDRunEnd();
+    }
+    assertEquals(maxDocId, runEnd);
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, iterator.advance(maxDocId));
     queryCache.close();
   }
