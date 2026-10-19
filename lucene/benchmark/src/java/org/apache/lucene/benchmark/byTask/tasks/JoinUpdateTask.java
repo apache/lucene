@@ -137,8 +137,12 @@ public class JoinUpdateTask extends PerfTask {
         }
       }
     }
-    productIndex.manager().maybeRefreshBlocking();
-    skuIndex.manager().maybeRefreshBlocking();
+    final var productManager = productIndex.manager();
+    final var skuManager = skuIndex.manager();
+    productManager.maybeRefreshBlocking();
+    if (skuManager != productManager) {
+      skuManager.maybeRefreshBlocking();
+    }
     return batch;
   }
 

@@ -123,7 +123,8 @@ public class JoinSearchTask extends PerfTask {
                   from,
                   scoreMode,
                   ((JoinIndices.JoinSearcher) from).ordinalMap());
-          default -> new ToParentBlockJoinQuery(skus, PRODUCTS, scoreMode);
+          case "block" -> new ToParentBlockJoinQuery(skus, PRODUCTS, scoreMode);
+          default -> throw new IllegalArgumentException("Unknown join algorithm: " + algorithm);
         };
     totalHits +=
         to.count(

@@ -140,11 +140,37 @@ final class JoinIndices implements Closeable {
 
   @Override
   public synchronized void close() throws IOException {
+    IOException firstException = null;
     for (Index index : indices.values()) {
-      IOUtils.close(index.manager(), index.writer()::rollback, index.dir());
+      try {
+        index.manager().close();
+      } catch (IOException e) {
+        firstException = e;
+      }
+      try {
+        index.writer().rollback();
+      } catch (IOException e) {
+        if (firstException == null) {
+          firstException = e;
+        } else {
+          firstException.addSuppressed(e);
+        }
+      }
+      try {
+        index.dir().close();
+      } catch (IOException e) {
+        if (firstException == null) {
+          firstException = e;
+        } else {
+          firstException.addSuppressed(e);
+        }
+      }
     }
     if (executor != null) {
       executor.shutdown();
+    }
+    if (firstException != null) {
+      throw firstException;
     }
   }
 }
