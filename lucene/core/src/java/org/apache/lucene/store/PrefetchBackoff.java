@@ -28,7 +28,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * resets the count to zero and the file has to earn N hits. Preloaded files start in sampling mode.
  * While sampling, an eviction goes unnoticed for at most SKIP - 1 reads.
  *
- * <p>Each input counts its own calls, seeded from a sequence number taken when it is created, so
+ * <p>Each input counts its own calls, starting from a sequence number taken when it is created, so
  * consecutive clones sample at different offsets and short-lived clones still sample collectively,
  * though possibly at a lower frequency if clones sample fewer than {@link #SKIP} times per
  * instance.
@@ -66,11 +66,11 @@ final class PrefetchBackoff {
   }
 
   /** Initial value for a new input's call counter, see {@link #shouldProbe}. Once per input. */
-  int nextSeed() {
+  int nextCounterStart() {
     return inputs.incrementAndGet();
   }
 
-  /** {@code calls} is the input's own call count, starting from {@link #nextSeed()}. */
+  /** {@code calls} is the input's own call count, starting from {@link #nextCounterStart()}. */
   boolean shouldProbe(int calls) {
     return consecutiveHits.get() < N || (calls & (SKIP - 1)) == 0;
   }

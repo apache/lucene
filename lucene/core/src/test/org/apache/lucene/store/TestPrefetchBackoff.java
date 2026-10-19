@@ -53,7 +53,7 @@ public class TestPrefetchBackoff extends LuceneTestCase {
 
   public void testStartsColdThenSamples() {
     PrefetchBackoff backoff = new PrefetchBackoff();
-    int seed = backoff.nextSeed();
+    int seed = backoff.nextCounterStart();
     for (int i = 0; i < N; i++) {
       assertTrue("call " + i, backoff.shouldProbe(++seed));
       backoff.onHit();
@@ -63,7 +63,7 @@ public class TestPrefetchBackoff extends LuceneTestCase {
 
   public void testPreloadedStartsSampling() {
     PrefetchBackoff backoff = new PrefetchBackoff(true);
-    int seed = backoff.nextSeed();
+    int seed = backoff.nextCounterStart();
     assertSampling(backoff, seed);
     // a miss still re-arms the full ramp
     backoff.onMiss();
@@ -114,9 +114,9 @@ public class TestPrefetchBackoff extends LuceneTestCase {
 
   public void testSeedsAreConsecutive() {
     PrefetchBackoff backoff = new PrefetchBackoff();
-    int first = backoff.nextSeed();
+    int first = backoff.nextCounterStart();
     for (int i = 1; i < 3 * SKIP; i++) {
-      assertEquals(first + i, backoff.nextSeed());
+      assertEquals(first + i, backoff.nextCounterStart());
     }
   }
 
@@ -135,7 +135,7 @@ public class TestPrefetchBackoff extends LuceneTestCase {
       }
       futures.clear();
       for (int t = 0; t < threads; t++) {
-        futures.add(exec.submit(() -> assertSampling(backoff, backoff.nextSeed())));
+        futures.add(exec.submit(() -> assertSampling(backoff, backoff.nextCounterStart())));
       }
       for (Future<?> f : futures) {
         f.get();

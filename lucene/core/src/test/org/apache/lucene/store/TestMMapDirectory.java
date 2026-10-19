@@ -472,7 +472,7 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
     assertFalse(cold.shouldProbe(1));
   }
 
-  // Each input seeds its call counter from a shared sequence, so among SKIP consecutive clones of
+  // Each input starts its call counter from a shared sequence, so among SKIP consecutive clones of
   // a warm input exactly one samples on its first prefetch call.
   public void testClonesSampleAtDifferentOffsets() throws IOException {
     try (MMapDirectory dir =
