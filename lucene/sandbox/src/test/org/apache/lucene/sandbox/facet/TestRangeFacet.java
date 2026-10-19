@@ -45,6 +45,7 @@ import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.sandbox.facet.cutters.TaxonomyFacetsCutter;
 import org.apache.lucene.sandbox.facet.cutters.ranges.DoubleRangeFacetCutter;
 import org.apache.lucene.sandbox.facet.cutters.ranges.LongRangeFacetCutter;
@@ -1137,6 +1138,37 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     }
 
     assertSkipIndexEquivalence(w, "by-name-no-skip-index");
+
+    w.close();
+    IOUtils.close(dir);
+  }
+
+  public void testByNameNoSkipIndexMixedSegmentsEquivalence() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    iwc.setMergePolicy(NoMergePolicy.INSTANCE);
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
+    w.setDoRandomForceMerge(false);
+
+    // A multi-valued segment followed by a single-valued one, so the by-name cutter picks a
+    // different leaf cutter for each.
+    int numDocs = atLeast(500);
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      doc.add(new SortedNumericDocValuesField("field", TestUtil.nextLong(random(), -100, 100)));
+      if (i == 0 || random().nextBoolean()) {
+        doc.add(new SortedNumericDocValuesField("field", TestUtil.nextLong(random(), -100, 100)));
+      }
+      w.addDocument(doc);
+    }
+    w.commit();
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      doc.add(new SortedNumericDocValuesField("field", TestUtil.nextLong(random(), -100, 100)));
+      w.addDocument(doc);
+    }
+
+    assertSkipIndexEquivalence(w, "by-name-no-skip-index-mixed-segments");
 
     w.close();
     IOUtils.close(dir);
