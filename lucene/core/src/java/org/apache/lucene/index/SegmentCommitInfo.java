@@ -268,15 +268,16 @@ public class SegmentCommitInfo {
 
   /** Returns total size in bytes of all files for this segment. */
   public long sizeInBytes() throws IOException {
-    if (sizeInBytes == -1) {
-      long sum = 0;
+    long size = sizeInBytes;
+    if (size == -1) {
+      size = 0;
       for (final String fileName : files()) {
-        sum += info.dir.fileLength(fileName);
+        size += info.dir.fileLength(fileName);
       }
-      sizeInBytes = sum;
+      sizeInBytes = size;
     }
 
-    return sizeInBytes;
+    return size;
   }
 
   /** Returns all files in use by this segment. */
