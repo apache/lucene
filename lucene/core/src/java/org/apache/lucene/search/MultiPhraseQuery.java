@@ -429,12 +429,15 @@ public class MultiPhraseQuery extends Query {
     public UnionPostingsEnum(Collection<PostingsEnum> subs) {
       docsQueue =
           PriorityQueue.usingComparator(subs.size(), Comparator.comparingInt(PostingsEnum::docID));
-      long cost = 0;
-      for (PostingsEnum sub : subs) {
-        docsQueue.add(sub);
-        cost += sub.cost();
-      }
-      this.cost = cost;
+      long[] cost = {0};
+      docsQueue.addAll(
+          subs.stream()
+              .map(
+                  sub -> {
+                    cost[0] += sub.cost();
+                    return sub;
+                  }));
+      this.cost = cost[0];
       this.subs = subs.toArray(PostingsEnum[]::new);
     }
 

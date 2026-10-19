@@ -112,6 +112,7 @@ class TermAutomatonScorer extends Scorer {
 
   /** Pushes all previously pop'd enums back into the docIDQueue */
   private void pushCurrentDoc() {
+    // TODO: Since addAll need adjusts all heap, and pq may not empty here. we use add here.
     for (int i = 0; i < numSubsOnDoc; i++) {
       docIDQueue.add(subsOnDoc[i]);
     }
