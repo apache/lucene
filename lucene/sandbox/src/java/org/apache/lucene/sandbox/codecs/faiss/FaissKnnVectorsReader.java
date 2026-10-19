@@ -59,6 +59,16 @@ final class FaissKnnVectorsReader extends KnnVectorsReader {
   private final Map<String, FaissLibrary.Index> indexMap;
   private boolean closed;
 
+  /**
+   * Reads the same indexes as {@code reader}, with the raw vectors read by {@code
+   * rawVectorsReader}.
+   */
+  private FaissKnnVectorsReader(FaissKnnVectorsReader reader, FlatVectorsReader rawVectorsReader) {
+    this.rawVectorsReader = rawVectorsReader;
+    this.data = reader.data;
+    this.indexMap = reader.indexMap;
+  }
+
   public FaissKnnVectorsReader(SegmentReadState state, FlatVectorsReader rawVectorsReader)
       throws IOException {
     this.rawVectorsReader = rawVectorsReader;
@@ -206,6 +216,24 @@ final class FaissKnnVectorsReader extends KnnVectorsReader {
   @Override
   public int getVectorCount(FieldInfo fieldInfo) throws IOException {
     return rawVectorsReader.getVectorCount(fieldInfo);
+  }
+
+  /**
+   * A merge rebuilds the index from the raw vectors, so it reads them the way the raw reader's
+   * merge instance does. The index itself is not read by a merge.
+   */
+  @Override
+  public KnnVectorsReader getMergeInstance() throws IOException {
+    FlatVectorsReader rawMergeInstance = rawVectorsReader.getMergeInstance();
+    if (rawMergeInstance == rawVectorsReader) {
+      return this;
+    }
+    return new FaissKnnVectorsReader(this, rawMergeInstance);
+  }
+
+  @Override
+  public void finishMerge() throws IOException {
+    rawVectorsReader.finishMerge();
   }
 
   @Override

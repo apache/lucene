@@ -135,11 +135,13 @@ final class DedupMergeContext implements Accountable {
 
       if (quantizer != null) {
         if (mergeGroup instanceof FloatGroup floatGroup) {
+          // Flavors referenced by this group's fields
           Set<DedupQuantizer.Flavor> flavors = EnumSet.noneOf(DedupQuantizer.Flavor.class);
           for (FieldData fieldData : entry.getValue()) {
             flavors.add(
                 DedupQuantizer.Flavor.of(fieldData.fieldInfo.getVectorSimilarityFunction()));
           }
+
           quantizer.writeGroup(
               meta,
               quantizedVectorData,
@@ -149,6 +151,24 @@ final class DedupMergeContext implements Accountable {
               flavors,
               ord -> floatGroup.get(ord).get(),
               floatGroup::preQuantized);
+        } else if (mergeGroup instanceof Float16Group float16Group) {
+          // Flavors referenced by this group's fields
+          Set<DedupQuantizer.Flavor> flavors = EnumSet.noneOf(DedupQuantizer.Flavor.class);
+          for (FieldData fieldData : entry.getValue()) {
+            flavors.add(
+                DedupQuantizer.Flavor.of(fieldData.fieldInfo.getVectorSimilarityFunction()));
+          }
+          // FLOAT16 is stored raw as short[]; inflate to float[] for data-blind quantization.
+          float[] inflated = new float[dimension];
+          quantizer.writeGroup(
+              meta,
+              quantizedVectorData,
+              encoding,
+              dimension,
+              groupNumVectors,
+              flavors,
+              ord -> DedupUtil.inflateFloat16(float16Group.get(ord).get(), inflated),
+              float16Group::preQuantized);
         } else {
           DedupQuantizer.writeEmptyGroup(meta);
         }
@@ -171,6 +191,7 @@ final class DedupMergeContext implements Accountable {
           groupOrds.get(fieldData.groupKey),
           fieldData.fieldOrdToGroupOrd.elementsCount,
           fieldData.maxDoc,
+          fieldData.maxGroupOrd,
           fieldData.docsWithFieldSet,
           new FieldOrdToGroupOrdArrayList(fieldData.fieldOrdToGroupOrd));
     }
@@ -201,6 +222,7 @@ final class DedupMergeContext implements Accountable {
         // record hit and ord in group
         fieldData.docsWithFieldSet.add(next.mappedDocID);
         fieldData.fieldOrdToGroupOrd.add(cursor.index);
+        fieldData.maxGroupOrd = Math.max(fieldData.maxGroupOrd, cursor.index);
       }
     }
   }
@@ -296,7 +318,8 @@ final class DedupMergeContext implements Accountable {
     DedupQuantizer.PreQuantized preQuantized(int ord) {
       FloatVector handle = get(ord);
       if (handle.values()
-          instanceof DedupScalarQuantizedVectorValues.RawAndQuantizedValues rawAndQuantized) {
+          instanceof
+          DedupScalarQuantizedVectorValues.Float32RawAndQuantizedValues rawAndQuantized) {
         DedupScalarQuantizedVectorValues.FieldValues quantized =
             rawAndQuantized.getQuantizedValues();
         return new DedupQuantizer.PreQuantized(quantized, quantized.flavor(), handle.ord());
@@ -371,6 +394,23 @@ final class DedupMergeContext implements Accountable {
       return new Float16Vector(sub.values, sub.iterator.index());
     }
 
+    /**
+     * The already-quantized record of the distinct vector at a group ordinal, when its source
+     * segment is in this format (data-blind quantization is a pure function of the inflated raw
+     * vector, so the record can be copied on merge instead of re-quantizing), or {@code null}.
+     */
+    DedupQuantizer.PreQuantized preQuantized(int ord) {
+      Float16Vector handle = get(ord);
+      if (handle.values()
+          instanceof
+          DedupScalarQuantizedVectorValues.Float16RawAndQuantizedValues rawAndQuantized) {
+        DedupScalarQuantizedVectorValues.FieldValues quantized =
+            rawAndQuantized.getQuantizedValues();
+        return new DedupQuantizer.PreQuantized(quantized, quantized.flavor(), handle.ord());
+      }
+      return null;
+    }
+
     @Override
     public long hash(Float16Vector vector) throws IOException {
       buffer.put(0, vector.get());
@@ -409,15 +449,37 @@ final class DedupMergeContext implements Accountable {
     }
   }
 
-  private record FieldData(
-      FieldInfo fieldInfo,
-      GroupKey groupKey,
-      DocsWithFieldSet docsWithFieldSet,
-      IntArrayList fieldOrdToGroupOrd,
-      DocIDMerger<?> merger,
-      int maxDoc) {
+  private static final class FieldData {
+    private final FieldInfo fieldInfo;
+    private final GroupKey groupKey;
+    private final DocsWithFieldSet docsWithFieldSet;
+    private final IntArrayList fieldOrdToGroupOrd;
+    private final DocIDMerger<?> merger;
+    private final int maxDoc;
+    // Largest group ordinal referenced by this field, tracked as vectors are merged in.
+    private int maxGroupOrd;
 
     static final long SHALLOW_SIZE = RamUsageEstimator.shallowSizeOfInstance(FieldData.class);
+
+    FieldData(
+        FieldInfo fieldInfo,
+        GroupKey groupKey,
+        DocsWithFieldSet docsWithFieldSet,
+        IntArrayList fieldOrdToGroupOrd,
+        DocIDMerger<?> merger,
+        int maxDoc) {
+      this.fieldInfo = fieldInfo;
+      this.groupKey = groupKey;
+      this.docsWithFieldSet = docsWithFieldSet;
+      this.fieldOrdToGroupOrd = fieldOrdToGroupOrd;
+      this.merger = merger;
+      this.maxDoc = maxDoc;
+      this.maxGroupOrd = 0;
+    }
+
+    GroupKey groupKey() {
+      return groupKey;
+    }
   }
 
   private static class Sub<T extends KnnVectorValues> extends DocIDMerger.Sub {

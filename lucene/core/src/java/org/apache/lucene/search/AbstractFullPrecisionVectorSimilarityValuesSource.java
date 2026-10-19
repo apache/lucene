@@ -60,6 +60,11 @@ abstract class AbstractFullPrecisionVectorSimilarityValuesSource extends DoubleV
               + fi.getVectorDimension());
     }
 
+    // A separate view is used for prefetching so that running ahead of the scoring position does
+    // not disturb the iterator that advanceExact()/doubleValue() rely on.
+    final KnnVectorValues prefetchValues = vectorValues.copy();
+    final KnnVectorValues.DocIndexIterator prefetchIterator = prefetchValues.iterator();
+
     if (vectorSimilarityFunction == null) {
       VectorScorer scorer = fullPrecisionRescorer(vectorValues);
       if (scorer == null) {
@@ -77,6 +82,14 @@ abstract class AbstractFullPrecisionVectorSimilarityValuesSource extends DoubleV
           return doc >= iterator.docID()
               && (iterator.docID() == doc || iterator.advance(doc) == doc);
         }
+
+        @Override
+        public void prefetch(int doc) throws IOException {
+          if (doc >= prefetchIterator.docID()
+              && (prefetchIterator.docID() == doc || prefetchIterator.advance(doc) == doc)) {
+            prefetchValues.prefetch(prefetchIterator.index(), 1);
+          }
+        }
       };
     }
     final KnnVectorValues.DocIndexIterator iterator = vectorValues.iterator();
@@ -89,6 +102,14 @@ abstract class AbstractFullPrecisionVectorSimilarityValuesSource extends DoubleV
       @Override
       public boolean advanceExact(int doc) throws IOException {
         return doc >= iterator.docID() && (iterator.docID() == doc || iterator.advance(doc) == doc);
+      }
+
+      @Override
+      public void prefetch(int doc) throws IOException {
+        if (doc >= prefetchIterator.docID()
+            && (prefetchIterator.docID() == doc || prefetchIterator.advance(doc) == doc)) {
+          prefetchValues.prefetch(prefetchIterator.index(), 1);
+        }
       }
     };
   }

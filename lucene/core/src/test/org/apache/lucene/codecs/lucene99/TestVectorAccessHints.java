@@ -43,6 +43,8 @@ import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.NoReuseHint;
 import org.apache.lucene.store.ReadOnceHint;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -205,6 +207,60 @@ public class TestVectorAccessHints extends LuceneTestCase {
     }
   }
 
+  /** What a writer says about the vector files it creates. */
+  public void testWrittenVectorsSayWhatTheyHold() throws Exception {
+    Opens creates = new Opens();
+    try (Directory dir = new RecordingDirectory(newDirectory(), new Opens(), creates)) {
+      try (IndexWriter w = new IndexWriter(dir, writerConfig(new Lucene99HnswVectorsFormat()))) {
+        addDocuments(w, 16);
+      }
+      for (String extension :
+          List.of(
+              Lucene99FlatVectorsFormat.VECTOR_DATA_EXTENSION,
+              Lucene99HnswVectorsFormat.VECTOR_INDEX_EXTENSION)) {
+        List<Open> written = creates.endingWith(extension);
+        MatcherAssert.assertThat("nothing was created: " + creates, written, not(empty()));
+        for (Open create : written) {
+          MatcherAssert.assertThat(
+              "created without saying it holds vectors: " + create,
+              create.context().hints(),
+              hasItem(FileDataHint.KNN_VECTORS));
+          MatcherAssert.assertThat(
+              "the vectors a graph searches are worth keeping: " + create,
+              create.context().hints(),
+              not(hasItem(NoReuseHint.INSTANCE)));
+        }
+      }
+    }
+  }
+
+  /** The raw vectors a quantized format keeps only to rescore, as they are written. */
+  public void testWrittenRescoreVectorsSayTheyAreNotReused() throws Exception {
+    Opens creates = new Opens();
+    try (Directory dir = new RecordingDirectory(newDirectory(), new Opens(), creates)) {
+      try (IndexWriter w =
+          new IndexWriter(dir, writerConfig(new Lucene104HnswScalarQuantizedVectorsFormat()))) {
+        addDocuments(w, 16);
+      }
+      List<Open> raw = creates.endingWith(Lucene99FlatVectorsFormat.VECTOR_DATA_EXTENSION);
+      MatcherAssert.assertThat("no raw vectors were created: " + creates, raw, not(empty()));
+      for (Open create : raw) {
+        MatcherAssert.assertThat(
+            "the raw vectors are only read back to rescore: " + create,
+            create.context().hints(),
+            hasItem(NoReuseHint.INSTANCE));
+      }
+      List<Open> quantized = creates.endingWith("veq");
+      MatcherAssert.assertThat("no quantized vectors created: " + creates, quantized, not(empty()));
+      for (Open create : quantized) {
+        MatcherAssert.assertThat(
+            "the quantized vectors a graph searches are worth keeping: " + create,
+            create.context().hints(),
+            not(hasItem(NoReuseHint.INSTANCE)));
+      }
+    }
+  }
+
   /** A read state for the flat format holding the vectors of the single segment in {@code dir}. */
   private static SegmentReadState flatReadState(Directory dir, IOContext context)
       throws IOException {
@@ -265,7 +321,7 @@ public class TestVectorAccessHints extends LuceneTestCase {
     }
   }
 
-  /** One {@link Directory#openInput} call. */
+  /** One {@link Directory#openInput} or {@link Directory#createOutput} call. */
   private record Open(String name, IOContext context) {
     DataAccessHint hint() {
       return context.hints(DataAccessHint.class).findFirst().orElse(null);
@@ -306,16 +362,28 @@ public class TestVectorAccessHints extends LuceneTestCase {
 
   private static final class RecordingDirectory extends FilterDirectory {
     private final Opens opens;
+    private final Opens creates;
 
     RecordingDirectory(Directory in, Opens opens) {
+      this(in, opens, new Opens());
+    }
+
+    RecordingDirectory(Directory in, Opens opens, Opens creates) {
       super(in);
       this.opens = opens;
+      this.creates = creates;
     }
 
     @Override
     public IndexInput openInput(String name, IOContext context) throws IOException {
       opens.record(name, context);
       return super.openInput(name, context);
+    }
+
+    @Override
+    public IndexOutput createOutput(String name, IOContext context) throws IOException {
+      creates.record(name, context);
+      return super.createOutput(name, context);
     }
   }
 }

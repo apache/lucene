@@ -24,6 +24,7 @@ import com.carrotsearch.randomizedtesting.jupiter.SystemThreadFilter;
 import java.io.Closeable;
 import java.io.PrintStream;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -360,15 +361,15 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
       // This is the chain of before-after callbacks that must be called in the right order for
       // compatibility
       // with junit4 implementation.
-      this.beforeAfters =
-          new OrderedBeforeAfterCallbacks(
-              List.of(
-                  perThreadRandom,
-                  installFrameworkInfraSupport,
-                  classEnvRule,
-                  fieldToType,
-                  installEnvInfo,
-                  tempFileSupplier));
+      List<BeforeAfterCallback> callbacks = new ArrayList<>();
+      callbacks.add(perThreadRandom);
+      callbacks.add(installFrameworkInfraSupport);
+      callbacks.add(classEnvRule);
+      callbacks.add(fieldToType);
+      callbacks.add(installEnvInfo);
+      callbacks.add(tempFileSupplier);
+      callbacks.addAll(LuceneTestCaseParent.suiteCallbacks());
+      this.beforeAfters = new OrderedBeforeAfterCallbacks(callbacks);
 
       beforeAfters.before();
     }
@@ -526,8 +527,10 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
 
     @Override
     public void beforeEach(ExtensionContext context) throws Exception {
-      this.callbacks =
-          new OrderedBeforeAfterCallbacks(List.of(new TestRuleSetupAndRestoreInstanceEnv()));
+      List<BeforeAfterCallback> testCallbacks = new ArrayList<>();
+      testCallbacks.add(new TestRuleSetupAndRestoreInstanceEnv());
+      testCallbacks.addAll(LuceneTestCaseParent.testCallbacks());
+      this.callbacks = new OrderedBeforeAfterCallbacks(testCallbacks);
       callbacks.before();
     }
 
