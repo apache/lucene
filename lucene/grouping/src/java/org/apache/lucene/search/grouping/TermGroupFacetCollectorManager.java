@@ -120,8 +120,7 @@ public class TermGroupFacetCollectorManager
     }
 
     // Terms must be presented to addFacetCount in ascending byte order: GroupedFacetResult's
-    // internal currentMin optimization assumes sorted input (as mergeSegmentResults guarantees
-    // via its priority queue). TreeSet gives us that order for free.
+    // internal currentMin optimization assumes sorted input. TreeSet gives us that order.
     Set<BytesRef> sortedTerms = new TreeSet<>(facetCounts.keySet());
     if (minCount == 0) {
       // Union in-range terms from all collectors so that zero-count terms are included.
