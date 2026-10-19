@@ -217,7 +217,7 @@ public class JoinDocMaker extends DocMaker {
       case "skus" -> dataset.skus(layout, product, _ -> 0);
       case "mixed" -> {
         List<Document> group = dataset.skus(layout, product, _ -> 0);
-        group.addFirst(dataset.product(layout, product, 0));
+        group.add(0, dataset.product(layout, product, 0));
         yield group;
       }
       default -> dataset.block(product, 0, _ -> 0);
