@@ -62,6 +62,8 @@ public class TestJoinSearchTask extends BenchmarkTestCase {
             update.runAndMaybeStats(false);
           }
         }
+        // deterministic: data, update and query sequences are seeded by join.seed; the randomized
+        // segment sizes and search threads don't affect hit counts
         assertNotEquals(side, base, assertAlgorithmsAgree(runData));
       }
     }

@@ -429,7 +429,9 @@ Bug Fixes
 
 Other
 ---------------------
-(No changes)
+* GITHUB#16858: Add join benchmarks to the benchmark module, comparing JoinUtil term, numeric and
+  global ordinals joins with ToParentBlockJoinQuery on a 1:M products/skus dataset, including
+  incremental updates with NRT reopen. (Mikhail Khludnev)
 
 ======================= Lucene 10.6.0 =======================
 

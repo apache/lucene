@@ -94,6 +94,10 @@ public class JoinSearchTask extends PerfTask {
   @Override
   public void setup() throws Exception {
     super.setup();
+    if (algorithm == null) {
+      throw new IllegalStateException(
+          "JoinSearch requires a parameter: term|numeric|globalOrd|block");
+    }
     if (fromManager == null) {
       JoinIndices indices = JoinIndices.get(getRunData());
       String layout = algorithm.equals("globalOrd") ? "mixed" : algorithm;
@@ -161,7 +165,8 @@ public class JoinSearchTask extends PerfTask {
   public void setParams(String params) {
     super.setParams(params);
     if (!List.of("term", "numeric", "globalOrd", "block").contains(params)) {
-      throw new IllegalArgumentException("Unknown join algorithm: " + params);
+      throw new IllegalArgumentException(
+          "Unknown join algorithm: " + params + ", expected term|numeric|globalOrd|block");
     }
     algorithm = params;
   }

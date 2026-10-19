@@ -38,7 +38,6 @@ import org.apache.lucene.search.SearcherFactory;
 import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
-import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NamedThreadFactory;
 
 /**
@@ -145,7 +144,11 @@ final class JoinIndices implements Closeable {
       try {
         index.manager().close();
       } catch (IOException e) {
-        firstException = e;
+        if (firstException == null) {
+          firstException = e;
+        } else {
+          firstException.addSuppressed(e);
+        }
       }
       try {
         index.writer().rollback();

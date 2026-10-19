@@ -72,13 +72,17 @@ public class JoinUpdateTask extends PerfTask {
     side = runData.getConfig().get("join.update.side", "both");
     batch = runData.getConfig().get("join.update.batch", 100);
     if (!List.of("products", "skus", "both").contains(side)) {
-      throw new IllegalArgumentException("join.update.side: " + side);
+      throw new IllegalArgumentException(
+          "Unknown join.update.side: " + side + ", expected products|skus|both");
     }
   }
 
   @Override
   public void setup() throws Exception {
     super.setup();
+    if (group == null) {
+      throw new IllegalStateException("JoinUpdate requires a parameter: split|mixed|block");
+    }
     if (versions == null) {
       PerfRunData runData = getRunData();
       JoinIndices indices = JoinIndices.get(runData);
@@ -139,8 +143,11 @@ public class JoinUpdateTask extends PerfTask {
     }
     final var productManager = productIndex.manager();
     final var skuManager = skuIndex.manager();
-    productManager.maybeRefreshBlocking();
-    if (skuManager != productManager) {
+    // refresh touched indices only; mixed and block keep both sides in one index
+    if (products || productManager == skuManager) {
+      productManager.maybeRefreshBlocking();
+    }
+    if (skus && skuManager != productManager) {
       skuManager.maybeRefreshBlocking();
     }
     return batch;
@@ -150,7 +157,8 @@ public class JoinUpdateTask extends PerfTask {
   public void setParams(String params) {
     super.setParams(params);
     if (!List.of("split", "mixed", "block").contains(params)) {
-      throw new IllegalArgumentException("Unknown join layout group: " + params);
+      throw new IllegalArgumentException(
+          "Unknown join layout group: " + params + ", expected split|mixed|block");
     }
     group = params;
   }
