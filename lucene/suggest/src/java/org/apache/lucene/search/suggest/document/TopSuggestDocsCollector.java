@@ -66,7 +66,7 @@ public class TopSuggestDocsCollector extends SimpleCollector {
   final CharArraySet seenSurfaceForms;
 
   /** Document base offset for the current Leaf */
-  protected int docBase;
+  protected long docBase;
 
   /**
    * Sole constructor
@@ -100,7 +100,7 @@ public class TopSuggestDocsCollector extends SimpleCollector {
 
   @Override
   protected void doSetNextReader(LeafReaderContext context) throws IOException {
-    docBase = Math.toIntExact(context.docBase);
+    docBase = context.docBase;
   }
 
   @Override

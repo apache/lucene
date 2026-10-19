@@ -179,7 +179,7 @@ public final class MoreLikeThis {
    * @see #setMaxDocFreq
    * @see #setMaxDocFreqPct
    */
-  public static final int DEFAULT_MAX_DOC_FREQ = Integer.MAX_VALUE;
+  public static final long DEFAULT_MAX_DOC_FREQ = Long.MAX_VALUE;
 
   /**
    * Boost terms in query based on score.
@@ -241,7 +241,7 @@ public final class MoreLikeThis {
   private int minDocFreq = DEFAULT_MIN_DOC_FREQ;
 
   /** Ignore words which occur in more than this many docs. */
-  private int maxDocFreq = DEFAULT_MAX_DOC_FREQ;
+  private long maxDocFreq = DEFAULT_MAX_DOC_FREQ;
 
   /** Should we apply a boost to the Query based on the scores? */
   private boolean boost = DEFAULT_BOOST;
@@ -378,7 +378,7 @@ public final class MoreLikeThis {
    * @return get the maximum frequency at which words are still allowed, words which occur in more
    *     docs than this are ignored.
    */
-  public int getMaxDocFreq() {
+  public long getMaxDocFreq() {
     return maxDocFreq;
   }
 
@@ -389,7 +389,7 @@ public final class MoreLikeThis {
    * @param maxFreq the maximum count of documents that a term may appear in to be still considered
    *     relevant
    */
-  public void setMaxDocFreq(int maxFreq) {
+  public void setMaxDocFreq(long maxFreq) {
     this.maxDocFreq = maxFreq;
   }
 
@@ -397,14 +397,14 @@ public final class MoreLikeThis {
    * Set the maximum percentage in which words may still appear. Words that appear in more than this
    * many percent of all docs will be ignored.
    *
-   * <p>This method calls {@link #setMaxDocFreq(int)} internally (both conditions cannot be used at
+   * <p>This method calls {@link #setMaxDocFreq(long)} internally (both conditions cannot be used at
    * the same time).
    *
    * @param maxPercentage the maximum percentage of documents (0-100) that a term may appear in to
    *     be still considered relevant.
    */
   public void setMaxDocFreqPct(int maxPercentage) {
-    setMaxDocFreq(Math.toIntExact((long) maxPercentage * ir.maxDoc() / 100));
+    setMaxDocFreq((long) maxPercentage * ir.maxDoc() / 100);
   }
 
   /**

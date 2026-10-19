@@ -304,6 +304,7 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
         v = DocValues.emptySortedSet();
       }
       values[i] = v;
+      // starts is int-addressed (MultiSortedSetDocValues), so this caps at 2^31 docs
       starts[i] = Math.toIntExact(context.docBase);
       cost += v.cost();
     }

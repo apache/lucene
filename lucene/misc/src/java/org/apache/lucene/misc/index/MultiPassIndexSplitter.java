@@ -79,6 +79,7 @@ public class MultiPassIndexSplitter {
     // this way we don't have to preserve original deletions because neither
     // deleteDocument(int) or undeleteAll() is applied to the wrapped input index.
     FakeDeleteIndexReader input = new FakeDeleteIndexReader(in);
+    // the splitter addresses docs by int throughout, so it caps at 2^31 docs
     int maxDoc = Math.toIntExact(input.maxDoc());
     int partLen = maxDoc / numParts;
     for (int i = 0; i < numParts; i++) {

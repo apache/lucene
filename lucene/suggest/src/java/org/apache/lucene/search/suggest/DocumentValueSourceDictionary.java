@@ -110,6 +110,7 @@ public class DocumentValueSourceDictionary extends DocumentDictionary {
         throws IOException {
       super(hasPayloads, hasContexts);
       leaves = reader.leaves();
+      // starts is int-addressed (ReaderUtil.subIndex), so this caps at 2^31 docs
       starts = new int[leaves.size() + 1];
       for (int i = 0; i < leaves.size(); i++) {
         starts[i] = Math.toIntExact(leaves.get(i).docBase);

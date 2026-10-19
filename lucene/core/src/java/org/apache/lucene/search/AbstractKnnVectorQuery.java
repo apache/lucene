@@ -370,7 +370,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     if (vectorScorer == null) {
       return NO_RESULTS;
     }
-    final int queueSize = Math.min(k, Math.toIntExact(acceptIterator.cost()));
+    final int queueSize = (int) Math.min(k, acceptIterator.cost());
     HitQueue queue = new HitQueue(queueSize, true);
     TotalHits.Relation relation = TotalHits.Relation.EQUAL_TO;
     ScoreDoc topDoc = queue.top();

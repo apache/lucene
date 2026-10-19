@@ -246,11 +246,10 @@ public class RandomSamplingFacetsCollector extends FacetsCollector {
     }
 
     // cap the total count on the total number of non-deleted documents in the reader
-    int correctedTotalCount = res.value.intValue();
+    long correctedTotalCount = res.value.longValue();
     if (correctedTotalCount > 0) {
       correctedTotalCount =
-          Math.min(
-              Math.toIntExact(reader.numDocs()), (int) (res.value.doubleValue() / samplingRate));
+          Math.min(reader.numDocs(), (long) (res.value.doubleValue() / samplingRate));
     }
 
     return new FacetResult(

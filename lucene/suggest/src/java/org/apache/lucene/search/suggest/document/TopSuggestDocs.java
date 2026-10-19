@@ -61,7 +61,7 @@ public class TopSuggestDocs extends TopDocs {
      * @param key matched completion
      * @param score weight of the matched completion
      */
-    public SuggestScoreDoc(int doc, CharSequence key, CharSequence context, float score) {
+    public SuggestScoreDoc(long doc, CharSequence key, CharSequence context, float score) {
       super(doc, score);
       this.key = key;
       this.context = context;

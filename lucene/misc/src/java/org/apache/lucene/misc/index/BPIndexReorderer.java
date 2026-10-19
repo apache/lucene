@@ -662,7 +662,7 @@ public final class BPIndexReorderer extends AbstractBPReorderer {
             ((ramBudgetMB * 1024 * 1024 - docRAMRequirements(reader.maxLeafDoc()))
                 / parallelism
                 / termRAMRequirementsPerThreadPerTerm());
-    final int maxDocFreq = (int) ((double) this.maxDocFreq * reader.maxDoc());
+    final int maxDocFreq = (int) ((double) this.maxDocFreq * reader.maxLeafDoc());
 
     int numTerms = 0;
     for (String field : fields) {

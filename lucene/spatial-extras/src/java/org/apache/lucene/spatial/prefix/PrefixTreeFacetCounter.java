@@ -92,6 +92,7 @@ public class PrefixTreeFacetCounter {
             new Bits() {
               @Override
               public boolean get(int index) {
+                // topAcceptDocs is an int-addressed Bits, so this caps at 2^31 docs
                 return topAcceptDocs.get(Math.toIntExact(leafCtx.docBase + index));
               }
 

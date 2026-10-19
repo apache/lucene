@@ -352,7 +352,7 @@ public class DirectSpellChecker {
     if (thresholdFrequency >= 1f) {
       docfreq = Math.max(docfreq, (int) thresholdFrequency);
     } else if (thresholdFrequency > 0f) {
-      docfreq = Math.max(docfreq, (int) (thresholdFrequency * (float) maxDoc) - 1);
+      docfreq = Math.max(docfreq, (long) (thresholdFrequency * (double) maxDoc) - 1);
     }
 
     Collection<ScoreTerm> terms = null;
