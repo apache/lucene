@@ -919,7 +919,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
         w.addDocument(doc);
       }
 
-      assertSkipIndexEquivalence(w, "mode=" + mode);
+      assertNameMatchesValueSource(w, "mode=" + mode);
 
       w.close();
       IOUtils.close(dir);
@@ -948,7 +948,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
       w.addDocument(doc);
     }
 
-    assertSkipIndexEquivalence(w, "extreme");
+    assertNameMatchesValueSource(w, "extreme");
 
     w.close();
     IOUtils.close(dir);
@@ -972,7 +972,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
       w.addDocument(doc);
     }
 
-    assertSkipIndexEquivalence(w, "sparse");
+    assertNameMatchesValueSource(w, "sparse");
 
     w.close();
     IOUtils.close(dir);
@@ -992,7 +992,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
       w.addDocument(doc);
     }
 
-    assertSkipIndexEquivalence(w, "multi-valued");
+    assertNameMatchesValueSource(w, "multi-valued");
 
     w.close();
     IOUtils.close(dir);
@@ -1015,7 +1015,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
       w.addDocument(doc);
     }
 
-    assertSkipIndexEquivalence(w, "multi-valued-few-values");
+    assertNameMatchesValueSource(w, "multi-valued-few-values");
 
     w.close();
     IOUtils.close(dir);
@@ -1043,7 +1043,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
       w.addDocument(doc);
     }
 
-    assertSkipIndexEquivalence(w, "multi-valued-extreme");
+    assertNameMatchesValueSource(w, "multi-valued-extreme");
 
     w.close();
     IOUtils.close(dir);
@@ -1069,7 +1069,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
       w.addDocument(doc);
     }
 
-    assertSkipIndexEquivalence(w, "multi-valued-sparse");
+    assertNameMatchesValueSource(w, "multi-valued-sparse");
 
     w.close();
     IOUtils.close(dir);
@@ -1099,7 +1099,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
         w.addDocument(doc);
       }
 
-      assertSkipIndexEquivalence(w, "multi-level-dense mv=" + multiValued);
+      assertNameMatchesValueSource(w, "multi-level-dense mv=" + multiValued);
 
       w.close();
       IOUtils.close(dir);
@@ -1120,7 +1120,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
       w.addDocument(doc);
     }
 
-    assertSkipIndexEquivalence(w, "few-values");
+    assertNameMatchesValueSource(w, "few-values");
 
     w.close();
     IOUtils.close(dir);
@@ -1137,7 +1137,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
       w.addDocument(doc);
     }
 
-    assertSkipIndexEquivalence(w, "by-name-no-skip-index");
+    assertNameMatchesValueSource(w, "by-name-no-skip-index");
 
     w.close();
     IOUtils.close(dir);
@@ -1168,13 +1168,13 @@ public class TestRangeFacet extends SandboxFacetTestCase {
       w.addDocument(doc);
     }
 
-    assertSkipIndexEquivalence(w, "by-name-no-skip-index-mixed-segments");
+    assertNameMatchesValueSource(w, "by-name-no-skip-index-mixed-segments");
 
     w.close();
     IOUtils.close(dir);
   }
 
-  private void assertSkipIndexEquivalence(RandomIndexWriter w, String desc) throws IOException {
+  private void assertNameMatchesValueSource(RandomIndexWriter w, String desc) throws IOException {
     IndexReader r = w.getReader();
     try {
       IndexSearcher s = newSearcher(r, false);
@@ -1214,16 +1214,17 @@ public class TestRangeFacet extends SandboxFacetTestCase {
             getAllSortByOrd(getRangeOrdinals(ranges), baselineRecorder, "field", ordToLabel)
                 .toString();
 
-        // by-field cutter, uses the skip index.
-        CountFacetRecorder skipRecorder = new CountFacetRecorder();
+        // by-name cutter, reads the field directly and uses its skip index when present.
+        CountFacetRecorder byNameRecorder = new CountFacetRecorder();
         s.search(
             MatchAllDocsQuery.INSTANCE,
             new FacetFieldCollectorManager<>(
-                LongRangeFacetCutter.create("field", ranges), skipRecorder));
-        String withSkip =
-            getAllSortByOrd(getRangeOrdinals(ranges), skipRecorder, "field", ordToLabel).toString();
+                LongRangeFacetCutter.create("field", ranges), byNameRecorder));
+        String byName =
+            getAllSortByOrd(getRangeOrdinals(ranges), byNameRecorder, "field", ordToLabel)
+                .toString();
 
-        assertEquals(desc + " iter=" + iter, baseline, withSkip);
+        assertEquals(desc + " iter=" + iter, baseline, byName);
       }
     } finally {
       IOUtils.close(r);
