@@ -48,8 +48,8 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.MultiDocValues;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.Term;
@@ -775,11 +775,13 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
     List<LookupResult> results = new ArrayList<>();
     for (int i = 0; i < hits.scoreDocs.length; i++) {
       FieldDoc fd = (FieldDoc) hits.scoreDocs[i];
-      // The suggester index is bounded well below Integer.MAX_VALUE docs, so the global doc id
-      // narrows safely to int for the composite (MultiDocValues) lookups below.
-      int docID = Math.toIntExact(fd.doc);
-      BinaryDocValues textDV =
-          MultiDocValues.getBinaryValues(searcher.getIndexReader(), TEXT_FIELD_NAME);
+      // Resolve the leaf and read every doc value from it with a leaf-local doc id, so a global
+      // doc id past Integer.MAX_VALUE still works (the composite doc space is a long).
+      LeafReaderContext leaf = leaves.get(ReaderUtil.subIndex(fd.doc, leaves));
+      LeafReader leafReader = leaf.reader();
+      int docID = leaf.toLeafDocId(fd.doc);
+
+      BinaryDocValues textDV = leafReader.getBinaryDocValues(TEXT_FIELD_NAME);
       textDV.advance(docID);
       BytesRef term = textDV.binaryValue();
       String text = term.utf8ToString();
@@ -787,8 +789,7 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
 
       // This will just be null if app didn't pass payloads to build():
       // TODO: maybe just stored fields?  they compress...
-      BinaryDocValues payloadsDV =
-          MultiDocValues.getBinaryValues(searcher.getIndexReader(), "payloads");
+      BinaryDocValues payloadsDV = leafReader.getBinaryDocValues("payloads");
 
       BytesRef payload;
       if (payloadsDV != null) {
@@ -801,15 +802,11 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
         payload = null;
       }
 
-      // Must look up sorted-set by segment:
-      int segment = ReaderUtil.subIndex(docID, leaves);
-      SortedSetDocValues contextsDV =
-          leaves.get(segment).reader().getSortedSetDocValues(CONTEXTS_FIELD_NAME);
+      SortedSetDocValues contextsDV = leafReader.getSortedSetDocValues(CONTEXTS_FIELD_NAME);
       Set<BytesRef> contexts;
       if (contextsDV != null) {
         contexts = new HashSet<>();
-        int targetDocID = docID - Math.toIntExact(leaves.get(segment).docBase);
-        if (contextsDV.advance(targetDocID) == targetDocID) {
+        if (contextsDV.advance(docID) == docID) {
           for (int j = 0; j < contextsDV.docValueCount(); j++) {
             BytesRef context = BytesRef.deepCopyOf(contextsDV.lookupOrd(contextsDV.nextOrd()));
             contexts.add(context);
