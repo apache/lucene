@@ -220,7 +220,7 @@ Optimizations
   grow without limit, so under memory pressure prefetch effectively stopped working. A file now probes on every
   prefetch call until 1024 consecutive hits, then every 64th call; a miss goes back to probing on every call.
   The first prefetch on a file always probes: a hit on a warm file switches to sampling immediately, a miss
-  makes the file earn the 1024 hits. Preloaded files start in sampling mode. (Michael Marshall)
+  makes the file earn the 1024 hits. (Michael Marshall)
 
 * GITHUB#16771: Lucene99FlatVectorsWriter now aligns vector data to 4096 bytes for all encodings
   (previously 64 for float32 and 4 for float16 and byte), so a vector whose size divides a page or is

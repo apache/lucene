@@ -418,37 +418,7 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
     }
   }
 
-  // A preloaded file is resident at open, so its prefetch backoff starts in sampling mode instead
-  // of probing on every call.
-  public void testPreloadedInputStartsSampling() throws IOException {
-    final int size = 8 * 1024;
-    try (MMapDirectory dir = new MMapDirectory(createTempDir("testPreloadedInputStartsSampling"))) {
-      try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
-        out.writeBytes(new byte[size], 0, size);
-      }
-      dir.setPreload(MMapDirectory.NO_FILES);
-      try (var in = (MemorySegmentIndexInput) dir.openInput("test", IOContext.DEFAULT)) {
-        in.backoff.onMiss(); // a cold file probes on every call until it earns N hits
-        for (int i = 0; i < PrefetchBackoff.N; i++) {
-          assertTrue("call " + i, in.backoff.shouldProbe(++in.prefetchCalls));
-          in.backoff.onHit();
-        }
-      }
-      dir.setPreload(MMapDirectory.ALL_FILES);
-      try (var in = (MemorySegmentIndexInput) dir.openInput("test", IOContext.DEFAULT)) {
-        int calls = 1 << 16;
-        int probes = 0;
-        for (int i = 0; i < calls; i++) {
-          if (in.backoff.shouldProbe(++in.prefetchCalls)) {
-            probes++;
-          }
-        }
-        assertTrue("expected sampling, got " + probes + " probes in " + calls, probes < calls / 16);
-      }
-    }
-  }
-
-  // A non-preloaded file starts at N - 1: the first call probes, a hit switches to sampling, and a
+  // A new file starts at N - 1: the first call probes, a hit switches to sampling, and a
   // miss makes the file earn N hits again.
   public void testFirstProbeDecides() {
     PrefetchBackoff warm = new PrefetchBackoff();
@@ -480,8 +450,8 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
       try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
         out.writeBytes(new byte[64], 0, 64);
       }
-      dir.setPreload(MMapDirectory.ALL_FILES); // warm from the first call
       try (var in = (MemorySegmentIndexInput) dir.openInput("test", IOContext.DEFAULT)) {
+        in.backoff.onHit(); // the first probe hit, so the file is sampling
         int firstCallProbes = 0;
         for (int i = 0; i < PrefetchBackoff.SKIP; i++) {
           MemorySegmentIndexInput clone = in.clone();

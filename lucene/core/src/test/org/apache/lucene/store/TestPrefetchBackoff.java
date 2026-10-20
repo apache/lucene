@@ -75,19 +75,6 @@ public class TestPrefetchBackoff extends LuceneTestCase {
     assertSampling(backoff, seed);
   }
 
-  public void testPreloadedStartsSampling() {
-    PrefetchBackoff backoff = new PrefetchBackoff(true);
-    int seed = backoff.nextCounterStart();
-    assertSampling(backoff, seed);
-    // a miss still re-arms the full ramp
-    backoff.onMiss();
-    for (int i = 0; i < N; i++) {
-      assertTrue("call " + i, backoff.shouldProbe(++seed));
-      backoff.onHit();
-    }
-    assertSampling(backoff, seed);
-  }
-
   public void testMissProbesUnconditionallyUntilNHits() {
     PrefetchBackoff backoff = new PrefetchBackoff();
     hit(backoff, N);

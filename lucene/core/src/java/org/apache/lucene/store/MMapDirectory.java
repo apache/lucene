@@ -266,9 +266,6 @@ public class MMapDirectory extends FSDirectory {
    * Configure which files to preload in physical memory upon opening. The default implementation
    * does not preload anything. The behavior is best effort and operating system-dependent.
    *
-   * <p>Since a preloaded file is resident when opened, {@link IndexInput#prefetch} on it starts by
-   * sampling the page cache rather than checking it on every call.
-   *
    * @param preload a {@link BiPredicate} whose first argument is the file name, and second argument
    *     is the {@link IOContext} used to open the file
    * @see #ALL_FILES
@@ -339,8 +336,7 @@ public class MMapDirectory extends FSDirectory {
           fileSize,
           chunkSizePower,
           confined,
-          toReadAdvice,
-          preloaded);
+          toReadAdvice);
     } catch (Throwable t) {
       arena.close();
       throw t;

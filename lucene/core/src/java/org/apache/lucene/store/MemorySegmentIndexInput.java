@@ -72,10 +72,9 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
       long length,
       int chunkSizePower,
       boolean confined,
-      Function<IOContext, ReadAdvice> toReadAdvice,
-      boolean preloaded) {
+      Function<IOContext, ReadAdvice> toReadAdvice) {
     assert Arrays.stream(segments).map(MemorySegment::scope).allMatch(arena.scope()::equals);
-    PrefetchBackoff backoff = new PrefetchBackoff(preloaded);
+    PrefetchBackoff backoff = new PrefetchBackoff();
     if (segments.length == 1) {
       return new SingleSegmentImpl(
           resourceDescription,
