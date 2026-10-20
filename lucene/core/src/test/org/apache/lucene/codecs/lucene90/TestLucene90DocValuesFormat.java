@@ -1350,22 +1350,33 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
   }
 
   public void testTableEncodedRangeIntoBitSet() throws Exception {
-    long[] table = {0, 10, 21, 35, 36, 48};
+    int tableSize = TestUtil.nextInt(random(), 3, 256);
+    TreeSet<Long> tableValues = new TreeSet<>();
+    tableValues.add(0L);
+    tableValues.add(1L);
+    while (tableValues.size() < tableSize) {
+      tableValues.add(TestUtil.nextLong(random(), 100, 100000));
+    }
+    long[] table = tableValues.stream().mapToLong(Long::longValue).toArray();
     String[] fields = {
       "numeric_dense", "numeric_sparse", "sorted_numeric_dense", "sorted_numeric_sparse"
     };
-    int numDocs = 100;
+    int numDocs = TestUtil.nextInt(random(), 2 * tableSize, 2 * tableSize + 1000);
     try (Directory dir = newDirectory()) {
       try (IndexWriter writer =
           new IndexWriter(dir, new IndexWriterConfig().setCodec(new Lucene104Codec()))) {
         for (int docID = 0; docID < numDocs; docID++) {
           Document doc = new Document();
-          long value = table[docID % table.length];
-          long nextValue = table[(docID + 1) % table.length];
+          int denseOrd = docID % table.length;
+          long value = table[denseOrd];
+          long nextValue = table[(denseOrd + 1) % table.length];
           doc.add(NumericDocValuesField.indexedField("numeric_dense", value));
           doc.add(SortedNumericDocValuesField.indexedField("sorted_numeric_dense", value));
           doc.add(SortedNumericDocValuesField.indexedField("sorted_numeric_dense", nextValue));
           if (docID % 2 != 0) {
+            int sparseOrd = (docID / 2) % table.length;
+            value = table[sparseOrd];
+            nextValue = table[(sparseOrd + 1) % table.length];
             doc.add(NumericDocValuesField.indexedField("numeric_sparse", value));
             doc.add(SortedNumericDocValuesField.indexedField("sorted_numeric_sparse", value));
             doc.add(SortedNumericDocValuesField.indexedField("sorted_numeric_sparse", nextValue));
@@ -1376,11 +1387,24 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
       }
       try (DirectoryReader reader = DirectoryReader.open(dir)) {
         LeafReader leaf = getOnlyLeafReader(reader);
-        long[][] ranges = {{0, 21}, {0, 0}, {21, 21}, {1, 20}, {1, 9}, {22, 23}, {21, 0}};
+        int mid = table.length / 2;
+        long[][] ranges = {
+          {table[0], table[mid]},
+          {table[0], table[0]},
+          {table[mid], table[mid]},
+          {table[0], table[1]},
+          {table[1] + 1, table[2] - 1},
+          {table[table.length - 1] + 1, table[table.length - 1] + 2},
+          {table[mid], table[mid] - 1}
+        };
         int fixedRangeCount = ranges.length;
         ranges = Arrays.copyOf(ranges, fixedRangeCount + 10);
         for (int i = fixedRangeCount; i < ranges.length; i++) {
-          ranges[i] = new long[] {random().nextInt(-5, 50), random().nextInt(-5, 50)};
+          ranges[i] =
+              new long[] {
+                TestUtil.nextLong(random(), table[0] - 5, table[table.length - 1] + 5),
+                TestUtil.nextLong(random(), table[0] - 5, table[table.length - 1] + 5)
+              };
         }
         for (String field : fields) {
           for (long[] range : ranges) {
