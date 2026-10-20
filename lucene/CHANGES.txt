@@ -216,6 +216,10 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#16871: Lucene104HnswScalarQuantizedVectorsFormat now quantizes merged vectors on its merge
+  workers, as it already builds the merged graph, instead of on the merging thread alone. It applies
+  when the format has more than one merge worker, and the bytes are the same. (Ankur Goel)
+
 
 * GITHUB#16771: Lucene99FlatVectorsWriter now aligns vector data to 4096 bytes for all encodings
   (previously 64 for float32 and 4 for float16 and byte), so a vector whose size divides a page or is
