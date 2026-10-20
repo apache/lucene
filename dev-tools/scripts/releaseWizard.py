@@ -56,18 +56,40 @@ from consolemenu import ConsoleMenu
 from consolemenu.items import ExitItem, FunctionItem, SubmenuItem
 from holidays import country_holidays
 from ics import Calendar, Event
-from jinja2 import Environment
+from jinja2 import Environment, Undefined
 
 import scriptutil
-from scriptutil import BranchType, Version, download, run
+from scriptutil import BranchType, CommitterPgp, Version, download, run
 
 # Lucene-to-Java version mapping
 java_versions = {6: 8, 7: 8, 8: 8, 9: 11, 10: 21, 11: 23}
 editor = None
 
 
+class ReadableUndefined(Undefined):
+  """Custom Undefined handler that renders undefined variables as {{ varname }}
+
+  This allows users to see which variables are not yet defined when displaying
+  command templates before execution, particularly useful for persist_vars
+  that haven't been captured yet.
+  """
+
+  @override
+  def __str__(self) -> str:
+    return "{{ %s }}" % self._undefined_name
+
+  @override
+  def __getattr__(self, name: str) -> Any:
+    # Handle special Python attributes normally
+    if name[:2] == "__":
+      raise AttributeError(name)
+    # Chain undefined attribute access for nested vars like {{ todo_id.var_name }}
+    return ReadableUndefined(name="%s.%s" % (self._undefined_name, name))
+
+
 # Edit this to add other global jinja2 variables or filters
 def expand_jinja(text: str, vars: dict[str, Any] | None = None) -> str:
+  latest_version = Version.parse(state.get_latest_version())
   global_vars: dict[str, Any] = OrderedDict(
     {
       "script_version": state.script_version,
@@ -110,6 +132,9 @@ def expand_jinja(text: str, vars: dict[str, Any] | None = None) -> str:
       "load_lines": load_lines,
       "set_java_home": set_java_home,
       "latest_version": state.get_latest_version(),
+      "latest_version_major": latest_version.major,
+      "latest_version_minor": latest_version.minor,
+      "latest_version_bugfix": latest_version.bugfix,
       "latest_lts_version": state.get_latest_lts_version(),
       "main_version": state.get_main_version(),
       "mirrored_versions": state.get_mirrored_versions(),
@@ -124,7 +149,7 @@ def expand_jinja(text: str, vars: dict[str, Any] | None = None) -> str:
   filled = replace_templates(text)
 
   try:
-    env = Environment(lstrip_blocks=True, keep_trailing_newline=False, trim_blocks=True)
+    env = Environment(lstrip_blocks=True, keep_trailing_newline=False, trim_blocks=True, undefined=ReadableUndefined)
     env.filters["path_join"] = lambda paths: os.path.join(*(cast("list[str]", paths)))
     env.filters["expanduser"] = lambda path: os.path.expanduser(str(path))
     env.filters["formatdate"] = lambda date: datetime.strftime(date, "%-d %B %Y") if date and isinstance(date, datetime) else "<date>"
@@ -828,7 +853,7 @@ class Todo(SecretYamlObject):
       print("ERROR while executing todo %s (%s)" % (self.get_title(), e))
 
   def get_menu_item(self) -> FunctionItem:
-    return FunctionItem(self.get_title(), self.display_and_confirm)
+    return FunctionItem(self.get_title, self.display_and_confirm)
 
   def clone(self) -> "Todo":
     clone = Todo(self.id, self.title, description=self.description)
@@ -1061,7 +1086,7 @@ def file_to_string(filename: str) -> str:
 
 
 def download_keys() -> None:
-  download("KEYS", "https://archive.apache.org/dist/lucene/KEYS", state.config_path)
+  download("KEYS", "https://downloads.apache.org/lucene/KEYS", state.config_path)
 
 
 def keys_downloaded() -> bool:
@@ -1101,20 +1126,16 @@ def configure_pgp(gpg_todo: Todo) -> bool:
   id = str(input("Please enter your Apache id: (ENTER=skip) "))
   if id.strip() == "":
     return False
-  key_url = "https://home.apache.org/keys/committer/%s.asc" % id.strip()
-  committer_key = load(key_url)
-  lines = committer_key.splitlines()
-  keyid_linenum = None
-  for idx, line in enumerate(lines):
-    if line == "ASF ID: %s" % id:
-      keyid_linenum = idx + 1
-      break
-  if keyid_linenum:
-    keyid_line = lines[keyid_linenum]
-    assert keyid_line.startswith("LDAP PGP key: ")
-    gpg_fingerprint = keyid_line[14:].replace(" ", "")
-    gpg_id = gpg_fingerprint[-8:]
-    print("Found gpg key id %s on file at Apache (%s)" % (gpg_id, key_url))
+  gpg_fingerprint = ""
+  gpg_id = None
+  try:
+    committer_pgp = CommitterPgp(id.strip())
+    gpg_id = committer_pgp.get_short_fingerprint()
+    gpg_fingerprint = committer_pgp.get_fingerprint() or ""
+  except Exception as e:
+    print("Failed to look up your key: %s" % e)
+  if gpg_id is not None:
+    print("Found gpg key id %s on file at Apache" % gpg_id)
   else:
     print(
       textwrap.dedent("""\
@@ -1345,7 +1366,7 @@ def main() -> None:
       todo_menu.append_item(menu_item)
 
   main_menu.append_item(SubmenuItem(get_todo_menuitem_title, todo_menu, menu=main_menu))
-  main_menu.append_item(FunctionItem(get_start_new_rc_menu_title(), start_new_rc))
+  main_menu.append_item(FunctionItem(get_start_new_rc_menu_title, start_new_rc))
   main_menu.append_item(FunctionItem("Clear and restart current RC", state.clear_rc))
   main_menu.append_item(FunctionItem("Clear all state, restart the %s release" % state.release_version, reset_state))
   main_menu.append_item(FunctionItem("Start release for a different version", release_other_version))
@@ -1391,20 +1412,27 @@ def tail_file(file: str, lines: int) -> None:
 
 
 def run_with_log_tail(
-  command: str | list[str], cwd: str | None, logfile: str | None = None, tail_lines: int = 10, tee: bool | None = False, live: bool | None = False, shell: bool | None = None
-) -> int | None:
+  command: str | list[str],
+  cwd: str | None,
+  logfile: str | None = None,
+  tail_lines: int = 10,
+  tee: bool | None = False,
+  live: bool | None = False,
+  shell: bool | None = None,
+  capture_output: bool = False,
+) -> tuple[int | None, str | None]:
   fh = sys.stdout
   if logfile:
     logdir = os.path.dirname(logfile)
     if not os.path.exists(logdir):
       Path(logdir).mkdir(parents=True)
     fh = open(logfile, "w")
-  rc = run_follow(command, cwd, fh=fh, tee=tee, live=live, shell=shell)
+  rc, captured_output = run_follow(command, cwd, fh=fh, tee=tee, live=live, shell=shell, capture_output=capture_output)
   if logfile:
     fh.close()
     if not tee and tail_lines and tail_lines > 0:
       tail_file(logfile, tail_lines)
-  return rc
+  return rc, captured_output
 
 
 def ask_yes_no(text: str) -> bool:
@@ -1434,7 +1462,9 @@ def print_line_cr(line: str, linenum: int, stdout: bool = True, tee: bool | None
     print(line.rstrip())
 
 
-def run_follow(command: str | list[str], cwd: str | None = None, fh: TextIO = sys.stdout, tee: bool | None = False, live: bool | None = False, shell: bool | None = None) -> int | None:
+def run_follow(
+  command: str | list[str], cwd: str | None = None, fh: TextIO = sys.stdout, tee: bool | None = False, live: bool | None = False, shell: bool | None = None, capture_output: bool = False
+) -> tuple[int | None, str | None]:
   doShell = "&&" in command or "&" in command or shell is not None
   if not doShell and not isinstance(command, list):
     command = shlex.split(command)
@@ -1451,6 +1481,7 @@ def run_follow(command: str | list[str], cwd: str | None = None, fh: TextIO = sy
 
   endstdout = endstderr = False
   errlines: list[str] = []
+  captured_lines: list[str] = []
   while not (endstderr and endstdout):
     lines_before = lines_written
     if not endstdout:
@@ -1462,6 +1493,8 @@ def run_follow(command: str | list[str], cwd: str | None = None, fh: TextIO = sy
           else:
             fh.write(chars)
             fh.flush()
+            if capture_output:
+              captured_lines.append(chars)
             if "\n" in chars:
               lines_written += 1
         else:
@@ -1471,6 +1504,8 @@ def run_follow(command: str | list[str], cwd: str | None = None, fh: TextIO = sy
           else:
             fh.write("%s\n" % line.rstrip())
             fh.flush()
+            if capture_output:
+              captured_lines.append(line)
             lines_written += 1
             print_line_cr(line, lines_written, stdout=(fh == sys.stdout), tee=tee)
 
@@ -1508,7 +1543,7 @@ def run_follow(command: str | list[str], cwd: str | None = None, fh: TextIO = sy
     for line in errlines:
       fh.write("%s\n" % line.rstrip())
       fh.flush()
-  return rc
+  return rc, ("".join(captured_lines) if capture_output else None)
 
 
 def is_windows() -> bool:
@@ -1625,6 +1660,7 @@ class Commands(SecretYamlObject):
             logfilename = cmd.logfile
             logfile = None
             cmd_to_run = "%s%s" % ("echo Dry run, command is: " if dry_run else "", cmd.get_cmd())
+            cmd_output: str | None = None
             if cmd.redirect:
               try:
                 out = run(cmd_to_run, cwd=cwd)
@@ -1633,6 +1669,7 @@ class Commands(SecretYamlObject):
                   outfile.write(out)
                   outfile.flush()
                 print("Wrote %s bytes to redirect file %s" % (len(out), cmd.get_redirect()))
+                cmd_output = out
               except Exception as e:
                 print("Command %s failed: %s" % (cmd_to_run, e))
                 success = False
@@ -1656,7 +1693,9 @@ class Commands(SecretYamlObject):
                 if cmd.comment:
                   print("# %s\n" % cmd.get_comment())
               start_time = time.time()
-              returncode = run_with_log_tail(cmd_to_run, cwd, logfile=logfile, tee=cmd.tee, tail_lines=25, live=cmd.live, shell=cmd.shell)
+              returncode, cmd_output = run_with_log_tail(
+                cmd_to_run, cwd, logfile=logfile, tee=cmd.tee, tail_lines=25, live=cmd.live, shell=cmd.shell, capture_output=bool(cmd.persist_vars) and not dry_run
+              )
               elapsed = time.time() - start_time
               if not returncode == 0:
                 if cmd.should_fail:
@@ -1672,6 +1711,21 @@ class Commands(SecretYamlObject):
                 break
               elif elapsed > 30:
                 print("Command completed in %s seconds" % elapsed)
+            # Persist variables parsed from the stdout of the command into the TODO state
+            if cmd.persist_vars and not dry_run and cmd_output:
+              try:
+                parsed_vars = parse_wizard_vars(cmd_output)
+                if parsed_vars:
+                  todo = state.get_todo_by_id(self.todo_id) if self.todo_id else None
+                  if todo:
+                    todo_state = todo.get_state()
+                    for var_name, var_value in parsed_vars.items():
+                      todo_state[var_name] = var_value
+                    state.save()
+                    for var_name, var_value in parsed_vars.items():
+                      print("Saved variable '%s' = '%s'" % (var_name, var_value))
+              except Exception as e:
+                print("WARNING: Failed to persist variables: %s" % e)
       if not success:
         print("WARNING: One or more commands failed, you may want to check the logs")
       return success
@@ -1706,7 +1760,7 @@ class Commands(SecretYamlObject):
     if self.todo_id:
       todo = state.get_todo_by_id(self.todo_id)
       assert todo
-      v.update(todo.get_vars())
+      v.update(todo.get_vars_and_state())
     if isinstance(data, list):
       if join:
         return expand_jinja(" ".join(data), v)
@@ -1725,6 +1779,25 @@ def abbreviate_homedir(line: str) -> str:
       return re.sub(r"([^/]|\b)%s" % os.path.expanduser("~"), "\\1%USERPROFILE%", line)
     return line
   return re.sub(r"([^/]|\b)%s" % os.path.expanduser("~"), "\\1~", line)
+
+
+def parse_wizard_vars(stdout_text: str | None) -> dict[str, str]:
+  """Parse --wizard-var markers from command stdout.
+
+  Format: --wizard-var KEY=VALUE
+
+  Returns a dict of extracted variables, with last value winning for duplicates.
+  """
+  variables: dict[str, str] = {}
+  if not stdout_text:
+    return variables
+  for line in stdout_text.splitlines():
+    if line.startswith("--wizard-var "):
+      key, sep, value = line[len("--wizard-var ") :].strip().partition("=")
+      key = key.strip()
+      if sep and key:
+        variables[key] = value.strip()
+  return variables
 
 
 class Command(SecretYamlObject):
@@ -1746,6 +1819,7 @@ class Command(SecretYamlObject):
     redirect: str | None = None,
     redirect_append: bool | None = None,
     shell: bool | None = None,
+    persist_vars: bool | None = None,
   ) -> None:
     self.cmd = cmd
     self.cwd = cwd
@@ -1760,6 +1834,7 @@ class Command(SecretYamlObject):
     self.todo_id = todo_id
     self.redirect_append = redirect_append
     self.redirect = redirect
+    self.persist_vars = persist_vars
     if tee and stdout:
       self.stdout = None
       print("Command %s specifies 'tee' and 'stdout', using only 'tee'" % self.cmd)
@@ -1810,7 +1885,7 @@ class Command(SecretYamlObject):
     if self.todo_id:
       todo = state.get_todo_by_id(self.todo_id)
       assert todo
-      v.update(todo.get_vars())
+      v.update(todo.get_vars_and_state())
     if isinstance(data, list):
       if join:
         return expand_jinja(" ".join(data), v)
