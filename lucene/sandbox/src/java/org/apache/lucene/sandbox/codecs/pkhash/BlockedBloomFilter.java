@@ -19,42 +19,10 @@ package org.apache.lucene.sandbox.codecs.pkhash;
 import org.apache.lucene.util.ArrayUtil;
 
 /**
- * The Bloom filter that a field of {@link PrimaryKeyHashPostingsFormat} may have. The staged
- * lookups read it before the control bytes; exact seeks do not read it. It is a register-blocked
- * Bloom filter (Lang, Neumann, Kemper and Boncz, <i>Performance-Optimal Filtering: Bloom Overtakes
- * Cuckoo at High Throughput</i>, PVLDB 12(5), 2019), the variant of the blocked Bloom filters of
- * Putze, Sanders and Singler (<i>Cache-, Hash- and Space-Efficient Bloom Filters</i>, WEA 2007)
- * whose blocks are machine words, applied to the {@link TermHash#filterHash filter hash} of a key.
- *
- * <p>The filter is an array of 64-bit words. A key sets {@value #K} bits of one word. It may be in
- * the set if all of them are set, and is certainly not in it otherwise. A lookup reads one word, 8
- * bytes at a multiple of 8, which never crosses a cache line, and checks it with an and-not and a
- * count of leading zeros, without a branch ({@link #mayContain}). These bits of a filter hash
- * decide where a key's bits are, from the highest:
- *
- * <ul>
- *   <li>bits {@code [30, 64)} choose the key's word ({@link #word}): as a fraction of
- *       2<sup>34</sup>, times the number of words, by multiply-shift (Lemire's "fastrange"), as
- *       home slots are, so that the mapping is monotonic in them;
- *   <li>bits {@code [6i, 6i + 6)}, for {@code i} from 0 to 4, are the positions in the word of the
- *       five bits of the key ({@link #mask}).
- * </ul>
- *
- * No bit of the filter hash decides both, so a key's bits are independent of its word. The top bits
- * of a filter hash are the key's partition, so the keys of a partition are in consecutive words
- * ({@link #firstWord}), and the writer only holds those of one partition at a time ({@link
- * #add(long[], int, int, long)}). Its other bits are those of the key's {@link TermHash#mix}, and
- * are independent of its home slot, control byte and tag. The five positions are taken from
- * separate bits, so they may repeat, and computing them takes no table or loop.
- *
- * <p>On disk, a word is a little-endian long, the first word first.
- *
- * <p>With {@code b} bits per key, there are {@code ceil(numKeys * b / 64)} words, and a word holds
- * {@code 64 / b} keys on average. A key that is not in the set passes the filter if each of its
- * bits is set in its word. With the number of keys of a word following a Poisson distribution, that
- * happens for about 20% of such keys at 4 bits per key, 7.6% at 6, 3.4% at 8, 1.78% at 10, 1.04% at
- * 12 and 0.43% at 16. A key sets five bits at any number of bits per key, so a set of keys computes
- * the bits of every key once for the filters of all segments ({@link HashedTerms#filterMasks}).
+ * The Bloom filter of a field of {@link PrimaryKeyHashPostingsFormat}: a register-blocked Bloom
+ * filter, in which a key sets {@value #K} bits of one 64-bit word, both chosen from its {@link
+ * TermHash#filterHash filter hash}. The reference and the exact layout are in the format's file
+ * format documentation. Only batched lookups read it.
  */
 final class BlockedBloomFilter {
 
@@ -79,8 +47,8 @@ final class BlockedBloomFilter {
   private BlockedBloomFilter() {}
 
   /**
-   * The number of words of the filter of {@code numKeys} keys at {@code bitsPerKey} bits per key:
-   * enough for that many bits, and at least one.
+   * The number of words of the filter of {@code numKeys} keys at {@code bitsPerKey} bits per key,
+   * at least one.
    */
   static long numWords(long numKeys, int bitsPerKey) {
     assert numKeys >= 0 && bitsPerKey > 0;
@@ -88,10 +56,8 @@ final class BlockedBloomFilter {
   }
 
   /**
-   * The word of a key whose filter hash is {@code filterHash}, in a filter of {@code numWords}
-   * words: the bits of the filter hash above its {@link #POSITION_HASH_BITS} low bits, which are
-   * the positions of the key's bits, mapped onto {@code [0, numWords)} by the high 64 bits of their
-   * product with the number of words, which is monotonic in them.
+   * The word of a key, by multiply-shift (Lemire's "fastrange") of the filter hash bits above the
+   * bit positions. Monotonic in the filter hash.
    */
   static int word(long filterHash, int numWords) {
     return (int) Math.unsignedMultiplyHigh(filterHash & WORD_HASH_MASK, numWords);
@@ -106,13 +72,9 @@ final class BlockedBloomFilter {
   }
 
   /**
-   * The first word that a key of partition {@code p} of a field with {@code partitionBits}
-   * partition bits can be in, in a filter of {@code numWords} words: the word of the smallest
-   * filter hash of the partition, whose top {@code partitionBits} bits are {@code p} ({@link
-   * TermHash#filterHash(long, int)}). Since {@link #word} is monotonic, the keys of partition
-   * {@code p} are in the words from this one to the first word of partition {@code p + 1}, which
-   * they may share with the keys of the next partitions, and at most {@code ceil(numWords / 2^
-   * partitionBits) + 1} words.
+   * The first word that a key of partition {@code p} can be in. A filter hash starts with its
+   * partition and {@link #word} is monotonic, so each partition's keys are in consecutive words,
+   * and the writer only holds the words of one partition at a time.
    */
   static int firstWord(int p, int partitionBits, int numWords) {
     assert p >= 0 && p < 1 << partitionBits : p + " of " + partitionBits + " partition bits";
@@ -120,11 +82,9 @@ final class BlockedBloomFilter {
   }
 
   /**
-   * The bits that a key whose filter hash is {@code filterHash} sets in its word: bit {@code
-   * (filterHash >>> 6i) & 63} for {@code i} from 0 to 4, from 1 to 5 bits. A long shifted by a long
-   * only takes the low 6 bits of the distance, so the positions are not masked. The low 32 bits of
-   * a filter hash are those of the key's {@link TermHash#mix}, whatever the field's number of
-   * partitions, so a set of keys computes the masks of its keys once for all segments ({@link
+   * The bits that a key sets in its word: bit {@code (filterHash >>> 6i) & 63} for {@code i} from 0
+   * to 4 (a long shift only uses the low 6 bits of its distance). They depend only on the key's
+   * {@link TermHash#mix}, so a set of keys computes them once for all segments ({@link
    * HashedTerms#filterMasks}).
    */
   static long mask(long filterHash) {
@@ -135,10 +95,7 @@ final class BlockedBloomFilter {
         | (1L << (filterHash >>> (4 * POSITION_BITS)));
   }
 
-  /**
-   * Adds a key, given its filter hash, to a filter of {@code words.length} words held as longs. For
-   * tests.
-   */
+  /** Adds a key, given its filter hash, to the filter {@code words}. For tests. */
   static void add(long[] words, long filterHash) {
     add(words, 0, words.length, filterHash);
   }
@@ -155,11 +112,8 @@ final class BlockedBloomFilter {
   }
 
   /**
-   * 1 if a key whose {@link #mask} is {@code mask} may be in the set, since all of its bits are set
-   * in its word, {@code word}, and 0 if it is not in it. There is no branch, so a loop over keys of
-   * which some pass and others do not has nothing to mispredict: the bits of the key that are
-   * missing from the word are 0 if and only if they have 64 leading zeros, and 64 is the only count
-   * of leading zeros of a long that has bit 6 set.
+   * 1 if all of a key's bits are set in its {@code word}, else 0, without a branch: {@code mask &
+   * ~word} is 0 exactly when it has 64 leading zeros.
    */
   static int mayContain(long word, long mask) {
     return Long.numberOfLeadingZeros(mask & ~word) >>> 6;

@@ -31,19 +31,14 @@ import org.apache.lucene.util.IOBooleanSupplier;
 
 /**
  * A {@link TermsEnum} whose exact seeks go through the hash table and everything else through the
- * delegate's enum, which is only pulled when needed.
+ * delegate's enum, which is only pulled when needed. Exact seeks do not read the field's filter: a
+ * single lookup has no other reads to overlap the read of the filter with.
  *
- * <p>Exact seeks do not read the field's filter, if it has one: a single lookup has no other reads
- * to overlap the read of the filter with. They check the range of the field's terms, and the key's
- * length if the field's keys are inline, then read the control bytes, and then, for each slot with
- * the key's control byte, its slot word and, if the tag matches, its record, or on an inline field
- * its record.
- *
- * <p>The enum is in one of three modes. After a successful exact seek of a key with a single
- * document it is in {@code HASH} mode: it knows the term and its document, and has not touched the
- * delegate. Keys with more than one document are sought in the delegate, as are all ordered
- * operations, which put the enum in {@code DELEGATE} mode. Moving on from a term found in {@code
- * HASH} mode ({@link #next}, {@link #ord}) first positions the delegate on that term.
+ * <p>After a successful exact seek of a key with a single document, the enum is in {@code HASH}
+ * mode: it knows the term and its document, and has not touched the delegate. Keys with more than
+ * one document are sought in the delegate, as are all ordered operations, which put the enum in
+ * {@code DELEGATE} mode. Moving on from a term found in {@code HASH} mode ({@link #next}, {@link
+ * #ord}) first positions the delegate on that term.
  */
 final class HashTermsEnum extends BaseTermsEnum {
 
@@ -118,13 +113,11 @@ final class HashTermsEnum extends BaseTermsEnum {
   }
 
   /**
-   * Hashes the key and prefetches the control bytes from its home slot. If the prefetch reports
-   * that they have to be read, the lookup is deferred to the returned supplier, so that the reads
-   * of many segments (see {@code TermStates}) can be in flight together. If they are already in
-   * memory, the key is looked up right away, and this returns null if it is absent. Returns null,
-   * with no read, for a key outside the range of the field's terms, or whose length differs from
-   * that of the field's inline keys. Like {@link #seekExact(BytesRef)}, this does not read the
-   * field's filter.
+   * Prefetches the control bytes from the key's home slot. If the prefetch reports that they have
+   * to be read, the lookup is deferred to the returned supplier, so that the reads of many segments
+   * (see {@code TermStates}) can be in flight together. Otherwise the key is looked up right away,
+   * and this returns null if it is absent. Returns null, with no read, for a key outside the range
+   * of the field's terms, or whose length differs from that of the field's inline keys.
    */
   @Override
   public IOBooleanSupplier prepareSeekExact(BytesRef text) throws IOException {

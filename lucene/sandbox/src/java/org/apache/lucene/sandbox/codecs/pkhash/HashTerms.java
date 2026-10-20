@@ -36,14 +36,11 @@ import org.apache.lucene.util.automaton.CompiledAutomaton;
  * Statistics, ordered iteration and {@link #intersect} come from the delegate format; exact seeks
  * on its {@link #iterator() TermsEnum} are answered by the hash table, except for keys with more
  * than one document ({@link #MULTI}), which are then sought in the delegate's terms dictionary. The
- * field's filter, if it has one, is only read by the lookups that are staged, those of {@link
- * #lookupBatch}. The table's slots are either slot words that point to records in term order, or,
- * if the field's keys are inline, records of a doc id and a key (see {@link
- * PrimaryKeyHashPostingsFormat}).
+ * field's filter, if it has one, is only read by {@link #lookupBatch}.
  *
  * <p>{@link #lookupBatch} resolves many keys at once. Callers can detect it with {@code instanceof}
- * on the {@code Terms} of a leaf reader, keeping in mind that a reader wrapper may hide it (in
- * which case a {@link TermsEnum} should be used instead).
+ * on the {@code Terms} of a leaf reader; a reader wrapper may hide it, in which case a {@link
+ * TermsEnum} should be used instead.
  *
  * @lucene.experimental
  */
@@ -74,16 +71,13 @@ public final class HashTerms extends Terms {
 
   /**
    * Where keys are compared with {@link #min} and {@link #max} from: 0, unless the two share their
-   * first 8 bytes, in which case it is the length of their common prefix. Every key between them
-   * starts with that prefix too, so a key that does not is out of range, and the others are
-   * compared with them on the bytes after it, which tell them apart.
+   * first 8 bytes, as keys of a scheme such as {@code https://} do, in which case it is the length
+   * of their common prefix. Every key between them starts with that prefix too, so a key that does
+   * not is out of range, and the others are compared with them on the bytes after it.
    */
   private final int rangeOffset;
 
-  /**
-   * The {@link #prefix} of the bytes of {@link #min}, and that of the bytes of {@link #max}, from
-   * {@link #rangeOffset} on.
-   */
+  /** The {@link #prefix} of {@link #min} and that of {@link #max}, from {@link #rangeOffset} on. */
   private final long minPrefix, maxPrefix;
 
   private final int partitionBits;
@@ -92,11 +86,7 @@ public final class HashTerms extends Terms {
   /** Where the slot words of every partition start, if the records are in term order; or null. */
   private final long[] slotsOffsets;
 
-  /**
-   * Where the inline records of every partition start, if the field's keys are inline; or null. The
-   * record of slot {@code i} of partition {@code p} starts at {@code recordsOffsets[p] + i *
-   * recordStride}.
-   */
+  /** Where the inline records of every partition start, if the field's keys are inline; or null. */
   private final long[] recordsOffsets;
 
   /** The length of an inline record, 4 + {@link #keyLength}; 0 if the records are in term order. */
@@ -163,10 +153,10 @@ public final class HashTerms extends Terms {
   }
 
   /**
-   * Returns the terms of the delegate format, those of this field without its hash table and
-   * filter, whose {@link TermsEnum} seeks keys in the terms dictionary. A key that {@link
-   * #lookupBatch} found to have several documents ({@link #MULTI}) is best sought there: this
-   * field's own {@link #iterator() TermsEnum} would look it up in the table again first.
+   * Returns the terms of the delegate format, whose {@link TermsEnum} seeks keys in the terms
+   * dictionary. A key that {@link #lookupBatch} found to have several documents ({@link #MULTI}) is
+   * best sought there: this field's own {@link #iterator() TermsEnum} would look it up in the table
+   * again first.
    */
   public Terms getDelegate() {
     return delegate;
@@ -177,11 +167,7 @@ public final class HashTerms extends Terms {
     return controlOffsets.length;
   }
 
-  /**
-   * Whether the field's keys are inline: they all have {@link #keyLength} bytes, and each slot is a
-   * record of a doc id and a key, rather than a slot word that points to a record in term order.
-   * For tests.
-   */
+  /** Whether the field's keys are inline, all of {@link #keyLength} bytes. For tests. */
   boolean isInline() {
     return recordStride != 0;
   }
@@ -252,9 +238,9 @@ public final class HashTerms extends Terms {
   }
 
   /**
-   * A new random-access view of this field's records, control bytes, slots and filter. {@link
-   * RandomAccessInput} is not thread-safe, so every enum and every batch gets its own: a clone of
-   * the field's slice, which is cheaper than slicing the data file again.
+   * A new random-access view of this field's slice. {@link RandomAccessInput} is not thread-safe,
+   * so every enum and every batch gets its own clone, which is cheaper than slicing the data file
+   * again.
    */
   RandomAccessInput newSlice() throws IOException {
     IndexInput clone = slice.clone();
@@ -265,11 +251,9 @@ public final class HashTerms extends Terms {
 
   /**
    * Whether a key sorts before the field's smallest term or after its largest one, so that it is
-   * known to be absent without reading anything. The key's first 8 bytes are compared with those of
-   * the two terms, and the whole key only with a term whose first 8 bytes are the same (see {@link
-   * #compare}). When the two terms share their first 8 bytes, as keys of a scheme such as {@code
-   * https://} or {@code arn:aws:} do, the key is first checked to start with the prefix that the
-   * two terms share, and its 8 bytes after that prefix are compared with theirs.
+   * known to be absent without reading anything. The key's 8 bytes from {@link #rangeOffset} are
+   * compared with those of the two terms, and the whole key only with a term whose 8 bytes are the
+   * same.
    */
   boolean outOfRange(byte[] key, int offset, int length) {
     final long prefix;
@@ -289,13 +273,11 @@ public final class HashTerms extends Terms {
   /**
    * The first 8 bytes of a key as a big-endian long, followed by zero bytes if the key is shorter.
    *
-   * <p>Keys whose prefixes differ are in the order of their prefixes compared as unsigned longs. At
-   * the first byte where the prefixes differ, either both keys have a byte, and it is their first
-   * difference, or one key is padded there and the other has a non-zero byte: the padded key is
-   * then a proper prefix of the other one, and the smaller of the two in both orders. Equal
-   * prefixes say nothing of the order: keys that only differ after their first 8 bytes have the
-   * same prefix, and so do a key shorter than 8 bytes and that key followed by zero bytes, such as
-   * {@code [0x61]} and {@code [0x61, 0x00]}.
+   * <p>Keys whose prefixes differ are in the order of their prefixes compared as unsigned longs: at
+   * the first byte where the prefixes differ, either both keys have a byte, which is their first
+   * difference, or one key is padded and the other has a non-zero byte, so the padded key is a
+   * proper prefix of the other and smaller in both orders. Equal prefixes say nothing of the order,
+   * as for keys that differ after 8 bytes, or {@code [0x61]} and {@code [0x61, 0x00]}.
    */
   static long prefix(byte[] key, int offset, int length) {
     if (length >= Long.BYTES) {
@@ -309,10 +291,9 @@ public final class HashTerms extends Terms {
   }
 
   /**
-   * Compares a key with a term, given the {@link #prefix} of both, or that of their bytes from an
-   * offset before which they are the same: returns a negative number, zero or a positive number as
-   * {@link Arrays#compareUnsigned(byte[], int, int, byte[], int, int)} does. The whole key is only
-   * compared when the prefixes are equal. Package-private for tests.
+   * Compares a key with a term as {@link Arrays#compareUnsigned(byte[], int, int, byte[], int,
+   * int)} does, given the {@link #prefix} of both, or that of their bytes from an offset before
+   * which they are the same. Package-private for tests.
    */
   static int compare(
       long keyPrefix, byte[] key, int offset, int length, long termPrefix, BytesRef term) {
@@ -393,25 +374,15 @@ public final class HashTerms extends Terms {
    * {@code docs[i - from]} either the id of the only document of this segment that contains it,
    * {@link #ABSENT}, or {@link #MULTI}. Deleted documents are not filtered out.
    *
-   * <p>Every key is looked up, except keys whose length differs from that of the field's keys, if
-   * they are inline, which are absent without any read. Keys that sort before the field's smallest
-   * term ({@link #getMin}) or after its largest one ({@link #getMax}) are found absent, but only
-   * after a lookup: a caller with sorted keys, such as {@link
-   * org.apache.lucene.sandbox.search.PrimaryKeyHashInSetQuery}, passes only those between the two.
-   * If the field has a filter, the keys are checked against it in chunks, the filter words of all
-   * the keys of a chunk being read first, and the keys that it rules out are absent. The filter
-   * pays off when most keys are absent: present keys always pass it, so for them its reads only add
-   * to those of the table.
+   * <p>Keys that sort before the field's smallest term ({@link #getMin}) or after its largest one
+   * ({@link #getMax}) are found absent, but only after a lookup: a caller with sorted keys, such as
+   * {@link org.apache.lucene.sandbox.search.PrimaryKeyHashInSetQuery}, passes only those between
+   * the two. If the field has a filter, it is read before the table. It pays off when most keys are
+   * absent: present keys always pass it, so for them its reads only add to those of the table.
    *
-   * <p>The remaining keys are looked up in the table in batches of {@link #CHUNK_SIZE}, in stages.
-   * The control bytes from every key's home slot are read first, then scanned to each key's first
-   * candidate slot, which ends most misses. Then the slot word of every candidate is read, and the
-   * head of the record of every candidate whose tag matches, while keys whose candidate holds
-   * another key move on to their next candidate, which is read in another round. Keys are compared
-   * with their records last. On a field whose keys are inline, the rounds read the first and, for
-   * keys longer than 4 bytes, the last 8 bytes of each candidate's record instead of a slot word,
-   * and compare the key with the record right away. No read of a stage depends on another, so their
-   * cache misses overlap instead of being paid one after the other.
+   * <p>Keys are looked up in the table in batches of {@link #CHUNK_SIZE}, in stages. No read of a
+   * stage depends on another, so their cache misses overlap instead of being paid one after the
+   * other.
    *
    * <p>Allocates a few small arrays per call and nothing per key. Thread-safe.
    *
@@ -450,17 +421,11 @@ public final class HashTerms extends Terms {
 
   /**
    * Checks the keys {@code [from, to)} against the field's filter, in chunks of {@link #CHUNK_SIZE}
-   * consecutive keys, and adds the keys that pass to {@code batch}, which is looked up in the table
-   * whenever it is full; the others are absent, and the result of key {@code i} is written to
-   * {@code docs[i - origin]}. The words of the filter of every key of a chunk are read first, in a
-   * stage of their own, and the batch only fills up with keys that pass, so that the stages of the
-   * table have as many keys to overlap as without a filter, although most keys do not get there.
-   * Keys whose length differs from that of the field's inline keys are absent without any read.
-   *
-   * <p>A set of keys is looked up in segment after segment, so what the filter needs of a key that
-   * does not depend on the segment is computed once, by {@link HashedTerms}: the {@link
-   * TermHash#mix} of its hash, which gives its word together with the field's partition bits, and
-   * its bits in that word.
+   * keys, and adds the keys that pass to {@code batch}, which is looked up in the table whenever it
+   * is full; the others are absent. The result of key {@code i} is written to {@code docs[i -
+   * origin]}. Since the batch only fills up with keys that pass, the stages of the table have as
+   * many keys to overlap as without a filter. What the filter needs of a key that does not depend
+   * on the segment is computed once, by {@link HashedTerms}.
    */
   private void lookupWithFilter(
       RandomAccessInput in, HashedTerms keys, int from, int to, int[] docs, int origin, Batch batch)
@@ -482,8 +447,7 @@ public final class HashTerms extends Terms {
           chunk[n++] = i;
         }
       }
-      // Stage 0: the word of the filter of every key. No read depends on another, or on a branch:
-      // which keys pass is only looked at once every word is read.
+      // Stage 0: the filter word of every key. No read depends on another, or on a branch.
       for (int j = 0; j < n; j++) {
         final int i = chunk[j];
         offsets[j] = BlockedBloomFilter.wordOffset(filterHash(mixes[i], hashes[i]), filterWords);
@@ -491,8 +455,7 @@ public final class HashTerms extends Terms {
       for (int j = 0; j < n; j++) {
         words[j] = in.readLong(filterOffset + offsets[j]);
       }
-      // Most keys are ruled out, and which ones are is unpredictable: the keys that pass are added
-      // to the batch without a branch on which ones they are.
+      // Which keys pass is unpredictable, so they are added to the batch without a branch.
       for (int j = 0; j < n; j++) {
         final int i = chunk[j];
         batch.keys[batch.size] = i;
@@ -541,9 +504,9 @@ public final class HashTerms extends Terms {
   }
 
   /**
-   * Looks up the keys of a batch in the table, in the stages of {@link #lookupBatch}, writing the
-   * result of key {@code i} to {@code docs[i - origin]}, and empties the batch. On a field whose
-   * keys are inline, every key of the batch has their length.
+   * Looks up the keys of a batch in the table, writing the result of key {@code i} to {@code docs[i
+   * - origin]}, and empties the batch. On a field whose keys are inline, every key of the batch has
+   * their length.
    */
   private void lookupInTable(
       RandomAccessInput in, HashedTerms keys, Batch batch, int[] docs, int origin)
@@ -558,12 +521,11 @@ public final class HashTerms extends Terms {
   }
 
   /**
-   * Stages 1 and 2 of {@link #lookupInTable}. Stage 1: the control bytes of every key's home slot
-   * and of the 7 slots after it, and nothing else; where they are is found first, then they are
-   * read in a loop that does nothing else. Stage 2: scan the control bytes of each key to the first
-   * one that is the key's. Most misses end here, at an empty slot; more control bytes are only read
-   * by scans past 8 slots. The keys without a candidate are absent; returns how many have one,
-   * which the first entries of {@code batch.candidates} are, by their index in the batch.
+   * Stages 1 and 2 of {@link #lookupInTable}. Stage 1 reads the 8 control bytes from every key's
+   * home slot, in a loop that does nothing else. Stage 2 scans them to each key's first candidate
+   * slot; most misses end here, at an empty slot. The keys without a candidate are absent; returns
+   * how many have one, which the first entries of {@code batch.candidates} are, by their index in
+   * the batch.
    */
   private int findCandidates(
       RandomAccessInput in, HashedTerms keys, Batch batch, int[] docs, int origin)
@@ -610,14 +572,12 @@ public final class HashTerms extends Terms {
 
   /**
    * Stages 3 to 5 of {@link #lookupInTable}, on a field whose records are in term order, for the
-   * first {@code numCandidates} keys of {@code batch.candidates}. Stages 3 and 4, in rounds until
-   * no key has a candidate left. Stage 3: the slot of every candidate. Stage 4: check tags, and
-   * read the first 8 bytes (doc id and key length) of the record of every candidate whose tag
-   * matches. A control byte also matches another key's once per 128 slots or so: the scan of such a
-   * key then resumes after that slot, in control bytes that were just read, and its next candidate
-   * is read in the next round, with the others' rather than one key at a time. Stage 5: compare
-   * keys. A tag also matches another key's once per 2^16 or so; the scan then resumes after that
-   * slot, one key at a time, verifying every match.
+   * first {@code numCandidates} keys of {@code batch.candidates}. In rounds until no key has a
+   * candidate left, stage 3 reads the slot of every candidate, and stage 4 checks tags and reads
+   * the first 8 bytes of the record of every candidate whose tag matches. A control byte also
+   * matches another key's once per 128 slots or so: such a key scans on, and its next candidate is
+   * read in the next round, with the others'. Stage 5 compares keys. A tag also matches another
+   * key's once per 2^16 or so; the scan then resumes one key at a time.
    */
   private void matchRecords(
       RandomAccessInput in,
@@ -689,10 +649,10 @@ public final class HashTerms extends Terms {
   /**
    * Stages 3 and 4 of {@link #lookupInTable}, on a field whose keys are inline, for the first
    * {@code numCandidates} keys of {@code batch.candidates}, in rounds until no key has a candidate
-   * left. Stage 3: the first 8 bytes of the record of every candidate and, for keys of more than 4
-   * bytes, its last 8, which take both cache lines of a record that crosses one. Stage 4: compare
-   * keys; a key whose candidate holds another key scans on, in control bytes that were just read,
-   * and its next candidate's record is read in the next round.
+   * left. Stage 3 reads the first 8 bytes of the record of every candidate and, for keys of more
+   * than 4 bytes, its last 8, which cover both cache lines of a record that crosses one. Stage 4
+   * compares keys; a key whose candidate holds another key scans on, and its next candidate's
+   * record is read in the next round.
    */
   private void matchInlineRecords(
       RandomAccessInput in,
@@ -862,9 +822,7 @@ public final class HashTerms extends Terms {
 
   /**
    * As {@link #lookup(RandomAccessInput, BytesRef, long)}, given the key's partition {@code p} and
-   * its home slot there, {@code home}: scans the control bytes from there, and reads a slot, or on
-   * a field whose keys are inline the record of a slot, only once they say that it may hold the
-   * key.
+   * its home slot there, {@code home}.
    */
   int lookup(RandomAccessInput in, BytesRef key, long hash, int p, int home) throws IOException {
     if (recordStride != 0) {
@@ -897,10 +855,8 @@ public final class HashTerms extends Terms {
   }
 
   /**
-   * Looks a key of a field whose keys are inline up in partition {@code p} from {@code slot} on, at
-   * or after its home slot {@code home}: scans the control bytes to every slot that has the key's,
-   * and compares the key with the record of each of them, until an empty slot or the {@link
-   * #limit}.
+   * Looks up a key of a field whose keys are inline in partition {@code p}, from {@code slot} on,
+   * at or after its home slot {@code home}, until an empty slot or the {@link #limit}.
    *
    * @param prefix the key's {@link #inlinePrefix}
    */
@@ -934,10 +890,10 @@ public final class HashTerms extends Terms {
   }
 
   /**
-   * Reads the head of the inline record at {@code position}, its first 8 bytes, and, if the field's
-   * keys are longer than 4 bytes, its tail, its last 8 bytes, both before comparing either; then
-   * compares the record's key with the given key, which has the field's key length: see {@link
-   * #matchInline(RandomAccessInput, long, long, long, byte[], int, int, int)}.
+   * Reads the head and, if the field's keys are longer than 4 bytes, the tail of the inline record
+   * at {@code position}, both before comparing either, then compares the record's key with the
+   * given key, of the field's key length, with {@link #matchInline(RandomAccessInput, long, long,
+   * long, byte[], int, int, int)}.
    *
    * @param prefix the key's {@link #inlinePrefix}
    */
@@ -970,10 +926,9 @@ public final class HashTerms extends Terms {
    * #inlinePrefix} is {@code prefix}, and which has {@code length} bytes, as the record's key does.
    * {@code head} is the record's first 8 bytes and, if the keys are longer than 4 bytes, {@code
    * tail} is its last 8: together they cover both cache lines of a record that crosses one. The
-   * first bytes of the key are compared with the head, leaving out the bytes after a key shorter
-   * than 4 bytes; then its last 8 bytes, or 4 if it is shorter than 8 bytes, with the tail; then,
-   * for keys of more than 12 bytes, the bytes between them, which are read from the same cache
-   * lines. Returns the record's document, {@link #MULTI}, or {@link #NO_MATCH}.
+   * key's first bytes are compared with the head, leaving out the bytes after a key shorter than 4
+   * bytes, and the rest of a longer key with {@link #restEquals}. Returns the record's document,
+   * {@link #MULTI}, or {@link #NO_MATCH}.
    */
   private static int matchInline(
       RandomAccessInput in,
@@ -1006,10 +961,9 @@ public final class HashTerms extends Terms {
   /**
    * Compares the key of the inline record at {@code position}, whose last 8 bytes are {@code tail},
    * with {@code key}, of {@code length > 4} bytes, from its fifth byte on: the first 4 are in the
-   * record's head, which was compared already. The last 8 bytes of the key, or the last 4 if it is
-   * shorter than 8 bytes, are in the tail; the bytes between the first 4 and the last 8 are
-   * compared by machine words, the last one overlapping the tail, rather than masked.
-   * Package-private for tests.
+   * record's head, which was compared already. The key's last 8 bytes, or last 4 if it is shorter
+   * than 8, are compared with the tail, and the bytes between the first 4 and the last 8 by machine
+   * words, the last one overlapping the tail, rather than masked. Package-private for tests.
    */
   static boolean restEquals(
       RandomAccessInput in, long position, long tail, byte[] key, int offset, int length)
@@ -1034,8 +988,7 @@ public final class HashTerms extends Terms {
 
   /**
    * Looks a key up in partition {@code p} from {@code slot} on, where {@code home} is the key's
-   * home slot: scans the control bytes to every slot that has the key's, and verifies each of them,
-   * until an empty slot or the {@link #limit}.
+   * home slot, until an empty slot or the {@link #limit}.
    */
   int probe(
       RandomAccessInput in,
@@ -1091,10 +1044,10 @@ public final class HashTerms extends Terms {
    * Compares the key of the record at {@code position}, whose first 8 bytes are {@code head}, with
    * the given key. Returns the record's document, {@link #MULTI}, or {@link #NO_MATCH}.
    *
-   * <p>The first 8 bytes of a record hold its 4-byte doc id and its key length, a VInt that takes
+   * <p>The first 8 bytes of a record hold its 4-byte doc id and its VInt key length, which takes
    * one byte for keys shorter than 128 bytes and at most three for any term Lucene accepts, so one
-   * read usually covers both. (A record is at least 5 bytes long and is followed by at least 16
-   * control bytes, so that read never leaves the slice.)
+   * read usually covers both. A record is at least 5 bytes long and is followed by at least 16
+   * control bytes, so that read never leaves the slice.
    */
   static int matchRecord(
       RandomAccessInput in, long position, long head, byte[] key, int offset, int length)
@@ -1130,10 +1083,9 @@ public final class HashTerms extends Terms {
   }
 
   /**
-   * Compares {@code length} bytes at {@code position} with {@code key}, a machine word at a time,
-   * reading the last word so that it overlaps the previous one rather than masking it. Reading the
-   * stored key in place avoids copying it out of the file first, which costs more than the
-   * comparison for typical id lengths. Package-private for tests.
+   * Compares {@code length} bytes at {@code position} with {@code key} in place, a machine word at
+   * a time, reading the last word so that it overlaps the previous one rather than masking it.
+   * Package-private for tests.
    */
   static boolean keyEquals(RandomAccessInput in, long position, byte[] key, int offset, int length)
       throws IOException {

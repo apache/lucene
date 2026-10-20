@@ -62,11 +62,10 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 
 /**
- * Reads the files written by {@link HashFieldsConsumer}: opens the delegate by the name stored in
- * the meta file, reads and validates the entries of the fields that have a table, and returns a
- * {@link HashTerms} for each of them; other fields are served by the delegate. The meta file is
- * verified against its checksum when it is opened; the data file only has its header and footer
- * checked then, and is fully verified by {@link #checkIntegrity}.
+ * Reads the files written by {@link HashFieldsConsumer}, and returns a {@link HashTerms} for each
+ * field with a table; other fields are served by the delegate, opened by the name stored in the
+ * meta file. The meta file is verified against its checksum when it is opened; the data file only
+ * has its header and footer checked then, and is fully verified by {@link #checkIntegrity}.
  */
 final class HashFieldsProducer extends FieldsProducer {
 
@@ -121,8 +120,7 @@ final class HashFieldsProducer extends FieldsProducer {
           VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
-      // The data file is too costly to verify in full on open, but this checks the structure of
-      // its footer, which detects truncation.
+      // too costly to verify in full on open, but this detects truncation
       CodecUtil.retrieveChecksum(data);
       final long dataEnd = data.length() - CodecUtil.footerLength();
       for (FieldEntry entry : entries) {
@@ -154,7 +152,7 @@ final class HashFieldsProducer extends FieldsProducer {
     }
   }
 
-  /** A merge instance: the delegate's merge instance, without tables, and the same data file. */
+  /** A merge instance, see {@link #getMergeInstance}. */
   private HashFieldsProducer(FieldsProducer delegate, IndexInput data) {
     this.delegate = delegate;
     this.data = data;
@@ -200,17 +198,13 @@ final class HashFieldsProducer extends FieldsProducer {
     }
   }
 
-  /**
-   * Reads the table of a field whose records are in term order: where they are, then the
-   * partitions, whose control bytes and slots follow the records, and the filter.
-   */
+  /** Reads the meta data of a field whose records are in term order: a TermOrderTable. */
   private static void readTermOrderTable(
       ChecksumIndexInput meta, FieldInfo info, FieldEntry entry, long minOffset)
       throws IOException {
     final long recordsOffset = meta.readVLong();
     final long recordsLength = meta.readVLong();
-    // A record takes at least 5 bytes: doc, one-byte length, no key bytes. Records start at a
-    // cache line.
+    // a record takes at least 5 bytes: doc, one-byte length, no key bytes
     if (recordsOffset < minOffset
         || recordsOffset > MAX_DATA_OFFSET
         || recordsOffset % CACHE_LINE_BYTES != 0
@@ -237,10 +231,7 @@ final class HashFieldsProducer extends FieldsProducer {
     entry.sliceLength = readFilter(meta, info, entry, end) - entry.sliceOffset;
   }
 
-  /**
-   * Reads the table of a field whose keys are inline: their length, where the field starts, then
-   * the partitions and the filter.
-   */
+  /** Reads the meta data of a field whose keys are inline: an InlineTable. */
   private static void readInlineTable(
       ChecksumIndexInput meta, FieldInfo info, FieldEntry entry, long minOffset)
       throws IOException {
@@ -264,11 +255,8 @@ final class HashFieldsProducer extends FieldsProducer {
 
   /**
    * Reads and checks the partitions of a field, whose first control bytes start at {@code offset},
-   * and returns where the last partition ends. Each partition's offsets follow from its number of
-   * slots, as the file format gives them. For records in term order ({@code keyLength} 0), the
-   * slots of a partition are slot words, right after its control bytes. For inline keys, the slots
-   * are records of {@code 4 + keyLength} bytes, from the first multiple of 64 after the control
-   * bytes, followed by {@link PrimaryKeyHashPostingsFormat#inlinePadding} zero bytes.
+   * and returns where the last partition ends. {@code keyLength} is 0 if the records are in term
+   * order.
    */
   private static long readPartitions(
       ChecksumIndexInput meta, FieldInfo info, FieldEntry entry, long offset, int keyLength)
@@ -307,9 +295,7 @@ final class HashFieldsProducer extends FieldsProducer {
                 + maxProbe,
             meta);
       }
-      // The writer holds a partition's control bytes in one array, which has more entries than
-      // the partition has slots (8 zero bytes and padding follow the last control byte), so it
-      // is the array whose length bounds the number of slots.
+      // the writer holds a partition's control bytes, padding included, in one array
       if (controlLength(slotCount) > ArrayUtil.MAX_ARRAY_LENGTH) {
         throw new CorruptIndexException(
             "field \""
@@ -356,8 +342,7 @@ final class HashFieldsProducer extends FieldsProducer {
 
   /**
    * Checks that the smallest or the largest term of an inline field, which is one of its keys, has
-   * the key length that the meta data gives. Otherwise records would be read with another stride
-   * than they were written with.
+   * the key length that the meta data gives. Otherwise records would be read with the wrong stride.
    */
   private static void checkKeyLength(FieldEntry entry, BytesRef term, IndexInput data)
       throws CorruptIndexException {
@@ -376,10 +361,9 @@ final class HashFieldsProducer extends FieldsProducer {
 
   /**
    * Reads the filter entry of a field whose slots end at {@code slotsEnd}, and returns where its
-   * filter ends, or {@code slotsEnd} if it has none. Its offset and number of words follow from the
-   * end of the slots, the number of keys and the number of bits per key, and must be those: a
-   * filter read with another number of words would put keys in other words than the writer did, and
-   * rule out keys that are there.
+   * filter ends, or {@code slotsEnd} if it has none. Its offset and number of words must be those
+   * that follow from the end of the slots, the number of keys and the bits per key: with another
+   * number of words, the filter would rule out keys that are there.
    */
   private static long readFilter(
       ChecksumIndexInput meta, FieldInfo info, FieldEntry entry, long slotsEnd) throws IOException {
@@ -478,10 +462,7 @@ final class HashFieldsProducer extends FieldsProducer {
     final String field;
     long numKeys;
 
-    /**
-     * The length of every key if the keys are inline, else 0: the records are in term order, and
-     * {@link #slotsOffsets} gives where the slots are.
-     */
+    /** The length of every key if the keys are inline, else 0. */
     int keyLength;
 
     /** Where the field's slice of the data file starts: its records, or its first control bytes. */

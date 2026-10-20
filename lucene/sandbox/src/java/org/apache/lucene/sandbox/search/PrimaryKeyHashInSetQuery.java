@@ -55,19 +55,17 @@ import org.apache.lucene.util.automaton.ByteRunAutomaton;
 /**
  * A constant-score query that matches the documents whose {@code field} contains any of a set of
  * terms, called keys here, and that looks them up in the hash index of {@link
- * PrimaryKeyHashPostingsFormat} when the field uses it. It is meant for keys that each occur in
- * about one document, such as primary keys or other unique ids.
+ * PrimaryKeyHashPostingsFormat} when the field uses it.
  *
  * <p>It matches exactly the documents that a {@link TermInSetQuery} on the same field and keys
- * matches, with the same scores (the boost). It differs in how keys are resolved: the keys are
- * sorted, de-duplicated and hashed once, when the query is created, and every segment then looks
- * them all up in one go:
+ * matches, with the same scores (the boost). The keys are sorted, de-duplicated and hashed once,
+ * when the query is created, and every segment then looks them all up in one go:
  *
  * <ul>
- *   <li>If the segment's {@link Terms} is a {@link HashTerms}, all keys are resolved with {@link
- *       HashTerms#lookupBatch}, whose staged probes overlap the memory accesses of many keys. Only
- *       keys that have more than one document in the segment are sought with a {@link TermsEnum},
- *       in the terms dictionary of the delegate format ({@link HashTerms#getDelegate}).
+ *   <li>If the segment's {@link Terms} is a {@link HashTerms}, the keys within the range of its
+ *       terms are resolved with {@link HashTerms#lookupBatch}; the others are skipped without any
+ *       read. Only keys that have more than one document in the segment are sought with a {@link
+ *       TermsEnum}, in the terms dictionary of the delegate format ({@link HashTerms#getDelegate}).
  *   <li>Otherwise (another postings format, or a reader wrapper that hides the format), the keys
  *       are sought in sorted order with {@link TermsEnum#seekExact(BytesRef)} on a single {@link
  *       TermsEnum}.
@@ -75,11 +73,10 @@ import org.apache.lucene.util.automaton.ByteRunAutomaton;
  *
  * <p>A segment is resolved completely when its {@link ScorerSupplier} is created, so that a segment
  * without matches gets no scorer and the reported cost is the number of documents found. This makes
- * the query a good fit for sets of keys that each match about one document, and a poor one for keys
- * that match many documents each, where a {@link TermInSetQuery} is the better choice. All keys are
- * resolved even when the query is intersected with a much more selective one, except that on a
- * segment with a hash table, keys outside the range of its terms are skipped without any read. As
- * with any query, deleted documents are filtered out by the searcher, not here.
+ * the query a good fit for keys that each match about one document, such as primary keys, and a
+ * poor one for keys that match many documents each, where a {@link TermInSetQuery} is the better
+ * choice. All keys are resolved even when the query is intersected with a much more selective one.
+ * As with any query, deleted documents are filtered out by the searcher, not here.
  *
  * @lucene.experimental
  */
@@ -97,8 +94,7 @@ public final class PrimaryKeyHashInSetQuery extends Query implements Accountable
   /**
    * If the table finds at most this many documents, and no key has several documents, they are
    * sorted in place rather than collected by a {@link DocIdSetBuilder}, whose fixed cost would
-   * exceed that of the lookups. For more documents, the builder's radix sort or bit set is as
-   * cheap.
+   * exceed that of the lookups.
    */
   private static final int MAX_SORTED_HITS = 32;
 
@@ -198,9 +194,8 @@ public final class PrimaryKeyHashInSetQuery extends Query implements Accountable
 
   /**
    * Resolves the keys within the range of the segment's terms with {@link HashTerms#lookupBatch},
-   * and keys with several documents with a {@link TermsEnum} of the delegate format's terms, which
-   * the table would only send there after reading it again. Returns the matching documents, or null
-   * if there are none.
+   * and keys with several documents with a {@link TermsEnum} of the delegate format's terms.
+   * Returns the matching documents, or null if there are none.
    */
   private DocIdSetIterator lookupHashed(HashTerms terms, int maxDoc) throws IOException {
     // Keys are sorted, and only those within the range of the segment's terms can be in it. When
@@ -219,10 +214,9 @@ public final class PrimaryKeyHashInSetQuery extends Query implements Accountable
     for (int from = start, n; from < end; from += n) {
       n = Math.min(LOOKUP_WINDOW, end - from);
       terms.lookupBatch(keys, from, from + n, docs);
-      // Compacts the hits of the window in place, without a branch on whether each key is a hit,
-      // which hits and misses mixed would mispredict: ABSENT and MULTI are negative and are
-      // dropped. Keys of several documents are rare; they are sought in key order, so that the
-      // enum moves forward.
+      // Compacts the hits in place without a branch, which mixed hits and misses would
+      // mispredict: ABSENT and MULTI are negative and are dropped. Keys of several documents are
+      // sought in key order, so that the enum moves forward.
       numHits = 0;
       for (int i = 0; i < n; i++) {
         final int doc = docs[i];

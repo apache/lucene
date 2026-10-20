@@ -20,13 +20,12 @@ import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.util.BytesRef;
 
 /**
- * Postings of a term that occurs in exactly one document of a {@code DOCS}-only field, as resolved
- * by the hash table. Frequencies are 1 and there are no positions, offsets or payloads, which is
- * what the delegate returns for such a field whatever flags were asked for.
+ * Postings of a term that the hash table resolved to its only document, in a {@code DOCS} field:
+ * frequency 1 and no positions, offsets or payloads, as the delegate returns for such a field
+ * whatever the flags.
  *
- * <p>Holds no state besides the document (and an enum of the delegate kept for reuse, which the
- * delegate checks before reusing it), so an instance may be reused for any term of any field or
- * segment.
+ * <p>Holds no state besides the document and {@link #delegateReuse}, which the delegate checks
+ * before reusing it, so an instance may be reused for any term of any field or segment.
  */
 final class SingleDocPostingsEnum extends PostingsEnum {
 
@@ -34,9 +33,8 @@ final class SingleDocPostingsEnum extends PostingsEnum {
   private int doc;
 
   /**
-   * A postings enum of the delegate format that was given up for reuse when this enum was created,
-   * kept for when this one is given back for reuse on a key that the delegate resolves. Only used
-   * by {@link HashTermsEnum#postings}.
+   * The delegate's postings enum that this one replaced, given back to the delegate when this one
+   * is reused on a key that the delegate resolves (see {@link HashTermsEnum#postings}).
    */
   PostingsEnum delegateReuse;
 

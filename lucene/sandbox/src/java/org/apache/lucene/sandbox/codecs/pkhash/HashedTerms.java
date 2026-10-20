@@ -50,10 +50,9 @@ public final class HashedTerms implements Accountable {
   private final long[] hashes;
 
   /**
-   * What the filter of any segment needs of every key, computed once rather than per segment: the
-   * {@link TermHash#mix} of the key's hash, which gives the key's word together with the field's
-   * number of partitions, and the {@link BlockedBloomFilter#mask} of the mix, the key's bits in its
-   * word.
+   * What the filter of any segment needs of every key: the {@link TermHash#mix} of its hash, which
+   * gives its word together with the field's number of partitions, and the {@link
+   * BlockedBloomFilter#mask} of the mix, its bits in that word.
    */
   private final long[] mixes, filterMasks;
 
@@ -103,7 +102,6 @@ public final class HashedTerms implements Accountable {
     int upto = 0;
     for (int i = 0; i < size; i++) {
       BytesRef key = keys[order[i]];
-      // hash the caller's bytes, before the copy
       final long hash = TermHash.hash(key.bytes, key.offset, key.length);
       final long mixed = TermHash.mix(hash);
       hashes[i] = hash;
@@ -118,21 +116,17 @@ public final class HashedTerms implements Accountable {
 
   /**
    * Sorts keys in unsigned byte order, the order of every terms dictionary, by their {@link
-   * HashTerms#prefix prefixes}: their first 8 bytes as unsigned longs. Comparing two prefixes takes
-   * an instruction, and comparing two keys an indirection to each and a call, so keys are only
-   * compared in full when their prefixes are equal. The keys do not move: the sort permutes their
-   * indices along with their prefixes, in O(n) ints and longs of scratch space. It is used instead
-   * of {@link org.apache.lucene.util.StringSorter} because it sorts by these cached 8-byte prefixes
-   * first, and most keys are told apart by their prefixes alone.
+   * HashTerms#prefix prefixes}: their first 8 bytes as unsigned longs. Keys are only compared in
+   * full when their prefixes are equal. The keys do not move: the sort permutes their indices along
+   * with their prefixes. It is used instead of {@link org.apache.lucene.util.StringSorter} because
+   * most keys are told apart by these cached prefixes alone.
    *
    * <p>The sort is an MSB radix sort on the bytes of the prefixes that skips the bytes that all
-   * keys of a range share, down to ranges of a few keys, which are sorted by insertion. Every byte
-   * that it sorts by takes O(n) time, and thousands of random keys need one or two. Keys whose
-   * prefixes are all equal share these 8 bytes, and often more, as URLs of one host do, unless some
-   * of them end within these bytes and are zero-padded. Such keys are sorted again by the 8 bytes
-   * that follow all the bytes they share, at most {@link #MAX_LEVELS} times so as not to recurse
-   * deeply on keys with long common prefixes, and otherwise by comparison. Keys that are already in
-   * order, or in reverse order, as from a sorted set, are only checked, or reversed, in one pass.
+   * keys of a range share, down to ranges of a few keys, which are sorted by insertion. Keys whose
+   * prefixes are all equal, as URLs of one host often are, are sorted again by the 8 bytes after
+   * all the bytes they share, at most {@link #MAX_LEVELS} times so as not to recurse deeply, and
+   * otherwise by comparison. Keys that are already in order, or in reverse order, as from a sorted
+   * set, are only checked, or reversed, in one pass.
    */
   private static final class KeySorter {
 
@@ -343,10 +337,7 @@ public final class HashedTerms implements Accountable {
       }.sort(from, to);
     }
 
-    /**
-     * Compares two keys, whose first {@code offset} bytes are the same, given their prefixes from
-     * there: as their prefixes if these differ, and as their bytes after {@code offset} otherwise.
-     */
+    /** Compares two keys equal up to {@code offset}, given their prefixes from there. */
     private int compare(long prefix1, int index1, long prefix2, int index2, int offset) {
       if (prefix1 != prefix2) {
         return Long.compareUnsigned(prefix1, prefix2);

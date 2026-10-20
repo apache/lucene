@@ -20,8 +20,8 @@ package org.apache.lucene.sandbox.codecs.pkhash;
  * The hash function persisted by {@link PrimaryKeyHashPostingsFormat}, and the mapping from a hash
  * to a partition, a home slot, a tag and a control byte.
  *
- * <p>The function is XXH3-64 ({@link Xxh3}) with the fixed seed {@link #SEED}. A key has a single
- * 64-bit hash, whose bits are split as follows, from the highest:
+ * <p>The function is XXH3-64 ({@link Xxh3}) with the fixed seed {@link #SEED}. From the highest,
+ * the bits of a key's 64-bit hash are used as follows:
  *
  * <ul>
  *   <li>the top {@code partitionBits} bits select the partition ({@link #partition});
@@ -36,25 +36,17 @@ package org.apache.lucene.sandbox.codecs.pkhash;
  * so the lowest bit of the home slot is bit {@code 64 - 10 - 31 = 23} or higher: the four parts
  * never share a bit, and keys with the same home slot are told apart by 23 independent bits.
  *
- * <p>If a field has a filter, a key's word and bits in it come from the key's {@link #filterHash}:
- * its partition, then the bits of its hash put through a finalizer ({@link #mix}) rather than those
- * of the hash itself.
- *
  * <p>The seed is a constant, not {@code StringHelper.GOOD_FAST_HASH_SEED} (which is random per
- * JVM), because the hash determines where keys live on disk. A constant seed also means a query can
- * hash each key once and reuse the hash for every segment. Correctness never depends on the hash:
- * every hit is verified against the full stored key, so a collision costs a probe, never a wrong
- * answer.
+ * JVM), because the hash determines where keys live on disk; it also lets a query hash each key
+ * once for all segments. Every hit is verified against the stored key, so a collision never gives a
+ * wrong answer.
  */
 final class TermHash {
 
   /** Identifies this function in the meta file. A different function must use a new id. */
   static final int XXH3_64_ID = 0;
 
-  /**
-   * The fixed seed: the 32-bit golden ratio, as an unsigned value. Changing it changes the on-disk
-   * format.
-   */
+  /** The fixed seed, the 32-bit golden ratio, unsigned. Changing it changes the on-disk format. */
   static final long SEED = 0x9E3779B9L;
 
   private static final Xxh3 XXH3 = new Xxh3(SEED);
@@ -63,8 +55,7 @@ final class TermHash {
   static final int HOME_BITS = 31;
 
   /**
-   * A slot word holds its record's offset plus one above this many low bits: the tag, then zero
-   * bits.
+   * A slot word holds its record's offset plus one above this many low bits: the tag, then zeros.
    */
   static final int POINTER_SHIFT = 24;
 
@@ -91,8 +82,8 @@ final class TermHash {
   }
 
   /**
-   * The control byte of a slot that holds a key: the high bit set, above bits {@code [TAG_BITS,
-   * TAG_BITS + CONTROL_BITS)} of the key's hash. Never {@link #EMPTY_CONTROL}.
+   * The control byte of a slot that holds a key: its high bit is set, so it is never {@link
+   * #EMPTY_CONTROL}.
    */
   static int control(long hash) {
     return 0x80 | ((int) (hash >>> TAG_BITS) & ((1 << CONTROL_BITS) - 1));
@@ -100,9 +91,8 @@ final class TermHash {
 
   /**
    * The bits of the hash that the tag and the control byte are taken from, in place. The writer
-   * keeps them in the low bits of a slot word until the slot is known, then moves the control bits
-   * to the slot's control byte, which is why {@link #tag} and {@link #control} give the same result
-   * on such a word as on the hash.
+   * keeps them in the low bits of a slot word until the slot is known, so {@link #tag} and {@link
+   * #control} give the same result on such a word as on the hash.
    */
   static long tagAndControlBits(long hash) {
     return hash & ((1L << (TAG_BITS + CONTROL_BITS)) - 1);
@@ -115,9 +105,9 @@ final class TermHash {
 
   /**
    * The home slot of a key in a partition of {@code capacity} slots: the {@link #HOME_BITS} bits of
-   * its hash just below the partition bits, mapped onto {@code [0, capacity)} by multiply-shift
-   * (Lemire's "fastrange"), which needs no power-of-two capacity. The mapping is monotonic in those
-   * bits. A partition has fewer than 2<sup>31</sup> slots, so every slot can be a home slot.
+   * its hash below the partition bits, mapped onto {@code [0, capacity)} by multiply-shift
+   * (Lemire's "fastrange"), which is monotonic and needs no power-of-two capacity. A partition has
+   * fewer than 2<sup>31</sup> slots, so every slot can be a home slot.
    */
   static int homeSlot(long hash, int partitionBits, int capacity) {
     long bits = (hash << partitionBits) >>> (Long.SIZE - HOME_BITS);
@@ -134,10 +124,9 @@ final class TermHash {
    * format depends on it: the bits of a key's {@link #filterHash} below its partition bits.
    *
    * <p>With {@link PrimaryKeyHashPostingsFormat#MAX_PARTITION_BITS} partition bits, the partition,
-   * the home slot, the control byte and the tag use all 64 bits of the hash, so the filter cannot
-   * take its bits from the hash itself without sharing some of them. The finalizer is a bijection
-   * in which every bit of the result depends on every bit of the hash, so a key's word and bits in
-   * the filter are unrelated to its home slot, control byte and tag.
+   * the home slot, the control byte and the tag use all 64 bits of the hash, leaving none for the
+   * filter. Every bit of the mix depends on every bit of the hash, so a key's word and bits in the
+   * filter are unrelated to its home slot, control byte and tag.
    */
   static long mix(long hash) {
     long h = hash;
@@ -152,14 +141,8 @@ final class TermHash {
   /**
    * The hash that the {@link BlockedBloomFilter} of a field with {@code partitionBits} partition
    * bits takes the word and the bits of a key from: the top {@code partitionBits} bits of the key's
-   * hash, which are its partition, then the other bits of its {@link #mix}.
-   *
-   * <p>The word is taken from the high bits of the filter hash, by a mapping that is monotonic in
-   * them ({@link BlockedBloomFilter#word}), so the keys of a partition are in consecutive words,
-   * from {@link BlockedBloomFilter#firstWord} of the partition to that of the next one, in
-   * partition order: the writer builds the filter one partition at a time, as it builds the slots,
-   * and only holds the words of one partition in heap. Within its partition's words, a key's word
-   * and its bits come from its mix, see there.
+   * hash, which are its partition, so that the keys of a partition are in consecutive words ({@link
+   * BlockedBloomFilter#firstWord}), then the other bits of its {@link #mix}.
    */
   static long filterHash(long hash, int partitionBits) {
     return filterHash(mix(hash), hash, partitionBits);
@@ -167,8 +150,7 @@ final class TermHash {
 
   /**
    * {@link #filterHash(long, int)} of a key whose {@link #mix} is {@code mixed}, so that a key
-   * looked up in fields with different numbers of partitions is mixed once: the top {@code
-   * partitionBits} bits of {@code hash}, then the other bits of {@code mixed}.
+   * looked up in fields with different numbers of partitions is mixed once.
    */
   static long filterHash(long mixed, long hash, int partitionBits) {
     final long mixedBits = -1L >>> partitionBits;

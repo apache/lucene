@@ -60,15 +60,8 @@ import org.apache.lucene.util.BitUtil;
  * href="https://github.com/Cyan4973/xxHash">xxHash</a>, with a seed and the default secret: for
  * inputs of any length, the same hash as {@code XXH3_64bits_withSeed} of xxHash 0.8.
  *
- * <p>Inputs of up to 16 bytes are read with at most two loads and mixed with a few multiplications,
- * inputs of up to 240 bytes take a 128-bit multiplication per 16 bytes, and longer ones the striped
- * accumulation of the reference, written one lane at a time. The high half of a 128-bit product
- * comes from {@link Math#unsignedMultiplyHigh}, and little-endian reads from {@link
- * BitUtil#VH_LE_LONG} and {@link BitUtil#VH_LE_INT}.
- *
- * <p>An instance holds everything that derives from its seed alone, including the secret that
- * inputs longer than 240 bytes use, so that hashing allocates nothing. Instances are immutable, and
- * so safe to share between threads.
+ * <p>An instance holds everything that derives from its seed alone, so that hashing allocates
+ * nothing. Instances are immutable, and so safe to share between threads.
  */
 final class Xxh3 {
 
@@ -131,11 +124,10 @@ final class Xxh3 {
   private final long bitflip9to16First, bitflip9to16Last;
 
   /**
-   * The secret derived from the seed, as {@code XXH3_initCustomSecret} derives it: every 16 bytes
-   * of the default secret, read as two little-endian longs, plus and minus the seed. Its first 128
+   * The secret derived from the seed, as {@code XXH3_initCustomSecret} derives it. Its first 128
    * bytes are what 16-byte blocks of inputs of 17 to 240 bytes are xored with, and all of it is the
-   * secret of inputs longer than 240 bytes, for which the reference derives it on every call (or
-   * uses the default secret if the seed is 0, which is what the derivation gives then).
+   * secret of longer inputs, for which the reference derives it on every call (or uses the default
+   * secret if the seed is 0, which is what the derivation gives then).
    */
   private final byte[] secret;
 
@@ -267,12 +259,9 @@ final class Xxh3 {
   }
 
   /**
-   * Inputs longer than {@link #MIDSIZE_MAX} bytes: {@code XXH3_hashLong_64b_internal}. The 8
-   * accumulators are local variables, so that nothing is allocated. Stripes of 64 bytes are
-   * accumulated, in blocks of {@link #STRIPES_PER_BLOCK} stripes that each start again from the
-   * start of the secret, with the accumulators scrambled after every full block; the last block
-   * holds fewer stripes, and then the last 64 bytes of the input are accumulated as one more
-   * stripe, which may overlap the previous one.
+   * Inputs longer than {@link #MIDSIZE_MAX} bytes: {@code XXH3_hashLong_64b_internal}, with the 8
+   * accumulators in local variables, so that nothing is allocated. The last 64 bytes of the input
+   * are accumulated as one more stripe, which may overlap the previous one.
    */
   private long hashLong(byte[] data, int offset, int length) {
     long acc0 = PRIME32_3;
@@ -301,8 +290,7 @@ final class Xxh3 {
           p = blockStart + stripe * STRIPE_LEN;
           s = stripe * SECRET_CONSUME_RATE;
         }
-        // XXH3_accumulate_512: lane i adds its input to lane i ^ 1, and the product of the two
-        // 32-bit halves of its input xor the secret to itself
+        // XXH3_accumulate_512: lane i adds its input to lane i ^ 1
         final long d0 = readLong(data, p);
         final long d1 = readLong(data, p + 8);
         final long d2 = readLong(data, p + 16);

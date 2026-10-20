@@ -20,8 +20,8 @@ import org.apache.lucene.index.TermState;
 
 /**
  * The state of a term resolved by the hash table: its only document. It needs no I/O to restore,
- * and is valid on any {@link HashTermsEnum} of the same field and segment. Terms that the delegate
- * resolved carry the delegate's own {@link TermState} instead.
+ * and is valid on any {@link HashTermsEnum} of the same field and segment; terms that the delegate
+ * resolved carry the delegate's {@link TermState}.
  */
 final class HashTermState extends TermState {
 

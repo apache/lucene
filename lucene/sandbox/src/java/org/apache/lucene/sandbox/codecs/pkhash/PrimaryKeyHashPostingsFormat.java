@@ -35,41 +35,38 @@ import org.apache.lucene.util.IOUtils;
 /**
  * A {@link PostingsFormat} for primary-key fields that adds a per-segment hash index for exact
  * lookups. It wraps a delegate format (by default {@link Lucene104PostingsFormat}), which writes
- * and reads all postings as usual, and adds a hash table from each term, called a key here, to its
- * document, for every field indexed with {@link IndexOptions#DOCS}. It is meant for fields of
- * unique keys that are looked up by exact value, such as primary keys, UUIDs or product ids indexed
- * with {@link org.apache.lucene.document.StringField} or {@link
- * org.apache.lucene.document.KeywordField}. Apply it to such fields only, for example with {@link
- * org.apache.lucene.codecs.perfield.PerFieldPostingsFormat}: a field with a table takes several
- * times the space it takes with the delegate alone (see below), and the table does not speed up
- * fields whose terms occur in many documents, nor prefix, range, wildcard or fuzzy queries.
+ * and reads all postings, and adds a hash table from each term, called a key here, to its document,
+ * for every field indexed with {@link IndexOptions#DOCS}. Apply it, for example with {@link
+ * org.apache.lucene.codecs.perfield.PerFieldPostingsFormat}, only to fields of unique keys that are
+ * looked up by exact value, such as primary keys or UUIDs indexed with {@link
+ * org.apache.lucene.document.StringField} or {@link org.apache.lucene.document.KeywordField}: a
+ * field with a table takes several times the space it takes with the delegate alone (see below),
+ * and the table does not speed up fields whose terms occur in many documents, nor prefix, range,
+ * wildcard or fuzzy queries.
  *
  * <h2>Lookups</h2>
  *
  * {@link TermsEnum#seekExact(BytesRef)} and {@link TermsEnum#prepareSeekExact(BytesRef)} on a field
  * with a table are answered by the table, and the enum reports {@link TermsEnum#preferSeekExact()},
  * so that {@code IndexWriter} uses {@code seekExact} for buffered deletes and updates. A key that
- * sorts before the field's smallest term or after its largest one is absent without any read.
- * Otherwise the key's hash gives its home slot, and the lookup scans the control bytes, an array of
- * one byte per slot, from there, 8 at a time; most absent keys need only that one read. A slot
- * whose control byte matches the key's is verified against the stored key, so hash collisions never
- * give wrong results. A present key takes three dependent reads (control bytes, slot, record), or
- * two if the field's keys are inline (control bytes, record). Keys need not be unique: a key with
- * more than one document in a segment, such as an updated key whose old document is still in the
- * segment, is marked in the table and sought in the delegate's terms dictionary. Everything else
- * (ordered iteration, {@code seekCeil}, statistics, {@code intersect}, merges) is the delegate's.
- * Fields with other index options are passed through untouched.
+ * sorts before the field's smallest term or after its largest one is absent without any read. Most
+ * other absent keys take one read, of the control bytes; a present key takes three dependent reads
+ * (control bytes, slot, record), or two if the field's keys are inline. A key with more than one
+ * document in a segment, such as an updated key whose old document is still in the segment, is
+ * marked in the table and sought in the delegate's terms dictionary. Everything else (ordered
+ * iteration, {@code seekCeil}, statistics, {@code intersect}, merges) is the delegate's, as are
+ * fields with other index options.
  *
  * <p>{@link HashTerms#lookupBatch}, which {@link
  * org.apache.lucene.sandbox.search.PrimaryKeyHashInSetQuery} uses, looks up many keys in one
- * segment. It issues the reads of many keys before it uses any of them, so that their cache misses
- * overlap, and reads the field's Bloom filter, if it has one, before the table. Exact seeks do not
- * read the filter. The {@link org.apache.lucene.index.Terms} of a field with a table is a {@link
- * HashTerms}; a reader wrapper may hide it.
+ * segment, issuing the reads of many keys before it uses any, so that their cache misses overlap.
+ * It reads the field's Bloom filter, if any, before the table; exact seeks do not read the filter.
+ * The {@link org.apache.lucene.index.Terms} of a field with a table is a {@link HashTerms}, unless
+ * a reader wrapper hides it.
  *
- * <p>If no table can be built within the probe limit, which takes keys crafted to collide, or if a
- * field's records would take more than 2<sup>40</sup> - 2 bytes, the field gets no table and is
- * served by the delegate alone.
+ * <p>A field gets no table, and is served by the delegate alone, if no table can be built within
+ * the probe limit (which takes keys crafted to collide) or if its records would take more than
+ * 2<sup>40</sup> - 2 bytes.
  *
  * <h2>File format</h2>
  *
@@ -180,43 +177,33 @@ import org.apache.lucene.util.IOUtils;
  *
  * <p>The filter is a register-blocked Bloom filter (Lang, Neumann, Kemper and Boncz,
  * <i>Performance-Optimal Filtering: Bloom Overtakes Cuckoo at High Throughput</i>, PVLDB 12(5),
- * 2019), the variant of the blocked Bloom filters of Putze, Sanders and Singler (<i>Cache-, Hash-
- * and Space-Efficient Bloom Filters</i>, WEA 2007) whose blocks are 64-bit words. The filter hash
- * {@code f} of a key is the top PartitionBits bits of its hash {@code h}, followed by the other
- * bits of {@code fmix64(h)}, the 64-bit finalizer of MurmurHash3. The key's word is {@code floor((f
- * >>> 30) * FilterWords / 2^34)}, and the 5 values {@code (f >>> 6i) & 63}, for {@code i} from 0 to
- * 4, are the bits that the key sets in it. A key may be in the field only if all of its bits are
- * set. The keys of a partition are in consecutive words, in partition order.
+ * 2019) with 64-bit blocks and 5 bits per key. The filter hash {@code f} of a key is the top
+ * PartitionBits bits of its hash {@code h}, followed by the other bits of {@code fmix64(h)}, the
+ * 64-bit finalizer of MurmurHash3. The key's word is {@code floor((f >>> 30) * FilterWords /
+ * 2^34)}, and the 5 values {@code (f >>> 6i) & 63}, for {@code i} from 0 to 4, are the bits that
+ * the key sets in it. A key may be in the field only if all of its bits are set. The keys of a
+ * partition are in consecutive words, in partition order.
  *
  * <h2>Options</h2>
  *
- * The constructors take the delegate format, which must be loadable by its SPI name when the index
- * is read, and {@code filterBitsPerKey}, the size of the filter of every field with a table: 0 for
- * none, or {@value #MIN_FILTER_BITS_PER_KEY} to {@value #MAX_FILTER_BITS_PER_KEY} bits per key,
- * {@value #DEFAULT_FILTER_BITS_PER_KEY} by default. The filter takes {@code filterBitsPerKey / 8}
- * bytes per key, and lets the batched lookups skip the table for most absent keys. Present keys
- * always pass it, so for them it is one more read. A field that is only looked up with exact seeks,
- * as by {@code IndexWriter}'s updates and deletes and by {@link
- * org.apache.lucene.search.TermQuery}, gains nothing from a filter: give it 0.
+ * The constructors take the delegate format and the size of the Bloom filter of every field with a
+ * table (see {@link #PrimaryKeyHashPostingsFormat(PostingsFormat, int)}).
  *
  * <p>Tables are sized for a load factor {@code lf} of 0.75: about that fraction of the home slots
- * is occupied. Every key is stored a second time, which is why a field with a table takes several
- * times the space it takes with the delegate alone. Per key, a field whose records are in term
- * order takes a record of a 4-byte document id, the key length as a VInt and the key bytes, and
- * {@code 9 / lf} bytes of slot words and control bytes. A field whose keys of {@code L} bytes are
- * inline takes {@code (5 + L) / lf} bytes of records and control bytes instead. Either way, a
- * filter adds {@code filterBitsPerKey / 8} bytes. Keys are inline if they all have the same length
- * L, from 1 to {@code (4 + 5 * lf) / (1 - lf)} bytes, which is 31 at this load factor: up to that
- * length, inline keys take no more space than records in term order.
+ * is occupied. Every key is stored a second time. Per key, a field whose records are in term order
+ * takes a record (a 4-byte document id, the key length as a VInt and the key bytes) and {@code 9 /
+ * lf} bytes of slot words and control bytes; a field whose keys of {@code L} bytes are inline takes
+ * {@code (5 + L) / lf} bytes of records and control bytes instead; a filter adds {@code
+ * filterBitsPerKey / 8} bytes. Keys are inline if they all have the same length L, from 1 to {@code
+ * (4 + 5 * lf) / (1 - lf)} = 31 bytes, up to which inline keys take no more space than records in
+ * term order.
  *
  * <p>A field of more than 2<sup>20</sup> keys is split into partitions of at most about that many
  * keys each, but into no more than 2<sup>{@value #MAX_PARTITION_BITS}</sup> partitions. Partitions
  * are written one at a time, with their part of the filter, so that the heap needed to write a
  * field is that of its largest partition: beyond 2<sup>20</sup> keys, the writer spills the 16
- * bytes per key that it keeps (a hash and a record pointer) to temporary files. Keys are read
- * during the delegate's own pass over the terms and postings, provided that the delegate reads each
- * field once, in term order, as Lucene's postings formats do; otherwise they are read in a separate
- * pass once the delegate has written the field.
+ * bytes per key that it keeps (a hash and a record pointer) to temporary files. Keys are read in a
+ * pass of their own over the field's terms and postings, once the delegate has written the field.
  *
  * @lucene.experimental
  */
@@ -228,21 +215,13 @@ public final class PrimaryKeyHashPostingsFormat extends PostingsFormat {
   /** Default fraction of slots that are occupied. */
   static final float DEFAULT_LOAD_FACTOR = 0.75f;
 
-  /**
-   * Default number of keys above which a field's table, and its filter, are split into partitions,
-   * which are written one at a time, so that the heap needed to write a field is that of its
-   * largest partition. A field has at most 2<sup>{@value #MAX_PARTITION_BITS}</sup> partitions, so
-   * the partitions of a field of more than 2<sup>30</sup> keys hold more keys than this.
-   */
+  /** Default number of keys above which a field's table and filter are split into partitions. */
   static final int DEFAULT_MAX_KEYS_PER_PARTITION = 1 << 20;
 
   /** Default bound on the displacement of a key from its home slot; above it, no table. */
   static final int DEFAULT_MAX_PROBE_LIMIT = 1024;
 
-  /**
-   * The default number of bits per key of the filter of a field: 10 bits take 1.25 bytes per key
-   * and let about 1.78% of absent keys through.
-   */
+  /** Default bits per key of a field's filter, which lets about 1.78% of absent keys through. */
   public static final int DEFAULT_FILTER_BITS_PER_KEY = 10;
 
   /** The fewest bits per key of a filter, which lets about a fifth of absent keys through. */
@@ -265,14 +244,13 @@ public final class PrimaryKeyHashPostingsFormat extends PostingsFormat {
   static final int LAYOUT_INLINE = 1;
 
   /**
-   * The longest keys that can be inline: their records, of a 4-byte doc id and the key, take at
-   * most a cache line.
+   * The longest keys that can be inline: a record of a 4-byte doc id and the key fits a cache line.
    */
   static final int MAX_INLINE_KEY_LENGTH = 60;
 
   /**
-   * The size of a cache line on most current CPUs, and the alignment of the files of a compound
-   * file. The records of a field, and its filter, start at a multiple of it.
+   * The cache line size of most CPUs, and the alignment of files in a compound file. The records of
+   * a field, and its filter, start at a multiple of it.
    */
   static final int CACHE_LINE_BYTES = 64;
 
@@ -280,42 +258,35 @@ public final class PrimaryKeyHashPostingsFormat extends PostingsFormat {
   static final int MAX_PARTITION_BITS = 10;
 
   /**
-   * The most bytes that the records of a field with a table may take, in term order. A slot stores
-   * its record's offset plus one in its top 40 bits, above the tag and 8 zero bits, and every
-   * offset is less than this. The writer points into the records of inline keys this way too, in a
-   * temporary file, until it writes them in slot order.
+   * The most bytes that the records of a field with a table may take, in term order, since a slot
+   * stores its record's offset plus one in its top 40 bits. The writer also points into the records
+   * of inline keys this way, in a temporary file, until it writes them in slot order.
    */
   static final long MAX_RECORDS_LENGTH = (1L << (Long.SIZE - TermHash.POINTER_SHIFT)) - 2;
 
   /** The DocID of a record whose key has more than one document. */
   static final int MULTI_DOC = -1;
 
-  /**
-   * The number of bytes of the control bytes of a partition of {@code slotCount} slots: one per
-   * slot, then 8 zero bytes and zero padding to a multiple of 8.
-   */
+  /** The length of the Control of a partition of {@code slotCount} slots, padding included. */
   static long controlLength(long slotCount) {
     return IndexOutput.alignOffset(slotCount + Long.BYTES, Long.BYTES);
   }
 
-  /**
-   * The number of zero bytes after the inline records of a partition, whose records take {@code
-   * recordLength} bytes each: enough that 8 bytes can be read from the start of any record.
-   */
+  /** The length of the RecordsPadding after inline records of {@code recordLength} bytes. */
   static int inlinePadding(int recordLength) {
     return Math.max(0, Long.BYTES - recordLength);
   }
 
   /**
-   * When the writer stores the keys of a field inline. Inline keys must all have the same length,
-   * of at most {@value #MAX_INLINE_KEY_LENGTH} bytes. For tests.
+   * When the writer stores the keys of a field inline, if they all have the same length of at most
+   * {@value #MAX_INLINE_KEY_LENGTH} bytes. For tests.
    */
   enum Inlining {
     /** Never: the records of every field are in term order. */
     NEVER,
     /**
-     * When the keys are short enough that inline records take no more space than records in term
-     * order and their slot words (see {@link PrimaryKeyHashPostingsFormat}): the default.
+     * The default: when inline records take no more space than records in term order and their slot
+     * words (see {@link PrimaryKeyHashPostingsFormat}).
      */
     IF_NOT_LARGER,
     /** Whenever the field's keys can be inline, whatever space that takes. */
@@ -332,8 +303,7 @@ public final class PrimaryKeyHashPostingsFormat extends PostingsFormat {
 
   /**
    * Creates a format that wraps {@link Lucene104PostingsFormat}, with a filter of {@value
-   * #DEFAULT_FILTER_BITS_PER_KEY} bits per key. This is the constructor used for reading, through
-   * SPI.
+   * #DEFAULT_FILTER_BITS_PER_KEY} bits per key. SPI uses it for reading.
    */
   public PrimaryKeyHashPostingsFormat() {
     this(new Lucene104PostingsFormat());
@@ -360,9 +330,11 @@ public final class PrimaryKeyHashPostingsFormat extends PostingsFormat {
    *     #MIN_FILTER_BITS_PER_KEY}{@code , }{@value #MAX_FILTER_BITS_PER_KEY}{@code ]}, of the Bloom
    *     filter of every field with a table ({@value #DEFAULT_FILTER_BITS_PER_KEY} with the other
    *     constructors). The filter takes {@code filterBitsPerKey / 8} bytes per key on disk, and as
-   *     much heap per key of the largest partition while a field is written. {@link
-   *     HashTerms#lookupBatch} reads it before the table; exact seeks do not. Use 0 for fields that
-   *     are only looked up with exact seeks, which gain nothing from it.
+   *     much heap per key of the largest partition while a field is written. It lets {@link
+   *     HashTerms#lookupBatch} skip the table for most absent keys, but present keys always pass
+   *     it, and exact seeks do not read it: use 0 for fields only looked up with exact seeks, as by
+   *     {@code IndexWriter}'s updates and deletes and by {@link
+   *     org.apache.lucene.search.TermQuery}.
    */
   public PrimaryKeyHashPostingsFormat(PostingsFormat delegate, int filterBitsPerKey) {
     this(
@@ -376,8 +348,7 @@ public final class PrimaryKeyHashPostingsFormat extends PostingsFormat {
   }
 
   /**
-   * Creates a format with every option; the public constructors use the defaults of the others. For
-   * tests.
+   * Creates a format with every option. For tests.
    *
    * @param loadFactor fraction of slots that are occupied, in {@code [0.5, 0.9]}
    * @param maxKeysPerPartition number of keys a field may have before its table is split into

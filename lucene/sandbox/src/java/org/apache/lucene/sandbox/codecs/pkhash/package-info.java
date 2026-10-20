@@ -16,13 +16,12 @@
  */
 
 /**
- * A postings format that adds a per-segment hash index for exact lookups to primary-key fields:
- * fields whose terms are primary keys or other unique IDs, such as UUIDs, product IDs or URLs, each
- * in one document.
+ * A postings format that adds a per-segment hash index for exact lookups to primary-key fields,
+ * whose terms are unique IDs such as UUIDs or URLs, each in one document.
  *
  * <ul>
- *   <li>{@link org.apache.lucene.sandbox.codecs.pkhash.PrimaryKeyHashPostingsFormat} is the format.
- *       It is meant to be applied per field, to primary-key fields only.
+ *   <li>{@link org.apache.lucene.sandbox.codecs.pkhash.PrimaryKeyHashPostingsFormat} is the format,
+ *       to apply per field, to primary-key fields only.
  *   <li>{@link org.apache.lucene.sandbox.search.PrimaryKeyHashInSetQuery} matches the documents
  *       that hold any of a set of terms.
  * </ul>
