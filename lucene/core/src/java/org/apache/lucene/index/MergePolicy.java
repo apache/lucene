@@ -615,6 +615,9 @@ public abstract class MergePolicy {
    * calls this whenever there is a change to the segments. This call is always synchronized on the
    * {@link IndexWriter} instance so only one thread at a time will call this method.
    *
+   * <p>A single merge must not combine more than {@link IndexWriter#MAX_DOCS} documents, since a
+   * segment numbers its documents with an int.
+   *
    * @param mergeTrigger the event that triggered the merge
    * @param segmentInfos the total set of segments in the index
    * @param mergeContext the IndexWriter to find the merges on
@@ -646,6 +649,10 @@ public abstract class MergePolicy {
    * specified segment count. {@link IndexWriter} calls this when its {@link IndexWriter#forceMerge}
    * method is called. This call is always synchronized on the {@link IndexWriter} instance so only
    * one thread at a time will call this method.
+   *
+   * <p>A single merge must not combine more than {@link IndexWriter#MAX_DOCS} documents, since a
+   * segment numbers its documents with an int, so more than {@code maxSegmentCount} segments may
+   * remain when the live documents do not fit in that many.
    *
    * @param segmentInfos the total set of segments in the index
    * @param maxSegmentCount requested maximum number of segments in the index

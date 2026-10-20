@@ -21,8 +21,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -215,6 +217,46 @@ public abstract class BaseMergePolicyTestCase extends LuceneTestCase {
 
     public void setMergingSegments(Set<SegmentCommitInfo> mergingSegments) {
       this.mergingSegments = mergingSegments;
+    }
+  }
+
+  /**
+   * A merge must never combine more documents than a single segment can hold ({@link
+   * IndexWriter#MAX_DOCS}), because a segment numbers its documents with an int. This runs the
+   * merge policy against a small per-segment limit, so a policy whose forced merges do not respect
+   * it fails here rather than overflowing when the merge runs.
+   */
+  public void testForcedMergesRespectMaxDocsPerSegment() throws IOException {
+    MergePolicy mergePolicy = mergePolicy();
+    SegmentInfos segmentInfos = new SegmentInfos(Version.LATEST.major);
+    Map<SegmentCommitInfo, Boolean> segmentsToMerge = new HashMap<>();
+    // Each segment holds a sizable fraction of the per-segment limit, so merging a handful already
+    // passes it; a policy that force-merges them all into one would exceed what a segment can hold.
+    final int numSegments = TestUtil.nextInt(random(), 8, 16);
+    for (int i = 0; i < numSegments; i++) {
+      int maxDoc = TestUtil.nextInt(random(), IndexWriter.MAX_DOCS / 4, IndexWriter.MAX_DOCS / 2);
+      SegmentCommitInfo info =
+          makeSegmentCommitInfo("_" + i, maxDoc, 0, 5.0, IndexWriter.SOURCE_FLUSH);
+      segmentInfos.add(info);
+      segmentsToMerge.put(info, Boolean.TRUE);
+    }
+    MergeContext mergeContext = new MockMergeContext(SegmentCommitInfo::getDelCount);
+    MergeSpecification spec =
+        mergePolicy.findForcedMerges(segmentInfos, 1, segmentsToMerge, mergeContext);
+    if (spec != null) {
+      for (OneMerge merge : spec.merges) {
+        long docs = 0;
+        for (SegmentCommitInfo info : merge.segments) {
+          docs += info.info.maxDoc() - mergeContext.numDeletesToMerge(info);
+        }
+        assertTrue(
+            mergePolicy
+                + " selected a merge of "
+                + docs
+                + " documents, over "
+                + IndexWriter.MAX_DOCS,
+            docs <= IndexWriter.MAX_DOCS);
+      }
     }
   }
 

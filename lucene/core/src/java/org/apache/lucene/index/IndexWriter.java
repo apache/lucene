@@ -5587,6 +5587,25 @@ public class IndexWriter
         mergeReaders.add(wrappedReader);
       }
 
+      // A segment addresses its documents with an int, so a merge may write at most MAX_DOCS of
+      // them. Only the stock merge policies cap this when they select a merge, so a policy that
+      // does not honor the cap (a custom one, or one that over-estimates the deletes a merge will
+      // reclaim) can still pick a merge whose live docs exceed the limit. The wrapped readers now
+      // know exactly how many docs will be written, so check that here, before the costly merge,
+      // and fail with a clear error instead of overflowing the int maxDoc.
+      long totalMergeDocs = 0;
+      for (CodecReader reader : mergeReaders) {
+        totalMergeDocs += reader.numLeafDocs();
+      }
+      if (totalMergeDocs > getActualMaxDocsPerSegment()) {
+        throw new IllegalArgumentException(
+            "number of documents in a merged segment cannot exceed "
+                + getActualMaxDocsPerSegment()
+                + " (merge would produce "
+                + totalMergeDocs
+                + " documents); merge fewer segments at once");
+      }
+
       final Executor intraMergeExecutor = mergeScheduler.getIntraMergeExecutor(merge);
 
       MergeState.DocMap[] reorderDocMaps = null;
