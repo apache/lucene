@@ -920,7 +920,7 @@ final class HashFieldsConsumer extends FieldsConsumer {
    * PrimaryKeyHashPostingsFormat} for why), and returns the partition's control bytes and slots, or
    * {@code null} if a key would be more than {@code maxProbeLimit} slots from its home slot. {@code
    * words} holds, for each key, its record pointer and {@link TermHash#tagAndControlBits}; in a
-   * slot, the control bits are replaced by the distance, and copied to the slot's control byte. The
+   * slot, the control bits are moved to the slot's control byte, leaving the pointer and tag. The
    * keys of a home slot take its slots in the order they are given; lookups do not depend on that
    * order.
    *
@@ -928,9 +928,7 @@ final class HashFieldsConsumer extends FieldsConsumer {
    * {@code h} or from right after the previously inserted key, whichever is later. Nothing wraps
    * around: keys that run past the last home slot go to a tail of extra slots after it, so there
    * are {@code capacity} slots plus that tail, which is never longer than the largest displacement.
-   * The keys along the slots are therefore in the order of their home slots, and each slot word
-   * records how far it is from its key's home slot ({@link TermHash#dist}), which lets a lookup
-   * stop as soon as it reaches a key whose home slot is after its own.
+   * The keys along the slots are therefore in the order of their home slots.
    *
    * <p>Where the keys of every home slot start and end follows from their number alone, so the
    * slots are sized, and the probe limit checked, before they are allocated. Each key is then
@@ -971,17 +969,15 @@ final class HashFieldsConsumer extends FieldsConsumer {
       final int slot = next[home]++;
       final long word = words[i];
       // nothing between the control bits and the pointer
-      assert (word & TermHash.DIST_MASK & ~TermHash.tagAndControlBits(-1L)) == 0;
+      assert (word & ZERO_BITS & ~TermHash.tagAndControlBits(-1L)) == 0;
       control[slot] = (byte) TermHash.control(word);
-      slots[slot] = (word & ~TermHash.DIST_MASK) | distBits(slot - home);
+      slots[slot] = word & ~ZERO_BITS;
     }
     return new Slots(control, slots, (int) largest);
   }
 
-  /** The distance bits of a slot word {@code dist} slots from its key's home slot. */
-  private static long distBits(int dist) {
-    return (long) Math.min(dist, TermHash.DIST_SATURATED) << TermHash.TAG_BITS;
-  }
+  /** The bits of a slot word between the tag and the pointer, which are zero. */
+  private static final long ZERO_BITS = ((1L << TermHash.POINTER_SHIFT) - 1) & ~TermHash.TAG_MASK;
 
   @Override
   public void close() throws IOException {

@@ -347,21 +347,11 @@ public class TestPrimaryKeyHashRange extends LuceneTestCase {
           assertEquals(probe.toString(), present, supplier != null && supplier.get());
         }
 
-        // the batch's binary searches for the bounds of the range, from every start
+        // batches of keys in and out of the range, from every start
         final HashedTerms keys = new HashedTerms(probes);
         for (int iter = 0; iter < 20; iter++) {
           int from = iter == 0 ? 0 : random.nextInt(keys.size() + 1);
           int to = iter == 0 ? keys.size() : TestUtil.nextInt(random, from, keys.size());
-          int start = from;
-          while (start < to && keys.get(start).compareTo(min) < 0) {
-            start++;
-          }
-          int end = start;
-          while (end < to && keys.get(end).compareTo(max) <= 0) {
-            end++;
-          }
-          assertEquals(start, terms.rangeStart(keys, from, to));
-          assertEquals(end, terms.rangeEnd(keys, start, to));
           int[] docs = new int[to - from];
           terms.lookupBatch(keys, from, to, docs);
           for (int i = from; i < to; i++) {

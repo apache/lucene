@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.sandbox.codecs.pkhash;
 
-import static org.apache.lucene.sandbox.codecs.pkhash.TermHash.DIST_SATURATED;
 import static org.apache.lucene.sandbox.codecs.pkhash.TermHash.POINTER_SHIFT;
 import static org.apache.lucene.sandbox.codecs.pkhash.TermHash.TAG_MASK;
 
@@ -198,14 +197,6 @@ public final class HashTerms extends Terms {
   }
 
   /**
-   * The number of bytes from the start of an inline record that a lookup that compares a key with
-   * it reads: those of the record, or 8 if it is shorter (see {@link #matchInline}).
-   */
-  int recordReadLength() {
-    return Math.max(Long.BYTES, recordStride);
-  }
-
-  /**
    * Whether the field cannot hold a key of {@code length} bytes, which is then known to be absent
    * without any read: its keys are inline, and of another length.
    */
@@ -338,78 +329,6 @@ public final class HashTerms extends Terms {
         key, offset, offset + length, term.bytes, term.offset, term.offset + term.length);
   }
 
-  /**
-   * The first index in {@code [from, to)} of a key that is not smaller than the field's smallest
-   * term, or {@code to} if there is none. Keys are sorted. Package-private for tests.
-   */
-  int rangeStart(HashedTerms keys, int from, int to) {
-    return firstAfter(keys, from, to, min, minPrefix, true);
-  }
-
-  /**
-   * The first index in {@code [from, to)} of a key that is larger than the field's largest term, or
-   * {@code to} if there is none. Keys are sorted. Package-private for tests.
-   */
-  int rangeEnd(HashedTerms keys, int from, int to) {
-    return firstAfter(keys, from, to, max, maxPrefix, false);
-  }
-
-  /**
-   * The first index in {@code [from, to)} of a key that sorts after {@code term}, the field's
-   * smallest or largest term, whose prefix from {@link #rangeOffset} is {@code termPrefix}, or
-   * equal to it if {@code orEqual}, or {@code to} if there is none. Keys are sorted. Takes two
-   * comparisons when the answer is {@code from} or {@code to}, the common case.
-   */
-  private int firstAfter(
-      HashedTerms keys, int from, int to, BytesRef term, long termPrefix, boolean orEqual) {
-    if (from == to || isAfter(keys, from, term, termPrefix, orEqual)) {
-      return from;
-    }
-    if (isAfter(keys, to - 1, term, termPrefix, orEqual) == false) {
-      return to;
-    }
-    // the answer is in (from, to - 1]
-    int lo = from + 1;
-    int hi = to - 1;
-    while (lo < hi) {
-      int mid = (lo + hi) >>> 1;
-      if (isAfter(keys, mid, term, termPrefix, orEqual)) {
-        hi = mid;
-      } else {
-        lo = mid + 1;
-      }
-    }
-    return lo;
-  }
-
-  private boolean isAfter(
-      HashedTerms keys, int index, BytesRef term, long termPrefix, boolean orEqual) {
-    final byte[] bytes = keys.bytes();
-    final int offset = keys.offset(index);
-    final int length = keys.length(index);
-    int cmp;
-    if (rangeOffset == 0) {
-      cmp = compare(prefix(bytes, offset, length), bytes, offset, length, termPrefix, term);
-    } else {
-      // the bytes that the smallest and largest terms share first, then the rest
-      final int shared = Math.min(length, rangeOffset);
-      cmp = Arrays.compareUnsigned(bytes, offset, offset + shared, term.bytes, 0, shared);
-      if (cmp == 0) {
-        cmp =
-            length < rangeOffset
-                ? -1 // a proper prefix of the term
-                : compare(
-                    prefix(bytes, offset + rangeOffset, length - rangeOffset),
-                    bytes,
-                    offset,
-                    length,
-                    termPrefix,
-                    term);
-      }
-    }
-    return cmp > 0 || (orEqual && cmp == 0);
-  }
-
   @Override
   public TermsEnum iterator() throws IOException {
     return new HashTermsEnum(this);
@@ -480,10 +399,12 @@ public final class HashTerms extends Terms {
    * {@code docs[i - from]} either the id of the only document of this segment that contains it,
    * {@link #ABSENT}, or {@link #MULTI}. Deleted documents are not filtered out.
    *
-   * <p>Keys that sort before the field's smallest term or after its largest one are absent without
-   * any read, as are keys whose length differs from that of the field's keys, if they are inline.
-   * When keys are assigned in increasing order, most segments hold a narrow range of them. If the
-   * field has a filter, the other keys are checked against it in chunks, the filter words of all
+   * <p>Every key is looked up, except keys whose length differs from that of the field's keys, if
+   * they are inline, which are absent without any read. Keys that sort before the field's smallest
+   * term ({@link #getMin}) or after its largest one ({@link #getMax}) are found absent, but only
+   * after a lookup: a caller with sorted keys, such as {@link
+   * org.apache.lucene.sandbox.search.PrimaryKeyHashInSetQuery}, passes only those between the two.
+   * If the field has a filter, the keys are checked against it in chunks, the filter words of all
    * the keys of a chunk being read first, and the keys that it rules out are absent. The filter
    * pays off when most keys are absent: present keys always pass it, so for them its reads only add
    * to those of the table.
@@ -509,19 +430,15 @@ public final class HashTerms extends Terms {
       throw new IllegalArgumentException(
           "docs has length " + docs.length + " but " + (to - from) + " keys were requested");
     }
-    final int start = rangeStart(keys, from, to);
-    final int end = rangeEnd(keys, start, to);
-    Arrays.fill(docs, 0, start - from, ABSENT);
-    Arrays.fill(docs, end - from, to - from, ABSENT);
-    if (start == end) {
+    if (from == to) {
       return;
     }
     final RandomAccessInput in = newSlice();
-    final Batch batch = new Batch(Math.min(CHUNK_SIZE, end - start));
+    final Batch batch = new Batch(Math.min(CHUNK_SIZE, to - from));
     if (filterWords != 0) {
-      lookupWithFilter(in, keys, start, end, docs, from, batch);
+      lookupWithFilter(in, keys, from, to, docs, from, batch);
     } else {
-      for (int i = start; i < end; i++) {
+      for (int i = from; i < to; i++) {
         if (excludesLength(keys.length(i))) {
           docs[i - from] = ABSENT;
         } else {
@@ -700,13 +617,13 @@ public final class HashTerms extends Terms {
   /**
    * Stages 3 to 5 of {@link #lookupInTable}, on a field whose records are in term order, for the
    * first {@code numCandidates} keys of {@code batch.candidates}. Stages 3 and 4, in rounds until
-   * no key has a candidate left. Stage 3: the slot of every candidate. Stage 4: check distances and
-   * tags, and read the first 8 bytes (doc id and key length) of the record of every candidate whose
-   * tag matches. A control byte also matches another key's once per 128 slots or so: the scan of
-   * such a key then resumes after that slot, in control bytes that were just read, and its next
-   * candidate is read in the next round, with the others' rather than one key at a time. Stage 5:
-   * compare keys. A tag also matches another key's once per 2^16 or so; the scan then resumes after
-   * that slot, one key at a time, verifying every match.
+   * no key has a candidate left. Stage 3: the slot of every candidate. Stage 4: check tags, and
+   * read the first 8 bytes (doc id and key length) of the record of every candidate whose tag
+   * matches. A control byte also matches another key's once per 128 slots or so: the scan of such a
+   * key then resumes after that slot, in control bytes that were just read, and its next candidate
+   * is read in the next round, with the others' rather than one key at a time. Stage 5: compare
+   * keys. A tag also matches another key's once per 2^16 or so; the scan then resumes after that
+   * slot, one key at a time, verifying every match.
    */
   private void matchRecords(
       RandomAccessInput in,
@@ -736,9 +653,7 @@ public final class HashTerms extends Terms {
         final int j = candidates[c];
         final int i = indices[j];
         final long word = words[j];
-        if (passed(word, slots[j] - homes[j])) {
-          docs[i - origin] = ABSENT;
-        } else if ((word & TAG_MASK) == keys.tag(i)) {
+        if ((word & TAG_MASK) == keys.tag(i)) {
           heads[numPending] = in.readLong(recordPosition(word));
           pending[numPending++] = j;
         } else {
@@ -925,18 +840,6 @@ public final class HashTerms extends Terms {
     return maxProbe < slotCount - home ? home + maxProbe + 1 : slotCount;
   }
 
-  /**
-   * Whether a lookup at a slot {@code probe} slots past its home slot, whose word is {@code word},
-   * has passed every slot its key could be in. Keys are laid out in the order of their home slots,
-   * so a slot that is closer to its own key's home slot than {@code probe} holds a key whose home
-   * slot comes after the looked-up key's, and so does every later slot. A saturated distance
-   * ({@link TermHash#DIST_SATURATED}) is only a lower bound, so it never says that.
-   */
-  static boolean passed(long word, int probe) {
-    int dist = TermHash.dist(word);
-    return dist < probe && dist != DIST_SATURATED;
-  }
-
   /** The partition of a key whose hash is {@code hash}. */
   int partition(long hash) {
     return TermHash.partition(hash, partitionBits);
@@ -959,25 +862,6 @@ public final class HashTerms extends Terms {
    */
   long candidatePosition(int p, int slot) {
     return recordStride != 0 ? recordPosition(p, slot) : slotsOffsets[p] + ((long) slot << 3);
-  }
-
-  /**
-   * Scans the control bytes of a key, in its partition {@code p} from its home slot {@code home}
-   * there, as its lookup does first, and returns the first slot whose control byte is the key's, or
-   * -1 if an empty slot or the {@link #limit} comes first: the key is then absent. {@link
-   * #lookupFrom} goes on from there.
-   *
-   * @param hash the key's hash
-   */
-  int firstCandidate(RandomAccessInput in, long hash, int p, int home) throws IOException {
-    final long controlOffset = controlOffsets[p];
-    return findCandidate(
-        in,
-        controlOffset,
-        home,
-        in.readLong(controlOffset + home),
-        limit(p, home),
-        repeat(TermHash.control(hash)));
   }
 
   /**
@@ -1020,32 +904,6 @@ public final class HashTerms extends Terms {
         key.bytes,
         key.offset,
         key.length);
-  }
-
-  /**
-   * As {@link #lookup(RandomAccessInput, BytesRef, long, int, int)}, from {@code candidate}, the
-   * slot that {@link #firstCandidate} returned for the key: the slot is verified, and on a mismatch
-   * the scan goes on after it, without reading the control bytes up to it again.
-   */
-  int lookupFrom(RandomAccessInput in, BytesRef key, long hash, int p, int home, int candidate)
-      throws IOException {
-    assert candidate >= home && candidate < limit(p, home);
-    final int control = TermHash.control(hash);
-    if (recordStride != 0) {
-      assert key.length == keyLength;
-      final int prefix = inlinePrefix(key.bytes, key.offset, keyLength);
-      final int doc = matchInline(in, recordPosition(p, candidate), key.bytes, key.offset, prefix);
-      if (doc != NO_MATCH) {
-        return doc;
-      }
-      return probeInline(in, p, home, candidate + 1, control, key.bytes, key.offset, prefix);
-    }
-    final int tag = TermHash.tag(hash);
-    final int doc = verify(in, p, home, candidate, tag, key.bytes, key.offset, key.length);
-    if (doc != NO_MATCH) {
-      return doc;
-    }
-    return probe(in, p, home, candidate + 1, tag, control, key.bytes, key.offset, key.length);
   }
 
   /** Position in the slice of the inline record of slot {@code slot} of partition {@code p}. */
@@ -1192,8 +1050,7 @@ public final class HashTerms extends Terms {
   /**
    * Looks a key up in partition {@code p} from {@code slot} on, where {@code home} is the key's
    * home slot: scans the control bytes to every slot that has the key's, and verifies each of them,
-   * until an empty slot, a slot whose key has a later home slot (see {@link #passed}), or the
-   * {@link #limit}.
+   * until an empty slot or the {@link #limit}.
    */
   int probe(
       RandomAccessInput in,
@@ -1215,7 +1072,7 @@ public final class HashTerms extends Terms {
       if (slot < 0) {
         return ABSENT;
       }
-      final int doc = verify(in, p, home, slot, tag, key, offset, length);
+      final int doc = verify(in, p, slot, tag, key, offset, length);
       if (doc != NO_MATCH) {
         return doc;
       }
@@ -1226,17 +1083,13 @@ public final class HashTerms extends Terms {
 
   /**
    * Verifies a slot of partition {@code p} whose control byte is the looked-up key's: returns the
-   * key's document, or {@link #MULTI}, if the slot holds the key; {@link #ABSENT} if the slot's key
-   * has a later home slot than {@code home}, the looked-up key's (see {@link #passed}); else {@link
-   * #NO_MATCH}, and the scan goes on.
+   * key's document, or {@link #MULTI}, if the slot holds the key; else {@link #NO_MATCH}, and the
+   * scan goes on.
    */
   private int verify(
-      RandomAccessInput in, int p, int home, int slot, int tag, byte[] key, int offset, int length)
+      RandomAccessInput in, int p, int slot, int tag, byte[] key, int offset, int length)
       throws IOException {
     final long word = in.readLong(slotsOffsets[p] + ((long) slot << 3));
-    if (passed(word, slot - home)) {
-      return ABSENT;
-    }
     if ((word & TAG_MASK) != tag) {
       return NO_MATCH;
     }

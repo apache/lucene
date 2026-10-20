@@ -63,8 +63,8 @@ final class TermHash {
   static final int HOME_BITS = 31;
 
   /**
-   * A slot word holds its record's offset plus one above this many low bits, which hold the tag and
-   * the probe distance.
+   * A slot word holds its record's offset plus one above this many low bits: the tag, then zero
+   * bits.
    */
   static final int POINTER_SHIFT = 24;
 
@@ -73,20 +73,6 @@ final class TermHash {
 
   /** Mask selecting the tag bits of a slot word. */
   static final long TAG_MASK = (1L << TAG_BITS) - 1;
-
-  /**
-   * Bits {@code [TAG_BITS, POINTER_SHIFT)} of a slot word hold how far the slot is from its key's
-   * home slot, or this value if it is that far or farther.
-   */
-  static final int DIST_SATURATED = (1 << (POINTER_SHIFT - TAG_BITS)) - 1;
-
-  /** Mask selecting the distance bits of a slot word. */
-  static final long DIST_MASK = (long) DIST_SATURATED << TAG_BITS;
-
-  /** The probe distance stored in a non-empty slot word; see {@link #DIST_SATURATED}. */
-  static int dist(long word) {
-    return (int) (word >>> TAG_BITS) & DIST_SATURATED;
-  }
 
   /**
    * Number of bits of the hash, just above the tag bits, that the control byte of a slot holds
@@ -115,8 +101,8 @@ final class TermHash {
   /**
    * The bits of the hash that the tag and the control byte are taken from, in place. The writer
    * keeps them in the low bits of a slot word until the slot is known, then moves the control bits
-   * to the slot's control byte and stores the distance in their place, which is why {@link #tag}
-   * and {@link #control} give the same result on such a word as on the hash.
+   * to the slot's control byte, which is why {@link #tag} and {@link #control} give the same result
+   * on such a word as on the hash.
    */
   static long tagAndControlBits(long hash) {
     return hash & ((1L << (TAG_BITS + CONTROL_BITS)) - 1);

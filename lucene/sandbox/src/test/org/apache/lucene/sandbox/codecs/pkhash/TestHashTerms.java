@@ -300,7 +300,7 @@ public class TestHashTerms extends LuceneTestCase {
             boolean expectTable = numKeys - 1 <= limit;
             if (expectTable) {
               HashTerms terms = (HashTerms) leaf.terms("id");
-              assertTrue(terms.maxProbeOfPartition(0) > TermHash.DIST_SATURATED);
+              assertEquals(numKeys - 1, terms.maxProbeOfPartition(0));
               assertEquals(filterBitsPerKey != 0, terms.hasFilter());
             }
             List<BytesRef> probes = new ArrayList<>(keys);
@@ -400,8 +400,9 @@ public class TestHashTerms extends LuceneTestCase {
   /**
    * Keys below a segment's smallest term or above its largest one, and keys of another length than
    * the inline keys of a field, are absent without any read of the data file, by every kind of
-   * lookup and by {@code IndexWriter} applying deletes; batches of them and other keys find the
-   * others, with a filter and without.
+   * lookup but {@link HashTerms#lookupBatch}, which leaves the range to its callers, and by {@code
+   * IndexWriter} applying deletes; batches of them and other keys find the others, with a filter
+   * and without.
    */
   public void testKeysThatCannotBeThereReadNothing() throws IOException {
     for (Inlining inlining : new Inlining[] {Inlining.NEVER, Inlining.ALWAYS}) {
@@ -453,19 +454,19 @@ public class TestHashTerms extends LuceneTestCase {
           assertEquals(0, searcher.count(new TermQuery(new Term("id", key))));
           assertEquals(-1, lookup.lookup(key));
         }
-        final HashedTerms hashed = new HashedTerms(none);
-        final int[] docs = new int[hashed.size()];
-        terms.lookupBatch(hashed, 0, hashed.size(), docs);
         final int[] lookups = new int[none.size()];
         lookup.lookup(none.toArray(new BytesRef[0]), 0, none.size(), lookups);
-        for (int doc : docs) {
-          assertEquals(HashTerms.ABSENT, doc);
-        }
         for (int doc : lookups) {
           assertEquals(-1, doc);
         }
         assertEquals(0, searcher.count(new PrimaryKeyHashInSetQuery("id", none)));
         assertEquals(0, dir.reads(dataName));
+        final HashedTerms hashed = new HashedTerms(none);
+        final int[] docs = new int[hashed.size()];
+        terms.lookupBatch(hashed, 0, hashed.size(), docs);
+        for (int doc : docs) {
+          assertEquals(HashTerms.ABSENT, doc);
+        }
 
         // in chunks with present and absent keys within the range, of the field's length
         final List<BytesRef> mixed = new ArrayList<>(none);
@@ -545,9 +546,9 @@ public class TestHashTerms extends LuceneTestCase {
   }
 
   /**
-   * prepareSeekExact finds what seekExact finds, whether its prefetches report that the bytes are
-   * to be read, which defers the lookup to the supplier, or that they are in memory, in which case
-   * the control bytes are scanned right away: most misses end there, and return null.
+   * prepareSeekExact finds what seekExact finds, whether its prefetch reports that the bytes are to
+   * be read, which defers the lookup to the supplier, or that they are in memory, in which case the
+   * key is looked up right away: every miss then returns null.
    */
   public void testPrepareSeekExact() throws IOException {
     for (Inlining inlining : new Inlining[] {Inlining.NEVER, Inlining.ALWAYS}) {
@@ -582,10 +583,7 @@ public class TestHashTerms extends LuceneTestCase {
                 }
               }
             }
-            assertEquals(prefetchReads, nulls == 0);
-            if (prefetchReads == false) {
-              assertTrue(nulls > numKeys / 2);
-            }
+            assertEquals(prefetchReads ? 0 : numKeys - 1, nulls);
           }
         }
       }
@@ -886,18 +884,20 @@ public class TestHashTerms extends LuceneTestCase {
     }
   }
 
+  /** The length of the runs of {@link #testLongRuns}, in slots. */
+  private static final int LONG_RUN = 255;
+
   /**
-   * Many keys with one home slot push the keys of the next home slots far from home, beyond the
-   * distance at which slot words saturate. Present keys are found, and absent keys whose home slots
-   * are in that run are not, whether the run is in the middle of the table or at its end, where it
-   * fills a long tail. With a filter, through which batches take another way to the table, and
-   * without.
+   * Many keys with one home slot push the keys of the next home slots far from home, more than
+   * {@link #LONG_RUN} slots. Present keys are found, and absent keys whose home slots are in that
+   * run are not, whether the run is in the middle of the table or at its end, where it fills a long
+   * tail. With a filter, through which batches take another way to the table, and without.
    */
-  public void testLongRunsAndSaturatedDistances() throws IOException {
+  public void testLongRuns() throws IOException {
     for (int filterBitsPerKey : new int[] {0, randomFilterBits(random())}) {
       for (boolean atEnd : new boolean[] {false, true}) {
-        // half of the keys on one home slot, more than 255 of them
-        final int numKeys = TestUtil.nextInt(random(), 2 * TermHash.DIST_SATURATED + 50, 800);
+        // half of the keys on one home slot, more than LONG_RUN of them
+        final int numKeys = TestUtil.nextInt(random(), 2 * LONG_RUN + 50, 800);
         final int capacity = (int) HashFieldsConsumer.capacity(numKeys, 0.75f);
         final int targetHome =
             atEnd ? capacity - 1 - random().nextInt(5) : random().nextInt(capacity / 2);
@@ -929,9 +929,9 @@ public class TestHashTerms extends LuceneTestCase {
         final HashTerms terms = onlyTable(reader);
         assertEquals(1, terms.numPartitions());
         assertEquals(capacity, terms.capacityOfPartition(0));
-        assertTrue(terms.maxProbeOfPartition(0) > TermHash.DIST_SATURATED);
+        assertTrue(terms.maxProbeOfPartition(0) > LONG_RUN);
         if (atEnd) {
-          assertTrue(terms.slotCountOfPartition(0) - capacity > TermHash.DIST_SATURATED);
+          assertTrue(terms.slotCountOfPartition(0) - capacity > LONG_RUN);
         }
         // Absent keys with home slots in the crowded run. They sort right after an indexed key,
         // and are never indexed since '#' is not a base-36 digit, so they are looked up.

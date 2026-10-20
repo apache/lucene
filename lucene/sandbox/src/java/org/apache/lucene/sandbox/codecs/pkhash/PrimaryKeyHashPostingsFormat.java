@@ -148,9 +148,8 @@ import org.apache.lucene.util.IOUtils;
  *             | ((h >>> 16) & 0x7F)} for the hash {@code h} of the slot's key. The zero bytes after
  *             the last control byte let a lookup read 8 control bytes from any slot
  *         <li>Slots --&gt; Slot<sup>SlotCount</sup>, each a little-endian Int64: 0 for an empty
- *             slot, else {@code ((recordOffset + 1) << 24) | (min(dist, 255) << 16) | tag}, where
- *             recordOffset is relative to RecordsOffset and dist is how far the slot is from its
- *             key's home slot
+ *             slot, else {@code ((recordOffset + 1) << 24) | tag}, where recordOffset is relative
+ *             to RecordsOffset; bits 16 to 23 are zero
  *         <li>InlineRecord --&gt; DocID (Int32, -1 if the key has more than one document), KeyBytes
  *             (InlineKeyLength bytes): record i is the key of slot i, and that of an empty slot is
  *             zero bytes
@@ -176,12 +175,10 @@ import org.apache.lucene.util.IOUtils;
  * last home slot take the Tail slots after it. Keys take the slots in the order of their home
  * slots, each at or after its own home slot. A lookup scans the control bytes from the key's home
  * slot until an empty slot, for at most MaxProbe + 1 slots and not past the last slot, and checks
- * every slot with the key's control byte. In a TermOrderTable it reads the slot word: if the slot's
- * stored distance is not 255 and is less than the slot's distance from the looked-up key's home
- * slot, this slot and every later one hold keys with later home slots, and the key is absent;
- * otherwise, if the tags match, the key is compared with the record's key. In an InlineTable, the
- * key is compared with the slot's InlineRecord, and a key whose length is not InlineKeyLength is
- * absent without any read. A DocID of -1 means that the key is sought in the delegate.
+ * every slot with the key's control byte. In a TermOrderTable it reads the slot word, and if the
+ * tags match, compares the key with the record's key. In an InlineTable, the key is compared with
+ * the slot's InlineRecord, and a key whose length is not InlineKeyLength is absent without any
+ * read. A DocID of -1 means that the key is sought in the delegate.
  *
  * <p>The filter is a register-blocked Bloom filter (Lang, Neumann, Kemper and Boncz,
  * <i>Performance-Optimal Filtering: Bloom Overtakes Cuckoo at High Throughput</i>, PVLDB 12(5),
@@ -286,7 +283,7 @@ public final class PrimaryKeyHashPostingsFormat extends PostingsFormat {
 
   /**
    * The most bytes that the records of a field with a table may take, in term order. A slot stores
-   * its record's offset plus one in its top 40 bits, above the tag and the distance, and every
+   * its record's offset plus one in its top 40 bits, above the tag and 8 zero bits, and every
    * offset is less than this. The writer points into the records of inline keys this way too, in a
    * temporary file, until it writes them in slot order.
    */

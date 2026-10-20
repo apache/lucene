@@ -465,8 +465,8 @@ public final class PrimaryKeyHashLookup {
 
     // Stages 3 and 4, in rounds until no entry has a candidate left. Stage 3: the slot of every
     // candidate, or for inline keys the first 8 bytes of its record and, for keys of more than 4
-    // bytes, its last 8. Stage 4: check distances and tags, and read the head of the record of
-    // every candidate whose tag is its key's, or for inline keys compare the key with the record,
+    // bytes, its last 8. Stage 4: check tags, and read the head of the record of every candidate
+    // whose tag is its key's, or for inline keys compare the key with the record,
     // while an entry whose candidate holds another key scans on to its next candidate, which is
     // read in the next round.
     final long[] words = scratch.words;
@@ -511,9 +511,6 @@ public final class PrimaryKeyHashLookup {
           }
         } else {
           final long word = words[e];
-          if (HashTerms.passed(word, slots[e] - homes[e])) {
-            continue; // absent
-          }
           if ((word & TermHash.TAG_MASK) == TermHash.tag(hash)) {
             heads[e] = inputs[t].readLong(HashTerms.recordPosition(word));
             pending[numPending++] = e;

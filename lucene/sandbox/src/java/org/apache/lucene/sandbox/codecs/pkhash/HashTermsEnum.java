@@ -118,17 +118,13 @@ final class HashTermsEnum extends BaseTermsEnum {
   }
 
   /**
-   * Hashes the key and prefetches the control bytes from its home slot, deferring the rest of the
-   * lookup to the returned supplier, so that the reads of many segments (see {@code TermStates})
-   * can be in flight together. If the prefetch reports that there was nothing to fetch, as when the
-   * control bytes are already in memory, they are scanned right away: this returns null for an
-   * absent key whose scan ends there, which is most of them, and otherwise prefetches what the
-   * lookup reads next, the slot word of the first slot with the key's control byte, or on an inline
-   * field as much of that slot's record as the lookup reads at once. When the control bytes do have
-   * to be read, what comes next is not known yet and is read without a prefetch. Returns null, with
-   * no read, for a key outside the range of the field's terms, or whose length differs from that of
-   * the field's inline keys. Like {@link #seekExact(BytesRef)}, this does not read the field's
-   * filter.
+   * Hashes the key and prefetches the control bytes from its home slot. If the prefetch reports
+   * that they have to be read, the lookup is deferred to the returned supplier, so that the reads
+   * of many segments (see {@code TermStates}) can be in flight together. If they are already in
+   * memory, the key is looked up right away, and this returns null if it is absent. Returns null,
+   * with no read, for a key outside the range of the field's terms, or whose length differs from
+   * that of the field's inline keys. Like {@link #seekExact(BytesRef)}, this does not read the
+   * field's filter.
    */
   @Override
   public IOBooleanSupplier prepareSeekExact(BytesRef text) throws IOException {
@@ -141,37 +137,25 @@ final class HashTermsEnum extends BaseTermsEnum {
     final RandomAccessInput input = in();
     final int p = terms.partition(hash);
     final int home = terms.homeSlot(hash, p);
-    final int candidate;
-    final boolean doDefer;
     if (input.prefetch(terms.controlOffset(p) + home, Long.BYTES)) {
-      candidate = -1; // the lookup starts from the home slot
-      doDefer = true;
-    } else {
-      candidate = terms.firstCandidate(input, hash, p, home);
-      if (candidate < 0) {
-        mode = Mode.UNPOSITIONED;
-        return null;
-      }
-      doDefer =
-          input.prefetch(
-              terms.candidatePosition(p, candidate),
-              terms.isInline() ? terms.recordReadLength() : Long.BYTES);
-    }
-    return new IOBooleanSupplier() {
-      @Override
-      public boolean get() throws IOException {
-        final int result =
-            candidate < 0
-                ? terms.lookup(input, text, hash, p, home)
-                : terms.lookupFrom(input, text, hash, p, home, candidate);
-        return position(text, result);
-      }
+      return new IOBooleanSupplier() {
+        @Override
+        public boolean get() throws IOException {
+          return position(text, terms.lookup(input, text, hash, p, home));
+        }
 
-      @Override
-      public boolean doDefer() {
-        return doDefer;
-      }
-    };
+        @Override
+        public boolean doDefer() {
+          return true;
+        }
+      };
+    }
+    final int result = terms.lookup(input, text, hash, p, home);
+    if (result == HashTerms.ABSENT) {
+      mode = Mode.UNPOSITIONED;
+      return null;
+    }
+    return () -> position(text, result);
   }
 
   @Override
