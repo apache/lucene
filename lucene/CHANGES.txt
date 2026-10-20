@@ -274,6 +274,10 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#16871: Lucene104HnswScalarQuantizedVectorsFormat now quantizes merged vectors on its merge
+  workers, as it already builds the merged graph, instead of on the merging thread alone. It applies
+  when the format has more than one merge worker, and the bytes are the same. (Ankur Goel)
+
 
 * GITHUB#16746: Speed up decoding long overlapping LZ4 matches using bulk copies
   of initialized bytes. (Andre Kurait)

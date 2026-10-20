@@ -24,6 +24,7 @@ import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.NoReuseHint;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
@@ -140,6 +141,8 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
       new Lucene104ScalarQuantizedVectorScorer(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
   private final ScalarEncoding encoding;
+  private final int numMergeWorkers;
+  private final TaskExecutor mergeExec;
 
   /** Creates a new instance with UNSIGNED_BYTE encoding. */
   public Lucene104ScalarQuantizedVectorsFormat() {
@@ -148,14 +151,30 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
 
   /** Creates a new instance with the chosen quantization encoding. */
   public Lucene104ScalarQuantizedVectorsFormat(ScalarEncoding encoding) {
+    this(encoding, 1, null);
+  }
+
+  /**
+   * Creates a new instance whose merges quantize vectors on {@code numMergeWorkers} tasks, run by
+   * {@code mergeExec} or, if that is null, by the merge's intra-merge executor.
+   */
+  Lucene104ScalarQuantizedVectorsFormat(
+      ScalarEncoding encoding, int numMergeWorkers, TaskExecutor mergeExec) {
     super(NAME);
     this.encoding = encoding;
+    this.numMergeWorkers = numMergeWorkers;
+    this.mergeExec = mergeExec;
   }
 
   @Override
   public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
     return new Lucene104ScalarQuantizedVectorsWriter(
-        state, encoding, rawVectorFormat.fieldsWriter(rescoreOnly(state)), scorer);
+        state,
+        encoding,
+        rawVectorFormat.fieldsWriter(rescoreOnly(state)),
+        scorer,
+        numMergeWorkers,
+        mergeExec);
   }
 
   @Override
