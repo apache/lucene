@@ -50,7 +50,7 @@ import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncod
 /** Quantizing merged vectors on several workers writes exactly the records of the serial path. */
 public class TestParallelMergeQuantization extends LuceneTestCase {
 
-  private static ExecutorService executor;
+  private ExecutorService executor;
 
   @Override
   public void setUp() throws Exception {
