@@ -256,7 +256,6 @@ public class TestPrimaryKeyHashSpill extends LuceneTestCase {
                     MAX_KEYS_PER_PARTITION,
                     maxProbeLimit,
                     PrimaryKeyHashPostingsFormat.MAX_RECORDS_LENGTH,
-                    random.nextBoolean(),
                     randomFilterBitsPerKey(random),
                     inlining));
         try (IndexWriter writer = new IndexWriter(dir, config(keys.size(), codec))) {

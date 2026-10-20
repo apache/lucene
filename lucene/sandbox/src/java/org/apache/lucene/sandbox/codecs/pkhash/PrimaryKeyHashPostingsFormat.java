@@ -130,8 +130,7 @@ import org.apache.lucene.util.IOUtils;
  *             #DATA_CODEC}"
  *         <li>FieldData --&gt; TermOrderData | InlineData, one per Field of the meta file. Unused
  *             bytes may come before a FieldData: the records and partitions of a field that ended
- *             without a table, and the records written during the delegate's pass over a field
- *             whose keys were then read in a separate pass
+ *             without a table
  *         <li>TermOrderData --&gt; Padding to a multiple of {@value #CACHE_LINE_BYTES},
  *             Record<sup>NumKeys</sup>, Padding to a multiple of 8, (Control,
  *             Slots)<sup>NumPartitions</sup>, [Padding to a multiple of {@value #CACHE_LINE_BYTES},
@@ -328,7 +327,6 @@ public final class PrimaryKeyHashPostingsFormat extends PostingsFormat {
   private final int maxKeysPerPartition;
   private final int maxProbeLimit;
   private final long maxRecordsLength;
-  private final boolean captureKeys;
   private final int filterBitsPerKey;
   private final Inlining inlining;
 
@@ -373,7 +371,6 @@ public final class PrimaryKeyHashPostingsFormat extends PostingsFormat {
         DEFAULT_MAX_KEYS_PER_PARTITION,
         DEFAULT_MAX_PROBE_LIMIT,
         MAX_RECORDS_LENGTH,
-        true,
         filterBitsPerKey,
         Inlining.IF_NOT_LARGER);
   }
@@ -390,8 +387,6 @@ public final class PrimaryKeyHashPostingsFormat extends PostingsFormat {
    *     least 0
    * @param maxRecordsLength fields whose records take more bytes than this get no table; in {@code
    *     [0, }{@link #MAX_RECORDS_LENGTH}{@code ]}
-   * @param captureKeys if false, keys are always read in a separate pass after the delegate wrote
-   *     its postings, rather than during the delegate's own pass
    * @param filterBitsPerKey bits per key of the filter of every field with a table, or 0 for none
    * @param inlining when the keys of a field are inline
    */
@@ -401,7 +396,6 @@ public final class PrimaryKeyHashPostingsFormat extends PostingsFormat {
       int maxKeysPerPartition,
       int maxProbeLimit,
       long maxRecordsLength,
-      boolean captureKeys,
       int filterBitsPerKey,
       Inlining inlining) {
     super(NAME);
@@ -435,7 +429,6 @@ public final class PrimaryKeyHashPostingsFormat extends PostingsFormat {
     this.maxKeysPerPartition = maxKeysPerPartition;
     this.maxProbeLimit = maxProbeLimit;
     this.maxRecordsLength = maxRecordsLength;
-    this.captureKeys = captureKeys;
     this.filterBitsPerKey = filterBitsPerKey;
     this.inlining = Objects.requireNonNull(inlining, "inlining");
   }
@@ -452,7 +445,6 @@ public final class PrimaryKeyHashPostingsFormat extends PostingsFormat {
           maxKeysPerPartition,
           maxProbeLimit,
           maxRecordsLength,
-          captureKeys,
           filterBitsPerKey,
           inlining);
     } catch (Throwable t) {

@@ -379,8 +379,7 @@ public class TestPrimaryKeyHashFilter extends LuceneTestCase {
    * The filter of every field is the one built from all the keys of the delegate's terms at once,
    * word for word, with the number of words that its size gives, at a multiple of 64 bytes: whether
    * the keys were spilled and partitioned, and the filter written one partition at a time, or not,
-   * captured during the delegate's pass or read in a pass of their own, and of one document or
-   * more.
+   * and of one document or more.
    */
   public void testFilterHoldsTheKeysOfTheField() throws IOException {
     final Random random = random();
@@ -515,8 +514,7 @@ public class TestPrimaryKeyHashFilter extends LuceneTestCase {
 
   /**
    * No key that is there is ever ruled out, by any way of looking keys up, on segments with
-   * partitions, spilled keys, keys of several documents, deletes, updates and merges, written with
-   * keys captured during the delegate's pass or read in a pass of their own.
+   * partitions, spilled keys, keys of several documents, deletes, updates and merges.
    */
   public void testNoFalseNegatives() throws IOException {
     final Random random = random();
@@ -653,7 +651,6 @@ public class TestPrimaryKeyHashFilter extends LuceneTestCase {
               maxKeysPerPartition,
               PrimaryKeyHashPostingsFormat.DEFAULT_MAX_PROBE_LIMIT,
               PrimaryKeyHashPostingsFormat.MAX_RECORDS_LENGTH,
-              random.nextBoolean(),
               randomFilterBits(random),
               randomInlining(random));
       final Path path = createTempDir();

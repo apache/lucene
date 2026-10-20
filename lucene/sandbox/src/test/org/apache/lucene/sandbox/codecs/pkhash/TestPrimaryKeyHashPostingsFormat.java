@@ -173,7 +173,6 @@ public class TestPrimaryKeyHashPostingsFormat extends BasePostingsFormatTestCase
                     maxKeysPerPartition,
                     maxProbeLimit,
                     maxRecordsLength,
-                    true,
                     PrimaryKeyHashPostingsFormat.DEFAULT_FILTER_BITS_PER_KEY,
                     Inlining.IF_NOT_LARGER));
     assertTrue(e.getMessage(), e.getMessage().contains(option));

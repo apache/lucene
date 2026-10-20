@@ -35,26 +35,19 @@ import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FieldsConsumer;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.Fields;
-import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.sandbox.codecs.pkhash.PrimaryKeyHashPostingsFormat.Inlining;
-import org.apache.lucene.search.DocAndFloatFeatureBuffer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataAccessHint;
@@ -66,31 +59,15 @@ import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.BytesRefBuilder;
-import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.IOBooleanSupplier;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.automaton.CompiledAutomaton;
 
 /**
  * Writes the delegate's postings, then, for every {@link IndexOptions#DOCS} field, the records and
  * hash table described in {@link PrimaryKeyHashPostingsFormat}, and the field's filter if it has
  * one.
  *
- * <p>The keys of a field are read as the delegate writes it, from the delegate's own pass over the
- * field's terms and postings: the delegate is given a view of the {@link Fields} that watches the
- * terms it moves to and the documents it reads, writes each key's record once its documents are
- * known, and writes the field's table when the delegate reaches the end of the field's terms. The
- * view forwards every call, returns what the delegate's calls return, and gives the delegate its
- * own postings enums back to reuse. This requires a delegate whose first pass over a field reads
- * its terms in order to the end, and every document of every term with {@code nextDoc}, as {@link
- * org.apache.lucene.codecs.PushPostingsWriterBase} does; what it reads after that pass, as a Bloom
- * filter wrapper that iterates the field again does, does not matter. If the delegate reads a field
- * in any other way (it seeks, iterates the terms again or iterates another field before the end of
- * the terms; or it never iterates them, skips documents, reads them in bulk, or stops before the
- * last term), the field's keys are read in a separate pass once the delegate is done, and the
- * records written for it during the delegate's pass are left unused in the data file. Messages for
- * {@link #INFO_STREAM_COMPONENT} say which fields took a separate pass, and why.
+ * <p>The keys of a field are read once the delegate has written it, in a pass of their own over the
+ * field's terms, in order, and over the postings of each term up to its second document.
  *
  * <p>Statistics such as {@code docFreq()} cannot be read from the {@link Fields} given to {@link
  * #write} (they throw on merge views), so a key's documents are counted from its postings: a key is
@@ -127,14 +104,6 @@ final class HashFieldsConsumer extends FieldsConsumer {
   /** The number of longs written at a time by {@link #writeLongs}. */
   private static final int LONGS_BATCH = 1024;
 
-  /**
-   * The {@link org.apache.lucene.util.InfoStream} component of the messages about fields whose keys
-   * were read in a separate pass.
-   */
-  static final String INFO_STREAM_COMPONENT = "HASH";
-
-  private static final String SEEK = "the delegate seeks";
-
   /** Zero bytes, as many as the padding before inline records can take. */
   private static final byte[] ZEROS = new byte[CACHE_LINE_BYTES];
 
@@ -150,7 +119,6 @@ final class HashFieldsConsumer extends FieldsConsumer {
   private final int maxKeysPerPartition;
   private final int maxProbeLimit;
   private final long maxRecordsLength;
-  private final boolean captureKeys;
   private final int filterBitsPerKey;
 
   /** The longest keys that may be inline, 0 if keys are never inline. */
@@ -167,7 +135,6 @@ final class HashFieldsConsumer extends FieldsConsumer {
       int maxKeysPerPartition,
       int maxProbeLimit,
       long maxRecordsLength,
-      boolean captureKeys,
       int filterBitsPerKey,
       Inlining inlining)
       throws IOException {
@@ -177,7 +144,6 @@ final class HashFieldsConsumer extends FieldsConsumer {
     this.maxKeysPerPartition = maxKeysPerPartition;
     this.maxProbeLimit = maxProbeLimit;
     this.maxRecordsLength = maxRecordsLength;
-    this.captureKeys = captureKeys;
     this.filterBitsPerKey = filterBitsPerKey;
     this.maxInlineKeyLength =
         switch (inlining) {
@@ -207,39 +173,14 @@ final class HashFieldsConsumer extends FieldsConsumer {
   @Override
   public void write(Fields fields, NormsProducer norms) throws IOException {
     // The delegate writes first; it may have opened its files when it was created.
-    CapturingFields capturingFields = null;
-    if (captureKeys) {
-      capturingFields = new CapturingFields(fields);
-      try {
-        delegate.write(capturingFields, norms);
-      } catch (Throwable t) {
-        IOUtils.closeWhileSuppressingExceptions(t, capturingFields::stopCapture);
-        throw t;
-      }
-      capturingFields.stopCapture();
-    } else {
-      delegate.write(fields, norms);
-    }
-
-    // a pass of their own for the fields whose keys were not captured
+    delegate.write(fields, norms);
     for (String field : fields) {
       final FieldInfo fieldInfo = state.fieldInfos.fieldInfo(field);
       if (fieldInfo.getIndexOptions() != IndexOptions.DOCS) {
         continue;
       }
-      if (capturingFields != null && capturingFields.complete.contains(field)) {
-        continue;
-      }
       final Terms terms = fields.terms(field);
       if (terms != null) {
-        if (captureKeys) {
-          message(
-              "field \""
-                  + field
-                  + "\": keys read in a separate pass: "
-                  + capturingFields.failures.getOrDefault(
-                      field, "the delegate did not iterate its terms"));
-        }
         writeField(fieldInfo, terms);
       }
     }
@@ -274,7 +215,7 @@ final class HashFieldsConsumer extends FieldsConsumer {
     }
   }
 
-  /** Reads the keys of a field in a pass of its own, and writes its records and table. */
+  /** Reads the keys of a field, and writes its records and table. */
   private void writeField(FieldInfo fieldInfo, Terms terms) throws IOException {
     try (FieldWriter writer = new FieldWriter(fieldInfo)) {
       final TermsEnum termsEnum = terms.iterator();
@@ -291,13 +232,6 @@ final class HashFieldsConsumer extends FieldsConsumer {
         writer.add(term, doc);
       }
       writer.finish();
-    }
-  }
-
-  private void message(String message) {
-    // null in some tests that create the state themselves
-    if (state.infoStream != null && state.infoStream.isEnabled(INFO_STREAM_COMPONENT)) {
-      state.infoStream.message(INFO_STREAM_COMPONENT, message);
     }
   }
 
@@ -1292,381 +1226,6 @@ final class HashFieldsConsumer extends FieldsConsumer {
       }
       IOUtils.close(
           () -> IOUtils.close(outputs), () -> IOUtils.deleteFiles(state.directory, files));
-    }
-  }
-
-  /**
-   * The view of the fields that the delegate writes: the terms of the {@code DOCS} fields that get
-   * a table are {@link CapturingTerms}. At most one field is captured at a time, so that the
-   * records of each field are written in one run. Only the outcome of a capture is kept once it
-   * ends, not the capture, which holds the enum of the field's terms that it wraps.
-   */
-  private final class CapturingFields extends FilterLeafReader.FilterFields {
-    /** The fields whose keys were captured. */
-    final Set<String> complete = new HashSet<>();
-
-    /** Why the capture of a field was abandoned, by field. */
-    final Map<String, String> failures = new HashMap<>();
-
-    /** The capture in progress, if any. */
-    KeyCapture active;
-
-    CapturingFields(Fields in) {
-      super(in);
-    }
-
-    @Override
-    public Terms terms(String field) {
-      final Terms terms = in.terms(field);
-      final FieldInfo fieldInfo = state.fieldInfos.fieldInfo(field);
-      if (terms == null || fieldInfo == null || fieldInfo.getIndexOptions() != IndexOptions.DOCS) {
-        return terms;
-      }
-      return new CapturingTerms(this, fieldInfo, terms);
-    }
-
-    /** Abandons the capture in progress, if any, once the delegate is done. */
-    void stopCapture() throws IOException {
-      if (active != null) {
-        active.abandon("the delegate did not reach the end of the terms");
-      }
-    }
-  }
-
-  /**
-   * The terms of a field to capture: their first iterator is the field's {@link KeyCapture}; other
-   * calls are forwarded, including those that {@link Terms} would otherwise implement with an
-   * iterator.
-   */
-  private final class CapturingTerms extends FilterLeafReader.FilterTerms {
-    private final CapturingFields fields;
-    private final FieldInfo fieldInfo;
-
-    CapturingTerms(CapturingFields fields, FieldInfo fieldInfo, Terms in) {
-      super(in);
-      this.fields = fields;
-      this.fieldInfo = fieldInfo;
-    }
-
-    @Override
-    public TermsEnum iterator() throws IOException {
-      final String field = fieldInfo.name;
-      if (fields.active != null && fields.active.field.equals(field)) {
-        fields.active.abandon("the delegate iterated the terms more than once");
-        return in.iterator();
-      }
-      if (fields.complete.contains(field) || fields.failures.containsKey(field)) {
-        // after a complete pass, more passes do not matter
-        return in.iterator();
-      }
-      if (fields.active != null) {
-        fields.active.abandon("the delegate iterated another field before the end of this one");
-      }
-      final TermsEnum termsEnum = in.iterator();
-      final KeyCapture capture =
-          new KeyCapture(fields, field, termsEnum, new FieldWriter(fieldInfo));
-      fields.active = capture;
-      return capture;
-    }
-
-    @Override
-    public TermsEnum intersect(CompiledAutomaton compiled, BytesRef startTerm) throws IOException {
-      return in.intersect(compiled, startTerm);
-    }
-
-    @Override
-    public BytesRef getMin() throws IOException {
-      return in.getMin();
-    }
-
-    @Override
-    public BytesRef getMax() throws IOException {
-      return in.getMax();
-    }
-  }
-
-  /**
-   * The terms enum that the delegate iterates a field with, which captures the field's keys: it
-   * copies each term that the delegate moves to, learns from the documents that the term's postings
-   * enums return whether it has none, one or several, and adds the key with its document, as {@link
-   * #writeField} would, when the delegate moves on. When the delegate reaches the end of the terms,
-   * the field's table is written. Anything but a single pass over the terms in increasing order,
-   * reading enough documents of every term to tell, with {@code nextDoc} or {@code advance} on its
-   * postings enums (not its impacts), abandons the capture; once it is complete, nothing does.
-   */
-  private final class KeyCapture extends FilterLeafReader.FilterTermsEnum {
-    private final CapturingFields fields;
-    final String field;
-
-    /** Writes the field's records; {@code null} once the capture is complete or abandoned. */
-    private FieldWriter writer;
-
-    /** The current term, if {@code positioned}. */
-    private final BytesRefBuilder term = new BytesRefBuilder();
-
-    private boolean positioned;
-
-    /** What the postings enums of the current term returned. */
-    private final TermDocs termDocs = new TermDocs();
-
-    KeyCapture(CapturingFields fields, String field, TermsEnum in, FieldWriter writer) {
-      super(in);
-      this.fields = fields;
-      this.field = field;
-      this.writer = writer;
-    }
-
-    @Override
-    public BytesRef next() throws IOException {
-      if (writer != null && positioned) {
-        finishTerm();
-      }
-      final BytesRef next = in.next();
-      if (writer != null) {
-        if (next == null) {
-          complete();
-        } else if (positioned && next.compareTo(term.get()) <= 0) {
-          abandon("the terms are not in increasing order");
-        } else {
-          term.copyBytes(next);
-          positioned = true;
-          termDocs.nextTerm();
-        }
-      }
-      return next;
-    }
-
-    private void finishTerm() throws IOException {
-      if (termDocs.numDocs > 1) {
-        writer.add(term.get(), MULTI_DOC);
-      } else if (termDocs.exhausted == false || termDocs.mayHaveSkipped) {
-        abandon("the delegate did not read enough documents of a term to tell how many it has");
-      } else if (termDocs.numDocs == 1) {
-        writer.add(term.get(), termDocs.firstDoc);
-      }
-      // else: no documents, so not a key, as in a separate pass
-    }
-
-    private void complete() throws IOException {
-      assert fields.active == this;
-      final FieldWriter writer = this.writer;
-      this.writer = null;
-      fields.complete.add(field);
-      fields.active = null;
-      try (writer) {
-        writer.finish();
-      }
-    }
-
-    /** Stops capturing; the records written so far are left unused in the data file. */
-    void abandon(String reason) throws IOException {
-      if (writer != null) {
-        final FieldWriter writer = this.writer;
-        this.writer = null;
-        fields.failures.put(field, reason);
-        if (fields.active == this) {
-          fields.active = null;
-        }
-        writer.close();
-      }
-    }
-
-    @Override
-    public PostingsEnum postings(PostingsEnum reuse, int flags) throws IOException {
-      // the delegate may reuse its own enum, never ours
-      final CapturingPostingsEnum capturing = reuse instanceof CapturingPostingsEnum c ? c : null;
-      final PostingsEnum postings = in.postings(capturing != null ? capturing.in : reuse, flags);
-      if (writer == null) {
-        return postings;
-      }
-      final CapturingPostingsEnum wrapper =
-          capturing != null ? capturing : new CapturingPostingsEnum();
-      wrapper.reset(postings, termDocs, termDocs.termOrd);
-      return wrapper;
-    }
-
-    @Override
-    public boolean preferSeekExact() {
-      return in.preferSeekExact();
-    }
-
-    @Override
-    public SeekStatus seekCeil(BytesRef text) throws IOException {
-      abandon(SEEK);
-      return in.seekCeil(text);
-    }
-
-    @Override
-    public boolean seekExact(BytesRef text) throws IOException {
-      abandon(SEEK);
-      return in.seekExact(text);
-    }
-
-    @Override
-    public IOBooleanSupplier prepareSeekExact(BytesRef text) throws IOException {
-      abandon(SEEK);
-      return in.prepareSeekExact(text);
-    }
-
-    @Override
-    public void seekExact(long ord) throws IOException {
-      abandon(SEEK);
-      in.seekExact(ord);
-    }
-
-    @Override
-    public void seekExact(BytesRef term, TermState state) throws IOException {
-      abandon(SEEK);
-      in.seekExact(term, state);
-    }
-  }
-
-  /**
-   * What the postings enums of the current term of a {@link KeyCapture} returned: no document, one
-   * ({@code firstDoc}), or more; whether one returned {@code NO_MORE_DOCS}, and whether one may
-   * have skipped documents. The enums report here rather than to the capture, so that the enum that
-   * a delegate keeps to reuse does not keep the capture, and the enum of the terms that it wraps,
-   * reachable once the capture is over.
-   */
-  private static final class TermDocs {
-    /**
-     * The number of terms the capture moved to: only postings enums of the current term are
-     * watched.
-     */
-    long termOrd;
-
-    int numDocs;
-    int firstDoc;
-    boolean exhausted;
-    boolean mayHaveSkipped;
-
-    void nextTerm() {
-      termOrd++;
-      numDocs = 0;
-      exhausted = false;
-      mayHaveSkipped = false;
-    }
-
-    /** Called by the postings enums with every document they return. */
-    void observe(long termOrd, int doc) {
-      if (termOrd != this.termOrd) {
-        return;
-      }
-      if (doc == DocIdSetIterator.NO_MORE_DOCS) {
-        exhausted = true;
-      } else if (numDocs == 0) {
-        firstDoc = doc;
-        numDocs = 1;
-      } else if (doc != firstDoc) {
-        numDocs = 2;
-      }
-    }
-
-    /**
-     * Called by the postings enums when they may have gone past documents without returning them.
-     */
-    void mayHaveSkipped(long termOrd) {
-      if (termOrd == this.termOrd) {
-        mayHaveSkipped = true;
-      }
-    }
-  }
-
-  /**
-   * A postings enum of a {@link KeyCapture}'s term: it forwards every call to the delegate's enum,
-   * and tells the capture's {@link TermDocs} what documents {@link #nextDoc} and {@link #advance}
-   * return, and when documents may have been read without being returned: when {@link #advance}
-   * jumps, and on bulk reads, after which the enum is on a document that the capture did not see
-   * (and that some enums do not even report).
-   */
-  private static final class CapturingPostingsEnum extends PostingsEnum {
-    private PostingsEnum in;
-    private TermDocs termDocs;
-    private long termOrd;
-
-    /** The last document returned by {@link #nextDoc} or {@link #advance}, or -1. */
-    private int doc;
-
-    void reset(PostingsEnum in, TermDocs termDocs, long termOrd) {
-      this.in = in;
-      this.termDocs = termDocs;
-      this.termOrd = termOrd;
-      this.doc = -1;
-    }
-
-    @Override
-    public int docID() {
-      return in.docID();
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      doc = in.nextDoc();
-      termDocs.observe(termOrd, doc);
-      return doc;
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      if (target > doc + 1L) {
-        termDocs.mayHaveSkipped(termOrd);
-      }
-      doc = in.advance(target);
-      termDocs.observe(termOrd, doc);
-      return doc;
-    }
-
-    @Override
-    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
-      termDocs.mayHaveSkipped(termOrd);
-      in.intoBitSet(upTo, bitSet, offset);
-    }
-
-    @Override
-    public int intoArray(int upTo, int[] docs) throws IOException {
-      termDocs.mayHaveSkipped(termOrd);
-      return in.intoArray(upTo, docs);
-    }
-
-    @Override
-    public void nextPostings(int upTo, DocAndFloatFeatureBuffer buffer) throws IOException {
-      termDocs.mayHaveSkipped(termOrd);
-      in.nextPostings(upTo, buffer);
-    }
-
-    @Override
-    public int docIDRunEnd() throws IOException {
-      return in.docIDRunEnd();
-    }
-
-    @Override
-    public long cost() {
-      return in.cost();
-    }
-
-    @Override
-    public int freq() throws IOException {
-      return in.freq();
-    }
-
-    @Override
-    public int nextPosition() throws IOException {
-      return in.nextPosition();
-    }
-
-    @Override
-    public int startOffset() throws IOException {
-      return in.startOffset();
-    }
-
-    @Override
-    public int endOffset() throws IOException {
-      return in.endOffset();
-    }
-
-    @Override
-    public BytesRef getPayload() throws IOException {
-      return in.getPayload();
     }
   }
 }

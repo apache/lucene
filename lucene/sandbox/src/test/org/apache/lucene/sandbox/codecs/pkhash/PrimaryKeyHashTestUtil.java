@@ -90,8 +90,8 @@ public final class PrimaryKeyHashTestUtil {
   // ---- formats and keys ----
 
   /**
-   * A format with random options: often tiny partitions, keys sometimes read in a separate pass, a
-   * filter half of the time, and keys of one length inline as {@link #randomInlining} says.
+   * A format with random options: often tiny partitions, a filter half of the time, and keys of one
+   * length inline as {@link #randomInlining} says.
    */
   public static PrimaryKeyHashPostingsFormat randomFormat(Random random) {
     return randomFormat(random, randomFilterBitsPerKey(random), randomInlining(random));
@@ -117,12 +117,11 @@ public final class PrimaryKeyHashTestUtil {
         maxKeysPerPartition,
         PrimaryKeyHashPostingsFormat.DEFAULT_MAX_PROBE_LIMIT,
         PrimaryKeyHashPostingsFormat.MAX_RECORDS_LENGTH,
-        random.nextInt(4) != 0,
         filterBitsPerKey,
         inlining);
   }
 
-  /** A format with the given options, which captures keys, with the default delegate and limits. */
+  /** A format with the given options, with the default delegate and limits. */
   static PrimaryKeyHashPostingsFormat format(
       float loadFactor, int maxKeysPerPartition, int filterBitsPerKey, Inlining inlining) {
     return new PrimaryKeyHashPostingsFormat(
@@ -131,7 +130,6 @@ public final class PrimaryKeyHashTestUtil {
         maxKeysPerPartition,
         PrimaryKeyHashPostingsFormat.DEFAULT_MAX_PROBE_LIMIT,
         PrimaryKeyHashPostingsFormat.MAX_RECORDS_LENGTH,
-        true,
         filterBitsPerKey,
         inlining);
   }

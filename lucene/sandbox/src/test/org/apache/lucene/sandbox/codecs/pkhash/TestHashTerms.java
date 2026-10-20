@@ -324,7 +324,6 @@ public class TestHashTerms extends LuceneTestCase {
             16,
             Integer.MAX_VALUE,
             PrimaryKeyHashPostingsFormat.MAX_RECORDS_LENGTH,
-            true,
             PrimaryKeyHashPostingsFormat.DEFAULT_FILTER_BITS_PER_KEY,
             Inlining.IF_NOT_LARGER);
     final List<BytesRef> keys = new ArrayList<>();
@@ -683,7 +682,6 @@ public class TestHashTerms extends LuceneTestCase {
                 TestUtil.nextInt(random(), 16, 64),
                 PrimaryKeyHashPostingsFormat.DEFAULT_MAX_PROBE_LIMIT,
                 limit,
-                random().nextBoolean(),
                 PrimaryKeyHashPostingsFormat.DEFAULT_FILTER_BITS_PER_KEY,
                 inlining);
         try (Directory dir = newDirectory()) {
