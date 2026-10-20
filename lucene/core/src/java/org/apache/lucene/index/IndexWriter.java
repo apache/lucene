@@ -2221,6 +2221,10 @@ public class IndexWriter
    * Forces merge policy to merge segments until there are {@code <= maxNumSegments}. The actual
    * merges to be executed are determined by the {@link MergePolicy}.
    *
+   * <p>A single segment holds at most {@link #MAX_DOCS} documents, so when the index has more live
+   * documents than {@code maxNumSegments} segments can hold, the result keeps more than {@code
+   * maxNumSegments} segments.
+   *
    * <p>This is a horribly costly operation, especially when you pass a small {@code
    * maxNumSegments}; usually you should only call this if the index is static (will no longer be
    * changed).
