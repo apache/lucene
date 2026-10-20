@@ -7,6 +7,9 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
+* GITHUB#16741: Lower the minimum supported major version from 10 to 9. Indexes created with 9.x
+  remain fully supported in Lucene 11, no reindexing required. (Luca Cavanna)
+
 * GITHUB#16705: KnnVectorValues#prefetch(int ord, int count) replaces prefetch(int ord). It prefetches
   a run of consecutive vectors with a single read and returns true if a prefetch was issued, like
   IndexInput#prefetch. The int[] form now coalesces ordinals that are consecutive in the array over
@@ -132,6 +135,16 @@ API Changes
 
 * GITHUB#16686: Make DocAndScoreQuery public (Trevor McCulloch)
 
+* GITHUB#16814: Remove unused VectorValueSource and MultiValueSource. They were
+  deprecated in 10.x (GITHUB#16813). (Luca Cavanna)
+
+* GITHUB#16834: Remove deprecated CharsRef.getUTF16SortedAsUTF8Comparator() method.
+  (Alan Woodward)
+
+* GITHUB#16833: Remove deprecated supportsConcurrency constructors from
+  TopFieldCollectorManager and TopScoreDocCollectorManager. The flag has been a
+  no-op since it was deprecated in 10.1. (Luca Cavanna)
+
 New Features
 ---------------------
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
@@ -161,6 +174,8 @@ New Features
   search. (Pulkit Gupta)
 
 * GITHUB#16628: Add re-ranking and prefetch support for fp16 vectors. (Pulkit Gupta)
+
+* GITHUB#16710: Add scalar quantization support for FLOAT16 vectors in the dedup KNN codec. (Pranshu Shukla)
 
 Improvements
 ---------------------
@@ -205,6 +220,12 @@ Improvements
 
 Optimizations
 ---------------------
+
+* GITHUB#16771: Lucene99FlatVectorsWriter now aligns vector data to 4096 bytes for all encodings
+  (previously 64 for float32 and 4 for float16 and byte), so a vector whose size divides a page or is
+  a multiple of it no longer straddles a page boundary and a rescoring read touches no extra page.
+  (Ankur Goel)
+
 * GITHUB#16431, GITHUB#16697: Add support for Block-Max WAND dynamic score skipping in FunctionScoreQuery
   and DoubleValuesSource using DocValuesSkipper. (Rajat Jain, Zhang Chao)
 
@@ -387,6 +408,32 @@ Other
 * GITHUB#16082: Added a new JMH microbenchmark for DiversifyingChildrenFloatKnnVectorQuery. (Anna Ruggero via Alessandro Benedetti)
 
 * GITHUB#16170: Add JMH benchmarks for int4BitDotProduct and int4DibitDotProduct. (Vignesh)
+
+======================= Lucene 10.7.0 =======================
+
+API Changes
+---------------------
+(No changes)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+(No changes)
+
+Optimizations
+---------------------
+(No changes)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+(No changes)
 
 ======================= Lucene 10.6.0 =======================
 
@@ -637,6 +684,8 @@ Optimizations
 * GITHUB#16783: Fix performance bug in DirectoryTaxonomyReader#getBulkOrdinals that broke its
   ord -> FacetLabel cache such that it always missed when it should have hit. (Alex Baranov)
 
+* GITHUB#16089: Upgrade DocIdSetBuilder to use FixedBitSet eagerly once exceeding the threshold (Ke Wei)
+
 Bug Fixes
 ---------------------
 
@@ -720,6 +769,10 @@ Bug Fixes
   for the life of the JVM once both their signed and unsigned (uint8) variants have been used,
   e.g. when searching UNSIGNED_BYTE and SEVEN_BIT scalar-quantized fields in one JVM.
   (Lantao Jin)
+
+* GITHUB#16849: Fix quadratic cost of BitSetIterator#docIDRunEnd() over long runs of set bits,
+  e.g. a dense cached filter on a segment with deletions, which made DenseConjunctionBulkScorer
+  rescan the run for every 4096-doc window since 10.5.0 (Costin Leau)
 
 Build
 ---------------------
