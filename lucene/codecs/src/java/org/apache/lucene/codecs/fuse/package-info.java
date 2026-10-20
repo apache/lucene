@@ -15,5 +15,5 @@
  * limitations under the License.
  */
 
-/** Binary fuse formating */
+/** Binary fuse filtering postings format. */
 package org.apache.lucene.codecs.fuse;
