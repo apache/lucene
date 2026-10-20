@@ -336,7 +336,6 @@ public class TestPrimaryKeyHashInline extends LuceneTestCase {
       }
       checkField(context.reader(), "id", probes, true);
     }
-    TestPrimaryKeyHashLookup.checkLookups(reader, "id", probes);
     final IndexSearcher searcher = newSearcher(reader);
     final List<BytesRef> some = probes.subList(0, Math.min(probes.size(), 1000));
     assertEquals(

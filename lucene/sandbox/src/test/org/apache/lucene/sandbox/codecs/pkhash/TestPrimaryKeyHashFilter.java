@@ -573,7 +573,7 @@ public class TestPrimaryKeyHashFilter extends LuceneTestCase {
         }
         // the group field has keys of several documents
         assertTrue(multi);
-        // and across segments, through the query and the lookup that look up batches of keys
+        // and across segments, through the query, which looks up batches of keys
         final IndexSearcher searcher = new IndexSearcher(reader);
         final Set<BytesRef> probes = new HashSet<>(keys.subList(0, Math.min(500, keys.size())));
         probes.add(new BytesRef("absent"));
@@ -582,7 +582,6 @@ public class TestPrimaryKeyHashFilter extends LuceneTestCase {
           expected += searcher.count(new TermQuery(new Term("id", probe)));
         }
         assertEquals(expected, searcher.count(new PrimaryKeyHashInSetQuery("id", probes)));
-        TestPrimaryKeyHashLookup.checkLookups(reader, "id", new ArrayList<>(probes));
       }
     }
   }
@@ -717,10 +716,6 @@ public class TestPrimaryKeyHashFilter extends LuceneTestCase {
               message,
               searcher.count(new TermInSetQuery("id", probes)),
               searcher.count(new PrimaryKeyHashInSetQuery("id", probes)));
-          final List<BytesRef> some = new ArrayList<>(probes);
-          Collections.shuffle(some, random);
-          TestPrimaryKeyHashLookup.checkLookups(
-              reader, "id", some.subList(0, Math.min(2000, some.size())));
         }
       }
     }

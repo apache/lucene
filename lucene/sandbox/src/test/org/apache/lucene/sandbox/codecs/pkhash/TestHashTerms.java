@@ -445,19 +445,12 @@ public class TestHashTerms extends LuceneTestCase {
         assertEquals(inlining == Inlining.ALWAYS, terms.isInline());
         final IndexSearcher searcher = new IndexSearcher(reader);
         searcher.setQueryCache(null);
-        final PrimaryKeyHashLookup lookup = new PrimaryKeyHashLookup(reader, "id");
         dir.resetReads();
         for (BytesRef key : none) {
           assertFalse(key.toString(), terms.iterator().seekExact(key));
           IOBooleanSupplier supplier = terms.iterator().prepareSeekExact(key);
           assertTrue(key.toString(), supplier == null || supplier.get() == false);
           assertEquals(0, searcher.count(new TermQuery(new Term("id", key))));
-          assertEquals(-1, lookup.lookup(key));
-        }
-        final int[] lookups = new int[none.size()];
-        lookup.lookup(none.toArray(new BytesRef[0]), 0, none.size(), lookups);
-        for (int doc : lookups) {
-          assertEquals(-1, doc);
         }
         assertEquals(0, searcher.count(new PrimaryKeyHashInSetQuery("id", none)));
         assertEquals(0, dir.reads(dataName));

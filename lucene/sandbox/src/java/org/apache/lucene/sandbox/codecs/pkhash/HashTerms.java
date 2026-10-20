@@ -36,15 +36,14 @@ import org.apache.lucene.util.automaton.CompiledAutomaton;
  * Statistics, ordered iteration and {@link #intersect} come from the delegate format; exact seeks
  * on its {@link #iterator() TermsEnum} are answered by the hash table, except for keys with more
  * than one document ({@link #MULTI}), which are then sought in the delegate's terms dictionary. The
- * field's filter, if it has one, is only read by the lookups that are staged: {@link #lookupBatch}
- * and {@link PrimaryKeyHashLookup}. The table's slots are either slot words that point to records
- * in term order, or, if the field's keys are inline, records of a doc id and a key (see {@link
+ * field's filter, if it has one, is only read by the lookups that are staged, those of {@link
+ * #lookupBatch}. The table's slots are either slot words that point to records in term order, or,
+ * if the field's keys are inline, records of a doc id and a key (see {@link
  * PrimaryKeyHashPostingsFormat}).
  *
  * <p>{@link #lookupBatch} resolves many keys at once. Callers can detect it with {@code instanceof}
  * on the {@code Terms} of a leaf reader, keeping in mind that a reader wrapper may hide it (in
- * which case a {@link TermsEnum} should be used instead). {@link PrimaryKeyHashLookup} looks keys
- * up in the tables of all the segments of a reader at once.
+ * which case a {@link TermsEnum} should be used instead).
  *
  * @lucene.experimental
  */
@@ -181,12 +180,13 @@ public final class HashTerms extends Terms {
   /**
    * Whether the field's keys are inline: they all have {@link #keyLength} bytes, and each slot is a
    * record of a doc id and a key, rather than a slot word that points to a record in term order.
+   * For tests.
    */
   boolean isInline() {
     return recordStride != 0;
   }
 
-  /** The length of every key of the field, if its keys are inline, else -1. */
+  /** The length of every key of the field, if its keys are inline, else -1. For tests. */
   int keyLength() {
     return keyLength;
   }
@@ -219,7 +219,7 @@ public final class HashTerms extends Terms {
     return maxProbes[p];
   }
 
-  /** Whether the field has a filter, which the staged lookups read before its control bytes. */
+  /** Whether the field has a filter, which {@link #lookupBatch} reads first. For tests. */
   boolean hasFilter() {
     return filterWords != 0;
   }
@@ -244,7 +244,7 @@ public final class HashTerms extends Terms {
 
   /**
    * Position in the slice of the word of the filter of a key whose filter hash in this field
-   * ({@link #filterHash}) is {@code filterHash}. The field must have a filter.
+   * ({@link #filterHash}) is {@code filterHash}. The field must have a filter. For tests.
    */
   long filterWordPosition(long filterHash) {
     assert filterWords != 0;
@@ -272,21 +272,15 @@ public final class HashTerms extends Terms {
    * two terms share, and its 8 bytes after that prefix are compared with theirs.
    */
   boolean outOfRange(byte[] key, int offset, int length) {
-    return outOfRange(prefix(key, offset, length), key, offset, length);
-  }
-
-  /**
-   * As {@link #outOfRange(byte[], int, int)}, given the key's {@link #prefix}, which {@link
-   * PrimaryKeyHashLookup} computes once for all segments.
-   */
-  boolean outOfRange(long keyPrefix, byte[] key, int offset, int length) {
-    long prefix = keyPrefix;
+    final long prefix;
     if (rangeOffset != 0) {
       if (length < rangeOffset
           || Arrays.equals(key, offset, offset + rangeOffset, min.bytes, 0, rangeOffset) == false) {
         return true; // it does not start with the prefix of every key in the range
       }
       prefix = prefix(key, offset + rangeOffset, length - rangeOffset);
+    } else {
+      prefix = prefix(key, offset, length);
     }
     return compare(prefix, key, offset, length, minPrefix, min) < 0
         || compare(prefix, key, offset, length, maxPrefix, max) > 0;
@@ -856,15 +850,6 @@ public final class HashTerms extends Terms {
   }
 
   /**
-   * Position in the slice of what a lookup reads first of slot {@code slot} of partition {@code p},
-   * once the slot's control byte says that it may hold the key: the slot's word, or, if the field's
-   * keys are inline, the slot's record.
-   */
-  long candidatePosition(int p, int slot) {
-    return recordStride != 0 ? recordPosition(p, slot) : slotsOffsets[p] + ((long) slot << 3);
-  }
-
-  /**
    * Looks up one key: returns the id of its only document, {@link #ABSENT} or {@link #MULTI}. On a
    * field whose keys are inline, the key must have their length.
    *
@@ -969,7 +954,7 @@ public final class HashTerms extends Terms {
    * its inline record read as a little-endian long: its first 4 bytes, or all of them, followed by
    * zeros, if it is shorter.
    */
-  static int inlinePrefix(byte[] key, int offset, int length) {
+  private static int inlinePrefix(byte[] key, int offset, int length) {
     if (length >= Integer.BYTES) {
       return (int) BitUtil.VH_LE_INT.get(key, offset);
     }
@@ -990,7 +975,7 @@ public final class HashTerms extends Terms {
    * for keys of more than 12 bytes, the bytes between them, which are read from the same cache
    * lines. Returns the record's document, {@link #MULTI}, or {@link #NO_MATCH}.
    */
-  static int matchInline(
+  private static int matchInline(
       RandomAccessInput in,
       long position,
       long head,
@@ -1013,7 +998,7 @@ public final class HashTerms extends Terms {
    * The document of a record whose first 8 bytes are {@code head}, or {@link #MULTI}. Inline
    * records and records in term order both start with the document id.
    */
-  static int docOf(long head) {
+  private static int docOf(long head) {
     final int doc = (int) head;
     return doc >= 0 ? doc : MULTI;
   }

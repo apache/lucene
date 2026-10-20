@@ -62,11 +62,10 @@ import org.apache.lucene.util.IOUtils;
  *
  * <p>{@link HashTerms#lookupBatch}, which {@link
  * org.apache.lucene.sandbox.search.PrimaryKeyHashInSetQuery} uses, looks up many keys in one
- * segment, and {@link PrimaryKeyHashLookup} finds the live document of a key in all the segments of
- * a reader. Both issue the reads of many keys, or segments, before they use any of them, so that
- * their cache misses overlap, and both read the field's Bloom filter, if it has one, before the
- * table. Exact seeks do not read the filter. The {@link org.apache.lucene.index.Terms} of a field
- * with a table is a {@link HashTerms}; a reader wrapper may hide it.
+ * segment. It issues the reads of many keys before it uses any of them, so that their cache misses
+ * overlap, and reads the field's Bloom filter, if it has one, before the table. Exact seeks do not
+ * read the filter. The {@link org.apache.lucene.index.Terms} of a field with a table is a {@link
+ * HashTerms}; a reader wrapper may hide it.
  *
  * <p>If no table can be built within the probe limit, which takes keys crafted to collide, or if a
  * field's records would take more than 2<sup>40</sup> - 2 bytes, the field gets no table and is
@@ -364,9 +363,8 @@ public final class PrimaryKeyHashPostingsFormat extends PostingsFormat {
    *     filter of every field with a table ({@value #DEFAULT_FILTER_BITS_PER_KEY} with the other
    *     constructors). The filter takes {@code filterBitsPerKey / 8} bytes per key on disk, and as
    *     much heap per key of the largest partition while a field is written. {@link
-   *     HashTerms#lookupBatch} and {@link PrimaryKeyHashLookup} read it before the table; exact
-   *     seeks do not. Use 0 for fields that are only looked up with exact seeks, which gain nothing
-   *     from it.
+   *     HashTerms#lookupBatch} reads it before the table; exact seeks do not. Use 0 for fields that
+   *     are only looked up with exact seeks, which gain nothing from it.
    */
   public PrimaryKeyHashPostingsFormat(PostingsFormat delegate, int filterBitsPerKey) {
     this(

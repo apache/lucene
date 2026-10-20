@@ -23,8 +23,6 @@
  * <ul>
  *   <li>{@link org.apache.lucene.sandbox.codecs.pkhash.PrimaryKeyHashPostingsFormat} is the format.
  *       It is meant to be applied per field, to primary-key fields only.
- *   <li>{@link org.apache.lucene.sandbox.codecs.pkhash.PrimaryKeyHashLookup} finds the live
- *       document that holds a given term in a whole reader.
  *   <li>{@link org.apache.lucene.sandbox.search.PrimaryKeyHashInSetQuery} matches the documents
  *       that hold any of a set of terms.
  * </ul>

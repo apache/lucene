@@ -368,12 +368,6 @@ public final class PrimaryKeyHashTestUtil {
           actual.lookupBatch(hashed, 0, hashed.size(), actualDocs);
           assertArrayEquals(expectedDocs, actualDocs);
         }
-        final BytesRef[] batch = probes.toArray(new BytesRef[0]);
-        final int[] expectedDocs = new int[batch.length];
-        final int[] actualDocs = new int[batch.length];
-        new PrimaryKeyHashLookup(expectedReader, "id").lookup(batch, 0, batch.length, expectedDocs);
-        new PrimaryKeyHashLookup(actualReader, "id").lookup(batch, 0, batch.length, actualDocs);
-        assertArrayEquals(expectedDocs, actualDocs);
         final List<BytesRef> some = probes.subList(0, Math.min(500, probes.size()));
         assertEquals(
             new IndexSearcher(expectedReader).count(new PrimaryKeyHashInSetQuery("id", some)),
@@ -537,38 +531,6 @@ public final class PrimaryKeyHashTestUtil {
 
     if (terms instanceof HashTerms hashTerms) {
       checkLookupBatch(hashTerms, expected, probes);
-    }
-    checkReaderLookup(reader, field, expected, probes);
-  }
-
-  /**
-   * {@link PrimaryKeyHashLookup} on the segment alone, one key at a time and in a batch: the first
-   * live document of every probe, or -1.
-   */
-  private static void checkReaderLookup(
-      LeafReader reader,
-      String field,
-      NavigableMap<BytesRef, int[]> expected,
-      List<BytesRef> probes)
-      throws IOException {
-    final Random random = random();
-    final PrimaryKeyHashLookup lookup = new PrimaryKeyHashLookup(reader, field);
-    final Bits liveDocs = reader.getLiveDocs();
-    final BytesRef[] keys = probes.toArray(new BytesRef[0]);
-    final int[] docs = new int[keys.length];
-    lookup.lookup(keys, 0, keys.length, docs);
-    for (int i = 0; i < keys.length; i++) {
-      int firstLive = -1;
-      final int[] postings = expected.get(keys[i]);
-      for (int j = 0; postings != null && j < postings.length && firstLive == -1; j++) {
-        if (liveDocs == null || liveDocs.get(postings[j])) {
-          firstLive = postings[j];
-        }
-      }
-      assertEquals(keys[i].toString(), firstLive, docs[i]);
-      if (random.nextInt(4) == 0) {
-        assertEquals(keys[i].toString(), firstLive, lookup.lookup(keys[i]));
-      }
     }
   }
 
