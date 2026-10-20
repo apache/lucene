@@ -60,6 +60,7 @@ import org.apache.lucene.util.BytesRef;
  */
 public class JoinDocMaker extends DocMaker {
 
+  private static final List<String> LAYOUTS = List.of("products", "skus", "mixed", "block");
   public static final String TYPE = "type";
   public static final String PRODUCT = "product";
   public static final String SKU = "sku";
@@ -186,8 +187,8 @@ public class JoinDocMaker extends DocMaker {
     super.setConfig(config, source);
     layout = config.get("join.layout", "mixed");
     dataset = Dataset.fromConfig(config);
-    if (!List.of("products", "skus", "mixed", "block").contains(layout)) {
-      throw new IllegalArgumentException("join.layout: " + layout);
+    if (!LAYOUTS.contains(layout)) {
+      throw new IllegalArgumentException("join.layout: " + layout + " expecting one of " + LAYOUTS);
     }
   }
 
