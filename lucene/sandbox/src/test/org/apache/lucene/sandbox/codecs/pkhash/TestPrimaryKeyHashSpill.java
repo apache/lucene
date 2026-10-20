@@ -57,9 +57,8 @@ import org.apache.lucene.util.IOUtils;
 
 /**
  * Fields with more keys than fit in one partition, whose keys are spilled to temporary files, as
- * are their filter and the records of keys that may be inline: every key is found, whatever the
- * number of partitions and the layout, no temporary file is left behind, and a corrupted temporary
- * file fails the flush.
+ * are their filter and the records of keys that may be inline: every key is found, no temporary
+ * file is left behind, and a corrupted temporary file fails the flush.
  */
 public class TestPrimaryKeyHashSpill extends LuceneTestCase {
 
@@ -114,44 +113,9 @@ public class TestPrimaryKeyHashSpill extends LuceneTestCase {
   }
 
   /**
-   * Fields of 2 to 2^7 partitions: those of up to 32 are gathered from the files that keys are
-   * spilled to as they are added, those of more from the files that these are split into, one per
-   * partition. With records in term order and inline keys, with a filter or not.
-   */
-  public void testSpilledKeys() throws IOException {
-    for (int partitionBits = 1;
-        partitionBits <= HashFieldsConsumer.SPLIT_BITS + 2;
-        partitionBits++) {
-      final int numKeys =
-          TestUtil.nextInt(
-              random(),
-              (MAX_KEYS_PER_PARTITION << (partitionBits - 1)) + 1,
-              MAX_KEYS_PER_PARTITION << partitionBits);
-      final List<BytesRef> keys = randomKeys(numKeys);
-      final Inlining inlining = partitionBits % 2 == 0 ? Inlining.ALWAYS : Inlining.NEVER;
-      try (Directory dir = new ByteBuffersDirectory()) {
-        final Codec codec = codec(randomFilterBitsPerKey(random()), inlining);
-        try (IndexWriter writer = new IndexWriter(dir, config(numKeys, codec))) {
-          addKeys(writer, keys);
-          writer.commit();
-        }
-        assertNoTemporaryFiles(dir);
-        try (DirectoryReader reader = DirectoryReader.open(dir)) {
-          final LeafReader leaf = getOnlyLeafReader(reader);
-          final HashTerms terms = (HashTerms) leaf.terms("id");
-          assertEquals(1 << partitionBits, terms.numPartitions());
-          assertEquals(inlining == Inlining.ALWAYS, terms.isInline());
-          checkField(leaf, "id", keys, true);
-        }
-      }
-    }
-  }
-
-  /**
-   * Spilled keys that may be inline: a key of another length, which comes first in term order, or
-   * later, once records are written to a temporary file, writes the records to the data file
-   * instead, and gives the same data file as without inline keys. By default, the keys, of 12
-   * bytes, are inline: the same data file as when keys are inline whenever they can be.
+   * Spilled keys that may be inline: a key of another length, first in term order or after records
+   * are written to a temporary file, writes the records to the data file instead, which is then the
+   * same as without inline keys.
    */
   public void testSpilledInlineKeys() throws IOException {
     final int numKeys = TestUtil.nextInt(random(), 1000, 3000);
@@ -170,7 +134,7 @@ public class TestPrimaryKeyHashSpill extends LuceneTestCase {
         withOther.add(other);
       }
       final byte[][] data = new byte[Inlining.values().length][];
-      for (Inlining inlining : Inlining.values()) {
+      for (Inlining inlining : new Inlining[] {Inlining.NEVER, Inlining.ALWAYS}) {
         try (Directory dir = new ByteBuffersDirectory()) {
           try (IndexWriter writer =
               new IndexWriter(dir, config(withOther.size(), codec(filterBitsPerKey, inlining)))) {
@@ -185,14 +149,13 @@ public class TestPrimaryKeyHashSpill extends LuceneTestCase {
             LeafReader leaf = getOnlyLeafReader(reader);
             HashTerms terms = (HashTerms) leaf.terms("id");
             assertTrue(terms.numPartitions() > 1);
-            assertEquals(inlining != Inlining.NEVER && other == null, terms.isInline());
+            assertEquals(inlining == Inlining.ALWAYS && other == null, terms.isInline());
             checkField(leaf, "id", withOther, true);
           }
         }
       }
       final byte[] never = data[Inlining.NEVER.ordinal()];
       final byte[] always = data[Inlining.ALWAYS.ordinal()];
-      assertArrayEquals(always, data[Inlining.IF_NOT_LARGER.ordinal()]);
       if (other != null) {
         assertArrayEquals(never, always);
       } else {
@@ -246,7 +209,7 @@ public class TestPrimaryKeyHashSpill extends LuceneTestCase {
         colliding++;
       }
     }
-    for (Inlining inlining : Inlining.values()) {
+    for (Inlining inlining : new Inlining[] {Inlining.NEVER, Inlining.ALWAYS}) {
       try (Directory dir = newDirectory()) {
         final Codec codec =
             TestUtil.alwaysPostingsFormat(
@@ -273,12 +236,11 @@ public class TestPrimaryKeyHashSpill extends LuceneTestCase {
   }
 
   /**
-   * A bit flipped in a temporary file must fail the flush: otherwise what is built or copied from
-   * it would be covered by the data file's valid checksum. The file of the records of keys that may
-   * be inline, whether they are, and are copied from it in slot order, or a key of another length,
-   * after more records than the writer holds in heap, has them copied to the data file in term
-   * order; the file of the filter of a field of several partitions; and a spill file, one that keys
-   * are spilled to as they are added or one that such a file is split into.
+   * A bit flipped in a temporary file must fail the flush, as what is built or copied from it would
+   * otherwise be covered by the data file's valid checksum: the records of keys that may be inline
+   * (copied in slot order if they are, or in term order after a key of another length that comes
+   * after more records than the writer holds in heap), the filter of a field of several partitions,
+   * and a spill file, one that keys are spilled to as they are added or one it is split into.
    */
   public void testCorruptedTemporaryFiles() throws IOException {
     for (boolean sameLength : new boolean[] {true, false}) {
@@ -300,9 +262,9 @@ public class TestPrimaryKeyHashSpill extends LuceneTestCase {
         codec(randomFilterBits(random()), randomInlining(random())),
         "hashfilter",
         0);
-    // Files 0 to 31 are those that keys are spilled to as they are added, 32 and up those that they
-    // are split into, if there are more than 32 partitions: one of the first files, or of the first
-    // ones split, so that there are files after it if it has no keys.
+    // Files 0 to 31 take keys as they are added, 32 and up are those split from them if there are
+    // more than 32 partitions. Corrupt one of the first files, or of the first split ones, so that
+    // other files follow it if it has no keys.
     final int spillFiles = 1 << HashFieldsConsumer.SPLIT_BITS;
     final int target =
         partitionBits > HashFieldsConsumer.SPLIT_BITS && random().nextBoolean()

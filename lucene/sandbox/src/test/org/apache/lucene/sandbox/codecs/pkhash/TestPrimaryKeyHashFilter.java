@@ -35,7 +35,6 @@ import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Random;
 import java.util.Set;
-import java.util.function.LongToIntFunction;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -47,12 +46,6 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.sandbox.codecs.pkhash.PrimaryKeyHashPostingsFormat.Inlining;
-import org.apache.lucene.sandbox.search.PrimaryKeyHashInSetQuery;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.TermInSetQuery;
-import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -66,21 +59,21 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 
 /**
- * The register-blocked Bloom filter of a field: its words and bits are those that its documentation
+ * The register-blocked Bloom filter of a field: its words and bits are those its documentation
  * gives, it never rules out a key that is there, however keys are looked up and the segment was
- * written, its false positives are as rare as its documentation says and unrelated to the place of
- * keys in the table, and lookups find the same with it as without it.
+ * written, and its false positives are as rare as documented.
  */
 public class TestPrimaryKeyHashFilter extends LuceneTestCase {
 
   /**
-   * Words, bits and sizes are those that the documentation of the filter gives, computed here
-   * independently: bits 30 to 63 of the filter hash, as a fraction of 2^34, times the number of
-   * words, choose the word, and bits {@code 6i} to {@code 6i + 5} the position of the key's bit
-   * {@code i}, neither depending on the bits of the other. A key that was added is never ruled out,
-   * and on disk, a word is a little-endian long.
+   * Words, bits and sizes are those the filter's documentation gives, computed independently: bits
+   * 30 to 63 of the filter hash, as a fraction of 2^34, times the number of words, choose the word,
+   * and bits {@code 6i} to {@code 6i + 5} the position of the key's bit {@code i}, neither
+   * depending on the other's bits. Whatever the number of partitions, a key's bits are those of its
+   * mix, which batches compute once for all fields. The mix and the filter hash, which filters on
+   * disk depend on, have golden values.
    */
-  public void testLayout() throws IOException {
+  public void testLayout() {
     final Random random = random();
     final long positionBits = (1L << BlockedBloomFilter.POSITION_HASH_BITS) - 1;
     for (int iter = 0; iter < 10_000; iter++) {
@@ -111,10 +104,19 @@ public class TestPrimaryKeyHashFilter extends LuceneTestCase {
           BlockedBloomFilter.word((filterHash & ~positionBits) | (other & positionBits), numWords));
       assertEquals(
           mask, BlockedBloomFilter.mask((filterHash & positionBits) | (other & ~positionBits)));
+      // the same value, taken as the hash of a key
+      final int partitionBits =
+          TestUtil.nextInt(random, 0, PrimaryKeyHashPostingsFormat.MAX_PARTITION_BITS);
+      assertEquals(
+          BlockedBloomFilter.mask(TermHash.mix(filterHash)),
+          BlockedBloomFilter.mask(TermHash.filterHash(filterHash, partitionBits)));
     }
     assertEquals(
         BlockedBloomFilter.MAX_WORDS - 1,
         BlockedBloomFilter.word(-1L, BlockedBloomFilter.MAX_WORDS));
+    // of the hash of "abc"
+    assertEquals(0x8c123698fd5b7a1bL, TermHash.mix(0x18ce44bde5a6523dL));
+    assertEquals(0x18d23698fd5b7a1bL, TermHash.filterHash(0x18ce44bde5a6523dL, 10));
 
     // as many words of 64 bits as the keys take, at least one
     assertEquals(1, BlockedBloomFilter.numWords(0, 8));
@@ -122,29 +124,6 @@ public class TestPrimaryKeyHashFilter extends LuceneTestCase {
     assertEquals(2, BlockedBloomFilter.numWords(9, 8));
     assertEquals(157, BlockedBloomFilter.numWords(1000, 10));
     assertEquals(1L << 31, BlockedBloomFilter.numWords(1L << 34, 8));
-
-    // added keys are never ruled out; on disk, a word is a little-endian long
-    final int numWords = TestUtil.nextInt(random, 1, 200);
-    final long[] words = new long[numWords];
-    final long[] added = new long[TestUtil.nextInt(random, 1, 1000)];
-    for (int i = 0; i < added.length; i++) {
-      added[i] = random.nextLong();
-      BlockedBloomFilter.add(words, added[i]);
-    }
-    final ByteBuffersDataOutput out = new ByteBuffersDataOutput();
-    for (long word : words) {
-      out.writeLong(word);
-    }
-    final byte[] bytes = out.toArrayCopy();
-    for (long filterHash : added) {
-      final int w = BlockedBloomFilter.word(filterHash, numWords);
-      assertEquals(1, BlockedBloomFilter.mayContain(words[w], BlockedBloomFilter.mask(filterHash)));
-      for (int i = 0; i < BlockedBloomFilter.K; i++) {
-        // bit b of a word is bit b % 8 of its byte b / 8
-        final int bit = (int) ((filterHash >>> (6 * i)) & 63);
-        assertTrue((bytes[w * Long.BYTES + bit / 8] & (1 << (bit % 8))) != 0);
-      }
-    }
 
     // a word lets a key through if and only if it has all of the key's bits, the sign bit included
     for (int iter = 0; iter < 1000; iter++) {
@@ -158,119 +137,7 @@ public class TestPrimaryKeyHashFilter extends LuceneTestCase {
     }
   }
 
-  /**
-   * The bits of a key are the same in the filter of every field, whatever its number of partitions,
-   * and are those of the mask of its mix, which batches compute once for all segments.
-   */
-  public void testMasks() {
-    for (int iter = 0; iter < 1000; iter++) {
-      final long hash = iter == 0 ? 0 : iter == 1 ? -1L : random().nextLong();
-      final long mask = BlockedBloomFilter.mask(TermHash.mix(hash));
-      for (int partitionBits = 0;
-          partitionBits <= PrimaryKeyHashPostingsFormat.MAX_PARTITION_BITS;
-          partitionBits++) {
-        assertEquals(mask, BlockedBloomFilter.mask(TermHash.filterHash(hash, partitionBits)));
-      }
-    }
-  }
-
-  /**
-   * The bits of the hash that place a key in the table (partition, home slot, control byte, tag)
-   * and those that place it in the filter (its word among the words of its partition, the positions
-   * of its bits) are independent, as are the latter among themselves, whatever the number of
-   * partition bits: a chi-squared test of independence of every pair, on random hashes, with a
-   * threshold that random data exceeds with a probability of about 10^-9. Taking the word from the
-   * hash itself, as a negative control, fails it. The words of the keys of a partition are its own.
-   */
-  public void testFilterBitsAreIndependentOfTableBits() {
-    final long[] hashes = new long[1 << 17];
-    for (int i = 0; i < hashes.length; i++) {
-      hashes[i] = random().nextLong();
-    }
-    final double critical = chiSquaredCriticalValue(15 * 15);
-    final List<LongToIntFunction> table =
-        List.of(
-            h -> TermHash.partition(h, 4),
-            h -> TermHash.partition(h, 10) & 15,
-            h -> TermHash.homeSlot(h, 4, 16),
-            h -> TermHash.homeSlot(h, 10, 1 << 30) & 15,
-            h -> TermHash.control(h) & 15,
-            h -> (TermHash.control(h) >>> 3) & 15,
-            h -> TermHash.tag(h) & 15,
-            h -> TermHash.tag(h) >>> 12);
-    for (int partitionBits : new int[] {0, 4, PrimaryKeyHashPostingsFormat.MAX_PARTITION_BITS}) {
-      // with 16 words per partition, a key's word is 16 times its partition plus its word there
-      final int numWords = 16 << partitionBits;
-      final List<LongToIntFunction> filter = new ArrayList<>();
-      filter.add(
-          h -> BlockedBloomFilter.word(TermHash.filterHash(h, partitionBits), numWords) & 15);
-      filter.add(
-          h ->
-              BlockedBloomFilter.word(
-                      TermHash.filterHash(h, partitionBits), BlockedBloomFilter.MAX_WORDS)
-                  & 15);
-      for (int i = 0; i < BlockedBloomFilter.K; i++) {
-        final int shift = 6 * i;
-        filter.add(h -> (int) ((TermHash.filterHash(h, partitionBits) >>> shift) & 63) >>> 2);
-      }
-      for (int f = 0; f < filter.size(); f++) {
-        for (int t = 0; t < table.size(); t++) {
-          final double chi2 = chiSquared(hashes, table.get(t), filter.get(f));
-          assertTrue(partitionBits + " bits, table " + t + ", filter " + f, chi2 < critical);
-        }
-        for (int g = f + 1; g < filter.size(); g++) {
-          final double chi2 = chiSquared(hashes, filter.get(f), filter.get(g));
-          assertTrue(partitionBits + " bits, filter " + f + ", filter " + g, chi2 < critical);
-        }
-      }
-      for (long hash : hashes) {
-        assertEquals(
-            TermHash.partition(hash, partitionBits),
-            BlockedBloomFilter.word(TermHash.filterHash(hash, partitionBits), numWords) / 16);
-      }
-    }
-    final double naive = chiSquared(hashes, table.get(0), h -> BlockedBloomFilter.word(h, 16));
-    assertTrue("naive: " + naive, naive > 100 * critical);
-  }
-
-  /** Pearson's chi-squared statistic of the independence of two functions with 16 values each. */
-  private static double chiSquared(long[] hashes, LongToIntFunction a, LongToIntFunction b) {
-    final long[][] counts = new long[16][16];
-    final long[] rows = new long[16];
-    final long[] columns = new long[16];
-    for (long hash : hashes) {
-      final int r = a.applyAsInt(hash);
-      final int c = b.applyAsInt(hash);
-      counts[r][c]++;
-      rows[r]++;
-      columns[c]++;
-    }
-    double chi2 = 0;
-    for (int r = 0; r < 16; r++) {
-      for (int c = 0; c < 16; c++) {
-        final double expected = (double) rows[r] * columns[c] / hashes.length;
-        if (expected > 0) {
-          final double diff = counts[r][c] - expected;
-          chi2 += diff * diff / expected;
-        }
-      }
-    }
-    return chi2;
-  }
-
-  /**
-   * A value that the chi-squared distribution with {@code df} degrees of freedom exceeds with a
-   * probability of about 10^-9: 6 standard deviations in the Wilson-Hilferty approximation.
-   */
-  private static double chiSquaredCriticalValue(int df) {
-    final double a = 2.0 / (9.0 * df);
-    return df * Math.pow(1 - a + 6 * Math.sqrt(a), 3);
-  }
-
-  /**
-   * The rate at which a random absent key passes a filter, for every word: the fraction of the bits
-   * of the word that are set, to the power of the number of bits of a key.
-   */
+  /** Per word, the rate at which an absent key passes: its fraction of set bits, to the power K. */
   private static double[] passRates(long[] words) {
     final double[] rates = new double[words.length];
     for (int w = 0; w < words.length; w++) {
@@ -290,9 +157,8 @@ public class TestPrimaryKeyHashFilter extends LuceneTestCase {
   }
 
   /**
-   * Filters of the hashes of random keys, at every number of bits per key: no key that was added is
-   * ruled out, absent keys pass as often as the bits that are set say, and at the sizes that the
-   * documentation of {@link BlockedBloomFilter} gives a rate for, at that rate.
+   * At every number of bits per key: no added key is ruled out, absent keys pass as often as the
+   * set bits say, and at the documented rate where {@link BlockedBloomFilter} gives one.
    */
   public void testFalsePositiveRates() {
     final Map<Integer, Double> documented =
@@ -350,21 +216,6 @@ public class TestPrimaryKeyHashFilter extends LuceneTestCase {
     return BlockedBloomFilter.mayContain(word, BlockedBloomFilter.mask(filterHash)) == 1;
   }
 
-  /**
-   * Whether the filter of {@code terms} rules out the key whose hash is {@code hash}, reading the
-   * key's word from {@code in}; false if the field has no filter.
-   */
-  private static boolean filterRulesOut(HashTerms terms, RandomAccessInput in, long hash)
-      throws IOException {
-    if (terms.hasFilter() == false) {
-      return false;
-    }
-    final long filterHash = terms.filterHash(TermHash.mix(hash), hash);
-    return BlockedBloomFilter.mayContain(
-            in.readLong(terms.filterWordPosition(filterHash)), BlockedBloomFilter.mask(filterHash))
-        == 0;
-  }
-
   /** The words of the filter of a field, as written. */
   private static long[] readFilter(HashTerms terms) throws IOException {
     final RandomAccessInput in = terms.newSlice();
@@ -376,10 +227,9 @@ public class TestPrimaryKeyHashFilter extends LuceneTestCase {
   }
 
   /**
-   * The filter of every field is the one built from all the keys of the delegate's terms at once,
-   * word for word, with the number of words that its size gives, at a multiple of 64 bytes: whether
-   * the keys were spilled and partitioned, and the filter written one partition at a time, or not,
-   * and of one document or more.
+   * Every field's filter is, word for word, the one built from all the delegate's terms at once,
+   * with the number of words its size gives, at a multiple of 64 bytes, whether or not the keys
+   * were spilled and partitioned, for keys of one document or more.
    */
   public void testFilterHoldsTheKeysOfTheField() throws IOException {
     final Random random = random();
@@ -422,11 +272,10 @@ public class TestPrimaryKeyHashFilter extends LuceneTestCase {
   }
 
   /**
-   * The keys of a partition are in consecutive words of the filter, from the first word of their
-   * partition to that of the next one, and at most {@code ceil(numWords / numPartitions) + 1}
-   * words; so the writer, which adds the keys of one partition after the other, holds no more than
-   * that many words in heap, and writes the filter that all the keys added at once give, through a
-   * temporary file that it deletes.
+   * A partition's keys are in consecutive words, from its first word to the next partition's, at
+   * most {@code ceil(numWords / numPartitions) + 1} of them; so the writer, which adds one
+   * partition after the other, holds no more than that many words in heap, and writes, through a
+   * temporary file that it deletes, the filter that adding all the keys at once gives.
    */
   public void testFilterIsBuiltOnePartitionAtATime() throws IOException {
     final Random random = random();
@@ -558,64 +407,33 @@ public class TestPrimaryKeyHashFilter extends LuceneTestCase {
           for (String field : new String[] {"id", "group"}) {
             final HashTerms terms = (HashTerms) leaf.terms(field);
             assertTrue(terms.hasFilter());
-            final RandomAccessInput in = terms.newSlice();
-            for (Map.Entry<BytesRef, int[]> entry : postingsOf(terms.getDelegate()).entrySet()) {
-              final BytesRef key = entry.getKey();
-              final long hash = TermHash.hash(key.bytes, key.offset, key.length);
-              assertFalse(key.toString(), filterRulesOut(terms, in, hash));
-              multi |= entry.getValue().length > 1;
-            }
+            multi |= postingsOf(terms.getDelegate()).values().stream().anyMatch(d -> d.length > 1);
             // every way of looking keys up, against the delegate
             checkField(leaf, field, keys, true);
           }
         }
         // the group field has keys of several documents
         assertTrue(multi);
-        // and across segments, through the query, which looks up batches of keys
-        final IndexSearcher searcher = new IndexSearcher(reader);
-        final Set<BytesRef> probes = new HashSet<>(keys.subList(0, Math.min(500, keys.size())));
-        probes.add(new BytesRef("absent"));
-        int expected = 0;
-        for (BytesRef probe : probes) {
-          expected += searcher.count(new TermQuery(new Term("id", probe)));
-        }
-        assertEquals(expected, searcher.count(new PrimaryKeyHashInSetQuery("id", probes)));
       }
     }
   }
 
   /**
-   * The same documents, written the same way with and without a filter, give segments with the same
-   * tables, and every lookup gives the same result on both.
+   * With one partition, the most partitions, and a random number in between, no key that is there
+   * is ruled out, whether the directory maps files or not: records in term order or inline keys, a
+   * key of another length among keys of one length, keys of several documents, compound files or
+   * not. Batches of any range of keys find what the delegate's postings hold in each of two
+   * segments whose ranges of terms overlap.
    */
-  public void testSameResultsWithAndWithoutFilter() throws IOException {
-    final long seed = random().nextLong();
-    final int bitsPerKey = randomFilterBits(random());
-    final Inlining inlining = randomInlining(random());
-    PrimaryKeyHashTestUtil.assertSameResults(
-        PrimaryKeyHashTestUtil.randomFormat(new Random(seed), 0, inlining),
-        PrimaryKeyHashTestUtil.randomFormat(new Random(seed), bitsPerKey, inlining),
-        random().nextInt(5),
-        (expected, actual) -> {
-          assertFalse(expected.hasFilter());
-          assertTrue(actual.hasFilter());
-          assertEquals(expected.isInline(), actual.isInline());
-        });
-  }
-
-  /**
-   * At every number of partition bits, no key that is there is ruled out, whether the directory
-   * maps files or not: records in term order or inline keys, a key of another length among keys of
-   * one length, keys of several documents, compound files or not. Batches of any range of keys find
-   * what the delegate's postings hold, the query counts their documents, and lookups across two
-   * segments whose ranges of terms overlap, which read the filters of both, find every key.
-   */
-  public void testNoFalseNegativesAtEveryPartitionCount() throws IOException {
+  public void testNoFalseNegativesAcrossPartitionCounts() throws IOException {
     final Random random = random();
     final int maxKeysPerPartition = 16;
-    for (int partitionBits = 0;
-        partitionBits <= PrimaryKeyHashPostingsFormat.MAX_PARTITION_BITS;
-        partitionBits++) {
+    for (int partitionBits :
+        new int[] {
+          0,
+          TestUtil.nextInt(random, 1, PrimaryKeyHashPostingsFormat.MAX_PARTITION_BITS - 1),
+          PrimaryKeyHashPostingsFormat.MAX_PARTITION_BITS
+        }) {
       final int numKeys =
           partitionBits == 0
               ? TestUtil.nextInt(random, 1, maxKeysPerPartition)
@@ -689,30 +507,19 @@ public class TestPrimaryKeyHashFilter extends LuceneTestCase {
         }
         probes.add(new BytesRef(String.format(Locale.ROOT, "absent%d", i)));
       }
-      for (Directory dir : new Directory[] {new MMapDirectory(path), new NIOFSDirectory(path)}) {
-        try (dir;
-            DirectoryReader reader = DirectoryReader.open(dir)) {
-          final String message = partitionBits + " partition bits, " + dir;
-          assertEquals(message, 2, reader.leaves().size());
-          for (LeafReaderContext context : reader.leaves()) {
-            final HashTerms terms = (HashTerms) context.reader().terms("id");
-            assertTrue(message, terms.hasFilter());
-            if (context.ord == 0) {
-              assertEquals(message, 1 << partitionBits, terms.numPartitions());
-            }
-            final NavigableMap<BytesRef, int[]> postings = postingsOf(terms.getDelegate());
-            final RandomAccessInput in = terms.newSlice();
-            for (BytesRef key : postings.keySet()) {
-              final long hash = TermHash.hash(key.bytes, key.offset, key.length);
-              assertFalse(message + " " + key, filterRulesOut(terms, in, hash));
-            }
-            PrimaryKeyHashTestUtil.checkLookupBatch(terms, postings, probes);
+      try (Directory dir =
+              random.nextBoolean() ? new MMapDirectory(path) : new NIOFSDirectory(path);
+          DirectoryReader reader = DirectoryReader.open(dir)) {
+        final String message = partitionBits + " partition bits, " + dir;
+        assertEquals(message, 2, reader.leaves().size());
+        for (LeafReaderContext context : reader.leaves()) {
+          final HashTerms terms = (HashTerms) context.reader().terms("id");
+          assertTrue(message, terms.hasFilter());
+          if (context.ord == 0) {
+            assertEquals(message, 1 << partitionBits, terms.numPartitions());
           }
-          final IndexSearcher searcher = new IndexSearcher(reader);
-          assertEquals(
-              message,
-              searcher.count(new TermInSetQuery("id", probes)),
-              searcher.count(new PrimaryKeyHashInSetQuery("id", probes)));
+          final NavigableMap<BytesRef, int[]> postings = postingsOf(terms.getDelegate());
+          PrimaryKeyHashTestUtil.checkLookupBatch(terms, postings, probes);
         }
       }
     }

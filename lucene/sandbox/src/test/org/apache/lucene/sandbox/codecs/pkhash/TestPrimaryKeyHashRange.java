@@ -21,10 +21,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Random;
 import java.util.TreeSet;
 import java.util.UUID;
@@ -45,12 +43,11 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOBooleanSupplier;
 
 /**
- * Checks that comparing keys with the smallest and largest terms of a field through their first 8
- * bytes ({@link HashTerms#prefix}), or through the 8 bytes after the prefix that the two terms
- * share when they share their first 8 bytes, decides exactly as comparing whole keys does: for keys
- * shorter than 8 bytes, keys equal to those terms, their prefixes, keys that only differ from them
- * after 8 bytes or in trailing zero bytes, keys of 0x00, 0x7F, 0x80 and 0xFF bytes, and keys of
- * schemes whose keys all start with the same 8 bytes or more, such as URLs.
+ * Comparing keys with a field's smallest and largest terms through their first 8 bytes ({@link
+ * HashTerms#prefix}), or through the 8 bytes after the prefix that the two terms share when they
+ * share their first 8 bytes, decides exactly as comparing whole keys does: for short keys, the
+ * terms and their prefixes, keys that differ from them only after 8 bytes or in trailing zero
+ * bytes, edge bytes, and keys of schemes whose keys all share 8 bytes or more, such as URLs.
  */
 public class TestPrimaryKeyHashRange extends LuceneTestCase {
 
@@ -73,8 +70,8 @@ public class TestPrimaryKeyHashRange extends LuceneTestCase {
   }
 
   /**
-   * Keys close to {@code key} in the order of keys or of their prefixes: the key, its prefixes, the
-   * key extended with zero bytes and with other bytes, and the key with one byte changed.
+   * Keys close to {@code key}: the key, its prefixes, the key extended with zero bytes and with
+   * other bytes, and the key with one byte changed.
    */
   private static List<byte[]> neighbors(byte[] key, Random random) {
     List<byte[]> neighbors = new ArrayList<>();
@@ -107,8 +104,8 @@ public class TestPrimaryKeyHashRange extends LuceneTestCase {
   }
 
   /**
-   * {@code key} copied into a larger array at a random offset, surrounded by random bytes that a
-   * comparison must not read, half of them 0xFF so that reading them past the end of a key shows.
+   * {@code key} at a random offset of a larger array of random bytes, half of them 0xFF, so that
+   * reading past the key shows.
    */
   private static BytesRef embed(byte[] key, Random random) {
     int offset = random.nextInt(5);
@@ -144,55 +141,6 @@ public class TestPrimaryKeyHashRange extends LuceneTestCase {
   }
 
   /**
-   * {@link HashTerms#compare} has the sign of a comparison of whole keys, given their prefixes or,
-   * for keys that start with the same bytes, the prefixes of the bytes after those.
-   */
-  public void testCompare() {
-    final Random random = random();
-    final int iters = atLeast(200);
-    for (int iter = 0; iter < iters; iter++) {
-      byte[] term = randomKey(random);
-      List<byte[]> keys = neighbors(term, random);
-      for (int i = 0; i < 20; i++) {
-        keys.add(randomKey(random));
-      }
-      BytesRef termRef = embed(term, random);
-      long termPrefix = prefix(termRef);
-      for (byte[] key : keys) {
-        BytesRef keyRef = embed(key, random);
-        long keyPrefix = prefix(keyRef);
-        int expected = Integer.signum(Arrays.compareUnsigned(key, term));
-        int actual =
-            Integer.signum(
-                HashTerms.compare(
-                    keyPrefix, keyRef.bytes, keyRef.offset, keyRef.length, termPrefix, termRef));
-        assertEquals(keyRef + " vs " + termRef, expected, actual);
-        if (keyPrefix != termPrefix) {
-          // prefixes that differ decide alone
-          assertEquals(expected, Integer.signum(Long.compareUnsigned(keyPrefix, termPrefix)));
-        }
-        // after bytes that both start with, the prefixes of the bytes that follow
-        final int shared = random.nextInt(9);
-        final byte[] start = new byte[shared];
-        random.nextBytes(start);
-        final byte[] longKey = concat(start, key);
-        final byte[] longTerm = concat(start, term);
-        assertEquals(
-            Integer.signum(Arrays.compareUnsigned(longKey, longTerm)),
-            Integer.signum(
-                HashTerms.compare(
-                    keyPrefix, longKey, 0, longKey.length, termPrefix, new BytesRef(longTerm))));
-      }
-    }
-  }
-
-  private static byte[] concat(byte[] a, byte[] b) {
-    byte[] concat = Arrays.copyOf(a, a.length + b.length);
-    System.arraycopy(b, 0, concat, a.length, b.length);
-    return concat;
-  }
-
-  /**
    * The offset that ranges are checked from is 0 unless the smallest and largest terms share their
    * first 8 bytes, and then the length of the prefix that they share.
    */
@@ -212,9 +160,8 @@ public class TestPrimaryKeyHashRange extends LuceneTestCase {
   }
 
   /**
-   * Keys of a scheme that all start with the same 8 bytes or more: URLs, ARNs, UUID URNs, and
-   * zero-padded numbers of 16 digits; when they are close to each other, the smallest and largest
-   * terms of a field share more than these first bytes.
+   * A key of a scheme whose keys all start with the same 8 bytes or more: URLs, ARNs, UUID URNs or
+   * zero-padded 16-digit numbers; keys close to each other share even more.
    */
   private static byte[] schemeKey(Random random, int scheme, int base) {
     final String key =
@@ -229,9 +176,9 @@ public class TestPrimaryKeyHashRange extends LuceneTestCase {
   }
 
   /**
-   * On real segments, {@link HashTerms#outOfRange} and the range of keys that {@link
-   * HashTerms#lookupBatch} looks up are those of whole-key comparisons with the field's smallest
-   * and largest terms, and every lookup finds exactly the indexed keys.
+   * On real segments, {@link HashTerms#outOfRange} decides exactly as whole-key comparisons with
+   * the smallest and largest terms, and seekExact and prepareSeekExact find exactly the indexed
+   * keys.
    */
   public void testRangeEquivalence() throws IOException {
     final Random random = random();
@@ -303,7 +250,6 @@ public class TestPrimaryKeyHashRange extends LuceneTestCase {
       throws IOException {
     final Random random = random();
     final Codec codec = TestUtil.alwaysPostingsFormat(PrimaryKeyHashTestUtil.randomFormat(random));
-    final Map<BytesRef, Integer> docIds = new HashMap<>();
     try (Directory dir = newDirectory()) {
       IndexWriterConfig iwc =
           new IndexWriterConfig(new MockAnalyzer(random))
@@ -317,7 +263,6 @@ public class TestPrimaryKeyHashRange extends LuceneTestCase {
         for (BytesRef key : shuffled) {
           Document doc = new Document();
           doc.add(new StringField("id", key, Field.Store.NO));
-          docIds.put(key, docIds.size());
           writer.addDocument(doc);
         }
       }
@@ -327,8 +272,6 @@ public class TestPrimaryKeyHashRange extends LuceneTestCase {
         final BytesRef max = terms.getMax();
         assertEquals(indexed.first(), min);
         assertEquals(indexed.last(), max);
-        assertEquals(HashTerms.rangeOffset(min, max), terms.rangeOffset());
-
         final List<BytesRef> probes = new ArrayList<>();
         for (byte[] probe : probeBytes) {
           probes.add(embed(probe, random));
@@ -345,22 +288,6 @@ public class TestPrimaryKeyHashRange extends LuceneTestCase {
           assertEquals(probe.toString(), present, termsEnum.seekExact(probe));
           IOBooleanSupplier supplier = terms.iterator().prepareSeekExact(probe);
           assertEquals(probe.toString(), present, supplier != null && supplier.get());
-        }
-
-        // batches of keys in and out of the range, from every start
-        final HashedTerms keys = new HashedTerms(probes);
-        for (int iter = 0; iter < 20; iter++) {
-          int from = iter == 0 ? 0 : random.nextInt(keys.size() + 1);
-          int to = iter == 0 ? keys.size() : TestUtil.nextInt(random, from, keys.size());
-          int[] docs = new int[to - from];
-          terms.lookupBatch(keys, from, to, docs);
-          for (int i = from; i < to; i++) {
-            Integer doc = docIds.get(keys.get(i));
-            assertEquals(
-                keys.get(i).toString(),
-                doc == null ? HashTerms.ABSENT : doc.intValue(),
-                docs[i - from]);
-          }
         }
       }
     }

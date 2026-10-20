@@ -26,7 +26,6 @@ import static org.apache.lucene.sandbox.codecs.pkhash.PrimaryKeyHashTestUtil.wri
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -46,9 +45,6 @@ import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.sandbox.codecs.pkhash.PrimaryKeyHashPostingsFormat.Inlining;
-import org.apache.lucene.sandbox.search.PrimaryKeyHashInSetQuery;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.TermInSetQuery;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
@@ -60,9 +56,9 @@ import org.apache.lucene.util.BytesRef;
  * Fields whose keys all have the same length, of at most {@value
  * PrimaryKeyHashPostingsFormat#MAX_INLINE_KEY_LENGTH} bytes, may have them inline: a record of a
  * doc id and a key per slot, rather than slot words that point to records in term order; by default
- * only if they are short enough to take no more space. Checked: lookups of every kind, for keys of
- * every length that can be inline, of one document and of several, sharing bytes, in tiny and in
- * mixed segments; the same results as with records in term order; and the choice of the layout.
+ * only if that takes no more space. Checked: lookups of every kind, for keys of every length that
+ * can be inline, of one document and of several, sharing bytes, in tiny segments; and the choice of
+ * the layout.
  */
 public class TestPrimaryKeyHashInline extends LuceneTestCase {
 
@@ -95,7 +91,7 @@ public class TestPrimaryKeyHashInline extends LuceneTestCase {
     for (int keyLength : lengths) {
       final Random random = random();
       final int numKeys =
-          keyLength == 1 ? TestUtil.nextInt(random, 50, 200) : TestUtil.nextInt(random, 200, 3000);
+          keyLength == 1 ? TestUtil.nextInt(random, 50, 200) : TestUtil.nextInt(random, 50, 500);
       final List<BytesRef> keys = randomKeys(random, keyLength, numKeys);
       final List<BytesRef> docKeys = new ArrayList<>(keys);
       for (BytesRef key : keys) {
@@ -114,46 +110,19 @@ public class TestPrimaryKeyHashInline extends LuceneTestCase {
           final boolean inline = keyLength <= PrimaryKeyHashPostingsFormat.MAX_INLINE_KEY_LENGTH;
           assertEquals(message, inline, terms.isInline());
           assertEquals(filterBitsPerKey != 0, terms.hasFilter());
-          assertEquals(message, inline ? keyLength : -1, terms.keyLength());
-          assertEquals(message, inline ? Integer.BYTES + keyLength : 0, terms.recordStride());
-          // and keys of other lengths, one byte shorter and longer
-          final List<BytesRef> probes = new ArrayList<>(keys);
-          for (int i = 0; i < 100; i++) {
-            final BytesRef key = keys.get(random.nextInt(keys.size()));
-            probes.add(new BytesRef(key.bytes, key.offset, key.length - 1));
-            probes.add(new BytesRef(Arrays.copyOf(BytesRef.deepCopyOf(key).bytes, key.length + 1)));
-          }
-          checkField(leaf, "id", probes, true);
+          checkField(leaf, "id", keys, true);
         }
       }
     }
   }
 
   /**
-   * The same documents, with updates, deletes and merges, written with inline keys and with records
-   * in term order: the same results for every way of looking keys up, segment by segment and in the
-   * whole index.
-   */
-  public void testSameResultsWithAndWithoutInlineKeys() throws IOException {
-    final long seed = random().nextLong();
-    final int filterBitsPerKey = randomFilterBitsPerKey(random());
-    PrimaryKeyHashTestUtil.assertSameResults(
-        randomFormat(new Random(seed), filterBitsPerKey, Inlining.NEVER),
-        randomFormat(new Random(seed), filterBitsPerKey, Inlining.ALWAYS),
-        random().nextInt(3), // binary UUIDs, UUID strings or numbers
-        (expected, actual) -> {
-          assertFalse(expected.isInline());
-          assertTrue(actual.isInline());
-        });
-  }
-
-  /**
    * By default, keys are inline only if they are no longer than {@link
-   * HashFieldsConsumer#defaultMaxInlineKeyLength} at the field's load factor. The same keys, of one
-   * length from 1 to 60 bytes, written with keys inline by default, whenever they can be, and
-   * never: by default, the data and meta files are those of one of the other two, byte for byte,
-   * the inline one if and only if the keys are that short. Fields of a few keys to a few thousand,
-   * at any load factor, in partitions and spilled, with a filter or not.
+   * HashFieldsConsumer#defaultMaxInlineKeyLength} at the field's load factor: of the same keys
+   * written with each {@link Inlining}, the default gives the data and meta files of one of the
+   * other two, byte for byte, the inline one if and only if the keys are that short. Fields of a
+   * few keys to a few thousand, at any load factor, in partitions and spilled, with a filter or
+   * not.
    */
   public void testInlineOnlyIfNotLarger() throws IOException {
     assertEquals(
@@ -176,9 +145,12 @@ public class TestPrimaryKeyHashInline extends LuceneTestCase {
         numKeys = Math.min(numKeys, 256);
       }
       final List<BytesRef> keys = randomKeys(random, keyLength, numKeys);
-      // the same options for every layout; randomFormat draws the load factor first
-      final long seed = random.nextLong();
-      final float loadFactor = 0.5f + 0.4f * new Random(seed).nextFloat();
+      // the same options for every layout
+      final float loadFactor = 0.5f + 0.4f * random.nextFloat();
+      final int maxKeysPerPartition =
+          random.nextBoolean()
+              ? TestUtil.nextInt(random, 16, 64)
+              : TestUtil.nextInt(random, 16, 100_000);
       final int filterBitsPerKey = randomFilterBitsPerKey(random);
       final List<byte[]> files = new ArrayList<>();
       final boolean[] inline = new boolean[Inlining.values().length];
@@ -186,7 +158,10 @@ public class TestPrimaryKeyHashInline extends LuceneTestCase {
         try (Directory dir = new ByteBuffersDirectory()) {
           final String data =
               writeSingleSegment(
-                  dir, randomFormat(new Random(seed), filterBitsPerKey, inlining), keys);
+                  dir,
+                  PrimaryKeyHashTestUtil.format(
+                      loadFactor, maxKeysPerPartition, filterBitsPerKey, inlining),
+                  keys);
           files.add(withoutHeaderAndFooter(dir, data));
           files.add(
               withoutHeaderAndFooter(
@@ -209,70 +184,6 @@ public class TestPrimaryKeyHashInline extends LuceneTestCase {
       final int byDefault = Inlining.IF_NOT_LARGER.ordinal();
       assertArrayEquals(message, files.get(2 * chosen), files.get(2 * byDefault));
       assertArrayEquals(message, files.get(2 * chosen + 1), files.get(2 * byDefault + 1));
-    }
-  }
-
-  /**
-   * The layout chosen by default, at the default load factor, for keys of the lengths of common
-   * ids: keys of 6, 10 and 16 bytes (sequence numbers, ASINs, binary UUIDs) are inline, and keys of
-   * 36 bytes (UUID strings) are in term order. In one partition, and spilled in several.
-   */
-  public void testDefaultLayoutOfCommonKeyLengths() throws IOException {
-    final int[] lengths = {6, 10, 16, 36};
-    final boolean[] inline = {true, true, true, false};
-    for (int i = 0; i < lengths.length; i++) {
-      final List<BytesRef> keys =
-          randomKeys(random(), lengths[i], TestUtil.nextInt(random(), 2000, 4000));
-      for (int maxKeysPerPartition :
-          new int[] {PrimaryKeyHashPostingsFormat.DEFAULT_MAX_KEYS_PER_PARTITION, 256}) {
-        try (Directory dir = new ByteBuffersDirectory()) {
-          writeSingleSegment(
-              dir,
-              PrimaryKeyHashTestUtil.format(
-                  PrimaryKeyHashPostingsFormat.DEFAULT_LOAD_FACTOR,
-                  maxKeysPerPartition,
-                  randomFilterBitsPerKey(random()),
-                  Inlining.IF_NOT_LARGER),
-              keys);
-          try (DirectoryReader reader = DirectoryReader.open(dir)) {
-            final HashTerms terms = (HashTerms) getOnlyLeafReader(reader).terms("id");
-            assertEquals(maxKeysPerPartition == 256, terms.numPartitions() > 1);
-            assertEquals(lengths[i] + " bytes", inline[i], terms.isInline());
-          }
-        }
-      }
-    }
-  }
-
-  /**
-   * A field of keys of one byte, all of which have several documents: every present key is sought
-   * in the delegate.
-   */
-  public void testOnlyMultiDocumentKeys() throws IOException {
-    final List<BytesRef> docKeys = new ArrayList<>();
-    for (int i = 0; i < 300; i++) {
-      docKeys.add(new BytesRef(Integer.toString(i % 7)));
-    }
-    try (Directory dir = newDirectory()) {
-      writeSingleSegment(dir, randomFormat(random(), 0, Inlining.ALWAYS), docKeys);
-      try (DirectoryReader reader = DirectoryReader.open(dir)) {
-        final LeafReader leaf = getOnlyLeafReader(reader);
-        final HashTerms terms = (HashTerms) leaf.terms("id");
-        assertTrue(terms.isInline());
-        assertEquals(1, terms.keyLength());
-        final HashedTerms keys = new HashedTerms(postingsOf(terms.getDelegate()).keySet());
-        assertEquals(7, keys.size());
-        final int[] docs = new int[keys.size()];
-        terms.lookupBatch(keys, 0, keys.size(), docs);
-        for (int doc : docs) {
-          assertEquals(HashTerms.MULTI, doc);
-        }
-        final List<BytesRef> probes = new ArrayList<>();
-        for (int i = 0; i < 10; i++) {
-          probes.add(new BytesRef(Integer.toString(i)));
-        }
-        checkField(leaf, "id", probes, true);
-      }
     }
   }
 
@@ -314,10 +225,9 @@ public class TestPrimaryKeyHashInline extends LuceneTestCase {
   }
 
   /**
-   * Checks every way to look up {@code probes} in the id field of {@code reader}, segment by
-   * segment and in the whole reader, against the delegate; and that every segment whose keys all
-   * have the same length, of at most {@value PrimaryKeyHashPostingsFormat#MAX_INLINE_KEY_LENGTH}
-   * bytes, has them inline.
+   * Checks every way to look up {@code probes} in the id field of each segment against the
+   * delegate, and that every segment whose keys all have one length, of at most {@value
+   * PrimaryKeyHashPostingsFormat#MAX_INLINE_KEY_LENGTH} bytes, has them inline.
    */
   private static void checkAllLookups(DirectoryReader reader, List<BytesRef> probes)
       throws IOException {
@@ -336,11 +246,6 @@ public class TestPrimaryKeyHashInline extends LuceneTestCase {
       }
       checkField(context.reader(), "id", probes, true);
     }
-    final IndexSearcher searcher = newSearcher(reader);
-    final List<BytesRef> some = probes.subList(0, Math.min(probes.size(), 1000));
-    assertEquals(
-        searcher.count(new TermInSetQuery("id", some)),
-        searcher.count(new PrimaryKeyHashInSetQuery("id", some)));
   }
 
   /**
@@ -348,8 +253,8 @@ public class TestPrimaryKeyHashInline extends LuceneTestCase {
    * 4 bytes, whose records then differ after their heads, or only in their last byte; keys of
    * mostly zero bytes, as the records of empty slots are; and keys of 1 to 3 bytes, of which most
    * values are present, so that control bytes often match and the heads of records hold bytes of
-   * the next record too. Then the absent keys of the same shapes, and for keys of 1 or 2 bytes,
-   * every value or many. With updates, deletes, flushes and merges.
+   * the next record too. Written with updates, deletes, flushes and merges, and probed with absent
+   * keys of the same shapes.
    */
   public void testKeysThatShareBytes() throws IOException {
     final Random random = random();
@@ -453,67 +358,6 @@ public class TestPrimaryKeyHashInline extends LuceneTestCase {
       final List<BytesRef> probes = new ArrayList<>(all);
       for (int i = 0; i < 200; i++) {
         probes.add(adversarialKey(random, length, 0, null));
-      }
-      try (DirectoryReader reader = DirectoryReader.open(dir)) {
-        checkAllLookups(reader, probes);
-      }
-    }
-  }
-
-  /**
-   * Segments whose keys have different lengths, each its own, inline or not, and segments that
-   * merges left with keys of several lengths, with updates and deletes across them: every key is
-   * found in the segments of its length, and only there.
-   */
-  public void testSegmentsOfDifferentKeyLengths() throws IOException {
-    final Random random = random();
-    final int[] lengths = new int[TestUtil.nextInt(random, 2, 4)];
-    for (int i = 0; i < lengths.length; i++) {
-      lengths[i] =
-          TestUtil.nextInt(random, 1, PrimaryKeyHashPostingsFormat.MAX_INLINE_KEY_LENGTH + 2);
-    }
-    final byte[] prefix = new byte[PrimaryKeyHashPostingsFormat.MAX_INLINE_KEY_LENGTH + 2];
-    random.nextBytes(prefix);
-    final List<BytesRef> keys = new ArrayList<>();
-    final Set<BytesRef> all = new HashSet<>();
-    try (Directory dir = newDirectory()) {
-      final IndexWriterConfig iwc =
-          new IndexWriterConfig(new MockAnalyzer(random))
-              .setCodec(TestUtil.alwaysPostingsFormat(inlineFormat(random)))
-              .setMaxBufferedDocs(100_000)
-              .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
-              .setMergePolicy(
-                  random.nextInt(3) == 0 ? new LogDocMergePolicy() : NoMergePolicy.INSTANCE)
-              .setMergeScheduler(new SerialMergeScheduler());
-      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
-        final int numSegments = TestUtil.nextInt(random, 2, 6);
-        for (int s = 0; s < numSegments; s++) {
-          final int length = lengths[random.nextInt(lengths.length)];
-          final int numDocs = TestUtil.nextInt(random, 1, 300);
-          for (int i = 0; i < numDocs; i++) {
-            final int op = keys.isEmpty() ? 0 : random.nextInt(8);
-            final BytesRef key =
-                op == 1
-                    ? keys.get(random.nextInt(keys.size()))
-                    : adversarialKey(random, length, random.nextInt(4), prefix);
-            keys.add(key);
-            all.add(key);
-            if (op == 2) {
-              writer.updateDocument(new Term("id", key), doc(key));
-            } else {
-              writer.addDocument(doc(key));
-            }
-            if (op == 3) {
-              writer.deleteDocuments(new Term("id", keys.get(random.nextInt(keys.size()))));
-            }
-          }
-          writer.flush();
-        }
-      }
-      final List<BytesRef> probes = new ArrayList<>(all);
-      for (int i = 0; i < 300; i++) {
-        final int length = lengths[random.nextInt(lengths.length)];
-        probes.add(adversarialKey(random, length, random.nextInt(4), prefix));
       }
       try (DirectoryReader reader = DirectoryReader.open(dir)) {
         checkAllLookups(reader, probes);

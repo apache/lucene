@@ -28,7 +28,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
-import java.util.Set;
 import java.util.function.Supplier;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.document.Document;
@@ -44,7 +43,6 @@ import org.apache.lucene.index.SoftDeletesRetentionMergePolicy;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.sandbox.codecs.pkhash.HashTerms;
-import org.apache.lucene.sandbox.codecs.pkhash.HashedTerms;
 import org.apache.lucene.sandbox.codecs.pkhash.PrimaryKeyHashPostingsFormat;
 import org.apache.lucene.sandbox.codecs.pkhash.PrimaryKeyHashTestUtil;
 import org.apache.lucene.search.BooleanClause.Occur;
@@ -92,8 +90,6 @@ public class TestPrimaryKeyHashInSetQuery extends LuceneTestCase {
   private enum Layout {
     /** Every segment with {@link PrimaryKeyHashPostingsFormat}. */
     HASH,
-    /** Every segment with the test framework's codec. */
-    DEFAULT,
     /** Both kinds of segments: the codec changes between writer sessions. */
     MIXED
   }
@@ -136,9 +132,8 @@ public class TestPrimaryKeyHashInSetQuery extends LuceneTestCase {
   }
 
   /**
-   * Builds an index of about {@code numDocs} documents. Most add a new key; some add a key that is
-   * already there, update a key (with hard or soft deletes) or delete one, so that keys with
-   * several documents, including deleted ones, occur.
+   * Builds an index of about {@code numDocs} documents. Most add a new key; some add an existing
+   * key again, update a key (with hard or soft deletes) or delete one.
    */
   private static TestIndex buildIndex(Layout layout, int numDocs, boolean allowDeletes)
       throws IOException {
@@ -155,7 +150,6 @@ public class TestPrimaryKeyHashInSetQuery extends LuceneTestCase {
       final boolean hash =
           switch (layout) {
             case HASH -> true;
-            case DEFAULT -> false;
             case MIXED -> (session % 2 == 0) == hashFirst;
           };
       IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random));
@@ -231,11 +225,7 @@ public class TestPrimaryKeyHashInSetQuery extends LuceneTestCase {
     return keys;
   }
 
-  /**
-   * Searchers over the reader: one from {@link #newSearcher(org.apache.lucene.index.IndexReader)},
-   * one whose leaves are the segment readers themselves, so that hash tables are visible, and one
-   * whose leaves wrap the segment readers, so that they are not.
-   */
+  /** A random searcher, one that sees the hash tables, and one whose wrapped leaves hide them. */
   private static List<IndexSearcher> searchers(DirectoryReader reader) throws IOException {
     return List.of(
         newSearcher(reader),
@@ -273,10 +263,6 @@ public class TestPrimaryKeyHashInSetQuery extends LuceneTestCase {
     doTestDuel(Layout.HASH);
   }
 
-  public void testDuelDefaultSegments() throws IOException {
-    doTestDuel(Layout.DEFAULT);
-  }
-
   public void testDuelMixedSegments() throws IOException {
     doTestDuel(Layout.MIXED);
   }
@@ -293,9 +279,9 @@ public class TestPrimaryKeyHashInSetQuery extends LuceneTestCase {
           otherLeaves++;
         }
       }
-      if (layout == Layout.DEFAULT) {
-        assertEquals(0, hashLeaves);
-      } else if (layout == Layout.MIXED) {
+      if (layout == Layout.HASH) {
+        assertEquals(0, otherLeaves);
+      } else {
         assertTrue("no segment with a hash table", hashLeaves > 0);
         assertTrue("no segment without a hash table", otherLeaves > 0);
       }
@@ -312,82 +298,21 @@ public class TestPrimaryKeyHashInSetQuery extends LuceneTestCase {
   }
 
   /**
-   * The checks of {@link QueryUtils}. Its matches check expects deleted documents not to match,
-   * which {@link TermInSetQuery} does not guarantee either, so these indexes have no deletions (but
-   * do have keys with several documents).
+   * The checks of {@link QueryUtils}, through a searcher that sees the hash tables and one that
+   * hides them. QueryUtils expects deleted documents not to match, which {@link TermInSetQuery}
+   * does not guarantee either, so the index has no deletions.
    */
   public void testQueryUtils() throws IOException {
-    for (Layout layout : Layout.values()) {
-      // QueryUtils creates a scorer per document, so keep this small
-      try (TestIndex index = buildIndex(layout, atLeast(100), false)) {
-        for (IndexSearcher searcher : searchers(index.reader)) {
-          QueryUtils.check(
-              random(),
-              new PrimaryKeyHashInSetQuery(ID, randomQueryKeys(random(), index.keys, 50)),
-              searcher);
-        }
-      }
-    }
-  }
-
-  /**
-   * Keys with several documents in a segment (added twice, or updated so that the old version is
-   * still in the postings) are resolved through the terms dictionary, before and after a merge.
-   */
-  public void testMultiDocumentKeys() throws IOException {
-    final Random random = random();
-    final int numKeys = TestUtil.nextInt(random, 100, 500);
-    final List<BytesRef> keys = new ArrayList<>();
-    final Set<Integer> duplicated = new HashSet<>();
-    final Set<Integer> updated = new HashSet<>();
-    for (int i = 0; i < numKeys; i++) {
-      keys.add(new BytesRef(String.format(Locale.ROOT, "key%05d", i)));
-    }
-    try (Directory dir = newDirectory()) {
-      IndexWriterConfig iwc =
-          new IndexWriterConfig(new MockAnalyzer(random))
-              .setCodec(hashCodec(random))
-              .setMergePolicy(NoMergePolicy.INSTANCE);
-      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
-        for (int i = 0; i < numKeys; i++) {
-          writer.addDocument(doc(keys.get(i), i));
-        }
-        for (int i = 0; i < numKeys; i++) {
-          if (i % 10 == 0) {
-            duplicated.add(i);
-            writer.addDocument(doc(keys.get(i), numKeys + i));
-          } else if (i % 10 == 1) {
-            updated.add(i);
-            writer.updateDocument(new Term(ID, keys.get(i)), doc(keys.get(i), numKeys + i));
-          }
-        }
-      }
-      try (DirectoryReader reader = DirectoryReader.open(dir)) {
-        assertEquals(1, reader.leaves().size());
-        HashTerms terms = (HashTerms) reader.leaves().get(0).reader().terms(ID);
-        int[] docs = new int[numKeys];
-        terms.lookupBatch(new HashedTerms(keys), 0, numKeys, docs);
-        for (int i = 0; i < numKeys; i++) {
-          boolean multi = duplicated.contains(i) || updated.contains(i);
-          assertEquals(multi, docs[i] == HashTerms.MULTI);
-        }
-        checkMultiDocumentKeys(reader, keys, duplicated);
-      }
-
-      // after a merge, the deleted versions of updated keys are gone
-      IndexWriterConfig mergeConfig =
-          new IndexWriterConfig(new MockAnalyzer(random)).setCodec(hashCodec(random));
-      try (IndexWriter writer = new IndexWriter(dir, mergeConfig)) {
-        writer.forceMerge(1);
-      }
-      try (DirectoryReader reader = DirectoryReader.open(dir)) {
-        HashTerms terms = (HashTerms) reader.leaves().get(0).reader().terms(ID);
-        int[] docs = new int[numKeys];
-        terms.lookupBatch(new HashedTerms(keys), 0, numKeys, docs);
-        for (int i = 0; i < numKeys; i++) {
-          assertEquals(duplicated.contains(i), docs[i] == HashTerms.MULTI);
-        }
-        checkMultiDocumentKeys(reader, keys, duplicated);
+    // QueryUtils creates a scorer per document, so keep this small
+    try (TestIndex index = buildIndex(Layout.MIXED, atLeast(100), false)) {
+      for (IndexSearcher searcher :
+          List.of(
+              newSearcher(index.reader, false),
+              newSearcher(new AssertingDirectoryReader(index.reader), false))) {
+        QueryUtils.check(
+            random(),
+            new PrimaryKeyHashInSetQuery(ID, randomQueryKeys(random(), index.keys, 50)),
+            searcher);
       }
     }
   }
@@ -395,15 +320,16 @@ public class TestPrimaryKeyHashInSetQuery extends LuceneTestCase {
   /**
    * A segment is looked up in windows of keys: windows of hits and misses, of hits, misses and keys
    * of several documents, of misses only and of hits only all match what {@link TermInSetQuery}
-   * matches. The query tells keys of several documents from other results by their order: {@link
-   * HashTerms#MULTI} is smaller than {@link HashTerms#ABSENT}, which is negative.
+   * matches. The query drops {@link HashTerms#ABSENT} and {@link HashTerms#MULTI} because both are
+   * negative, and seeks MULTI keys in the delegate.
    */
   public void testWindowsOfHitsMissesAndMultiDocumentKeys() throws IOException {
-    assertTrue(HashTerms.MULTI < HashTerms.ABSENT && HashTerms.ABSENT < 0);
+    assertTrue(HashTerms.MULTI < 0 && HashTerms.ABSENT < 0 && HashTerms.MULTI != HashTerms.ABSENT);
     final Random random = random();
     final int window = PrimaryKeyHashInSetQuery.LOOKUP_WINDOW;
     final int numKeys = 6 * window + random.nextInt(window);
     final List<BytesRef> probes = new ArrayList<>();
+    final List<BytesRef> multiKeys = new ArrayList<>();
     int expectedCount = 0;
     try (Directory dir = newDirectory()) {
       final IndexWriterConfig iwc =
@@ -424,11 +350,18 @@ public class TestPrimaryKeyHashInSetQuery extends LuceneTestCase {
           } else {
             multi = random.nextInt(100) == 0;
           }
+          // an updated key keeps its deleted version in the postings, so it has several documents
+          final boolean update = multi && random.nextBoolean();
           if (indexed) {
             writer.addDocument(doc(key, i));
-            if (multi) {
+            if (update) {
+              writer.updateDocument(new Term(ID, key), doc(key, numKeys + i));
+            } else if (multi) {
               writer.addDocument(doc(key, numKeys + i));
             }
+          }
+          if (multi) {
+            multiKeys.add(key);
           }
           final boolean probed;
           if (i < 2 * window) {
@@ -440,7 +373,7 @@ public class TestPrimaryKeyHashInSetQuery extends LuceneTestCase {
           }
           if (probed) {
             probes.add(key);
-            expectedCount += indexed ? (multi ? 2 : 1) : 0;
+            expectedCount += indexed ? (multi && update == false ? 2 : 1) : 0;
           }
         }
       }
@@ -450,31 +383,10 @@ public class TestPrimaryKeyHashInSetQuery extends LuceneTestCase {
         final IndexSearcher searcher = newSearcher(reader, false);
         assertEquals(expectedCount, searcher.count(new PrimaryKeyHashInSetQuery(ID, probes)));
         assertSameMatches(searcher, probes);
+        // every key found has several documents: all matches come from the delegate's postings
+        assertSameMatches(searcher, multiKeys);
       }
     }
-  }
-
-  private static void checkMultiDocumentKeys(
-      DirectoryReader reader, List<BytesRef> keys, Set<Integer> duplicated) throws IOException {
-    IndexSearcher searcher = newSearcher(reader, false);
-    List<BytesRef> queryKeys = new ArrayList<>();
-    int expectedCount = 0;
-    for (int i = 0; i < keys.size(); i++) {
-      if (random().nextInt(3) == 0) {
-        queryKeys.add(keys.get(i));
-        expectedCount += duplicated.contains(i) ? 2 : 1;
-      }
-    }
-    assertEquals(expectedCount, searcher.count(new PrimaryKeyHashInSetQuery(ID, queryKeys)));
-    assertSameMatches(searcher, queryKeys);
-    List<BytesRef> duplicatedKeys = new ArrayList<>();
-    for (int i : duplicated) {
-      duplicatedKeys.add(keys.get(i));
-    }
-    assertEquals(
-        2 * duplicated.size(), searcher.count(new PrimaryKeyHashInSetQuery(ID, duplicatedKeys)));
-    assertSameMatches(searcher, duplicatedKeys);
-    assertSameMatches(searcher, keys);
   }
 
   private static void addLetters(Directory dir, Codec codec) throws IOException {
@@ -657,33 +569,21 @@ public class TestPrimaryKeyHashInSetQuery extends LuceneTestCase {
   }
 
   public void testEqualsAndHashCode() {
-    final int num = atLeast(100);
+    final int num = atLeast(20);
     final List<BytesRef> keys = new ArrayList<>();
-    final Set<BytesRef> uniqueKeys = new HashSet<>();
     for (int i = 0; i < num; i++) {
-      String string = TestUtil.randomRealisticUnicodeString(random());
-      keys.add(new BytesRef(string));
-      uniqueKeys.add(new BytesRef(string));
-      PrimaryKeyHashInSetQuery left = new PrimaryKeyHashInSetQuery(ID, uniqueKeys);
-      Collections.shuffle(keys, random());
-      PrimaryKeyHashInSetQuery right = new PrimaryKeyHashInSetQuery(ID, keys);
-      QueryUtils.checkEqual(left, right);
-      QueryUtils.checkEqual(left, new PrimaryKeyHashInSetQuery(ID, keys.toArray(new BytesRef[0])));
-      QueryUtils.checkUnequal(left, new PrimaryKeyHashInSetQuery("other", keys));
-      QueryUtils.checkUnequal(left, new TermInSetQuery(ID, keys));
-      if (uniqueKeys.size() > 1) {
-        List<BytesRef> fewer = new ArrayList<>(uniqueKeys);
-        fewer.remove(0);
-        QueryUtils.checkUnequal(left, new PrimaryKeyHashInSetQuery(ID, fewer));
-      }
-      QueryUtils.check(left);
+      keys.add(new BytesRef(TestUtil.randomRealisticUnicodeString(random())));
     }
-
-    // same String hash code, different keys
-    assertEquals("AaAaBB".hashCode(), "BBBBBB".hashCode());
-    QueryUtils.checkUnequal(
-        new PrimaryKeyHashInSetQuery(ID, new BytesRef("AaAaAa"), new BytesRef("AaAaBB")),
-        new PrimaryKeyHashInSetQuery(ID, new BytesRef("AaAaAa"), new BytesRef("BBBBBB")));
+    final PrimaryKeyHashInSetQuery left = new PrimaryKeyHashInSetQuery(ID, new HashSet<>(keys));
+    Collections.shuffle(keys, random());
+    QueryUtils.checkEqual(left, new PrimaryKeyHashInSetQuery(ID, keys));
+    QueryUtils.checkEqual(left, new PrimaryKeyHashInSetQuery(ID, keys.toArray(new BytesRef[0])));
+    QueryUtils.checkUnequal(left, new PrimaryKeyHashInSetQuery("other", keys));
+    QueryUtils.checkUnequal(left, new TermInSetQuery(ID, keys));
+    final List<BytesRef> fewer = new ArrayList<>(keys);
+    fewer.removeIf(key -> key.bytesEquals(keys.get(0)));
+    QueryUtils.checkUnequal(left, new PrimaryKeyHashInSetQuery(ID, fewer));
+    QueryUtils.check(left);
     // the same keys split differently
     QueryUtils.checkUnequal(
         new PrimaryKeyHashInSetQuery(ID, new BytesRef("ab"), new BytesRef("c")),

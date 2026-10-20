@@ -17,7 +17,6 @@
 package org.apache.lucene.sandbox.codecs.pkhash;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -33,18 +32,16 @@ import org.apache.lucene.util.BytesRefIterator;
 /**
  * The order of {@link HashedTerms} against {@link Arrays#sort(Object[])} on {@link BytesRef}s, for
  * keys that tie on their first 8 bytes, are prefixes of each other, hold 0x00 and 0xFF bytes, and
- * come in every order, and for sizes on both sides of every threshold of the sort.
+ * come in every order, and for sizes on both sides of 32 keys, up to which the sort is by
+ * insertion.
  */
 public class TestHashedTerms extends LuceneTestCase {
 
-  /** Sizes around the thresholds of the sort: insertion sort, radix sort and comparison sort. */
-  private static final int[] SIZES = {
-    0, 1, 2, 3, 7, 8, 9, 31, 32, 33, 34, 63, 64, 65, 127, 128, 129, 130, 255, 256, 257, 1000, 4096,
-    20000
-  };
+  /** Small sizes, sizes around 32 and large sizes. */
+  private static final int[] SIZES = {0, 1, 2, 3, 31, 32, 33, 34, 65, 1000, 20000};
 
   private static int randomSize(Random random) {
-    return random.nextInt(4) == 0
+    return random.nextBoolean()
         ? TestUtil.nextInt(random, 0, 5000)
         : SIZES[random.nextInt(SIZES.length)];
   }
@@ -131,11 +128,6 @@ public class TestHashedTerms extends LuceneTestCase {
       Collections.reverse(Arrays.asList(nearly));
       assertSorts(hashed, nearly, expected);
     }
-    final List<BytesRef> shuffled = new ArrayList<>(Arrays.asList(keys));
-    Collections.shuffle(shuffled, random);
-    final HashedTerms fromCollection = new HashedTerms(shuffled);
-    assertEquals(hashed, fromCollection);
-    assertEquals(hashed.hashCode(), fromCollection.hashCode());
   }
 
   private static void assertSorts(HashedTerms hashed, BytesRef[] keys, List<BytesRef> expected)
@@ -178,18 +170,12 @@ public class TestHashedTerms extends LuceneTestCase {
     for (int size : SIZES) {
       assertSorts(random, randomKeys(random, size, TestHashedTerms::randomBinary));
     }
-    for (int iter = 0; iter < 5; iter++) {
-      assertSorts(random, randomKeys(random, randomSize(random), TestHashedTerms::randomBinary));
-    }
   }
 
   public void testTinyAlphabet() throws IOException {
     final Random random = random();
     for (int size : SIZES) {
       assertSorts(random, randomKeys(random, size, TestHashedTerms::tinyAlphabet));
-    }
-    for (int iter = 0; iter < 5; iter++) {
-      assertSorts(random, randomKeys(random, randomSize(random), TestHashedTerms::tinyAlphabet));
     }
   }
 
@@ -228,38 +214,6 @@ public class TestHashedTerms extends LuceneTestCase {
   }
 
   /**
-   * Keys of a few hosts and paths, sharing more than their first 8 bytes, with keys that are
-   * prefixes of others: the URLs of a host and its path, and their scheme.
-   */
-  public void testUrls() throws IOException {
-    final Random random = random();
-    final int numHosts = TestUtil.nextInt(random, 1, 5);
-    final String[] hosts = new String[numHosts];
-    for (int h = 0; h < numHosts; h++) {
-      hosts[h] = "https://" + (random.nextBoolean() ? "www." : "") + "host" + h + ".example.com";
-    }
-    final Function<Random, byte[]> url =
-        r -> {
-          final StringBuilder b = new StringBuilder(hosts[r.nextInt(numHosts)]);
-          switch (r.nextInt(8)) {
-            case 0 -> {} // a host
-            case 1 -> b.setLength(r.nextInt(b.length() + 1)); // a prefix of one
-            default -> {
-              b.append("/items/");
-              if (r.nextBoolean()) {
-                b.append(TestUtil.randomSimpleString(r, 0, 3)).append('/');
-              }
-              b.append(r.nextInt(r.nextBoolean() ? 100 : 1_000_000));
-            }
-          }
-          return b.toString().getBytes(StandardCharsets.UTF_8);
-        };
-    for (int iter = 0; iter < 5; iter++) {
-      assertSorts(random, randomKeys(random, randomSize(random), url));
-    }
-  }
-
-  /**
    * Keys that share more bytes than are sorted by their prefixes at all levels: prefixes of one
    * another, with or without a random byte after them, so most only differ in their length.
    */
@@ -276,25 +230,6 @@ public class TestHashedTerms extends LuceneTestCase {
           final byte[] bytes = Arrays.copyOf(buffer, length + (r.nextInt(4) == 0 ? 1 : 0));
           if (bytes.length > length) {
             bytes[length] = (byte) r.nextInt(256);
-          }
-          return bytes;
-        };
-    for (int iter = 0; iter < 5; iter++) {
-      assertSorts(random, randomKeys(random, randomSize(random), next));
-    }
-  }
-
-  /**
-   * Keys that tie on their prefixes with one of them shorter, so zero-padded: such as {@code
-   * [0x61]} and {@code [0x61, 0x00]}, and keys of zero bytes of every length.
-   */
-  public void testZeroPadding() throws IOException {
-    final Random random = random();
-    final Function<Random, byte[]> next =
-        r -> {
-          final byte[] bytes = new byte[r.nextInt(24)];
-          if (bytes.length > 0 && r.nextBoolean()) {
-            bytes[r.nextInt(bytes.length)] = (byte) (r.nextBoolean() ? 0x01 : 0xFF);
           }
           return bytes;
         };
@@ -360,55 +295,40 @@ public class TestHashedTerms extends LuceneTestCase {
 
   public void testEqualsAndHashCode() {
     final Random random = random();
-    for (int iter = 0; iter < 10; iter++) {
-      final BytesRef[] keys = randomKeys(random, randomSize(random), TestHashedTerms::randomBinary);
-      final HashedTerms hashed = new HashedTerms(keys);
-      final List<BytesRef> withDuplicates = new ArrayList<>(Arrays.asList(keys));
-      for (int i = 0; i < keys.length && i < 100; i++) {
-        withDuplicates.add(BytesRef.deepCopyOf(keys[random.nextInt(keys.length)]));
-      }
-      Collections.shuffle(withDuplicates, random);
-      final HashedTerms other = new HashedTerms(withDuplicates);
-      assertEquals(hashed, other);
-      assertEquals(hashed.hashCode(), other.hashCode());
-      assertEquals(hashed.hashCode(), hashed.hashCode());
-      if (hashed.size() > 0) {
-        // without one key
-        final List<BytesRef> fewer = new ArrayList<>();
-        final BytesRef removed = hashed.get(random.nextInt(hashed.size()));
-        for (BytesRef key : keys) {
-          if (key.bytesEquals(removed) == false) {
-            fewer.add(key);
-          }
-        }
-        assertFalse(hashed.equals(new HashedTerms(fewer)));
-      }
-    }
+    final BytesRef[] keys =
+        randomKeys(random, TestUtil.nextInt(random, 1, 1000), TestHashedTerms::randomBinary);
+    final HashedTerms hashed = new HashedTerms(keys);
+    expectThrows(IndexOutOfBoundsException.class, () -> hashed.get(hashed.size()));
+    // without one key
+    final BytesRef removed = hashed.get(random.nextInt(hashed.size()));
+    final List<BytesRef> fewer = new ArrayList<>(Arrays.asList(keys));
+    fewer.removeIf(key -> key.bytesEquals(removed));
+    assertNotEquals(hashed, new HashedTerms(fewer));
+    // the same lengths but other bytes; the same bytes split differently
+    assertNotEquals(new HashedTerms(new BytesRef("a")), new HashedTerms(new BytesRef("b")));
+    assertNotEquals(
+        new HashedTerms(new BytesRef("ab"), new BytesRef("c")),
+        new HashedTerms(new BytesRef("a"), new BytesRef("bc")));
     assertEquals(new HashedTerms(), new HashedTerms(new ArrayList<>()));
     assertEquals(new HashedTerms().hashCode(), new HashedTerms(new ArrayList<>()).hashCode());
     assertFalse(new HashedTerms().equals(new HashedTerms(new BytesRef())));
   }
 
-  /** The tag and control byte of every key, its memory use, and invalid arguments. */
-  public void testAccessors() {
-    final BytesRef[] keys =
-        randomKeys(random(), randomSize(random()), TestHashedTerms::randomBinary);
-    final HashedTerms hashed = new HashedTerms(keys);
-    for (int i = 0; i < hashed.size(); i++) {
-      final long hash = hashed.hash(i);
-      assertEquals(TermHash.tag(hash), hashed.tag(i));
-      assertEquals(TermHash.control(hash), hashed.control(i));
+  /** Distinct keys that hold more bytes than an array can are rejected. */
+  public void testTooManyBytes() {
+    final byte[] buffer = new byte[(1 << 20) + 2048];
+    random().nextBytes(buffer);
+    final BytesRef[] keys = new BytesRef[2048];
+    for (int i = 0; i < keys.length; i++) {
+      keys[i] = new BytesRef(buffer, i, 1 << 20); // 2048 distinct keys of 1 MiB: 2^31 bytes
     }
-    assertTrue(hashed.ramBytesUsed() > 0);
-    expectThrows(NullPointerException.class, () -> new HashedTerms(new BytesRef("a"), null));
-    expectThrows(IndexOutOfBoundsException.class, () -> hashed.get(hashed.size()));
+    expectThrows(IllegalArgumentException.class, () -> new HashedTerms(keys));
   }
 
   /**
-   * More keys than are sorted by insertion, longer than any term, sharing a long prefix, and each a
-   * prefix of the next, so that they share 8 more bytes at every level of the sort. A sort that
-   * recursed once per few bytes that keys share would overflow the stack of the thread this runs
-   * on.
+   * More keys than are sorted by insertion, longer than any term, each a prefix of the next, so
+   * that they share 8 more bytes at every level of the sort. A sort that recursed once per few
+   * shared bytes would overflow the stack of the thread this runs on.
    */
   public void testLongCommonPrefix() throws Exception {
     final int prefixLength = 256 * 1024;

@@ -114,15 +114,12 @@ public class TestPrimaryKeyHashUpdates extends LuceneTestCase {
             }
             model.remove(id);
           } else if (action < 85) {
-            DirectoryReader newReader = DirectoryReader.openIfChanged(reader, writer);
-            if (newReader != null) {
-              reader.close();
-              reader = newReader;
-              lookup =
-                  random.nextBoolean()
-                      ? lookup.reopen(reader)
-                      : new PerThreadPKLookup(reader, "id");
-            }
+            // not openIfChanged, which can miss doc values updates that flush() wrote
+            DirectoryReader newReader = DirectoryReader.open(writer);
+            reader.close();
+            reader = newReader;
+            lookup =
+                random.nextBoolean() ? lookup.reopen(reader) : new PerThreadPKLookup(reader, "id");
             verify(reader, lookup, model, ids, random);
           } else if (action < 88) {
             writer.commit();

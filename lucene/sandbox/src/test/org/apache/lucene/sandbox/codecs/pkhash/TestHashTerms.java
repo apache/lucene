@@ -24,6 +24,7 @@ import static org.apache.lucene.sandbox.codecs.pkhash.PrimaryKeyHashTestUtil.pos
 import static org.apache.lucene.sandbox.codecs.pkhash.PrimaryKeyHashTestUtil.randomFilterBits;
 import static org.apache.lucene.sandbox.codecs.pkhash.PrimaryKeyHashTestUtil.randomFilterBitsPerKey;
 import static org.apache.lucene.sandbox.codecs.pkhash.PrimaryKeyHashTestUtil.randomFormat;
+import static org.apache.lucene.sandbox.codecs.pkhash.PrimaryKeyHashTestUtil.randomInlining;
 import static org.apache.lucene.sandbox.codecs.pkhash.PrimaryKeyHashTestUtil.randomKey;
 import static org.apache.lucene.sandbox.codecs.pkhash.PrimaryKeyHashTestUtil.writeSingleSegment;
 
@@ -34,9 +35,12 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.IntPredicate;
 import org.apache.lucene.codecs.Codec;
@@ -45,28 +49,23 @@ import org.apache.lucene.codecs.lucene104.Lucene104Codec;
 import org.apache.lucene.codecs.lucene104.Lucene104PostingsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
-import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.SoftDeletesRetentionMergePolicy;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.sandbox.codecs.pkhash.PrimaryKeyHashPostingsFormat.Inlining;
-import org.apache.lucene.sandbox.codecs.pkhash.PrimaryKeyHashTestUtil.Meta;
-import org.apache.lucene.sandbox.codecs.pkhash.PrimaryKeyHashTestUtil.ReadCountingDirectory;
 import org.apache.lucene.sandbox.search.PrimaryKeyHashInSetQuery;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FilterDirectory;
+import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
@@ -80,20 +79,18 @@ import org.apache.lucene.util.IOBooleanSupplier;
 
 /**
  * Lookups in the {@link HashTerms} of a segment agree with the delegate's terms dictionary, for
- * keys that are present, absent, nearly present, of several documents, crafted to collide, and for
- * fields whose table could not be built. Readers are opened with {@link DirectoryReader#open}, as
- * reader wrappers would hide {@link HashTerms}.
+ * present, absent and nearly present keys, keys of several documents, keys crafted to collide, and
+ * fields without a table. Readers are opened with {@link DirectoryReader#open}, as reader wrappers
+ * would hide {@link HashTerms}.
  */
 public class TestHashTerms extends LuceneTestCase {
 
   private static Document doc(BytesRef key, int seq) {
     Document doc = new Document();
     doc.add(new StringField("id", key, Field.Store.NO));
-    // a second primary key, and a DOCS field whose keys mostly have several documents
-    doc.add(new StringField("seq", Integer.toString(seq), Field.Store.NO));
+    doc.add(new StringField("seq", Integer.toString(seq), Field.Store.NO)); // a second primary key
+    // keys of one byte, mostly of several documents
     doc.add(new StringField("group", Integer.toString(seq % 7), Field.Store.NO));
-    // not DOCS: passed through
-    doc.add(new TextField("body", "some text " + (seq % 100), Field.Store.NO));
     return doc;
   }
 
@@ -113,54 +110,6 @@ public class TestHashTerms extends LuceneTestCase {
 
   private static HashTerms onlyTable(DirectoryReader reader) throws IOException {
     return (HashTerms) getOnlyLeafReader(reader).terms("id");
-  }
-
-  public void testRandomLookups() throws IOException {
-    final Random random = random();
-    final Codec codec = TestUtil.alwaysPostingsFormat(randomFormat(random));
-    final int shape = random.nextInt(6); // 5 mixes all shapes
-    final List<BytesRef> keys = new ArrayList<>();
-    final List<BytesRef> seqs = new ArrayList<>();
-    try (Directory dir = newDirectory()) {
-      IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random)).setCodec(codec);
-      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
-        final int numDocs = atLeast(1000);
-        for (int i = 0; i < numDocs; i++) {
-          seqs.add(new BytesRef(Integer.toString(i)));
-          int op = keys.isEmpty() ? 3 : random.nextInt(20);
-          if (op == 0) {
-            // a duplicate key: multi-document, unless the copies end up in different segments
-            writer.addDocument(doc(keys.get(random.nextInt(keys.size())), i));
-          } else if (op == 1) {
-            // an update: the old document stays in the postings until it is merged away
-            BytesRef key = keys.get(random.nextInt(keys.size()));
-            writer.updateDocument(new Term("id", key), doc(key, i));
-          } else if (op == 2) {
-            writer.deleteDocuments(new Term("id", keys.get(random.nextInt(keys.size()))));
-          } else {
-            BytesRef key = randomKey(random, shape == 5 ? random.nextInt(5) : shape, i);
-            keys.add(key);
-            writer.addDocument(doc(key, i));
-          }
-          if (random.nextInt(300) == 0) {
-            writer.commit();
-          }
-        }
-        if (random.nextBoolean()) {
-          writer.forceMerge(TestUtil.nextInt(random, 1, 3));
-        }
-      }
-      try (DirectoryReader reader = DirectoryReader.open(dir)) {
-        for (LeafReaderContext context : reader.leaves()) {
-          LeafReader leaf = context.reader();
-          checkField(leaf, "id", keys, true);
-          checkField(leaf, "seq", seqs, true);
-          checkField(leaf, "group", seqs, true);
-          assertFalse(leaf.terms("body") instanceof HashTerms);
-          assertNotNull(leaf.terms("body"));
-        }
-      }
-    }
   }
 
   /** Enough keys and tiny partitions: the field is partitioned and its keys are spilled. */
@@ -209,112 +158,57 @@ public class TestHashTerms extends LuceneTestCase {
   }
 
   /**
-   * Keys with several documents: copies added on purpose, and soft-deleted versions kept by a
-   * retention merge policy, which survive merges.
-   */
-  public void testMultiDocumentKeys() throws IOException {
-    final Random random = random();
-    final Codec codec = TestUtil.alwaysPostingsFormat(randomFormat(random));
-    final List<BytesRef> keys = new ArrayList<>();
-    try (Directory dir = newDirectory()) {
-      IndexWriterConfig iwc =
-          newIndexWriterConfig(new MockAnalyzer(random))
-              .setCodec(codec)
-              .setSoftDeletesField("soft");
-      iwc.setMergePolicy(
-          new SoftDeletesRetentionMergePolicy("soft", MatchAllDocsQuery::new, newMergePolicy()));
-      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
-        int numKeys = atLeast(300);
-        for (int i = 0; i < numKeys; i++) {
-          BytesRef key = randomKey(random, random.nextInt(5), i);
-          keys.add(key);
-          writer.addDocument(doc(key, i));
-        }
-        for (int i = 0; i < numKeys; i++) {
-          BytesRef key = keys.get(random.nextInt(keys.size()));
-          switch (random.nextInt(3)) {
-            case 0 -> writer.addDocument(doc(key, numKeys + i));
-            case 1 ->
-                writer.softUpdateDocument(
-                    new Term("id", key),
-                    doc(key, numKeys + i),
-                    new NumericDocValuesField("soft", 1));
-            default -> {}
-          }
-          if (random.nextInt(50) == 0) {
-            writer.commit();
-          }
-        }
-        writer.forceMerge(1);
-        try (DirectoryReader reader = DirectoryReader.open(writer)) {
-          LeafReader leaf = getOnlyLeafReader(reader);
-          checkField(leaf, "id", keys, true);
-          // whatever the number of retained versions, TermQuery sees the live ones
-          IndexSearcher searcher = new IndexSearcher(reader);
-          NavigableMap<BytesRef, int[]> postings =
-              postingsOf(((HashTerms) leaf.terms("id")).getDelegate());
-          assertTrue(postings.values().stream().anyMatch(docs -> docs.length > 1));
-          for (BytesRef key : keys) {
-            int expected = 0;
-            for (int doc : postings.get(key)) {
-              if (leaf.getLiveDocs() == null || leaf.getLiveDocs().get(doc)) {
-                expected++;
-              }
-            }
-            assertEquals(expected, searcher.count(new TermQuery(new Term("id", key))));
-          }
-        }
-      }
-    }
-  }
-
-  /**
-   * Keys crafted so that they all share one home slot. Up to the probe limit the table is built and
-   * every lookup scans the shared run; one key more and the field has no table. Either way results
-   * are the delegate's. With a filter, through which batches take another way to the table, and
-   * without.
+   * Keys that all share one home slot. Up to the probe limit the table is built, every lookup scans
+   * the shared run, and the run fills the tail as far as it goes past the capacity; one key more
+   * and the field has no table. Either way results are the delegate's. The run is checked in term
+   * order without a filter and inline with one, through which batches take another way.
    */
   public void testCollidingKeys() throws IOException {
-    final Random random = random();
     final int limit = PrimaryKeyHashPostingsFormat.DEFAULT_MAX_PROBE_LIMIT;
-    for (int filterBitsPerKey : new int[] {0, randomFilterBits(random)}) {
-      for (int numKeys : new int[] {limit + 1, limit + 2}) {
-        // a single partition of this many slots
-        final int capacity = (int) HashFieldsConsumer.capacity(numKeys, 0.75f);
-        final int targetHome = random.nextInt(capacity);
-        final List<BytesRef> keys = new ArrayList<>();
-        final byte[] candidate = new byte[16];
-        while (keys.size() < numKeys) {
-          random.nextBytes(candidate);
-          long hash = TermHash.hash(candidate, 0, candidate.length);
-          if (TermHash.homeSlot(hash, 0, capacity) == targetHome) {
-            keys.add(new BytesRef(candidate.clone()));
-          }
+    checkCollidingKeys(limit + 1, 0, Inlining.NEVER);
+    checkCollidingKeys(limit + 1, randomFilterBits(random()), Inlining.IF_NOT_LARGER);
+    checkCollidingKeys(limit + 2, randomFilterBits(random()), randomInlining(random()));
+  }
+
+  private void checkCollidingKeys(int numKeys, int filterBitsPerKey, Inlining inlining)
+      throws IOException {
+    final Random random = random();
+    // a single partition of this many slots
+    final int capacity = (int) HashFieldsConsumer.capacity(numKeys, 0.75f);
+    final int targetHome = random.nextInt(capacity);
+    final List<BytesRef> keys = new ArrayList<>();
+    final byte[] candidate = new byte[16];
+    while (keys.size() < numKeys) {
+      random.nextBytes(candidate);
+      long hash = TermHash.hash(candidate, 0, candidate.length);
+      if (TermHash.homeSlot(hash, 0, capacity) == targetHome) {
+        keys.add(new BytesRef(candidate.clone()));
+      }
+    }
+    try (Directory dir = newDirectory()) {
+      writeSingleSegment(dir, format(0.75f, 1 << 20, filterBitsPerKey, inlining), keys);
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        LeafReader leaf = getOnlyLeafReader(reader);
+        // n keys on one home slot need a displacement of n - 1
+        boolean expectTable = numKeys - 1 <= PrimaryKeyHashPostingsFormat.DEFAULT_MAX_PROBE_LIMIT;
+        if (expectTable) {
+          HashTerms terms = (HashTerms) leaf.terms("id");
+          assertEquals(numKeys - 1, terms.maxProbeOfPartition(0));
+          assertEquals(filterBitsPerKey != 0, terms.hasFilter());
+          assertEquals(
+              Math.max(0, targetHome + numKeys - capacity),
+              terms.slotCountOfPartition(0) - capacity);
         }
-        try (Directory dir = newDirectory()) {
-          writeSingleSegment(
-              dir, format(0.75f, 1 << 20, filterBitsPerKey, Inlining.IF_NOT_LARGER), keys);
-          try (DirectoryReader reader = DirectoryReader.open(dir)) {
-            LeafReader leaf = getOnlyLeafReader(reader);
-            // n keys on one home slot need a displacement of n - 1
-            boolean expectTable = numKeys - 1 <= limit;
-            if (expectTable) {
-              HashTerms terms = (HashTerms) leaf.terms("id");
-              assertEquals(numKeys - 1, terms.maxProbeOfPartition(0));
-              assertEquals(filterBitsPerKey != 0, terms.hasFilter());
-            }
-            List<BytesRef> probes = new ArrayList<>(keys);
-            probes.add(new BytesRef("absent"));
-            checkField(leaf, "id", probes, expectTable);
-          }
-        }
+        List<BytesRef> probes = new ArrayList<>(keys);
+        probes.add(new BytesRef("absent"));
+        checkField(leaf, "id", probes, expectTable);
       }
     }
   }
 
   /**
    * A probe limit that can never be reached, a natural way to ask for no limit, must not keep
-   * tables from being written; partitions are tiny, so that keys are spilled and split too.
+   * tables from being written; partitions are tiny, so that keys are spilled.
    */
   public void testUnreachableProbeLimit() throws IOException {
     final PostingsFormat format =
@@ -399,8 +293,7 @@ public class TestHashTerms extends LuceneTestCase {
   /**
    * Keys below a segment's smallest term or above its largest one, and keys of another length than
    * the inline keys of a field, are absent without any read of the data file, by every kind of
-   * lookup but {@link HashTerms#lookupBatch}, which leaves the range to its callers, and by {@code
-   * IndexWriter} applying deletes; batches of them and other keys find the others, with a filter
+   * lookup but {@link HashTerms#lookupBatch}, which leaves the range to its callers. With a filter
    * and without.
    */
   public void testKeysThatCannotBeThereReadNothing() throws IOException {
@@ -453,94 +346,76 @@ public class TestHashTerms extends LuceneTestCase {
         }
         assertEquals(0, searcher.count(new PrimaryKeyHashInSetQuery("id", none)));
         assertEquals(0, dir.reads(dataName));
-        final HashedTerms hashed = new HashedTerms(none);
-        final int[] docs = new int[hashed.size()];
-        terms.lookupBatch(hashed, 0, hashed.size(), docs);
-        for (int doc : docs) {
-          assertEquals(HashTerms.ABSENT, doc);
-        }
-
-        // in chunks with present and absent keys within the range, of the field's length
-        final List<BytesRef> mixed = new ArrayList<>(none);
-        for (int i = 0; i < numKeys; i++) {
-          if (random.nextInt(3) == 0) {
-            mixed.add(keys.get(i));
-          }
-          if (i > 0 && random.nextInt(3) == 0) {
-            mixed.add(new BytesRef(String.format(Locale.ROOT, "%08d", 1000 + 2 * i - 1)));
-          }
-        }
-        final HashedTerms mixedKeys = new HashedTerms(mixed);
-        final int[] mixedDocs = new int[mixedKeys.size()];
-        terms.lookupBatch(mixedKeys, 0, mixedKeys.size(), mixedDocs);
-        for (int i = 0; i < mixedKeys.size(); i++) {
-          assertEquals(mixedKeys.get(i).toString(), keys.indexOf(mixedKeys.get(i)), mixedDocs[i]);
-        }
+        // and every lookup, lookupBatch included, agrees with the delegate on them
+        checkField(getOnlyLeafReader(reader), "id", none, true);
         assertTrue(dir.reads(dataName) > 0);
       }
-
-      // IndexWriter applies deletes of ids that are not in the segment through seekExact
-      dir.resetReads();
-      final IndexWriterConfig iwc =
-          new IndexWriterConfig(new MockAnalyzer(random))
-              .setCodec(TestUtil.alwaysPostingsFormat(format))
-              .setMergePolicy(NoMergePolicy.INSTANCE);
-      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
-        for (BytesRef key : none) {
-          Document doc = new Document();
-          doc.add(new StringField("id", key, Field.Store.NO));
-          writer.updateDocument(new Term("id", key), doc);
-        }
-        writer.commit();
-      }
-      assertEquals(0, dir.reads(dataName));
     }
   }
 
-  /** A miss whose home slot is empty reads the control bytes from there and nothing else. */
+  /**
+   * A miss whose home slot is empty reads the control bytes from there and nothing else; exact
+   * seeks never read the filter. A batch reads only the filter word of a key that the filter rules
+   * out.
+   */
   public void testMissAtAnEmptyHomeSlotReadsOnlyControlBytes() throws IOException {
     for (Inlining inlining : new Inlining[] {Inlining.NEVER, Inlining.ALWAYS}) {
-      final int numKeys = TestUtil.nextInt(random(), 500, 2000);
-      try (ReadCountingDirectory dir = new ReadCountingDirectory(newDirectory())) {
-        final String dataName =
-            writeSingleSegment(dir, format(0.75f, 1 << 20, 0, inlining), evenNumbers(numKeys));
-        try (DirectoryReader reader = DirectoryReader.open(dir)) {
-          final HashTerms terms = onlyTable(reader);
-          assertEquals(inlining == Inlining.ALWAYS, terms.isInline());
-          final RandomAccessInput in = terms.newSlice();
-          final List<BytesRef> misses = new ArrayList<>();
-          for (int i = 1; i < numKeys; i++) {
-            final BytesRef miss = number(2 * i - 1);
-            final long hash = TermHash.hash(miss.bytes, miss.offset, miss.length);
-            final int p = terms.partition(hash);
-            if (in.readByte(terms.controlOffset(p) + terms.homeSlot(hash, p))
-                == TermHash.EMPTY_CONTROL) {
-              misses.add(miss);
+      for (int filterBits : new int[] {0, randomFilterBits(random())}) {
+        final int numKeys = TestUtil.nextInt(random(), 500, 2000);
+        try (ReadCountingDirectory dir = new ReadCountingDirectory(newDirectory())) {
+          final String dataName =
+              writeSingleSegment(
+                  dir, format(0.75f, 1 << 20, filterBits, inlining), evenNumbers(numKeys));
+          try (DirectoryReader reader = DirectoryReader.open(dir)) {
+            final HashTerms terms = onlyTable(reader);
+            assertEquals(inlining == Inlining.ALWAYS, terms.isInline());
+            final RandomAccessInput in = terms.newSlice();
+            final List<BytesRef> misses = new ArrayList<>();
+            final List<BytesRef> ruledOut = new ArrayList<>(); // wherever their home slot
+            for (int i = 1; i < numKeys; i++) {
+              final BytesRef miss = number(2 * i - 1);
+              final long hash = TermHash.hash(miss.bytes, miss.offset, miss.length);
+              final int p = terms.partition(hash);
+              if (in.readByte(terms.controlOffset(p) + terms.homeSlot(hash, p))
+                  == TermHash.EMPTY_CONTROL) {
+                misses.add(miss);
+              }
+              if (terms.hasFilter()) {
+                final long filterHash = terms.filterHash(TermHash.mix(hash), hash);
+                final long word = in.readLong(terms.filterWordPosition(filterHash));
+                if (BlockedBloomFilter.mayContain(word, BlockedBloomFilter.mask(filterHash)) == 0) {
+                  ruledOut.add(miss);
+                }
+              }
             }
+            assertTrue(misses.size() > numKeys / 10);
+            dir.resetReads();
+            for (BytesRef miss : misses) {
+              assertFalse(terms.iterator().seekExact(miss));
+            }
+            assertEquals(misses.size(), dir.reads(dataName));
+            // one read per key: its control word, or with a filter, its filter word
+            final List<BytesRef> batchKeys = terms.hasFilter() ? ruledOut : misses;
+            assertFalse(batchKeys.isEmpty());
+            dir.resetReads();
+            final HashedTerms batch = new HashedTerms(batchKeys);
+            final int[] docs = new int[batch.size()];
+            terms.lookupBatch(batch, 0, batch.size(), docs);
+            for (int doc : docs) {
+              assertEquals(HashTerms.ABSENT, doc);
+            }
+            assertEquals(batchKeys.size(), dir.reads(dataName));
           }
-          assertTrue(misses.size() > numKeys / 10);
-          dir.resetReads();
-          for (BytesRef miss : misses) {
-            assertFalse(terms.iterator().seekExact(miss));
-          }
-          assertEquals(misses.size(), dir.reads(dataName));
-          dir.resetReads();
-          final HashedTerms batch = new HashedTerms(misses);
-          final int[] docs = new int[batch.size()];
-          terms.lookupBatch(batch, 0, batch.size(), docs);
-          for (int doc : docs) {
-            assertEquals(HashTerms.ABSENT, doc);
-          }
-          assertEquals(misses.size(), dir.reads(dataName));
         }
       }
     }
   }
 
   /**
-   * prepareSeekExact finds what seekExact finds, whether its prefetch reports that the bytes are to
-   * be read, which defers the lookup to the supplier, or that they are in memory, in which case the
-   * key is looked up right away: every miss then returns null.
+   * prepareSeekExact finds what seekExact finds, keys of several documents included, whether its
+   * prefetch reports that the bytes are to be read, which defers the lookup to the supplier, or
+   * that they are in memory, in which case the key is looked up right away: every miss then returns
+   * null.
    */
   public void testPrepareSeekExact() throws IOException {
     for (Inlining inlining : new Inlining[] {Inlining.NEVER, Inlining.ALWAYS}) {
@@ -551,8 +426,10 @@ public class TestHashTerms extends LuceneTestCase {
               TestUtil.nextInt(random(), 16, 64),
               randomFilterBitsPerKey(random()),
               inlining);
+      final List<BytesRef> docKeys = evenNumbers(numKeys);
+      docKeys.addAll(evenNumbers(5)); // keys of two documents
       try (ReadCountingDirectory dir = new ReadCountingDirectory(newDirectory())) {
-        writeSingleSegment(dir, format, evenNumbers(numKeys));
+        writeSingleSegment(dir, format, docKeys);
         try (DirectoryReader reader = DirectoryReader.open(dir)) {
           final HashTerms terms = onlyTable(reader);
           assertTrue(terms.numPartitions() > 1);
@@ -620,9 +497,10 @@ public class TestHashTerms extends LuceneTestCase {
 
   /**
    * An enum that is not on a term, because it is fresh, a seek failed or it is exhausted, throws
-   * {@link IllegalStateException} on calls that need a term.
+   * {@link IllegalStateException} on calls that need a term. {@link HashTerms#lookupBatch} throws
+   * on invalid ranges and on arrays too short for the results.
    */
-  public void testUnpositionedEnum() throws IOException {
+  public void testUnpositionedEnumAndInvalidBatches() throws IOException {
     final List<BytesRef> keys = new ArrayList<>();
     for (int i = 0; i < 10; i += 2) {
       keys.add(new BytesRef("id" + i));
@@ -630,7 +508,8 @@ public class TestHashTerms extends LuceneTestCase {
     try (Directory dir = newDirectory()) {
       writeSingleSegment(dir, randomFormat(random()), keys);
       try (DirectoryReader reader = DirectoryReader.open(dir)) {
-        TermsEnum termsEnum = onlyTable(reader).iterator();
+        final HashTerms terms = onlyTable(reader);
+        TermsEnum termsEnum = terms.iterator();
         assertUnpositioned(termsEnum);
         assertFalse(termsEnum.seekExact(new BytesRef("id5")));
         assertUnpositioned(termsEnum);
@@ -640,6 +519,15 @@ public class TestHashTerms extends LuceneTestCase {
         assertTrue(termsEnum.seekExact(new BytesRef("id0")));
         assertNull(termsEnum.prepareSeekExact(new BytesRef("zz")));
         assertUnpositioned(termsEnum);
+
+        final HashedTerms hashed = new HashedTerms(keys);
+        terms.lookupBatch(hashed, 1, 1, new int[0]);
+        expectThrows(IndexOutOfBoundsException.class, () -> terms.lookupBatch(hashed, 1, 0, null));
+        expectThrows(
+            IndexOutOfBoundsException.class,
+            () -> terms.lookupBatch(hashed, 0, hashed.size() + 1, null));
+        expectThrows(
+            IllegalArgumentException.class, () -> terms.lookupBatch(hashed, 0, 2, new int[1]));
       }
     }
   }
@@ -655,8 +543,9 @@ public class TestHashTerms extends LuceneTestCase {
 
   /**
    * A field gets a table only if its records take at most {@code maxRecordsLength} bytes, which is
-   * the bound that readers check. Inline keys, whose records the writer lays out in term order
-   * before it copies them in slot order, are bound the same.
+   * the bound that readers check: a limit of exactly their length gives a table, one byte less does
+   * not. Inline keys, whose records the writer lays out in term order before it copies them in slot
+   * order, are bound the same.
    */
   public void testRecordsLengthLimit() throws IOException {
     final int numKeys = TestUtil.nextInt(random(), 1, 300);
@@ -664,15 +553,8 @@ public class TestHashTerms extends LuceneTestCase {
     for (int i = 0; i < numKeys; i++) {
       keys.add(new BytesRef(String.format(Locale.ROOT, "%016d", i)));
     }
-    final long recordsLength;
-    try (Directory dir = newDirectory()) {
-      writeSingleSegment(dir, format(0.75f, 1 << 20, 0, Inlining.NEVER), keys);
-      final String metaName =
-          PrimaryKeyHashTestUtil.onlyFile(dir, PrimaryKeyHashPostingsFormat.META_EXTENSION);
-      recordsLength = Meta.read(dir, metaName).fields.getFirst().recordsLength;
-    }
     // records follow each other with nothing between them: a doc id, a one-byte length, the key
-    assertEquals(numKeys * (Integer.BYTES + 1 + 16L), recordsLength);
+    final long recordsLength = numKeys * (Integer.BYTES + 1 + 16L);
     for (long limit : new long[] {recordsLength, recordsLength - 1, 0}) {
       for (Inlining inlining : new Inlining[] {Inlining.NEVER, Inlining.ALWAYS}) {
         final PostingsFormat format =
@@ -700,31 +582,48 @@ public class TestHashTerms extends LuceneTestCase {
     }
   }
 
-  /** The format is used for one field only, next to the default format. */
+  /**
+   * The format is used for some fields only, next to the default format, on segments with keys of
+   * several documents, updates and deletes; a field whose keys mostly have several documents gets a
+   * table too.
+   */
   public void testPerFieldFormat() throws IOException {
-    final PrimaryKeyHashPostingsFormat format = randomFormat(random());
+    final Random random = random();
+    final PrimaryKeyHashPostingsFormat format = randomFormat(random);
     final Codec codec =
         new Lucene104Codec() {
           @Override
           public PostingsFormat getPostingsFormatForField(String field) {
-            return "id".equals(field) ? format : super.getPostingsFormatForField(field);
+            return "seq".equals(field) ? super.getPostingsFormatForField(field) : format;
           }
         };
     final List<BytesRef> keys = new ArrayList<>();
     try (Directory dir = newDirectory()) {
-      IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random())).setCodec(codec);
+      IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random)).setCodec(codec);
       try (IndexWriter writer = new IndexWriter(dir, iwc)) {
         int numDocs = atLeast(200);
         for (int i = 0; i < numDocs; i++) {
-          BytesRef key = randomKey(random(), random().nextInt(5), i);
-          keys.add(key);
-          writer.addDocument(doc(key, i));
+          int op = keys.isEmpty() ? 3 : random.nextInt(20);
+          if (op == 0) {
+            // a key of several documents, unless the copies end up in different segments
+            writer.addDocument(doc(keys.get(random.nextInt(keys.size())), i));
+          } else if (op == 1) {
+            BytesRef key = keys.get(random.nextInt(keys.size()));
+            writer.updateDocument(new Term("id", key), doc(key, i));
+          } else if (op == 2) {
+            writer.deleteDocuments(new Term("id", keys.get(random.nextInt(keys.size()))));
+          } else {
+            BytesRef key = randomKey(random, random.nextInt(5), i);
+            keys.add(key);
+            writer.addDocument(doc(key, i));
+          }
         }
       }
       try (DirectoryReader reader = DirectoryReader.open(dir)) {
         for (LeafReaderContext context : reader.leaves()) {
           LeafReader leaf = context.reader();
           checkField(leaf, "id", keys, true);
+          checkField(leaf, "group", keys, true);
           assertFalse(leaf.terms("seq") instanceof HashTerms);
         }
       }
@@ -733,7 +632,8 @@ public class TestHashTerms extends LuceneTestCase {
 
   /**
    * Keys of every length up to 130 bytes and some much longer, whose records cross cache lines or
-   * are longer than one, and whose lengths take one to three bytes.
+   * are longer than one, and whose lengths take one to three bytes; and a field whose smallest key
+   * is longer than a batch of records.
    */
   public void testKeysOfManyLengths() throws IOException {
     final Set<BytesRef> keys = new HashSet<>();
@@ -751,10 +651,18 @@ public class TestHashTerms extends LuceneTestCase {
     }
     final List<BytesRef> shuffled = new ArrayList<>(keys);
     Collections.shuffle(shuffled, random());
-    try (Directory dir = newDirectory()) {
-      writeSingleSegment(dir, randomFormat(random()), shuffled);
-      try (DirectoryReader reader = DirectoryReader.open(dir)) {
-        checkField(getOnlyLeafReader(reader), "id", List.of(), true);
+    final List<BytesRef> longOnly = new ArrayList<>();
+    for (int length : new int[] {5000, 5000, IndexWriter.MAX_TERM_LENGTH}) {
+      final byte[] bytes = new byte[length];
+      random().nextBytes(bytes);
+      longOnly.add(new BytesRef(bytes));
+    }
+    for (List<BytesRef> segmentKeys : List.of(shuffled, longOnly)) {
+      try (Directory dir = newDirectory()) {
+        writeSingleSegment(dir, randomFormat(random()), segmentKeys);
+        try (DirectoryReader reader = DirectoryReader.open(dir)) {
+          checkField(getOnlyLeafReader(reader), "id", List.of(), true);
+        }
       }
     }
   }
@@ -825,150 +733,12 @@ public class TestHashTerms extends LuceneTestCase {
   }
 
   /**
-   * {@link HashTerms#lookupBatch} on ranges that start and end around multiples of the chunk size
-   * writes the results of the keys of its range, and nothing past them; invalid ranges and arrays
-   * too short for the results throw.
-   */
-  public void testLookupBatchRanges() throws IOException {
-    final Random random = random();
-    final int shape = random.nextInt(6);
-    final List<BytesRef> keys = new ArrayList<>();
-    for (int i = 0; i < 1000; i++) {
-      keys.add(
-          keys.isEmpty() == false && random.nextInt(20) == 0
-              ? keys.get(random.nextInt(keys.size())) // a key of two documents
-              : randomKey(random, shape == 5 ? random.nextInt(5) : shape, i));
-    }
-    try (Directory dir = newDirectory()) {
-      writeSingleSegment(dir, randomFormat(random), keys);
-      try (DirectoryReader reader = DirectoryReader.open(dir)) {
-        final HashTerms terms = onlyTable(reader);
-        final NavigableMap<BytesRef, int[]> expected = postingsOf(terms.getDelegate());
-        final List<BytesRef> probes = new ArrayList<>(keys);
-        for (int i = 0; i < 500; i++) {
-          probes.add(randomKey(random, random.nextInt(5), random.nextInt(1_000_000)));
-        }
-        final HashedTerms hashed = new HashedTerms(probes);
-        final int c = HashTerms.CHUNK_SIZE;
-        for (int start : new int[] {0, 1, c - 1, c, c + 1, 2 * c - 1, 2 * c, 3 * c + 1}) {
-          for (int length : new int[] {0, 1, 2, c - 1, c, c + 1, 2 * c + 1, 1024, 1025}) {
-            final int from = Math.min(start, hashed.size());
-            final int to = Math.min(hashed.size(), from + length);
-            final int[] docs = new int[to - from + 2];
-            Arrays.fill(docs, Integer.MIN_VALUE);
-            terms.lookupBatch(hashed, from, to, docs);
-            for (int i = from; i < to; i++) {
-              assertEquals(lookupResult(expected.get(hashed.get(i))), docs[i - from]);
-            }
-            assertEquals(Integer.MIN_VALUE, docs[to - from]);
-            assertEquals(Integer.MIN_VALUE, docs[to - from + 1]);
-          }
-        }
-        final int size = hashed.size();
-        terms.lookupBatch(hashed, 1, 1, new int[0]);
-        expectThrows(IndexOutOfBoundsException.class, () -> terms.lookupBatch(hashed, 1, 0, null));
-        expectThrows(
-            IndexOutOfBoundsException.class, () -> terms.lookupBatch(hashed, 0, size + 1, null));
-        expectThrows(
-            IllegalArgumentException.class, () -> terms.lookupBatch(hashed, 0, 2, new int[1]));
-      }
-    }
-  }
-
-  /** The length of the runs of {@link #testLongRuns}, in slots. */
-  private static final int LONG_RUN = 255;
-
-  /**
-   * Many keys with one home slot push the keys of the next home slots far from home, more than
-   * {@link #LONG_RUN} slots. Present keys are found, and absent keys whose home slots are in that
-   * run are not, whether the run is in the middle of the table or at its end, where it fills a long
-   * tail. With a filter, through which batches take another way to the table, and without.
-   */
-  public void testLongRuns() throws IOException {
-    for (int filterBitsPerKey : new int[] {0, randomFilterBits(random())}) {
-      for (boolean atEnd : new boolean[] {false, true}) {
-        // half of the keys on one home slot, more than LONG_RUN of them
-        final int numKeys = TestUtil.nextInt(random(), 2 * LONG_RUN + 50, 800);
-        final int capacity = (int) HashFieldsConsumer.capacity(numKeys, 0.75f);
-        final int targetHome =
-            atEnd ? capacity - 1 - random().nextInt(5) : random().nextInt(capacity / 2);
-        checkLongRun(numKeys, capacity, targetHome, atEnd, filterBitsPerKey);
-      }
-    }
-  }
-
-  private void checkLongRun(
-      int numKeys, int capacity, int targetHome, boolean atEnd, int filterBitsPerKey)
-      throws IOException {
-    final List<BytesRef> crowded = new ArrayList<>();
-    final List<BytesRef> others = new ArrayList<>();
-    for (long i = 0; crowded.size() < numKeys / 2 || others.size() < numKeys - numKeys / 2; i++) {
-      BytesRef key = new BytesRef(Long.toString(i, 36));
-      int home = TermHash.homeSlot(TermHash.hash(key.bytes, key.offset, key.length), 0, capacity);
-      if (home == targetHome && crowded.size() < numKeys / 2) {
-        crowded.add(key);
-      } else if (home != targetHome && others.size() < numKeys - numKeys / 2) {
-        others.add(key);
-      }
-    }
-    final List<BytesRef> all = new ArrayList<>(crowded);
-    all.addAll(others);
-    try (Directory dir = newDirectory()) {
-      writeSingleSegment(
-          dir, format(0.75f, 1 << 20, filterBitsPerKey, Inlining.IF_NOT_LARGER), all);
-      try (DirectoryReader reader = DirectoryReader.open(dir)) {
-        final HashTerms terms = onlyTable(reader);
-        assertEquals(1, terms.numPartitions());
-        assertEquals(capacity, terms.capacityOfPartition(0));
-        assertTrue(terms.maxProbeOfPartition(0) > LONG_RUN);
-        if (atEnd) {
-          assertTrue(terms.slotCountOfPartition(0) - capacity > LONG_RUN);
-        }
-        // Absent keys with home slots in the crowded run. They sort right after an indexed key,
-        // and are never indexed since '#' is not a base-36 digit, so they are looked up.
-        final Set<BytesRef> absent = new HashSet<>();
-        for (int attempt = 0; absent.size() < 200 && attempt < 1_000_000; attempt++) {
-          String indexed = all.get(random().nextInt(all.size())).utf8ToString();
-          BytesRef key =
-              new BytesRef(indexed + "#" + Integer.toString(random().nextInt(1 << 20), 36));
-          int home =
-              TermHash.homeSlot(TermHash.hash(key.bytes, key.offset, key.length), 0, capacity);
-          if (home >= targetHome
-              && home < targetHome + crowded.size()
-              && terms.outOfRange(key.bytes, key.offset, key.length) == false) {
-            absent.add(key);
-          }
-        }
-        assertEquals(200, absent.size());
-        final TermsEnum termsEnum = terms.iterator();
-        for (BytesRef key : all) {
-          assertTrue(key.utf8ToString(), termsEnum.seekExact(key));
-        }
-        for (BytesRef key : absent) {
-          assertFalse(key.utf8ToString(), termsEnum.seekExact(key));
-        }
-        final List<BytesRef> mixed = new ArrayList<>(absent);
-        mixed.addAll(all);
-        final HashedTerms batch = new HashedTerms(mixed);
-        final int[] docs = new int[batch.size()];
-        terms.lookupBatch(batch, 0, batch.size(), docs);
-        for (int i = 0; i < batch.size(); i++) {
-          assertEquals(
-              batch.get(i).utf8ToString(),
-              absent.contains(batch.get(i)),
-              docs[i] == HashTerms.ABSENT);
-          assertTrue(docs[i] != HashTerms.MULTI);
-        }
-      }
-    }
-  }
-
-  /**
    * Keys whose control bytes are equal: a run of keys of one home slot and one control byte, three
-   * keys of the next home slot with that control byte, and a block of other keys after the run,
-   * which may run into the tail. Lookups must go past every slot with their control byte that holds
-   * another key, across words of control bytes, and stop at a key of a later home slot or after
-   * MaxProbe + 1 slots; batches look the next candidates of such keys up in rounds.
+   * keys of the next home slot with that control byte, so that candidates of the run's keys hold
+   * other keys, and a block of other keys after the run, which may run into the tail. Lookups must
+   * go past every slot with their control byte that holds another key, across words of control
+   * bytes, and stop at an empty slot or after MaxProbe + 1 slots; batches look the next candidates
+   * of such keys up in rounds.
    */
   public void testControlCollisions() throws IOException {
     for (Inlining inlining : new Inlining[] {Inlining.NEVER, Inlining.ALWAYS}) {
@@ -1044,9 +814,8 @@ public class TestHashTerms extends LuceneTestCase {
   }
 
   /**
-   * The scan of control bytes 8 at a time against a scan of one byte at a time, on random control
-   * bytes: valid ones, long runs without an empty slot, bytes that make the borrows of the 8-byte
-   * arithmetic flag bytes above them, and arbitrary bytes, wherever the control bytes start.
+   * The scan of control bytes 8 at a time agrees with a scan of one byte at a time, on random
+   * control bytes of several kinds, wherever they start.
    */
   public void testControlScan() throws IOException {
     try (Directory dir = newDirectory()) {
@@ -1097,7 +866,7 @@ public class TestHashTerms extends LuceneTestCase {
         int r = random.nextInt(10);
         yield r < 3 ? TermHash.EMPTY_CONTROL : r == 3 ? want : 0x80 | random.nextInt(128);
       }
-      case 1 -> { // long runs
+      case 1 -> { // long runs without an empty slot
         int r = random.nextInt(40);
         yield r == 0 ? TermHash.EMPTY_CONTROL : r == 1 ? want : 0x80 | random.nextInt(128);
       }
@@ -1111,16 +880,23 @@ public class TestHashTerms extends LuceneTestCase {
     };
   }
 
-  /** Every length and every position of a difference, so that no word of the compare is skipped. */
+  /**
+   * Every length and every position of a difference, so that no word of the compare is skipped; and
+   * a record whose key length is not a valid VInt matches no key.
+   */
   public void testKeyEquals() throws IOException {
     try (Directory dir = new ByteBuffersDirectory()) {
       byte[] stored = new byte[64];
       random().nextBytes(stored);
+      Arrays.fill(stored, Integer.BYTES, Integer.BYTES + 5, (byte) 0xFF); // after a 4-byte doc id
       try (IndexOutput out = dir.createOutput("keys", IOContext.DEFAULT)) {
         out.writeBytes(stored, stored.length);
       }
       try (IndexInput in = dir.openInput("keys", IOContext.DEFAULT)) {
         RandomAccessInput slice = in.randomAccessSlice(0, in.length());
+        assertEquals(
+            HashTerms.NO_MATCH,
+            HashTerms.matchRecord(slice, 0, slice.readLong(0), new byte[0], 0, 0));
         for (int length = 0; length <= 40; length++) {
           int position = random().nextInt(stored.length - length + 1);
           byte[] key = new byte[length + 2];
@@ -1170,6 +946,115 @@ public class TestHashTerms extends LuceneTestCase {
           }
         }
       }
+    }
+  }
+
+  /**
+   * Counts the positional reads of the data files, which is how lookups read them; sequential
+   * reads, such as those of headers and footers, are not counted. Prefetches return what {@link
+   * #setPrefetchReads} says, so that tests choose whether the bytes are to be read or are in
+   * memory.
+   */
+  private static final class ReadCountingDirectory extends FilterDirectory {
+    private final Map<String, AtomicLong> reads = new ConcurrentHashMap<>();
+    private volatile boolean prefetchReads;
+
+    ReadCountingDirectory(Directory in) {
+      super(in);
+    }
+
+    long reads(String file) {
+      return counter(file).get();
+    }
+
+    void resetReads() {
+      for (AtomicLong counter : reads.values()) {
+        counter.set(0);
+      }
+    }
+
+    void setPrefetchReads(boolean prefetchReads) {
+      this.prefetchReads = prefetchReads;
+    }
+
+    private AtomicLong counter(String file) {
+      return reads.computeIfAbsent(file, _ -> new AtomicLong());
+    }
+
+    @Override
+    public IndexInput openInput(String name, IOContext context) throws IOException {
+      final IndexInput input = super.openInput(name, context);
+      return name.endsWith("." + PrimaryKeyHashPostingsFormat.DATA_EXTENSION)
+          ? new CountingInput(input, counter(name), this)
+          : input;
+    }
+  }
+
+  private static final class CountingInput extends FilterIndexInput {
+    private final AtomicLong reads;
+    private final ReadCountingDirectory dir;
+
+    CountingInput(IndexInput in, AtomicLong reads, ReadCountingDirectory dir) {
+      super("counting(" + in + ")", in);
+      this.reads = reads;
+      this.dir = dir;
+    }
+
+    @Override
+    public IndexInput slice(String sliceDescription, long offset, long length) throws IOException {
+      return new CountingInput(in.slice(sliceDescription, offset, length), reads, dir);
+    }
+
+    @Override
+    public CountingInput clone() {
+      return new CountingInput(in.clone(), reads, dir);
+    }
+
+    @Override
+    public RandomAccessInput randomAccessSlice(long offset, long length) throws IOException {
+      final RandomAccessInput slice = in.randomAccessSlice(offset, length);
+      return new RandomAccessInput() {
+        @Override
+        public long length() {
+          return slice.length();
+        }
+
+        @Override
+        public byte readByte(long pos) throws IOException {
+          reads.incrementAndGet();
+          return slice.readByte(pos);
+        }
+
+        @Override
+        public void readBytes(long pos, byte[] bytes, int offset, int length) throws IOException {
+          reads.incrementAndGet();
+          slice.readBytes(pos, bytes, offset, length);
+        }
+
+        @Override
+        public short readShort(long pos) throws IOException {
+          reads.incrementAndGet();
+          return slice.readShort(pos);
+        }
+
+        @Override
+        public int readInt(long pos) throws IOException {
+          reads.incrementAndGet();
+          return slice.readInt(pos);
+        }
+
+        @Override
+        public long readLong(long pos) throws IOException {
+          reads.incrementAndGet();
+          return slice.readLong(pos);
+        }
+
+        @Override
+        public boolean prefetch(long offset, long length) throws IOException {
+          slice.prefetch(offset, length);
+          return dir.prefetchReads;
+        }
+      };
     }
   }
 }

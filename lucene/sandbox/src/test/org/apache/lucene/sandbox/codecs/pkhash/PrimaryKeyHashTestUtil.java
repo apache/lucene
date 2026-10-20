@@ -20,7 +20,6 @@ import static org.apache.lucene.sandbox.codecs.pkhash.PrimaryKeyHashPostingsForm
 import static org.apache.lucene.sandbox.codecs.pkhash.PrimaryKeyHashPostingsFormat.DATA_EXTENSION;
 import static org.apache.lucene.sandbox.codecs.pkhash.PrimaryKeyHashPostingsFormat.META_CODEC;
 import static org.apache.lucene.sandbox.codecs.pkhash.PrimaryKeyHashPostingsFormat.META_EXTENSION;
-import static org.apache.lucene.tests.util.LuceneTestCase.newDirectory;
 import static org.apache.lucene.tests.util.LuceneTestCase.random;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -35,45 +34,33 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Random;
 import java.util.TreeMap;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.BiConsumer;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
-import org.apache.lucene.document.TextField;
-import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.LogDocMergePolicy;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.sandbox.codecs.pkhash.PrimaryKeyHashPostingsFormat.Inlining;
-import org.apache.lucene.sandbox.search.PrimaryKeyHashInSetQuery;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.FilterDirectory;
-import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
@@ -243,137 +230,6 @@ public final class PrimaryKeyHashTestUtil {
     return Arrays.copyOfRange(bytes, headerLength(file), bytes.length - CodecUtil.footerLength());
   }
 
-  /** The meta and data files of the two directories are the same but for headers and footers. */
-  static void assertSameFiles(Directory expected, Directory actual) throws IOException {
-    final List<String> files = formatFiles(expected);
-    assertFalse(files.isEmpty());
-    assertEquals(files, formatFiles(actual));
-    for (String file : files) {
-      assertArrayEquals(
-          file, withoutHeaderAndFooter(expected, file), withoutHeaderAndFooter(actual, file));
-    }
-  }
-
-  private static List<String> formatFiles(Directory dir) throws IOException {
-    final List<String> files = new ArrayList<>();
-    for (String file : dir.listAll()) {
-      if (file.endsWith("." + META_EXTENSION) || file.endsWith("." + DATA_EXTENSION)) {
-        files.add(file);
-      }
-    }
-    return files;
-  }
-
-  /**
-   * Writes an index of the given key shape from {@code seed} alone, flushes, merges, updates,
-   * deletes and keys of several documents included, so that it can be written twice the same;
-   * returns its keys.
-   */
-  private static List<BytesRef> writeSeeded(
-      Directory dir, PostingsFormat format, long seed, int shape) throws IOException {
-    final Random random = new Random(seed);
-    final LogDocMergePolicy mergePolicy = new LogDocMergePolicy();
-    mergePolicy.setMergeFactor(TestUtil.nextInt(random, 2, 10));
-    final IndexWriterConfig iwc =
-        new IndexWriterConfig(new MockAnalyzer(random))
-            .setCodec(TestUtil.alwaysPostingsFormat(format))
-            .setMaxBufferedDocs(TestUtil.nextInt(random, 50, 500))
-            .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
-            .setMergePolicy(mergePolicy)
-            .setMergeScheduler(new SerialMergeScheduler());
-    final List<BytesRef> keys = new ArrayList<>();
-    try (IndexWriter writer = new IndexWriter(dir, iwc)) {
-      final int numDocs = TestUtil.nextInt(random, 500, 3000);
-      for (int i = 0; i < numDocs; i++) {
-        final int op = keys.isEmpty() ? 0 : random.nextInt(20);
-        final Document doc = new Document();
-        doc.add(new TextField("body", "some text " + (i % 100), Field.Store.NO));
-        if (op == 1 || op == 2 || op == 3) {
-          final BytesRef key = keys.get(random.nextInt(keys.size()));
-          doc.add(new StringField("id", key, Field.Store.NO));
-          switch (op) {
-            case 1 -> writer.updateDocument(new Term("id", key), doc);
-            case 2 -> writer.deleteDocuments(new Term("id", key));
-            default -> writer.addDocument(doc); // another document of the key
-          }
-        } else {
-          final BytesRef key = randomKey(random, shape, i);
-          keys.add(key);
-          doc.add(new StringField("id", key, Field.Store.NO));
-          writer.addDocument(doc);
-        }
-      }
-    }
-    return keys;
-  }
-
-  /**
-   * Writes the same index of keys of the given shape with both formats and checks that their
-   * segments have tables of the same sizes, which {@code checkTables} checks further, and that
-   * every way to look keys up finds the same, segment by segment and in the whole index.
-   */
-  static void assertSameResults(
-      PostingsFormat expectedFormat,
-      PostingsFormat actualFormat,
-      int shape,
-      BiConsumer<HashTerms, HashTerms> checkTables)
-      throws IOException {
-    final Random random = random();
-    final long seed = random.nextLong();
-    try (Directory expectedDir = newDirectory();
-        Directory actualDir = newDirectory()) {
-      final List<BytesRef> keys = writeSeeded(expectedDir, expectedFormat, seed, shape);
-      assertEquals(keys, writeSeeded(actualDir, actualFormat, seed, shape));
-      final List<BytesRef> probes = new ArrayList<>(keys);
-      for (int i = 0; i < 300; i++) {
-        final byte[] bytes = BytesRef.deepCopyOf(keys.get(random.nextInt(keys.size()))).bytes;
-        if (bytes.length > 0) {
-          bytes[random.nextInt(bytes.length)] ^= (byte) (1 + random.nextInt(255));
-        }
-        probes.add(new BytesRef(bytes));
-        probes.add(new BytesRef("absent" + i));
-      }
-      try (DirectoryReader expectedReader = DirectoryReader.open(expectedDir);
-          DirectoryReader actualReader = DirectoryReader.open(actualDir)) {
-        assertEquals(expectedReader.leaves().size(), actualReader.leaves().size());
-        for (int l = 0; l < expectedReader.leaves().size(); l++) {
-          final HashTerms expected =
-              (HashTerms) expectedReader.leaves().get(l).reader().terms("id");
-          final HashTerms actual = (HashTerms) actualReader.leaves().get(l).reader().terms("id");
-          checkTables.accept(expected, actual);
-          assertEquals(expected.numPartitions(), actual.numPartitions());
-          for (int p = 0; p < expected.numPartitions(); p++) {
-            assertEquals(expected.capacityOfPartition(p), actual.capacityOfPartition(p));
-            assertEquals(expected.slotCountOfPartition(p), actual.slotCountOfPartition(p));
-            assertEquals(expected.maxProbeOfPartition(p), actual.maxProbeOfPartition(p));
-          }
-          final TermsEnum expectedEnum = expected.iterator();
-          final TermsEnum actualEnum = actual.iterator();
-          for (BytesRef probe : probes) {
-            final boolean found = expectedEnum.seekExact(probe);
-            assertEquals(probe.toString(), found, actualEnum.seekExact(probe));
-            if (found) {
-              assertEquals(expectedEnum.docFreq(), actualEnum.docFreq());
-              assertArrayEquals(docs(expectedEnum.postings(null)), docs(actualEnum.postings(null)));
-            }
-            final IOBooleanSupplier supplier = actual.iterator().prepareSeekExact(probe);
-            assertEquals(probe.toString(), found, supplier != null && supplier.get());
-          }
-          final HashedTerms hashed = new HashedTerms(probes);
-          final int[] expectedDocs = new int[hashed.size()];
-          final int[] actualDocs = new int[hashed.size()];
-          expected.lookupBatch(hashed, 0, hashed.size(), expectedDocs);
-          actual.lookupBatch(hashed, 0, hashed.size(), actualDocs);
-          assertArrayEquals(expectedDocs, actualDocs);
-        }
-        final List<BytesRef> some = probes.subList(0, Math.min(500, probes.size()));
-        assertEquals(
-            new IndexSearcher(expectedReader).count(new PrimaryKeyHashInSetQuery("id", some)),
-            new IndexSearcher(actualReader).count(new PrimaryKeyHashInSetQuery("id", some)));
-      }
-    }
-  }
-
   // ---- checks ----
 
   /** The postings of every term, read from {@code terms}' own ordered iteration. */
@@ -528,11 +384,18 @@ public final class PrimaryKeyHashTestUtil {
     }
 
     if (terms instanceof HashTerms hashTerms) {
+      // tables are only for DOCS fields
+      assertFalse(
+          terms.hasFreqs() || terms.hasOffsets() || terms.hasPositions() || terms.hasPayloads());
+      assertEquals(oracle.getSumTotalTermFreq(), terms.getSumTotalTermFreq());
       checkLookupBatch(hashTerms, expected, probes);
     }
   }
 
-  /** {@link HashTerms#lookupBatch} on the whole batch, then on random ranges of it. */
+  /**
+   * {@link HashTerms#lookupBatch} on the whole batch, then on random ranges of it, which must write
+   * nothing past the results of the range.
+   */
   static void checkLookupBatch(
       HashTerms terms, NavigableMap<BytesRef, int[]> expected, List<BytesRef> probes)
       throws IOException {
@@ -542,128 +405,15 @@ public final class PrimaryKeyHashTestUtil {
       final int from = iter == 0 ? 0 : random.nextInt(keys.size() + 1);
       final int to = iter == 0 ? keys.size() : TestUtil.nextInt(random, from, keys.size());
       final int[] docs = new int[to - from + random.nextInt(3)];
+      Arrays.fill(docs, Integer.MIN_VALUE);
       terms.lookupBatch(keys, from, to, docs);
       for (int i = from; i < to; i++) {
         assertEquals(
             keys.get(i).toString(), lookupResult(expected.get(keys.get(i))), docs[i - from]);
       }
-    }
-  }
-
-  // ---- reads ----
-
-  /**
-   * Counts the positional reads of every data file of a directory, which is how lookups read it;
-   * sequential reads, such as those of the header and footer when a segment is opened, are not
-   * counted. Prefetches return what {@link #setPrefetchReads} says, so that tests choose whether
-   * the bytes are to be read or are in memory already.
-   */
-  static final class ReadCountingDirectory extends FilterDirectory {
-    private final Map<String, AtomicLong> reads = new ConcurrentHashMap<>();
-    private volatile boolean prefetchReads;
-
-    ReadCountingDirectory(Directory in) {
-      super(in);
-    }
-
-    long reads(String file) {
-      return counter(file).get();
-    }
-
-    void resetReads() {
-      for (AtomicLong counter : reads.values()) {
-        counter.set(0);
+      for (int i = to - from; i < docs.length; i++) {
+        assertEquals(Integer.MIN_VALUE, docs[i]);
       }
-    }
-
-    void setPrefetchReads(boolean prefetchReads) {
-      this.prefetchReads = prefetchReads;
-    }
-
-    private AtomicLong counter(String file) {
-      return reads.computeIfAbsent(file, _ -> new AtomicLong());
-    }
-
-    @Override
-    public IndexInput openInput(String name, IOContext context) throws IOException {
-      final IndexInput input = super.openInput(name, context);
-      return name.endsWith("." + DATA_EXTENSION)
-          ? new CountingInput(input, counter(name), this)
-          : input;
-    }
-  }
-
-  private static final class CountingInput extends FilterIndexInput {
-    private final AtomicLong reads;
-    private final ReadCountingDirectory dir;
-
-    CountingInput(IndexInput in, AtomicLong reads, ReadCountingDirectory dir) {
-      super("counting(" + in + ")", in);
-      this.reads = reads;
-      this.dir = dir;
-    }
-
-    @Override
-    public IndexInput slice(String sliceDescription, long offset, long length) throws IOException {
-      return new CountingInput(in.slice(sliceDescription, offset, length), reads, dir);
-    }
-
-    @Override
-    public CountingInput clone() {
-      return new CountingInput(in.clone(), reads, dir);
-    }
-
-    @Override
-    public boolean prefetch(long offset, long length) throws IOException {
-      in.prefetch(offset, length);
-      return dir.prefetchReads;
-    }
-
-    @Override
-    public RandomAccessInput randomAccessSlice(long offset, long length) throws IOException {
-      final RandomAccessInput slice = in.randomAccessSlice(offset, length);
-      return new RandomAccessInput() {
-        @Override
-        public long length() {
-          return slice.length();
-        }
-
-        @Override
-        public byte readByte(long pos) throws IOException {
-          reads.incrementAndGet();
-          return slice.readByte(pos);
-        }
-
-        @Override
-        public void readBytes(long pos, byte[] bytes, int offset, int length) throws IOException {
-          reads.incrementAndGet();
-          slice.readBytes(pos, bytes, offset, length);
-        }
-
-        @Override
-        public short readShort(long pos) throws IOException {
-          reads.incrementAndGet();
-          return slice.readShort(pos);
-        }
-
-        @Override
-        public int readInt(long pos) throws IOException {
-          reads.incrementAndGet();
-          return slice.readInt(pos);
-        }
-
-        @Override
-        public long readLong(long pos) throws IOException {
-          reads.incrementAndGet();
-          return slice.readLong(pos);
-        }
-
-        @Override
-        public boolean prefetch(long offset, long length) throws IOException {
-          slice.prefetch(offset, length);
-          return dir.prefetchReads;
-        }
-      };
     }
   }
 

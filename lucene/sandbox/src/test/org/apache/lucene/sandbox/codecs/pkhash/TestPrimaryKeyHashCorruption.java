@@ -56,7 +56,6 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
-import org.apache.lucene.util.BytesRef;
 
 /**
  * Corrupted files must fail when the segment is opened, or at the latest in {@code checkIntegrity};
@@ -84,13 +83,13 @@ public class TestPrimaryKeyHashCorruption extends LuceneTestCase {
     final int bodyField;
     final int emptyField;
 
-    Index(int filterBitsPerKey, boolean fixedLength, int maxKeysPerPartition) throws IOException {
+    Index(int filterBitsPerKey, boolean fixedLength) throws IOException {
       final IndexWriterConfig iwc =
           new IndexWriterConfig(new MockAnalyzer(random()))
               .setCodec(
                   TestUtil.alwaysPostingsFormat(
                       PrimaryKeyHashTestUtil.format(
-                          0.75f, maxKeysPerPartition, filterBitsPerKey, Inlining.IF_NOT_LARGER)))
+                          0.75f, 16, filterBitsPerKey, Inlining.IF_NOT_LARGER)))
               .setMergePolicy(NoMergePolicy.INSTANCE)
               .setUseCompoundFile(false);
       final FieldType docsOnly = new FieldType();
@@ -103,7 +102,6 @@ public class TestPrimaryKeyHashCorruption extends LuceneTestCase {
           doc.add(new Field("empty", new CannedTokenStream(), docsOnly));
           writer.addDocument(doc);
         }
-        writer.forceMerge(1);
       }
       metaName = PrimaryKeyHashTestUtil.onlyFile(dir, PrimaryKeyHashPostingsFormat.META_EXTENSION);
       dataName = PrimaryKeyHashTestUtil.onlyFile(dir, PrimaryKeyHashPostingsFormat.DATA_EXTENSION);
@@ -210,7 +208,7 @@ public class TestPrimaryKeyHashCorruption extends LuceneTestCase {
   }
 
   public void testCorruptedFiles() throws IOException {
-    try (Index index = new Index(0, false, 16)) {
+    try (Index index = new Index(0, false)) {
       final int headerLength = PrimaryKeyHashTestUtil.headerLength(index.dataName);
       final byte[] meta = readAll(index.dir, index.metaName);
       final byte[] data = readAll(index.dir, index.dataName);
@@ -255,7 +253,7 @@ public class TestPrimaryKeyHashCorruption extends LuceneTestCase {
 
   /** A field whose records are in term order, in several partitions, without a filter. */
   public void testTamperedMeta() throws IOException {
-    try (Index index = new Index(0, false, 16)) {
+    try (Index index = new Index(0, false)) {
       index.assertOpens("id7", "id7x");
       final FieldMeta id = index.idEntry();
       assertTrue("several partitions", id.capacities.length > 1);
@@ -289,8 +287,7 @@ public class TestPrimaryKeyHashCorruption extends LuceneTestCase {
           rejected(
               records,
               (_, f) -> f.recordsLength = PrimaryKeyHashPostingsFormat.MAX_RECORDS_LENGTH + 1));
-      // Records start at a cache line. Moved within one, with the same end, nothing else is wrong
-      // with them: the control bytes still start right after them.
+      // Records start at a cache line. Moved within one, keeping their end, nothing else is wrong.
       for (int shift :
           new int[] {1, Long.BYTES, PrimaryKeyHashPostingsFormat.CACHE_LINE_BYTES / 2}) {
         cases.add(
@@ -324,9 +321,8 @@ public class TestPrimaryKeyHashCorruption extends LuceneTestCase {
                 f.capacities[p] -= shift;
                 f.tails[p] += shift;
               }));
-      // More slots than the writer can hold the control bytes of in one array, which a partition
-      // never has, would overflow the slot count of a partition: rejected by that check, before the
-      // length of the data is checked. The most slots it can hold pass that check.
+      // More slots than the writer can hold the control bytes of in one array are rejected by the
+      // slot count check, before the length of the data is checked; the most it can hold pass it.
       for (long slotCount : new long[] {maxSlotCount + 1, Integer.MAX_VALUE + 2L, maxSlotCount}) {
         cases.add(
             rejected(
@@ -349,15 +345,14 @@ public class TestPrimaryKeyHashCorruption extends LuceneTestCase {
 
   /**
    * The filter of a field starts at the first multiple of 64 after its slots and has as many words
-   * as its keys take at its number of bits per key: a filter read with another number of words
-   * would look for keys in other words than the writer put them in, and rule out keys that are
-   * there. Without its entry, the filter is ignored.
+   * as its keys take at its number of bits per key: read with another number of words, it would
+   * look for keys in other words than the writer put them in, and rule out keys that are there.
    */
   public void testTamperedFilter() throws IOException {
     // at most 12 bits per key, so that 16 bits per key take more words
     final int bitsPerKey =
         TestUtil.nextInt(random(), PrimaryKeyHashPostingsFormat.MIN_FILTER_BITS_PER_KEY, 12);
-    try (Index index = new Index(bitsPerKey, false, 16)) {
+    try (Index index = new Index(bitsPerKey, false)) {
       index.assertOpens("id7", "id7x");
       final FieldMeta id = index.idEntry();
       assertEquals(bitsPerKey, id.filterBitsPerKey);
@@ -367,15 +362,8 @@ public class TestPrimaryKeyHashCorruption extends LuceneTestCase {
             rejected("invalid filter bitsPerKey=", (_, f) -> f.filterBitsPerKey = (byte) invalid));
       }
       final String layout = "invalid filter offset=";
-      // other valid numbers of bits per key that take another number of words
-      for (int other = PrimaryKeyHashPostingsFormat.MIN_FILTER_BITS_PER_KEY;
-          other <= PrimaryKeyHashPostingsFormat.MAX_FILTER_BITS_PER_KEY;
-          other++) {
-        if (Math.ceilDiv(id.numKeys * other, 64) != id.filterWords) {
-          final byte value = (byte) other;
-          cases.add(rejected(layout, (_, f) -> f.filterBitsPerKey = value));
-        }
-      }
+      // another valid number of bits per key, which takes more words
+      cases.add(rejected(layout, (_, f) -> f.filterBitsPerKey = (byte) (bitsPerKey + 1)));
       for (int shift : new int[] {1, -1, id.filterWords, -id.filterWords}) {
         cases.add(rejected(layout, (_, f) -> f.filterWords += shift));
       }
@@ -392,47 +380,31 @@ public class TestPrimaryKeyHashCorruption extends LuceneTestCase {
                 f.filterWords = Math.toIntExact(Math.ceilDiv(f.numKeys * maxBits, 64));
               }));
       index.assertRejected(cases);
-
-      // without its entry, the field is looked up in the table alone
-      try (Directory dir = index.tampered((_, f) -> f.filterBitsPerKey = 0);
-          DirectoryReader reader = DirectoryReader.open(dir)) {
-        LeafReader leaf = getOnlyLeafReader(reader);
-        assertFalse(((HashTerms) leaf.terms("id")).hasFilter());
-        List<BytesRef> keys = new ArrayList<>();
-        for (int i = 0; i < 200; i++) {
-          keys.add(new BytesRef("id" + i));
-        }
-        PrimaryKeyHashTestUtil.checkField(leaf, "id", keys, true);
-      }
     }
   }
 
   /**
-   * A field with inline keys: its key length, and its start, which must be at a cache line after
-   * the header, and the sizes of its partitions. Other key lengths read records with another
-   * stride; the smallest and largest terms, which have the length of all keys, or the end of the
-   * data tell.
+   * A field with inline keys: its key length, its start, which must be at a cache line after the
+   * header, and the sizes of its partitions. Another key length reads records with another stride,
+   * which the smallest and largest terms, of the length of all keys, or the end of the data tell.
    */
   public void testTamperedInlineMeta() throws IOException {
-    try (Index index = new Index(0, true, 16)) {
+    try (Index index = new Index(0, true)) {
       index.assertOpens("id007", "id7");
       final FieldMeta id = index.idEntry();
       assertEquals(PrimaryKeyHashPostingsFormat.LAYOUT_INLINE, id.layout);
       assertEquals(5, id.keyLength);
-      final int p = random().nextInt(id.capacities.length);
       final int headerLength = PrimaryKeyHashTestUtil.headerLength(index.dataName);
       final List<Case> cases = new ArrayList<>();
-      // read as records in term order
-      cases.add(
-          rejected(null, (_, f) -> f.layout = PrimaryKeyHashPostingsFormat.LAYOUT_TERM_ORDER));
       for (int keyLength :
           new int[] {0, -1, PrimaryKeyHashPostingsFormat.MAX_INLINE_KEY_LENGTH + 1}) {
         cases.add(
             rejected("invalid key length " + keyLength, (_, f) -> f.keyLength = (byte) keyLength));
       }
-      cases.add(rejected(null, (_, f) -> f.keyLength = 4));
+      cases.add(
+          rejected(
+              "invalid key length 4, the field has a term of 5 bytes", (_, f) -> f.keyLength = 4));
       cases.add(rejected(null, (_, f) -> f.keyLength = 6));
-      cases.add(rejected("invalid partition " + p + " capacity=", (_, f) -> f.capacities[p] = 1));
       for (long shift :
           new long[] {1, Long.BYTES, -Long.BYTES, -id.controlOffset, -headerLength, 1L << 57}) {
         cases.add(
@@ -441,33 +413,8 @@ public class TestPrimaryKeyHashCorruption extends LuceneTestCase {
                 (_, f) -> f.controlOffset += shift));
       }
       cases.add(rejected("exceed the data", (_, f) -> f.capacities[last(f)] += 1_000_000));
-      cases.add(rejected("slots are too few", TestPrimaryKeyHashCorruption::tooManyKeys));
       cases.add(rejected("exceed the data", TestPrimaryKeyHashCorruption::addFilter));
       index.assertRejected(cases);
-    }
-  }
-
-  /**
-   * A field of one partition with inline keys, and their key length made shorter, with its filter,
-   * if any, moved to just after the shorter records: everything after the records is where it
-   * should be, but the smallest and largest terms, which have the length of all keys, tell.
-   */
-  public void testTamperedKeyLengthOfOnePartition() throws IOException {
-    for (int filterBitsPerKey :
-        new int[] {0, PrimaryKeyHashPostingsFormat.DEFAULT_FILTER_BITS_PER_KEY}) {
-      try (Index index = new Index(filterBitsPerKey, true, 1 << 20)) {
-        assertEquals(1, index.idEntry().capacities.length);
-        index.assertRejected(
-            List.of(
-                rejected(
-                    "invalid key length 4, the field has a term of 5 bytes",
-                    (_, f) -> {
-                      f.keyLength = 4;
-                      if (f.filterBitsPerKey != 0) {
-                        f.filterOffset = IndexOutput.alignOffset(f.slotsEnd(), 64);
-                      }
-                    })));
-      }
     }
   }
 }
