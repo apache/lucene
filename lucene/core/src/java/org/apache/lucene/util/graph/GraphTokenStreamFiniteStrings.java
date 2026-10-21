@@ -45,9 +45,6 @@ import org.apache.lucene.util.automaton.Transition;
  * different paths of the {@link Automaton}.
  */
 public final class GraphTokenStreamFiniteStrings {
-  /** Maximum level of recursion allowed in recursive operations. */
-  private static final int MAX_RECURSION_LEVEL = 1000;
-
   private AttributeSource[] tokens = new AttributeSource[4];
   private final Automaton det;
   private final Transition transition = new Transition();
@@ -176,15 +173,7 @@ public final class GraphTokenStreamFiniteStrings {
         undirect.addTransition(transition.dest, i, transition.min);
       }
     }
-    int numStates = det.getNumStates();
-    BitSet visited = new BitSet(numStates);
-    int[] depth = new int[det.getNumStates()];
-    int[] low = new int[det.getNumStates()];
-    int[] parent = new int[det.getNumStates()];
-    Arrays.fill(parent, -1);
-    IntArrayList points = new IntArrayList();
-    articulationPointsRecurse(undirect.finish(), 0, 0, depth, low, parent, visited, points);
-    return points.reverse().toArray();
+    return articulationPointsIterative(undirect.finish()).reverse().toArray();
   }
 
   /** Build an automaton from the provided {@link TokenStream}. */
@@ -252,43 +241,67 @@ public final class GraphTokenStreamFiniteStrings {
     return builder.finish();
   }
 
-  private static void articulationPointsRecurse(
-      Automaton a,
-      int state,
-      int d,
-      int[] depth,
-      int[] low,
-      int[] parent,
-      BitSet visited,
-      IntArrayList points) {
-    visited.set(state);
-    depth[state] = d;
-    low[state] = d;
-    int childCount = 0;
-    boolean isArticulation = false;
-    Transition t = new Transition();
-    int numT = a.initTransition(state, t);
-    for (int i = 0; i < numT; i++) {
-      a.getNextTransition(t);
-      if (visited.get(t.dest) == false) {
-        parent[t.dest] = state;
-        if (d < MAX_RECURSION_LEVEL) {
-          articulationPointsRecurse(a, t.dest, d + 1, depth, low, parent, visited, points);
-        } else {
-          throw new IllegalArgumentException(
-              "Exceeded maximum recursion level during graph analysis");
+  /**
+   * Iterative (IntArrayList stack) implementation of Tarjan's articulation points DFS, so that deep
+   * undirected graphs can be analyzed without hitting a {@link StackOverflowError}. Each state
+   * (vertex) is pushed at most once over the whole traversal. {@code transitionIndex[state]} holds
+   * how many of that state's transitions (edges) we've already traversed. We resume at the next one
+   * after exploring the current child and all its descendants.
+   */
+  private static IntArrayList articulationPointsIterative(Automaton a) {
+    final int numStates = a.getNumStates();
+    final int[] depth = new int[numStates];
+    final int[] low = new int[numStates];
+    final int[] parent = new int[numStates];
+    Arrays.fill(parent, -1);
+    final int[] transitionIndex = new int[numStates];
+    final BitSet visited = new BitSet(numStates);
+    final BitSet isArticulation = new BitSet(numStates);
+    final IntArrayList stack = new IntArrayList();
+    final IntArrayList points = new IntArrayList();
+    final Transition t = new Transition();
+
+    // The DFS starts at the root (state 0). depth[0] and low[0] are by default set to 0.
+    stack.add(0);
+    visited.set(0);
+    // The root vertex must be handled separately: it is a cut vertex if and only if it has at least
+    // two children in the DFS tree.
+    int rootChildCount = 0;
+
+    while (stack.isEmpty() == false) {
+      int state = stack.get(stack.size() - 1);
+      int i = transitionIndex[state];
+      if (i < a.getNumTransitions(state)) {
+        transitionIndex[state] = i + 1;
+        a.getTransition(state, i, t);
+        if (visited.get(t.dest) == false) {
+          visited.set(t.dest);
+          parent[t.dest] = state;
+          depth[t.dest] = low[t.dest] = depth[state] + 1;
+          if (state == 0) {
+            rootChildCount++;
+          }
+          stack.add(t.dest);
+        } else if (t.dest != parent[state]) {
+          // backedge.
+          low[state] = Math.min(low[state], depth[t.dest]);
         }
-        childCount++;
-        if (low[t.dest] >= depth[state]) {
-          isArticulation = true;
+      } else {
+        // Current state has been fully explored.
+        stack.removeLast();
+        // Only root (state 0) has no parent (-1).
+        int par = parent[state];
+        if (par != -1) {
+          low[par] = Math.min(low[par], low[state]);
+          if (low[state] >= depth[par]) {
+            isArticulation.set(par);
+          }
         }
-        low[state] = Math.min(low[state], low[t.dest]);
-      } else if (t.dest != parent[state]) {
-        low[state] = Math.min(low[state], depth[t.dest]);
+        if ((par != -1 && isArticulation.get(state)) || (par == -1 && rootChildCount > 1)) {
+          points.add(state);
+        }
       }
     }
-    if ((parent[state] != -1 && isArticulation) || (parent[state] == -1 && childCount > 1)) {
-      points.add(state);
-    }
+    return points;
   }
 }
