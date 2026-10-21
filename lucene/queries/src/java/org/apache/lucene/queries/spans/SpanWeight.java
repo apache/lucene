@@ -142,19 +142,18 @@ public abstract class SpanWeight extends Weight {
     if (spans == null) {
       return null;
     }
-    final NumericDocValues norms = context.reader().getNormValues(field);
-    final var scorer = new SpanScorer(spans, simScorer, norms);
-    return new ScorerSupplier() {
-      @Override
-      public SpanScorer get(long leadCost) throws IOException {
-        return scorer;
-      }
+    return new DefaultScorerSupplier(createSpanScorer(spans, context));
+  }
 
-      @Override
-      public long cost() {
-        return scorer.iterator().cost();
-      }
-    };
+  /**
+   * Creates a {@link SpanScorer} for the given spans and context. Subclasses may override this to
+   * return a scorer with specialized scoring behavior (e.g. per-clause scoring for disjunctions).
+   *
+   * @lucene.internal
+   */
+  public SpanScorer createSpanScorer(Spans spans, LeafReaderContext ctx) throws IOException {
+    final NumericDocValues norms = ctx.reader().getNormValues(field);
+    return new SpanScorer(spans, simScorer, norms);
   }
 
   /** Return the SimScorer */
