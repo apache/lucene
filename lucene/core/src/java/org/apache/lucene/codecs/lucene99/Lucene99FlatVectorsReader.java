@@ -216,15 +216,11 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
       return this;
     }
     IndexInput data = original.mergeVectorData();
-    boolean success = false;
     try {
-      FlatVectorsReader mergeInstance = new Lucene99FlatVectorsReader(this, data.clone());
-      success = true;
-      return mergeInstance;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(original.release());
-      }
+      return new Lucene99FlatVectorsReader(this, data.clone());
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, original.release());
+      throw t;
     }
   }
 
