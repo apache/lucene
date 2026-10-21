@@ -1323,6 +1323,17 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
+    public void ordinalRangeIntoBitSet(
+        int fromDoc, int toDoc, long minOrd, long maxOrd, FixedBitSet bitSet, int offset)
+        throws IOException {
+      assertThread("Sorted set doc values", creationThread);
+      in.ordinalRangeIntoBitSet(fromDoc, toDoc, minOrd, maxOrd, bitSet, offset);
+      lastDocID = in.docID();
+      exists = lastDocID >= 0 && lastDocID != NO_MORE_DOCS;
+      ordsRetrieved = 0;
+    }
+
+    @Override
     public int docIDRunEnd() throws IOException {
       assertThread("Sorted set doc values", creationThread);
       assert docID() != -1;

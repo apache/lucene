@@ -368,6 +368,7 @@ public class TestDocValuesOrdinalRangeIterator extends BaseDocValuesSkipperTests
 
       @Override
       public boolean advanceExact(int target) {
+        ordIdx = 0;
         if (docHasValue(target)) {
           doc = target;
           return true;
