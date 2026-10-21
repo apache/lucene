@@ -17,7 +17,8 @@
 package org.apache.lucene.analysis.ja;
 
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
 import org.apache.lucene.analysis.TokenFilter;
@@ -145,7 +146,7 @@ public final class JapaneseCompletionFilter extends TokenFilter {
 
     private final Mode mode;
 
-    private List<CompletionToken> outputs;
+    private final Deque<CompletionToken> outputs;
 
     private CharsRefBuilder pdgSurface;
     private CharsRefBuilder pdgReading;
@@ -154,7 +155,7 @@ public final class JapaneseCompletionFilter extends TokenFilter {
 
     CompletionTokenGenerator(Mode mode) {
       this.mode = mode;
-      outputs = new ArrayList<>();
+      outputs = new ArrayDeque<>();
     }
 
     public void reset() {
@@ -164,12 +165,12 @@ public final class JapaneseCompletionFilter extends TokenFilter {
 
     @Override
     public boolean hasNext() {
-      return outputs.size() > 0;
+      return !outputs.isEmpty();
     }
 
     @Override
     public CompletionToken next() {
-      return outputs.remove(0);
+      return outputs.removeFirst();
     }
 
     void addToken(String surface, String reading, int startOffset, int endOffset) {
@@ -215,7 +216,8 @@ public final class JapaneseCompletionFilter extends TokenFilter {
 
     private void generateOutputs() {
       // preserve original surface form as an output.
-      outputs.add(new CompletionToken(pdgSurface.toString(), true, pdgStartOffset, pdgEndOffset));
+      outputs.addLast(
+          new CompletionToken(pdgSurface.toString(), true, pdgStartOffset, pdgEndOffset));
       // skip readings that cannot be translated to romaji.
       if (pdgReading == null
           || pdgReading.length() == 0
@@ -226,7 +228,7 @@ public final class JapaneseCompletionFilter extends TokenFilter {
       List<CharsRef> romaji = KatakanaRomanizer.getInstance().romanize(pdgReading.get());
       for (CharsRef ref : romaji) {
         // set the same start/end offset as the original surface form for romanized tokens.
-        outputs.add(new CompletionToken(ref.toString(), false, pdgStartOffset, pdgEndOffset));
+        outputs.addLast(new CompletionToken(ref.toString(), false, pdgStartOffset, pdgEndOffset));
       }
     }
 

@@ -129,26 +129,28 @@ public class TestInfoStream extends LuceneTestCase {
     boolean foundInit = false;
     int flushedCount = 0;
     int mergedCount = 0;
-    for (String message : infoStream) {
-      // we don't want to be printing full diagnostics every time a segment is mentioned in the log,
-      // only when it is first flushed
-      if (message.contains("diagnostics")) {
-        if (message.startsWith("[IW] publishFlushedSegment")) {
-          flushedCount++;
-        } else if (message.startsWith("[IW] merged new segment")) {
-          mergedCount++;
-        } else {
-          fail("message contains diagnostics: " + message);
+    synchronized (infoStream) {
+      for (String message : infoStream) {
+        // we don't want to be printing full diagnostics every time a segment is mentioned in the
+        // log, only when it is first flushed
+        if (message.contains("diagnostics")) {
+          if (message.startsWith("[IW] publishFlushedSegment")) {
+            flushedCount++;
+          } else if (message.startsWith("[IW] merged new segment")) {
+            mergedCount++;
+          } else {
+            fail("message contains diagnostics: " + message);
+          }
         }
+        if (message.contains("init segments")) {
+          assertEquals("[IW] init segments: \n", message);
+          foundInit = true;
+        }
+        // System.out.print(message);
       }
-      if (message.contains("init segments")) {
-        assertEquals("[IW] init segments: \n", message);
-        foundInit = true;
-      }
-      // System.out.print(message);
+      assertTrue("init message not found", foundInit);
+      assertEquals(2, flushedCount);
+      assertEquals(1, mergedCount);
     }
-    assertTrue("init message not found", foundInit);
-    assertEquals(2, flushedCount);
-    assertEquals(1, mergedCount);
   }
 }

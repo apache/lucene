@@ -20,9 +20,11 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.IntPredicate;
 import org.apache.lucene.tests.search.AssertingBulkScorer;
 import org.apache.lucene.tests.search.RandomApproximationQuery.RandomTwoPhaseView;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.FixedBitSet;
 
@@ -590,6 +592,80 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
     assertEquals(50_000, collectedViaRange[0]);
   }
 
+  /**
+   * A two-phase clause that relies on the default {@link TwoPhaseIterator#docIDRunEnd()} — which
+   * reports no matching run, because the current approximation doc is only a candidate until {@link
+   * TwoPhaseIterator#matches()} confirms it — must produce the same matches however the doc space
+   * is split into scoring windows. That partition invariance is what intra-segment search
+   * concurrency relies on: a segment scored in one pass and the same segment scored as adjacent
+   * sub-ranges must agree. A per-doc (width-1) partition is the strongest such split and forces
+   * every window to go through {@link TwoPhaseIterator#matches()} confirmation rather than the
+   * {@link LeafCollector#collectRange} fast path, which must never collect an unconfirmed doc.
+   */
+  public void testTwoPhaseDefaultRunEndIsPartitionInvariant() throws IOException {
+    int maxDoc = 5_000;
+    // The approximation is positioned on every doc; matches() confirms a non-trivial subset.
+    IntPredicate matching = doc -> doc % 3 != 0;
+
+    FixedBitSet expected = new FixedBitSet(maxDoc);
+    for (int doc = 0; doc < maxDoc; doc++) {
+      if (matching.test(doc)) {
+        expected.set(doc);
+      }
+    }
+
+    // Whole range in one pass.
+    FixedBitSet singlePass = new FixedBitSet(maxDoc);
+    newTwoPhaseScorer(maxDoc, matching)
+        .score(collectInto(singlePass), null, 0, DocIdSetIterator.NO_MORE_DOCS);
+    assertEquals(expected, singlePass);
+
+    // Same range as adjacent width-1 windows must collect exactly the same docs.
+    FixedBitSet perDoc = new FixedBitSet(maxDoc);
+    BulkScorer scorer = newTwoPhaseScorer(maxDoc, matching);
+    LeafCollector collector = collectInto(perDoc);
+    for (int doc = 0; doc < maxDoc; doc++) {
+      scorer.score(collector, null, doc, doc + 1);
+    }
+    assertEquals(expected, perDoc);
+  }
+
+  /** A single dense two-phase clause using the default (unoverridden) {@code docIDRunEnd()}. */
+  private static BulkScorer newTwoPhaseScorer(int maxDoc, IntPredicate matching) {
+    TwoPhaseIterator twoPhase =
+        new TwoPhaseIterator(DocIdSetIterator.all(maxDoc)) {
+          @Override
+          public boolean matches() {
+            return matching.test(approximation().docID());
+          }
+
+          @Override
+          public float matchCost() {
+            return 1f;
+          }
+        };
+    return new DenseConjunctionBulkScorer(
+        Collections.emptyList(), Collections.singletonList(twoPhase), maxDoc, 0f);
+  }
+
+  /** A collector that records every collected doc, whichever collection path delivers it. */
+  private static LeafCollector collectInto(FixedBitSet bitSet) {
+    return new LeafCollector() {
+      @Override
+      public void setScorer(Scorable scorer) throws IOException {}
+
+      @Override
+      public void collect(int doc) throws IOException {
+        bitSet.set(doc);
+      }
+
+      @Override
+      public void collect(DocIdStream stream) throws IOException {
+        stream.forEach(bitSet::set);
+      }
+    };
+  }
+
   private static class CountingLeafCollector implements LeafCollector {
 
     int count;
@@ -1067,6 +1143,91 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
     assertEquals(30_000, collector.count);
   }
 
+  /**
+   * When two two-phase clauses tie on approximation cost, the scorer must still confirm the clause
+   * with the cheaper {@link TwoPhaseIterator#matchCost()} first, so that it thins out candidates
+   * before the more expensive confirmation runs. The clauses are passed to the constructor with the
+   * expensive one first, so any observed ordering comes purely from the {@code matchCost}
+   * tie-break.
+   */
+  public void testTwoPhaseIteratorsOrderedByMatchCost() throws IOException {
+    int maxDoc = 100_000;
+
+    // A plain (non-two-phase) leading clause that matches every other doc.
+    FixedBitSet leadMatches = new FixedBitSet(maxDoc);
+    for (int i = 0; i < maxDoc; i += 2) {
+      leadMatches.set(i);
+    }
+    DocIdSetIterator lead = new BitSetIterator(leadMatches, leadMatches.approximateCardinality());
+
+    int[] cheapCalls = {0};
+    int[] expensiveCalls = {0};
+
+    // Cheap to confirm, and selective: only matches 1 in 8 candidates.
+    TwoPhaseIterator cheap =
+        new TwoPhaseIterator(DocIdSetIterator.all(maxDoc)) {
+          @Override
+          public boolean matches() throws IOException {
+            cheapCalls[0]++;
+            return approximation().docID() % 8 == 0;
+          }
+
+          @Override
+          public float matchCost() {
+            return 1f;
+          }
+        };
+    // Expensive to confirm, and matches everything it's asked about.
+    TwoPhaseIterator expensive =
+        new TwoPhaseIterator(DocIdSetIterator.all(maxDoc)) {
+          @Override
+          public boolean matches() throws IOException {
+            expensiveCalls[0]++;
+            return true;
+          }
+
+          @Override
+          public float matchCost() {
+            return 1000f;
+          }
+        };
+
+    BulkScorer scorer =
+        new DenseConjunctionBulkScorer(
+            Collections.singletonList(lead), Arrays.asList(expensive, cheap), maxDoc, 0f);
+    FixedBitSet result = new FixedBitSet(maxDoc);
+    scorer.score(
+        new LeafCollector() {
+          @Override
+          public void setScorer(Scorable scorer) throws IOException {}
+
+          @Override
+          public void collect(int doc) throws IOException {
+            result.set(doc);
+          }
+        },
+        null,
+        0,
+        DocIdSetIterator.NO_MORE_DOCS);
+
+    FixedBitSet expected = new FixedBitSet(maxDoc);
+    for (int i = 0; i < maxDoc; i += 8) {
+      expected.set(i);
+    }
+    assertEquals(expected, result);
+
+    // The cheap clause runs first and thins out the candidate set, so the expensive clause -- even
+    // though it matches every candidate it's asked about -- gets confirmed less often. Without the
+    // matchCost tie-break, both clauses tie on approximation cost and the expensive one would be
+    // confirmed just as often as the cheap one.
+    assertTrue(
+        "expensive matchCost clause should be confirmed less often than the cheap one: cheap="
+            + cheapCalls[0]
+            + " expensive="
+            + expensiveCalls[0],
+        expensiveCalls[0] < cheapCalls[0]);
+  }
+
   public void testMixedTwoPhaseRangeIntersection() throws IOException {
     int maxDoc = 100_000;
     DocIdSetIterator clause1 = DocIdSetIterator.range(10_000, 60_000);
@@ -1233,5 +1394,122 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
     CountingLeafCollector collector = new CountingLeafCollector();
     scorer.score(collector, null, 0, DocIdSetIterator.NO_MORE_DOCS);
     assertEquals(expected.cardinality(), collector.count);
+  }
+
+  public void testLongRunWithLiveDocsIsScannedOnce() throws IOException {
+    int maxDoc = 1 << 20;
+    ScanCountingBitSet clause = new ScanCountingBitSet(maxDoc);
+    clause.in.set(0, maxDoc);
+    FixedBitSet acceptDocs = new FixedBitSet(maxDoc);
+    acceptDocs.set(0, maxDoc);
+    acceptDocs.clear(maxDoc / 2);
+    BulkScorer scorer =
+        new DenseConjunctionBulkScorer(
+            Collections.singletonList(new BitSetIterator(clause, maxDoc)),
+            Collections.emptyList(),
+            maxDoc,
+            0f);
+    CountingLeafCollector collector = new CountingLeafCollector();
+    scorer.score(collector, acceptDocs, 0, DocIdSetIterator.NO_MORE_DOCS);
+    assertEquals(maxDoc - 1, collector.count);
+    // Windows are WINDOW_SIZE docs because of deleted docs, the run must not be rescanned for
+    // every window.
+    assertTrue("scanned " + clause.scannedBits + " bits", clause.scannedBits <= 2L * maxDoc);
+  }
+
+  public void testLongRunWithSparseClauseIsScannedOnce() throws IOException {
+    int maxDoc = 1 << 20;
+    ScanCountingBitSet clause1 = new ScanCountingBitSet(maxDoc);
+    clause1.in.set(0, maxDoc);
+    FixedBitSet clause2 = new FixedBitSet(maxDoc);
+    for (int i = 0; i < maxDoc; i += 2) {
+      clause2.set(i);
+    }
+    BulkScorer scorer =
+        new DenseConjunctionBulkScorer(
+            Arrays.asList(
+                new BitSetIterator(clause1, maxDoc),
+                new BitSetIterator(clause2, clause2.cardinality())),
+            Collections.emptyList(),
+            maxDoc,
+            0f);
+    CountingLeafCollector collector = new CountingLeafCollector();
+    scorer.score(collector, null, 0, DocIdSetIterator.NO_MORE_DOCS);
+    assertEquals(maxDoc / 2, collector.count);
+    // Windows are WINDOW_SIZE docs because clause2 has no long runs, the run of clause1 must not
+    // be rescanned for every window.
+    assertTrue("scanned " + clause1.scannedBits + " bits", clause1.scannedBits <= 2L * maxDoc);
+  }
+
+  /** A {@link BitSet} that counts how many bits {@link #nextClearBit(int, int)} scans. */
+  private static class ScanCountingBitSet extends BitSet {
+    final FixedBitSet in;
+    long scannedBits;
+
+    ScanCountingBitSet(int length) {
+      in = new FixedBitSet(length);
+    }
+
+    @Override
+    public int nextClearBit(int start, int upperBound) {
+      int res = in.nextClearBit(start, upperBound);
+      scannedBits += (res == DocIdSetIterator.NO_MORE_DOCS ? upperBound : res + 1) - start;
+      return res;
+    }
+
+    @Override
+    public void set(int i) {
+      in.set(i);
+    }
+
+    @Override
+    public boolean getAndSet(int i) {
+      return in.getAndSet(i);
+    }
+
+    @Override
+    public void clear(int i) {
+      in.clear(i);
+    }
+
+    @Override
+    public void clear(int startIndex, int endIndex) {
+      in.clear(startIndex, endIndex);
+    }
+
+    @Override
+    public int cardinality() {
+      return in.cardinality();
+    }
+
+    @Override
+    public int approximateCardinality() {
+      return in.approximateCardinality();
+    }
+
+    @Override
+    public int prevSetBit(int index) {
+      return in.prevSetBit(index);
+    }
+
+    @Override
+    public int nextSetBit(int start, int end) {
+      return in.nextSetBit(start, end);
+    }
+
+    @Override
+    public boolean get(int index) {
+      return in.get(index);
+    }
+
+    @Override
+    public int length() {
+      return in.length();
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      return in.ramBytesUsed();
+    }
   }
 }

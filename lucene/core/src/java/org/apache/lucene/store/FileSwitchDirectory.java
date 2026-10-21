@@ -238,6 +238,12 @@ public class FileSwitchDirectory extends Directory {
   }
 
   @Override
+  public void copyFrom(Directory from, String src, String dest, IOContext context)
+      throws IOException {
+    getDirectory(dest).copyFrom(from, src, dest, context);
+  }
+
+  @Override
   public Set<String> getPendingDeletions() throws IOException {
     Set<String> primaryDeletions = primaryDir.getPendingDeletions();
     Set<String> secondaryDeletions = secondaryDir.getPendingDeletions();

@@ -35,6 +35,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BoostQuery;
+import org.apache.lucene.search.DoubleValues;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
@@ -42,6 +43,8 @@ import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.Weight;
@@ -377,5 +380,339 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
       weightCount += weight.count(leafReaderContext);
     }
     assertEquals(searchCount, weightCount);
+  }
+
+  public void testMaxScoreDelegationWithDocValuesSkipper() throws Exception {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig conf = newIndexWriterConfig();
+      try (IndexWriter indexWriter = new IndexWriter(dir, conf)) {
+        for (int i = 1; i <= 500; i++) {
+          Document doc = new Document();
+          doc.add(new TextField(TEXT_FIELD, "test doc", Field.Store.NO));
+          doc.add(new NumericDocValuesField("val", i * 10));
+          indexWriter.addDocument(doc);
+        }
+        indexWriter.commit();
+      }
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        DoubleValuesSource valueSource = DoubleValuesSource.fromLongField("val");
+        Query q = new FunctionScoreQuery(new TermQuery(new Term(TEXT_FIELD, "test")), valueSource);
+
+        Weight weight = searcher.createWeight(q, ScoreMode.TOP_SCORES, 1f);
+        LeafReaderContext ctx = reader.leaves().get(0);
+        var scorerSupplier = weight.scorerSupplier(ctx);
+        assertNotNull(scorerSupplier);
+        var scorer = scorerSupplier.get(Long.MAX_VALUE);
+        assertNotNull(scorer);
+
+        int maxDoc = ctx.reader().maxDoc();
+        int shallowEnd = scorer.advanceShallow(0);
+        assertTrue(shallowEnd >= 0);
+
+        float maxScore = scorer.getMaxScore(maxDoc);
+        if (ctx.reader().getDocValuesSkipper("val") != null) {
+          assertFalse(Float.isInfinite(maxScore));
+          assertTrue(maxScore >= 5000f);
+        } else {
+          assertTrue(Float.isInfinite(maxScore));
+        }
+      }
+    }
+  }
+
+  public void testMaxScorePruningTopDocs() throws Exception {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig conf = newIndexWriterConfig();
+      try (IndexWriter indexWriter = new IndexWriter(dir, conf)) {
+        for (int i = 1; i <= 200; i++) {
+          Document doc = new Document();
+          doc.add(new TextField(TEXT_FIELD, "prune search", Field.Store.NO));
+          doc.add(new NumericDocValuesField("score_val", i));
+          indexWriter.addDocument(doc);
+        }
+        indexWriter.commit();
+      }
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        Query baseQuery = new TermQuery(new Term(TEXT_FIELD, "prune"));
+        DoubleValuesSource valSource = DoubleValuesSource.fromLongField("score_val");
+        Query scriptQuery = new FunctionScoreQuery(baseQuery, valSource);
+
+        TopDocs topDocs = searcher.search(scriptQuery, 5);
+        assertEquals(5, topDocs.scoreDocs.length);
+        // Highest numeric values (200, 199, 198, 197, 196) must be returned
+        assertTrue(topDocs.scoreDocs[0].score >= 196f);
+      }
+    }
+  }
+
+  public void testMaxScoreMonotonicDecreasingFunction() throws Exception {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig conf = newIndexWriterConfig();
+      try (IndexWriter indexWriter = new IndexWriter(dir, conf)) {
+        for (int i = 1; i <= 100; i++) {
+          Document doc = new Document();
+          doc.add(new TextField(TEXT_FIELD, "decreasing", Field.Store.NO));
+          doc.add(new NumericDocValuesField("val", i * 10)); // 10..1000
+          indexWriter.addDocument(doc);
+        }
+        indexWriter.commit();
+      }
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        Query baseQuery = new TermQuery(new Term(TEXT_FIELD, "decreasing"));
+        // Monotonically decreasing function: f(x) = 10000.0 / x (Monotonicity.DECREASING)
+        DoubleValuesSource valSource =
+            DoubleValuesSource.fromField(
+                "val", (v) -> 10000.0 / v, DoubleValuesSource.Monotonicity.DECREASING);
+        Query scriptQuery = new FunctionScoreQuery(baseQuery, valSource);
+
+        LeafReaderContext ctx = reader.leaves().get(0);
+        Weight weight = scriptQuery.createWeight(searcher, ScoreMode.TOP_SCORES, 1f);
+        ScorerSupplier supplier = weight.scorerSupplier(ctx);
+        assertNotNull(supplier);
+        Scorer scorer = supplier.get(Long.MAX_VALUE);
+
+        int maxDoc = ctx.reader().maxDoc();
+        scorer.advanceShallow(0);
+        float maxScore = scorer.getMaxScore(maxDoc);
+
+        if (ctx.reader().getDocValuesSkipper("val") != null) {
+          // Minimum raw value (10) produces max score: 10000 / 10 = 1000.0
+          assertFalse(Float.isInfinite(maxScore));
+          assertTrue("Expected maxScore >= 1000f but got " + maxScore, maxScore >= 1000f);
+        }
+      }
+    }
+  }
+
+  public void testCustomHomemadeIncreasingAndDecreasingFunction() throws Exception {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig conf = newIndexWriterConfig();
+      try (IndexWriter indexWriter = new IndexWriter(dir, conf)) {
+        for (int i = 1; i <= 100; i++) {
+          Document doc = new Document();
+          doc.add(new TextField(TEXT_FIELD, "custom test", Field.Store.NO));
+          doc.add(new NumericDocValuesField("val", i * 5)); // 5..500
+          indexWriter.addDocument(doc);
+        }
+        indexWriter.commit();
+      }
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        Query baseQuery = new TermQuery(new Term(TEXT_FIELD, "custom"));
+
+        // Homemade custom DoubleValuesSource class: f(x) = sqrt(x) [Increasing]
+        DoubleValuesSource customIncreasing =
+            new DoubleValuesSource() {
+              @Override
+              public DoubleValues getValues(LeafReaderContext ctx, DoubleValues scores)
+                  throws IOException {
+                DoubleValues in = DoubleValuesSource.fromLongField("val").getValues(ctx, scores);
+                return new DoubleValues() {
+                  @Override
+                  public double doubleValue() throws IOException {
+                    return Math.sqrt(in.doubleValue());
+                  }
+
+                  @Override
+                  public boolean advanceExact(int doc) throws IOException {
+                    return in.advanceExact(doc);
+                  }
+
+                  @Override
+                  public int advanceShallow(int target) throws IOException {
+                    return in.advanceShallow(target);
+                  }
+
+                  @Override
+                  public float getMaxScore(int upTo) throws IOException {
+                    float innerMax = in.getMaxScore(upTo);
+                    return Float.isInfinite(innerMax)
+                        ? Float.POSITIVE_INFINITY
+                        : (float) Math.sqrt(innerMax);
+                  }
+                };
+              }
+
+              @Override
+              public boolean needsScores() {
+                return false;
+              }
+
+              @Override
+              public boolean isCacheable(LeafReaderContext ctx) {
+                return true;
+              }
+
+              @Override
+              public DoubleValuesSource rewrite(IndexSearcher searcher) {
+                return this;
+              }
+
+              @Override
+              public boolean equals(Object o) {
+                return o == this;
+              }
+
+              @Override
+              public int hashCode() {
+                return System.identityHashCode(this);
+              }
+
+              @Override
+              public String toString() {
+                return "customSqrt(val)";
+              }
+            };
+
+        Query q = new FunctionScoreQuery(baseQuery, customIncreasing);
+        LeafReaderContext ctx = reader.leaves().get(0);
+        Weight weight = q.createWeight(searcher, ScoreMode.TOP_SCORES, 1f);
+        ScorerSupplier supplier = weight.scorerSupplier(ctx);
+        assertNotNull(supplier);
+        Scorer scorer = supplier.get(Long.MAX_VALUE);
+        scorer.advanceShallow(0);
+        float maxScore = scorer.getMaxScore(ctx.reader().maxDoc());
+
+        if (ctx.reader().getDocValuesSkipper("val") != null) {
+          // Raw max is 500, sqrt(500) ~ 22.36
+          assertFalse(Float.isInfinite(maxScore));
+          assertTrue(maxScore >= 22.3f);
+        }
+      }
+    }
+  }
+
+  public void testMaxScoreNonMonotonicFunction() throws Exception {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig conf = newIndexWriterConfig();
+      try (IndexWriter indexWriter = new IndexWriter(dir, conf)) {
+        for (int i = 1; i <= 100; i++) {
+          Document doc = new Document();
+          doc.add(new TextField(TEXT_FIELD, "nonmonotonic", Field.Store.NO));
+          doc.add(new NumericDocValuesField("val", i * 10));
+          indexWriter.addDocument(doc);
+        }
+        indexWriter.commit();
+      }
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        Query baseQuery = new TermQuery(new Term(TEXT_FIELD, "nonmonotonic"));
+
+        // A non-monotonic function (neither increasing nor decreasing)
+        // specifying Monotonicity.NONE
+        DoubleValuesSource valSource =
+            DoubleValuesSource.fromField(
+                "val", (v) -> Math.sin((double) v), DoubleValuesSource.Monotonicity.NONE);
+        Query scriptQuery = new FunctionScoreQuery(baseQuery, valSource);
+
+        LeafReaderContext ctx = reader.leaves().get(0);
+        Weight weight = scriptQuery.createWeight(searcher, ScoreMode.TOP_SCORES, 1f);
+        ScorerSupplier supplier = weight.scorerSupplier(ctx);
+        assertNotNull(supplier);
+        Scorer scorer = supplier.get(Long.MAX_VALUE);
+
+        int maxDoc = ctx.reader().maxDoc();
+        scorer.advanceShallow(0);
+        float maxScore = scorer.getMaxScore(maxDoc);
+
+        // Since the function is neither increasing nor decreasing (Monotonicity.NONE),
+        // we cannot compute a tight block-level max score bound using the skipper.
+        // Therefore, it must return Float.POSITIVE_INFINITY, meaning the doc block
+        // cannot be pruned or skipped.
+        assertEquals(Float.POSITIVE_INFINITY, maxScore, 0f);
+      }
+    }
+  }
+
+  public void testConstantLambdaMonotonicity() throws Exception {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig conf = newIndexWriterConfig();
+      try (IndexWriter indexWriter = new IndexWriter(dir, conf)) {
+        for (int i = 1; i <= 100; i++) {
+          Document doc = new Document();
+          doc.add(new TextField(TEXT_FIELD, "constant test", Field.Store.NO));
+          doc.add(new NumericDocValuesField("val", i * 10));
+          indexWriter.addDocument(doc);
+        }
+        indexWriter.commit();
+      }
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        Query baseQuery = new TermQuery(new Term(TEXT_FIELD, "constant"));
+
+        // Create the three value sources with different monotonicity settings,
+        // all using the same constant lambda function: f(v) = 5.0
+        DoubleValuesSource sourceIncreasing =
+            DoubleValuesSource.fromField(
+                "val", (_) -> 5.0, DoubleValuesSource.Monotonicity.INCREASING);
+        DoubleValuesSource sourceDecreasing =
+            DoubleValuesSource.fromField(
+                "val", (_) -> 5.0, DoubleValuesSource.Monotonicity.DECREASING);
+        DoubleValuesSource sourceNone =
+            DoubleValuesSource.fromField("val", (_) -> 5.0, DoubleValuesSource.Monotonicity.NONE);
+
+        Query qIncreasing = new FunctionScoreQuery(baseQuery, sourceIncreasing);
+        Query qDecreasing = new FunctionScoreQuery(baseQuery, sourceDecreasing);
+        Query qNone = new FunctionScoreQuery(baseQuery, sourceNone);
+
+        // 1. Verify that all three queries produce the exact same top docs and scores
+        TopDocs tdIncreasing = searcher.search(qIncreasing, 10);
+        TopDocs tdDecreasing = searcher.search(qDecreasing, 10);
+        TopDocs tdNone = searcher.search(qNone, 10);
+
+        assertEquals(tdIncreasing.totalHits.value(), tdDecreasing.totalHits.value());
+        assertEquals(tdIncreasing.totalHits.value(), tdNone.totalHits.value());
+        assertEquals(tdIncreasing.scoreDocs.length, tdDecreasing.scoreDocs.length);
+        assertEquals(tdIncreasing.scoreDocs.length, tdNone.scoreDocs.length);
+
+        for (int i = 0; i < tdIncreasing.scoreDocs.length; i++) {
+          assertEquals(tdIncreasing.scoreDocs[i].doc, tdDecreasing.scoreDocs[i].doc);
+          assertEquals(tdIncreasing.scoreDocs[i].doc, tdNone.scoreDocs[i].doc);
+          assertEquals(tdIncreasing.scoreDocs[i].score, tdDecreasing.scoreDocs[i].score, 1e-5f);
+          assertEquals(tdIncreasing.scoreDocs[i].score, tdNone.scoreDocs[i].score, 1e-5f);
+        }
+
+        // 2. Verify that they calculate appropriate maxScore bounds
+        LeafReaderContext ctx = reader.leaves().get(0);
+
+        // INCREASING
+        Weight wInc = qIncreasing.createWeight(searcher, ScoreMode.TOP_SCORES, 1f);
+        Scorer scorerInc = wInc.scorerSupplier(ctx).get(Long.MAX_VALUE);
+        scorerInc.advanceShallow(0);
+        float maxScoreInc = scorerInc.getMaxScore(ctx.reader().maxDoc());
+
+        // DECREASING
+        Weight wDec = qDecreasing.createWeight(searcher, ScoreMode.TOP_SCORES, 1f);
+        Scorer scorerDec = wDec.scorerSupplier(ctx).get(Long.MAX_VALUE);
+        scorerDec.advanceShallow(0);
+        float maxScoreDec = scorerDec.getMaxScore(ctx.reader().maxDoc());
+
+        // NONE
+        Weight wNone = qNone.createWeight(searcher, ScoreMode.TOP_SCORES, 1f);
+        Scorer scorerNone = wNone.scorerSupplier(ctx).get(Long.MAX_VALUE);
+        scorerNone.advanceShallow(0);
+        float maxScoreNone = scorerNone.getMaxScore(ctx.reader().maxDoc());
+
+        if (ctx.reader().getDocValuesSkipper("val") != null) {
+          // If skipper exists, INCREASING and DECREASING should compute a tight finite max score
+          // (5.0 * innerMaxScore)
+          assertFalse(Float.isInfinite(maxScoreInc));
+          assertFalse(Float.isInfinite(maxScoreDec));
+          assertEquals(maxScoreInc, maxScoreDec, 1e-5f);
+        }
+
+        // NONE must always return Float.POSITIVE_INFINITY
+        assertEquals(Float.POSITIVE_INFINITY, maxScoreNone, 0f);
+      }
+    }
   }
 }

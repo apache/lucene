@@ -137,6 +137,8 @@ repos:
           UV_PROJECT: dev-tools
           UV_FROZEN: "1"
         types: [ 'text' ]
+        # has a perf bug, does a separate walk for each file
+        pass_filenames: false
         require_serial: true
 
       - id: rumdl

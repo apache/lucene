@@ -40,6 +40,7 @@ import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.KnnByteVectorField;
+import org.apache.lucene.document.KnnFloat16VectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StoredValue;
@@ -658,11 +659,14 @@ final class IndexingChain implements Accountable {
       }
     } finally {
       if (hasHitAbortingException == false) {
-        // Finish each indexed field name seen in the document:
-        for (int i = 0; i < indexedFieldCount; i++) {
-          fields[i].finish(docID);
+        try {
+          // Finish each indexed field name seen in the document:
+          for (int i = 0; i < indexedFieldCount; i++) {
+            fields[i].finish(docID);
+          }
+        } finally {
+          finishStoredFields();
         }
-        finishStoredFields();
         // TODO: for broken docs, optimize termsHash.finishDocument
         try {
           termsHash.finishDocument(docID);
@@ -917,11 +921,14 @@ final class IndexingChain implements Accountable {
         }
       } finally {
         if (hasHitAbortingException == false) {
-          for (int i = 0; i < indexedFieldCount; i++) {
-            fields[i].finish(segDocID);
-          }
-          if (hasStored) {
-            finishStoredFields();
+          try {
+            for (int i = 0; i < indexedFieldCount; i++) {
+              fields[i].finish(segDocID);
+            }
+          } finally {
+            if (hasStored) {
+              finishStoredFields();
+            }
           }
           if (hasInverted) {
             try {
@@ -1253,24 +1260,12 @@ final class IndexingChain implements Accountable {
       throws IOException {
     final VectorEncoding encoding = fieldType.vectorEncoding();
     final int dimension = fieldType.vectorDimension();
+    final VectorSimilarityFunction similarityFunction = fieldType.vectorSimilarityFunction();
     final ObjectTupleCursor<?> cursor = column.tuples();
     int prevBatchDocID = -1;
     int consumed = 0;
     int batchDocID;
     switch (encoding) {
-      case FLOAT32 -> {
-        KnnFieldVectorsWriter<float[]> writer =
-            (KnnFieldVectorsWriter<float[]>) pf.knnFieldVectorsWriter;
-        while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-          ColumnValidation.checkDocID(column, batchDocID, numDocs);
-          ColumnValidation.checkVectorDocIDStrictlyIncreasing(column, batchDocID, prevBatchDocID);
-          float[] vec = (float[]) cursor.value();
-          ColumnValidation.checkVectorDimension(column, vec.length, dimension, batchDocID);
-          writer.addValue(baseDocID + batchDocID, vec);
-          prevBatchDocID = batchDocID;
-          consumed++;
-        }
-      }
       case BYTE -> {
         KnnFieldVectorsWriter<byte[]> writer =
             (KnnFieldVectorsWriter<byte[]>) pf.knnFieldVectorsWriter;
@@ -1279,6 +1274,35 @@ final class IndexingChain implements Accountable {
           ColumnValidation.checkVectorDocIDStrictlyIncreasing(column, batchDocID, prevBatchDocID);
           byte[] vec = (byte[]) cursor.value();
           ColumnValidation.checkVectorDimension(column, vec.length, dimension, batchDocID);
+          ColumnValidation.checkByteVectorValue(column, vec, similarityFunction, batchDocID);
+          writer.addValue(baseDocID + batchDocID, vec);
+          prevBatchDocID = batchDocID;
+          consumed++;
+        }
+      }
+      case FLOAT16 -> {
+        KnnFieldVectorsWriter<short[]> writer =
+            (KnnFieldVectorsWriter<short[]>) pf.knnFieldVectorsWriter;
+        while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+          ColumnValidation.checkDocID(column, batchDocID, numDocs);
+          ColumnValidation.checkVectorDocIDStrictlyIncreasing(column, batchDocID, prevBatchDocID);
+          short[] vec = (short[]) cursor.value();
+          ColumnValidation.checkVectorDimension(column, vec.length, dimension, batchDocID);
+          ColumnValidation.checkFloat16VectorValue(column, vec, similarityFunction, batchDocID);
+          writer.addValue(baseDocID + batchDocID, vec);
+          prevBatchDocID = batchDocID;
+          consumed++;
+        }
+      }
+      case FLOAT32 -> {
+        KnnFieldVectorsWriter<float[]> writer =
+            (KnnFieldVectorsWriter<float[]>) pf.knnFieldVectorsWriter;
+        while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+          ColumnValidation.checkDocID(column, batchDocID, numDocs);
+          ColumnValidation.checkVectorDocIDStrictlyIncreasing(column, batchDocID, prevBatchDocID);
+          float[] vec = (float[]) cursor.value();
+          ColumnValidation.checkVectorDimension(column, vec.length, dimension, batchDocID);
+          ColumnValidation.checkFloatVectorValue(column, vec, similarityFunction, batchDocID);
           writer.addValue(baseDocID + batchDocID, vec);
           prevBatchDocID = batchDocID;
           consumed++;
@@ -1690,6 +1714,9 @@ final class IndexingChain implements Accountable {
       case BYTE ->
           ((KnnFieldVectorsWriter<byte[]>) pf.knnFieldVectorsWriter)
               .addValue(docID, ((KnnByteVectorField) field).vectorValue());
+      case FLOAT16 ->
+          ((KnnFieldVectorsWriter<short[]>) pf.knnFieldVectorsWriter)
+              .addValue(docID, ((KnnFloat16VectorField) field).vectorValue());
       case FLOAT32 ->
           ((KnnFieldVectorsWriter<float[]>) pf.knnFieldVectorsWriter)
               .addValue(docID, ((KnnFloatVectorField) field).vectorValue());

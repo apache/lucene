@@ -83,7 +83,9 @@ public class RenderJavadocPlugin extends LuceneGradlePlugin {
         getProjectRootPath(project).resolve("gradle/documentation/render-javadoc").toFile();
 
     var missingdocletConfiguration = project.getConfigurations().create("missingdoclet");
-    project.getDependencies().add("missingdoclet", project.project(":build-tools:missing-doclet"));
+    var dependencies = project.getDependencies();
+    dependencies.add(
+        "missingdoclet", dependencies.project(Map.of("path", ":build-tools:missing-doclet")));
 
     TaskContainer tasks = project.getTasks();
     var renderJavadoc =

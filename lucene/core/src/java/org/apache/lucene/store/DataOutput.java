@@ -327,24 +327,6 @@ public abstract class DataOutput {
 
   /**
    * Encode integers using group-varint. It uses {@link DataOutput#writeVInt VInt} to encode tail
-   * values that are not enough for a group. we need a long[] because this is what postings are
-   * using, all longs are actually required to be integers.
-   *
-   * @param values the values to write
-   * @param limit the number of values to write.
-   * @lucene.experimental
-   * @deprecated This method is preserved only for backwards codecs
-   */
-  @Deprecated
-  public void writeGroupVInts(long[] values, int limit) throws IOException {
-    if (groupVIntBytes == null) {
-      groupVIntBytes = new byte[GroupVIntUtil.MAX_LENGTH_PER_GROUP];
-    }
-    GroupVIntUtil.writeGroupVInts(this, groupVIntBytes, values, limit);
-  }
-
-  /**
-   * Encode integers using group-varint. It uses {@link DataOutput#writeVInt VInt} to encode tail
    * values that are not enough for a group.
    *
    * @param values the values to write

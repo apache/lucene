@@ -36,6 +36,7 @@ import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.mutable.MutableValueStr;
 
@@ -216,6 +217,48 @@ public class TestGroupingSearch extends AbstractGroupingTestCase {
     }
 
     return groupingSearch;
+  }
+
+  public void testEmptyTopSearchGroups() throws Exception {
+    final String groupField = "author";
+
+    Shard shard = new Shard();
+    RandomIndexWriter w = shard.writer;
+
+    Document doc = new Document();
+    doc.add(new TextField(groupField, "author1", Field.Store.YES));
+    doc.add(new SortedDocValuesField(groupField, new BytesRef("author1")));
+    doc.add(new TextField("content", "hello world", Field.Store.YES));
+    w.addDocument(doc);
+
+    IndexSearcher indexSearcher = shard.getIndexSearcher();
+    w.close();
+
+    GroupingSearch gs = new GroupingSearch(groupField);
+    gs.setGroupDocsLimit(5);
+    gs.setAllGroups(true);
+    gs.setAllGroupHeads(true);
+    TopGroups<?> groups =
+        gs.search(indexSearcher, new TermQuery(new Term("content", "hello")), 10, 10);
+
+    assertNotNull(groups);
+    assertEquals(0, groups.totalHitCount);
+    assertEquals(0, groups.groups.length);
+
+    assertNotNull(
+        "getAllMatchingGroups() should not be null when no groups are found",
+        gs.getAllMatchingGroups());
+    assertEquals(1, gs.getAllMatchingGroups().size());
+
+    assertNotNull(
+        "getAllGroupHeads() should not be null when no groups are found", gs.getAllGroupHeads());
+    int count = 0;
+    Bits bits = gs.getAllGroupHeads();
+    for (int i = 0; i < bits.length(); i++) {
+      if (bits.get(i)) count++;
+    }
+    assertEquals(1, count);
+    shard.close();
   }
 
   public void testSetAllGroups() throws Exception {

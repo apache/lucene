@@ -131,11 +131,17 @@ public class FilteredHnswGraphSearcher extends HnswGraphSearcher {
     // A bound that holds the minimum similarity to the query vector that a candidate vector must
     // have to be considered.
     float minAcceptedSimilarity = Math.nextUp(results.minCompetitiveSimilarity());
+    // Allow one candidate equivalent to the current minimum, matching HnswGraphSearcher.
+    boolean shouldExploreMinSim = true;
     while (candidates.size() > 0 && results.earlyTerminated() == false) {
       // get the best candidate (closest or best scoring)
       float topCandidateSimilarity = candidates.topScore();
-      if (minAcceptedSimilarity > topCandidateSimilarity) {
-        break;
+      if (topCandidateSimilarity < minAcceptedSimilarity) {
+        if (shouldExploreMinSim && Math.nextUp(topCandidateSimilarity) == minAcceptedSimilarity) {
+          shouldExploreMinSim = false;
+        } else {
+          break;
+        }
       }
       int topCandidateNode = candidates.pop();
       graph.seek(level, topCandidateNode);
@@ -197,15 +203,19 @@ public class FilteredHnswGraphSearcher extends HnswGraphSearcher {
               ? scorer.bulkScore(toScore.nodes, bulkScores, toScore.size)
               : Float.NEGATIVE_INFINITY;
       results.incVisitedCount(toScore.count());
-      if (maxScore > minAcceptedSimilarity) {
+      if (maxScore > results.minCompetitiveSimilarity()) {
         for (int i = 0; i < toScore.count(); i++) {
           int idx = i + toScore.upto;
           float friendSimilarity = bulkScores[idx];
-          if (friendSimilarity > minAcceptedSimilarity) {
+          if (friendSimilarity >= minAcceptedSimilarity) {
             int ord = toScore.nodes[idx];
             candidates.add(ord, friendSimilarity);
             if (results.collect(ord, friendSimilarity)) {
+              float oldMinAcceptedSimilarity = minAcceptedSimilarity;
               minAcceptedSimilarity = Math.nextUp(results.minCompetitiveSimilarity());
+              if (minAcceptedSimilarity > oldMinAcceptedSimilarity) {
+                shouldExploreMinSim = true;
+              }
             }
           }
         }

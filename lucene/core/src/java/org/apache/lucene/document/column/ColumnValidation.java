@@ -20,6 +20,8 @@ import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexableFieldType;
+import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.util.VectorUtil;
 
 /**
  * Static validation and bounds-checking helpers for the columnar indexing path. These helpers are
@@ -347,5 +349,88 @@ public final class ColumnValidation {
               + " at batch doc "
               + batchDocID);
     }
+  }
+
+  /**
+   * Throws if a float vector has a non-finite component, or is a zero vector while {@code
+   * similarityFunction} is {@link VectorSimilarityFunction#COSINE COSINE}. Mirrors the checks done
+   * by {@link org.apache.lucene.document.KnnFloatVectorField}.
+   */
+  public static void checkFloatVectorValue(
+      VectorColumn<?> column,
+      float[] vector,
+      VectorSimilarityFunction similarityFunction,
+      int batchDocID) {
+    boolean isZero = true;
+    for (int i = 0; i < vector.length; i++) {
+      if (Float.isFinite(vector[i]) == false) {
+        throw new IllegalArgumentException(
+            "VectorColumn \""
+                + column.name()
+                + "\" has non-finite value at vector["
+                + i
+                + "]="
+                + vector[i]
+                + " at batch doc "
+                + batchDocID);
+      }
+      isZero = isZero & (vector[i] == 0);
+    }
+    if (isZero && similarityFunction == VectorSimilarityFunction.COSINE) {
+      throw zeroCosineVector(column, batchDocID);
+    }
+  }
+
+  /**
+   * Throws if a byte vector is a zero vector while {@code similarityFunction} is {@link
+   * VectorSimilarityFunction#COSINE COSINE}. Mirrors the checks done by {@link
+   * org.apache.lucene.document.KnnByteVectorField}.
+   */
+  public static void checkByteVectorValue(
+      VectorColumn<?> column,
+      byte[] vector,
+      VectorSimilarityFunction similarityFunction,
+      int batchDocID) {
+    if (similarityFunction == VectorSimilarityFunction.COSINE && VectorUtil.isZeroVector(vector)) {
+      throw zeroCosineVector(column, batchDocID);
+    }
+  }
+
+  /**
+   * Throws if a float16 vector, encoded as {@code short[]}, has a non-finite component, or is a
+   * zero vector while {@code similarityFunction} is {@link VectorSimilarityFunction#COSINE COSINE}.
+   * Mirrors the checks done by {@link org.apache.lucene.document.KnnFloat16VectorField}.
+   */
+  public static void checkFloat16VectorValue(
+      VectorColumn<?> column,
+      short[] vector,
+      VectorSimilarityFunction similarityFunction,
+      int batchDocID) {
+    for (int i = 0; i < vector.length; i++) {
+      if ((vector[i] & 0x7C00) == 0x7C00) {
+        throw new IllegalArgumentException(
+            "VectorColumn \""
+                + column.name()
+                + "\" has non-finite float16 value at vector["
+                + i
+                + "]="
+                + Float.float16ToFloat(vector[i])
+                + " at batch doc "
+                + batchDocID);
+      }
+    }
+    if (similarityFunction == VectorSimilarityFunction.COSINE
+        && VectorUtil.isZeroVectorFloat16(vector)) {
+      throw zeroCosineVector(column, batchDocID);
+    }
+  }
+
+  private static IllegalArgumentException zeroCosineVector(VectorColumn<?> column, int batchDocID) {
+    return new IllegalArgumentException(
+        "VectorColumn \""
+            + column.name()
+            + "\" has a zero vector at batch doc "
+            + batchDocID
+            + ", which is not allowed with cosine similarity function");
   }
 }

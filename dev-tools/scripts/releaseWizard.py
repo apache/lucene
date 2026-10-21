@@ -1071,7 +1071,7 @@ def keys_downloaded() -> bool:
 def dump_yaml() -> None:
   file = open(os.path.join(script_path, "releaseWizard.yaml"), "w")
   yaml.add_representer(str, str_presenter)
-  yaml.Dumper.ignore_aliases = lambda self, data: True  # ty:ignore[invalid-assignment]
+  yaml.Dumper.ignore_aliases = lambda self, data: True
   dump_obj: dict[str, Any] = {"templates": templates, "groups": state.todo_groups}
   yaml.dump(dump_obj, width=180, stream=file, sort_keys=False, default_flow_style=False)
 
@@ -1879,7 +1879,7 @@ def create_ical(_todo: Todo) -> bool:
     c.events.add(e)
     ics_file = os.path.join(state.get_rc_folder(), "vote_end.ics")
     with open(ics_file, "w") as my_file:
-      my_file.writelines(iter(c))
+      my_file.writelines(c.__iter__())
     open_file(ics_file)
   return True
 

@@ -31,6 +31,7 @@ import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.MergePolicy;
@@ -178,6 +179,7 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
         switch (info.getVectorEncoding()) {
           case BYTE -> Byte.BYTES;
           case FLOAT32 -> Float.BYTES;
+          case FLOAT16 -> Short.BYTES;
         };
     long vectorBytes = Math.multiplyExact((long) dimension, byteSize);
     long numBytes = Math.multiplyExact(vectorBytes, fieldEntry.size);
@@ -271,6 +273,11 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
+  public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public void search(String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.FLOAT32);
@@ -308,6 +315,12 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
         vectorValues.getAcceptOrds(acceptDocs.bits()));
   }
 
+  @Override
+  public void search(String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
+    throw new UnsupportedOperationException();
+  }
+
   private HnswGraph getGraph(FieldEntry entry) throws IOException {
     IndexInput bytesSlice =
         vectorIndex.slice("graph-data", entry.vectorIndexOffset, entry.vectorIndexLength);
@@ -320,6 +333,11 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
     var raw = Map.entry(VECTOR_DATA_EXTENSION, entry.vectorDataLength);
     var graph = Map.entry(VECTOR_INDEX_EXTENSION, entry.vectorIndexLength);
     return Map.ofEntries(raw, graph);
+  }
+
+  @Override
+  public int getVectorCount(FieldInfo fieldInfo) {
+    return getFieldEntryOrThrow(fieldInfo.name).size();
   }
 
   @Override

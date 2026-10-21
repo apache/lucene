@@ -98,12 +98,20 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
   public abstract class NumericLeafComparator implements LeafFieldComparator {
     private final LeafReaderContext context;
     protected final NumericDocValues docValues;
-    private final CompetitiveDISIBuilder competitiveDISIBuilder;
+    private CompetitiveDISIBuilder competitiveDISIBuilder;
 
     public NumericLeafComparator(LeafReaderContext context) throws IOException {
       this.context = context;
       this.docValues = getNumericDocValues(context, field);
       this.competitiveDISIBuilder = buildCompetitiveDISIBuilder();
+    }
+
+    @Override
+    public void disableSkipping() {
+      // Drop the competitive iterator so this segment is scanned without skipping; the collector
+      // has determined the search sort is a prefix of this segment's index sort and will terminate
+      // early on its own.
+      this.competitiveDISIBuilder = null;
     }
 
     protected CompetitiveDISIBuilder buildCompetitiveDISIBuilder() throws IOException {

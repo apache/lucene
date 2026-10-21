@@ -29,6 +29,7 @@ import org.apache.lucene.internal.hppc.IntIntHashMap;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IORunnable;
 
 /** This merger merges graph in a concurrent manner, by using {@link HnswConcurrentMergeBuilder} */
 public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
@@ -46,7 +47,24 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
       int beamWidth,
       TaskExecutor taskExecutor,
       int numWorker) {
-    super(fieldInfo, scorerSupplier, M, beamWidth);
+    this(fieldInfo, scorerSupplier, M, beamWidth, taskExecutor, numWorker, null);
+  }
+
+  /**
+   * @param fieldInfo FieldInfo for the field being merged
+   * @param abortCheck optional check invoked before every node insertion during graph construction;
+   *     may throw {@link org.apache.lucene.index.MergePolicy.MergeAbortedException} to abort the
+   *     build when the surrounding merge has been aborted, or null
+   */
+  public ConcurrentHnswMerger(
+      FieldInfo fieldInfo,
+      RandomVectorScorerSupplier scorerSupplier,
+      int M,
+      int beamWidth,
+      TaskExecutor taskExecutor,
+      int numWorker,
+      IORunnable abortCheck) {
+    super(fieldInfo, scorerSupplier, M, beamWidth, abortCheck);
     this.taskExecutor = taskExecutor;
     this.numWorker = numWorker;
   }
@@ -56,6 +74,7 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
       throws IOException {
     OnHeapHnswGraph graph;
     BitSet initializedNodes = null;
+    InitializedHnswGraphBuilder.PrunedGraph prunedGraph = null;
 
     if (largestGraphReader == null) {
       graph = new OnHeapHnswGraph(M, maxOrd);
@@ -77,13 +96,20 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
                 initGraphSize,
                 mergedVectorValues,
                 initializedNodes);
-        graph =
-            InitializedHnswGraphBuilder.initGraph(
-                initializerGraph, oldToNewOrdinalMap, maxOrd, beamWidth, scorerSupplier);
+        InitializedHnswGraphBuilder.PrunedGraph result =
+            InitializedHnswGraphBuilder.pruneGraph(
+                scorerSupplier,
+                beamWidth,
+                initializerGraph,
+                oldToNewOrdinalMap,
+                maxOrd,
+                abortCheck);
+        graph = result.graph();
+        prunedGraph = result.hasDeletes() ? result : null;
       }
     }
     return new HnswConcurrentMergeBuilder(
-        taskExecutor, numWorker, scorerSupplier, beamWidth, graph, initializedNodes);
+        taskExecutor, numWorker, scorerSupplier, beamWidth, graph, initializedNodes, prunedGraph);
   }
 
   /**
@@ -107,6 +133,8 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
 
     switch (fieldInfo.getVectorEncoding()) {
       case BYTE -> initializerIterator = initReader.getByteVectorValues(fieldInfo.name).iterator();
+      case FLOAT16 ->
+          initializerIterator = initReader.getFloat16VectorValues(fieldInfo.name).iterator();
       case FLOAT32 ->
           initializerIterator = initReader.getFloatVectorValues(fieldInfo.name).iterator();
     }

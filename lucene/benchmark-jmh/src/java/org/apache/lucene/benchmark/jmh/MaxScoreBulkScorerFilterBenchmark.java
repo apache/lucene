@@ -77,7 +77,7 @@ public class MaxScoreBulkScorerFilterBenchmark {
   public int numClauses;
 
   /** Filter density: 1.0 = match-all, 0.8 = 80% dense */
-  @Param({"1.0", "0.8"})
+  @Param({"0.01", "0.05", "0.1", "0.2", "0.3", "0.8", "1.0"})
   public double filterDensity;
 
   private Directory dir;
@@ -96,7 +96,7 @@ public class MaxScoreBulkScorerFilterBenchmark {
         // so multiple clauses often match the same doc, forcing PQ activity.
         for (int t = 0; t < numClauses; t++) {
           int period = 7 + t * 11; // 7, 18, 29, 40, ... ~14% avg density
-          int offset = (t * 7919) % period;
+          int offset = (int) ((t * 7919L) % period);
           if ((i + offset) % period == 0) {
             doc.add(new TextField("text", "word" + t, Field.Store.NO));
           }
@@ -106,7 +106,7 @@ public class MaxScoreBulkScorerFilterBenchmark {
           doc.add(new StringField("filter", "yes", Field.Store.NO));
         } else {
           int filterThreshold = (int) (filterDensity * 1000);
-          if ((i * 7919) % 1000 < filterThreshold) {
+          if ((i * 7919L) % 1000 < filterThreshold) {
             doc.add(new StringField("filter", "yes", Field.Store.NO));
           } else {
             doc.add(new StringField("filter", "no", Field.Store.NO));

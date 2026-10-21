@@ -35,6 +35,7 @@ import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.MergePolicy;
@@ -57,6 +58,16 @@ final class FaissKnnVectorsReader extends KnnVectorsReader {
   private final IndexInput data;
   private final Map<String, FaissLibrary.Index> indexMap;
   private boolean closed;
+
+  /**
+   * Reads the same indexes as {@code reader}, with the raw vectors read by {@code
+   * rawVectorsReader}.
+   */
+  private FaissKnnVectorsReader(FaissKnnVectorsReader reader, FlatVectorsReader rawVectorsReader) {
+    this.rawVectorsReader = rawVectorsReader;
+    this.data = reader.data;
+    this.indexMap = reader.indexMap;
+  }
 
   public FaissKnnVectorsReader(SegmentReadState state, FlatVectorsReader rawVectorsReader)
       throws IOException {
@@ -169,6 +180,11 @@ final class FaissKnnVectorsReader extends KnnVectorsReader {
   }
 
   @Override
+  public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+    throw new UnsupportedOperationException("Float16 vectors not supported");
+  }
+
+  @Override
   public void search(
       String field, float[] vector, KnnCollector knnCollector, AcceptDocs acceptDocs) {
     FaissLibrary.Index index = indexMap.get(field);
@@ -186,9 +202,38 @@ final class FaissKnnVectorsReader extends KnnVectorsReader {
   }
 
   @Override
+  public void search(String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
+    throw new UnsupportedOperationException("Float16 vectors not supported");
+  }
+
+  @Override
   public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
     // TODO: How to estimate Faiss usage?
     return rawVectorsReader.getOffHeapByteSize(fieldInfo);
+  }
+
+  @Override
+  public int getVectorCount(FieldInfo fieldInfo) throws IOException {
+    return rawVectorsReader.getVectorCount(fieldInfo);
+  }
+
+  /**
+   * A merge rebuilds the index from the raw vectors, so it reads them the way the raw reader's
+   * merge instance does. The index itself is not read by a merge.
+   */
+  @Override
+  public KnnVectorsReader getMergeInstance() throws IOException {
+    FlatVectorsReader rawMergeInstance = rawVectorsReader.getMergeInstance();
+    if (rawMergeInstance == rawVectorsReader) {
+      return this;
+    }
+    return new FaissKnnVectorsReader(this, rawMergeInstance);
+  }
+
+  @Override
+  public void finishMerge() throws IOException {
+    rawVectorsReader.finishMerge();
   }
 
   @Override

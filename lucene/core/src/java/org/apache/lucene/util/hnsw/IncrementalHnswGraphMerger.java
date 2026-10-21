@@ -33,6 +33,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.InfoStream;
 
 /**
@@ -46,6 +47,7 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
   protected final RandomVectorScorerSupplier scorerSupplier;
   protected final int M;
   protected final int beamWidth;
+  protected final IORunnable abortCheck;
 
   protected List<GraphReader> graphReaders = new ArrayList<>();
   protected GraphReader largestGraphReader;
@@ -60,21 +62,44 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
    * <p>A value of 40 means that if more than 40% of the graph's original vectors have been deleted,
    * the graph will not be selected as the base.
    */
-  private final int DELETE_PCT_THRESHOLD = 40;
+  static final int DELETE_PCT_THRESHOLD = 40;
 
-  /** Represents a vector reader that contains graph info. */
+  /**
+   * Represents a vector reader that contains graph info.
+   *
+   * @param reader the vectors reader that provides the graph
+   * @param initDocMap maps the reader's doc IDs to doc IDs in the merged segment
+   * @param graphSize total number of nodes in the graph, including deleted ones
+   * @param liveVectorCount number of nodes in the graph whose documents are live
+   */
   protected record GraphReader(
-      KnnVectorsReader reader, MergeState.DocMap initDocMap, int graphSize) {}
+      KnnVectorsReader reader, MergeState.DocMap initDocMap, int graphSize, int liveVectorCount) {}
 
   /**
    * @param fieldInfo FieldInfo for the field being merged
    */
   public IncrementalHnswGraphMerger(
       FieldInfo fieldInfo, RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth) {
+    this(fieldInfo, scorerSupplier, M, beamWidth, null);
+  }
+
+  /**
+   * @param fieldInfo FieldInfo for the field being merged
+   * @param abortCheck optional check invoked before every node insertion during graph construction;
+   *     may throw {@link org.apache.lucene.index.MergePolicy.MergeAbortedException} to abort the
+   *     build when the surrounding merge has been aborted, or null
+   */
+  public IncrementalHnswGraphMerger(
+      FieldInfo fieldInfo,
+      RandomVectorScorerSupplier scorerSupplier,
+      int M,
+      int beamWidth,
+      IORunnable abortCheck) {
     this.fieldInfo = fieldInfo;
     this.scorerSupplier = scorerSupplier;
     this.M = M;
     this.beamWidth = beamWidth;
+    this.abortCheck = abortCheck;
   }
 
   /**
@@ -96,18 +121,20 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
     KnnVectorValues knnVectorValues =
         switch (fieldInfo.getVectorEncoding()) {
           case BYTE -> reader.getByteVectorValues(fieldInfo.name);
+          case FLOAT16 -> reader.getFloat16VectorValues(fieldInfo.name);
           case FLOAT32 -> reader.getFloatVectorValues(fieldInfo.name);
         };
 
     int candidateVectorCount = countLiveVectors(liveDocs, knnVectorValues);
     int graphSize = graph.size();
 
-    GraphReader graphReader = new GraphReader(reader, docMap, graphSize);
+    GraphReader graphReader = new GraphReader(reader, docMap, graphSize, candidateVectorCount);
 
     int deletePct = ((graphSize - candidateVectorCount) * 100) / graphSize;
 
     if (deletePct <= DELETE_PCT_THRESHOLD
-        && (largestGraphReader == null || candidateVectorCount > largestGraphReader.graphSize)) {
+        && (largestGraphReader == null
+            || candidateVectorCount > largestGraphReader.liveVectorCount)) {
       largestGraphReader = graphReader;
     }
 
@@ -158,7 +185,8 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
         graphs,
         ordMaps,
         maxOrd,
-        initializedNodes);
+        initializedNodes,
+        abortCheck);
   }
 
   protected final int[][] getNewOrdMapping(
@@ -171,6 +199,9 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
       switch (fieldInfo.getVectorEncoding()) {
         case BYTE ->
             vectorsIter = graphReaders.get(i).reader.getByteVectorValues(fieldInfo.name).iterator();
+        case FLOAT16 ->
+            vectorsIter =
+                graphReaders.get(i).reader.getFloat16VectorValues(fieldInfo.name).iterator();
         case FLOAT32 ->
             vectorsIter =
                 graphReaders.get(i).reader.getFloatVectorValues(fieldInfo.name).iterator();
@@ -211,6 +242,9 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
       KnnVectorValues mergedVectorValues, InfoStream infoStream, int maxOrd) throws IOException {
     HnswBuilder builder = createBuilder(mergedVectorValues, maxOrd);
     builder.setInfoStream(infoStream);
+    if (abortCheck != null) {
+      builder.setAbortCheck(abortCheck);
+    }
     return builder.build(maxOrd);
   }
 
