@@ -191,9 +191,9 @@ public abstract class FieldOffsetStrategy {
 
     CharsRefBuilder refBuilder = new CharsRefBuilder();
     while ((term = termsEnum.next()) != null) {
+      refBuilder.copyUTF8Bytes(term);
       for (int i = 0; i < automata.length; i++) {
         CharArrayMatcher automaton = automata[i];
-        refBuilder.copyUTF8Bytes(term);
         if (automaton.match(refBuilder.get())) {
           PostingsEnum postings = termsEnum.postings(null, PostingsEnum.OFFSETS);
           if (doc == postings.advance(doc)) {
