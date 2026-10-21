@@ -261,6 +261,10 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#13593: ConcurrentMergeScheduler could spawn more merge threads than maxMergeCount when a
+  merge became pending between the stall check and the queue pull. maybeStall now enforces the
+  thread cap unconditionally instead of only when the queue was non-empty at check time. (goingforstudying-ctrl)
+
 * GITHUB#16657: Fix hashCode/equals contract violation in LRUQueryCache's QueryCacheKey and account a
   cached query's RAM once per distinct query. (Sagar Upadhyaya)
 
