@@ -275,6 +275,19 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
 
   @Override
   public FloatVectorValues getFloatVectorValues(String field) throws IOException {
+    return loadFloatVectorValues(field, vectorData);
+  }
+
+  @Override
+  public FloatVectorValues getFloatVectorValues(String field, DataAccessHint access)
+      throws IOException {
+    IndexInput data =
+        access == DataAccessHint.SEQUENTIAL ? original.sequentialVectorData() : vectorData;
+    return loadFloatVectorValues(field, data);
+  }
+
+  private FloatVectorValues loadFloatVectorValues(String field, IndexInput data)
+      throws IOException {
     final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.FLOAT32);
     return OffHeapFloatVectorValues.load(
         fieldEntry.similarityFunction,
@@ -284,7 +297,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
         fieldEntry.dimension,
         fieldEntry.vectorDataOffset,
         fieldEntry.vectorDataLength,
-        vectorData);
+        data);
   }
 
   @Override

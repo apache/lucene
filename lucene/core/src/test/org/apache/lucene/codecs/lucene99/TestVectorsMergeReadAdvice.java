@@ -362,6 +362,55 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
     assertTrue("closed with the reader: " + opens, mapped.get(0).closed());
   }
 
+  public void testSequentialValuesReadTheMergeInput() throws Exception {
+    assertSequentialValuesReadTheMergeInput(new Lucene99HnswVectorsFormat());
+  }
+
+  public void testQuantizedSequentialValuesReadTheMergeInput() throws Exception {
+    assertSequentialValuesReadTheMergeInput(new Lucene104HnswScalarQuantizedVectorsFormat());
+  }
+
+  /** Sequential values read through the input merges use; values read at random do not. */
+  private static void assertSequentialValuesReadTheMergeInput(KnnVectorsFormat format)
+      throws Exception {
+    Opens opens = new Opens();
+    List<Open> mapped;
+    try (Directory dir = new RecordingDirectory(newDirectory(), opens)) {
+      IndexWriterConfig iwc = new IndexWriterConfig();
+      iwc.setCodec(TestUtil.alwaysKnnVectorsFormat(format));
+      iwc.setUseCompoundFile(false);
+      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+        for (int i = 0; i < 16; i++) {
+          Document doc = new Document();
+          doc.add(new KnnFloatVectorField("field", vector(), VectorSimilarityFunction.DOT_PRODUCT));
+          w.addDocument(doc);
+        }
+        w.commit();
+      }
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        KnnVectorsReader vectors = ((CodecReader) getOnlyLeafReader(reader)).getVectorReader();
+        opens.clear();
+
+        FloatVectorValues random = vectors.getFloatVectorValues("field", DataAccessHint.RANDOM);
+        assertEquals(
+            "nothing opened for random reads: " + opens, List.of(), sequentialOpens(opens));
+
+        FloatVectorValues sequential =
+            vectors.getFloatVectorValues("field", DataAccessHint.SEQUENTIAL);
+        mapped = sequentialOpens(opens);
+        assertEquals("one input for sequential reads: " + opens, 1, mapped.size());
+        assertEquals(random.size(), sequential.size());
+        for (int ord = 0; ord < random.size(); ord++) {
+          assertArrayEquals(random.vectorValue(ord), sequential.vectorValue(ord), 0f);
+        }
+
+        vectors.unwrapReaderForField("field").getMergeInstance().finishMerge();
+        assertEquals("merges share it: " + opens, 1, sequentialOpens(opens).size());
+      }
+    }
+    assertTrue("closed with the reader: " + opens, mapped.get(0).closed());
+  }
+
   /**
    * Fields sharing a reader each ask it for a merge instance, so one segment has several merge
    * instances at once. They share one mapping, each through a clone of its own.
