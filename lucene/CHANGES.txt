@@ -421,7 +421,10 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+* GITHUB#16879: Reuse the HNSW graphs of the source segments when a merge goes through
+  SortingCodecReader, as it does when a merge policy reorders documents (e.g.
+  BPReorderingMergePolicy) or when IndexWriter#addIndexes is given a SortingCodecReader. Such
+  merges used to rebuild the merged graph from scratch. (Lantao Jin)
 
 Bug Fixes
 ---------------------
