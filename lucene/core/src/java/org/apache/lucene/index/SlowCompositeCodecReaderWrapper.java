@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.index;
 
+import static org.apache.lucene.codecs.KnnVectorsWriter.MergedVectorValues.hasVectorValues;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -31,6 +33,7 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.codecs.hnsw.HnswGraphMergeSources;
 import org.apache.lucene.index.MultiDocValues.MultiSortedDocValues;
 import org.apache.lucene.index.MultiDocValues.MultiSortedSetDocValues;
 import org.apache.lucene.search.AcceptDocs;
@@ -791,7 +794,8 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     return new SlowCompositeKnnVectorsReaderWrapper(codecReaders, docStarts);
   }
 
-  private static class SlowCompositeKnnVectorsReaderWrapper extends KnnVectorsReader {
+  private static class SlowCompositeKnnVectorsReaderWrapper extends KnnVectorsReader
+      implements HnswGraphMergeSources {
 
     private final CodecReader[] codecReaders;
     private final KnnVectorsReader[] readers;
@@ -818,6 +822,18 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
           reader.checkIntegrity(merge);
         }
       }
+    }
+
+    @Override
+    public List<Source> getMergeSources(String field) {
+      List<Source> sources = new ArrayList<>();
+      for (int i = 0; i < codecReaders.length; i++) {
+        if (readers[i] != null && hasVectorValues(codecReaders[i].getFieldInfos(), field)) {
+          final int docStart = docStarts[i];
+          sources.add(new Source(readers[i], doc -> docStart + doc, codecReaders[i].maxDoc()));
+        }
+      }
+      return sources;
     }
 
     @Override
