@@ -19,8 +19,10 @@ package org.apache.lucene.codecs.lucene90;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.codecs.CodecUtil;
@@ -54,8 +56,8 @@ final class Lucene90CompoundReader extends CompoundDirectory {
   private final String dataFileName;
   private final Map<String, FileEntry> entries;
   private final IndexInput handle;
-  // the mapping merges read through, opened by the first merge open and closed with this reader
-  private IndexInput mergeHandle;
+  // mappings of the data file, starting with handle, guarded by this
+  private final List<Mapping> mappings = new ArrayList<>();
   private boolean closed;
   private int version;
 
@@ -148,13 +150,17 @@ final class Lucene90CompoundReader extends CompoundDirectory {
 
   @Override
   public void close() throws IOException {
-    IndexInput merge;
+    List<IndexInput> others = new ArrayList<>();
     synchronized (this) {
       closed = true;
-      merge = mergeHandle == handle ? null : mergeHandle;
-      mergeHandle = null;
+      for (Mapping mapping : mappings) {
+        if (mapping.data != handle) {
+          others.add(mapping.data);
+        }
+      }
+      mappings.clear();
     }
-    IOUtils.close(handle, merge);
+    IOUtils.close(handle, () -> IOUtils.close(others));
   }
 
   @Override
@@ -176,28 +182,50 @@ final class Lucene90CompoundReader extends CompoundDirectory {
               + entries.keySet()
               + ")");
     }
-    IndexInput data = context.context() == IOContext.Context.MERGE ? mergeHandle() : handle;
-    return data.slice(name, entry.offset, entry.length, context);
+    synchronized (this) {
+      Mapping mapping = mappingFor(id, context);
+      IndexInput slice = mapping.data.slice(name, entry.offset, entry.length, context);
+      mapping.firstOpens.putIfAbsent(id, slice);
+      return slice;
+    }
   }
 
   /**
-   * A merge reads through a mapping of its own, so the access it advises does not replace the
-   * advice of searches reading the same inner files. Merges of this segment share it. Like the
-   * search mapping, it is opened without advice: each inner file is advised on its own region.
+   * Returns the first mapping where {@code id} is not open yet or reads as {@code context}, and
+   * opens a new mapping otherwise. This way an inner file is never advised twice on one mapping.
    */
-  private synchronized IndexInput mergeHandle() throws IOException {
+  private Mapping mappingFor(String id, IOContext context) throws IOException {
+    assert Thread.holdsLock(this);
     if (closed) {
       throw new AlreadyClosedException("this Directory is closed");
     }
-    if (mergeHandle == null) {
-      try {
-        mergeHandle = directory.openInput(dataFileName, IOContext.DEFAULT);
-      } catch (@SuppressWarnings("unused") FileNotFoundException | NoSuchFileException e) {
-        // an open reader outlives its files, so fall back to the mapping it already holds
-        mergeHandle = handle;
+    if (mappings.isEmpty()) {
+      mappings.add(new Mapping(handle));
+    }
+    for (Mapping mapping : mappings) {
+      IndexInput first = mapping.firstOpens.get(id);
+      if (first == null || first.readsAs(context)) {
+        return mapping;
       }
     }
-    return mergeHandle;
+    IndexInput data;
+    try {
+      // like the reader's mapping, opened without advice
+      data = directory.openInput(dataFileName, IOContext.DEFAULT);
+    } catch (@SuppressWarnings("unused") FileNotFoundException | NoSuchFileException e) {
+      // an open reader outlives its files, so read through the mapping it already holds
+      return mappings.getFirst();
+    }
+    Mapping mapping = new Mapping(data);
+    mappings.add(mapping);
+    return mapping;
+  }
+
+  /** A mapping of the data file and the first open of each inner file on it. */
+  private record Mapping(IndexInput data, Map<String, IndexInput> firstOpens) {
+    Mapping(IndexInput data) {
+      this(data, new HashMap<>());
+    }
   }
 
   /** Returns an array of strings, one for each file in the directory. */

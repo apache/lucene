@@ -102,17 +102,14 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   private final long[] prefetchedBlockIDCache;
   private int prefetchedBlockIDCacheIndex;
   private volatile boolean closed;
-  // what a merge needs to map the data file for itself
+  // to open the data file again for sequential reads
   private final Directory directory;
   private final String fieldsStreamFN;
   private final IOContext context;
-  // the reader this one was cloned from, which owns the mapping merges read
+  // the reader this one was cloned from
   private final Lucene90CompressingStoredFieldsReader original;
-  private IndexInput mergeFieldsStream;
-  // merge instances handed out and not yet finished
-  private int mergeInstances;
-  // set once this merge instance has released the mapping
-  private boolean mergeFinished;
+  // the input for sequential reads, opened lazily and closed with this reader
+  private IndexInput sequentialFieldsStream;
 
   // used by clone
   private Lucene90CompressingStoredFieldsReader(
@@ -274,14 +271,16 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   @Override
   public void close() throws IOException {
     if (!closed) {
-      IOUtils.close(indexReader, fieldsStream, mergeFieldsStreamToClose());
+      IOUtils.close(indexReader, fieldsStream, sequentialFieldsStreamToClose());
       closed = true;
     }
   }
 
-  /** The mapping a merge opened, read under the lock that guards it, closed outside it. */
-  private synchronized IndexInput mergeFieldsStreamToClose() {
-    return original == this && mergeFieldsStream != fieldsStream ? mergeFieldsStream : null;
+  /** Returns the sequential input to close, if it is not {@code fieldsStream}. */
+  private synchronized IndexInput sequentialFieldsStreamToClose() {
+    return original == this && sequentialFieldsStream != fieldsStream
+        ? sequentialFieldsStream
+        : null;
   }
 
   private static void readField(DataInput in, StoredFieldVisitor visitor, FieldInfo info, int bits)
@@ -724,68 +723,32 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   @Override
   public StoredFieldsReader getMergeInstance() throws IOException {
     ensureOpen();
-    IndexInput stream = original.mergeFieldsStream();
-    boolean success = false;
-    try {
-      StoredFieldsReader mergeInstance =
-          new Lucene90CompressingStoredFieldsReader(this, true, stream.clone());
-      success = true;
-      return mergeInstance;
-    } finally {
-      if (success == false) {
-        original.releaseMergeFieldsStream();
-      }
-    }
+    return new Lucene90CompressingStoredFieldsReader(
+        this, true, original.sequentialFieldsStream().clone());
   }
 
   /**
-   * The data file as a merge reads it, front to back. Advice applies to a whole mapping, so a merge
-   * maps the file again. Mapped on the first merge, released by {@link #finishMerge()}.
+   * Returns the input for sequential reads. The data file is opened again only if {@code
+   * fieldsStream} does not read as the sequential context.
    */
-  private synchronized IndexInput mergeFieldsStream() throws IOException {
+  private synchronized IndexInput sequentialFieldsStream() throws IOException {
     assert original == this;
     ensureOpen();
-    if (mergeFieldsStream == null) {
-      if (context.context() == IOContext.Context.MERGE) {
-        // opened by a merge to begin with, so it already advises sequential reads
-        mergeFieldsStream = fieldsStream;
+    if (sequentialFieldsStream == null) {
+      IOContext sequential =
+          context.withHints(FileTypeHint.DATA, DataAccessHint.SEQUENTIAL, NoReuseHint.INSTANCE);
+      if (fieldsStream.readsAs(sequential)) {
+        sequentialFieldsStream = fieldsStream;
       } else {
         try {
-          mergeFieldsStream =
-              directory.openInput(
-                  fieldsStreamFN,
-                  IOContext.merge()
-                      .withHints(
-                          FileTypeHint.DATA, DataAccessHint.SEQUENTIAL, NoReuseHint.INSTANCE));
+          sequentialFieldsStream = directory.openInput(fieldsStreamFN, sequential);
         } catch (FileNotFoundException | NoSuchFileException _) {
-          // an open reader outlives its files, so fall back to the mapping it already holds
-          mergeFieldsStream = fieldsStream;
+          // an open reader outlives its files, so read through the input it already holds
+          sequentialFieldsStream = fieldsStream;
         }
       }
     }
-    mergeInstances++;
-    return mergeFieldsStream;
-  }
-
-  /** Releases the mapping once no other merge instance holds it. A later merge maps it again. */
-  @Override
-  public void finishMerge() throws IOException {
-    if (merging == false || mergeFinished) {
-      return;
-    }
-    mergeFinished = true;
-    original.releaseMergeFieldsStream();
-  }
-
-  private synchronized void releaseMergeFieldsStream() throws IOException {
-    assert original == this;
-    if (closed || mergeInstances == 0 || --mergeInstances > 0) {
-      return;
-    }
-    if (mergeFieldsStream != null && mergeFieldsStream != fieldsStream) {
-      mergeFieldsStream.close();
-    }
-    mergeFieldsStream = null;
+    return sequentialFieldsStream;
   }
 
   int getVersion() {

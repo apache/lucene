@@ -37,11 +37,13 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
@@ -99,16 +101,29 @@ public class TestLucene99HnswScalarQuantizedVectorsFormat extends BaseKnnVectors
           @Override
           public IndexInput openInput(String name, IOContext context) throws IOException {
             IndexInput in = super.openInput(name, context);
-            if (name.endsWith(".vec") == false || context.context() != IOContext.Context.MERGE) {
+            if (name.endsWith(".vec") == false) {
               return in;
             }
+            boolean sequential = context.hints().contains(DataAccessHint.SEQUENTIAL);
             AtomicBoolean closed = new AtomicBoolean();
-            mergeOpens.add(closed);
+            if (sequential) {
+              mergeOpens.add(closed);
+            }
             return new FilterIndexInput(name, in) {
+              // reads like a memory-mapped input using ADVISE_BY_CONTEXT
+              @Override
+              public boolean readsAs(IOContext other) {
+                return MMapDirectory.ADVISE_BY_CONTEXT
+                    .apply(name, context)
+                    .equals(MMapDirectory.ADVISE_BY_CONTEXT.apply(name, other));
+              }
+
               @Override
               public IndexInput slice(String sliceDescription, long offset, long length)
                   throws IOException {
-                mergeSlices.incrementAndGet(); // the vectors are read through slices
+                if (sequential) {
+                  mergeSlices.incrementAndGet(); // the vectors are read through slices
+                }
                 return super.slice(sliceDescription, offset, length);
               }
 
@@ -148,8 +163,9 @@ public class TestLucene99HnswScalarQuantizedVectorsFormat extends BaseKnnVectors
         }
 
         merging.finishMerge();
-        assertTrue("finishing the merge did not close them", mergeOpens.get(0).get());
+        assertFalse("kept while the reader is open", mergeOpens.get(0).get());
       }
+      assertTrue("closed with the reader", mergeOpens.get(0).get());
     }
   }
 }

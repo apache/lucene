@@ -181,6 +181,48 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
     }
   }
 
+  /** An input reads as a context when its pages would get the same advice. */
+  public void testReadsAs() throws IOException {
+    var random = new DefaultIOContext(DataAccessHint.RANDOM);
+    var sequential = new DefaultIOContext(DataAccessHint.SEQUENTIAL);
+    // larger than a page, so that slices get advised
+    final int size = 1 << 17;
+    try (MMapDirectory dir = new MMapDirectory(createTempDir("testMatches"))) {
+      try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
+        out.writeBytes(new byte[size], 0, size);
+      }
+      try (IndexInput in = dir.openInput("test", random)) {
+        assertTrue("one advice for every context", in.readsAs(sequential));
+      }
+
+      dir.setReadAdvice(MMapDirectory.ADVISE_BY_CONTEXT);
+      boolean advises = MMapDirectory.supportsMadvise();
+      try (IndexInput in = dir.openInput("test", random)) {
+        assertTrue(in.readsAs(random));
+        assertEquals(advises == false, in.readsAs(sequential));
+        assertEquals(
+            "a clone reads the same pages", advises == false, in.clone().readsAs(sequential));
+        assertEquals(
+            "a slice reads the same pages",
+            advises == false,
+            in.slice("slice", 0, size).readsAs(sequential));
+
+        IndexInput advised = in.slice("advised", 0, size, sequential);
+        assertTrue(advised.readsAs(sequential));
+        assertEquals(advises == false, advised.readsAs(random));
+        assertTrue("too small to be advised", in.slice("small", 0, 1, sequential).readsAs(random));
+
+        in.updateIOContext(sequential);
+        assertTrue(in.readsAs(sequential));
+      }
+
+      dir.setPreload((_, _) -> true);
+      try (IndexInput in = dir.openInput("test", random)) {
+        assertTrue("preloaded pages are resident", in.readsAs(sequential));
+      }
+    }
+  }
+
   public void testPreload() throws Exception {
     assumeTrue("madvise for preloading only works on linux/mac", MMapDirectory.supportsMadvise());
 

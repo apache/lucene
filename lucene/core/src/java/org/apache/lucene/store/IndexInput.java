@@ -239,6 +239,16 @@ public abstract class IndexInput extends DataInput implements Closeable {
   public void updateIOContext(IOContext context) throws IOException {}
 
   /**
+   * Returns true if reading this input is as efficient as reading an input opened with the given
+   * {@code IOContext}. If not, callers that read with this context may open the file again.
+   *
+   * <p>The default implementation returns {@code true}.
+   */
+  public boolean readsAs(IOContext context) {
+    return true;
+  }
+
+  /**
    * Returns a hint whether all the contents of this input are resident in physical memory. It's a
    * hint because the operating system may have paged out some of the data by the time this method
    * returns. If the optional is true, then it's likely that the contents of this input are resident

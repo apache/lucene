@@ -103,7 +103,8 @@ public class TestLucene90CompoundFormat extends BaseCompoundFormatTestCase {
     dir.close();
   }
 
-  public void testMergesReadThroughAMappingOfTheirOwn() throws IOException {
+  /** An inner file opened with a context it does not read as gets a new mapping. */
+  public void testAnOpenReadingDifferentlyReadsAMappingOfItsOwn() throws IOException {
     try (Directory base = newDirectory()) {
       SegmentInfo si = writeCompound(base);
       DataOpens dir = new DataOpens(base);
@@ -112,28 +113,34 @@ public class TestLucene90CompoundFormat extends BaseCompoundFormatTestCase {
         assertEquals(1, dir.opens.size());
         String first = "_123.0";
         String second = "_123.1";
-        try (IndexInput search = cfs.openInput(first, IOContext.DEFAULT)) {
+        try (IndexInput search = cfs.openInput(first, RANDOM)) {
           assertEquals("searches read the mapping opened with the reader", 1, dir.opens.size());
 
-          IndexInput merge = cfs.openInput(first, IOContext.merge());
-          IndexInput otherMerge = cfs.openInput(second, IOContext.merge());
-          assertEquals("merges share one mapping of their own", 2, dir.opens.size());
+          IndexInput sequential = cfs.openInput(first, SEQUENTIAL);
+          assertEquals("reading it differently maps the file again", 2, dir.opens.size());
           assertEquals(
-              "opened without advice, like the search mapping",
+              "opened without advice, like the reader's mapping",
               IOContext.DEFAULT,
               dir.opens.get(1));
+          IndexInput otherSequential = cfs.openInput(first, SEQUENTIAL);
+          IndexInput otherFile = cfs.openInput(second, SEQUENTIAL);
+          assertEquals("reading the same way, or another file, maps nothing", 2, dir.opens.size());
           try (IndexInput expected = base.openInput(first, IOContext.DEFAULT)) {
-            assertSameStreams(first, expected, merge);
+            assertSameStreams(first, expected, sequential);
+          }
+          try (IndexInput expected = base.openInput(first, IOContext.DEFAULT)) {
+            assertSameStreams(first, expected, otherSequential);
           }
           try (IndexInput expected = base.openInput(first, IOContext.DEFAULT)) {
             assertSameStreams(first, expected, search);
           }
           try (IndexInput expected = base.openInput(second, IOContext.DEFAULT)) {
-            assertSameStreams(second, expected, otherMerge);
+            assertSameStreams(second, expected, otherFile);
           }
-          merge.close();
-          otherMerge.close();
-          assertEquals("the merge mapping stays open with the reader", 0, dir.closes);
+          sequential.close();
+          otherSequential.close();
+          otherFile.close();
+          assertEquals("the other mapping stays open with the reader", 0, dir.closes);
         }
       } finally {
         cfs.close();
@@ -142,16 +149,41 @@ public class TestLucene90CompoundFormat extends BaseCompoundFormatTestCase {
     }
   }
 
-  public void testMergesFallBackToTheReaderMappingWhenTheFileIsGone() throws IOException {
+  /** No new mapping when every context reads the same. */
+  public void testNoOtherMappingWhenInputsReadTheSame() throws IOException {
+    try (Directory base = newDirectory()) {
+      SegmentInfo si = writeCompound(base);
+      DataOpens dir = new DataOpens(base, false);
+      try (Directory cfs = si.getCodec().compoundFormat().getCompoundReader(dir, si);
+          IndexInput search = cfs.openInput("_123.0", RANDOM);
+          IndexInput sequential = cfs.openInput("_123.0", SEQUENTIAL)) {
+        assertEquals(1, dir.opens.size());
+        try (IndexInput expected = base.openInput("_123.0", IOContext.DEFAULT)) {
+          assertSameStreams("_123.0", expected, sequential);
+        }
+        try (IndexInput expected = base.openInput("_123.0", IOContext.DEFAULT)) {
+          assertSameStreams("_123.0", expected, search);
+        }
+      }
+      assertEquals(1, dir.closes);
+    }
+  }
+
+  public void testFallBackToTheReaderMappingWhenTheFileIsGone() throws IOException {
     try (Directory base = newDirectory()) {
       SegmentInfo si = writeCompound(base);
       DataOpens dir = new DataOpens(base);
       try (Directory cfs = si.getCodec().compoundFormat().getCompoundReader(dir, si)) {
-        dir.gone = true;
         String file = "_123.0";
-        try (IndexInput merge = cfs.openInput(file, IOContext.merge());
-            IndexInput expected = base.openInput(file, IOContext.DEFAULT)) {
-          assertSameStreams(file, expected, merge);
+        try (IndexInput search = cfs.openInput(file, RANDOM)) {
+          dir.gone = true;
+          try (IndexInput sequential = cfs.openInput(file, SEQUENTIAL);
+              IndexInput expected = base.openInput(file, IOContext.DEFAULT)) {
+            assertSameStreams(file, expected, sequential);
+          }
+          try (IndexInput expected = base.openInput(file, IOContext.DEFAULT)) {
+            assertSameStreams(file, expected, search);
+          }
         }
         assertEquals(1, dir.opens.size());
       }
@@ -159,21 +191,23 @@ public class TestLucene90CompoundFormat extends BaseCompoundFormatTestCase {
     }
   }
 
-  /** Searches share the mapping opened with the reader; a merge reads one of its own. */
-  public void testAMergeDoesNotReadTheMappingSearchesRead() throws IOException {
-    try (MMapDirectory dir = new MMapDirectory(createTempDir("cfsMerge"))) {
+  /** On MMapDirectory, inner files opened with different advice use different mappings. */
+  public void testEachAdviceReadsItsOwnMapping() throws IOException {
+    try (MMapDirectory dir = new MMapDirectory(createTempDir("cfsAdvice"))) {
       dir.setReadAdvice(MMapDirectory.ADVISE_BY_CONTEXT);
-      SegmentInfo si = writeCompound(dir);
+      // larger than a page, so that inner files get advised
+      SegmentInfo si = writeCompound(dir, 1 << 17);
       try (Directory cfs = si.getCodec().compoundFormat().getCompoundReader(dir, si);
-          IndexInput search = cfs.openInput("_123.0", IOContext.DEFAULT);
-          IndexInput randomSearch =
-              cfs.openInput("_123.0", IOContext.DEFAULT.withHints(DataAccessHint.RANDOM));
-          IndexInput merge =
-              cfs.openInput("_123.0", IOContext.merge().withHints(DataAccessHint.SEQUENTIAL))) {
-        assertEquals(address(search), address(randomSearch));
-        assertNotEquals(address(search), address(merge));
+          IndexInput search = cfs.openInput("_123.0", RANDOM);
+          IndexInput otherSearch = cfs.openInput("_123.0", RANDOM);
+          IndexInput sequential = cfs.openInput("_123.0", SEQUENTIAL)) {
+        assertEquals(address(search), address(otherSearch));
+        assertEquals(
+            "only advice that applies needs a mapping of its own",
+            MMapDirectory.supportsMadvise(),
+            address(search) != address(sequential));
         try (IndexInput expected = dir.openInput("_123.0", IOContext.DEFAULT)) {
-          assertSameStreams("_123.0", expected, merge);
+          assertSameStreams("_123.0", expected, sequential);
         }
       }
     }
@@ -183,41 +217,47 @@ public class TestLucene90CompoundFormat extends BaseCompoundFormatTestCase {
     return ((MemorySegmentAccessInput) in).segmentSliceOrNull(0, 1).address();
   }
 
-  public void testNoMergeMappingOnceClosed() throws IOException {
+  public void testNoOpenOnceClosed() throws IOException {
     try (Directory base = newDirectory()) {
       SegmentInfo si = writeCompound(base);
       DataOpens dir = new DataOpens(base);
       Directory cfs = si.getCodec().compoundFormat().getCompoundReader(dir, si);
       cfs.close();
-      expectThrows(AlreadyClosedException.class, () -> cfs.openInput("_123.0", IOContext.merge()));
+      expectThrows(AlreadyClosedException.class, () -> cfs.openInput("_123.0", SEQUENTIAL));
       assertEquals(1, dir.opens.size());
       assertEquals(1, dir.closes);
     }
   }
 
-  public void testAFailedMergeOpenKeepsNothingOpen() throws IOException {
+  public void testAFailedOpenKeepsNothingOpen() throws IOException {
     try (Directory base = newDirectory()) {
       SegmentInfo si = writeCompound(base);
       DataOpens dir = new DataOpens(base);
-      try (Directory cfs = si.getCodec().compoundFormat().getCompoundReader(dir, si)) {
+      try (Directory cfs = si.getCodec().compoundFormat().getCompoundReader(dir, si);
+          IndexInput search = cfs.openInput("_123.0", RANDOM)) {
         dir.failNextOpen = true;
-        expectThrows(IOException.class, () -> cfs.openInput("_123.0", IOContext.merge()));
+        expectThrows(IOException.class, () -> cfs.openInput("_123.0", SEQUENTIAL));
         assertEquals(1, dir.opens.size());
-        try (IndexInput merge = cfs.openInput("_123.0", IOContext.merge());
+        try (IndexInput sequential = cfs.openInput("_123.0", SEQUENTIAL);
             IndexInput expected = base.openInput("_123.0", IOContext.DEFAULT)) {
-          assertSameStreams("_123.0", expected, merge);
+          assertSameStreams("_123.0", expected, sequential);
         }
-        assertEquals("the next merge maps the file", 2, dir.opens.size());
+        assertEquals("the next open maps the file", 2, dir.opens.size());
+        try (IndexInput expected = base.openInput("_123.0", IOContext.DEFAULT)) {
+          assertSameStreams("_123.0", expected, search);
+        }
       }
       assertEquals(2, dir.closes);
     }
   }
 
-  public void testConcurrentMergeOpensMapOnce() throws Exception {
+  public void testConcurrentOpensMapOnce() throws Exception {
     try (Directory base = newDirectory()) {
       SegmentInfo si = writeCompound(base);
       DataOpens dir = new DataOpens(base);
-      try (Directory cfs = si.getCodec().compoundFormat().getCompoundReader(dir, si)) {
+      try (Directory cfs = si.getCodec().compoundFormat().getCompoundReader(dir, si);
+          IndexInput first = cfs.openInput("_123.0", RANDOM);
+          IndexInput second = cfs.openInput("_123.1", RANDOM)) {
         int threadCount = 2 + random().nextInt(4);
         CountDownLatch start = new CountDownLatch(1);
         List<Thread> threads = new ArrayList<>();
@@ -229,7 +269,7 @@ public class TestLucene90CompoundFormat extends BaseCompoundFormatTestCase {
                   () -> {
                     try {
                       start.await();
-                      try (IndexInput in = cfs.openInput(file, IOContext.merge())) {
+                      try (IndexInput in = cfs.openInput(file, SEQUENTIAL)) {
                         in.seek(in.length());
                       }
                     } catch (Throwable e) {
@@ -245,17 +285,28 @@ public class TestLucene90CompoundFormat extends BaseCompoundFormatTestCase {
         }
         assertEquals(List.of(), failures);
         assertEquals(2, dir.opens.size());
+        for (IndexInput search : List.of(first, second)) {
+          search.seek(search.length());
+        }
       }
       assertEquals(2, dir.closes);
     }
   }
 
+  private static final IOContext RANDOM = IOContext.DEFAULT.withHints(DataAccessHint.RANDOM);
+  private static final IOContext SEQUENTIAL =
+      IOContext.DEFAULT.withHints(DataAccessHint.SEQUENTIAL);
+
   private static SegmentInfo writeCompound(Directory dir) throws IOException {
+    return writeCompound(dir, random().nextInt(1, 4096));
+  }
+
+  private static SegmentInfo writeCompound(Directory dir, int length) throws IOException {
     SegmentInfo si = newSegmentInfo(dir, "_123");
     List<String> files = new ArrayList<>();
     for (int i = 0; i < 2; i++) {
       String name = "_123." + i;
-      createRandomFile(dir, name, random().nextInt(1, 4096), si.getId());
+      createRandomFile(dir, name, length, si.getId());
       files.add(name);
     }
     si.setFiles(files);
@@ -263,15 +314,24 @@ public class TestLucene90CompoundFormat extends BaseCompoundFormatTestCase {
     return si;
   }
 
-  /** Records the contexts the compound data file is opened with, and counts closes. */
+  /**
+   * Records the contexts the compound data file is opened with, and counts closes. Slices match
+   * like memory-mapped inputs using ADVISE_BY_CONTEXT, or match every context.
+   */
   private static class DataOpens extends FilterDirectory {
     final List<IOContext> opens = Collections.synchronizedList(new ArrayList<>());
+    final boolean advises;
     volatile int closes;
     volatile boolean gone;
     volatile boolean failNextOpen;
 
     DataOpens(Directory in) {
+      this(in, true);
+    }
+
+    DataOpens(Directory in, boolean advises) {
       super(in);
+      this.advises = advises;
     }
 
     @Override
@@ -305,7 +365,43 @@ public class TestLucene90CompoundFormat extends BaseCompoundFormatTestCase {
         public IndexInput slice(String description, long offset, long length) throws IOException {
           return in.slice(description, offset, length);
         }
+
+        @Override
+        public IndexInput slice(String description, long offset, long length, IOContext context)
+            throws IOException {
+          return new Advised(in.slice(description, offset, length, context), context, advises);
+        }
       };
+    }
+  }
+
+  /** A slice that reads like a memory-mapped input using ADVISE_BY_CONTEXT. */
+  private static final class Advised extends FilterIndexInput {
+    private final IOContext context;
+    private final boolean advises;
+
+    Advised(IndexInput in, IOContext context, boolean advises) {
+      super("Advised(" + in + ")", in);
+      this.context = context;
+      this.advises = advises;
+    }
+
+    @Override
+    public boolean readsAs(IOContext other) {
+      return advises == false
+          || MMapDirectory.ADVISE_BY_CONTEXT
+              .apply("", context)
+              .equals(MMapDirectory.ADVISE_BY_CONTEXT.apply("", other));
+    }
+
+    @Override
+    public IndexInput clone() {
+      return new Advised(in.clone(), context, advises);
+    }
+
+    @Override
+    public IndexInput slice(String description, long offset, long length) throws IOException {
+      return new Advised(in.slice(description, offset, length), context, advises);
     }
   }
 }
