@@ -27,30 +27,145 @@ import java.lang.invoke.MethodHandle;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
+import java.util.OptionalLong;
+import org.apache.lucene.misc.store.DirectIODirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.Constants;
+import org.apache.lucene.util.IOUtils;
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.TearDown;
+import org.openjdk.jmh.infra.BenchmarkParams;
 
 /**
- * Abstract base for read I/O benchmarks. Provides shared FFI handles (pread, open, close, fcntl),
- * Lucene Directory/IndexInput setups, and per-thread state.
+ * Base class for {@link RandomReadIOBenchmark} and {@link SequentialReadIOBenchmark}, which measure
+ * the read throughput of one large file with different I/O strategies. The first one reads at
+ * random offsets, the second one scans the file sequentially.
+ *
+ * <p>One benchmark invocation, which is what JMH counts as one op in the reported ops/ms, issues
+ * {@code readsPerOp} reads of {@code readSize} bytes each.
+ *
+ * <p>Strategies:
+ *
+ * <ul>
+ *   <li>{@code mmap}: {@link MMapDirectory} with the default advice ({@link ReadAdvice#NORMAL}, so
+ *       no madvise call).
+ *   <li>{@code mmapRandom}: {@link MMapDirectory} with {@link ReadAdvice#RANDOM}.
+ *   <li>{@code mmapSequential}: {@link MMapDirectory} with {@link ReadAdvice#SEQUENTIAL}.
+ *   <li>{@code *BatchedPrefetch}: each invocation first calls {@link IndexInput#prefetch} on the
+ *       offsets of all its reads, then does the reads one by one.
+ *   <li>{@code fileChannelNIOFS}: {@link NIOFSDirectory}, positional {@code FileChannel} reads.
+ *   <li>{@code ffiPread}: pread(2) through the FFI into a native buffer.
+ *   <li>{@code directIO}: {@link DirectIODirectory}, which reads with direct I/O and bypasses the
+ *       OS page cache.
+ * </ul>
+ *
+ * <p>How to run:
+ *
+ * <pre>
+ * dd if=/dev/urandom of=/path/to/pread-bench-16G.dat bs=1M count=16384
+ * ./gradlew :lucene:benchmark-jmh:assemble
+ * java -jar lucene/benchmark-jmh/build/benchmarks/lucene-benchmark-jmh-*.jar RandomReadIOBenchmark \
+ *   -p readSize=16384 -p readsPerOp=16 \
+ *   -jvmArgsAppend "-Dbench.file=/path/to/pread-bench-16G.dat -Dbench.fileSizeMB=16384 -Dbench.dropPageCache=false"
+ * </pre>
+ *
+ * <p>JMH parameters ({@code -p}):
+ *
+ * <ul>
+ *   <li>{@code readSize}: bytes per read, default 16384.
+ *   <li>{@code readsPerOp}: reads per benchmark invocation, default 16 for {@link
+ *       RandomReadIOBenchmark} and 128 for {@link SequentialReadIOBenchmark}.
+ * </ul>
+ *
+ * <p>Configuration (environment variable first, then system property):
+ *
+ * <ul>
+ *   <li>{@code BENCH_FILE} / {@code bench.file}: the file to read, default {@code
+ *       /tmp/pread-bench.dat}.
+ *   <li>{@code BENCH_FILE_SIZE_MB} / {@code bench.fileSizeMB}: the size of the region to read,
+ *       starting at offset 0, in MiB (1 MiB = 1024 * 1024 bytes). The file must be at least this
+ *       large. Default 1024.
+ *   <li>{@code BENCH_DROP_CACHES} / {@code bench.dropPageCache}: drop the OS page cache before
+ *       every iteration, default {@code false}.
+ * </ul>
+ *
+ * <p>The benchmarks work like a Java version of fio: each strategy issues the same reads as a fio
+ * job, through the Lucene or JDK API it stands for, so the two tools can be compared side by side.
+ * One JMH op issues {@code readsPerOp} reads, so ops/ms x 1000 x {@code readsPerOp} gives the IOPS
+ * that fio reports. To make both tools do the same work:
+ *
+ * <ul>
+ *   <li>Drop the page cache before each run of either tool, so both start from a cold cache.
+ *   <li>Run JMH with {@code -f 1 -wi 0 -i 1 -r 30s}, one 30 second run without warmup, to match
+ *       fio's {@code --time_based --runtime=30}.
+ * </ul>
+ *
+ * <p>Some examples:
+ *
+ * <ul>
+ *   <li>Random 16 KiB reads with {@code mmap}, 4 threads, one read in flight per thread:
+ *       <pre>
+ * java -jar lucene/benchmark-jmh/build/benchmarks/lucene-benchmark-jmh-*.jar 'RandomReadIOBenchmark\.mmap_T04$' \
+ *   -p readSize=16384 -p readsPerOp=1 -f 1 -wi 0 -i 1 -r 30s \
+ *   -jvmArgsAppend "-Dbench.file=/path/to/pread-bench-16G.dat -Dbench.fileSizeMB=16384"
+ *
+ * fio --name=rand-mmap --filename=/path/to/pread-bench-16G.dat --size=16384m --readonly \
+ *   --rw=randread --bs=16k --norandommap --randrepeat=0 --blockalign=1 \
+ *   --ioengine=mmap --fadvise_hint=0 --numjobs=4 --thread --iodepth=1 \
+ *   --time_based --runtime=30 --group_reporting
+ * </pre>
+ *   <li>Random 16 KiB reads with {@code fileChannelNIOFS}, 16 threads, the same as fio's psync
+ *       engine with buffered I/O:
+ *       <pre>
+ * java -jar lucene/benchmark-jmh/build/benchmarks/lucene-benchmark-jmh-*.jar 'RandomReadIOBenchmark\.fileChannelNIOFS_T16$' \
+ *   -p readSize=16384 -p readsPerOp=1 -f 1 -wi 0 -i 1 -r 30s \
+ *   -jvmArgsAppend "-Dbench.file=/path/to/pread-bench-16G.dat -Dbench.fileSizeMB=16384"
+ *
+ * fio --name=rand-niofs --filename=/path/to/pread-bench-16G.dat --size=16384m --readonly \
+ *   --rw=randread --bs=16k --norandommap --randrepeat=0 --blockalign=1 \
+ *   --ioengine=psync --direct=0 --fadvise_hint=0 --numjobs=16 --thread --iodepth=1 \
+ *   --time_based --runtime=30 --group_reporting
+ * </pre>
+ *   <li>Random 16 KiB reads with {@code mmapRandomBatchedPrefetch}, 1 thread, 16 reads in flight
+ *       per thread. This saturates the device just like fio does with an I/O depth of 16:
+ *       <pre>
+ * java -jar lucene/benchmark-jmh/build/benchmarks/lucene-benchmark-jmh-*.jar 'RandomReadIOBenchmark\.mmapRandomBatchedPrefetch_T01$' \
+ *   -p readSize=16384 -p readsPerOp=16 -f 1 -wi 0 -i 1 -r 30s \
+ *   -jvmArgsAppend "-Dbench.file=/path/to/pread-bench-16G.dat -Dbench.fileSizeMB=16384"
+ *
+ * fio --name=rand-prefetch --filename=/path/to/pread-bench-16G.dat --size=16384m --readonly \
+ *   --rw=randread --bs=16k --norandommap --randrepeat=0 --blockalign=1 \
+ *   --ioengine=io_uring --direct=0 --fadvise_hint=random --numjobs=1 --thread \
+ *   --iodepth=16 --iodepth_batch_submit=16 --iodepth_batch_complete_min=16 \
+ *   --time_based --runtime=30 --group_reporting
+ * </pre>
+ * </ul>
+ *
+ * <p>Watch out for:
+ *
+ * <ul>
+ *   <li>The benchmark does not create memory pressure by itself, the host does. Make the file
+ *       larger than the memory available for the page cache, or run inside a memory-limited cgroup.
+ *   <li>Each benchmark runs in its own JVM fork, but the OS page cache is shared across forks, and
+ *       benchmarks run one after another. Without {@code bench.dropPageCache=true}, a benchmark
+ *       starts with whatever the previous one left in the cache. If you run the memory pressure
+ *       scenario, clearing the cache or not makes little difference: pages get evicted all the
+ *       time, so the cache holds the same mix of hot, warm and cold pages either way. Warm the file
+ *       before the first run (for example {@code cat /path/to/file > /dev/null}), otherwise the
+ *       first buffered benchmark may spend its whole run filling the cache.
+ *   <li>Put the file on a real disk. On some Linux distributions {@code /tmp} is a tmpfs, which
+ *       keeps the whole file in memory and makes the results meaningless.
+ * </ul>
  */
 public abstract class AbstractReadIOBenchmark {
 
   /** POSIX open(2) flag: read-only. */
   private static final int O_RDONLY = 0;
-
-  /** Linux open(2) flag: bypass the page cache (requires aligned buffers and offsets). */
-  private static final int O_DIRECT = 0x4000;
-
-  /** macOS fcntl(2) command: disable unified buffer cache for this fd (equivalent to O_DIRECT). */
-  private static final int F_NOCACHE = 48;
 
   protected static final long FILE_SIZE =
       Long.parseLong(getConfigFromEnvOrProp("BENCH_FILE_SIZE_MB", "bench.fileSizeMB", "1024"))
@@ -67,7 +182,6 @@ public abstract class AbstractReadIOBenchmark {
   protected static final MethodHandle PREAD;
   protected static final MethodHandle OPEN;
   protected static final MethodHandle CLOSE;
-  protected static final MethodHandle FCNTL;
 
   protected static final int PAGE_SIZE;
 
@@ -100,17 +214,6 @@ public abstract class AbstractReadIOBenchmark {
             stdlib,
             "close",
             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT));
-
-    FCNTL =
-        findFunction(
-            linker,
-            stdlib,
-            "fcntl",
-            FunctionDescriptor.of(
-                ValueLayout.JAVA_INT,
-                ValueLayout.JAVA_INT,
-                ValueLayout.JAVA_INT,
-                ValueLayout.JAVA_INT));
 
     try {
       PAGE_SIZE =
@@ -148,15 +251,22 @@ public abstract class AbstractReadIOBenchmark {
   protected NIOFSDirectory niofsDir;
   protected IndexInput niofsInput;
 
-  // FFI pread file descriptors
-  protected int preadFd;
-  protected int directIOFd;
+  /** Only opened for direct I/O benchmarks, otherwise null. */
+  protected DirectIODirectory directIODir;
+
+  protected IndexInput directIOInput;
+
+  // FFI pread file descriptor, -1 until opened
+  protected int preadFd = -1;
   protected Arena ffiArena;
 
+  /** Size in bytes of a single read. */
+  protected abstract int readSize();
+
   @Setup(Level.Trial)
-  public void setup() throws Exception {
+  public void setup(BenchmarkParams params) throws Exception {
     Path benchFile = Path.of(BENCH_FILE);
-    if (!Files.exists(benchFile)) {
+    if (Files.exists(benchFile) == false) {
       throw new IOException(
           "Benchmark file not found: "
               + benchFile
@@ -184,10 +294,23 @@ public abstract class AbstractReadIOBenchmark {
 
     setupMMapAndNIOFSDirectory(dirPath, fileName);
 
-    // Setup FFI pread file descriptors
+    // Setup FFI pread file descriptor
     ffiArena = Arena.ofShared();
     setupPreadFd(benchFile);
-    setupDirectIOFd(benchFile);
+
+    if (isDirectIOBenchmark(params)) {
+      setupDirectIODirectory(dirPath, fileName);
+    }
+  }
+
+  /**
+   * Benchmark methods whose name starts with this prefix read through {@link #directIOInput}. Only
+   * those open it.
+   */
+  protected static final String DIRECT_IO_BENCHMARK_PREFIX = "directIO";
+
+  private static boolean isDirectIOBenchmark(BenchmarkParams params) {
+    return params.getBenchmark().contains("." + DIRECT_IO_BENCHMARK_PREFIX);
   }
 
   private void setupMMapAndNIOFSDirectory(Path dirPath, String fileName) throws IOException {
@@ -230,75 +353,71 @@ public abstract class AbstractReadIOBenchmark {
     }
   }
 
-  private void setupDirectIOFd(Path benchFile) throws IOException {
-    MemorySegment pathStr = ffiArena.allocateFrom(benchFile.toString());
-    try {
-      if (Constants.LINUX) {
-        directIOFd = (int) OPEN.invokeExact(pathStr, O_RDONLY | O_DIRECT);
-        if (directIOFd < 0) {
-          throw new IOException("open(O_DIRECT) returned fd=" + directIOFd);
-        }
-      } else if (Constants.MAC_OS_X) {
-        directIOFd = (int) OPEN.invokeExact(pathStr, O_RDONLY);
-        if (directIOFd < 0) {
-          throw new IOException("open() for direct I/O returned fd=" + directIOFd);
-        }
-        int rc = (int) FCNTL.invokeExact(directIOFd, F_NOCACHE, 1);
-        if (rc != 0) {
-          CLOSE.invokeExact(directIOFd);
-          throw new IOException("fcntl(F_NOCACHE) returned " + rc);
-        }
-      } else {
-        directIOFd = -1;
-      }
-    } catch (IOException e) {
-      throw e;
-    } catch (Throwable t) {
-      throw new RuntimeException("Failed to open for direct I/O", t);
-    }
+  private void setupDirectIODirectory(Path dirPath, String fileName) throws IOException {
+    directIODir =
+        new DirectIODirectory(new NIOFSDirectory(dirPath), readSize(), 0L) {
+          @Override
+          protected boolean useDirectIO(String name, IOContext context, OptionalLong fileLength) {
+            return true;
+          }
+        };
+    directIOInput = directIODir.openInput(fileName, IOContext.DEFAULT);
   }
 
   @TearDown(Level.Trial)
-  @SuppressWarnings({"restricted", "unused"})
-  public void tearDown() throws Exception {
-    // Close Lucene IndexInputs and Directories
-    if (mmapInput != null) {
-      mmapInput.close();
-    }
-    if (mmapSequentialInput != null) {
-      mmapSequentialInput.close();
-    }
-    if (mmapRandomInput != null) {
-      mmapRandomInput.close();
-    }
-    if (mmapDir != null) {
-      mmapDir.close();
-    }
-    if (mmapSequentialDir != null) {
-      mmapSequentialDir.close();
-    }
-    if (mmapRandomDir != null) {
-      mmapRandomDir.close();
-    }
-    if (niofsInput != null) {
-      niofsInput.close();
-    }
-    if (niofsDir != null) {
-      niofsDir.close();
-    }
+  public void tearDown() throws IOException {
+    IOUtils.close(
+        mmapInput,
+        mmapSequentialInput,
+        mmapRandomInput,
+        niofsInput,
+        directIOInput,
+        mmapDir,
+        mmapSequentialDir,
+        mmapRandomDir,
+        niofsDir,
+        directIODir,
+        () -> closeFd(preadFd),
+        () -> {
+          if (ffiArena != null) {
+            ffiArena.close();
+          }
+        });
+  }
 
+  /**
+   * Reads {@code length} bytes at {@code offset} with pread(2) into {@code buf}.
+   *
+   * @return the number of bytes read, always {@code length}
+   * @throws IOException if pread fails or returns a short read, so that a failed read never counts
+   *     as a fast one
+   */
+  protected final long pread(MemorySegment buf, int length, long offset) throws IOException {
+    long n;
     try {
-      if (preadFd > 0) {
-        int rc = (int) CLOSE.invokeExact(preadFd);
-      }
-      if (directIOFd > 0) {
-        int rc = (int) CLOSE.invokeExact(directIOFd);
-      }
+      n = (long) PREAD.invokeExact(preadFd, buf, (long) length, offset);
     } catch (Throwable t) {
-      throw new RuntimeException("Failed to close fd", t);
+      throw new IOException("pread() failed at offset " + offset, t);
     }
-    if (ffiArena != null) {
-      ffiArena.close();
+    if (n != length) {
+      throw new IOException(
+          "pread() returned " + n + " at offset " + offset + ", expected " + length);
+    }
+    return n;
+  }
+
+  private static void closeFd(int fd) throws IOException {
+    if (fd < 0) {
+      return;
+    }
+    int rc;
+    try {
+      rc = (int) CLOSE.invokeExact(fd);
+    } catch (Throwable t) {
+      throw new IOException("close(" + fd + ") failed", t);
+    }
+    if (rc != 0) {
+      throw new IOException("close(" + fd + ") returned " + rc);
     }
   }
 
@@ -311,10 +430,10 @@ public abstract class AbstractReadIOBenchmark {
 
   private static void dropPageCaches() throws IOException {
     if (Constants.MAC_OS_X) {
-      exec("/usr/bin/sudo", "purge");
+      exec("/usr/bin/sudo", "-n", "purge");
     } else if (Constants.LINUX) {
-      exec("/usr/bin/sync");
-      exec("/usr/bin/sudo", "/usr/bin/bash", "-c", "echo 3 > /proc/sys/vm/drop_caches");
+      exec("/bin/sync");
+      exec("/usr/bin/sudo", "-n", "/bin/sh", "-c", "echo 3 > /proc/sys/vm/drop_caches");
     }
   }
 
@@ -347,9 +466,9 @@ public abstract class AbstractReadIOBenchmark {
     public IndexInput mmapSequentialInput;
     public IndexInput mmapRandomInput;
     public IndexInput niofsInput;
+    public IndexInput directIOInput;
     public Arena ffiArena;
     public MemorySegment ffiBuf;
-    public MemorySegment ffiDirectIOBuf;
     public byte[] heapBuf;
 
     public void init(AbstractReadIOBenchmark bench, int readSize) throws IOException {
@@ -357,17 +476,15 @@ public abstract class AbstractReadIOBenchmark {
       mmapSequentialInput = bench.mmapSequentialInput.clone();
       mmapRandomInput = bench.mmapRandomInput.clone();
       niofsInput = bench.niofsInput.clone();
+      if (bench.directIOInput != null) {
+        directIOInput = bench.directIOInput.clone();
+      }
       ffiArena = Arena.ofConfined();
       ffiBuf = ffiArena.allocate(readSize);
-      ffiDirectIOBuf = ffiArena.allocate(readSize, PAGE_SIZE);
       heapBuf = new byte[readSize];
     }
 
-    public void cleanup() throws IOException {
-      mmapInput.close();
-      mmapSequentialInput.close();
-      mmapRandomInput.close();
-      niofsInput.close();
+    public void cleanup() {
       ffiArena.close();
     }
   }

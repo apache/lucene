@@ -37,16 +37,18 @@ import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
 
 /**
- * Benchmark comparing sequential (whole-file scan) I/O strategies. Single-threaded. Each op reads
- * {@code readsPerOp} pages sequentially forward from the current file position, wrapping at EOF.
+ * Sequential read benchmark, single-threaded, like a whole-file scan. Each benchmark invocation
+ * issues {@code readsPerOp} reads of {@code readSize} bytes, going forward from where the previous
+ * invocation stopped, and wraps around at the end of the file. See {@link AbstractReadIOBenchmark}
+ * for the strategies, how to run, and what to watch out for.
  */
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 @State(Scope.Benchmark)
 @Warmup(iterations = 1, time = 2)
-@Measurement(iterations = 1, time = 3)
+@Measurement(iterations = 3, time = 3)
 @Fork(
-    value = 1,
+    value = 2,
     jvmArgsPrepend = {"--enable-native-access=ALL-UNNAMED", "-Xms2g", "-Xmx2g"})
 @Threads(1)
 public class SequentialReadIOBenchmark extends AbstractReadIOBenchmark {
@@ -69,22 +71,19 @@ public class SequentialReadIOBenchmark extends AbstractReadIOBenchmark {
     }
 
     @TearDown(Level.Trial)
-    public void tearDown() throws IOException {
+    public void tearDown() {
       cleanup();
     }
   }
 
   @Setup(Level.Trial)
   public void checkAndInit() {
-    if (directIOFd >= 0 && readSize % PAGE_SIZE != 0) {
-      throw new IllegalArgumentException(
-          "readSize ("
-              + readSize
-              + ") must be a multiple of PAGE_SIZE ("
-              + PAGE_SIZE
-              + ") for O_DIRECT.");
-    }
     maxOffset = FILE_SIZE - readSize;
+  }
+
+  @Override
+  protected int readSize() {
+    return readSize;
   }
 
   // ======== mmap NORMAL ========
@@ -97,21 +96,21 @@ public class SequentialReadIOBenchmark extends AbstractReadIOBenchmark {
   // ======== mmap SEQUENTIAL ========
 
   @Benchmark
-  public void mmapMadvSequential(ThreadState ts, Blackhole bh) throws IOException {
+  public void mmapSequential(ThreadState ts, Blackhole bh) throws IOException {
     doSequentialReads(ts.mmapSequentialInput, ts.heapBuf, bh);
   }
 
   // ======== mmap RANDOM ========
 
   @Benchmark
-  public void mmapMadvRandom(ThreadState ts, Blackhole bh) throws IOException {
+  public void mmapRandom(ThreadState ts, Blackhole bh) throws IOException {
     doSequentialReads(ts.mmapRandomInput, ts.heapBuf, bh);
   }
 
   // ======== mmap RANDOM + batched prefetch ========
 
   @Benchmark
-  public void mmapMadvRandomBatchedPrefetch(ThreadState ts, Blackhole bh) throws IOException {
+  public void mmapRandomBatchedPrefetch(ThreadState ts, Blackhole bh) throws IOException {
     batchedPrefetch(ts.mmapRandomInput);
     doSequentialReads(ts.mmapRandomInput, ts.heapBuf, bh);
   }
@@ -126,47 +125,24 @@ public class SequentialReadIOBenchmark extends AbstractReadIOBenchmark {
   // ======== FFI pread ========
 
   @Benchmark
-  public void ffiPread(ThreadState ts, Blackhole bh) {
+  public void ffiPread(ThreadState ts, Blackhole bh) throws IOException {
     MemorySegment buf = ts.ffiBuf;
     long offset = seqPosition;
-    try {
-      for (int i = 0; i < readsPerOp; i++) {
-        long n = (long) PREAD.invokeExact(preadFd, buf, (long) readSize, offset);
-        bh.consume(n);
-        offset += readSize;
-        if (offset > maxOffset) {
-          offset = 0;
-        }
+    for (int i = 0; i < readsPerOp; i++) {
+      bh.consume(pread(buf, readSize, offset));
+      offset += readSize;
+      if (offset > maxOffset) {
+        offset = 0;
       }
-    } catch (Throwable t) {
-      throw new RuntimeException("FFI Pread failed", t);
     }
     seqPosition = offset;
   }
 
-  // ======== FFI pread + O_DIRECT ========
+  // ======== DirectIODirectory (O_DIRECT) ========
 
   @Benchmark
-  public void ffiPreadDirectIO(ThreadState ts, Blackhole bh) {
-    if (directIOFd < 0) {
-      bh.consume(0);
-      return;
-    }
-    MemorySegment buf = ts.ffiDirectIOBuf;
-    long offset = (seqPosition / PAGE_SIZE) * PAGE_SIZE;
-    try {
-      for (int i = 0; i < readsPerOp; i++) {
-        long n = (long) PREAD.invokeExact(directIOFd, buf, (long) readSize, offset);
-        bh.consume(n);
-        offset += readSize;
-        if (offset > maxOffset) {
-          offset = 0;
-        }
-      }
-    } catch (Throwable t) {
-      throw new RuntimeException("FFI Direct IO read failed", t);
-    }
-    seqPosition = offset;
+  public void directIO(ThreadState ts, Blackhole bh) throws IOException {
+    doSequentialReads(ts.directIOInput, ts.heapBuf, bh);
   }
 
   private void doSequentialReads(IndexInput input, byte[] dst, Blackhole bh) throws IOException {
