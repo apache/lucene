@@ -135,9 +135,10 @@ Improvements
 * GITHUB#16091: Replace deprecated IndexSearcher#search(Query, Collector) usage with CollectorManager
   in JoinUtil#createJoinQuery for the GlobalOrdinalsCollector case. (Luca Cavanna)
 
-* GITHUB#7820: CheckIndex now reports which segment's .si file could not be read, rather than only that
+* GITHUB#17820: CheckIndex now reports which segment's .si file could not be read, rather than only that
   a commit point was unreadable. SegmentInfos throws CorruptSegmentInfoException, carrying the segment
-  name and the underlying failure. (Gokul Manoj, Serhiy Bzhezytskyy)
+  name and the underlying failure, when a .si file is missing or corrupt; other I/O failures, such as
+  transient ones, propagate unchanged. (Gokul Manoj, Serhiy Bzhezytskyy, Alex Reelsen)
 
 * GITHUB#16292: Introduce TermGroupFacetCollectorManager to enable concurrent search with grouped
   faceting, removing usages of the deprecated IndexSearcher#search(Query, Collector).
