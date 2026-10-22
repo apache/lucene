@@ -75,6 +75,8 @@ This is the same suite that is run in the [nightly benchmarks](https://benchmark
 
 The instructions for running the benchmarks can be found in the luceneutil [README](https://github.com/mikemccand/luceneutil/blob/main/README.md).
 
+Committers can also run luceneutil on a pull request by applying the `benchmark:luceneutil-1m` label; see [Benchmarking Pull Requests](./dev-docs/benchmarking-pull-requests.md).
+
 The Lucene community is also interested in other implementations of these benchmark tasks.
 Feel free to share your findings (especially if your implementation performs better!) through the [Lucene mailing lists](https://lucene.apache.org/core/discussion.html) or open [PRs](https://github.com/mikemccand/luceneutil/pulls), [issues](https://github.com/mikemccand/luceneutil/issues) on the luceneutil project directly.
 
