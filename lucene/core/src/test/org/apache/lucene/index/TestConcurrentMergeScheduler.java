@@ -396,6 +396,7 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
   // https://github.com/apache/lucene/issues/13593
   // A merge that becomes pending in the window between the stall check and
   // getNextMerge must not push us over maxMergeCount:
+  @SuppressForbidden(reason = "Wall clock bounds the best-effort overshoot detection window")
   public void testMaxMergeCountNotExceededByLatePendingMerge() throws Exception {
     Directory dir = newDirectory();
 
