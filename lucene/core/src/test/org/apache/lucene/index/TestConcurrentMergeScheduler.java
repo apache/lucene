@@ -393,6 +393,153 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
     dir.close();
   }
 
+  // https://github.com/apache/lucene/issues/13593
+  // A merge that becomes pending in the window between the stall check and
+  // getNextMerge must not push us over maxMergeCount:
+  @SuppressForbidden(reason = "Wall clock bounds the best-effort overshoot detection window")
+  public void testMaxMergeCountNotExceededByLatePendingMerge() throws Exception {
+    Directory dir = newDirectory();
+
+    final MergePolicy.OneMerge firstMerge = newFakeMerge(dir, "_0");
+    final MergePolicy.OneMerge lateMerge = newFakeMerge(dir, "_1");
+
+    final List<MergePolicy.OneMerge> pending = new ArrayList<>();
+    final AtomicBoolean lateMergeQueued = new AtomicBoolean();
+    final CountDownLatch firstMergeRunning = new CountDownLatch(1);
+    final CountDownLatch firstMergeMayFinish = new CountDownLatch(1);
+
+    // Fake MergeSource that reproduces the race window deterministically: the
+    // late merge materializes inside getNextMerge, after hasPendingMerges was
+    // already evaluated as false, just as if IndexWriter had registered it in
+    // between under its own lock:
+    MergeScheduler.MergeSource source =
+        new MergeScheduler.MergeSource() {
+          @Override
+          public MergePolicy.OneMerge getNextMerge() {
+            synchronized (pending) {
+              if (pending.isEmpty() && lateMergeQueued.compareAndSet(false, true)) {
+                pending.add(lateMerge);
+              }
+              if (pending.isEmpty()) {
+                return null;
+              }
+              return pending.remove(0);
+            }
+          }
+
+          @Override
+          public void onMergeFinished(MergePolicy.OneMerge merge) {}
+
+          @Override
+          public boolean hasPendingMerges() {
+            synchronized (pending) {
+              return pending.isEmpty() == false;
+            }
+          }
+
+          @Override
+          public void merge(MergePolicy.OneMerge merge) {}
+        };
+
+    final AtomicInteger runningMergeCount = new AtomicInteger();
+    final AtomicInteger maxRunningMergeCount = new AtomicInteger();
+    final List<MergePolicy.OneMerge> executed = Collections.synchronizedList(new ArrayList<>());
+
+    try (ConcurrentMergeScheduler cms =
+        new ConcurrentMergeScheduler() {
+          @Override
+          protected void doMerge(MergeSource mergeSource, MergePolicy.OneMerge merge) {
+            int count = runningMergeCount.incrementAndGet();
+            maxRunningMergeCount.accumulateAndGet(count, Math::max);
+            executed.add(merge);
+            try {
+              if (merge == firstMerge) {
+                // Keep the first merge running until the scheduling thread has
+                // had the chance to pick up the late merge:
+                firstMergeRunning.countDown();
+                if (firstMergeMayFinish.await(30, TimeUnit.SECONDS) == false) {
+                  fail("timed out waiting to finish the first merge");
+                }
+              }
+            } catch (InterruptedException ie) {
+              throw new RuntimeException(ie);
+            } finally {
+              runningMergeCount.decrementAndGet();
+            }
+          }
+        }) {
+
+      cms.initialize(InfoStream.NO_OUTPUT, dir);
+      cms.setMaxMergesAndThreads(1, 1);
+
+      synchronized (pending) {
+        pending.add(firstMerge);
+      }
+
+      // Let the first merge finish once it is running. If the scheduler is
+      // buggy it will have started a second merge thread in the meantime; give
+      // it a brief chance to do so, so the overshoot is recorded:
+      Thread finishFirstMerge =
+          new Thread(
+              () -> {
+                try {
+                  if (firstMergeRunning.await(30, TimeUnit.SECONDS) == false) {
+                    fail("first merge never started");
+                  }
+                } catch (InterruptedException ie) {
+                  throw new RuntimeException(ie);
+                }
+                long deadline = System.currentTimeMillis() + 1000;
+                while (runningMergeCount.get() < 2 && System.currentTimeMillis() < deadline) {
+                  Thread.yield();
+                }
+                firstMergeMayFinish.countDown();
+              });
+      finishFirstMerge.start();
+
+      cms.merge(source, MergeTrigger.SEGMENT_FLUSH);
+      finishFirstMerge.join();
+
+      // Wait for all merge threads to wrap up:
+      cms.sync();
+
+      assertEquals(2, executed.size());
+      assertSame(firstMerge, executed.get(0));
+      assertSame(lateMerge, executed.get(1));
+      assertEquals(
+          "maxMergeCount was exceeded: " + maxRunningMergeCount.get(),
+          1,
+          maxRunningMergeCount.get());
+    } finally {
+      dir.close();
+    }
+  }
+
+  private static MergePolicy.OneMerge newFakeMerge(Directory dir, String name) {
+    return new MergePolicy.OneMerge(
+        List.of(
+            new SegmentCommitInfo(
+                new SegmentInfo(
+                    dir,
+                    Version.LATEST,
+                    null,
+                    name,
+                    0,
+                    false,
+                    false,
+                    Codec.getDefault(),
+                    Collections.emptyMap(),
+                    StringHelper.randomId(),
+                    new HashMap<>(),
+                    null),
+                0,
+                0,
+                0,
+                0,
+                0,
+                new byte[16])));
+  }
+
   public void testSmallMergesDonNotGetThreads() throws IOException {
     Directory dir = newDirectory();
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
