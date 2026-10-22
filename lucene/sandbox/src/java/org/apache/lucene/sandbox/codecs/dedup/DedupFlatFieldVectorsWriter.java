@@ -36,6 +36,7 @@ final class DedupFlatFieldVectorsWriter<T> extends FlatFieldVectorsWriter<T> {
       RamUsageEstimator.shallowSizeOfInstance(DedupFlatFieldVectorsWriter.class);
 
   private final DedupGroup<T> group;
+  private final String fieldName;
   private final DocsWithFieldSet docsWithFieldSet;
   private final List<T> vectors;
   private final IntArrayList fieldOrdToGroupOrd;
@@ -43,8 +44,9 @@ final class DedupFlatFieldVectorsWriter<T> extends FlatFieldVectorsWriter<T> {
   private int lastDocID;
   private boolean finished;
 
-  DedupFlatFieldVectorsWriter(DedupGroup<T> group) {
+  DedupFlatFieldVectorsWriter(String fieldName, DedupGroup<T> group) {
     this.group = group;
+    this.fieldName = fieldName;
     this.docsWithFieldSet = new DocsWithFieldSet();
     this.vectors = new ArrayList<>();
     this.fieldOrdToGroupOrd = new IntArrayList();
@@ -94,7 +96,13 @@ final class DedupFlatFieldVectorsWriter<T> extends FlatFieldVectorsWriter<T> {
   public void addValue(int docID, T vectorValue) throws IOException {
     if (finished) {
       throw new IllegalStateException("already finished");
-    } else if (docID <= lastDocID) {
+    } else if (docID == lastDocID) {
+      // Match the same-doc duplicate message used by other KNN vectors writers.
+      throw new IllegalArgumentException(
+          "VectorValuesField \""
+              + fieldName
+              + "\" appears more than once in this document (only one value is allowed per field)");
+    } else if (docID < lastDocID) {
       throw new IllegalArgumentException(
           "docID=" + docID + " not going forwards, indexed lastDocID=" + lastDocID);
     }
