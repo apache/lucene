@@ -286,7 +286,8 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     return original == this && mergeFieldsStream != fieldsStream ? mergeFieldsStream : null;
   }
 
-  private static void readField(DataInput in, StoredFieldVisitor visitor, FieldInfo info, int bits)
+  static void readField(
+      DataInput in, StoredFieldVisitor visitor, FieldInfo info, int bits, DataInput source)
       throws IOException {
     switch (bits & TYPE_MASK) {
       case BYTE_ARR:
@@ -309,11 +310,11 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
         visitor.doubleField(info, readZDouble(in));
         break;
       default:
-        throw new AssertionError("Unknown type flag: " + Integer.toHexString(bits));
+        throw new CorruptIndexException("Unknown type flag: " + Integer.toHexString(bits), source);
     }
   }
 
-  private static void skipField(DataInput in, int bits) throws IOException {
+  static void skipField(DataInput in, int bits, DataInput source) throws IOException {
     switch (bits & TYPE_MASK) {
       case BYTE_ARR:
       case STRING:
@@ -333,7 +334,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
         readZDouble(in);
         break;
       default:
-        throw new AssertionError("Unknown type flag: " + Integer.toHexString(bits));
+        throw new CorruptIndexException("Unknown type flag: " + Integer.toHexString(bits), source);
     }
   }
 
@@ -699,20 +700,23 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
       final long infoAndBits = doc.in.readVLong();
       final int fieldNumber = (int) (infoAndBits >>> TYPE_BITS);
       final FieldInfo fieldInfo = fieldInfos.fieldInfo(fieldNumber);
+      if (fieldInfo == null) {
+        throw new CorruptIndexException(
+            "Unknown field number: " + fieldNumber + ", docID=" + docID, fieldsStream);
+      }
 
       final int bits = (int) (infoAndBits & TYPE_MASK);
-      assert bits <= NUMERIC_DOUBLE : "bits=" + Integer.toHexString(bits);
 
       switch (visitor.needsField(fieldInfo)) {
         case YES:
-          readField(doc.in, visitor, fieldInfo, bits);
+          readField(doc.in, visitor, fieldInfo, bits, fieldsStream);
           break;
         case NO:
           if (fieldIDX
               == doc.numStoredFields - 1) { // don't skipField on last field value; treat like STOP
             return;
           }
-          skipField(doc.in, bits);
+          skipField(doc.in, bits, fieldsStream);
           break;
         case STOP:
           return;
