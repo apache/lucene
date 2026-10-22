@@ -60,7 +60,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
   final MemorySegment[] segments;
   final Function<IOContext, ReadAdvice> toReadAdvice;
   final AtomicInteger sharedPrefetchCounter;
-  // the advice applied to the pages of this input, or null if none applies (e.g. preloaded)
+  // the advice applied to the pages of this input, or null if any advice reads the same
   ReadAdvice readAdvice;
 
   int curSegmentIndex = -1;
@@ -376,14 +376,23 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
   public void updateIOContext(IOContext context) throws IOException {
     ReadAdvice advice = toReadAdvice.apply(context);
     updateReadAdvice(advice);
-    readAdvice = advice;
+    if (readAdvice != null) {
+      readAdvice = advice;
+    }
   }
 
   @Override
-  public boolean readsAs(IOContext context) {
-    return NATIVE_ACCESS.isEmpty()
-        || readAdvice == null
-        || toReadAdvice.apply(context) == readAdvice;
+  public boolean isEfficientFor(IOContext context) {
+    if (NATIVE_ACCESS.isEmpty() || readAdvice == null) {
+      return true;
+    }
+    // only random and sequential reads get inputs of their own
+    ReadAdvice advice = toReadAdvice.apply(context);
+    return switch (readAdvice) {
+      case RANDOM -> advice != ReadAdvice.SEQUENTIAL;
+      case SEQUENTIAL -> advice != ReadAdvice.RANDOM;
+      case NORMAL -> true;
+    };
   }
 
   private void updateReadAdvice(ReadAdvice readAdvice) throws IOException {
@@ -625,7 +634,9 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
               + this);
     }
 
-    return buildSlice(sliceDescription, offset, length);
+    MemorySegmentIndexInput slice = buildSlice(sliceDescription, offset, length);
+    slice.readAdvice = readAdvice;
+    return slice;
   }
 
   @Override
@@ -652,7 +663,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
             });
         slice.readAdvice = advice;
       } else {
-        // too small to be advised, so any context reads it the same way
+        // too small to be advised
         slice.readAdvice = null;
       }
     }
@@ -682,34 +693,28 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
     }
 
     final String newResourceDescription = getFullSliceDescription(sliceDescription);
-    final MemorySegmentIndexInput slice;
     if (slices.length == 1) {
-      slice =
-          new SingleSegmentImpl(
-              newResourceDescription,
-              null, // clones don't have an Arena, as they can't close)
-              isClone ? slices[0] : slices[0].asSlice(offset, length),
-              length,
-              chunkSizePower,
-              confined,
-              toReadAdvice,
-              sharedPrefetchCounter);
+      return new SingleSegmentImpl(
+          newResourceDescription,
+          null, // clones don't have an Arena, as they can't close)
+          isClone ? slices[0] : slices[0].asSlice(offset, length),
+          length,
+          chunkSizePower,
+          confined,
+          toReadAdvice,
+          sharedPrefetchCounter);
     } else {
-      slice =
-          new MultiSegmentImpl(
-              newResourceDescription,
-              null, // clones don't have an Arena, as they can't close)
-              slices,
-              offset,
-              length,
-              chunkSizePower,
-              confined,
-              toReadAdvice,
-              sharedPrefetchCounter);
+      return new MultiSegmentImpl(
+          newResourceDescription,
+          null, // clones don't have an Arena, as they can't close)
+          slices,
+          offset,
+          length,
+          chunkSizePower,
+          confined,
+          toReadAdvice,
+          sharedPrefetchCounter);
     }
-    // a slice reads the same pages
-    slice.readAdvice = readAdvice;
-    return slice;
   }
 
   static boolean checkIndex(long index, long length) {

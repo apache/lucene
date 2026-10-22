@@ -36,8 +36,10 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.MemorySegmentAccessInput;
+import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.tests.index.BaseCompoundFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.IOUtils;
 
 public class TestLucene90CompoundFormat extends BaseCompoundFormatTestCase {
   private final Codec codec = TestUtil.getDefaultCodec();
@@ -103,54 +105,44 @@ public class TestLucene90CompoundFormat extends BaseCompoundFormatTestCase {
     dir.close();
   }
 
-  /** An inner file opened with a context it does not read as gets a new mapping. */
-  public void testAnOpenReadingDifferentlyReadsAMappingOfItsOwn() throws IOException {
-    try (Directory base = newDirectory()) {
-      SegmentInfo si = writeCompound(base);
-      DataOpens dir = new DataOpens(base);
-      Directory cfs = si.getCodec().compoundFormat().getCompoundReader(dir, si);
-      try {
-        assertEquals(1, dir.opens.size());
-        String first = "_123.0";
-        String second = "_123.1";
-        try (IndexInput search = cfs.openInput(first, RANDOM)) {
-          assertEquals("searches read the mapping opened with the reader", 1, dir.opens.size());
-
-          IndexInput sequential = cfs.openInput(first, SEQUENTIAL);
-          assertEquals("reading it differently maps the file again", 2, dir.opens.size());
-          assertEquals(
-              "opened without advice, like the reader's mapping",
-              IOContext.DEFAULT,
-              dir.opens.get(1));
-          IndexInput otherSequential = cfs.openInput(first, SEQUENTIAL);
-          IndexInput otherFile = cfs.openInput(second, SEQUENTIAL);
-          assertEquals("reading the same way, or another file, maps nothing", 2, dir.opens.size());
-          try (IndexInput expected = base.openInput(first, IOContext.DEFAULT)) {
-            assertSameStreams(first, expected, sequential);
+  /** Random and sequential reads of an inner file use mappings of their own, in either order. */
+  public void testRandomAndSequentialReadsUseTheirOwnMapping() throws IOException {
+    IOContext normal = IOContext.DEFAULT;
+    for (List<IOContext> order :
+        List.of(
+            List.of(RANDOM, normal, SEQUENTIAL),
+            List.of(SEQUENTIAL, normal, RANDOM),
+            List.of(normal, RANDOM, SEQUENTIAL))) {
+      try (Directory base = newDirectory()) {
+        SegmentInfo si = writeCompound(base);
+        DataOpens dir = new DataOpens(base);
+        int mappings = order.getFirst() == normal ? 1 : 2;
+        try (Directory cfs = si.getCodec().compoundFormat().getCompoundReader(dir, si)) {
+          for (String file : List.of("_123.0", "_123.1")) {
+            List<IndexInput> inputs = new ArrayList<>();
+            for (int i = 0; i < 2; i++) {
+              for (IOContext context : order) {
+                inputs.add(cfs.openInput(file, context));
+              }
+            }
+            for (IndexInput input : inputs) {
+              try (IndexInput expected = base.openInput(file, IOContext.DEFAULT)) {
+                assertSameStreams(file, expected, input);
+              }
+            }
+            IOUtils.close(inputs);
           }
-          try (IndexInput expected = base.openInput(first, IOContext.DEFAULT)) {
-            assertSameStreams(first, expected, otherSequential);
-          }
-          try (IndexInput expected = base.openInput(first, IOContext.DEFAULT)) {
-            assertSameStreams(first, expected, search);
-          }
-          try (IndexInput expected = base.openInput(second, IOContext.DEFAULT)) {
-            assertSameStreams(second, expected, otherFile);
-          }
-          sequential.close();
-          otherSequential.close();
-          otherFile.close();
-          assertEquals("the other mapping stays open with the reader", 0, dir.closes);
+          assertEquals(order.toString(), Collections.nCopies(mappings, normal), dir.opens);
+          assertEquals("each file is advised once per mapping", 2 * mappings, dir.advisedSlices);
+          assertEquals(0, dir.closes);
         }
-      } finally {
-        cfs.close();
+        assertEquals("closed with the reader", mappings, dir.closes);
       }
-      assertEquals("closing the reader closes both mappings", 2, dir.closes);
     }
   }
 
-  /** No new mapping when every context reads the same. */
-  public void testNoOtherMappingWhenInputsReadTheSame() throws IOException {
+  /** No second mapping when inputs serve every context. */
+  public void testNoSecondMappingWhenNotNeeded() throws IOException {
     try (Directory base = newDirectory()) {
       SegmentInfo si = writeCompound(base);
       DataOpens dir = new DataOpens(base, false);
@@ -191,7 +183,7 @@ public class TestLucene90CompoundFormat extends BaseCompoundFormatTestCase {
     }
   }
 
-  /** On MMapDirectory, inner files opened with different advice use different mappings. */
+  /** On MMapDirectory, random and sequential reads of an inner file use different mappings. */
   public void testEachAdviceReadsItsOwnMapping() throws IOException {
     try (MMapDirectory dir = new MMapDirectory(createTempDir("cfsAdvice"))) {
       dir.setReadAdvice(MMapDirectory.ADVISE_BY_CONTEXT);
@@ -202,10 +194,7 @@ public class TestLucene90CompoundFormat extends BaseCompoundFormatTestCase {
           IndexInput otherSearch = cfs.openInput("_123.0", RANDOM);
           IndexInput sequential = cfs.openInput("_123.0", SEQUENTIAL)) {
         assertEquals(address(search), address(otherSearch));
-        assertEquals(
-            "only advice that applies needs a mapping of its own",
-            MMapDirectory.supportsMadvise(),
-            address(search) != address(sequential));
+        assertEquals(MMapDirectory.supportsMadvise(), address(search) != address(sequential));
         try (IndexInput expected = dir.openInput("_123.0", IOContext.DEFAULT)) {
           assertSameStreams("_123.0", expected, sequential);
         }
@@ -315,13 +304,15 @@ public class TestLucene90CompoundFormat extends BaseCompoundFormatTestCase {
   }
 
   /**
-   * Records the contexts the compound data file is opened with, and counts closes. Slices match
-   * like memory-mapped inputs using ADVISE_BY_CONTEXT, or match every context.
+   * Records the contexts the compound data file is opened with and counts closes. Its slices are
+   * efficient for a context like memory-mapped inputs using {@link
+   * MMapDirectory#ADVISE_BY_CONTEXT}, or for every context.
    */
   private static class DataOpens extends FilterDirectory {
     final List<IOContext> opens = Collections.synchronizedList(new ArrayList<>());
     final boolean advises;
     volatile int closes;
+    volatile int advisedSlices;
     volatile boolean gone;
     volatile boolean failNextOpen;
 
@@ -369,13 +360,15 @@ public class TestLucene90CompoundFormat extends BaseCompoundFormatTestCase {
         @Override
         public IndexInput slice(String description, long offset, long length, IOContext context)
             throws IOException {
+          synchronized (DataOpens.this) {
+            advisedSlices++;
+          }
           return new Advised(in.slice(description, offset, length, context), context, advises);
         }
       };
     }
   }
 
-  /** A slice that reads like a memory-mapped input using ADVISE_BY_CONTEXT. */
   private static final class Advised extends FilterIndexInput {
     private final IOContext context;
     private final boolean advises;
@@ -387,11 +380,15 @@ public class TestLucene90CompoundFormat extends BaseCompoundFormatTestCase {
     }
 
     @Override
-    public boolean readsAs(IOContext other) {
-      return advises == false
-          || MMapDirectory.ADVISE_BY_CONTEXT
-              .apply("", context)
-              .equals(MMapDirectory.ADVISE_BY_CONTEXT.apply("", other));
+    public boolean isEfficientFor(IOContext other) {
+      if (advises == false) {
+        return true;
+      }
+      ReadAdvice advice = MMapDirectory.ADVISE_BY_CONTEXT.apply("", context).orElseThrow();
+      ReadAdvice otherAdvice = MMapDirectory.ADVISE_BY_CONTEXT.apply("", other).orElseThrow();
+      return advice == ReadAdvice.NORMAL
+          || otherAdvice == ReadAdvice.NORMAL
+          || advice == otherAdvice;
     }
 
     @Override

@@ -338,8 +338,9 @@ public class MMapDirectory extends FSDirectory {
               chunkSizePower,
               confined,
               toReadAdvice);
-      // preloaded pages are already in memory, so advice does not matter
-      input.readAdvice = preloaded ? null : advice;
+      // preloaded or within a page, any advice reads the same
+      boolean withinAPage = NATIVE_ACCESS.filter(na -> fileSize < na.getPageSize()).isPresent();
+      input.readAdvice = preloaded || withinAPage ? null : advice;
       return input;
     } catch (Throwable t) {
       arena.close();

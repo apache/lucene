@@ -271,16 +271,19 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   @Override
   public void close() throws IOException {
     if (!closed) {
-      IOUtils.close(indexReader, fieldsStream, sequentialFieldsStreamToClose());
-      closed = true;
+      IOUtils.close(indexReader, fieldsStream, takeSequentialFieldsStream());
     }
   }
 
-  /** Returns the sequential input to close, if it is not {@code fieldsStream}. */
-  private synchronized IndexInput sequentialFieldsStreamToClose() {
-    return original == this && sequentialFieldsStream != fieldsStream
-        ? sequentialFieldsStream
-        : null;
+  /** Marks this reader closed and returns the sequential input to close, if any. */
+  private synchronized IndexInput takeSequentialFieldsStream() {
+    closed = true;
+    if (original != this || sequentialFieldsStream == fieldsStream) {
+      return null;
+    }
+    IndexInput toClose = sequentialFieldsStream;
+    sequentialFieldsStream = null;
+    return toClose;
   }
 
   private static void readField(DataInput in, StoredFieldVisitor visitor, FieldInfo info, int bits)
@@ -727,17 +730,14 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
         this, true, original.sequentialFieldsStream().clone());
   }
 
-  /**
-   * Returns the input for sequential reads. The data file is opened again only if {@code
-   * fieldsStream} does not read as the sequential context.
-   */
+  /** Returns the input for sequential reads, opening the data file again if needed. */
   private synchronized IndexInput sequentialFieldsStream() throws IOException {
     assert original == this;
     ensureOpen();
     if (sequentialFieldsStream == null) {
       IOContext sequential =
           context.withHints(FileTypeHint.DATA, DataAccessHint.SEQUENTIAL, NoReuseHint.INSTANCE);
-      if (fieldsStream.readsAs(sequential)) {
+      if (fieldsStream.isEfficientFor(sequential)) {
         sequentialFieldsStream = fieldsStream;
       } else {
         try {

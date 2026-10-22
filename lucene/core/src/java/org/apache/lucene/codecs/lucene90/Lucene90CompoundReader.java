@@ -82,6 +82,7 @@ final class Lucene90CompoundReader extends CompoundDirectory {
             + CodecUtil.footerLength();
 
     handle = directory.openInput(dataFileName, IOContext.DEFAULT);
+    mappings.add(new Mapping(handle));
     try {
       CodecUtil.checkIndexHeader(
           handle, Lucene90CompoundFormat.DATA_CODEC, version, version, si.getId(), "");
@@ -150,17 +151,15 @@ final class Lucene90CompoundReader extends CompoundDirectory {
 
   @Override
   public void close() throws IOException {
-    List<IndexInput> others = new ArrayList<>();
+    List<IndexInput> data = new ArrayList<>();
     synchronized (this) {
       closed = true;
       for (Mapping mapping : mappings) {
-        if (mapping.data != handle) {
-          others.add(mapping.data);
-        }
+        data.add(mapping.data);
       }
       mappings.clear();
     }
-    IOUtils.close(handle, () -> IOUtils.close(others));
+    IOUtils.close(data);
   }
 
   @Override
@@ -183,48 +182,44 @@ final class Lucene90CompoundReader extends CompoundDirectory {
               + ")");
     }
     synchronized (this) {
-      Mapping mapping = mappingFor(id, context);
-      IndexInput slice = mapping.data.slice(name, entry.offset, entry.length, context);
-      mapping.firstOpens.putIfAbsent(id, slice);
-      return slice;
+      if (closed) {
+        throw new AlreadyClosedException("this Directory is closed");
+      }
+      for (Mapping mapping : mappings) {
+        IndexInput slice = mapping.slices.get(id);
+        if (slice == null) {
+          return mapping.open(id, name, entry, context);
+        }
+        if (slice.isEfficientFor(context)) {
+          return slice.clone();
+        }
+      }
+      Mapping mapping;
+      try {
+        // without advice, like the reader's mapping, so inner files advise their own pages
+        mapping = new Mapping(directory.openInput(dataFileName, IOContext.DEFAULT));
+      } catch (@SuppressWarnings("unused") FileNotFoundException | NoSuchFileException e) {
+        // an open reader outlives its files, so read through the mapping it already holds
+        return mappings.getFirst().slices.get(id).clone();
+      }
+      mappings.add(mapping);
+      return mapping.open(id, name, entry, context);
     }
   }
 
   /**
-   * Returns the first mapping where {@code id} is not open yet or reads as {@code context}, and
-   * opens a new mapping otherwise. This way an inner file is never advised twice on one mapping.
+   * A mapping of the data file, shared by all inner files, and the slice of each inner file opened
+   * on it. Only that first open advises the pages of the inner file.
    */
-  private Mapping mappingFor(String id, IOContext context) throws IOException {
-    assert Thread.holdsLock(this);
-    if (closed) {
-      throw new AlreadyClosedException("this Directory is closed");
-    }
-    if (mappings.isEmpty()) {
-      mappings.add(new Mapping(handle));
-    }
-    for (Mapping mapping : mappings) {
-      IndexInput first = mapping.firstOpens.get(id);
-      if (first == null || first.readsAs(context)) {
-        return mapping;
-      }
-    }
-    IndexInput data;
-    try {
-      // like the reader's mapping, opened without advice
-      data = directory.openInput(dataFileName, IOContext.DEFAULT);
-    } catch (@SuppressWarnings("unused") FileNotFoundException | NoSuchFileException e) {
-      // an open reader outlives its files, so read through the mapping it already holds
-      return mappings.getFirst();
-    }
-    Mapping mapping = new Mapping(data);
-    mappings.add(mapping);
-    return mapping;
-  }
-
-  /** A mapping of the data file and the first open of each inner file on it. */
-  private record Mapping(IndexInput data, Map<String, IndexInput> firstOpens) {
+  private record Mapping(IndexInput data, Map<String, IndexInput> slices) {
     Mapping(IndexInput data) {
       this(data, new HashMap<>());
+    }
+
+    IndexInput open(String id, String name, FileEntry entry, IOContext context) throws IOException {
+      IndexInput slice = data.slice(name, entry.offset, entry.length, context);
+      slices.put(id, slice);
+      return slice.clone();
     }
   }
 

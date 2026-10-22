@@ -181,44 +181,55 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
     }
   }
 
-  /** An input reads as a context when its pages would get the same advice. */
-  public void testReadsAs() throws IOException {
+  /** Only random and sequential reads get inputs of their own. */
+  public void testIsEfficientFor() throws IOException {
     var random = new DefaultIOContext(DataAccessHint.RANDOM);
     var sequential = new DefaultIOContext(DataAccessHint.SEQUENTIAL);
     // larger than a page, so that slices get advised
     final int size = 1 << 17;
-    try (MMapDirectory dir = new MMapDirectory(createTempDir("testMatches"))) {
+    try (MMapDirectory dir = new MMapDirectory(createTempDir("testIsEfficientFor"))) {
       try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
         out.writeBytes(new byte[size], 0, size);
       }
       try (IndexInput in = dir.openInput("test", random)) {
-        assertTrue("one advice for every context", in.readsAs(sequential));
+        assertTrue("one advice for every context", in.isEfficientFor(sequential));
       }
 
       dir.setReadAdvice(MMapDirectory.ADVISE_BY_CONTEXT);
       boolean advises = MMapDirectory.supportsMadvise();
       try (IndexInput in = dir.openInput("test", random)) {
-        assertTrue(in.readsAs(random));
-        assertEquals(advises == false, in.readsAs(sequential));
+        assertTrue(in.isEfficientFor(random));
+        assertTrue("normal reads share a random input", in.isEfficientFor(IOContext.DEFAULT));
+        assertEquals(advises == false, in.isEfficientFor(sequential));
         assertEquals(
-            "a clone reads the same pages", advises == false, in.clone().readsAs(sequential));
+            "a clone reads the same pages",
+            advises == false,
+            in.clone().isEfficientFor(sequential));
         assertEquals(
             "a slice reads the same pages",
             advises == false,
-            in.slice("slice", 0, size).readsAs(sequential));
+            in.slice("slice", 0, size).isEfficientFor(sequential));
 
         IndexInput advised = in.slice("advised", 0, size, sequential);
-        assertTrue(advised.readsAs(sequential));
-        assertEquals(advises == false, advised.readsAs(random));
-        assertTrue("too small to be advised", in.slice("small", 0, 1, sequential).readsAs(random));
+        assertTrue(advised.isEfficientFor(sequential));
+        assertEquals(advises == false, advised.isEfficientFor(random));
+        assertTrue(
+            "too small to be advised", in.slice("small", 0, 1, sequential).isEfficientFor(random));
 
         in.updateIOContext(sequential);
-        assertTrue(in.readsAs(sequential));
+        assertTrue(in.isEfficientFor(sequential));
+      }
+
+      try (IndexOutput out = dir.createOutput("small", IOContext.DEFAULT)) {
+        out.writeByte((byte) 0);
+      }
+      try (IndexInput in = dir.openInput("small", random)) {
+        assertTrue("a file within a page is not opened again", in.isEfficientFor(sequential));
       }
 
       dir.setPreload((_, _) -> true);
       try (IndexInput in = dir.openInput("test", random)) {
-        assertTrue("preloaded pages are resident", in.readsAs(sequential));
+        assertTrue("preloaded pages are resident", in.isEfficientFor(sequential));
       }
     }
   }

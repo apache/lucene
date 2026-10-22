@@ -215,10 +215,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     return data == vectorData ? this : new Lucene99FlatVectorsReader(this, data.clone());
   }
 
-  /**
-   * Returns the input for sequential reads. The data file is opened again only if {@code
-   * vectorData} does not read as the sequential context.
-   */
+  /** Returns the input for sequential reads, opening the data file again if needed. */
   private synchronized IndexInput sequentialVectorData() throws IOException {
     assert original == this;
     if (closed) {
@@ -226,15 +223,15 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     }
     if (sequentialVectorData == null) {
       IOContext sequential = sequentialContext();
-      if (vectorData.readsAs(sequential) == false) {
+      if (vectorData.isEfficientFor(sequential)) {
+        sequentialVectorData = vectorData;
+      } else {
         try {
           sequentialVectorData = directory.openInput(vectorDataFN, sequential);
         } catch (FileNotFoundException | NoSuchFileException _) {
           // an open reader outlives its files, so read through the input it already holds
           sequentialVectorData = vectorData;
         }
-      } else {
-        sequentialVectorData = vectorData;
       }
     }
     return sequentialVectorData;
@@ -390,7 +387,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     IOUtils.close(vectorData, takeSequentialVectorData());
   }
 
-  /** Returns the sequential input to close, if it is not {@code vectorData}. */
+  /** Marks this reader closed and returns the sequential input to close, if any. */
   private synchronized IndexInput takeSequentialVectorData() {
     closed = true;
     if (original != this || sequentialVectorData == vectorData) {

@@ -90,8 +90,8 @@ public class TestLucene99HnswScalarQuantizedVectorsFormat extends BaseKnnVectors
   }
 
   /**
-   * A merge instance reaches the raw vectors reader, which opens the raw vectors again for the
-   * merge, and finishing the merge closes them.
+   * Merges and sequential values reach the raw vectors reader, which opens the raw vectors again
+   * for sequential reads and closes them with the reader.
    */
   public void testMergeInstanceOpensTheRawVectors() throws IOException {
     List<AtomicBoolean> mergeOpens = new CopyOnWriteArrayList<>();
@@ -112,7 +112,7 @@ public class TestLucene99HnswScalarQuantizedVectorsFormat extends BaseKnnVectors
             return new FilterIndexInput(name, in) {
               // reads like a memory-mapped input using ADVISE_BY_CONTEXT
               @Override
-              public boolean readsAs(IOContext other) {
+              public boolean isEfficientFor(IOContext other) {
                 return MMapDirectory.ADVISE_BY_CONTEXT
                     .apply(name, context)
                     .equals(MMapDirectory.ADVISE_BY_CONTEXT.apply(name, other));
@@ -161,6 +161,11 @@ public class TestLucene99HnswScalarQuantizedVectorsFormat extends BaseKnnVectors
         for (int ord = 0; ord < expected.size(); ord++) {
           assertArrayEquals(expected.vectorValue(ord), actual.vectorValue(ord), 0f);
         }
+
+        int slices = mergeSlices.get();
+        vectors.getFloatVectorValues("f", DataAccessHint.SEQUENTIAL);
+        assertTrue("sequential values read the same input", mergeSlices.get() > slices);
+        assertEquals(1, mergeOpens.size());
 
         merging.finishMerge();
         assertFalse("kept while the reader is open", mergeOpens.get(0).get());
