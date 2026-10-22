@@ -691,6 +691,8 @@ Optimizations
 
 * GITHUB#16119: Optimize byte array writes in OutputStreamIndexOutput to remove unnecessary overhead. (neoremind)
 
+* GITHUB#16757: Speed up building cached bit sets in LRUQueryCache. (Ke Wei)
+
 Bug Fixes
 ---------------------
 
