@@ -113,10 +113,11 @@ templates:
 
     (( template=announce_lucene_mail_body ))
     ----
-  announce_lucene_sign_mail: |
+  announce_lucene_announce_mail: |
     The template below can be used to announce the Lucene release to the
-    `announce@apache.org` mailing list. The mail *should be signed with PGP.*
-    and sent *from your `@apache.org` account*.
+    `announce@apache.org` mailing list. The email *must* be sent *from your `@apache.org` account*,
+    and it *can optionally* be signed with your PGP key, using the `--clearsign` option of
+    gpg, as explained in https://www.gnupg.org/gph/en/manual/x135.html.
 
     .Mail template
     ----
@@ -157,6 +158,7 @@ templates:
 #     depends:  # One or more dependencies which will bar execution
 #     - todo_id1
 #     - todo_id2
+#     types: ['major', 'minor', 'bugfix'] # Limit TODO to specific release types
 #     vars:  # Dictionary of jinja2 variables local to this TODO, e.g.
 #       logfile_path: "{{ [rc_folder, 'logs'] | path_join }}"
 #       # Vars can contain global jinja vars or local vars earlier defined (ordered dict)
@@ -172,6 +174,9 @@ templates:
 #       confirm_each_command: true # Set to false to run all commands without prompting
 #       remove_files: ['file1', 'folder2'] # List of files or folders that must be gone
 #       logs_prefix: prefix # Lets you prefix logs file names with this string
+#       run_text: Optional text to display before asking to run commands
+#       env: {} # Dictionary of environment variables to set before running commands
+#       vars: {} # Dictionary of local jinja2 variables for this Commands block
 #       commands:   # List of !Commands to execute
 #       - !Command  # One single command
 #         cmd: "ls {{ folder_to_ls }}"  # A single command. May reference jinja vars
@@ -179,13 +184,17 @@ templates:
 #         cwd: relative_path # Where to run command, relative to root_folder
 #         comment: # Will display a # or REM comment above the command in printouts
 #         vars: {} # Possible to define local vars for this command only
-#         logfile: my.og # Overrides log file name which may grow very long :)
+#         logfile: my.log # Overrides log file name which may grow very long :)
 #         tee: false       # If true, sends output to console and file
 #         stdout: false    # if true, sends output only to console, not log file
 #         live: false      # If true, sends output live byte-by-byte to console
 #         redirect: file.txt      # Send output to file. Use instead of >
 #         redirect_append: false  # Will cause output to be appended, like >>
-#         shell: false     $ Set to true to use built-in shell commands
+#         shell: false     # Set to true to use built-in shell commands
+#         should_fail: false # Set to true if command is expected to fail (for testing)
+#         persist_vars: false # If true, parses stdout for --wizard-var KEY=VALUE markers
+#                             # and persists them to TODO state, referenced as {{ todo_id.KEY }}.
+#                             # Format: --wizard-var var_name=value with spaces allowed in value
 #     user_input: # An array of !UserInput objects for requesting input from user
 #     - !UserInput
 #       prompt: Please enter your gpg key ID, e.g. 0D8D0B93
@@ -440,6 +449,37 @@ groups:
         cmd: git push --set-upstream origin {{ release_branch }}
         tee: true
   - !Todo
+    id: protect_branches
+    title: Protect the new git branch(es)
+    vars:
+      branch_names: "{{ release_branch }}{% if release_type == 'major' %} and {{ stable_branch }}{% endif %}"
+    description: >
+      Edit `.asf.yaml` to protect new git branch(es) {{ branch_names }}.
+    types:
+    - major
+    - minor
+    depends: create_minor_branch
+    commands: !Commands
+      root_folder: '{{ git_checkout_folder }}'
+      commands_text: Run these commands to edit `.asf.yaml` and protect the new branch(es)
+      commands:
+      - !Command
+        cmd: git checkout main
+        tee: true
+      - !Command
+        cmd: git pull --ff-only
+        tee: true
+      - !Command
+        cmd: "{{ editor }} .asf.yaml"
+        comment: >
+          Add the newly created branch(es) {{ branch_names }}
+          under `protected_branches` in `.asf.yaml`. An editor will open.
+        stdout: true
+      - !Command
+        cmd: git add .asf.yaml && git commit -m "Add branch protection for {{ branch_names }}" && git push
+        logfile: commit-branch-protection.log
+        tee: true
+  - !Todo
     id: add_version_major
     title: Add a new major version on main branch
     types:
@@ -515,14 +555,39 @@ groups:
     links:
     - https://projects.apache.org/doap.html
   - !Todo
-    id: jenkins_builds
-    title: Add Jenkins task for the release branch
-    description: '...so that builds run for the new branch. Consult the JenkinsReleaseBuilds page.'
+    id: new_jenkins_builds
+    title: Add Jenkins tasks for new branch(es)
+    description: |
+      This will make sure we are continuously testing the new branch(es) we have created.
+      Consult the JenkinsReleaseBuilds page for more information.
+
+      Job Suffixes to create:
+        {% if release_type == 'major' %}
+        *-{{release_version_major}}.x (The new stable branch)
+        {% endif %}
+        *-{{release_version_major}}.{{release_version_minor}} (The new release branch)
     types:
     - major
     - minor
     links:
     - https://cwiki.apache.org/confluence/display/LUCENEJAVA/JenkinsReleaseBuilds
+    - https://ci-builds.apache.org/job/Lucene/
+  - !Todo
+    id: old_jenkins_builds
+    title: Remove old Jenkins tasks for decommissioned branches
+    description: |
+      This will make sure we aren't using resources to test branches no longer in development.
+      Consult the JenkinsReleaseBuilds page for more information.
+
+      Job Suffixes to delete:
+        *-{{latest_version_major}}.{{latest_version_minor}} (The previous release branch)
+    depends: new_jenkins_builds
+    types:
+    - major
+    - minor
+    links:
+    - https://cwiki.apache.org/confluence/display/LUCENEJAVA/JenkinsReleaseBuilds
+    - https://ci-builds.apache.org/job/Lucene/
   - !Todo
     id: inform_devs
     title: Inform Devs of the new Release Branch
@@ -1308,29 +1373,13 @@ groups:
     description: |
       (( template=announce_lucene_mail ))
   - !Todo
-    id: setup_pgp_mail
-    title: Setup your mail client for PGP
-    description: |
-      The announce mail to `announce@apache.org` should be cryptographically signed.
-      Make sure you have a PGP enabled email client with your apache key installed.
-      There are plugins for popular email programs, as well as browser plugins for webmail.
-      See links for help on how to setup your email client for PGP.
-
-      If you prefer to sign the announcements manually rather than using a plugin,
-      you can do so from the command line and then copy the output into your mail program.
-
-      gpg --output - --clearsign lucene_announce.txt
-    links:
-    - https://www.openpgp.org/software/
-    - https://ssd.eff.org/en/module/how-use-pgp-mac-os-x
-    - https://ssd.eff.org/en/module/how-use-pgp-linux
-    - https://ssd.eff.org/en/module/how-use-pgp-windows
-    - https://www.openpgp.org/software/mailvelope/
-  - !Todo
     id: announce_lucene_sig
     title: Announce the Lucene release (announce@a.o)
     description: |
-      (( template=announce_lucene_sign_mail ))
+      (( template=announce_lucene_announce_mail ))
+    links:
+      - https://www.apache.org/legal/release-policy.html#release-announcements
+      - https://www.gnupg.org/gph/en/manual/x135.html
   - !Todo
     id: add_to_wikipedia
     title: Add the new version to Wikipedia
