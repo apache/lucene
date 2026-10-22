@@ -22,8 +22,10 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.AttributeSource;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.automaton.Automaton;
+import org.apache.lucene.util.automaton.ByteRunnable;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 
 /**
@@ -170,5 +172,36 @@ public class AutomatonQuery extends MultiTermQuery implements Accountable {
   @Override
   public long ramBytesUsed() {
     return ramBytesUsed;
+  }
+
+  private static final int TERM_LIMIT_FOR_COST = 16;
+
+  @Override
+  public long estimateCost(Terms terms) throws IOException {
+    // Special cases of automata
+    if (compiled.type == CompiledAutomaton.AUTOMATON_TYPE.NONE) {
+      return 0;
+    } else if (compiled.type == CompiledAutomaton.AUTOMATON_TYPE.ALL) {
+      return terms.getSumDocFreq();
+    } else if (compiled.type == CompiledAutomaton.AUTOMATON_TYPE.SINGLE) {
+      TermsEnum t = terms.iterator();
+      return t.seekExact(compiled.term) ? t.docFreq() : 0;
+    }
+    assert compiled.type == CompiledAutomaton.AUTOMATON_TYPE.NORMAL;
+    // Special case: Few terms overall
+    if (terms.size() < TERM_LIMIT_FOR_COST) {
+      // Exhaustively sum cost of matching terms
+      long cost = 0;
+      ByteRunnable byteRunnable = compiled.getByteRunnable();
+      TermsEnum t = terms.iterator();
+      BytesRef term;
+      while ((term = t.next()) != null) {
+        if (byteRunnable.run(term.bytes, term.offset, term.length)) {
+          cost += t.docFreq();
+        }
+      }
+      return cost;
+    }
+    return terms.getSumDocFreq();
   }
 }
