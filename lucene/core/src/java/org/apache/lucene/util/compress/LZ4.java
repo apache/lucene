@@ -147,6 +147,95 @@ public final class LZ4 {
     return dOff;
   }
 
+  /**
+   * Same as {@link #decompress(DataInput, int, byte[], int)}, but reads the compressed bytes from
+   * {@code compressed[cOff:cOff+cLen]}. Reading from a heap array avoids the per-byte overhead of
+   * {@link DataInput#readByte()}, which dominates decompression when the input is an {@code
+   * IndexInput}.
+   */
+  public static int decompress(
+      byte[] compressed, int cOff, int cLen, int decompressedLen, byte[] dest, int dOff)
+      throws IOException {
+    Objects.checkFromIndexSize(cOff, cLen, compressed.length);
+    final int cEnd = cOff + cLen;
+    final int destEnd = dOff + decompressedLen;
+
+    do {
+      if (cOff >= cEnd) {
+        throw new IOException("compressed input is truncated");
+      }
+      // literals
+      final int token = compressed[cOff++] & 0xFF;
+      int literalLen = token >>> 4;
+
+      if (literalLen != 0) {
+        if (literalLen == 0x0F) {
+          byte len;
+          do {
+            if (cOff >= cEnd) {
+              throw new IOException("compressed input is truncated");
+            }
+            len = compressed[cOff++];
+            literalLen += len & 0xFF;
+          } while (len == (byte) 0xFF);
+        }
+        if (literalLen > cEnd - cOff) {
+          throw new IOException("compressed input is truncated");
+        }
+        System.arraycopy(compressed, cOff, dest, dOff, literalLen);
+        cOff += literalLen;
+        dOff += literalLen;
+      }
+
+      if (dOff >= destEnd) {
+        break;
+      }
+
+      // matches
+      if (cEnd - cOff < 2) {
+        throw new IOException("compressed input is truncated");
+      }
+      final int matchDec = (compressed[cOff] & 0xFF) | ((compressed[cOff + 1] & 0xFF) << 8);
+      cOff += 2;
+      if (matchDec == 0) {
+        throw new IOException("offset 0 is invalid");
+      }
+      if (matchDec > dOff) {
+        // The match would reference bytes before dest[0], which this call never wrote.
+        throw new IOException(
+            "match offset " + matchDec + " is invalid, only " + dOff + " bytes are available");
+      }
+
+      int matchLen = token & 0x0F;
+      if (matchLen == 0x0F) {
+        int len;
+        do {
+          if (cOff >= cEnd) {
+            throw new IOException("compressed input is truncated");
+          }
+          len = compressed[cOff++] & 0xFF;
+          matchLen += len;
+        } while (len == 0xFF);
+      }
+      matchLen += MIN_MATCH;
+
+      // copying a multiple of 8 bytes can make decompression from 5% to 10% faster
+      final int fastLen = (matchLen + 7) & 0xFFFFFFF8;
+      if (matchDec < matchLen || dOff + fastLen > destEnd) {
+        // overlap -> naive incremental copy
+        for (int ref = dOff - matchDec, end = dOff + matchLen; dOff < end; ++ref, ++dOff) {
+          dest[dOff] = dest[ref];
+        }
+      } else {
+        // no overlap -> arraycopy
+        System.arraycopy(dest, dOff - matchDec, dest, dOff, fastLen);
+        dOff += matchLen;
+      }
+    } while (dOff < destEnd);
+
+    return dOff;
+  }
+
   private static void encodeLen(int l, DataOutput out) throws IOException {
     while (l >= 0xFF) {
       out.writeByte((byte) 0xFF);
