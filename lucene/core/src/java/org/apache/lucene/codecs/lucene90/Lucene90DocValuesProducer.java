@@ -545,12 +545,14 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
   /**
    * Transforms query bounds {@code [minValue, maxValue]} into the encoded domain where stored
    * values satisfy {@code stored = raw * mul + delta}. Returns {@code {encodedMin, encodedMax}} or
-   * {@code null} if the range is empty (no raw value can match).
+   * {@code null} if the range is empty (no raw value can match). The caller must ensure that
+   * subtracting {@code delta} from both bounds does not overflow.
    */
   private static long[] transformGcdBounds(long minValue, long maxValue, long mul, long delta) {
     assert mul > 0;
-    long encodedMin = saturatingShiftLower(minValue, delta);
-    long encodedMax = saturatingShiftUpper(maxValue, delta);
+    assert gcdBoundsOverflow(minValue, maxValue, delta) == false;
+    long encodedMin = minValue - delta;
+    long encodedMax = maxValue - delta;
     if (mul != 1) {
       encodedMin = Math.ceilDiv(encodedMin, mul);
       encodedMax = Math.floorDiv(encodedMax, mul);
@@ -560,6 +562,15 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       return null;
     }
     return new long[] {encodedMin, encodedMax};
+  }
+
+  private static boolean gcdBoundsOverflow(long minValue, long maxValue, long delta) {
+    return subtractionOverflows(minValue, delta) || subtractionOverflows(maxValue, delta);
+  }
+
+  private static boolean subtractionOverflows(long value, long delta) {
+    long result = value - delta;
+    return ((value ^ delta) & (value ^ result)) < 0;
   }
 
   /**
@@ -579,39 +590,6 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     long[] bounds = transformGcdBounds(minValue, maxValue, mul, delta);
     if (bounds != null) {
       rangeIntoBitSet(values, fromDoc, toDoc, bounds[0], bounds[1], bitSet, offset);
-    }
-  }
-
-  /**
-   * Returns {@code minValue - delta}, saturating to {@code Long.MIN_VALUE} when the real value
-   * would underflow (every non-negative stored value satisfies the lower bound) or to {@code
-   * Long.MAX_VALUE} when it would overflow (no stored value can satisfy the lower bound). Stored
-   * values are non-negative, so the caller can keep using the SIMD path with these saturated
-   * sentinels.
-   */
-  private static long saturatingShiftLower(long minValue, long delta) {
-    try {
-      return Math.subtractExact(minValue, delta);
-    } catch (
-        @SuppressWarnings("unused")
-        ArithmeticException overflow) {
-      return delta > 0 ? Long.MIN_VALUE : Long.MAX_VALUE;
-    }
-  }
-
-  /**
-   * Symmetric counterpart of {@link #saturatingShiftLower}: returns {@code maxValue - delta},
-   * saturating to {@code Long.MAX_VALUE} when the real value would overflow (every stored value
-   * satisfies the upper bound) or to {@code Long.MIN_VALUE} when it would underflow (no stored
-   * value can satisfy the upper bound).
-   */
-  private static long saturatingShiftUpper(long maxValue, long delta) {
-    try {
-      return Math.subtractExact(maxValue, delta);
-    } catch (
-        @SuppressWarnings("unused")
-        ArithmeticException overflow) {
-      return delta < 0 ? Long.MAX_VALUE : Long.MIN_VALUE;
     }
   }
 
@@ -1032,6 +1010,13 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           } else {
             final long mul = entry.gcd;
             final long delta = entry.minValue;
+            final LongValues decodedValues =
+                new LongValues() {
+                  @Override
+                  public long get(long index) {
+                    return mul * values.get(index) + delta;
+                  }
+                };
             return new DenseNumericDocValues(maxDoc) {
               private byte[] bulkBytes = new byte[0];
 
@@ -1071,8 +1056,13 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
                   long maxValue,
                   FixedBitSet bitSet,
                   int offset) {
-                Lucene90DocValuesProducer.rangeGcdDeltaIntoBitSet(
-                    values, fromDoc, toDoc, minValue, maxValue, mul, delta, bitSet, offset);
+                if (gcdBoundsOverflow(minValue, maxValue, delta)) {
+                  Lucene90DocValuesProducer.rangeIntoBitSet(
+                      decodedValues, fromDoc, toDoc, minValue, maxValue, bitSet, offset);
+                } else {
+                  Lucene90DocValuesProducer.rangeGcdDeltaIntoBitSet(
+                      values, fromDoc, toDoc, minValue, maxValue, mul, delta, bitSet, offset);
+                }
               }
             };
           }
@@ -2092,7 +2082,8 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           }
           LongValues v;
           long lo, hi;
-          if (hasGcdEncoding) {
+          if (hasGcdEncoding
+              && gcdBoundsOverflow(minValue, maxValue, entry.minValue) == false) {
             long[] bounds = transformGcdBounds(minValue, maxValue, entry.gcd, entry.minValue);
             if (bounds == null) {
               return;
@@ -2223,7 +2214,8 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           }
           LongValues v;
           long lo, hi;
-          if (hasGcdEncoding) {
+          if (hasGcdEncoding
+              && gcdBoundsOverflow(minValue, maxValue, entry.minValue) == false) {
             long[] bounds = transformGcdBounds(minValue, maxValue, entry.gcd, entry.minValue);
             if (bounds == null) {
               set = false;

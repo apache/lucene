@@ -427,7 +427,7 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+* GITHUB#16896: Fix long overflow in GCD-encoded DocValues range transform. (Ke Wei)
 
 Other
 ---------------------
