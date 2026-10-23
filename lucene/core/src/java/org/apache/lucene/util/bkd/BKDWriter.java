@@ -18,11 +18,14 @@ package org.apache.lucene.util.bkd;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.IntFunction;
+import java.util.stream.IntStream;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.MutablePointTree;
 import org.apache.lucene.index.MergeState;
@@ -640,21 +643,26 @@ public class BKDWriter implements Closeable {
     PriorityQueue<MergeReader> queue =
         PriorityQueue.usingComparator(readers.size(), mergeComparator(config.bytesPerDim()));
 
-    for (int i = 0; i < readers.size(); i++) {
-      PointValues pointValues = readers.get(i);
-      assert pointValues.getNumDimensions() == config.numDims()
-          && pointValues.getBytesPerDimension() == config.bytesPerDim()
-          && pointValues.getNumIndexDimensions() == config.numIndexDims();
-      MergeState.DocMap docMap;
-      if (docMaps == null) {
-        docMap = null;
-      } else {
-        docMap = docMaps.get(i);
-      }
-      MergeReader reader = new MergeReader(pointValues, docMap);
-      if (reader.next()) {
-        queue.add(reader);
-      }
+    try {
+      queue.addAll(
+          IntStream.range(0, readers.size())
+              .mapToObj(
+                  i -> {
+                    try {
+                      PointValues pointValues = readers.get(i);
+                      assert pointValues.getNumDimensions() == config.numDims()
+                          && pointValues.getBytesPerDimension() == config.bytesPerDim()
+                          && pointValues.getNumIndexDimensions() == config.numIndexDims();
+                      MergeState.DocMap docMap = docMaps == null ? null : docMaps.get(i);
+                      MergeReader reader = new MergeReader(pointValues, docMap);
+                      return reader.next() ? reader : null;
+                    } catch (IOException e) {
+                      throw new UncheckedIOException(e);
+                    }
+                  })
+              .filter(Objects::nonNull));
+    } catch (UncheckedIOException e) {
+      throw e.getCause();
     }
 
     OneDimensionBKDWriter oneDimWriter = new OneDimensionBKDWriter(metaOut, indexOut, dataOut);

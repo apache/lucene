@@ -20,6 +20,7 @@ package org.apache.lucene.index;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.List;
 import org.apache.lucene.search.DocIdSetIterator; // javadocs
 import org.apache.lucene.util.PriorityQueue;
@@ -167,17 +168,27 @@ public abstract class DocIDMerger<T extends DocIDMerger.Sub> {
       // caller may not have fully consumed the queue:
       queue.clear();
       current = null;
-      boolean first = true;
-      for (T sub : subs) {
-        if (first) {
-          // by setting mappedDocID = -1, this entry is guaranteed to be the top of the queue
-          // so the first call to next() will advance it
-          sub.mappedDocID = -1;
-          current = sub;
-          first = false;
-        } else if (sub.nextMappedDoc() != NO_MORE_DOCS) {
-          queue.add(sub);
-        } // else all docs in this sub were deleted; do not add it to the queue!
+      if (subs.isEmpty() == false) {
+        // by setting mappedDocID = -1, this entry is guaranteed to be the top of the queue
+        // so the first call to next() will advance it
+        current = subs.get(0);
+        current.mappedDocID = -1;
+      }
+      try {
+        queue.addAll(
+            subs.stream()
+                .skip(1)
+                .filter(
+                    sub -> {
+                      try {
+                        // Skip subs whose documents were all deleted.
+                        return sub.nextMappedDoc() != NO_MORE_DOCS;
+                      } catch (IOException e) {
+                        throw new UncheckedIOException(e);
+                      }
+                    }));
+      } catch (UncheckedIOException e) {
+        throw e.getCause();
       }
       setQueueMinDocID();
     }
