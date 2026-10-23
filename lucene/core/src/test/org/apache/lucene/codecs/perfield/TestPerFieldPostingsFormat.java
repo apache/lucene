@@ -39,4 +39,10 @@ public class TestPerFieldPostingsFormat extends BasePostingsFormatTestCase {
   public void testPostingsEnumReuse() throws Exception {
     assumeTrue("The MockRandom PF randomizes content on the fly, so we can't check it", false);
   }
+
+  @Override
+  protected boolean indexFakeImpacts() {
+    // we don't know if the codec will use fake impls or not, true is the safe value
+    return true;
+  }
 }
