@@ -436,7 +436,8 @@ public class TestJoinUtil extends LuceneTestCase {
   }
 
   public void testRandomOrdinalsJoin() throws Exception {
-    IndexIterationContext context = createContext(128, false, true);
+    int nDocs = atLeast(100);
+    IndexIterationContext context = createContext(nDocs, false, true);
     int searchIters = atLeast(1);
     IndexSearcher indexSearcher = context.searcher;
     for (int i = 0; i < searchIters; i++) {
