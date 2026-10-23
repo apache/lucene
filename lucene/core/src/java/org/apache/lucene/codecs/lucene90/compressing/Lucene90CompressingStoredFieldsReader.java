@@ -43,6 +43,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
 import java.util.Arrays;
+import java.util.stream.Stream;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.compressing.CompressionMode;
@@ -105,7 +106,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   // to open the data file again for sequential reads
   private final Directory directory;
   private final String fieldsStreamFN;
-  private final IOContext context;
+  private final IOContext dataContext;
   // the reader this one was cloned from
   private final Lucene90CompressingStoredFieldsReader original;
   // the input for sequential reads, opened lazily and closed with this reader
@@ -119,7 +120,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     this.fieldsStream = fieldsStream;
     this.directory = reader.directory;
     this.fieldsStreamFN = reader.fieldsStreamFN;
-    this.context = reader.context;
+    this.dataContext = reader.dataContext;
     this.original = reader.original;
     this.indexReader = reader.indexReader.clone();
     this.maxPointer = reader.maxPointer;
@@ -152,17 +153,15 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     fieldInfos = fn;
     numDocs = si.maxDoc();
     this.directory = d;
-    this.context = context;
+    this.dataContext =
+        context.withHints(FileTypeHint.DATA, DataAccessHint.RANDOM, NoReuseHint.INSTANCE);
     this.original = this;
 
     this.fieldsStreamFN = IndexFileNames.segmentFileName(segment, segmentSuffix, FIELDS_EXTENSION);
     ChecksumIndexInput metaIn = null;
     try {
       // Open the data file
-      fieldsStream =
-          d.openInput(
-              fieldsStreamFN,
-              context.withHints(FileTypeHint.DATA, DataAccessHint.RANDOM, NoReuseHint.INSTANCE));
+      fieldsStream = d.openInput(fieldsStreamFN, dataContext);
       version =
           CodecUtil.checkIndexHeader(
               fieldsStream, formatName, VERSION_START, VERSION_CURRENT, si.getId(), segmentSuffix);
@@ -270,20 +269,19 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   /** Close the underlying {@link IndexInput}s. */
   @Override
   public void close() throws IOException {
-    if (!closed) {
-      IOUtils.close(indexReader, fieldsStream, takeSequentialFieldsStream());
+    IndexInput sequential;
+    synchronized (this) {
+      if (closed) {
+        return;
+      }
+      closed = true;
+      sequential =
+          original == this && sequentialFieldsStream != fieldsStream
+              ? sequentialFieldsStream
+              : null;
+      sequentialFieldsStream = null;
     }
-  }
-
-  /** Marks this reader closed and returns the sequential input to close, if any. */
-  private synchronized IndexInput takeSequentialFieldsStream() {
-    closed = true;
-    if (original != this || sequentialFieldsStream == fieldsStream) {
-      return null;
-    }
-    IndexInput toClose = sequentialFieldsStream;
-    sequentialFieldsStream = null;
-    return toClose;
+    IOUtils.close(indexReader, fieldsStream, sequential);
   }
 
   private static void readField(DataInput in, StoredFieldVisitor visitor, FieldInfo info, int bits)
@@ -726,17 +724,18 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   @Override
   public StoredFieldsReader getMergeInstance() throws IOException {
     ensureOpen();
-    return new Lucene90CompressingStoredFieldsReader(
-        this, true, original.sequentialFieldsStream().clone());
+    return new Lucene90CompressingStoredFieldsReader(this, true, original.sequentialFieldsStream());
   }
 
-  /** Returns the input for sequential reads, opening the data file again if needed. */
+  /**
+   * Returns a clone of the input for sequential reads, opening the data file again if needed. The
+   * clone is taken under the lock, so that a concurrent close cannot close the input first.
+   */
   private synchronized IndexInput sequentialFieldsStream() throws IOException {
     assert original == this;
     ensureOpen();
     if (sequentialFieldsStream == null) {
-      IOContext sequential =
-          context.withHints(FileTypeHint.DATA, DataAccessHint.SEQUENTIAL, NoReuseHint.INSTANCE);
+      IOContext sequential = sequentialContext();
       if (fieldsStream.isEfficientFor(sequential)) {
         sequentialFieldsStream = fieldsStream;
       } else {
@@ -748,7 +747,17 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
         }
       }
     }
-    return sequentialFieldsStream;
+    return sequentialFieldsStream.clone();
+  }
+
+  /** Returns the context of the data file with sequential access. */
+  private IOContext sequentialContext() {
+    return dataContext.withHints(
+        Stream.concat(
+                dataContext.hints().stream()
+                    .filter(hint -> hint instanceof DataAccessHint == false),
+                Stream.of(DataAccessHint.SEQUENTIAL))
+            .toArray(IOContext.FileOpenHint[]::new));
   }
 
   int getVersion() {

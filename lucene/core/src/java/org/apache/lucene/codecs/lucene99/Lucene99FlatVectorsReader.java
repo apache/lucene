@@ -77,6 +77,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   private final Lucene99FlatVectorsReader original;
   // the input for sequential reads, opened lazily and closed with this reader
   private IndexInput sequentialVectorData;
+  // guarded by this
   private boolean closed;
 
   public Lucene99FlatVectorsReader(SegmentReadState state, FlatVectorsScorer scorer)
@@ -211,11 +212,16 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
 
   @Override
   public FlatVectorsReader getMergeInstance() throws IOException {
-    IndexInput data = original.sequentialVectorData();
-    return data == vectorData ? this : new Lucene99FlatVectorsReader(this, data.clone());
+    if (vectorData.isEfficientFor(sequentialContext())) {
+      return this;
+    }
+    return new Lucene99FlatVectorsReader(this, original.sequentialVectorData());
   }
 
-  /** Returns the input for sequential reads, opening the data file again if needed. */
+  /**
+   * Returns a clone of the input for sequential reads, opening the data file again if needed. The
+   * clone is taken under the lock, so that a concurrent close cannot close the input first.
+   */
   private synchronized IndexInput sequentialVectorData() throws IOException {
     assert original == this;
     if (closed) {
@@ -234,10 +240,10 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
         }
       }
     }
-    return sequentialVectorData;
+    return sequentialVectorData.clone();
   }
 
-  /** Returns the context of this reader with sequential access. */
+  /** Returns the context of the data file with sequential access. */
   private IOContext sequentialContext() {
     return dataContext.withHints(
         Stream.concat(
@@ -384,18 +390,17 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
 
   @Override
   public void close() throws IOException {
-    IOUtils.close(vectorData, takeSequentialVectorData());
-  }
-
-  /** Marks this reader closed and returns the sequential input to close, if any. */
-  private synchronized IndexInput takeSequentialVectorData() {
-    closed = true;
-    if (original != this || sequentialVectorData == vectorData) {
-      return null;
+    IndexInput sequential;
+    synchronized (this) {
+      if (closed) {
+        return;
+      }
+      closed = true;
+      sequential =
+          original == this && sequentialVectorData != vectorData ? sequentialVectorData : null;
+      sequentialVectorData = null;
     }
-    IndexInput toClose = sequentialVectorData;
-    sequentialVectorData = null;
-    return toClose;
+    IOUtils.close(vectorData, sequential);
   }
 
   private record FieldEntry(

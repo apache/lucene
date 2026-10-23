@@ -209,6 +209,12 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
             "a slice reads the same pages",
             advises == false,
             in.slice("slice", 0, size).isEfficientFor(sequential));
+        dir.setReadAdvice((_, _) -> Optional.of(ReadAdvice.NORMAL));
+        assertEquals(
+            "an input keeps the function it was opened with",
+            advises == false,
+            in.isEfficientFor(sequential));
+        dir.setReadAdvice(MMapDirectory.ADVISE_BY_CONTEXT);
 
         IndexInput advised = in.slice("advised", 0, size, sequential);
         assertTrue(advised.isEfficientFor(sequential));

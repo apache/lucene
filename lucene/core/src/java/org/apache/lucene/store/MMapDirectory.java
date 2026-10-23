@@ -322,8 +322,10 @@ public class MMapDirectory extends FSDirectory {
     final String resourceDescription = "MemorySegmentIndexInput(path=\"" + path.toString() + "\")";
 
     final boolean confined = context.hints().contains(ReadOnceHint.INSTANCE);
+    // the function in effect now, so that this input is not affected by a later setReadAdvice
+    final var readAdviceFunction = readAdvice;
     Function<IOContext, ReadAdvice> toReadAdvice =
-        c -> readAdvice.apply(name, c).orElse(Constants.DEFAULT_READADVICE);
+        c -> readAdviceFunction.apply(name, c).orElse(Constants.DEFAULT_READADVICE);
     final Arena arena = confined ? Arena.ofConfined() : getSharedArena(name, arenas);
     try (var fc = FileChannel.open(path, StandardOpenOption.READ)) {
       final long fileSize = fc.size();
