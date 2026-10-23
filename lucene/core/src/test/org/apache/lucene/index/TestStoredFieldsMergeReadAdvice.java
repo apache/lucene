@@ -33,6 +33,7 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.NoReuseHint;
+import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.store.ReadOnceHint;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
@@ -242,10 +243,15 @@ public class TestStoredFieldsMergeReadAdvice extends LuceneTestCase {
 
     @Override
     public boolean isEfficientFor(IOContext other) {
-      return advises == false
-          || MMapDirectory.ADVISE_BY_CONTEXT
-              .apply(open.name, context)
-              .equals(MMapDirectory.ADVISE_BY_CONTEXT.apply(open.name, other));
+      if (advises == false) {
+        return true;
+      }
+      ReadAdvice advice = MMapDirectory.ADVISE_BY_CONTEXT.apply(open.name, context).orElseThrow();
+      ReadAdvice otherAdvice =
+          MMapDirectory.ADVISE_BY_CONTEXT.apply(open.name, other).orElseThrow();
+      return advice == ReadAdvice.NORMAL
+          || otherAdvice == ReadAdvice.NORMAL
+          || advice == otherAdvice;
     }
 
     @Override
