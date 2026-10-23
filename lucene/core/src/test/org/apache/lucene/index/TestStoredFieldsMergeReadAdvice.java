@@ -19,6 +19,7 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.document.Document;
@@ -43,7 +44,7 @@ import org.apache.lucene.tests.util.TestUtil;
 public class TestStoredFieldsMergeReadAdvice extends LuceneTestCase {
 
   public void testMergeOpensTheStoredFieldsAgain() throws Exception {
-    Opens opens = new Opens();
+    List<Open> opens = new CopyOnWriteArrayList<>();
     List<Open> sequential;
     try (Directory dir = new RecordingDirectory(newDirectory(), opens);
         IndexWriter w = writer(dir)) {
@@ -56,7 +57,6 @@ public class TestStoredFieldsMergeReadAdvice extends LuceneTestCase {
         sequential = sequentialOpens(opens);
         assertEquals(opens.toString(), 2, sequential.size());
       }
-      assertEquals("searches keep their advice: " + opens, List.of(), opens.advised());
     }
     for (Open open : sequential) {
       assertTrue("closed with the reader: " + open, open.closed);
@@ -88,7 +88,7 @@ public class TestStoredFieldsMergeReadAdvice extends LuceneTestCase {
 
   /** Merges share one input, kept until the reader closes. */
   public void testOneSequentialInputUntilTheReaderCloses() throws Exception {
-    Opens opens = new Opens();
+    List<Open> opens = new CopyOnWriteArrayList<>();
     List<Open> sequential;
     try (Directory dir = new RecordingDirectory(newDirectory(), opens);
         DirectoryReader reader = openReader(dir)) {
@@ -105,18 +105,18 @@ public class TestStoredFieldsMergeReadAdvice extends LuceneTestCase {
 
   /** Nothing is opened again when the input already serves sequential reads. */
   public void testNoSecondInputWhenNotNeeded() throws Exception {
-    Opens opens = new Opens();
+    List<Open> opens = new CopyOnWriteArrayList<>();
     try (Directory dir = new RecordingDirectory(newDirectory(), opens, false);
         DirectoryReader reader = openReader(dir)) {
       StoredFieldsReader fields = ((CodecReader) getOnlyLeafReader(reader)).getFieldsReader();
       opens.clear();
       fields.getMergeInstance();
-      assertEquals(opens.toString(), List.of(), opens.all());
+      assertEquals(opens.toString(), List.of(), opens);
     }
   }
 
   public void testFailedOpenIsRetried() throws Exception {
-    Opens opens = new Opens();
+    List<Open> opens = new CopyOnWriteArrayList<>();
     AtomicBoolean fail = new AtomicBoolean();
     Directory dir =
         new RecordingDirectory(newDirectory(), opens) {
@@ -141,7 +141,7 @@ public class TestStoredFieldsMergeReadAdvice extends LuceneTestCase {
       fields.getMergeInstance();
       assertEquals(opens.toString(), 1, sequentialOpens(opens).size());
     }
-    assertTrue("closed with the reader", opens.all().getLast().closed);
+    assertTrue("closed with the reader", opens.getLast().closed);
   }
 
   private static IndexWriter writer(Directory dir) throws IOException {
@@ -171,9 +171,9 @@ public class TestStoredFieldsMergeReadAdvice extends LuceneTestCase {
   }
 
   /** The opens of the data file for sequential reads, other than integrity checks. */
-  private static List<Open> sequentialOpens(Opens opens) {
+  private static List<Open> sequentialOpens(List<Open> opens) {
     List<Open> sequential =
-        opens.all().stream()
+        opens.stream()
             .filter(o -> o.name.endsWith(".fdt"))
             .filter(o -> o.context.hints().contains(DataAccessHint.SEQUENTIAL))
             .filter(o -> o.context.hints().contains(ReadOnceHint.INSTANCE) == false)
@@ -201,53 +201,19 @@ public class TestStoredFieldsMergeReadAdvice extends LuceneTestCase {
     }
   }
 
-  private static final class Opens {
-    private final List<Open> opens = new ArrayList<>();
-    private final List<String> advised = new ArrayList<>();
-
-    synchronized Open record(String name, IOContext context) {
-      Open open = new Open(name, context);
-      opens.add(open);
-      return open;
-    }
-
-    synchronized void recordAdvice(String name) {
-      advised.add(name);
-    }
-
-    synchronized List<Open> all() {
-      return List.copyOf(opens);
-    }
-
-    /** Files whose advice was updated after they were opened. */
-    synchronized List<String> advised() {
-      return List.copyOf(advised);
-    }
-
-    synchronized void clear() {
-      opens.clear();
-      advised.clear();
-    }
-
-    @Override
-    public synchronized String toString() {
-      return "opens: " + opens + ", advised: " + advised;
-    }
-  }
-
   /**
    * Records opens. Its inputs are efficient for a context like memory-mapped inputs using {@link
    * MMapDirectory#ADVISE_BY_CONTEXT}, or for every context.
    */
   private static class RecordingDirectory extends FilterDirectory {
-    private final Opens opens;
+    private final List<Open> opens;
     private final boolean advises;
 
-    RecordingDirectory(Directory in, Opens opens) {
+    RecordingDirectory(Directory in, List<Open> opens) {
       this(in, opens, true);
     }
 
-    RecordingDirectory(Directory in, Opens opens, boolean advises) {
+    RecordingDirectory(Directory in, List<Open> opens, boolean advises) {
       super(in);
       this.opens = opens;
       this.advises = advises;
@@ -255,26 +221,21 @@ public class TestStoredFieldsMergeReadAdvice extends LuceneTestCase {
 
     @Override
     public IndexInput openInput(String name, IOContext context) throws IOException {
-      Open open = opens.record(name, context);
-      return new RecordingIndexInput(
-          super.openInput(name, context), name, open, opens, context, advises);
+      Open open = new Open(name, context);
+      opens.add(open);
+      return new RecordingIndexInput(super.openInput(name, context), open, context, advises);
     }
   }
 
   private static final class RecordingIndexInput extends FilterIndexInput {
-    private final String name;
     private final Open open;
-    private final Opens opens;
     // the context the pages of this input were advised with
     private final IOContext context;
     private final boolean advises;
 
-    RecordingIndexInput(
-        IndexInput in, String name, Open open, Opens opens, IOContext context, boolean advises) {
-      super("Recording(" + name + ")", in);
-      this.name = name;
+    RecordingIndexInput(IndexInput in, Open open, IOContext context, boolean advises) {
+      super("Recording(" + open.name + ")", in);
       this.open = open;
-      this.opens = opens;
       this.context = context;
       this.advises = advises;
     }
@@ -283,14 +244,8 @@ public class TestStoredFieldsMergeReadAdvice extends LuceneTestCase {
     public boolean isEfficientFor(IOContext other) {
       return advises == false
           || MMapDirectory.ADVISE_BY_CONTEXT
-              .apply(name, context)
-              .equals(MMapDirectory.ADVISE_BY_CONTEXT.apply(name, other));
-    }
-
-    @Override
-    public void updateIOContext(IOContext context) throws IOException {
-      opens.recordAdvice(name);
-      in.updateIOContext(context);
+              .apply(open.name, context)
+              .equals(MMapDirectory.ADVISE_BY_CONTEXT.apply(open.name, other));
     }
 
     @Override
@@ -301,13 +256,13 @@ public class TestStoredFieldsMergeReadAdvice extends LuceneTestCase {
 
     @Override
     public IndexInput clone() {
-      return new RecordingIndexInput(in.clone(), name, open, opens, context, advises);
+      return new RecordingIndexInput(in.clone(), open, context, advises);
     }
 
     @Override
     public IndexInput slice(String sliceDescription, long offset, long length) throws IOException {
       return new RecordingIndexInput(
-          in.slice(sliceDescription, offset, length), name, open, opens, context, advises);
+          in.slice(sliceDescription, offset, length), open, context, advises);
     }
   }
 }

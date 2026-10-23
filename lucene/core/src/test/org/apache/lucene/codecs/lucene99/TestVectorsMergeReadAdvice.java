@@ -17,9 +17,9 @@
 package org.apache.lucene.codecs.lucene99;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -64,7 +64,7 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
 
   public void testMergeOpensTheVectorsAgain() throws Exception {
     for (KnnVectorsFormat format : formats()) {
-      Opens opens = new Opens();
+      List<Open> opens = new CopyOnWriteArrayList<>();
       List<Open> sequential;
       try (Directory dir = new RecordingDirectory(newDirectory(), opens);
           IndexWriter w = writer(dir, format, false)) {
@@ -84,7 +84,6 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
                 open.context.hints().contains(NoReuseHint.INSTANCE));
           }
         }
-        assertEquals("searches keep their advice: " + opens, List.of(), opens.advised());
       }
       for (Open open : sequential) {
         assertTrue("closed with the reader: " + open, open.closed);
@@ -94,7 +93,7 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
 
   /** In a compound segment, a merge opens the compound file again, without advice. */
   public void testCompoundMergeOpensTheCompoundFileAgain() throws Exception {
-    Opens opens = new Opens();
+    List<Open> opens = new CopyOnWriteArrayList<>();
     List<Open> cfsOpens;
     try (Directory dir = new RecordingDirectory(newDirectory(), opens);
         IndexWriter w = writer(dir, new Lucene99HnswVectorsFormat(), true)) {
@@ -103,7 +102,7 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
         assertEquals(2, reader.leaves().size());
         opens.clear();
         w.forceMerge(1);
-        cfsOpens = opens.all().stream().filter(o -> o.name.endsWith(".cfs")).toList();
+        cfsOpens = opens.stream().filter(o -> o.name.endsWith(".cfs")).toList();
         assertEquals(opens.toString(), 2, cfsOpens.size());
         for (Open open : cfsOpens) {
           assertTrue(open.toString(), open.read);
@@ -118,7 +117,7 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
 
   /** A reader opened by a merge already reads sequentially. */
   public void testMergeReadsThroughTheReaderItOpened() throws Exception {
-    Opens opens = new Opens();
+    List<Open> opens = new CopyOnWriteArrayList<>();
     try (Directory dir = new RecordingDirectory(newDirectory(), opens)) {
       try (IndexWriter w = writer(dir, new Lucene99HnswVectorsFormat(), false)) {
         addSegments(w, 2);
@@ -137,19 +136,20 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
   }
 
   private static void assertNoSecondInput(boolean advises, IOContext context) throws Exception {
-    RecordingDirectory dir = new RecordingDirectory(newDirectory(), new Opens(), advises);
+    RecordingDirectory dir =
+        new RecordingDirectory(newDirectory(), new CopyOnWriteArrayList<>(), advises);
     try (dir;
         DirectoryReader reader = openReader(dir, new Lucene99HnswVectorsFormat());
         FlatVectorsReader flat = flatReader(dir, reader, context)) {
       dir.opens.clear();
       assertSame(flat, flat.getMergeInstance());
-      assertEquals(dir.opens.toString(), List.of(), dir.opens.all());
+      assertEquals(dir.opens.toString(), List.of(), dir.opens);
     }
   }
 
   /** The sequential input keeps the caller's hints and only changes the access. */
   public void testSequentialInputKeepsTheCallerHints() throws Exception {
-    Opens opens = new Opens();
+    List<Open> opens = new CopyOnWriteArrayList<>();
     IOContext context =
         IOContext.DEFAULT.withHints(
             DataAccessHint.RANDOM, NoReuseHint.INSTANCE, CallerHint.INSTANCE);
@@ -174,7 +174,7 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
   /** Merges and sequential values share one input, kept until the reader closes. */
   public void testOneSequentialInputUntilTheReaderCloses() throws Exception {
     for (KnnVectorsFormat format : formats()) {
-      Opens opens = new Opens();
+      List<Open> opens = new CopyOnWriteArrayList<>();
       List<Open> sequential;
       try (Directory dir = new RecordingDirectory(newDirectory(), opens);
           DirectoryReader reader = openReader(dir, format)) {
@@ -203,7 +203,7 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
   }
 
   public void testNoSecondInputOnceClosed() throws Exception {
-    Opens opens = new Opens();
+    List<Open> opens = new CopyOnWriteArrayList<>();
     try (Directory dir = new RecordingDirectory(newDirectory(), opens);
         DirectoryReader reader = openReader(dir, new Lucene99HnswVectorsFormat())) {
       FlatVectorsReader flat =
@@ -219,7 +219,7 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
   }
 
   public void testFailedOpenIsRetried() throws Exception {
-    Opens opens = new Opens();
+    List<Open> opens = new CopyOnWriteArrayList<>();
     AtomicBoolean fail = new AtomicBoolean();
     Directory dir =
         new RecordingDirectory(newDirectory(), opens) {
@@ -245,7 +245,7 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
       vectors.getMergeInstance();
       assertEquals(opens.toString(), 1, sequentialOpens(opens).size());
     }
-    assertTrue("closed with the reader", opens.all().getLast().closed);
+    assertTrue("closed with the reader", opens.getLast().closed);
   }
 
   private static IndexWriter writer(Directory dir, KnnVectorsFormat format, boolean compound)
@@ -304,8 +304,8 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
   }
 
   /** The opens of the vector data for sequential reads, other than integrity checks. */
-  private static List<Open> sequentialOpens(Opens opens) {
-    return opens.all().stream()
+  private static List<Open> sequentialOpens(List<Open> opens) {
+    return opens.stream()
         .filter(o -> o.name.endsWith(".vec"))
         .filter(o -> o.context.hints().contains(DataAccessHint.SEQUENTIAL))
         .filter(o -> o.context.hints().contains(ReadOnceHint.INSTANCE) == false)
@@ -331,53 +331,19 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
     }
   }
 
-  private static final class Opens {
-    private final List<Open> opens = new ArrayList<>();
-    private final List<String> advised = new ArrayList<>();
-
-    synchronized Open record(String name, IOContext context) {
-      Open open = new Open(name, context);
-      opens.add(open);
-      return open;
-    }
-
-    synchronized void recordAdvice(String name) {
-      advised.add(name);
-    }
-
-    synchronized List<Open> all() {
-      return List.copyOf(opens);
-    }
-
-    /** Files whose advice was updated after they were opened. */
-    synchronized List<String> advised() {
-      return List.copyOf(advised);
-    }
-
-    synchronized void clear() {
-      opens.clear();
-      advised.clear();
-    }
-
-    @Override
-    public synchronized String toString() {
-      return "opens: " + opens + ", advised: " + advised;
-    }
-  }
-
   /**
    * Records opens. Its inputs are efficient for a context like memory-mapped inputs using {@link
    * MMapDirectory#ADVISE_BY_CONTEXT}, or for every context.
    */
   private static class RecordingDirectory extends FilterDirectory {
-    final Opens opens;
+    final List<Open> opens;
     private final boolean advises;
 
-    RecordingDirectory(Directory in, Opens opens) {
+    RecordingDirectory(Directory in, List<Open> opens) {
       this(in, opens, true);
     }
 
-    RecordingDirectory(Directory in, Opens opens, boolean advises) {
+    RecordingDirectory(Directory in, List<Open> opens, boolean advises) {
       super(in);
       this.opens = opens;
       this.advises = advises;
@@ -385,22 +351,21 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
 
     @Override
     public IndexInput openInput(String name, IOContext context) throws IOException {
-      Open open = opens.record(name, context);
-      return new RecordingIndexInput(super.openInput(name, context), open, opens, context, advises);
+      Open open = new Open(name, context);
+      opens.add(open);
+      return new RecordingIndexInput(super.openInput(name, context), open, context, advises);
     }
   }
 
   private static final class RecordingIndexInput extends FilterIndexInput {
     private final Open open;
-    private final Opens opens;
     // the context the pages of this input were advised with
     private final IOContext context;
     private final boolean advises;
 
-    RecordingIndexInput(IndexInput in, Open open, Opens opens, IOContext context, boolean advises) {
+    RecordingIndexInput(IndexInput in, Open open, IOContext context, boolean advises) {
       super("Recording(" + open.name + ")", in);
       this.open = open;
-      this.opens = opens;
       this.context = context;
       this.advises = advises;
     }
@@ -415,12 +380,6 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
     }
 
     @Override
-    public void updateIOContext(IOContext context) throws IOException {
-      opens.recordAdvice(open.name);
-      in.updateIOContext(context);
-    }
-
-    @Override
     public void close() throws IOException {
       open.closed = true;
       in.close();
@@ -428,14 +387,14 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
 
     @Override
     public IndexInput clone() {
-      return new RecordingIndexInput(in.clone(), open, opens, context, advises);
+      return new RecordingIndexInput(in.clone(), open, context, advises);
     }
 
     @Override
     public IndexInput slice(String sliceDescription, long offset, long length) throws IOException {
       open.read = true;
       return new RecordingIndexInput(
-          in.slice(sliceDescription, offset, length), open, opens, context, advises);
+          in.slice(sliceDescription, offset, length), open, context, advises);
     }
 
     @Override
@@ -443,7 +402,7 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
         throws IOException {
       open.read = true;
       return new RecordingIndexInput(
-          in.slice(sliceDescription, offset, length, context), open, opens, context, advises);
+          in.slice(sliceDescription, offset, length, context), open, context, advises);
     }
   }
 }

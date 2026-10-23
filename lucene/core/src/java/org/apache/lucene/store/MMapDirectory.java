@@ -329,19 +329,18 @@ public class MMapDirectory extends FSDirectory {
       final long fileSize = fc.size();
       final ReadAdvice advice = toReadAdvice.apply(context);
       final boolean preloaded = preload.test(name, context);
-      MemorySegmentIndexInput input =
-          MemorySegmentIndexInput.newInstance(
-              resourceDescription,
-              arena,
-              map(arena, resourceDescription, fc, advice, chunkSizePower, preloaded, fileSize),
-              fileSize,
-              chunkSizePower,
-              confined,
-              toReadAdvice);
       // preloaded or within a page, any advice reads the same
-      boolean withinAPage = NATIVE_ACCESS.filter(na -> fileSize < na.getPageSize()).isPresent();
-      input.readAdvice = preloaded || withinAPage ? null : advice;
-      return input;
+      final boolean withinAPage =
+          NATIVE_ACCESS.filter(na -> fileSize < na.getPageSize()).isPresent();
+      return MemorySegmentIndexInput.newInstance(
+          resourceDescription,
+          arena,
+          map(arena, resourceDescription, fc, advice, chunkSizePower, preloaded, fileSize),
+          fileSize,
+          chunkSizePower,
+          confined,
+          toReadAdvice,
+          preloaded || withinAPage ? null : advice);
     } catch (Throwable t) {
       arena.close();
       throw t;
