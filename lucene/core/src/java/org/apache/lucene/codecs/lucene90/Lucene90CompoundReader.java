@@ -58,10 +58,13 @@ final class Lucene90CompoundReader extends CompoundDirectory {
   private final IndexInput handle;
   // copies of the data file, starting with handle, guarded by this
   private final List<IndexInput> data = new ArrayList<>();
-  // the slices of each inner file, guarded by this
-  private final Map<String, List<IndexInput>> slices = new HashMap<>();
+  // the slices of each inner file, one per copy, guarded by this
+  private final Map<String, List<Slice>> slices = new HashMap<>();
   private boolean closed;
   private int version;
+
+  /** A slice of an inner file and the context it was opened with. */
+  private record Slice(IndexInput input, IOContext context) {}
 
   /** Create a new CompoundFileDirectory. */
   // TODO: we should just pre-strip "entries" and append segment name up-front like simpletext?
@@ -186,26 +189,28 @@ final class Lucene90CompoundReader extends CompoundDirectory {
       if (closed) {
         throw new AlreadyClosedException("this Directory is closed");
       }
-      List<IndexInput> fileSlices = slices.computeIfAbsent(id, _ -> new ArrayList<>());
-      for (IndexInput slice : fileSlices) {
-        if (slice.isEfficientFor(context)) {
-          return slice.clone();
-        }
+      List<Slice> fileSlices = slices.computeIfAbsent(id, _ -> new ArrayList<>());
+      int copy = 0;
+      while (copy < fileSlices.size()
+          && fileSlices.get(copy).input().isEfficientFor(context) == false) {
+        copy++;
       }
       // each slice of an inner file is on its own copy of the data file, so it keeps its own advice
-      if (fileSlices.size() == data.size()) {
+      if (copy == fileSlices.size()) {
         try {
-          // without advice, like handle, so inner files advise their own pages
-          data.add(directory.openInput(dataFileName, IOContext.DEFAULT));
+          if (copy == data.size()) {
+            // without advice, like handle, so inner files advise their own pages
+            data.add(directory.openInput(dataFileName, IOContext.DEFAULT));
+          }
+          IndexInput input = data.get(copy).slice(name, entry.offset, entry.length, context);
+          fileSlices.add(new Slice(input, context));
         } catch (@SuppressWarnings("unused") FileNotFoundException | NoSuchFileException e) {
-          // an open reader outlives its files, so read through the slice it already holds
-          return fileSlices.getFirst().clone();
+          // an open reader outlives its files, so read through the copy it already holds
+          copy = 0;
         }
       }
-      IndexInput slice =
-          data.get(fileSlices.size()).slice(name, entry.offset, entry.length, context);
-      fileSlices.add(slice);
-      return slice.clone();
+      // a new slice each time, since callers close what they open
+      return data.get(copy).slice(name, entry.offset, entry.length, fileSlices.get(copy).context());
     }
   }
 

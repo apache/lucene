@@ -20,7 +20,9 @@ import java.io.IOException;
 import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CodecUtil;
@@ -30,6 +32,7 @@ import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FSLockFactory;
 import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.IOContext;
@@ -133,7 +136,8 @@ public class TestLucene90CompoundFormat extends BaseCompoundFormatTestCase {
             IOUtils.close(inputs);
           }
           assertEquals(order.toString(), Collections.nCopies(mappings, normal), dir.opens);
-          assertEquals("each file is advised once per mapping", 2 * mappings, dir.advisedSlices);
+          Set<IOContext> advised = mappings == 1 ? Set.of(normal) : Set.of(RANDOM, SEQUENTIAL);
+          assertEquals("each copy keeps the advice of its first slice", advised, dir.advised);
           assertEquals(0, dir.closes);
         }
         assertEquals("closed with the reader", mappings, dir.closes);
@@ -312,7 +316,7 @@ public class TestLucene90CompoundFormat extends BaseCompoundFormatTestCase {
     final List<IOContext> opens = Collections.synchronizedList(new ArrayList<>());
     final boolean advises;
     volatile int closes;
-    volatile int advisedSlices;
+    final Set<IOContext> advised = Collections.synchronizedSet(new HashSet<>());
     volatile boolean gone;
     volatile boolean failNextOpen;
 
@@ -360,9 +364,7 @@ public class TestLucene90CompoundFormat extends BaseCompoundFormatTestCase {
         @Override
         public IndexInput slice(String description, long offset, long length, IOContext context)
             throws IOException {
-          synchronized (DataOpens.this) {
-            advisedSlices++;
-          }
+          advised.add(context);
           return new Advised(in.slice(description, offset, length, context), context, advises);
         }
       };
@@ -399,6 +401,24 @@ public class TestLucene90CompoundFormat extends BaseCompoundFormatTestCase {
     @Override
     public IndexInput slice(String description, long offset, long length) throws IOException {
       return new Advised(in.slice(description, offset, length), context, advises);
+    }
+  }
+
+  /** Closing an input of an inner file does not close the other inputs of that file. */
+  public void testClosingAnInputKeepsTheOthers() throws IOException {
+    try (Directory dir = new MMapDirectory(createTempDir(), FSLockFactory.getDefault(), 1 << 10)) {
+      SegmentInfo si = newSegmentInfo(dir, "_123");
+      createSequenceFile(dir, "_123.d1", (byte) 0, 10_000, si.getId(), "suffix");
+      si.setFiles(List.of("_123.d1"));
+      si.getCodec().compoundFormat().write(dir, si, IOContext.DEFAULT);
+      try (Directory cfs = si.getCodec().compoundFormat().getCompoundReader(dir, si);
+          IndexInput expected = dir.openInput("_123.d1", IOContext.DEFAULT)) {
+        IOContext context = IOContext.DEFAULT.withHints(DataAccessHint.RANDOM);
+        cfs.openInput("_123.d1", context).close();
+        try (IndexInput actual = cfs.openInput("_123.d1", context)) {
+          assertSameStreams("_123.d1", expected, actual);
+        }
+      }
     }
   }
 }
