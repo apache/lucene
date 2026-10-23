@@ -357,6 +357,9 @@ Build
 
 * GITHUB#16036: Upgrade gradle to 9.5.0 (Dawid Weiss)
 
+* GITHUB#16894: Committers can benchmark a pull request with luceneutil by applying the benchmark:luceneutil-1m label;
+  results are posted on the pull request. (Owais Kazi)
+
 Other
 ---------------------
 
