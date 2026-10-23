@@ -212,16 +212,11 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
 
   @Override
   public FlatVectorsReader getMergeInstance() throws IOException {
-    if (vectorData.isEfficientFor(sequentialContext())) {
-      return this;
-    }
-    return new Lucene99FlatVectorsReader(this, original.sequentialVectorData());
+    IndexInput data = original.sequentialVectorData();
+    return data == vectorData ? this : new Lucene99FlatVectorsReader(this, data.clone());
   }
 
-  /**
-   * Returns a clone of the input for sequential reads, opening the data file again if needed. The
-   * clone is taken under the lock, so that a concurrent close cannot close the input first.
-   */
+  /** Returns the input for sequential reads, opening the data file again if needed. */
   private synchronized IndexInput sequentialVectorData() throws IOException {
     assert original == this;
     if (closed) {
@@ -240,7 +235,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
         }
       }
     }
-    return sequentialVectorData.clone();
+    return sequentialVectorData;
   }
 
   /** Returns the context of the data file with sequential access. */

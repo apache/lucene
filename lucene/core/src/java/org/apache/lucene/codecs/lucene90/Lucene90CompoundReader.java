@@ -58,7 +58,7 @@ final class Lucene90CompoundReader extends CompoundDirectory {
   private final IndexInput handle;
   // copies of the data file, starting with handle, guarded by this
   private final List<IndexInput> data = new ArrayList<>();
-  // the slices of each inner file, the i-th one on the i-th copy of the data file, guarded by this
+  // the slices of each inner file, guarded by this
   private final Map<String, List<IndexInput>> slices = new HashMap<>();
   private boolean closed;
   private int version;

@@ -724,13 +724,11 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   @Override
   public StoredFieldsReader getMergeInstance() throws IOException {
     ensureOpen();
-    return new Lucene90CompressingStoredFieldsReader(this, true, original.sequentialFieldsStream());
+    return new Lucene90CompressingStoredFieldsReader(
+        this, true, original.sequentialFieldsStream().clone());
   }
 
-  /**
-   * Returns a clone of the input for sequential reads, opening the data file again if needed. The
-   * clone is taken under the lock, so that a concurrent close cannot close the input first.
-   */
+  /** Returns the input for sequential reads, opening the data file again if needed. */
   private synchronized IndexInput sequentialFieldsStream() throws IOException {
     assert original == this;
     ensureOpen();
@@ -747,7 +745,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
         }
       }
     }
-    return sequentialFieldsStream.clone();
+    return sequentialFieldsStream;
   }
 
   /** Returns the context of the data file with sequential access. */
