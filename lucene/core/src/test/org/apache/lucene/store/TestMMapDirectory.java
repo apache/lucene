@@ -399,6 +399,71 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
     assertFalse(func.apply("_51a.si").isPresent());
   }
 
+  // slice(String, long, long, IOContext) must apply the same bounds checks as the overload without
+  // a context.
+  public void testSliceWithContextBoundsCheck() throws IOException {
+    try (Directory dir = new MMapDirectory(createTempDir("testSliceWithContextBoundsCheck"))) {
+      try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
+        out.writeBytes(new byte[64], 0, 64);
+      }
+      try (var in = dir.openInput("test", IOContext.DEFAULT)) {
+        expectThrows(
+            IllegalArgumentException.class, () -> in.slice("s", 1, in.length(), IOContext.DEFAULT));
+        expectThrows(IllegalArgumentException.class, () -> in.slice("s", -1, 1, IOContext.DEFAULT));
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> in.slice("s", 0, in.length() + 1, IOContext.DEFAULT));
+        in.slice("s", 0, in.length(), IOContext.DEFAULT).close();
+      }
+    }
+  }
+
+  // A new file starts at N - 1: the first call probes, a hit switches to sampling, and a
+  // miss makes the file earn N hits again.
+  public void testFirstProbeDecides() {
+    PrefetchBackoff warm = new PrefetchBackoff();
+    assertTrue(warm.shouldProbe(1));
+    warm.onHit();
+    int probes = 0;
+    for (int i = 0; i < PrefetchBackoff.SKIP * 4; i++) {
+      if (warm.shouldProbe(i + 1)) {
+        probes++;
+      }
+    }
+    assertEquals(4, probes);
+
+    PrefetchBackoff cold = new PrefetchBackoff();
+    assertTrue(cold.shouldProbe(1));
+    cold.onMiss();
+    for (int i = 0; i < PrefetchBackoff.N; i++) {
+      assertTrue("call " + i, cold.shouldProbe(i + 1));
+      cold.onHit();
+    }
+    assertFalse(cold.shouldProbe(1));
+  }
+
+  // Each input starts its call counter from a shared sequence, so among SKIP consecutive clones of
+  // a warm input exactly one samples on its first prefetch call.
+  public void testClonesSampleAtDifferentOffsets() throws IOException {
+    try (MMapDirectory dir =
+        new MMapDirectory(createTempDir("testClonesSampleAtDifferentOffsets"))) {
+      try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
+        out.writeBytes(new byte[64], 0, 64);
+      }
+      try (var in = (MemorySegmentIndexInput) dir.openInput("test", IOContext.DEFAULT)) {
+        in.backoff.onHit(); // the first probe hit, so the file is sampling
+        int firstCallProbes = 0;
+        for (int i = 0; i < PrefetchBackoff.SKIP; i++) {
+          MemorySegmentIndexInput clone = in.clone();
+          if (clone.backoff.shouldProbe(++clone.prefetchCalls)) {
+            firstCallProbes++;
+          }
+        }
+        assertEquals(1, firstCallProbes);
+      }
+    }
+  }
+
   public void testPrefetchWithSingleSegment() throws IOException {
     testPrefetchWithSegments(64 * 1024);
   }
