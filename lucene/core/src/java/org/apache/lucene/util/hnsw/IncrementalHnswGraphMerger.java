@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.hnsw.HnswGraphMergeSources;
 import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.KnnVectorValues;
@@ -105,10 +106,34 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
   /**
    * Adds a reader to the graph merger if it meets the following criteria: 1. does not contain any
    * deleted vector 2. is a HnswGraphProvider
+   *
+   * <p>A reader that is a {@link HnswGraphMergeSources} view is replaced by the readers it wraps,
+   * so that their graphs can be reused. Their live docs are those of the view, mapped back.
    */
   @Override
   public IncrementalHnswGraphMerger addReader(
       KnnVectorsReader reader, MergeState.DocMap docMap, Bits liveDocs) throws IOException {
+    if (reader instanceof HnswGraphMergeSources view) {
+      for (HnswGraphMergeSources.Source source : view.getMergeSources(fieldInfo.name)) {
+        MergeState.DocMap sourceDocMap = source.docMap();
+        Bits sourceLiveDocs =
+            liveDocs == null
+                ? null
+                : new Bits() {
+                  @Override
+                  public boolean get(int index) {
+                    return liveDocs.get(sourceDocMap.get(index));
+                  }
+
+                  @Override
+                  public int length() {
+                    return source.maxDoc();
+                  }
+                };
+        addReader(source.reader(), doc -> docMap.get(sourceDocMap.get(doc)), sourceLiveDocs);
+      }
+      return this;
+    }
     numReaders++;
     if (!(reader instanceof HnswGraphProvider hgp)) {
       return this;
