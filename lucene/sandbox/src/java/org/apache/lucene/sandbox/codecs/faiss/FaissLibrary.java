@@ -33,15 +33,6 @@ import org.apache.lucene.util.hnsw.IntToIntFunction;
 interface FaissLibrary {
   FaissLibrary INSTANCE = new FaissLibraryNativeImpl();
 
-  /**
-   * Default baseline Faiss C API library name. At runtime, {@link FaissNativeWrapper} dynamically
-   * attempts to load optimized SIMD variants (such as {@code faiss_c_avx512}, {@code faiss_c_avx2},
-   * or {@code faiss_c_sve}) if supported by the CPU, falling back to this baseline.
-   */
-  String NAME = FaissNativeWrapper.LOADED_LIBRARY;
-
-  String VERSION = "1.11.0";
-
   interface Index extends Closeable {
     void search(float[] query, KnnCollector knnCollector, AcceptDocs acceptDocs);
 

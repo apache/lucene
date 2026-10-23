@@ -38,15 +38,11 @@
  *   <li>Install <a href="https://github.com/mamba-org/mamba">micromamba</a> (an open-source Conda
  *       package manager) or similar
  *   <li>Install dependencies using {@code micromamba create -n faiss-env -c pytorch -c conda-forge
- *       -y faiss-cpu=}{@value org.apache.lucene.sandbox.codecs.faiss.FaissLibrary#VERSION}
+ *       -y faiss-cpu=}{@value org.apache.lucene.sandbox.codecs.faiss.FaissNativeWrapper#VERSION}
  *   <li>Activate environment using {@code micromamba activate faiss-env}
  *   <li>Add shared libraries to runtime using {@code export LD_LIBRARY_PATH=$CONDA_PREFIX/lib}
- *       (verify that the {@code libfaiss_c.so} library is present here)
- *   <li>Optionally, specify a custom Faiss C API library name via the {@code
- *       -Dlucene.faiss.libname=<name>} system property. The specified library must be present on
- *       {@code java.library.path} (or {@code LD_LIBRARY_PATH}). By default, Lucene automatically
- *       attempts to load optimized SIMD variants (such as {@code faiss_c_avx512}, {@code
- *       faiss_c_avx2}, or {@code faiss_c_sve}) if supported by the CPU.
+ *       (verify that the {@value org.apache.lucene.sandbox.codecs.faiss.FaissNativeWrapper#NAME}
+ *       library is present here)
  *   <li>And you're good to go! (add the {@code -Dtests.faiss.run=true} JVM argument to ensure Faiss
  *       tests are run)
  * </ul>

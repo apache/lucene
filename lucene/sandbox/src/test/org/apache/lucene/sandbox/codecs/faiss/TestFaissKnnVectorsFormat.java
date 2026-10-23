@@ -69,8 +69,8 @@ public class TestFaissKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
   }
 
   public void testLoadedLibraryName() {
-    assertNotNull(FaissLibrary.NAME);
-    assertFalse(FaissLibrary.NAME.isBlank());
+    assertNotNull(FaissNativeWrapper.LOADED_LIBRARY);
+    assertFalse(FaissNativeWrapper.LOADED_LIBRARY.isBlank());
   }
 
   @Override
