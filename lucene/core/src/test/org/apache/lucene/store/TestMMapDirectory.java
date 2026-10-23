@@ -215,9 +215,6 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
         assertEquals(advises == false, advised.isEfficientFor(random));
         assertTrue(
             "too small to be advised", in.slice("small", 0, 1, sequential).isEfficientFor(random));
-
-        in.updateIOContext(sequential);
-        assertTrue(in.isEfficientFor(sequential));
       }
 
       try (IndexOutput out = dir.createOutput("small", IOContext.DEFAULT)) {

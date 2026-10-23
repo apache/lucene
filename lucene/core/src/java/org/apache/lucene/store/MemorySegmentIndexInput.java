@@ -60,7 +60,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
   final MemorySegment[] segments;
   final Function<IOContext, ReadAdvice> toReadAdvice;
   final AtomicInteger sharedPrefetchCounter;
-  // the advice applied to the pages of this input, or null if any advice reads the same
+  // the advice applied when this input was opened or sliced, or null if any advice reads the same
   ReadAdvice readAdvice;
 
   int curSegmentIndex = -1;
@@ -373,15 +373,6 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
   }
 
   @Override
-  public void updateIOContext(IOContext context) throws IOException {
-    ReadAdvice advice = toReadAdvice.apply(context);
-    updateReadAdvice(advice);
-    if (readAdvice != null) {
-      readAdvice = advice;
-    }
-  }
-
-  @Override
   public boolean isEfficientFor(IOContext context) {
     if (NATIVE_ACCESS.isEmpty() || readAdvice == null) {
       return true;
@@ -393,25 +384,6 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
       case SEQUENTIAL -> advice != ReadAdvice.RANDOM;
       case NORMAL -> true;
     };
-  }
-
-  private void updateReadAdvice(ReadAdvice readAdvice) throws IOException {
-    if (NATIVE_ACCESS.isEmpty()) {
-      return;
-    }
-    final NativeAccess nativeAccess = NATIVE_ACCESS.get();
-
-    long offset = 0;
-    for (MemorySegment seg : segments) {
-      advise(
-          offset,
-          seg.byteSize(),
-          segment -> {
-            nativeAccess.madvise(segment, readAdvice);
-            return true;
-          });
-      offset += seg.byteSize();
-    }
   }
 
   boolean advise(long offset, long length, IOFunction<MemorySegment, Boolean> advice)
