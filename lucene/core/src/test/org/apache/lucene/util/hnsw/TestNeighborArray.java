@@ -435,65 +435,57 @@ public class TestNeighborArray extends LuceneTestCase {
     assertNodesEqual(new int[] {0, 2, 1, 3}, neighbors);
   }
 
-  //   n2 ------ n1 ------ B
-  //  (0.8, 0)  (0.9, 0)  (1.0, 0)
-  //
-  // Both nodes fit within capacity; no eviction.
   public void testAddAndEnsureDiversityNoOverflow() throws IOException {
     NeighborArray neighbors = new NeighborArray(3, true);
 
-    PlaneScorer scorer =
-        new PlaneScorer(new float[] {1.0f, 0f}, new float[] {0.9f, 0f}, new float[] {0.8f, 0f});
+    float[][] values = {
+      {1.0f, 0f},
+      {0.9f, 0f},
+      {0.8f, 0f}
+    };
+    Vector2dScorer scorer = new Vector2dScorer(values);
 
     neighbors.addAndEnsureDiversity(1, scorer.base(1), 0, scorer);
     neighbors.addAndEnsureDiversity(2, scorer.base(2), 0, scorer);
 
+    // both nodes fit within capacity, no eviction
     assertEquals(2, neighbors.size());
     assertScoresEqual(new float[] {scorer.base(1), scorer.base(2)}, neighbors);
     assertNodesEqual(new int[] {1, 2}, neighbors);
   }
 
-  //   n2 ------ n1 ------ B ----------- n3
-  //  (0.8, 0)  (0.9, 0)  (1.0, 0)    (1.5, 0)
-  //   evicted                            new
-  //
-  // n2 is more similar to n1 (0.9) than to B (0.8), so n1 covers it and n2 is evicted.
-  // n3 is on the other side of B and not covered by any existing node; it survives.
   public void testAddAndEnsureDiversityRemoveUncheckNode() throws IOException {
     NeighborArray neighbors = new NeighborArray(3, true);
 
-    PlaneScorer scorer =
-        new PlaneScorer(
-            new float[] {1.0f, 0f},
-            new float[] {0.9f, 0f},
-            new float[] {0.8f, 0f},
-            new float[] {1.5f, 0f});
+    float[][] values = {
+      {1.0f, 0f},
+      {0.9f, 0f},
+      {0.8f, 0f},
+      {1.5f, 0f}
+    };
+    Vector2dScorer scorer = new Vector2dScorer(values);
 
     neighbors.addOutOfOrder(1, scorer.base(1));
     neighbors.addOutOfOrder(2, scorer.base(2));
     neighbors.addAndEnsureDiversity(3, scorer.base(3), 0, scorer);
 
+    // 2 is closer to 1 than to 0, so it is excluded as non-diverse; 3 survives
     assertEquals(2, neighbors.size());
     assertScoresEqual(new float[] {scorer.base(1), scorer.base(3)}, neighbors);
     assertNodesEqual(new int[] {1, 3}, neighbors);
   }
 
-  //   n3 --------- n1 ------ B --- n4 --------- n2
-  //  (0.45, 0)  (0.9, 0)  (1.0, 0)  (1.2, 0)  (1.5, 0)
-  //                                   new        evicted
-  //
-  // n2 is more similar to n4 (0.7) than to B (0.5), so n4 covers it and n2 is evicted.
-  // n3 is on the other side of B: similarity to n4 is 0.25 < 0.45, so it survives.
   public void testAddAndEnsureDiversityRemoveCheckNode() throws IOException {
     NeighborArray neighbors = new NeighborArray(4, true);
 
-    PlaneScorer scorer =
-        new PlaneScorer(
-            new float[] {1.0f, 0f},
-            new float[] {0.9f, 0f},
-            new float[] {1.5f, 0f},
-            new float[] {0.45f, 0f},
-            new float[] {1.2f, 0f});
+    float[][] values = {
+      {1.0f, 0f},
+      {0.9f, 0f},
+      {1.5f, 0f},
+      {0.45f, 0f},
+      {1.2f, 0f}
+    };
+    Vector2dScorer scorer = new Vector2dScorer(values);
 
     // addInOrder marks nodes as checked before the diversity scan runs
     neighbors.addInOrder(1, scorer.base(1));
@@ -501,35 +493,28 @@ public class TestNeighborArray extends LuceneTestCase {
     neighbors.addInOrder(3, scorer.base(3));
     neighbors.addAndEnsureDiversity(4, scorer.base(4), 0, scorer);
 
+    // 2 is closer to 4 than to 0, so it is excluded as non-diverse; 3 survives
     assertEquals(3, neighbors.size());
     assertScoresEqual(new float[] {scorer.base(1), scorer.base(4), scorer.base(3)}, neighbors);
     assertNodesEqual(new int[] {1, 4, 3}, neighbors);
   }
 
-  //              n2 (0, 0.4)
-  //               |
-  //   n3 -------- B ---- n1
-  //  (-0.2, 0)  (0,0)   (0.1, 0)
-  //   new
-  //
-  // Each node is closer to B than to any other node, so nobody covers anybody:
-  //   n3: base 0.8, to n1 0.7
-  //   n2: base 0.6, to n1 0.5, to n3 0.4
-  // Capacity exceeded → fallback evicts the worst base score, n2.
   public void testAddAndEnsureDiversityFallback() throws IOException {
     NeighborArray neighbors = new NeighborArray(3, true);
 
-    PlaneScorer scorer =
-        new PlaneScorer(
-            new float[] {0f, 0f},
-            new float[] {0.1f, 0f},
-            new float[] {0f, 0.4f},
-            new float[] {-0.2f, 0f});
+    float[][] values = {
+      {0f, 0f},
+      {0.1f, 0f},
+      {0f, 0.4f},
+      {-0.2f, 0f}
+    };
+    Vector2dScorer scorer = new Vector2dScorer(values);
 
     neighbors.addInOrder(1, scorer.base(1));
     neighbors.addInOrder(2, scorer.base(2));
     neighbors.addAndEnsureDiversity(3, scorer.base(3), 0, scorer);
 
+    // no node covers any other, so the fallback drops the worst base score (2)
     assertEquals(2, neighbors.size());
     assertScoresEqual(new float[] {scorer.base(1), scorer.base(3)}, neighbors);
     assertNodesEqual(new int[] {1, 3}, neighbors);
@@ -564,12 +549,12 @@ public class TestNeighborArray extends LuceneTestCase {
     }
   }
 
-  static class PlaneScorer implements UpdateableRandomVectorScorer {
+  static class Vector2dScorer implements UpdateableRandomVectorScorer {
 
     private final float[][] points;
     private int current;
 
-    PlaneScorer(float[]... points) {
+    Vector2dScorer(float[]... points) {
       this.points = points;
     }
 
