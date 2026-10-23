@@ -136,15 +136,15 @@ public final class SoftDeletesDirectoryReaderWrapper extends FilterDirectoryRead
     if (liveDocs != null) {
       bits = FixedBitSet.copyOf(liveDocs);
     } else {
-      bits = new FixedBitSet(reader.maxDoc());
-      bits.set(0, reader.maxDoc());
+      bits = new FixedBitSet(reader.maxLeafDoc());
+      bits.set(0, reader.maxLeafDoc());
     }
     int numSoftDeletes = PendingSoftDeletes.applySoftDeletes(iterator, bits);
     if (numSoftDeletes == 0) {
       return reader;
     }
-    int numDeletes = reader.numDeletedDocs() + numSoftDeletes;
-    int numDocs = reader.maxDoc() - numDeletes;
+    int numDeletes = reader.numDeletedLeafDocs() + numSoftDeletes;
+    int numDocs = reader.maxLeafDoc() - numDeletes;
     assert assertDocCounts(numDocs, numSoftDeletes, reader);
     return reader instanceof CodecReader
         ? new SoftDeletesFilterCodecReader((CodecReader) reader, bits, numDocs)
@@ -208,7 +208,7 @@ public final class SoftDeletesDirectoryReaderWrapper extends FilterDirectoryRead
     }
 
     @Override
-    public int numDocs() {
+    public int numLeafDocs() {
       return numDocs;
     }
 
@@ -246,7 +246,7 @@ public final class SoftDeletesDirectoryReaderWrapper extends FilterDirectoryRead
     }
 
     @Override
-    public int numDocs() {
+    public int numLeafDocs() {
       return numDocs;
     }
 

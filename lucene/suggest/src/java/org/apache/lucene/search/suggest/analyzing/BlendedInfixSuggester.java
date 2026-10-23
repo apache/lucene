@@ -28,8 +28,10 @@ import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.IndexOptions;
-import org.apache.lucene.index.MultiDocValues;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
@@ -226,27 +228,30 @@ public class BlendedInfixSuggester extends AnalyzingInfixSuggester {
     // we reduce the num to the one initially requested
     int actualNum = num / numFactor;
 
-    TermVectors termVectors = searcher.getIndexReader().termVectors();
+    List<LeafReaderContext> leaves = searcher.getIndexReader().leaves();
     for (int i = 0; i < hits.scoreDocs.length; i++) {
       FieldDoc fd = (FieldDoc) hits.scoreDocs[i];
+      // Resolve the leaf and read every doc value from it with a leaf-local doc id, so a global
+      // doc id past Integer.MAX_VALUE still works (the composite doc space is a long).
+      LeafReaderContext leaf = leaves.get(ReaderUtil.subIndex(fd.doc, leaves));
+      LeafReader leafReader = leaf.reader();
+      int docID = leaf.toLeafDocId(fd.doc);
 
-      BinaryDocValues textDV =
-          MultiDocValues.getBinaryValues(searcher.getIndexReader(), TEXT_FIELD_NAME);
+      BinaryDocValues textDV = leafReader.getBinaryDocValues(TEXT_FIELD_NAME);
       assert textDV != null;
 
-      textDV.advance(fd.doc);
+      textDV.advance(docID);
 
       final String text = textDV.binaryValue().utf8ToString();
       long weight = (Long) fd.fields[0];
 
       // This will just be null if app didn't pass payloads to build():
       // TODO: maybe just stored fields?  they compress...
-      BinaryDocValues payloadsDV =
-          MultiDocValues.getBinaryValues(searcher.getIndexReader(), "payloads");
+      BinaryDocValues payloadsDV = leafReader.getBinaryDocValues("payloads");
 
       BytesRef payload;
       if (payloadsDV != null) {
-        if (payloadsDV.advance(fd.doc) == fd.doc) {
+        if (payloadsDV.advance(docID) == docID) {
           payload = BytesRef.deepCopyOf(payloadsDV.binaryValue());
         } else {
           payload = new BytesRef(BytesRef.EMPTY_BYTES);
@@ -260,7 +265,8 @@ public class BlendedInfixSuggester extends AnalyzingInfixSuggester {
         // if hit starts with the key, we don't change the score
         coefficient = 1;
       } else {
-        coefficient = createCoefficient(termVectors, fd.doc, matchedTokens, prefixToken);
+        coefficient =
+            createCoefficient(leafReader.termVectors(), docID, matchedTokens, prefixToken);
       }
       if (weight == 0) {
         weight = 1;

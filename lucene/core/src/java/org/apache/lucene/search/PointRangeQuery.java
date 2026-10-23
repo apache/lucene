@@ -294,11 +294,11 @@ public abstract class PointRangeQuery extends Query {
 
         if (allDocsMatch) {
           // all docs have a value and all points are within bounds, so everything matches
-          return ConstantScoreScorerSupplier.matchAll(score(), scoreMode, reader.maxDoc());
+          return ConstantScoreScorerSupplier.matchAll(score(), scoreMode, reader.maxLeafDoc());
         } else {
-          return new ConstantScoreScorerSupplier(score(), scoreMode, reader.maxDoc()) {
+          return new ConstantScoreScorerSupplier(score(), scoreMode, reader.maxLeafDoc()) {
 
-            final DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values);
+            final DocIdSetBuilder result = new DocIdSetBuilder(reader.maxLeafDoc(), values);
             final IntersectVisitor visitor = getIntersectVisitor(result);
             long cost = -1;
 
@@ -310,11 +310,11 @@ public abstract class PointRangeQuery extends Query {
                 // If all docs have exactly one value and the cost is greater
                 // than half the leaf size then maybe we can make things faster
                 // by computing the set of documents that do NOT match the range
-                final FixedBitSet result = new FixedBitSet(reader.maxDoc());
+                final FixedBitSet result = new FixedBitSet(reader.maxLeafDoc());
                 long[] cost = new long[1];
                 values.intersect(getInverseIntersectVisitor(result, cost));
                 // Flip the bit set and cost
-                result.flip(0, reader.maxDoc());
+                result.flip(0, reader.maxLeafDoc());
                 cost[0] = Math.max(0, reader.maxDoc() - cost[0]);
                 return new BitSetIterator(result, cost[0]);
               }

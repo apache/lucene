@@ -980,7 +980,7 @@ public class TestIndexWriter extends LuceneTestCase {
                 try {
                   r = DirectoryReader.open(w, random.nextBoolean(), false);
                   if (random.nextBoolean() && r.maxDoc() > 0) {
-                    int docid = random.nextInt(r.maxDoc());
+                    int docid = random.nextInt(Math.toIntExact(r.maxDoc()));
                     w.tryDeleteDocument(r, docid);
                   }
                 } finally {
@@ -2195,7 +2195,7 @@ public class TestIndexWriter extends LuceneTestCase {
     for (LeafReaderContext leafReaderContext : leaves) {
       LeafReader ar = leafReaderContext.reader();
       Bits liveDocs = ar.getLiveDocs();
-      int maxDoc = ar.maxDoc();
+      int maxDoc = ar.maxLeafDoc();
       StoredFields storedFields = ar.storedFields();
       for (int i = 0; i < maxDoc; i++) {
         if (liveDocs == null || liveDocs.get(i)) {
@@ -2244,7 +2244,7 @@ public class TestIndexWriter extends LuceneTestCase {
     for (LeafReaderContext leafReaderContext : leaves) {
       LeafReader ar = leafReaderContext.reader();
       Bits liveDocs = ar.getLiveDocs();
-      int maxDoc = ar.maxDoc();
+      int maxDoc = ar.maxLeafDoc();
       StoredFields storedFields = ar.storedFields();
       for (int i = 0; i < maxDoc; i++) {
         if (liveDocs == null || liveDocs.get(i)) {
@@ -3549,8 +3549,8 @@ public class TestIndexWriter extends LuceneTestCase {
                           }
 
                           @Override
-                          public int numDocs() {
-                            return maxDoc();
+                          public int numLeafDocs() {
+                            return maxLeafDoc();
                           }
                         };
                       }

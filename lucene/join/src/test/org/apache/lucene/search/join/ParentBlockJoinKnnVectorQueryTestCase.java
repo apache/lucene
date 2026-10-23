@@ -274,8 +274,8 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
                     "field", new float[] {0, 0}, null, 8, parentFilter(searcher.getIndexReader())),
                 10);
         assertEquals(8, results.scoreDocs.length);
-        assertIdMatches(reader, "0", results.scoreDocs[0].doc);
-        assertIdMatches(reader, "7", results.scoreDocs[7].doc);
+        assertIdMatches(reader, "0", Math.toIntExact(results.scoreDocs[0].doc));
+        assertIdMatches(reader, "7", Math.toIntExact(results.scoreDocs[7].doc));
 
         // test some results in the middle of the sequence - also tests docid tiebreaking
         results =
@@ -288,8 +288,8 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
                     parentFilter(searcher.getIndexReader())),
                 10);
         assertEquals(8, results.scoreDocs.length);
-        assertIdMatches(reader, "10", results.scoreDocs[0].doc);
-        assertIdMatches(reader, "6", results.scoreDocs[7].doc);
+        assertIdMatches(reader, "10", Math.toIntExact(results.scoreDocs[0].doc));
+        assertIdMatches(reader, "6", Math.toIntExact(results.scoreDocs[7].doc));
       }
     }
   }
@@ -317,10 +317,10 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
       searcher.setTimeout(new CountingQueryTimeout(1)); // Only score 1 parent
       // Note: We get partial results when the HNSW graph has 1 layer, but no results for > 1 layer
       // because the timeout is exhausted while finding the best entry node for the last level
-      assertThat(searcher.count(query), lessThanOrEqualTo(1));
+      assertThat(searcher.count(query), lessThanOrEqualTo(1L));
 
       searcher.setTimeout(new CountingQueryTimeout(1)); // Only score 1 parent
-      assertThat(searcher.count(exactQuery), lessThanOrEqualTo(1));
+      assertThat(searcher.count(exactQuery), lessThanOrEqualTo(1L));
     }
   }
 

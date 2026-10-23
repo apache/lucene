@@ -71,7 +71,7 @@ public final class SearchResults {
           (fieldsToLoad == null)
               ? storedFields.document(sd.doc)
               : storedFields.document(sd.doc, fieldsToLoad);
-      res.hits.add(Doc.of(sd.doc, sd.score, luceneDoc));
+      res.hits.add(Doc.of(Math.toIntExact(sd.doc), sd.score, luceneDoc));
       res.offset = offset;
     }
 

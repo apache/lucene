@@ -26,7 +26,7 @@ import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.PointTree;
 import org.apache.lucene.index.PointValues.Relation;
-import org.apache.lucene.internal.hppc.IntArrayList;
+import org.apache.lucene.internal.hppc.LongArrayList;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.PriorityQueue;
 import org.apache.lucene.util.SloppyMath;
@@ -96,7 +96,7 @@ class NearestNeighbor {
 
   private static class NearestVisitor implements IntersectVisitor {
 
-    public int curDocBase;
+    public long curDocBase;
     public Bits curLiveDocs;
     final int topN;
     final NearestHitQueue hitQueue;
@@ -176,7 +176,7 @@ class NearestNeighbor {
       // System.out.println("    visit docID=" + docID + " distanceSortKey=" + distanceSortKey + "
       // docLat=" + docLatitude + " docLon=" + docLongitude);
 
-      int fullDocID = curDocBase + docID;
+      long fullDocID = curDocBase + docID;
 
       if (hitQueue.size() == topN) {
         // queue already full
@@ -220,7 +220,7 @@ class NearestNeighbor {
 
   /** Holds one hit from {@link NearestNeighbor#nearest} */
   static class NearestHit {
-    public int docID;
+    public long docID;
 
     /**
      * The distance from the hit to the query point, computed as a sort key through {@link
@@ -243,7 +243,7 @@ class NearestNeighbor {
       double pointLon,
       List<PointValues> readers,
       List<Bits> liveDocs,
-      IntArrayList docBases,
+      LongArrayList docBases,
       final int n)
       throws IOException {
 

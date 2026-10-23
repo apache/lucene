@@ -96,7 +96,7 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
                 "missing_field",
                 new float[] {1, 2, 3},
                 10,
-                AcceptDocs.fromLiveDocs(reader.getLiveDocs(), reader.maxDoc()),
+                AcceptDocs.fromLiveDocs(reader.getLiveDocs(), reader.maxLeafDoc()),
                 Integer.MAX_VALUE);
         assertEquals(0, hits.scoreDocs.length);
         hits =
@@ -104,7 +104,7 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
                 "id",
                 new float[] {1, 2, 3},
                 10,
-                AcceptDocs.fromLiveDocs(reader.getLiveDocs(), reader.maxDoc()),
+                AcceptDocs.fromLiveDocs(reader.getLiveDocs(), reader.maxLeafDoc()),
                 Integer.MAX_VALUE);
         assertEquals(0, hits.scoreDocs.length);
       }
@@ -155,7 +155,7 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
                 "field1",
                 new float[] {1, 2, 3},
                 10,
-                AcceptDocs.fromLiveDocs(reader.getLiveDocs(), reader.maxDoc()),
+                AcceptDocs.fromLiveDocs(reader.getLiveDocs(), reader.maxLeafDoc()),
                 Integer.MAX_VALUE);
         assertEquals(1, hits1.scoreDocs.length);
 
@@ -164,7 +164,7 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
                 "field2",
                 new float[] {1, 2, 3},
                 10,
-                AcceptDocs.fromLiveDocs(reader.getLiveDocs(), reader.maxDoc()),
+                AcceptDocs.fromLiveDocs(reader.getLiveDocs(), reader.maxLeafDoc()),
                 Integer.MAX_VALUE);
         assertEquals(1, hits2.scoreDocs.length);
       }

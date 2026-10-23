@@ -139,7 +139,7 @@ public class TestSortRandom extends LuceneTestCase {
       } else {
         sort = new Sort(sf, SortField.FIELD_DOC);
       }
-      final int hitCount = TestUtil.nextInt(random, 1, r.maxDoc() + 20);
+      final int hitCount = TestUtil.nextInt(random, 1, Math.toIntExact(r.maxDoc()) + 20);
       final RandomQuery f = new RandomQuery(random.nextLong(), random.nextFloat(), docValues);
       hits = s.search(f, hitCount, sort, false);
 
@@ -257,7 +257,7 @@ public class TestSortRandom extends LuceneTestCase {
                   context,
                   _ -> {
                     Random random = new Random(context.docBase ^ seed);
-                    final int maxDoc = context.reader().maxDoc();
+                    final int maxDoc = context.maxLeafDoc();
                     try {
                       final NumericDocValues idSource =
                           DocValues.getNumeric(context.reader(), "id");

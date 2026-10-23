@@ -216,7 +216,10 @@ public class MatchRegionRetriever {
   public void highlightDocuments(TopDocs topDocs, MatchOffsetsConsumer consumer)
       throws IOException {
     highlightDocuments(
-        Arrays.stream(topDocs.scoreDocs).mapToInt(scoreDoc -> scoreDoc.doc).sorted().iterator(),
+        Arrays.stream(topDocs.scoreDocs)
+            .mapToInt(scoreDoc -> Math.toIntExact(scoreDoc.doc))
+            .sorted()
+            .iterator(),
         consumer,
         _ -> Integer.MAX_VALUE);
   }
@@ -362,7 +365,7 @@ public class MatchRegionRetriever {
         reader = currentContext.reader();
       }
 
-      int contextRelativeDocId = docId - currentContext.docBase;
+      int contextRelativeDocId = currentContext.toLeafDocId(docId);
 
       var fieldVisitor = new StoredFieldsVisitor(shouldLoadStoredField);
       StoredFields storedFields = reader.storedFields();
@@ -465,7 +468,7 @@ public class MatchRegionRetriever {
       LeafReaderContext prev = leaves.get(i - 1);
       LeafReaderContext next = leaves.get(i);
       assert prev.docBase <= next.docBase;
-      assert prev.docBase + prev.reader().maxDoc() == next.docBase;
+      assert prev.docBase + prev.maxLeafDoc() == next.docBase;
     }
     return true;
   }

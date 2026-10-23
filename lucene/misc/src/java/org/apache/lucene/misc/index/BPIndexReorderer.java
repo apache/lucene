@@ -659,10 +659,10 @@ public final class BPIndexReorderer extends AbstractBPReorderer {
       throws IOException {
     final int maxNumTerms =
         (int)
-            ((ramBudgetMB * 1024 * 1024 - docRAMRequirements(reader.maxDoc()))
+            ((ramBudgetMB * 1024 * 1024 - docRAMRequirements(reader.maxLeafDoc()))
                 / parallelism
                 / termRAMRequirementsPerThreadPerTerm());
-    final int maxDocFreq = (int) ((double) this.maxDocFreq * reader.maxDoc());
+    final int maxDocFreq = (int) ((double) this.maxDocFreq * reader.maxLeafDoc());
 
     int numTerms = 0;
     for (String field : fields) {
@@ -778,10 +778,10 @@ public final class BPIndexReorderer extends AbstractBPReorderer {
   @Override
   public Sorter.DocMap computeDocMap(CodecReader reader, Directory tempDir, Executor executor)
       throws IOException {
-    if (docRAMRequirements(reader.maxDoc()) >= ramBudgetMB * 1024 * 1024) {
+    if (docRAMRequirements(reader.maxLeafDoc()) >= ramBudgetMB * 1024 * 1024) {
       throw new NotEnoughRAMException(
           "At least "
-              + Math.ceil(docRAMRequirements(reader.maxDoc()) / 1024. / 1024.)
+              + Math.ceil(docRAMRequirements(reader.maxLeafDoc()) / 1024. / 1024.)
               + "MB of RAM are required to hold metadata about documents in RAM, but current RAM budget is "
               + ramBudgetMB
               + "MB");
@@ -857,7 +857,7 @@ public final class BPIndexReorderer extends AbstractBPReorderer {
       parallelism = Runtime.getRuntime().availableProcessors();
     }
 
-    final int maxDoc = reader.maxDoc();
+    final int maxDoc = reader.maxLeafDoc();
     try {
       int numTerms;
       String postingsName;

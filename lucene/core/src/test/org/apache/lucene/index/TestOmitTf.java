@@ -308,7 +308,7 @@ public class TestOmitTf extends LuceneTestCase {
     bq.add(q1, Occur.MUST);
     bq.add(q4, Occur.MUST);
 
-    int count = searcher.count(bq.build());
+    long count = searcher.count(bq.build());
     assertEquals(15, count);
 
     reader.close();

@@ -708,7 +708,8 @@ class SimplePrimaryNode extends PrimaryNode {
             IndexSearcher searcher = mgr.acquire();
             try {
               long version = ((DirectoryReader) searcher.getIndexReader()).getVersion();
-              int hitCount = searcher.count(new TermQuery(new Term("body", "the")));
+              int hitCount =
+                  Math.toIntExact(searcher.count(new TermQuery(new Term("body", "the"))));
               // message("version=" + version + " searcher=" + searcher);
               out.writeVLong(version);
               out.writeVInt(hitCount);
@@ -726,7 +727,7 @@ class SimplePrimaryNode extends PrimaryNode {
             IndexSearcher searcher = mgr.acquire();
             try {
               long version = ((DirectoryReader) searcher.getIndexReader()).getVersion();
-              int hitCount = searcher.count(MatchAllDocsQuery.INSTANCE);
+              int hitCount = Math.toIntExact(searcher.count(MatchAllDocsQuery.INSTANCE));
               // message("version=" + version + " searcher=" + searcher);
               out.writeVLong(version);
               out.writeVInt(hitCount);
@@ -844,7 +845,7 @@ class SimplePrimaryNode extends PrimaryNode {
     IndexSearcher searcher = mgr.acquire();
     try {
       long version = ((DirectoryReader) searcher.getIndexReader()).getVersion();
-      int hitCount = searcher.count(new TermQuery(new Term("marker", "marker")));
+      int hitCount = Math.toIntExact(searcher.count(new TermQuery(new Term("marker", "marker"))));
 
       if (hitCount < expectedAtLeastCount) {
         message(

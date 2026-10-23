@@ -100,12 +100,12 @@ abstract class DocValuesLeafReader extends LeafReader {
   }
 
   @Override
-  public final int numDocs() {
+  public final int numLeafDocs() {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public final int maxDoc() {
+  public final int maxLeafDoc() {
     throw new UnsupportedOperationException();
   }
 

@@ -63,7 +63,7 @@ public final class LargeNumHitsTopDocsCollector implements Collector {
 
   @Override
   public LeafCollector getLeafCollector(LeafReaderContext context) {
-    final int docBase = context.docBase;
+    final long docBase = context.docBase;
     return new LeafCollector() {
 
       private Scorable scorer;
@@ -148,7 +148,7 @@ public final class LargeNumHitsTopDocsCollector implements Collector {
     hits.sort(
         Comparator.comparingDouble((ScoreDoc scoreDoc) -> scoreDoc.score)
             .reversed()
-            .thenComparingInt(scoreDoc -> scoreDoc.doc));
+            .thenComparingLong(scoreDoc -> scoreDoc.doc));
 
     for (int i = 0; i < howMany; i++) {
       results[i] = hits.get(i);

@@ -216,7 +216,7 @@ public class TestLatLonPointDistanceSort extends LuceneTestCase {
       double lon = GeoTestUtil.nextLongitude();
       double missingValue = Double.POSITIVE_INFINITY;
 
-      Result[] expected = new Result[reader.maxDoc()];
+      Result[] expected = new Result[Math.toIntExact(reader.maxDoc())];
 
       for (int doc = 0; doc < reader.maxDoc(); doc++) {
         Document targetDoc = storedFields.document(doc);
@@ -235,7 +235,7 @@ public class TestLatLonPointDistanceSort extends LuceneTestCase {
       Arrays.sort(expected);
 
       // randomize the topN a bit
-      int topN = TestUtil.nextInt(random(), 1, reader.maxDoc());
+      int topN = TestUtil.nextInt(random(), 1, Math.toIntExact(reader.maxDoc()));
       // sort by distance, then ID
       SortField distanceSort = LatLonDocValuesField.newDistanceSort("field", lat, lon);
       Sort sort = new Sort(distanceSort, new SortField("id", SortField.Type.INT));
@@ -249,7 +249,7 @@ public class TestLatLonPointDistanceSort extends LuceneTestCase {
 
       // get page2 with searchAfter()
       if (topN < reader.maxDoc()) {
-        int page2 = TestUtil.nextInt(random(), 1, reader.maxDoc() - topN);
+        int page2 = TestUtil.nextInt(random(), 1, Math.toIntExact(reader.maxDoc()) - topN);
         TopDocs topDocs2 =
             searcher.searchAfter(
                 topDocs.scoreDocs[topN - 1], MatchAllDocsQuery.INSTANCE, page2, sort);

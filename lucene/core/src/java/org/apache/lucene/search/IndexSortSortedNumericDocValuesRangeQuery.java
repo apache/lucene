@@ -162,7 +162,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
         if (itAndCount != null) {
           DocIdSetIterator disi = itAndCount.it;
           return ConstantScoreScorerSupplier.fromIterator(
-              disi, score(), scoreMode, context.reader().maxDoc());
+              disi, score(), scoreMode, context.maxLeafDoc());
         }
         return fallbackWeight.scorerSupplier(context);
       }
@@ -461,7 +461,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
       return IteratorAndCount.empty();
     }
     if (matchAll(points, queryLowerPoint, queryUpperPoint)) {
-      int maxDoc = context.reader().maxDoc();
+      int maxDoc = context.maxLeafDoc();
       if (points.getDocCount() == maxDoc) {
         return IteratorAndCount.all(maxDoc);
       } else {
@@ -492,7 +492,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
     } else {
       maxDocId = nextDoc(points.getPointTree(), queryUpperPoint, false, comparator, false);
       if (maxDocId == -1) {
-        maxDocId = context.reader().maxDoc();
+        maxDocId = context.maxLeafDoc();
       }
     }
 
@@ -500,7 +500,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
       return IteratorAndCount.empty();
     }
 
-    if ((points.getDocCount() == context.reader().maxDoc())) {
+    if ((points.getDocCount() == context.maxLeafDoc())) {
       return IteratorAndCount.denseRange(minDocId, maxDocId);
     } else {
       return IteratorAndCount.sparseRange(minDocId, maxDocId, delegate);
@@ -552,7 +552,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
       throws IOException {
     long lower = sortField.getReverse() ? upperValue : lowerValue;
     long upper = sortField.getReverse() ? lowerValue : upperValue;
-    int maxDoc = context.reader().maxDoc();
+    int maxDoc = context.maxLeafDoc();
 
     // Perform a binary search to find the first document with value >= lower.
     ValueComparator comparator = loadComparator(sortField, sortFieldType, lower, context);

@@ -213,7 +213,7 @@ public class SortedNumericDocValuesMultiRangeQuery extends Query {
       }
       long lowerValue = sortedClauses.getFirst().lower;
       long upperValue = sortedClauses.getLast().upper;
-      int maxDoc = context.reader().maxDoc();
+      int maxDoc = context.maxLeafDoc();
       DocValuesSkipper skipper = context.reader().getDocValuesSkipper(fieldName);
       if (skipper != null) {
         if (skipper.minValue() > upperValue || skipper.maxValue() < lowerValue) {

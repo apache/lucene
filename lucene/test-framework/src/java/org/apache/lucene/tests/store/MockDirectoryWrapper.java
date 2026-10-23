@@ -976,12 +976,12 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
           }
 
           DirectoryReader ir1 = DirectoryReader.open(this);
-          int numDocs1 = ir1.numDocs();
+          int numDocs1 = Math.toIntExact(ir1.numDocs());
           ir1.close();
           // Don't commit on close, so that no merges will be scheduled.
           new IndexWriter(this, new IndexWriterConfig(null).setCommitOnClose(false)).close();
           DirectoryReader ir2 = DirectoryReader.open(this);
-          int numDocs2 = ir2.numDocs();
+          int numDocs2 = Math.toIntExact(ir2.numDocs());
           ir2.close();
           assert numDocs1 == numDocs2
               : "numDocs changed after opening/closing IW: before="

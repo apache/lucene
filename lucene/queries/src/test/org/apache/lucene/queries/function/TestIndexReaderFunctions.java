@@ -224,7 +224,7 @@ public class TestIndexReaderFunctions extends LuceneTestCase {
         expected, (a, b) -> reversed ? (int) (b.score - a.score) : (int) (a.score - b.score));
     int[] expectedDocs = new int[expected.length];
     for (int i = 0; i < expected.length; i++) {
-      expectedDocs[i] = expected[i].doc;
+      expectedDocs[i] = Math.toIntExact(expected[i].doc);
     }
     TopDocs docs =
         searcher.search(

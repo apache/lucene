@@ -214,7 +214,7 @@ final class LongDistanceFeatureQuery extends Query {
           @Override
           public Scorer get(long leadCost) throws IOException {
             return new DistanceScorer(
-                context.reader().maxDoc(), leadCost, boost, pointValues, docValues);
+                context.maxLeafDoc(), leadCost, boost, pointValues, docValues);
           }
 
           @Override

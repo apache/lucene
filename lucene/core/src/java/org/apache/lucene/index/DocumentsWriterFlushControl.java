@@ -209,7 +209,10 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
     // in order to prevent contention in the case of many threads indexing small documents
     // we skip ram accounting unless the DWPT accumulated enough ram to be worthwhile
     if (config.getMaxBufferedDocs() == IndexWriterConfig.DISABLE_AUTO_FLUSH
-        && delta < ramBufferGranularity()) {
+        && delta < ramBufferGranularity()
+        // ... but never skip once a DWPT nears the per-segment doc limit, otherwise a segment built
+        // from many tiny documents could exceed it (document numbers within a segment are int).
+        && perThread.getNumDocsInRAM() < IndexWriter.getActualMaxDocsPerSegment()) {
       // Skip accounting for now, we'll come back to it later when the delta is bigger
       return null;
     }

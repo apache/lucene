@@ -109,7 +109,7 @@ public class StringValueFacetCounts extends Facets {
         int totalDocs = 0;
         for (FacetsCollector.MatchingDocs matchingDocs : facetsCollector.getMatchingDocs()) {
           totalHits += matchingDocs.totalHits();
-          totalDocs += matchingDocs.context().reader().maxDoc();
+          totalDocs += matchingDocs.context().maxLeafDoc();
         }
 
         // No counting needed if there are no hits:
@@ -278,10 +278,11 @@ public class StringValueFacetCounts extends Facets {
       LeafReaderContext context = leaves.get(i);
       SortedSetDocValues dv = DocValues.getSortedSet(context.reader(), field);
       docValues[i] = dv;
-      starts[i] = context.docBase;
+      // starts is int-addressed (MultiSortedSetDocValues), so this caps at 2^31 docs
+      starts[i] = Math.toIntExact(context.docBase);
       cost += dv.cost();
     }
-    starts[leafCount] = reader.maxDoc();
+    starts[leafCount] = Math.toIntExact(reader.maxDoc());
 
     return new MultiDocValues.MultiSortedSetDocValues(docValues, starts, ordinalMap, cost);
   }

@@ -36,4 +36,24 @@ public class TestTermStates extends LuceneTestCase {
     assertEquals("TermStates\n  state=null\n", states.toString());
     IOUtils.close(r, w, dir);
   }
+
+  /**
+   * {@link TermStates#docFreq()} is a {@code long}: summing per-segment counts for a term that
+   * occurs in more than {@link Integer#MAX_VALUE} documents must not overflow.
+   */
+  public void testDocFreqAccumulatesBeyondMaxInt() throws Exception {
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    w.addDocument(new Document());
+    IndexReader r = w.getReader();
+    TermStates states = new TermStates(r.getContext());
+    long perLeaf = IndexWriter.MAX_DOCS; // the per-segment cap, a legal single-leaf docFreq
+    states.accumulateStatistics(perLeaf, perLeaf);
+    states.accumulateStatistics(perLeaf, perLeaf);
+    assertEquals(2L * perLeaf, states.docFreq());
+    assertTrue(
+        "docFreq should exceed Integer.MAX_VALUE: " + states.docFreq(),
+        states.docFreq() > Integer.MAX_VALUE);
+    IOUtils.close(r, w, dir);
+  }
 }

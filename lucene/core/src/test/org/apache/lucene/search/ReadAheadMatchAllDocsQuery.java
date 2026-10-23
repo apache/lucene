@@ -70,20 +70,20 @@ public final class ReadAheadMatchAllDocsQuery extends Query {
           @Override
           public Scorer get(long leadCost) throws IOException {
             return new ConstantScoreScorer(
-                score(), scoreMode, DocIdSetIterator.all(context.reader().maxDoc()));
+                score(), scoreMode, DocIdSetIterator.all(context.maxLeafDoc()));
           }
 
           @Override
           public BulkScorer bulkScorer() throws IOException {
             List<DocIdSetIterator> clauses =
-                Collections.singletonList(DocIdSetIterator.all(context.reader().maxDoc()));
+                Collections.singletonList(DocIdSetIterator.all(context.maxLeafDoc()));
             return new DenseConjunctionBulkScorer(
-                clauses, Collections.emptyList(), context.reader().maxDoc(), score());
+                clauses, Collections.emptyList(), context.maxLeafDoc(), score());
           }
 
           @Override
           public long cost() {
-            return context.reader().maxDoc();
+            return context.maxLeafDoc();
           }
         };
       }

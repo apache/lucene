@@ -371,7 +371,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
           // when acceptDocs is null due to no doc deleted, we will instantiate a new one that would
           // match all docs to allow timeout checking.
           final Bits updatedAcceptDocs =
-              in.bits() == null ? new Bits.MatchAllBits(maxDoc()) : in.bits();
+              in.bits() == null ? new Bits.MatchAllBits(maxLeafDoc()) : in.bits();
           bits =
               new Bits() {
                 private static final int MAX_CALLS_BEFORE_QUERY_TIMEOUT_CHECK = 16;

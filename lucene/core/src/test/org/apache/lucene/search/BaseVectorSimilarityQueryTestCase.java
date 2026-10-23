@@ -302,7 +302,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
 
       ScoreDoc[] scoreDocs = searcher.search(query, numDocs).scoreDocs;
       for (ScoreDoc scoreDoc : scoreDocs) {
-        int id = getId(searcher, scoreDoc.doc);
+        int id = getId(searcher, Math.toIntExact(scoreDoc.doc));
 
         // Check that returned document is in selected range
         assertTrue(id >= startIndex && id <= endIndex);
@@ -423,7 +423,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
 
         ScoreDoc[] scoreDocs = searcher.search(query, numDocs).scoreDocs;
         for (ScoreDoc scoreDoc : scoreDocs) {
-          int id = getId(searcher, scoreDoc.doc);
+          int id = getId(searcher, Math.toIntExact(scoreDoc.doc));
 
           // Check that returned document is not deleted
           assertThat(id, either(lessThan(startIndex)).or(greaterThan(endIndex)));
@@ -523,7 +523,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
 
       ScoreDoc[] scoreDocs = searcher.search(query, numDocs).scoreDocs;
       for (ScoreDoc scoreDoc : scoreDocs) {
-        int id = getId(searcher, scoreDoc.doc);
+        int id = getId(searcher, Math.toIntExact(scoreDoc.doc));
 
         // Check that the collected result is above accepted similarity
         assertTrue(scores.containsKey(id));
@@ -637,7 +637,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
       assertEquals(0, searcher.count(query)); // Expect no results with the timeout
 
       searcher.setTimeout(new CountingQueryTimeout(numDocs - 1)); // Do not score all docs
-      int count = searcher.count(query);
+      long count = searcher.count(query);
       assertTrue(
           "0 < count=" + count + " < numDocs=" + numDocs,
           count > 0 && count < numDocs); // Expect partial results
@@ -655,7 +655,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
 
       searcher.setTimeout(
           new CountingQueryTimeout(numFiltered - 1)); // Timeout before scoring all filtered docs
-      int filteredCount = searcher.count(filteredQuery);
+      long filteredCount = searcher.count(filteredQuery);
       assertTrue(
           "0 < filteredCount=" + filteredCount + " < numFiltered=" + numFiltered,
           filteredCount > 0 && filteredCount < numFiltered); // Expect partial results

@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.search.grouping;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -34,12 +33,13 @@ import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiDocValues;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.function.ValueSource;
 import org.apache.lucene.queries.function.valuesource.BytesRefFieldSource;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
@@ -50,7 +50,6 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 
@@ -133,7 +132,7 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
     IndexSearcher indexSearcher = newSearcher(reader);
 
     w.close();
-    int maxDoc = reader.maxDoc();
+    List<LeafReaderContext> leaves = indexSearcher.getIndexReader().leaves();
 
     Sort sortWithinGroup = new Sort(new SortField("id_1", SortField.Type.INT, true));
     AllGroupHeadsCollectorManager<?> allGroupHeadsCollectorManager =
@@ -144,7 +143,7 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
     assertTrue(arrayContains(new int[] {2, 3, 5, 7}, groupHeadsResult.retrieveGroupHeads()));
     assertTrue(
         openBitSetContains(
-            new int[] {2, 3, 5, 7}, groupHeadsResult.retrieveGroupHeads(maxDoc), maxDoc));
+            new int[] {2, 3, 5, 7}, groupHeadsResult.retrieveGroupHeads(leaves), leaves));
 
     allGroupHeadsCollectorManager = createRandomCollectorManager(groupField, sortWithinGroup);
     groupHeadsResult =
@@ -153,7 +152,7 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
     assertTrue(arrayContains(new int[] {2, 3, 4}, groupHeadsResult.retrieveGroupHeads()));
     assertTrue(
         openBitSetContains(
-            new int[] {2, 3, 4}, groupHeadsResult.retrieveGroupHeads(maxDoc), maxDoc));
+            new int[] {2, 3, 4}, groupHeadsResult.retrieveGroupHeads(leaves), leaves));
 
     allGroupHeadsCollectorManager = createRandomCollectorManager(groupField, sortWithinGroup);
     groupHeadsResult =
@@ -161,7 +160,7 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
             new TermQuery(new Term("content", "blob")), allGroupHeadsCollectorManager);
     assertTrue(arrayContains(new int[] {1, 5}, groupHeadsResult.retrieveGroupHeads()));
     assertTrue(
-        openBitSetContains(new int[] {1, 5}, groupHeadsResult.retrieveGroupHeads(maxDoc), maxDoc));
+        openBitSetContains(new int[] {1, 5}, groupHeadsResult.retrieveGroupHeads(leaves), leaves));
 
     // STRING sort type triggers different implementation
     Sort sortWithinGroup2 = new Sort(new SortField("id_2", SortField.Type.STRING, true));
@@ -172,7 +171,7 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
     assertTrue(arrayContains(new int[] {2, 3, 5, 7}, groupHeadsResult.retrieveGroupHeads()));
     assertTrue(
         openBitSetContains(
-            new int[] {2, 3, 5, 7}, groupHeadsResult.retrieveGroupHeads(maxDoc), maxDoc));
+            new int[] {2, 3, 5, 7}, groupHeadsResult.retrieveGroupHeads(leaves), leaves));
 
     Sort sortWithinGroup3 = new Sort(new SortField("id_2", SortField.Type.STRING, false));
     allGroupHeadsCollectorManager = createRandomCollectorManager(groupField, sortWithinGroup3);
@@ -183,7 +182,7 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
     assertTrue(arrayContains(new int[] {0, 3, 4, 6}, groupHeadsResult.retrieveGroupHeads()));
     assertTrue(
         openBitSetContains(
-            new int[] {0, 3, 4, 6}, groupHeadsResult.retrieveGroupHeads(maxDoc), maxDoc));
+            new int[] {0, 3, 4, 6}, groupHeadsResult.retrieveGroupHeads(leaves), leaves));
 
     // query that matches no documents should return empty group heads
     allGroupHeadsCollectorManager = createRandomCollectorManager(groupField, sortWithinGroup);
@@ -191,7 +190,7 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
         indexSearcher.search(
             new TermQuery(new Term("content", "nonexistent")), allGroupHeadsCollectorManager);
     assertEquals(0, groupHeadsResult.retrieveGroupHeads().length);
-    assertEquals(0, ((FixedBitSet) groupHeadsResult.retrieveGroupHeads(maxDoc)).cardinality());
+    assertTrue(openBitSetContains(new int[0], groupHeadsResult.retrieveGroupHeads(leaves), leaves));
 
     indexSearcher.getIndexReader().close();
     dir.close();
@@ -335,7 +334,7 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
         final ScoreDoc[] hits =
             s.search(new TermQuery(new Term("content", "real" + contentID)), numDocs).scoreDocs;
         for (ScoreDoc hit : hits) {
-          int idValue = docIDToFieldId[hit.doc];
+          int idValue = docIDToFieldId[Math.toIntExact(hit.doc)];
           final GroupDoc gd = groupDocs[idValue];
           assertEquals(gd.id, idValue);
           seenIDs.add(idValue);
@@ -369,10 +368,11 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
         int[] expectedGroupHeads =
             createExpectedGroupHeads(
                 searchTerm, groupDocs, sortWithinGroup, sortByScoreOnly, fieldIdToDocID);
-        int[] actualGroupHeads = groupHeadsResult.retrieveGroupHeads();
-        // The actual group heads contains Lucene ids. Need to change them into our id value.
-        for (int i = 0; i < actualGroupHeads.length; i++) {
-          actualGroupHeads[i] = docIDToFieldId[actualGroupHeads[i]];
+        long[] groupHeadDocs = groupHeadsResult.retrieveGroupHeads();
+        // The actual group heads contain Lucene ids. Need to change them into our id value.
+        int[] actualGroupHeads = new int[groupHeadDocs.length];
+        for (int i = 0; i < groupHeadDocs.length; i++) {
+          actualGroupHeads[i] = docIDToFieldId[Math.toIntExact(groupHeadDocs[i])];
         }
         // Allows us the easily iterate and assert the actual and expected results.
         Arrays.sort(expectedGroupHeads);
@@ -426,7 +426,7 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
     }
   }
 
-  private boolean arrayContains(int[] expected, int[] actual) {
+  private boolean arrayContains(int[] expected, long[] actual) {
     // in some cases the actual docs aren't sorted by docid. This method expects that.
     Arrays.sort(actual);
     if (expected.length != actual.length) {
@@ -435,7 +435,7 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
 
     for (int e : expected) {
       boolean found = false;
-      for (int a : actual) {
+      for (long a : actual) {
         if (e == a) {
           found = true;
           break;
@@ -450,25 +450,19 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
     return true;
   }
 
-  private boolean openBitSetContains(int[] expectedDocs, Bits actual, int maxDoc)
-      throws IOException {
-    assert actual instanceof FixedBitSet;
-    if (expectedDocs.length != ((FixedBitSet) actual).cardinality()) {
+  private boolean openBitSetContains(
+      int[] expectedDocs, FixedBitSet[] actual, List<LeafReaderContext> leaves) {
+    int cardinality = 0;
+    for (FixedBitSet bits : actual) {
+      cardinality += bits.cardinality();
+    }
+    if (expectedDocs.length != cardinality) {
       return false;
     }
 
-    FixedBitSet expected = new FixedBitSet(maxDoc);
-    for (int expectedDoc : expectedDocs) {
-      expected.set(expectedDoc);
-    }
-
-    for (int docId = expected.nextSetBit(0);
-        docId != DocIdSetIterator.NO_MORE_DOCS;
-        docId =
-            docId + 1 >= expected.length()
-                ? DocIdSetIterator.NO_MORE_DOCS
-                : expected.nextSetBit(docId + 1)) {
-      if (!actual.get(docId)) {
+    for (int doc : expectedDocs) {
+      int ord = ReaderUtil.subIndex(doc, leaves);
+      if (!actual[ord].get(doc - (int) leaves.get(ord).docBase)) {
         return false;
       }
     }

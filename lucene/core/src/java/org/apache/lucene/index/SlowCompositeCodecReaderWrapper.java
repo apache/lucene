@@ -1150,20 +1150,20 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
   int numDocs = -1;
 
   @Override
-  public synchronized int numDocs() {
+  public synchronized int numLeafDocs() {
     // Compute the number of docs lazily, in case some leaves need to recompute it the first time it
     // is called, see BaseCompositeReader#numDocs.
     if (numDocs == -1) {
       numDocs = 0;
       for (CodecReader reader : codecReaders) {
-        numDocs += reader.numDocs();
+        numDocs += reader.numLeafDocs();
       }
     }
     return numDocs;
   }
 
   @Override
-  public int maxDoc() {
+  public int maxLeafDoc() {
     return docStarts[docStarts.length - 1];
   }
 

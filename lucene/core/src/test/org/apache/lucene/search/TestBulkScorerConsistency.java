@@ -83,7 +83,7 @@ public class TestBulkScorerConsistency extends LuceneTestCase {
         correct.setQueryCache(null);
         lying.setQueryCache(null);
 
-        int maxDoc = reader.maxDoc();
+        int maxDoc = Math.toIntExact(reader.maxDoc());
         Query query = new TermQuery(new Term("f", "even"));
 
         FixedBitSet correctResult =
@@ -148,7 +148,7 @@ public class TestBulkScorerConsistency extends LuceneTestCase {
   static void assertBulkEqualsScorer(
       IndexSearcher fastSearcher, ScorerIndexSearcher slowSearcher, Query query)
       throws IOException {
-    int maxDoc = fastSearcher.getIndexReader().maxDoc();
+    int maxDoc = Math.toIntExact(fastSearcher.getIndexReader().maxDoc());
     FixedBitSet fast = fastSearcher.search(query, FixedBitSetCollector.createManager(maxDoc));
     FixedBitSet slow = slowSearcher.search(query, FixedBitSetCollector.createManager(maxDoc));
     if (slow.equals(fast) == false) {
@@ -192,7 +192,7 @@ public class TestBulkScorerConsistency extends LuceneTestCase {
         return;
       }
       try {
-        int maxDoc = Math.min(maxDocId, ctx.reader().maxDoc());
+        int maxDoc = Math.min(maxDocId, ctx.maxLeafDoc());
         new LyingBulkScorer(real)
             .score(leafCollector, ctx.reader().getLiveDocs(), minDocId, maxDoc);
       } catch (CollectionTerminatedException _) {

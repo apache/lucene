@@ -333,17 +333,17 @@ public class DirectSpellChecker {
       term = new Term(term.field(), text.toLowerCase(Locale.ROOT));
     }
 
-    int docfreq = ir.docFreq(term);
+    long docfreq = ir.docFreq(term);
 
     if (suggestMode == SuggestMode.SUGGEST_WHEN_NOT_IN_INDEX && docfreq > 0) {
       return new SuggestWord[0];
     }
 
-    int maxDoc = ir.maxDoc();
+    long maxDoc = ir.maxDoc();
 
     if (maxQueryFrequency >= 1f && docfreq > maxQueryFrequency) {
       return new SuggestWord[0];
-    } else if (docfreq > (int) Math.ceil(maxQueryFrequency * (float) maxDoc)) {
+    } else if (docfreq > Math.ceil(maxQueryFrequency * (double) maxDoc)) {
       return new SuggestWord[0];
     }
 
@@ -352,7 +352,7 @@ public class DirectSpellChecker {
     if (thresholdFrequency >= 1f) {
       docfreq = Math.max(docfreq, (int) thresholdFrequency);
     } else if (thresholdFrequency > 0f) {
-      docfreq = Math.max(docfreq, (int) (thresholdFrequency * (float) maxDoc) - 1);
+      docfreq = Math.max(docfreq, (long) (thresholdFrequency * (double) maxDoc) - 1);
     }
 
     Collection<ScoreTerm> terms = null;
@@ -411,7 +411,7 @@ public class DirectSpellChecker {
       Term term,
       int numSug,
       IndexReader ir,
-      int docfreq,
+      long docfreq,
       int editDistance,
       float accuracy,
       final CharsRefBuilder spare)

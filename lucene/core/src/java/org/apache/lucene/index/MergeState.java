@@ -128,7 +128,7 @@ public class MergeState {
     for (int i = 0; i < numReaders; i++) {
       final CodecReader reader = readers.get(i);
 
-      maxDocs[i] = reader.maxDoc();
+      maxDocs[i] = reader.maxLeafDoc();
       liveDocs[i] = reader.getLiveDocs();
       fieldInfos[i] = reader.getFieldInfos();
 
@@ -189,7 +189,7 @@ public class MergeState {
 
       final PackedLongValues delDocMap;
       if (liveDocs != null) {
-        delDocMap = removeDeletes(reader.maxDoc(), liveDocs);
+        delDocMap = removeDeletes(reader.maxLeafDoc(), liveDocs);
       } else {
         delDocMap = null;
       }

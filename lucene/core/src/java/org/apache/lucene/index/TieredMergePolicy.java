@@ -318,8 +318,8 @@ public class TieredMergePolicy extends MergePolicy {
     long totIndexBytes = 0;
     long minSegmentBytes = Long.MAX_VALUE;
 
-    int totalDelDocs = 0;
-    int totalMaxDoc = 0;
+    long totalDelDocs = 0;
+    long totalMaxDoc = 0;
 
     long mergingBytes = 0;
 
@@ -362,7 +362,7 @@ public class TieredMergePolicy extends MergePolicy {
     assert totalDelDocs >= 0;
 
     final double totalDelPct = 100 * (double) totalDelDocs / totalMaxDoc;
-    int allowedDelCount = (int) (deletesPctAllowed * totalMaxDoc / 100);
+    long allowedDelCount = (long) (deletesPctAllowed * totalMaxDoc / 100);
 
     // If we have too-large segments, grace them out of the maximum segment count
     // If we're above certain thresholds of deleted docs, we can merge very large segments.
@@ -417,7 +417,7 @@ public class TieredMergePolicy extends MergePolicy {
     // No need to merge if the total number of segments (including too big segments) is less than or
     // equal to the target search concurrency.
     allowedSegCount = Math.max(allowedSegCount, targetSearchConcurrency - tooBigCount);
-    int allowedDocCount = getMaxAllowedDocs(totalMaxDoc, totalDelDocs);
+    long allowedDocCount = getMaxAllowedDocs(totalMaxDoc, totalDelDocs);
 
     if (verbose(mergeContext) && tooBigCount > 0) {
       message(
@@ -452,14 +452,17 @@ public class TieredMergePolicy extends MergePolicy {
       final long maxMergedSegmentBytes,
       final int mergeFactor,
       final int allowedSegCount,
-      final int allowedDelCount,
-      final int allowedDocCount,
+      final long allowedDelCount,
+      final long allowedDocCount,
       final MERGE_TYPE mergeType,
       MergeContext mergeContext,
       boolean maxMergeIsRunning)
       throws IOException {
 
     List<SegmentSizeAndDocs> sortedEligible = new ArrayList<>(sortedEligibleInfos);
+
+    // Hard cap on the number of live docs a single merged segment may contain.
+    final long maxDocsPerSegment = IndexWriter.getActualMaxDocsPerSegment();
 
     Map<SegmentCommitInfo, SegmentSizeAndDocs> segInfosSizes = new HashMap<>();
     for (SegmentSizeAndDocs segSizeDocs : sortedEligible) {
@@ -517,7 +520,7 @@ public class TieredMergePolicy extends MergePolicy {
         return spec;
       }
 
-      final int remainingDelCount = sortedEligible.stream().mapToInt(c -> c.delCount).sum();
+      final long remainingDelCount = sortedEligible.stream().mapToLong(c -> c.delCount).sum();
       if (mergeType == MERGE_TYPE.NATURAL
           && sortedEligible.size() <= allowedSegCount
           && remainingDelCount <= allowedDelCount) {
@@ -549,13 +552,19 @@ public class TieredMergePolicy extends MergePolicy {
           final SegmentSizeAndDocs segSizeDocs = sortedEligible.get(idx);
           final long segBytes = segSizeDocs.sizeInBytes;
           int segDocCount = segSizeDocs.maxDoc - segSizeDocs.delCount;
+          // A merge drops deletions, so the merged segment holds the sum of the inputs' live docs.
+          // Never let that exceed the per-segment limit: document numbers within a segment are int.
+          final boolean hitMaxDocsPerSegment = docCountThisMerge + segDocCount > maxDocsPerSegment;
           if (bytesThisMerge + segBytes > maxMergedSegmentBytes
+              || hitMaxDocsPerSegment
               || (bytesThisMerge > floorSegmentBytes
                   && docCountThisMerge + segDocCount > allowedDocCount)) {
-            // Only set hitTooLarge when reaching the maximum byte size, as this will create
-            // segments of the maximum size which will no longer be eligible for merging for a long
-            // time (until they accumulate enough deletes).
-            hitTooLarge |= bytesThisMerge + segBytes > maxMergedSegmentBytes;
+            // Only set hitTooLarge when reaching the maximum byte size or the per-segment doc
+            // limit,
+            // as this will create segments of the maximum size which will no longer be eligible for
+            // merging for a long time (until they accumulate enough deletes).
+            hitTooLarge |=
+                bytesThisMerge + segBytes > maxMergedSegmentBytes || hitMaxDocsPerSegment;
             // We should never have something coming in that _cannot_ be merged, so handle
             // singleton merges
             if (candidate.size() > 0) {
@@ -762,6 +771,9 @@ public class TieredMergePolicy extends MergePolicy {
     List<SegmentSizeAndDocs> sortedSizeAndDocs = getSortedBySegmentSize(infos, mergeContext);
 
     long totalMergeBytes = 0;
+    // Hard cap on the number of live docs a single merged segment may contain: document numbers
+    // within a segment are int, so force-merge must never coalesce more than this into one segment.
+    final long maxDocsPerSegment = IndexWriter.getActualMaxDocsPerSegment();
     final Set<SegmentCommitInfo> merging = mergeContext.getMergingSegments();
 
     // Trim the list down, remove if we're respecting max segment size and it's not original.
@@ -863,7 +875,13 @@ public class TieredMergePolicy extends MergePolicy {
     }
 
     // This is the special case of merging down to one segment
-    if (maxSegmentCount == 1 && totalMergeBytes < maxMergeBytes) {
+    long totalMergeLiveDocs = 0;
+    for (SegmentSizeAndDocs segSizeDocs : sortedSizeAndDocs) {
+      totalMergeLiveDocs += segSizeDocs.maxDoc - segSizeDocs.delCount;
+    }
+    if (maxSegmentCount == 1
+        && totalMergeBytes < maxMergeBytes
+        && totalMergeLiveDocs <= maxDocsPerSegment) {
       MergeSpecification spec = new MergeSpecification();
       List<SegmentCommitInfo> allOfThem = new ArrayList<>();
       for (SegmentSizeAndDocs segSizeDocs : sortedSizeAndDocs) {
@@ -872,6 +890,8 @@ public class TieredMergePolicy extends MergePolicy {
       spec.add(new OneMerge(allOfThem));
       return spec;
     }
+    // Otherwise (including when the requested single segment would exceed the per-segment doc
+    // limit) fall through to bin-packing, which caps each merged segment by both bytes and docs.
 
     MergeSpecification spec = null;
 
@@ -880,18 +900,25 @@ public class TieredMergePolicy extends MergePolicy {
     while (true) {
       List<SegmentCommitInfo> candidate = new ArrayList<>();
       long currentCandidateBytes = 0L;
+      long currentCandidateDocs = 0L;
       while (index >= 0 && resultingSegments > maxSegmentCount) {
-        final SegmentCommitInfo current = sortedSizeAndDocs.get(index).segInfo;
+        final SegmentSizeAndDocs currentSizeAndDocs = sortedSizeAndDocs.get(index);
+        final SegmentCommitInfo current = currentSizeAndDocs.segInfo;
         final int initialCandidateSize = candidate.size();
         final long currentSegmentSize = current.sizeInBytes();
+        final long currentSegmentDocs = currentSizeAndDocs.maxDoc - currentSizeAndDocs.delCount;
         // We either add to the bin because there's space or because the it is the smallest possible
         // bin since
         // decrementing the index will move us to even larger segments.
-        if (currentCandidateBytes + currentSegmentSize <= maxMergeBytes
-            || initialCandidateSize < 2) {
+        // The per-segment doc limit is a hard cap and is never relaxed for the smallest-bin case:
+        // exceeding it would create an illegal segment holding more than Integer.MAX_VALUE docs.
+        if (currentCandidateDocs + currentSegmentDocs <= maxDocsPerSegment
+            && (currentCandidateBytes + currentSegmentSize <= maxMergeBytes
+                || initialCandidateSize < 2)) {
           candidate.add(current);
           --index;
           currentCandidateBytes += currentSegmentSize;
+          currentCandidateDocs += currentSegmentDocs;
           if (initialCandidateSize > 0) {
             // Any merge that handles two or more segments reduces the resulting number of segments
             // by the number of segments handled - 1
@@ -977,7 +1004,7 @@ public class TieredMergePolicy extends MergePolicy {
         false);
   }
 
-  int getMaxAllowedDocs(int totalMaxDoc, int totalDelDocs) {
+  long getMaxAllowedDocs(long totalMaxDoc, long totalDelDocs) {
     return Math.ceilDiv(totalMaxDoc - totalDelDocs, targetSearchConcurrency);
   }
 

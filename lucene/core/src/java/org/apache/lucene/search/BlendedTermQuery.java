@@ -280,7 +280,7 @@ public final class BlendedTermQuery extends Query {
     // Compute aggregated doc freq and total term freq
     // df will be the max of all doc freqs
     // ttf will be the sum of all total term freqs
-    int df = 0;
+    long df = 0;
     long ttf = 0;
     for (TermStates ctx : contexts) {
       df = Math.max(df, ctx.docFreq());
@@ -312,7 +312,7 @@ public final class BlendedTermQuery extends Query {
   }
 
   private static TermStates adjustFrequencies(
-      IndexReaderContext readerContext, TermStates ctx, int artificialDf, long artificialTtf)
+      IndexReaderContext readerContext, TermStates ctx, long artificialDf, long artificialTtf)
       throws IOException {
     List<LeafReaderContext> leaves = readerContext.leaves();
     TermStates newCtx = new TermStates(readerContext);

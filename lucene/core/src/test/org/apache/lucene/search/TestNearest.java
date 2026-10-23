@@ -215,7 +215,7 @@ public class TestNearest extends LuceneTestCase {
                 return cmp;
               }
               // tie break by smaller docID:
-              return a.doc - b.doc;
+              return Math.toIntExact(a.doc - b.doc);
             }
           });
 
@@ -246,9 +246,9 @@ public class TestNearest extends LuceneTestCase {
               "  expected id="
                   + expected.doc
                   + " lat="
-                  + lats[expected.doc]
+                  + lats[Math.toIntExact(expected.doc)]
                   + " lon="
-                  + lons[expected.doc]
+                  + lons[Math.toIntExact(expected.doc)]
                   + " distance="
                   + ((Double) expected.fields[0]).doubleValue()
                   + " meters");

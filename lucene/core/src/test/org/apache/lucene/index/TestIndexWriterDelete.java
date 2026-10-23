@@ -393,7 +393,7 @@ public class TestIndexWriterDelete extends LuceneTestCase {
     }
     assertEquals(0, reader.maxDoc());
     assertEquals(0, reader.numDocs());
-    assertEquals(0, reader.numDeletedDocs(), 0);
+    assertEquals(0, reader.numDeletedDocs());
     reader.close();
 
     dir.close();

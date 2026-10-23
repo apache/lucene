@@ -228,7 +228,7 @@ public class TestTopDocsMerge extends LuceneTestCase {
         final LeafReaderContext leave = compCTX.leaves().get(searcherIDX);
         subSearchers[searcherIDX] = new ShardSearcher(leave, compCTX);
         docStarts[searcherIDX] = docBase;
-        docBase += leave.reader().maxDoc();
+        docBase += leave.maxLeafDoc();
       }
     }
 
@@ -399,7 +399,7 @@ public class TestTopDocsMerge extends LuceneTestCase {
           final ScoreDoc sd = mergedHits.scoreDocs[hitIDX];
           assertEquals(
               "doc=" + sd.doc + " wrong shard",
-              ReaderUtil.subIndex(sd.doc, docStarts),
+              ReaderUtil.subIndex(Math.toIntExact(sd.doc), docStarts),
               sd.shardIndex);
         }
       }

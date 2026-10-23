@@ -115,7 +115,7 @@ public class TestFrozenBufferedUpdates extends LuceneTestCase {
             leafReader = new PreferSeekExactLeafReader(leafReader);
           }
           TermDocsIterator iterator = new TermDocsIterator(leafReader, sorted);
-          FixedBitSet bitSet = new FixedBitSet(reader.maxDoc());
+          FixedBitSet bitSet = new FixedBitSet(Math.toIntExact(reader.maxDoc()));
           BytesRef ref;
           while ((ref = values.next()) != null) {
             DocIdSetIterator docIdSetIterator = iterator.nextTerm("field", ref);

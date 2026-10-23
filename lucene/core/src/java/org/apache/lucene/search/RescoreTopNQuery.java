@@ -218,7 +218,7 @@ public class RescoreTopNQuery extends Query {
     }
   }
 
-  private static void rescoreInto(HitQueue queue, DoubleValues values, int docBase, int docId)
+  private static void rescoreInto(HitQueue queue, DoubleValues values, long docBase, int docId)
       throws IOException {
     if (values.advanceExact(docId)) {
       queue.insertWithOverflow(new ScoreDoc(docBase + docId, (float) values.doubleValue()));

@@ -228,7 +228,7 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
     if (n == 0) {
       return;
     }
-    final int maxDocs = IndexWriter.getActualMaxDocs();
+    final long maxDocs = IndexWriter.getActualMaxDocs();
     while (true) {
       long current = pendingNumDocs.get();
       long next = current + n;

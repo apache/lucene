@@ -156,7 +156,7 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
             .build();
     TopScoreDocCollectorManager collectorManager =
         new TopScoreDocCollectorManager(
-            Math.min(reader.numDocs(), Integer.MAX_VALUE), Integer.MAX_VALUE);
+            (int) Math.min(reader.numDocs(), Integer.MAX_VALUE), Integer.MAX_VALUE);
     TopDocs topDocs = searcher.search(query, collectorManager);
     assertEquals(new TotalHits(11, TotalHits.Relation.EQUAL_TO), topDocs.totalHits);
     // All docs must have the same score

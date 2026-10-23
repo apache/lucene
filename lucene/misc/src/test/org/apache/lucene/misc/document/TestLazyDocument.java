@@ -99,7 +99,8 @@ public class TestLazyDocument extends LuceneTestCase {
       ScoreDoc[] hits = searcher.search(q, 100).scoreDocs;
       assertEquals("Too many docs", 1, hits.length);
       LazyTestingStoredFieldVisitor visitor =
-          new LazyTestingStoredFieldVisitor(new LazyDocument(reader, hits[0].doc), FIELDS);
+          new LazyTestingStoredFieldVisitor(
+              new LazyDocument(reader, Math.toIntExact(hits[0].doc)), FIELDS);
       reader.storedFields().document(hits[0].doc, visitor);
       Document d = visitor.doc;
 
@@ -160,7 +161,8 @@ public class TestLazyDocument extends LuceneTestCase {
 
       // use the same LazyDoc to ask for one more lazy field
       visitor =
-          new LazyTestingStoredFieldVisitor(new LazyDocument(reader, hits[0].doc), "load_later");
+          new LazyTestingStoredFieldVisitor(
+              new LazyDocument(reader, Math.toIntExact(hits[0].doc)), "load_later");
       reader.storedFields().document(hits[0].doc, visitor);
       d = visitor.doc;
 

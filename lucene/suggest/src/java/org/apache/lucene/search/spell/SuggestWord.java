@@ -30,7 +30,7 @@ public final class SuggestWord {
   public float score;
 
   /** The freq of the word */
-  public int freq;
+  public long freq;
 
   /** the suggested word */
   public String string;

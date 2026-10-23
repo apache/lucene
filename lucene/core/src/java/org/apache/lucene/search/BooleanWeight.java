@@ -165,7 +165,7 @@ final class BooleanWeight extends Weight {
 
   @Override
   public int count(LeafReaderContext context) throws IOException {
-    final int numDocs = context.reader().numDocs();
+    final int numDocs = context.numLeafDocs();
     int positiveCount;
     if (query.isPureDisjunction()) {
       return optCount(context, Occur.SHOULD);
@@ -204,7 +204,7 @@ final class BooleanWeight extends Weight {
    * required clauses.
    */
   private int reqCount(LeafReaderContext context) throws IOException {
-    final int numDocs = context.reader().numDocs();
+    final int numDocs = context.numLeafDocs();
     int reqCount = numDocs;
     for (WeightedBooleanClause weightedClause : weightedClauses) {
       if (weightedClause.clause.isRequired() == false) {
@@ -235,7 +235,7 @@ final class BooleanWeight extends Weight {
    * optional clauses.
    */
   private int optCount(LeafReaderContext context, Occur occur) throws IOException {
-    final int numDocs = context.reader().numDocs();
+    final int numDocs = context.numLeafDocs();
     int optCount = 0;
     boolean unknownCount = false;
     for (WeightedBooleanClause weightedClause : weightedClauses) {
@@ -336,6 +336,6 @@ final class BooleanWeight extends Weight {
     }
 
     return new BooleanScorerSupplier(
-        this, scorers, scoreMode, minShouldMatch, context.reader().maxDoc());
+        this, scorers, scoreMode, minShouldMatch, context.maxLeafDoc());
   }
 }

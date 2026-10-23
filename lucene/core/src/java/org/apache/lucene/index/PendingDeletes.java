@@ -40,7 +40,7 @@ class PendingDeletes {
 
   PendingDeletes(SegmentReader reader, SegmentCommitInfo info) {
     this(info, reader.getLiveDocs(), true);
-    pendingDeleteCount = reader.numDeletedDocs() - info.getDelCount();
+    pendingDeleteCount = reader.numDeletedLeafDocs() - info.getDelCount();
   }
 
   PendingDeletes(SegmentCommitInfo info) {

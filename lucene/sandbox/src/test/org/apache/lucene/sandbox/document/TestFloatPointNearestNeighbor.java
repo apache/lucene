@@ -217,7 +217,7 @@ public class TestFloatPointNearestNeighbor extends LuceneTestCase {
           expectedHits,
           (a, b) -> {
             int cmp = Double.compare(a.distanceSquared, b.distanceSquared);
-            return cmp != 0 ? cmp : a.docID - b.docID; // tie break by smaller id
+            return cmp != 0 ? cmp : Long.compare(a.docID, b.docID); // tie break by smaller id
           });
 
       int topK = TestUtil.nextInt(random(), 1, numPoints);
@@ -239,7 +239,7 @@ public class TestFloatPointNearestNeighbor extends LuceneTestCase {
               "  expected id="
                   + expected.docID
                   + "  "
-                  + Arrays.toString(values[expected.docID])
+                  + Arrays.toString(values[Math.toIntExact(expected.docID)])
                   + "  distance="
                   + (float) Math.sqrt(expected.distanceSquared)
                   + "  distanceSquared="

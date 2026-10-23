@@ -241,7 +241,7 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
                   "f",
                   a,
                   numA + numB,
-                  AcceptDocs.fromLiveDocs(null, leafReader.maxDoc()),
+                  AcceptDocs.fromLiveDocs(null, leafReader.maxLeafDoc()),
                   Integer.MAX_VALUE);
           assertEquals(numA + numB, topDocs.scoreDocs.length);
           assertGraphBuilt(leafReader, "f"); // search ran over a real HNSW graph
@@ -283,7 +283,7 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
                   "f",
                   query,
                   1,
-                  AcceptDocs.fromLiveDocs(null, leafReader.maxDoc()),
+                  AcceptDocs.fromLiveDocs(null, leafReader.maxLeafDoc()),
                   Integer.MAX_VALUE);
           assertEquals(1, topDocs.totalHits.value());
           // NOTE: data-blind quantization is less accurate than centroid-centered quantization,
@@ -320,7 +320,7 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
                 "f",
                 small,
                 2,
-                AcceptDocs.fromLiveDocs(null, leafReader.maxDoc()),
+                AcceptDocs.fromLiveDocs(null, leafReader.maxLeafDoc()),
                 Integer.MAX_VALUE);
         assertEquals(2, topDocs.scoreDocs.length);
         // both docs point in the same direction: cosine similarity ~1 -> score ~1
@@ -436,7 +436,7 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
                 "f",
                 a,
                 numA + numB,
-                AcceptDocs.fromLiveDocs(null, leafReader.maxDoc()),
+                AcceptDocs.fromLiveDocs(null, leafReader.maxLeafDoc()),
                 Integer.MAX_VALUE);
         assertEquals(numA + numB, topDocs.scoreDocs.length);
         float scoreA = topDocs.scoreDocs[0].score;
@@ -522,7 +522,7 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
                     "f",
                     query,
                     2,
-                    AcceptDocs.fromLiveDocs(null, leafReader.maxDoc()),
+                    AcceptDocs.fromLiveDocs(null, leafReader.maxLeafDoc()),
                     Integer.MAX_VALUE);
             assertEquals(context, 2, topDocs.scoreDocs.length);
             // the two duplicates of the query vector share the (top) score
@@ -590,7 +590,7 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
                     "f",
                     query,
                     2,
-                    AcceptDocs.fromLiveDocs(null, leafReader.maxDoc()),
+                    AcceptDocs.fromLiveDocs(null, leafReader.maxLeafDoc()),
                     Integer.MAX_VALUE);
             String context = "encoding=" + encoding + ", function=" + function;
             assertEquals(context, 2, topDocs.scoreDocs.length);
@@ -666,7 +666,7 @@ public class TestDedupScalarQuantizedVectorsFormat extends LuceneTestCase {
                   "small",
                   q,
                   2,
-                  AcceptDocs.fromLiveDocs(null, leafReader.maxDoc()),
+                  AcceptDocs.fromLiveDocs(null, leafReader.maxLeafDoc()),
                   Integer.MAX_VALUE);
           assertEquals(context, 2, topDocs.scoreDocs.length);
           assertEquals(context, topDocs.scoreDocs[0].score, topDocs.scoreDocs[1].score, 0f);

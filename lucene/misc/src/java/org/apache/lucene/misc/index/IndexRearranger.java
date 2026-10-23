@@ -258,7 +258,7 @@ public class IndexRearranger {
     }
 
     @Override
-    public int numDocs() {
+    public int numLeafDocs() {
       return numDocs;
     }
 

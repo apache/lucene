@@ -200,8 +200,8 @@ abstract class PointInSetIncludingScoreQuery extends Query implements Accountabl
           return null;
         }
 
-        FixedBitSet result = new FixedBitSet(reader.maxDoc());
-        float[] scores = new float[reader.maxDoc()];
+        FixedBitSet result = new FixedBitSet(reader.maxLeafDoc());
+        float[] scores = new float[reader.maxLeafDoc()];
         values.intersect(new MergePointVisitor(sortedPackedPoints, result, scores));
         final var scorer =
             new Scorer() {

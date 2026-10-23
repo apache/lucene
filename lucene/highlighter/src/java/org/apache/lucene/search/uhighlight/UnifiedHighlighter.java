@@ -830,7 +830,7 @@ public class UnifiedHighlighter {
     final ScoreDoc[] scoreDocs = topDocs.scoreDocs;
     int[] docids = new int[scoreDocs.length];
     for (int i = 0; i < docids.length; i++) {
-      docids[i] = scoreDocs[i].doc;
+      docids[i] = Math.toIntExact(scoreDocs[i].doc);
     }
 
     return highlightFields(fields, query, docids, maxPassages);

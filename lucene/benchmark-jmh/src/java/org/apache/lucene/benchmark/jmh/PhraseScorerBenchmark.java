@@ -125,7 +125,7 @@ public class PhraseScorerBenchmark {
   // iterator; it is a real TermQuery rather than MatchAllDocsQuery, which BooleanQuery#rewrite
   // would strip from a multi-clause FILTER, collapsing this back to the bare phrase.
   @Benchmark
-  public int benchmarkPhraseFilterConjunction() throws IOException {
+  public long benchmarkPhraseFilterConjunction() throws IOException {
     Query q =
         new BooleanQuery.Builder()
             .add(exactQuery, Occur.FILTER)
@@ -136,7 +136,7 @@ public class PhraseScorerBenchmark {
 
   // Two phrase clauses (both two-phase) confirming each other.
   @Benchmark
-  public int benchmarkPhraseConjunction() throws IOException {
+  public long benchmarkPhraseConjunction() throws IOException {
     Query q =
         new BooleanQuery.Builder()
             .add(exactQuery, Occur.FILTER)
@@ -147,7 +147,7 @@ public class PhraseScorerBenchmark {
 
   // Phrase (two-phase) ∩ term (plain, dense): the term is the dense clause, the phrase confirms.
   @Benchmark
-  public int benchmarkPhraseTermConjunction() throws IOException {
+  public long benchmarkPhraseTermConjunction() throws IOException {
     Query q =
         new BooleanQuery.Builder()
             .add(exactQuery, Occur.FILTER)
@@ -159,7 +159,7 @@ public class PhraseScorerBenchmark {
   // Cross-type: phrase (two-phase) ∩ doc-values range (two-phase) — both two-phase clauses of
   // different kinds pruning each other through the unified path.
   @Benchmark
-  public int benchmarkPhraseRangeConjunction() throws IOException {
+  public long benchmarkPhraseRangeConjunction() throws IOException {
     Query q =
         new BooleanQuery.Builder()
             .add(exactQuery, Occur.FILTER)

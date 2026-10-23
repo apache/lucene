@@ -114,7 +114,7 @@ public class SimpleNaiveBayesDocumentClassifier extends SimpleNaiveBayesClassifi
 
       analyzeSeedDocument(inputDocument, fieldName2tokensArray, fieldName2boost);
 
-      int docsWithClassSize = countDocsWithClass();
+      long docsWithClassSize = countDocsWithClass();
       while ((c = classesEnum.next()) != null) {
         double classScore = 0;
         Term term = new Term(this.classFieldName, c);
@@ -199,15 +199,15 @@ public class SimpleNaiveBayesDocumentClassifier extends SimpleNaiveBayesClassifi
    * @throws IOException If there is a low-level I/O error
    */
   private double calculateLogLikelihood(
-      String[] tokenizedText, String fieldName, Term term, int docsWithClass) throws IOException {
+      String[] tokenizedText, String fieldName, Term term, long docsWithClass) throws IOException {
     // for each word
     double result = 0d;
     for (String word : tokenizedText) {
       // search with text:word AND class:c
-      int hits = getWordFreqForClass(word, fieldName, term);
+      long hits = getWordFreqForClass(word, fieldName, term);
 
       // num : count the no of times the word appears in documents of class c (+1)
-      double num = hits + 1; // +1 is added because of add 1 smoothing
+      double num = hits + 1.0; // +1 is added because of add 1 smoothing
 
       // den : for the whole dictionary, count the no of times a word appears in documents of class
       // c (+|V|)
@@ -236,7 +236,7 @@ public class SimpleNaiveBayesDocumentClassifier extends SimpleNaiveBayesClassifi
     long numPostings = terms.getSumDocFreq(); // number of term/doc pairs
     avgNumberOfUniqueTerms =
         numPostings / (double) terms.getDocCount(); // avg # of unique terms per doc
-    int docsWithC = indexReader.docFreq(term);
+    long docsWithC = indexReader.docFreq(term);
     return avgNumberOfUniqueTerms
         * docsWithC; // avg # of unique terms in text fields per doc * # docs with c
   }
@@ -251,7 +251,7 @@ public class SimpleNaiveBayesDocumentClassifier extends SimpleNaiveBayesClassifi
    * @return number of documents of the input class
    * @throws java.io.IOException If there is a low-level I/O error
    */
-  private int getWordFreqForClass(String word, String fieldName, Term term) throws IOException {
+  private long getWordFreqForClass(String word, String fieldName, Term term) throws IOException {
     BooleanQuery.Builder booleanQuery = new BooleanQuery.Builder();
     BooleanQuery.Builder subQuery = new BooleanQuery.Builder();
     subQuery.add(
@@ -264,11 +264,11 @@ public class SimpleNaiveBayesDocumentClassifier extends SimpleNaiveBayesClassifi
     return indexSearcher.count(booleanQuery.build());
   }
 
-  private double calculateLogPrior(Term term, int docsWithClassSize) throws IOException {
-    return Math.log(docCount(term)) - Math.log(docsWithClassSize);
+  private double calculateLogPrior(Term term, long docsWithClassSize) throws IOException {
+    return Math.log((double) docCount(term)) - Math.log((double) docsWithClassSize);
   }
 
-  private int docCount(Term term) throws IOException {
+  private long docCount(Term term) throws IOException {
     return indexReader.docFreq(term);
   }
 }
