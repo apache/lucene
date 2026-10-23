@@ -2082,8 +2082,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           }
           LongValues v;
           long lo, hi;
-          if (hasGcdEncoding
-              && gcdBoundsOverflow(minValue, maxValue, entry.minValue) == false) {
+          if (hasGcdEncoding && gcdBoundsOverflow(minValue, maxValue, entry.minValue) == false) {
             long[] bounds = transformGcdBounds(minValue, maxValue, entry.gcd, entry.minValue);
             if (bounds == null) {
               return;
@@ -2214,8 +2213,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           }
           LongValues v;
           long lo, hi;
-          if (hasGcdEncoding
-              && gcdBoundsOverflow(minValue, maxValue, entry.minValue) == false) {
+          if (hasGcdEncoding && gcdBoundsOverflow(minValue, maxValue, entry.minValue) == false) {
             long[] bounds = transformGcdBounds(minValue, maxValue, entry.gcd, entry.minValue);
             if (bounds == null) {
               set = false;
