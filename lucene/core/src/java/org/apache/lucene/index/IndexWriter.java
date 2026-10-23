@@ -5803,8 +5803,6 @@ public class IndexWriter
       }
 
       success = true;
-    } catch (Throwable t) {
-      throw t;
     } finally {
       // Readers are already closed in commitMerge if we didn't hit
       // an exc:

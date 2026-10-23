@@ -729,16 +729,11 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   public StoredFieldsReader getMergeInstance() throws IOException {
     ensureOpen();
     IndexInput stream = original.mergeFieldsStream();
-    boolean success = false;
     try {
-      StoredFieldsReader mergeInstance =
-          new Lucene90CompressingStoredFieldsReader(this, true, stream.clone());
-      success = true;
-      return mergeInstance;
-    } finally {
-      if (success == false) {
-        original.releaseMergeFieldsStream();
-      }
+      return new Lucene90CompressingStoredFieldsReader(this, true, stream.clone());
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, original::releaseMergeFieldsStream);
+      throw t;
     }
   }
 
