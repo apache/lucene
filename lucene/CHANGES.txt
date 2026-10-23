@@ -693,6 +693,9 @@ Optimizations
 
 * GITHUB#16119: Optimize byte array writes in OutputStreamIndexOutput to remove unnecessary overhead. (neoremind)
 
+* GITHUB#16790: Vectorize OptimizedScalarQuantizer with osqCenter, osqGridStats and osqAssign.
+  (Jakub Slowinski)
+
 Bug Fixes
 ---------------------
 

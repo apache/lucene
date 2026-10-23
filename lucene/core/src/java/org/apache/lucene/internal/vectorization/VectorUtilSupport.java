@@ -161,6 +161,34 @@ public interface VectorUtilSupport {
       float maxQuantile);
 
   /**
+   * Subtracts {@code centroid} from {@code vector} in place, for {@link
+   * org.apache.lucene.util.quantization.OptimizedScalarQuantizer}, and writes into {@code stats}
+   * the dot product of the original vector with {@code centroid}, then the min, max, sum of squares
+   * and sum of the result. The sums may be added in any order, with or without fma.
+   */
+  void osqCenter(float[] vector, float[] centroid, float[] stats);
+
+  /**
+   * Computes the sums that the interval search of {@link
+   * org.apache.lucene.util.quantization.OptimizedScalarQuantizer} needs for one interval. Each
+   * value {@code x} of {@code vector}, limited to {@code [lower, upper]}, is rounded half up, by
+   * adding 0.5 and truncating, to one of {@code points} levels {@code k}, which dequantizes to
+   * {@code x'}.
+   *
+   * <p>Writes the sums of k, k * k, x * k, x * (x - x'), (x - x') * (x - x') and x into {@code
+   * stats}. The first two are exact, the others may be summed in float, in any order, with or
+   * without fma.
+   */
+  void osqGridStats(float[] vector, float lower, float upper, int points, double[] stats);
+
+  /**
+   * Quantizes {@code vector} into {@code dest} as {@code Math.round((x - lower) / step)}, with each
+   * value {@code x} limited to {@code [lower, upper]}, and returns the sum of the quantized values.
+   * Every implementation must write the same bytes and return the same sum.
+   */
+  int osqAssign(float[] vector, float lower, float upper, float step, byte[] dest);
+
+  /**
    * filter both {@code docBuffer} and {@code scoreBuffer} with {@code minScoreInclusive}, each
    * {@code docBuffer} and {@code scoreBuffer} of the same index forms a pair, pairs with score not
    * greater than or equal to {@code minScoreInclusive} will be filtered out from the array.
