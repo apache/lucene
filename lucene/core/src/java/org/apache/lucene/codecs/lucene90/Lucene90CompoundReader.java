@@ -57,14 +57,12 @@ final class Lucene90CompoundReader extends CompoundDirectory {
   private final Map<String, FileEntry> entries;
   private final IndexInput handle;
   // copies of the data file, starting with handle, guarded by this
-  private final List<IndexInput> data = new ArrayList<>();
-  // the slices of each inner file, one per copy, guarded by this
-  private final Map<String, List<Slice>> slices = new HashMap<>();
+  private final List<Copy> copies = new ArrayList<>();
   private boolean closed;
   private int version;
 
-  /** A slice of an inner file and the context it was opened with. */
-  private record Slice(IndexInput input, IOContext context) {}
+  /** A copy of the data file and the context each inner file was first opened with on it. */
+  private record Copy(IndexInput data, Map<String, IOContext> contexts) {}
 
   /** Create a new CompoundFileDirectory. */
   // TODO: we should just pre-strip "entries" and append segment name up-front like simpletext?
@@ -87,7 +85,7 @@ final class Lucene90CompoundReader extends CompoundDirectory {
             + CodecUtil.footerLength();
 
     handle = directory.openInput(dataFileName, IOContext.DEFAULT);
-    data.add(handle);
+    copies.add(new Copy(handle, new HashMap<>()));
     try {
       CodecUtil.checkIndexHeader(
           handle, Lucene90CompoundFormat.DATA_CODEC, version, version, si.getId(), "");
@@ -156,12 +154,13 @@ final class Lucene90CompoundReader extends CompoundDirectory {
 
   @Override
   public void close() throws IOException {
-    List<IndexInput> toClose;
+    List<IndexInput> toClose = new ArrayList<>();
     synchronized (this) {
       closed = true;
-      toClose = new ArrayList<>(data);
-      data.clear();
-      slices.clear();
+      for (Copy copy : copies) {
+        toClose.add(copy.data());
+      }
+      copies.clear();
     }
     IOUtils.close(toClose);
   }
@@ -189,28 +188,26 @@ final class Lucene90CompoundReader extends CompoundDirectory {
       if (closed) {
         throw new AlreadyClosedException("this Directory is closed");
       }
-      List<Slice> fileSlices = slices.computeIfAbsent(id, _ -> new ArrayList<>());
-      int copy = 0;
-      while (copy < fileSlices.size()
-          && fileSlices.get(copy).input().isEfficientFor(context) == false) {
-        copy++;
-      }
-      // each slice of an inner file is on its own copy of the data file, so it keeps its own advice
-      if (copy == fileSlices.size()) {
-        try {
-          if (copy == data.size()) {
-            // without advice, like handle, so inner files advise their own pages
-            data.add(directory.openInput(dataFileName, IOContext.DEFAULT));
-          }
-          IndexInput input = data.get(copy).slice(name, entry.offset, entry.length, context);
-          fileSlices.add(new Slice(input, context));
-        } catch (@SuppressWarnings("unused") FileNotFoundException | NoSuchFileException e) {
-          // an open reader outlives its files, so read through the copy it already holds
-          copy = 0;
+      for (Copy copy : copies) {
+        // an inner file keeps the advice it was first opened with on a copy
+        IOContext first = copy.contexts().putIfAbsent(id, context);
+        IndexInput slice =
+            copy.data().slice(name, entry.offset, entry.length, first == null ? context : first);
+        if (first == null || slice.isEfficientFor(context)) {
+          return slice;
         }
       }
-      // a new slice each time, since callers close what they open
-      return data.get(copy).slice(name, entry.offset, entry.length, fileSlices.get(copy).context());
+      final IndexInput data;
+      try {
+        // without advice, like handle, so inner files advise their own pages
+        data = directory.openInput(dataFileName, IOContext.DEFAULT);
+      } catch (@SuppressWarnings("unused") FileNotFoundException | NoSuchFileException e) {
+        // an open reader outlives its files, so read through the copy it already holds
+        IOContext first = copies.getFirst().contexts().get(id);
+        return handle.slice(name, entry.offset, entry.length, first);
+      }
+      copies.add(new Copy(data, new HashMap<>(Map.of(id, context))));
+      return data.slice(name, entry.offset, entry.length, context);
     }
   }
 
