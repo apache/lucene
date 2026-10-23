@@ -14,11 +14,6 @@ on:
 
 permissions: {}
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  # speed up feedback on pull request builds by cancelling outdated builds
-  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
-
 jobs:
   faiss-tests:
     name: tests for the Faiss codec (v${{ matrix.faiss-version }} with JDK ${{ matrix.java }} on ${{ matrix.os }})
@@ -26,7 +21,6 @@ jobs:
 
     strategy:
       matrix:
-        # works on x86 only
         os: [ ubuntu-latest ]
         java: [ '25' ]
         faiss-version: [ '1.11.0' ]
@@ -65,12 +59,6 @@ jobs:
 
       - name: Prepare Lucene workspace
         uses: ./.github/actions/prepare-for-build
-
-      - name: Prepare AVX2 Faiss C library
-        run: |
-          cp "$CONDA_PREFIX/lib/libfaiss_c.so" "$CONDA_PREFIX/lib/libfaiss_c_avx2.so"
-          patchelf --replace-needed libfaiss.so libfaiss_avx2.so "$CONDA_PREFIX/lib/libfaiss_c_avx2.so"
-          ldd "$CONDA_PREFIX/lib/libfaiss_c_avx2.so" || true
 
       - name: Run tests for Faiss codec
         run: >
