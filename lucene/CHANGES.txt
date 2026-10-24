@@ -425,7 +425,7 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+* GITHUB#16897: Use RangeIntoBitSet for DocValues without skip indexes. (Ke Wei)
 
 Bug Fixes
 ---------------------
