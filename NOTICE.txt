@@ -31,6 +31,11 @@ compression library (https://github.com/lz4/lz4/tree/dev/lib) that is licensed
 under the 2-clause BSD license.
 (https://opensource.org/licenses/bsd-license.php)
 
+The class org.apache.lucene.sandbox.codecs.pkhash.Xxh3 is a Java implementation
+of the XXH3 hash function of the xxHash library (https://github.com/Cyan4973/xxHash)
+that is licensed under the 2-clause BSD license.
+(https://opensource.org/licenses/bsd-license.php)
+
 The Google Code Prettify is Apache License 2.0.
 See http://code.google.com/p/google-code-prettify/
 
