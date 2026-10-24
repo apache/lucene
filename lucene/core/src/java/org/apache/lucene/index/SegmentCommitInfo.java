@@ -25,6 +25,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.lucene.util.StringHelper;
 
 /**
@@ -81,7 +82,12 @@ public class SegmentCommitInfo {
   // track the fieldInfos update files
   private final Set<String> fieldInfosFiles = new HashSet<>();
 
-  private volatile long sizeInBytes = -1;
+  // The cached size when >= 0, otherwise a unique negative token identifying the invalidation, so a
+  // computation that raced with a later invalidation fails to cache its (possibly stale) result
+  private final AtomicLong sizeInBytes = new AtomicLong(-1);
+
+  // Source of the never-reused negative tokens written to sizeInBytes on invalidation
+  private final AtomicLong lastInvalidationToken = new AtomicLong(-1);
 
   // NOTE: only used in-RAM by IW to track buffered deletes;
   // this is never written to/read from the Directory
@@ -137,6 +143,7 @@ public class SegmentCommitInfo {
       }
       this.dvUpdatesFiles.put(kv.getKey(), set);
     }
+    invalidateSizeInBytes();
   }
 
   /**
@@ -189,6 +196,7 @@ public class SegmentCommitInfo {
     for (String file : fieldInfosFiles) {
       this.fieldInfosFiles.add(info.namedForThisSegment(file));
     }
+    invalidateSizeInBytes();
   }
 
   /** Called when we succeed in writing deletes */
@@ -266,17 +274,24 @@ public class SegmentCommitInfo {
     nextWriteDocValuesGen = v;
   }
 
-  /** Returns total size in bytes of all files for this segment. */
+  /**
+   * Returns total size in bytes of all files for this segment.
+   *
+   * <p>If this is called without holding the {@link IndexWriter} lock while the segment is being
+   * modified, the result is best-effort: it may not reflect the concurrent changes, and the call
+   * may throw a {@link java.util.ConcurrentModificationException}.
+   */
   public long sizeInBytes() throws IOException {
-    if (sizeInBytes == -1) {
-      long sum = 0;
-      for (final String fileName : files()) {
-        sum += info.dir.fileLength(fileName);
-      }
-      sizeInBytes = sum;
+    final long state = sizeInBytes.get();
+    if (state >= 0) {
+      return state;
     }
-
-    return sizeInBytes;
+    long size = 0;
+    for (final String fileName : files()) {
+      size += info.dir.fileLength(fileName);
+    }
+    sizeInBytes.compareAndSet(state, size);
+    return size;
   }
 
   /** Returns all files in use by this segment. */
@@ -455,8 +470,15 @@ public class SegmentCommitInfo {
   }
 
   private void generationAdvanced() {
-    sizeInBytes = -1;
+    invalidateSizeInBytes();
     id = StringHelper.randomId();
+  }
+
+  // Must be called after any change to the generations, fieldInfosFiles or dvUpdatesFiles, so a
+  // computation that read the old files does not cache its result. Changes to the files of the
+  // wrapped SegmentInfo do not invalidate the cached size.
+  private void invalidateSizeInBytes() {
+    sizeInBytes.set(lastInvalidationToken.decrementAndGet());
   }
 
   /**
