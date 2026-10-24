@@ -314,8 +314,10 @@ public class MMapDirectory extends FSDirectory {
     ensureOpen();
     ensureCanRead(name);
     Path path = directory.resolve(name);
+    // the function this input is opened with, even if setReadAdvice is called later
+    final var readAdviceFunction = readAdvice;
     Function<IOContext, ReadAdvice> toReadAdvice =
-        c -> readAdvice.apply(name, c).orElse(Constants.DEFAULT_READADVICE);
+        c -> readAdviceFunction.apply(name, c).orElse(Constants.DEFAULT_READADVICE);
     return PROVIDER.openInput(
         path,
         chunkSizePower,

@@ -283,6 +283,12 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   }
 
   @Override
+  public FloatVectorValues getFloatVectorValues(String field, DataAccessHint access)
+      throws IOException {
+    return flatVectorsReader.getFloatVectorValues(field, access);
+  }
+
+  @Override
   public ByteVectorValues getByteVectorValues(String field) throws IOException {
     return flatVectorsReader.getByteVectorValues(field);
   }

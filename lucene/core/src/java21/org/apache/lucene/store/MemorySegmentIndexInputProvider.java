@@ -63,22 +63,20 @@ final class MemorySegmentIndexInputProvider
     final Arena arena = confined ? Arena.ofConfined() : getSharedArena(group, arenas);
     try (var fc = FileChannel.open(path, StandardOpenOption.READ)) {
       final long fileSize = fc.size();
+      final ReadAdvice advice = toReadAdvice.apply(context);
+      // preloaded or within a page, any advice reads the same
+      final boolean withinAPage =
+          nativeAccess.filter(na -> fileSize < na.getPageSize()).isPresent();
       final IndexInput in =
           MemorySegmentIndexInput.newInstance(
               resourceDescription,
               arena,
-              map(
-                  arena,
-                  resourceDescription,
-                  fc,
-                  toReadAdvice.apply(context),
-                  chunkSizePower,
-                  preload,
-                  fileSize),
+              map(arena, resourceDescription, fc, advice, chunkSizePower, preload, fileSize),
               fileSize,
               chunkSizePower,
               confined,
-              toReadAdvice);
+              toReadAdvice,
+              preload || withinAPage ? null : advice);
       success = true;
       return in;
     } finally {

@@ -192,6 +192,13 @@ public class MockIndexInputWrapper extends FilterIndexInput {
   }
 
   @Override
+  public boolean isEfficientFor(IOContext context) {
+    ensureOpen();
+    ensureAccessible();
+    return in.isEfficientFor(context);
+  }
+
+  @Override
   public long length() {
     ensureOpen();
     return in.length();
