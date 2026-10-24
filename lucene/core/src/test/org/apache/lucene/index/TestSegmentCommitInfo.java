@@ -73,6 +73,9 @@ public class TestSegmentCommitInfo extends LuceneTestCase {
     }
   }
 
+  // Simulates a caller outside the IndexWriter lock, such as a MergeScheduler, computing the size
+  // while ReadersAndUpdates#writeFieldUpdates changes the files after it has already advanced the
+  // generation
   public void testFilesChangedDuringSizeInBytesIsNotCached() throws IOException {
     try (Directory dir = newDirectory()) {
       writeFile(dir, "_0.c", 30);
@@ -88,6 +91,8 @@ public class TestSegmentCommitInfo extends LuceneTestCase {
     }
   }
 
+  // The setters invalidate on their own rather than relying on a preceding generation advance,
+  // which is what closes the window exercised by testFilesChangedDuringSizeInBytesIsNotCached
   public void testSizeInBytesIsRecomputedAfterFilesChange() throws IOException {
     try (Directory dir = newDirectory()) {
       writeFile(dir, "_0.c", 30);
