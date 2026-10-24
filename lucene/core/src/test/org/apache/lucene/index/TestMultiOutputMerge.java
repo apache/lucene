@@ -1212,6 +1212,18 @@ public class TestMultiOutputMerge extends LuceneTestCase {
   }
 
   /**
+   * A config that leaves everything written in one segment, for tests that address doc ids
+   * directly. Randomized flushing would otherwise spread the documents over several segments.
+   */
+  private IndexWriterConfig oneSegmentConfig() {
+    IndexWriterConfig iwc = newIndexWriterConfig(analyzer);
+    iwc.setMergePolicy(NoMergePolicy.INSTANCE);
+    iwc.setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH);
+    iwc.setRAMBufferSizeMB(IndexWriterConfig.DEFAULT_RAM_BUFFER_SIZE_MB);
+    return iwc;
+  }
+
+  /**
    * A range reader's cursor must not walk on after being asked for a document beyond its range.
    * {@code advanceExact} answers such a request without moving the values it wraps, so a following
    * {@code nextDoc} would step an iterator still positioned behind the range and hand back a
@@ -1219,14 +1231,13 @@ public class TestMultiOutputMerge extends LuceneTestCase {
    */
   public void testAdvanceExactPastTheRangeEndsTheIteration() throws Exception {
     try (Directory dir = newDirectory()) {
-      IndexWriterConfig iwc = newIndexWriterConfig(analyzer);
-      iwc.setMergePolicy(NoMergePolicy.INSTANCE);
-      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+      try (IndexWriter w = new IndexWriter(dir, oneSegmentConfig())) {
         for (int d = 0; d < PER_SEGMENT; d++) {
           w.addDocument(doc(id(0, d), d));
         }
       }
       try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        assertEquals(1, reader.leaves().size());
         CodecReader leaf = (CodecReader) reader.leaves().get(0).reader();
         final int start = PER_SEGMENT / 4;
         final int end = PER_SEGMENT / 2;
@@ -1254,14 +1265,13 @@ public class TestMultiOutputMerge extends LuceneTestCase {
   /** An output owning no document here reads no terms dictionary and no points. */
   public void testEmptyRangeReadsNothing() throws Exception {
     try (Directory dir = newDirectory()) {
-      IndexWriterConfig iwc = newIndexWriterConfig(analyzer);
-      iwc.setMergePolicy(NoMergePolicy.INSTANCE);
-      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+      try (IndexWriter w = new IndexWriter(dir, oneSegmentConfig())) {
         for (int d = 0; d < PER_SEGMENT; d++) {
           w.addDocument(doc(id(0, d), d));
         }
       }
       try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        assertEquals(1, reader.leaves().size());
         CodecReader leaf = (CodecReader) reader.leaves().get(0).reader();
         DocRangeCodecReader empty = new DocRangeCodecReader(leaf, 7, 7);
         assertEquals(0, empty.numDocs());
