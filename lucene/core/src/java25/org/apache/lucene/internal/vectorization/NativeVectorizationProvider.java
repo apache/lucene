@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.Locale;
 import java.util.logging.Logger;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
+import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SuppressForbidden;
@@ -74,6 +75,14 @@ final class NativeVectorizationProvider extends VectorizationProvider {
   @Override
   public FlatVectorsScorer getLucene99ScalarQuantizedVectorsScorer() {
     return delegateVectorUtilProvider.getLucene99ScalarQuantizedVectorsScorer();
+  }
+
+  @Override
+  public Lucene104ScalarQuantizedVectorScorer getLucene104ScalarQuantizedVectorsScorer() {
+    if (NativeVectorUtilSupport.hasInt4DotProductSinglePackedBulk()) {
+      return new Lucene104NativeScalarQuantizedVectorScorer(getLucene99FlatVectorsScorer());
+    }
+    return delegateVectorUtilProvider.getLucene104ScalarQuantizedVectorsScorer();
   }
 
   @Override
