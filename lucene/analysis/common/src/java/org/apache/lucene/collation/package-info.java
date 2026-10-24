@@ -61,7 +61,7 @@
  *   // with a Farsi Collator (or an Arabic one for the case when Farsi is not
  *   // supported).
  *   ScoreDoc[] result
- *     = is.search(aqp.parse("[ \u062F TO \u0698 ]"), null, 1000).scoreDocs;
+ *     = is.search(aqp.parse("[ \u062F TO \u0698 ]"), 1000).scoreDocs;
  *   assertEquals("The index Term should not be included.", 0, result.length);
  * </code></pre>
  *
@@ -88,9 +88,9 @@
  *   Sort sort = new Sort();
  *   sort.setSort(new SortField("contents", SortField.STRING));
  *   Query query = MatchAllDocsQuery.INSTANCE;
- *   ScoreDoc[] result = searcher.search(query, null, 1000, sort).scoreDocs;
+ *   ScoreDoc[] result = searcher.search(query, 1000, sort).scoreDocs;
  *   for (int i = 0 ; i &lt; result.length ; ++i) {
- *     Document doc = searcher.doc(result[i].doc);
+ *     Document doc = searcher.storedFields().document(result[i].doc);
  *     assertEquals(sortedTracerOrder[i], doc.getValues("tracer")[0]);
  *   }
  * </code></pre>
@@ -112,7 +112,7 @@
  *   IndexSearcher is = new IndexSearcher(ir);
  *   QueryParser parser = new QueryParser("contents", analyzer);
  *   Query query = parser.parse("d\u0131gy");   // U+0131: dotless i
- *   ScoreDoc[] result = is.search(query, null, 1000).scoreDocs;
+ *   ScoreDoc[] result = is.search(query, 1000).scoreDocs;
  *   assertEquals("The index Term should be included.", 1, result.length);
  * </code></pre>
  *
