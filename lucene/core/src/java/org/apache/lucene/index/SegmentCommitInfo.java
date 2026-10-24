@@ -82,11 +82,12 @@ public class SegmentCommitInfo {
   // track the fieldInfos update files
   private final Set<String> fieldInfosFiles = new HashSet<>();
 
-  private volatile long sizeInBytes = -1;
+  // The cached size when >= 0, otherwise a unique negative token identifying the invalidation, so a
+  // computation that raced with a later invalidation fails to cache its (possibly stale) result
+  private final AtomicLong sizeInBytes = new AtomicLong(-1);
 
-  // Incremented before sizeInBytes is invalidated, so a concurrent computation can detect that it
-  // may have cached a stale size
-  private final AtomicLong sizeInBytesGen = new AtomicLong();
+  // Source of the never-reused negative tokens written to sizeInBytes on invalidation
+  private final AtomicLong lastInvalidationToken = new AtomicLong(-1);
 
   // NOTE: only used in-RAM by IW to track buffered deletes;
   // this is never written to/read from the Directory
@@ -273,20 +274,15 @@ public class SegmentCommitInfo {
 
   /** Returns total size in bytes of all files for this segment. */
   public long sizeInBytes() throws IOException {
-    long size = sizeInBytes;
-    if (size == -1) {
-      final long gen = sizeInBytesGen.get();
-      size = 0;
-      for (final String fileName : files()) {
-        size += info.dir.fileLength(fileName);
-      }
-      sizeInBytes = size;
-      if (sizeInBytesGen.get() != gen) {
-        // invalidated while computing, don't leave a possibly stale size cached
-        sizeInBytes = -1;
-      }
+    final long state = sizeInBytes.get();
+    if (state >= 0) {
+      return state;
     }
-
+    long size = 0;
+    for (final String fileName : files()) {
+      size += info.dir.fileLength(fileName);
+    }
+    sizeInBytes.compareAndSet(state, size);
     return size;
   }
 
@@ -466,8 +462,7 @@ public class SegmentCommitInfo {
   }
 
   private void generationAdvanced() {
-    sizeInBytesGen.incrementAndGet();
-    sizeInBytes = -1;
+    sizeInBytes.set(lastInvalidationToken.decrementAndGet());
     id = StringHelper.randomId();
   }
 
