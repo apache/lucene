@@ -30,6 +30,7 @@ import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IORunnable;
+import org.apache.lucene.util.IOUtils;
 
 /** This merger merges graph in a concurrent manner, by using {@link HnswConcurrentMergeBuilder} */
 public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
@@ -72,12 +73,12 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
   @Override
   protected HnswBuilder createBuilder(KnnVectorValues mergedVectorValues, int maxOrd)
       throws IOException {
-    OnHeapHnswGraph graph;
+    BuildableHnswGraph graph;
     BitSet initializedNodes = null;
     InitializedHnswGraphBuilder.PrunedGraph prunedGraph = null;
 
     if (largestGraphReader == null) {
-      graph = new OnHeapHnswGraph(M, maxOrd);
+      graph = BuildableHnswGraph.create(M, maxOrd, offHeapGraph);
     } else {
       KnnVectorsReader initReader = largestGraphReader.reader();
       MergeState.DocMap initDocMap = largestGraphReader.initDocMap();
@@ -85,7 +86,7 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
       HnswGraph initializerGraph = ((HnswGraphProvider) initReader).getGraph(fieldInfo.name);
 
       if (initializerGraph.size() == 0) {
-        graph = new OnHeapHnswGraph(M, maxOrd);
+        graph = BuildableHnswGraph.create(M, maxOrd, offHeapGraph);
       } else {
         initializedNodes = new FixedBitSet(maxOrd);
         int[] oldToNewOrdinalMap =
@@ -103,13 +104,19 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
                 initializerGraph,
                 oldToNewOrdinalMap,
                 maxOrd,
-                abortCheck);
+                abortCheck,
+                offHeapGraph);
         graph = result.graph();
         prunedGraph = result.hasDeletes() ? result : null;
       }
     }
-    return new HnswConcurrentMergeBuilder(
-        taskExecutor, numWorker, scorerSupplier, beamWidth, graph, initializedNodes, prunedGraph);
+    try {
+      return new HnswConcurrentMergeBuilder(
+          taskExecutor, numWorker, scorerSupplier, beamWidth, graph, initializedNodes, prunedGraph);
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, graph);
+      throw t;
+    }
   }
 
   /**

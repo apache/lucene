@@ -29,9 +29,9 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.hnsw.BuildableHnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
-import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 
@@ -45,7 +45,7 @@ public class Word2VecSynonymProvider {
   private static final VectorSimilarityFunction SIMILARITY_FUNCTION =
       VectorSimilarityFunction.DOT_PRODUCT;
   private final Word2VecModel word2VecModel;
-  private final OnHeapHnswGraph hnswGraph;
+  private final BuildableHnswGraph hnswGraph;
   private final DefaultFlatVectorScorer defaultFlatVectorScorer = new DefaultFlatVectorScorer();
 
   /**

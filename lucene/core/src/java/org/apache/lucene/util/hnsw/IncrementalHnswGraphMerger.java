@@ -34,6 +34,7 @@ import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IORunnable;
+import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 
 /**
@@ -48,6 +49,9 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
   protected final int M;
   protected final int beamWidth;
   protected final IORunnable abortCheck;
+
+  /** Whether the merged graph is built off-heap, see {@link OffHeapHnswGraph} */
+  protected boolean offHeapGraph;
 
   protected List<GraphReader> graphReaders = new ArrayList<>();
   protected GraphReader largestGraphReader;
@@ -100,6 +104,17 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
     this.M = M;
     this.beamWidth = beamWidth;
     this.abortCheck = abortCheck;
+  }
+
+  /**
+   * Sets whether to build the merged graph in native memory ({@link OffHeapHnswGraph}) rather than
+   * on the java heap. Defaults to false.
+   *
+   * @return this
+   */
+  public IncrementalHnswGraphMerger setOffHeapGraph(boolean offHeapGraph) {
+    this.offHeapGraph = offHeapGraph;
+    return this;
   }
 
   /**
@@ -157,8 +172,13 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
   protected HnswBuilder createBuilder(KnnVectorValues mergedVectorValues, int maxOrd)
       throws IOException {
     if (largestGraphReader == null) {
-      return HnswGraphBuilder.create(
-          scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed, maxOrd);
+      BuildableHnswGraph graph = BuildableHnswGraph.create(M, maxOrd, offHeapGraph);
+      try {
+        return HnswGraphBuilder.create(scorerSupplier, beamWidth, HnswGraphBuilder.randSeed, graph);
+      } catch (Throwable t) {
+        IOUtils.closeWhileSuppressingExceptions(t, graph);
+        throw t;
+      }
     }
     if (!graphReaders.contains(largestGraphReader)) {
       graphReaders.addFirst(largestGraphReader);
@@ -186,7 +206,8 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
         ordMaps,
         maxOrd,
         initializedNodes,
-        abortCheck);
+        abortCheck,
+        offHeapGraph);
   }
 
   protected final int[][] getNewOrdMapping(
@@ -238,14 +259,19 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
   }
 
   @Override
-  public OnHeapHnswGraph merge(
+  public BuildableHnswGraph merge(
       KnnVectorValues mergedVectorValues, InfoStream infoStream, int maxOrd) throws IOException {
     HnswBuilder builder = createBuilder(mergedVectorValues, maxOrd);
-    builder.setInfoStream(infoStream);
-    if (abortCheck != null) {
-      builder.setAbortCheck(abortCheck);
+    try {
+      builder.setInfoStream(infoStream);
+      if (abortCheck != null) {
+        builder.setAbortCheck(abortCheck);
+      }
+      return builder.build(maxOrd);
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, builder.getGraph());
+      throw t;
     }
-    return builder.build(maxOrd);
   }
 
   private static int countLiveVectors(Bits liveDocs, KnnVectorValues knnVectorValues)

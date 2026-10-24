@@ -18,6 +18,8 @@
 package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import java.util.Arrays;
 import java.util.function.LongConsumer;
 import java.util.stream.Collectors;
@@ -339,5 +341,52 @@ public class NeighborArray {
 
   public int maxSize() {
     return maxSize;
+  }
+
+  /**
+   * Bytes needed by {@link #storeTo} for an array of the given max size: {@code [int size][int
+   * sortedSize][int nodes[maxSize]][float scores[maxSize]]}.
+   */
+  static long slotBytes(int maxSize) {
+    return 2L * Integer.BYTES + (long) maxSize * (Integer.BYTES + Float.BYTES);
+  }
+
+  /** Byte offset of the node ids within a slot */
+  static final long SLOT_NODES_OFFSET = 2L * Integer.BYTES;
+
+  /** Replaces the content of this array with the slot at {@code offset}, see {@link #slotBytes}. */
+  void loadFrom(MemorySegment segment, long offset) {
+    if (nodes.length < maxSize) {
+      // scratch arrays are loaded repeatedly, size them once to avoid growing them later
+      nodes = ArrayUtil.growExact(nodes, maxSize);
+      scores = ArrayUtil.growExact(scores, maxSize);
+    }
+    int newSize = segment.get(ValueLayout.JAVA_INT_UNALIGNED, offset);
+    sortedNodeSize = segment.get(ValueLayout.JAVA_INT_UNALIGNED, offset + Integer.BYTES);
+    size = newSize;
+    MemorySegment.copy(
+        segment, ValueLayout.JAVA_INT_UNALIGNED, offset + SLOT_NODES_OFFSET, nodes, 0, newSize);
+    MemorySegment.copy(
+        segment,
+        ValueLayout.JAVA_FLOAT_UNALIGNED,
+        offset + SLOT_NODES_OFFSET + (long) maxSize * Integer.BYTES,
+        scores,
+        0,
+        newSize);
+  }
+
+  /** Writes the content of this array to the slot at {@code offset}, see {@link #slotBytes}. */
+  void storeTo(MemorySegment segment, long offset) {
+    segment.set(ValueLayout.JAVA_INT_UNALIGNED, offset, size);
+    segment.set(ValueLayout.JAVA_INT_UNALIGNED, offset + Integer.BYTES, sortedNodeSize);
+    MemorySegment.copy(
+        nodes, 0, segment, ValueLayout.JAVA_INT_UNALIGNED, offset + SLOT_NODES_OFFSET, size);
+    MemorySegment.copy(
+        scores,
+        0,
+        segment,
+        ValueLayout.JAVA_FLOAT_UNALIGNED,
+        offset + SLOT_NODES_OFFSET + (long) maxSize * Integer.BYTES,
+        size);
   }
 }
