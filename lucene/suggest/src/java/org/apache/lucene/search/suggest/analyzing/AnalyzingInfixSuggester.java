@@ -109,7 +109,7 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
   protected static final String EXACT_TEXT_FIELD_NAME = "exacttext";
 
   /**
-   * Field name used for the indexed context, as a StringField and a SortedSetDVField, for
+   * Field name used for the indexed context, as a StringField and a SortedSetDocValuesField, for
    * filtering.
    */
   protected static final String CONTEXTS_FIELD_NAME = "contexts";

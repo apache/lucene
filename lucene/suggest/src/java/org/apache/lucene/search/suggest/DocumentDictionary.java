@@ -123,7 +123,7 @@ public class DocumentDictionary implements Dictionary {
 
     /**
      * Creates an iterator over term, weight and payload fields from the lucene index. setting
-     * <code>withPayload</code> to false, implies an iterator over only term and weight.
+     * <code>hasPayloads</code> to false, implies an iterator over only term and weight.
      */
     public DocumentInputIterator(boolean hasPayloads, boolean hasContexts) throws IOException {
       this.hasPayloads = hasPayloads;
