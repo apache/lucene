@@ -274,7 +274,13 @@ public class SegmentCommitInfo {
     nextWriteDocValuesGen = v;
   }
 
-  /** Returns total size in bytes of all files for this segment. */
+  /**
+   * Returns total size in bytes of all files for this segment.
+   *
+   * <p>If this is called without holding the {@link IndexWriter} lock while the segment is being
+   * modified, the result is best-effort: it may not reflect the concurrent changes, and the call
+   * may throw a {@link java.util.ConcurrentModificationException}.
+   */
   public long sizeInBytes() throws IOException {
     final long state = sizeInBytes.get();
     if (state >= 0) {
@@ -468,8 +474,9 @@ public class SegmentCommitInfo {
     id = StringHelper.randomId();
   }
 
-  // Must be called after any change to the files tracked by this SegmentCommitInfo, so a
-  // computation that read the old files does not cache its result
+  // Must be called after any change to the generations, fieldInfosFiles or dvUpdatesFiles, so a
+  // computation that read the old files does not cache its result. Changes to the files of the
+  // wrapped SegmentInfo do not invalidate the cached size.
   private void invalidateSizeInBytes() {
     sizeInBytes.set(lastInvalidationToken.decrementAndGet());
   }
