@@ -25,6 +25,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.lucene.util.StringHelper;
 
 /**
@@ -82,6 +83,10 @@ public class SegmentCommitInfo {
   private final Set<String> fieldInfosFiles = new HashSet<>();
 
   private volatile long sizeInBytes = -1;
+
+  // Incremented before sizeInBytes is invalidated, so a concurrent computation can detect that it
+  // may have cached a stale size
+  private final AtomicLong sizeInBytesGen = new AtomicLong();
 
   // NOTE: only used in-RAM by IW to track buffered deletes;
   // this is never written to/read from the Directory
@@ -270,11 +275,16 @@ public class SegmentCommitInfo {
   public long sizeInBytes() throws IOException {
     long size = sizeInBytes;
     if (size == -1) {
+      final long gen = sizeInBytesGen.get();
       size = 0;
       for (final String fileName : files()) {
         size += info.dir.fileLength(fileName);
       }
       sizeInBytes = size;
+      if (sizeInBytesGen.get() != gen) {
+        // invalidated while computing, don't leave a possibly stale size cached
+        sizeInBytes = -1;
+      }
     }
 
     return size;
@@ -456,6 +466,7 @@ public class SegmentCommitInfo {
   }
 
   private void generationAdvanced() {
+    sizeInBytesGen.incrementAndGet();
     sizeInBytes = -1;
     id = StringHelper.randomId();
   }
