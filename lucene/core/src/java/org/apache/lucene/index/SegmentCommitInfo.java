@@ -143,6 +143,7 @@ public class SegmentCommitInfo {
       }
       this.dvUpdatesFiles.put(kv.getKey(), set);
     }
+    invalidateSizeInBytes();
   }
 
   /**
@@ -195,6 +196,7 @@ public class SegmentCommitInfo {
     for (String file : fieldInfosFiles) {
       this.fieldInfosFiles.add(info.namedForThisSegment(file));
     }
+    invalidateSizeInBytes();
   }
 
   /** Called when we succeed in writing deletes */
@@ -462,8 +464,14 @@ public class SegmentCommitInfo {
   }
 
   private void generationAdvanced() {
-    sizeInBytes.set(lastInvalidationToken.decrementAndGet());
+    invalidateSizeInBytes();
     id = StringHelper.randomId();
+  }
+
+  // Must be called after any change to the files of this segment, so a computation that read the
+  // old files does not cache its result
+  private void invalidateSizeInBytes() {
+    sizeInBytes.set(lastInvalidationToken.decrementAndGet());
   }
 
   /**
