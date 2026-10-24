@@ -632,6 +632,13 @@ public final class CodecUtil {
 
   static long checksumEntireFile(
       IndexInput input, MergePolicy.OneMerge merge, long abortCheckInterval) throws IOException {
+    if (merge != null && merge.areInputsVerified()) {
+      // This merge read this file end to end once already, and a second pass over the same bytes
+      // cannot find anything the first one missed. Reading the footer still catches a truncated
+      // file. Read it off a clone, as the full check below does: the caller's input is live and
+      // seeking it would move a position the caller still depends on.
+      return retrieveChecksum(input.clone());
+    }
     IndexInput clone = input.clone();
     clone.seek(0);
     ChecksumIndexInput in = new BufferedChecksumIndexInput(clone);
