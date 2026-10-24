@@ -426,7 +426,7 @@ Optimizations
 Bug Fixes
 ---------------------
 * GITHUB#16865: SegmentCommitInfo#sizeInBytes no longer returns its -1 cache sentinel, or caches a
-  stale size, when the segment's generation advances concurrently. (Nick Tindall)
+  stale size, when the segment's generation or files change concurrently. (Nick Tindall)
 
 Other
 ---------------------

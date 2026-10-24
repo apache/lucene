@@ -468,8 +468,8 @@ public class SegmentCommitInfo {
     id = StringHelper.randomId();
   }
 
-  // Must be called after any change to the files of this segment, so a computation that read the
-  // old files does not cache its result
+  // Must be called after any change to the files tracked by this SegmentCommitInfo, so a
+  // computation that read the old files does not cache its result
   private void invalidateSizeInBytes() {
     sizeInBytes.set(lastInvalidationToken.decrementAndGet());
   }
