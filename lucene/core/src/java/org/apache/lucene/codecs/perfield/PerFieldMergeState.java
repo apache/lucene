@@ -230,10 +230,12 @@ final class PerFieldMergeState {
 
   private static class FilterFieldsProducer extends FieldsProducer {
     private final FieldsProducer in;
+    private final Set<String> filteredNames;
     private final List<String> filtered;
 
     FilterFieldsProducer(FieldsProducer in, Collection<String> filterFields) {
       this.in = in;
+      this.filteredNames = new HashSet<>(filterFields);
       this.filtered = new ArrayList<>(filterFields);
     }
 
@@ -244,7 +246,7 @@ final class PerFieldMergeState {
 
     @Override
     public Terms terms(String field) {
-      if (!filtered.contains(field)) {
+      if (!filteredNames.contains(field)) {
         throw new IllegalArgumentException(
             "The field named '"
                 + field
