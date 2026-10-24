@@ -31,6 +31,7 @@ import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.NormsConsumer;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsWriter;
+import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.StoredFieldsWriter;
 import org.apache.lucene.codecs.TermVectorsWriter;
 import org.apache.lucene.store.Directory;
@@ -366,6 +367,11 @@ final class SegmentMerger {
     for (KnnVectorsReader reader : mergeState.knnVectorsReaders) {
       // Keyed on the reader underneath: every output of a partitioned merge narrows the same one.
       if (reader != null && finished.add(DocRangeKnnVectorsReader.unwrap(reader))) {
+        reader.finishMerge();
+      }
+    }
+    for (StoredFieldsReader reader : mergeState.storedFieldsReaders) {
+      if (reader != null) {
         reader.finishMerge();
       }
     }

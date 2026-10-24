@@ -109,10 +109,10 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
 
   /**
    * Default maximum number of sparse doc-values overlays a field keeps before they are folded into
-   * one: {@code 16}. {@code 0} disables the feature (classic full-column rewrite); higher values
+   * one: {@code 8}. {@code 0} disables the feature (classic full-column rewrite); higher values
    * lower write amplification but keep more overlays (hence more files) live to merge at read time.
    */
-  public static final int DEFAULT_MAX_DOC_VALUES_OVERLAYS = 16;
+  public static final int DEFAULT_MAX_DOC_VALUES_OVERLAYS = 8;
 
   // indicates whether this config instance is already attached to a writer.
   // not final so that it can be cloned properly.
@@ -178,10 +178,10 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
    * index already exists, then this value is ignored. Default value is the {@link Version#major
    * major} of the {@link Version#LATEST latest version}.
    *
-   * <p><b>NOTE</b>: Changing the creation version reduces backward compatibility guarantees. For
-   * instance an index created with Lucene 8 with a compatibility version of 7 can't be read with
-   * Lucene 9 due to the fact that Lucene only supports reading indices created with the current or
-   * previous major release.
+   * <p><b>NOTE</b>: Changing the creation version reduces backward compatibility guarantees. The
+   * value must be between {@link Version#MIN_SUPPORTED_MAJOR} and the major of {@link
+   * Version#LATEST}, inclusive. A lower creation version means the index will become unopenable
+   * sooner when {@link Version#MIN_SUPPORTED_MAJOR} is later bumped.
    *
    * @param indexCreatedVersionMajor the major version to use for compatibility
    */
@@ -193,10 +193,10 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
               + ", but got: "
               + indexCreatedVersionMajor);
     }
-    if (indexCreatedVersionMajor < Version.LATEST.major - 1) {
+    if (indexCreatedVersionMajor < Version.MIN_SUPPORTED_MAJOR) {
       throw new IllegalArgumentException(
           "indexCreatedVersionMajor may not be less than the minimum supported version: "
-              + (Version.LATEST.major - 1)
+              + (Version.MIN_SUPPORTED_MAJOR)
               + ", but got: "
               + indexCreatedVersionMajor);
     }

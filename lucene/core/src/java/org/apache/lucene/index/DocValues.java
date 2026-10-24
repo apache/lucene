@@ -199,6 +199,14 @@ public final class DocValues {
     return new SingletonSortedNumericDocValues(dv);
   }
 
+  /**
+   * Returns whether the provided SortedNumericDocValues is a single-valued view of a
+   * NumericDocValues.
+   */
+  static boolean isSingleton(SortedNumericDocValues dv) {
+    return dv instanceof SingletonSortedNumericDocValues;
+  }
+
   // some helpers, for transition from fieldcache apis.
   // as opposed to the LeafReader apis (which must be strict for consistency), these are lenient
 

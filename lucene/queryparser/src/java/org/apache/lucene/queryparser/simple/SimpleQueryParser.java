@@ -65,9 +65,7 @@ import org.apache.lucene.util.automaton.LevenshteinAutomata;
  * will evaluate {@code token1 OR token2} first, then {@code AND} with {@code token3}:
  *
  * <blockquote>
- *
  * token1 | token2 + token3
- *
  * </blockquote>
  *
  * <b>Escaping</b>

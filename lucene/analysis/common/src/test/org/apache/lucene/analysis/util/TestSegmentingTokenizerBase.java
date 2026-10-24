@@ -149,6 +149,20 @@ public class TestSegmentingTokenizerBase extends BaseTokenStreamTestCase {
     checkRandomData(random(), sentenceAndWord, 200 * RANDOM_MULTIPLIER);
   }
 
+  /** Test customizable buffer size with tiny buffer */
+  public void testCustomBufferSize() throws IOException {
+    Analyzer a =
+        new Analyzer() {
+          @Override
+          protected TokenStreamComponents createComponents(String fieldName) {
+            return new TokenStreamComponents(new WholeSentenceTokenizer(16));
+          }
+        };
+    assertAnalyzesTo(
+        a, "Sentence one.\nSentence two.", new String[] {"Sentence one.\n", "Sentence two."});
+    a.close();
+  }
+
   // some tokenizers for testing
 
   /** silly tokenizer that just returns whole sentences as tokens */
@@ -160,7 +174,11 @@ public class TestSegmentingTokenizerBase extends BaseTokenStreamTestCase {
     private OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
 
     public WholeSentenceTokenizer() {
-      super(newAttributeFactory(), BreakIterator.getSentenceInstance(Locale.ROOT));
+      this(BUFFERMAX);
+    }
+
+    public WholeSentenceTokenizer(int bufferSize) {
+      super(newAttributeFactory(), BreakIterator.getSentenceInstance(Locale.ROOT), bufferSize);
     }
 
     @Override
