@@ -1050,6 +1050,53 @@ public class TestDocValuesRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
     assertTrue("Expected some bits set", bitSet.cardinality() > 0);
   }
 
+  public void testGcdEncodingOverflow() throws Exception {
+    int numDocs = 300;
+    FixedBitSet expected = new FixedBitSet(numDocs);
+    expected.set(2, 5);
+
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig().setCodec(new Lucene104Codec());
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        for (int docID = 0; docID < numDocs; docID++) {
+          long value =
+              switch (docID) {
+                case 0 -> Long.MIN_VALUE;
+                case 1 -> Long.MAX_VALUE;
+                case 2 -> -1;
+                case 3 -> 0;
+                case 4 -> 1;
+                default -> docID;
+              };
+          Document doc = new Document();
+          doc.add(new NumericDocValuesField("numeric", value));
+          doc.add(new SortedNumericDocValuesField("sorted_numeric", value));
+          doc.add(new SortedNumericDocValuesField("sorted_numeric", 1000L + docID));
+          writer.addDocument(doc);
+        }
+        writer.forceMerge(1);
+      }
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        assert reader.leaves().size() == 1;
+        LeafReaderContext context = reader.leaves().getFirst();
+        FixedBitSet actualNumeric = new FixedBitSet(numDocs);
+        context
+            .reader()
+            .getNumericDocValues("numeric")
+            .rangeIntoBitSet(0, numDocs, -1, 1, actualNumeric, 0);
+        assertEquals(expected, actualNumeric);
+
+        FixedBitSet actualSortedNumeric = new FixedBitSet(numDocs);
+        context
+            .reader()
+            .getSortedNumericDocValues("sorted_numeric")
+            .rangeIntoBitSet(0, numDocs, -1, 1, actualSortedNumeric, 0);
+        assertEquals(expected, actualSortedNumeric);
+      }
+    }
+  }
+
   private static long[] rangeValues(int numDocs, LongUnaryOperator valueFunction) {
     long[] values = new long[numDocs];
     for (int i = 0; i < numDocs; i++) {
