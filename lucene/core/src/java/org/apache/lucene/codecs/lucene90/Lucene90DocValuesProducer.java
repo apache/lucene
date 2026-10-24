@@ -562,6 +562,19 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     return new long[] {encodedMin, encodedMax};
   }
 
+  private static long[] transformTableBounds(long[] table, long minValue, long maxValue) {
+    int minOrd = Arrays.binarySearch(table, minValue);
+    if (minOrd < 0) {
+      minOrd = -1 - minOrd;
+    }
+    int maxOrd = Arrays.binarySearch(table, maxValue);
+    if (maxOrd < 0) {
+      // find the upper bound
+      maxOrd = -2 - maxOrd;
+    }
+    return minOrd > maxOrd ? null : new long[] {minOrd, maxOrd};
+  }
+
   /**
    * Maps the raw query bounds {@code [minValue, maxValue]} into the encoded domain and runs the
    * SIMD range scan directly on packed values.
@@ -962,6 +975,21 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
               }
 
               @Override
+              public void rangeIntoBitSet(
+                  int fromDoc,
+                  int toDoc,
+                  long minValue,
+                  long maxValue,
+                  FixedBitSet bitSet,
+                  int offset) {
+                long[] bounds = transformTableBounds(table, minValue, maxValue);
+                if (bounds != null) {
+                  Lucene90DocValuesProducer.rangeIntoBitSet(
+                      values, fromDoc, toDoc, bounds[0], bounds[1], bitSet, offset);
+                }
+              }
+
+              @Override
               public void longValues(
                   int size,
                   int[] docs,
@@ -1122,6 +1150,37 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
               @Override
               public long longValue() throws IOException {
                 return table[(int) values.get(disi.index())];
+              }
+
+              @Override
+              public void rangeIntoBitSet(
+                  int fromDoc,
+                  int toDoc,
+                  long minValue,
+                  long maxValue,
+                  FixedBitSet bitSet,
+                  int offset)
+                  throws IOException {
+                int endDoc = Math.min(toDoc, maxDoc);
+                if (fromDoc >= endDoc) {
+                  return;
+                }
+                long[] bounds = transformTableBounds(table, minValue, maxValue);
+                if (bounds == null || fromDoc >= endDoc) {
+                  return;
+                }
+                int currentDoc = disi.docID();
+                if (currentDoc < fromDoc) {
+                  currentDoc = disi.advance(fromDoc);
+                } else if (currentDoc < endDoc && disi.advanceExact(currentDoc) == false) {
+                  currentDoc = disi.nextDoc();
+                }
+                for (; currentDoc < endDoc; currentDoc = disi.nextDoc()) {
+                  long ord = values.get(disi.index());
+                  if (ord >= bounds[0] && ord <= bounds[1]) {
+                    bitSet.set(currentDoc - offset);
+                  }
+                }
               }
             };
           } else if (entry.gcd == 1 && entry.minValue == 0) {
@@ -2092,8 +2151,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           }
           LongValues v;
           long lo, hi;
-          if (hasGcdEncoding) {
-            long[] bounds = transformGcdBounds(minValue, maxValue, entry.gcd, entry.minValue);
+          if (entry.table != null || hasGcdEncoding) {
+            long[] bounds =
+                entry.table != null
+                    ? transformTableBounds(entry.table, minValue, maxValue)
+                    : transformGcdBounds(minValue, maxValue, entry.gcd, entry.minValue);
             if (bounds == null) {
               return;
             }
@@ -2210,6 +2272,10 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           int currentDoc = disi.docID();
           if (currentDoc < fromDoc) {
             currentDoc = disi.advance(fromDoc);
+          } else if (entry.table != null
+              && currentDoc < endDoc
+              && disi.advanceExact(currentDoc) == false) {
+            currentDoc = disi.nextDoc();
           }
           if (currentDoc >= endDoc) {
             return;
@@ -2223,8 +2289,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           }
           LongValues v;
           long lo, hi;
-          if (hasGcdEncoding) {
-            long[] bounds = transformGcdBounds(minValue, maxValue, entry.gcd, entry.minValue);
+          if (entry.table != null || hasGcdEncoding) {
+            long[] bounds =
+                entry.table != null
+                    ? transformTableBounds(entry.table, minValue, maxValue)
+                    : transformGcdBounds(minValue, maxValue, entry.gcd, entry.minValue);
             if (bounds == null) {
               set = false;
               return;

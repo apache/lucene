@@ -693,6 +693,8 @@ Optimizations
 
 * GITHUB#16119: Optimize byte array writes in OutputStreamIndexOutput to remove unnecessary overhead. (neoremind)
 
+* GITHUB#16835: Speed up rangeIntoBitSet for table-encoded numeric and sorted numeric DocValues. (Ke Wei)
+
 Bug Fixes
 ---------------------
 
