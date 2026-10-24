@@ -272,7 +272,7 @@ public class TestIndexedDISI extends LuceneTestCase {
   public void testAllDocs() throws IOException {
     int maxDoc = TestUtil.nextInt(random(), 1, 100000);
     FixedBitSet set = new FixedBitSet(maxDoc);
-    set.set(1, maxDoc);
+    set.set(0, maxDoc);
     try (Directory dir = newDirectory()) {
       doTest(set, dir);
     }
