@@ -23,6 +23,9 @@ import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVe
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 import org.apache.lucene.codecs.CodecUtil;
@@ -75,8 +78,8 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   private final String vectorDataFN;
   // the reader this one was created from
   private final Lucene99FlatVectorsReader original;
-  // the input for sequential reads, opened lazily and closed with this reader
-  private IndexInput sequentialVectorData;
+  // the inputs for other contexts, closed with this reader, guarded by this
+  private final Map<IOContext, IndexInput> otherVectorData = new HashMap<>();
   // guarded by this
   private boolean closed;
 
@@ -212,40 +215,44 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
 
   @Override
   public FlatVectorsReader getMergeInstance() throws IOException {
-    IndexInput data = original.sequentialVectorData();
+    IndexInput data = original.vectorDataFor(IOContext.merge().withHints(sequentialHints()));
     return data == vectorData ? this : new Lucene99FlatVectorsReader(this, data.clone());
   }
 
-  /** Returns the input for sequential reads, opening the data file again if needed. */
-  private synchronized IndexInput sequentialVectorData() throws IOException {
+  /** Returns an input efficient for {@code context}, opening the data file again if none is. */
+  private synchronized IndexInput vectorDataFor(IOContext context) throws IOException {
     assert original == this;
     if (closed) {
       throw new AlreadyClosedException("this reader is closed");
     }
-    if (sequentialVectorData == null) {
-      IOContext sequential = sequentialContext();
-      if (vectorData.isEfficientFor(sequential)) {
-        sequentialVectorData = vectorData;
-      } else {
-        try {
-          sequentialVectorData = directory.openInput(vectorDataFN, sequential);
-        } catch (FileNotFoundException | NoSuchFileException _) {
-          // an open reader outlives its files, so read through the input it already holds
-          sequentialVectorData = vectorData;
-        }
+    if (vectorData.isEfficientFor(context)) {
+      return vectorData;
+    }
+    IndexInput data = otherVectorData.get(context);
+    if (data != null) {
+      return data;
+    }
+    for (IndexInput other : otherVectorData.values()) {
+      if (other.isEfficientFor(context)) {
+        return other;
       }
     }
-    return sequentialVectorData;
+    try {
+      data = directory.openInput(vectorDataFN, context);
+    } catch (FileNotFoundException | NoSuchFileException _) {
+      // an open reader outlives its files, so read through the input it already holds
+      data = vectorData;
+    }
+    otherVectorData.put(context, data);
+    return data;
   }
 
-  /** Returns the context of the data file with sequential access. */
-  private IOContext sequentialContext() {
-    return dataContext.withHints(
-        Stream.concat(
-                dataContext.hints().stream()
-                    .filter(hint -> hint instanceof DataAccessHint == false),
-                Stream.of(DataAccessHint.SEQUENTIAL))
-            .toArray(IOContext.FileOpenHint[]::new));
+  /** Returns the hints of the data file with sequential access. */
+  private IOContext.FileOpenHint[] sequentialHints() {
+    return Stream.concat(
+            dataContext.hints().stream().filter(hint -> hint instanceof DataAccessHint == false),
+            Stream.of(DataAccessHint.SEQUENTIAL))
+        .toArray(IOContext.FileOpenHint[]::new);
   }
 
   private FieldEntry getFieldEntryOrThrow(String field) {
@@ -280,7 +287,10 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   public FloatVectorValues getFloatVectorValues(String field, DataAccessHint access)
       throws IOException {
     IndexInput data =
-        access == DataAccessHint.SEQUENTIAL ? original.sequentialVectorData() : vectorData;
+        access == DataAccessHint.SEQUENTIAL
+            // read by searches, even on a reader a merge opened
+            ? original.vectorDataFor(IOContext.DEFAULT.withHints(sequentialHints()))
+            : vectorData;
     return loadFloatVectorValues(field, data);
   }
 
@@ -385,17 +395,21 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
 
   @Override
   public void close() throws IOException {
-    IndexInput sequential;
+    List<IndexInput> toClose = new ArrayList<>();
     synchronized (this) {
       if (closed) {
         return;
       }
       closed = true;
-      sequential =
-          original == this && sequentialVectorData != vectorData ? sequentialVectorData : null;
-      sequentialVectorData = null;
+      toClose.add(vectorData);
+      for (IndexInput other : otherVectorData.values()) {
+        if (other != vectorData) {
+          toClose.add(other);
+        }
+      }
+      otherVectorData.clear();
     }
-    IOUtils.close(vectorData, sequential);
+    IOUtils.close(toClose);
   }
 
   private record FieldEntry(

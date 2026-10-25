@@ -752,14 +752,15 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     return sequentialFieldsStream;
   }
 
-  /** Returns the context of the data file with sequential access. */
+  /** Returns the context merges read the data file with. */
   private IOContext sequentialContext() {
-    return dataContext.withHints(
-        Stream.concat(
-                dataContext.hints().stream()
-                    .filter(hint -> hint instanceof DataAccessHint == false),
-                Stream.of(DataAccessHint.SEQUENTIAL))
-            .toArray(IOContext.FileOpenHint[]::new));
+    return IOContext.merge()
+        .withHints(
+            Stream.concat(
+                    dataContext.hints().stream()
+                        .filter(hint -> hint instanceof DataAccessHint == false),
+                    Stream.of(DataAccessHint.SEQUENTIAL))
+                .toArray(IOContext.FileOpenHint[]::new));
   }
 
   int getVersion() {
