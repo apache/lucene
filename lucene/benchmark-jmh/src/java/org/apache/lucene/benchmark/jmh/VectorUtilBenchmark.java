@@ -64,6 +64,11 @@ public class VectorUtilBenchmark {
   private byte[] dibitQuantized;
   private float[] floatsA;
   private float[] floatsB;
+  // BLOCK vectors of `size` floats each, for the blocked all-pairs dot product
+  private static final int BLOCK = 32;
+  private float[] blockA;
+  private float[] blockB;
+  private float[] blockOut;
   private short[] shortsA;
   private short[] shortsB;
   private int expectedHalfByteDotProduct;
@@ -110,6 +115,13 @@ public class VectorUtilBenchmark {
     // random float arrays for float methods
     floatsA = new float[size];
     floatsB = new float[size];
+    blockA = new float[BLOCK * size];
+    blockB = new float[BLOCK * size];
+    blockOut = new float[BLOCK * BLOCK];
+    for (int i = 0; i < blockA.length; ++i) {
+      blockA[i] = random.nextFloat();
+      blockB[i] = random.nextFloat();
+    }
     shortsA = new short[size];
     shortsB = new short[size];
     for (int i = 0; i < size; ++i) {
@@ -379,6 +391,38 @@ public class VectorUtilBenchmark {
       jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public float floatDotProductVector() {
     return VectorUtil.dotProduct(floatsA, floatsB);
+  }
+
+  /**
+   * BLOCK x BLOCK dot products through the blocked kernel; compare per-op with the pairwise one.
+   */
+  @Benchmark
+  public float[] floatDotProductsBlockedScalar() {
+    VectorUtil.dotProducts(blockA, 0, BLOCK, blockB, 0, BLOCK, size, size, blockOut);
+    return blockOut;
+  }
+
+  @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public float[] floatDotProductsBlockedVector() {
+    VectorUtil.dotProducts(blockA, 0, BLOCK, blockB, 0, BLOCK, size, size, blockOut);
+    return blockOut;
+  }
+
+  /** The same BLOCK x BLOCK products, one pair at a time. */
+  @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public float[] floatDotProductsPairwiseVector() {
+    float[] a = new float[size];
+    float[] b = new float[size];
+    for (int i = 0; i < BLOCK; i++) {
+      System.arraycopy(blockA, i * size, a, 0, size);
+      for (int j = 0; j < BLOCK; j++) {
+        System.arraycopy(blockB, j * size, b, 0, size);
+        blockOut[i * BLOCK + j] = VectorUtil.dotProduct(a, b);
+      }
+    }
+    return blockOut;
   }
 
   @Benchmark

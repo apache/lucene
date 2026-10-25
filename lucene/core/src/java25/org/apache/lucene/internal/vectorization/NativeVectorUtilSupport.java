@@ -416,6 +416,20 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
+  public void dotProducts(
+      float[] a,
+      int aOffset,
+      int aCount,
+      float[] b,
+      int bOffset,
+      int bCount,
+      int dim,
+      int stride,
+      float[] out) {
+    delegateVectorUtilSupport.dotProducts(a, aOffset, aCount, b, bOffset, bCount, dim, stride, out);
+  }
+
+  @Override
   public int dotProduct(byte[] a, byte[] b) {
     return (dotProduct$MH != null)
         ? dotProduct(MemorySegment.ofArray(a), MemorySegment.ofArray(b))
