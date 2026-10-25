@@ -22,7 +22,9 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.TextField;
+import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
@@ -389,6 +391,55 @@ public class TestSloppyPhraseQuery extends LuceneTestCase {
     // "drug the drug"~5
     assertSaneScoring(pq, is);
     ir.close();
+    dir.close();
+  }
+
+  /**
+   * A query term that repeats within the phrase itself (here, "a") gets a separate {@code
+   * PhrasePositions} per occurrence, each independently walking that term's postings. When slop
+   * forces the matcher to search ahead, it can end up resolving a position collision between two
+   * such repeat PhrasePositions by permanently advancing one of them past the document occurrence
+   * that was actually part of the match -- into a *later* occurrence of the same term elsewhere in
+   * the document. Before this was fixed, the reported match offsets leaked that later, unrelated
+   * occurrence instead of the one that actually satisfied the phrase, making the highlighted
+   * fragment wider than the real match (see LUCENE JIRA/GitHub issue for this bug).
+   *
+   * <p>Here, "a b a"~1 should match only "a xx b a" (indices 0-3): the extra "a" at index 5 is not
+   * part of that match and must not affect its reported offsets or positions.
+   */
+  public void testOffsetsNotCorruptedByRepeaterCollisionResolution() throws Exception {
+    Directory dir = new ByteBuffersDirectory();
+    RandomIndexWriter writer =
+        new RandomIndexWriter(
+            random(), dir, new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false));
+    FieldType offsetsType = new FieldType(TextField.TYPE_STORED);
+    offsetsType.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
+    Document doc = new Document();
+    String text = "a xx b a yy a";
+    doc.add(new Field("f", text, offsetsType));
+    writer.addDocument(doc);
+    IndexReader reader = writer.getReader();
+    writer.close();
+
+    IndexSearcher searcher = newSearcher(reader);
+    PhraseQuery.Builder builder = new PhraseQuery.Builder();
+    builder.add(new Term("f", "a"), 0);
+    builder.add(new Term("f", "b"), 1);
+    builder.add(new Term("f", "a"), 2);
+    builder.setSlop(1);
+    PhraseQuery pq = builder.build();
+
+    Weight w = searcher.createWeight(searcher.rewrite(pq), ScoreMode.COMPLETE, 1f);
+    LeafReaderContext ctx = reader.leaves().get(0);
+    Matches matches = w.matches(ctx, 0);
+    MatchesIterator mi = matches.getMatches("f");
+    assertTrue("expected a match", mi.next());
+    assertEquals("a xx b a", text.substring(mi.startOffset(), mi.endOffset()));
+    assertEquals(0, mi.startPosition());
+    assertEquals(3, mi.endPosition());
+    assertFalse("expected exactly one match", mi.next());
+
+    reader.close();
     dir.close();
   }
 }
