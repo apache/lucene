@@ -310,7 +310,25 @@ public class HnswGraphBuilder implements HnswBuilder {
     for (int level = nodeLevel; level >= 0; level--) {
       hnsw.addNode(level, node);
     }
-    // then promote itself as entry node if entry node is not set (this is the first ever node of
+    connectNode(node, nodeLevel, 0, scorer, eps0);
+  }
+
+  /**
+   * Connects a node that has already been added to the graph on levels {@code [minLevel,
+   * nodeLevel]} (see {@link OnHeapHnswGraph#addNode}). Levels below {@code minLevel} are left
+   * untouched, which lets a caller that fills level 0 by other means (see {@link
+   * PipnnGraphBuilder}) still build the upper levels with the regular HNSW insertion.
+   *
+   * <p>If the graph has no entry node yet, the node becomes the entry node and no connections are
+   * made.
+   *
+   * @param eps0 optional entry points for the search on level 0, see {@link #addGraphNode(int,
+   *     IntHashSet)}
+   */
+  void connectNode(
+      int node, int nodeLevel, int minLevel, UpdateableRandomVectorScorer scorer, IntHashSet eps0)
+      throws IOException {
+    // promote itself as entry node if entry node is not set (this is the first ever node of
     // the graph)
     if (hnsw.trySetNewEntryNode(node, nodeLevel)) {
       return;
@@ -318,7 +336,7 @@ public class HnswGraphBuilder implements HnswBuilder {
     // if the entry node is already set, then we have to do all connections first before we can
     // promote ourselves as entry node
 
-    int lowestUnsetLevel = 0;
+    int lowestUnsetLevel = minLevel;
     int curMaxLevel;
     do {
       curMaxLevel = hnsw.numLevels() - 1;
@@ -570,7 +588,7 @@ public class HnswGraphBuilder implements HnswBuilder {
     return true;
   }
 
-  private static int getRandomGraphLevel(double ml, SplittableRandom random) {
+  static int getRandomGraphLevel(double ml, SplittableRandom random) {
     double randDouble;
     do {
       randDouble = random.nextDouble(); // avoid 0 value, as log(0) is undefined
@@ -602,7 +620,7 @@ public class HnswGraphBuilder implements HnswBuilder {
     }
   }
 
-  private boolean connectComponents(int level) throws IOException {
+  boolean connectComponents(int level) throws IOException {
     FixedBitSet notFullyConnected = new FixedBitSet(hnsw.size());
     int maxConn = M;
     if (level == 0) {
@@ -684,7 +702,8 @@ public class HnswGraphBuilder implements HnswBuilder {
     if (nbr0.size() == maxConn) {
       notFullyConnected.clear(n0);
     }
-    if (nbr1.size() < maxConn) {
+    // n1 may already link to n0 (the components are disconnected in the other direction only)
+    if (nbr1.size() < maxConn && contains(nbr1, n0) == false) {
       nbr1.addOutOfOrder(n0, score);
       if (nbr1.size() == maxConn) {
         notFullyConnected.clear(n1);

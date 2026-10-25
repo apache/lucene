@@ -153,6 +153,13 @@ API Changes
 
 New Features
 ---------------------
+* GITHUB#16906: Add PipnnGraphBuilder, a search-free HNSW graph construction (PiPNN, Rubel et al.
+  KDD 2026) for merge-time graph rebuilds: level 0 is built from overlapping clusters with a
+  bounded, direction-diverse candidate reservoir per node and no graph search; upper levels keep
+  the regular HNSW insertion. Opt in with the new Lucene99HnswVectorsFormat constructor taking
+  PipnnParams. The build is deterministic for a given seed even when run on several threads.
+  (Tony Xu)
+
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
   modern Hangul conjoining jamo before KoreanTokenizer. (Mingi Jeong)
 
