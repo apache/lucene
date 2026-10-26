@@ -147,6 +147,10 @@ API Changes
   TopFieldCollectorManager and TopScoreDocCollectorManager. The flag has been a
   no-op since it was deprecated in 10.1. (Luca Cavanna)
 
+* GITHUB#16899: Multi-term intervals sources (prefix, wildcard, regexp, fuzzy, range and
+  multiterm) now throw IndexSearcher.TooManyClauses instead of IllegalStateException when
+  they expand to more than maxExpansions terms. (Mayya Sharipova)
+
 New Features
 ---------------------
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
@@ -211,6 +215,10 @@ Improvements
   improving readability of the parsing logic. (Rajat Jain)
 
 * GITHUB#16499: Clean up BytesRefHash. Remove dead lastCount and unused close(), fix stale comments (neoremind)
+
+* GITHUB#16734: IndexWriter#addBatch now hands DENSE vector columns to the vectors writer in bulk
+  through the new VectorColumn#values cursor and KnnFieldVectorsWriter#addDenseValues, instead of
+  adding vectors one document at a time. (Mayya Sharipova)
 
 Optimizations
 ---------------------
