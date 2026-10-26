@@ -106,12 +106,15 @@ public class TestNativeVectorUtilSupport extends TestVectorUtilSupport {
                 new Class<?>[] {VectorUtilSupport.class},
                 (_, method, args) -> {
                   calls.clear();
-                  Object result = invoke(method, nativeSupport, args);
-                  String symbol = symbol(method);
-                  boolean hasHandle =
-                      method.getParameterTypes()[0] != short[].class && available.contains(symbol);
-                  assertEquals(List.of((hasHandle ? "native:" : "delegate:") + symbol), calls);
-                  return result;
+                  try {
+                    return invoke(method, nativeSupport, args);
+                  } finally {
+                    String symbol = symbol(method);
+                    boolean hasHandle =
+                        method.getParameterTypes()[0] != short[].class
+                            && available.contains(symbol);
+                    assertEquals(List.of((hasHandle ? "native:" : "delegate:") + symbol), calls);
+                  }
                 });
   }
 
@@ -185,9 +188,13 @@ public class TestNativeVectorUtilSupport extends TestVectorUtilSupport {
       assertSame(actual, support.l2normalize(actual, throwOnZero));
       assertArrayEquals(expected, actual, 1e-6f);
     }
-    float[] zeros = new float[5];
-    assertSame(zeros, support.l2normalize(zeros, false));
-    assertArrayEquals(new float[5], zeros, 0f);
+    for (int length : new int[] {0, 5}) {
+      float[] zeros = new float[length];
+      assertSame(zeros, support.l2normalize(zeros, false));
+      assertArrayEquals(new float[length], zeros, 0f);
+      expectThrows(IllegalArgumentException.class, () -> support.l2normalize(zeros, true));
+      assertArrayEquals(new float[length], zeros, 0f);
+    }
   }
 
   public void testExpand8() {
@@ -317,19 +324,22 @@ public class TestNativeVectorUtilSupport extends TestVectorUtilSupport {
       return reference.cosine(a.toArray(JAVA_BYTE), b.toArray(JAVA_BYTE));
     }
 
-    float dotProductFloat(MemorySegment a, MemorySegment b, int byteSize) {
-      checkByteSize(a, byteSize);
-      return reference.dotProduct(a.toArray(JAVA_FLOAT), b.toArray(JAVA_FLOAT));
+    float dotProductFloat(MemorySegment a, MemorySegment b, int length) {
+      float[] values = a.toArray(JAVA_FLOAT);
+      assertEquals(values.length, length);
+      return reference.dotProduct(values, b.toArray(JAVA_FLOAT));
     }
 
-    float squareDistanceFloat(MemorySegment a, MemorySegment b, int byteSize) {
-      checkByteSize(a, byteSize);
-      return reference.squareDistance(a.toArray(JAVA_FLOAT), b.toArray(JAVA_FLOAT));
+    float squareDistanceFloat(MemorySegment a, MemorySegment b, int length) {
+      float[] values = a.toArray(JAVA_FLOAT);
+      assertEquals(values.length, length);
+      return reference.squareDistance(values, b.toArray(JAVA_FLOAT));
     }
 
-    float cosineFloat(MemorySegment a, MemorySegment b, int byteSize) {
-      checkByteSize(a, byteSize);
-      return reference.cosine(a.toArray(JAVA_FLOAT), b.toArray(JAVA_FLOAT));
+    float cosineFloat(MemorySegment a, MemorySegment b, int length) {
+      float[] values = a.toArray(JAVA_FLOAT);
+      assertEquals(values.length, length);
+      return reference.cosine(values, b.toArray(JAVA_FLOAT));
     }
 
     int int4SquareDistance(MemorySegment a, MemorySegment b, int byteSize) {
@@ -431,9 +441,14 @@ public class TestNativeVectorUtilSupport extends TestVectorUtilSupport {
       float[] values = vector.toArray(JAVA_FLOAT);
       assertEquals(values.length, length);
       assertTrue(throwOnZero == 0 || throwOnZero == 1);
-      reference.l2normalize(values, throwOnZero != 0);
+      // The native contract returns NULL for zero norm even when throwOnZero is set.
+      if (reference.dotProduct(values, values) == 0f) {
+        return MemorySegment.NULL;
+      }
+      reference.l2normalize(values, false);
       MemorySegment.copy(MemorySegment.ofArray(values), 0, vector, 0, vector.byteSize());
-      return vector;
+      // Heap segments have address zero; model a successful native call with a non-null pointer.
+      return MemorySegment.ofAddress(1);
     }
 
     void expand8(MemorySegment vector, int length) {
