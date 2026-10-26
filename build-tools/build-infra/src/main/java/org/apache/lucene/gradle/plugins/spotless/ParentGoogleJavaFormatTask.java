@@ -37,6 +37,8 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import javax.inject.Inject;
 import org.gradle.api.DefaultTask;
+import org.gradle.api.GradleException;
+import org.gradle.api.JavaVersion;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.FileType;
 import org.gradle.api.file.ProjectLayout;
@@ -136,11 +138,29 @@ abstract class ParentGoogleJavaFormatTask extends DefaultTask {
       input = input + "\n";
     }
 
-    input = ImportOrderer.reorderImports(input, JavaFormatterOptions.Style.GOOGLE);
-    input = RemoveUnusedImports.removeUnusedImports(input);
-    input = formatter.formatSource(input);
+    try {
+      input = ImportOrderer.reorderImports(input, JavaFormatterOptions.Style.GOOGLE);
+      input = RemoveUnusedImports.removeUnusedImports(input);
+      input = formatter.formatSource(input);
+      // intentionally left out.
+      // input = StringWrapper.wrap(input, formatter);
+    } catch (FormatterException e) {
+      String details;
+      if (e.getMessage().contains("com.sun")) {
+        details =
+            "It is likely that this version does not support Java "
+                + JavaVersion.current().getMajorVersion()
+                + ". ";
+      } else {
+        details = "";
+      }
 
-    // input = StringWrapper.wrap(input, formatter);
+      throw new GradleException(
+          "google-java-formatter threw an exception. "
+              + details
+              + "Rerun with gradle's --stacktrace option and report the problem.",
+          e);
+    }
 
     return input;
   }

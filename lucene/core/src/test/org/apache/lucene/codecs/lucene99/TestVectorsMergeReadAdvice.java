@@ -17,199 +17,447 @@
 package org.apache.lucene.codecs.lucene99;
 
 import java.io.IOException;
-import java.util.ArrayList;
+import java.nio.file.NoSuchFileException;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
+import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
+import org.apache.lucene.codecs.lucene104.Lucene104HnswScalarQuantizedVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.FilterLeafReader;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.SegmentReader;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.NoReuseHint;
+import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.store.ReadOnceHint;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
 /**
- * A merge reads the raw vectors front to back while a graph search reads them at random, and read
- * advice applies to a whole mapping, so a merge opens the data file for itself.
+ * Raw vectors read at random are opened again for merges and sequential values, which share an
+ * input when it is efficient for both, closed with the reader.
  */
 public class TestVectorsMergeReadAdvice extends LuceneTestCase {
 
   private static final int DIM = 8;
 
-  public void testMergeOpensItsOwnVectors() throws Exception {
-    Opens opens = new Opens();
-    try (Directory dir = new RecordingDirectory(newDirectory(), opens)) {
-      IndexWriterConfig iwc = new IndexWriterConfig();
-      iwc.setCodec(TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat()));
-      iwc.setUseCompoundFile(false); // so the directory sees the data file by name
-      try (IndexWriter w = new IndexWriter(dir, iwc)) {
-        for (int segment = 0; segment < 2; segment++) {
-          for (int i = 0; i < 64; i++) {
-            Document doc = new Document();
-            doc.add(
-                new KnnFloatVectorField("field", vector(), VectorSimilarityFunction.DOT_PRODUCT));
-            w.addDocument(doc);
-          }
-          w.commit();
-        }
+  private static List<KnnVectorsFormat> formats() {
+    return List.of(
+        new Lucene99HnswVectorsFormat(), new Lucene104HnswScalarQuantizedVectorsFormat());
+  }
 
-        // searches open the segments first, so the merge finds readers that are already open
+  public void testMergeOpensTheVectorsAgain() throws Exception {
+    for (KnnVectorsFormat format : formats()) {
+      List<Open> opens = new CopyOnWriteArrayList<>();
+      List<Open> sequential;
+      try (Directory dir = new RecordingDirectory(newDirectory(), opens);
+          IndexWriter w = writer(dir, format, false)) {
+        addSegments(w, 2);
+        // open the segments first, so the merge reuses readers that read at random
         try (DirectoryReader reader = DirectoryReader.open(w)) {
           assertEquals(2, reader.leaves().size());
           opens.clear();
           w.forceMerge(1);
-
-          // the merge is over, so what it opened is gone even though the segments are still open
-          List<Open> sequential = sequentialOpens(opens);
-          assertFalse(
-              "the merge never opened the vectors for itself: " + opens, sequential.isEmpty());
+          sequential = sequentialOpens(opens);
+          assertEquals(opens.toString(), 2, sequential.size());
           for (Open open : sequential) {
-            assertTrue("the merge kept its vectors open: " + open, open.closed());
+            assertTrue(open.toString(), open.read);
+            assertEquals(open.toString(), IOContext.Context.MERGE, open.context.context());
+            assertEquals(
+                "keeps the format's hints: " + open,
+                format instanceof Lucene104HnswScalarQuantizedVectorsFormat,
+                open.context.hints().contains(NoReuseHint.INSTANCE));
           }
         }
       }
-
-      assertEquals(
-          "the merge re-advised the vectors searches are reading: " + opens,
-          List.of(),
-          opens.advised());
+      for (Open open : sequential) {
+        assertTrue("closed with the reader: " + open, open.closed);
+      }
     }
   }
 
-  public void testTheMappingIsSharedThenReleasedByTheLastMergeInstance() throws Exception {
-    Opens opens = new Opens();
-    try (Directory dir = new RecordingDirectory(newDirectory(), opens)) {
-      IndexWriterConfig iwc = new IndexWriterConfig();
-      iwc.setCodec(TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat()));
-      iwc.setUseCompoundFile(false);
-      try (IndexWriter w = new IndexWriter(dir, iwc)) {
-        for (int i = 0; i < 16; i++) {
-          Document doc = new Document();
-          doc.add(new KnnFloatVectorField("field", vector(), VectorSimilarityFunction.DOT_PRODUCT));
-          w.addDocument(doc);
+  /** In a compound segment, a merge opens the compound file again, without advice. */
+  public void testCompoundMergeOpensTheCompoundFileAgain() throws Exception {
+    List<Open> opens = new CopyOnWriteArrayList<>();
+    List<Open> cfsOpens;
+    try (Directory dir = new RecordingDirectory(newDirectory(), opens);
+        IndexWriter w = writer(dir, new Lucene99HnswVectorsFormat(), true)) {
+      addSegments(w, 2);
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        assertEquals(2, reader.leaves().size());
+        opens.clear();
+        w.forceMerge(1);
+        cfsOpens = opens.stream().filter(o -> o.name.endsWith(".cfs")).toList();
+        assertEquals(opens.toString(), 2, cfsOpens.size());
+        for (Open open : cfsOpens) {
+          assertTrue(open.toString(), open.read);
+          assertEquals(open.toString(), Set.of(), open.context.hints());
         }
-        w.commit();
+      }
+    }
+    for (Open open : cfsOpens) {
+      assertTrue("closed with the reader: " + open, open.closed);
+    }
+  }
+
+  /** In a compound segment, merges and sequential values share one more copy of the file. */
+  public void testCompoundMergesAndSequentialValues() throws Exception {
+    List<Open> opens = new CopyOnWriteArrayList<>();
+    try (Directory dir = new RecordingDirectory(newDirectory(), opens)) {
+      try (IndexWriter w = writer(dir, new Lucene99HnswVectorsFormat(), true)) {
+        addSegments(w, 1);
       }
       try (DirectoryReader reader = DirectoryReader.open(dir)) {
-        KnnVectorsReader vectors =
-            ((CodecReader) getOnlyLeafReader(reader))
-                .getVectorReader()
-                .unwrapReaderForField("field");
+        KnnVectorsReader vectors = fieldReader(reader);
         opens.clear();
-
-        KnnVectorsReader first = vectors.getMergeInstance();
-        List<Open> mapped = sequentialOpens(opens);
-        assertEquals("one mapping for the first merge instance: " + opens, 1, mapped.size());
-
-        KnnVectorsReader second = vectors.getMergeInstance();
+        for (int i = 0; i < 2; i++) {
+          vectors.getMergeInstance();
+          vectors.getFloatVectorValues("field", DataAccessHint.SEQUENTIAL);
+        }
         assertEquals(
-            "a second merge instance shares it: " + opens, 1, sequentialOpens(opens).size());
-
-        first.finishMerge();
-        assertFalse("still held by the second instance: " + opens, mapped.get(0).closed());
-
-        second.finishMerge();
-        assertTrue("released by the last instance: " + opens, mapped.get(0).closed());
-
-        KnnVectorsReader third = vectors.getMergeInstance();
-        assertEquals("a later merge maps it again: " + opens, 2, sequentialOpens(opens).size());
-        third.finishMerge();
+            opens.toString(), 1, opens.stream().filter(o -> o.name.endsWith(".cfs")).count());
       }
+      assertAllClosed(opens);
     }
   }
 
-  /** The mapping goes with the reader, even if no merge ever says it is finished. */
-  public void testTheMappingIsClosedWithTheReader() throws Exception {
-    Opens opens = new Opens();
+  /** A reader opened by a merge already reads sequentially. */
+  public void testMergeReadsThroughTheReaderItOpened() throws Exception {
+    List<Open> opens = new CopyOnWriteArrayList<>();
     try (Directory dir = new RecordingDirectory(newDirectory(), opens)) {
-      IndexWriterConfig iwc = new IndexWriterConfig();
-      iwc.setCodec(TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat()));
-      iwc.setUseCompoundFile(false);
-      try (IndexWriter w = new IndexWriter(dir, iwc)) {
-        for (int i = 0; i < 16; i++) {
-          Document doc = new Document();
-          doc.add(new KnnFloatVectorField("field", vector(), VectorSimilarityFunction.DOT_PRODUCT));
-          w.addDocument(doc);
-        }
-        w.commit();
+      try (IndexWriter w = writer(dir, new Lucene99HnswVectorsFormat(), false)) {
+        addSegments(w, 2);
+        opens.clear();
+        w.forceMerge(1);
       }
-      List<Open> mapped;
-      try (DirectoryReader reader = DirectoryReader.open(dir)) {
-        KnnVectorsReader vectors =
-            ((CodecReader) getOnlyLeafReader(reader))
-                .getVectorReader()
-                .unwrapReaderForField("field");
+      assertEquals(opens.toString(), List.of(), sequentialOpens(opens));
+    }
+  }
+
+  /** Nothing is opened again when the input already serves sequential reads. */
+  public void testNoSecondInputWhenNotNeeded() throws Exception {
+    assertNoSecondInput(true, IOContext.DEFAULT.withHints(DataAccessHint.SEQUENTIAL));
+    assertNoSecondInput(
+        false, IOContext.DEFAULT.withHints(DataAccessHint.RANDOM, NoReuseHint.INSTANCE));
+  }
+
+  private static void assertNoSecondInput(boolean advises, IOContext context) throws Exception {
+    RecordingDirectory dir =
+        new RecordingDirectory(newDirectory(), new CopyOnWriteArrayList<>(), advises);
+    try (dir;
+        DirectoryReader reader = openReader(dir, new Lucene99HnswVectorsFormat());
+        FlatVectorsReader flat = flatReader(dir, reader, context)) {
+      dir.opens.clear();
+      assertSame(flat, flat.getMergeInstance());
+      assertEquals(dir.opens.toString(), List.of(), dir.opens);
+    }
+  }
+
+  /** The sequential input keeps the caller's hints and only changes the access. */
+  public void testSequentialInputKeepsTheCallerHints() throws Exception {
+    List<Open> opens = new CopyOnWriteArrayList<>();
+    IOContext context =
+        IOContext.DEFAULT.withHints(
+            DataAccessHint.RANDOM, NoReuseHint.INSTANCE, CallerHint.INSTANCE);
+    try (Directory dir = new RecordingDirectory(newDirectory(), opens);
+        DirectoryReader reader = openReader(dir, new Lucene99HnswVectorsFormat());
+        FlatVectorsReader flat = flatReader(dir, reader, context)) {
+      opens.clear();
+      assertNotSame(flat, flat.getMergeInstance());
+      List<Open> sequential = sequentialOpens(opens);
+      assertEquals(opens.toString(), 1, sequential.size());
+      Set<IOContext.FileOpenHint> hints = sequential.get(0).context.hints();
+      assertTrue(hints.toString(), hints.contains(CallerHint.INSTANCE));
+      assertTrue(hints.toString(), hints.contains(NoReuseHint.INSTANCE));
+      assertFalse(hints.toString(), hints.contains(DataAccessHint.RANDOM));
+    }
+  }
+
+  private enum CallerHint implements IOContext.FileOpenHint {
+    INSTANCE
+  }
+
+  /** Sequential values and later merges share one input, kept until the reader closes. */
+  public void testOneSequentialInputUntilTheReaderCloses() throws Exception {
+    for (KnnVectorsFormat format : formats()) {
+      List<Open> opens = new CopyOnWriteArrayList<>();
+      List<Open> sequential;
+      try (Directory dir = new RecordingDirectory(newDirectory(), opens);
+          DirectoryReader reader = openReader(dir, format)) {
+        KnnVectorsReader vectors = ((CodecReader) getOnlyLeafReader(reader)).getVectorReader();
         opens.clear();
 
-        // a merge instance nobody finishes, as an abandoned merge leaves behind
-        assertNotNull(vectors.getMergeInstance());
-        mapped = sequentialOpens(opens);
-        assertEquals("one mapping for the merge instance: " + opens, 1, mapped.size());
-        assertFalse("still held by the merge instance: " + opens, mapped.get(0).closed());
+        FloatVectorValues random = vectors.getFloatVectorValues("field", DataAccessHint.RANDOM);
+        assertEquals(opens.toString(), List.of(), sequentialOpens(opens));
+
+        FloatVectorValues values = vectors.getFloatVectorValues("field", DataAccessHint.SEQUENTIAL);
+        sequential = sequentialOpens(opens);
+        assertEquals(opens.toString(), 1, sequential.size());
+        assertEquals(IOContext.Context.DEFAULT, sequential.get(0).context.context());
+        assertEquals(random.size(), values.size());
+        for (int ord = 0; ord < random.size(); ord++) {
+          assertArrayEquals(random.vectorValue(ord), values.vectorValue(ord), 0f);
+        }
+
+        KnnVectorsReader field = vectors.unwrapReaderForField("field");
+        field.getMergeInstance().finishMerge();
+        assertEquals(DIM, field.getMergeInstance().getFloatVectorValues("field").dimension());
+        assertEquals(opens.toString(), 1, sequentialOpens(opens).size());
+        assertFalse("kept while the reader is open", sequential.get(0).closed);
       }
-      assertTrue("closed with the reader: " + mapped.get(0), mapped.get(0).closed());
+      assertTrue("closed with the reader", sequential.get(0).closed);
     }
   }
 
-  /** A merge open that fails leaves nothing behind, so a later merge still releases the mapping. */
-  public void testAFailedMergeOpenIsNotCountedAsAMergeInstance() throws Exception {
-    Opens opens = new Opens();
-    AtomicBoolean failMergeOpens = new AtomicBoolean();
-    try (Directory dir =
+  public void testNoSecondInputOnceClosed() throws Exception {
+    List<Open> opens = new CopyOnWriteArrayList<>();
+    try (Directory dir = new RecordingDirectory(newDirectory(), opens);
+        DirectoryReader reader = openReader(dir, new Lucene99HnswVectorsFormat())) {
+      FlatVectorsReader flat =
+          flatReader(
+              dir,
+              reader,
+              IOContext.DEFAULT.withHints(DataAccessHint.RANDOM, NoReuseHint.INSTANCE));
+      flat.close();
+      opens.clear();
+      expectThrows(AlreadyClosedException.class, flat::getMergeInstance);
+      expectThrows(
+          AlreadyClosedException.class,
+          () -> flat.getFloatVectorValues("field", DataAccessHint.SEQUENTIAL));
+      assertEquals(opens.toString(), List.of(), sequentialOpens(opens));
+    }
+  }
+
+  public void testFailedOpenIsRetried() throws Exception {
+    List<Open> opens = new CopyOnWriteArrayList<>();
+    AtomicBoolean fail = new AtomicBoolean();
+    Directory dir =
         new RecordingDirectory(newDirectory(), opens) {
           @Override
           public IndexInput openInput(String name, IOContext context) throws IOException {
-            if (failMergeOpens.get()
+            if (fail.get()
                 && name.endsWith(".vec")
-                && context.context() == IOContext.Context.MERGE) {
+                && context.hints().contains(DataAccessHint.SEQUENTIAL)) {
               throw new IOException("injected");
             }
             return super.openInput(name, context);
           }
-        }) {
-      IndexWriterConfig iwc = new IndexWriterConfig();
-      iwc.setCodec(TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat()));
-      iwc.setUseCompoundFile(false);
-      try (IndexWriter w = new IndexWriter(dir, iwc)) {
-        for (int i = 0; i < 16; i++) {
-          Document doc = new Document();
-          doc.add(new KnnFloatVectorField("field", vector(), VectorSimilarityFunction.DOT_PRODUCT));
-          w.addDocument(doc);
-        }
-        w.commit();
+        };
+    try (dir;
+        DirectoryReader reader = openReader(dir, new Lucene99HnswVectorsFormat())) {
+      KnnVectorsReader vectors =
+          ((CodecReader) getOnlyLeafReader(reader)).getVectorReader().unwrapReaderForField("field");
+      opens.clear();
+      fail.set(true);
+      expectThrows(IOException.class, vectors::getMergeInstance);
+      assertEquals(opens.toString(), List.of(), sequentialOpens(opens));
+      fail.set(false);
+      vectors.getMergeInstance();
+      assertEquals(opens.toString(), 1, sequentialOpens(opens).size());
+    }
+    assertTrue("closed with the reader", opens.getLast().closed);
+  }
+
+  /** Once the file is gone, merges and searches read through the open input. */
+  public void testMissingFileReadsThroughTheOpenInput() throws Exception {
+    AtomicInteger attempts = new AtomicInteger();
+    AtomicBoolean gone = new AtomicBoolean();
+    Directory dir =
+        new RecordingDirectory(newDirectory(), new CopyOnWriteArrayList<>()) {
+          @Override
+          public IndexInput openInput(String name, IOContext context) throws IOException {
+            if (gone.get() && name.endsWith(".vec")) {
+              attempts.incrementAndGet();
+              throw new NoSuchFileException(name);
+            }
+            return super.openInput(name, context);
+          }
+        };
+    try (dir;
+        DirectoryReader reader = openReader(dir, new Lucene99HnswVectorsFormat())) {
+      KnnVectorsReader vectors = fieldReader(reader);
+      gone.set(true);
+      for (int i = 0; i < 2; i++) {
+        vectors.getMergeInstance();
+        assertEquals(16, vectors.getFloatVectorValues("field", DataAccessHint.SEQUENTIAL).size());
       }
-      try (DirectoryReader reader = DirectoryReader.open(dir)) {
-        KnnVectorsReader vectors =
-            ((CodecReader) getOnlyLeafReader(reader))
-                .getVectorReader()
-                .unwrapReaderForField("field");
+      assertEquals("one attempt for merges and one for searches", 2, attempts.get());
+    }
+  }
+
+  /** A merge opens with a merge context, and sequential values share its input. */
+  public void testSequentialValuesShareTheMergeInput() throws Exception {
+    List<Open> opens = new CopyOnWriteArrayList<>();
+    try (Directory dir = new RecordingDirectory(newDirectory(), opens);
+        DirectoryReader reader = openReader(dir, new Lucene99HnswVectorsFormat())) {
+      KnnVectorsReader vectors = fieldReader(reader);
+      opens.clear();
+      vectors.getMergeInstance();
+      vectors.getFloatVectorValues("field", DataAccessHint.SEQUENTIAL);
+      List<Open> sequential = sequentialOpens(opens);
+      assertEquals(opens.toString(), 1, sequential.size());
+      assertEquals(IOContext.Context.MERGE, sequential.get(0).context.context());
+    }
+  }
+
+  /**
+   * A directory that serves merges apart, as with direct I/O for merges, gets a merge open and a
+   * search open, whichever comes first, and nothing more.
+   */
+  public void testMergesServedApartOpenOnTheirOwn() throws Exception {
+    for (boolean mergeFirst : new boolean[] {true, false}) {
+      List<Open> opens = new CopyOnWriteArrayList<>();
+      try (Directory dir = new RecordingDirectory(newDirectory(), opens, true, true);
+          DirectoryReader reader = openReader(dir, new Lucene99HnswVectorsFormat())) {
+        KnnVectorsReader vectors = fieldReader(reader);
         opens.clear();
+        for (int i = 0; i < 2; i++) {
+          if (mergeFirst) {
+            vectors.getMergeInstance();
+            vectors.getFloatVectorValues("field", DataAccessHint.SEQUENTIAL);
+          } else {
+            vectors.getFloatVectorValues("field", DataAccessHint.SEQUENTIAL);
+            vectors.getMergeInstance();
+          }
+        }
+        List<IOContext.Context> contexts =
+            sequentialOpens(opens).stream().map(o -> o.context.context()).toList();
+        assertEquals(
+            opens.toString(),
+            mergeFirst
+                ? List.of(IOContext.Context.MERGE, IOContext.Context.DEFAULT)
+                : List.of(IOContext.Context.DEFAULT, IOContext.Context.MERGE),
+            contexts);
+      }
+      assertAllClosed(opens);
+    }
+  }
 
-        failMergeOpens.set(true);
-        expectThrows(IOException.class, vectors::getMergeInstance);
-        assertEquals("a failed open maps nothing: " + opens, List.of(), sequentialOpens(opens));
-
-        failMergeOpens.set(false);
-        KnnVectorsReader merging = vectors.getMergeInstance();
-        List<Open> mapped = sequentialOpens(opens);
-        assertEquals("one mapping for the one merge instance: " + opens, 1, mapped.size());
-
-        merging.finishMerge();
-        assertTrue("released by the only merge instance: " + opens, mapped.get(0).closed());
+  /** On a reader a merge opened, merges read through it and sequential values read as searches. */
+  public void testReaderOpenedByAMerge() throws Exception {
+    for (boolean mergesApart : new boolean[] {true, false}) {
+      RecordingDirectory dir =
+          new RecordingDirectory(newDirectory(), new CopyOnWriteArrayList<>(), true, mergesApart);
+      try (dir;
+          DirectoryReader reader = openReader(dir, new Lucene99HnswVectorsFormat());
+          FlatVectorsReader flat =
+              flatReader(dir, reader, IOContext.merge().withHints(DataAccessHint.SEQUENTIAL))) {
+        dir.opens.clear();
+        assertSame(flat, flat.getMergeInstance());
+        flat.getFloatVectorValues("field", DataAccessHint.SEQUENTIAL);
+        List<Open> sequential = sequentialOpens(dir.opens);
+        if (mergesApart) {
+          assertEquals(dir.opens.toString(), 1, sequential.size());
+          assertEquals(IOContext.Context.DEFAULT, sequential.get(0).context.context());
+        } else {
+          assertEquals(dir.opens.toString(), List.of(), sequential);
+        }
       }
     }
+  }
+
+  /**
+   * A codec reader reads sequential values through its vectors reader; a filter reader does not.
+   */
+  public void testLeafReaderSequentialValues() throws Exception {
+    List<Open> opens = new CopyOnWriteArrayList<>();
+    try (Directory dir = new RecordingDirectory(newDirectory(), opens);
+        DirectoryReader reader = openReader(dir, new Lucene99HnswVectorsFormat())) {
+      LeafReader leaf = getOnlyLeafReader(reader);
+      opens.clear();
+      LeafReader filtered =
+          new FilterLeafReader(leaf) {
+            @Override
+            public CacheHelper getCoreCacheHelper() {
+              return null;
+            }
+
+            @Override
+            public CacheHelper getReaderCacheHelper() {
+              return null;
+            }
+          };
+      assertNotNull(filtered.getFloatVectorValues("field", DataAccessHint.SEQUENTIAL));
+      assertEquals(opens.toString(), List.of(), sequentialOpens(opens));
+      assertNotNull(leaf.getFloatVectorValues("field", DataAccessHint.SEQUENTIAL));
+      assertEquals(opens.toString(), 1, sequentialOpens(opens).size());
+      assertNull(leaf.getFloatVectorValues("missing", DataAccessHint.SEQUENTIAL));
+    }
+  }
+
+  /** The vectors reader of the only field of the only segment of {@code reader}. */
+  private static KnnVectorsReader fieldReader(DirectoryReader reader) {
+    return ((CodecReader) getOnlyLeafReader(reader))
+        .getVectorReader()
+        .unwrapReaderForField("field");
+  }
+
+  private static IndexWriter writer(Directory dir, KnnVectorsFormat format, boolean compound)
+      throws IOException {
+    IndexWriterConfig iwc = new IndexWriterConfig();
+    iwc.setCodec(TestUtil.alwaysKnnVectorsFormat(format));
+    iwc.setUseCompoundFile(compound);
+    return new IndexWriter(dir, iwc);
+  }
+
+  private static void addSegments(IndexWriter w, int segments) throws IOException {
+    for (int segment = 0; segment < segments; segment++) {
+      for (int i = 0; i < 16; i++) {
+        Document doc = new Document();
+        doc.add(new KnnFloatVectorField("field", vector(), VectorSimilarityFunction.DOT_PRODUCT));
+        w.addDocument(doc);
+      }
+      w.commit();
+    }
+  }
+
+  /** Opens a reader over a single segment of vectors. */
+  private static DirectoryReader openReader(Directory dir, KnnVectorsFormat format)
+      throws IOException {
+    try (IndexWriter w = writer(dir, format, false)) {
+      addSegments(w, 1);
+    }
+    return DirectoryReader.open(dir);
+  }
+
+  /** A flat vectors reader over the vectors of the only segment, opened with {@code context}. */
+  private static FlatVectorsReader flatReader(
+      Directory dir, DirectoryReader reader, IOContext context) throws IOException {
+    SegmentReader segment = (SegmentReader) getOnlyLeafReader(reader);
+    String segmentName = segment.getSegmentInfo().info.name;
+    String vectorData =
+        segment.getSegmentInfo().files().stream()
+            .filter(f -> f.endsWith("." + Lucene99FlatVectorsFormat.VECTOR_DATA_EXTENSION))
+            .findFirst()
+            .orElseThrow();
+    // the per-field suffix, between the segment name and the extension
+    String suffix = vectorData.substring(segmentName.length() + 1, vectorData.lastIndexOf('.'));
+    SegmentReadState state =
+        new SegmentReadState(
+            dir, segment.getSegmentInfo().info, segment.getFieldInfos(), context, suffix);
+    return new Lucene99FlatVectorsFormat(FlatVectorScorerUtil.getLucene99FlatVectorsScorer())
+        .fieldsReader(state);
   }
 
   private static float[] vector() {
@@ -220,129 +468,106 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
     return v;
   }
 
-  /** The opens a merge made for itself: the vector data, read front to back and once. */
-  private static List<Open> sequentialOpens(Opens opens) {
-    List<Open> sequential = new ArrayList<>();
-    for (Open open : opens.all()) {
-      // integrity checks read a file once, front to back, and say so with READONCE
-      if (open.name().endsWith(".vec")
-          && open.hint() == DataAccessHint.SEQUENTIAL
-          && open.hints().contains(ReadOnceHint.INSTANCE) == false) {
-        assertTrue(
-            "a merge reads the vectors once and does not come back: " + open,
-            open.hints().contains(NoReuseHint.INSTANCE));
-        assertSame(
-            "the open says a merge is reading, so a directory can route it: " + open,
-            IOContext.Context.MERGE,
-            open.context());
-        sequential.add(open);
-      }
+  private static void assertAllClosed(List<Open> opens) {
+    for (Open open : opens) {
+      assertTrue("closed with the reader: " + open, open.closed);
     }
-    return sequential;
+  }
+
+  /** The opens of the vector data for sequential reads, other than integrity checks. */
+  private static List<Open> sequentialOpens(List<Open> opens) {
+    return opens.stream()
+        .filter(o -> o.name.endsWith(".vec"))
+        .filter(o -> o.context.hints().contains(DataAccessHint.SEQUENTIAL))
+        .filter(o -> o.context.hints().contains(ReadOnceHint.INSTANCE) == false)
+        .toList();
   }
 
   /** One {@link Directory#openInput} call. */
   private static final class Open {
-    private final String name;
-    private final IOContext context;
-    private volatile boolean closed;
+    final String name;
+    final IOContext context;
+    volatile boolean closed;
+    // whether the input was sliced, which is how vectors are read
+    volatile boolean read;
 
     Open(String name, IOContext context) {
       this.name = name;
       this.context = context;
     }
 
-    String name() {
-      return name;
-    }
-
-    Set<IOContext.FileOpenHint> hints() {
-      return context.hints();
-    }
-
-    DataAccessHint hint() {
-      return context.hints(DataAccessHint.class).findFirst().orElse(null);
-    }
-
-    IOContext.Context context() {
-      return context.context();
-    }
-
-    boolean closed() {
-      return closed;
-    }
-
     @Override
     public String toString() {
-      return name + " [hint=" + hint() + " closed=" + closed + "]";
+      return name + context.hints() + (closed ? " closed" : "") + (read ? " read" : "");
     }
   }
 
-  private static final class Opens {
-    private final List<Open> opens = new ArrayList<>();
-    private final List<String> advised = new ArrayList<>();
-
-    synchronized Open record(String name, IOContext context) {
-      Open open = new Open(name, context);
-      opens.add(open);
-      return open;
-    }
-
-    /** Files whose advice was changed after they were opened. */
-    synchronized void recordAdvice(String name) {
-      advised.add(name);
-    }
-
-    synchronized List<Open> all() {
-      return List.copyOf(opens);
-    }
-
-    synchronized List<String> advised() {
-      return List.copyOf(advised);
-    }
-
-    synchronized void clear() {
-      opens.clear();
-      advised.clear();
-    }
-
-    @Override
-    public synchronized String toString() {
-      return "opens: " + opens + ", advised: " + advised;
-    }
-  }
-
+  /**
+   * Records opens. Its inputs are efficient for a context like memory-mapped inputs using {@link
+   * MMapDirectory#ADVISE_BY_CONTEXT}, or for every context, and, if it serves merges apart, only
+   * for merges if opened by one and only for other reads otherwise.
+   */
   private static class RecordingDirectory extends FilterDirectory {
-    private final Opens opens;
+    final List<Open> opens;
+    private final boolean advises;
+    private final boolean mergesApart;
 
-    RecordingDirectory(Directory in, Opens opens) {
+    RecordingDirectory(Directory in, List<Open> opens) {
+      this(in, opens, true);
+    }
+
+    RecordingDirectory(Directory in, List<Open> opens, boolean advises) {
+      this(in, opens, advises, false);
+    }
+
+    RecordingDirectory(Directory in, List<Open> opens, boolean advises, boolean mergesApart) {
       super(in);
       this.opens = opens;
+      this.advises = advises;
+      this.mergesApart = mergesApart;
     }
 
     @Override
     public IndexInput openInput(String name, IOContext context) throws IOException {
-      Open open = opens.record(name, context);
-      return new RecordingIndexInput(super.openInput(name, context), name, open, opens);
+      Open open = new Open(name, context);
+      opens.add(open);
+      return new RecordingIndexInput(
+          super.openInput(name, context), open, context, advises, mergesApart);
     }
   }
 
   private static final class RecordingIndexInput extends FilterIndexInput {
-    private final String name;
     private final Open open;
-    private final Opens opens;
+    // the context the pages of this input were advised with
+    private final IOContext context;
+    private final boolean advises;
+    private final boolean mergesApart;
 
-    RecordingIndexInput(IndexInput in, String name, Open open, Opens opens) {
-      super("Recording(" + name + ")", in);
-      this.name = name;
+    RecordingIndexInput(
+        IndexInput in, Open open, IOContext context, boolean advises, boolean mergesApart) {
+      super("Recording(" + open.name + ")", in);
       this.open = open;
-      this.opens = opens;
+      this.context = context;
+      this.advises = advises;
+      this.mergesApart = mergesApart;
     }
 
     @Override
-    public void updateIOContext(IOContext context) throws IOException {
-      opens.recordAdvice(name);
-      in.updateIOContext(context);
+    public boolean isEfficientFor(IOContext other) {
+      if (mergesApart
+          && (other.context() == IOContext.Context.MERGE)
+              != (context.context() == IOContext.Context.MERGE)) {
+        return false;
+      }
+      if (advises == false) {
+        return true;
+      }
+      ReadAdvice advice = MMapDirectory.ADVISE_BY_CONTEXT.apply(open.name, context).orElseThrow();
+      ReadAdvice otherAdvice =
+          MMapDirectory.ADVISE_BY_CONTEXT.apply(open.name, other).orElseThrow();
+      return advice == ReadAdvice.NORMAL
+          || otherAdvice == ReadAdvice.NORMAL
+          || advice == otherAdvice;
     }
 
     @Override
@@ -353,12 +578,22 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
 
     @Override
     public IndexInput clone() {
-      return new RecordingIndexInput(in.clone(), name, open, opens);
+      return new RecordingIndexInput(in.clone(), open, context, advises, mergesApart);
     }
 
     @Override
     public IndexInput slice(String sliceDescription, long offset, long length) throws IOException {
-      return new RecordingIndexInput(in.slice(sliceDescription, offset, length), name, open, opens);
+      open.read = true;
+      return new RecordingIndexInput(
+          in.slice(sliceDescription, offset, length), open, context, advises, mergesApart);
+    }
+
+    @Override
+    public IndexInput slice(String sliceDescription, long offset, long length, IOContext context)
+        throws IOException {
+      open.read = true;
+      return new RecordingIndexInput(
+          in.slice(sliceDescription, offset, length, context), open, context, advises, mergesApart);
     }
   }
 }
