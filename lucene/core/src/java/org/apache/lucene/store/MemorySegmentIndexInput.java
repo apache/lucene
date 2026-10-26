@@ -60,6 +60,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
   final MemorySegment[] segments;
   final Function<IOContext, ReadAdvice> toReadAdvice;
   final AtomicInteger sharedPrefetchCounter;
+  // the advice applied when this input was opened or sliced, or null if any advice reads the same
+  final ReadAdvice readAdvice;
 
   int curSegmentIndex = -1;
   MemorySegment
@@ -73,7 +75,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
       long length,
       int chunkSizePower,
       boolean confined,
-      Function<IOContext, ReadAdvice> toReadAdvice) {
+      Function<IOContext, ReadAdvice> toReadAdvice,
+      ReadAdvice readAdvice) {
     assert Arrays.stream(segments).map(MemorySegment::scope).allMatch(arena.scope()::equals);
     AtomicInteger sharedPrefetchCounter = new AtomicInteger();
     if (segments.length == 1) {
@@ -85,6 +88,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
           chunkSizePower,
           confined,
           toReadAdvice,
+          readAdvice,
           sharedPrefetchCounter);
     } else {
       return new MultiSegmentImpl(
@@ -96,6 +100,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
           chunkSizePower,
           confined,
           toReadAdvice,
+          readAdvice,
           sharedPrefetchCounter);
     }
   }
@@ -108,6 +113,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
       int chunkSizePower,
       boolean confined,
       Function<IOContext, ReadAdvice> toReadAdvice,
+      ReadAdvice readAdvice,
       AtomicInteger sharedPrefetchCounter) {
     super(resourceDescription);
     this.arena = arena;
@@ -118,6 +124,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
     this.chunkSizeMask = (1L << chunkSizePower) - 1L;
     this.curSegment = segments[0];
     this.toReadAdvice = toReadAdvice;
+    this.readAdvice = readAdvice;
     this.sharedPrefetchCounter = sharedPrefetchCounter;
   }
 
@@ -371,27 +378,17 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
   }
 
   @Override
-  public void updateIOContext(IOContext context) throws IOException {
-    updateReadAdvice(toReadAdvice.apply(context));
-  }
-
-  private void updateReadAdvice(ReadAdvice readAdvice) throws IOException {
-    if (NATIVE_ACCESS.isEmpty()) {
-      return;
+  public boolean isEfficientFor(IOContext context) {
+    if (NATIVE_ACCESS.isEmpty() || readAdvice == null) {
+      return true;
     }
-    final NativeAccess nativeAccess = NATIVE_ACCESS.get();
-
-    long offset = 0;
-    for (MemorySegment seg : segments) {
-      advise(
-          offset,
-          seg.byteSize(),
-          segment -> {
-            nativeAccess.madvise(segment, readAdvice);
-            return true;
-          });
-      offset += seg.byteSize();
-    }
+    // only random and sequential reads get inputs of their own
+    ReadAdvice advice = toReadAdvice.apply(context);
+    return switch (readAdvice) {
+      case RANDOM -> advice != ReadAdvice.SEQUENTIAL;
+      case SEQUENTIAL -> advice != ReadAdvice.RANDOM;
+      case NORMAL -> true;
+    };
   }
 
   boolean advise(long offset, long length, IOFunction<MemorySegment, Boolean> advice)
@@ -570,6 +567,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
               chunkSizePower,
               confined,
               toReadAdvice,
+              readAdvice,
               sharedPrefetchCounter);
     } else {
       clone =
@@ -582,6 +580,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
               chunkSizePower,
               confined,
               toReadAdvice,
+              readAdvice,
               sharedPrefetchCounter);
     }
     try {
@@ -599,6 +598,11 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
    */
   @Override
   public final MemorySegmentIndexInput slice(String sliceDescription, long offset, long length) {
+    return sliceWithAdvice(sliceDescription, offset, length, readAdvice);
+  }
+
+  private MemorySegmentIndexInput sliceWithAdvice(
+      String sliceDescription, long offset, long length, ReadAdvice readAdvice) {
     if ((length | offset) < 0 || length > this.length - offset) {
       throw new IllegalArgumentException(
           "slice() "
@@ -613,38 +617,41 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
               + this);
     }
 
-    return buildSlice(sliceDescription, offset, length);
+    return buildSlice(sliceDescription, offset, length, readAdvice);
   }
 
   @Override
   public final MemorySegmentIndexInput slice(
       String sliceDescription, long offset, long length, IOContext context) throws IOException {
-    MemorySegmentIndexInput slice = slice(sliceDescription, offset, length);
     ReadAdvice advice = toReadAdvice.apply(context);
-    if (NATIVE_ACCESS.isPresent() && advice != ReadAdvice.NORMAL) {
+    if (NATIVE_ACCESS.isEmpty() || advice == ReadAdvice.NORMAL) {
       // No need to madvise with a normal advice, since it's the OS' default.
-      final NativeAccess nativeAccess = NATIVE_ACCESS.get();
-      if (length >= nativeAccess.getPageSize()) {
-        // Only set the read advice if the inner file is large enough. Otherwise the cons are likely
-        // outweighing the pros as we're:
-        //  - potentially overriding the advice of other files that share the same pages,
-        //  - paying the cost of a madvise system call for little value.
-        // We could align inner files with the page size to avoid the first issue, but again the
-        // pros don't clearly overweigh the cons.
-        slice.advise(
-            0,
-            slice.length,
-            segment -> {
-              nativeAccess.madvise(segment, advice);
-              return true;
-            });
-      }
+      return slice(sliceDescription, offset, length);
     }
+    final NativeAccess nativeAccess = NATIVE_ACCESS.get();
+    if (length < nativeAccess.getPageSize()) {
+      // Only set the read advice if the inner file is large enough. Otherwise the cons are likely
+      // outweighing the pros as we're:
+      //  - potentially overriding the advice of other files that share the same pages,
+      //  - paying the cost of a madvise system call for little value.
+      // We could align inner files with the page size to avoid the first issue, but again the
+      // pros don't clearly overweigh the cons.
+      return sliceWithAdvice(sliceDescription, offset, length, null);
+    }
+    MemorySegmentIndexInput slice = sliceWithAdvice(sliceDescription, offset, length, advice);
+    slice.advise(
+        0,
+        slice.length,
+        segment -> {
+          nativeAccess.madvise(segment, advice);
+          return true;
+        });
     return slice;
   }
 
   /** Builds the actual sliced IndexInput (may apply extra offset in subclasses). * */
-  MemorySegmentIndexInput buildSlice(String sliceDescription, long offset, long length) {
+  MemorySegmentIndexInput buildSlice(
+      String sliceDescription, long offset, long length, ReadAdvice readAdvice) {
     ensureOpen();
     ensureAccessible();
     final MemorySegment[] slices;
@@ -675,6 +682,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
           chunkSizePower,
           confined,
           toReadAdvice,
+          readAdvice,
           sharedPrefetchCounter);
     } else {
       return new MultiSegmentImpl(
@@ -686,6 +694,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
           chunkSizePower,
           confined,
           toReadAdvice,
+          readAdvice,
           sharedPrefetchCounter);
     }
   }
@@ -731,6 +740,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
         int chunkSizePower,
         boolean confined,
         Function<IOContext, ReadAdvice> toReadAdvice,
+        ReadAdvice readAdvice,
         AtomicInteger sharedPrefetchCounter) {
       super(
           resourceDescription,
@@ -740,6 +750,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
           chunkSizePower,
           confined,
           toReadAdvice,
+          readAdvice,
           sharedPrefetchCounter);
       this.curSegmentIndex = 0;
     }
@@ -845,6 +856,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
         int chunkSizePower,
         boolean confined,
         Function<IOContext, ReadAdvice> toReadAdvice,
+        ReadAdvice readAdvice,
         AtomicInteger sharedPrefetchCounter) {
       super(
           resourceDescription,
@@ -854,6 +866,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
           chunkSizePower,
           confined,
           toReadAdvice,
+          readAdvice,
           sharedPrefetchCounter);
       this.offset = offset;
       try {
@@ -921,8 +934,9 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
     }
 
     @Override
-    MemorySegmentIndexInput buildSlice(String sliceDescription, long ofs, long length) {
-      return super.buildSlice(sliceDescription, this.offset + ofs, length);
+    MemorySegmentIndexInput buildSlice(
+        String sliceDescription, long ofs, long length, ReadAdvice readAdvice) {
+      return super.buildSlice(sliceDescription, this.offset + ofs, length, readAdvice);
     }
 
     @Override
