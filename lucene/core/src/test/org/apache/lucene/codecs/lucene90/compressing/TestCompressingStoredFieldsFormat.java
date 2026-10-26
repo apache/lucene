@@ -66,13 +66,13 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
                   .setCodec(new LZ4WithPresetCompressingCodec(4096, 2, false, 8))
                   .setMergePolicy(NoMergePolicy.INSTANCE))) {
         String[] values = {
-            "a".repeat(512),
-            "b".repeat(512),
-            null,
-            "c".repeat(512),
-            "d".repeat(512),
-            "e".repeat(512),
-            "f".repeat(512)
+          "a".repeat(512),
+          "b".repeat(512),
+          null,
+          "c".repeat(512),
+          "d".repeat(512),
+          "e".repeat(512),
+          "f".repeat(512)
         };
         for (String value : values) {
           Document doc = new Document();
