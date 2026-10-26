@@ -25,6 +25,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FilterDocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.VectorScorer;
+import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
@@ -332,6 +333,16 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     @Override
     public FloatVectorValues getFloatVectorValues(String field) throws IOException {
       final FloatVectorValues vectorValues = in.getFloatVectorValues(field);
+      if (vectorValues == null) {
+        return null;
+      }
+      return new ExitableFloatVectorValues(vectorValues);
+    }
+
+    @Override
+    public FloatVectorValues getFloatVectorValues(String field, DataAccessHint access)
+        throws IOException {
+      final FloatVectorValues vectorValues = in.getFloatVectorValues(field, access);
       if (vectorValues == null) {
         return null;
       }
