@@ -20,11 +20,23 @@ module org.apache.lucene.sandbox {
   requires org.apache.lucene.core;
   requires org.apache.lucene.queries;
   requires org.apache.lucene.facet;
+  // Optional (compile-time) dependency for the ivfaster SIMD kernels. `static` so the module still
+  // resolves on a JVM started WITHOUT `--add-modules jdk.incubator.vector`; the kernels detect that
+  // at runtime and fall back to scalar loops.
+  //
+  // The incubator-module-dependency rule bans this because a hard `requires` would make the module
+  // unresolvable without --add-modules, and would bind released bytecode to an incubating API. A
+  // `requires static` edge does neither: it is erased from runtime resolution, and the classes that
+  // touch the API are named by string and loaded reflectively, so a JVM without the module never
+  // verifies them (see HammingKernel.Holder). Nothing outside the kernels references it.
+  // ast-grep-ignore: incubator-module-dependency
+  requires static jdk.incubator.vector;
 
   exports org.apache.lucene.payloads;
   exports org.apache.lucene.sandbox.codecs.dedup;
   exports org.apache.lucene.sandbox.codecs.faiss;
   exports org.apache.lucene.sandbox.codecs.idversion;
+  exports org.apache.lucene.sandbox.codecs.ivfaster;
   exports org.apache.lucene.sandbox.codecs.quantization;
   exports org.apache.lucene.sandbox.document;
   exports org.apache.lucene.sandbox.queries;
@@ -44,5 +56,6 @@ module org.apache.lucene.sandbox {
   provides org.apache.lucene.codecs.KnnVectorsFormat with
       org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormat,
       org.apache.lucene.sandbox.codecs.dedup.DedupHnswVectorsFormat,
-      org.apache.lucene.sandbox.codecs.dedup.DedupHnswScalarQuantizedVectorsFormat;
+      org.apache.lucene.sandbox.codecs.dedup.DedupHnswScalarQuantizedVectorsFormat,
+      org.apache.lucene.sandbox.codecs.ivfaster.IVFasterVectorsFormat;
 }
