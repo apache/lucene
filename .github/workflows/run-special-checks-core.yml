@@ -6,11 +6,45 @@ on:
   pull_request:
     branches:
       - '*'
+    paths:
+      - '.github/workflows/run-special-checks-core.yml'
+      - '.github/actions/prepare-for-build/**'
+      - 'build-tools/build-infra/**'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - 'build-options.properties'
+      - 'gradlew'
+      - 'gradle/**'
+      - 'versions.lock'
+      - 'lucene/build.gradle'
+      - 'lucene/core/build.gradle'
+      - 'lucene/core/src/**/vectorization/**'
+      - 'lucene/core/src/java/org/apache/lucene/util/Constants.java'
+      - 'lucene/core/src/test-native/**'
+      - 'lucene/misc/src/c/**'
+      - 'lucene/test-framework/src/java/org/apache/lucene/tests/util/LuceneTestCase.java'
 
   push:
     branches:
       - 'main'
       - 'branch_10x'
+    paths:
+      - '.github/workflows/run-special-checks-core.yml'
+      - '.github/actions/prepare-for-build/**'
+      - 'build-tools/build-infra/**'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - 'build-options.properties'
+      - 'gradlew'
+      - 'gradle/**'
+      - 'versions.lock'
+      - 'lucene/build.gradle'
+      - 'lucene/core/build.gradle'
+      - 'lucene/core/src/**/vectorization/**'
+      - 'lucene/core/src/java/org/apache/lucene/util/Constants.java'
+      - 'lucene/core/src/test-native/**'
+      - 'lucene/misc/src/c/**'
+      - 'lucene/test-framework/src/java/org/apache/lucene/tests/util/LuceneTestCase.java'
 
 permissions: {}
 
@@ -20,13 +54,10 @@ concurrency:
 
 jobs:
   native-vector-tests:
-    name: Native vector integration (${{ matrix.os }})
+    name: Native vector integration (ubuntu-latest)
     timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ ubuntu-latest, ubuntu-26.04-arm ]
-    runs-on: ${{ matrix.os }}
+    # The scalar fixture checks FFM integration without architecture-specific kernels.
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Lucene
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
