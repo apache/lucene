@@ -1,0 +1,42 @@
+name: "Run special checks: native vector integration"
+
+on:
+  workflow_dispatch:
+
+  pull_request:
+    branches:
+      - '*'
+
+  push:
+    branches:
+      - 'main'
+      - 'branch_10x'
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
+
+jobs:
+  native-vector-tests:
+    name: Native vector integration (${{ matrix.os }})
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, ubuntu-26.04-arm ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout Lucene
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Prepare Lucene workspace
+        uses: ./.github/actions/prepare-for-build
+
+      - name: Build and test native vector libraries
+        run: >
+          ./gradlew :lucene:core:test
+          --tests org.apache.lucene.internal.vectorization.TestNativeVectorLibrary
+          -Ptests.nativevector.run=true
