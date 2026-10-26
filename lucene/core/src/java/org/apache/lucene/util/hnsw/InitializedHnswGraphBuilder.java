@@ -27,6 +27,7 @@ import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.IORunnable;
+import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.IntsRefBuilder;
 
@@ -127,20 +128,49 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
       int totalNumberOfVectors,
       IORunnable abortCheck)
       throws IOException {
+    return fromGraph(
+        scorerSupplier,
+        beamWidth,
+        seed,
+        initializerGraph,
+        newOrdMap,
+        initializedNodes,
+        totalNumberOfVectors,
+        abortCheck,
+        false);
+  }
 
-    InitializedHnswGraphBuilder builder =
-        new InitializedHnswGraphBuilder(
-            scorerSupplier,
-            beamWidth,
-            seed,
-            new OnHeapHnswGraph(initializerGraph.maxConn(), totalNumberOfVectors),
-            initializedNodes);
-
-    if (abortCheck != null) {
-      builder.setAbortCheck(abortCheck);
+  /**
+   * Same as {@link #fromGraph(RandomVectorScorerSupplier, int, long, HnswGraph, int[], BitSet, int,
+   * IORunnable)}, optionally building the graph off-heap.
+   *
+   * @param offHeap whether to build an {@link OffHeapHnswGraph}
+   */
+  public static InitializedHnswGraphBuilder fromGraph(
+      RandomVectorScorerSupplier scorerSupplier,
+      int beamWidth,
+      long seed,
+      HnswGraph initializerGraph,
+      int[] newOrdMap,
+      BitSet initializedNodes,
+      int totalNumberOfVectors,
+      IORunnable abortCheck,
+      boolean offHeap)
+      throws IOException {
+    BuildableHnswGraph graph =
+        BuildableHnswGraph.create(initializerGraph.maxConn(), totalNumberOfVectors, offHeap);
+    try {
+      InitializedHnswGraphBuilder builder =
+          new InitializedHnswGraphBuilder(scorerSupplier, beamWidth, seed, graph, initializedNodes);
+      if (abortCheck != null) {
+        builder.setAbortCheck(abortCheck);
+      }
+      builder.initializeFromGraph(initializerGraph, newOrdMap);
+      return builder;
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, graph);
+      throw t;
     }
-    builder.initializeFromGraph(initializerGraph, newOrdMap);
-    return builder;
   }
 
   /**
@@ -192,6 +222,32 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
       RandomVectorScorerSupplier scorerSupplier,
       IORunnable abortCheck)
       throws IOException {
+    return (OnHeapHnswGraph)
+        initGraph(
+            initializerGraph,
+            newOrdMap,
+            totalNumberOfVectors,
+            beamWidth,
+            scorerSupplier,
+            abortCheck,
+            false);
+  }
+
+  /**
+   * Same as {@link #initGraph(HnswGraph, int[], int, int, RandomVectorScorerSupplier, IORunnable)},
+   * optionally building the graph off-heap.
+   *
+   * @param offHeap whether to build an {@link OffHeapHnswGraph}
+   */
+  public static BuildableHnswGraph initGraph(
+      HnswGraph initializerGraph,
+      int[] newOrdMap,
+      int totalNumberOfVectors,
+      int beamWidth,
+      RandomVectorScorerSupplier scorerSupplier,
+      IORunnable abortCheck,
+      boolean offHeap)
+      throws IOException {
 
     InitializedHnswGraphBuilder builder =
         fromGraph(
@@ -202,7 +258,8 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
             newOrdMap,
             null,
             totalNumberOfVectors,
-            abortCheck);
+            abortCheck,
+            offHeap);
     return builder.getGraph();
   }
 
@@ -225,7 +282,7 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
       RandomVectorScorerSupplier scorerSupplier,
       int beamWidth,
       long seed,
-      OnHeapHnswGraph initializedGraph,
+      BuildableHnswGraph initializedGraph,
       BitSet initializedNodes)
       throws IOException {
     super(scorerSupplier, beamWidth, seed, initializedGraph);
@@ -243,6 +300,7 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
    * @param newOrdMap maps old ordinals to new ordinals; -1 indicates deleted documents
    * @param totalNumberOfVectors the total number of vectors in the merged graph
    * @param abortCheck optional check invoked during pruning; may be null
+   * @param offHeap whether to build an {@link OffHeapHnswGraph}
    * @return the pruned graph and its deferred repair/rebalance state
    * @throws IOException if an I/O error occurs while pruning
    */
@@ -252,21 +310,24 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
       HnswGraph initializerGraph,
       int[] newOrdMap,
       int totalNumberOfVectors,
-      IORunnable abortCheck)
+      IORunnable abortCheck,
+      boolean offHeap)
       throws IOException {
-    InitializedHnswGraphBuilder builder =
-        new InitializedHnswGraphBuilder(
-            scorerSupplier,
-            beamWidth,
-            randSeed,
-            new OnHeapHnswGraph(initializerGraph.maxConn(), totalNumberOfVectors),
-            null);
-    if (abortCheck != null) {
-      builder.setAbortCheck(abortCheck);
+    BuildableHnswGraph graph =
+        BuildableHnswGraph.create(initializerGraph.maxConn(), totalNumberOfVectors, offHeap);
+    try {
+      InitializedHnswGraphBuilder builder =
+          new InitializedHnswGraphBuilder(scorerSupplier, beamWidth, randSeed, graph, null);
+      if (abortCheck != null) {
+        builder.setAbortCheck(abortCheck);
+      }
+      IntsRef[] disconnectedNodesByLevel =
+          builder.copyAndPruneGraphStructure(initializerGraph, newOrdMap);
+      return new PrunedGraph(builder, disconnectedNodesByLevel, builder.hasDeletes);
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, graph);
+      throw t;
     }
-    IntsRef[] disconnectedNodesByLevel =
-        builder.copyAndPruneGraphStructure(initializerGraph, newOrdMap);
-    return new PrunedGraph(builder, disconnectedNodesByLevel, builder.hasDeletes);
   }
 
   /**
@@ -277,7 +338,7 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
   record PrunedGraph(
       InitializedHnswGraphBuilder builder, IntsRef[] disconnectedNodesByLevel, boolean hasDeletes) {
 
-    OnHeapHnswGraph graph() {
+    BuildableHnswGraph graph() {
       return builder.getGraph();
     }
 
@@ -364,7 +425,7 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
         scorer.setScoringOrdinal(newOrd);
 
         // Copy neighbors
-        NeighborArray newNeighbors = hnsw.getNeighbors(level, newOrd);
+        NeighborArray newNeighbors = hnsw.beginUpdate(level, newOrd, updateScratch(level));
         initializerGraph.seek(level, oldOrd);
         int oldNeighbourCount = 0;
         for (int oldNeighbor = initializerGraph.nextNeighbor();
@@ -378,6 +439,7 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
             newNeighbors.addOutOfOrder(newNeighbor, Float.NaN);
           }
         }
+        hnsw.endUpdate(level, newOrd, newNeighbors);
 
         // Flag a node that lost neighbors and crossed either disconnection threshold.
         int maxConnOnLevel = newNeighbors.maxSize() - 1; // M on upper levels, 2*M on level 0

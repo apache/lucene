@@ -59,7 +59,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
       int numWorker,
       RandomVectorScorerSupplier scorerSupplier,
       int beamWidth,
-      OnHeapHnswGraph hnsw,
+      BuildableHnswGraph hnsw,
       BitSet initializedNodes)
       throws IOException {
     this(taskExecutor, numWorker, scorerSupplier, beamWidth, hnsw, initializedNodes, null);
@@ -76,7 +76,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
       int numWorker,
       RandomVectorScorerSupplier scorerSupplier,
       int beamWidth,
-      OnHeapHnswGraph hnsw,
+      BuildableHnswGraph hnsw,
       BitSet initializedNodes,
       InitializedHnswGraphBuilder.PrunedGraph prunedGraph)
       throws IOException {
@@ -99,7 +99,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
   }
 
   @Override
-  public OnHeapHnswGraph build(int maxOrd) throws IOException {
+  public BuildableHnswGraph build(int maxOrd) throws IOException {
     if (frozen) {
       throw new IllegalStateException("graph has already been built");
     }
@@ -228,7 +228,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
   }
 
   @Override
-  public OnHeapHnswGraph getCompletedGraph() throws IOException {
+  public BuildableHnswGraph getCompletedGraph() throws IOException {
     if (frozen == false) {
       // should already have been called in build(), but just in case
       finish();
@@ -242,7 +242,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
   }
 
   @Override
-  public OnHeapHnswGraph getGraph() {
+  public BuildableHnswGraph getGraph() {
     return workers[0].getGraph();
   }
 
@@ -268,7 +268,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
         RandomVectorScorerSupplier scorerSupplier,
         int beamWidth,
         long seed,
-        OnHeapHnswGraph hnsw,
+        BuildableHnswGraph hnsw,
         HnswLock hnswLock,
         BitSet initializedNodes,
         AtomicInteger workProgress)
@@ -337,14 +337,12 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
 
     @Override
     void graphSeek(HnswGraph graph, int level, int targetNode) {
+      if (nodeBuffer == null) {
+        nodeBuffer = new int[graph.maxConn() * 2 + 1];
+      }
       Lock lock = hnswLock.read(level, targetNode);
       try {
-        NeighborArray neighborArray = ((OnHeapHnswGraph) graph).getNeighbors(level, targetNode);
-        if (nodeBuffer == null || nodeBuffer.length < neighborArray.size()) {
-          nodeBuffer = new int[neighborArray.size()];
-        }
-        size = neighborArray.size();
-        System.arraycopy(neighborArray.nodes(), 0, nodeBuffer, 0, size);
+        size = ((BuildableHnswGraph) graph).copyNeighbors(level, targetNode, nodeBuffer);
       } finally {
         lock.unlock();
       }

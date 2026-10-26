@@ -81,8 +81,13 @@ public class HnswGraphBuilder implements HnswBuilder {
       beamCandidates; // for levels of graph where we add the node
   private final GraphBuilderKnnCollector beamCandidates0;
 
-  protected final OnHeapHnswGraph hnsw;
+  protected final BuildableHnswGraph hnsw;
   protected final HnswLock hnswLock;
+
+  // scratch arrays for mutating neighbor lists of graphs that are not mutated in place, see
+  // BuildableHnswGraph#beginUpdate; null for on-heap graphs
+  private final NeighborArray updateScratch0;
+  private final NeighborArray updateScratch;
 
   protected InfoStream infoStream = InfoStream.getDefault();
   private IORunnable abortCheck;
@@ -124,6 +129,17 @@ public class HnswGraphBuilder implements HnswBuilder {
   }
 
   /**
+   * Creates a builder that adds nodes to the provided graph.
+   *
+   * @param hnsw the graph to build, see {@link BuildableHnswGraph#create(int, int, boolean)}
+   */
+  public static HnswGraphBuilder create(
+      RandomVectorScorerSupplier scorerSupplier, int beamWidth, long seed, BuildableHnswGraph hnsw)
+      throws IOException {
+    return new HnswGraphBuilder(scorerSupplier, beamWidth, seed, hnsw);
+  }
+
+  /**
    * Reads all the vectors from vector values, builds a graph connecting them by their dense
    * ordinals, using the given hyperparameter settings, and returns the resulting graph.
    *
@@ -142,7 +158,7 @@ public class HnswGraphBuilder implements HnswBuilder {
   }
 
   protected HnswGraphBuilder(
-      RandomVectorScorerSupplier scorerSupplier, int beamWidth, long seed, OnHeapHnswGraph hnsw)
+      RandomVectorScorerSupplier scorerSupplier, int beamWidth, long seed, BuildableHnswGraph hnsw)
       throws IOException {
     this(
         scorerSupplier,
@@ -167,7 +183,7 @@ public class HnswGraphBuilder implements HnswBuilder {
       RandomVectorScorerSupplier scorerSupplier,
       int beamWidth,
       long seed,
-      OnHeapHnswGraph hnsw,
+      BuildableHnswGraph hnsw,
       HnswLock hnswLock,
       HnswGraphSearcher graphSearcher)
       throws IOException {
@@ -186,6 +202,8 @@ public class HnswGraphBuilder implements HnswBuilder {
     this.hnsw = hnsw;
     this.hnswLock = hnswLock;
     this.graphSearcher = graphSearcher;
+    this.updateScratch0 = hnsw.newUpdateScratch(0);
+    this.updateScratch = hnsw.newUpdateScratch(1);
     // pick a number that keeps us from scoring TOO much for diversity checking
     // but enough to take advantage of bulk scoring
     this.bulkScoreNodes = new int[MAX_BULK_SCORE_NODES];
@@ -196,7 +214,7 @@ public class HnswGraphBuilder implements HnswBuilder {
   }
 
   @Override
-  public OnHeapHnswGraph build(int maxOrd) throws IOException {
+  public BuildableHnswGraph build(int maxOrd) throws IOException {
     if (frozen) {
       throw new IllegalStateException("This HnswGraphBuilder is frozen and cannot be updated");
     }
@@ -232,7 +250,7 @@ public class HnswGraphBuilder implements HnswBuilder {
   }
 
   @Override
-  public OnHeapHnswGraph getCompletedGraph() throws IOException {
+  public BuildableHnswGraph getCompletedGraph() throws IOException {
     if (!frozen) {
       finish();
     }
@@ -240,7 +258,7 @@ public class HnswGraphBuilder implements HnswBuilder {
   }
 
   @Override
-  public OnHeapHnswGraph getGraph() {
+  public BuildableHnswGraph getGraph() {
     return hnsw;
   }
 
@@ -418,22 +436,26 @@ public class HnswGraphBuilder implements HnswBuilder {
      * is closer to target than it is to any of the already-selected neighbors (ie selected in this method,
      * since the node is new and has no prior neighbors).
      */
-    NeighborArray neighbors = hnsw.getNeighbors(level, node);
     int maxConnOnLevel = level == 0 ? M * 2 : M;
+    NeighborArray scratch = updateScratch(level);
     boolean[] mask;
     if (isLinkRepair && hnswLock != null) {
       // A repaired node is already discoverable, so lock its own array against a concurrent
       // reciprocal write.
       Lock selfLock = hnswLock.write(level, node);
       try {
+        NeighborArray neighbors = hnsw.beginUpdate(level, node, scratch);
         mask =
             selectAndLinkDiverse(node, neighbors, candidates, maxConnOnLevel, scorer, isLinkRepair);
+        hnsw.endUpdate(level, node, neighbors);
       } finally {
         selfLock.unlock();
       }
     } else {
+      NeighborArray neighbors = hnsw.beginUpdate(level, node, scratch);
       mask =
           selectAndLinkDiverse(node, neighbors, candidates, maxConnOnLevel, scorer, isLinkRepair);
+      hnsw.endUpdate(level, node, neighbors);
     }
 
     // Link the selected nodes to the new node, and the new node to the selected nodes (again
@@ -449,44 +471,37 @@ public class HnswGraphBuilder implements HnswBuilder {
       if (hnswLock != null) {
         Lock lock = hnswLock.write(level, nbr);
         try {
-          updateNeighbor(
-              getGraph().getNeighbors(level, nbr),
-              node,
-              candidates.getScores(i),
-              nbr,
-              scorer,
-              isLinkRepair);
+          updateNeighbor(level, nbr, node, candidates.getScores(i), scratch, scorer, isLinkRepair);
         } finally {
           lock.unlock();
         }
       } else {
-        updateNeighbor(
-            hnsw.getNeighbors(level, nbr),
-            node,
-            candidates.getScores(i),
-            nbr,
-            scorer,
-            isLinkRepair);
+        updateNeighbor(level, nbr, node, candidates.getScores(i), scratch, scorer, isLinkRepair);
       }
     }
   }
 
+  final NeighborArray updateScratch(int level) {
+    return level == 0 ? updateScratch0 : updateScratch;
+  }
+
   private void updateNeighbor(
-      NeighborArray nbrsOfNbr,
+      int level,
+      int nbr,
       int node,
       float score,
-      int nbr,
+      NeighborArray scratch,
       UpdateableRandomVectorScorer scorer,
       boolean isLinkRepair)
       throws IOException {
+    NeighborArray nbrsOfNbr = hnsw.beginUpdate(level, nbr, scratch);
     // Only check for duplicates during link repair to avoid performance overhead during normal
     // construction
-    if (isLinkRepair) {
-      for (int j = 0; j < nbrsOfNbr.size(); j++) {
-        if (nbrsOfNbr.nodes()[j] == node) return;
-      }
+    if (isLinkRepair && contains(nbrsOfNbr, node)) {
+      return;
     }
     nbrsOfNbr.addAndEnsureDiversity(node, score, nbr, scorer);
+    hnsw.endUpdate(level, nbr, nbrsOfNbr);
   }
 
   /**
@@ -672,8 +687,8 @@ public class HnswGraphBuilder implements HnswBuilder {
   // Try to link two nodes bidirectionally; the forward connection will always be made.
   // Update notFullyConnected.
   private void link(int level, int n0, int n1, float score, FixedBitSet notFullyConnected) {
-    NeighborArray nbr0 = hnsw.getNeighbors(level, n0);
-    NeighborArray nbr1 = hnsw.getNeighbors(level, n1);
+    NeighborArray scratch = updateScratch(level);
+    NeighborArray nbr0 = hnsw.beginUpdate(level, n0, scratch);
     // must subtract 1 here since the nodes array is one larger than the configured
     // max neighbors (M / 2M).
     // We should have taken care of this check by searching for not-full nodes
@@ -684,12 +699,15 @@ public class HnswGraphBuilder implements HnswBuilder {
     if (nbr0.size() == maxConn) {
       notFullyConnected.clear(n0);
     }
+    hnsw.endUpdate(level, n0, nbr0);
+    NeighborArray nbr1 = hnsw.beginUpdate(level, n1, scratch);
     if (nbr1.size() < maxConn) {
       nbr1.addOutOfOrder(n0, score);
       if (nbr1.size() == maxConn) {
         notFullyConnected.clear(n1);
       }
     }
+    hnsw.endUpdate(level, n1, nbr1);
   }
 
   /**
@@ -733,18 +751,12 @@ public class HnswGraphBuilder implements HnswBuilder {
       if (hnswLock != null) {
         Lock readLock = hnswLock.read(level, node);
         try {
-          NeighborArray existingNeighbors = hnsw.getNeighbors(level, node);
-          int size = existingNeighbors.size();
-          entryPoints = new int[size];
-          System.arraycopy(existingNeighbors.nodes(), 0, entryPoints, 0, size);
+          entryPoints = copyNeighbors(level, node);
         } finally {
           readLock.unlock();
         }
       } else {
-        NeighborArray existingNeighbors = hnsw.getNeighbors(level, node);
-        int size = existingNeighbors.size();
-        entryPoints = new int[size];
-        System.arraycopy(existingNeighbors.nodes(), 0, entryPoints, 0, size);
+        entryPoints = copyNeighbors(level, node);
       }
 
       // Use all existing neighbors as entry points for search
@@ -763,6 +775,13 @@ public class HnswGraphBuilder implements HnswBuilder {
       scratchArray.clear();
       candidates.clear();
     }
+  }
+
+  /** Returns an exact-size copy of the neighbors of a node */
+  private int[] copyNeighbors(int level, int node) {
+    int[] neighbors = new int[hnsw.numNeighbors(level, node)];
+    hnsw.copyNeighbors(level, node, neighbors);
+    return neighbors;
   }
 
   /**
