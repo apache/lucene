@@ -49,6 +49,7 @@ import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.ChecksumIndexInput;
+import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FileDataHint;
 import org.apache.lucene.store.FileTypeHint;
@@ -56,6 +57,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
@@ -243,6 +245,18 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
 
   @Override
   public FloatVectorValues getFloatVectorValues(String field) throws IOException {
+    return withQuantized(field, () -> rawVectorsReader.getFloatVectorValues(field));
+  }
+
+  @Override
+  public FloatVectorValues getFloatVectorValues(String field, DataAccessHint access)
+      throws IOException {
+    return withQuantized(field, () -> rawVectorsReader.getFloatVectorValues(field, access));
+  }
+
+  /** The raw vectors of {@code field} paired with its quantized vectors. */
+  private FloatVectorValues withQuantized(String field, IOSupplier<FloatVectorValues> rawValues)
+      throws IOException {
     FieldEntry fi = fields.get(field);
     if (fi == null) {
       return null;
@@ -257,7 +271,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
               + VectorEncoding.FLOAT32);
     }
 
-    FloatVectorValues rawFloatVectorValues = rawVectorsReader.getFloatVectorValues(field);
+    FloatVectorValues rawFloatVectorValues = rawValues.get();
 
     OffHeapScalarQuantizedVectorValues sqvv = loadQuantizedVectorValues(fi);
 
