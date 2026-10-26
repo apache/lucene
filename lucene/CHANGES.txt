@@ -223,6 +223,11 @@ Improvements
 Optimizations
 ---------------------
 
+* GITHUB#16794: Concurrent HNSW merges now join the other deletion-free graphs into the base graph
+  through their join sets, as serial merges have done since GITHUB#14331, instead of inserting all
+  their vectors with a full search. Graphs now match the serial merge: slightly lower recall at the
+  same ef, but fewer visited nodes. (Lantao Jin)
+
 * GITHUB#16771: Lucene99FlatVectorsWriter now aligns vector data to 4096 bytes for all encodings
   (previously 64 for float32 and 4 for float16 and byte), so a vector whose size divides a page or is
   a multiple of it no longer straddles a page boundary and a rescoring read touches no extra page.
@@ -559,11 +564,6 @@ Improvements
 
 Optimizations
 ---------------------
-
-* GITHUB#16794: Concurrent HNSW merges now join the other deletion-free graphs into the base graph
-  through their join sets, as serial merges have done since GITHUB#14331, instead of inserting all
-  their vectors with a full search. Graphs now match the serial merge: slightly lower recall at the
-  same ef, but fewer visited nodes. (Lantao Jin)
 
 * GITHUB#16706: Reduce the sandboxed dedup vector formats' index size by packing each field
   ordinal to group ordinal mapping at the minimum bit width required for the largest group ordinal,
