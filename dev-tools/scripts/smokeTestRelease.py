@@ -616,6 +616,7 @@ def verifyUnpacked(java: Any, artifact: str, unpackPath: str, gitRevision: str, 
       "gradlew.bat",
       "help",
       "lucene",
+      "SECURITY.md",
       "settings.gradle",
       "versions.lock",
     ]
