@@ -565,11 +565,14 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
   private static long[] transformTableBounds(long[] table, long minValue, long maxValue) {
     int minOrd = Arrays.binarySearch(table, minValue);
     if (minOrd < 0) {
+      // lower bound: (-1 - minOrd) gives back insertionPoint, the index of the first value ≥
+      // minValue.
       minOrd = -1 - minOrd;
     }
     int maxOrd = Arrays.binarySearch(table, maxValue);
     if (maxOrd < 0) {
-      // find the upper bound
+      // upper bound: (-2 - maxOrd) gives insertionPoint - 1, the index of the last value ≤
+      // maxValue.
       maxOrd = -2 - maxOrd;
     }
     return minOrd > maxOrd ? null : new long[] {minOrd, maxOrd};
