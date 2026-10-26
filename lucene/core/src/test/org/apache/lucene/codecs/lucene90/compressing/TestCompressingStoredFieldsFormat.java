@@ -17,14 +17,18 @@
 package org.apache.lucene.codecs.lucene90.compressing;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.lucene104.Lucene104Codec;
 import org.apache.lucene.codecs.lucene90.Lucene90StoredFieldsFormat;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.DocumentStoredFieldVisitor;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.index.CodecReader;
+import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -32,7 +36,10 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ByteArrayDataOutput;
+import org.apache.lucene.store.ByteBuffersDataInput;
+import org.apache.lucene.store.ByteBuffersIndexInput;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.codecs.compressing.CompressingCodec;
 import org.apache.lucene.tests.index.BaseStoredFieldsFormatTestCase;
@@ -60,6 +67,28 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
     assertEquals(expected.length, actual.length);
     for (int i = 0; i < expected.length; i++) {
       assertEquals(expected[i], actual.bytes[actual.offset + i]);
+    }
+  }
+
+  public void testUnknownTypeFlagIsCorruptIndex() throws Exception {
+    IndexInput source =
+        new ByteBuffersIndexInput(
+            new ByteBuffersDataInput(List.of(ByteBuffer.allocate(1))), "test.fdt");
+    ByteArrayDataInput in = new ByteArrayDataInput(new byte[8]);
+    for (int bits : new int[] {6, 7}) {
+      CorruptIndexException readException =
+          expectThrows(
+              CorruptIndexException.class,
+              () ->
+                  Lucene90CompressingStoredFieldsReader.readField(
+                      in, new DocumentStoredFieldVisitor(), null, bits, source));
+      assertTrue(readException.getMessage().contains("test.fdt"));
+
+      CorruptIndexException skipException =
+          expectThrows(
+              CorruptIndexException.class,
+              () -> Lucene90CompressingStoredFieldsReader.skipField(in, bits, source));
+      assertTrue(skipException.getMessage().contains("test.fdt"));
     }
   }
 

@@ -19,7 +19,7 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.document.Document;
@@ -31,82 +31,54 @@ import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.NoReuseHint;
+import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.store.ReadOnceHint;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
 /**
- * A merge reads stored fields front to back, while searches read them at random, and read advice
- * applies to a whole mapping. So a merge opens the data file for itself instead of re-advising the
- * one searches are reading.
+ * Stored fields read at random get a second input for sequential reads, shared by merges and closed
+ * with the reader.
  */
 public class TestStoredFieldsMergeReadAdvice extends LuceneTestCase {
 
-  public void testMergeOpensItsOwnStoredFields() throws Exception {
-    Opens opens = new Opens();
-    try (Directory dir = new RecordingDirectory(newDirectory(), opens)) {
-      IndexWriterConfig iwc = new IndexWriterConfig();
-      iwc.setCodec(TestUtil.getDefaultCodec()); // the merge advice is the default format's
-      iwc.setUseCompoundFile(false); // so the directory sees the data file by name
-      try (IndexWriter w = new IndexWriter(dir, iwc)) {
-        for (int segment = 0; segment < 2; segment++) {
-          for (int i = 0; i < 64; i++) {
-            Document doc = new Document();
-            doc.add(new StoredField("field", "value " + i));
-            w.addDocument(doc);
-          }
-          w.commit();
-        }
-
-        // searches open the segments first, so the merge finds readers advised for random access
-        try (DirectoryReader reader = DirectoryReader.open(w)) {
-          assertEquals(2, reader.leaves().size());
-          opens.clear();
-          w.forceMerge(1);
-
-          // the merge is over, so what it opened is gone even though the segments are still open
-          List<Open> sequential = sequentialOpens(opens);
-          assertFalse(
-              "the merge never opened stored fields for itself: " + opens, sequential.isEmpty());
-          for (Open open : sequential) {
-            assertTrue("the merge kept its stored fields open: " + open, open.closed());
-          }
-        }
+  public void testMergeOpensTheStoredFieldsAgain() throws Exception {
+    List<Open> opens = new CopyOnWriteArrayList<>();
+    List<Open> sequential;
+    try (Directory dir = new RecordingDirectory(newDirectory(), opens);
+        IndexWriter w = writer(dir)) {
+      addSegments(w, 2);
+      // open the segments first, so the merge reuses readers that read at random
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        assertEquals(2, reader.leaves().size());
+        opens.clear();
+        w.forceMerge(1);
+        sequential = sequentialOpens(opens);
+        assertEquals(opens.toString(), 2, sequential.size());
       }
-
-      assertEquals(
-          "the merge re-advised the stored fields searches are reading: " + opens,
-          List.of(),
-          opens.advised());
+    }
+    for (Open open : sequential) {
+      assertTrue("closed with the reader: " + open, open.closed);
     }
   }
 
-  /** The data file is written front to back and, as it is read, not reused. */
   public void testDataIsWrittenSequentiallyAndNotReused() throws Exception {
     List<IOContext> dataWrites = new ArrayList<>();
     try (Directory dir =
-        new FilterDirectory(newDirectory()) {
-          @Override
-          public IndexOutput createOutput(String name, IOContext context) throws IOException {
-            if (name.endsWith(".fdt")) {
-              dataWrites.add(context);
-            }
-            return super.createOutput(name, context);
-          }
-        }) {
-      IndexWriterConfig iwc = new IndexWriterConfig();
-      iwc.setCodec(TestUtil.getDefaultCodec());
-      iwc.setUseCompoundFile(false);
-      try (IndexWriter w = new IndexWriter(dir, iwc)) {
-        for (int segment = 0; segment < 2; segment++) {
-          Document doc = new Document();
-          doc.add(new StoredField("field", "value " + segment));
-          w.addDocument(doc);
-          w.commit();
-        }
-        w.forceMerge(1);
-      }
+            new FilterDirectory(newDirectory()) {
+              @Override
+              public IndexOutput createOutput(String name, IOContext context) throws IOException {
+                if (name.endsWith(".fdt")) {
+                  dataWrites.add(context);
+                }
+                return super.createOutput(name, context);
+              }
+            };
+        IndexWriter w = writer(dir)) {
+      addSegments(w, 2);
+      w.forceMerge(1);
     }
     assertEquals("two flushes and a merge: " + dataWrites, 3, dataWrites.size());
     for (IOContext context : dataWrites) {
@@ -115,93 +87,73 @@ public class TestStoredFieldsMergeReadAdvice extends LuceneTestCase {
     }
   }
 
-  /** Nothing depends on the hook: finishing twice, or never, still leaves the mapping sound. */
-  public void testTheHookIsAHint() throws Exception {
-    Opens opens = new Opens();
-    try (Directory dir = new RecordingDirectory(newDirectory(), opens)) {
-      writeDocuments(dir);
-      List<Open> mapped;
-      try (DirectoryReader reader = DirectoryReader.open(dir)) {
-        StoredFieldsReader fields = ((CodecReader) getOnlyLeafReader(reader)).getFieldsReader();
-        opens.clear();
+  /** Merges share one input, kept until the reader closes. */
+  public void testOneSequentialInputUntilTheReaderCloses() throws Exception {
+    List<Open> opens = new CopyOnWriteArrayList<>();
+    List<Open> sequential;
+    try (Directory dir = new RecordingDirectory(newDirectory(), opens);
+        DirectoryReader reader = openReader(dir)) {
+      StoredFieldsReader fields = ((CodecReader) getOnlyLeafReader(reader)).getFieldsReader();
+      opens.clear();
+      fields.getMergeInstance().finishMerge();
+      fields.getMergeInstance();
+      sequential = sequentialOpens(opens);
+      assertEquals(opens.toString(), 1, sequential.size());
+      assertFalse("kept while the reader is open", sequential.get(0).closed);
+    }
+    assertTrue("closed with the reader", sequential.get(0).closed);
+  }
 
-        StoredFieldsReader first = fields.getMergeInstance();
-        StoredFieldsReader second = fields.getMergeInstance();
-        mapped = sequentialOpens(opens);
-        assertEquals("one mapping for both merge instances: " + opens, 1, mapped.size());
-
-        // twice from one instance, and once from a reader that is not a merge instance
-        first.finishMerge();
-        first.finishMerge();
-        fields.finishMerge();
-        assertFalse("still held by the second instance: " + opens, mapped.get(0).closed());
-
-        second.finishMerge();
-        assertTrue("released by the last instance: " + opens, mapped.get(0).closed());
-      }
+  /** Nothing is opened again when the input already serves sequential reads. */
+  public void testNoSecondInputWhenNotNeeded() throws Exception {
+    List<Open> opens = new CopyOnWriteArrayList<>();
+    try (Directory dir = new RecordingDirectory(newDirectory(), opens, false);
+        DirectoryReader reader = openReader(dir)) {
+      StoredFieldsReader fields = ((CodecReader) getOnlyLeafReader(reader)).getFieldsReader();
+      opens.clear();
+      fields.getMergeInstance();
+      assertEquals(opens.toString(), List.of(), opens);
     }
   }
 
-  /** A merge instance nobody finishes, the way an abandoned merge leaves one behind. */
-  public void testTheMappingIsClosedWithTheReader() throws Exception {
-    Opens opens = new Opens();
-    try (Directory dir = new RecordingDirectory(newDirectory(), opens)) {
-      writeDocuments(dir);
-      List<Open> mapped;
-      try (DirectoryReader reader = DirectoryReader.open(dir)) {
-        StoredFieldsReader fields = ((CodecReader) getOnlyLeafReader(reader)).getFieldsReader();
-        opens.clear();
-
-        assertNotNull(fields.getMergeInstance());
-        mapped = sequentialOpens(opens);
-        assertEquals("one mapping for the merge instance: " + opens, 1, mapped.size());
-        assertFalse("still held by the merge instance: " + opens, mapped.get(0).closed());
-      }
-      assertTrue("closed with the reader: " + mapped.get(0), mapped.get(0).closed());
-    }
-  }
-
-  /** A merge open that fails leaves nothing behind, so a later merge still releases the mapping. */
-  public void testAFailedMergeOpenIsNotCountedAsAMergeInstance() throws Exception {
-    Opens opens = new Opens();
-    AtomicBoolean failMergeOpens = new AtomicBoolean();
-    try (Directory dir =
+  public void testFailedOpenIsRetried() throws Exception {
+    List<Open> opens = new CopyOnWriteArrayList<>();
+    AtomicBoolean fail = new AtomicBoolean();
+    Directory dir =
         new RecordingDirectory(newDirectory(), opens) {
           @Override
           public IndexInput openInput(String name, IOContext context) throws IOException {
-            if (failMergeOpens.get()
+            if (fail.get()
                 && name.endsWith(".fdt")
-                && context.context() == IOContext.Context.MERGE) {
+                && context.hints().contains(DataAccessHint.SEQUENTIAL)) {
               throw new IOException("injected");
             }
             return super.openInput(name, context);
           }
-        }) {
-      writeDocuments(dir);
-      try (DirectoryReader reader = DirectoryReader.open(dir)) {
-        StoredFieldsReader fields = ((CodecReader) getOnlyLeafReader(reader)).getFieldsReader();
-        opens.clear();
-
-        failMergeOpens.set(true);
-        expectThrows(IOException.class, fields::getMergeInstance);
-        assertEquals("a failed open maps nothing: " + opens, List.of(), sequentialOpens(opens));
-
-        failMergeOpens.set(false);
-        StoredFieldsReader merging = fields.getMergeInstance();
-        List<Open> mapped = sequentialOpens(opens);
-        assertEquals("one mapping for the one merge instance: " + opens, 1, mapped.size());
-
-        merging.finishMerge();
-        assertTrue("released by the only merge instance: " + opens, mapped.get(0).closed());
-      }
+        };
+    try (dir;
+        DirectoryReader reader = openReader(dir)) {
+      StoredFieldsReader fields = ((CodecReader) getOnlyLeafReader(reader)).getFieldsReader();
+      opens.clear();
+      fail.set(true);
+      expectThrows(IOException.class, fields::getMergeInstance);
+      assertEquals(opens.toString(), List.of(), sequentialOpens(opens));
+      fail.set(false);
+      fields.getMergeInstance();
+      assertEquals(opens.toString(), 1, sequentialOpens(opens).size());
     }
+    assertTrue("closed with the reader", opens.getLast().closed);
   }
 
-  private static void writeDocuments(Directory dir) throws IOException {
+  private static IndexWriter writer(Directory dir) throws IOException {
     IndexWriterConfig iwc = new IndexWriterConfig();
-    iwc.setCodec(TestUtil.getDefaultCodec()); // the merge advice is the default format's
-    iwc.setUseCompoundFile(false); // so the directory sees the data file by name
-    try (IndexWriter w = new IndexWriter(dir, iwc)) {
+    iwc.setCodec(TestUtil.getDefaultCodec());
+    iwc.setUseCompoundFile(false);
+    return new IndexWriter(dir, iwc);
+  }
+
+  private static void addSegments(IndexWriter w, int segments) throws IOException {
+    for (int segment = 0; segment < segments; segment++) {
       for (int i = 0; i < 64; i++) {
         Document doc = new Document();
         doc.add(new StoredField("field", "value " + i));
@@ -211,129 +163,95 @@ public class TestStoredFieldsMergeReadAdvice extends LuceneTestCase {
     }
   }
 
-  /** The opens a merge made for itself: the data file, asked for front to back. */
-  private static List<Open> sequentialOpens(Opens opens) {
-    List<Open> sequential = new ArrayList<>();
-    for (Open open : opens.all()) {
-      // integrity checks read a file once, front to back, and say so with READONCE
-      if (open.name().endsWith(".fdt")
-          && open.hint() == DataAccessHint.SEQUENTIAL
-          && open.hints().contains(ReadOnceHint.INSTANCE) == false) {
-        assertTrue(
-            "a merge reads the data file once and does not come back: " + open,
-            open.hints().contains(NoReuseHint.INSTANCE));
-        assertSame(
-            "the open says a merge is reading, so a directory can route it: " + open,
-            IOContext.Context.MERGE,
-            open.context());
-        sequential.add(open);
-      }
+  /** Opens a reader over a single segment of stored fields. */
+  private static DirectoryReader openReader(Directory dir) throws IOException {
+    try (IndexWriter w = writer(dir)) {
+      addSegments(w, 1);
+    }
+    return DirectoryReader.open(dir);
+  }
+
+  /** The opens of the data file for sequential reads, other than integrity checks. */
+  private static List<Open> sequentialOpens(List<Open> opens) {
+    List<Open> sequential =
+        opens.stream()
+            .filter(o -> o.name.endsWith(".fdt"))
+            .filter(o -> o.context.hints().contains(DataAccessHint.SEQUENTIAL))
+            .filter(o -> o.context.hints().contains(ReadOnceHint.INSTANCE) == false)
+            .toList();
+    for (Open open : sequential) {
+      assertTrue(open.toString(), open.context.hints().contains(NoReuseHint.INSTANCE));
     }
     return sequential;
   }
 
   /** One {@link Directory#openInput} call. */
   private static final class Open {
-    private final String name;
-    private final IOContext context;
-    private volatile boolean closed;
+    final String name;
+    final IOContext context;
+    volatile boolean closed;
 
     Open(String name, IOContext context) {
       this.name = name;
       this.context = context;
     }
 
-    String name() {
-      return name;
-    }
-
-    Set<IOContext.FileOpenHint> hints() {
-      return context.hints();
-    }
-
-    DataAccessHint hint() {
-      return context.hints(DataAccessHint.class).findFirst().orElse(null);
-    }
-
-    IOContext.Context context() {
-      return context.context();
-    }
-
-    boolean closed() {
-      return closed;
-    }
-
     @Override
     public String toString() {
-      return name + " [hint=" + hint() + " closed=" + closed + "]";
+      return name + context.hints() + (closed ? " closed" : "");
     }
   }
 
-  private static final class Opens {
-    private final List<Open> opens = new ArrayList<>();
-    private final List<String> advised = new ArrayList<>();
-
-    synchronized Open record(String name, IOContext context) {
-      Open open = new Open(name, context);
-      opens.add(open);
-      return open;
-    }
-
-    /** Files whose advice was changed after they were opened. */
-    synchronized void recordAdvice(String name) {
-      advised.add(name);
-    }
-
-    synchronized List<Open> all() {
-      return List.copyOf(opens);
-    }
-
-    synchronized List<String> advised() {
-      return List.copyOf(advised);
-    }
-
-    synchronized void clear() {
-      opens.clear();
-      advised.clear();
-    }
-
-    @Override
-    public synchronized String toString() {
-      return "opens: " + opens + ", advised: " + advised;
-    }
-  }
-
+  /**
+   * Records opens. Its inputs are efficient for a context like memory-mapped inputs using {@link
+   * MMapDirectory#ADVISE_BY_CONTEXT}, or for every context.
+   */
   private static class RecordingDirectory extends FilterDirectory {
-    private final Opens opens;
+    private final List<Open> opens;
+    private final boolean advises;
 
-    RecordingDirectory(Directory in, Opens opens) {
+    RecordingDirectory(Directory in, List<Open> opens) {
+      this(in, opens, true);
+    }
+
+    RecordingDirectory(Directory in, List<Open> opens, boolean advises) {
       super(in);
       this.opens = opens;
+      this.advises = advises;
     }
 
     @Override
     public IndexInput openInput(String name, IOContext context) throws IOException {
-      Open open = opens.record(name, context);
-      return new RecordingIndexInput(super.openInput(name, context), name, open, opens);
+      Open open = new Open(name, context);
+      opens.add(open);
+      return new RecordingIndexInput(super.openInput(name, context), open, context, advises);
     }
   }
 
   private static final class RecordingIndexInput extends FilterIndexInput {
-    private final String name;
     private final Open open;
-    private final Opens opens;
+    // the context the pages of this input were advised with
+    private final IOContext context;
+    private final boolean advises;
 
-    RecordingIndexInput(IndexInput in, String name, Open open, Opens opens) {
-      super("Recording(" + name + ")", in);
-      this.name = name;
+    RecordingIndexInput(IndexInput in, Open open, IOContext context, boolean advises) {
+      super("Recording(" + open.name + ")", in);
       this.open = open;
-      this.opens = opens;
+      this.context = context;
+      this.advises = advises;
     }
 
     @Override
-    public void updateIOContext(IOContext context) throws IOException {
-      opens.recordAdvice(name);
-      in.updateIOContext(context);
+    public boolean isEfficientFor(IOContext other) {
+      if (advises == false) {
+        return true;
+      }
+      ReadAdvice advice = MMapDirectory.ADVISE_BY_CONTEXT.apply(open.name, context).orElseThrow();
+      ReadAdvice otherAdvice =
+          MMapDirectory.ADVISE_BY_CONTEXT.apply(open.name, other).orElseThrow();
+      return advice == ReadAdvice.NORMAL
+          || otherAdvice == ReadAdvice.NORMAL
+          || advice == otherAdvice;
     }
 
     @Override
@@ -344,12 +262,13 @@ public class TestStoredFieldsMergeReadAdvice extends LuceneTestCase {
 
     @Override
     public IndexInput clone() {
-      return new RecordingIndexInput(in.clone(), name, open, opens);
+      return new RecordingIndexInput(in.clone(), open, context, advises);
     }
 
     @Override
     public IndexInput slice(String sliceDescription, long offset, long length) throws IOException {
-      return new RecordingIndexInput(in.slice(sliceDescription, offset, length), name, open, opens);
+      return new RecordingIndexInput(
+          in.slice(sliceDescription, offset, length), open, context, advises);
     }
   }
 }
