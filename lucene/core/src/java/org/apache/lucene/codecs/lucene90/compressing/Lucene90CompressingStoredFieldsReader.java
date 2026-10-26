@@ -698,6 +698,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
       }
 
       final int bits = (int) (infoAndBits & TYPE_MASK);
+      assert bits <= NUMERIC_DOUBLE : "bits=" + Integer.toHexString(bits);
 
       switch (visitor.needsField(fieldInfo)) {
         case YES:
