@@ -270,6 +270,8 @@ Optimizations
 * GITHUB#16619: DirectIODirectory's slice() no longer performs a blocking direct read when
   creating a slice; the first read resolves the deferred start position instead. (John Maurice)
 
+* GITHUB#16835: Speed up rangeIntoBitSet for table-encoded numeric and sorted numeric DocValues. (Ke Wei)
+
 Bug Fixes
 ---------------------
 * GITHUB#16441: MultiFieldQueryParser + per-field boosts produce wrong Occur under AND default operator (Egor Potemkin, Olivier Jaquemet)
@@ -705,8 +707,6 @@ Optimizations
 * GITHUB#16089: Upgrade DocIdSetBuilder to use FixedBitSet eagerly once exceeding the threshold (Ke Wei)
 
 * GITHUB#16119: Optimize byte array writes in OutputStreamIndexOutput to remove unnecessary overhead. (neoremind)
-
-* GITHUB#16835: Speed up rangeIntoBitSet for table-encoded numeric and sorted numeric DocValues. (Ke Wei)
 
 Bug Fixes
 ---------------------
