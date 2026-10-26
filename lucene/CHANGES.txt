@@ -793,6 +793,18 @@ Bug Fixes
 * GITHUB#16855: Stop BlockMaxConjunctionBulkScorer from iterating windows past maxDoc.
   (Michalis Papadimitriou)
 
+* GITHUB#16884: Fix IndexSortSortedNumericDocValuesRangeQuery#count returning a wrong count on
+  multi-valued fields, because the index sort only reflects one value per document.
+  (Salvatore Campagna, Houston Putman)
+
+* GITHUB#16885: Fix the range queries behind SortedNumericDocValuesField, NumericDocValuesField,
+  SortedSetDocValuesField and SortedDocValuesField#newSlowRangeQuery returning wrong hits on
+  segments with document blocks when the field is the primary index sort field, has a doc values
+  skipper and every document has a value. (Salvatore Campagna, Houston Putman)
+
+* GITHUB#16886: Fix IndexSortSortedNumericDocValuesRangeQuery returning wrong hits and counts, or
+  throwing IllegalArgumentException, on segments with document blocks. (Salvatore Campagna, Houston Putman)
+
 Build
 ---------------------
 
