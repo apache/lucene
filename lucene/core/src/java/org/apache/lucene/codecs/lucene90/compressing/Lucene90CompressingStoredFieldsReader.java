@@ -102,14 +102,14 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   private final long[] prefetchedBlockIDCache;
   private int prefetchedBlockIDCacheIndex;
   private volatile boolean closed;
-  // to open the data file again for sequential reads
+  // to open the data file again for merge instances
   private final Directory directory;
   private final String fieldsStreamFN;
   private final IOContext dataContext;
   // the reader this one was cloned from
   private final Lucene90CompressingStoredFieldsReader original;
-  // the input for sequential reads, opened lazily and closed with this reader
-  private IndexInput sequentialFieldsStream;
+  // the input for merges and other sequential reads, opened lazily and closed with this reader
+  private IndexInput mergeInstanceFieldsStream;
 
   // used by clone
   private Lucene90CompressingStoredFieldsReader(
@@ -271,19 +271,19 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   /** Close the underlying {@link IndexInput}s. */
   @Override
   public void close() throws IOException {
-    IndexInput sequential;
+    IndexInput merge;
     synchronized (this) {
       if (closed) {
         return;
       }
       closed = true;
-      sequential =
-          original == this && sequentialFieldsStream != fieldsStream
-              ? sequentialFieldsStream
+      merge =
+          original == this && mergeInstanceFieldsStream != fieldsStream
+              ? mergeInstanceFieldsStream
               : null;
-      sequentialFieldsStream = null;
+      mergeInstanceFieldsStream = null;
     }
-    IOUtils.close(indexReader, fieldsStream, sequential);
+    IOUtils.close(indexReader, fieldsStream, merge);
   }
 
   static void readField(
@@ -735,37 +735,38 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   public StoredFieldsReader getMergeInstance() throws IOException {
     ensureOpen();
     return new Lucene90CompressingStoredFieldsReader(
-        this, true, original.sequentialFieldsStream().clone());
+        this, true, original.mergeInstanceFieldsStream().clone());
   }
 
-  /** Returns the input for sequential reads, opening the data file again if needed. */
-  private synchronized IndexInput sequentialFieldsStream() throws IOException {
+  /** Returns the input for merge instances, opening the data file again if needed. */
+  private synchronized IndexInput mergeInstanceFieldsStream() throws IOException {
     assert original == this;
     ensureOpen();
-    if (sequentialFieldsStream == null) {
-      IOContext sequential = sequentialContext();
-      if (fieldsStream.isEfficientFor(sequential)) {
-        sequentialFieldsStream = fieldsStream;
+    if (mergeInstanceFieldsStream == null) {
+      IOContext context = mergeInstanceContext();
+      if (fieldsStream.isEfficientFor(context)) {
+        mergeInstanceFieldsStream = fieldsStream;
       } else {
         try {
-          sequentialFieldsStream = directory.openInput(fieldsStreamFN, sequential);
+          mergeInstanceFieldsStream = directory.openInput(fieldsStreamFN, context);
         } catch (@SuppressWarnings("unused") FileNotFoundException | NoSuchFileException e) {
           // an open reader outlives its files, so read through the input it already holds
-          sequentialFieldsStream = fieldsStream;
+          mergeInstanceFieldsStream = fieldsStream;
         }
       }
     }
-    return sequentialFieldsStream;
+    return mergeInstanceFieldsStream;
   }
 
-  /** Returns the context of the data file with sequential access. */
-  private IOContext sequentialContext() {
-    return dataContext.withHints(
-        Stream.concat(
-                dataContext.hints().stream()
-                    .filter(hint -> hint instanceof DataAccessHint == false),
-                Stream.of(DataAccessHint.SEQUENTIAL))
-            .toArray(IOContext.FileOpenHint[]::new));
+  /** Returns the context merge instances read the data file with. */
+  private IOContext mergeInstanceContext() {
+    return IOContext.merge()
+        .withHints(
+            Stream.concat(
+                    dataContext.hints().stream()
+                        .filter(hint -> hint instanceof DataAccessHint == false),
+                    Stream.of(DataAccessHint.SEQUENTIAL))
+                .toArray(IOContext.FileOpenHint[]::new));
   }
 
   int getVersion() {

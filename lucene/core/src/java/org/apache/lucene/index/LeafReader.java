@@ -24,6 +24,7 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopDocsCollector;
 import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.search.TotalHits;
+import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.LiveDocs;
 
@@ -218,6 +219,20 @@ public abstract non-sealed class LeafReader extends IndexReader {
    * @lucene.experimental
    */
   public abstract FloatVectorValues getFloatVectorValues(String field) throws IOException;
+
+  /**
+   * Returns {@link FloatVectorValues} for this field, to be read with the given access pattern,
+   * such as {@link DataAccessHint#SEQUENTIAL} to read all vectors in order, or null if no {@link
+   * FloatVectorValues} were indexed. The returned instance should only be used by a single thread.
+   *
+   * <p>The default implementation ignores {@code access}.
+   *
+   * @lucene.experimental
+   */
+  public FloatVectorValues getFloatVectorValues(String field, DataAccessHint access)
+      throws IOException {
+    return getFloatVectorValues(field);
+  }
 
   /**
    * Returns {@link ByteVectorValues} for this field, or null if no {@link ByteVectorValues} were
