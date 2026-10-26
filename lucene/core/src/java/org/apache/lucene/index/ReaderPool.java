@@ -52,6 +52,7 @@ final class ReaderPool implements Closeable {
   private final InfoStream infoStream;
   private final SegmentInfos segmentInfos;
   private final String softDeletesField;
+  private final LiveIndexWriterConfig config;
   // This is a "write once" variable (like the organic dye
   // on a DVD-R that may or may not be heated by a laser and
   // then cooled to permanently record the event): it's
@@ -75,7 +76,8 @@ final class ReaderPool implements Closeable {
       LongSupplier completedDelGenSupplier,
       InfoStream infoStream,
       String softDeletesField,
-      StandardDirectoryReader reader)
+      StandardDirectoryReader reader,
+      LiveIndexWriterConfig config)
       throws IOException {
     this.directory = directory;
     this.originalDirectory = originalDirectory;
@@ -84,6 +86,7 @@ final class ReaderPool implements Closeable {
     this.completedDelGenSupplier = completedDelGenSupplier;
     this.infoStream = infoStream;
     this.softDeletesField = softDeletesField;
+    this.config = config;
     if (reader != null) {
       // Pre-enroll all segment readers into the reader pool; this is necessary so
       // any in-memory NRT live docs are correctly carried over, and so NRT readers
@@ -106,7 +109,8 @@ final class ReaderPool implements Closeable {
             new ReadersAndUpdates(
                 segmentInfos.getIndexCreatedVersionMajor(),
                 newReader,
-                newPendingDeletes(newReader, newReader.getOriginalSegmentInfo())));
+                newPendingDeletes(newReader, newReader.getOriginalSegmentInfo()),
+                config));
       }
     }
   }
@@ -266,7 +270,6 @@ final class ReaderPool implements Closeable {
         any |=
             rld.writeFieldUpdates(
                 directory, fieldNumbers, completedDelGenSupplier.getAsLong(), infoStream);
-        rld.setIsMerging();
       }
     }
     return any;
@@ -404,7 +407,7 @@ final class ReaderPool implements Closeable {
       }
       rld =
           new ReadersAndUpdates(
-              segmentInfos.getIndexCreatedVersionMajor(), info, newPendingDeletes(info));
+              segmentInfos.getIndexCreatedVersionMajor(), info, newPendingDeletes(info), config);
       // Steal initial reference:
       readerMap.put(info, rld);
     } else {

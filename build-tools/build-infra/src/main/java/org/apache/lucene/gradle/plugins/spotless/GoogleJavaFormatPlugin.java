@@ -68,10 +68,16 @@ public class GoogleJavaFormatPlugin extends LuceneGradlePlugin {
     tasks.named("check", check -> check.dependsOn(checkTask));
 
     var fileStates = project.getLayout().getBuildDirectory().file("gjf-file-states.json");
+    var formatterVersion =
+        getVersionCatalog(project)
+            .findLibrary("gjf")
+            .orElseThrow()
+            .map(dep -> dep.getModule() + ":" + dep.getVersionConstraint().getRequiredVersion());
     for (var t : List.of(applyTask, checkTask)) {
       t.configure(
           task -> {
             task.getBatchSize().set(batchSizeOption);
+            task.getFormatterVersion().set(formatterVersion);
             task.dependsOn(":" + CheckEnvironmentPlugin.TASK_CHECK_JDK_INTERNALS_EXPOSED_TO_GRADLE);
             task.getFileStateCache().set(fileStates);
           });

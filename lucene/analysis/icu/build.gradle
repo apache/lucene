@@ -65,7 +65,7 @@ def icupkg
 if (Os.isFamily(Os.FAMILY_WINDOWS)) {
   icuBinDir = file("${icuBuildDir}/bin64")
   gennorm = file("${icuBinDir}/gennorm2.exe")
-  icupkg =  file("${icuBinDir}/icupkg.exe")
+  icupkg = file("${icuBinDir}/icupkg.exe")
 } else {
   icuBinDir = file("${icuBuildDir}/icu/source/bin")
   gennorm = file("${icuBinDir}/gennorm2")

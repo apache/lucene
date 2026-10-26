@@ -20,26 +20,24 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
-import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorSimilarityFunction;
 
 /**
- * A {@link DoubleValuesSource} that computes vector similarity between a query vector and raw full
- * precision vectors indexed in provided {@link org.apache.lucene.document.KnnFloatVectorField} in
- * documents.
+ * A {@link DoubleValuesSource} that computes vector similarity between a query vector and the raw
+ * full-precision vectors indexed in the provided {@link
+ * org.apache.lucene.document.KnnFloatVectorField} in documents.
  */
-public class FullPrecisionFloatVectorSimilarityValuesSource extends DoubleValuesSource {
+public class FullPrecisionFloatVectorSimilarityValuesSource
+    extends AbstractFullPrecisionVectorSimilarityValuesSource {
 
   private final float[] queryVector;
-  private final String fieldName;
-  private VectorSimilarityFunction vectorSimilarityFunction;
 
   /**
-   * Creates a {@link DoubleValuesSource} that returns vector similarity score between provided
-   * query vector and field for documents.
+   * Creates a {@link DoubleValuesSource} that returns the vector similarity score between the
+   * provided query vector and the field for documents.
    *
    * @param vector the query vector
    * @param fieldName the field name of the {@link org.apache.lucene.document.KnnFloatVectorField}
@@ -47,15 +45,14 @@ public class FullPrecisionFloatVectorSimilarityValuesSource extends DoubleValues
    */
   public FullPrecisionFloatVectorSimilarityValuesSource(
       float[] vector, String fieldName, VectorSimilarityFunction vectorSimilarityFunction) {
+    super(fieldName, vectorSimilarityFunction);
     this.queryVector = vector;
-    this.fieldName = fieldName;
-    this.vectorSimilarityFunction = vectorSimilarityFunction;
   }
 
   /**
-   * Creates a {@link DoubleValuesSource} that returns vector similarity score between provided
-   * query vector and field for documents. Uses the configured vector similarity function for the
-   * field.
+   * Creates a {@link DoubleValuesSource} that returns the vector similarity score between the
+   * provided query vector and the field for documents, using the similarity function configured for
+   * the field.
    *
    * @param vector the query vector
    * @param fieldName the field name of the {@link org.apache.lucene.document.KnnFloatVectorField}
@@ -64,69 +61,30 @@ public class FullPrecisionFloatVectorSimilarityValuesSource extends DoubleValues
     this(vector, fieldName, null);
   }
 
-  /** Sugar to fetch full precision similarity score values */
-  public DoubleValues getSimilarityScores(LeafReaderContext ctx) throws IOException {
-    return getValues(ctx, null);
+  @Override
+  protected KnnVectorValues getVectorValues(LeafReaderContext ctx) throws IOException {
+    return ctx.reader().getFloatVectorValues(fieldName);
   }
 
   @Override
-  public DoubleValues getValues(LeafReaderContext ctx, DoubleValues scores) throws IOException {
-    final FloatVectorValues vectorValues = ctx.reader().getFloatVectorValues(fieldName);
-    if (vectorValues == null) {
-      FloatVectorValues.checkField(ctx.reader(), fieldName);
-      return DoubleValues.EMPTY;
-    }
-    final FieldInfo fi = ctx.reader().getFieldInfos().fieldInfo(fieldName);
-    if (fi.getVectorDimension() != queryVector.length) {
-      throw new IllegalArgumentException(
-          "Query vector dimension does not match field dimension: "
-              + queryVector.length
-              + " != "
-              + fi.getVectorDimension());
-    }
-
-    if (vectorSimilarityFunction == null) {
-      VectorScorer scorer = vectorValues.rescorer(queryVector);
-      if (scorer == null) {
-        return DoubleValues.EMPTY;
-      }
-      DocIdSetIterator iterator = scorer.iterator();
-      return new DoubleValues() {
-        @Override
-        public double doubleValue() throws IOException {
-          return scorer.score();
-        }
-
-        @Override
-        public boolean advanceExact(int doc) throws IOException {
-          return doc >= iterator.docID()
-              && (iterator.docID() == doc || iterator.advance(doc) == doc);
-        }
-      };
-    }
-    final KnnVectorValues.DocIndexIterator iterator = vectorValues.iterator();
-    return new DoubleValues() {
-      @Override
-      public double doubleValue() throws IOException {
-        return vectorSimilarityFunction.compare(
-            queryVector, vectorValues.vectorValue(iterator.index()));
-      }
-
-      @Override
-      public boolean advanceExact(int doc) throws IOException {
-        return doc >= iterator.docID() && (iterator.docID() == doc || iterator.advance(doc) == doc);
-      }
-    };
+  protected void checkField(LeafReaderContext ctx) {
+    FloatVectorValues.checkField(ctx.reader(), fieldName);
   }
 
   @Override
-  public boolean needsScores() {
-    return false;
+  protected int queryDimension() {
+    return queryVector.length;
   }
 
   @Override
-  public DoubleValuesSource rewrite(IndexSearcher reader) throws IOException {
-    return this;
+  protected VectorScorer fullPrecisionRescorer(KnnVectorValues vectorValues) throws IOException {
+    return ((FloatVectorValues) vectorValues).rescorer(queryVector);
+  }
+
+  @Override
+  protected double compareToQuery(KnnVectorValues vectorValues, int ord) throws IOException {
+    return vectorSimilarityFunction.compare(
+        queryVector, ((FloatVectorValues) vectorValues).vectorValue(ord));
   }
 
   @Override
@@ -150,14 +108,9 @@ public class FullPrecisionFloatVectorSimilarityValuesSource extends DoubleValues
     return "FullPrecisionFloatVectorSimilarityValuesSource(fieldName="
         + fieldName
         + " vectorSimilarityFunction="
-        + vectorSimilarityFunction.name()
+        + vectorSimilarityFunction
         + " queryVector="
         + Arrays.toString(queryVector)
         + ")";
-  }
-
-  @Override
-  public boolean isCacheable(LeafReaderContext ctx) {
-    return true;
   }
 }

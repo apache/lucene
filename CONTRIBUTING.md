@@ -37,33 +37,33 @@ Some build tasks (in particular `./gradlew check`) require Perl and Python 3.
 
 ### Building with Gradle
 
-Lucene uses [Gradle](https://gradle.org/) for build control. Gradle is itself Java-based and may be incompatible with newer Java versions; you can still build and test Lucene with these Java releases, see [jvms.txt](./help/jvms.txt) for more information.
+Lucene uses [Gradle](https://gradle.org/) for build control. Gradle is itself Java-based and may be incompatible with newer Java versions; you can still build and test Lucene with these Java releases, see [help/jvms.md](./help/jvms.md) for more information.
 
 NOTE: DO NOT use the `gradle` command that is perhaps installed on your machine. This may result in using a different gradle version than the project requires and this is known to lead to very cryptic errors. The "gradle wrapper" (`gradlew` script) does everything required to build the project from scratch: it downloads the correct version of gradle, sets up sane local configurations and is tested on multiple environments.
 
 The first time you run gradlew, it will create a file "gradle.properties" that contains machine-specific settings. Normally you can use this file as-is, but it can be modified if necessary.
 
-Type `./gradlew helpWorkflow` to show typical workflow tasks ([help/workflow.txt](./help/workflow.txt)).
+Type `./gradlew helpWorkflow` to show typical workflow tasks ([help/workflow.md](./help/workflow.md)).
 
 Also run `./gradlew help`, this will print a list of help guides that introduce and explain
 various parts of the build system, including typical workflow tasks.
 
 ### Code formatting and checks
 
-Lucene uses [prek](https://github.com/j178/prek) for fast pre-commit validation. Validate your staged changes with `uvx prek`, Type `./gradlew helpPrecommit` for more information: [help/precommit.txt](help/precommit.txt).
+Lucene uses [prek](https://github.com/j178/prek) for fast pre-commit validation. Validate your staged changes with `uvx prek`, Type `./gradlew helpPrecommit` for more information: [help/precommit.md](./help/precommit.md).
 
-If you've modified any sources, run `./gradlew tidy` to apply code formatting conventions automatically (see [help/formatting.txt](https://github.com/apache/lucene/blob/main/help/formatting.txt)).
+If you've modified any sources, run `./gradlew tidy` to apply code formatting conventions automatically (see [help/formatting.md](./help/formatting.md)).
 
-Please make sure that all unit tests and validations succeed before constructing your patch: `./gradlew check`. This will assemble Lucene and run all validation tasks (including tests). There are various commands to check the code; type `./gradlew helpTest` for more information ([help/tests.txt](./help/tests.txt)).
+Please make sure that all unit tests and validations succeed before constructing your patch: `./gradlew check`. This will assemble Lucene and run all validation tasks (including tests). There are various commands to check the code; type `./gradlew helpTest` for more information ([help/tests.md](./help/tests.md)).
 
 In case your contribution fixes a bug, please create a new test case that fails before your fix, to show the presence of the bug and ensure it never re-occurs. A test case showing the presence of a bug is also a good contribution by itself.
 
 ### IDE support
 
 - *IntelliJ* - IntelliJ idea can import and build gradle-based projects out of the box. It will default to running tests by calling the gradle wrapper, and while this works, it is can be a bit slow. If instead you configure IntelliJ to use its own built-in test runner by (in 2024 version) navigating to settings for Build Execution & Deployment/Build Tools/Gradle (under File/Settings menu on some platforms) and selecting "Build and Run using: IntelliJ IDEA" and "Run Tests using: IntelliJ IDEA", then some tests will run faster. However some other tests will not run using this configuration.
-- *Eclipse* - Basic support ([help/IDEs.txt](https://github.com/apache/lucene/blob/main/help/IDEs.txt#L7)).
-- *VSCode* - Basic support ([help/IDEs.txt](https://github.com/apache/lucene/blob/main/help/IDEs.txt#L23)).
-- *Neovim* - Basic support ([help/IDEs.txt](https://github.com/apache/lucene/blob/main/help/IDEs.txt#L32)).
+- *Eclipse* - Basic support ([help/IDEs.md](./help/IDEs.md#eclipse)).
+- *VSCode* - Basic support ([help/IDEs.md](./help/IDEs.md#vscode)).
+- *Neovim* - Basic support ([help/IDEs.md](./help/IDEs.md#neovim)).
 - *Netbeans* - Not tested.
 
 ## Benchmarking
@@ -77,6 +77,8 @@ The instructions for running the benchmarks can be found in the luceneutil [READ
 
 The Lucene community is also interested in other implementations of these benchmark tasks.
 Feel free to share your findings (especially if your implementation performs better!) through the [Lucene mailing lists](https://lucene.apache.org/core/discussion.html) or open [PRs](https://github.com/mikemccand/luceneutil/pulls), [issues](https://github.com/mikemccand/luceneutil/issues) on the luceneutil project directly.
+
+A note on micro-benchmarks: one-off JMH benchmarks used to validate a change generally shouldn't be committed. Just drop the benchmark and its numbers in the PR description so reviewers can see the evidence. Only add benchmarks to the dedicated JMH [module](https://github.com/apache/lucene/tree/main/lucene/benchmark-jmh) if they have lasting value and can be reused in the future.
 
 ## Contributing your work
 
@@ -104,6 +106,10 @@ Before creating your patch, you may want to get 'main' up to date with the lates
 
 You may want to add a CHANGES entry to [CHANGES.txt](./lucene/CHANGES.txt). A CHANGES entry should start with the issue or pull request number `GITHUB#XXX` that is followed by the description of the change and contributors' name. Please see the existing entries for reference.
 
+### Use of AI
+
+We require all use of AI in contributions to follow our [AI Policy](AI_POLICY.md).
+
 ## Stay involved
 
 Contributors should join the [Lucene mailing lists](https://lucene.apache.org/core/discussion.html). In particular, the commit list (to see changes as they are made), the dev list (to join discussions of changes) and the user list (to help others).
@@ -123,3 +129,9 @@ The rough criteria for picking your first issues are:
 ## Developer tips
 
 For more contribution guidelines and tips, see [DeveloperTips](https://cwiki.apache.org/confluence/display/LUCENE/DeveloperTips).
+
+## Security issues
+
+Please do not report suspected security vulnerabilities through public GitHub issues or pull requests. Follow the process described in [SECURITY.md](./SECURITY.md) instead. That document also explains what is in scope.
+
+If your findings are not in scope of a security issue, feel free to open a public pull request or public issue!

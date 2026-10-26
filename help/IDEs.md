@@ -1,0 +1,71 @@
+# IDE support
+
+## IntelliJ IDEA
+
+Importing the project as a gradle project should just run out of the box.
+
+## Eclipse
+
+Run the following to set up Eclipse project files:
+
+```bash
+./gradlew eclipse
+```
+
+then import the project into Eclipse with:
+
+```text
+File -> Import... -> Existing Project into Workspace
+```
+
+Please note that Eclipse does not distinguish between sub-projects and package sets (main/ test) so pretty much all
+the sources and dependencies are available in one large bin.
+
+## VSCode
+
+Run the following to set up Eclipse project files:
+
+```bash
+./gradlew eclipse
+```
+
+Open the lucene checkout in VSCode.
+
+## GitHub Codespaces
+
+- Fork the apache/lucene repository
+- Browse to <https://github.com/codespaces/new>
+- Repository: yourfork/lucene
+- Click "Create codespace"
+
+## Neovim
+
+Run the following to set up Eclipse project files:
+
+```bash
+./gradlew eclipse
+```
+
+Install jdtls: <https://projects.eclipse.org/projects/eclipse.jdt.ls>
+
+Create `lsp/jdtls.lua`, see <https://github.com/neovim/nvim-lspconfig> for example. Modify `lsp/jdtls.lua` to disable
+gradle/maven integration:
+
+```lua
+init_options = {
+    settings = {
+        java = {
+            import = {
+                gradle = {
+                    enabled = false,
+                },
+                maven = {
+                    enabled = false,
+                },
+            },
+        },
+    },
+},
+```
+
+Enable `jdtls` language server with `vim.lsp.enable()`

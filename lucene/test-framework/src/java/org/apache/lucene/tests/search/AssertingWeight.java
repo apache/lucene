@@ -99,7 +99,7 @@ class AssertingWeight extends FilterWeight {
       }
 
       @Override
-      public long cost() {
+      public long cost() throws IOException {
         final long cost = inScorerSupplier.cost();
         assert cost >= 0;
         return cost;

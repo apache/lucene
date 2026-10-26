@@ -77,7 +77,8 @@ rule:
     - has:
         field: body
         kind: block
-        pattern: "{}"
+        not:
+          regex: "[a-zA-Z0-9_]"
     - has:
         kind: modifiers
         all:

@@ -659,11 +659,14 @@ final class IndexingChain implements Accountable {
       }
     } finally {
       if (hasHitAbortingException == false) {
-        // Finish each indexed field name seen in the document:
-        for (int i = 0; i < indexedFieldCount; i++) {
-          fields[i].finish(docID);
+        try {
+          // Finish each indexed field name seen in the document:
+          for (int i = 0; i < indexedFieldCount; i++) {
+            fields[i].finish(docID);
+          }
+        } finally {
+          finishStoredFields();
         }
-        finishStoredFields();
         // TODO: for broken docs, optimize termsHash.finishDocument
         try {
           termsHash.finishDocument(docID);
@@ -918,11 +921,14 @@ final class IndexingChain implements Accountable {
         }
       } finally {
         if (hasHitAbortingException == false) {
-          for (int i = 0; i < indexedFieldCount; i++) {
-            fields[i].finish(segDocID);
-          }
-          if (hasStored) {
-            finishStoredFields();
+          try {
+            for (int i = 0; i < indexedFieldCount; i++) {
+              fields[i].finish(segDocID);
+            }
+          } finally {
+            if (hasStored) {
+              finishStoredFields();
+            }
           }
           if (hasInverted) {
             try {
@@ -1254,6 +1260,7 @@ final class IndexingChain implements Accountable {
       throws IOException {
     final VectorEncoding encoding = fieldType.vectorEncoding();
     final int dimension = fieldType.vectorDimension();
+    final VectorSimilarityFunction similarityFunction = fieldType.vectorSimilarityFunction();
     final ObjectTupleCursor<?> cursor = column.tuples();
     int prevBatchDocID = -1;
     int consumed = 0;
@@ -1267,6 +1274,7 @@ final class IndexingChain implements Accountable {
           ColumnValidation.checkVectorDocIDStrictlyIncreasing(column, batchDocID, prevBatchDocID);
           byte[] vec = (byte[]) cursor.value();
           ColumnValidation.checkVectorDimension(column, vec.length, dimension, batchDocID);
+          ColumnValidation.checkByteVectorValue(column, vec, similarityFunction, batchDocID);
           writer.addValue(baseDocID + batchDocID, vec);
           prevBatchDocID = batchDocID;
           consumed++;
@@ -1280,6 +1288,7 @@ final class IndexingChain implements Accountable {
           ColumnValidation.checkVectorDocIDStrictlyIncreasing(column, batchDocID, prevBatchDocID);
           short[] vec = (short[]) cursor.value();
           ColumnValidation.checkVectorDimension(column, vec.length, dimension, batchDocID);
+          ColumnValidation.checkFloat16VectorValue(column, vec, similarityFunction, batchDocID);
           writer.addValue(baseDocID + batchDocID, vec);
           prevBatchDocID = batchDocID;
           consumed++;
@@ -1293,6 +1302,7 @@ final class IndexingChain implements Accountable {
           ColumnValidation.checkVectorDocIDStrictlyIncreasing(column, batchDocID, prevBatchDocID);
           float[] vec = (float[]) cursor.value();
           ColumnValidation.checkVectorDimension(column, vec.length, dimension, batchDocID);
+          ColumnValidation.checkFloatVectorValue(column, vec, similarityFunction, batchDocID);
           writer.addValue(baseDocID + batchDocID, vec);
           prevBatchDocID = batchDocID;
           consumed++;

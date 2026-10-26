@@ -151,6 +151,10 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     flatVectorsReader.finishMerge();
   }
 
+  public FlatVectorsReader getFlatVectorsReader() {
+    return flatVectorsReader;
+  }
+
   private static IndexInput openDataInput(
       SegmentReadState state,
       int versionMeta,
@@ -272,6 +276,12 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   @Override
   public FloatVectorValues getFloatVectorValues(String field) throws IOException {
     return flatVectorsReader.getFloatVectorValues(field);
+  }
+
+  @Override
+  public FloatVectorValues getFloatVectorValues(String field, DataAccessHint access)
+      throws IOException {
+    return flatVectorsReader.getFloatVectorValues(field, access);
   }
 
   @Override
@@ -431,6 +441,11 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     var flat = flatVectorsReader.getOffHeapByteSize(fieldInfo);
     var graph = Map.of(Lucene99HnswVectorsFormat.VECTOR_INDEX_EXTENSION, entry.vectorIndexLength);
     return KnnVectorsReader.mergeOffHeapByteSizeMaps(flat, graph);
+  }
+
+  @Override
+  public int getVectorCount(FieldInfo fieldInfo) {
+    return getFieldEntryOrThrow(fieldInfo.name).size();
   }
 
   @Override
