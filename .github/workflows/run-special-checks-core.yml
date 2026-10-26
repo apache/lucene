@@ -23,6 +23,7 @@ jobs:
     name: Native vector integration (${{ matrix.os }})
     timeout-minutes: 15
     strategy:
+      fail-fast: false
       matrix:
         os: [ ubuntu-latest, ubuntu-26.04-arm ]
     runs-on: ${{ matrix.os }}

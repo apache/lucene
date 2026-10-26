@@ -40,7 +40,7 @@ def nativeVectorCompiler = buildOptions.addOption("lucene.tool.cc",
 
 if (nativeVectorTests.get()) {
   boolean macOS = Os.isFamily(Os.FAMILY_MAC)
-  if (!macOS && !Os.isName("Linux")) {
+  if (!macOS && !Os.isName("linux")) {
     throw new GradleException("Native vector test libraries currently support Linux and macOS only.")
   }
   def libraryRoot = layout.buildDirectory.dir("native-vector-tests")
