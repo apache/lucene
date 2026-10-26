@@ -103,14 +103,14 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   private final long[] prefetchedBlockIDCache;
   private int prefetchedBlockIDCacheIndex;
   private volatile boolean closed;
-  // to open the data file again for sequential reads
+  // to open the data file again for merges
   private final Directory directory;
   private final String fieldsStreamFN;
   private final IOContext dataContext;
   // the reader this one was cloned from
   private final Lucene90CompressingStoredFieldsReader original;
-  // the input for sequential reads, opened lazily and closed with this reader
-  private IndexInput sequentialFieldsStream;
+  // the input for merges, opened lazily and closed with this reader
+  private IndexInput mergeFieldsStream;
 
   // used by clone
   private Lucene90CompressingStoredFieldsReader(
@@ -269,19 +269,16 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   /** Close the underlying {@link IndexInput}s. */
   @Override
   public void close() throws IOException {
-    IndexInput sequential;
+    IndexInput merge;
     synchronized (this) {
       if (closed) {
         return;
       }
       closed = true;
-      sequential =
-          original == this && sequentialFieldsStream != fieldsStream
-              ? sequentialFieldsStream
-              : null;
-      sequentialFieldsStream = null;
+      merge = original == this && mergeFieldsStream != fieldsStream ? mergeFieldsStream : null;
+      mergeFieldsStream = null;
     }
-    IOUtils.close(indexReader, fieldsStream, sequential);
+    IOUtils.close(indexReader, fieldsStream, merge);
   }
 
   static void readField(
@@ -729,31 +726,31 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   public StoredFieldsReader getMergeInstance() throws IOException {
     ensureOpen();
     return new Lucene90CompressingStoredFieldsReader(
-        this, true, original.sequentialFieldsStream().clone());
+        this, true, original.mergeFieldsStream().clone());
   }
 
-  /** Returns the input for sequential reads, opening the data file again if needed. */
-  private synchronized IndexInput sequentialFieldsStream() throws IOException {
+  /** Returns the input for merges, opening the data file again if needed. */
+  private synchronized IndexInput mergeFieldsStream() throws IOException {
     assert original == this;
     ensureOpen();
-    if (sequentialFieldsStream == null) {
-      IOContext sequential = sequentialContext();
-      if (fieldsStream.isEfficientFor(sequential)) {
-        sequentialFieldsStream = fieldsStream;
+    if (mergeFieldsStream == null) {
+      IOContext context = mergeContext();
+      if (fieldsStream.isEfficientFor(context)) {
+        mergeFieldsStream = fieldsStream;
       } else {
         try {
-          sequentialFieldsStream = directory.openInput(fieldsStreamFN, sequential);
+          mergeFieldsStream = directory.openInput(fieldsStreamFN, context);
         } catch (FileNotFoundException | NoSuchFileException _) {
           // an open reader outlives its files, so read through the input it already holds
-          sequentialFieldsStream = fieldsStream;
+          mergeFieldsStream = fieldsStream;
         }
       }
     }
-    return sequentialFieldsStream;
+    return mergeFieldsStream;
   }
 
   /** Returns the context merges read the data file with. */
-  private IOContext sequentialContext() {
+  private IOContext mergeContext() {
     return IOContext.merge()
         .withHints(
             Stream.concat(
