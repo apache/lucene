@@ -21,6 +21,7 @@ dependencies {
   moduleImplementation project(':lucene:core')
   moduleImplementation project(':lucene:expressions')
   moduleImplementation project(':lucene:join')
+  moduleImplementation project(':lucene:misc')
   moduleImplementation project(':lucene:sandbox')
   moduleTestImplementation project(':lucene:test-framework')
 
