@@ -147,6 +147,10 @@ API Changes
   TopFieldCollectorManager and TopScoreDocCollectorManager. The flag has been a
   no-op since it was deprecated in 10.1. (Luca Cavanna)
 
+* GITHUB#16899: Multi-term intervals sources (prefix, wildcard, regexp, fuzzy, range and
+  multiterm) now throw IndexSearcher.TooManyClauses instead of IllegalStateException when
+  they expand to more than maxExpansions terms. (Mayya Sharipova)
+
 New Features
 ---------------------
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
@@ -211,6 +215,10 @@ Improvements
   improving readability of the parsing logic. (Rajat Jain)
 
 * GITHUB#16499: Clean up BytesRefHash. Remove dead lastCount and unused close(), fix stale comments (neoremind)
+
+* GITHUB#16734: IndexWriter#addBatch now hands DENSE vector columns to the vectors writer in bulk
+  through the new VectorColumn#values cursor and KnnFieldVectorsWriter#addDenseValues, instead of
+  adding vectors one document at a time. (Mayya Sharipova)
 
 Optimizations
 ---------------------
@@ -407,6 +415,8 @@ Other
 
 * GITHUB#16170: Add JMH benchmarks for int4BitDotProduct and int4DibitDotProduct. (Vignesh)
 
+* GITHUB#16279: Add JMH benchmarks comparing read I/O strategies under memory pressure. (neoremind)
+
 ======================= Lucene 10.7.0 =======================
 
 API Changes
@@ -549,6 +559,11 @@ Improvements
 
 Optimizations
 ---------------------
+
+* GITHUB#16794: Concurrent HNSW merges now join the other deletion-free graphs into the base graph
+  through their join sets, as serial merges have done since GITHUB#14331, instead of inserting all
+  their vectors with a full search. Graphs now match the serial merge: slightly lower recall at the
+  same ef, but fewer visited nodes. (Lantao Jin)
 
 * GITHUB#16706: Reduce the sandboxed dedup vector formats' index size by packing each field
   ordinal to group ordinal mapping at the minimum bit width required for the largest group ordinal,
@@ -774,6 +789,9 @@ Bug Fixes
 
 * GITHUB#16139: Fix IBSimilarity with DistributionSPL producing negative scores due to
   floating-point rounding errors. (Prithvi S)
+
+* GITHUB#16855: Stop BlockMaxConjunctionBulkScorer from iterating windows past maxDoc.
+  (Michalis Papadimitriou)
 
 * GITHUB#16884: Fix IndexSortSortedNumericDocValuesRangeQuery#count returning a wrong count on
   multi-valued fields, because the index sort only reflects one value per document.
