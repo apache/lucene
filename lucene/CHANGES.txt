@@ -216,6 +216,10 @@ Improvements
 
 * GITHUB#16499: Clean up BytesRefHash. Remove dead lastCount and unused close(), fix stale comments (neoremind)
 
+* GITHUB#16734: IndexWriter#addBatch now hands DENSE vector columns to the vectors writer in bulk
+  through the new VectorColumn#values cursor and KnnFieldVectorsWriter#addDenseValues, instead of
+  adding vectors one document at a time. (Mayya Sharipova)
+
 Optimizations
 ---------------------
 
