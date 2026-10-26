@@ -23,10 +23,9 @@ import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVe
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
@@ -78,8 +77,9 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   private final String vectorDataFN;
   // the reader this one was created from
   private final Lucene99FlatVectorsReader original;
-  // the inputs for other contexts, closed with this reader, guarded by this
-  private final Map<IOContext, IndexInput> otherVectorData = new HashMap<>();
+  // opened lazily for merges and sequential reads, closed with this reader, guarded by this
+  private IndexInput mergeVectorData;
+  private IndexInput sequentialVectorData;
   // guarded by this
   private boolean closed;
 
@@ -215,43 +215,59 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
 
   @Override
   public FlatVectorsReader getMergeInstance() throws IOException {
-    IndexInput data = original.vectorDataFor(IOContext.merge().withHints(sequentialHints()));
+    IndexInput data = original.mergeVectorData();
     return data == vectorData ? this : new Lucene99FlatVectorsReader(this, data.clone());
   }
 
-  /** Returns an input efficient for {@code context}, opening the data file again if none is. */
-  private synchronized IndexInput vectorDataFor(IOContext context) throws IOException {
+  /** Returns the input for merges, opening the data file again if needed. */
+  private synchronized IndexInput mergeVectorData() throws IOException {
     assert original == this;
-    if (closed) {
-      throw new AlreadyClosedException("this reader is closed");
+    ensureOpen();
+    if (mergeVectorData == null) {
+      mergeVectorData =
+          vectorDataFor(IOContext.merge().withHints(sequentialHints()), sequentialVectorData);
     }
+    return mergeVectorData;
+  }
+
+  /** Returns the input for sequential reads by searches, opening the data file again if needed. */
+  private synchronized IndexInput sequentialVectorData() throws IOException {
+    assert original == this;
+    ensureOpen();
+    if (sequentialVectorData == null) {
+      // read by searches, even on a reader a merge opened
+      sequentialVectorData =
+          vectorDataFor(IOContext.DEFAULT.withHints(sequentialHints()), mergeVectorData);
+    }
+    return sequentialVectorData;
+  }
+
+  /** Returns an input efficient for {@code context}, opening the data file again if none is. */
+  private IndexInput vectorDataFor(IOContext context, IndexInput other) throws IOException {
     if (vectorData.isEfficientFor(context)) {
       return vectorData;
     }
-    IndexInput data = otherVectorData.get(context);
-    if (data != null) {
-      return data;
-    }
-    for (IndexInput other : otherVectorData.values()) {
-      if (other.isEfficientFor(context)) {
-        return other;
-      }
+    if (other != null && other.isEfficientFor(context)) {
+      return other;
     }
     try {
-      data = directory.openInput(vectorDataFN, context);
+      return directory.openInput(vectorDataFN, context);
     } catch (FileNotFoundException | NoSuchFileException _) {
       // an open reader outlives its files, so read through the input it already holds
-      data = vectorData;
+      return vectorData;
     }
-    otherVectorData.put(context, data);
-    return data;
+  }
+
+  private void ensureOpen() {
+    if (closed) {
+      throw new AlreadyClosedException("this reader is closed");
+    }
   }
 
   /** Returns the hints of the data file with sequential access. */
   private IOContext.FileOpenHint[] sequentialHints() {
     return Stream.concat(
-            dataContext.hints().stream().filter(hint -> hint instanceof DataAccessHint == false),
-            Stream.of(DataAccessHint.SEQUENTIAL))
+            dataContext.removeHints(DataAccessHint.class), Stream.of(DataAccessHint.SEQUENTIAL))
         .toArray(IOContext.FileOpenHint[]::new);
   }
 
@@ -287,10 +303,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   public FloatVectorValues getFloatVectorValues(String field, DataAccessHint access)
       throws IOException {
     IndexInput data =
-        access == DataAccessHint.SEQUENTIAL
-            // read by searches, even on a reader a merge opened
-            ? original.vectorDataFor(IOContext.DEFAULT.withHints(sequentialHints()))
-            : vectorData;
+        access == DataAccessHint.SEQUENTIAL ? original.sequentialVectorData() : vectorData;
     return loadFloatVectorValues(field, data);
   }
 
@@ -395,19 +408,18 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
 
   @Override
   public void close() throws IOException {
-    List<IndexInput> toClose = new ArrayList<>();
+    // the inputs can be the same
+    Set<IndexInput> toClose = new LinkedHashSet<>();
     synchronized (this) {
       if (closed) {
         return;
       }
       closed = true;
       toClose.add(vectorData);
-      for (IndexInput other : otherVectorData.values()) {
-        if (other != vectorData) {
-          toClose.add(other);
-        }
-      }
-      otherVectorData.clear();
+      toClose.add(mergeVectorData);
+      toClose.add(sequentialVectorData);
+      mergeVectorData = null;
+      sequentialVectorData = null;
     }
     IOUtils.close(toClose);
   }

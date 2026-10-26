@@ -17,10 +17,12 @@
 package org.apache.lucene.codecs.lucene99;
 
 import java.io.IOException;
+import java.nio.file.NoSuchFileException;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
@@ -116,6 +118,27 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
     }
     for (Open open : cfsOpens) {
       assertTrue("closed with the reader: " + open, open.closed);
+    }
+  }
+
+  /** In a compound segment, merges and sequential values share one more copy of the file. */
+  public void testCompoundMergesAndSequentialValues() throws Exception {
+    List<Open> opens = new CopyOnWriteArrayList<>();
+    try (Directory dir = new RecordingDirectory(newDirectory(), opens)) {
+      try (IndexWriter w = writer(dir, new Lucene99HnswVectorsFormat(), true)) {
+        addSegments(w, 1);
+      }
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        KnnVectorsReader vectors = fieldReader(reader);
+        opens.clear();
+        for (int i = 0; i < 2; i++) {
+          vectors.getMergeInstance();
+          vectors.getFloatVectorValues("field", DataAccessHint.SEQUENTIAL);
+        }
+        assertEquals(
+            opens.toString(), 1, opens.stream().filter(o -> o.name.endsWith(".cfs")).count());
+      }
+      assertAllClosed(opens);
     }
   }
 
@@ -219,6 +242,9 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
       flat.close();
       opens.clear();
       expectThrows(AlreadyClosedException.class, flat::getMergeInstance);
+      expectThrows(
+          AlreadyClosedException.class,
+          () -> flat.getFloatVectorValues("field", DataAccessHint.SEQUENTIAL));
       assertEquals(opens.toString(), List.of(), sequentialOpens(opens));
     }
   }
@@ -251,6 +277,33 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
       assertEquals(opens.toString(), 1, sequentialOpens(opens).size());
     }
     assertTrue("closed with the reader", opens.getLast().closed);
+  }
+
+  /** Once the file is gone, merges and searches read through the open input. */
+  public void testMissingFileReadsThroughTheOpenInput() throws Exception {
+    AtomicInteger attempts = new AtomicInteger();
+    AtomicBoolean gone = new AtomicBoolean();
+    Directory dir =
+        new RecordingDirectory(newDirectory(), new CopyOnWriteArrayList<>()) {
+          @Override
+          public IndexInput openInput(String name, IOContext context) throws IOException {
+            if (gone.get() && name.endsWith(".vec")) {
+              attempts.incrementAndGet();
+              throw new NoSuchFileException(name);
+            }
+            return super.openInput(name, context);
+          }
+        };
+    try (dir;
+        DirectoryReader reader = openReader(dir, new Lucene99HnswVectorsFormat())) {
+      KnnVectorsReader vectors = fieldReader(reader);
+      gone.set(true);
+      for (int i = 0; i < 2; i++) {
+        vectors.getMergeInstance();
+        assertEquals(16, vectors.getFloatVectorValues("field", DataAccessHint.SEQUENTIAL).size());
+      }
+      assertEquals("one attempt for merges and one for searches", 2, attempts.get());
+    }
   }
 
   /** A merge opens with a merge context, and sequential values share its input. */
@@ -297,6 +350,7 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
                 : List.of(IOContext.Context.DEFAULT, IOContext.Context.MERGE),
             contexts);
       }
+      assertAllClosed(opens);
     }
   }
 
@@ -412,6 +466,12 @@ public class TestVectorsMergeReadAdvice extends LuceneTestCase {
       v[i] = random().nextFloat() + 0.01f;
     }
     return v;
+  }
+
+  private static void assertAllClosed(List<Open> opens) {
+    for (Open open : opens) {
+      assertTrue("closed with the reader: " + open, open.closed);
+    }
   }
 
   /** The opens of the vector data for sequential reads, other than integrity checks. */
