@@ -29,6 +29,7 @@ import static jdk.incubator.vector.VectorOperators.ZERO_EXTEND_S2I;
 import static org.apache.lucene.util.VectorUtil.isUnitVector;
 
 import java.lang.foreign.MemorySegment;
+import java.util.Arrays;
 import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.DoubleVector;
 import jdk.incubator.vector.FloatVector;
@@ -255,6 +256,251 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     for (; i < a.length; i++) {
       float diff = a[i] - b[i];
       res = fma(diff, diff, res);
+    }
+    return res;
+  }
+
+  @Override
+  public void dotProducts(
+      float[] a,
+      int aOffset,
+      int aCount,
+      float[] b,
+      int bOffset,
+      int bCount,
+      int dim,
+      int stride,
+      float[] out) {
+    if (dim == 0) {
+      // no slice to run: write the empty dot products rather than leaving out untouched
+      Arrays.fill(out, 0, aCount * bCount, 0f);
+      return;
+    }
+    // Three levels of blocking, as in a GEMM (Goto and van de Geijn, "Anatomy of High-Performance
+    // Matrix Multiplication", ACM TOMS 34(3), 2008, https://doi.org/10.1145/1356052.1356053):
+    // - the dimension is cut into slices of DOT_PRODUCTS_K_BLOCK floats, so the four rows of a
+    //   held in registers' reach stay in the L1 cache however large the vectors are; slices after
+    //   the first accumulate into out;
+    // - within a slice, b is scanned in panels of DOT_PRODUCTS_J_BLOCK rows, so a panel stays in
+    //   the L2 cache while every row of a is scored against it and b is read from memory once per
+    //   call rather than once per four rows of a;
+    // - within a panel, a 4x4 register tile: 8 loads feed 16 fmas per step, versus 2 loads per fma
+    //   for one product at a time.
+    for (int k0 = 0; k0 < dim; k0 += DOT_PRODUCTS_K_BLOCK) {
+      final int kLen = Math.min(DOT_PRODUCTS_K_BLOCK, dim - k0);
+      final int limit = kLen > 2 * FLOAT_SPECIES.length() ? FLOAT_SPECIES.loopBound(kLen) : 0;
+      final boolean accumulate = k0 > 0;
+      final int aBase = aOffset + k0, bBase = bOffset + k0;
+      for (int j0 = 0; j0 < bCount; j0 += DOT_PRODUCTS_J_BLOCK) {
+        final int jEnd = Math.min(j0 + DOT_PRODUCTS_J_BLOCK, bCount);
+        int i = 0;
+        for (; i + 3 < aCount; i += 4) {
+          int j = j0;
+          for (; j + 3 < jEnd; j += 4) {
+            dotProducts4x4(
+                a,
+                aBase + i * stride,
+                b,
+                bBase + j * stride,
+                stride,
+                kLen,
+                limit,
+                out,
+                i * bCount + j,
+                bCount,
+                accumulate);
+          }
+          for (; j < jEnd; j++) {
+            int bOff = bBase + j * stride;
+            for (int r = 0; r < 4; r++) {
+              store(
+                  out,
+                  (i + r) * bCount + j,
+                  dotProduct(a, aBase + (i + r) * stride, b, bOff, kLen, limit),
+                  accumulate);
+            }
+          }
+        }
+        for (; i < aCount; i++) {
+          int aOff = aBase + i * stride;
+          for (int j = j0; j < jEnd; j++) {
+            store(
+                out,
+                i * bCount + j,
+                dotProduct(a, aOff, b, bBase + j * stride, kLen, limit),
+                accumulate);
+          }
+        }
+      }
+    }
+  }
+
+  /** Dimension slice scored per pass: four rows of this many floats fit in a 64 KB L1 cache. */
+  static final int DOT_PRODUCTS_K_BLOCK = 1024;
+
+  /** Rows of {@code b} scored per panel: a panel of a slice is 256 KB, which fits in L2. */
+  static final int DOT_PRODUCTS_J_BLOCK = 64;
+
+  private static void store(float[] out, int index, float value, boolean accumulate) {
+    out[index] = accumulate ? out[index] + value : value;
+  }
+
+  /**
+   * Scores a 4x4 tile of rows over {@code kLen} dimensions starting at the given offsets, where
+   * consecutive rows are {@code stride} floats apart and consecutive output rows {@code outStride}
+   * floats apart.
+   */
+  private static void dotProducts4x4(
+      float[] a,
+      int aOff,
+      float[] b,
+      int bOff,
+      int stride,
+      int kLen,
+      int limit,
+      float[] out,
+      int outOff,
+      int outStride,
+      boolean accumulate) {
+    final int aOff1 = aOff + stride, aOff2 = aOff + 2 * stride, aOff3 = aOff + 3 * stride;
+    final int bOff1 = bOff + stride, bOff2 = bOff + 2 * stride, bOff3 = bOff + 3 * stride;
+    FloatVector acc00 = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector acc01 = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector acc02 = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector acc03 = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector acc10 = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector acc11 = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector acc12 = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector acc13 = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector acc20 = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector acc21 = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector acc22 = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector acc23 = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector acc30 = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector acc31 = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector acc32 = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector acc33 = FloatVector.zero(FLOAT_SPECIES);
+    int k = 0;
+    for (; k < limit; k += FLOAT_SPECIES.length()) {
+      FloatVector a0 = FloatVector.fromArray(FLOAT_SPECIES, a, aOff + k);
+      FloatVector a1 = FloatVector.fromArray(FLOAT_SPECIES, a, aOff1 + k);
+      FloatVector a2 = FloatVector.fromArray(FLOAT_SPECIES, a, aOff2 + k);
+      FloatVector a3 = FloatVector.fromArray(FLOAT_SPECIES, a, aOff3 + k);
+      FloatVector b0 = FloatVector.fromArray(FLOAT_SPECIES, b, bOff + k);
+      FloatVector b1 = FloatVector.fromArray(FLOAT_SPECIES, b, bOff1 + k);
+      FloatVector b2 = FloatVector.fromArray(FLOAT_SPECIES, b, bOff2 + k);
+      FloatVector b3 = FloatVector.fromArray(FLOAT_SPECIES, b, bOff3 + k);
+      acc00 = fma(a0, b0, acc00);
+      acc01 = fma(a0, b1, acc01);
+      acc02 = fma(a0, b2, acc02);
+      acc03 = fma(a0, b3, acc03);
+      acc10 = fma(a1, b0, acc10);
+      acc11 = fma(a1, b1, acc11);
+      acc12 = fma(a1, b2, acc12);
+      acc13 = fma(a1, b3, acc13);
+      acc20 = fma(a2, b0, acc20);
+      acc21 = fma(a2, b1, acc21);
+      acc22 = fma(a2, b2, acc22);
+      acc23 = fma(a2, b3, acc23);
+      acc30 = fma(a3, b0, acc30);
+      acc31 = fma(a3, b1, acc31);
+      acc32 = fma(a3, b2, acc32);
+      acc33 = fma(a3, b3, acc33);
+    }
+    float r00 = acc00.reduceLanes(ADD), r01 = acc01.reduceLanes(ADD);
+    float r02 = acc02.reduceLanes(ADD), r03 = acc03.reduceLanes(ADD);
+    float r10 = acc10.reduceLanes(ADD), r11 = acc11.reduceLanes(ADD);
+    float r12 = acc12.reduceLanes(ADD), r13 = acc13.reduceLanes(ADD);
+    float r20 = acc20.reduceLanes(ADD), r21 = acc21.reduceLanes(ADD);
+    float r22 = acc22.reduceLanes(ADD), r23 = acc23.reduceLanes(ADD);
+    float r30 = acc30.reduceLanes(ADD), r31 = acc31.reduceLanes(ADD);
+    float r32 = acc32.reduceLanes(ADD), r33 = acc33.reduceLanes(ADD);
+    // scalar tail
+    for (; k < kLen; k++) {
+      float x0 = a[aOff + k], x1 = a[aOff1 + k], x2 = a[aOff2 + k], x3 = a[aOff3 + k];
+      float y0 = b[bOff + k], y1 = b[bOff1 + k], y2 = b[bOff2 + k], y3 = b[bOff3 + k];
+      r00 = fma(x0, y0, r00);
+      r01 = fma(x0, y1, r01);
+      r02 = fma(x0, y2, r02);
+      r03 = fma(x0, y3, r03);
+      r10 = fma(x1, y0, r10);
+      r11 = fma(x1, y1, r11);
+      r12 = fma(x1, y2, r12);
+      r13 = fma(x1, y3, r13);
+      r20 = fma(x2, y0, r20);
+      r21 = fma(x2, y1, r21);
+      r22 = fma(x2, y2, r22);
+      r23 = fma(x2, y3, r23);
+      r30 = fma(x3, y0, r30);
+      r31 = fma(x3, y1, r31);
+      r32 = fma(x3, y2, r32);
+      r33 = fma(x3, y3, r33);
+    }
+    if (accumulate) {
+      out[outOff] += r00;
+      out[outOff + 1] += r01;
+      out[outOff + 2] += r02;
+      out[outOff + 3] += r03;
+      outOff += outStride;
+      out[outOff] += r10;
+      out[outOff + 1] += r11;
+      out[outOff + 2] += r12;
+      out[outOff + 3] += r13;
+      outOff += outStride;
+      out[outOff] += r20;
+      out[outOff + 1] += r21;
+      out[outOff + 2] += r22;
+      out[outOff + 3] += r23;
+      outOff += outStride;
+      out[outOff] += r30;
+      out[outOff + 1] += r31;
+      out[outOff + 2] += r32;
+      out[outOff + 3] += r33;
+      return;
+    }
+    out[outOff] = r00;
+    out[outOff + 1] = r01;
+    out[outOff + 2] = r02;
+    out[outOff + 3] = r03;
+    outOff += outStride;
+    out[outOff] = r10;
+    out[outOff + 1] = r11;
+    out[outOff + 2] = r12;
+    out[outOff + 3] = r13;
+    outOff += outStride;
+    out[outOff] = r20;
+    out[outOff + 1] = r21;
+    out[outOff + 2] = r22;
+    out[outOff + 3] = r23;
+    outOff += outStride;
+    out[outOff] = r30;
+    out[outOff + 1] = r31;
+    out[outOff + 2] = r32;
+    out[outOff + 3] = r33;
+  }
+
+  /** dot product of two vectors stored at offsets inside larger arrays */
+  private static float dotProduct(float[] a, int aOff, float[] b, int bOff, int dim, int limit) {
+    FloatVector acc1 = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector acc2 = FloatVector.zero(FLOAT_SPECIES);
+    int k = 0;
+    int unrolledLimit = limit - FLOAT_SPECIES.length();
+    for (; k < unrolledLimit; k += 2 * FLOAT_SPECIES.length()) {
+      FloatVector va = FloatVector.fromArray(FLOAT_SPECIES, a, aOff + k);
+      FloatVector vb = FloatVector.fromArray(FLOAT_SPECIES, b, bOff + k);
+      acc1 = fma(va, vb, acc1);
+      FloatVector vc = FloatVector.fromArray(FLOAT_SPECIES, a, aOff + k + FLOAT_SPECIES.length());
+      FloatVector vd = FloatVector.fromArray(FLOAT_SPECIES, b, bOff + k + FLOAT_SPECIES.length());
+      acc2 = fma(vc, vd, acc2);
+    }
+    for (; k < limit; k += FLOAT_SPECIES.length()) {
+      FloatVector va = FloatVector.fromArray(FLOAT_SPECIES, a, aOff + k);
+      FloatVector vb = FloatVector.fromArray(FLOAT_SPECIES, b, bOff + k);
+      acc1 = fma(va, vb, acc1);
+    }
+    float res = acc1.add(acc2).reduceLanes(ADD);
+    for (; k < dim; k++) {
+      res = fma(a[aOff + k], b[bOff + k], res);
     }
     return res;
   }

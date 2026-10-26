@@ -153,6 +153,13 @@ API Changes
 
 New Features
 ---------------------
+* GITHUB#16906: Add PipnnGraphBuilder, a search-free HNSW graph construction (PiPNN, Rubel et al.
+  KDD 2026) for merge-time graph rebuilds: level 0 is built from overlapping clusters with a
+  bounded, direction-diverse candidate reservoir per node and no graph search; upper levels keep
+  the regular HNSW insertion. Opt in with the new Lucene99HnswVectorsFormat constructor taking
+  PipnnParams. The build is deterministic for a given seed even when run on several threads.
+  (Tony Xu)
+
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
   modern Hangul conjoining jamo before KoreanTokenizer. (Mingi Jeong)
 
@@ -227,6 +234,11 @@ Optimizations
   through their join sets, as serial merges have done since GITHUB#14331, instead of inserting all
   their vectors with a full search. Graphs now match the serial merge: slightly lower recall at the
   same ef, but fewer visited nodes. (Lantao Jin)
+
+* GITHUB#16906: Add VectorUtil.dotProducts, a batched kernel that scores all pairs between two sets
+  of float vectors at once. The Panama implementation uses a 4x4 register tile and scans the second
+  operand in L2-sized row panels, so it runs at about 3x the rate of one dotProduct call at a time
+  and keeps that rate when many cores run it at once. (Tony Xu)
 
 * GITHUB#16771: Lucene99FlatVectorsWriter now aligns vector data to 4096 bytes for all encodings
   (previously 64 for float32 and 4 for float16 and byte), so a vector whose size divides a page or is
