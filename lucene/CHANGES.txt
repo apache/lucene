@@ -438,7 +438,8 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+* GITHUB#14397: Reuse the LZ4 preset dictionary when reading stored fields or term vectors
+  from the same compressed chunk. (Ke Wei)
 
 Bug Fixes
 ---------------------
