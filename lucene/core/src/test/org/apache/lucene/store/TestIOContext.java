@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.store;
 
+import static org.hamcrest.Matchers.arrayContainingInAnyOrder;
+
 import java.util.List;
 import java.util.Set;
 import org.apache.lucene.store.IOContext.FileOpenHint;
@@ -63,6 +65,27 @@ public class TestIOContext extends LuceneTestCase {
     assertEquals(IOContext.Context.MERGE, withHint.context());
     assertNull(withHint.mergeInfo());
     assertEquals(Set.of(DataAccessHint.SEQUENTIAL), withHint.hints());
+  }
+
+  public void testHintsOfClass() {
+    IOContext context =
+        IOContext.DEFAULT.withHints(
+            CustomTestHint.CUSTOM_TEST_HINT1, PreloadHint.INSTANCE, DataAccessHint.SEQUENTIAL);
+    assertThat(
+        context.hints(CustomTestHint.class).toArray(CustomTestHint[]::new),
+        arrayContainingInAnyOrder(CustomTestHint.CUSTOM_TEST_HINT1));
+  }
+
+  public void testRemoveHint() {
+    IOContext context =
+        IOContext.DEFAULT.withHints(
+            CustomTestHint.CUSTOM_TEST_HINT1, PreloadHint.INSTANCE, DataAccessHint.SEQUENTIAL);
+    assertThat(
+        context.removeHints(CustomTestHint.class).toArray(FileOpenHint[]::new),
+        arrayContainingInAnyOrder(PreloadHint.INSTANCE, DataAccessHint.SEQUENTIAL));
+    assertThat(
+        context.removeHints(DataAccessHint.class).toArray(FileOpenHint[]::new),
+        arrayContainingInAnyOrder(CustomTestHint.CUSTOM_TEST_HINT1, PreloadHint.INSTANCE));
   }
 
   protected List<IOContext> getContexts() {
