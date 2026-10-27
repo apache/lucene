@@ -324,9 +324,8 @@ static void* resolve_int4_single_packed_bulk(void) {
 
 // Scores a whole HNSW candidate batch in one call.
 __attribute__((ifunc("resolve_int4_single_packed_bulk")))
-void int4DotProductSinglePackedBulk(const uint8_t unpacked[], const uint8_t vectors[],
-                                    int32_t stride, const int32_t ords[], int32_t count,
-                                    int32_t packedLength, int32_t results[]);
+void lucene_int4DotProductSinglePackedBulk(const uint8_t unpacked[], const uint8_t vectors[],
+    int32_t stride, const int32_t ords[], int32_t count, int32_t packedLength, int32_t results[]);
 #endif
 
 /*
