@@ -329,6 +329,75 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
     IOUtils.close(reader1, reader2, dir);
   }
 
+  // GITHUB#16900: flush writes pending doc values updates to disk, which must make NRT readers
+  // opened before the updates non-current
+  public void testReopenAfterFlush() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
+    writer.addDocument(doc(0)); // val=1
+    DirectoryReader reader1 = DirectoryReader.open(writer);
+
+    writer.updateNumericDocValue(new Term("id", "doc-0"), "val", 10L);
+    writer.flush();
+
+    assertFalse(reader1.isCurrent());
+    DirectoryReader reader2 = DirectoryReader.openIfChanged(reader1, writer);
+    assertNotNull(reader2);
+    NumericDocValues dvs = reader2.leaves().get(0).reader().getNumericDocValues("val");
+    assertEquals(0, dvs.nextDoc());
+    assertEquals(10, dvs.longValue());
+
+    IOUtils.close(reader1, reader2, writer, dir);
+  }
+
+  // GITHUB#16900: same as above, but the updates are written when reopening a reader that writes
+  // all deletes
+  public void testReopenWriteAllDeletesReader() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
+    writer.addDocument(doc(0)); // val=1
+    DirectoryReader reader1 = DirectoryReader.open(writer, true, true);
+
+    writer.updateNumericDocValue(new Term("id", "doc-0"), "val", 10L);
+
+    DirectoryReader reader2 = DirectoryReader.openIfChanged(reader1);
+    assertNotNull(reader2);
+    NumericDocValues dvs = reader2.leaves().get(0).reader().getNumericDocValues("val");
+    assertEquals(0, dvs.nextDoc());
+    assertEquals(10, dvs.longValue());
+
+    IOUtils.close(reader1, reader2, writer, dir);
+  }
+
+  // same as above, but the updates are written when applying the next updates packet because the
+  // reader pool uses more than half of the RAM buffer
+  public void testReopenAfterUpdatesWrittenUnderRAMPressure() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriterConfig conf = newIndexWriterConfig(new MockAnalyzer(random()));
+    conf.setMaxBufferedDocs(10);
+    conf.setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH);
+    IndexWriter writer = new IndexWriter(dir, conf);
+    writer.addDocument(doc(0)); // val=1
+    DirectoryReader reader1 = DirectoryReader.open(writer);
+
+    // a tiny RAM buffer applies each update right away
+    writer.getConfig().setRAMBufferSizeMB(0.00000001);
+    int flushDeletesCount = writer.getFlushDeletesCount();
+    writer.updateNumericDocValue(new Term("id", "doc-0"), "val", 10L);
+    // applying this packet writes the previous one's updates, and leaves none pending
+    writer.updateNumericDocValue(new Term("id", "doc-1"), "val", 20L);
+    assertEquals(flushDeletesCount + 2, writer.getFlushDeletesCount());
+
+    assertFalse(reader1.isCurrent());
+    DirectoryReader reader2 = DirectoryReader.openIfChanged(reader1, writer);
+    assertNotNull(reader2);
+    NumericDocValues dvs = reader2.leaves().get(0).reader().getNumericDocValues("val");
+    assertEquals(0, dvs.nextDoc());
+    assertEquals(10, dvs.longValue());
+
+    IOUtils.close(reader1, reader2, writer, dir);
+  }
+
   public void testUpdatesAndDeletes() throws Exception {
     // create an index with a segment with only deletes, a segment with both
     // deletes and updates and a segment with only updates

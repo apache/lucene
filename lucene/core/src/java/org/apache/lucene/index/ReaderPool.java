@@ -341,7 +341,8 @@ final class ReaderPool implements Closeable {
   }
 
   /**
-   * Commit live docs changes for the segment readers for the provided infos.
+   * Commit live docs changes and doc values updates for the segment readers for the provided infos.
+   * Increments the version of the provided infos if any doc values updates were written.
    *
    * @throws IOException If there is a low-level I/O error
    */
@@ -352,9 +353,14 @@ final class ReaderPool implements Closeable {
       if (rld != null) {
         assert rld.info == info;
         boolean changed = rld.writeLiveDocs(directory);
-        changed |=
-            rld.writeFieldUpdates(
-                directory, fieldNumbers, completedDelGenSupplier.getAsLong(), infoStream);
+        if (rld.writeFieldUpdates(
+            directory, fieldNumbers, completedDelGenSupplier.getAsLong(), infoStream)) {
+          // Unlike deletes, doc values updates are only visible to NRT readers once written, and
+          // writing them clears the pending updates that IW#nrtIsCurrent checks, so this is an
+          // NRT-visible change:
+          infos.changed();
+          changed = true;
+        }
 
         if (changed) {
           // Make sure we only write del docs for a live segment:
@@ -364,7 +370,7 @@ final class ReaderPool implements Closeable {
           // created new _X_N.del and field updates files;
           // don't call IW.checkpoint because that also
           // increments SIS.version, which we do not want to
-          // do here: it was done previously (after we
+          // do here for deletes: it was done previously (after we
           // invoked BDS.applyDeletes), whereas here all we
           // did was move the state to disk:
           atLeastOneChange = true;

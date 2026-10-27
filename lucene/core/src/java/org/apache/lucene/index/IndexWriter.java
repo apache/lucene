@@ -856,7 +856,9 @@ public class IndexWriter
                     globalFieldNumberMap,
                     bufferedUpdatesStream.getCompletedDelGen(),
                     infoStream)) {
-                  checkpointNoSIS();
+                  // bump SIS.version too: doc values updates become visible to NRT readers only
+                  // once they are written
+                  checkpoint();
                 }
               }
               long bytesUsedAfter = rld.ramBytesUsed.get();
