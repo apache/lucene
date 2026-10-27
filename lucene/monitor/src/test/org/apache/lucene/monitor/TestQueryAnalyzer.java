@@ -27,6 +27,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.TermInSetQuery;
@@ -241,6 +242,15 @@ public class TestQueryAnalyzer extends LuceneTestCase {
     Pass pass = notSlotPass("*:* -(+b +c)");
     assertEquals(Set.of(), pass.terms());
     assertEquals(Set.of(Set.of(t("b")), Set.of(t("c"))), new HashSet<>(pass.notSlots()));
+  }
+
+  public void testNegatedOneTermPhraseIsANotSlot() {
+    Query query =
+        new BooleanQuery.Builder()
+            .add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.SHOULD)
+            .add(new PhraseQuery("field", "b"), BooleanClause.Occur.MUST_NOT)
+            .build();
+    assertEquals(new Pass(Set.of(), List.of(Set.of(t("b")))), collect(notSlotTree(query)));
   }
 
   public void testDoubleNegationIsPositive() {

@@ -28,6 +28,7 @@ import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.ConstantScoreQuery;
+import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.SynonymQuery;
@@ -150,7 +151,8 @@ class QueryAnalyzer {
       if (isNegativeClause) {
         if (query instanceof TermQuery
             || query instanceof SynonymQuery
-            || query instanceof TermInSetQuery) {
+            || query instanceof TermInSetQuery
+            || query instanceof PhraseQuery) {
           negatedTerms.addAll(Arrays.asList(terms));
         } else {
           children.add(_ -> QueryTree.anyTerm("NOT " + query));
@@ -224,6 +226,9 @@ class QueryAnalyzer {
     }
     if (parent instanceof SynonymQuery) {
       return occur == BooleanClause.Occur.SHOULD;
+    }
+    if (parent instanceof PhraseQuery pq) {
+      return pq.getTerms().length == 1; // a one-term phrase is a term query
     }
     return false;
   }
