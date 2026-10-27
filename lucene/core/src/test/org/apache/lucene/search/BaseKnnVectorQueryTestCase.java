@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -1304,20 +1305,17 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     }
   }
 
+  /** Must be thread-safe: per-segment kNN searches may call it concurrently. */
   private static class CountingQueryTimeout implements QueryTimeout {
-    private int remaining;
+    private final AtomicInteger remaining;
 
     public CountingQueryTimeout(int count) {
-      remaining = count;
+      remaining = new AtomicInteger(count);
     }
 
     @Override
     public boolean shouldExit() {
-      if (remaining > 0) {
-        remaining--;
-        return false;
-      }
-      return true;
+      return remaining.getAndUpdate(r -> r > 0 ? r - 1 : 0) == 0;
     }
   }
 

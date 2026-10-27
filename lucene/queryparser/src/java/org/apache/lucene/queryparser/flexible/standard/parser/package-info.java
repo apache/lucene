@@ -16,8 +16,6 @@
  */
 
 /**
- *
- *
  * <h2>Lucene Query Parser</h2>
  *
  * <p>The package org.apache.lucene.queryparser.flexible.standard.parser contains the query parser.

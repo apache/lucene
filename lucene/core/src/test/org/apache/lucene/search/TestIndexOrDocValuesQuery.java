@@ -264,4 +264,34 @@ public class TestIndexOrDocValuesQuery extends LuceneTestCase {
       }
     }
   }
+
+  public void testRewriteToFieldExistsWhenBothSidesCoverAllValues() throws Exception {
+    var config = newIndexWriterConfig().setCodec(TestUtil.getDefaultCodec());
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, config)) {
+      for (int i = 0; i < 10; ++i) {
+        Document doc = new Document();
+        // sparse field: a value on every doc but one, so it can't rewrite to MatchAllDocsQuery
+        if (i != 5) {
+          doc.add(new LongPoint("sparse", 100 + i));
+          doc.add(SortedNumericDocValuesField.indexedField("sparse", 100 + i));
+        }
+        w.addDocument(doc);
+      }
+      w.forceMerge(1);
+
+      try (IndexReader reader = DirectoryReader.open(w)) {
+        IndexSearcher searcher = newSearcher(reader);
+        // A range covering every value of the sparse field: both the point and the doc-values side
+        // rewrite to a FieldExistsQuery, so the wrapper collapses to a single FieldExistsQuery
+        // rather than re-wrapping two identical queries.
+        IndexOrDocValuesQuery query =
+            new IndexOrDocValuesQuery(
+                LongPoint.newRangeQuery("sparse", 0, 250),
+                SortedNumericDocValuesField.newSlowRangeQuery("sparse", 0, 250));
+        QueryUtils.check(random(), query, searcher);
+        assertEquals(new FieldExistsQuery("sparse"), query.rewrite(searcher));
+      }
+    }
+  }
 }

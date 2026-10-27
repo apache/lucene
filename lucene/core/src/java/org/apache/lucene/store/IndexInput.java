@@ -239,6 +239,17 @@ public abstract class IndexInput extends DataInput implements Closeable {
   public void updateIOContext(IOContext context) throws IOException {}
 
   /**
+   * Returns false if callers reading with the given {@code IOContext} should open the file again
+   * rather than read through this input. This is a hint based on the advice applied when this input
+   * was opened or sliced.
+   *
+   * <p>The default implementation returns {@code true}, so callers never open the file again.
+   */
+  public boolean isEfficientFor(IOContext context) {
+    return true;
+  }
+
+  /**
    * Returns a hint whether all the contents of this input are resident in physical memory. It's a
    * hint because the operating system may have paged out some of the data by the time this method
    * returns. If the optional is true, then it's likely that the contents of this input are resident

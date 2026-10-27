@@ -296,8 +296,8 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
   }
 
   /**
-   * Read a particular segmentFileName, as long as the commit's {@link
-   * SegmentInfos#getIndexCreatedVersionMajor()} is strictly greater than the provided minimum
+   * Read a particular segmentFileName, as long as each segment's {@link
+   * SegmentInfo#getMinVersion()} within the commit is strictly greater than the provided minimum
    * supported major version. If the commit's version is older, an {@link
    * IndexFormatTooOldException} will be thrown. Note that this may throw an IOException if a commit
    * is in process.
@@ -405,8 +405,21 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       byte[] segmentID = new byte[StringHelper.ID_LENGTH];
       input.readBytes(segmentID, 0, segmentID.length);
       Codec codec = readCodec(input);
-      SegmentInfo info =
-          codec.segmentInfoFormat().read(directory, segName, segmentID, IOContext.READONCE);
+      final SegmentInfo info;
+      try {
+        info = codec.segmentInfoFormat().read(directory, segName, segmentID, IOContext.READONCE);
+      } catch (CorruptIndexException
+          | EOFException
+          | NoSuchFileException
+          | FileNotFoundException e) {
+        // The .si is missing, truncated or failed its checksum. Anything else, e.g. a transient I/O
+        // failure, is no evidence of corruption and must propagate as-is.
+        throw new CorruptSegmentInfoException(
+            segName,
+            "segment info file: " + segName + ".si cannot be read - it may be missing or corrupt",
+            input,
+            e);
+      }
       info.setCodec(codec);
       totalDocs += info.maxDoc();
       long delGen = CodecUtil.readBELong(input);

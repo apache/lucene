@@ -31,6 +31,7 @@ import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.util.Bits;
 
 /**
@@ -170,6 +171,12 @@ public final class SlowCodecReaderWrapper {
       }
 
       @Override
+      public FloatVectorValues getFloatVectorValues(String field, DataAccessHint access)
+          throws IOException {
+        return reader.getFloatVectorValues(field, access);
+      }
+
+      @Override
       public ByteVectorValues getByteVectorValues(String field) throws IOException {
         return reader.getByteVectorValues(field);
       }
@@ -213,15 +220,34 @@ public final class SlowCodecReaderWrapper {
         return vectorsReader.getOffHeapByteSize(fieldInfo);
       }
 
+      @Override
+      public int getVectorCount(FieldInfo fieldInfo) throws IOException {
+        SegmentReader segmentReader = unwrapSegmentReader(reader);
+        if (segmentReader != null) {
+          var vectorsReader = segmentReader.getVectorReader();
+          vectorsReader = vectorsReader.unwrapReaderForField(fieldInfo.name);
+          return vectorsReader.getVectorCount(fieldInfo);
+        }
+        return super.getVectorCount(fieldInfo);
+      }
+
       static SegmentReader segmentReader(LeafReader reader) {
+        SegmentReader segmentReader = unwrapSegmentReader(reader);
+        if (segmentReader == null) {
+          throw new AssertionError("unexpected reader [" + reader + "]");
+        }
+        return segmentReader;
+      }
+
+      static SegmentReader unwrapSegmentReader(LeafReader reader) {
         if (reader instanceof SegmentReader sr) {
           return sr;
         } else if (reader instanceof final FilterLeafReader fReader) {
-          return segmentReader(FilterLeafReader.unwrap(fReader));
+          return unwrapSegmentReader(FilterLeafReader.unwrap(fReader));
         } else if (reader instanceof final FilterCodecReader fReader) {
-          return segmentReader(FilterCodecReader.unwrap(fReader));
+          return unwrapSegmentReader(FilterCodecReader.unwrap(fReader));
         }
-        throw new AssertionError("unexpected reader [" + reader + "]");
+        return null;
       }
 
       @Override

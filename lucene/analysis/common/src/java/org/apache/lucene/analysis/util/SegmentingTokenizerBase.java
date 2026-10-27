@@ -36,8 +36,8 @@ import org.apache.lucene.util.AttributeFactory;
  * @lucene.experimental
  */
 public abstract class SegmentingTokenizerBase extends Tokenizer {
-  protected static final int BUFFERMAX = 1024;
-  protected final char[] buffer = new char[BUFFERMAX];
+  public static final int BUFFERMAX = 1024;
+  protected final char[] buffer;
 
   /** true length of text in the buffer */
   private int length = 0;
@@ -60,12 +60,37 @@ public abstract class SegmentingTokenizerBase extends Tokenizer {
    * newly created or cloned one should always be provided to this constructor.
    */
   public SegmentingTokenizerBase(BreakIterator iterator) {
-    this(DEFAULT_TOKEN_ATTRIBUTE_FACTORY, iterator);
+    this(DEFAULT_TOKEN_ATTRIBUTE_FACTORY, iterator, BUFFERMAX);
+  }
+
+  /**
+   * Construct a new SegmenterBase, using the provided BreakIterator and buffer size.
+   *
+   * @param iterator BreakIterator for sentence segmentation
+   * @param bufferSize internal buffer size in characters
+   */
+  public SegmentingTokenizerBase(BreakIterator iterator, int bufferSize) {
+    this(DEFAULT_TOKEN_ATTRIBUTE_FACTORY, iterator, bufferSize);
   }
 
   /** Construct a new SegmenterBase, also supplying the AttributeFactory */
   public SegmentingTokenizerBase(AttributeFactory factory, BreakIterator iterator) {
+    this(factory, iterator, BUFFERMAX);
+  }
+
+  /**
+   * Construct a new SegmenterBase, supplying the AttributeFactory, BreakIterator, and buffer size.
+   *
+   * @param factory AttributeFactory to use
+   * @param iterator BreakIterator for sentence segmentation
+   * @param bufferSize internal buffer size in characters
+   */
+  public SegmentingTokenizerBase(AttributeFactory factory, BreakIterator iterator, int bufferSize) {
     super(factory);
+    if (bufferSize <= 0) {
+      throw new IllegalArgumentException("bufferSize must be > 0");
+    }
+    this.buffer = new char[bufferSize];
     this.iterator = iterator;
   }
 

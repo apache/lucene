@@ -88,7 +88,8 @@ public class NeighborArray {
     ++sortedNodeSize;
   }
 
-  /// Grow the [#scores] and [#nodes] fields if they are full, up to [#maxSize]. Grow in larger steps.
+  /// Grow the [#scores] and [#nodes] fields if they are full, up to [#maxSize]. Grow in larger
+  /// steps.
   private void growArrays() {
     if (size == maxSize) {
       throw new IllegalStateException("Cannot grow beyond maxSize: " + maxSize);

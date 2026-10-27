@@ -36,6 +36,11 @@ interface IntervalTracker extends OrdinalIterator {
   /** clear recorded information on this tracker. * */
   void clear();
 
+  /**
+   * restart reading from the first recorded ordinal, to replay a {@link #freeze() frozen} tracker
+   */
+  void rewind();
+
   /** check if any data for the interval has been recorded * */
   boolean get(int index);
 
@@ -69,6 +74,12 @@ interface IntervalTracker extends OrdinalIterator {
       bitFrom = 0;
       trackerState = 0;
       intervalsWithHit = 0;
+    }
+
+    @Override
+    public void rewind() {
+      bitFrom = 0;
+      trackerState = 0;
     }
 
     @Override

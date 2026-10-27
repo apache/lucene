@@ -289,6 +289,21 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
   }
 
   /**
+   * Returns a DoubleValues instance for computing the vector similarity score per document against
+   * the float16 query vector
+   *
+   * @param ctx the context for which to return the DoubleValues
+   * @param queryVector float16 query vector
+   * @param vectorField knn float16 field name
+   * @return DoubleValues instance
+   * @throws IOException if an {@link IOException} occurs
+   */
+  public static DoubleValues similarityToQueryVector(
+      LeafReaderContext ctx, short[] queryVector, String vectorField) throws IOException {
+    return new Float16VectorSimilarityValuesSource(queryVector, vectorField).getValues(ctx, null);
+  }
+
+  /**
    * Creates a DoubleValuesSource that wraps a generic NumericDocValues field. Assumes no monotonic
    * direction by default (Monotonicity.NONE).
    *
@@ -526,20 +541,42 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
         @Override
         public int advanceShallow(int target) throws IOException {
           if (skipper != null) {
-            skipper.advance(target);
+            if (target > skipper.maxDocID(0)) {
+              skipper.advance(target);
+            }
             return skipper.maxDocID(0);
           }
           return DocIdSetIterator.NO_MORE_DOCS;
         }
 
+        /**
+         * Return the first level that includes all doc IDs up to {@code upTo}, or -1 if there is no
+         * such level.
+         */
+        private int getLevel(int upTo) {
+          final int maxDocID = skipper.maxDocID(0);
+          if (maxDocID == -1 || maxDocID == DocIdSetIterator.NO_MORE_DOCS) {
+            // the skipper's values may not be read before it is advanced or after it is exhausted
+            return -1;
+          }
+          for (int level = 0, numLevels = skipper.numLevels(); level < numLevels; ++level) {
+            final int skipperUpTo = skipper.maxDocID(level);
+            if (upTo <= skipperUpTo) {
+              return level;
+            }
+          }
+          return -1;
+        }
+
         @Override
         public float getMaxScore(int upTo) throws IOException {
           if (skipper != null && monotonicity != Monotonicity.NONE) {
-            if (skipper.minDocID(0) <= upTo) {
+            int level = getLevel(upTo);
+            if (level >= 0) {
               long rawBound =
                   (monotonicity == Monotonicity.INCREASING)
-                      ? skipper.maxValue(0)
-                      : skipper.minValue(0);
+                      ? skipper.maxValue(level)
+                      : skipper.minValue(level);
               return (float) decoder.applyAsDouble(rawBound);
             }
           }
@@ -549,11 +586,12 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
         @Override
         public float getMinScore(int upTo) throws IOException {
           if (skipper != null && monotonicity != Monotonicity.NONE) {
-            if (skipper.minDocID(0) <= upTo) {
+            int level = getLevel(upTo);
+            if (level >= 0) {
               long rawBound =
                   (monotonicity == Monotonicity.INCREASING)
-                      ? skipper.minValue(0)
-                      : skipper.maxValue(0);
+                      ? skipper.minValue(level)
+                      : skipper.maxValue(level);
               return (float) decoder.applyAsDouble(rawBound);
             }
           }
