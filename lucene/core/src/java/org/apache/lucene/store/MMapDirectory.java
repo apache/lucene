@@ -322,26 +322,27 @@ public class MMapDirectory extends FSDirectory {
     final String resourceDescription = "MemorySegmentIndexInput(path=\"" + path.toString() + "\")";
 
     final boolean confined = context.hints().contains(ReadOnceHint.INSTANCE);
+    // the function this input is opened with, even if setReadAdvice is called later
+    final var readAdviceFunction = readAdvice;
     Function<IOContext, ReadAdvice> toReadAdvice =
-        c -> readAdvice.apply(name, c).orElse(Constants.DEFAULT_READADVICE);
+        c -> readAdviceFunction.apply(name, c).orElse(Constants.DEFAULT_READADVICE);
     final Arena arena = confined ? Arena.ofConfined() : getSharedArena(name, arenas);
     try (var fc = FileChannel.open(path, StandardOpenOption.READ)) {
       final long fileSize = fc.size();
+      final ReadAdvice advice = toReadAdvice.apply(context);
+      final boolean preloaded = preload.test(name, context);
+      // preloaded or within a page, any advice reads the same
+      final boolean withinAPage =
+          NATIVE_ACCESS.filter(na -> fileSize < na.getPageSize()).isPresent();
       return MemorySegmentIndexInput.newInstance(
           resourceDescription,
           arena,
-          map(
-              arena,
-              resourceDescription,
-              fc,
-              toReadAdvice.apply(context),
-              chunkSizePower,
-              preload.test(name, context),
-              fileSize),
+          map(arena, resourceDescription, fc, advice, chunkSizePower, preloaded, fileSize),
           fileSize,
           chunkSizePower,
           confined,
-          toReadAdvice);
+          toReadAdvice,
+          preloaded || withinAPage ? null : advice);
     } catch (Throwable t) {
       arena.close();
       throw t;
