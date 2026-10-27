@@ -68,8 +68,8 @@
  * <h3>Danish Sorting</h3>
  *
  * <pre><code class="language-java">
- *   Analyzer analyzer
- *     = new CollationKeyAnalyzer(Collator.getInstance(new Locale("da", "dk")));
+ *   Collator collator = Collator.getInstance(new Locale("da", "dk"));
+ *   Analyzer analyzer = new CollationKeyAnalyzer(collator);
  *   Path dirPath = Files.createTempDirectory("tempIndex");
  *   Directory dir = FSDirectory.open(dirPath);
  *   IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig(analyzer));
@@ -80,13 +80,16 @@
  *     Document doc = new Document();
  *     doc.add(new StoredField("tracer", tracer[i]));
  *     doc.add(new TextField("contents", data[i], Field.Store.NO));
+ *     CollationDocValuesField dvField = new CollationDocValuesField("contents", collator);
+ *     dvField.setStringValue(data[i]);
+ *     doc.add(dvField);
  *     writer.addDocument(doc);
  *   }
  *   writer.close();
  *   IndexReader ir = DirectoryReader.open(dir);
  *   IndexSearcher searcher = new IndexSearcher(ir);
  *   Sort sort = new Sort();
- *   sort.setSort(new SortField("contents", SortField.STRING));
+ *   sort.setSort(new SortField("contents", SortField.Type.STRING));
  *   Query query = MatchAllDocsQuery.INSTANCE;
  *   ScoreDoc[] result = searcher.search(query, 1000, sort).scoreDocs;
  *   for (int i = 0 ; i &lt; result.length ; ++i) {
