@@ -123,7 +123,7 @@ interface AffixCondition {
       return regexpCondition(kind, condition.substring(0, split), conditionChars - strip.length());
     } catch (PatternSyntaxException _) {
       return ALWAYS_FALSE;
-    } catch (Throwable e) {
+    } catch (RuntimeException e) {
       throw new IllegalArgumentException("On line: " + line, e);
     }
   }
@@ -144,7 +144,7 @@ interface AffixCondition {
     if (condition.charAt(pos) == '[') {
       pos = condition.indexOf(']', pos + 1);
       if (pos < 0) {
-        throw new AssertionError("Malformed condition " + condition);
+        throw new IllegalStateException("Malformed condition " + condition);
       }
     }
     return pos + 1;

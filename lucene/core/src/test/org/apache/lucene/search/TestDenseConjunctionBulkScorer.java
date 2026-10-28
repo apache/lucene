@@ -24,6 +24,7 @@ import java.util.function.IntPredicate;
 import org.apache.lucene.tests.search.AssertingBulkScorer;
 import org.apache.lucene.tests.search.RandomApproximationQuery.RandomTwoPhaseView;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.FixedBitSet;
 
@@ -1393,5 +1394,122 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
     CountingLeafCollector collector = new CountingLeafCollector();
     scorer.score(collector, null, 0, DocIdSetIterator.NO_MORE_DOCS);
     assertEquals(expected.cardinality(), collector.count);
+  }
+
+  public void testLongRunWithLiveDocsIsScannedOnce() throws IOException {
+    int maxDoc = 1 << 20;
+    ScanCountingBitSet clause = new ScanCountingBitSet(maxDoc);
+    clause.in.set(0, maxDoc);
+    FixedBitSet acceptDocs = new FixedBitSet(maxDoc);
+    acceptDocs.set(0, maxDoc);
+    acceptDocs.clear(maxDoc / 2);
+    BulkScorer scorer =
+        new DenseConjunctionBulkScorer(
+            Collections.singletonList(new BitSetIterator(clause, maxDoc)),
+            Collections.emptyList(),
+            maxDoc,
+            0f);
+    CountingLeafCollector collector = new CountingLeafCollector();
+    scorer.score(collector, acceptDocs, 0, DocIdSetIterator.NO_MORE_DOCS);
+    assertEquals(maxDoc - 1, collector.count);
+    // Windows are WINDOW_SIZE docs because of deleted docs, the run must not be rescanned for
+    // every window.
+    assertTrue("scanned " + clause.scannedBits + " bits", clause.scannedBits <= 2L * maxDoc);
+  }
+
+  public void testLongRunWithSparseClauseIsScannedOnce() throws IOException {
+    int maxDoc = 1 << 20;
+    ScanCountingBitSet clause1 = new ScanCountingBitSet(maxDoc);
+    clause1.in.set(0, maxDoc);
+    FixedBitSet clause2 = new FixedBitSet(maxDoc);
+    for (int i = 0; i < maxDoc; i += 2) {
+      clause2.set(i);
+    }
+    BulkScorer scorer =
+        new DenseConjunctionBulkScorer(
+            Arrays.asList(
+                new BitSetIterator(clause1, maxDoc),
+                new BitSetIterator(clause2, clause2.cardinality())),
+            Collections.emptyList(),
+            maxDoc,
+            0f);
+    CountingLeafCollector collector = new CountingLeafCollector();
+    scorer.score(collector, null, 0, DocIdSetIterator.NO_MORE_DOCS);
+    assertEquals(maxDoc / 2, collector.count);
+    // Windows are WINDOW_SIZE docs because clause2 has no long runs, the run of clause1 must not
+    // be rescanned for every window.
+    assertTrue("scanned " + clause1.scannedBits + " bits", clause1.scannedBits <= 2L * maxDoc);
+  }
+
+  /** A {@link BitSet} that counts how many bits {@link #nextClearBit(int, int)} scans. */
+  private static class ScanCountingBitSet extends BitSet {
+    final FixedBitSet in;
+    long scannedBits;
+
+    ScanCountingBitSet(int length) {
+      in = new FixedBitSet(length);
+    }
+
+    @Override
+    public int nextClearBit(int start, int upperBound) {
+      int res = in.nextClearBit(start, upperBound);
+      scannedBits += (res == DocIdSetIterator.NO_MORE_DOCS ? upperBound : res + 1) - start;
+      return res;
+    }
+
+    @Override
+    public void set(int i) {
+      in.set(i);
+    }
+
+    @Override
+    public boolean getAndSet(int i) {
+      return in.getAndSet(i);
+    }
+
+    @Override
+    public void clear(int i) {
+      in.clear(i);
+    }
+
+    @Override
+    public void clear(int startIndex, int endIndex) {
+      in.clear(startIndex, endIndex);
+    }
+
+    @Override
+    public int cardinality() {
+      return in.cardinality();
+    }
+
+    @Override
+    public int approximateCardinality() {
+      return in.approximateCardinality();
+    }
+
+    @Override
+    public int prevSetBit(int index) {
+      return in.prevSetBit(index);
+    }
+
+    @Override
+    public int nextSetBit(int start, int end) {
+      return in.nextSetBit(start, end);
+    }
+
+    @Override
+    public boolean get(int index) {
+      return in.get(index);
+    }
+
+    @Override
+    public int length() {
+      return in.length();
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      return in.ramBytesUsed();
+    }
   }
 }
