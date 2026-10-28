@@ -469,7 +469,6 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
     var arena1 = new RefCountedSharedArena("1", _ -> {}, 1);
     var arena2 = new RefCountedSharedArena("1", _ -> {}, 1);
     try {
-      assertEquals(arena1, arena1);
       assertEquals(System.identityHashCode(arena1), arena1.hashCode());
       assertEquals(System.identityHashCode(arena2), arena2.hashCode());
       assertNotEquals(arena1, arena2);
