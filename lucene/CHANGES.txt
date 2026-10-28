@@ -443,7 +443,10 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+
+* GITHUB#16839: Merges of quantized vector fields now compute the centroid while copying the raw
+  vectors, instead of reading the live vectors a second time when a segment has deletes.
+  (Jackie Jiang)
 
 Bug Fixes
 ---------------------

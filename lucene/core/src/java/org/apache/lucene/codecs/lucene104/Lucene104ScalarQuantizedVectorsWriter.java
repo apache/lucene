@@ -28,7 +28,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.function.IntPredicate;
 import org.apache.lucene.codecs.CodecUtil;
@@ -56,7 +55,6 @@ import org.apache.lucene.store.FileDataHint;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.VectorUtil;
@@ -351,13 +349,17 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   private MergeScorerData mergeOneFlatVectorField(
       FieldInfo fieldInfo, MergeState mergeState, IntPredicate needsMergeScorer)
       throws IOException {
-    // Don't need access to the random vectors, we can just use the merged
-    rawVectorDelegate.mergeOneFlatVectorField(fieldInfo, mergeState);
     if (fieldInfo.getVectorEncoding().isFloatingPoint() == false) {
+      // Byte vectors have no centroid, so this is only the raw copy of the vectors.
+      rawVectorDelegate.mergeOneFlatVectorField(fieldInfo, mergeState);
       return null;
     }
+    // The raw merge reads every live vector once, so the centroid is summed during that pass.
+    MergedCentroidCollector centroidCollector =
+        new MergedCentroidCollector(fieldInfo, mergeState.knnVectorsReaders.length);
+    rawVectorDelegate.mergeOneFlatVectorField(fieldInfo, centroidCollector.wrap(mergeState));
     final float[] mergedCentroid = new float[fieldInfo.getVectorDimension()];
-    int vectorCount = mergeAndRecalculateCentroids(mergeState, fieldInfo, mergedCentroid);
+    int vectorCount = centroidCollector.verifyAndComputeCentroid(mergeState, mergedCentroid);
     if (segmentWriteState.infoStream.isEnabled(QUANTIZED_VECTOR_COMPONENT)) {
       segmentWriteState.infoStream.message(
           QUANTIZED_VECTOR_COMPONENT, "Vectors' count:" + vectorCount);
@@ -566,20 +568,12 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     IOUtils.close(meta, vectorData, rawVectorDelegate);
   }
 
-  static float[] getCentroid(KnnVectorsReader vectorsReader, String fieldName) {
-    vectorsReader = vectorsReader.unwrapReaderForField(fieldName);
-    if (vectorsReader instanceof Lucene104ScalarQuantizedVectorsReader reader) {
-      return reader.getCentroid(fieldName);
-    }
-    return null;
-  }
-
   /**
    * Returns the reader's floating-point vectors viewed as fp32, inflating fp16 on read, or null
    * when the field is absent from this reader or is byte-encoded.
    */
-  private static FloatVectorValues floatingPointVectorValues(
-      KnnVectorsReader reader, FieldInfo fieldInfo) throws IOException {
+  static FloatVectorValues floatingPointVectorValues(KnnVectorsReader reader, FieldInfo fieldInfo)
+      throws IOException {
     return switch (fieldInfo.getVectorEncoding()) {
       case FLOAT32 -> reader.getFloatVectorValues(fieldInfo.name);
       case FLOAT16 -> {
@@ -588,95 +582,6 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       }
       case BYTE -> null;
     };
-  }
-
-  static int mergeAndRecalculateCentroids(
-      MergeState mergeState, FieldInfo fieldInfo, float[] mergedCentroid) throws IOException {
-    boolean recalculate = false;
-    int totalVectorCount = 0;
-    for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
-      KnnVectorsReader knnVectorsReader = mergeState.knnVectorsReaders[i];
-      if (knnVectorsReader == null) {
-        continue;
-      }
-      KnnVectorValues values = floatingPointVectorValues(knnVectorsReader, fieldInfo);
-      if (values == null) {
-        continue;
-      }
-      int vectorCount = values.size();
-      if (vectorCount == 0) {
-        continue;
-      }
-      float[] centroid = getCentroid(knnVectorsReader, fieldInfo.name);
-      totalVectorCount += vectorCount;
-      // If there aren't centroids, or previously clustered with more than one cluster
-      // or if there are deleted docs, we must recalculate the centroid
-      if (centroid == null || mergeState.liveDocs[i] != null) {
-        recalculate = true;
-        break;
-      }
-      for (int j = 0; j < centroid.length; j++) {
-        mergedCentroid[j] += centroid[j] * vectorCount;
-      }
-    }
-    if (totalVectorCount == 0) {
-      return 0;
-    } else if (recalculate) {
-      return calculateCentroid(mergeState, fieldInfo, mergedCentroid);
-    } else {
-      for (int j = 0; j < mergedCentroid.length; j++) {
-        mergedCentroid[j] = mergedCentroid[j] / totalVectorCount;
-      }
-      if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
-        VectorUtil.l2normalize(mergedCentroid);
-      }
-      return totalVectorCount;
-    }
-  }
-
-  static int calculateCentroid(MergeState mergeState, FieldInfo fieldInfo, float[] centroid)
-      throws IOException {
-    assert fieldInfo.getVectorEncoding().isFloatingPoint();
-    // clear out the centroid
-    Arrays.fill(centroid, 0);
-    int count = 0;
-    for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
-      KnnVectorsReader knnVectorsReader = mergeState.knnVectorsReaders[i];
-      if (knnVectorsReader == null) continue;
-      count += accumulateCentroid(knnVectorsReader, fieldInfo, mergeState.liveDocs[i], centroid);
-    }
-    if (count == 0) {
-      return count;
-    }
-    for (int i = 0; i < centroid.length; i++) {
-      centroid[i] /= count;
-    }
-    if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
-      VectorUtil.l2normalize(centroid);
-    }
-    return count;
-  }
-
-  private static int accumulateCentroid(
-      KnnVectorsReader reader, FieldInfo fieldInfo, Bits liveDocs, float[] centroid)
-      throws IOException {
-    FloatVectorValues vectorValues = floatingPointVectorValues(reader, fieldInfo);
-    if (vectorValues == null) {
-      return 0;
-    }
-    int count = 0;
-    KnnVectorValues.DocIndexIterator iterator = vectorValues.iterator();
-    for (int doc = iterator.nextDoc(); doc != NO_MORE_DOCS; doc = iterator.nextDoc()) {
-      if (liveDocs != null && liveDocs.get(doc) == false) {
-        continue;
-      }
-      count++;
-      float[] vector = vectorValues.vectorValue(iterator.index());
-      for (int j = 0; j < vector.length; j++) {
-        centroid[j] += vector[j];
-      }
-    }
-    return count;
   }
 
   @Override
