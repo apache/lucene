@@ -53,7 +53,6 @@
  *   IndexSearcher is = new IndexSearcher(ir);
  *
  *   QueryParser aqp = new QueryParser("content", analyzer);
- *   aqp.setAnalyzeRangeTerms(true);
  *
  *   // Unicode order would include U+0633 in [ U+062F - U+0698 ], but Farsi
  *   // orders the U+0698 character before the U+0633 character, so the single
@@ -76,11 +75,11 @@
  *   String[] tracer = new String[] { "A", "B", "C", "D", "E" };
  *   String[] data = new String[] { "HAT", "HUT", "H\u00C5T", "H\u00D8T", "HOT" };
  *   String[] sortedTracerOrder = new String[] { "A", "E", "B", "D", "C" };
+ *   CollationDocValuesField dvField = new CollationDocValuesField("contents", collator);
  *   for (int i = 0 ; i &lt; data.length ; ++i) {
  *     Document doc = new Document();
  *     doc.add(new StoredField("tracer", tracer[i]));
  *     doc.add(new TextField("contents", data[i], Field.Store.NO));
- *     CollationDocValuesField dvField = new CollationDocValuesField("contents", collator);
  *     dvField.setStringValue(data[i]);
  *     doc.add(dvField);
  *     writer.addDocument(doc);
