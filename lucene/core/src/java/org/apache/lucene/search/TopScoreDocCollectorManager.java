@@ -34,35 +34,6 @@ public class TopScoreDocCollectorManager
 
   /**
    * Creates a new {@link TopScoreDocCollectorManager} given the number of hits to collect and the
-   * number of hits to count accurately.
-   *
-   * <p><b>NOTE</b>: If the total hit count of the top docs is less than or exactly {@code
-   * totalHitsThreshold} then this value is accurate. On the other hand, if the {@link
-   * TopDocs#totalHits} value is greater than {@code totalHitsThreshold} then its value is a lower
-   * bound of the hit count. A value of {@link Integer#MAX_VALUE} will make the hit count accurate
-   * but will also likely make query processing slower.
-   *
-   * <p><b>NOTE</b>: The instances returned by this method pre-allocate a full array of length
-   * <code>numHits</code>, and fill the array with sentinel objects.
-   *
-   * @param numHits the number of results to collect.
-   * @param after the previous doc after which matching docs will be collected.
-   * @param totalHitsThreshold the number of docs to count accurately. If the query matches more
-   *     than {@code totalHitsThreshold} hits then its hit count will be a lower bound. On the other
-   *     hand if the query matches less than or exactly {@code totalHitsThreshold} hits then the hit
-   *     count of the result will be accurate. {@link Integer#MAX_VALUE} may be used to make the hit
-   *     count accurate, but this will also make query processing slower.
-   * @deprecated Use {@link #TopScoreDocCollectorManager(int, ScoreDoc, int)}, the
-   *     supportsConcurrency parameter is now a no-op.
-   */
-  @Deprecated
-  public TopScoreDocCollectorManager(
-      int numHits, ScoreDoc after, int totalHitsThreshold, boolean supportsConcurrency) {
-    this(numHits, after, totalHitsThreshold);
-  }
-
-  /**
-   * Creates a new {@link TopScoreDocCollectorManager} given the number of hits to collect and the
    * number of hits to count accurately, with thread-safe internal states.
    *
    * <p><b>NOTE</b>: If the total hit count of the top docs is less than or exactly {@code
@@ -120,7 +91,7 @@ public class TopScoreDocCollectorManager
    *     count accurate, but this will also make query processing slower.
    */
   public TopScoreDocCollectorManager(int numHits, int totalHitsThreshold) {
-    this(numHits, null, totalHitsThreshold, true);
+    this(numHits, null, totalHitsThreshold);
   }
 
   @Override
