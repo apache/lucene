@@ -41,6 +41,8 @@ import java.util.function.Consumer;
  */
 final class RefCountedSharedArena implements Arena {
 
+  // Intentionally no equals/hashCode: MMapDirectory's arenas.remove(key, arena) relies on identity.
+
   // default maximum permits
   static final int DEFAULT_MAX_PERMITS = 64;
 
