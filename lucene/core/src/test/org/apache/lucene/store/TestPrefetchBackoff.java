@@ -113,12 +113,42 @@ public class TestPrefetchBackoff extends LuceneTestCase {
     }
   }
 
-  public void testSeedsAreConsecutive() {
+  public void testCounterStartsAreSpreadOut() {
     PrefetchBackoff backoff = new PrefetchBackoff();
-    int first = backoff.nextCounterStart();
+    int previous = backoff.nextCounterStart();
     for (int i = 1; i < 3 * SKIP; i++) {
-      assertEquals(first + i, backoff.nextCounterStart());
+      int current = backoff.nextCounterStart();
+      assertTrue(current >= 0 && current < SKIP);
+      int distance = Math.abs(current - previous);
+      distance = Math.min(distance, SKIP - distance);
+      assertTrue("adjacent starts are only " + distance + " apart", distance >= SKIP / 4);
+      previous = current;
     }
+  }
+
+  // When similarly short-lived clones make four calls each in creation order, probes are spread
+  // across the combined call stream rather than arriving in a flurry after roughly SKIP clones.
+  public void testShortLivedInputsSampleRegularly() {
+    PrefetchBackoff backoff = new PrefetchBackoff();
+    hit(backoff, N);
+    int inputCount = 4 * SKIP;
+    int callsPerInput = 4;
+    int callsSinceProbe = 0;
+    int probes = 0;
+    for (int i = 0; i < inputCount; i++) {
+      int calls = backoff.nextCounterStart();
+      for (int j = 0; j < callsPerInput; j++) {
+        callsSinceProbe++;
+        if (backoff.shouldProbe(++calls)) {
+          probes++;
+          assertTrue("gap between probes was " + callsSinceProbe, callsSinceProbe >= SKIP / 2);
+          assertTrue("gap between probes was " + callsSinceProbe, callsSinceProbe < 2 * SKIP);
+          callsSinceProbe = 0;
+        }
+      }
+    }
+    assertEquals(inputCount * callsPerInput / SKIP, probes);
+    assertTrue("tail after last probe was " + callsSinceProbe, callsSinceProbe < 2 * SKIP);
   }
 
   public void testConcurrentHitsAndProbes() throws Exception {

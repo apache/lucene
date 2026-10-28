@@ -25,13 +25,12 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <p>Probe on every call until {@link #N} consecutive hits, then every {@link #SKIP}th call; a miss
  * goes back to probing on every call. Files start one hit short of sampling ({@code N - 1}), so the
  * first prefetch always probes: a hit on a warm file switches to sampling immediately, while a miss
- * resets the count to zero and the file has to earn N hits. While sampling, an eviction goes
- * unnoticed for at most SKIP - 1 reads.
+ * resets the count to zero and the file has to earn N hits. While sampling, an eviction on a
+ * long-lived input goes unnoticed for at most SKIP - 1 reads.
  *
- * <p>Each input counts its own calls, starting from a sequence number taken when it is created, so
- * consecutive clones sample at different offsets and short-lived clones still sample collectively,
- * though possibly at a lower frequency if clones sample fewer than {@link #SKIP} times per
- * instance.
+ * <p>Each input counts its own calls. New inputs start at successive points in a low-discrepancy
+ * sequence spanning [0, {@code SKIP}), so adjacent clones have well-separated probe phases. This
+ * avoids clustered probes when similarly short-lived clones perform calls in creation order.
  */
 final class PrefetchBackoff {
 
@@ -44,9 +43,9 @@ final class PrefetchBackoff {
   // p > 3/n), so it takes on the order of a thousand hits to be confident enough to skip.
   static final int N = 1024;
 
-  // Every SKIPth call probes when the file looks warm, so an eviction costs at most SKIP - 1
-  // unprefetched reads before a sample notices it. On fully cached files, this is assumed to be
-  // noise. Must be a power of two.
+  // On a long-lived input, every SKIPth call probes when the file looks warm, so an eviction costs
+  // at most SKIP - 1 unprefetched reads before a sample notices it. On fully cached files, this is
+  // assumed to be noise. Must be a power of two.
   static final int SKIP = 64;
 
   private final AtomicInteger consecutiveHits;
@@ -60,7 +59,9 @@ final class PrefetchBackoff {
 
   /** Initial value for a new input's call counter, see {@link #shouldProbe}. Once per input. */
   int nextCounterStart() {
-    return inputs.incrementAndGet();
+    // Multiplication by the fractional golden ratio distributes successive inputs across the
+    // counter range instead of giving neighboring clones nearly identical probe schedules.
+    return (inputs.incrementAndGet() * 0x9E3779B9) >>> Integer.numberOfLeadingZeros(SKIP - 1);
   }
 
   /** {@code calls} is the input's own call count, starting from {@link #nextCounterStart()}. */
