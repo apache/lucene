@@ -444,7 +444,9 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+
+* GITHUB#XXX: RescoreTopNQuery no longer throws when its inner query matches no documents.
+  (Greg Miller)
 
 Other
 ---------------------
