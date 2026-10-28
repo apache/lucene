@@ -274,9 +274,6 @@ Optimizations
 
 Bug Fixes
 ---------------------
-* GITHUB#16931: Fix MMapDirectory losing shared arena grouping when an old arena closes and removes
-  the newer live arena of the same group from the arenas map. (Chris Hegarty)
-
 * GITHUB#16441: MultiFieldQueryParser + per-field boosts produce wrong Occur under AND default operator (Egor Potemkin, Olivier Jaquemet)
 
 * GITHUB#16443: MultiFieldQueryParser: default operator is not honored between term positions (Egor Potemkin, Olivier Jaquemet)
@@ -337,6 +334,9 @@ Bug Fixes
 * GITHUB#16409: Fix filtered HNSW search boundary handling to match the general HNSW searcher. (Mingi Jeong)
 
 * GITHUB#16687: Use quantized vectors for fp16 HNSW graph construction during merges. (Kaival Parikh)
+
+* GITHUB#16931: Fix MMapDirectory losing shared arena grouping when an old arena closes and removes
+  the newer live arena of the same group from the arenas map. (Chris Hegarty)
 
 Changes in Runtime Behavior
 ---------------------
