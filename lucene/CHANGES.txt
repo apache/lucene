@@ -337,7 +337,7 @@ Bug Fixes
 
 * GITHUB#16931: Fix MMapDirectory losing shared arena grouping when an old arena closes and removes
   the newer live arena of the same group from the arenas map. (Chris Hegarty)
-  
+
 * GITHUB#16926: RescoreTopNQuery no longer throws when its inner query matches no documents.
   (Greg Miller)
 
