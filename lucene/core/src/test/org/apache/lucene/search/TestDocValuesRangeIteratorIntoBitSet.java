@@ -1050,6 +1050,216 @@ public class TestDocValuesRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
     assertTrue("Expected some bits set", bitSet.cardinality() > 0);
   }
 
+  public void testGcdEncodingOverflow() throws Exception {
+    int numDocs = 300;
+    FixedBitSet expected = new FixedBitSet(numDocs);
+    expected.set(2, 5);
+
+    try (Directory dir = newDirectory()) {
+      writeGcdEncoding64BitIndex(dir, numDocs);
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        assert reader.leaves().size() == 1;
+        LeafReaderContext context = reader.leaves().getFirst();
+        FixedBitSet actualNumeric = new FixedBitSet(numDocs);
+        context
+            .reader()
+            .getNumericDocValues("numeric")
+            .rangeIntoBitSet(0, numDocs, -1, 1, actualNumeric, 0);
+        assertEquals(expected, actualNumeric);
+
+        FixedBitSet actualSortedNumeric = new FixedBitSet(numDocs);
+        context
+            .reader()
+            .getSortedNumericDocValues("sorted_numeric")
+            .rangeIntoBitSet(0, numDocs, -1, 1, actualSortedNumeric, 0);
+        assertEquals(expected, actualSortedNumeric);
+
+        FixedBitSet expectedSparse = new FixedBitSet(numDocs);
+        expectedSparse.set(2);
+        expectedSparse.set(4);
+        FixedBitSet actualSparseSortedNumeric = new FixedBitSet(numDocs);
+        context
+            .reader()
+            .getSortedNumericDocValues("sparse_sorted_numeric")
+            .rangeIntoBitSet(0, numDocs, -1, 1, actualSparseSortedNumeric, 0);
+        assertEquals(expectedSparse, actualSparseSortedNumeric);
+      }
+    }
+  }
+
+  // test bitsPerValue = 64
+  public void testGcdEncoding64BitOpenBounds() throws Exception {
+    int numDocs = 300;
+    try (Directory dir = newDirectory()) {
+      writeGcdEncoding64BitIndex(dir, numDocs);
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        assert reader.leaves().size() == 1;
+        LeafReaderContext context = reader.leaves().getFirst();
+
+        // open low Bounds
+        FixedBitSet expectedOpenLower = new FixedBitSet(numDocs);
+        expectedOpenLower.set(0);
+        expectedOpenLower.set(2);
+        FixedBitSet actualNumericOpenLower = new FixedBitSet(numDocs);
+        context
+            .reader()
+            .getNumericDocValues("numeric")
+            .rangeIntoBitSet(0, numDocs, Long.MIN_VALUE, -1, actualNumericOpenLower, 0);
+        assertEquals(expectedOpenLower, actualNumericOpenLower);
+
+        FixedBitSet actualSortedNumericOpenLower = new FixedBitSet(numDocs);
+        context
+            .reader()
+            .getSortedNumericDocValues("sorted_numeric")
+            .rangeIntoBitSet(0, numDocs, Long.MIN_VALUE, -1, actualSortedNumericOpenLower, 0);
+        assertEquals(expectedOpenLower, actualSortedNumericOpenLower);
+
+        // open upper Bounds
+        FixedBitSet actualSparseSortedNumericOpenLower = new FixedBitSet(numDocs);
+        context
+            .reader()
+            .getSortedNumericDocValues("sparse_sorted_numeric")
+            .rangeIntoBitSet(0, numDocs, Long.MIN_VALUE, -1, actualSparseSortedNumericOpenLower, 0);
+        assertEquals(expectedOpenLower, actualSparseSortedNumericOpenLower);
+
+        FixedBitSet expectedNumericOpenUpper = new FixedBitSet(numDocs);
+        expectedNumericOpenUpper.set(1);
+        expectedNumericOpenUpper.set(3, numDocs);
+        FixedBitSet actualNumericOpenUpper = new FixedBitSet(numDocs);
+        context
+            .reader()
+            .getNumericDocValues("numeric")
+            .rangeIntoBitSet(0, numDocs, 0, Long.MAX_VALUE, actualNumericOpenUpper, 0);
+        assertEquals(expectedNumericOpenUpper, actualNumericOpenUpper);
+
+        FixedBitSet expectedSortedNumericOpenUpper = new FixedBitSet(numDocs);
+        expectedSortedNumericOpenUpper.set(0, numDocs);
+        FixedBitSet actualSortedNumericOpenUpper = new FixedBitSet(numDocs);
+        context
+            .reader()
+            .getSortedNumericDocValues("sorted_numeric")
+            .rangeIntoBitSet(0, numDocs, 0, Long.MAX_VALUE, actualSortedNumericOpenUpper, 0);
+        assertEquals(expectedSortedNumericOpenUpper, actualSortedNumericOpenUpper);
+
+        FixedBitSet expectedSparseSortedNumericOpenUpper = new FixedBitSet(numDocs);
+        for (int docID = 0; docID < numDocs; docID += 2) {
+          expectedSparseSortedNumericOpenUpper.set(docID);
+        }
+        FixedBitSet actualSparseSortedNumericOpenUpper = new FixedBitSet(numDocs);
+        context
+            .reader()
+            .getSortedNumericDocValues("sparse_sorted_numeric")
+            .rangeIntoBitSet(0, numDocs, 0, Long.MAX_VALUE, actualSparseSortedNumericOpenUpper, 0);
+        assertEquals(expectedSparseSortedNumericOpenUpper, actualSparseSortedNumericOpenUpper);
+      }
+    }
+  }
+
+  // test bitsPerValue < 64
+  public void testGcdEncodingLessThan64BitOpenBounds() throws Exception {
+    int numDocs = 10;
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig().setCodec(new Lucene104Codec());
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        for (int docID = 0; docID < numDocs; docID++) {
+          long positiveValue = 2 + docID * 2;
+          long negativeValue = -20 + docID * 2;
+          Document doc = new Document();
+          doc.add(new NumericDocValuesField("positive", positiveValue));
+          doc.add(new NumericDocValuesField("negative", negativeValue));
+          if (docID % 2 == 0) {
+            doc.add(new SortedNumericDocValuesField("sparse_positive", positiveValue));
+            doc.add(new SortedNumericDocValuesField("sparse_positive", positiveValue + 2));
+            doc.add(new SortedNumericDocValuesField("sparse_negative", negativeValue));
+            doc.add(new SortedNumericDocValuesField("sparse_negative", negativeValue + 2));
+          }
+          writer.addDocument(doc);
+        }
+        writer.forceMerge(1);
+      }
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        LeafReaderContext context = reader.leaves().getFirst();
+
+        FixedBitSet expectedValues = new FixedBitSet(numDocs);
+        expectedValues.set(0, 3);
+        FixedBitSet actualValues = new FixedBitSet(numDocs);
+        context
+            .reader()
+            .getNumericDocValues("positive")
+            .rangeIntoBitSet(0, numDocs, Long.MIN_VALUE, 6, actualValues, 0);
+        assertEquals(expectedValues, actualValues);
+
+        expectedValues.clear();
+        actualValues.clear();
+        expectedValues.set(7, 10);
+        context
+            .reader()
+            .getNumericDocValues("negative")
+            .rangeIntoBitSet(0, numDocs, -6, Long.MAX_VALUE, actualValues, 0);
+        assertEquals(expectedValues, actualValues);
+
+        expectedValues.clear();
+        actualValues.clear();
+        context
+            .reader()
+            .getSortedNumericDocValues("sparse_positive")
+            .rangeIntoBitSet(0, numDocs, Long.MIN_VALUE, Long.MIN_VALUE + 500, actualValues, 0);
+        assertEquals(0, actualValues.cardinality());
+
+        expectedValues.clear();
+        actualValues.clear();
+        expectedValues.set(0);
+        expectedValues.set(2);
+        expectedValues.set(4);
+        context
+            .reader()
+            .getSortedNumericDocValues("sparse_positive")
+            .rangeIntoBitSet(0, numDocs, Long.MIN_VALUE, 10, actualValues, 0);
+        assertEquals(expectedValues, actualValues);
+
+        expectedValues.clear();
+        actualValues.clear();
+        expectedValues.set(6);
+        expectedValues.set(8);
+        context
+            .reader()
+            .getSortedNumericDocValues("sparse_negative")
+            .rangeIntoBitSet(0, numDocs, -8, Long.MAX_VALUE, actualValues, 0);
+        assertEquals(expectedValues, actualValues);
+      }
+    }
+  }
+
+  private void writeGcdEncoding64BitIndex(Directory dir, int numDocs) throws IOException {
+    IndexWriterConfig iwc = new IndexWriterConfig().setCodec(new Lucene104Codec());
+    try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+      for (int docID = 0; docID < numDocs; docID++) {
+        long value =
+            switch (docID) {
+              case 0 -> Long.MIN_VALUE;
+              case 1 -> Long.MAX_VALUE;
+              case 2 -> -1;
+              case 3 -> 0;
+              case 4 -> 1;
+              default -> docID;
+            };
+        Document doc = new Document();
+        doc.add(new NumericDocValuesField("numeric", value));
+        doc.add(new SortedNumericDocValuesField("sorted_numeric", value));
+        doc.add(new SortedNumericDocValuesField("sorted_numeric", 1000 + docID));
+        if (docID % 2 == 0) {
+          doc.add(new SortedNumericDocValuesField("sparse_sorted_numeric", value));
+          doc.add(new SortedNumericDocValuesField("sparse_sorted_numeric", 1000 + docID));
+        }
+        writer.addDocument(doc);
+      }
+      writer.forceMerge(1);
+    }
+  }
+
   private static long[] rangeValues(int numDocs, LongUnaryOperator valueFunction) {
     long[] values = new long[numDocs];
     for (int i = 0; i < numDocs; i++) {
