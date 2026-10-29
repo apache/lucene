@@ -1,2 +1,0 @@
-org.apache.commons.codec.Charsets @ Use java.nio.charset.StandardCharsets instead
-org.apache.commons.codec.binary.Base64 @ Use java.util.Base64 instead
