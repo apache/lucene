@@ -41,8 +41,6 @@ import java.util.function.Consumer;
  */
 final class RefCountedSharedArena implements Arena {
 
-  // Intentionally no equals/hashCode: MMapDirectory's arenas.remove(key, arena) relies on identity.
-
   // default maximum permits
   static final int DEFAULT_MAX_PERMITS = 64;
 
@@ -138,6 +136,19 @@ final class RefCountedSharedArena implements Arena {
   @Override
   public MemorySegment.Scope scope() {
     return arena.scope();
+  }
+
+  // equals and hashCode are intentionally identity based and final: MMapDirectory's
+  // arenas.remove(key, arena) relies on that.
+
+  @Override
+  public boolean equals(Object obj) {
+    return super.equals(obj);
+  }
+
+  @Override
+  public int hashCode() {
+    return super.hashCode();
   }
 
   @Override
