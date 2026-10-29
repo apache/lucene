@@ -972,11 +972,11 @@ public class TestDocValuesRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
       try (DirectoryReader reader = DirectoryReader.open(dir)) {
         LeafReaderContext ctx = reader.leaves().get(0);
         FixedBitSet expected = new FixedBitSet(numDocs);
-        var expectedValuess = ctx.reader().getSortedNumericDocValues("sn");
+        var expectedValues = ctx.reader().getSortedNumericDocValues("sn");
         for (int docID = 0; docID < numDocs; docID++) {
-          if (expectedValuess.advanceExact(docID)) {
-            for (int i = 0, count = expectedValuess.docValueCount(); i < count; i++) {
-              long value = expectedValuess.nextValue();
+          if (expectedValues.advanceExact(docID)) {
+            for (int i = 0, count = expectedValues.docValueCount(); i < count; i++) {
+              long value = expectedValues.nextValue();
               if (value >= 20) {
                 if (value <= 40) {
                   expected.set(docID);
