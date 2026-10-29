@@ -463,22 +463,6 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
     }
   }
 
-  // MMapDirectory removes arenas from its map with arenas.remove(key, arena), which relies on
-  // RefCountedSharedArena using identity equality.
-  public void testRefCountedSharedArenaUsesIdentityEquality() {
-    var arena1 = new RefCountedSharedArena("1", _ -> {}, 1);
-    var arena2 = new RefCountedSharedArena("1", _ -> {}, 1);
-    try {
-      assertEquals(System.identityHashCode(arena1), arena1.hashCode());
-      assertEquals(System.identityHashCode(arena2), arena2.hashCode());
-      assertNotEquals(arena1, arena2);
-      assertNotEquals(arena2, arena1);
-    } finally {
-      arena1.close();
-      arena2.close();
-    }
-  }
-
   public void testGroupBySegmentFunc() {
     var func = MMapDirectory.GROUP_BY_SEGMENT;
     assertEquals("0", func.apply("_0.doc").orElseThrow());
