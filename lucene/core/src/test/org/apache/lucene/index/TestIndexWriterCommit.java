@@ -506,6 +506,51 @@ public class TestIndexWriterCommit extends LuceneTestCase {
     dir.close();
   }
 
+  public void testOpenLatestCommitIsNotAChange() throws Exception {
+    try (Directory dir = newDirectory()) {
+      IndexWriter w =
+          new IndexWriter(
+              dir,
+              newIndexWriterConfig(new MockAnalyzer(random()))
+                  .setIndexDeletionPolicy(NoDeletionPolicy.INSTANCE));
+      w.addDocument(new Document());
+      w.commit();
+      w.addDocument(new Document());
+      w.close();
+
+      List<IndexCommit> commits = DirectoryReader.listCommits(dir);
+      assertEquals(2, commits.size());
+
+      // opening the latest commit explicitly must behave like opening without a commit
+      w =
+          new IndexWriter(
+              dir,
+              newIndexWriterConfig(new MockAnalyzer(random()))
+                  .setIndexDeletionPolicy(NoDeletionPolicy.INSTANCE)
+                  .setMergePolicy(NoMergePolicy.INSTANCE)
+                  .setIndexCommit(commits.get(1)));
+      assertFalse(w.hasUncommittedChanges());
+      w.close();
+      assertEquals(2, DirectoryReader.listCommits(dir).size());
+
+      // whereas opening an older commit is a change that the next commit must record
+      w =
+          new IndexWriter(
+              dir,
+              newIndexWriterConfig(new MockAnalyzer(random()))
+                  .setIndexDeletionPolicy(NoDeletionPolicy.INSTANCE)
+                  .setMergePolicy(NoMergePolicy.INSTANCE)
+                  .setIndexCommit(commits.get(0)));
+      assertTrue(w.hasUncommittedChanges());
+      w.close();
+      commits = DirectoryReader.listCommits(dir);
+      assertEquals(3, commits.size());
+      try (DirectoryReader r = DirectoryReader.open(commits.get(2))) {
+        assertEquals(1, r.numDocs());
+      }
+    }
+  }
+
   public void testZeroCommits() throws Exception {
     // Tests that if we don't call commit(), the directory has 0 commits. This has
     // changed since LUCENE-2386, where before IW would always commit on a fresh
