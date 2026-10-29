@@ -36,30 +36,6 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
   /**
    * Creates a new {@link TopFieldCollectorManager} from the given arguments.
    *
-   * <p><b>NOTE</b>: The instances returned by this method pre-allocate a full array of length
-   * <code>numHits</code>.
-   *
-   * @param sort the sort criteria (SortFields).
-   * @param numHits the number of results to collect.
-   * @param after the previous doc after which matching docs will be collected.
-   * @param totalHitsThreshold the number of docs to count accurately. If the query matches more
-   *     than {@code totalHitsThreshold} hits then its hit count will be a lower bound. On the other
-   *     hand if the query matches less than or exactly {@code totalHitsThreshold} hits then the hit
-   *     count of the result will be accurate. {@link Integer#MAX_VALUE} may be used to make the hit
-   *     count accurate, but this will also make query processing slower.
-   * @param supportsConcurrency to use thread-safe and slower internal states for count tracking.
-   * @deprecated Use {@link #TopFieldCollectorManager(Sort, int, FieldDoc, int)}, the
-   *     supportsConcurrency parameter is now a no-op.
-   */
-  @Deprecated
-  public TopFieldCollectorManager(
-      Sort sort, int numHits, FieldDoc after, int totalHitsThreshold, boolean supportsConcurrency) {
-    this(sort, numHits, after, totalHitsThreshold);
-  }
-
-  /**
-   * Creates a new {@link TopFieldCollectorManager} from the given arguments.
-   *
    * <p>Thread safety is guaranteed for the shared internal states (hit counting, minimum score
    * propagation) across collectors created by {@link #newCollector()}. Note that {@link
    * #newCollector()} itself is designed to be called from a single thread; {@link IndexSearcher}
@@ -129,7 +105,7 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
    *     count accurate, but this will also make query processing slower.
    */
   public TopFieldCollectorManager(Sort sort, int numHits, int totalHitsThreshold) {
-    this(sort, numHits, null, totalHitsThreshold, true);
+    this(sort, numHits, null, totalHitsThreshold);
   }
 
   @Override
