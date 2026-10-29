@@ -19,6 +19,7 @@ package org.apache.lucene.store;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 /**
  * A reference counted shared Arena.
@@ -31,7 +32,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * <p>The reference count is increased by {@link #acquire()}, and decreased by {@link #release()}.
  * When the reference count reaches 0, then the underlying arena is closed and the given {@code
- * onClose} runnable is executed. No more references can be acquired.
+ * onClose} consumer is called with this arena. No more references can be acquired.
  *
  * <p>The total number of acquires that can be obtained for the lifetime of an instance of this
  * class is 1024. When the total number of acquires is exhausted, then no more acquires are
@@ -44,6 +45,10 @@ final class RefCountedSharedArena implements Arena {
   // default maximum permits
   static final int DEFAULT_MAX_PERMITS = 64;
 
+  // the largest configurable number of permits, since the remaining permits are tracked in the high
+  // 16 bits of the (signed) state
+  static final int MAX_PERMITS = 0x7FFF;
+
   private static final int CLOSED = 0;
   // minimum value, beyond which permits are exhausted
   private static final int REMAINING_UNIT = 1 << 16;
@@ -54,7 +59,7 @@ final class RefCountedSharedArena implements Arena {
 
   // onClose could be called multiple times when the inner Arena's close fails with
   // IllegalStateException
-  private final Runnable onClose;
+  private final Consumer<RefCountedSharedArena> onClose;
 
   private final Arena arena;
 
@@ -62,11 +67,12 @@ final class RefCountedSharedArena implements Arena {
   // low 16 bit contain the current ref count
   private final AtomicInteger state;
 
-  RefCountedSharedArena(String segmentName, Runnable onClose) {
+  RefCountedSharedArena(String segmentName, Consumer<RefCountedSharedArena> onClose) {
     this(segmentName, onClose, DEFAULT_MAX_PERMITS);
   }
 
-  RefCountedSharedArena(String segmentName, Runnable onClose, int maxPermits) {
+  RefCountedSharedArena(
+      String segmentName, Consumer<RefCountedSharedArena> onClose, int maxPermits) {
     if (validMaxPermits(maxPermits) == false) {
       throw new IllegalArgumentException("invalid max permits: " + maxPermits);
     }
@@ -77,7 +83,7 @@ final class RefCountedSharedArena implements Arena {
   }
 
   static boolean validMaxPermits(int v) {
-    return v > 0 && v <= 0x7FFF;
+    return v > 0 && v <= MAX_PERMITS;
   }
 
   // for debugging
@@ -110,7 +116,7 @@ final class RefCountedSharedArena implements Arena {
       final int newValue = count <= 1 ? CLOSED : value - 1;
       if (this.state.compareAndSet(value, newValue)) {
         if (newValue == CLOSED) {
-          onClose.run();
+          onClose.accept(this);
           arena.close();
         }
         return;
@@ -131,6 +137,19 @@ final class RefCountedSharedArena implements Arena {
   @Override
   public MemorySegment.Scope scope() {
     return arena.scope();
+  }
+
+  // equals and hashCode are intentionally identity based and final: MMapDirectory's
+  // arenas.remove(key, arena) relies on that.
+
+  @Override
+  public final boolean equals(Object obj) {
+    return super.equals(obj);
+  }
+
+  @Override
+  public final int hashCode() {
+    return super.hashCode();
   }
 
   @Override
