@@ -142,12 +142,12 @@ final class RefCountedSharedArena implements Arena {
   // arenas.remove(key, arena) relies on that.
 
   @Override
-  public boolean equals(Object obj) {
+  public final boolean equals(Object obj) {
     return super.equals(obj);
   }
 
   @Override
-  public int hashCode() {
+  public final int hashCode() {
     return super.hashCode();
   }
 
