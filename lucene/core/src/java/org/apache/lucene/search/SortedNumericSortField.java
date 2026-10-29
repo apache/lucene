@@ -361,9 +361,6 @@ public class SortedNumericSortField extends SortField {
       default:
         throw new AssertionError();
     }
-    if (getOptimizeSortWithIndexedData() == false) {
-      fieldComparator.disableSkipping();
-    }
     return fieldComparator;
   }
 

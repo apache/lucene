@@ -36,6 +36,16 @@ API Changes
 * GITHUB#16741: Lower the minimum supported major version from 10 to 9. Indexes created with 9.x
   remain fully supported in Lucene 11, no reindexing required. (Luca Cavanna)
 
+* GITHUB#14399: Sort pruning decisions are now entirely made through the Pruning
+  enum.  The various different locations that made these decisions are consolidated
+  into FieldValueHitQueue, and early termination through examining index sorts is
+  handled by a new IndexSortedLeafFieldComparator class.  Index pruning can be
+  disabled by wrapping the relevant SortField with SortField#withoutPruning, and the
+  deprecated SortField#setOptimizeSortWithIndexedData, #getOptimizeSortWithIndexedData,
+  #setOptimizeSortWithPoints and #getOptimizeSortWithPoints methods are removed, as well
+  as FieldComparator#setSingleSort, FieldComparator#disableSkipping and
+  LeafFieldComparator#disableSkipping. (Alan Woodward)
+
 * GITHUB#16705: KnnVectorValues#prefetch(int ord, int count) replaces prefetch(int ord). It prefetches
   a run of consecutive vectors with a single read and returns true if a prefetch was issued, like
   IndexInput#prefetch. The int[] form now coalesces ordinals that are consecutive in the array over

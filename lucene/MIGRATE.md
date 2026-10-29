@@ -19,6 +19,20 @@
 
 ## Migration from Lucene 10.x to Lucene 11.0
 
+### SortField#setOptimizeSortWithIndexedData has been removed (GITHUB#14399)
+
+`SortField#setOptimizeSortWithIndexedData(false)` and `setOptimizeSortWithPoints(false)`, along with
+their getters, are gone. Wrap the sort field instead: `SortField.withoutPruning(sortField)`. The
+wrapper is immutable and never lets comparators skip documents using points, terms or doc values
+skippers. Early termination for sorts that are a prefix of the index sort still applies. The
+wrapper is for searching only: it cannot be used as an index sort, and `getIndexSorter()` throws
+`UnsupportedOperationException`.
+
+`FieldComparator#setSingleSort`, `FieldComparator#disableSkipping` and
+`LeafFieldComparator#disableSkipping` were removed too. Custom comparators that relied on
+`setSingleSort` can use the `Pruning` they are constructed with: a single sort field that is not
+paging gets `Pruning.GREATER_THAN_OR_EQUAL_TO`, and has no top value set.
+
 ### Java 25 is the minimum required JDK (GITHUB#14229, GITHUB#15215)
 
 Lucene 11 requires Java 25. Rebuild and run on JDK 25 or newer before upgrading
