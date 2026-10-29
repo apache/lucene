@@ -276,8 +276,28 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
               VectorUtil.int4BitDotProduct(quantizedQuery, quantizedDoc);
           case DIBIT_QUERY_NIBBLE -> VectorUtil.int4DibitDotProduct(quantizedQuery, quantizedDoc);
         };
-    OptimizedScalarQuantizer.QuantizationResult indexCorrections =
-        targetVectors.getCorrectiveTerms(targetOrd);
+    return quantizedScore(
+        qcDist,
+        queryCorrections,
+        targetVectors.getCorrectiveTerms(targetOrd),
+        targetVectors,
+        similarityFunction);
+  }
+
+  /**
+   * Scores {@code qcDist}, the quantized dot product of a vector and the query, using both vectors'
+   * corrective terms.
+   *
+   * @lucene.internal
+   */
+  protected static float quantizedScore(
+      float qcDist,
+      OptimizedScalarQuantizer.QuantizationResult queryCorrections,
+      OptimizedScalarQuantizer.QuantizationResult indexCorrections,
+      QuantizedByteVectorValues targetVectors,
+      VectorSimilarityFunction similarityFunction)
+      throws IOException {
+    var scalarEncoding = targetVectors.getScalarEncoding();
     float queryScale = SCALE_LUT[scalarEncoding.getQueryBits() - 1];
     float scale = SCALE_LUT[scalarEncoding.getBits() - 1];
     float x1 = indexCorrections.quantizedComponentSum();
