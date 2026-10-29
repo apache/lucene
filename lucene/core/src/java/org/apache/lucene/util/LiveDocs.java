@@ -34,6 +34,8 @@ import org.apache.lucene.search.DocIdSetIterator;
  *   <li>Dense deletions: Use {@link FixedBitSet} to store live docs, maintaining current behavior
  * </ul>
  *
+ * <p>A bulk {@link Bits#applyMask} is recommended, the default falls back to a per-bit loop.
+ *
  * @lucene.experimental
  */
 public interface LiveDocs extends Bits {

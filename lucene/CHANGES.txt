@@ -3,12 +3,48 @@ Lucene Change Log
 For more information on past and future Lucene versions, please see:
 http://s.apache.org/luceneversions
 
+======================= Lucene 12.0.0 =======================
+
+API Changes
+---------------------
+(No changes)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+(No changes)
+
+Optimizations
+---------------------
+(No changes)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+(No changes)
+
 ======================= Lucene 11.0.0 =======================
 
 API Changes
 ---------------------
 * GITHUB#16741: Lower the minimum supported major version from 10 to 9. Indexes created with 9.x
   remain fully supported in Lucene 11, no reindexing required. (Luca Cavanna)
+
+* GITHUB#14399: Sort pruning decisions are now entirely made through the Pruning
+  enum.  The various different locations that made these decisions are consolidated
+  into FieldValueHitQueue, and early termination through examining index sorts is
+  handled by a new IndexSortedLeafFieldComparator class.  Index pruning can be
+  disabled by wrapping the relevant SortField with SortField#withoutPruning, and the
+  deprecated SortField#setOptimizeSortWithIndexedData, #getOptimizeSortWithIndexedData,
+  #setOptimizeSortWithPoints and #getOptimizeSortWithPoints methods are removed, as well
+  as FieldComparator#setSingleSort, FieldComparator#disableSkipping and
+  LeafFieldComparator#disableSkipping. (Alan Woodward)
 
 * GITHUB#16705: KnnVectorValues#prefetch(int ord, int count) replaces prefetch(int ord). It prefetches
   a run of consecutive vectors with a single read and returns true if a prefetch was issued, like
@@ -153,6 +189,8 @@ API Changes
 
 New Features
 ---------------------
+* GITHUB#16723: Support SIMD Faiss library variants with runtime fallback. (Abhinav Chinnala)
+
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
   modern Hangul conjoining jamo before KoreanTokenizer. (Mingi Jeong)
 
@@ -216,8 +254,17 @@ Improvements
 
 * GITHUB#16499: Clean up BytesRefHash. Remove dead lastCount and unused close(), fix stale comments (neoremind)
 
+* GITHUB#16734: IndexWriter#addBatch now hands DENSE vector columns to the vectors writer in bulk
+  through the new VectorColumn#values cursor and KnnFieldVectorsWriter#addDenseValues, instead of
+  adding vectors one document at a time. (Mayya Sharipova)
+
 Optimizations
 ---------------------
+
+* GITHUB#16794: Concurrent HNSW merges now join the other deletion-free graphs into the base graph
+  through their join sets, as serial merges have done since GITHUB#14331, instead of inserting all
+  their vectors with a full search. Graphs now match the serial merge: slightly lower recall at the
+  same ef, but fewer visited nodes. (Lantao Jin)
 
 * GITHUB#16771: Lucene99FlatVectorsWriter now aligns vector data to 4096 bytes for all encodings
   (previously 64 for float32 and 4 for float16 and byte), so a vector whose size divides a page or is
@@ -260,6 +307,11 @@ Optimizations
 
 * GITHUB#16619: DirectIODirectory's slice() no longer performs a blocking direct read when
   creating a slice; the first read resolves the deferred start position instead. (John Maurice)
+
+* GITHUB#16623: FixedBitSet#copyOf masks LiveDocs in bulk through Bits#applyMask instead of
+  testing every bit, which speeds up the first delete on a segment whose deletes were read from
+  disk, opening soft-deletes readers, and sandbox FAISS KNN search over segments with deletions.
+  (Costin Leau)
 
 Bug Fixes
 ---------------------
@@ -323,6 +375,12 @@ Bug Fixes
 * GITHUB#16409: Fix filtered HNSW search boundary handling to match the general HNSW searcher. (Mingi Jeong)
 
 * GITHUB#16687: Use quantized vectors for fp16 HNSW graph construction during merges. (Kaival Parikh)
+
+* GITHUB#16931: Fix MMapDirectory losing shared arena grouping when an old arena closes and removes
+  the newer live arena of the same group from the arenas map. (Chris Hegarty)
+
+* GITHUB#16926: RescoreTopNQuery no longer throws when its inner query matches no documents.
+  (Greg Miller)
 
 Changes in Runtime Behavior
 ---------------------
@@ -415,32 +473,6 @@ Other
 * GITHUB#16170: Add JMH benchmarks for int4BitDotProduct and int4DibitDotProduct. (Vignesh)
 
 * GITHUB#16279: Add JMH benchmarks comparing read I/O strategies under memory pressure. (neoremind)
-
-======================= Lucene 10.7.0 =======================
-
-API Changes
----------------------
-(No changes)
-
-New Features
----------------------
-(No changes)
-
-Improvements
----------------------
-(No changes)
-
-Optimizations
----------------------
-(No changes)
-
-Bug Fixes
----------------------
-(No changes)
-
-Other
----------------------
-(No changes)
 
 ======================= Lucene 10.6.0 =======================
 
@@ -558,11 +590,6 @@ Improvements
 
 Optimizations
 ---------------------
-
-* GITHUB#16794: Concurrent HNSW merges now join the other deletion-free graphs into the base graph
-  through their join sets, as serial merges have done since GITHUB#14331, instead of inserting all
-  their vectors with a full search. Graphs now match the serial merge: slightly lower recall at the
-  same ef, but fewer visited nodes. (Lantao Jin)
 
 * GITHUB#16706: Reduce the sandboxed dedup vector formats' index size by packing each field
   ordinal to group ordinal mapping at the minimum bit width required for the largest group ordinal,
@@ -791,6 +818,18 @@ Bug Fixes
 
 * GITHUB#16855: Stop BlockMaxConjunctionBulkScorer from iterating windows past maxDoc.
   (Michalis Papadimitriou)
+
+* GITHUB#16884: Fix IndexSortSortedNumericDocValuesRangeQuery#count returning a wrong count on
+  multi-valued fields, because the index sort only reflects one value per document.
+  (Salvatore Campagna, Houston Putman)
+
+* GITHUB#16885: Fix the range queries behind SortedNumericDocValuesField, NumericDocValuesField,
+  SortedSetDocValuesField and SortedDocValuesField#newSlowRangeQuery returning wrong hits on
+  segments with document blocks when the field is the primary index sort field, has a doc values
+  skipper and every document has a value. (Salvatore Campagna, Houston Putman)
+
+* GITHUB#16886: Fix IndexSortSortedNumericDocValuesRangeQuery returning wrong hits and counts, or
+  throwing IllegalArgumentException, on segments with document blocks. (Salvatore Campagna, Houston Putman)
 
 Build
 ---------------------

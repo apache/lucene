@@ -871,9 +871,15 @@ public final class FixedBitSet extends BitSet {
       int length = bits.length();
       FixedBitSet bitSet = new FixedBitSet(length);
       bitSet.set(0, length);
-      for (int i = 0; i < length; ++i) {
-        if (bits.get(i) == false) {
-          bitSet.clear(i);
+      if (bits instanceof LiveDocs) {
+        bits.applyMask(bitSet, 0);
+      } else {
+        // The default Bits#applyMask calls nextSetBit per set bit, which is several times slower
+        // than this loop on a fully set bit set.
+        for (int i = 0; i < length; ++i) {
+          if (bits.get(i) == false) {
+            bitSet.clear(i);
+          }
         }
       }
       return bitSet;
