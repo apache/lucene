@@ -547,7 +547,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
    * values satisfy {@code stored = raw * mul + delta}. Returns {@code {encodedMin, encodedMax}} or
    * {@code null} if the range is empty (no raw value can match).
    */
-  private static long[] transformGcdBounds(
+  static long[] transformGcdBounds(
       long minValue, long maxValue, long mul, long delta, int bitsPerValue) {
     assert mul > 0;
     if (maxValue < delta) {
@@ -563,11 +563,8 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     return new long[] {encodedMin, encodedMax};
   }
 
-  /**
-   * Checks whether query bounds can be safely transformed to encoded bounds.
-   */
-  private static boolean canTransformGcdBounds(
-      long minValue, long maxValue, long delta, int bitsPerValue) {
+  /** Checks whether query bounds can be safely transformed to encoded bounds. */
+  static boolean canTransformGcdBounds(long minValue, long maxValue, long delta, int bitsPerValue) {
     if (maxValue < delta || delta >= 0) {
       return true;
     }
