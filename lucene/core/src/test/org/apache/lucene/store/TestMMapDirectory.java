@@ -411,6 +411,58 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
     }
   }
 
+  // When the permits of a group's arena are exhausted, a newer arena replaces it in the arenas map
+  // while the older one is still alive. Closing the older arena must not evict the newer one.
+  public void testArenasOldArenaCloseKeepsNewerArena() throws Exception {
+    final String name = "_1.dat";
+    byte[] bytes = new byte[4];
+    random().nextBytes(bytes);
+
+    try (var dir = new MMapDirectory(createTempDir("testArenasOldArenaCloseKeepsNewerArena"))) {
+      try (IndexOutput out = dir.createOutput(name, IOContext.DEFAULT)) {
+        out.writeBytes(bytes, 0, bytes.length);
+      }
+      final String key = MMapDirectory.GROUP_BY_SEGMENT.apply(name).orElseThrow();
+
+      // Open the same file until the permits of the first arena are exhausted, and the arenas map
+      // holds a newer arena for the group. The number of permits is at most MAX_PERMITS, so the
+      // loop is bounded by one more open than that.
+      List<IndexInput> oldInputs = new ArrayList<>();
+      oldInputs.add(dir.openInput(name, IOContext.DEFAULT));
+      final RefCountedSharedArena oldArena = dir.arenas.get(key);
+      assertNotNull(oldArena);
+
+      IndexInput newInput = null;
+      for (int i = 0; i <= RefCountedSharedArena.MAX_PERMITS && newInput == null; i++) {
+        IndexInput in = dir.openInput(name, IOContext.DEFAULT);
+        if (dir.arenas.get(key) == oldArena) {
+          oldInputs.add(in);
+        } else {
+          newInput = in;
+        }
+      }
+      assertNotNull("permits were never exhausted", newInput);
+      final RefCountedSharedArena newArena = dir.arenas.get(key);
+      assertNotNull(newArena);
+      assertNotSame(oldArena, newArena);
+
+      // Closing all inputs of the old arena closes it, but the newer arena is still live
+      for (IndexInput in : oldInputs) {
+        in.close();
+      }
+      assertSame("old arena's close evicted the newer arena", newArena, dir.arenas.get(key));
+
+      // Further opens of the group still share the newer arena
+      IndexInput another = dir.openInput(name, IOContext.DEFAULT);
+      assertSame(newArena, dir.arenas.get(key));
+      assertEquals(1, dir.arenas.size());
+      another.close();
+
+      newInput.close();
+      assertEquals(0, dir.arenas.size());
+    }
+  }
+
   public void testGroupBySegmentFunc() {
     var func = MMapDirectory.GROUP_BY_SEGMENT;
     assertEquals("0", func.apply("_0.doc").orElseThrow());
