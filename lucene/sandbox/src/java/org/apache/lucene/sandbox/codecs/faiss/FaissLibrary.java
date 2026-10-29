@@ -33,14 +33,6 @@ import org.apache.lucene.util.hnsw.IntToIntFunction;
 interface FaissLibrary {
   FaissLibrary INSTANCE = new FaissLibraryNativeImpl();
 
-  // TODO: Use SIMD version at runtime. The "faiss_c" library is linked to the main "faiss" library,
-  //  which does not use SIMD instructions. However, there are SIMD versions of "faiss" (like
-  //  "faiss_avx2", "faiss_avx512", "faiss_sve", etc.) available, which can be used by changing the
-  //  dependencies of "faiss_c" using the "patchelf" utility. Figure out how to do this dynamically,
-  //  or via modifications to upstream Faiss.
-  String NAME = "faiss_c";
-  String VERSION = "1.11.0";
-
   interface Index extends Closeable {
     void search(float[] query, KnnCollector knnCollector, AcceptDocs acceptDocs);
 
