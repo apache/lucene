@@ -308,7 +308,7 @@ Bug Fixes
 * GITHUB#16867: Apply buffered soft-update/delete terms before the global delete buffer reaches the 2GB
   addressing limit of its ByteBlockPool, and stall indexing if the limit is hit during a full flush.
   (Alan Woodward)
-  
+
 * GITHUB#16441: MultiFieldQueryParser + per-field boosts produce wrong Occur under AND default operator (Egor Potemkin, Olivier Jaquemet)
 
 * GITHUB#16443: MultiFieldQueryParser: default operator is not honored between term positions (Egor Potemkin, Olivier Jaquemet)
