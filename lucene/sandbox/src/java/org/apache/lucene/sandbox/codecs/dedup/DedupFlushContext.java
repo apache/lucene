@@ -18,7 +18,6 @@ package org.apache.lucene.sandbox.codecs.dedup;
 
 import static java.nio.ByteOrder.LITTLE_ENDIAN;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.alignBytes;
-import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.hashBytes;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.writeEndMarker;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.writeFieldInfo;
 
@@ -52,8 +51,8 @@ import org.apache.lucene.util.RamUsageEstimator;
 /**
  * Buffers vectors added during a flush and de-duplicates them in memory. Fields sharing a {@link
  * DedupUtil.GroupKey} intern into the same {@link DedupGroup}; on {@link #flush} each group's
- * distinct vectors are written once, followed by per-field metadata mapping document ordinals to
- * group ordinals.
+ * vectors are written once per document, in doc order, followed by per-field metadata mapping
+ * document ordinals to group ordinals.
  *
  * @lucene.experimental
  */
@@ -97,9 +96,9 @@ final class DedupFlushContext implements Accountable {
   }
 
   /**
-   * Writes each group's distinct vectors once, followed by per-field metadata. When {@code
-   * quantizer} is non-null, a quantized copy of each applicable group is also written and its block
-   * location appended to the group metadata.
+   * Writes each group's vectors once per document in doc order, followed by per-field metadata.
+   * When {@code quantizer} is non-null, a quantized copy of each applicable group is also written
+   * and its block location appended to the group metadata.
    */
   void flush(
       IndexOutput meta,
@@ -111,6 +110,7 @@ final class DedupFlushContext implements Accountable {
       throws IOException {
 
     Map<GroupKey, Integer> groupOrds = new HashMap<>();
+    Map<GroupKey, int[]> old2NewGroupOrds = new HashMap<>(); // after sorting each group by doc
 
     // quantization flavors referencing each group, derived from its fields' similarity functions
     Map<GroupKey, Set<DedupQuantizer.Flavor>> groupFlavors = new HashMap<>();
@@ -135,8 +135,9 @@ final class DedupFlushContext implements Accountable {
       int groupNumVectors = group.numVectors();
       long vectorDataOffset = alignBytes(vectorData, encoding);
 
-      // TODO: Write in sorted order for faster merge? (with sequential IO)
-      for (int ord = 0; ord < groupNumVectors; ord++) {
+      // Write the vectors in (sorted) doc order, so that a merge reads them sequentially
+      int[] new2OldGroupOrd = group.ordsByDoc(sortMap);
+      for (int ord : new2OldGroupOrd) {
         byte[] bytes = group.serialize(ord);
         vectorData.writeBytes(bytes, bytes.length);
       }
@@ -156,7 +157,7 @@ final class DedupFlushContext implements Accountable {
               dimension,
               groupNumVectors,
               groupFlavors.get(groupKey),
-              floatGroup::get,
+              ord -> floatGroup.get(new2OldGroupOrd[ord]),
               null);
         } else if (group instanceof Float16Group float16Group) {
           // FLOAT16 is stored raw as short[]; inflate to float[] for data-blind quantization. The
@@ -170,7 +171,7 @@ final class DedupFlushContext implements Accountable {
               dimension,
               groupNumVectors,
               groupFlavors.get(groupKey),
-              ord -> DedupUtil.inflateFloat16(float16Group.get(ord), inflated),
+              ord -> DedupUtil.inflateFloat16(float16Group.get(new2OldGroupOrd[ord]), inflated),
               null);
         } else {
           DedupQuantizer.writeEmptyGroup(meta);
@@ -179,12 +180,19 @@ final class DedupFlushContext implements Accountable {
 
       groupOrds.put(groupKey, groupOrd);
       groupOrd++;
+
+      int[] old2NewGroupOrd = new int[groupNumVectors];
+      for (int ord = 0; ord < groupNumVectors; ord++) {
+        old2NewGroupOrd[new2OldGroupOrd[ord]] = ord;
+      }
+      old2NewGroupOrds.put(groupKey, old2NewGroupOrd);
     }
 
     writeEndMarker(meta);
 
     for (FieldData fieldData : fieldDataList) {
       fieldData.fieldWriter.finish();
+      fieldData.fieldWriter.remapGroupOrds(old2NewGroupOrds.get(fieldData.groupKey));
 
       IntArrayList fieldOrdToGroupOrd = fieldData.fieldWriter.getFieldOrdToGroupOrd();
       int vectorCount = fieldOrdToGroupOrd.elementsCount;
@@ -234,11 +242,6 @@ final class DedupFlushContext implements Accountable {
     }
 
     @Override
-    public long hash(byte[] vector) {
-      return hashBytes(vector);
-    }
-
-    @Override
     public boolean equals(byte[] vector, byte[] other) {
       return Arrays.equals(vector, other);
     }
@@ -275,12 +278,6 @@ final class DedupFlushContext implements Accountable {
               + length;
       this.bytes = new byte[length];
       this.buffer = ByteBuffer.wrap(bytes).order(LITTLE_ENDIAN).asFloatBuffer();
-    }
-
-    @Override
-    public long hash(float[] vector) {
-      buffer.put(0, vector);
-      return hashBytes(bytes);
     }
 
     @Override
@@ -321,12 +318,6 @@ final class DedupFlushContext implements Accountable {
               + length;
       this.bytes = new byte[length];
       this.buffer = ByteBuffer.wrap(bytes).order(LITTLE_ENDIAN).asShortBuffer();
-    }
-
-    @Override
-    public long hash(short[] vector) {
-      buffer.put(0, vector);
-      return hashBytes(bytes);
     }
 
     @Override

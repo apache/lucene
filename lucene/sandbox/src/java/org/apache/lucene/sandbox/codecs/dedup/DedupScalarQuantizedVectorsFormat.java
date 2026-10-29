@@ -25,14 +25,14 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
 
 /**
- * A scalar quantized version of {@link DedupFlatVectorsFormat} that stores each distinct vector
- * once, in both raw and quantized form.
+ * A scalar quantized version of {@link DedupFlatVectorsFormat} that stores each distinct vector of
+ * a document once, in both raw and quantized form.
  *
  * <p>Quantization is <i>data-blind</i>: input vectors are assumed to be evenly distributed, i.e.
  * centered on a zero vector (see {@link DedupQuantizer}). The quantized record of a vector is then
  * a pure function of the raw vector and the {@link DedupQuantizer.Flavor} derived from the field's
  * similarity function — independent of the other vectors in the segment — so quantized records
- * de-duplicate like raw vectors: identical vectors across documents and fields of a group whose
+ * de-duplicate like raw vectors: identical vectors across the fields of a document in a group whose
  * similarity functions map to the same flavor share one quantized record, resolved through the same
  * {@code fieldOrdToGroupOrd} translation map. Records follow the {@link
  * org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat} conventions per flavor,

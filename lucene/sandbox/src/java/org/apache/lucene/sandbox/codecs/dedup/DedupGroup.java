@@ -19,15 +19,18 @@ package org.apache.lucene.sandbox.codecs.dedup;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.lucene.internal.hppc.LongIntHashMap;
+import org.apache.lucene.index.Sorter;
+import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.internal.hppc.ObjectCursor;
 import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.InPlaceMergeSorter;
 
 /**
- * Interns vectors so that each distinct value is stored once. {@link #addUnique} returns the group
- * ordinal for a vector, adding it (via {@link #copy}) only if not already present. Callers with the
- * same {@code (dimension, encoding)} share a group, so an identical vector across fields is stored
- * a single time.
+ * Stores the vectors of a group once per document: {@link #addUnique} returns the group ordinal for
+ * a vector of a document, adding it (via {@link #copy}) only if no other field of the document
+ * holds an equal one. Callers with the same {@code (dimension, encoding)} share a group, so an
+ * identical vector across fields of a document is stored a single time. Vectors must be added
+ * document by document: a vector is only compared with those added since the document changed.
  *
  * <p>Not thread-safe; a group is confined to the writer that created it.
  *
@@ -39,23 +42,23 @@ abstract sealed class DedupGroup<T> implements Accountable
         DedupFlushContext.Float16Group,
         DedupMergeContext.DedupMergeGroup {
 
-  /**
-   * Map for vector hash -> group ord. Only a hint and not the ground truth due to possibility of
-   * hash collisions, where a full equality check must be performed.
-   */
-  private final LongIntHashMap hashToOrdHint;
-
   private final List<T> vectors;
+
+  private final IntArrayList docIDs; // the document of each vector, to sort them by doc on flush
 
   private final ObjectCursor<T> current; // reuse from addUnique
 
-  DedupGroup() {
-    this.hashToOrdHint = new LongIntHashMap();
-    this.vectors = new ArrayList<>();
-    this.current = new ObjectCursor<>();
-  }
+  private int lastDocID; // the document whose vectors were added last
 
-  abstract long hash(T vector) throws IOException;
+  private int lastDocFirstOrd; // the group ordinal of its first vector
+
+  DedupGroup() {
+    this.vectors = new ArrayList<>();
+    this.docIDs = new IntArrayList();
+    this.current = new ObjectCursor<>();
+    this.lastDocID = -1;
+    this.lastDocFirstOrd = 0;
+  }
 
   abstract boolean equals(T vector, T other) throws IOException;
 
@@ -71,35 +74,56 @@ abstract sealed class DedupGroup<T> implements Accountable
     return vectors.get(ord);
   }
 
-  ObjectCursor<T> addUnique(T vectorValue) throws IOException {
-    final int groupOrd;
-    final T ownedVector;
-    for (long hash = hash(vectorValue); ; hash++) { // linear probing
-      int ordIndex = hashToOrdHint.indexOf(hash);
-      if (ordIndex < 0) { // not found
-        groupOrd = vectors.size();
-        ownedVector = copy(vectorValue); // only for unique vectors
-        hashToOrdHint.put(hash, groupOrd);
-        vectors.add(ownedVector);
-        break;
-      } else {
-        int ord = hashToOrdHint.indexGet(ordIndex);
-        T other = vectors.get(ord);
-        if (equals(vectorValue, other)) {
-          groupOrd = ord;
-          ownedVector = other;
-          break;
-        }
-        // else continue probing
-      }
+  ObjectCursor<T> addUnique(int docID, T vectorValue) throws IOException {
+    if (docID != lastDocID) {
+      lastDocID = docID;
+      lastDocFirstOrd = vectors.size();
+    }
+    int groupOrd = lastDocFirstOrd; // only compare with the vectors of the document
+    while (groupOrd < vectors.size() && equals(vectorValue, vectors.get(groupOrd)) == false) {
+      groupOrd++;
+    }
+    if (groupOrd == vectors.size()) { // not held by another field of the document
+      vectors.add(copy(vectorValue)); // only for unique vectors
+      docIDs.add(docID);
     }
     current.index = groupOrd;
-    current.value = ownedVector;
+    current.value = vectors.get(groupOrd);
     return current;
+  }
+
+  /**
+   * The group ordinals sorted by the document of their vector (mapped through {@code sortMap} if
+   * not null), the vectors of a document keeping their order.
+   */
+  int[] ordsByDoc(Sorter.DocMap sortMap) {
+    int[] ords = new int[vectors.size()];
+    for (int ord = 0; ord < ords.length; ord++) {
+      ords[ord] = ord;
+    }
+    new InPlaceMergeSorter() {
+      @Override
+      protected int compare(int i, int j) {
+        return Integer.compare(doc(ords[i]), doc(ords[j]));
+      }
+
+      @Override
+      protected void swap(int i, int j) {
+        int tmp = ords[i];
+        ords[i] = ords[j];
+        ords[j] = tmp;
+      }
+
+      private int doc(int ord) {
+        int docID = docIDs.get(ord);
+        return sortMap == null ? docID : sortMap.oldToNew(docID);
+      }
+    }.sort(0, ords.length);
+    return ords;
   }
 
   @Override
   public long ramBytesUsed() {
-    return hashToOrdHint.ramBytesUsed();
+    return docIDs.ramBytesUsed();
   }
 }

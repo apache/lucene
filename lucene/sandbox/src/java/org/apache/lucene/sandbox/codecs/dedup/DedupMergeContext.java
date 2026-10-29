@@ -18,9 +18,9 @@ package org.apache.lucene.sandbox.codecs.dedup;
 
 import static java.nio.ByteOrder.LITTLE_ENDIAN;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.alignBytes;
-import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.hashBytes;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.writeEndMarker;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.writeFieldInfo;
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -47,19 +47,19 @@ import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.internal.hppc.ObjectCursor;
 import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.GroupInfo;
 import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.GroupKey;
-import org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.FieldOrdToGroupOrd;
 import org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.FieldOrdToGroupOrdArrayList;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.IOSupplier;
+import org.apache.lucene.util.PriorityQueue;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /**
  * Merges de-duplicated flat vectors from several segments. Fields sharing a {@link
- * DedupUtil.GroupKey} are merged into one group: their vectors are streamed in merged doc order
- * through a {@link DedupGroup}, so a vector is written the first time it is seen and later
- * occurrences (within or across fields) reuse that group ordinal. Vectors originating from a dedup
- * source are compared by ordinal to avoid reading them back.
+ * DedupUtil.GroupKey} are merged into one group: their vectors are streamed together in merged doc
+ * order through a {@link DedupGroup}, so a vector is written the first time it is seen in a
+ * document and the document's other fields holding it reuse that group ordinal. A vector is only
+ * compared with the other vectors of its document, and the vectors are written in doc order.
  *
  * @lucene.experimental
  */
@@ -78,21 +78,14 @@ final class DedupMergeContext implements Accountable {
   }
 
   void addField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-    fieldDataList.add(
-        new FieldData(
-            fieldInfo,
-            new GroupKey(fieldInfo),
-            new DocsWithFieldSet(),
-            new IntArrayList(),
-            getVectorMerger(fieldInfo, mergeState),
-            mergeState.segmentInfo.maxDoc()));
+    fieldDataList.add(new FieldData(fieldInfo, mergeState));
   }
 
   /**
-   * Merges each group's distinct vectors, followed by per-field metadata. When {@code quantizer} is
-   * non-null, a quantized copy of each applicable group is also written and its block location
-   * appended to the group metadata — copying records from source segments in this format, and
-   * re-reading a distinct vector through its handle to quantize it otherwise.
+   * Merges each group's vectors in doc order, followed by per-field metadata. When {@code
+   * quantizer} is non-null, a quantized copy of each applicable group is also written and its block
+   * location appended to the group metadata — copying records from source segments in this format,
+   * and re-reading a vector through its handle to quantize it otherwise.
    */
   void finish(
       IndexOutput meta,
@@ -121,9 +114,7 @@ final class DedupMergeContext implements Accountable {
             case FLOAT16 -> new Float16Group(dimension);
           };
 
-      for (FieldData fieldData : entry.getValue()) {
-        mergeGroup.processField(fieldData, vectorData);
-      }
+      mergeGroup.processFields(entry.getValue(), vectorData);
 
       int groupNumVectors = mergeGroup.numVectors();
       long vectorDataSize = vectorData.getFilePointer() - vectorDataOffset;
@@ -202,17 +193,32 @@ final class DedupMergeContext implements Accountable {
   abstract static sealed class DedupMergeGroup<T, U extends KnnVectorValues> extends DedupGroup<T> {
     abstract T vectorFrom(Sub<U> sub);
 
-    void processField(FieldData fieldData, IndexOutput vectorData) throws IOException {
-      @SuppressWarnings("unchecked")
-      DocIDMerger<Sub<U>> merger = (DocIDMerger<Sub<U>>) fieldData.merger;
+    void processFields(List<FieldData> fieldDataList, IndexOutput vectorData) throws IOException {
+      // Merge the fields together, doc by doc: a queue interleaves their subs, several of which may
+      // be on the same doc (one per field holding it), which DocIDMerger does not allow
+      List<Sub<U>> subs = new ArrayList<>();
+      for (FieldData fieldData : fieldDataList) {
+        for (Sub<?> sub : fieldData.subs) {
+          @SuppressWarnings("unchecked")
+          Sub<U> fieldSub = (Sub<U>) sub; // the fields of a group share the encoding
+          if (fieldSub.nextMappedDoc() != NO_MORE_DOCS) {
+            subs.add(fieldSub);
+          }
+        }
+      }
+      PriorityQueue<Sub<U>> queue =
+          PriorityQueue.usingComparator(
+              subs.size(), (a, b) -> Integer.compare(a.mappedDocID, b.mappedDocID));
+      queue.addAll(subs);
 
-      // iterate merged docs one-by-one
-      for (Sub<U> next = merger.next(); next != null; next = merger.next()) {
+      // iterate merged docs one-by-one, all fields of a doc together
+      while (queue.size() > 0) {
+        Sub<U> next = queue.top();
         T vector = vectorFrom(next);
         int groupNumVectors = numVectors();
 
         // add vector to group
-        ObjectCursor<T> cursor = addUnique(vector);
+        ObjectCursor<T> cursor = addUnique(next.mappedDocID, vector);
         if (cursor.index == groupNumVectors) { // new addition
           // already on-heap, write immediately to avoid another IO read
           byte[] bytes = serialize(groupNumVectors);
@@ -220,9 +226,16 @@ final class DedupMergeContext implements Accountable {
         }
 
         // record hit and ord in group
+        FieldData fieldData = next.fieldData;
         fieldData.docsWithFieldSet.add(next.mappedDocID);
         fieldData.fieldOrdToGroupOrd.add(cursor.index);
         fieldData.maxGroupOrd = Math.max(fieldData.maxGroupOrd, cursor.index);
+
+        if (next.nextMappedDoc() == NO_MORE_DOCS) {
+          queue.pop();
+        } else {
+          queue.updateTop();
+        }
       }
     }
   }
@@ -247,23 +260,9 @@ final class DedupMergeContext implements Accountable {
     }
 
     @Override
-    public long hash(ByteVector vector) throws IOException {
-      return hashBytes(vector.get());
-    }
-
-    @Override
     public boolean equals(ByteVector vector, ByteVector other) throws IOException {
-      // Fast path: two docs from the same dedup source share a vector iff they map to the same
-      // group ordinal, so we can compare ordinals without reading the vectors back.
-      if (vector.values == other.values && vector.values instanceof DedupVectorValues dedup) {
-        FieldOrdToGroupOrd fieldOrdToGroupOrd = dedup.getFieldOrdToGroupOrd();
-        return fieldOrdToGroupOrd.get(vector.ord) == fieldOrdToGroupOrd.get(other.ord);
-      }
-      byte[] a = vector.get();
-      if (vector.values == other.values) {
-        a = a.clone(); // same reader reuses one buffer; copy before reading the other vector
-      }
-      return Arrays.equals(a, other.get());
+      // vectors of two fields of one doc, so from two readers with their own buffers
+      return Arrays.equals(vector.get(), other.get());
     }
 
     @Override
@@ -328,24 +327,9 @@ final class DedupMergeContext implements Accountable {
     }
 
     @Override
-    public long hash(FloatVector vector) throws IOException {
-      buffer.put(0, vector.get());
-      return hashBytes(bytes);
-    }
-
-    @Override
     public boolean equals(FloatVector vector, FloatVector other) throws IOException {
-      // Fast path: two docs from the same dedup source share a vector iff they map to the same
-      // group ordinal, so we can compare ordinals without reading the vectors back.
-      if (vector.values == other.values && vector.values instanceof DedupVectorValues dedup) {
-        FieldOrdToGroupOrd fieldOrdToGroupOrd = dedup.getFieldOrdToGroupOrd();
-        return fieldOrdToGroupOrd.get(vector.ord) == fieldOrdToGroupOrd.get(other.ord);
-      }
-      float[] a = vector.get();
-      if (vector.values == other.values) {
-        a = a.clone(); // same reader reuses one buffer; copy before reading the other vector
-      }
-      return Arrays.equals(a, other.get());
+      // vectors of two fields of one doc, so from two readers with their own buffers
+      return Arrays.equals(vector.get(), other.get());
     }
 
     @Override
@@ -412,24 +396,9 @@ final class DedupMergeContext implements Accountable {
     }
 
     @Override
-    public long hash(Float16Vector vector) throws IOException {
-      buffer.put(0, vector.get());
-      return hashBytes(bytes);
-    }
-
-    @Override
     public boolean equals(Float16Vector vector, Float16Vector other) throws IOException {
-      // Fast path: two docs from the same dedup source share a vector iff they map to the same
-      // group ordinal, so we can compare ordinals without reading the vectors back.
-      if (vector.values == other.values && vector.values instanceof DedupVectorValues dedup) {
-        FieldOrdToGroupOrd fieldOrdToGroupOrd = dedup.getFieldOrdToGroupOrd();
-        return fieldOrdToGroupOrd.get(vector.ord) == fieldOrdToGroupOrd.get(other.ord);
-      }
-      short[] a = vector.get();
-      if (vector.values == other.values) {
-        a = a.clone(); // same reader reuses one buffer; copy before reading the other vector
-      }
-      return Arrays.equals(a, other.get());
+      // vectors of two fields of one doc, so from two readers with their own buffers
+      return Arrays.equals(vector.get(), other.get());
     }
 
     @Override
@@ -454,27 +423,21 @@ final class DedupMergeContext implements Accountable {
     private final GroupKey groupKey;
     private final DocsWithFieldSet docsWithFieldSet;
     private final IntArrayList fieldOrdToGroupOrd;
-    private final DocIDMerger<?> merger;
+    private final List<Sub<? extends KnnVectorValues>> subs;
     private final int maxDoc;
     // Largest group ordinal referenced by this field, tracked as vectors are merged in.
     private int maxGroupOrd;
 
     static final long SHALLOW_SIZE = RamUsageEstimator.shallowSizeOfInstance(FieldData.class);
 
-    FieldData(
-        FieldInfo fieldInfo,
-        GroupKey groupKey,
-        DocsWithFieldSet docsWithFieldSet,
-        IntArrayList fieldOrdToGroupOrd,
-        DocIDMerger<?> merger,
-        int maxDoc) {
+    FieldData(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
       this.fieldInfo = fieldInfo;
-      this.groupKey = groupKey;
-      this.docsWithFieldSet = docsWithFieldSet;
-      this.fieldOrdToGroupOrd = fieldOrdToGroupOrd;
-      this.merger = merger;
-      this.maxDoc = maxDoc;
+      this.groupKey = new GroupKey(fieldInfo);
+      this.docsWithFieldSet = new DocsWithFieldSet();
+      this.fieldOrdToGroupOrd = new IntArrayList();
+      this.maxDoc = mergeState.segmentInfo.maxDoc();
       this.maxGroupOrd = 0;
+      this.subs = getSubs(this, mergeState);
     }
 
     GroupKey groupKey() {
@@ -483,11 +446,13 @@ final class DedupMergeContext implements Accountable {
   }
 
   private static class Sub<T extends KnnVectorValues> extends DocIDMerger.Sub {
+    private final FieldData fieldData;
     private final T values;
     private final KnnVectorValues.DocIndexIterator iterator;
 
-    Sub(MergeState.DocMap docMap, T values) {
+    Sub(MergeState.DocMap docMap, FieldData fieldData, T values) {
       super(docMap);
+      this.fieldData = fieldData;
       this.values = values;
       iterator = values.iterator();
     }
@@ -498,8 +463,10 @@ final class DedupMergeContext implements Accountable {
     }
   }
 
-  private static DocIDMerger<Sub<? extends KnnVectorValues>> getVectorMerger(
-      FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+  /** One sub per segment holding the field's vectors. */
+  private static List<Sub<? extends KnnVectorValues>> getSubs(
+      FieldData fieldData, MergeState mergeState) throws IOException {
+    FieldInfo fieldInfo = fieldData.fieldInfo;
 
     List<Sub<? extends KnnVectorValues>> subs = new ArrayList<>();
     for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
@@ -521,9 +488,9 @@ final class DedupMergeContext implements Accountable {
         continue;
       }
 
-      subs.add(new Sub<>(mergeState.docMaps[i], vectorValues));
+      subs.add(new Sub<>(mergeState.docMaps[i], fieldData, vectorValues));
     }
 
-    return DocIDMerger.of(subs, mergeState.needsIndexSort);
+    return subs;
   }
 }
