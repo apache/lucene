@@ -271,6 +271,11 @@ Optimizations
 
 * GITHUB#16619: DirectIODirectory's slice() no longer performs a blocking direct read when
   creating a slice; the first read resolves the deferred start position instead. (John Maurice)
+  
+* GITHUB#16623: FixedBitSet#copyOf masks LiveDocs in bulk through Bits#applyMask instead of
+  testing every bit, which speeds up the first delete on a segment whose deletes were read from
+  disk, opening soft-deletes readers, and sandbox FAISS KNN search over segments with deletions.
+  (Costin Leau)
 
 Bug Fixes
 ---------------------
@@ -707,11 +712,6 @@ Optimizations
 * GITHUB#16089: Upgrade DocIdSetBuilder to use FixedBitSet eagerly once exceeding the threshold (Ke Wei)
 
 * GITHUB#16119: Optimize byte array writes in OutputStreamIndexOutput to remove unnecessary overhead. (neoremind)
-
-* GITHUB#16623: FixedBitSet#copyOf masks LiveDocs in bulk through Bits#applyMask instead of
-  testing every bit, which speeds up the first delete on a segment whose deletes were read from
-  disk, opening soft-deletes readers, and sandbox FAISS KNN search over segments with deletions.
-  (Costin Leau)
 
 Bug Fixes
 ---------------------
