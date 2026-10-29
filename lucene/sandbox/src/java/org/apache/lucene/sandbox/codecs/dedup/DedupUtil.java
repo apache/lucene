@@ -16,10 +16,10 @@
  */
 package org.apache.lucene.sandbox.codecs.dedup;
 
-import static org.apache.lucene.util.StringHelper.GOOD_FAST_HASH_SEED;
-import static org.apache.lucene.util.StringHelper.murmurhash3_x64_128;
-
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.file.NoSuchFileException;
+import java.util.stream.Stream;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
@@ -27,13 +27,17 @@ import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.FieldOrdToGroupOrd;
+import org.apache.lucene.store.DataAccessHint;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.packed.DirectWriter;
 
 /**
  * Shared helpers for the de-duplicating flat format: reading / writing field and group metadata,
- * vector hashing and alignment, and the {@link DedupVectorValues} views used on the read path.
+ * vector alignment, the inputs merges read through, and the {@link DedupVectorValues} views used on
+ * the read path.
  *
  * @lucene.experimental
  */
@@ -208,10 +212,6 @@ final class DedupUtil {
     return prefetched;
   }
 
-  static long hashBytes(byte[] bytes) {
-    return murmurhash3_x64_128(bytes, 0, bytes.length, GOOD_FAST_HASH_SEED)[0];
-  }
-
   /**
    * Inflates a float16 vector ({@code short[]}) into the reused {@code float[]} buffer for the
    * fp32-based scalar quantizer.
@@ -232,5 +232,32 @@ final class DedupUtil {
           case FLOAT32, FLOAT16 -> 64;
         };
     return output.alignFilePointer(alignBytes);
+  }
+
+  /**
+   * Returns {@code data} if it is efficient for {@code context}, or else {@code fileName} opened
+   * again with it (as {@code Lucene99FlatVectorsReader} does for merges), which the caller closes.
+   */
+  static IndexInput inputFor(
+      IOContext context, IndexInput data, Directory directory, String fileName) throws IOException {
+    if (data.isEfficientFor(context)) {
+      return data;
+    }
+    try {
+      return directory.openInput(fileName, context);
+    } catch (FileNotFoundException | NoSuchFileException _) {
+      // an open reader outlives its files, so read through the input it already holds
+      return data;
+    }
+  }
+
+  /** The merge context with the hints of {@code dataContext}, for sequential access. */
+  static IOContext mergeContext(IOContext dataContext) {
+    return IOContext.merge()
+        .withHints(
+            Stream.concat(
+                    dataContext.removeHints(DataAccessHint.class),
+                    Stream.of(DataAccessHint.SEQUENTIAL))
+                .toArray(IOContext.FileOpenHint[]::new));
   }
 }

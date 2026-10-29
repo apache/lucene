@@ -26,8 +26,8 @@ import org.apache.lucene.internal.hppc.ObjectCursor;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /**
- * Buffers one field's vectors during flush, de-duplicating them through a shared {@link
- * DedupGroup}.
+ * Buffers one field's vectors during flush, de-duplicating them within each document through a
+ * shared {@link DedupGroup}.
  *
  * @lucene.experimental
  */
@@ -102,10 +102,20 @@ final class DedupFlatFieldVectorsWriter<T> extends FlatFieldVectorsWriter<T> {
     lastDocID = docID;
     docsWithFieldSet.add(docID);
 
-    ObjectCursor<T> cursor = group.addUnique(vectorValue);
+    ObjectCursor<T> cursor = group.addUnique(docID, vectorValue);
     vectors.add(cursor.value); // owned vector value
     fieldOrdToGroupOrd.add(cursor.index); // index in group
     maxGroupOrd = Math.max(maxGroupOrd, cursor.index);
+  }
+
+  /** Renumbers the group ordinals of this field's vectors, after the group sorted its vectors. */
+  void remapGroupOrds(int[] oldToNewGroupOrd) {
+    maxGroupOrd = 0;
+    for (int ord = 0; ord < fieldOrdToGroupOrd.size(); ord++) {
+      int groupOrd = oldToNewGroupOrd[fieldOrdToGroupOrd.get(ord)];
+      fieldOrdToGroupOrd.set(ord, groupOrd);
+      maxGroupOrd = Math.max(maxGroupOrd, groupOrd);
+    }
   }
 
   @Override

@@ -45,7 +45,7 @@ import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectReader;
 
 /**
- * Vector values that share a single copy of each distinct vector across the documents and fields
+ * Vector values that share a single copy of each distinct vector of a document across the fields
  * that reference it.
  *
  * <p>Every instance is backed by two views: the {@code fieldView} maps ordinals to docs and drives

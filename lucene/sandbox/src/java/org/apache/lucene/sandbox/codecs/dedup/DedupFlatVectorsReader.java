@@ -19,6 +19,8 @@ package org.apache.lucene.sandbox.codecs.dedup;
 import static org.apache.lucene.index.VectorEncoding.BYTE;
 import static org.apache.lucene.index.VectorEncoding.FLOAT16;
 import static org.apache.lucene.index.VectorEncoding.FLOAT32;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.inputFor;
+import static org.apache.lucene.sandbox.codecs.dedup.DedupUtil.mergeContext;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.loadDedupBytes;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.loadDedupFloat16s;
 import static org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.loadDedupFloats;
@@ -26,8 +28,10 @@ import static org.apache.lucene.sandbox.codecs.dedup.DedupVectorValues.loadDedup
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
@@ -43,7 +47,9 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.GroupInfo;
 import org.apache.lucene.sandbox.codecs.dedup.DedupUtil.ReadFieldInfo;
+import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.ChecksumIndexInput;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FileDataHint;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
@@ -66,6 +72,15 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
   private final Map<String, FieldEntry> fields;
   private final IndexInput vectorData;
   private final String vectorDataExtension;
+  private final Directory directory;
+  private final String vectorDataFN;
+  private final IOContext dataContext;
+  // the reader this one was created from
+  private final DedupFlatVectorsReader original;
+  // opened lazily for merges, closed with this reader, guarded by this
+  private IndexInput mergeVectorData;
+  // guarded by this
+  private boolean closed;
 
   DedupFlatVectorsReader(
       SegmentReadState state,
@@ -81,6 +96,13 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
     this.vectorsScorer = vectorsScorer;
     this.fields = new HashMap<>();
     this.vectorDataExtension = vectorDataExtension;
+    this.directory = state.directory;
+    this.vectorDataFN =
+        IndexFileNames.segmentFileName(
+            state.segmentInfo.name, state.segmentSuffix, vectorDataExtension);
+    // how these are read is up to whoever wraps this format
+    this.dataContext = state.context.union(FileTypeHint.DATA, FileDataHint.KNN_VECTORS);
+    this.original = this;
 
     String metaFileName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, metaExtension);
@@ -109,13 +131,26 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
               state,
               versionMeta,
               vectorDataCodecName,
-              vectorDataExtension,
+              vectorDataFN,
+              dataContext,
               versionStart,
               versionCurrent);
     } catch (Throwable t) {
       IOUtils.closeWhileSuppressingExceptions(t, this);
       throw t;
     }
+  }
+
+  /** Reads the same fields as {@code reader}, through {@code vectorData}. */
+  private DedupFlatVectorsReader(DedupFlatVectorsReader reader, IndexInput vectorData) {
+    this.vectorsScorer = reader.vectorsScorer;
+    this.fields = reader.fields;
+    this.vectorData = vectorData;
+    this.vectorDataExtension = reader.vectorDataExtension;
+    this.directory = reader.directory;
+    this.vectorDataFN = reader.vectorDataFN;
+    this.dataContext = reader.dataContext;
+    this.original = reader.original;
   }
 
   private void readMetaBody(ChecksumIndexInput meta, FieldInfos fieldInfos) throws IOException {
@@ -190,17 +225,11 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
       SegmentReadState state,
       int versionMeta,
       String vectorDataCodecName,
-      String vectorDataExtension,
+      String fileName,
+      IOContext context,
       int versionStart,
       int versionCurrent)
       throws IOException {
-
-    String fileName =
-        IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, vectorDataExtension);
-
-    // how these are read is up to whoever wraps this format
-    IOContext context = state.context.union(FileTypeHint.DATA, FileDataHint.KNN_VECTORS);
 
     IndexInput in = null;
     boolean success = false;
@@ -337,21 +366,38 @@ final class DedupFlatVectorsReader extends FlatVectorsReader {
   }
 
   @Override
-  public FlatVectorsReader getMergeInstance() {
-    // TODO: Can we improve performance using sequential IO + avoiding read-backs? One way is to
-    //  de-duplicate only within a document, allowing for cleaner sort of vectors during flush +
-    //  avoid read-backs for full equality checks during merge.
-    return this;
+  public FlatVectorsReader getMergeInstance() throws IOException {
+    // vectors are stored in doc order and merged front to back, so read them sequentially
+    IndexInput data = original.mergeVectorData();
+    return data == vectorData ? this : new DedupFlatVectorsReader(this, data.clone());
   }
 
-  @Override
-  public void finishMerge() {
-    // TODO: Converse of getMergeInstance()
+  /** Returns the input for merges, opening the data file again if needed. */
+  private synchronized IndexInput mergeVectorData() throws IOException {
+    assert original == this;
+    if (closed) {
+      throw new AlreadyClosedException("this reader is closed");
+    }
+    if (mergeVectorData == null) {
+      mergeVectorData = inputFor(mergeContext(dataContext), vectorData, directory, vectorDataFN);
+    }
+    return mergeVectorData;
   }
 
   @Override
   public void close() throws IOException {
-    IOUtils.close(vectorData);
+    // the inputs can be the same
+    Set<IndexInput> toClose = new LinkedHashSet<>();
+    synchronized (this) {
+      if (closed) {
+        return;
+      }
+      closed = true;
+      toClose.add(vectorData);
+      toClose.add(mergeVectorData);
+      mergeVectorData = null;
+    }
+    IOUtils.close(toClose);
   }
 
   @Override

@@ -43,14 +43,15 @@ import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
 
 /**
- * An HNSW vector format that de-duplicates vectors, storing each distinct vector once in both raw
- * and scalar quantized form.
+ * An HNSW vector format that de-duplicates vectors, storing each distinct vector of a document once
+ * in both raw and scalar quantized form.
  *
  * <p>Graph construction and search are identical to {@link
  * org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat}, with searches scoring against the
  * quantized vectors. A {@link DedupScalarQuantizedVectorsFormat} is used for the flat vector
- * storage, which stores each distinct vector exactly once, shared across all documents that
- * reference it. See {@link DedupHnswVectorsFormat} for the intended multi-field usage pattern.
+ * storage, which stores each distinct vector of a document exactly once, shared across all its
+ * fields that reference it. See {@link DedupHnswVectorsFormat} for the intended multi-field usage
+ * pattern.
  *
  * <p>If you customize this format, be sure to <b>share the same instance</b> of the underlying
  * {@link DedupScalarQuantizedVectorsFormat} to de-duplicate vectors correctly.

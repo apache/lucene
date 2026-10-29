@@ -24,19 +24,19 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 
 /**
- * Flat vector format that stores each distinct vector once.
+ * Flat vector format that stores each distinct vector of a document once.
  *
  * <p>Vectors that share the same dimension and encoding form a <i>group</i>. Within a group, an
- * identical vector is stored a single time regardless of how many documents (across all fields that
- * map to that group) reference it; each field then keeps a {@code fieldOrdToGroupOrd} map from its
- * document ordinal to the group ordinal of the shared vector. This is well suited to indexes with
- * repeated vectors, e.g. several fields derived from the same embedding, or heavily duplicated
- * content.
+ * identical vector is stored a single time per document regardless of how many of its fields (among
+ * all fields that map to that group) reference it; each field then keeps a {@code
+ * fieldOrdToGroupOrd} map from its document ordinal to the group ordinal of the shared vector. This
+ * is well suited to indexes with several fields derived from the same embedding. Identical vectors
+ * of different documents are stored once each, which keeps the group's vectors in doc order.
  *
  * <h2>.vdd (vector de-dup data) file</h2>
  *
  * <ul>
- *   <li>For each group, its distinct vectors, aligned to 4 bytes (BYTE) or 64 bytes (FLOAT32 and
+ *   <li>For each group, its distinct vectors in doc order, aligned to 4 bytes (BYTE) or 64 bytes
  *       FLOAT16). This a best-effort alignment, because Arm Neoverse machines incur a performance
  *       penalty in reading data not aligned to 64 bytes. This penalty may be incurred for float
  *       vectors that do not have a dimension of a multiple of 16 (equivalent to 64 bytes), because
@@ -89,18 +89,23 @@ import org.apache.lucene.index.SegmentWriteState;
  * <h2>Complexity</h2>
  *
  * <p>Let {@code N} be the number of indexed vectors (one per document per field), {@code U} the
- * number of distinct vectors, and {@code d} the dimension. De-duplication interns each vector via a
- * hash lookup with linear probing, resolving hash collisions with a full equality check.
+ * number of distinct vectors per document summed over all documents, {@code F} the number of fields
+ * in a group, and {@code d} the dimension. A vector is only compared with the other vectors of its
+ * document, so there is no hash table; de-duplication relies on the vectors of a document being
+ * added together, as {@link org.apache.lucene.index.IndexWriter#addDocument} does.
  *
  * <ul>
- *   <li><b>Indexing (flush):</b> expected {@code O(N * d)} time (a hash plus occasional equality
- *       check per vector). Heap is {@code O(U * d)} for the distinct vectors held in the group,
- *       plus {@code O(N)} for the per-document references and {@code fieldOrdToGroupOrd} entries.
- *   <li><b>Merge:</b> expected {@code O(N * d)} time; distinct vectors are written to disk as soon
- *       as they are first seen rather than buffered, so heap stays {@code O(N)} (the per-field
- *       {@code fieldOrdToGroupOrd} maps and light per-vector handles) with no {@code O(U * d)}
- *       term. When a source segment is itself in this format, equality is decided by comparing
- *       group ordinals in {@code O(1)} without reading the vectors back.
+ *   <li><b>Indexing (flush):</b> {@code O(N * F * d)} time at worst (up to {@code F - 1} equality
+ *       checks per vector). Heap is {@code O(U * d)} for the vectors held in the group, plus {@code
+ *       O(N)} for the per-document references and {@code fieldOrdToGroupOrd} entries. The group's
+ *       vectors are written in (index-sorted) doc order.
+ *   <li><b>Merge:</b> {@code O(N * F * d)} time at worst; the fields of a group are merged together
+ *       in doc order, and a vector is written to disk as soon as it is first seen in its document
+ *       rather than buffered, so heap stays {@code O(N)} (the per-field {@code fieldOrdToGroupOrd}
+ *       maps and light per-vector handles) with no {@code O(U * d)} term. Since the vectors of a
+ *       source segment are in doc order, they are read sequentially, through an input opened for
+ *       merges if the reader's own input reads at random, and a vector is only compared with the
+ *       vectors of its document that were just read.
  *   <li><b>Reading:</b> both the vectors and the {@code fieldOrdToGroupOrd} map stay off-heap; a
  *       read resolves a document ordinal to its vector via one extra {@code fieldOrdToGroupOrd}
  *       lookup.
