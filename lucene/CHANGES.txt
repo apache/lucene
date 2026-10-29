@@ -147,8 +147,14 @@ API Changes
   TopFieldCollectorManager and TopScoreDocCollectorManager. The flag has been a
   no-op since it was deprecated in 10.1. (Luca Cavanna)
 
+* GITHUB#16899: Multi-term intervals sources (prefix, wildcard, regexp, fuzzy, range and
+  multiterm) now throw IndexSearcher.TooManyClauses instead of IllegalStateException when
+  they expand to more than maxExpansions terms. (Mayya Sharipova)
+
 New Features
 ---------------------
+* GITHUB#16723: Support SIMD Faiss library variants with runtime fallback. (Abhinav Chinnala)
+
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
   modern Hangul conjoining jamo before KoreanTokenizer. (Mingi Jeong)
 
@@ -212,8 +218,17 @@ Improvements
 
 * GITHUB#16499: Clean up BytesRefHash. Remove dead lastCount and unused close(), fix stale comments (neoremind)
 
+* GITHUB#16734: IndexWriter#addBatch now hands DENSE vector columns to the vectors writer in bulk
+  through the new VectorColumn#values cursor and KnnFieldVectorsWriter#addDenseValues, instead of
+  adding vectors one document at a time. (Mayya Sharipova)
+
 Optimizations
 ---------------------
+
+* GITHUB#16794: Concurrent HNSW merges now join the other deletion-free graphs into the base graph
+  through their join sets, as serial merges have done since GITHUB#14331, instead of inserting all
+  their vectors with a full search. Graphs now match the serial merge: slightly lower recall at the
+  same ef, but fewer visited nodes. (Lantao Jin)
 
 * GITHUB#16771: Lucene99FlatVectorsWriter now aligns vector data to 4096 bytes for all encodings
   (previously 64 for float32 and 4 for float16 and byte), so a vector whose size divides a page or is
@@ -320,6 +335,14 @@ Bug Fixes
 
 * GITHUB#16687: Use quantized vectors for fp16 HNSW graph construction during merges. (Kaival Parikh)
 
+* GITHUB#16931: Fix MMapDirectory losing shared arena grouping when an old arena closes and removes
+  the newer live arena of the same group from the arenas map. (Chris Hegarty)
+
+* GITHUB#16926: RescoreTopNQuery no longer throws when its inner query matches no documents.
+  (Greg Miller)
+
+* GITHUB#16896: Fix long overflow in GCD-encoded DocValues range transform. (Ke Wei)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
@@ -407,31 +430,7 @@ Other
 
 * GITHUB#16170: Add JMH benchmarks for int4BitDotProduct and int4DibitDotProduct. (Vignesh)
 
-======================= Lucene 10.7.0 =======================
-
-API Changes
----------------------
-(No changes)
-
-New Features
----------------------
-(No changes)
-
-Improvements
----------------------
-(No changes)
-
-Optimizations
----------------------
-(No changes)
-
-Bug Fixes
----------------------
-* GITHUB#16896: Fix long overflow in GCD-encoded DocValues range transform. (Ke Wei)
-
-Other
----------------------
-(No changes)
+* GITHUB#16279: Add JMH benchmarks comparing read I/O strategies under memory pressure. (neoremind)
 
 ======================= Lucene 10.6.0 =======================
 
@@ -774,6 +773,21 @@ Bug Fixes
 
 * GITHUB#16139: Fix IBSimilarity with DistributionSPL producing negative scores due to
   floating-point rounding errors. (Prithvi S)
+
+* GITHUB#16855: Stop BlockMaxConjunctionBulkScorer from iterating windows past maxDoc.
+  (Michalis Papadimitriou)
+
+* GITHUB#16884: Fix IndexSortSortedNumericDocValuesRangeQuery#count returning a wrong count on
+  multi-valued fields, because the index sort only reflects one value per document.
+  (Salvatore Campagna, Houston Putman)
+
+* GITHUB#16885: Fix the range queries behind SortedNumericDocValuesField, NumericDocValuesField,
+  SortedSetDocValuesField and SortedDocValuesField#newSlowRangeQuery returning wrong hits on
+  segments with document blocks when the field is the primary index sort field, has a doc values
+  skipper and every document has a value. (Salvatore Campagna, Houston Putman)
+
+* GITHUB#16886: Fix IndexSortSortedNumericDocValuesRangeQuery returning wrong hits and counts, or
+  throwing IllegalArgumentException, on segments with document blocks. (Salvatore Campagna, Houston Putman)
 
 Build
 ---------------------
