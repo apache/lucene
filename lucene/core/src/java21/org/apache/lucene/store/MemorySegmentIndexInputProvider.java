@@ -189,7 +189,8 @@ final class MemorySegmentIndexInputProvider
     String key = group.get();
     var refCountedArena =
         arenas.computeIfAbsent(
-            key, s -> new RefCountedSharedArena(s, () -> arenas.remove(s), sharedArenaMaxPermits));
+            key,
+            s -> new RefCountedSharedArena(s, a -> arenas.remove(s, a), sharedArenaMaxPermits));
     if (refCountedArena.acquire()) {
       return refCountedArena;
     } else {
@@ -199,7 +200,7 @@ final class MemorySegmentIndexInputProvider
             if (v != null && v.acquire()) {
               return v;
             } else {
-              v = new RefCountedSharedArena(s, () -> arenas.remove(s), sharedArenaMaxPermits);
+              v = new RefCountedSharedArena(s, a -> arenas.remove(s, a), sharedArenaMaxPermits);
               v.acquire(); // guaranteed to succeed
               return v;
             }
