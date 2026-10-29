@@ -3307,6 +3307,15 @@ public class IndexWriter
 
       MergePolicy mergePolicy = config.getMergePolicy();
       MergePolicy.MergeSpecification spec = mergePolicy.findMerges(readers);
+      if (spec != null) {
+        for (MergePolicy.OneMerge merge : spec.merges) {
+          // This API merges on its own path, which writes a single segment.
+          if (merge.isPartitioned()) {
+            throw new UnsupportedOperationException(
+                "addIndexes(CodecReader...) cannot run a partitioned merge");
+          }
+        }
+      }
       boolean mergeSuccess = false;
       if (spec != null && spec.merges.size() > 0) {
         try {
@@ -3963,8 +3972,9 @@ public class IndexWriter
             new OneMergeWrappingMergePolicy(
                 config.getMergePolicy(),
                 toWrap ->
-                    new MergePolicy.OneMerge(toWrap) {
-                      SegmentCommitInfo origInfo;
+                    new MergePolicy.FilterOneMerge(toWrap) {
+                      // The outputs that survived, in index order.
+                      List<SegmentCommitInfo> origInfos = List.of();
                       final AtomicBoolean onlyOnce = new AtomicBoolean(false);
 
                       @Override
@@ -3979,10 +3989,11 @@ public class IndexWriter
                         // and will not commit our merge to the to-be-committed SegmentInfos
                         if (segmentDropped == false
                             && committed
-                            && stopCollectingMergeResults.getAsBoolean() == false) {
+                            && stopCollectingMergeResults.getAsBoolean() == false
+                            && everyOutputKept()) {
 
                           // make sure onMergeComplete really was called:
-                          assert origInfo != null;
+                          assert origInfos.isEmpty() == false;
 
                           if (infoStream.isEnabled("IW")) {
                             infoStream.message(
@@ -3993,7 +4004,9 @@ public class IndexWriter
                             // if we do this in a getReader call here this is obsolete since we
                             // already hold a reader that has
                             // incRef'd these files
-                            deleter.incRef(origInfo.files());
+                            for (SegmentCommitInfo out : origInfos) {
+                              deleter.incRef(out.files());
+                            }
                           }
                           Set<String> mergedSegmentNames = new HashSet<>();
                           for (SegmentCommitInfo sci : segments) {
@@ -4014,12 +4027,13 @@ public class IndexWriter
                           // Construct a OneMerge that applies to toCommit
                           MergePolicy.OneMerge applicableMerge =
                               new MergePolicy.OneMerge(toCommitMergedAwaySegments);
-                          applicableMerge.info = origInfo;
-                          long segmentCounter =
-                              Long.parseLong(origInfo.info.name.substring(1), Character.MAX_RADIX);
-                          mergingSegmentInfos.counter =
-                              Math.max(mergingSegmentInfos.counter, segmentCounter + 1);
-                          mergingSegmentInfos.applyMergeChanges(applicableMerge, false);
+                          for (SegmentCommitInfo out : origInfos) {
+                            long segmentCounter =
+                                Long.parseLong(out.info.name.substring(1), Character.MAX_RADIX);
+                            mergingSegmentInfos.counter =
+                                Math.max(mergingSegmentInfos.counter, segmentCounter + 1);
+                          }
+                          mergingSegmentInfos.applyMergeChanges(applicableMerge, origInfos);
                         } else {
                           if (infoStream.isEnabled("IW")) {
                             infoStream.message(
@@ -4030,17 +4044,38 @@ public class IndexWriter
                         super.mergeFinished(committed, segmentDropped);
                       }
 
+                      /**
+                       * Whether the index kept every output holding documents. Deletes arriving
+                       * during the merge can drop one, and its documents are still live in this
+                       * point in time, so the inputs stay instead.
+                       */
+                      private boolean everyOutputKept() {
+                        assert Thread.holdsLock(IndexWriter.this);
+                        for (SegmentCommitInfo out : getMergeInfos()) {
+                          if (out.info.maxDoc() > 0 && segmentInfos.contains(out) == false) {
+                            return false;
+                          }
+                        }
+                        return true;
+                      }
+
                       @Override
                       void onMergeComplete() throws IOException {
                         assert Thread.holdsLock(IndexWriter.this);
                         if (stopCollectingMergeResults.getAsBoolean() == false
-                            && isAborted() == false
-                            && info.info.maxDoc()
-                                > 0 /* never do this if the segment is dropped / empty */) {
-                          mergeFinished.accept(info);
-                          // clone the target info to make sure we have the original info without
-                          // the updated del and update gens
-                          origInfo = info.clone();
+                            && isAborted() == false) {
+                          List<SegmentCommitInfo> survivors = new ArrayList<>(getOutputCount());
+                          for (SegmentCommitInfo out : getMergeInfos()) {
+                            // never do this if the output is dropped / empty
+                            if (out.info.maxDoc() == 0) {
+                              continue;
+                            }
+                            mergeFinished.accept(out);
+                            // clone the target info to make sure we have the original info without
+                            // the updated del and update gens
+                            survivors.add(out.clone());
+                          }
+                          origInfos = List.copyOf(survivors);
                         }
                         toWrap.onMergeComplete();
                         super.onMergeComplete();
@@ -4059,20 +4094,15 @@ public class IndexWriter
                       }
 
                       @Override
-                      public CodecReader wrapForMerge(CodecReader reader) throws IOException {
-                        return toWrap.wrapForMerge(reader); // must delegate
-                      }
-
-                      @Override
-                      public Sorter.DocMap reorder(
-                          CodecReader reader, Directory dir, Executor executor) throws IOException {
-                        return toWrap.reorder(reader, dir, executor); // must delegate
-                      }
-
-                      @Override
                       public void setMergeInfo(SegmentCommitInfo info) {
                         super.setMergeInfo(info);
                         toWrap.setMergeInfo(info);
+                      }
+
+                      @Override
+                      public void setMergeInfo(int output, SegmentCommitInfo info) {
+                        super.setMergeInfo(output, info);
+                        toWrap.setMergeInfo(output, info);
                       }
                     }),
             trigger,

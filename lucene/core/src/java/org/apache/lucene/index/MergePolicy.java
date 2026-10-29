@@ -390,10 +390,9 @@ public abstract class MergePolicy {
      * <b>disjoint</b> and together <b>cover every document</b>. {@link IndexWriter} validates the
      * shape and rejects the merge otherwise.
      *
-     * <p><b>Wrapping policies must delegate this method and {@link #isPartitioned()}.</b> A wrapper
-     * such as {@link OneMergeWrappingMergePolicy} that re-wraps the {@link OneMerge} without
-     * forwarding them silently downgrades the merge to a single output -- no error, just no
-     * partitioning.
+     * <p><b>Wrapping policies must delegate this method and {@link #isPartitioned()}.</b> Extend
+     * {@link FilterOneMerge}, which forwards both; a wrapper that forgets them downgrades the merge
+     * to a single output, with no error unless it goes through {@link OneMergeWrappingMergePolicy}.
      *
      * <p>An index sort is not required, but it is what makes an output mean something: because
      * every input is then sorted by the same key, a contiguous doc range is a contiguous key range,
@@ -439,7 +438,10 @@ public abstract class MergePolicy {
      */
     public void setMergeInfo(int output, SegmentCommitInfo info) {
       if (infos == null) {
-        infos = new ArrayList<>(Collections.nCopies(outputCount, null));
+        infos = new ArrayList<>();
+      }
+      while (infos.size() <= output) {
+        infos.add(null);
       }
       infos.set(output, info);
     }
@@ -620,7 +622,7 @@ public abstract class MergePolicy {
 
     /** Wrap {@code in}. */
     public FilterOneMerge(OneMerge in) {
-      super(in.segments);
+      super(in);
       this.in = in;
     }
 

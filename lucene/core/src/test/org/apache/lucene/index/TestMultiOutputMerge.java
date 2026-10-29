@@ -255,6 +255,211 @@ public class TestMultiOutputMerge extends LuceneTestCase {
     }
   }
 
+  /** Routes the same partitioned merge through the full-flush path. */
+  private class FullFlushPartitioningMergePolicy extends PartitioningMergePolicy {
+    @Override
+    public MergeSpecification findMerges(MergeTrigger t, SegmentInfos infos, MergeContext ctx) {
+      return null; // so the outputs can only come from the full flush
+    }
+
+    @Override
+    public MergeSpecification findFullFlushMerges(
+        MergeTrigger t, SegmentInfos infos, MergeContext ctx) {
+      return super.findMerges(t, infos, ctx);
+    }
+  }
+
+  private IndexWriterConfig fullFlushConfig() {
+    IndexWriterConfig iwc = config();
+    iwc.setMergePolicy(new FullFlushPartitioningMergePolicy());
+    iwc.setMaxFullFlushMergeWaitMillis(30_000);
+    return iwc;
+  }
+
+  /** A commit applies the merge it waited for to the commit point, every output of it. */
+  public void testPartitionedMergeOnCommit() throws Exception {
+    try (Directory dir = newDirectory()) {
+      Set<String> expected = new HashSet<>();
+      try (IndexWriter w = new IndexWriter(dir, fullFlushConfig())) {
+        for (int seg = 0; seg < SEGMENTS; seg++) {
+          for (int d = 0; d < PER_SEGMENT; d++) {
+            w.addDocument(doc(id(seg, d), 0));
+            expected.add(id(seg, d));
+          }
+          w.flush();
+        }
+        enabled = true;
+        proceed.countDown();
+        w.commit();
+      }
+
+      TestUtil.checkIndex(dir);
+
+      try (DirectoryReader r = DirectoryReader.open(dir)) {
+        assertEquals(OUTPUTS, r.leaves().size());
+        List<String> live = liveIds(r);
+        assertEquals(expected.size(), live.size());
+        assertEquals(expected, new HashSet<>(live));
+        assertEachOutputSorted(r);
+      }
+    }
+  }
+
+  /** The same, for the reader a full flush opens, which merges on refresh. */
+  public void testPartitionedMergeOnRefresh() throws Exception {
+    try (Directory dir = newDirectory()) {
+      Set<String> expected = new HashSet<>();
+      try (IndexWriter w = new IndexWriter(dir, fullFlushConfig())) {
+        for (int seg = 0; seg < SEGMENTS; seg++) {
+          for (int d = 0; d < PER_SEGMENT; d++) {
+            w.addDocument(doc(id(seg, d), 0));
+            expected.add(id(seg, d));
+          }
+          w.flush();
+        }
+        enabled = true;
+        proceed.countDown();
+        try (DirectoryReader r = DirectoryReader.open(w)) {
+          assertEquals(OUTPUTS, r.leaves().size());
+          List<String> live = liveIds(r);
+          assertEquals(expected.size(), live.size());
+          assertEquals(expected, new HashSet<>(live));
+          assertEachOutputSorted(r);
+        }
+      }
+      TestUtil.checkIndex(dir);
+    }
+  }
+
+  /** {@link IndexWriter#addIndexes(CodecReader...)} merges on a path that writes one segment. */
+  public void testAddIndexesRefusesAPartitionedMerge() throws Exception {
+    try (Directory src = newDirectory();
+        Directory dest = newDirectory()) {
+      try (IndexWriter w = new IndexWriter(src, newIndexWriterConfig(analyzer))) {
+        for (int d = 0; d < PER_SEGMENT; d++) {
+          w.addDocument(doc(id(0, d), 0));
+        }
+      }
+
+      IndexWriterConfig iwc = newIndexWriterConfig(analyzer);
+      iwc.setMergePolicy(
+          new MergePolicy() {
+            @Override
+            public MergeSpecification findMerges(CodecReader... readers) {
+              MergeSpecification spec = new MergeSpecification();
+              spec.add(
+                  new OneMerge(readers) {
+                    @Override
+                    public boolean isPartitioned() {
+                      return true;
+                    }
+
+                    @Override
+                    public int[][] getDocRangePartitions(List<CodecReader> rs) {
+                      int[][] parts = new int[rs.size()][];
+                      for (int i = 0; i < rs.size(); i++) {
+                        int maxDoc = rs.get(i).maxDoc();
+                        parts[i] = new int[] {0, maxDoc / 2, maxDoc};
+                      }
+                      return parts;
+                    }
+                  });
+              return spec;
+            }
+
+            @Override
+            public MergeSpecification findMerges(
+                MergeTrigger t, SegmentInfos infos, MergeContext ctx) {
+              return null;
+            }
+
+            @Override
+            public MergeSpecification findForcedMerges(
+                SegmentInfos i, int m, Map<SegmentCommitInfo, Boolean> s, MergeContext c) {
+              return null;
+            }
+
+            @Override
+            public MergeSpecification findForcedDeletesMerges(SegmentInfos i, MergeContext c) {
+              return null;
+            }
+          });
+
+      try (IndexWriter w = new IndexWriter(dest, iwc);
+          DirectoryReader r = DirectoryReader.open(src)) {
+        CodecReader[] readers = new CodecReader[r.leaves().size()];
+        for (int i = 0; i < readers.length; i++) {
+          readers[i] = SlowCodecReaderWrapper.wrap(r.leaves().get(i).reader());
+        }
+        expectThrows(UnsupportedOperationException.class, () -> w.addIndexes(readers));
+      }
+    }
+  }
+
+  /**
+   * An output emptied by deletes that arrive mid-merge is dropped from the index, but its documents
+   * are still live in the commit point, so the commit keeps the inputs.
+   */
+  public void testOutputDroppedDuringCommitKeepsTheInputs() throws Exception {
+    try (Directory dir = newDirectory()) {
+      Set<String> expected = new HashSet<>();
+      List<String> doomed = new ArrayList<>();
+      try (IndexWriter w = new IndexWriter(dir, fullFlushConfig())) {
+        for (int seg = 0; seg < SEGMENTS; seg++) {
+          for (int d = 0; d < PER_SEGMENT; d++) {
+            w.addDocument(doc(id(seg, d), 0));
+            expected.add(id(seg, d));
+          }
+          w.flush();
+        }
+
+        // The documents the middle output will hold: an input is in index-sort order, so the
+        // policy's even cut makes that its middle third.
+        try (DirectoryReader r = DirectoryReader.open(w)) {
+          for (LeafReaderContext ctx : r.leaves()) {
+            StoredFields sf = ctx.reader().storedFields();
+            int maxDoc = ctx.reader().maxDoc();
+            for (int d = maxDoc / OUTPUTS; d < 2 * maxDoc / OUTPUTS; d++) {
+              doomed.add(sf.document(d).get("id"));
+            }
+          }
+        }
+        assertFalse(doomed.isEmpty());
+
+        Thread deleter =
+            new Thread(
+                () -> {
+                  try {
+                    mergeStarted.await();
+                    for (String id : doomed) {
+                      w.deleteDocuments(new Term("id", id));
+                    }
+                    // Force the deletes to resolve against the merging segments, so they are
+                    // carried over to the output that owns them.
+                    DirectoryReader.open(w).close();
+                  } catch (Throwable t) {
+                    throw new AssertionError(t);
+                  } finally {
+                    proceed.countDown();
+                  }
+                });
+        deleter.start();
+        enabled = true;
+        w.commit();
+        deleter.join();
+
+        // Read before closing the writer, which would commit the deletes too.
+        try (DirectoryReader r = DirectoryReader.open(dir)) {
+          List<String> live = liveIds(r);
+          assertEquals("no document may be duplicated", live.size(), new HashSet<>(live).size());
+          assertEquals(expected, new HashSet<>(live));
+        }
+      }
+
+      TestUtil.checkIndex(dir);
+    }
+  }
+
   /** Deletes arriving after the merge snapshot must land on the output owning the doc. */
   public void testConcurrentDeletes() throws Exception {
     try (Directory dir = newDirectory()) {
