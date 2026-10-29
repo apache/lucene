@@ -125,7 +125,7 @@ public class HighFreqTerms {
     return tiq.drainToArrayHighestFirst(TermStats[]::new);
   }
 
-  /** Compares terms by docTermFreq */
+  /** Compares terms by {@link TermStats#docFreq} */
   public static final class DocFreqComparator implements Comparator<TermStats> {
 
     @Override

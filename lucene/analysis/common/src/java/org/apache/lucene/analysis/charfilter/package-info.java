@@ -31,7 +31,7 @@
  *
  * <p>When the replacement is shorter than the original (e.g. when the replacement is the empty
  * string), a single offset correction mapping should be added at the replacement's end offset in
- * the output stream. The <code>cumulativeDiff</code> parameter to the <code>addOffCorrectMapping()
+ * the output stream. The <code>cumulativeDiff</code> parameter to the <code>addOffCorrectMap()
  * </code> method will be the sum of all previous replacement offset adjustments, with the addition
  * of the difference between the lengths of the original substring and the replacement string (a
  * positive value).
@@ -40,7 +40,7 @@
  * you should add as many offset correction mappings as the difference between the lengths of the
  * replacement string and the original substring, starting at the end offset the original substring
  * would have had in the output stream. The <code>cumulativeDiff</code> parameter to the <code>
- * addOffCorrectMapping()</code> method will be the sum of all previous replacement offset
+ * addOffCorrectMap()</code> method will be the sum of all previous replacement offset
  * adjustments, with the addition of the difference between the lengths of the original substring
  * and the replacement string so far (a negative value).
  */

@@ -18,7 +18,7 @@ package org.apache.lucene.tests.codecs.compressing;
 
 import org.apache.lucene.codecs.lucene90.DeflateWithPresetDictCompressionMode;
 
-/** CompressionCodec that uses {@link DeflateWithPresetDictCompressionMode}. */
+/** {@link CompressingCodec} that uses {@link DeflateWithPresetDictCompressionMode}. */
 public class DeflateWithPresetCompressingCodec extends CompressingCodec {
 
   /** Constructor that allows to configure the chunk size. */
