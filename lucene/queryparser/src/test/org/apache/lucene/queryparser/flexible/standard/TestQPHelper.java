@@ -923,6 +923,18 @@ public class TestQPHelper extends LuceneTestCase {
     // LUCENE-881
     assertEscapedQueryEquals("|| abc ||", a, "\\|\\| abc \\|\\|");
     assertEscapedQueryEquals("&& abc &&", a, "\\&\\& abc \\&\\&");
+
+    // '=', '<', '>' and '@' are syntax characters in this parser
+    assertEscapedQueryEquals("a=b", a, "a\\=b");
+    assertEscapedQueryEquals("a<b", a, "a\\<b");
+    assertEscapedQueryEquals("a>=b", a, "a\\>\\=b");
+    assertEscapedQueryEquals("a@b", a, "a\\@b");
+
+    StandardQueryParser qp = getParser(a);
+    for (String text : new String[] {"secret=x", "price<10", "price>=10", "a@b"}) {
+      assertEquals(
+          new TermQuery(new Term("field", text)), qp.parse(QueryParserUtil.escape(text), "field"));
+    }
   }
 
   @Ignore("flexible queryparser shouldn't escape wildcard terms")
