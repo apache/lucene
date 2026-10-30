@@ -431,6 +431,9 @@ Build
 Other
 ---------------------
 
+* GITHUB#16901: Add direct unit tests for NeighborArray#addAndEnsureDiversity
+  in TestNeighborArray. (Luis Negrin)
+
 * GITHUB#16513: Add docIDRunEnd contract tests for DV formats to BaseDocValuesFormatTestCase. (Tim Allison)
 
 * GITHUB#16512: AssertingScorer's two-phase iterator now delegates docIDRunEnd(),
