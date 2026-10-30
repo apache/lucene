@@ -6159,7 +6159,7 @@ public class IndexWriter
     return isCurrent;
   }
 
-  synchronized boolean isClosed() {
+  boolean isClosed() {
     return closed;
   }
 
