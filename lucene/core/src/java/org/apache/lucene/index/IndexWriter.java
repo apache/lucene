@@ -1098,10 +1098,14 @@ public class IndexWriter
                     + commit.getDirectory());
           }
 
-          SegmentInfos oldInfos =
-              SegmentInfos.readCommit(directoryOrig, commit.getSegmentsFileName());
-          segmentInfos.replace(oldInfos);
-          changed();
+          // Opening the latest commit is the same as opening the index without a commit, so only
+          // record a change if we actually go back to an older commit:
+          if (commit.getSegmentsFileName().equals(lastSegmentsFile) == false) {
+            SegmentInfos oldInfos =
+                SegmentInfos.readCommit(directoryOrig, commit.getSegmentsFileName());
+            segmentInfos.replace(oldInfos);
+            changed();
+          }
 
           if (infoStream.isEnabled("IW")) {
             infoStream.message(

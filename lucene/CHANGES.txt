@@ -386,6 +386,10 @@ Bug Fixes
 * GITHUB#16926: RescoreTopNQuery no longer throws when its inner query matches no documents.
   (Greg Miller)
 
+* GITHUB#13151: Opening an IndexWriter with IndexWriterConfig#setIndexCommit pointing to the latest
+  commit no longer marks the index as changed, so closing or committing without changes no longer
+  writes a new commit. (Nikita Rusetskii)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
