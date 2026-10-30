@@ -260,6 +260,10 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#16871: Lucene104HnswScalarQuantizedVectorsFormat now quantizes merged vectors on its merge
+  workers, as it already builds the merged graph, instead of on the merging thread alone. It applies
+  when the format has more than one merge worker, and the bytes are the same. (Ankur Goel)
+
 
 * GITHUB#16794: Concurrent HNSW merges now join the other deletion-free graphs into the base graph
   through their join sets, as serial merges have done since GITHUB#14331, instead of inserting all
