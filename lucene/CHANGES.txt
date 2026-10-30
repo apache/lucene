@@ -313,6 +313,9 @@ Optimizations
   disk, opening soft-deletes readers, and sandbox FAISS KNN search over segments with deletions.
   (Costin Leau)
 
+* GITHUB#16790: Vectorize OptimizedScalarQuantizer with osqCenter, osqGridStats and osqAssign.
+  (Jakub Slowinski)
+
 Bug Fixes
 ---------------------
 * GITHUB#16867: Apply buffered soft-update/delete terms before the global delete buffer reaches the 2GB

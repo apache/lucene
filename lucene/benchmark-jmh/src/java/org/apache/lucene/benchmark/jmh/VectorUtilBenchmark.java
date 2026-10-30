@@ -18,7 +18,9 @@ package org.apache.lucene.benchmark.jmh;
 
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.VectorUtil;
+import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -66,6 +68,11 @@ public class VectorUtilBenchmark {
   private float[] floatsB;
   private short[] shortsA;
   private short[] shortsB;
+  private float[][] quantizeVectors;
+  private int quantizeNext;
+  private float[] quantizeCentroid;
+  private byte[] quantizeDest;
+  private OptimizedScalarQuantizer quantizer;
   private int expectedHalfByteDotProduct;
   private int expectedHalfByteSquareDistance;
 
@@ -118,6 +125,17 @@ public class VectorUtilBenchmark {
       floatsB[i] = random.nextFloat();
       shortsB[i] = Float.floatToFloat16(floatsB[i]);
     }
+    // Rotate through 64 vectors, as the number of descent steps depends on the vector. They are
+    // centered here and the centroid is zero, so scalarQuantize leaves them as they are.
+    quantizeVectors = new float[64][size];
+    for (float[] vector : quantizeVectors) {
+      for (int i = 0; i < size; ++i) {
+        vector[i] = random.nextFloat() - floatsB[i];
+      }
+    }
+    quantizeCentroid = new float[size];
+    quantizeDest = new byte[size];
+    quantizer = new OptimizedScalarQuantizer(VectorSimilarityFunction.DOT_PRODUCT);
 
     // arrays for BBQ int4-bit and int4-dibit dot product benchmarks
     int4QuantizedBit = new byte[size * 4];
@@ -302,6 +320,19 @@ public class VectorUtilBenchmark {
   public byte[] binaryHalfByteUnpackVector() {
     VectorUtil.int4Unpack(halfBytesAPacked, halfBytesUnpackDest);
     return halfBytesUnpackDest;
+  }
+
+  @Benchmark
+  public OptimizedScalarQuantizer.QuantizationResult scalarQuantizeScalar() {
+    return quantizer.scalarQuantize(
+        quantizeVectors[quantizeNext++ & 63], quantizeDest, (byte) 4, quantizeCentroid);
+  }
+
+  @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public OptimizedScalarQuantizer.QuantizationResult scalarQuantizeVector() {
+    return quantizer.scalarQuantize(
+        quantizeVectors[quantizeNext++ & 63], quantizeDest, (byte) 4, quantizeCentroid);
   }
 
   @Benchmark
