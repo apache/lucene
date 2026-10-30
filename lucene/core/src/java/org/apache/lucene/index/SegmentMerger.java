@@ -56,11 +56,6 @@ final class SegmentMerger {
   private final FieldInfos.Builder fieldInfosBuilder;
   final Thread mergeStateCreationThread;
 
-  // Set once the stored fields are merged, and read by the phases after that.
-  private SegmentWriteState segmentWriteState;
-  private SegmentReadState segmentReadState;
-  private int numMerged;
-
   // note, just like in codec apis Directory 'dir' is NOT the same as segmentInfo.dir!!
   SegmentMerger(
       List<CodecReader> readers,
@@ -128,14 +123,14 @@ final class SegmentMerger {
     }
     mergeFieldInfos();
 
-    numMerged = mergeWithLogging(this::mergeFields, "stored fields");
+    int numMerged = mergeWithLogging(this::mergeFields, "stored fields");
     assert numMerged == mergeState.segmentInfo.maxDoc()
         : "numMerged="
             + numMerged
             + " vs mergeState.segmentInfo.maxDoc()="
             + mergeState.segmentInfo.maxDoc();
 
-    segmentWriteState =
+    final SegmentWriteState segmentWriteState =
         new SegmentWriteState(
             mergeState.infoStream,
             directory,
@@ -143,7 +138,7 @@ final class SegmentMerger {
             mergeState.mergeFieldInfos,
             null,
             context);
-    segmentReadState =
+    final SegmentReadState segmentReadState =
         new SegmentReadState(
             directory,
             mergeState.segmentInfo,
@@ -154,6 +149,8 @@ final class SegmentMerger {
     if (mergeState.mergeFieldInfos.hasNorms()) {
       mergeWithLogging(this::mergeNorms, segmentWriteState, segmentReadState, "norms", numMerged);
     }
+
+    mergeWithLogging(this::mergeTerms, segmentWriteState, segmentReadState, "postings", numMerged);
 
     if (mergeState.mergeFieldInfos.hasDocValues()) {
       mergeWithLogging(
@@ -177,17 +174,10 @@ final class SegmentMerger {
       mergeWithLogging(this::mergeTermVectors, "term vectors");
     }
 
-    mergeWithLogging(this::mergeTerms, segmentWriteState, segmentReadState, "postings", numMerged);
-
-    // Field infos last: a per-field format records which format wrote a field as a FieldInfo
-    // attribute while writing it, so every format that stamps one must have run by now.
-    return writeFieldInfos();
-  }
-
-  /** Persists the field infos, which every other phase may still have been adding to. */
-  MergeState writeFieldInfos() throws IOException {
+    // write the merged infos
     mergeWithLogging(
         this::mergeFieldInfos, segmentWriteState, segmentReadState, "field infos", numMerged);
+
     return mergeState;
   }
 
@@ -242,15 +232,7 @@ final class SegmentMerger {
     }
   }
 
-  /**
-   * Works out which fields the merged segment will have. This writes nothing, so a caller may run
-   * it while still free to refuse the merge, before any file exists. Running it twice would add
-   * every field to the builder again, hence the guard.
-   */
-  void mergeFieldInfos() {
-    if (mergeState.mergeFieldInfos != null) {
-      return;
-    }
+  private void mergeFieldInfos() {
     for (FieldInfos readerFieldInfos : mergeState.fieldInfos) {
       for (FieldInfo fi : readerFieldInfos) {
         fieldInfosBuilder.add(fi);

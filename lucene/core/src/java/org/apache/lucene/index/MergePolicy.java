@@ -364,10 +364,7 @@ public abstract class MergePolicy {
      * <p>Returns {@code null} (the default) for the usual behaviour of producing exactly one
      * segment. Called once, <b>after</b> merge readers have been opened, so an implementation may
      * inspect {@link #getMergeReader()} to place boundaries on real key values rather than on doc
-     * counts. Otherwise the returned array has one entry per input segment, in the order of {@link
-     * #segments}. Each entry is a non-decreasing array of {@code outputCount + 1} boundaries
-     * starting at {@code 0} and ending at that input's {@code maxDoc}: output {@code o} takes docs
-     * {@code [b[o], b[o+1])} from that input.
+     * counts.
      *
      * <p><b>Cost:</b> bytes written are unaffected -- every document is written exactly once, into
      * whichever output owns it. Reads depend on whether a format can skip by document range. The
@@ -387,8 +384,8 @@ public abstract class MergePolicy {
      *
      * <p>Expressing the split as boundaries rather than arbitrary doc sets makes the two properties
      * {@link IndexWriter} depends on structural rather than a caller obligation: the outputs are
-     * <b>disjoint</b> and together <b>cover every document</b>. {@link IndexWriter} validates the
-     * shape and rejects the merge otherwise.
+     * <b>disjoint</b> and together <b>cover every document</b>. {@link DocRangePartitions} checks
+     * the shape, and {@link IndexWriter} checks it against the inputs.
      *
      * <p><b>Wrapping policies must delegate this method and {@link #isPartitioned()}.</b> Extend
      * {@link FilterOneMerge}, which forwards both; a wrapper that forgets them downgrades the merge
@@ -401,7 +398,7 @@ public abstract class MergePolicy {
      *
      * @lucene.experimental
      */
-    public int[][] getDocRangePartitions(List<CodecReader> readers) throws IOException {
+    public DocRangePartitions getDocRangePartitions(List<CodecReader> readers) throws IOException {
       return null;
     }
 
@@ -632,7 +629,7 @@ public abstract class MergePolicy {
     }
 
     @Override
-    public int[][] getDocRangePartitions(List<CodecReader> readers) throws IOException {
+    public DocRangePartitions getDocRangePartitions(List<CodecReader> readers) throws IOException {
       return in.getDocRangePartitions(readers);
     }
 

@@ -5693,52 +5693,24 @@ public class IndexWriter
   }
 
   /**
-   * Validate a doc-range partition spec. Only the SHAPE is checked -- one boundary array per input,
-   * all the same length, non-decreasing, starting at 0 and ending at that input's maxDoc. Given
-   * that shape, the two properties the merge depends on, disjointness and full coverage, hold by
-   * construction rather than by trusting the caller.
+   * Checks a partitioning against the merge it came from. {@link DocRangePartitions} has already
+   * checked the shape, so what is left is what needs the inputs: one entry per input segment,
+   * ending at that input's maxDoc, and no boundary inside a document block. Given that, the two
+   * properties the merge depends on, disjointness and full coverage, hold by construction rather
+   * than by trusting the caller.
    */
   private void validateDocRangePartitions(
-      MergePolicy.OneMerge merge, int[][] partitions, List<CodecReader> readers)
+      MergePolicy.OneMerge merge, DocRangePartitions partitions, List<CodecReader> readers)
       throws IOException {
-    if (partitions.length != merge.segments.size()) {
-      throw new IllegalArgumentException(
-          "docRangePartitions has "
-              + partitions.length
-              + " entries but the merge has "
-              + merge.segments.size()
-              + " input segments");
-    }
-    final int outputs = merge.getOutputCount();
-    if (outputs < 1) {
-      throw new IllegalArgumentException("a partitioned merge must have at least one output");
-    }
-    for (int i = 0; i < partitions.length; i++) {
-      final int[] b = partitions[i];
+    final int outputs = partitions.outputCount();
+    for (int i = 0; i < partitions.inputCount(); i++) {
       final int maxDoc = merge.segments.get(i).info.maxDoc();
-      if (b.length != outputs + 1) {
+      final int end = partitions.end(i, outputs - 1);
+      if (end != maxDoc) {
         throw new IllegalArgumentException(
-            "docRangePartitions[" + i + "] has length " + b.length + ", expected " + (outputs + 1));
+            "input " + i + " of the partitioning must end at doc " + maxDoc + ", got " + end);
       }
-      if (b[0] != 0 || b[outputs] != maxDoc) {
-        throw new IllegalArgumentException(
-            "docRangePartitions["
-                + i
-                + "] must span [0, "
-                + maxDoc
-                + "], got ["
-                + b[0]
-                + ", "
-                + b[outputs]
-                + "]");
-      }
-      for (int o = 1; o <= outputs; o++) {
-        if (b[o] < b[o - 1]) {
-          throw new IllegalArgumentException(
-              "docRangePartitions[" + i + "] is not non-decreasing at " + o);
-        }
-      }
-      checkBoundariesRespectBlocks(readers.get(i), b, i);
+      checkBoundariesRespectBlocks(readers.get(i), partitions, i);
     }
   }
 
@@ -5757,8 +5729,8 @@ public class IndexWriter
    * to partition a block index has the readers when it chooses its boundaries, and can align them
    * by reading the same parent field this does.
    */
-  private static void checkBoundariesRespectBlocks(CodecReader reader, int[] b, int input)
-      throws IOException {
+  private static void checkBoundariesRespectBlocks(
+      CodecReader reader, DocRangePartitions partitions, int input) throws IOException {
     final String parentField = reader.getFieldInfos().getParentField();
     if (parentField == null) {
       return;
@@ -5769,8 +5741,8 @@ public class IndexWriter
     }
     final int maxDoc = reader.maxDoc();
     int previous = -1;
-    for (int o = 1; o < b.length - 1; o++) {
-      final int boundary = b[o];
+    for (int o = 1; o < partitions.outputCount(); o++) {
+      final int boundary = partitions.start(input, o);
       // The ends of the space are block boundaries by construction, and a repeated boundary is an
       // empty output, which cannot split anything the previous one did not.
       if (boundary == 0 || boundary == maxDoc || boundary == previous) {
@@ -5780,9 +5752,9 @@ public class IndexWriter
       // A boundary is legal exactly when the document before it ends a block.
       if (parents.advanceExact(boundary - 1) == false) {
         throw new IllegalArgumentException(
-            "docRangePartitions["
+            "input "
                 + input
-                + "] cuts inside a document block at "
+                + " of the partitioning cuts inside a document block at "
                 + boundary
                 + ": document "
                 + (boundary - 1)
@@ -5806,8 +5778,8 @@ public class IndexWriter
 
     boolean success = false;
     int totalDocs = 0;
-    // Outlive the loop that creates them: the postings of every output are written between the
-    // phases either side of them, so each merger stays open across all three phases.
+    // Outlive the loop that creates them: the inputs are finished once for the whole merge, and
+    // each output is packaged after every output has been merged.
     final List<SegmentMerger> mergers = new ArrayList<>();
     // The outputs share one set of input readers, so a reader that hands out itself as its own
     // merge instance must still be finished exactly once, whichever path gets there first.
@@ -5824,22 +5796,21 @@ public class IndexWriter
       for (MergePolicy.MergeReader mr : merge.getMergeReader()) {
         rawReaders.add(mr.reader);
       }
-      final int[][] partitions = merge.getDocRangePartitions(rawReaders);
+      final DocRangePartitions partitions = merge.getDocRangePartitions(rawReaders);
       if (partitions == null) {
         throw new IllegalStateException(
             "OneMerge.isPartitioned() returned true but getDocRangePartitions() returned null");
       }
-      // Before indexing into it: a policy that returns the wrong shape should be told so, rather
-      // than reaching this with an array index out of bounds.
-      if (partitions.length != merge.segments.size()) {
+      // Before indexing into it: a policy that partitions a different set of segments should be
+      // told so, rather than reaching this with an index out of bounds.
+      if (partitions.inputCount() != merge.segments.size()) {
         throw new IllegalArgumentException(
-            "docRangePartitions has "
-                + partitions.length
-                + " entries but the merge has "
-                + merge.segments.size()
-                + " input segments");
+            "the partitioning covers "
+                + partitions.inputCount()
+                + " input segments but the merge has "
+                + merge.segments.size());
       }
-      merge.outputCount = partitions[0].length - 1;
+      merge.outputCount = partitions.outputCount();
       validateDocRangePartitions(merge, partitions, rawReaders);
       final int outputCount = merge.getOutputCount();
 
@@ -5917,7 +5888,7 @@ public class IndexWriter
           // resulting DocMap -- which is what routes concurrent deletes to the right output.
           CodecReader wrapped =
               new DocRangeCodecReader(
-                  wrappedReaders.get(i), partitions[i][output], partitions[i][output + 1]);
+                  wrappedReaders.get(i), partitions.start(i, output), partitions.end(i, output));
           if (softDeletesEnabled) {
             // Count soft deletes that fall INSIDE this output's range. The
             // single-output shortcut (softDelCount - numDeletedDocs) cannot be

@@ -355,13 +355,13 @@ public class TestMultiOutputMerge extends LuceneTestCase {
                     }
 
                     @Override
-                    public int[][] getDocRangePartitions(List<CodecReader> rs) {
+                    public DocRangePartitions getDocRangePartitions(List<CodecReader> rs) {
                       int[][] parts = new int[rs.size()][];
                       for (int i = 0; i < rs.size(); i++) {
                         int maxDoc = rs.get(i).maxDoc();
                         parts[i] = new int[] {0, maxDoc / 2, maxDoc};
                       }
-                      return parts;
+                      return DocRangePartitions.of(parts);
                     }
                   });
               return spec;
@@ -700,6 +700,33 @@ public class TestMultiOutputMerge extends LuceneTestCase {
       }
       assertTrue("expected IllegalArgumentException in the cause chain, got " + caught, sawIae);
     }
+  }
+
+  /** The shape a partitioning must have is checked where it is built, before any merge runs. */
+  public void testDocRangePartitionsChecksItsShape() {
+    expectThrows(
+        IllegalArgumentException.class, () -> DocRangePartitions.of(new int[][] {new int[] {0}}));
+    expectThrows(IllegalArgumentException.class, () -> DocRangePartitions.of(new int[0][]));
+    // One input split into two outputs, the other into three.
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> DocRangePartitions.of(new int[][] {{0, 5, 10}, {0, 3, 6, 9}}));
+    expectThrows(
+        IllegalArgumentException.class, () -> DocRangePartitions.of(new int[][] {{1, 5, 10}}));
+    expectThrows(
+        IllegalArgumentException.class, () -> DocRangePartitions.of(new int[][] {{0, 7, 5}}));
+
+    int[][] boundaries = {{0, 5, 10}, {0, 4, 8}};
+    DocRangePartitions partitions = DocRangePartitions.of(boundaries);
+    // Taken by value, so a policy that keeps the array it passed cannot change the split.
+    boundaries[0][1] = 9;
+    assertEquals(2, partitions.inputCount());
+    assertEquals(2, partitions.outputCount());
+    assertEquals(0, partitions.start(0, 0));
+    assertEquals(5, partitions.end(0, 0));
+    assertEquals(5, partitions.start(0, 1));
+    assertEquals(10, partitions.end(0, 1));
+    assertEquals(4, partitions.end(1, 0));
   }
 
   /**
@@ -1286,15 +1313,17 @@ public class TestMultiOutputMerge extends LuceneTestCase {
     OneMerge merge(List<SegmentCommitInfo> segs, int[][] parts) {
       return new Partitioned(segs, parts) {
         @Override
-        public int[][] getDocRangePartitions(List<CodecReader> readers) {
-          int[][] aligned = super.getDocRangePartitions(readers);
+        public DocRangePartitions getDocRangePartitions(List<CodecReader> readers) {
+          DocRangePartitions unaligned = super.getDocRangePartitions(readers);
+          int[][] aligned = new int[readers.size()][];
           for (int i = 0; i < readers.size(); i++) {
             CodecReader reader = readers.get(i);
             // A parent field's numeric doc values hold a value exactly on the last document of each
             // block, so iterating it lands on block ends.
             try {
               NumericDocValues parents = reader.getNumericDocValues("_parent");
-              int[] b = aligned[i];
+              int[] b = unaligned.boundaries(i);
+              aligned[i] = b;
               for (int o = 1; o < b.length - 1; o++) {
                 if (b[o] == 0 || b[o] >= reader.maxDoc()) {
                   continue;
@@ -1309,7 +1338,7 @@ public class TestMultiOutputMerge extends LuceneTestCase {
               throw new UncheckedIOException(e);
             }
           }
-          return aligned;
+          return DocRangePartitions.of(aligned);
         }
       };
     }
@@ -1633,7 +1662,8 @@ public class TestMultiOutputMerge extends LuceneTestCase {
             }
 
             @Override
-            public int[][] getDocRangePartitions(List<CodecReader> readers) throws IOException {
+            public DocRangePartitions getDocRangePartitions(List<CodecReader> readers)
+                throws IOException {
               int[][] boundaries = new int[readers.size()][cuts.length + 2];
               for (int i = 0; i < readers.size(); i++) {
                 CodecReader reader = readers.get(i);
@@ -1651,7 +1681,7 @@ public class TestMultiOutputMerge extends LuceneTestCase {
                 }
                 boundaries[i][cuts.length + 1] = reader.maxDoc();
               }
-              return boundaries;
+              return DocRangePartitions.of(boundaries);
             }
           });
       return spec;
@@ -1751,8 +1781,8 @@ public class TestMultiOutputMerge extends LuceneTestCase {
     }
 
     @Override
-    public int[][] getDocRangePartitions(List<CodecReader> readers) {
-      return parts;
+    public DocRangePartitions getDocRangePartitions(List<CodecReader> readers) {
+      return DocRangePartitions.of(parts);
     }
 
     @Override
