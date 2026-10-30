@@ -221,6 +221,9 @@ New Features
 
 * GITHUB#16710: Add scalar quantization support for FLOAT16 vectors in the dedup KNN codec. (Pranshu Shukla)
 
+* GITHUB#XXXXX: New hash table based postings format wrapper for much faster primary key lookups
+  (sandbox). (Shitij Bhargava)
+
 Improvements
 ---------------------
 * GITHUB#15704: Replace LinkedList with more efficient data structure. (Renato Haeberli)
