@@ -59,7 +59,7 @@ public final class SoftDeletesRetentionMergePolicy extends OneMergeWrappingMerge
     super(
         in,
         toWrap ->
-            new MergePolicy.OneMerge(toWrap.segments) {
+            new MergePolicy.FilterOneMerge(toWrap) {
               @Override
               public CodecReader wrapForMerge(CodecReader reader) throws IOException {
                 CodecReader wrapped = toWrap.wrapForMerge(reader);
