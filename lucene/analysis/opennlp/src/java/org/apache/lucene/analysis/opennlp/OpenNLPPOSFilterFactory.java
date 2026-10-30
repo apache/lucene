@@ -18,7 +18,9 @@
 package org.apache.lucene.analysis.opennlp;
 
 import java.io.IOException;
+import java.util.Locale;
 import java.util.Map;
+import opennlp.tools.postag.POSTagFormat;
 import org.apache.lucene.analysis.TokenFilterFactory;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.opennlp.tools.OpenNLPOpsFactory;
@@ -46,11 +48,17 @@ public class OpenNLPPOSFilterFactory extends TokenFilterFactory implements Resou
 
   public static final String POS_TAGGER_MODEL = "posTaggerModel";
 
+  public static final String POS_TAG_FORMAT = "posTagFormat";
+
   private final String posTaggerModelFile;
+
+  private final POSTagFormat posTaggerFormat;
 
   public OpenNLPPOSFilterFactory(Map<String, String> args) {
     super(args);
     posTaggerModelFile = require(args, POS_TAGGER_MODEL);
+    String tagFormat = get(args, POS_TAG_FORMAT, "CUSTOM");
+    posTaggerFormat = POSTagFormat.valueOf(tagFormat.toUpperCase(Locale.ROOT));
     if (!args.isEmpty()) {
       throw new IllegalArgumentException("Unknown parameters: " + args);
     }
@@ -64,7 +72,8 @@ public class OpenNLPPOSFilterFactory extends TokenFilterFactory implements Resou
   @Override
   public OpenNLPPOSFilter create(TokenStream in) {
     try {
-      return new OpenNLPPOSFilter(in, OpenNLPOpsFactory.getPOSTagger(posTaggerModelFile));
+      return new OpenNLPPOSFilter(
+          in, OpenNLPOpsFactory.getPOSTagger(posTaggerModelFile, posTaggerFormat));
     } catch (IOException e) {
       throw new IllegalArgumentException(e);
     }
