@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.analysis.ja.dict;
 
-import static org.apache.lucene.util.fst.FST.readMetadata;
-
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -25,12 +23,9 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.apache.lucene.analysis.morph.BinaryDictionary;
-import org.apache.lucene.store.DataInput;
-import org.apache.lucene.store.InputStreamDataInput;
+import org.apache.lucene.analysis.morph.MorphFSTLoader;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.fst.FST;
-import org.apache.lucene.util.fst.PositiveIntOutputs;
 
 /**
  * Binary dictionary implementation for a known-word dictionary model: Words are encoded into an FST
@@ -42,6 +37,9 @@ public final class TokenInfoDictionary extends BinaryDictionary<TokenInfoMorphDa
 
   private final TokenInfoFST fst;
   private final TokenInfoMorphData morphAtts;
+  /** Keeps mmap resources alive for {@link MorphFSTLoader#loadFromPath}; otherwise null. */
+  @SuppressWarnings("unused")
+  private final MorphFSTLoader.LoadedFST fstHolder;
 
   /**
    * Create a {@link TokenInfoDictionary} from an external resource path.
@@ -54,11 +52,17 @@ public final class TokenInfoDictionary extends BinaryDictionary<TokenInfoMorphDa
    */
   public TokenInfoDictionary(Path targetMapFile, Path posDictFile, Path dictFile, Path fstFile)
       throws IOException {
-    this(
+    super(
         () -> Files.newInputStream(targetMapFile),
-        () -> Files.newInputStream(posDictFile),
         () -> Files.newInputStream(dictFile),
-        () -> Files.newInputStream(fstFile));
+        DictionaryConstants.TARGETMAP_HEADER,
+        DictionaryConstants.DICT_HEADER,
+        DictionaryConstants.VERSION);
+    this.morphAtts =
+        new TokenInfoMorphData(buffer, () -> Files.newInputStream(posDictFile));
+    MorphFSTLoader.LoadedFST loaded = MorphFSTLoader.loadFromPath(fstFile);
+    this.fstHolder = loaded;
+    this.fst = new TokenInfoFST(loaded.fst(), true);
   }
 
   /**
@@ -73,11 +77,16 @@ public final class TokenInfoDictionary extends BinaryDictionary<TokenInfoMorphDa
    */
   public TokenInfoDictionary(URL targetMapUrl, URL posDictUrl, URL dictUrl, URL fstUrl)
       throws IOException {
-    this(
+    super(
         () -> targetMapUrl.openStream(),
-        () -> posDictUrl.openStream(),
         () -> dictUrl.openStream(),
-        () -> fstUrl.openStream());
+        DictionaryConstants.TARGETMAP_HEADER,
+        DictionaryConstants.DICT_HEADER,
+        DictionaryConstants.VERSION);
+    this.morphAtts = new TokenInfoMorphData(buffer, () -> posDictUrl.openStream());
+    MorphFSTLoader.LoadedFST loaded = MorphFSTLoader.loadFromUrl(fstUrl);
+    this.fstHolder = loaded.resource() != null ? loaded : null;
+    this.fst = new TokenInfoFST(loaded.fst(), true);
   }
 
   private TokenInfoDictionary() throws IOException {
@@ -101,14 +110,11 @@ public final class TokenInfoDictionary extends BinaryDictionary<TokenInfoMorphDa
         DictionaryConstants.DICT_HEADER,
         DictionaryConstants.VERSION);
     this.morphAtts = new TokenInfoMorphData(buffer, posResource);
-
-    FST<Long> fst;
     try (InputStream is = new BufferedInputStream(fstResource.get())) {
-      DataInput in = new InputStreamDataInput(is);
-      fst = new FST<>(readMetadata(in, PositiveIntOutputs.getSingleton()), in);
+      // TODO: some way to configure?
+      this.fst = new TokenInfoFST(MorphFSTLoader.loadFromStream(is), true);
     }
-    // TODO: some way to configure?
-    this.fst = new TokenInfoFST(fst, true);
+    this.fstHolder = null;
   }
 
   static InputStream getClassResource(String suffix) throws IOException {
