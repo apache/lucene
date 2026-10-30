@@ -20,9 +20,12 @@ package org.apache.lucene.codecs.lucene99;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readSimilarityFunction;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.file.NoSuchFileException;
+import java.util.LinkedHashSet;
 import java.util.Map;
-import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
@@ -43,12 +46,13 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
+import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataAccessHint;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FileDataHint;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
-import org.apache.lucene.store.IOContext.FileOpenHint;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -64,47 +68,60 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   private static final long SHALLOW_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(Lucene99FlatVectorsFormat.class);
 
-  private final IntObjectHashMap<FieldEntry> fields = new IntObjectHashMap<>();
+  private final IntObjectHashMap<FieldEntry> fields;
   private final FlatVectorsScorer vectorScorer;
   private final IndexInput vectorData;
   private final FieldInfos fieldInfos;
   private final IOContext dataContext;
+  private final Directory directory;
+  private final String vectorDataFN;
+  // the reader this one was created from
+  private final Lucene99FlatVectorsReader original;
+  // opened lazily for merges and sequential reads, closed with this reader, guarded by this
+  private IndexInput mergeVectorData;
+  private IndexInput sequentialVectorData;
+  // guarded by this
+  private boolean closed;
 
   public Lucene99FlatVectorsReader(SegmentReadState state, FlatVectorsScorer scorer)
       throws IOException {
-    this(state, scorer, DataAccessHint.RANDOM);
-  }
-
-  /**
-   * Creates a Lucene99FlatVectorsReader.
-   *
-   * @param state the segment read state
-   * @param scorer the flat vectors scorer
-   * @param accessHint a data access hint, or null
-   */
-  public Lucene99FlatVectorsReader(
-      SegmentReadState state, FlatVectorsScorer scorer, DataAccessHint accessHint)
-      throws IOException {
+    this.fields = new IntObjectHashMap<>();
     int versionMeta = readMetadata(state);
     this.vectorScorer = scorer;
     this.fieldInfos = state.fieldInfos;
-    FileOpenHint[] hints =
-        Stream.of(FileTypeHint.DATA, FileDataHint.KNN_VECTORS, accessHint)
-            .filter(Objects::nonNull)
-            .toArray(FileOpenHint[]::new);
-    dataContext = state.context.withHints(hints);
+    this.directory = state.directory;
+    this.original = this;
+    // how these are read is up to whoever wraps this format
+    dataContext = state.context.union(FileTypeHint.DATA, FileDataHint.KNN_VECTORS);
+    this.vectorDataFN =
+        IndexFileNames.segmentFileName(
+            state.segmentInfo.name,
+            state.segmentSuffix,
+            Lucene99FlatVectorsFormat.VECTOR_DATA_EXTENSION);
     try {
       vectorData =
           openDataInput(
               state,
               versionMeta,
-              Lucene99FlatVectorsFormat.VECTOR_DATA_EXTENSION,
+              vectorDataFN,
               Lucene99FlatVectorsFormat.VECTOR_DATA_CODEC_NAME,
               dataContext);
     } catch (Throwable t) {
       IOUtils.closeWhileSuppressingExceptions(t, this);
       throw t;
     }
+  }
+
+  /** Reads the same fields as {@code reader}, through {@code vectorData}. */
+  private Lucene99FlatVectorsReader(Lucene99FlatVectorsReader reader, IndexInput vectorData) {
+    this.fields = reader.fields;
+    this.vectorScorer = reader.vectorScorer;
+    this.fieldInfos = reader.fieldInfos;
+    this.dataContext = reader.dataContext;
+    this.directory = reader.directory;
+    this.vectorDataFN = reader.vectorDataFN;
+    this.original = reader.original;
+    this.vectorData = vectorData;
   }
 
   private int readMetadata(SegmentReadState state) throws IOException {
@@ -134,14 +151,8 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   }
 
   private static IndexInput openDataInput(
-      SegmentReadState state,
-      int versionMeta,
-      String fileExtension,
-      String codecName,
-      IOContext context)
+      SegmentReadState state, int versionMeta, String fileName, String codecName, IOContext context)
       throws IOException {
-    String fileName =
-        IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, fileExtension);
     IndexInput in = state.directory.openInput(fileName, context);
     try {
       int versionVectorData =
@@ -204,9 +215,60 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
 
   @Override
   public FlatVectorsReader getMergeInstance() throws IOException {
-    // Update the read advice since vectors are guaranteed to be accessed sequentially for merge
-    vectorData.updateIOContext(dataContext.withHints(DataAccessHint.SEQUENTIAL));
-    return this;
+    IndexInput data = original.mergeVectorData();
+    return data == vectorData ? this : new Lucene99FlatVectorsReader(this, data.clone());
+  }
+
+  /** Returns the input for merges, opening the data file again if needed. */
+  private synchronized IndexInput mergeVectorData() throws IOException {
+    assert original == this;
+    ensureOpen();
+    if (mergeVectorData == null) {
+      mergeVectorData =
+          vectorDataFor(IOContext.merge().withHints(sequentialHints()), sequentialVectorData);
+    }
+    return mergeVectorData;
+  }
+
+  /** Returns the input for sequential reads by searches, opening the data file again if needed. */
+  private synchronized IndexInput sequentialVectorData() throws IOException {
+    assert original == this;
+    ensureOpen();
+    if (sequentialVectorData == null) {
+      // read by searches, even on a reader a merge opened
+      sequentialVectorData =
+          vectorDataFor(IOContext.DEFAULT.withHints(sequentialHints()), mergeVectorData);
+    }
+    return sequentialVectorData;
+  }
+
+  /** Returns an input efficient for {@code context}, opening the data file again if none is. */
+  private IndexInput vectorDataFor(IOContext context, IndexInput other) throws IOException {
+    if (vectorData.isEfficientFor(context)) {
+      return vectorData;
+    }
+    if (other != null && other.isEfficientFor(context)) {
+      return other;
+    }
+    try {
+      return directory.openInput(vectorDataFN, context);
+    } catch (FileNotFoundException | NoSuchFileException _) {
+      // an open reader outlives its files, so read through the input it already holds
+      return vectorData;
+    }
+  }
+
+  private void ensureOpen() {
+    if (closed) {
+      throw new AlreadyClosedException("this reader is closed");
+    }
+  }
+
+  /** Returns the hints of the data file with sequential access. */
+  private IOContext.FileOpenHint[] sequentialHints() {
+    return Stream.concat(
+            dataContext.removeHints(DataAccessHint.class), Stream.of(DataAccessHint.SEQUENTIAL))
+        .toArray(IOContext.FileOpenHint[]::new);
   }
 
   private FieldEntry getFieldEntryOrThrow(String field) {
@@ -234,6 +296,19 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
 
   @Override
   public FloatVectorValues getFloatVectorValues(String field) throws IOException {
+    return loadFloatVectorValues(field, vectorData);
+  }
+
+  @Override
+  public FloatVectorValues getFloatVectorValues(String field, DataAccessHint access)
+      throws IOException {
+    IndexInput data =
+        access == DataAccessHint.SEQUENTIAL ? original.sequentialVectorData() : vectorData;
+    return loadFloatVectorValues(field, data);
+  }
+
+  private FloatVectorValues loadFloatVectorValues(String field, IndexInput data)
+      throws IOException {
     final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.FLOAT32);
     return OffHeapFloatVectorValues.load(
         fieldEntry.similarityFunction,
@@ -243,7 +318,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
         fieldEntry.dimension,
         fieldEntry.vectorDataOffset,
         fieldEntry.vectorDataLength,
-        vectorData);
+        data);
   }
 
   @Override
@@ -332,15 +407,21 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   }
 
   @Override
-  public void finishMerge() throws IOException {
-    // This makes sure that the access pattern hint is reverted back since HNSW implementation
-    // needs it
-    vectorData.updateIOContext(dataContext);
-  }
-
-  @Override
   public void close() throws IOException {
-    IOUtils.close(vectorData);
+    // the inputs can be the same
+    Set<IndexInput> toClose = new LinkedHashSet<>();
+    synchronized (this) {
+      if (closed) {
+        return;
+      }
+      closed = true;
+      toClose.add(vectorData);
+      toClose.add(mergeVectorData);
+      toClose.add(sequentialVectorData);
+      mergeVectorData = null;
+      sequentialVectorData = null;
+    }
+    IOUtils.close(toClose);
   }
 
   private record FieldEntry(

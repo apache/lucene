@@ -6,7 +6,7 @@ on:
   pull_request:
     branches:
       - 'main'
-      - 'branch_10x'
+      - 'branch_11x'
     paths:
       - '.github/workflows/run-checks-python.yml'
       - 'dev-tools/scripts/**'
@@ -14,7 +14,7 @@ on:
   push:
     branches:
       - 'main'
-      - 'branch_10x'
+      - 'branch_11x'
     paths:
       - '.github/workflows/run-checks-python.yml'
       - 'dev-tools/scripts/**'
@@ -30,7 +30,7 @@ jobs:
   lint:
     name: Lint python scripts
     timeout-minutes: 15
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
 
     steps:
       - name: Checkout repository
@@ -41,7 +41,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: "3.12.6"
+          python-version: "3.12"
 
       - name: Lint Python
         run: "cd dev-tools/scripts && make"

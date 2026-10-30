@@ -21,7 +21,7 @@ jobs:
     name: Hunspell regression tests against latest dictionaries
     timeout-minutes: 15
 
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
 
     steps:
       - name: Checkout repository

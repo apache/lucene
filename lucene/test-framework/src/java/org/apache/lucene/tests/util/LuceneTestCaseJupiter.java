@@ -24,6 +24,7 @@ import com.carrotsearch.randomizedtesting.jupiter.SystemThreadFilter;
 import java.io.Closeable;
 import java.io.PrintStream;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -68,8 +69,8 @@ import org.opentest4j.TestAbortedException;
 /// ## Class and instance setup
 ///
 /// The preferred way to specify class (suite-level) setup/cleanup is to use static methods
-/// annotated with [org.junit.jupiter.api.BeforeAll] and [org.junit.jupiter.api.AfterAll].
-/// **Do not use static initializers (including complex final field initializers).**
+/// annotated with [org.junit.jupiter.api.BeforeAll] and [org.junit.jupiter.api.AfterAll]. **Do not
+/// use static initializers (including complex final field initializers).**
 ///
 /// For instance-level setup, use [org.junit.jupiter.api.BeforeEach] and
 /// [org.junit.jupiter.api.AfterEach] annotated methods.
@@ -77,6 +78,7 @@ import org.opentest4j.TestAbortedException;
 /// ## Specifying test cases
 ///
 /// Any method of specifying JUnit jupiter tests will work. The most common way would therefore be:
+///
 /// ```java
 /// @Test
 /// public void testMethod(Random random) {}
@@ -86,15 +88,13 @@ import org.opentest4j.TestAbortedException;
 ///
 /// ## Randomized execution and test facilities
 ///
-/// [LuceneTestCaseJupiter] uses the [Randomized] extension to support component randomization.
-/// A [Random] can be automatically injected in the test (or any junit5 callback) as a parameter.
-/// Tests should be fully reproducible for the same initial seed
-/// (assuming no race conditions between threads
-/// etc.). The initial seed for a test case is reported in many ways:
+/// [LuceneTestCaseJupiter] uses the [Randomized] extension to support component randomization. A
+/// [Random] can be automatically injected in the test (or any junit5 callback) as a parameter.
+/// Tests should be fully reproducible for the same initial seed (assuming no race conditions
+/// between threads etc.). The initial seed for a test case is reported in many ways:
 ///
-///   - logged from the gradle build,
-///   - inserted as a synthetic stack frame in any exceptions.
-///
+/// - logged from the gradle build,
+/// - inserted as a synthetic stack frame in any exceptions.
 /*
 TODO: port the remaining infrastructure bits from LuceneTestCase:
 - there are class rules and test rules that are still only on junit4 side
@@ -182,9 +182,9 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
     }
   }
 
-  /// Tracks whether any test in the current suite had a failure.
-  /// Registered before [ClassLevelCallbackChain] so its state is available during suite teardown.
-  /// We plug into multiple jupiter extensions, hoping they will be sufficient to detect failure
+  /// Tracks whether any test in the current suite had a failure. Registered before
+  /// [ClassLevelCallbackChain] so its state is available during suite teardown. We plug into
+  /// multiple jupiter extensions, hoping they will be sufficient to detect failure
   // state.
   static final class SuiteFailureTracker
       implements AfterAllCallback,
@@ -264,11 +264,11 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
     }
   }
 
-  /// This extension sets up junit-jupiter implementations of the
-  /// test framework-dependent infrastructure in [LuceneTestCaseParent].
+  /// This extension sets up junit-jupiter implementations of the test framework-dependent
+  /// infrastructure in [LuceneTestCaseParent].
   ///
-  /// It tries to simulate before-after rules as they are implemented in junit4
-  /// (call order, unwinding in case of failures, etc.).
+  /// It tries to simulate before-after rules as they are implemented in junit4 (call order,
+  /// unwinding in case of failures, etc.).
   static class ClassLevelCallbackChain
       implements BeforeAllCallback, AfterAllCallback, AfterEachCallback {
     private final SuiteFailureTracker suiteFailureTracker;
@@ -361,15 +361,15 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
       // This is the chain of before-after callbacks that must be called in the right order for
       // compatibility
       // with junit4 implementation.
-      this.beforeAfters =
-          new OrderedBeforeAfterCallbacks(
-              List.of(
-                  perThreadRandom,
-                  installFrameworkInfraSupport,
-                  classEnvRule,
-                  fieldToType,
-                  installEnvInfo,
-                  tempFileSupplier));
+      List<BeforeAfterCallback> callbacks = new ArrayList<>();
+      callbacks.add(perThreadRandom);
+      callbacks.add(installFrameworkInfraSupport);
+      callbacks.add(classEnvRule);
+      callbacks.add(fieldToType);
+      callbacks.add(installEnvInfo);
+      callbacks.add(tempFileSupplier);
+      callbacks.addAll(LuceneTestCaseParent.suiteCallbacks());
+      this.beforeAfters = new OrderedBeforeAfterCallbacks(callbacks);
 
       beforeAfters.before();
     }
@@ -527,8 +527,10 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
 
     @Override
     public void beforeEach(ExtensionContext context) throws Exception {
-      this.callbacks =
-          new OrderedBeforeAfterCallbacks(List.of(new TestRuleSetupAndRestoreInstanceEnv()));
+      List<BeforeAfterCallback> testCallbacks = new ArrayList<>();
+      testCallbacks.add(new TestRuleSetupAndRestoreInstanceEnv());
+      testCallbacks.addAll(LuceneTestCaseParent.testCallbacks());
+      this.callbacks = new OrderedBeforeAfterCallbacks(testCallbacks);
       callbacks.before();
     }
 

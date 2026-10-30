@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.store;
 
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -65,6 +67,19 @@ public interface IOContext {
   /** Returns an {@link IOContext} for merging with the specified {@link MergeInfo} */
   static IOContext merge(MergeInfo mergeInfo) {
     Objects.requireNonNull(mergeInfo);
+    return merge(mergeInfo, Set.of());
+  }
+
+  /**
+   * Returns an {@link IOContext} for merging when the caller does not know how large the merge is.
+   * Unlike {@link #merge(MergeInfo)}, {@link #mergeInfo()} on the returned context is {@code null}.
+   */
+  static IOContext merge() {
+    return merge(null, Set.of());
+  }
+
+  private static IOContext merge(MergeInfo mergeInfo, Set<FileOpenHint> hints) {
+    Set<FileOpenHint> copy = DefaultIOContext.checkOneHintPerType(hints);
     return new IOContext() {
       @Override
       public Context context() {
@@ -83,19 +98,24 @@ public interface IOContext {
 
       @Override
       public Set<FileOpenHint> hints() {
-        return Set.of();
+        return copy;
       }
 
       @Override
       public IOContext withHints(FileOpenHint... hints) {
-        return this;
+        return merge(mergeInfo, Set.of(hints));
       }
     };
   }
 
   /** Returns an {@link IOContext} for flushing with the specified {@link FlushInfo} */
   static IOContext flush(FlushInfo flushInfo) {
+    return flush(flushInfo, Set.of());
+  }
+
+  private static IOContext flush(FlushInfo flushInfo, Set<FileOpenHint> hints) {
     Objects.requireNonNull(flushInfo);
+    Set<FileOpenHint> copy = DefaultIOContext.checkOneHintPerType(hints);
     return new IOContext() {
       @Override
       public Context context() {
@@ -114,12 +134,12 @@ public interface IOContext {
 
       @Override
       public Set<FileOpenHint> hints() {
-        return Set.of();
+        return copy;
       }
 
       @Override
       public IOContext withHints(FileOpenHint... hints) {
-        return this;
+        return flush(flushInfo, Set.of(hints));
       }
     };
   }
@@ -127,7 +147,10 @@ public interface IOContext {
   /** The {@link Context} this context is for */
   Context context();
 
-  /** Merge info, if {@link #context()} is {@link Context#MERGE} */
+  /**
+   * Merge info, or {@code null} if {@link #context()} is not {@link Context#MERGE}, or if it is but
+   * the caller does not know how large the merge is (see {@link #merge()}).
+   */
   MergeInfo mergeInfo();
 
   /** Flush info, if {@link #context()} is {@link Context#FLUSH} */
@@ -141,9 +164,13 @@ public interface IOContext {
     return hints().stream().filter(cls::isInstance).map(cls::cast);
   }
 
+  /** Returns all the hints that are not of type {@code cls} */
+  default Stream<FileOpenHint> removeHints(Class<? extends FileOpenHint> cls) {
+    return hints().stream().filter(h -> !cls.isInstance(h));
+  }
+
   /**
-   * Returns an IOContext with the given hints, if it makes sense to do so for this specific
-   * context. Otherwise, returns this context.
+   * Returns an IOContext with the given hints.
    *
    * <p>The returned context has the same {@link #context()}, {@link #mergeInfo()}, and {@link
    * #flushInfo()} as this context.
@@ -151,4 +178,16 @@ public interface IOContext {
    * <p>This instance is immutable and unaffected by this method call.
    */
   IOContext withHints(FileOpenHint... hints);
+
+  /**
+   * Returns an IOContext with the given hints added to the ones it already has. A hint it already
+   * has is added once.
+   *
+   * @throws IllegalArgumentException if that would give it two different hints of the same type
+   */
+  default IOContext union(FileOpenHint... hints) {
+    Set<FileOpenHint> merged = new HashSet<>(hints());
+    Collections.addAll(merged, hints);
+    return withHints(merged.toArray(FileOpenHint[]::new));
+  }
 }

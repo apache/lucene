@@ -62,6 +62,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.NoReuseHint;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
@@ -148,7 +149,9 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
       final String vectorsStreamFN =
           IndexFileNames.segmentFileName(segment, segmentSuffix, VECTORS_EXTENSION);
       vectorsStream =
-          d.openInput(vectorsStreamFN, context.withHints(FileTypeHint.DATA, DataAccessHint.RANDOM));
+          d.openInput(
+              vectorsStreamFN,
+              context.withHints(FileTypeHint.DATA, DataAccessHint.RANDOM, NoReuseHint.INSTANCE));
       version =
           CodecUtil.checkIndexHeader(
               vectorsStream, formatName, VERSION_START, VERSION_CURRENT, si.getId(), segmentSuffix);
@@ -439,7 +442,8 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     {
       final int bitsPerOff = DirectWriter.bitsRequired(fieldNums.length - 1);
       final LongValues allFieldNumOffs = DirectReader.getInstance(slice(vectorsStream), bitsPerOff);
-      switch (vectorsStream.readVInt()) {
+      final int flagsFormat = vectorsStream.readVInt();
+      switch (flagsFormat) {
         case 0:
           final LongValues fieldFlags = DirectReader.getInstance(slice(vectorsStream), FLAGS_BITS);
           final ByteBuffersDataOutput out = new ByteBuffersDataOutput();
@@ -456,7 +460,8 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
           flags = DirectReader.getInstance(slice(vectorsStream), FLAGS_BITS);
           break;
         default:
-          throw new AssertionError();
+          throw new IllegalStateException(
+              "Unknown flags format: " + flagsFormat + " in " + vectorsStream);
       }
       for (int i = 0; i < numFields; ++i) {
         fieldNumOffs[i] = (int) allFieldNumOffs.get(skip + i);
