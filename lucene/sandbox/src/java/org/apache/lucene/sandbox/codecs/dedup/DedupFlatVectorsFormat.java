@@ -36,11 +36,13 @@ import org.apache.lucene.index.SegmentWriteState;
  * <h2>.vdd (vector de-dup data) file</h2>
  *
  * <ul>
- *   <li>For each group, its distinct vectors, aligned to 4 bytes (BYTE) or 64 bytes (FLOAT32 and
- *       FLOAT16). This a best-effort alignment, because Arm Neoverse machines incur a performance
- *       penalty in reading data not aligned to 64 bytes. This penalty may be incurred for float
- *       vectors that do not have a dimension of a multiple of 16 (equivalent to 64 bytes), because
- *       the alignment will not hold for all vectors in the file.
+ *   <li>For each group: distinct vectors, with the start of the group aligned to 4096 bytes. A
+ *       vector whose size divides 4096 bytes or is a multiple of it (e.g. 1024-dim float32) never
+ *       straddles a page boundary, so reading one vector (as rescoring does) touches no extra
+ *       pages. 4096 is also a multiple of 64 bytes, the alignment that Arm Neoverse machines need
+ *       to read vectors without overhead. If the vector size is not a multiple of 64 bytes, most
+ *       vectors in the file are not aligned to 64 bytes, and searching them may be slower on these
+ *       machines.
  *   <li>For each field:
  *       <ul>
  *         <li>The sparse-encoding data (only when some documents lack the field): DocIds encoded by
