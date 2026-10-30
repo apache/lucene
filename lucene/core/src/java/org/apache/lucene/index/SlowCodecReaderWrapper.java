@@ -31,6 +31,7 @@ import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.util.Bits;
 
 /**
@@ -167,6 +168,12 @@ public final class SlowCodecReaderWrapper {
       @Override
       public FloatVectorValues getFloatVectorValues(String field) throws IOException {
         return reader.getFloatVectorValues(field);
+      }
+
+      @Override
+      public FloatVectorValues getFloatVectorValues(String field, DataAccessHint access)
+          throws IOException {
+        return reader.getFloatVectorValues(field, access);
       }
 
       @Override

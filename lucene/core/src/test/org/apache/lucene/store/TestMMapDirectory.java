@@ -181,6 +181,62 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
     }
   }
 
+  /** Only random and sequential reads get inputs of their own. */
+  public void testIsEfficientFor() throws IOException {
+    var random = new DefaultIOContext(DataAccessHint.RANDOM);
+    var sequential = new DefaultIOContext(DataAccessHint.SEQUENTIAL);
+    // larger than a page, so that slices get advised
+    final int size = 1 << 17;
+    try (MMapDirectory dir = new MMapDirectory(createTempDir("testIsEfficientFor"))) {
+      try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
+        out.writeBytes(new byte[size], 0, size);
+      }
+      try (IndexInput in = dir.openInput("test", random)) {
+        assertTrue("one advice for every context", in.isEfficientFor(sequential));
+      }
+
+      dir.setReadAdvice(MMapDirectory.ADVISE_BY_CONTEXT);
+      boolean advises = MMapDirectory.supportsMadvise();
+      try (IndexInput in = dir.openInput("test", random)) {
+        assertTrue(in.isEfficientFor(random));
+        assertTrue("normal reads share a random input", in.isEfficientFor(IOContext.DEFAULT));
+        assertEquals(advises == false, in.isEfficientFor(sequential));
+        assertEquals(
+            "a clone reads the same pages",
+            advises == false,
+            in.clone().isEfficientFor(sequential));
+        assertEquals(
+            "a slice reads the same pages",
+            advises == false,
+            in.slice("slice", 0, size).isEfficientFor(sequential));
+        dir.setReadAdvice((_, _) -> Optional.of(ReadAdvice.NORMAL));
+        assertEquals(
+            "an input keeps the function it was opened with",
+            advises == false,
+            in.isEfficientFor(sequential));
+        dir.setReadAdvice(MMapDirectory.ADVISE_BY_CONTEXT);
+
+        IndexInput advised = in.slice("advised", 0, size, sequential);
+        assertTrue(advised.isEfficientFor(sequential));
+        assertEquals(advises == false, advised.isEfficientFor(random));
+        assertTrue(
+            "too small to be advised", in.slice("small", 0, 1, sequential).isEfficientFor(random));
+      }
+
+      try (IndexOutput out = dir.createOutput("small", IOContext.DEFAULT)) {
+        out.writeByte((byte) 0);
+      }
+      try (IndexInput in = dir.openInput("small", random)) {
+        assertTrue("a file within a page is not opened again", in.isEfficientFor(sequential));
+      }
+
+      dir.setPreload((_, _) -> true);
+      try (IndexInput in = dir.openInput("test", random)) {
+        assertTrue("preloaded pages are resident", in.isEfficientFor(sequential));
+      }
+    }
+  }
+
   public void testPreload() throws Exception {
     assumeTrue("madvise for preloading only works on linux/mac", MMapDirectory.supportsMadvise());
 
@@ -351,6 +407,58 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
         closeable.close();
       }
 
+      assertEquals(0, dir.arenas.size());
+    }
+  }
+
+  // When the permits of a group's arena are exhausted, a newer arena replaces it in the arenas map
+  // while the older one is still alive. Closing the older arena must not evict the newer one.
+  public void testArenasOldArenaCloseKeepsNewerArena() throws Exception {
+    final String name = "_1.dat";
+    byte[] bytes = new byte[4];
+    random().nextBytes(bytes);
+
+    try (var dir = new MMapDirectory(createTempDir("testArenasOldArenaCloseKeepsNewerArena"))) {
+      try (IndexOutput out = dir.createOutput(name, IOContext.DEFAULT)) {
+        out.writeBytes(bytes, 0, bytes.length);
+      }
+      final String key = MMapDirectory.GROUP_BY_SEGMENT.apply(name).orElseThrow();
+
+      // Open the same file until the permits of the first arena are exhausted, and the arenas map
+      // holds a newer arena for the group. The number of permits is at most MAX_PERMITS, so the
+      // loop is bounded by one more open than that.
+      List<IndexInput> oldInputs = new ArrayList<>();
+      oldInputs.add(dir.openInput(name, IOContext.DEFAULT));
+      final RefCountedSharedArena oldArena = dir.arenas.get(key);
+      assertNotNull(oldArena);
+
+      IndexInput newInput = null;
+      for (int i = 0; i <= RefCountedSharedArena.MAX_PERMITS && newInput == null; i++) {
+        IndexInput in = dir.openInput(name, IOContext.DEFAULT);
+        if (dir.arenas.get(key) == oldArena) {
+          oldInputs.add(in);
+        } else {
+          newInput = in;
+        }
+      }
+      assertNotNull("permits were never exhausted", newInput);
+      final RefCountedSharedArena newArena = dir.arenas.get(key);
+      assertNotNull(newArena);
+      assertNotSame(oldArena, newArena);
+
+      // Closing all inputs of the old arena closes it, but the newer arena is still live
+      for (IndexInput in : oldInputs) {
+        in.close();
+      }
+      assertSame("old arena's close evicted the newer arena", newArena, dir.arenas.get(key));
+
+      // Further opens of the group still share the newer arena
+      IndexInput another = dir.openInput(name, IOContext.DEFAULT);
+      assertSame(newArena, dir.arenas.get(key));
+      assertEquals(1, dir.arenas.size());
+      another.close();
+
+      newInput.close();
       assertEquals(0, dir.arenas.size());
     }
   }
