@@ -186,7 +186,45 @@ public class AssertingLeafReader extends FilterLeafReader {
       assertThread("Fields", creationThread);
       Iterator<String> iterator = super.iterator();
       assert iterator != null;
-      return iterator;
+      return assertFieldOrder(iterator);
+    }
+
+    /**
+     * Wraps {@code in} so that it fails if field names do not arrive in ascending natural order
+     * with no duplicates, as {@link Fields#iterator()} requires.
+     *
+     * <p>Nothing in production code detects a violation: {@link
+     * org.apache.lucene.util.MergedIterator}, which is what relies on the order, is documented as
+     * undefined for unsorted input rather than checking it, so an offending implementation silently
+     * returns wrong results — the merge stops deduplicating and a name present in two sub-iterators
+     * can be returned twice. Only {@code CheckIndex} catches it, and only after the fact.
+     *
+     * <p>The comparison is strict, matching the check in {@code CheckIndex#checkFields} and the one
+     * applied to the write side of {@code AssertingPostingsFormat} since 2013.
+     */
+    public static Iterator<String> assertFieldOrder(Iterator<String> in) {
+      return new Iterator<>() {
+        String last;
+
+        @Override
+        public boolean hasNext() {
+          return in.hasNext();
+        }
+
+        @Override
+        public String next() {
+          String field = in.next();
+          assert last == null || last.compareTo(field) < 0
+              : "Fields.iterator() must return field names in ascending order with no duplicates,"
+                  + " but saw \""
+                  + last
+                  + "\" followed by \""
+                  + field
+                  + "\"";
+          last = field;
+          return field;
+        }
+      };
     }
 
     @Override
