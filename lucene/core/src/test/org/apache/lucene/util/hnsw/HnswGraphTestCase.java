@@ -474,6 +474,32 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     return nodes;
   }
 
+  // both sets must give the same graph; the other tests only use the bit set
+  public void testHashSetVisitedSetBuildsSameGraph() throws IOException {
+    int size = atLeast(300);
+    int M = random().nextInt(14) + 2;
+    int beamWidth = random().nextInt(50) + 20;
+    long seed = random().nextLong();
+    KnnVectorValues vectors = vectorValues(size, random().nextInt(32) + 2);
+    HnswGraph[] graphs = new HnswGraph[2];
+    // a bit set for the graph, and a hash set as for a graph of any size
+    VisitedSet[] visitedSets = {
+      VisitedSet.create(size, size), VisitedSet.create(16, Integer.MAX_VALUE)
+    };
+    for (int i = 0; i < 2; i++) {
+      graphs[i] =
+          new HnswGraphBuilder(
+                  buildScorerSupplier(vectors),
+                  beamWidth,
+                  seed,
+                  new OnHeapHnswGraph(M, -1),
+                  null,
+                  new HnswGraphSearcher(new NeighborQueue(beamWidth, true), visitedSets[i]))
+              .build(size);
+    }
+    assertGraphEqual(graphs[0], graphs[1]);
+  }
+
   void assertGraphEqual(HnswGraph g, HnswGraph h) throws IOException {
     // construct these up front since they call seek which will mess up our test loop
     String prettyG = prettyPrint(g);
