@@ -52,6 +52,7 @@ public class TestIndexWriterConfig extends LuceneTestCase {
     assertEquals(IndexWriterConfig.DEFAULT_MAX_BUFFERED_DOCS, conf.getMaxBufferedDocs());
     assertEquals(IndexWriterConfig.DEFAULT_READER_POOLING, conf.getReaderPooling());
     assertNull(conf.getMergedSegmentWarmer());
+    assertNull(conf.getMergedSegmentWarmerExecutor());
     assertEquals(TieredMergePolicy.class, conf.getMergePolicy().getClass());
     assertEquals(FlushByRamOrCountsPolicy.class, conf.getFlushPolicy().getClass());
     assertEquals(
@@ -76,6 +77,7 @@ public class TestIndexWriterConfig extends LuceneTestCase {
     getters.add("getMaxBufferedDocs");
     getters.add("getIndexingChain");
     getters.add("getMergedSegmentWarmer");
+    getters.add("getMergedSegmentWarmerExecutor");
     getters.add("getMergePolicy");
     getters.add("getReaderPooling");
     getters.add("getIndexerThreadPool");
