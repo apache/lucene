@@ -738,6 +738,8 @@ Optimizations
 
 * GITHUB#16119: Optimize byte array writes in OutputStreamIndexOutput to remove unnecessary overhead. (neoremind)
 
+* GITHUB#16832: Reuse address upper when scanning sparse sorted numeric & dense binary doc values. (Ke Wei)
+
 Bug Fixes
 ---------------------
 
