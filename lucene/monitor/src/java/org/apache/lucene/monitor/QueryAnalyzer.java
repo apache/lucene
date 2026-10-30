@@ -48,9 +48,6 @@ class QueryAnalyzer {
     this(queryTreeBuilders, false);
   }
 
-  /**
-   * @param isNegationOptimized whether negated clauses become NotSlots, rather than being ignored
-   */
   QueryAnalyzer(List<CustomQueryHandler> queryTreeBuilders, boolean isNegationOptimized) {
     this.handlers = queryTreeBuilders;
     this.isNegationOptimized = isNegationOptimized;
@@ -86,13 +83,7 @@ class QueryAnalyzer {
     return builder.apply(weightor);
   }
 
-  /**
-   * Builds the tree for a group of clauses
-   *
-   * <p>With negation optimized, NOT is pushed down to the terms (De Morgan): a builder for a
-   * negative clause builds the negation of its clauses, so its tree operator is flipped, and its
-   * terms become NotSlots. Anything that cannot be negated exactly becomes ANY.
-   */
+  /** Builds the tree for a group of clauses; under negation its operator flips (De Morgan) */
   private class QueryBuilder extends QueryVisitor implements Function<TermWeightor, QueryTree> {
 
     final boolean isNegativeClause;

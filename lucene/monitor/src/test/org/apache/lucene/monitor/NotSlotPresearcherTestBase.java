@@ -173,11 +173,8 @@ public abstract class NotSlotPresearcherTestBase extends PresearcherTestBase {
   }
 
   public void testFieldsNamedLikeNotSlotFieldsAreSafe() throws IOException {
-    // A query with a positive term on a user field named like NotSlot 0 of field x (single pass,
-    // and pass 0 of a multipass presearcher) must not be excluded by the document's x:t. The
-    // helper query puts x:t in the term filter, so that the document's x:t can exclude queries.
-    // If the NotSlot field naming changes, the guard in TermFilteredPresearcher.addPass must still
-    // cover it; testNotSlotFieldNamesAreGuarded checks that.
+    // A user field named like a NotSlot field of x must not let the document's x:t exclude the
+    // query; the helper query lets x:t pass the term filter
     for (String field :
         new String[] {
           TermFilteredPresearcher.notSlotField("x", 0),

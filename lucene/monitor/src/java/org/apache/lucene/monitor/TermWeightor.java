@@ -91,10 +91,6 @@ public interface TermWeightor extends ToDoubleFunction<Term> {
         });
   }
 
-  /**
-   * A weightor applying the same factor to the presence and the absence of a term, for use in
-   * {@link #combine(TermWeightor...)}
-   */
   private static TermWeightor factor(ToDoubleFunction<Term> factor) {
     return of(factor, factor);
   }

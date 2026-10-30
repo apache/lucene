@@ -48,16 +48,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 
-/**
- * Random queries and documents: presearchers with NotSlots must never drop a query that matches,
- * compared to a Monitor that runs every query, and must exclude some queries that a presearcher
- * without NotSlots selects.
- *
- * <p>Each iteration draws a test configuration: few or many fields, a small or large vocabulary
- * with a skewed distribution, and few or many values per field. Batches have 1 to {@value
- * #MAX_BATCH_SIZE} documents. Field names that collide with the presearcher's reserved fields are
- * covered by {@link NotSlotPresearcherTestBase#testFieldsNamedLikeNotSlotFieldsAreSafe}.
- */
+/** NotSlots must never drop a matching query, and must exclude some that would be selected */
 public class TestNotSlotRandomized extends LuceneTestCase {
 
   private static final Analyzer ANALYZER = new WhitespaceAnalyzer();

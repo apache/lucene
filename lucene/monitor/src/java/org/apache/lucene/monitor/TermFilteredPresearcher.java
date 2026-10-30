@@ -60,26 +60,11 @@ import org.apache.lucene.util.BytesRefIterator;
  * that contain values in those fields will only be checked against {@link MonitorQuery} instances
  * that have the same fieldname-value mapping in their metadata.
  *
- * <p>Negated clauses can optionally be used for filtering too, by passing a maximum number of
- * NotSlots per query greater than 0. Negation is pushed down to the terms, and the negated terms of
- * a conjunction form a NotSlot, which selects a query for documents containing none of them. For
- * example, {@code *:* -flag:true} is then only selected for documents without {@code flag:true},
- * rather than for every document. Notes:
- *
- * <ul>
- *   <li>Negated clauses that cannot be pushed down exactly (phrases, ranges, wildcards, queries
- *       with a minimum number of SHOULD clauses, and leaves claimed by {@link CustomQueryHandler}s
- *       that do not implement {@link CustomQueryHandler#handleNegatedQuery}) select the query for
- *       every document.
- *   <li>In a batch, a term only excludes queries if every document in the batch contains it.
- *   <li>NotSlots are indexed under the reserved fields {@code <field>__not}, {@code
- *       <field>__not_<slot>} and {@code __notslot_<slot>} (with a pass number in multipass
- *       presearchers). Queries with terms on fields whose names contain {@code __not} are therefore
- *       selected for every document.
- *   <li>Changing the setting requires re-indexing the queries.
- *   <li>Subclasses that override {@link #getQueryBuilder()} must support NotSlots, see {@link
- *       DocumentQueryBuilder#supportsNotSlots()}.
- * </ul>
+ * <p>With a maximum number of NotSlots greater than 0, negated terms filter too: {@code *:*
+ * -flag:true} is then only selected for documents without {@code flag:true}. Negations that cannot
+ * be expressed exactly, such as phrases or wildcards, still select the query for every document,
+ * and in a batch a term only excludes queries if every document contains it. Field names containing
+ * {@code __not} are reserved. Changing the setting requires re-indexing the queries.
  */
 public class TermFilteredPresearcher extends Presearcher {
 
@@ -216,13 +201,7 @@ public class TermFilteredPresearcher extends Presearcher {
     ts.close();
   }
 
-  /**
-   * Adds the terms of a field that every document in the batch contains, and that the term filter
-   * accepts as negated terms: only those can exclude queries through a NotSlot. Terms created by
-   * custom query handlers never can. The terms are read directly rather than through {@link
-   * TermsEnumTokenStream}, whose conversion to characters can merge different invalid UTF-8 terms:
-   * harmless for selecting queries, but it could wrongly exclude one.
-   */
+  /** Adds the terms every document contains, which can exclude queries through a NotSlot */
   private static void addNegatableTerms(
       DocumentQueryBuilder queryBuilder,
       String field,
@@ -230,6 +209,7 @@ public class TermFilteredPresearcher extends Presearcher {
       int maxDoc,
       BiPredicate<String, BytesRef> termAcceptor)
       throws IOException {
+    // read directly: TermsEnumTokenStream can merge invalid UTF-8 terms, which must not exclude
     String notField = field + NOT_SUFFIX;
     for (BytesRef term = terms.next(); term != null; term = terms.next()) {
       if (terms.docFreq() == maxDoc && termAcceptor.test(notField, term)) {
@@ -289,18 +269,12 @@ public class TermFilteredPresearcher extends Presearcher {
     /** Add a term from this document */
     void addTerm(String field, BytesRef term) throws IOException;
 
-    /**
-     * Whether this builder adds the NotSlot clauses to its query; required when the presearcher has
-     * NotSlots enabled
-     */
+    /** Whether this builder adds NotSlot clauses; required when NotSlots are enabled */
     default boolean supportsNotSlots() {
       return false;
     }
 
-    /**
-     * Add a term that every document in the batch contains, and that can therefore exclude queries
-     * through a NotSlot. Only called if {@link #supportsNotSlots()} returns true.
-     */
+    /** Add a term that every document in the batch contains, to exclude queries by */
     default void addNegatableTerm(String field, BytesRef term) throws IOException {}
 
     /**
@@ -339,14 +313,7 @@ public class TermFilteredPresearcher extends Presearcher {
     };
   }
 
-  /**
-   * Builds the disjunction matching one pass of the indexed queries: any of the document's terms,
-   * or any NotSlot whose terms the document does not contain
-   *
-   * @param terms the document's terms, by field
-   * @param negatableTerms the terms every document in the batch contains, by field
-   * @param passField maps a field name to the name it is indexed under in this pass
-   */
+  /** The document query for one pass, with field names mapped by {@code passField} */
   Query buildPass(
       Map<String, ? extends Collection<BytesRef>> terms,
       Map<String, ? extends Collection<BytesRef>> negatableTerms,
@@ -412,12 +379,7 @@ public class TermFilteredPresearcher extends Presearcher {
     return doc;
   }
 
-  /**
-   * Indexes the terms and NotSlots collected for one pass
-   *
-   * @param passField maps a field name to the name it is indexed under in this pass. Terms are also
-   *     indexed under the original name, for the term filter.
-   */
+  /** Indexes one pass's terms and NotSlots, with field names mapped by {@code passField} */
   void addPass(Document doc, CollectedTerms collected, UnaryOperator<String> passField) {
     for (Map.Entry<String, BytesRefHash> entry : collected.terms().entrySet()) {
       if (maxNotSlots > 0 && entry.getKey().contains(NOT_SUFFIX)) {
@@ -468,10 +430,7 @@ public class TermFilteredPresearcher extends Presearcher {
   /** The terms and NotSlots collected from one path through a {@link QueryTree} */
   record CollectedTerms(Map<String, BytesRefHash> terms, List<Set<Term>> notSlots) {}
 
-  /**
-   * Collects the terms and NotSlots of the current path through a {@link QueryTree}. With NotSlots
-   * disabled, this is {@link #collectTerms(QueryTree)}.
-   */
+  /** Collects the terms and NotSlots of the current path through a {@link QueryTree} */
   CollectedTerms collectTermsAndNotSlots(QueryTree querytree) {
     if (maxNotSlots == 0) {
       return new CollectedTerms(collectTerms(querytree), List.of());

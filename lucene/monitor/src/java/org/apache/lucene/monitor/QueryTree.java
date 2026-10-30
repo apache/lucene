@@ -175,11 +175,8 @@ public abstract class QueryTree {
    * the strongest of their {@link TermWeightor#applyNegatedAsDouble(Term) negated weights}
    */
   public static QueryTree notSlot(Set<Term> terms, TermWeightor weightor) {
-    // If the terms occurred independently, the weight could be the sum of the negated weights
-    // (-ln of the probability that a document contains none of them). Correlated terms, such as
-    // system flags that tend to appear together, would make the sum an overestimate. The max is
-    // the cautious choice: P(contains any) >= max P(contains t), so it is a lower bound on the
-    // true weight whatever the correlation, and exact when the terms always co-occur.
+    // The sum would be exact for independent terms but overestimates correlated ones; the max is a
+    // lower bound whatever the correlation.
     double weight = 0;
     for (Term term : terms) {
       weight = Math.max(weight, weightor.applyNegatedAsDouble(term));
