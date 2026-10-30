@@ -1585,7 +1585,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   // reduceLanes(ADD) leaves the order of the additions open, and it adds in a different order
-  // before C2 compiles it than after, so the codes would depend on JIT state.
+  // before C2 compiles it than after, so the quantized values would depend on JIT state.
   // Adding the lanes in order keeps them the same.
   private static float sumLanes(FloatVector v) {
     float sum = 0;
