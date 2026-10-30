@@ -1,0 +1,186 @@
+name: "Report benchmark: luceneutil"
+
+# Posts the status and results comments for run-benchmark-luceneutil.yml on pull requests.
+#
+# The benchmark runs PR code with a read-only token, so it cannot comment itself. This workflow runs
+# from the default branch with write access but never runs PR code. The benchmark run's name and
+# artifact are untrusted: the pull request is verified against the run's head commit, every value
+# from the artifact is validated, and the report is rendered with the script from the default branch.
+
+on:
+  # Runs from the default branch, and only reads data from the benchmark run
+  # zizmor: ignore[dangerous-triggers]
+  workflow_run:
+    workflows: ["Run benchmark: luceneutil (baseline vs candidate)"]
+    # Not requested: the run name is not evaluated yet at that point, so the title is still the PR title
+    types: [in_progress, completed]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.workflow_run.id }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  report:
+    name: Report benchmark
+    if: github.event.workflow_run.event == 'pull_request'
+    timeout-minutes: 10
+    runs-on: ubuntu-26.04-arm
+    permissions:
+      actions: read # downloads the benchmark run's results artifact
+      contents: read # checks out the report script from the default branch
+      pull-requests: write # posts and updates the benchmark comment on the pull request
+
+    steps:
+      - name: Verify the pull request
+        id: request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: ${{ github.event.workflow_run.display_title }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          HEAD_REPO: ${{ github.event.workflow_run.head_repository.full_name }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          # Set by run-benchmark-luceneutil.yml; any other run (e.g. other labels) is ignored
+          if [[ ! "$TITLE" =~ ^luceneutil\ benchmark\ for\ PR\ \#([0-9]+)\ \(benchmark:luceneutil-(1m|10k)\)$ ]]; then
+            echo "Not a benchmark request: $TITLE"
+            exit 0
+          fi
+          pr=${BASH_REMATCH[1]}
+          size=${BASH_REMATCH[2]}
+
+          # The run name comes from the PR, so check that the run really belongs to that PR
+          pull=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$pr")
+          if [ "$(jq -r .head.repo.full_name <<< "$pull")" != "$HEAD_REPO" ] || [ "$(jq -r .head.ref <<< "$pull")" != "$HEAD_BRANCH" ]; then
+            echo "::error::Run head $HEAD_REPO:$HEAD_BRANCH does not match PR #$pr"
+            exit 1
+          fi
+          if ! gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$pr/commits?per_page=100" --jq '.[].sha' | grep -qx "$HEAD_SHA"; then
+            echo "::error::Commit $HEAD_SHA is not part of PR #$pr"
+            exit 1
+          fi
+          {
+            echo "pr=$pr"
+            echo "size=$size"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post the status comment
+        if: steps.request.outputs.pr != '' && github.event.action == 'in_progress'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.request.outputs.pr }}
+          SIZE: ${{ steps.request.outputs.size }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+        run: |
+          # The completed event can arrive first if the run is cancelled right away
+          if [ "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID" --jq .status)" = completed ]; then
+            exit 0
+          fi
+          # in_progress fires once per job, so only the first one posts
+          marker="<!-- luceneutil-benchmark run=$RUN_ID -->"
+          existing=$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments?per_page=100" \
+            --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | contains(\"$marker\"))) | .id")
+          if [ -n "$existing" ]; then
+            exit 0
+          fi
+          body="Running luceneutil \`$SIZE\` on \`${HEAD_SHA:0:10}\` against its merge-base. This comment will be updated with the results ([workflow run]($RUN_URL))."
+          body+=$'\n'"$marker"
+          gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" -f body="$body" > /dev/null
+
+      - name: Download results
+        if: steps.request.outputs.pr != '' && github.event.action == 'completed' && github.event.workflow_run.conclusion == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" --name luceneutil-results-1 --dir results
+
+      - name: Validate results
+        id: results
+        if: steps.request.outputs.pr != '' && github.event.action == 'completed' && github.event.workflow_run.conclusion == 'success'
+        env:
+          PR_NUMBER: ${{ steps.request.outputs.pr }}
+          SIZE: ${{ steps.request.outputs.size }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          r=results/request.json
+          field() { jq -r --arg k "$1" '.[$k] // empty | strings' "$r"; }
+          source=$(field source)
+          baseline=$(field baseline)
+          runner=$(field runner)
+          cpus=$(field cpus)
+          [ "$(field pr)" = "$PR_NUMBER" ] || { echo "::error::PR number mismatch"; exit 1; }
+          [ "$(field candidate)" = "$HEAD_SHA" ] || { echo "::error::Candidate is not the run's head commit"; exit 1; }
+          [ "$source" = "wikimedium$SIZE" ] || { echo "::error::Unexpected source: $source"; exit 1; }
+          [[ "$baseline" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Invalid baseline commit"; exit 1; }
+          [ "$runner" = ubuntu-26.04-arm ] || { echo "::error::Unexpected runner: $runner"; exit 1; }
+          [[ "$cpus" =~ ^[0-9]{1,3}$ ]] || { echo "::error::Invalid CPU count"; exit 1; }
+          {
+            echo "source=$source"
+            echo "baseline=$baseline"
+            echo "runner=$runner"
+            echo "cpus=$cpus"
+          } >> "$GITHUB_OUTPUT"
+
+      # From the default branch, never from the PR
+      - name: Checkout report script
+        if: steps.results.outputs.source != ''
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: dev-tools/scripts
+          persist-credentials: false
+          path: trusted
+
+      - name: Set up Python
+        if: steps.results.outputs.source != ''
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+
+      - name: Render the report
+        if: steps.results.outputs.source != ''
+        env:
+          SOURCE: ${{ steps.results.outputs.source }}
+          BASELINE: ${{ steps.results.outputs.baseline }}
+          CANDIDATE: ${{ github.event.workflow_run.head_sha }}
+          RUNNER_LABEL: ${{ steps.results.outputs.runner }}
+          CPUS: ${{ steps.results.outputs.cpus }}
+        run: |
+          python trusted/dev-tools/scripts/luceneutil_report.py results/bench.log --output report.md \
+            --source "$SOURCE" --baseline "$BASELINE" --candidate "$CANDIDATE" \
+            --runner "$RUNNER_LABEL" --cpus "$CPUS"
+
+      - name: Update the status comment
+        if: always() && steps.request.outputs.pr != '' && github.event.action == 'completed'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.request.outputs.pr }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+        run: |
+          if [ "$CONCLUSION" = success ] && [ -s report.md ]; then
+            body="$(cat report.md)"$'\n'"[Workflow run]($RUN_URL)"
+          elif [ "$CONCLUSION" = success ]; then
+            body="The benchmark finished, but its results could not be read. See the [workflow run]($RUN_URL)."
+          elif [ "$CONCLUSION" = cancelled ]; then
+            body="Cancelled, most likely by a newer benchmark request on this PR ([workflow run]($RUN_URL))."
+          else
+            body="The benchmark did not complete ($CONCLUSION). See the [workflow run]($RUN_URL)."
+          fi
+          marker="<!-- luceneutil-benchmark run=$RUN_ID -->"
+          body+=$'\n'"$marker"
+          # Only the bot's own comment can carry the marker, so users cannot redirect the update
+          comment_id=$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments?per_page=100" \
+            --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | contains(\"$marker\"))) | .id" | head -n 1)
+          if [ -n "$comment_id" ]; then
+            gh api --method PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$comment_id" -f body="$body" > /dev/null
+          else
+            gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" -f body="$body" > /dev/null
+          fi

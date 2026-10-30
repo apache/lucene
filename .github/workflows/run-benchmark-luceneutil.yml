@@ -1,0 +1,282 @@
+name: "Run benchmark: luceneutil (baseline vs candidate)"
+
+# Runs a luceneutil comparison of two Lucene commits, started by a benchmark label on a pull request.
+# See dev-docs/benchmarking-pull-requests.md.
+
+# report-benchmark-luceneutil.yml reads the PR number and label from the run name
+run-name: >-
+  ${{ github.event_name == 'pull_request'
+      && format('luceneutil benchmark for PR #{0} ({1})', github.event.pull_request.number, github.event.label.name)
+      || 'luceneutil benchmark (manual)' }}
+
+on:
+  # The commit to benchmark is taken from the event, so it is the commit that was labeled even if
+  # the PR changes afterwards.
+  pull_request:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      source:
+        description: "luceneutil corpus size"
+        type: choice
+        options:
+          - wikimedium1m
+          - wikimedium10k
+        default: wikimedium1m
+      baseline_ref:
+        description: "Baseline ref (empty = the commit this workflow runs on)"
+        type: string
+        default: ""
+      candidate_ref:
+        description: "Candidate ref (empty = the commit this workflow runs on)"
+        type: string
+        default: ""
+      iterations:
+        description: "Number of JVM iterations per competitor"
+        type: string
+        default: "20"
+      runner:
+        description: "Runner label"
+        type: choice
+        options:
+          - ubuntu-26.04-arm
+          - ubuntu-latest
+        default: ubuntu-26.04-arm
+      attempts:
+        description: "JSON list of attempt ids; each runs as a separate job on its own runner"
+        type: string
+        default: "[1]"
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.run_id }}
+  cancel-in-progress: false
+
+env:
+  CORPUS_FILE: enwiki-20120502-lines-1k-fixed-utf8-with-random-label.txt
+  CORPUS_URL: https://pub-6de3254d7180436684278e0ec33ada22.r2.dev/enwiki-20120502-lines-1k-fixed-utf8-with-random-label.txt.lzma
+  # wikimedium1m reads the first 1M docs; +1 for the header line
+  CORPUS_LINES: "1000001"
+  # sha256 of the first CORPUS_LINES lines; checked after every restore and download
+  CORPUS_SHA256: 02b6f0b539d9a82c2e5a215aa5c1690703c74d875fd08b36763253627b1c1896
+  LUCENEUTIL_REF: f77ba1c41c181b9361a7ab5d48fa83b4a367f2e9
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  gate:
+    name: Resolve benchmark request
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      contains(fromJSON('["benchmark:luceneutil-1m", "benchmark:luceneutil-10k"]'), github.event.label.name)
+    timeout-minutes: 5
+    runs-on: ubuntu-26.04-arm
+    permissions:
+      contents: read
+    outputs:
+      pr: ${{ steps.resolve.outputs.pr }}
+      source: ${{ steps.resolve.outputs.source }}
+      baseline: ${{ steps.resolve.outputs.baseline }}
+      candidate: ${{ steps.resolve.outputs.candidate }}
+      iterations: ${{ steps.resolve.outputs.iterations }}
+      runner: ${{ steps.resolve.outputs.runner }}
+      attempts: ${{ steps.resolve.outputs.attempts }}
+
+    steps:
+      - name: Resolve refs and corpus
+        id: resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          LABEL: ${{ github.event.label.name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          DISPATCH_SOURCE: ${{ inputs.source }}
+          DISPATCH_BASELINE: ${{ inputs.baseline_ref }}
+          DISPATCH_CANDIDATE: ${{ inputs.candidate_ref }}
+          DISPATCH_ITERATIONS: ${{ inputs.iterations }}
+          DISPATCH_RUNNER: ${{ inputs.runner }}
+          DISPATCH_ATTEMPTS: ${{ inputs.attempts }}
+        run: |
+          if [ "$EVENT_NAME" = workflow_dispatch ]; then
+            {
+              echo "source=$DISPATCH_SOURCE"
+              echo "baseline=${DISPATCH_BASELINE:-$GITHUB_SHA}"
+              echo "candidate=${DISPATCH_CANDIDATE:-$GITHUB_SHA}"
+              echo "iterations=$DISPATCH_ITERATIONS"
+              echo "runner=$DISPATCH_RUNNER"
+              echo "attempts=$DISPATCH_ATTEMPTS"
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "pr=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          case "$LABEL" in
+            benchmark:luceneutil-1m) source=wikimedium1m ;;
+            benchmark:luceneutil-10k) source=wikimedium10k ;;
+            *) echo "::error::Unexpected label: $LABEL"; exit 1 ;;
+          esac
+          # HEAD_SHA is the commit that was labeled, not the PR head at the time this job runs
+          merge_base=$(gh api "repos/$GITHUB_REPOSITORY/compare/$BASE_SHA...$HEAD_SHA" --jq .merge_base_commit.sha)
+          {
+            echo "source=$source"
+            echo "baseline=$merge_base"
+            echo "candidate=$HEAD_SHA"
+            echo "iterations=20"
+            echo "runner=ubuntu-26.04-arm"
+            echo "attempts=[1]"
+          } >> "$GITHUB_OUTPUT"
+
+  # Builds and runs both commits. PR code runs here, so: read-only token, no secrets and
+  # no persisted credentials.
+  benchmark:
+    name: luceneutil ${{ needs.gate.outputs.source }} (attempt ${{ matrix.attempt }})
+    needs: gate
+    if: needs.gate.outputs.source != ''
+    timeout-minutes: 120
+    runs-on: ${{ needs.gate.outputs.runner }}
+    permissions:
+      contents: read
+    # A newer request on the same PR cancels the running one; manual runs never cancel each other
+    concurrency:
+      group: ${{ github.workflow }}-${{ needs.gate.outputs.pr || format('{0}-{1}', github.run_id, matrix.attempt) }}
+      cancel-in-progress: ${{ needs.gate.outputs.pr != '' }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        attempt: ${{ fromJSON(needs.gate.outputs.attempts) }}
+
+    steps:
+      # Only used for this run's job summary. The pull request comment is rendered by
+      # report-benchmark-luceneutil.yml with the script from the default branch.
+      - name: Checkout report script
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: dev-tools/scripts
+          persist-credentials: false
+
+      - name: Checkout baseline
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.gate.outputs.baseline }}
+          path: bench/lucene_baseline
+          persist-credentials: false
+
+      - name: Checkout candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.gate.outputs.candidate }}
+          path: bench/lucene_candidate
+          persist-credentials: false
+
+      - name: Checkout luceneutil
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: mikemccand/luceneutil
+          ref: ${{ env.LUCENEUTIL_REF }}
+          path: bench/util
+          persist-credentials: false
+
+      - name: Set up Java
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "25"
+          java-package: jdk
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+        with:
+          # PR code runs in this job, so only manually triggered runs may write the cache
+          cache-read-only: ${{ github.event_name != 'workflow_dispatch' }}
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+
+      - name: Runner info
+        run: |
+          nproc
+          lscpu | grep -E '^(Model name|CPU\(s\)|Architecture)'
+          free -g
+          df -h "$GITHUB_WORKSPACE"
+          java -version
+
+      - name: Restore corpus
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: bench/data/${{ env.CORPUS_FILE }}
+          key: luceneutil-corpus-${{ env.CORPUS_FILE }}-${{ env.CORPUS_LINES }}
+
+      - name: Fetch corpus
+        run: |
+          file="bench/data/$CORPUS_FILE"
+          # A cached copy is only used if its checksum matches
+          if [ -f "$file" ] && echo "$CORPUS_SHA256  $file" | sha256sum --check --quiet; then
+            exit 0
+          fi
+          mkdir -p bench/data
+          # head closes the pipe after CORPUS_LINES lines, so curl exits non-zero; the checksum decides
+          curl -sSfL "$CORPUS_URL" | xz -dc | head -n "$CORPUS_LINES" > "$file" || true
+          echo "$CORPUS_SHA256  $file" | sha256sum --check --quiet
+
+      - name: Set up luceneutil
+        working-directory: bench/util
+        run: python src/python/initial_setup.py
+
+      - name: Build baseline
+        working-directory: bench/lucene_baseline
+        run: ./gradlew jar
+
+      - name: Build candidate
+        working-directory: bench/lucene_candidate
+        run: ./gradlew jar
+
+      - name: Run benchmark
+        working-directory: bench/util
+        env:
+          SOURCE: ${{ needs.gate.outputs.source }}
+          ITERATIONS: ${{ needs.gate.outputs.iterations }}
+        run: |
+          sudo sysctl -w kernel.perf_event_paranoid=1
+          python src/python/localrun.py -source "$SOURCE" -iterations "$ITERATIONS" \
+            -b "$GITHUB_WORKSPACE/bench/lucene_baseline" \
+            -c "$GITHUB_WORKSPACE/bench/lucene_candidate" 2>&1 | tee "$GITHUB_WORKSPACE/bench/bench.log"
+
+      - name: Summarize results
+        if: always()
+        env:
+          PR_NUMBER: ${{ needs.gate.outputs.pr }}
+          SOURCE: ${{ needs.gate.outputs.source }}
+          BASELINE: ${{ needs.gate.outputs.baseline }}
+          CANDIDATE: ${{ needs.gate.outputs.candidate }}
+          RUNNER_LABEL: ${{ needs.gate.outputs.runner }}
+          ATTEMPT: ${{ matrix.attempt }}
+        run: |
+          touch bench/bench.log
+          python dev-tools/scripts/luceneutil_report.py bench/bench.log --output bench/summary.md \
+            --source "$SOURCE" --baseline "$BASELINE" --candidate "$CANDIDATE" \
+            --runner "$RUNNER_LABEL" --cpus "$(nproc)" --attempt "$ATTEMPT"
+          cat bench/summary.md >> "$GITHUB_STEP_SUMMARY"
+          # Read by report-benchmark-luceneutil.yml, which validates every value
+          jq -n --arg pr "$PR_NUMBER" --arg source "$SOURCE" --arg baseline "$BASELINE" --arg candidate "$CANDIDATE" \
+            --arg runner "$RUNNER_LABEL" --arg cpus "$(nproc)" --arg attempt "$ATTEMPT" \
+            '{pr: $pr, source: $source, baseline: $baseline, candidate: $candidate, runner: $runner, cpus: $cpus, attempt: $attempt}' \
+            > bench/request.json
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: luceneutil-results-${{ matrix.attempt }}
+          path: |
+            bench/bench.log
+            bench/request.json
+          retention-days: 14
+          if-no-files-found: ignore
