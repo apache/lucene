@@ -143,15 +143,25 @@ public final class Sort {
    * segment, or fields that have only a single distinct value.
    */
   public static SortField getPrimarySortField(LeafReader reader) {
+    int idx = primarySortFieldIndex(reader);
+    return idx == -1 ? null : reader.getMetaData().sort().fields[idx];
+  }
+
+  /**
+   * Returns the position in the index sort of the field that {@link #getPrimarySortField} would
+   * return, or -1 if the reader has no index sort or every field in it is a no-op.
+   */
+  static int primarySortFieldIndex(LeafReader reader) {
     Sort sort = reader.getMetaData().sort();
     if (sort == null) {
-      return null;
+      return -1;
     }
-    for (SortField sf : sort.fields) {
+    for (int i = 0; i < sort.fields.length; i++) {
+      SortField sf = sort.fields[i];
       String field = sf.getField();
       if (field == null) {
         // Custom field that we don't know anything about, so return it as primary
-        return sf;
+        return i;
       }
       if (reader.getFieldInfos().fieldInfo(field) == null) {
         // Field has no values in this segment, so sorting by it has no effect.
@@ -167,8 +177,8 @@ public final class Sort {
           && skipper.minValue() == skipper.maxValue()) {
         continue;
       }
-      return sf;
+      return i;
     }
-    return null;
+    return -1;
   }
 }

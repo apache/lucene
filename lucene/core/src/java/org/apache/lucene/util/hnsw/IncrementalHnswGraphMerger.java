@@ -64,9 +64,16 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
    */
   static final int DELETE_PCT_THRESHOLD = 40;
 
-  /** Represents a vector reader that contains graph info. */
+  /**
+   * Represents a vector reader that contains graph info.
+   *
+   * @param reader the vectors reader that provides the graph
+   * @param initDocMap maps the reader's doc IDs to doc IDs in the merged segment
+   * @param graphSize total number of nodes in the graph, including deleted ones
+   * @param liveVectorCount number of nodes in the graph whose documents are live
+   */
   protected record GraphReader(
-      KnnVectorsReader reader, MergeState.DocMap initDocMap, int graphSize) {}
+      KnnVectorsReader reader, MergeState.DocMap initDocMap, int graphSize, int liveVectorCount) {}
 
   /**
    * @param fieldInfo FieldInfo for the field being merged
@@ -121,12 +128,13 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
     int candidateVectorCount = countLiveVectors(liveDocs, knnVectorValues);
     int graphSize = graph.size();
 
-    GraphReader graphReader = new GraphReader(reader, docMap, graphSize);
+    GraphReader graphReader = new GraphReader(reader, docMap, graphSize, candidateVectorCount);
 
     int deletePct = ((graphSize - candidateVectorCount) * 100) / graphSize;
 
     if (deletePct <= DELETE_PCT_THRESHOLD
-        && (largestGraphReader == null || candidateVectorCount > largestGraphReader.graphSize)) {
+        && (largestGraphReader == null
+            || candidateVectorCount > largestGraphReader.liveVectorCount)) {
       largestGraphReader = graphReader;
     }
 
@@ -152,23 +160,10 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
       return HnswGraphBuilder.create(
           scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed, maxOrd);
     }
-    if (!graphReaders.contains(largestGraphReader)) {
-      graphReaders.addFirst(largestGraphReader);
-    } else {
-      graphReaders.sort(Comparator.comparingInt(GraphReader::graphSize).reversed());
-    }
-
+    HnswGraph[] graphs = orderGraphReaders();
     final BitSet initializedNodes =
         graphReaders.size() == numReaders ? null : new FixedBitSet(maxOrd);
     int[][] ordMaps = getNewOrdMapping(mergedVectorValues, initializedNodes);
-    HnswGraph[] graphs = new HnswGraph[graphReaders.size()];
-    for (int i = 0; i < graphReaders.size(); i++) {
-      HnswGraph graph = ((HnswGraphProvider) graphReaders.get(i).reader).getGraph(fieldInfo.name);
-      if (graph.size() == 0) {
-        throw new IllegalStateException("Graph should not be empty");
-      }
-      graphs[i] = graph;
-    }
 
     return MergingHnswGraphBuilder.fromGraphs(
         scorerSupplier,
@@ -179,6 +174,31 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
         maxOrd,
         initializedNodes,
         abortCheck);
+  }
+
+  /**
+   * Orders {@link #graphReaders} so that {@link #largestGraphReader} comes first, adding it if it
+   * has deletions, and returns the graphs of the readers in that order. Must be called at most
+   * once, and only when {@link #largestGraphReader} is not null.
+   *
+   * @return the graphs to merge, starting with the graph to initialize the merged graph from
+   * @throws IOException If an error occurs while reading a graph
+   */
+  protected final HnswGraph[] orderGraphReaders() throws IOException {
+    if (!graphReaders.contains(largestGraphReader)) {
+      graphReaders.addFirst(largestGraphReader);
+    } else {
+      graphReaders.sort(Comparator.comparingInt(GraphReader::graphSize).reversed());
+    }
+    HnswGraph[] graphs = new HnswGraph[graphReaders.size()];
+    for (int i = 0; i < graphReaders.size(); i++) {
+      HnswGraph graph = ((HnswGraphProvider) graphReaders.get(i).reader).getGraph(fieldInfo.name);
+      if (graph.size() == 0) {
+        throw new IllegalStateException("Graph should not be empty");
+      }
+      graphs[i] = graph;
+    }
+    return graphs;
   }
 
   protected final int[][] getNewOrdMapping(

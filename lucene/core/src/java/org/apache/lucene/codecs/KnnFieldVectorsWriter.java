@@ -18,6 +18,7 @@
 package org.apache.lucene.codecs;
 
 import java.io.IOException;
+import org.apache.lucene.document.column.VectorValuesCursor;
 import org.apache.lucene.util.Accountable;
 
 /**
@@ -35,6 +36,31 @@ public abstract class KnnFieldVectorsWriter<T> implements Accountable {
    * increasing order.
    */
   public abstract void addValue(int docID, T vectorValue) throws IOException;
+
+  /**
+   * Add {@code values.size()} vectors for the consecutive doc IDs {@code [firstDocID, firstDocID +
+   * values.size())}. {@code firstDocID} must be greater than every doc ID added so far, and every
+   * vector has exactly {@code values.dimension()} elements, which matches the field's dimension.
+   * Implementations must consume exactly {@code values.size()} vectors.
+   *
+   * <p>The cursor may throw while it is being consumed, for example when a vector fails validation.
+   * In that case the documents of the whole batch are marked as deleted, but the writer must remain
+   * in a consistent state: every doc ID it has recorded must have its vector. Validation runs after
+   * the copy, so when {@link VectorValuesCursor#fill} throws, the destination may already hold the
+   * rejected vectors; record doc IDs and vectors only after {@code fill} has returned.
+   *
+   * <p>The default implementation calls {@link #addValue} once per vector. Override for a more
+   * efficient bulk path. A writer that wraps another field writer should forward this method to it,
+   * otherwise the delegate's override is never reached.
+   *
+   * @lucene.experimental
+   */
+  public void addDenseValues(int firstDocID, VectorValuesCursor<T> values) throws IOException {
+    final int size = values.size();
+    for (int i = 0; i < size; i++) {
+      addValue(firstDocID + i, values.next());
+    }
+  }
 
   /**
    * Used to copy values being indexed to internal storage.
