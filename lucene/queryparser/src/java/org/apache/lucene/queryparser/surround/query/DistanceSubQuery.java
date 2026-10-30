@@ -23,8 +23,8 @@ public interface DistanceSubQuery {
   /**
    * When distanceSubQueryNotAllowed() returns non null, the reason why the subquery is not allowed
    * as a distance subquery is returned. <br>
-   * When distanceSubQueryNotAllowed() returns null addSpanNearQueries() can be used in the creation
-   * of the span near clause for the subquery.
+   * When distanceSubQueryNotAllowed() returns null {@link #addSpanQueries(SpanNearClauseFactory)}
+   * can be used in the creation of the span near clause for the subquery.
    */
   String distanceSubQueryNotAllowed();
 

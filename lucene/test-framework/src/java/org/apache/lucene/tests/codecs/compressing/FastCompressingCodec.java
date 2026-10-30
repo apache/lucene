@@ -18,7 +18,7 @@ package org.apache.lucene.tests.codecs.compressing;
 
 import org.apache.lucene.codecs.compressing.CompressionMode;
 
-/** CompressionCodec that uses {@link CompressionMode#FAST} */
+/** {@link CompressingCodec} that uses {@link CompressionMode#FAST} */
 public class FastCompressingCodec extends CompressingCodec {
 
   /** Constructor that allows to configure the chunk size. */
