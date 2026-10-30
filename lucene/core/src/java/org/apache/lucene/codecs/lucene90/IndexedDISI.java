@@ -18,6 +18,7 @@ package org.apache.lucene.codecs.lucene90;
 
 import java.io.DataInput;
 import java.io.IOException;
+import java.util.Arrays;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.search.AbstractDocIdSetIterator;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -408,6 +409,8 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
   // SPARSE variables
   boolean exists;
   int nextExistDocInBlock = -1;
+  int[] sparseDocs;
+  int blockBaseIndex;
 
   // DENSE variables
   long word;
@@ -524,7 +527,15 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
     nextBlockIndex = index + numValues;
     if (numValues <= MAX_ARRAY_LENGTH) {
       method = Method.SPARSE;
-      blockEnd = slice.getFilePointer() + (numValues << 1);
+      // Pre-load sparse block into memory so we can binary-search within it instead of
+      // streaming reads. This avoids repeated slice reads for multiple advances inside
+      // the same block.
+      blockBaseIndex = index;
+      sparseDocs = new int[numValues];
+      for (int i = 0; i < numValues; i++) {
+        sparseDocs[i] = Short.toUnsignedInt(slice.readShort());
+      }
+      blockEnd = slice.getFilePointer();
       nextExistDocInBlock = -1;
     } else if (numValues == BLOCK_SIZE) {
       method = Method.ALL;
@@ -579,24 +590,29 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
       @Override
       boolean advanceWithinBlock(IndexedDISI disi, int target) throws IOException {
         final int targetInBlock = target & 0xFFFF;
-        // TODO: binary search
-        for (; disi.index < disi.nextBlockIndex; ) {
-          int doc = Short.toUnsignedInt(disi.slice.readShort());
-          disi.index++;
-          if (doc >= targetInBlock) {
-            disi.doc = disi.block | doc;
-            disi.exists = true;
-            disi.nextExistDocInBlock = doc;
-            return true;
-          }
+        final int start = Math.max(0, disi.index - disi.blockBaseIndex);
+        final int end = disi.nextBlockIndex - disi.blockBaseIndex;
+        if (start >= end) {
+          return false;
         }
-        return false;
+        int pos = Arrays.binarySearch(disi.sparseDocs, start, end, targetInBlock);
+        if (pos < 0) {
+          pos = -pos - 1;
+        }
+        if (pos >= end) {
+          return false;
+        }
+        disi.index = disi.blockBaseIndex + pos + 1; // advance index to one past found
+        int docInBlock = disi.sparseDocs[pos];
+        disi.doc = disi.block | docInBlock;
+        disi.exists = true;
+        disi.nextExistDocInBlock = docInBlock;
+        return true;
       }
 
       @Override
       boolean advanceExactWithinBlock(IndexedDISI disi, int target) throws IOException {
         final int targetInBlock = target & 0xFFFF;
-        // TODO: binary search
         if (disi.nextExistDocInBlock > targetInBlock) {
           assert !disi.exists;
           return false;
@@ -604,32 +620,38 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
         if (target == disi.doc) {
           return disi.exists;
         }
-        for (; disi.index < disi.nextBlockIndex; ) {
-          int doc = Short.toUnsignedInt(disi.slice.readShort());
-          disi.index++;
-          if (doc >= targetInBlock) {
-            disi.nextExistDocInBlock = doc;
-            if (doc != targetInBlock) {
-              disi.index--;
-              disi.slice.seek(disi.slice.getFilePointer() - Short.BYTES);
-              break;
-            }
-            disi.exists = true;
-            return true;
-          }
+        final int start = Math.max(0, disi.index - disi.blockBaseIndex);
+        final int end = disi.nextBlockIndex - disi.blockBaseIndex;
+        if (start >= end) {
+          disi.exists = false;
+          return false;
         }
-        disi.exists = false;
-        return false;
+        int pos = Arrays.binarySearch(disi.sparseDocs, start, end, targetInBlock);
+        if (pos < 0) {
+          pos = -pos - 1;
+        }
+        if (pos >= end || disi.sparseDocs[pos] != targetInBlock) {
+          disi.exists = false;
+          // set index to position where next greater element would be
+          disi.index = disi.blockBaseIndex + pos;
+          return false;
+        }
+        // found exact match
+        disi.exists = true;
+        disi.index = disi.blockBaseIndex + pos + 1; // one past found
+        return true;
       }
 
       @Override
       boolean intoBitSetWithinBlock(IndexedDISI disi, int upTo, FixedBitSet bitSet, int offset)
           throws IOException {
         bitSet.set(disi.doc - offset);
-        for (; disi.index < disi.nextBlockIndex; ) {
-          int docInBlock = disi.slice.readShort() & 0xFFFF;
+        final int start = Math.max(0, disi.index - disi.blockBaseIndex);
+        final int end = disi.nextBlockIndex - disi.blockBaseIndex;
+        for (int i = start; i < end; i++) {
+          int docInBlock = disi.sparseDocs[i];
           int doc = disi.block | docInBlock;
-          disi.index++;
+          disi.index = disi.blockBaseIndex + i + 1;
           if (doc >= upTo) {
             disi.doc = doc;
             disi.exists = true;
