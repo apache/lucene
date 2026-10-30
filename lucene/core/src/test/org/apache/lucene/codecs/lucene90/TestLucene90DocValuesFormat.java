@@ -62,6 +62,11 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.TermsEnum.SeekStatus;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.Directory;
@@ -69,6 +74,7 @@ import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
 import org.apache.lucene.tests.index.BaseCompressingDocValuesFormatTestCase;
@@ -1345,6 +1351,79 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
     assertNull(termsEnum.next());
     reader.close();
     directory.close();
+  }
+
+  public void testMemoryMappedRangeQueries() throws IOException {
+    // Dense fields whose values are packed with 8, 16, 32 or 64 bits, plain and GCD-encoded.
+    final int[] bitsPerValues = {8, 16, 32, 64};
+    final int numDocs = TestUtil.nextInt(random(), 5_000, 20_000);
+    final List<String> fields = new ArrayList<>();
+    final List<long[]> fieldValues = new ArrayList<>();
+    for (int bitsPerValue : bitsPerValues) {
+      long domain = bitsPerValue == 64 ? Long.MAX_VALUE : 1L << bitsPerValue;
+      long[] plain = new long[numDocs];
+      for (int i = 0; i < numDocs; ++i) {
+        plain[i] = random().nextLong(0, domain);
+      }
+      // Make sure the encoded values need exactly bitsPerValue bits.
+      plain[0] = 0;
+      plain[1] = domain - 1;
+      fields.add("plain_" + bitsPerValue);
+      fieldValues.add(plain);
+      if (bitsPerValue <= 32) {
+        long[] gcd = new long[numDocs];
+        for (int i = 0; i < numDocs; ++i) {
+          gcd[i] = 1000 + 7 * plain[i];
+        }
+        fields.add("gcd_" + bitsPerValue);
+        fieldValues.add(gcd);
+      }
+    }
+
+    // Don't use newDirectory(): its wrappers would hide the memory segment.
+    try (Directory dir = new MMapDirectory(createTempDir())) {
+      IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec());
+      try (IndexWriter writer = new IndexWriter(dir, config)) {
+        for (int i = 0; i < numDocs; ++i) {
+          Document doc = new Document();
+          for (int f = 0; f < fields.size(); ++f) {
+            doc.add(NumericDocValuesField.indexedField(fields.get(f), fieldValues.get(f)[i]));
+          }
+          writer.addDocument(doc);
+        }
+        writer.forceMerge(1);
+      }
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        // Don't use newSearcher(): wrapped readers would hide the memory segment too.
+        IndexSearcher searcher = new IndexSearcher(reader);
+        searcher.setQueryCache(null);
+        for (int f = 0; f < fields.size(); ++f) {
+          long[] values = fieldValues.get(f);
+          for (int iter = 0; iter < 5; ++iter) {
+            long a = values[random().nextInt(numDocs)];
+            long b = values[random().nextInt(numDocs)];
+            long min = Math.min(a, b);
+            long max = Math.max(a, b);
+            // A MatchAllDocsQuery FILTER clause makes the range evaluated through intoBitSet.
+            Query query =
+                new BooleanQuery.Builder()
+                    .add(
+                        NumericDocValuesField.newSlowRangeQuery(fields.get(f), min, max),
+                        BooleanClause.Occur.FILTER)
+                    .add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.FILTER)
+                    .build();
+            int expected = 0;
+            for (long v : values) {
+              if (v >= min && v <= max) {
+                expected++;
+              }
+            }
+            assertEquals(
+                fields.get(f) + " [" + min + ", " + max + "]", expected, searcher.count(query));
+          }
+        }
+      }
+    }
   }
 
   public void testSkipIndexStoredSeparately() throws IOException {

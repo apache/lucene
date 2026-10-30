@@ -104,6 +104,12 @@ public class MultiFieldDocValuesRangeBenchmark {
 
     @Param({CLUSTERED, MIXED, RANDOM, SORTED, DENSE, DENSE_SPARSE})
     public String dataPattern;
+
+    // When > 0, the random/dense/dense_sparse patterns draw values uniformly from
+    // [0, 2^bitsPerValue) instead of [0, docCount), so that values are packed with exactly this
+    // number of bits per value. 0 keeps the original value domain.
+    @Param({"0"})
+    public int bitsPerValue;
   }
 
   @Setup(Level.Trial)
@@ -121,11 +127,16 @@ public class MultiFieldDocValuesRangeBenchmark {
 
     IndexWriter w = new IndexWriter(dir, iwc);
     Random r = new Random(42);
+    // [0, Long.MAX_VALUE) still needs 64 bits per value once rounded by DirectWriter.
+    final long valueDomain =
+        params.bitsPerValue >= 64
+            ? Long.MAX_VALUE
+            : params.bitsPerValue > 0 ? 1L << params.bitsPerValue : params.docCount;
 
     for (int i = 0; i < params.docCount; i++) {
       Document doc = new Document();
       for (int f = 0; f < params.fieldCount; f++) {
-        long value = generateValue(params.dataPattern, f, i, params.docCount, r);
+        long value = generateValue(params.dataPattern, f, i, params.docCount, valueDomain, r);
         doc.add(NumericDocValuesField.indexedField("field" + f, value));
       }
       // A sparsely populated field WITHOUT a skip index (plain NumericDocValuesField). Its range
@@ -143,7 +154,7 @@ public class MultiFieldDocValuesRangeBenchmark {
 
     BooleanQuery.Builder bqBuilder = new BooleanQuery.Builder();
     for (int f = 0; f < params.fieldCount; f++) {
-      long[] range = getQueryRange(params.dataPattern, f, params.docCount);
+      long[] range = getQueryRange(params.dataPattern, f, params.docCount, valueDomain);
       bqBuilder.add(
           SortedNumericDocValuesField.newSlowRangeQuery("field" + f, range[0], range[1]),
           Occur.FILTER);
@@ -161,7 +172,7 @@ public class MultiFieldDocValuesRangeBenchmark {
     }
     query = bqBuilder.build();
 
-    long[] range0 = getQueryRange(params.dataPattern, 0, params.docCount);
+    long[] range0 = getQueryRange(params.dataPattern, 0, params.docCount, valueDomain);
     singleRange = SortedNumericDocValuesField.newSlowRangeQuery("field0", range0[0], range0[1]);
 
     sparseNoSkipRange =
@@ -169,7 +180,7 @@ public class MultiFieldDocValuesRangeBenchmark {
   }
 
   private static long generateValue(
-      String pattern, int fieldIdx, int docIdx, int docCount, Random r) {
+      String pattern, int fieldIdx, int docIdx, int docCount, long valueDomain, Random r) {
     switch (pattern) {
       case CLUSTERED:
         long scale = (fieldIdx + 1) * 100L;
@@ -194,13 +205,14 @@ public class MultiFieldDocValuesRangeBenchmark {
       case RANDOM:
       case DENSE:
       case DENSE_SPARSE:
-        return r.nextLong(0, docCount);
+        return r.nextLong(0, valueDomain);
       default:
         throw new IllegalArgumentException("Unknown pattern: " + pattern);
     }
   }
 
-  private static long[] getQueryRange(String pattern, int fieldIdx, int docCount) {
+  private static long[] getQueryRange(
+      String pattern, int fieldIdx, int docCount, long valueDomain) {
     switch (pattern) {
       case CLUSTERED:
         long scale = (fieldIdx + 1) * 100L;
@@ -229,20 +241,20 @@ public class MultiFieldDocValuesRangeBenchmark {
           return new long[] {lower3, lower3 + rangeSize3};
         }
       case RANDOM:
-        long rangeSize4 = docCount / 5;
-        long lower4 = (docCount - rangeSize4) / 2;
+        long rangeSize4 = valueDomain / 5;
+        long lower4 = (valueDomain - rangeSize4) / 2;
         return new long[] {lower4, lower4 + rangeSize4};
       case DENSE:
         // Each clause matches ~70% of docs, so the intersection stays dense.
-        return new long[] {0, (long) (docCount * 0.7)};
+        return new long[] {0, (long) (valueDomain * 0.7)};
       case DENSE_SPARSE:
         if (fieldIdx == 0) {
           // Dense clause: matches all docs.
-          return new long[] {0, docCount};
+          return new long[] {0, valueDomain};
         }
         // Very sparse clause: matches ~0.1% of docs.
-        long rangeSize5 = Math.max(1, docCount / 1000);
-        long lower5 = (docCount - rangeSize5) / 2;
+        long rangeSize5 = Math.max(1, valueDomain / 1000);
+        long lower5 = (valueDomain - rangeSize5) / 2;
         return new long[] {lower5, lower5 + rangeSize5};
       default:
         throw new IllegalArgumentException("Unknown pattern: " + pattern);
