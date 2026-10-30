@@ -449,7 +449,7 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
       assertOsqAssign(vector, upper, lower, -step);
       assertOsqAssign(vector, lower, upper, Float.MIN_VALUE);
       assertOsqAssign(vector, lower, upper, Float.MIN_NORMAL);
-      // Levels past a byte: 2^30 still takes the vector path, 2^31 does not.
+      // Levels past a byte, and past an int.
       assertOsqAssign(vector, lower, upper, (upper - lower) / 0x1p30f);
       assertOsqAssign(vector, lower, upper, (upper - lower) / 0x1p31f);
     }

@@ -764,6 +764,9 @@ public class TestVectorUtil extends LuceneTestCase {
         () -> VectorUtil.osqCenter(vector, new float[8], new float[4]));
     expectThrows(
         IllegalArgumentException.class,
+        () -> VectorUtil.osqCenter(vector, new float[8], new float[6]));
+    expectThrows(
+        IllegalArgumentException.class,
         () -> VectorUtil.osqGridStats(vector, -1, 1, 1, new double[6]));
     expectThrows(
         IllegalArgumentException.class,
@@ -771,6 +774,9 @@ public class TestVectorUtil extends LuceneTestCase {
     expectThrows(
         IllegalArgumentException.class,
         () -> VectorUtil.osqGridStats(vector, -1, 1, 16, new double[5]));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> VectorUtil.osqGridStats(vector, -1, 1, 16, new double[7]));
     expectThrows(
         IllegalArgumentException.class,
         () -> VectorUtil.osqAssign(vector, -1, 1, 0.1f, new byte[7]));

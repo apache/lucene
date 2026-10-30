@@ -608,8 +608,8 @@ public final class VectorUtil {
       throw new IllegalArgumentException(
           "vector dimensions differ: " + vector.length + "!=" + centroid.length);
     }
-    if (stats.length < 5) {
-      throw new IllegalArgumentException("stats must have at least 5 entries: " + stats.length);
+    if (stats.length != 5) {
+      throw new IllegalArgumentException("stats must have 5 entries: " + stats.length);
     }
     IMPL.osqCenter(vector, centroid, stats);
   }
@@ -625,16 +625,16 @@ public final class VectorUtil {
     if (points < 2 || points > 256) {
       throw new IllegalArgumentException("points must be in [2, 256]: " + points);
     }
-    if (stats.length < 6) {
-      throw new IllegalArgumentException("stats must have at least 6 entries: " + stats.length);
+    if (stats.length != 6) {
+      throw new IllegalArgumentException("stats must have 6 entries: " + stats.length);
     }
     IMPL.osqGridStats(vector, lower, upper, points, stats);
   }
 
   /**
-   * Quantizes {@code vector} into {@code dest} for the optimized scalar quantizer, as {@code
-   * Math.round((x - lower) / step)} with each value {@code x} limited to {@code [lower, upper]},
-   * and returns the sum of the quantized values.
+   * Quantizes {@code vector} into {@code dest} for the optimized scalar quantizer, as {@code (int)
+   * ((x - lower) / step + 0.5f)} with each value {@code x} limited to {@code [lower, upper]}, and
+   * returns the sum of the quantized values.
    */
   public static int osqAssign(float[] vector, float lower, float upper, float step, byte[] dest) {
     if (dest.length < vector.length) {

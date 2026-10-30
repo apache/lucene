@@ -1616,25 +1616,12 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       accSum = accSum.add(x);
     }
     // scalar tail
-    float dot = 0;
-    float min = accMin.reduceLanes(VectorOperators.MIN);
-    float max = accMax.reduceLanes(VectorOperators.MAX);
-    float sumSq = 0;
-    float sum = 0;
-    for (; i < vector.length; i++) {
-      dot += vector[i] * centroid[i];
-      float x = vector[i] - centroid[i];
-      vector[i] = x;
-      min = Math.min(min, x);
-      max = Math.max(max, x);
-      sumSq += x * x;
-      sum += x;
-    }
-    stats[0] = dot + sumLanes(accDot);
-    stats[1] = min;
-    stats[2] = max;
-    stats[3] = sumSq + sumLanes(accSq);
-    stats[4] = sum + sumLanes(accSum);
+    DefaultVectorUtilSupport.osqCenterImpl(vector, centroid, i, stats);
+    stats[0] += sumLanes(accDot);
+    stats[1] = Math.min(stats[1], accMin.reduceLanes(VectorOperators.MIN));
+    stats[2] = Math.max(stats[2], accMax.reduceLanes(VectorOperators.MAX));
+    stats[3] += sumLanes(accSq);
+    stats[4] += sumLanes(accSum);
   }
 
   // k * k is at most 255^2, so an int lane can sum about 33K of them before it overflows. Below
@@ -1644,7 +1631,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   @Override
   public void osqGridStats(float[] vector, float lower, float upper, int points, double[] stats) {
     if (vector.length >= OSQ_GRID_STATS_MAX_DIMS) {
-      DefaultVectorUtilSupport.osqGridStatsImpl(vector, lower, upper, points, stats);
+      DefaultVectorUtilSupport.osqGridStatsImpl(vector, 0, lower, upper, points, stats);
       return;
     }
     float stepInv = (points - 1f) / (upper - lower);
@@ -1671,39 +1658,18 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       accDD = fma(d, d, accDD);
       accX = accX.add(x);
     }
-    long sumK = accK.reduceLanesToLong(ADD);
-    long sumKK = accKK.reduceLanesToLong(ADD);
-    double sumXK = sumLanes(accXK);
-    double sumXD = sumLanes(accXD);
-    double sumDD = sumLanes(accDD);
-    double sumX = sumLanes(accX);
     // scalar tail
-    for (; i < vector.length; i++) {
-      float x = vector[i];
-      int k = (int) ((Math.min(Math.max(x, lower), upper) - lower) * stepInv + 0.5f);
-      float d = x - (lower + k * step);
-      sumK += k;
-      sumKK += (long) k * k;
-      sumXK += x * k;
-      sumXD += x * d;
-      sumDD += d * d;
-      sumX += x;
-    }
-    stats[0] = sumK;
-    stats[1] = sumKK;
-    stats[2] = sumXK;
-    stats[3] = sumXD;
-    stats[4] = sumDD;
-    stats[5] = sumX;
+    DefaultVectorUtilSupport.osqGridStatsImpl(vector, i, lower, upper, points, stats);
+    stats[0] += accK.reduceLanesToLong(ADD);
+    stats[1] += accKK.reduceLanesToLong(ADD);
+    stats[2] += sumLanes(accXK);
+    stats[3] += sumLanes(accXD);
+    stats[4] += sumLanes(accDD);
+    stats[5] += sumLanes(accX);
   }
 
   @Override
   public int osqAssign(float[] vector, float lower, float upper, float step, byte[] dest) {
-    // The vector loop converts levels with F2I, so it needs every level in [0, 2^31).
-    float maxLevel = (upper - lower) / step;
-    if ((maxLevel > 0 && maxLevel < 0x1p31f) == false) {
-      return DefaultVectorUtilSupport.osqAssignImpl(vector, 0, lower, upper, step, dest);
-    }
     IntVector sums = IntVector.zero(INT_SPECIES);
     final int lanes = FLOAT_SPECIES.length();
     // Four int vectors of levels fill one byte vector.
@@ -1713,12 +1679,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       ByteVector out = ByteVector.zero(BYTE_SPECIES_FULL);
       for (int part = 0; part < 4; part++) {
         FloatVector x = FloatVector.fromArray(FLOAT_SPECIES, vector, i + part * lanes);
-        FloatVector t = x.max(lower).min(upper).sub(lower).div(step);
-        // Same as Math.round(t): truncate, then add 1 when twice the fraction truncates to 1. NaN
-        // converts to 0, as in Math.round.
+        FloatVector t = x.max(lower).min(upper).sub(lower).div(step).add(0.5f);
         IntVector k = (IntVector) t.convert(VectorOperators.F2I, 0);
-        FloatVector frac = t.sub((FloatVector) k.convert(VectorOperators.I2F, 0));
-        k = k.add((IntVector) frac.add(frac).convert(VectorOperators.F2I, 0));
         sums = sums.add(k);
         out = out.or((ByteVector) k.convert(VectorOperators.I2B, -part));
       }

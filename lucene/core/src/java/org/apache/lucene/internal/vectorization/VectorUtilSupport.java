@@ -182,9 +182,9 @@ public interface VectorUtilSupport {
   void osqGridStats(float[] vector, float lower, float upper, int points, double[] stats);
 
   /**
-   * Quantizes {@code vector} into {@code dest} as {@code Math.round((x - lower) / step)}, with each
-   * value {@code x} limited to {@code [lower, upper]}, and returns the sum of the quantized values.
-   * Every implementation must write the same bytes and return the same sum.
+   * Quantizes {@code vector} into {@code dest} as {@code (int) ((x - lower) / step + 0.5f)}, with
+   * each value {@code x} limited to {@code [lower, upper]}, and returns the sum of the quantized
+   * values. Every implementation must write the same bytes and return the same sum.
    */
   int osqAssign(float[] vector, float lower, float upper, float step, byte[] dest);
 
