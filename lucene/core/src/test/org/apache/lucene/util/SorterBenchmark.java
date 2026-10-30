@@ -44,11 +44,6 @@ public class SorterBenchmark {
         (arr, _) -> {
           return new ArrayTimSorter<>(arr, Entry::compareTo, arr.length / 64);
         }),
-    MERGE_SORTER(
-        "MergeSorter",
-        (arr, _) -> {
-          return new ArrayInPlaceMergeSorter<>(arr, Entry::compareTo);
-        }),
     ;
 
     final String name;
