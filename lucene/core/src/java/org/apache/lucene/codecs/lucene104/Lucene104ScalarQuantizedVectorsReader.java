@@ -49,6 +49,7 @@ import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.ChecksumIndexInput;
+import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FileDataHint;
 import org.apache.lucene.store.FileTypeHint;
@@ -56,6 +57,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
@@ -78,7 +80,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
   private static final long SHALLOW_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(Lucene104ScalarQuantizedVectorsReader.class);
 
-  private final Map<String, FieldEntry> fields = new HashMap<>();
+  private final Map<String, FieldEntry> fields;
   private final IndexInput quantizedVectorData;
   private final FlatVectorsReader rawVectorsReader;
   private final Lucene104ScalarQuantizedVectorScorer vectorScorer;
@@ -89,6 +91,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
       FlatVectorsReader rawVectorsReader,
       Lucene104ScalarQuantizedVectorScorer vectorsScorer)
       throws IOException {
+    this.fields = new HashMap<>();
     this.vectorScorer = vectorsScorer;
     this.rawVectorsReader = rawVectorsReader;
     int versionMeta = -1;
@@ -127,6 +130,37 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
       IOUtils.closeWhileSuppressingExceptions(t, this);
       throw t;
     }
+  }
+
+  /**
+   * Copy constructor for {@link #getMergeInstance()}: the copy shares {@code reader}'s open state
+   * and reads raw vectors through {@code rawVectorsReader}, normally the original raw reader's
+   * merge instance. It is used only by the merging thread and is never closed: {@link
+   * #finishMerge()} releases the raw merge instance.
+   */
+  protected Lucene104ScalarQuantizedVectorsReader(
+      Lucene104ScalarQuantizedVectorsReader reader, FlatVectorsReader rawVectorsReader) {
+    this.fields = reader.fields;
+    this.quantizedVectorData = reader.quantizedVectorData;
+    this.rawVectorsReader = rawVectorsReader;
+    this.vectorScorer = reader.vectorScorer;
+  }
+
+  /**
+   * Returns a copy of this reader that reads raw vectors through the raw reader's merge instance. A
+   * subclass must override this method and build its own copy through the {@link
+   * #Lucene104ScalarQuantizedVectorsReader(Lucene104ScalarQuantizedVectorsReader,
+   * FlatVectorsReader) copy constructor}, or its merge instance will be a plain {@code
+   * Lucene104ScalarQuantizedVectorsReader}.
+   */
+  @Override
+  public FlatVectorsReader getMergeInstance() throws IOException {
+    return new Lucene104ScalarQuantizedVectorsReader(this, rawVectorsReader.getMergeInstance());
+  }
+
+  @Override
+  public void finishMerge() throws IOException {
+    rawVectorsReader.finishMerge();
   }
 
   private void readFields(ChecksumIndexInput meta, FieldInfos infos) throws IOException {
@@ -211,6 +245,18 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
 
   @Override
   public FloatVectorValues getFloatVectorValues(String field) throws IOException {
+    return withQuantized(field, () -> rawVectorsReader.getFloatVectorValues(field));
+  }
+
+  @Override
+  public FloatVectorValues getFloatVectorValues(String field, DataAccessHint access)
+      throws IOException {
+    return withQuantized(field, () -> rawVectorsReader.getFloatVectorValues(field, access));
+  }
+
+  /** The raw vectors of {@code field} paired with its quantized vectors. */
+  private FloatVectorValues withQuantized(String field, IOSupplier<FloatVectorValues> rawValues)
+      throws IOException {
     FieldEntry fi = fields.get(field);
     if (fi == null) {
       return null;
@@ -225,7 +271,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
               + VectorEncoding.FLOAT32);
     }
 
-    FloatVectorValues rawFloatVectorValues = rawVectorsReader.getFloatVectorValues(field);
+    FloatVectorValues rawFloatVectorValues = rawValues.get();
 
     OffHeapScalarQuantizedVectorValues sqvv = loadQuantizedVectorValues(fi);
 

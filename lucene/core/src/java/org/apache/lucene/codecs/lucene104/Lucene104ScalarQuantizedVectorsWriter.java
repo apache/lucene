@@ -37,6 +37,7 @@ import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
+import org.apache.lucene.document.column.VectorValuesCursor;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.Float16VectorValues;
@@ -55,6 +56,7 @@ import org.apache.lucene.store.FileDataHint;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.VectorUtil;
@@ -361,8 +363,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
           QUANTIZED_VECTOR_COMPONENT, "Vectors' count:" + vectorCount);
     }
     // Only asymmetric encodings have query-side records, and both FLOAT16 and FLOAT32 fields
-    // score graphs with them. The predicate sees vectorCount before deletions, so it can
-    // request data even when the merged field is too small to build a graph.
+    // score graphs with them.
     boolean prepareQueryData =
         encoding.isAsymmetric()
             && fieldInfo.getVectorEncoding().isFloatingPoint()
@@ -642,7 +643,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
       KnnVectorsReader knnVectorsReader = mergeState.knnVectorsReaders[i];
       if (knnVectorsReader == null) continue;
-      count += accumulateCentroid(knnVectorsReader, fieldInfo, centroid);
+      count += accumulateCentroid(knnVectorsReader, fieldInfo, mergeState.liveDocs[i], centroid);
     }
     if (count == 0) {
       return count;
@@ -657,7 +658,8 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   }
 
   private static int accumulateCentroid(
-      KnnVectorsReader reader, FieldInfo fieldInfo, float[] centroid) throws IOException {
+      KnnVectorsReader reader, FieldInfo fieldInfo, Bits liveDocs, float[] centroid)
+      throws IOException {
     FloatVectorValues vectorValues = floatingPointVectorValues(reader, fieldInfo);
     if (vectorValues == null) {
       return 0;
@@ -665,6 +667,9 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     int count = 0;
     KnnVectorValues.DocIndexIterator iterator = vectorValues.iterator();
     for (int doc = iterator.nextDoc(); doc != NO_MORE_DOCS; doc = iterator.nextDoc()) {
+      if (liveDocs != null && liveDocs.get(doc) == false) {
+        continue;
+      }
       count++;
       float[] vector = vectorValues.vectorValue(iterator.index());
       for (int j = 0; j < vector.length; j++) {
@@ -732,6 +737,29 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     }
 
     @Override
+    public void addValue(int docID, T vectorValue) throws IOException {
+      flatFieldVectorsWriter.addValue(docID, vectorValue);
+      accumulate(vectorValue);
+    }
+
+    /**
+     * Adds the batch to the flat writer, then accumulates the new vectors. The flat writer records
+     * nothing if the cursor throws, so neither does this writer.
+     */
+    @Override
+    public void addDenseValues(int firstDocID, VectorValuesCursor<T> values) throws IOException {
+      final int firstOrd = getVectors().size();
+      flatFieldVectorsWriter.addDenseValues(firstDocID, values);
+      final List<T> vectors = getVectors();
+      for (int ord = firstOrd; ord < vectors.size(); ord++) {
+        accumulate(vectors.get(ord));
+      }
+    }
+
+    /** Adds a stored vector to the centroid sums and caches its magnitude when COSINE. */
+    abstract void accumulate(T vector);
+
+    @Override
     public DocsWithFieldSet getDocsWithFieldSet() {
       return flatFieldVectorsWriter.getDocsWithFieldSet();
     }
@@ -760,7 +788,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
      * Adds {@code vector} to the centroid sums, unit-scaled when COSINE, and caches its magnitude
      * for {@link #scaleToUnitLength}.
      */
-    protected final void accumulate(float[] vector) {
+    protected final void accumulateFloats(float[] vector) {
       if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
         float dp = VectorUtil.dotProduct(vector, vector);
         float divisor = (float) Math.sqrt(dp);
@@ -834,9 +862,8 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     }
 
     @Override
-    public void addValue(int docID, float[] vectorValue) throws IOException {
-      flatFieldVectorsWriter.addValue(docID, vectorValue);
-      accumulate(vectorValue);
+    void accumulate(float[] vector) {
+      accumulateFloats(vector);
     }
 
     @Override
@@ -865,10 +892,9 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     }
 
     @Override
-    public void addValue(int docID, short[] vectorValue) throws IOException {
-      flatFieldVectorsWriter.addValue(docID, vectorValue);
-      inflate(vectorValue);
-      accumulate(inflated);
+    void accumulate(short[] vector) {
+      inflate(vector);
+      accumulateFloats(inflated);
     }
 
     @Override

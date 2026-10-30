@@ -32,6 +32,7 @@ import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
+import org.apache.lucene.document.column.VectorValuesCursor;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
@@ -184,20 +185,21 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     return total;
   }
 
-  private static long alignOutput(IndexOutput output, VectorEncoding encoding) throws IOException {
-    return output.alignFilePointer(
-        switch (encoding) {
-          case BYTE -> Float.BYTES;
-          case FLOAT16 -> Float.BYTES;
-          case FLOAT32 -> 64; // optimal alignment for Arm Neoverse machines.
-        });
+  /**
+   * Page-aligns vector data for every encoding, so a vector whose size divides 4 KB or is a
+   * multiple of it (e.g. 1024-dim float32, 1024- or 4096-dim float16, 1024-dim byte) never
+   * straddles a page boundary and a rescoring read touches no extra page. Also a multiple of the
+   * 64-byte alignment that is optimal for Arm Neoverse machines.
+   */
+  private static long alignOutput(IndexOutput output) throws IOException {
+    return output.alignFilePointer(4096);
   }
 
   private void writeField(FlatFieldVectorsWriter<?> fieldWriter, FieldInfo fieldInfo, int maxDoc)
       throws IOException {
     // write vector values
     VectorEncoding encoding = fieldInfo.getVectorEncoding();
-    long vectorDataOffset = alignOutput(vectorData, encoding);
+    long vectorDataOffset = alignOutput(vectorData);
     switch (encoding) {
       case BYTE -> writeByteVectors(fieldWriter);
       case FLOAT16 -> writeFloat16Vectors(fieldWriter, fieldInfo);
@@ -251,7 +253,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
 
     // write vector values
     VectorEncoding encoding = fieldInfo.getVectorEncoding();
-    long vectorDataOffset = alignOutput(vectorData, encoding);
+    long vectorDataOffset = alignOutput(vectorData);
     switch (encoding) {
       case BYTE -> writeSortedByteVectors(fieldWriter, ordMap);
       case FLOAT16 -> writeSortedFloat16Vectors(fieldWriter, fieldInfo, ordMap);
@@ -302,7 +304,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     // Since we know we will not be searching for additional indexing, we can just write the
     // vectors directly to the new segment.
     VectorEncoding encoding = fieldInfo.getVectorEncoding();
-    long vectorDataOffset = alignOutput(vectorData, encoding);
+    long vectorDataOffset = alignOutput(vectorData);
     // No need to use temporary file as we don't have to re-open for reading
     DocsWithFieldSet docsWithField =
         switch (encoding) {
@@ -441,6 +443,11 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
               public byte[] copyValue(byte[] value) {
                 return ArrayUtil.copyOfSubArray(value, 0, dim);
               }
+
+              @Override
+              byte[] newVector() {
+                return new byte[dim];
+              }
             };
         case FLOAT16 ->
             new DefaultFieldWriter<short[]>(fieldInfo) {
@@ -448,12 +455,22 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
               public short[] copyValue(short[] value) {
                 return ArrayUtil.copyOfSubArray(value, 0, dim);
               }
+
+              @Override
+              short[] newVector() {
+                return new short[dim];
+              }
             };
         case FLOAT32 ->
             new DefaultFieldWriter<float[]>(fieldInfo) {
               @Override
               public float[] copyValue(float[] value) {
                 return ArrayUtil.copyOfSubArray(value, 0, dim);
+              }
+
+              @Override
+              float[] newVector() {
+                return new float[dim];
               }
             };
       };
@@ -482,6 +499,35 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       docsWithField.add(docID);
       vectors.add(copy);
       lastDocID = docID;
+    }
+
+    /** Returns a new, empty array for one vector of this field's dimension. */
+    abstract T newVector();
+
+    /**
+     * Fills each vector straight into a newly allocated array, so a vector is copied once. Doc IDs
+     * and vectors are recorded only after every {@code fill} has returned, so the writer is
+     * unchanged if the cursor throws.
+     */
+    @Override
+    public void addDenseValues(int firstDocID, VectorValuesCursor<T> values) throws IOException {
+      if (finished) {
+        throw new IllegalStateException("already finished, cannot add more values");
+      }
+      assert firstDocID > lastDocID;
+      final int count = values.size();
+      if (count == 0) {
+        return;
+      }
+      final List<T> batch = new ArrayList<>(count);
+      for (int i = 0; i < count; i++) {
+        T vector = newVector();
+        values.fill(vector, 0, 1);
+        batch.add(vector);
+      }
+      vectors.addAll(batch);
+      docsWithField.addRange(firstDocID, firstDocID + count);
+      lastDocID = firstDocID + count - 1;
     }
 
     @Override
