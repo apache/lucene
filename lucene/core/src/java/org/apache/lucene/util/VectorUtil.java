@@ -602,6 +602,8 @@ public final class VectorUtil {
    * Subtracts {@code centroid} from {@code vector} in place, for the optimized scalar quantizer,
    * and writes into {@code stats} the dot product of the original vector with {@code centroid},
    * then the min, max, sum of squares and sum of the result.
+   *
+   * @lucene.experimental
    */
   public static void osqCenter(float[] vector, float[] centroid, float[] stats) {
     if (vector.length != centroid.length) {
@@ -618,15 +620,17 @@ public final class VectorUtil {
    * Computes the sums that the optimized scalar quantizer's interval search needs for one interval.
    * Each value {@code x} of {@code vector}, limited to {@code [lower, upper]}, is rounded half up
    * to one of {@code points} levels {@code k}, which dequantizes to {@code x'}. Writes the sums of
-   * k, k * k, x * k, x * (x - x'), (x - x') * (x - x') and x into {@code stats}.
+   * k, k * k, x * k, x * (x - x') and (x - x') * (x - x') into {@code stats}.
+   *
+   * @lucene.experimental
    */
   public static void osqGridStats(
       float[] vector, float lower, float upper, int points, double[] stats) {
     if (points < 2 || points > 256) {
       throw new IllegalArgumentException("points must be in [2, 256]: " + points);
     }
-    if (stats.length != 6) {
-      throw new IllegalArgumentException("stats must have 6 entries: " + stats.length);
+    if (stats.length != 5) {
+      throw new IllegalArgumentException("stats must have 5 entries: " + stats.length);
     }
     IMPL.osqGridStats(vector, lower, upper, points, stats);
   }
@@ -635,6 +639,8 @@ public final class VectorUtil {
    * Quantizes {@code vector} into {@code dest} for the optimized scalar quantizer, as {@code (int)
    * ((x - lower) / step + 0.5f)} with each value {@code x} limited to {@code [lower, upper]}, and
    * returns the sum of the quantized values.
+   *
+   * @lucene.experimental
    */
   public static int osqAssign(float[] vector, float lower, float upper, float step, byte[] dest) {
     if (dest.length < vector.length) {

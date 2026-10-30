@@ -408,8 +408,8 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
     float lower = -0.1f + random().nextFloat() * 0.05f;
     float upper = 0.05f + random().nextFloat() * 0.05f;
     for (int points : new int[] {2, 4, 16, 128, 256}) {
-      double[] expected = new double[6];
-      double[] actual = new double[6];
+      double[] expected = new double[5];
+      double[] actual = new double[5];
       LUCENE_PROVIDER.getVectorUtilSupport().osqGridStats(vector, lower, upper, points, expected);
       PANAMA_OR_NATIVE_PROVIDER
           .getVectorUtilSupport()
@@ -417,7 +417,7 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
       // The level sums are exact.
       assertEquals(expected[0], actual[0], 0);
       assertEquals(expected[1], actual[1], 0);
-      for (int j = 2; j < 6; j++) {
+      for (int j = 2; j < 5; j++) {
         assertEquals(expected[j], actual[j], delta * Math.max(1, Math.abs(expected[j])));
       }
     }

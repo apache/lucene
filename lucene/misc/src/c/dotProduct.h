@@ -63,6 +63,13 @@ float lucene_recalculateScalarQuantizationOffset(int8_t vector[], float oldAlpha
     float oldMinQuantile, float scale, float alpha, float minQuantile, float maxQuantile,
     int32_t n);
 
+// See VectorUtilSupport#osqCenter, #osqGridStats and #osqAssign; n is the length of vector.
+void lucene_osqCenter(float vector[], float centroid[], float stats[], int32_t n);
+void lucene_osqGridStats(float vector[], float lower, float upper, int32_t points,
+    double stats[], int32_t n);
+int32_t lucene_osqAssign(float vector[], float lower, float upper, float step, int8_t dest[],
+    int32_t n);
+
 // Compacts the first upTo entries of both buffers in place; returns the number kept.
 int32_t lucene_filterByScore(int32_t docBuffer[], double scoreBuffer[], double minScoreInclusive,
     int32_t upTo);

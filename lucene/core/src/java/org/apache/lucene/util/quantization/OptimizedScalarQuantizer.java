@@ -142,7 +142,7 @@ public class OptimizedScalarQuantizer {
           (float) clamp(MINIMUM_MSE_GRID[bits[i] - 1][0] * vecStd + vecMean, min, max);
       intervalScratch[1] =
           (float) clamp(MINIMUM_MSE_GRID[bits[i] - 1][1] * vecStd + vecMean, min, max);
-      optimizeIntervals(intervalScratch, vector, norm2, points);
+      optimizeIntervals(intervalScratch, vector, norm2, centerStats[4], points);
       float nSteps = ((1 << bits[i]) - 1);
       float a = intervalScratch[0];
       float b = intervalScratch[1];
@@ -190,7 +190,7 @@ public class OptimizedScalarQuantizer {
     // the min/max bounds
     intervalScratch[0] = (float) clamp(MINIMUM_MSE_GRID[bits - 1][0] * vecStd + vecMean, min, max);
     intervalScratch[1] = (float) clamp(MINIMUM_MSE_GRID[bits - 1][1] * vecStd + vecMean, min, max);
-    optimizeIntervals(intervalScratch, vector, norm2, points);
+    optimizeIntervals(intervalScratch, vector, norm2, centerStats[4], points);
     float nSteps = ((1 << bits) - 1);
     // Now we have the optimized intervals, quantize the vector
     float a = intervalScratch[0];
@@ -287,10 +287,12 @@ public class OptimizedScalarQuantizer {
    * @param initInterval initial interval, the optimized interval will be stored here
    * @param vector raw vector
    * @param norm2 squared norm of the vector
+   * @param sum sum of the vector's values
    * @param points number of quantization points
    */
-  private void optimizeIntervals(float[] initInterval, float[] vector, float norm2, int points) {
-    double[] stats = new double[6];
+  private void optimizeIntervals(
+      float[] initInterval, float[] vector, float norm2, float sum, int points) {
+    double[] stats = new double[5];
     VectorUtil.osqGridStats(vector, initInterval[0], initInterval[1], points, stats);
     double initialLoss = loss(stats, norm2);
     final float scale = (1.0f - lambda) / norm2;
@@ -308,7 +310,7 @@ public class OptimizedScalarQuantizer {
       double dab = sumS - sumSS;
       double dbb = sumSS;
       double dbx = stats[2] / nSteps;
-      double dax = stats[5] - dbx;
+      double dax = sum - dbx;
       double m0 = scale * dax * dax + lambda * daa;
       double m1 = scale * dax * dbx + lambda * dab;
       double m2 = scale * dbx * dbx + lambda * dbb;

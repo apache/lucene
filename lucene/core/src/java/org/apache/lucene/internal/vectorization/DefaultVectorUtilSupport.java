@@ -499,10 +499,9 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
     float step = (upper - lower) / (points - 1f);
     long sumK = 0;
     long sumKK = 0;
-    double sumXK = 0;
-    double sumXD = 0;
-    double sumDD = 0;
-    double sumX = 0;
+    float sumXK = 0;
+    float sumXD = 0;
+    float sumDD = 0;
     for (int i = start; i < vector.length; i++) {
       float x = vector[i];
       // Adds 0.5 and truncates, as Math.round is costly to match in the Panama version.
@@ -513,14 +512,12 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
       sumXK += x * k;
       sumXD += x * d;
       sumDD += d * d;
-      sumX += x;
     }
     stats[0] = sumK;
     stats[1] = sumKK;
     stats[2] = sumXK;
     stats[3] = sumXD;
     stats[4] = sumDD;
-    stats[5] = sumX;
   }
 
   @Override

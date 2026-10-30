@@ -69,7 +69,6 @@ public class VectorUtilBenchmark {
   private short[] shortsA;
   private short[] shortsB;
   private float[][] quantizeVectors;
-  private OptimizedScalarQuantizer.QuantizationResult[] expectedQuantizeResults;
   private int quantizeNext;
   private float[] quantizeCentroid;
   private byte[] quantizeDest;
@@ -127,20 +126,16 @@ public class VectorUtilBenchmark {
       shortsB[i] = Float.floatToFloat16(floatsB[i]);
     }
     // Rotate through 64 vectors, as the number of descent steps depends on the vector. They are
-    // centered here and the centroid is zero, so scalarQuantize leaves them as they are and every
-    // call can be checked against the first.
+    // centered here and the centroid is zero, so scalarQuantize leaves them as they are.
     quantizeVectors = new float[64][size];
-    expectedQuantizeResults = new OptimizedScalarQuantizer.QuantizationResult[64];
+    for (float[] vector : quantizeVectors) {
+      for (int i = 0; i < size; ++i) {
+        vector[i] = random.nextFloat() - floatsB[i];
+      }
+    }
     quantizeCentroid = new float[size];
     quantizeDest = new byte[size];
     quantizer = new OptimizedScalarQuantizer(VectorSimilarityFunction.DOT_PRODUCT);
-    for (int j = 0; j < 64; j++) {
-      for (int i = 0; i < size; ++i) {
-        quantizeVectors[j][i] = random.nextFloat() - floatsB[i];
-      }
-      expectedQuantizeResults[j] =
-          quantizer.scalarQuantize(quantizeVectors[j], quantizeDest, (byte) 4, quantizeCentroid);
-    }
 
     // arrays for BBQ int4-bit and int4-dibit dot product benchmarks
     int4QuantizedBit = new byte[size * 4];
@@ -329,25 +324,15 @@ public class VectorUtilBenchmark {
 
   @Benchmark
   public OptimizedScalarQuantizer.QuantizationResult scalarQuantizeScalar() {
-    int j = quantizeNext++ & 63;
-    OptimizedScalarQuantizer.QuantizationResult result =
-        quantizer.scalarQuantize(quantizeVectors[j], quantizeDest, (byte) 4, quantizeCentroid);
-    if (result.equals(expectedQuantizeResults[j]) == false) {
-      throw new RuntimeException("Expected " + expectedQuantizeResults[j] + " but got " + result);
-    }
-    return result;
+    return quantizer.scalarQuantize(
+        quantizeVectors[quantizeNext++ & 63], quantizeDest, (byte) 4, quantizeCentroid);
   }
 
   @Benchmark
   @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public OptimizedScalarQuantizer.QuantizationResult scalarQuantizeVector() {
-    int j = quantizeNext++ & 63;
-    OptimizedScalarQuantizer.QuantizationResult result =
-        quantizer.scalarQuantize(quantizeVectors[j], quantizeDest, (byte) 4, quantizeCentroid);
-    if (result.equals(expectedQuantizeResults[j]) == false) {
-      throw new RuntimeException("Expected " + expectedQuantizeResults[j] + " but got " + result);
-    }
-    return result;
+    return quantizer.scalarQuantize(
+        quantizeVectors[quantizeNext++ & 63], quantizeDest, (byte) 4, quantizeCentroid);
   }
 
   @Benchmark

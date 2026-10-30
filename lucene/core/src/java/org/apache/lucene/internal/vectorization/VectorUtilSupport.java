@@ -175,9 +175,8 @@ public interface VectorUtilSupport {
    * adding 0.5 and truncating, to one of {@code points} levels {@code k}, which dequantizes to
    * {@code x'}.
    *
-   * <p>Writes the sums of k, k * k, x * k, x * (x - x'), (x - x') * (x - x') and x into {@code
-   * stats}. The first two are exact, the others may be summed in float, in any order, with or
-   * without fma.
+   * <p>Writes the sums of k, k * k, x * k, x * (x - x') and (x - x') * (x - x') into {@code stats}.
+   * The first two are exact, the others may be summed in float, in any order, with or without fma.
    */
   void osqGridStats(float[] vector, float lower, float upper, int points, double[] stats);
 

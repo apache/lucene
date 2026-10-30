@@ -1641,7 +1641,6 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     FloatVector accXK = FloatVector.zero(FLOAT_SPECIES);
     FloatVector accXD = FloatVector.zero(FLOAT_SPECIES);
     FloatVector accDD = FloatVector.zero(FLOAT_SPECIES);
-    FloatVector accX = FloatVector.zero(FLOAT_SPECIES);
     final int bound = FLOAT_SPECIES.loopBound(vector.length);
     int i = 0;
     for (; i < bound; i += FLOAT_SPECIES.length()) {
@@ -1656,7 +1655,6 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       accXK = fma(x, kf, accXK);
       accXD = fma(x, d, accXD);
       accDD = fma(d, d, accDD);
-      accX = accX.add(x);
     }
     // scalar tail
     DefaultVectorUtilSupport.osqGridStatsImpl(vector, i, lower, upper, points, stats);
@@ -1665,7 +1663,6 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     stats[2] += sumLanes(accXK);
     stats[3] += sumLanes(accXD);
     stats[4] += sumLanes(accDD);
-    stats[5] += sumLanes(accX);
   }
 
   @Override
