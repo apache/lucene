@@ -410,7 +410,7 @@ public class MMapDirectory extends FSDirectory {
     String key = group.get();
     var refCountedArena =
         arenas.computeIfAbsent(
-            key, s -> new RefCountedSharedArena(s, () -> arenas.remove(s), SHARED_ARENA_PERMITS));
+            key, s -> new RefCountedSharedArena(s, a -> arenas.remove(s, a), SHARED_ARENA_PERMITS));
     if (refCountedArena.acquire()) {
       return refCountedArena;
     } else {
@@ -420,7 +420,7 @@ public class MMapDirectory extends FSDirectory {
             if (v != null && v.acquire()) {
               return v;
             } else {
-              v = new RefCountedSharedArena(s, () -> arenas.remove(s), SHARED_ARENA_PERMITS);
+              v = new RefCountedSharedArena(s, a -> arenas.remove(s, a), SHARED_ARENA_PERMITS);
               v.acquire(); // guaranteed to succeed
               return v;
             }
