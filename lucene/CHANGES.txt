@@ -382,6 +382,8 @@ Bug Fixes
 * GITHUB#16926: RescoreTopNQuery no longer throws when its inner query matches no documents.
   (Greg Miller)
 
+* GITHUB#16952: Use leaf maxDoc as the upper bound for bulk scoring. (Ke Wei)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
