@@ -24,6 +24,8 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.function.Supplier;
+import org.apache.lucene.analysis.LowerCaseFilter;
+import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.TextField;
@@ -38,6 +40,7 @@ import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.TermInSetQuery;
+import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.BytesRef;
@@ -249,5 +252,35 @@ public abstract class NotSlotPresearcherTestBase extends PresearcherTestBase {
       }
     }
     dir.close();
+  }
+
+  public void testOnlyRealDocumentTermsExclude() throws IOException {
+    // The regexp handler turns the document's apple into tokens such as apXX; only real terms of
+    // the document may exclude queries, so the query negating the literal term apXX still matches
+    Presearcher presearcher = createPresearcher(1, List.of(new RegexpQueryHandler()));
+    assertRunAndMatched(1, 1, run(presearcher, "*:* -f:apXX", doc("f", "apple")));
+    // real terms passed through the handler still exclude
+    assertRunAndMatched(0, 0, run(presearcher, "*:* -f:apple", doc("f", "apple")));
+
+    // A handler rewriting tokens in place: the document contains Apple, not apple
+    CustomQueryHandler lowercasing =
+        new CustomQueryHandler() {
+          @Override
+          public QueryTree handleQuery(Query query, TermWeightor termWeightor) {
+            return null;
+          }
+
+          @Override
+          public TokenStream wrapTermStream(String field, TokenStream in) {
+            return new LowerCaseFilter(in);
+          }
+        };
+    Query query =
+        new BooleanQuery.Builder()
+            .add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.SHOULD)
+            .add(new TermQuery(new Term("f", "apple")), BooleanClause.Occur.MUST_NOT)
+            .build();
+    assertRunAndMatched(
+        1, 1, run(createPresearcher(1, List.of(lowercasing)), query, doc("f", "Apple")));
   }
 }

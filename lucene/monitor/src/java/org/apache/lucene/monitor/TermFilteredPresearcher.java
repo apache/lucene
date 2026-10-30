@@ -27,7 +27,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.BiPredicate;
 import java.util.function.UnaryOperator;
-import org.apache.lucene.analysis.FilteringTokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
 import org.apache.lucene.document.Document;
@@ -160,7 +159,9 @@ public class TermFilteredPresearcher extends Presearcher {
             "NotSlots are enabled, but the DocumentQueryBuilder does not support them");
       }
       for (FieldInfo field : reader.getFieldInfos()) {
-
+        if (filterFields.contains(field.name)) {
+          continue;
+        }
         Terms terms = reader.terms(field.name);
         if (terms == null) {
           continue;
@@ -170,26 +171,10 @@ public class TermFilteredPresearcher extends Presearcher {
         for (CustomQueryHandler handler : queryHandlers) {
           ts = handler.wrapTermStream(field.name, ts);
         }
-
-        ts =
-            new FilteringTokenFilter(ts) {
-              TermToBytesRefAttribute termAtt = addAttribute(TermToBytesRefAttribute.class);
-
-              @Override
-              protected boolean accept() {
-                return filterFields.contains(field.name) == false
-                    && termAcceptor.test(field.name, termAtt.getBytesRef());
-              }
-            };
-
-        TermToBytesRefAttribute termAtt = ts.addAttribute(TermToBytesRefAttribute.class);
-        while (ts.incrementToken()) {
-          queryBuilder.addTerm(field.name, BytesRef.deepCopyOf(termAtt.getBytesRef()));
-        }
-        ts.close();
-
-        if (maxNotSlots > 0 && !filterFields.contains(field.name)) {
-          addNegatableTerms(reader.maxDoc(), field.name, terms, termAcceptor, queryBuilder);
+        addTerms(queryBuilder, field.name, ts, termAcceptor);
+        if (maxNotSlots > 0) {
+          addNegatableTerms(
+              queryBuilder, field.name, terms.iterator(), reader.maxDoc(), termAcceptor);
         }
       }
       Query presearcherQuery = queryBuilder.build();
@@ -214,22 +199,40 @@ public class TermFilteredPresearcher extends Presearcher {
     }
   }
 
+  /** Adds the terms of a field that the term filter accepts, to select queries */
+  private static void addTerms(
+      DocumentQueryBuilder queryBuilder,
+      String field,
+      TokenStream ts,
+      BiPredicate<String, BytesRef> termAcceptor)
+      throws IOException {
+    TermToBytesRefAttribute termAtt = ts.addAttribute(TermToBytesRefAttribute.class);
+    while (ts.incrementToken()) {
+      BytesRef term = termAtt.getBytesRef();
+      if (termAcceptor.test(field, term)) {
+        queryBuilder.addTerm(field, BytesRef.deepCopyOf(term));
+      }
+    }
+    ts.close();
+  }
+
   /**
-   * Passes the terms of {@code field} that every document in the batch contains to the query
-   * builder: only those can exclude a query through a NotSlot
+   * Adds the terms of a field that every document in the batch contains, and that the term filter
+   * accepts as negated terms: only those can exclude queries through a NotSlot. Terms created by
+   * custom query handlers never can. The terms are read directly rather than through {@link
+   * TermsEnumTokenStream}, whose conversion to characters can merge different invalid UTF-8 terms:
+   * harmless for selecting queries, but it could wrongly exclude one.
    */
   private static void addNegatableTerms(
-      int maxDoc,
+      DocumentQueryBuilder queryBuilder,
       String field,
-      Terms terms,
-      BiPredicate<String, BytesRef> termAcceptor,
-      DocumentQueryBuilder queryBuilder)
+      TermsEnum terms,
+      int maxDoc,
+      BiPredicate<String, BytesRef> termAcceptor)
       throws IOException {
     String notField = field + NOT_SUFFIX;
-    TermsEnum te = terms.iterator();
-    BytesRef term;
-    while ((term = te.next()) != null) {
-      if (te.docFreq() == maxDoc && termAcceptor.test(notField, term)) {
+    for (BytesRef term = terms.next(); term != null; term = terms.next()) {
+      if (terms.docFreq() == maxDoc && termAcceptor.test(notField, term)) {
         queryBuilder.addNegatableTerm(field, BytesRef.deepCopyOf(term));
       }
     }
