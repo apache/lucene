@@ -189,6 +189,8 @@ API Changes
 
 New Features
 ---------------------
+* GITHUB#16780: Add BinaryFuseFilteringPostingsFormat, introducing 8-bit and 16-bit
+  Binary Fuse Filters. (Abhinav)
 * GITHUB#16723: Support SIMD Faiss library variants with runtime fallback. (Abhinav Chinnala)
 
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
