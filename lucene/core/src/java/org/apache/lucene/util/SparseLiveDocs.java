@@ -57,8 +57,9 @@ public final class SparseLiveDocs implements LiveDocs {
   /**
    * Creates a builder for constructing SparseLiveDocs instances.
    *
-   * @param deletedDocs bit set where set bits represent DELETED documents
-   * @param maxDoc the maximum document ID (exclusive)
+   * @param deletedDocs bit set where set bits represent DELETED documents; may be longer than
+   *     maxDoc, but must have no bits set at or beyond maxDoc
+   * @param maxDoc the maximum document ID (exclusive), must not be negative
    * @return a new builder instance
    */
   public static Builder builder(SparseFixedBitSet deletedDocs, int maxDoc) {
@@ -91,9 +92,20 @@ public final class SparseLiveDocs implements LiveDocs {
      * Builds the SparseLiveDocs instance.
      *
      * @return a new SparseLiveDocs instance
-     * @throws IllegalArgumentException if deletedCount is outside valid range [0, maxDoc]
+     * @throws IllegalArgumentException if maxDoc is negative, if deletedDocs has bits set at or
+     *     beyond maxDoc, or if deletedCount is outside valid range [0, maxDoc]
      */
     public SparseLiveDocs build() {
+      if (maxDoc < 0) {
+        throw new IllegalArgumentException("maxDoc must not be negative: " + maxDoc);
+      }
+
+      if (deletedDocs.length() > maxDoc
+          && deletedDocs.nextSetBit(maxDoc) != DocIdSetIterator.NO_MORE_DOCS) {
+        throw new IllegalArgumentException(
+            "deletedDocs has bits set at or beyond maxDoc=" + maxDoc);
+      }
+
       int count = deletedCount != null ? deletedCount : deletedDocs.cardinality();
 
       if (count < 0 || count > maxDoc) {

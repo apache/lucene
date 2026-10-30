@@ -471,6 +471,14 @@ Other
 
 * GITHUB#16279: Add JMH benchmarks comparing read I/O strategies under memory pressure. (neoremind)
 
+======================= Lucene 10.6.1 =======================
+
+Bug Fixes
+---------------------
+* GITHUB#16768: DenseLiveDocs and SparseLiveDocs now reject a backing bit set with bits set at or
+  beyond maxDoc. Such bits skewed deletedCount and made the live and deleted doc iterators return
+  doc ids past maxDoc. (Salvatore Campagna)
+
 ======================= Lucene 10.6.0 =======================
 
 API Changes
