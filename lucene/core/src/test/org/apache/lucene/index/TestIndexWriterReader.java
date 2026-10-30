@@ -26,8 +26,11 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.LongPoint;
@@ -38,6 +41,7 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.AssertingDirectoryReader;
 import org.apache.lucene.tests.index.DocHelper;
@@ -48,6 +52,7 @@ import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.ThreadInterruptedException;
 import org.apache.lucene.util.Version;
@@ -238,6 +243,76 @@ public class TestIndexWriterReader extends LuceneTestCase {
     dirReader.close();
     nrtReader.close();
     dir.close();
+  }
+
+  /**
+   * An NRT reader opened while a commit is syncing files already has the commit's version but still
+   * names the previous segments_N. It must not be considered current once the commit completes.
+   */
+  public void testReaderOpenedDuringCommitIsNotCurrentAfterCommit() throws Exception {
+    final AtomicBoolean blockSync = new AtomicBoolean();
+    final CountDownLatch syncStarted = new CountDownLatch(1);
+    final CountDownLatch releaseSync = new CountDownLatch(1);
+    Directory dir =
+        new FilterDirectory(newDirectory()) {
+          @Override
+          public void sync(Collection<String> names) throws IOException {
+            // Only block the bulk sync that IndexWriter#startCommit runs without holding the
+            // IndexWriter lock; pending_segments_N is synced under the lock.
+            if (names.stream().noneMatch(n -> n.startsWith(IndexFileNames.PENDING_SEGMENTS))
+                && blockSync.compareAndSet(true, false)) {
+              syncStarted.countDown();
+              try {
+                assertTrue(releaseSync.await(30, TimeUnit.SECONDS));
+              } catch (InterruptedException e) {
+                throw new ThreadInterruptedException(e);
+              }
+            }
+            super.sync(names);
+          }
+        };
+    IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
+    writer.addDocument(DocHelper.createDocument(0, "index", 4));
+    writer.commit();
+    DirectoryReader reader = DirectoryReader.open(writer);
+    writer.addDocument(DocHelper.createDocument(1, "index", 4));
+
+    blockSync.set(true);
+    final AtomicReference<Throwable> commitFailure = new AtomicReference<>();
+    Thread committer =
+        new Thread(
+            () -> {
+              try {
+                writer.commit();
+              } catch (Throwable t) {
+                commitFailure.set(t);
+              }
+            });
+    committer.start();
+    try {
+      assertTrue(syncStarted.await(30, TimeUnit.SECONDS));
+      // the commit's changes are visible, but its segments_N is not written yet
+      DirectoryReader newReader = DirectoryReader.openIfChanged(reader, writer);
+      assertNotNull(newReader);
+      reader.close();
+      reader = newReader;
+      assertEquals(2, reader.numDocs());
+    } finally {
+      releaseSync.countDown();
+      committer.join();
+    }
+    assertNull(commitFailure.get());
+
+    String lastCommit = SegmentInfos.readLatestCommit(dir).getSegmentsFileName();
+    assertNotEquals(lastCommit, reader.getIndexCommit().getSegmentsFileName());
+    assertFalse(reader.isCurrent());
+    DirectoryReader newReader = DirectoryReader.openIfChanged(reader, writer);
+    assertNotNull(newReader);
+    assertEquals(lastCommit, newReader.getIndexCommit().getSegmentsFileName());
+    assertEquals(2, newReader.numDocs());
+    assertTrue(newReader.isCurrent());
+
+    IOUtils.close(reader, newReader, writer, dir);
   }
 
   /** Test using IW.addIndexes */

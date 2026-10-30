@@ -463,10 +463,12 @@ public final class StandardDirectoryReader extends DirectoryReader {
       return null;
     }
 
-    DirectoryReader reader = writer.getReader(applyAllDeletes, writeAllDeletes);
+    StandardDirectoryReader reader = writer.getReader(applyAllDeletes, writeAllDeletes);
 
-    // If in fact no changes took place, return null:
-    if (reader.getVersion() == segmentInfos.getVersion()) {
+    // If in fact no changes took place, return null. A commit that was syncing files when this
+    // reader was opened changes the referenced segments_N once it completes, but not the version:
+    if (reader.getVersion() == segmentInfos.getVersion()
+        && reader.segmentInfos.getLastGeneration() == segmentInfos.getLastGeneration()) {
       reader.decRef();
       return null;
     }
