@@ -18,7 +18,9 @@
 package org.apache.lucene.queries.intervals;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -181,12 +183,24 @@ class UnorderedIntervalsSource extends MinimizingConjunctionIntervalsSource {
     protected void reset() throws IOException {
       queueEnd = start = end = -1;
       this.queue.clear();
-      for (IntervalIterator it : subIterators) {
-        if (it.nextInterval() == NO_MORE_INTERVALS) {
-          break;
-        }
-        queue.add(it);
-        updateRightExtreme(it);
+      try {
+        queue.addAll(
+            Arrays.stream(subIterators)
+                .takeWhile(
+                    it -> {
+                      try {
+                        return it.nextInterval() != NO_MORE_INTERVALS;
+                      } catch (IOException e) {
+                        throw new UncheckedIOException(e);
+                      }
+                    })
+                .map(
+                    it -> {
+                      updateRightExtreme(it);
+                      return it;
+                    }));
+      } catch (UncheckedIOException e) {
+        throw e.getCause();
       }
     }
   }
