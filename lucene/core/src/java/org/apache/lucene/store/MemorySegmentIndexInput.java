@@ -27,10 +27,8 @@ import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.IOFunction;
 
@@ -59,7 +57,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
   final Arena arena;
   final MemorySegment[] segments;
   final Function<IOContext, ReadAdvice> toReadAdvice;
-  final AtomicInteger sharedPrefetchCounter;
+  final PrefetchBackoff backoff;
+  int prefetchCalls; // this input's own count, starting at nextCounterStart(); see PrefetchBackoff
   // the advice applied when this input was opened or sliced, or null if any advice reads the same
   final ReadAdvice readAdvice;
 
@@ -78,7 +77,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
       Function<IOContext, ReadAdvice> toReadAdvice,
       ReadAdvice readAdvice) {
     assert Arrays.stream(segments).map(MemorySegment::scope).allMatch(arena.scope()::equals);
-    AtomicInteger sharedPrefetchCounter = new AtomicInteger();
+    PrefetchBackoff backoff = new PrefetchBackoff();
     if (segments.length == 1) {
       return new SingleSegmentImpl(
           resourceDescription,
@@ -89,7 +88,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
           confined,
           toReadAdvice,
           readAdvice,
-          sharedPrefetchCounter);
+          backoff);
     } else {
       return new MultiSegmentImpl(
           resourceDescription,
@@ -101,7 +100,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
           confined,
           toReadAdvice,
           readAdvice,
-          sharedPrefetchCounter);
+          backoff);
     }
   }
 
@@ -114,7 +113,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
       boolean confined,
       Function<IOContext, ReadAdvice> toReadAdvice,
       ReadAdvice readAdvice,
-      AtomicInteger sharedPrefetchCounter) {
+      PrefetchBackoff backoff) {
     super(resourceDescription);
     this.arena = arena;
     this.segments = segments;
@@ -124,8 +123,9 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
     this.chunkSizeMask = (1L << chunkSizePower) - 1L;
     this.curSegment = segments[0];
     this.toReadAdvice = toReadAdvice;
+    this.backoff = backoff;
+    this.prefetchCalls = backoff.nextCounterStart();
     this.readAdvice = readAdvice;
-    this.sharedPrefetchCounter = sharedPrefetchCounter;
   }
 
   void ensureOpen() {
@@ -354,11 +354,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
 
     ensureOpen();
 
-    if (BitUtil.isZeroOrPowerOfTwo(sharedPrefetchCounter.getAndIncrement()) == false) {
-      // We've had enough consecutive hits on the page cache that this number is neither zero nor a
-      // power of two. There is a good chance that a good chunk of this index input is cached in
-      // physical memory. Let's skip the overhead of the madvise system call, we'll be trying again
-      // on the next power of two of the counter.
+    if (backoff.shouldProbe(++prefetchCalls) == false) {
       return false;
     }
 
@@ -367,13 +363,13 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
         offset,
         length,
         segment -> {
-          if (segment.isLoaded() == false) {
-            // We have a cache miss on at least one page, let's reset the counter.
-            sharedPrefetchCounter.set(0);
-            nativeAccess.madviseWillNeed(segment);
-            return true;
+          if (segment.isLoaded()) {
+            backoff.onHit();
+            return false;
           }
-          return false;
+          backoff.onMiss();
+          nativeAccess.madviseWillNeed(segment);
+          return true;
         });
   }
 
@@ -568,7 +564,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
               confined,
               toReadAdvice,
               readAdvice,
-              sharedPrefetchCounter);
+              backoff);
     } else {
       clone =
           new MultiSegmentImpl(
@@ -581,7 +577,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
               confined,
               toReadAdvice,
               readAdvice,
-              sharedPrefetchCounter);
+              backoff);
     }
     try {
       clone.seek(getFilePointer());
@@ -683,7 +679,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
           confined,
           toReadAdvice,
           readAdvice,
-          sharedPrefetchCounter);
+          backoff);
     } else {
       return new MultiSegmentImpl(
           newResourceDescription,
@@ -695,7 +691,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
           confined,
           toReadAdvice,
           readAdvice,
-          sharedPrefetchCounter);
+          backoff);
     }
   }
 
@@ -741,7 +737,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
         boolean confined,
         Function<IOContext, ReadAdvice> toReadAdvice,
         ReadAdvice readAdvice,
-        AtomicInteger sharedPrefetchCounter) {
+        PrefetchBackoff backoff) {
       super(
           resourceDescription,
           arena,
@@ -751,7 +747,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
           confined,
           toReadAdvice,
           readAdvice,
-          sharedPrefetchCounter);
+          backoff);
       this.curSegmentIndex = 0;
     }
 
@@ -857,7 +853,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
         boolean confined,
         Function<IOContext, ReadAdvice> toReadAdvice,
         ReadAdvice readAdvice,
-        AtomicInteger sharedPrefetchCounter) {
+        PrefetchBackoff backoff) {
       super(
           resourceDescription,
           arena,
@@ -867,7 +863,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
           confined,
           toReadAdvice,
           readAdvice,
-          sharedPrefetchCounter);
+          backoff);
       this.offset = offset;
       try {
         seek(0L);
