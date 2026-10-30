@@ -137,6 +137,52 @@ public final class VectorUtil {
   }
 
   /**
+   * Computes the dot products between every one of {@code aCount} vectors and every one of {@code
+   * bCount} vectors. The vectors have {@code dim} floats each and consecutive vectors start {@code
+   * stride} floats apart (so {@code stride == dim} means stored back to back), the first ones at
+   * {@code a[aOffset]} and {@code b[bOffset]}. The dot product of the i-th a vector and the j-th b
+   * vector is written to {@code out[i * bCount + j]}. This is faster than calling {@link
+   * #dotProduct(float[], float[])} for every pair, because loaded vector data is reused across
+   * products.
+   *
+   * <p>A {@code stride} that is a multiple of 1024 floats (4 KB) makes the rows that are scanned
+   * together map to the same cache sets and evict each other; pad such a stride by a few floats.
+   *
+   * @throws IllegalArgumentException if the ranges do not fit the arrays or the stride is smaller
+   *     than the dimension
+   */
+  public static void dotProducts(
+      float[] a,
+      int aOffset,
+      int aCount,
+      float[] b,
+      int bOffset,
+      int bCount,
+      int dim,
+      int stride,
+      float[] out) {
+    if (aCount < 0 || bCount < 0 || dim < 0) {
+      throw new IllegalArgumentException("counts and dim must not be negative");
+    }
+    if (stride < dim) {
+      throw new IllegalArgumentException("stride " + stride + " is smaller than dim " + dim);
+    }
+    if (aOffset < 0 || (aCount > 0 && aOffset + (long) (aCount - 1) * stride + dim > a.length)) {
+      throw new IllegalArgumentException(
+          "a: " + aCount + " vectors of " + dim + " at " + aOffset + " exceed " + a.length);
+    }
+    if (bOffset < 0 || (bCount > 0 && bOffset + (long) (bCount - 1) * stride + dim > b.length)) {
+      throw new IllegalArgumentException(
+          "b: " + bCount + " vectors of " + dim + " at " + bOffset + " exceed " + b.length);
+    }
+    if ((long) aCount * bCount > out.length) {
+      throw new IllegalArgumentException(
+          "out holds " + out.length + " values, need " + ((long) aCount * bCount));
+    }
+    IMPL.dotProducts(a, aOffset, aCount, b, bOffset, bCount, dim, stride, out);
+  }
+
+  /**
    * Returns the sum of squared differences of the two vectors.
    *
    * @throws IllegalArgumentException if the vectors' dimensions differ.
