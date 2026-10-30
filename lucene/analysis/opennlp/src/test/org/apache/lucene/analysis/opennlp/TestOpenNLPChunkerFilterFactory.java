@@ -126,4 +126,18 @@ public class TestOpenNLPChunkerFilterFactory extends BaseTokenStreamTestCase {
             .build();
     assertAnalyzesTo(analyzer, "", new String[0], null, null, null, null, null, true);
   }
+
+  /** blast some random strings through the analyzer */
+  public void testRandomStrings() throws Exception {
+    CustomAnalyzer analyzer =
+        CustomAnalyzer.builder(new ClasspathResourceLoader(getClass()))
+            .withTokenizer(
+                "opennlp", "tokenizerModel", tokenizerModelFile, "sentenceModel", sentenceModelFile)
+            .addTokenFilter("opennlpPOS", "posTaggerModel", posTaggerModelFile)
+            .addTokenFilter("opennlpChunker", "chunkerModel", chunkerModelFile)
+            .addTokenFilter(TypeAsPayloadTokenFilterFactory.class)
+            .build();
+    checkRandomData(random(), analyzer, 200 * RANDOM_MULTIPLIER);
+    analyzer.close();
+  }
 }
