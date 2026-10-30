@@ -66,7 +66,7 @@ public class ScaleFloatFunction extends ValueSource {
     float maxVal = Float.NEGATIVE_INFINITY;
 
     for (LeafReaderContext leaf : leaves) {
-      int maxDoc = leaf.reader().maxDoc();
+      int maxDoc = leaf.maxLeafDoc();
       FunctionValues vals = source.getValues(context, leaf);
       for (int i = 0; i < maxDoc; i++) {
         if (!vals.exists(i)) {

@@ -99,7 +99,7 @@ public class TestDefaultCodecParallelizesIO extends LuceneTestCase {
     StoredFields storedFields = leafReader.storedFields();
     int[] docs = new int[20];
     for (int i = 0; i < docs.length; ++i) {
-      docs[i] = random().nextInt(leafReader.maxDoc());
+      docs[i] = random().nextInt(leafReader.maxLeafDoc());
       storedFields.prefetch(docs[i]);
     }
     for (int doc : docs) {

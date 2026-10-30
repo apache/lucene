@@ -113,13 +113,13 @@ public final class SlowCodecReaderWrapper {
         }
 
         @Override
-        public int numDocs() {
-          return reader.numDocs();
+        public int numLeafDocs() {
+          return reader.numLeafDocs();
         }
 
         @Override
-        public int maxDoc() {
-          return reader.maxDoc();
+        public int maxLeafDoc() {
+          return reader.maxLeafDoc();
         }
 
         @Override

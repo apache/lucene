@@ -197,8 +197,8 @@ public class TestReaderUtil extends LuceneTestCase {
             int[] leafOrds = ordinalsByLeaf[leafIdx];
             assertEquals(leafDocs.length, leafOrds.length);
             LeafReaderContext leaf = leaves.get(leafIdx);
-            int docBase = leaf.docBase;
-            int maxDoc = leaf.reader().maxDoc();
+            int docBase = Math.toIntExact(leaf.docBase);
+            int maxDoc = leaf.maxLeafDoc();
 
             for (int i = 0; i < leafDocs.length; i++) {
               int docId = leafDocs[i];

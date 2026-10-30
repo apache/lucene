@@ -120,7 +120,7 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
         new CombinedFieldQuery.Builder("a").addField("f", 1f).addField("g", 1f).build();
     TopScoreDocCollectorManager collectorManager =
         new TopScoreDocCollectorManager(
-            Math.min(reader.numDocs(), Integer.MAX_VALUE), Integer.MAX_VALUE);
+            (int) Math.min(reader.numDocs(), Integer.MAX_VALUE), Integer.MAX_VALUE);
     TopDocs topDocs = searcher.search(query, collectorManager);
     assertEquals(new TotalHits(11, TotalHits.Relation.EQUAL_TO), topDocs.totalHits);
     // All docs must have the same score
@@ -661,7 +661,7 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
     Scorer scorer3 = weight.scorer(context);
     scorer3.iterator().nextDoc();
     scorer3.nextDocsAndScores(
-        DocIdSetIterator.NO_MORE_DOCS, new Bits.MatchNoBits(context.reader().maxDoc()), buffer);
+        DocIdSetIterator.NO_MORE_DOCS, new Bits.MatchNoBits(context.maxLeafDoc()), buffer);
     assertEquals(0, buffer.size);
 
     reader.close();

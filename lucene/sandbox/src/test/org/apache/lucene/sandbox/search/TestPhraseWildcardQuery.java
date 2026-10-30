@@ -471,9 +471,13 @@ public class TestPhraseWildcardQuery extends LuceneTestCase {
       }
     } else {
       Set<Integer> testResultDocIds =
-          Arrays.stream(testResults).map(scoreDoc -> scoreDoc.doc).collect(Collectors.toSet());
+          Arrays.stream(testResults)
+              .map(scoreDoc -> Math.toIntExact(scoreDoc.doc))
+              .collect(Collectors.toSet());
       Set<Integer> referenceResultDocIds =
-          Arrays.stream(referenceResults).map(scoreDoc -> scoreDoc.doc).collect(Collectors.toSet());
+          Arrays.stream(referenceResults)
+              .map(scoreDoc -> Math.toIntExact(scoreDoc.doc))
+              .collect(Collectors.toSet());
       assertEquals(
           "Results differ when comparing to "
               + referenceQuery.getClass().getSimpleName()

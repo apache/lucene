@@ -38,6 +38,15 @@ paging gets `Pruning.GREATER_THAN_OR_EQUAL_TO`, and has no top value set.
 Lucene 11 requires Java 25. Rebuild and run on JDK 25 or newer before upgrading
 library versions.
 
+### Custom merge policies must cap merges at IndexWriter.MAX_DOCS (GITHUB#16847)
+
+An index can now hold more than `Integer.MAX_VALUE` documents across its segments, so
+`forceMerge` may ask a merge policy to combine more documents than a single segment can hold.
+A segment still numbers its documents with an int, so a merge must not combine more than
+`IndexWriter.MAX_DOCS` documents. `TieredMergePolicy` and `LogMergePolicy` enforce this and may
+leave more than the requested number of segments; a custom `MergePolicy` that does not will fail
+the merge. `BaseMergePolicyTestCase` now asserts it.
+
 ### Security Manager support has been removed (GITHUB#14801)
 
 All Security Manager and `java.security` related code has been removed. That machinery is

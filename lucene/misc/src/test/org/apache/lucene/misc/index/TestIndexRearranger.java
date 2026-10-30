@@ -260,7 +260,7 @@ public class TestIndexRearranger extends LuceneTestCase {
   private static class LiveToLiveSelector implements IndexRearranger.DocumentSelector {
     @Override
     public BitSet getFilteredDocs(CodecReader reader) throws IOException {
-      FixedBitSet filteredSet = new FixedBitSet(reader.maxDoc());
+      FixedBitSet filteredSet = new FixedBitSet(reader.maxLeafDoc());
       NumericDocValues numericDocValues = reader.getNumericDocValues("ord");
       assert numericDocValues != null;
       for (int docid = 0; docid < reader.maxDoc(); docid++) {
@@ -276,7 +276,7 @@ public class TestIndexRearranger extends LuceneTestCase {
   private static class DeleteToLiveSelector implements IndexRearranger.DocumentSelector {
     @Override
     public BitSet getFilteredDocs(CodecReader reader) throws IOException {
-      FixedBitSet filteredSet = new FixedBitSet(reader.maxDoc());
+      FixedBitSet filteredSet = new FixedBitSet(reader.maxLeafDoc());
       NumericDocValues numericDocValues = reader.getNumericDocValues("ord");
       assert numericDocValues != null;
       for (int docid = 0; docid < reader.maxDoc(); docid++) {
@@ -292,7 +292,7 @@ public class TestIndexRearranger extends LuceneTestCase {
   private static class DeleteSelector implements IndexRearranger.DocumentSelector {
     @Override
     public BitSet getFilteredDocs(CodecReader reader) throws IOException {
-      FixedBitSet filteredSet = new FixedBitSet(reader.maxDoc());
+      FixedBitSet filteredSet = new FixedBitSet(reader.maxLeafDoc());
       NumericDocValues numericDocValues = reader.getNumericDocValues("ord");
       assert numericDocValues != null;
       for (int docid = 0; docid < reader.maxDoc(); docid++) {

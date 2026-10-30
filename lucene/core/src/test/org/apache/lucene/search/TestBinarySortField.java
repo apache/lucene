@@ -441,7 +441,7 @@ public class TestBinarySortField extends LuceneTestCase {
           BinaryDocValues db = ctx.reader().getBinaryDocValues("b");
           BytesRef prevA = null;
           BytesRef prevB = null;
-          for (int doc = 0; doc < ctx.reader().maxDoc(); doc++) {
+          for (int doc = 0; doc < ctx.maxLeafDoc(); doc++) {
             assertTrue(da.advanceExact(doc));
             assertTrue(db.advanceExact(doc));
             BytesRef a = BytesRef.deepCopyOf(da.binaryValue());
@@ -508,7 +508,7 @@ public class TestBinarySortField extends LuceneTestCase {
           BytesRef prevA = null;
           BytesRef prevB = null;
           long prevN = 0;
-          for (int doc = 0; doc < ctx.reader().maxDoc(); doc++) {
+          for (int doc = 0; doc < ctx.maxLeafDoc(); doc++) {
             assertTrue(da.advanceExact(doc));
             assertTrue(db.advanceExact(doc));
             assertTrue(dn.advanceExact(doc));
@@ -616,7 +616,7 @@ public class TestBinarySortField extends LuceneTestCase {
         TopFieldDocs td =
             searcher.search(
                 new MatchAllDocsQuery(),
-                reader.maxDoc(),
+                Math.toIntExact(reader.maxDoc()),
                 new Sort(new BinarySortField("dv", reverse, missingValue)));
         BytesRef previous = null;
         boolean previousMissing = false;
@@ -675,7 +675,7 @@ public class TestBinarySortField extends LuceneTestCase {
               new Sort(new FirstValueSortField("dv", reverse)), ctx.reader().getMetaData().sort());
           BinaryDocValues dv = ctx.reader().getBinaryDocValues("dv");
           BytesRef previous = null;
-          for (int doc = 0; doc < ctx.reader().maxDoc(); doc++) {
+          for (int doc = 0; doc < ctx.maxLeafDoc(); doc++) {
             assertTrue(dv.advanceExact(doc));
             BytesRef current = BytesRef.deepCopyOf(dv.binaryValue());
             if (previous != null) {
@@ -760,7 +760,7 @@ public class TestBinarySortField extends LuceneTestCase {
               new Sort(new MinValueSortField("dv", reverse)), ctx.reader().getMetaData().sort());
           BinaryDocValues dv = ctx.reader().getBinaryDocValues("dv");
           BytesRef previous = null;
-          for (int doc = 0; doc < ctx.reader().maxDoc(); doc++) {
+          for (int doc = 0; doc < ctx.maxLeafDoc(); doc++) {
             assertTrue(dv.advanceExact(doc));
             BytesRef key = BytesRef.deepCopyOf(MinValueSortField.min(dv.binaryValue()));
             if (previous != null) {
@@ -809,11 +809,11 @@ public class TestBinarySortField extends LuceneTestCase {
         // flush path: random pairs within a leaf must follow the comparator
         for (LeafReaderContext ctx : reader.leaves()) {
           LeafReader leaf = ctx.reader();
-          IndexSorter.DocComparator dc = sorter.getDocComparator(leaf, leaf.maxDoc());
+          IndexSorter.DocComparator dc = sorter.getDocComparator(leaf, leaf.maxLeafDoc());
           List<BytesRef> docValues = readAll(leaf, "dv");
           for (int iter = 0; iter < 200; iter++) {
-            int a = random().nextInt(leaf.maxDoc());
-            int b = random().nextInt(leaf.maxDoc());
+            int a = random().nextInt(leaf.maxLeafDoc());
+            int b = random().nextInt(leaf.maxLeafDoc());
             assertEquals(
                 Integer.signum(cmp.compare(docValues.get(a), docValues.get(b))),
                 Integer.signum(dc.compare(a, b)));
@@ -833,9 +833,9 @@ public class TestBinarySortField extends LuceneTestCase {
             values.add(readAll(leaf, "dv"));
           }
           int n = leaves.size();
-          int maxCommon = leaves.get(0).maxDoc();
+          int maxCommon = leaves.get(0).maxLeafDoc();
           for (LeafReader leaf : leaves) {
-            maxCommon = Math.min(maxCommon, leaf.maxDoc());
+            maxCommon = Math.min(maxCommon, leaf.maxLeafDoc());
           }
           for (int doc = 0; doc < maxCommon; doc++) {
             for (int r = 0; r < n; r++) {
@@ -938,7 +938,7 @@ public class TestBinarySortField extends LuceneTestCase {
       BytesRef previous = null;
       boolean previousMissing = false;
       boolean first = true;
-      for (int doc = 0; doc < ctx.reader().maxDoc(); doc++) {
+      for (int doc = 0; doc < ctx.maxLeafDoc(); doc++) {
         boolean hasValue = dv != null && dv.advanceExact(doc);
         BytesRef current = hasValue ? BytesRef.deepCopyOf(dv.binaryValue()) : null;
         if (first == false) {

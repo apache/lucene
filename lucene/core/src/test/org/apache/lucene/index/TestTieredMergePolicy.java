@@ -125,7 +125,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     // are either not balanced or because they exceed the max merged segment doc count.
     // We only check pairwise merges instead of every possible merge to keep things simple. If none
     // of the pairwise merges are legal, chances are high that no merge is legal.
-    int maxDocsPerSegment = tmp.getMaxAllowedDocs(infos.totalMaxDoc(), totalDelCount);
+    long maxDocsPerSegment = tmp.getMaxAllowedDocs(infos.totalMaxDoc(), totalDelCount);
     boolean hasLegalMerges = false;
     for (int i = 0; i < segmentSizes.size() - 1; ++i) {
       DocCountAndSizeInBytes size1 = segmentSizes.get(i);
@@ -424,7 +424,8 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     // should be tested
     // when we deal with that JIRA.
 
-    deletedThisPass = deletePctDocsFromEachSeg(w, (w.getDocStats().numDocs * 60) / 100, true);
+    deletedThisPass =
+        deletePctDocsFromEachSeg(w, (int) ((w.getDocStats().numDocs * 60) / 100), true);
     remainingDocs -= deletedThisPass;
 
     for (int i = 0; i < 50; i++) {
@@ -714,7 +715,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     // we expect
     List<Term> ret = new ArrayList<>(100);
 
-    double numDocs = ctx.reader().numDocs();
+    double numDocs = ctx.numLeafDocs();
     double tmp = (numDocs * (double) pct) / 100.0;
 
     if (tmp <= 1.0) { // Calculations break down for segments with very few documents, the "tail end
@@ -817,7 +818,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
 
     // Make sure TMP always merged equal-number-of-docs segments:
     for (LeafReaderContext ctx : r.leaves()) {
-      int numDocs = ctx.reader().numDocs();
+      int numDocs = ctx.numLeafDocs();
       assertTrue("got numDocs=" + numDocs, numDocs == 100 || numDocs == 800 || numDocs == 6400);
     }
     r.close();

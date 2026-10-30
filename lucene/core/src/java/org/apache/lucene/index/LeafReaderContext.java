@@ -24,8 +24,13 @@ public final class LeafReaderContext extends IndexReaderContext {
   /** The reader's ord in the top-level's leaves array */
   public final int ord;
 
-  /** The reader's absolute doc base */
-  public final int docBase;
+  /**
+   * The reader's absolute doc base: the global doc id of this leaf's first document within the
+   * top-level composite reader. This is a {@code long} because a composite/directory reader may
+   * span more than {@link Integer#MAX_VALUE} documents across its segments, even though each
+   * segment (leaf) is itself limited to {@link Integer#MAX_VALUE} documents.
+   */
+  public final long docBase;
 
   private final LeafReader reader;
   private final List<LeafReaderContext> leaves;
@@ -35,9 +40,9 @@ public final class LeafReaderContext extends IndexReaderContext {
       CompositeReaderContext parent,
       LeafReader reader,
       int ord,
-      int docBase,
+      long docBase,
       int leafOrd,
-      int leafDocBase) {
+      long leafDocBase) {
     super(parent, ord, docBase);
     this.ord = leafOrd;
     this.docBase = leafDocBase;
@@ -66,6 +71,35 @@ public final class LeafReaderContext extends IndexReaderContext {
   @Override
   public LeafReader reader() {
     return reader;
+  }
+
+  /** Returns the number of documents in this leaf, as an {@code int}. */
+  public int numLeafDocs() {
+    return reader.numLeafDocs();
+  }
+
+  /** Returns one greater than the largest document number in this leaf, as an {@code int}. */
+  public int maxLeafDoc() {
+    return reader.maxLeafDoc();
+  }
+
+  /**
+   * Converts a global doc id — from the top-level composite reader, whose space is {@code long} —
+   * to a leaf-local doc id in this segment, which always fits an {@code int}. Prefer this to a raw
+   * {@code (int) (globalDocId - docBase)} cast: the narrowing happens in one place, and the doc is
+   * asserted to actually belong to this leaf. The doc must be in {@code [docBase, docBase +
+   * maxDoc)}.
+   */
+  public int toLeafDocId(long globalDocId) {
+    assert globalDocId >= docBase && globalDocId < docBase + reader.maxDoc()
+        : "global doc "
+            + globalDocId
+            + " outside leaf ["
+            + docBase
+            + ", "
+            + (docBase + reader.maxDoc())
+            + ")";
+    return (int) (globalDocId - docBase);
   }
 
   @Override

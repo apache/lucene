@@ -70,11 +70,11 @@ public class TestDocsAndPositions extends LuceneTestCase {
       for (LeafReaderContext leafReaderContext : topReaderContext.leaves()) {
         PostingsEnum docsAndPosEnum = getDocsAndPositions(leafReaderContext.reader(), bytes);
         assertNotNull(docsAndPosEnum);
-        if (leafReaderContext.reader().maxDoc() == 0) {
+        if (leafReaderContext.maxLeafDoc() == 0) {
           continue;
         }
         final int advance =
-            docsAndPosEnum.advance(random().nextInt(leafReaderContext.reader().maxDoc()));
+            docsAndPosEnum.advance(random().nextInt(leafReaderContext.maxLeafDoc()));
         do {
           String msg =
               "Advanced to: "
@@ -157,7 +157,7 @@ public class TestDocsAndPositions extends LuceneTestCase {
         PostingsEnum docsAndPosEnum = getDocsAndPositions(leafReaderContext.reader(), bytes);
         assertNotNull(docsAndPosEnum);
         int initDoc = 0;
-        int maxDoc = leafReaderContext.reader().maxDoc();
+        int maxDoc = leafReaderContext.maxLeafDoc();
         // initially advance or do next doc
         if (random().nextBoolean()) {
           initDoc = docsAndPosEnum.nextDoc();
@@ -170,7 +170,7 @@ public class TestDocsAndPositions extends LuceneTestCase {
           if (docID == DocIdSetIterator.NO_MORE_DOCS) {
             break;
           }
-          Integer[] pos = positionsInDoc[leafReaderContext.docBase + docID];
+          Integer[] pos = positionsInDoc[Math.toIntExact(leafReaderContext.docBase + docID)];
           assertEquals(pos.length, docsAndPosEnum.freq());
           // number of positions read should be random - don't read all of them
           // always
@@ -242,23 +242,31 @@ public class TestDocsAndPositions extends LuceneTestCase {
       BytesRef bytes = newBytesRef("" + term);
       IndexReaderContext topReaderContext = reader.getContext();
       for (LeafReaderContext context : topReaderContext.leaves()) {
-        int maxDoc = context.reader().maxDoc();
+        int maxDoc = context.maxLeafDoc();
         PostingsEnum postingsEnum =
             TestUtil.docs(random(), context.reader(), fieldName, bytes, null, PostingsEnum.FREQS);
-        if (findNext(freqInDoc, context.docBase, context.docBase + maxDoc) == Integer.MAX_VALUE) {
+        if (findNext(
+                freqInDoc,
+                Math.toIntExact(context.docBase),
+                Math.toIntExact(context.docBase + maxDoc))
+            == Integer.MAX_VALUE) {
           assertNull(postingsEnum);
           continue;
         }
         assertNotNull(postingsEnum);
         postingsEnum.nextDoc();
         for (int j = 0; j < maxDoc; j++) {
-          if (freqInDoc[context.docBase + j] != 0) {
+          if (freqInDoc[Math.toIntExact(context.docBase + j)] != 0) {
             assertEquals(j, postingsEnum.docID());
-            assertEquals(postingsEnum.freq(), freqInDoc[context.docBase + j]);
+            assertEquals(postingsEnum.freq(), freqInDoc[Math.toIntExact(context.docBase + j)]);
             if (i % 2 == 0 && random().nextInt(10) == 0) {
               int next =
-                  findNext(freqInDoc, context.docBase + j + 1, context.docBase + maxDoc)
-                      - context.docBase;
+                  Math.toIntExact(
+                      findNext(
+                              freqInDoc,
+                              Math.toIntExact(context.docBase + j + 1),
+                              Math.toIntExact(context.docBase + maxDoc))
+                          - context.docBase);
               int advancedTo = postingsEnum.advance(next);
               if (next >= maxDoc) {
                 assertEquals(DocIdSetIterator.NO_MORE_DOCS, advancedTo);
@@ -330,7 +338,7 @@ public class TestDocsAndPositions extends LuceneTestCase {
         assertNotNull(docsAndPosEnum);
 
         int initDoc = 0;
-        int maxDoc = leafReaderContext.reader().maxDoc();
+        int maxDoc = leafReaderContext.maxLeafDoc();
         // initially advance or do next doc
         if (random().nextBoolean()) {
           initDoc = docsAndPosEnum.nextDoc();

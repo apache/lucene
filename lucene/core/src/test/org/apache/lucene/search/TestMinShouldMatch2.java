@@ -355,7 +355,7 @@ public class TestMinShouldMatch2 extends LuceneTestCase {
     SlowMinShouldMatchScorer(BooleanWeight weight, LeafReader reader, IndexSearcher searcher)
         throws IOException {
       this.dv = reader.getSortedSetDocValues("dv");
-      this.maxDoc = reader.maxDoc();
+      this.maxDoc = reader.maxLeafDoc();
       BooleanQuery bq = (BooleanQuery) weight.getQuery();
       this.minNrShouldMatch = bq.getMinimumNumberShouldMatch();
       this.sims = new SimScorer[(int) dv.getValueCount()];

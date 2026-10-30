@@ -46,7 +46,7 @@ public class DocNameExtractor {
    * @return the name of the input doc as extracted from the index.
    * @throws IOException if cannot extract the doc name from the index.
    */
-  public String docName(StoredFields storedFields, int docid) throws IOException {
+  public String docName(StoredFields storedFields, long docid) throws IOException {
     final List<String> name = new ArrayList<>();
     storedFields.document(
         docid,

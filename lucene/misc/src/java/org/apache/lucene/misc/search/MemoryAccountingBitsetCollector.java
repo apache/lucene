@@ -48,8 +48,10 @@ public class MemoryAccountingBitsetCollector extends SimpleCollector {
 
   @Override
   protected void doSetNextReader(LeafReaderContext context) throws IOException {
-    docBase = context.docBase;
-    int docEnd = docBase + context.reader().maxDoc();
+    // This collector indexes a FixedBitSet by global doc id and therefore does not support
+    // composite readers with more than Integer.MAX_VALUE docs.
+    docBase = Math.toIntExact(context.docBase);
+    int docEnd = docBase + context.maxLeafDoc();
     minDocBase = Math.min(minDocBase, docBase);
     maxDocEnd = Math.max(maxDocEnd, docEnd);
     length = maxDocEnd - minDocBase;

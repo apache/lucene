@@ -113,7 +113,7 @@ public class TestMultiPassIndexSplitter extends LuceneTestCase {
     assertTrue(ir.numDocs() - NUM_DOCS / 3 <= 1);
     Document doc = ir.storedFields().document(0);
     assertEquals("0", doc.get("id"));
-    int start = ir.numDocs();
+    int start = Math.toIntExact(ir.numDocs());
     ir.close();
     ir = DirectoryReader.open(dirs[1]);
     assertTrue(ir.numDocs() - NUM_DOCS / 3 <= 1);

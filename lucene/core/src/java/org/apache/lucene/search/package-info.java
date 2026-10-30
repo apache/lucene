@@ -227,7 +227,7 @@
  * <p>Scoring is very much dependent on the way documents are indexed, so it is important to
  * understand indexing. (see <a href="{@docRoot}/overview-summary.html#overview_description">Lucene
  * overview</a> before continuing on with this section) Be sure to use the useful {@link
- * org.apache.lucene.search.IndexSearcher#explain(org.apache.lucene.search.Query, int)
+ * org.apache.lucene.search.IndexSearcher#explain(org.apache.lucene.search.Query, long)
  * IndexSearcher.explain(Query, doc)} to understand how the score for a certain matching document
  * was computed.
  *

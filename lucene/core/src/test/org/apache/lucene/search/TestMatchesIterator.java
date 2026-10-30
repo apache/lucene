@@ -337,7 +337,7 @@ public class TestMatchesIterator extends MatchesTestBase {
 
     LeafReaderContext ctx =
         searcher.leafContexts.get(ReaderUtil.subIndex(1, searcher.leafContexts));
-    Matches m = w.matches(ctx, 1 - ctx.docBase);
+    Matches m = w.matches(ctx, ctx.toLeafDocId(1));
     assertNotNull(m);
     checkFieldMatches(m.getMatches("id"), new int[] {-1, 0, 0, -1, -1});
     checkFieldMatches(m.getMatches(FIELD_WITH_OFFSETS), new int[] {-1, 1, 1, 3, 5, 3, 3, 9, 11});
@@ -506,7 +506,7 @@ public class TestMatchesIterator extends MatchesTestBase {
     int[] expectedSeeks = new int[] {1, 1, 1, 1, 6, 6};
     int i = 0;
     for (LeafReaderContext ctx : reader.leaves()) {
-      for (int doc = 0; doc < ctx.reader().maxDoc(); doc++) {
+      for (int doc = 0; doc < ctx.maxLeafDoc(); doc++) {
         reader.seeks = 0;
         w.matches(ctx, doc);
         assertEquals("Unexpected seek count on doc " + doc, expectedSeeks[i], reader.seeks);

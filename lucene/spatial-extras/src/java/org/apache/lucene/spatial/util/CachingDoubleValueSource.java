@@ -47,7 +47,8 @@ public class CachingDoubleValueSource extends DoubleValuesSource {
   @Override
   public DoubleValues getValues(LeafReaderContext readerContext, DoubleValues scores)
       throws IOException {
-    final int base = readerContext.docBase;
+    // cache keys are int (base + doc), so only the first 2^31 docs are cached
+    final int base = Math.toIntExact(readerContext.docBase);
     final DoubleValues vals = source.getValues(readerContext, scores);
     return new DoubleValues() {
 

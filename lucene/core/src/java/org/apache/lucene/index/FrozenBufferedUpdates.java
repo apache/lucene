@@ -291,7 +291,7 @@ final class FrozenBufferedUpdates {
                         delGen,
                         updateField,
                         dvType,
-                        segState.reader.maxDoc(),
+                        segState.reader.maxLeafDoc(),
                         value.getNumericValue(0));
               } else {
                 dvUpdates =
@@ -301,11 +301,12 @@ final class FrozenBufferedUpdates {
                         dvType,
                         value.getMinNumeric(),
                         value.getMaxNumeric(),
-                        segState.reader.maxDoc());
+                        segState.reader.maxLeafDoc());
               }
             } else {
               dvUpdates =
-                  new BinaryDocValuesFieldUpdates(delGen, updateField, segState.reader.maxDoc());
+                  new BinaryDocValuesFieldUpdates(
+                      delGen, updateField, segState.reader.maxLeafDoc());
             }
             resolvedUpdates.add(dvUpdates);
           }

@@ -814,7 +814,7 @@ public class TestGrouping extends LuceneTestCase {
 
       docStarts = new int[subSearchers.length];
       for (int subIDX = 0; subIDX < docStarts.length; subIDX++) {
-        docStarts[subIDX] = leaves.get(subIDX).docBase;
+        docStarts[subIDX] = Math.toIntExact(leaves.get(subIDX).docBase);
         // System.out.println("docStarts[" + subIDX + "]=" + docStarts[subIDX]);
       }
     }
@@ -954,7 +954,7 @@ public class TestGrouping extends LuceneTestCase {
       w.close();
 
       NumericDocValues values = MultiDocValues.getNumericValues(r, "id");
-      int[] docIDToID = new int[r.maxDoc()];
+      int[] docIDToID = new int[Math.toIntExact(r.maxDoc())];
       for (int i = 0; i < r.maxDoc(); i++) {
         assertEquals(i, values.nextDoc());
         docIDToID[i] = (int) values.longValue();
@@ -977,7 +977,7 @@ public class TestGrouping extends LuceneTestCase {
         final ScoreDoc[] hits =
             s.search(new TermQuery(new Term("content", "real" + contentID)), numDocs).scoreDocs;
         for (ScoreDoc hit : hits) {
-          int idValue = docIDToID[hit.doc];
+          int idValue = docIDToID[Math.toIntExact(hit.doc)];
 
           final GroupDoc gd = groupDocs[idValue];
           seenIDs.add(idValue);
@@ -1019,7 +1019,7 @@ public class TestGrouping extends LuceneTestCase {
 
       values = MultiDocValues.getNumericValues(rBlocks, "id");
       assertNotNull(values);
-      int[] docIDToIDBlocks = new int[rBlocks.maxDoc()];
+      int[] docIDToIDBlocks = new int[Math.toIntExact(rBlocks.maxDoc())];
       for (int i = 0; i < rBlocks.maxDoc(); i++) {
         assertEquals(i, values.nextDoc());
         docIDToIDBlocks[i] = (int) values.longValue();
@@ -1039,10 +1039,10 @@ public class TestGrouping extends LuceneTestCase {
             sBlocks.search(new TermQuery(new Term("content", "real" + contentID)), numDocs)
                 .scoreDocs;
         for (ScoreDoc hit : hits) {
-          final GroupDoc gd = groupDocsByID[docIDToIDBlocks[hit.doc]];
+          final GroupDoc gd = groupDocsByID[docIDToIDBlocks[Math.toIntExact(hit.doc)]];
           assertTrue(gd.score2 == 0.0);
           gd.score2 = hit.score;
-          assertEquals(gd.id, docIDToIDBlocks[hit.doc]);
+          assertEquals(gd.id, docIDToIDBlocks[Math.toIntExact(hit.doc)]);
           // System.out.println("    score=" + gd.score + " score2=" + hit.score + " id=" +
           // docIDToIDBlocks[hit.doc]);
           termScoreMap.put(gd.score, gd.score2);
@@ -1263,7 +1263,8 @@ public class TestGrouping extends LuceneTestCase {
                     + " totalHits="
                     + gd.totalHits().value());
             for (ScoreDoc sd : gd.scoreDocs()) {
-              System.out.println("    id=" + docIDToID[sd.doc] + " score=" + sd.score);
+              System.out.println(
+                  "    id=" + docIDToID[Math.toIntExact(sd.doc)] + " score=" + sd.score);
             }
           }
 
@@ -1284,7 +1285,8 @@ public class TestGrouping extends LuceneTestCase {
                     + " totalHits="
                     + gd.totalHits().value());
             for (ScoreDoc sd : gd.scoreDocs()) {
-              System.out.println("    id=" + docIDToID[sd.doc] + " score=" + sd.score);
+              System.out.println(
+                  "    id=" + docIDToID[Math.toIntExact(sd.doc)] + " score=" + sd.score);
             }
           }
         }
@@ -1342,7 +1344,8 @@ public class TestGrouping extends LuceneTestCase {
                     + " totalHits="
                     + gd.totalHits().value());
             for (ScoreDoc sd : gd.scoreDocs()) {
-              System.out.println("    id=" + docIDToIDBlocks[sd.doc] + " score=" + sd.score);
+              System.out.println(
+                  "    id=" + docIDToIDBlocks[Math.toIntExact(sd.doc)] + " score=" + sd.score);
               if (first) {
                 System.out.println("explain: " + sBlocks.explain(query, sd.doc));
                 first = false;
@@ -1369,7 +1372,7 @@ public class TestGrouping extends LuceneTestCase {
         // Fixup scores for reader2
         for (GroupDocs<?> groupDocsHits : expectedGroups.groups) {
           for (ScoreDoc hit : groupDocsHits.scoreDocs()) {
-            final GroupDoc gd = groupDocsByID[hit.doc];
+            final GroupDoc gd = groupDocsByID[Math.toIntExact(hit.doc)];
             assertEquals(gd.id, hit.doc);
             // System.out.println("fixup score " + hit.score + " to " + gd.score2 + " vs " +
             // gd.score);
@@ -1426,7 +1429,7 @@ public class TestGrouping extends LuceneTestCase {
         final ScoreDoc sd = group.scoreDocs()[hitIDX];
         assertEquals(
             "doc=" + sd.doc + " wrong shard",
-            ReaderUtil.subIndex(sd.doc, docStarts),
+            ReaderUtil.subIndex(Math.toIntExact(sd.doc), docStarts),
             sd.shardIndex);
       }
     }
@@ -1642,7 +1645,7 @@ public class TestGrouping extends LuceneTestCase {
         final FieldDoc actualFD = (FieldDoc) actualFDs[docIDX];
         // System.out.println("  actual doc=" + docIDtoID[actualFD.doc] + " score=" +
         // actualFD.score);
-        assertEquals(expectedFD.doc, docIDtoID[actualFD.doc]);
+        assertEquals(expectedFD.doc, docIDtoID[Math.toIntExact(actualFD.doc)]);
         assertArrayEquals(expectedFD.fields, actualFD.fields);
       }
     }

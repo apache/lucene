@@ -44,6 +44,15 @@ public abstract class TermVectors {
   public void prefetch(int docID) throws IOException {}
 
   /**
+   * Like {@link #prefetch(int)} but for a global doc id in a composite/directory reader, whose
+   * doc-id space may exceed {@link Integer#MAX_VALUE}. The default narrows to {@code int} (correct
+   * for a leaf reader); composite readers override it to dispatch by the global id.
+   */
+  public void prefetch(long docID) throws IOException {
+    prefetch(Math.toIntExact(docID));
+  }
+
+  /**
    * Returns term vectors for this document, or null if term vectors were not indexed.
    *
    * <p>The returned Fields instance acts like a single-document inverted index (the docID will be
@@ -60,6 +69,24 @@ public abstract class TermVectors {
    * PostingsEnum}.
    */
   public final Terms get(int doc, String field) throws IOException {
+    Fields vectors = get(doc);
+    if (vectors == null) {
+      return null;
+    }
+    return vectors.terms(field);
+  }
+
+  /**
+   * Like {@link #get(int)} but for a global doc id in a composite/directory reader. The default
+   * narrows to {@code int} (correct for a leaf reader); composite readers override it to dispatch
+   * by the global id.
+   */
+  public Fields get(long doc) throws IOException {
+    return get(Math.toIntExact(doc));
+  }
+
+  /** Like {@link #get(int, String)} but for a global doc id. */
+  public final Terms get(long doc, String field) throws IOException {
     Fields vectors = get(doc);
     if (vectors == null) {
       return null;

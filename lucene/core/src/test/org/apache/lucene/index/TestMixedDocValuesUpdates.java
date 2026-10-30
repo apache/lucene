@@ -146,7 +146,7 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
             assertNull(ndv);
             assertNotNull(bdv);
           }
-          int maxDoc = r.maxDoc();
+          int maxDoc = r.maxLeafDoc();
           for (int doc = 0; doc < maxDoc; doc++) {
             if (liveDocs == null || liveDocs.get(doc)) {
               //              System.out.println("doc=" + (doc + context.docBase) + " f='" + f + "'
@@ -480,9 +480,13 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
         assertNull(numericIdValues);
         assertNull(binaryIdValues);
         numericIdValues = c.reader().getNumericDocValues("numericId");
-        assertEquals(topDocs.scoreDocs[0].doc, numericIdValues.advance(topDocs.scoreDocs[0].doc));
+        assertEquals(
+            topDocs.scoreDocs[0].doc,
+            numericIdValues.advance(Math.toIntExact(topDocs.scoreDocs[0].doc)));
         binaryIdValues = c.reader().getBinaryDocValues("binaryId");
-        assertEquals(topDocs.scoreDocs[0].doc, binaryIdValues.advance(topDocs.scoreDocs[0].doc));
+        assertEquals(
+            topDocs.scoreDocs[0].doc,
+            binaryIdValues.advance(Math.toIntExact(topDocs.scoreDocs[0].doc)));
       } else {
         assertEquals(0, topDocs.totalHits.value());
       }
@@ -565,7 +569,7 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
           TopDocs topDocs =
               new IndexSearcher(reader).search(new TermQuery(new Term("id", "" + i)), 10);
           assertEquals(topDocs.totalHits.value(), 1);
-          int docID = topDocs.scoreDocs[0].doc;
+          int docID = Math.toIntExact(topDocs.scoreDocs[0].doc);
           List<LeafReaderContext> leaves = reader.leaves();
           int subIndex = ReaderUtil.subIndex(docID, leaves);
           LeafReader leafReader = leaves.get(subIndex).reader();
@@ -592,7 +596,7 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
       try (DirectoryReader reader = DirectoryReader.open(writer)) {
         TopDocs topDocs = new IndexSearcher(reader).search(new TermQuery(doc), 10);
         assertEquals(1, topDocs.totalHits.value());
-        int theDoc = topDocs.scoreDocs[0].doc;
+        int theDoc = Math.toIntExact(topDocs.scoreDocs[0].doc);
         seqId = writer.tryUpdateDocValue(reader, theDoc, fields);
       }
     } while (seqId == -1);
@@ -685,7 +689,7 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
         LeafReaderContext leafReaderContext = reader.leaves().get(i);
         NumericDocValues seqID = leafReaderContext.reader().getNumericDocValues("seqID");
         assertNotNull(seqID);
-        assertTrue(seqID.advanceExact(doc.doc - leafReaderContext.docBase));
+        assertTrue(seqID.advanceExact(leafReaderContext.toLeafDocId(doc.doc)));
         assertEquals(seqId[id], seqID.longValue());
       }
     }

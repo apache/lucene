@@ -25,27 +25,29 @@ import org.apache.lucene.search.LeafFieldComparator;
 import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.Scorable;
 
-/** Comparator that sorts by asc _doc */
-public class DocComparator extends FieldComparator<Integer> {
-  private final int[] docIDs;
+/**
+ * Comparator that sorts by asc _doc. The sort value is a global doc id, which may exceed {@link
+ * Integer#MAX_VALUE} in a composite/directory reader, hence {@code FieldComparator<Long>}.
+ */
+public class DocComparator extends FieldComparator<Long> {
+  private final long[] docIDs;
   private final boolean enableSkipping; // if skipping functionality should be enabled
-  private int bottom;
-  private int topValue;
+  private long bottom;
+  private long topValue;
   private boolean topValueSet;
   private boolean bottomValueSet;
   private boolean hitsThresholdReached;
 
   /** Creates a new comparator based on document ids for {@code numHits} */
   public DocComparator(int numHits, boolean reverse, Pruning pruning) {
-    this.docIDs = new int[numHits];
+    this.docIDs = new long[numHits];
     // skipping functionality is enabled if we are sorting by _doc in asc order as a primary sort
     this.enableSkipping = (reverse == false && pruning != Pruning.NONE);
   }
 
   @Override
   public int compare(int slot1, int slot2) {
-    // No overflow risk because docIDs are non-negative
-    return docIDs[slot1] - docIDs[slot2];
+    return Long.compare(docIDs[slot1], docIDs[slot2]);
   }
 
   @Override
@@ -57,14 +59,14 @@ public class DocComparator extends FieldComparator<Integer> {
   }
 
   @Override
-  public void setTopValue(Integer value) {
+  public void setTopValue(Long value) {
     topValue = value;
     topValueSet = true;
   }
 
   @Override
-  public Integer value(int slot) {
-    return Integer.valueOf(docIDs[slot]);
+  public Long value(int slot) {
+    return Long.valueOf(docIDs[slot]);
   }
 
   /**
@@ -74,8 +76,8 @@ public class DocComparator extends FieldComparator<Integer> {
    * iterator that can quickly skip to the desired "top" document.
    */
   private class DocLeafComparator implements LeafFieldComparator {
-    private final int docBase;
-    private final int minDoc;
+    private final long docBase;
+    private final long minDoc;
     private final int maxDoc;
     private final UpdateableDocIdSetIterator
         competitiveIterator; // iterator that starts from topValue
@@ -88,7 +90,7 @@ public class DocComparator extends FieldComparator<Integer> {
         // in a distributed search where there are docs from different indices
         // with the same docID.
         this.minDoc = topValue;
-        this.maxDoc = context.reader().maxDoc();
+        this.maxDoc = context.maxLeafDoc();
         this.competitiveIterator = new UpdateableDocIdSetIterator();
         this.competitiveIterator.update(DocIdSetIterator.all(maxDoc));
       } else {
@@ -107,14 +109,13 @@ public class DocComparator extends FieldComparator<Integer> {
 
     @Override
     public int compareBottom(int doc) {
-      // No overflow risk because docIDs are non-negative
-      return bottom - (docBase + doc);
+      return Long.compare(bottom, docBase + doc);
     }
 
     @Override
     public int compareTop(int doc) {
-      int docValue = docBase + doc;
-      return Integer.compare(topValue, docValue);
+      long docValue = docBase + doc;
+      return Long.compare(topValue, docValue);
     }
 
     @Override
@@ -152,9 +153,12 @@ public class DocComparator extends FieldComparator<Integer> {
         if (docBase + maxDoc <= minDoc) {
           competitiveIterator.update(DocIdSetIterator.empty()); // skip this segment
         } else {
-          int segmentMinDoc = Math.max(competitiveIterator.docID(), minDoc - docBase);
+          // The after-doc may precede this leaf, so minDoc - docBase can be negative; clamp it in
+          // long before narrowing. The segment was not skipped above, so the result is in
+          // [0, maxDoc) and fits an int.
+          long leafLocalMin = Math.max(0L, minDoc - docBase);
           // The competitive iterator may not be positioned yet.
-          segmentMinDoc = Math.max(0, segmentMinDoc);
+          int segmentMinDoc = Math.max(competitiveIterator.docID(), (int) leafLocalMin);
           competitiveIterator.update(DocIdSetIterator.range(segmentMinDoc, maxDoc));
         }
       }

@@ -264,7 +264,7 @@ public class MockRandomMergePolicy extends MergePolicy {
   }
 
   static Sorter.DocMap reverse(CodecReader reader) throws IOException {
-    final int maxDoc = reader.maxDoc();
+    final int maxDoc = reader.maxLeafDoc();
     final BitSet parents;
     if (reader.getFieldInfos().getParentField() == null) {
       parents = null;

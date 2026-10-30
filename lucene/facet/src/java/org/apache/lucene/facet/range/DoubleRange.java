@@ -174,7 +174,7 @@ public final class DoubleRange extends Range {
       return new ConstantScoreWeight(this, boost) {
         @Override
         public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-          final int maxDoc = context.reader().maxDoc();
+          final int maxDoc = context.maxLeafDoc();
 
           final DocIdSetIterator approximation;
           if (fastMatchWeight == null) {
@@ -273,7 +273,7 @@ public final class DoubleRange extends Range {
       return new ConstantScoreWeight(this, boost) {
         @Override
         public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-          final int maxDoc = context.reader().maxDoc();
+          final int maxDoc = context.maxLeafDoc();
 
           final DocIdSetIterator approximation;
           if (fastMatchWeight == null) {

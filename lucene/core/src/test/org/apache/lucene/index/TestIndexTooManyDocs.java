@@ -116,7 +116,7 @@ public class TestIndexTooManyDocs extends LuceneTestCase {
       writer.close();
       dir.close();
     } finally {
-      IndexWriter.setMaxDocs(IndexWriter.MAX_DOCS);
+      IndexWriter.setMaxDocs(IndexWriter.MAX_TOTAL_DOCS);
     }
   }
 }

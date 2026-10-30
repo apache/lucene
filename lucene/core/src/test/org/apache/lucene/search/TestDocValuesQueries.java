@@ -443,7 +443,7 @@ public class TestDocValuesQueries extends LuceneTestCaseJupiter {
 
   private void assertSameMatches(IndexSearcher searcher, Query q1, Query q2, boolean scores)
       throws IOException {
-    final int maxDoc = searcher.getIndexReader().maxDoc();
+    final int maxDoc = Math.toIntExact(searcher.getIndexReader().maxDoc());
     final TopDocs td1 = searcher.search(q1, maxDoc, scores ? Sort.RELEVANCE : Sort.INDEXORDER);
     final TopDocs td2 = searcher.search(q2, maxDoc, scores ? Sort.RELEVANCE : Sort.INDEXORDER);
     assertEquals(td1.totalHits.value(), td2.totalHits.value());
@@ -590,12 +590,12 @@ public class TestDocValuesQueries extends LuceneTestCaseJupiter {
 
     Query query = SortedNumericDocValuesField.newSlowRangeQuery("dv", lo, hi);
     // TODO: assert expected matches
-    searcher.search(query, searcher.reader.maxDoc(), Sort.INDEXORDER);
+    searcher.search(query, Math.toIntExact(searcher.reader.maxDoc()), Sort.INDEXORDER);
 
     // swap order, should still work
     query = SortedNumericDocValuesField.newSlowRangeQuery("dv", hi, lo);
     // TODO: assert expected matches
-    searcher.search(query, searcher.reader.maxDoc(), Sort.INDEXORDER);
+    searcher.search(query, Math.toIntExact(searcher.reader.maxDoc()), Sort.INDEXORDER);
 
     reader.close();
     dir.close();

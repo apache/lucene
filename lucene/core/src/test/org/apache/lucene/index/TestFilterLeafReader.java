@@ -100,7 +100,7 @@ public class TestFilterLeafReader extends LuceneTestCase {
       if (ndv == null) {
         return null;
       }
-      FixedBitSet docsWithTerms = new FixedBitSet(maxDoc());
+      FixedBitSet docsWithTerms = new FixedBitSet(maxLeafDoc());
       TermsEnum termsEnum = terms(field).iterator();
       PostingsEnum postings = null;
       while (termsEnum.next() != null) {

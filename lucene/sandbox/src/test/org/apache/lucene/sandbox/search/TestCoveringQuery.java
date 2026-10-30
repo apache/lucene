@@ -243,7 +243,7 @@ public class TestCoveringQuery extends LuceneTestCase {
 
   private void assertSameMatches(IndexSearcher searcher, Query q1, Query q2, boolean scores)
       throws IOException {
-    final int maxDoc = searcher.getIndexReader().maxDoc();
+    final int maxDoc = Math.toIntExact(searcher.getIndexReader().maxDoc());
     final TopDocs td1 = searcher.search(q1, maxDoc, scores ? Sort.RELEVANCE : Sort.INDEXORDER);
     final TopDocs td2 = searcher.search(q2, maxDoc, scores ? Sort.RELEVANCE : Sort.INDEXORDER);
     assertEquals(td1.totalHits.value(), td2.totalHits.value());

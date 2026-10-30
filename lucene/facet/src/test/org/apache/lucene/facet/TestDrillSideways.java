@@ -1308,8 +1308,7 @@ public class TestDrillSideways extends FacetTestCase {
                   @Override
                   public ScorerSupplier scorerSupplier(LeafReaderContext context)
                       throws IOException {
-                    DocIdSetIterator approximation =
-                        DocIdSetIterator.all(context.reader().maxDoc());
+                    DocIdSetIterator approximation = DocIdSetIterator.all(context.maxLeafDoc());
                     final var scorer =
                         new ConstantScoreScorer(
                             score(),
@@ -1390,7 +1389,7 @@ public class TestDrillSideways extends FacetTestCase {
         DrillSidewaysResult dsr = ds.search(ddq, filter, null, numDocs, sort, true);
         actual.resultCount = dsr.hits.totalHits;
         for (ScoreDoc scoreDoc : dsr.hits.scoreDocs) {
-          actual.results.add(new DocAndScore(scoreDoc.doc, scoreDoc.score));
+          actual.results.add(new DocAndScore(Math.toIntExact(scoreDoc.doc), scoreDoc.score));
         }
         actual.facets = dsr.facets;
       } else {
@@ -1486,8 +1485,7 @@ public class TestDrillSideways extends FacetTestCase {
         // context, which happens as part of #finish getting called:
         assertEquals(1, result.drillDownFacetsCollector.getMatchingDocs().size());
         assertEquals(
-            1,
-            result.drillDownFacetsCollector.getMatchingDocs().get(0).context().reader().maxDoc());
+            1, result.drillDownFacetsCollector.getMatchingDocs().get(0).context().maxLeafDoc());
         assertEquals(1, result.drillSidewaysFacetsCollector.length);
         assertEquals(1, result.drillSidewaysFacetsCollector[0].getMatchingDocs().size());
         assertEquals(
@@ -1580,7 +1578,7 @@ public class TestDrillSideways extends FacetTestCase {
     @Override
     public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
 
-      int docBase = context.docBase;
+      int docBase = Math.toIntExact(context.docBase);
       SortedDocValues idVals = DocValues.getSorted(context.reader(), "id");
 
       return new SimpleLeafCollector() {

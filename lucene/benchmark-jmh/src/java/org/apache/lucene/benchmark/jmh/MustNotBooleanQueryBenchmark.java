@@ -117,7 +117,7 @@ public class MustNotBooleanQueryBenchmark {
     int intervalDocCount = (params.docCount - 1) / params.interval + 1;
     int expectedHitCount =
         DENSE.equals(params.distribution) ? intervalDocCount : params.docCount - intervalDocCount;
-    int actualHitCount = searcher.search(query, collectorManager);
+    long actualHitCount = searcher.search(query, collectorManager);
     if (actualHitCount != expectedHitCount) {
       throw new AssertionError("expected " + expectedHitCount + " hits but got " + actualHitCount);
     }
@@ -173,7 +173,7 @@ public class MustNotBooleanQueryBenchmark {
   }
 
   @Benchmark
-  public int searchMustNot() throws IOException {
+  public long searchMustNot() throws IOException {
     return searcher.search(query, collectorManager);
   }
 }

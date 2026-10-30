@@ -195,7 +195,7 @@ public class GcdDeltaRangeIntoBitSetBenchmark {
   @Fork(
       value = 1,
       jvmArgsAppend = {"-Xmx2g", "-Xms2g", "-XX:+AlwaysPreTouch"})
-  public int rangeQueryDefaultProvider() throws IOException {
+  public long rangeQueryDefaultProvider() throws IOException {
     return searcher.count(query);
   }
 
@@ -209,7 +209,7 @@ public class GcdDeltaRangeIntoBitSetBenchmark {
         "-Xms2g",
         "-XX:+AlwaysPreTouch"
       })
-  public int rangeQueryPanamaProvider() throws IOException {
+  public long rangeQueryPanamaProvider() throws IOException {
     return searcher.count(query);
   }
 }

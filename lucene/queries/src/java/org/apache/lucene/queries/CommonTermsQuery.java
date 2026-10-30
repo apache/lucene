@@ -110,7 +110,7 @@ public class CommonTermsQuery extends Query {
       return newTermQuery(this.terms.get(0), null);
     }
     final List<LeafReaderContext> leaves = reader.leaves();
-    final int maxDoc = reader.maxDoc();
+    final long maxDoc = reader.maxDoc();
     final TermStates[] contextArray = new TermStates[terms.size()];
     final Term[] queryTerms = this.terms.toArray(Term[]::new);
     collectTermStates(reader, leaves, contextArray, queryTerms);
@@ -143,7 +143,7 @@ public class CommonTermsQuery extends Query {
   }
 
   protected Query buildQuery(
-      final int maxDoc, final TermStates[] contextArray, final Term[] queryTerms) {
+      final long maxDoc, final TermStates[] contextArray, final Term[] queryTerms) {
     List<Query> lowFreqQueries = new ArrayList<>();
     List<Query> highFreqQueries = new ArrayList<>();
     for (int i = 0; i < queryTerms.length; i++) {
@@ -152,7 +152,7 @@ public class CommonTermsQuery extends Query {
         lowFreqQueries.add(newTermQuery(queryTerms[i], null));
       } else {
         if ((maxTermFrequency >= 1f && termStates.docFreq() > maxTermFrequency)
-            || (termStates.docFreq() > (int) Math.ceil(maxTermFrequency * (float) maxDoc))) {
+            || (termStates.docFreq() > (long) Math.ceil(maxTermFrequency * (double) maxDoc))) {
           highFreqQueries.add(newTermQuery(queryTerms[i], termStates));
         } else {
           lowFreqQueries.add(newTermQuery(queryTerms[i], termStates));

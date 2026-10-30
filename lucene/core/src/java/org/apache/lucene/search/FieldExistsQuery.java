@@ -215,7 +215,7 @@ public class FieldExistsQuery extends Query {
           return null;
         }
         return ConstantScoreScorerSupplier.fromIterator(
-            iterator, score(), scoreMode, context.reader().maxDoc());
+            iterator, score(), scoreMode, context.maxLeafDoc());
       }
 
       @Override
@@ -230,8 +230,8 @@ public class FieldExistsQuery extends Query {
 
         if (fieldInfo.hasNorms()) { // the field indexes norms
           // If every field has a value then we can shortcut
-          if (reader.getDocCount(field) == reader.maxDoc()) {
-            return reader.numDocs();
+          if (reader.getLeafDocCount(field) == reader.maxLeafDoc()) {
+            return reader.numLeafDocs();
           }
           return super.count(context);
         }
@@ -263,7 +263,7 @@ public class FieldExistsQuery extends Query {
           return 0;
         } else if (count == reader.maxDoc()) {
           // All docs in the leaf (live or deleted) have the field. Return the count of live docs.
-          return reader.numDocs();
+          return reader.numLeafDocs();
         } else if (count >= 0 && reader.hasDeletions() == false) {
           // No deleted docs. The computed count can be trusted.
           return count;

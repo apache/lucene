@@ -239,7 +239,7 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
 
     DirectoryReader r = DirectoryReader.open(benchmark.getRunData().getDirectory());
 
-    final int maxDoc = r.maxDoc();
+    final int maxDoc = Math.toIntExact(r.maxDoc());
     assertEquals(1000, maxDoc);
     StoredFields storedFields = r.storedFields();
     for (int i = 0; i < 1000; i++) {

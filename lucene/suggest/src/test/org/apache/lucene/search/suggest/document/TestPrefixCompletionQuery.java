@@ -81,7 +81,7 @@ public class TestPrefixCompletionQuery extends LuceneTestCase {
 
     @Override
     public Bits getBits(final LeafReaderContext context) throws IOException {
-      final int maxDoc = context.reader().maxDoc();
+      final int maxDoc = context.maxLeafDoc();
       FixedBitSet bits = new FixedBitSet(maxDoc);
       final SortedNumericDocValues values = DocValues.getSortedNumeric(context.reader(), field);
       int docID;

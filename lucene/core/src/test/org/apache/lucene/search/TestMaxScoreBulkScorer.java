@@ -89,8 +89,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
                 .scorer(context);
 
         BulkScorer scorer =
-            new MaxScoreBulkScorer(
-                context.reader().maxDoc(), Arrays.asList(scorer1, scorer2), null);
+            new MaxScoreBulkScorer(context.maxLeafDoc(), Arrays.asList(scorer1, scorer2), null);
 
         scorer.score(
             new LeafCollector() {
@@ -170,7 +169,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
 
         BulkScorer scorer =
             new MaxScoreBulkScorer(
-                context.reader().maxDoc(), Arrays.asList(scorer1, scorer2), filterScorer);
+                context.maxLeafDoc(), Arrays.asList(scorer1, scorer2), filterScorer);
 
         scorer.score(
             new LeafCollector() {
@@ -242,7 +241,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
 
         BulkScorer scorer =
             new MaxScoreBulkScorer(
-                context.reader().maxDoc(), Arrays.asList(scorer1, scorer2), filterScorer);
+                context.maxLeafDoc(), Arrays.asList(scorer1, scorer2), filterScorer);
 
         scorer.score(
             new LeafCollector() {
@@ -303,8 +302,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
                 .scorer(context);
 
         BulkScorer scorer =
-            new MaxScoreBulkScorer(
-                context.reader().maxDoc(), Arrays.asList(scorer1, scorer2), null);
+            new MaxScoreBulkScorer(context.maxLeafDoc(), Arrays.asList(scorer1, scorer2), null);
 
         scorer.score(
             new LeafCollector() {
@@ -376,7 +374,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
 
         BulkScorer scorer =
             new MaxScoreBulkScorer(
-                context.reader().maxDoc(), Arrays.asList(scorer1, scorer2, scorer3), null);
+                context.maxLeafDoc(), Arrays.asList(scorer1, scorer2, scorer3), null);
 
         scorer.score(
             new LeafCollector() {
@@ -453,7 +451,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
 
         BulkScorer scorer =
             new MaxScoreBulkScorer(
-                context.reader().maxDoc(), Arrays.asList(scorer1, scorer2, scorer3), null);
+                context.maxLeafDoc(), Arrays.asList(scorer1, scorer2, scorer3), null);
 
         scorer.score(
             new LeafCollector() {
@@ -686,8 +684,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
         assertTrue(
             "filter should be dense enough for bitset path",
             filterCheck.iterator().cost()
-                >= context.reader().maxDoc()
-                    / DenseConjunctionBulkScorer.DENSITY_THRESHOLD_INVERSE);
+                >= context.maxLeafDoc() / DenseConjunctionBulkScorer.DENSITY_THRESHOLD_INVERSE);
 
         Scorer scorer1 =
             searcher
@@ -704,7 +701,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
 
         BulkScorer scorer =
             new MaxScoreBulkScorer(
-                context.reader().maxDoc(), Arrays.asList(scorer1, scorer2), filterScorer);
+                context.maxLeafDoc(), Arrays.asList(scorer1, scorer2), filterScorer);
 
         // Doc 0: has A (score=2), filter matches
         // Doc 1: has A+C (score=2+1=3), filter matches
@@ -792,7 +789,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
 
         BulkScorer bulkScorer =
             new MaxScoreBulkScorer(
-                context.reader().maxDoc(), Arrays.asList(scorer1, scorer2), filterScorer);
+                context.maxLeafDoc(), Arrays.asList(scorer1, scorer2), filterScorer);
 
         // acceptDocs that excludes doc 1
         Bits acceptDocs =
@@ -1038,8 +1035,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
         assertTrue(
             "filter should be dense enough for bitset path",
             filterCheck.iterator().cost()
-                >= context.reader().maxDoc()
-                    / DenseConjunctionBulkScorer.DENSITY_THRESHOLD_INVERSE);
+                >= context.maxLeafDoc() / DenseConjunctionBulkScorer.DENSITY_THRESHOLD_INVERSE);
 
         Scorer scorer1 =
             searcher
@@ -1056,7 +1052,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
 
         BulkScorer bulkScorer =
             new MaxScoreBulkScorer(
-                context.reader().maxDoc(), Arrays.asList(scorer1, scorer2), filterScorer);
+                context.maxLeafDoc(), Arrays.asList(scorer1, scorer2), filterScorer);
 
         // Score with a max that allows a second inner window.
         // After the first window, filter.doc = NO_MORE_DOCS (no filter matches >= 4096).

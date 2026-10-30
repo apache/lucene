@@ -80,7 +80,7 @@ public class TestHnswFloat16VectorGraph extends HnswGraphTestCase<short[]> {
   @Override
   MockFloat16VectorValues vectorValues(LeafReader reader, String fieldName) throws IOException {
     Float16VectorValues vectorValues = reader.getFloat16VectorValues(fieldName);
-    short[][] vectors = new short[reader.maxDoc()][];
+    short[][] vectors = new short[reader.maxLeafDoc()][];
     for (int i = 0; i < vectorValues.size(); i++) {
       vectors[vectorValues.ordToDoc(i)] =
           ArrayUtil.copyOfSubArray(vectorValues.vectorValue(i), 0, vectorValues.dimension());
@@ -147,7 +147,9 @@ public class TestHnswFloat16VectorGraph extends HnswGraphTestCase<short[]> {
     assertEquals("Number of found results is not equal to [10].", 10, nodes.scoreDocs.length);
     int sum = 0;
     for (ScoreDoc node : nodes.scoreDocs) {
-      assertTrue("the results include a deleted document: " + node, acceptOrds.get(node.doc));
+      assertTrue(
+          "the results include a deleted document: " + node,
+          acceptOrds.get(Math.toIntExact(node.doc)));
       sum += node.doc;
     }
     // We still expect to get reasonable recall. The lowest non-skipped docIds

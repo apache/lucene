@@ -1943,7 +1943,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
 
           @Override
           public int count(LeafReaderContext context) {
-            return context.reader().numDocs();
+            return context.numLeafDocs();
           }
         };
 
@@ -2198,12 +2198,12 @@ public class TestLRUQueryCache extends LuceneTestCase {
             public Scorer get(long leadCost) throws IOException {
               scorerCreatedCount.incrementAndGet();
               return new ConstantScoreScorer(
-                  1, scoreMode, DocIdSetIterator.all(context.reader().maxDoc()));
+                  1, scoreMode, DocIdSetIterator.all(context.maxLeafDoc()));
             }
 
             @Override
             public long cost() {
-              return context.reader().maxDoc();
+              return context.maxLeafDoc();
             }
           };
         }

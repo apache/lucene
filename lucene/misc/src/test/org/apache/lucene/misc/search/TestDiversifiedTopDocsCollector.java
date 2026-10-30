@@ -171,22 +171,22 @@ public class TestDiversifiedTopDocsCollector extends LuceneTestCase {
 
         @Override
         public int docID() {
-          return sdv.docID() - context.docBase;
+          return sdv.docID() - Math.toIntExact(context.docBase);
         }
 
         @Override
         public int nextDoc() throws IOException {
-          return sdv.nextDoc() - context.docBase;
+          return sdv.nextDoc() - Math.toIntExact(context.docBase);
         }
 
         @Override
         public int advance(int target) throws IOException {
-          return sdv.advance(target + context.docBase);
+          return sdv.advance(target + Math.toIntExact(context.docBase));
         }
 
         @Override
         public boolean advanceExact(int target) throws IOException {
-          return sdv.advanceExact(target + context.docBase);
+          return sdv.advanceExact(target + Math.toIntExact(context.docBase));
         }
 
         @Override

@@ -241,12 +241,12 @@ public abstract class LogMergePolicy extends MergePolicy {
             || (start != last - 1 && !isMerged(infos, infos.info(start + 1), mergeContext))) {
           // there is more than 1 segment to the right of
           // this one, or a mergeable single segment.
-          spec.add(new OneMerge(segments.subList(start + 1, last)));
+          addForcedMerge(spec, infos, segments, start + 1, last, mergeContext);
         }
         last = start;
       } else if (last - start == mergeFactor) {
         // mergeFactor eligible segments were found, add them as a merge.
-        spec.add(new OneMerge(segments.subList(start, last)));
+        addForcedMerge(spec, infos, segments, start, last, mergeContext);
         last = start;
       }
       --start;
@@ -255,7 +255,7 @@ public abstract class LogMergePolicy extends MergePolicy {
     // Add any left-over segments, unless there is just 1
     // already fully merged
     if (last > 0 && (++start + 1 < last || !isMerged(infos, infos.info(start), mergeContext))) {
-      spec.add(new OneMerge(segments.subList(start, last)));
+      addForcedMerge(spec, infos, segments, start, last, mergeContext);
     }
 
     return spec.merges.size() == 0 ? null : spec;
@@ -263,8 +263,9 @@ public abstract class LogMergePolicy extends MergePolicy {
 
   /**
    * Returns the merges necessary to forceMerge the index. This method constraints the returned
-   * merges only by the {@code maxNumSegments} parameter, and guaranteed that exactly that number of
-   * segments will remain in the index.
+   * merges by the {@code maxNumSegments} parameter and by the per-segment document limit, so more
+   * than {@code maxNumSegments} segments may remain when the live documents do not fit in that
+   * many.
    */
   private MergeSpecification findForcedMergesMaxNumSegments(
       SegmentInfos infos, int maxNumSegments, int last, MergeContext mergeContext)
@@ -275,7 +276,7 @@ public abstract class LogMergePolicy extends MergePolicy {
     // First, enroll all "full" merges (size
     // mergeFactor) to potentially be run concurrently:
     while (last - maxNumSegments + 1 >= mergeFactor) {
-      spec.add(new OneMerge(segments.subList(last - mergeFactor, last)));
+      addForcedMerge(spec, infos, segments, last - mergeFactor, last, mergeContext);
       last -= mergeFactor;
     }
 
@@ -287,7 +288,7 @@ public abstract class LogMergePolicy extends MergePolicy {
         // Since we must merge down to 1 segment, the
         // choice is simple:
         if (last > 1 || !isMerged(infos, infos.info(0), mergeContext)) {
-          spec.add(new OneMerge(segments.subList(0, last)));
+          addForcedMerge(spec, infos, segments, 0, last, mergeContext);
         }
       } else if (last > maxNumSegments) {
 
@@ -318,10 +319,62 @@ public abstract class LogMergePolicy extends MergePolicy {
           }
         }
 
-        spec.add(new OneMerge(segments.subList(bestStart, bestStart + finalMergeSize)));
+        addForcedMerge(spec, infos, segments, bestStart, bestStart + finalMergeSize, mergeContext);
       }
     }
     return spec.merges.size() == 0 ? null : spec;
+  }
+
+  /**
+   * Adds a merge of {@code segments[from, to)} to {@code spec}. This is a single merge unless those
+   * segments together hold more live documents than a single segment may (document numbers within a
+   * segment are int, see {@link IndexWriter#MAX_DOCS}), in which case it is split into adjacent
+   * merges that each stay within the limit.
+   */
+  private void addForcedMerge(
+      MergeSpecification spec,
+      SegmentInfos infos,
+      List<SegmentCommitInfo> segments,
+      int from,
+      int to,
+      MergeContext mergeContext)
+      throws IOException {
+    final long docLimit = IndexWriter.getActualMaxDocsPerSegment();
+    long totalDocs = 0;
+    for (int i = from; i < to; i++) {
+      totalDocs += sizeDocs(segments.get(i), mergeContext);
+    }
+    if (totalDocs <= docLimit) {
+      spec.add(new OneMerge(segments.subList(from, to)));
+      return;
+    }
+    int groupStart = from;
+    long groupDocs = 0;
+    for (int i = from; i < to; i++) {
+      final long docs = sizeDocs(segments.get(i), mergeContext);
+      if (i > groupStart && groupDocs + docs > docLimit) {
+        addForcedMergeGroup(spec, infos, segments, groupStart, i, mergeContext);
+        groupStart = i;
+        groupDocs = 0;
+      }
+      groupDocs += docs;
+    }
+    addForcedMergeGroup(spec, infos, segments, groupStart, to, mergeContext);
+  }
+
+  private void addForcedMergeGroup(
+      MergeSpecification spec,
+      SegmentInfos infos,
+      List<SegmentCommitInfo> segments,
+      int from,
+      int to,
+      MergeContext mergeContext)
+      throws IOException {
+    // A lone segment that is already merged is left as-is: merging it by itself would only rewrite
+    // it.
+    if (to - from > 1 || isMerged(infos, segments.get(from), mergeContext) == false) {
+      spec.add(new OneMerge(segments.subList(from, to)));
+    }
   }
 
   /**
@@ -496,7 +549,7 @@ public abstract class LogMergePolicy extends MergePolicy {
 
     final Set<SegmentCommitInfo> mergingSegments = mergeContext.getMergingSegments();
 
-    int totalDocCount = 0;
+    long totalDocCount = 0;
     for (int i = 0; i < numSegments; i++) {
       final SegmentCommitInfo info = infos.info(i);
       totalDocCount += sizeDocs(info, mergeContext);
@@ -589,8 +642,12 @@ public abstract class LogMergePolicy extends MergePolicy {
             mergeContext);
       }
 
-      final int maxMergeDocs =
-          Math.min(this.maxMergeDocs, Math.ceilDiv(totalDocCount, targetSearchConcurrency));
+      // Never let a merged segment exceed the per-segment doc limit (int document numbers), even if
+      // the configured maxMergeDocs or the concurrency target would otherwise allow it.
+      final long maxMergeDocs =
+          Math.min(
+              Math.min((long) this.maxMergeDocs, IndexWriter.getActualMaxDocsPerSegment()),
+              Math.ceilDiv(totalDocCount, targetSearchConcurrency));
 
       // Finally, record all merges that are viable at this level:
       int end = start + mergeFactor;

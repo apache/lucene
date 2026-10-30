@@ -105,7 +105,7 @@ public class FacetsCollector extends SimpleCollector {
   @Override
   protected void doSetNextReader(LeafReaderContext context) throws IOException {
     assert docsBuilder == null;
-    docsBuilder = new DocIdSetBuilder(context.reader().maxDoc());
+    docsBuilder = new DocIdSetBuilder(context.maxLeafDoc());
     totalHits = 0;
     if (keepScores) {
       scores = new float[64]; // some initial size

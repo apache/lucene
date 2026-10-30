@@ -32,7 +32,7 @@ public class TestTopKnnResults extends LuceneTestCase {
     int[] sortedNodes = new int[topDocs.scoreDocs.length];
     float[] sortedScores = new float[topDocs.scoreDocs.length];
     for (int i = 0; i < topDocs.scoreDocs.length; i++) {
-      sortedNodes[i] = topDocs.scoreDocs[i].doc;
+      sortedNodes[i] = Math.toIntExact(topDocs.scoreDocs[i].doc);
       sortedScores[i] = topDocs.scoreDocs[i].score;
     }
     assertArrayEquals(new int[] {2, 7, 8, 10, 4}, sortedNodes);

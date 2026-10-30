@@ -92,7 +92,7 @@ public class Word2VecSynonymProvider {
 
       for (int i = 0; i < topDocs.scoreDocs.length; i++) {
         float similarity = topDocs.scoreDocs[i].score;
-        int id = topDocs.scoreDocs[i].doc;
+        int id = Math.toIntExact(topDocs.scoreDocs[i].doc);
 
         BytesRef synonym = word2VecModel.termValue(id);
         // We remove the original query term

@@ -154,10 +154,11 @@ public class TestSortedDvMultiRangeQuery extends LuceneTestCase {
       Query query2 = builder2.build();
       Query query3 = builder3.build();
       Query queryNumeric = builderNumeric.build();
-      TopDocs result1 = searcher.search(query1, reader.maxDoc(), Sort.INDEXORDER);
-      TopDocs result2 = searcher.search(query2, reader.maxDoc(), Sort.INDEXORDER);
-      TopDocs result3 = searcher.search(query3, reader.maxDoc(), Sort.INDEXORDER);
-      TopDocs resultNumeric = searcher.search(queryNumeric, reader.maxDoc(), Sort.INDEXORDER);
+      TopDocs result1 = searcher.search(query1, Math.toIntExact(reader.maxDoc()), Sort.INDEXORDER);
+      TopDocs result2 = searcher.search(query2, Math.toIntExact(reader.maxDoc()), Sort.INDEXORDER);
+      TopDocs result3 = searcher.search(query3, Math.toIntExact(reader.maxDoc()), Sort.INDEXORDER);
+      TopDocs resultNumeric =
+          searcher.search(queryNumeric, Math.toIntExact(reader.maxDoc()), Sort.INDEXORDER);
       assertSameResults(
           "LongPointMultiRange", result1, query1, "BooleanDisjunction", result2, query2, reader);
       assertSameResults(
@@ -317,7 +318,7 @@ public class TestSortedDvMultiRangeQuery extends LuceneTestCase {
   private static Set<Integer> docIds(TopDocs docs) {
     Set<Integer> ids = new TreeSet<>();
     for (var sd : docs.scoreDocs) {
-      ids.add(sd.doc);
+      ids.add(Math.toIntExact(sd.doc));
     }
     return ids;
   }
@@ -360,7 +361,7 @@ public class TestSortedDvMultiRangeQuery extends LuceneTestCase {
     List<LeafReaderContext> leaves = reader.leaves();
     for (int docId : allDiff) {
       LeafReaderContext ctx = leaves.get(ReaderUtil.subIndex(docId, leaves));
-      int localDoc = docId - ctx.docBase;
+      int localDoc = ctx.toLeafDocId(docId);
       LeafReader leaf = ctx.reader();
 
       sb.append("  doc=")

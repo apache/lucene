@@ -231,13 +231,13 @@ public final class SegmentReader extends CodecReader {
   }
 
   @Override
-  public int numDocs() {
+  public int numLeafDocs() {
     // Don't call ensureOpen() here (it could affect performance)
     return numDocs;
   }
 
   @Override
-  public int maxDoc() {
+  public int maxLeafDoc() {
     // Don't call ensureOpen() here (it could affect performance)
     return si.info.maxDoc();
   }

@@ -51,7 +51,7 @@ public class SearchTravRetLoadFieldSelectorTask extends SearchTravTask {
   }
 
   @Override
-  protected Document retrieveDoc(StoredFields storedFields, int id) throws IOException {
+  protected Document retrieveDoc(StoredFields storedFields, long id) throws IOException {
     if (fieldsToLoad == null) {
       return storedFields.document(id);
     } else {

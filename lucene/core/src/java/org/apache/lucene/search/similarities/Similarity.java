@@ -80,7 +80,7 @@ import org.apache.lucene.util.SmallFloat;
  * </ol>
  *
  * <p><a id="explaintime">Explanations</a> When {@link
- * IndexSearcher#explain(org.apache.lucene.search.Query, int)} is called, queries consult the
+ * IndexSearcher#explain(org.apache.lucene.search.Query, long)} is called, queries consult the
  * Similarity's DocScorer for an explanation of how it computed its score. The query passes in a the
  * document id and an explanation of how the frequency was computed.
  *

@@ -110,7 +110,11 @@ public final class QueryAutoStopWordAnalyzer extends AnalyzerWrapper {
   public QueryAutoStopWordAnalyzer(
       Analyzer delegate, IndexReader indexReader, Collection<String> fields, float maxPercentDocs)
       throws IOException {
-    this(delegate, indexReader, fields, (int) (indexReader.numDocs() * maxPercentDocs));
+    this(
+        delegate,
+        indexReader,
+        fields,
+        Math.toIntExact((long) ((double) indexReader.numDocs() * maxPercentDocs)));
   }
 
   /**
