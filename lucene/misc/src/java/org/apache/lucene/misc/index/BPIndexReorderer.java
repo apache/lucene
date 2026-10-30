@@ -414,8 +414,12 @@ public final class BPIndexReorderer extends AbstractBPReorderer {
 
         @Override
         public int comparePivot(int j) {
-          int cmp = Float.compare(pivotBias, biases[j]);
-          if (cmp == 0) {
+          int cmp = Float.compare(pivotBias-iter, biases[j]);
+          if (cmp > 0) {
+            return cmp;
+          }
+          cmp = Float.compare(pivotBias, biases[j]);
+          if (cmp >= 0) {
             // Tie break on the doc ID to preserve doc ID ordering as much as possible
             cmp = pivotDoc - docIDs.ints[j];
           }
