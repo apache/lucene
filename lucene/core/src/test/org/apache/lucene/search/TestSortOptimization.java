@@ -703,7 +703,7 @@ public class TestSortOptimization extends LuceneTestCase {
         assertEquals(i, topDocs.scoreDocs[i].doc);
       }
       assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation());
-      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), 10);
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), numDocs);
     }
 
     // sort by _doc with a bool query should skip all non-competitive documents
