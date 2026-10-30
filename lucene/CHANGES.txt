@@ -258,6 +258,8 @@ Improvements
   through the new VectorColumn#values cursor and KnnFieldVectorsWriter#addDenseValues, instead of
   adding vectors one document at a time. (Mayya Sharipova)
 
+* GITHUB#16897: Use RangeIntoBitSet for DocValues without skip indexes. (Ke Wei)
+
 Optimizations
 ---------------------
 
