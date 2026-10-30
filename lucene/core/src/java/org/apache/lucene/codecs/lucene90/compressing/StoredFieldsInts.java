@@ -28,17 +28,11 @@ class StoredFieldsInts {
 
   private StoredFieldsInts() {}
 
-  static void writeInts(int[] values, int start, int count, DataOutput out) throws IOException {
-    boolean allEqual = true;
-    for (int i = 1; i < count; ++i) {
-      if (values[start + i] != values[start]) {
-        allEqual = false;
-        break;
-      }
-    }
-    if (allEqual) {
+  static void writeInts(int[] values, int start, int count, DataOutput out, boolean allSame)
+      throws IOException {
+    if (allSame) {
       out.writeByte((byte) 0);
-      out.writeVInt(values[0]);
+      out.writeVInt(values[start]);
     } else {
       long max = 0;
       for (int i = 0; i < count; ++i) {
