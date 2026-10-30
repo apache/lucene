@@ -150,7 +150,9 @@ public class HnswGraphBuilder implements HnswBuilder {
         seed,
         hnsw,
         null,
-        new HnswGraphSearcher(new NeighborQueue(beamWidth, true), new FixedBitSet(hnsw.size())));
+        new HnswGraphSearcher(
+            new NeighborQueue(beamWidth, true),
+            HnswGraphSearcher.createVisitedSet(beamWidth, HnswGraphSearcher.getGraphSize(hnsw))));
   }
 
   /**
