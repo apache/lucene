@@ -25,6 +25,7 @@ import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.internal.hppc.LongIntHashMap;
 import org.apache.lucene.queries.function.FunctionScoreQuery;
 import org.apache.lucene.search.BooleanClause.Occur;
@@ -42,6 +43,7 @@ import org.apache.lucene.search.SortField;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NumericUtils;
 
 public class TestHistogramCollectorManager extends LuceneTestCase {
@@ -75,6 +77,115 @@ public class TestHistogramCollectorManager extends LuceneTestCase {
 
     reader.close();
     dir.close();
+  }
+
+  public void testSingleValuedNoSkipIndexWithDeletes() throws IOException {
+    Directory dir = newDirectory();
+    // NOTE: canCollectEfficiently needs about 512 points per extra bucket to use the point tree.
+    int bucketWidth = 512;
+    int numDocs = 3 * bucketWidth;
+    long[] values = new long[numDocs];
+    for (int i = 0; i < numDocs; i++) {
+      values[i] = i;
+    }
+    boolean[] deletedValues = new boolean[numDocs];
+    deletedValues[5] = true;
+    deletedValues[1030] = true;
+    deletedValues[1031] = true;
+
+    DirectoryReader reader = indexWithDeletes(dir, values, deletedValues, -1);
+    IndexSearcher searcher = newSearcher(reader);
+    assertEquals(numDocs, reader.maxDoc());
+    assertEquals(numDocs - 3, reader.numDocs());
+    assertEquals(3, reader.numDeletedDocs());
+
+    LongIntHashMap actualCounts =
+        searcher.search(
+            LongPoint.newRangeQuery("f", 1, numDocs - 1),
+            new HistogramCollectorManager("f", bucketWidth));
+    LongIntHashMap expectedCounts = new LongIntHashMap();
+
+    // NOTE: bucket 0 loses 0 (outside the query range) and 5. Bucket 2 loses 1030 and 1031.
+    expectedCounts.put(0, 510);
+    expectedCounts.put(1, 512);
+    expectedCounts.put(2, 510);
+    assertEquals(expectedCounts, actualCounts);
+
+    IOUtils.close(reader, dir);
+  }
+
+  public void testSingleValuedNoSkipIndexWithDeletesRandom() throws IOException {
+    int bucketWidth = random().nextInt(128, 513);
+    int numValues = 3 * bucketWidth;
+    boolean[] deletedValues = new boolean[numValues];
+    for (int j = 0; j < numValues; j++) {
+      deletedValues[j] = random().nextInt(10) < 2;
+    }
+
+    int numDocs = random().nextInt(2 * 1024, 4 * 1024);
+    long[] values = new long[numDocs];
+    for (int i = 0; i < numDocs; i++) {
+      values[i] = random().nextLong(0, numValues);
+    }
+    int commitAt = random().nextBoolean() ? random().nextInt(numDocs) : -1;
+
+    Directory dir = newDirectory();
+    DirectoryReader reader = indexWithDeletes(dir, values, deletedValues, commitAt);
+    IndexSearcher searcher = newSearcher(reader);
+
+    boolean matchAll = random().nextBoolean();
+    long lower = matchAll ? 0 : random().nextLong(0, numValues);
+    long upper = matchAll ? numValues - 1 : random().nextLong(lower, numValues);
+    Query query =
+        matchAll ? MatchAllDocsQuery.INSTANCE : LongPoint.newRangeQuery("f", lower, upper);
+
+    LongIntHashMap expectedHistogram = histogram(values, deletedValues, lower, upper, bucketWidth);
+    LongIntHashMap actualHistogram =
+        searcher.search(query, new HistogramCollectorManager("f", bucketWidth));
+
+    assertEquals(expectedHistogram, actualHistogram);
+
+    IOUtils.close(reader, dir);
+  }
+
+  private DirectoryReader indexWithDeletes(
+      Directory dir, long[] values, boolean[] deletedValues, int commitAt) throws IOException {
+    // NOTE: NoMergePolicy keeps the deletes. A merge on reader open would expunge them.
+    IndexWriter writer =
+        new IndexWriter(dir, new IndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE));
+    for (int i = 0; i < values.length; i++) {
+      addDocument(writer, "f", values[i]);
+      if (i == commitAt) {
+        writer.commit();
+      }
+    }
+    for (int value = 0; value < deletedValues.length; value++) {
+      if (deletedValues[value]) {
+        writer.deleteDocuments(LongPoint.newExactQuery("f", value));
+      }
+    }
+
+    DirectoryReader reader = DirectoryReader.open(writer);
+    writer.close();
+    return reader;
+  }
+
+  private static LongIntHashMap histogram(
+      long[] values, boolean[] deletedValues, long lower, long upper, int bucketWidth) {
+    LongIntHashMap histogram = new LongIntHashMap();
+    for (long value : values) {
+      if (!deletedValues[(int) value] && value >= lower && value <= upper) {
+        histogram.addTo(Math.floorDiv(value, bucketWidth), 1);
+      }
+    }
+    return histogram;
+  }
+
+  private static void addDocument(IndexWriter writer, String field, long value) throws IOException {
+    Document doc = new Document();
+    doc.add(new LongPoint(field, value));
+    doc.add(new NumericDocValuesField(field, value));
+    writer.addDocument(doc);
   }
 
   public void testMultiValuedNoSkipIndex() throws IOException {

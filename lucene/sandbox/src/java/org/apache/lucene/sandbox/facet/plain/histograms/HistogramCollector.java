@@ -84,7 +84,7 @@ final class HistogramCollector implements Collector {
     // field indexed as point for MATCH_ALL cases. In future, this can be extended
     // for Point Range Query cases as well
     final PointRangeQuery pointRangeQuery = getPointRangeQuery(field);
-    if (isMatchAll(context) || pointRangeQuery != null) {
+    if (canUsePointTree(context, pointRangeQuery)) {
       final PointValues pointValues = context.reader().getPointValues(field);
       if (PointTreeBulkCollector.canCollectEfficiently(pointValues, bucketWidth)) {
         // In case of intra segment concurrency, only one collector should collect
@@ -375,6 +375,11 @@ final class HistogramCollector implements Collector {
 
   private boolean isMatchAll(LeafReaderContext context) throws IOException {
     return weight != null && weight.count(context) == context.reader().maxDoc();
+  }
+
+  private boolean canUsePointTree(LeafReaderContext context, PointRangeQuery pointRangeQuery)
+      throws IOException {
+    return isMatchAll(context) || (pointRangeQuery != null && !context.reader().hasDeletions());
   }
 
   private static final Map<Class<?>, Function<Query, Query>> queryWrappers;

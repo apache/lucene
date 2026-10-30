@@ -471,6 +471,13 @@ Other
 
 * GITHUB#16279: Add JMH benchmarks comparing read I/O strategies under memory pressure. (neoremind)
 
+======================= Lucene 10.6.1 =======================
+
+Bug Fixes
+---------------------
+* GITHUB#16860: Fix HistogramCollector counting deleted documents when it collects a point range
+  query through the point tree. (Salvatore Campagna)
+
 ======================= Lucene 10.6.0 =======================
 
 API Changes
