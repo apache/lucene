@@ -26,6 +26,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.DirectoryReader;
@@ -47,6 +48,7 @@ import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 
@@ -74,7 +76,7 @@ public class TestSharedFloorKnnSearch extends LuceneTestCase {
    */
   public void testRecallParityAcrossSegmentCounts() throws IOException {
     int dim = 16;
-    int numDocs = 1200;
+    int numDocs = 6000;
     int k = 64;
     int numQueries = 10;
     for (int segments : new int[] {1, 2, 5}) {
@@ -85,6 +87,7 @@ public class TestSharedFloorKnnSearch extends LuceneTestCase {
       try (Directory dir = newDirectory()) {
         indexInSegments(dir, vectors, segments);
         try (DirectoryReader reader = DirectoryReader.open(dir)) {
+          assertHnswEligible(reader, k);
           assertEquals(segments, reader.leaves().size());
           IndexSearcher searcher = new IndexSearcher(reader);
           double stockRecallSum = 0;
@@ -125,7 +128,7 @@ public class TestSharedFloorKnnSearch extends LuceneTestCase {
     int k = 64;
     int trueNeighborSegments = 4;
     int trueNeighborsPerSegment = 16;
-    int backgroundPerSegment = 300;
+    int backgroundPerSegment = 1000;
     int decoyCount = 400;
 
     float[] center = randomVector(dim);
@@ -153,7 +156,16 @@ public class TestSharedFloorKnnSearch extends LuceneTestCase {
 
     try (Directory dir = newDirectory()) {
       try (IndexWriter writer =
-          new IndexWriter(dir, new IndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE))) {
+          new IndexWriter(
+              dir,
+              new IndexWriterConfig()
+                  .setCodec(
+                      TestUtil.alwaysKnnVectorsFormat(
+                          new Lucene99HnswVectorsFormat(
+                              Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
+                              Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH,
+                              0)))
+                  .setMergePolicy(NoMergePolicy.INSTANCE))) {
         addSegment(writer, decoySegment);
         for (List<float[]> segment : laterSegments) {
           addSegment(writer, segment);
@@ -161,6 +173,7 @@ public class TestSharedFloorKnnSearch extends LuceneTestCase {
         writer.commit();
       }
       try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        assertHnswEligible(reader, k);
         assertEquals(1 + trueNeighborSegments, reader.leaves().size());
         IndexSearcher searcher = new IndexSearcher(reader);
         int numQueries = 5;
@@ -202,6 +215,7 @@ public class TestSharedFloorKnnSearch extends LuceneTestCase {
     try (Directory dir = newDirectory()) {
       indexInSegments(dir, vectors, 4);
       try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        assertHnswEligible(reader, k);
         IndexSearcher searcher = new IndexSearcher(reader);
         for (int i = 0; i < 5; i++) {
           float[] query = randomVector(dim);
@@ -225,7 +239,7 @@ public class TestSharedFloorKnnSearch extends LuceneTestCase {
    */
   public void testParallelRecallMatchesSequential() throws Exception {
     int dim = 16;
-    int numDocs = 1200;
+    int numDocs = 6000;
     int k = 64;
     int numQueries = 10;
     float[][] vectors = new float[numDocs][];
@@ -237,6 +251,7 @@ public class TestSharedFloorKnnSearch extends LuceneTestCase {
     try (Directory dir = newDirectory()) {
       indexInSegments(dir, vectors, 5);
       try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        assertHnswEligible(reader, k);
         IndexSearcher sequentialSearcher = new IndexSearcher(reader);
         IndexSearcher parallelSearcher = new IndexSearcher(reader, executor);
         double sequentialRecallSum = 0;
@@ -273,11 +288,11 @@ public class TestSharedFloorKnnSearch extends LuceneTestCase {
    * before the graph search has discovered its neighborhood, can sever the paths through mediocre
    * intermediate nodes that graph navigation depends on. An advertiser is therefore expected to
    * leave rank headroom (for example, a scout advertising its k'-th best for k' several times k),
-   * and this test pins down that a bound with such headroom is harmless.
+   * and this test checks the measured recall tolerance for this fixture.
    */
   public void testSlackAdvertisedBoundPreservesRecall() throws IOException {
     int dim = 16;
-    int numDocs = 1200;
+    int numDocs = 6000;
     int k = 64;
     int numQueries = 10;
     float[][] vectors = new float[numDocs][];
@@ -287,6 +302,7 @@ public class TestSharedFloorKnnSearch extends LuceneTestCase {
     try (Directory dir = newDirectory()) {
       indexInSegments(dir, vectors, 4);
       try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        assertHnswEligible(reader, k);
         IndexSearcher searcher = new IndexSearcher(reader);
         double unadvertisedRecallSum = 0;
         double advertisedRecallSum = 0;
@@ -315,47 +331,33 @@ public class TestSharedFloorKnnSearch extends LuceneTestCase {
     }
   }
 
-  /**
-   * At {@code greediness = 0} the non-competitive queue is at least as large as the local queue, so
-   * the effective bound can never exceed what the local search would have imposed on itself: the
-   * shared floor is fully neutralized. Recall must then match stock search even under the tightest
-   * bound that exists, the query's exact final k-th best similarity, advertised before the search
-   * starts. This pins down the greediness dial's safe endpoint; the recall cost of tighter settings
-   * under tight bounds is a measured trade, not a correctness property.
-   */
+  /** Zero greediness must preserve stock documents and scores, even with an early gate. */
   public void testZeroGreedinessNeutralizesTightestBound() throws IOException {
     int dim = 16;
-    int numDocs = 1200;
-    int k = 64;
-    int numQueries = 10;
+    int numDocs = 6000;
+    int k = 128;
     float[][] vectors = new float[numDocs][];
     for (int i = 0; i < numDocs; i++) {
       vectors[i] = randomVector(dim);
     }
+    assertTrue(SharedFloorKnnCollectorManager.perShardGate(k, 0.25) < k);
     try (Directory dir = newDirectory()) {
       indexInSegments(dir, vectors, 4);
       try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        assertHnswEligible(reader, k);
         IndexSearcher searcher = new IndexSearcher(reader);
-        double stockRecallSum = 0;
-        double advertisedRecallSum = 0;
-        for (int i = 0; i < numQueries; i++) {
+        for (int i = 0; i < 10; i++) {
           float[] query = randomVector(dim);
-          Set<Integer> truth = exactTopK(reader, query, k);
-          stockRecallSum +=
-              recall(searcher.search(new KnnFloatVectorQuery(FIELD, query, k), k), truth, k);
-
+          TopDocs stock = searcher.search(new KnnFloatVectorQuery(FIELD, query, k), k);
           SharedFloorKnnQuery advertisedQuery = new SharedFloorKnnQuery(FIELD, query, k, 0f);
           advertisedQuery.manager.getGlobalFloor().advertise(exactKthBestScore(reader, query, k));
-          advertisedRecallSum += recall(searcher.search(advertisedQuery, k), truth, k);
+          TopDocs advertised = searcher.search(advertisedQuery, k);
+          assertEquals(stock.scoreDocs.length, advertised.scoreDocs.length);
+          for (int rank = 0; rank < stock.scoreDocs.length; rank++) {
+            assertEquals(stock.scoreDocs[rank].doc, advertised.scoreDocs[rank].doc);
+            assertEquals(stock.scoreDocs[rank].score, advertised.scoreDocs[rank].score, 0f);
+          }
         }
-        double stockRecall = stockRecallSum / numQueries;
-        double advertisedRecall = advertisedRecallSum / numQueries;
-        assertTrue(
-            "greediness 0 must neutralize even the tightest advertised bound: stock="
-                + stockRecall
-                + " advertised="
-                + advertisedRecall,
-            advertisedRecall >= stockRecall - 0.05);
       }
     }
   }
@@ -380,6 +382,7 @@ public class TestSharedFloorKnnSearch extends LuceneTestCase {
     try (Directory dir = newDirectory()) {
       indexInSegments(dir, vectors, 4);
       try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        assertHnswEligible(reader, k);
         IndexSearcher searcher = new IndexSearcher(reader);
         for (int i = 0; i < 5; i++) {
           float[] query = randomVector(dim);
@@ -431,14 +434,7 @@ public class TestSharedFloorKnnSearch extends LuceneTestCase {
     try (Directory dir = newDirectory()) {
       indexInSegments(dir, vectors, 5);
       try (DirectoryReader reader = DirectoryReader.open(dir)) {
-        // Small segments use an exhaustive scan when the estimated HNSW visit count is
-        // at least the number of vectors. Such a scan cannot demonstrate visit savings.
-        for (LeafReaderContext leaf : reader.leaves()) {
-          int numVectors = leaf.reader().getFloatVectorValues(FIELD).size();
-          assertTrue(
-              "segments must be large enough to exercise HNSW pruning",
-              HnswGraphSearcher.expectedVisitedNodes(k, numVectors) < numVectors);
-        }
+        assertHnswEligible(reader, k);
         IndexSearcher searcher = new IndexSearcher(reader);
         for (int i = 0; i < numQueries; i++) {
           float[] query = randomVector(dim);
@@ -471,7 +467,7 @@ public class TestSharedFloorKnnSearch extends LuceneTestCase {
    */
   public void testFloorNeverExceedsExactKthBest() throws IOException {
     int dim = 16;
-    int numDocs = 1200;
+    int numDocs = 6000;
     int k = 64;
     int numQueries = 10;
     float[][] vectors = new float[numDocs][];
@@ -481,6 +477,7 @@ public class TestSharedFloorKnnSearch extends LuceneTestCase {
     try (Directory dir = newDirectory()) {
       indexInSegments(dir, vectors, 4);
       try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        assertHnswEligible(reader, k);
         IndexSearcher searcher = new IndexSearcher(reader);
         for (int i = 0; i < numQueries; i++) {
           float[] query = randomVector(dim);
@@ -650,9 +647,32 @@ public class TestSharedFloorKnnSearch extends LuceneTestCase {
     return vector;
   }
 
+  private static void assertHnswEligible(IndexReader reader, int k) throws IOException {
+    for (LeafReaderContext leaf : reader.leaves()) {
+      int numVectors = leaf.reader().getFloatVectorValues(FIELD).size();
+      assertTrue(
+          "fixture must exercise HNSW rather than exhaustive scanning: k="
+              + k
+              + " vectors="
+              + numVectors,
+          HnswGraphSearcher.expectedVisitedNodes(k, numVectors) < numVectors);
+    }
+  }
+
+  // Use unquantized scores so advertised bounds and the exact oracle share a score domain.
+  // A zero graph-construction threshold ensures even the smallest fixture builds HNSW.
   private void indexInSegments(Directory dir, float[][] vectors, int segments) throws IOException {
     try (IndexWriter writer =
-        new IndexWriter(dir, new IndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE))) {
+        new IndexWriter(
+            dir,
+            new IndexWriterConfig()
+                .setCodec(
+                    TestUtil.alwaysKnnVectorsFormat(
+                        new Lucene99HnswVectorsFormat(
+                            Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
+                            Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH,
+                            0)))
+                .setMergePolicy(NoMergePolicy.INSTANCE))) {
       int docsPerSegment = (vectors.length + segments - 1) / segments;
       int written = 0;
       while (written < vectors.length) {

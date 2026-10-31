@@ -35,7 +35,7 @@ import org.apache.lucene.util.hnsw.FloatHeap;
  * method is therefore the entire integration: no searcher changes are required, and a collector
  * whose floor never rises behaves exactly like its delegate.
  *
- * <p>Three guards keep the shared bound from harming recall or becoming a synchronization hot spot:
+ * <p>Three controls limit pruning and synchronization overhead:
  *
  * <ul>
  *   <li><b>Ascent gate.</b> The shared floor is ignored until this collector has gathered {@code
@@ -43,8 +43,9 @@ import org.apache.lucene.util.hnsw.FloatHeap;
  *       an entry point that is usually far from the query, and every score observed while
  *       descending toward the query's neighborhood is uninformative; a bound derived from an
  *       already-converged sibling would terminate the search before it had a chance to find
- *       anything. Once the gate's worth of results has been gathered, the search has reached its
- *       neighborhood and competitiveness against the rest of the query is meaningful.
+ *       anything. Collecting the gate's worth of results is a warm-up heuristic, not proof that the
+ *       search has reached its best neighborhood. Its effect must be evaluated against stock search
+ *       at the target recall.
  *       <p>The gate may be set below the queue size when this collector's expected contribution to
  *       the merged result set is smaller than the queue it collects into. A searcher of one shard
  *       among many is statistically due only {@code k * proportion} of the query's final top-k, yet
@@ -57,16 +58,17 @@ import org.apache.lucene.util.hnsw.FloatHeap;
  *   <li><b>Greediness clamp.</b> Even after the gate opens, the effective bound is capped by the
  *       similarity of the {@code max(minExplorationSlots, (1 - greediness) * gateK)}-th best score
  *       this collector has seen. A search that is globally non-competitive is thus throttled rather
- *       than stopped outright: it keeps following its most promising frontier, which preserves the
- *       paths through mediocre intermediate nodes that graph navigation depends on. At {@code
- *       greediness = 0} the floor has no effect; at {@code greediness = 1} the collector retains
- *       only the absolute minimum of exploration slots. See {@link #DEFAULT_MIN_EXPLORATION_SLOTS}
- *       for why the clamp has an absolute lower bound.
- *       <p><b>Caution:</b> because the clamp is sized from {@code gateK}, a low greediness combined
- *       with a gate well below the local queue size can leave the clamp as the binding constraint
- *       for the entire search, silently reducing the collector to a fixed per-searcher quota of
- *       {@code (1 - greediness) * gateK} results — the floor's adaptivity is neutralized, and
- *       measurements of such a configuration measure the quota, not the floor. (Benchmarked
+ *       than stopped outright: the score cutoff is capped to leave more exploration possible. This
+ *       score heap does not reserve graph-frontier entries or guarantee that a bridge to a better
+ *       region survives. The clamp must fill before it supplies a cutoff, even if the ascent gate
+ *       has already opened. At {@code greediness = 0} the floor has no effect; at {@code greediness
+ *       = 1} the collector retains only the absolute minimum of exploration slots. See {@link
+ *       #DEFAULT_MIN_EXPLORATION_SLOTS} for why the clamp has an absolute lower bound.
+ *       <p><b>Caution:</b> because the clamp is sized from {@code gateK}, a low positive greediness
+ *       combined with a gate well below the local queue size can leave the clamp as the binding
+ *       constraint for the entire search, silently reducing the collector to a fixed per-searcher
+ *       quota of {@code (1 - greediness) * gateK} results — the floor's adaptivity is neutralized,
+ *       and measurements of such a configuration measure the quota, not the floor. (Benchmarked
  *       directly: {@code greediness = 0.5, gateK = 6000} on a 16-shard k=10000 search reproduced a
  *       static per-shard quota of 3000 result-for-result.) When configuring a gate below the queue
  *       size, derive greediness from the exploration width the graph needs via {@link
@@ -131,8 +133,8 @@ public final class FloorAwareKnnCollector extends KnnCollector.Decorator {
    * recall is the clamp's <em>absolute</em> width, not the greediness fraction: the same {@code
    * greediness = 0.9} that leaves a comfortable 600-slot clamp at {@code gateK = 6000} collapses to
    * the bare minimum at {@code gateK = 184}, which benchmarked at double-digit recall loss. A
-   * caller who instead fixes the width it needs, and lets this method translate it, is safe at
-   * every gate size.
+   * caller can fix a measured exploration width and use this method to translate it across gate
+   * sizes. The width remains a tuning choice, not a recall guarantee.
    *
    * @param gateK the ascent gate the collector will use, at least 1
    * @param clampSlots the exploration width to preserve, at least 1
@@ -151,6 +153,8 @@ public final class FloorAwareKnnCollector extends KnnCollector.Decorator {
   }
 
   private final AbstractKnnCollector subCollector;
+  private final boolean floorPruningEnabled;
+  private final int explorationSlots;
   private final GlobalKnnFloor globalFloor;
 
   /**
@@ -318,12 +322,13 @@ public final class FloorAwareKnnCollector extends KnnCollector.Decorator {
           "gateK must be in [1, subCollector.k()=" + subCollector.k() + "], got: " + gateK);
     }
     this.subCollector = subCollector;
+    this.floorPruningEnabled = greediness > 0 && minExplorationSlots < subCollector.k();
     this.globalFloor = globalFloor;
     this.gateK = gateK;
     this.syncInterval = syncInterval;
     this.publishToFloor = publishToFloor;
-    this.nonCompetitiveQueue =
-        new FloatHeap(Math.max(minExplorationSlots, Math.round((1 - greediness) * gateK)));
+    this.explorationSlots = Math.max(minExplorationSlots, Math.round((1 - greediness) * gateK));
+    this.nonCompetitiveQueue = new FloatHeap(explorationSlots);
     this.updatesQueue = publishToFloor ? new FloatHeap(globalFloor.k()) : null;
     this.updatesScratch = publishToFloor ? new float[globalFloor.k()] : null;
   }
@@ -381,9 +386,12 @@ public final class FloorAwareKnnCollector extends KnnCollector.Decorator {
 
   @Override
   public float minCompetitiveSimilarity() {
-    if (gateOpened == false) {
-      // Ascent gate: until gateK results have been collected, expose only the delegate's bound,
-      // which is NEGATIVE_INFINITY by the KnnCollector contract. See the class comment.
+    if (floorPruningEnabled == false
+        || gateOpened == false
+        || nonCompetitiveQueue.size() < explorationSlots) {
+      // Disabled pruning always delegates, including when gateK is below the local queue size.
+      // Otherwise, the ascent gate delays floor pruning until gateK results are collected.
+      // A clamp wider than the gate must also fill before it supplies a score cutoff.
       return subCollector.minCompetitiveSimilarity();
     }
     // nextDown keeps the bound strictly below the floor so exact score ties at the cutoff remain

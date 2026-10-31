@@ -22,6 +22,52 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestFloorAwareKnnCollector extends LuceneTestCase {
 
+  public void testExplorationWidthMustFillAfterEarlyGate() {
+    GlobalKnnFloor floor = new GlobalKnnFloor(100);
+    float[] remoteScores = new float[100];
+    java.util.Arrays.fill(remoteScores, 0.9f);
+    floor.offer(remoteScores, remoteScores.length);
+    TopKnnCollector delegate = new TopKnnCollector(100, Integer.MAX_VALUE);
+    FloorAwareKnnCollector collector = new FloorAwareKnnCollector(delegate, floor, 0.5f, 32, 1, 8);
+    for (int doc = 0; doc < 31; doc++) {
+      collector.incVisitedCount(1);
+      collector.collect(doc, 0.1f + doc * 0.01f);
+      assertEquals(Float.NEGATIVE_INFINITY, collector.minCompetitiveSimilarity(), 0f);
+    }
+    collector.incVisitedCount(1);
+    collector.collect(31, 0.41f);
+    assertEquals(0.1f, collector.minCompetitiveSimilarity(), 0f);
+  }
+
+  public void testDisabledFloorPreservesDelegateWithEarlyGate() {
+    int k = 100;
+    for (int slots : new int[] {16, k, k + 1}) {
+      for (float greediness : new float[] {0f, 1f}) {
+        if (greediness > 0 && slots < k) {
+          continue;
+        }
+        GlobalKnnFloor floor = new GlobalKnnFloor(k);
+        // k distinct remote hits establish a valid floor above the local scores.
+        float[] scores = new float[k];
+        java.util.Arrays.fill(scores, 0.9f);
+        floor.offer(scores, k);
+        TopKnnCollector delegate = new TopKnnCollector(k, Integer.MAX_VALUE);
+        FloorAwareKnnCollector collector =
+            new FloorAwareKnnCollector(delegate, floor, greediness, slots, 1, 20);
+        for (int doc = 0; doc < 2 * k; doc++) {
+          collector.incVisitedCount(1);
+          collector.collect(doc, doc / (float) (4 * k));
+          assertEquals(
+              "disabled pruning must preserve the delegate before and after its queue fills",
+              delegate.minCompetitiveSimilarity(),
+              collector.minCompetitiveSimilarity(),
+              0f);
+        }
+        assertEquals(0.9f, floor.floor(), 0f);
+      }
+    }
+  }
+
   public void testInvalidGreediness() {
     GlobalKnnFloor floor = new GlobalKnnFloor(4);
     TopKnnCollector delegate = new TopKnnCollector(4, Integer.MAX_VALUE);
