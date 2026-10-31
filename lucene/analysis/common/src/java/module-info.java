@@ -77,6 +77,7 @@ module org.apache.lucene.analysis.common {
   exports org.apache.lucene.analysis.shingle;
   exports org.apache.lucene.analysis.sinks;
   exports org.apache.lucene.analysis.snowball;
+  exports org.apache.lucene.analysis.sq;
   exports org.apache.lucene.analysis.sr;
   exports org.apache.lucene.analysis.sv;
   exports org.apache.lucene.analysis.synonym;
@@ -255,6 +256,8 @@ module org.apache.lucene.analysis.common {
       org.apache.lucene.analysis.shingle.ShingleFilterFactory,
       org.apache.lucene.analysis.shingle.FixedShingleFilterFactory,
       org.apache.lucene.analysis.snowball.SnowballPorterFilterFactory,
+      org.apache.lucene.analysis.sq.AlbanianLightStemFilterFactory,
+      org.apache.lucene.analysis.sq.AlbanianNormalizationFilterFactory,
       org.apache.lucene.analysis.sr.SerbianNormalizationFilterFactory,
       org.apache.lucene.analysis.sv.SwedishLightStemFilterFactory,
       org.apache.lucene.analysis.sv.SwedishMinimalStemFilterFactory,
