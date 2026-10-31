@@ -115,6 +115,8 @@ org.apache.lucene.analysis.ru.RussianLightStemFilterFactory
 org.apache.lucene.analysis.shingle.ShingleFilterFactory
 org.apache.lucene.analysis.shingle.FixedShingleFilterFactory
 org.apache.lucene.analysis.snowball.SnowballPorterFilterFactory
+org.apache.lucene.analysis.sq.AlbanianLightStemFilterFactory
+org.apache.lucene.analysis.sq.AlbanianNormalizationFilterFactory
 org.apache.lucene.analysis.sr.SerbianNormalizationFilterFactory
 org.apache.lucene.analysis.sv.SwedishLightStemFilterFactory
 org.apache.lucene.analysis.sv.SwedishMinimalStemFilterFactory
