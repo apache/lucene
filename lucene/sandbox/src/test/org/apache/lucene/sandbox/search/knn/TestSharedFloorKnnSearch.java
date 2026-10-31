@@ -48,6 +48,7 @@ import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.NamedThreadFactory;
+import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 
 /**
  * End-to-end tests of kNN search through {@link SharedFloorKnnCollectorManager}: the shared floor
@@ -420,7 +421,7 @@ public class TestSharedFloorKnnSearch extends LuceneTestCase {
    */
   public void testSeededFloorReducesVisitedVectors() throws IOException {
     int dim = 16;
-    int numDocs = 2000;
+    int numDocs = 10000;
     int k = 100;
     int numQueries = 5;
     float[][] vectors = new float[numDocs][];
@@ -430,6 +431,14 @@ public class TestSharedFloorKnnSearch extends LuceneTestCase {
     try (Directory dir = newDirectory()) {
       indexInSegments(dir, vectors, 5);
       try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        // Small segments use an exhaustive scan when the estimated HNSW visit count is
+        // at least the number of vectors. Such a scan cannot demonstrate visit savings.
+        for (LeafReaderContext leaf : reader.leaves()) {
+          int numVectors = leaf.reader().getFloatVectorValues(FIELD).size();
+          assertTrue(
+              "segments must be large enough to exercise HNSW pruning",
+              HnswGraphSearcher.expectedVisitedNodes(k, numVectors) < numVectors);
+        }
         IndexSearcher searcher = new IndexSearcher(reader);
         for (int i = 0; i < numQueries; i++) {
           float[] query = randomVector(dim);
