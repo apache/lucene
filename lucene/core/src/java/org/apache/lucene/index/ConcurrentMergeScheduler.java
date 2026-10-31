@@ -647,14 +647,15 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
       doStall();
     }
 
-    if (mergeThreadCount() >= maxMergeCount && mergeThreads.contains(Thread.currentThread())) {
-      // A merge thread must not kick off new merges while we are at the cap,
-      // even when no merges are pending at this instant: IndexWriter registers
-      // new pending merges under its own lock, so a merge may become pending
-      // right after the hasPendingMerges check above, and getNextMerge would
-      // still pick it up, spawning more merge threads than maxMergeCount (see
-      // https://github.com/apache/lucene/issues/13593). Producer threads may
-      // continue; the cap is re-checked after they pull a merge (see merge()).
+    if (mergeThreads.contains(Thread.currentThread()) && mergeSource.hasPendingMerges() == false) {
+      // A merge thread must not wait around for a merge that becomes pending
+      // after this check: IndexWriter registers new pending merges under its
+      // own lock, so a merge may become pending right after the stall check
+      // above, and getNextMerge would still pick it up, spawning more merge
+      // threads than maxMergeCount (see
+      // https://github.com/apache/lucene/issues/13593). The registration path
+      // calls merge() again for the late merge. Producer threads may continue;
+      // the cap is re-checked after they pull a merge (see merge()).
       return false;
     }
 
