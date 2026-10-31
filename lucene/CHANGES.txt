@@ -19,7 +19,9 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+
+* GITHUB#16956: Merges that reuse an existing HNSW graph no longer read the query vector of every
+  copied node, which slowed the graph copy by 2.4x to 10x in one benchmark. (Ankur Goel)
 
 Bug Fixes
 ---------------------
