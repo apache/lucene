@@ -32,6 +32,7 @@ dependencies {
   moduleImplementation project(':lucene:analysis:phonetic')
   moduleImplementation project(':lucene:facet')
   moduleImplementation project(':lucene:highlighter')
+  moduleImplementation project(':lucene:join')
   moduleImplementation project(':lucene:queries')
   moduleImplementation project(':lucene:spatial-extras')
   moduleImplementation project(':lucene:queryparser')

@@ -478,6 +478,10 @@ Other
 
 * GITHUB#16170: Add JMH benchmarks for int4BitDotProduct and int4DibitDotProduct. (Vignesh)
 
+* GITHUB#16858: Add join benchmarks to the benchmark module, comparing JoinUtil term, numeric and
+  global ordinals joins with ToParentBlockJoinQuery on a 1:M products/skus dataset, including
+  incremental updates with NRT reopen. (Mikhail Khludnev)
+
 * GITHUB#16279: Add JMH benchmarks comparing read I/O strategies under memory pressure. (neoremind)
 
 ======================= Lucene 10.6.0 =======================
