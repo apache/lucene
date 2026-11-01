@@ -56,9 +56,6 @@ public class TestAlbanianAnalyzer extends BaseTokenStreamTestCase {
     assertAnalyzesTo(a, "Qka ke qdo dite?", new String[] {"dit"});
     // kec (a kid goat) is not keq (bad), which is a stop word: the real c-words keep their c
     assertAnalyzesTo(a, "kec keca keq", new String[] {"kec", "kec"});
-    assertAnalyzesTo(a, "xhami gjami xhamia", new String[] {"gjam", "gjam", "gjam"});
-    assertAnalyzesTo(a, "haxh hagj haxhi", new String[] {"hag", "hag", "hag"});
-    assertAnalyzesTo(a, "nxënës nxenes", new String[] {"nxen", "nxen"});
     a.close();
     // çfarë is a stop word; without the list its three spellings are one stem
     Analyzer noStop = new AlbanianAnalyzer(CharArraySet.EMPTY_SET);

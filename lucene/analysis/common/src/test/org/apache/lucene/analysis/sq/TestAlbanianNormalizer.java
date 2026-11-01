@@ -74,15 +74,6 @@ public class TestAlbanianNormalizer extends BaseTokenStreamTestCase {
     check("ceshtje", "qeshtje");
     check("qeshtje", "qeshtje");
     check("mençur", "menqur");
-    // xh and gj: the same sound to many speakers, so xhami / gjami, haxh / hagj are one term
-    check("xhami", "gjami");
-    check("gjami", "gjami");
-    check("haxh", "hagj");
-    check("XHAMI", "GJAMI");
-    check("Xhuma", "Gjuma");
-    // x on its own is another letter and stays
-    check("nxënës", "nxenes");
-    check("xixa", "xixa");
   }
 
   /**
@@ -104,6 +95,9 @@ public class TestAlbanianNormalizer extends BaseTokenStreamTestCase {
     check("care", "qare");
     check("cdo", "qdo");
     check("kryenec", "kryeneq");
+    // xh is not folded to gj: xhenet (paradise) would stem into gjen (to find)
+    check("xhenet", "xhenet");
+    check("gjenet", "gjenet");
   }
 
   public void testApostrophes() throws IOException {

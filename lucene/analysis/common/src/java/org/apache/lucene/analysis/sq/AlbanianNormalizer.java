@@ -60,10 +60,6 @@ import org.apache.lucene.util.IOUtils;
  * {@value #KEEP_C_FILE}, so <code>kec</code> stays apart from <code>keq</code> while <code>cdo
  * </code> still meets <code>çdo</code>.
  *
- * <p>The digraph <code>xh</code> is folded to <code>gj</code> for the same reason: the two sound
- * alike to many speakers, and the logs have <code>xhami</code> and <code>gjami</code>, <code>haxh
- * </code> and <code>hagj</code> for the same word.
- *
  * <p>The folding is applied to both indexed text and queries, so it also lets the {@link
  * AlbanianLightStemmer} work on a single spelling of every suffix.
  */
@@ -154,15 +150,6 @@ public class AlbanianNormalizer {
         case 'Ê':
         case 'É':
           s[i] = 'E';
-          break;
-        case 'x':
-        case 'X':
-          // the digraph xh is heard as gj by many speakers (xhami / gjami, haxh / hagj): one class
-          if (i + 1 < len && (s[i + 1] == 'h' || s[i + 1] == 'H')) {
-            s[i] = s[i] == 'x' ? 'g' : 'G';
-            s[i + 1] = s[i + 1] == 'h' ? 'j' : 'J';
-            i++;
-          }
           break;
         case 'ç':
           // ç is typed as c (no cedilla) and as q (the same sound to most speakers): one class,
