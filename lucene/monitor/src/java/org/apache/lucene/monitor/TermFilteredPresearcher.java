@@ -32,6 +32,7 @@ import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
@@ -407,8 +408,8 @@ public class TermFilteredPresearcher extends Presearcher {
         byField.computeIfAbsent(term.field(), _ -> new BytesRefHash()).add(term.bytes());
       }
       for (Map.Entry<String, BytesRefHash> entry : byField.entrySet()) {
-        addField(doc, notSlotField(passField.apply(entry.getKey()), slot), entry.getValue());
-        addField(doc, entry.getKey() + NOT_SUFFIX, entry.getValue());
+        addRawTerms(doc, notSlotField(passField.apply(entry.getKey()), slot), entry.getValue());
+        addRawTerms(doc, entry.getKey() + NOT_SUFFIX, entry.getValue());
       }
       addField(
           doc, notSlotMarkerField(passField.apply(NOTSLOT_MARKER_FIELD), slot), NOTSLOT_MARKER);
@@ -425,6 +426,16 @@ public class TermFilteredPresearcher extends Presearcher {
     doc.add(
         new Field(
             field, new TermsEnumTokenStream(new BytesRefHashIterator(terms)), QUERYFIELDTYPE));
+  }
+
+  /**
+   * Indexes exact bytes: TermsEnumTokenStream can merge invalid UTF-8 terms, which must not exclude
+   */
+  private static void addRawTerms(Document doc, String field, BytesRefHash terms) {
+    BytesRef scratch = new BytesRef();
+    for (int i = 0; i < terms.size(); i++) {
+      doc.add(new StringField(field, BytesRef.deepCopyOf(terms.get(i, scratch)), Field.Store.NO));
+    }
   }
 
   /** The terms and NotSlots collected from one path through a {@link QueryTree} */

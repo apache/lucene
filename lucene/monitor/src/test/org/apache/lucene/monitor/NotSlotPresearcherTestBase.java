@@ -280,4 +280,15 @@ public abstract class NotSlotPresearcherTestBase extends PresearcherTestBase {
     assertRunAndMatched(
         1, 1, run(createPresearcher(1, List.of(lowercasing)), query, doc("f", "Apple")));
   }
+
+  public void testBinaryNegatedTermsAreExact() throws IOException {
+    // c1 a1 is invalid UTF-8 that lenient decoding turns into "a"
+    Term binary = new Term("f", new BytesRef(new byte[] {(byte) 0xc1, (byte) 0xa1}));
+    Query query =
+        new BooleanQuery.Builder()
+            .add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.SHOULD)
+            .add(new TermQuery(binary), BooleanClause.Occur.MUST_NOT)
+            .build();
+    assertRunAndMatched(1, 1, run(createPresearcher(), query, doc("f", "a")));
+  }
 }
