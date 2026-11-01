@@ -106,7 +106,12 @@ public class JoinSearchTask extends PerfTask {
       toManager = indices.index(split ? "products" : layout).manager();
     }
     from = fromManager.acquire();
-    to = toManager.acquire();
+    if (fromManager == toManager) {
+      from.getIndexReader().incRef();
+      to = from;
+    } else {
+      to = toManager.acquire();
+    }
   }
 
   @Override

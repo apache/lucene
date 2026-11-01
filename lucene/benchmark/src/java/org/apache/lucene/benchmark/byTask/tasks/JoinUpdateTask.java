@@ -59,8 +59,8 @@ public class JoinUpdateTask extends PerfTask {
     }
   }
 
-  private final String side;
-  private final int batch;
+  private String side;
+  private int batch;
   private String group;
   private JoinIndices.Index productIndex;
   private JoinIndices.Index skuIndex;
@@ -69,17 +69,17 @@ public class JoinUpdateTask extends PerfTask {
 
   public JoinUpdateTask(PerfRunData runData) {
     super(runData);
-    side = runData.getConfig().get("join.update.side", "both");
-    batch = runData.getConfig().get("join.update.batch", 100);
-    if (!List.of("products", "skus", "both").contains(side)) {
-      throw new IllegalArgumentException(
-          "Unknown join.update.side: " + side + ", expected products|skus|both");
-    }
   }
 
   @Override
   public void setup() throws Exception {
     super.setup();
+    side = getRunData().getConfig().get("join.update.side", "both");
+    batch = getRunData().getConfig().get("join.update.batch", 100);
+    if (!List.of("products", "skus", "both").contains(side)) {
+      throw new IllegalArgumentException(
+          "Unknown join.update.side: " + side + ", expected products|skus|both");
+    }
     if (group == null) {
       throw new IllegalStateException("JoinUpdate requires a parameter: split|mixed|block");
     }
