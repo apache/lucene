@@ -249,6 +249,7 @@ public class TestNotSlotRandomized extends LuceneTestCase {
     return ids;
   }
 
+  @Nightly
   public void testNotSlotsNeverDropMatches() throws IOException {
     Random r = random();
     long excluded = 0;

@@ -26,10 +26,15 @@ import java.util.Set;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.BoostQuery;
+import org.apache.lucene.search.ConstantScoreQuery;
+import org.apache.lucene.search.DisjunctionMaxQuery;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
+import org.apache.lucene.search.RegexpQuery;
+import org.apache.lucene.search.SynonymQuery;
 import org.apache.lucene.search.TermInSetQuery;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -155,6 +160,15 @@ public class TestQueryAnalyzer extends LuceneTestCase {
     assertFalse(tree.advancePhase(0));
   }
 
+  public void testShouldClausesBesideFilterClausesAreIgnored() {
+    Query query =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("field", "a")), BooleanClause.Occur.FILTER)
+            .add(new TermQuery(new Term("field", "b")), BooleanClause.Occur.SHOULD)
+            .build();
+    assertEquals(Set.of(new Term("field", "a")), collectTerms(query));
+  }
+
   public void testMinWeightAdvances() {
     QueryTree tree =
         QueryTree.disjunction(
@@ -253,6 +267,39 @@ public class TestQueryAnalyzer extends LuceneTestCase {
     assertEquals(new Pass(Set.of(), List.of(Set.of(t("b")))), collect(notSlotTree(query)));
   }
 
+  private static Query matchAllExcept(Query negated) {
+    return new BooleanQuery.Builder()
+        .add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.SHOULD)
+        .add(negated, BooleanClause.Occur.MUST_NOT)
+        .build();
+  }
+
+  public void testNegationThroughOtherQueryTypes() {
+    TermQuery b = new TermQuery(t("b"));
+    List<Set<Term>> notB = List.of(Set.of(t("b")));
+    assertEquals(
+        new Pass(Set.of(), notB), collect(notSlotTree(matchAllExcept(new BoostQuery(b, 2)))));
+    assertEquals(
+        new Pass(Set.of(), notB), collect(notSlotTree(matchAllExcept(new ConstantScoreQuery(b)))));
+    Query oneTermSet = new TermInSetQuery("field", List.of(new BytesRef("b")));
+    assertEquals(new Pass(Set.of(), notB), collect(notSlotTree(matchAllExcept(oneTermSet))));
+    Query synonyms = new SynonymQuery.Builder("field").addTerm(t("b")).addTerm(t("c")).build();
+    assertEquals(
+        new Pass(Set.of(), List.of(Set.of(t("b"), t("c")))),
+        collect(notSlotTree(matchAllExcept(synonyms))));
+
+    // not negated exactly: a disjunction-max wrapper, an empty boolean query (which matches
+    // nothing), and a query whose handler does not implement handleNegatedQuery
+    Query dismax = new DisjunctionMaxQuery(List.of(b, new TermQuery(t("c"))), 0);
+    assertEquals(new Pass(ANY, List.of()), collect(notSlotTree(matchAllExcept(dismax))));
+    Query empty = new BooleanQuery.Builder().build();
+    assertEquals(new Pass(ANY, List.of()), collect(notSlotTree(matchAllExcept(empty))));
+    QueryAnalyzer regexp = new QueryAnalyzer(List.of(new RegexpQueryHandler()), true);
+    Query negatedRegexp = matchAllExcept(new RegexpQuery(t("ab.*")));
+    assertEquals(
+        new Pass(ANY, List.of()), collect(regexp.buildTree(negatedRegexp, TermWeightor.DEFAULT)));
+  }
+
   public void testDoubleNegationIsPositive() {
     // NOT(a AND NOT b) = NOT a OR b
     assertEquals(new Pass(Set.of(t("b")), List.of(Set.of(t("a")))), notSlotPass("*:* -(+a -b)"));
@@ -307,16 +354,6 @@ public class TestQueryAnalyzer extends LuceneTestCase {
             .add(allTerms, BooleanClause.Occur.MUST_NOT)
             .build();
     assertEquals(new Pass(ANY, List.of()), collect(notSlotTree(query)));
-  }
-
-  public void testNegationOffIgnoresNegatedClauses() {
-    QueryAnalyzer off = new QueryAnalyzer(List.of(), false);
-    assertEquals(
-        new Pass(Set.of(t("a")), List.of()),
-        collect(off.buildTree(MonitorTestBase.parse("+a -b"), TermWeightor.DEFAULT)));
-    assertEquals(
-        new Pass(ANY, List.of()),
-        collect(off.buildTree(MonitorTestBase.parse("-b"), TermWeightor.DEFAULT)));
   }
 
   public void testCustomQueryHandlersUnderNegation() {

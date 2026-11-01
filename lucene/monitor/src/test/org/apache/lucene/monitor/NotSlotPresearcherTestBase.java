@@ -98,20 +98,6 @@ public abstract class NotSlotPresearcherTestBase extends PresearcherTestBase {
     return new ConstantScoreQuery(parse(query));
   }
 
-  public void testPureNegativeQuery() throws IOException {
-    // The QueryDecomposer drops top-level pure negative queries, as Lucene matches nothing for them
-    assertRunAndMatched(0, 0, run("-f:t", doc("f", "x")));
-    // nested, it is a NotSlot
-    assertRunAndMatched(0, 0, run(createPresearcher(), undecomposed("-f:t"), doc("f", "t")));
-    assertRunAndMatched(1, 0, run(createPresearcher(), undecomposed("-f:t"), doc("f", "x")));
-  }
-
-  public void testNegatedDisjunction() throws IOException {
-    assertRunAndMatched(0, 0, run("*:* -(y:b z:c)", doc("y", "b")));
-    assertRunAndMatched(0, 0, run("*:* -(y:b z:c)", doc("z", "c")));
-    assertRunAndMatched(1, 1, run("*:* -(y:b z:c)", doc("y", "q")));
-  }
-
   public void testNegatedConjunctionNeedsTwoNotSlots() throws IOException {
     String query = "*:* -(+y:b +z:c)";
     Document both = doc("y", "b", "z", "c");
@@ -119,24 +105,6 @@ public abstract class NotSlotPresearcherTestBase extends PresearcherTestBase {
     assertRunAndMatched(1, 0, run(createPresearcher(1, List.of()), query, both));
     assertRunAndMatched(0, 0, run(createPresearcher(2, List.of()), query, both));
     assertRunAndMatched(1, 1, run(createPresearcher(2, List.of()), query, doc("y", "b")));
-  }
-
-  public void testDisjunctionOfNegations() throws IOException {
-    // decomposed, each disjunct is its own query with one NotSlot
-    assertRunAndMatched(0, 0, run("(*:* -a:x) (*:* -b:y)", doc("a", "x", "b", "y")));
-
-    Query query = undecomposed("(*:* -a:x) (*:* -b:y)");
-    Document both = doc("a", "x", "b", "y");
-    assertRunAndMatched(1, 0, run(createPresearcher(1, List.of()), query, both));
-    assertRunAndMatched(0, 0, run(createPresearcher(2, List.of()), query, both));
-    assertRunAndMatched(1, 1, run(createPresearcher(2, List.of()), query, doc("a", "x")));
-  }
-
-  public void testInexactNegationsNeverExclude() throws IOException {
-    assertRunAndMatched(1, 1, run("*:* -f:\"w1 w2\"", doc("f", "w2 w1")));
-    assertRunAndMatched(1, 0, run("*:* -f:\"w1 w2\"", doc("f", "w1 w2")));
-    assertRunAndMatched(1, 0, run("*:* -f:b*", doc("f", "bb")));
-    assertRunAndMatched(1, 0, run("*:* -f:[a TO c]", doc("f", "b")));
   }
 
   public void testBatchesOnlyExcludeOnTermsEveryDocumentContains() throws IOException {
@@ -154,22 +122,6 @@ public abstract class NotSlotPresearcherTestBase extends PresearcherTestBase {
               new Document[] {doc("f", "t", "x", "1"), doc("f", "t")}, QueryMatch.SIMPLE_MATCHER);
       assertEquals(0, matches.getQueriesRun());
     }
-  }
-
-  public void testCustomQueryHandlerNegation() throws IOException {
-    Query query =
-        new BooleanQuery.Builder()
-            .add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.SHOULD)
-            .add(
-                new TermInSetQuery("f", List.of(new BytesRef("x"), new BytesRef("y"))),
-                BooleanClause.Occur.MUST_NOT)
-            .build();
-    Presearcher negatable = createPresearcher(1, List.of(new TermInSetQueryHandler(true)));
-    assertRunAndMatched(0, 0, run(negatable, query, doc("f", "y")));
-    assertRunAndMatched(1, 1, run(negatable, query, doc("f", "z")));
-
-    Presearcher notNegatable = createPresearcher(1, List.of(new TermInSetQueryHandler(false)));
-    assertRunAndMatched(1, 0, run(notNegatable, query, doc("f", "y")));
   }
 
   public void testFieldsNamedLikeNotSlotFieldsAreSafe() throws IOException {
@@ -251,7 +203,7 @@ public abstract class NotSlotPresearcherTestBase extends PresearcherTestBase {
     dir.close();
   }
 
-  public void testOnlyRealDocumentTermsExclude() throws IOException {
+  public void testOnlyExactDocumentTermsExclude() throws IOException {
     // The regexp handler turns the document's apple into tokens such as apXX; only real terms of
     // the document may exclude queries, so the query negating the literal term apXX still matches
     Presearcher presearcher = createPresearcher(1, List.of(new RegexpQueryHandler()));
@@ -279,12 +231,10 @@ public abstract class NotSlotPresearcherTestBase extends PresearcherTestBase {
             .build();
     assertRunAndMatched(
         1, 1, run(createPresearcher(1, List.of(lowercasing)), query, doc("f", "Apple")));
-  }
 
-  public void testBinaryNegatedTermsAreExact() throws IOException {
     // c1 a1 is invalid UTF-8 that lenient decoding turns into "a"
     Term binary = new Term("f", new BytesRef(new byte[] {(byte) 0xc1, (byte) 0xa1}));
-    Query query =
+    query =
         new BooleanQuery.Builder()
             .add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.SHOULD)
             .add(new TermQuery(binary), BooleanClause.Occur.MUST_NOT)

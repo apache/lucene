@@ -131,11 +131,6 @@ public class TermFilteredPresearcher extends Presearcher {
     this.maxNotSlots = maxNotSlots;
   }
 
-  /** The maximum number of NotSlots a query may use per pass; 0 if negations are not used */
-  protected int maxNotSlots() {
-    return maxNotSlots;
-  }
-
   @Override
   public final Query buildQuery(LeafReader reader, BiPredicate<String, BytesRef> termAcceptor) {
     try {
@@ -276,7 +271,10 @@ public class TermFilteredPresearcher extends Presearcher {
     }
 
     /** Add a term that every document in the batch contains, to exclude queries by */
-    default void addNegatableTerm(String field, BytesRef term) throws IOException {}
+    default void addNegatableTerm(String field, BytesRef term) throws IOException {
+      throw new UnsupportedOperationException(
+          "supportsNotSlots() returns true, but addNegatableTerm is not implemented");
+    }
 
     /**
      * @return the final Query

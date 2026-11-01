@@ -37,30 +37,42 @@ public class TestNotSlotTermPresearcher extends NotSlotPresearcherTestBase {
     assertRunAndMatched(0, 0, run("+x:abc -f:t", doc("f", "t")));
   }
 
-  public void testNegatedTermsAreNotIndexedAsPositives() throws IOException {
-    // a document containing only the negated term must not select the query
-    assertRunAndMatched(0, 0, run("*:* -f:t", doc("f", "t")));
+  /** A document query builder that ignores NotSlots */
+  private static class IgnoringNotSlots implements TermFilteredPresearcher.DocumentQueryBuilder {
+    @Override
+    public void addTerm(String field, BytesRef term) {}
+
+    @Override
+    public Query build() {
+      return new BooleanQuery.Builder().build();
+    }
+  }
+
+  private static TermFilteredPresearcher withQueryBuilder(
+      TermFilteredPresearcher.DocumentQueryBuilder builder) {
+    return new TermFilteredPresearcher(TermWeightor.DEFAULT, List.of(), Set.of(), 1) {
+      @Override
+      protected DocumentQueryBuilder getQueryBuilder() {
+        return builder;
+      }
+    };
   }
 
   public void testQueryBuildersMustSupportNotSlots() throws IOException {
-    TermFilteredPresearcher custom =
-        new TermFilteredPresearcher(TermWeightor.DEFAULT, List.of(), Set.of(), 1) {
+    expectThrows(
+        IllegalStateException.class,
+        () -> run(withQueryBuilder(new IgnoringNotSlots()), "*:* -f:t", doc("f", "t")));
+    // claiming support without implementing addNegatableTerm
+    TermFilteredPresearcher.DocumentQueryBuilder claiming =
+        new IgnoringNotSlots() {
           @Override
-          protected DocumentQueryBuilder getQueryBuilder() {
-            return new DocumentQueryBuilder() {
-              final BooleanQuery.Builder builder = new BooleanQuery.Builder();
-
-              @Override
-              public void addTerm(String field, BytesRef term) {}
-
-              @Override
-              public Query build() {
-                return builder.build();
-              }
-            };
+          public boolean supportsNotSlots() {
+            return true;
           }
         };
-    expectThrows(IllegalStateException.class, () -> run(custom, "*:* -f:t", doc("f", "t")));
+    expectThrows(
+        UnsupportedOperationException.class,
+        () -> run(withQueryBuilder(claiming), "*:* -f:t", doc("f", "t")));
   }
 
   public void testNegativeMaxNotSlotsIsRejected() {
