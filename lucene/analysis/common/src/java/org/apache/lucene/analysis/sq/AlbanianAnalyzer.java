@@ -71,18 +71,32 @@ public final class AlbanianAnalyzer extends StopwordAnalyzerBase {
 
     static {
       try {
+        // the stop filter runs after the normalizer, so the list (kept readable: që, aq, çdo) is
+        // matched in its normalized spelling
         DEFAULT_STOP_SET =
-            WordlistLoader.getWordSet(
-                IOUtils.requireResourceNonNull(
-                    AlbanianAnalyzer.class.getResourceAsStream(DEFAULT_STOPWORD_FILE),
-                    DEFAULT_STOPWORD_FILE),
-                "#");
+            normalized(
+                WordlistLoader.getWordSet(
+                    IOUtils.requireResourceNonNull(
+                        AlbanianAnalyzer.class.getResourceAsStream(DEFAULT_STOPWORD_FILE),
+                        DEFAULT_STOPWORD_FILE),
+                    "#"));
       } catch (IOException ex) {
         // default set should always be present as it is part of the
         // distribution (JAR)
         throw new UncheckedIOException("Unable to load default stopword set", ex);
       }
     }
+  }
+
+  private static CharArraySet normalized(CharArraySet words) {
+    AlbanianNormalizer normalizer = new AlbanianNormalizer();
+    CharArraySet result = new CharArraySet(words.size(), false);
+    for (Object word : words) {
+      char[] chars = ((char[]) word).clone();
+      int len = normalizer.normalize(chars, chars.length);
+      result.add(new String(chars, 0, len));
+    }
+    return CharArraySet.unmodifiableSet(result);
   }
 
   private final CharArraySet stemExclusionSet;

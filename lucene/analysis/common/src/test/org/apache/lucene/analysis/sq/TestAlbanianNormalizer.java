@@ -29,9 +29,9 @@ public class TestAlbanianNormalizer extends BaseTokenStreamTestCase {
 
   public void testDiacritics() throws IOException {
     check("është", "eshte");
-    check("çfarë", "cfare");
+    check("çfarë", "qfare");
     check("mëshirëbërës", "meshireberes");
-    check("ÇËSHTJE", "CESHTJE");
+    check("ÇËSHTJE", "QESHTJE");
   }
 
   /**
@@ -40,7 +40,7 @@ public class TestAlbanianNormalizer extends BaseTokenStreamTestCase {
    */
   public void testCombiningMarks() throws IOException {
     check("është", "eshte");
-    check("çfarë", "cfare");
+    check("çfarë", "qfare");
     check("âsht", "asht");
   }
 
@@ -53,9 +53,57 @@ public class TestAlbanianNormalizer extends BaseTokenStreamTestCase {
     check("hûni", "huni");
     check("ÂSHT", "ASHT");
     // acute accents mark long vowels in the same tradition (Lahuta e Malcís)
-    check("malcís", "malcis");
+    check("malcís", "malqis");
     check("lirís", "liris");
     check("kángë", "kange");
+  }
+
+  /**
+   * ç is typed as c (without the cedilla) and as q (the same sound to most speakers): the three
+   * spellings land on one term. Every row is a spelling seen in the search logs of an Albanian
+   * site.
+   */
+  public void testKeyboardSpellings() throws IOException {
+    check("çdo", "qdo");
+    check("cdo", "qdo");
+    check("qdo", "qdo");
+    check("kryeneç", "kryeneq");
+    check("kryenec", "kryeneq");
+    check("kryeneq", "kryeneq");
+    check("çështje", "qeshtje");
+    check("ceshtje", "qeshtje");
+    check("qeshtje", "qeshtje");
+    check("mençur", "menqur");
+    // xh and gj: the same sound to many speakers, so xhami / gjami, haxh / hagj are one term
+    check("xhami", "gjami");
+    check("gjami", "gjami");
+    check("haxh", "hagj");
+    check("XHAMI", "GJAMI");
+    check("Xhuma", "Gjuma");
+    // x on its own is another letter and stays
+    check("nxënës", "nxenes");
+    check("xixa", "xixa");
+  }
+
+  /**
+   * Words that really have a c keep it (cwords.txt): cili, copë, forcë, kec, and the whole word ca;
+   * a c typed for ç still folds, also in a word that looks like one of them (care for çarë).
+   */
+  public void testRealCIsKept() throws IOException {
+    check("kec", "kec");
+    check("kecat", "kecat");
+    check("Kec", "Kec");
+    check("cili", "cili");
+    check("cilët", "cilet");
+    check("secili", "secili");
+    check("copë", "cope");
+    check("forcë", "force");
+    check("caktuar", "caktuar");
+    check("shumica", "shumica");
+    check("ca", "ca");
+    check("care", "qare");
+    check("cdo", "qdo");
+    check("kryenec", "kryeneq");
   }
 
   public void testApostrophes() throws IOException {

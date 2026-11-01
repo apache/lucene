@@ -40,8 +40,35 @@ public class TestAlbanianAnalyzer extends BaseTokenStreamTestCase {
 
   public void testCustomStopwords() throws IOException {
     Analyzer a = new AlbanianAnalyzer(CharArraySet.EMPTY_SET);
-    assertAnalyzesTo(a, "Çfarë është durimi?", new String[] {"cfar", "esht", "dur"});
+    assertAnalyzesTo(a, "Çfarë është durimi?", new String[] {"qfar", "esht", "dur"});
     a.close();
+  }
+
+  /**
+   * People type ç as c or q: the three spellings of a word are one term, stop words included, and
+   * the palatal plural (miq) still meets its singular after the fold.
+   */
+  public void testTypedSpellings() throws IOException {
+    Analyzer a = new AlbanianAnalyzer();
+    assertAnalyzesTo(a, "kryeneç kryeneq kryenec", new String[] {"kryenek", "kryenek", "kryenek"});
+    assertAnalyzesTo(a, "çdo qdo cdo çka qka cka", new String[] {});
+    assertAnalyzesTo(a, "mik miq miqtë miqve", new String[] {"mik", "mik", "mik", "mik"});
+    assertAnalyzesTo(a, "Qka ke qdo dite?", new String[] {"dit"});
+    // kec (a kid goat) is not keq (bad), which is a stop word: the real c-words keep their c
+    assertAnalyzesTo(a, "kec keca keq", new String[] {"kec", "kec"});
+    assertAnalyzesTo(a, "xhami gjami xhamia", new String[] {"gjam", "gjam", "gjam"});
+    assertAnalyzesTo(a, "haxh hagj haxhi", new String[] {"hag", "hag", "hag"});
+    assertAnalyzesTo(a, "nxënës nxenes", new String[] {"nxen", "nxen"});
+    a.close();
+    // çfarë is a stop word; without the list its three spellings are one stem
+    Analyzer noStop = new AlbanianAnalyzer(CharArraySet.EMPTY_SET);
+    assertAnalyzesTo(noStop, "çfarë qfare cfare", new String[] {"qfar", "qfar", "qfar"});
+    // cili and cilët are stop words too; without the list their real c shows in the stem
+    assertAnalyzesTo(
+        noStop,
+        "cili cilët secili copë forcë",
+        new String[] {"cil", "cil", "secil", "cop", "forc"});
+    noStop.close();
   }
 
   public void testReusableTokenStream() throws IOException {
@@ -150,7 +177,7 @@ public class TestAlbanianAnalyzer extends BaseTokenStreamTestCase {
     assertAnalyzesTo(
         a,
         "Gjuha shqipe është gjuhë dhe degë e veçantë e familjes indo-evropiane.",
-        new String[] {"gjuh", "shqip", "gjuh", "deg", "vecant", "famil", "ind", "evropian"});
+        new String[] {"gjuh", "shqip", "gjuh", "deg", "veqant", "famil", "ind", "evropian"});
     assertAnalyzesTo(
         a,
         "Shqipja është gjuha zyrtare e Shqipërisë dhe Kosovës.",
