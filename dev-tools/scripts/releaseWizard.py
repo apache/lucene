@@ -34,6 +34,7 @@
 import argparse
 import copy
 import fcntl
+import functools
 import json
 import os
 import platform
@@ -62,7 +63,7 @@ import scriptutil
 from scriptutil import BranchType, CommitterPgp, Version, download, run
 
 # Lucene-to-Java version mapping
-java_versions = {6: 8, 7: 8, 8: 8, 9: 11, 10: 21, 11: 23}
+java_versions = {6: 8, 7: 8, 8: 8, 9: 11, 10: 21, 11: 25}
 editor = None
 
 
@@ -297,6 +298,15 @@ def str_presenter(dumper: yaml.Dumper, data: str) -> yaml.ScalarNode:
   return dumper.represent_scalar("tag:yaml.org,2002:str", data)
 
 
+@functools.cache
+def list_dist_release_versions() -> list[str]:
+  """Versions in the dist release directory, which is where old versions get deleted from.
+  Cached since this is called on every template render and `svn ls` is slow.
+  """
+  listing = run("svn ls https://dist.apache.org/repos/dist/release/lucene/java/")
+  return [x.rstrip("/") for x in listing.splitlines() if re.fullmatch(r"\d+\.\d+\.\d+/", x.strip())]
+
+
 class ReleaseState:
   def __init__(self, config_path: str, release_version: str, script_version: str) -> None:
     self.script_version = script_version
@@ -375,9 +385,8 @@ class ReleaseState:
       state.mirrored_versions = [r for r in list(map(lambda y: y[12:], filter(lambda x: x.startswith("lucene-java-"), list(releases.keys()))))]
     return state.mirrored_versions
 
-  def get_mirrored_versions_to_delete(self) -> list[str]:      # List the dist directory itself, since that is where the old versions get deleted from
-    listing = run("svn ls https://dist.apache.org/repos/dist/release/lucene/java/")
-    versions = [x.rstrip("/") for x in listing.splitlines() if re.fullmatch(r"\d+\.\d+\.\d+/", x.strip())]
+  def get_mirrored_versions_to_delete(self) -> list[str]:
+    versions = list_dist_release_versions()
     to_keep = versions
     if state.release_type == "major":
       to_keep = [self.release_version, self.get_latest_version()]
