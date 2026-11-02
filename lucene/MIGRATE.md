@@ -19,6 +19,11 @@
 
 ## Migration from Lucene 10.x to Lucene 11.0
 
+### RegExp.ASCII_CASE_INSENSITIVE has been removed (GITHUB#14192)
+
+The flag was deprecated in 10.x and already behaved the same as `RegExp.CASE_INSENSITIVE` (full
+Unicode case folding). Replace it with `RegExp.CASE_INSENSITIVE`.
+
 ### SortField#setOptimizeSortWithIndexedData has been removed (GITHUB#14399)
 
 `SortField#setOptimizeSortWithIndexedData(false)` and `setOptimizeSortWithPoints(false)`, along with

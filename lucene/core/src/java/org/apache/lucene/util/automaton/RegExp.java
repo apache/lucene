@@ -415,14 +415,10 @@ public class RegExp {
 
   // -----  Matching flags ( > 0xff <= 0xffff )  ------
 
-  /**
-   * Allows case-insensitive matching of ASCII characters.
-   *
-   * <p>This flag has been deprecated in favor of {@link #CASE_INSENSITIVE} that supports the full
-   * range of Unicode characters. Usage of this flag now has the same behavior as {@link
-   * #CASE_INSENSITIVE}
-   */
-  @Deprecated public static final int ASCII_CASE_INSENSITIVE = 0x0100;
+  // Question for review: should we drop the constant instead? Keeping it makes raw 0x0100 flag
+  // values from 10.x
+  // (the removed ASCII_CASE_INSENSITIVE) still work, at the cost of permanent legacy code.
+  private static final int LEGACY_ASCII_CASE_INSENSITIVE = 0x0100;
 
   /**
    * Allows case-insensitive matching of most Unicode characters.
@@ -680,7 +676,7 @@ public class RegExp {
         a = Operations.complement(a, Integer.MAX_VALUE);
         break;
       case REGEXP_CHAR:
-        if (check(ASCII_CASE_INSENSITIVE | CASE_INSENSITIVE)) {
+        if (isCaseInsensitive()) {
           a = Automata.makeCaseInsensitiveChar(c);
         } else {
           a = Automata.makeChar(c);
@@ -699,7 +695,7 @@ public class RegExp {
         a = Automata.makeEmpty();
         break;
       case REGEXP_STRING:
-        if (check(ASCII_CASE_INSENSITIVE | CASE_INSENSITIVE)) {
+        if (isCaseInsensitive()) {
           a = Automata.makeCaseInsensitiveString(s);
         } else {
           a = Automata.makeString(s);
@@ -1221,6 +1217,10 @@ public class RegExp {
     return ch;
   }
 
+  private boolean isCaseInsensitive() {
+    return check(CASE_INSENSITIVE | LEGACY_ASCII_CASE_INSENSITIVE);
+  }
+
   private boolean check(int flag) {
     return (flags & flag) != 0;
   }
@@ -1333,7 +1333,7 @@ public class RegExp {
             starts.add(c);
             ends.add(parseCharExp());
           }
-        } else if (check(ASCII_CASE_INSENSITIVE | CASE_INSENSITIVE)) {
+        } else if (isCaseInsensitive()) {
           // single case-insensitive character
           for (int form : toCaseInsensitiveChar(c)) {
             starts.add(form);
