@@ -246,10 +246,11 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
    *
    * <p>Used by tests whose indexes are generated only at major releases. The current major uses
    * {@link Version#LATEST} when that release is itself {@code X.0.0}, so the index is created on
-   * the fly.
+   * the fly. The latest version of the previous major is still under development, so it is omitted
+   * until its BWC index is checked in after that release.
    *
    * <p>Every major from {@link Version#MIN_SUPPORTED_MAJOR} through {@link Version#LATEST} must be
-   * present, so dropping a supported major cannot happen silently.
+   * present as a {@link Version} constant, so dropping a supported major cannot happen silently.
    */
   public static Iterable<Object[]> allInitialMajorVersion(String name, String... suffixes) {
     List<Object> patterns = new ArrayList<>();
@@ -288,6 +289,10 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
 
     List<Object[]> versionAndPatterns = new ArrayList<>();
     for (Version v : versions) {
+      if (v.equals(LATEST_PREVIOUS_MAJOR)) {
+        // Same as allVersion: previous major is still under development, no zip yet.
+        continue;
+      }
       for (Object p : patterns) {
         versionAndPatterns.add(new Object[] {v, p});
       }

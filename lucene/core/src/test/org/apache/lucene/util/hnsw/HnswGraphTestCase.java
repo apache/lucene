@@ -26,9 +26,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
@@ -37,6 +39,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.LongAdder;
 import java.util.stream.Collectors;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
@@ -49,6 +52,7 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexReader;
@@ -57,6 +61,8 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.MergeState;
+import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorEncoding;
@@ -82,6 +88,7 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.VectorUtil;
@@ -1178,6 +1185,357 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     }
     // cannot build twice
     expectThrows(IllegalStateException.class, () -> builder.build(size));
+  }
+
+  private static final int MERGE_DIM = 16;
+  private static final int MERGE_M = 16;
+  private static final int MERGE_BEAM_WIDTH = 100;
+  private static final String MERGE_FIELD = "vector";
+  private static final String MERGE_ID_FIELD = "id";
+
+  /**
+   * The concurrent merger must reuse the structure of every graph without deletions, as the serial
+   * merger does, rather than only the structure of the largest one. Rebuilding the other graphs
+   * from scratch shows up as many more vector comparisons than the serial merge.
+   */
+  public void testConcurrentMergeScoresAboutAsManyVectorsAsSerialMerge() throws IOException {
+    int[] segmentSizes = {
+      TestUtil.nextInt(random(), 1500, 2000),
+      TestUtil.nextInt(random(), 1000, 1500),
+      TestUtil.nextInt(random(), 500, 1000)
+    };
+    List<T> vectors = randomVectors(Arrays.stream(segmentSizes).sum());
+    try (Directory dir = newDirectory()) {
+      buildMergeIndex(dir, vectors, segmentSizes, Set.of());
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        MergeResult<T> serial = merge(reader, vectors, 0);
+        MergeResult<T> concurrent = merge(reader, vectors, TestUtil.nextInt(random(), 1, 4));
+        String message =
+            String.format(
+                Locale.ROOT,
+                "serial merge scored %d vectors, concurrent merge scored %d",
+                serial.scoreCount,
+                concurrent.scoreCount);
+        if (VERBOSE) {
+          System.out.println(message);
+        }
+        assertTrue(message, concurrent.scoreCount < serial.scoreCount * 1.25);
+      }
+    }
+  }
+
+  /**
+   * With one worker the concurrent join inserts the same nodes in the same order, from the same
+   * entry points, as the serial merger, so it must build exactly the same graph.
+   */
+  public void testConcurrentMergeWithOneWorkerBuildsSameGraphAsSerialMerge() throws IOException {
+    int[] segmentSizes = {
+      TestUtil.nextInt(random(), 500, 1000),
+      TestUtil.nextInt(random(), 200, 500),
+      TestUtil.nextInt(random(), 50, 200)
+    };
+    List<T> vectors = randomVectors(Arrays.stream(segmentSizes).sum());
+    try (Directory dir = newDirectory()) {
+      buildMergeIndex(dir, vectors, segmentSizes, Set.of());
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        OnHeapHnswGraph serial = merge(reader, vectors, 0).graph;
+        OnHeapHnswGraph concurrent = merge(reader, vectors, 1).graph;
+        assertEquals(serial.numLevels(), concurrent.numLevels());
+        assertEquals(serial.entryNode(), concurrent.entryNode());
+        for (int level = 0; level < serial.numLevels(); level++) {
+          assertEquals(neighborsByNode(serial, level), neighborsByNode(concurrent, level));
+        }
+      }
+    }
+  }
+
+  /** The concurrent merge must not trade graph quality for its speed. */
+  public void testConcurrentMergeRecallComparableToSerialMerge() throws IOException {
+    int[] segmentSizes = {
+      TestUtil.nextInt(random(), 1000, 1500),
+      TestUtil.nextInt(random(), 500, 1000),
+      TestUtil.nextInt(random(), 200, 500),
+      TestUtil.nextInt(random(), 50, 200)
+    };
+    List<T> vectors = randomVectors(Arrays.stream(segmentSizes).sum());
+    try (Directory dir = newDirectory()) {
+      buildMergeIndex(dir, vectors, segmentSizes, Set.of());
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        MergeResult<T> serial = merge(reader, vectors, 0);
+        MergeResult<T> concurrent = merge(reader, vectors, TestUtil.nextInt(random(), 2, 4));
+        assertEquals(vectors.size(), concurrent.graph.size());
+        assertNoIsolatedNodes(concurrent.graph);
+        assertRecallComparable(serial, concurrent);
+      }
+    }
+  }
+
+  /**
+   * When the base graph has deletions, the concurrent merger repairs it with all workers before it
+   * joins the other graphs into it.
+   */
+  public void testConcurrentMergeRecallWithDeletesInBaseGraph() throws IOException {
+    int[] segmentSizes = {
+      TestUtil.nextInt(random(), 1500, 2000),
+      TestUtil.nextInt(random(), 500, 800),
+      TestUtil.nextInt(random(), 200, 400)
+    };
+    List<T> vectors = randomVectors(Arrays.stream(segmentSizes).sum());
+    // a fifth of the largest segment: few enough for it to stay the base graph
+    Set<Integer> deleted = new HashSet<>();
+    while (deleted.size() < segmentSizes[0] / 5) {
+      deleted.add(random().nextInt(segmentSizes[0]));
+    }
+    try (Directory dir = newDirectory()) {
+      buildMergeIndex(dir, vectors, segmentSizes, deleted);
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        assertEquals(deleted.size(), reader.leaves().get(0).reader().numDeletedDocs());
+        MergeResult<T> serial = merge(reader, vectors, 0);
+        MergeResult<T> concurrent = merge(reader, vectors, TestUtil.nextInt(random(), 2, 4));
+        assertEquals(vectors.size() - deleted.size(), concurrent.graph.size());
+        assertNoIsolatedNodes(concurrent.graph);
+        assertRecallComparable(serial, concurrent);
+      }
+    }
+  }
+
+  private void assertRecallComparable(MergeResult<T> serial, MergeResult<T> concurrent)
+      throws IOException {
+    List<T> queries = randomVectors(100);
+    double serialRecall = recall(serial.graph, serial.vectors, queries);
+    double concurrentRecall = recall(concurrent.graph, concurrent.vectors, queries);
+    String message =
+        String.format(
+            Locale.ROOT,
+            "%s %s: serial recall %.3f, concurrent recall %.3f",
+            getVectorEncoding(),
+            similarityFunction,
+            serialRecall,
+            concurrentRecall);
+    if (VERBOSE) {
+      System.out.println(message);
+    }
+    assertTrue(message, concurrentRecall > 0.8);
+    assertTrue(message, concurrentRecall > serialRecall - 0.05);
+  }
+
+  /** The merged graph, the vectors it was built from, and how many vectors the merge scored. */
+  private record MergeResult<V>(OnHeapHnswGraph graph, List<V> vectors, long scoreCount) {}
+
+  /**
+   * Merges every segment of the reader, dropping deleted documents; uses the serial merger when
+   * {@code numWorkers} is 0. {@code vectors} holds the vector of every document, in doc ID order.
+   */
+  private MergeResult<T> merge(DirectoryReader reader, List<T> vectors, int numWorkers)
+      throws IOException {
+    List<T> liveVectors = new ArrayList<>();
+    MergeState.DocMap[] docMaps = new MergeState.DocMap[reader.leaves().size()];
+    for (LeafReaderContext ctx : reader.leaves()) {
+      Bits liveDocs = ctx.reader().getLiveDocs();
+      int[] newDocIds = new int[ctx.reader().maxDoc()];
+      for (int doc = 0; doc < newDocIds.length; doc++) {
+        if (liveDocs == null || liveDocs.get(doc)) {
+          newDocIds[doc] = liveVectors.size();
+          liveVectors.add(vectors.get(ctx.docBase + doc));
+        } else {
+          newDocIds[doc] = -1;
+        }
+      }
+      docMaps[ctx.ord] = doc -> newDocIds[doc];
+    }
+    KnnVectorValues mergedVectors = vectorValues(liveVectors);
+    LongAdder scoreCount = new LongAdder();
+    RandomVectorScorerSupplier scorerSupplier =
+        new CountingScorerSupplier(buildScorerSupplier(mergedVectors), scoreCount);
+    FieldInfo fieldInfo = reader.leaves().get(0).reader().getFieldInfos().fieldInfo(MERGE_FIELD);
+    ExecutorService exec = null;
+    try {
+      IncrementalHnswGraphMerger merger;
+      if (numWorkers == 0) {
+        merger =
+            new IncrementalHnswGraphMerger(fieldInfo, scorerSupplier, MERGE_M, MERGE_BEAM_WIDTH);
+      } else {
+        exec = Executors.newFixedThreadPool(numWorkers, new NamedThreadFactory("hnswMerge"));
+        merger =
+            new ConcurrentHnswMerger(
+                fieldInfo,
+                scorerSupplier,
+                MERGE_M,
+                MERGE_BEAM_WIDTH,
+                new TaskExecutor(exec),
+                numWorkers);
+      }
+      for (LeafReaderContext ctx : reader.leaves()) {
+        CodecReader segment = (CodecReader) ctx.reader();
+        merger.addReader(segment.getVectorReader(), docMaps[ctx.ord], segment.getLiveDocs());
+      }
+      OnHeapHnswGraph graph =
+          merger.merge(mergedVectors, InfoStream.NO_OUTPUT, mergedVectors.size());
+      return new MergeResult<>(graph, liveVectors, scoreCount.sum());
+    } finally {
+      if (exec != null) {
+        TestUtil.shutdownExecutorService(exec);
+      }
+    }
+  }
+
+  /** The sorted neighbors of every node on a level, keyed by node. */
+  private static Map<Integer, List<Integer>> neighborsByNode(OnHeapHnswGraph graph, int level)
+      throws IOException {
+    Map<Integer, List<Integer>> neighborsByNode = new HashMap<>();
+    NodesIterator nodes = graph.getNodesOnLevel(level);
+    while (nodes.hasNext()) {
+      int node = nodes.nextInt();
+      List<Integer> neighbors = new ArrayList<>();
+      graph.seek(level, node);
+      for (int n = graph.nextNeighbor(); n != NO_MORE_DOCS; n = graph.nextNeighbor()) {
+        neighbors.add(n);
+      }
+      Collections.sort(neighbors);
+      neighborsByNode.put(node, neighbors);
+    }
+    return neighborsByNode;
+  }
+
+  private static void assertNoIsolatedNodes(OnHeapHnswGraph graph) throws IOException {
+    for (int node = 0; node < graph.size(); node++) {
+      graph.seek(0, node);
+      assertNotEquals("node " + node + " has no neighbors", NO_MORE_DOCS, graph.nextNeighbor());
+    }
+  }
+
+  /** Recall of the top 10, searching with a beam of 50. */
+  private double recall(OnHeapHnswGraph graph, List<T> vectors, List<T> queries)
+      throws IOException {
+    int topK = 10;
+    int beamWidth = 50;
+    KnnVectorValues values = vectorValues(vectors);
+    int matches = 0;
+    for (T query : queries) {
+      ScoreDoc[] actual =
+          HnswGraphSearcher.search(
+                  buildScorer(values, query), beamWidth, graph, null, Integer.MAX_VALUE)
+              .topDocs()
+              .scoreDocs;
+      NeighborQueue expected = new NeighborQueue(topK, false);
+      for (int ord = 0; ord < vectors.size(); ord++) {
+        expected.add(ord, compare(query, vectors.get(ord)));
+        if (expected.size() > topK) {
+          expected.pop();
+        }
+      }
+      for (int ord : expected.nodes()) {
+        for (int i = 0; i < Math.min(topK, actual.length); i++) {
+          if (actual[i].doc == ord) {
+            matches++;
+            break;
+          }
+        }
+      }
+    }
+    return matches / (double) (topK * queries.size());
+  }
+
+  private List<T> randomVectors(int count) {
+    List<T> vectors = new ArrayList<>(count);
+    for (int i = 0; i < count; i++) {
+      vectors.add(randomVector(MERGE_DIM));
+    }
+    return vectors;
+  }
+
+  /**
+   * Flushes one segment per entry of {@code segmentSizes}, in order, then deletes the documents
+   * whose position in {@code vectors} is in {@code deleted}.
+   */
+  private void buildMergeIndex(
+      Directory dir, List<T> vectors, int[] segmentSizes, Set<Integer> deleted) throws IOException {
+    IndexWriterConfig cfg = new IndexWriterConfig();
+    cfg.setCodec(
+        TestUtil.alwaysKnnVectorsFormat(
+            new Lucene99HnswVectorsFormat(MERGE_M, MERGE_BEAM_WIDTH, 0)));
+    cfg.setMergePolicy(NoMergePolicy.INSTANCE);
+    try (IndexWriter w = new IndexWriter(dir, cfg)) {
+      int ord = 0;
+      for (int size : segmentSizes) {
+        for (int i = 0; i < size; i++) {
+          Document doc = new Document();
+          doc.add(new StringField(MERGE_ID_FIELD, Integer.toString(ord), Field.Store.NO));
+          doc.add(knnVectorField(MERGE_FIELD, vectors.get(ord++), similarityFunction));
+          w.addDocument(doc);
+        }
+        w.flush();
+      }
+      for (int deletedOrd : deleted) {
+        w.deleteDocuments(new Term(MERGE_ID_FIELD, Integer.toString(deletedOrd)));
+      }
+      w.commit();
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private KnnVectorValues vectorValues(List<T> vectors) {
+    return switch (getVectorEncoding()) {
+      case BYTE -> ByteVectorValues.fromBytes((List<byte[]>) vectors, MERGE_DIM);
+      case FLOAT16 -> Float16VectorValues.fromFloats16((List<short[]>) vectors, MERGE_DIM);
+      case FLOAT32 -> FloatVectorValues.fromFloats((List<float[]>) vectors, MERGE_DIM);
+    };
+  }
+
+  private float compare(T a, T b) throws IOException {
+    return switch (getVectorEncoding()) {
+      case BYTE -> similarityFunction.compare((byte[]) a, (byte[]) b);
+      case FLOAT16 -> similarityFunction.compare((short[]) a, (short[]) b);
+      case FLOAT32 -> similarityFunction.compare((float[]) a, (float[]) b);
+    };
+  }
+
+  /** Counts how many vectors the scorers it creates have scored, across all copies. */
+  private record CountingScorerSupplier(RandomVectorScorerSupplier in, LongAdder count)
+      implements RandomVectorScorerSupplier {
+
+    @Override
+    public UpdateableRandomVectorScorer scorer() throws IOException {
+      UpdateableRandomVectorScorer scorer = in.scorer();
+      return new UpdateableRandomVectorScorer() {
+        @Override
+        public void setScoringOrdinal(int node) throws IOException {
+          scorer.setScoringOrdinal(node);
+        }
+
+        @Override
+        public float score(int node) throws IOException {
+          count.increment();
+          return scorer.score(node);
+        }
+
+        @Override
+        public float bulkScore(int[] nodes, float[] scores, int numNodes) throws IOException {
+          count.add(numNodes);
+          return scorer.bulkScore(nodes, scores, numNodes);
+        }
+
+        @Override
+        public int maxOrd() {
+          return scorer.maxOrd();
+        }
+
+        @Override
+        public int ordToDoc(int ord) {
+          return scorer.ordToDoc(ord);
+        }
+
+        @Override
+        public Bits getAcceptOrds(Bits acceptDocs) {
+          return scorer.getAcceptOrds(acceptDocs);
+        }
+      };
+    }
+
+    @Override
+    public RandomVectorScorerSupplier copy() throws IOException {
+      return new CountingScorerSupplier(in.copy(), count);
+    }
   }
 
   public void testAllNodesVisitedInSingleLevel() throws IOException {

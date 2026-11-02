@@ -171,9 +171,8 @@ public class SortedSetSortField extends SortField {
 
   @Override
   public FieldComparator<?> getComparator(int numHits, Pruning pruning) {
-    Pruning finalPruning = getOptimizeSortWithIndexedData() ? pruning : Pruning.NONE;
     return new TermOrdValComparator(
-        numHits, getField(), missingValue == STRING_LAST, reverse, finalPruning) {
+        numHits, getField(), missingValue == STRING_LAST, reverse, pruning) {
       @Override
       protected SortedDocValues getSortedDocValues(LeafReaderContext context, String field)
           throws IOException {
