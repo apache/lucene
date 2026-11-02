@@ -128,7 +128,7 @@ def expand_jinja(text: str, vars: dict[str, Any] | None = None) -> str:
       "vote_close_72h": vote_close_72h_date().strftime("%Y-%m-%d %H:00 UTC"),
       "vote_close_72h_epoch": unix_time_millis(vote_close_72h_date()),
       "vote_close_72h_holidays": vote_close_72h_holidays(),
-      "lucene_news_file": lucene_news_file,
+      "lucene_news_file": get_lucene_news_file(),
       "load_lines": load_lines,
       "set_java_home": set_java_home,
       "latest_version": state.get_latest_version(),
@@ -372,7 +372,7 @@ class ReleaseState:
     if state.mirrored_versions is None:
       releases_str = load("https://projects.apache.org/json/foundation/releases.json", "utf-8")
       releases: dict[str, str] = json.loads(releases_str)["lucene"]
-      state.mirrored_versions = [r for r in list(map(lambda y: y[7:], filter(lambda x: x.startswith("lucene-"), list(releases.keys()))))]
+      state.mirrored_versions = [r for r in list(map(lambda y: y[12:], filter(lambda x: x.startswith("lucene-java-"), list(releases.keys()))))]
     return state.mirrored_versions
 
   def get_mirrored_versions_to_delete(self) -> list[str]:
@@ -380,12 +380,13 @@ class ReleaseState:
     to_keep = versions
     if state.release_type == "major":
       to_keep = [self.release_version, self.get_latest_version()]
+    lts = self.get_latest_lts_version()
     if state.release_type == "minor":
-      to_keep = [self.release_version, self.get_latest_lts_version()]
+      to_keep = [self.release_version] + ([lts] if lts else [])
     if state.release_type == "bugfix":
       if Version.parse(state.release_version).major == Version.parse(state.get_latest_version()).major:
-        to_keep = [self.release_version, self.get_latest_lts_version()]
-      elif Version.parse(state.release_version).major == Version.parse(state.get_latest_lts_version()).major:
+        to_keep = [self.release_version] + ([lts] if lts else [])
+      elif lts and Version.parse(state.release_version).major == Version.parse(lts).major:
         to_keep = [self.get_latest_version(), self.release_version]
       else:
         raise Exception("Release version %s must have same major version as current minor or lts release")
@@ -395,11 +396,14 @@ class ReleaseState:
     v = Version.parse(self.get_latest_version())
     return "%s.%s.%s" % (v.major + 1, 0, 0)
 
-  def get_latest_lts_version(self) -> str:
+  def get_latest_lts_version(self) -> str | None:
     versions = self.get_mirrored_versions()
     latest = self.get_latest_version()
     lts_prefix = "%s." % (Version.parse(latest).major - 1)
     lts_versions = list(filter(lambda x: x.startswith(lts_prefix), versions))
+    if not lts_versions:
+      # No release of the previous major version is mirrored (anymore)
+      return None
     latest_lts = lts_versions[0]
     for ver in lts_versions:
       if Version.parse(ver).gt(Version.parse(latest_lts)):
@@ -1278,7 +1282,6 @@ class CustomExitItem(ExitItem):
 
 
 templates: Any
-lucene_news_file: str
 
 
 def main() -> None:
@@ -1343,9 +1346,6 @@ def main() -> None:
   # Smoketester requires JAVA_HOME to point to the minimum Java required to build the project.
   os.environ["JAVA_HOME"] = state.get_java_home()
   os.environ["JAVACMD"] = state.get_java_cmd()
-
-  global lucene_news_file
-  lucene_news_file = os.path.join(state.get_website_git_folder(), "content", "core", "core_news", "%s-%s-available.md" % (state.get_release_date_iso(), state.release_version.replace(".", "-")))
 
   main_menu = ConsoleMenu(
     title="Lucene ReleaseWizard",
@@ -1997,7 +1997,13 @@ def vote_close_72h_holidays() -> list[str] | None:
   return holidays if len(holidays) > 0 else None
 
 
+def get_lucene_news_file() -> str:
+  # Computed on demand, since the release date is only known once the maven artifacts are published
+  return os.path.join(state.get_website_git_folder(), "content", "core", "core_news", "%s-%s-available.md" % (state.get_release_date_iso(), state.release_version.replace(".", "-")))
+
+
 def prepare_announce_lucene(_todo: Todo) -> bool:
+  lucene_news_file = get_lucene_news_file()
   if not os.path.exists(lucene_news_file):
     lucene_text = expand_jinja("(( template=announce_lucene ))")
     with open(lucene_news_file, "w") as fp:
