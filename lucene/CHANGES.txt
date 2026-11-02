@@ -313,6 +313,8 @@ Optimizations
   disk, opening soft-deletes readers, and sandbox FAISS KNN search over segments with deletions.
   (Costin Leau)
 
+* GITHUB#15902: Improve DiversifyingChildren performance by using primitive arrays (Alessandro Benedetti)
+
 Bug Fixes
 ---------------------
 * GITHUB#16867: Apply buffered soft-update/delete terms before the global delete buffer reaches the 2GB
@@ -592,7 +594,8 @@ Improvements
 
 * GITHUB#7820: CheckIndex now reports which segment's .si file could not be read, rather than only that
   a commit point was unreadable. SegmentInfos throws CorruptSegmentInfoException, carrying the segment
-  name and the underlying failure. (Gokul Manoj, Serhiy Bzhezytskyy)
+  name and the underlying failure, when a .si file is missing or corrupt; other I/O failures, such as
+  transient ones, propagate unchanged. (Gokul Manoj, Serhiy Bzhezytskyy, Alex Reelsen)
 
 * GITHUB#16292: Introduce TermGroupFacetCollectorManager to enable concurrent search with grouped
   faceting, removing usages of the deprecated IndexSearcher#search(Query, Collector).
@@ -1004,6 +1007,9 @@ New Features
 
 Improvements
 ---------------------
+
+* GITHUB#15711: DirectoryTaxonomyReader.getBulkPath() now uses getPathFromCache. (Shubham Sharma)
+
 * GITHUB#15948: Improve BayesianScoreQuery and LogOddsFusionQuery with base rate prior,
   weighted Logarithmic Opinion Pooling, and auto parameter estimation. Add
   BayesianScoreEstimator for estimating sigmoid calibration parameters from corpus
@@ -1017,8 +1023,6 @@ Improvements
 
 * GITHUB#15823: Implement method to add all stream elements into a PriorityQueue.
   Call PriorityQueue#addAll with mapped stream in DisjunctionMaxBulkScorer's constructor. (Zhou Hui)
-
-* GITHUB#15711: DirectoryTaxonomyReader.getBulkPath() now uses getPathFromCache. (Shubham Sharma)
 
 * GITHUB#15757: Better skipper-based numeric sort pruning from the start of segments (Alan Woodward)
 
@@ -1122,8 +1126,6 @@ Optimizations
 * GITHUB#15886: Cache frozen FieldType to skip redundant schema validation. (Tim Brooks)
 
 * GITHUB#15942: Skip max score computation when sorting by relevance in BlockGroupingCollector (Binlong Gao)
-
-* GITHUB#15902: Improve DiversifyingChildren performance by using primitive arrays(Alessandro Benedetti)
 
 * GITHUB#15954: Use SkipBlockRangeIterator as the two-phase approximation in SortedNumericDocValuesRangeQuery. (Sagar Upadhyaya)
 
