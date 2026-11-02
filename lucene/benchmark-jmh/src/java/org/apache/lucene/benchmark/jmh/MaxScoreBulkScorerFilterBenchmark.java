@@ -125,7 +125,7 @@ public class MaxScoreBulkScorerFilterBenchmark {
     }
     if (filterDensity >= 1.0) {
       bqWithFilter.add(
-          new org.apache.lucene.search.MatchAllDocsQuery(), BooleanClause.Occur.FILTER);
+          org.apache.lucene.search.MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.FILTER);
     } else {
       bqWithFilter.add(new TermQuery(new Term("filter", "yes")), BooleanClause.Occur.FILTER);
     }
