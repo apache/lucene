@@ -28,7 +28,7 @@ with `VisitedSet.create(expectedVisitedNodes, graphSize)`.
 
 ## Migration from Lucene 10.x to Lucene 11.0
 
-### FixBrokenOffsetsFilter has been removed (GITHUB#XXXXX)
+### FixBrokenOffsetsFilter has been removed (GITHUB#16964)
 
 The deprecated `FixBrokenOffsetsFilter` and its factory (SPI name `fixBrokenOffsets`) are gone.
 Offsets that go backwards are rejected at index time; fix the upstream token filter or tokenizer
