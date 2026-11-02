@@ -23,6 +23,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -411,6 +412,77 @@ public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
     assertTrue(td.totalHits.value() < numDocs);
     for (int i = 0; i < 5; i++) {
       assertEquals(i, td.scoreDocs[i].doc);
+    }
+    d.close();
+  }
+
+  public void testNoIndexSortEarlyTerminationWithBlocks() throws IOException {
+    Sort indexSort = new Sort(new SortField("b", SortField.Type.LONG));
+    int numBlocks = 200;
+    Directory d = newDirectory();
+    IndexWriterConfig iwc = newIndexWriterConfig().setIndexSort(indexSort).setParentField("parent");
+    try (RandomIndexWriter w = new RandomIndexWriter(random(), d, iwc)) {
+      for (int i = 0; i < numBlocks; i++) {
+        Document child1 = new Document();
+        Document child2 = new Document();
+        Document parent = new Document();
+        parent.add(new NumericDocValuesField("b", i + 1));
+        w.addDocuments(List.of(child1, child2, parent));
+      }
+      w.forceMerge(1);
+    }
+    int numDocs = numBlocks * 3;
+
+    // naively using the index-sort to enforce early termination would return the wrong
+    // results here because the queue would fill with child documents and assume that
+    // all subsequent documents would compare as worse, when in fact later parent documents
+    // should displace the child docs.  Instead we disable sort-based early termination
+    // when blocks are present in the leaf.
+    TopFieldDocs td = search(d, indexSort, 5, null);
+    int[] expectedDocs = {0, 1, 3, 4, 6};
+    for (int i = 0; i < expectedDocs.length; i++) {
+      assertEquals(expectedDocs[i], td.scoreDocs[i].doc);
+    }
+
+    // doc id order is unaffected by blocks
+    td = search(d, new Sort(SortField.FIELD_DOC), 5, null);
+    assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, td.totalHits.relation());
+    assertTrue(td.totalHits.value() < numDocs);
+    d.close();
+  }
+
+  public void testCompetitiveIteratorWithBlocks() throws IOException {
+    Sort indexSort = new Sort(new SortField("b", SortField.Type.LONG));
+    int numBlocks = 200;
+    Directory d = newDirectory();
+    IndexWriterConfig iwc =
+        newIndexWriterConfig()
+            .setIndexSort(indexSort)
+            .setParentField("parent")
+            .setCodec(TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(16)));
+    try (RandomIndexWriter w = new RandomIndexWriter(random(), d, iwc)) {
+      for (int i = 0; i < numBlocks; i++) {
+        Document child1 = new Document();
+        Document child2 = new Document();
+        Document parent = new Document();
+        child1.add(NumericDocValuesField.indexedField("b", 1000 + i));
+        child2.add(NumericDocValuesField.indexedField("b", 1000 + i));
+        parent.add(NumericDocValuesField.indexedField("b", i));
+        w.addDocuments(List.of(child1, child2, parent));
+      }
+      w.forceMerge(1);
+    }
+
+    // the leading docs are children with large values, so index-sort early termination would
+    // miss the parents; value-based pruning through the competitive iterator is still correct
+    TopFieldDocs td = search(d, indexSort, 5, null);
+    assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, td.totalHits.relation());
+    assertTrue(td.totalHits.value() < numBlocks * 3);
+    int[] expectedDocs = {2, 5, 8, 11, 14};
+    assertEquals(expectedDocs.length, td.scoreDocs.length);
+    for (int i = 0; i < expectedDocs.length; i++) {
+      assertEquals(expectedDocs[i], td.scoreDocs[i].doc);
+      assertEquals((long) i, ((FieldDoc) td.scoreDocs[i]).fields[0]);
     }
     d.close();
   }
