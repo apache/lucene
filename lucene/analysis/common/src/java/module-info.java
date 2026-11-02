@@ -258,7 +258,6 @@ module org.apache.lucene.analysis.common {
       org.apache.lucene.analysis.sr.SerbianNormalizationFilterFactory,
       org.apache.lucene.analysis.sv.SwedishLightStemFilterFactory,
       org.apache.lucene.analysis.sv.SwedishMinimalStemFilterFactory,
-      org.apache.lucene.analysis.synonym.SynonymFilterFactory,
       org.apache.lucene.analysis.synonym.SynonymGraphFilterFactory,
       org.apache.lucene.analysis.synonym.word2vec.Word2VecSynonymFilterFactory,
       org.apache.lucene.analysis.core.FlattenGraphFilterFactory,

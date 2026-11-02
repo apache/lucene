@@ -28,6 +28,15 @@ with `VisitedSet.create(expectedVisitedNodes, graphSize)`.
 
 ## Migration from Lucene 10.x to Lucene 11.0
 
+### SynonymFilter and SynonymFilterFactory have been removed (GITHUB#XXXXX)
+
+The deprecated `SynonymFilter` and its factory (SPI name `synonym`) are gone. Use
+`SynonymGraphFilter` and `SynonymGraphFilterFactory` (SPI name `synonymGraph`), which accept the
+same `SynonymMap` and factory arguments. At index time, follow `SynonymGraphFilter` with
+`FlattenGraphFilter`, because the indexer cannot consume a token graph; at query time use the graph
+directly. Token order differs: `SynonymGraphFilter` emits synonyms before the original token at
+the same position.
+
 ### MergePolicy.MergeSpecification#segString(Directory) has been removed (GITHUB#16963)
 
 The deprecated `MergePolicy.MergeSpecification#segString(Directory)` method is gone. The `Directory`
