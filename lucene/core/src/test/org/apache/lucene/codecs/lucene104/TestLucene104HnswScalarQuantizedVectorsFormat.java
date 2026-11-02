@@ -69,6 +69,7 @@ import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
@@ -224,6 +225,74 @@ public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVector
         }
       }
     }
+  }
+
+  public void testBulkScoreMatchesScore() throws IOException {
+    VectorSimilarityFunction similarity = randomSimilarity();
+    int dim = random().nextInt(8, 300);
+    int numDocs = atLeast(100);
+    // a plain MMapDirectory, so that bulk scoring reads the vectors from their memory segment
+    try (Directory dir = new MMapDirectory(createTempDir());
+        IndexWriter w = new IndexWriter(dir, newIndexWriterConfig().setCodec(getCodec()))) {
+      for (int i = 0; i < numDocs; i++) {
+        Document doc = new Document();
+        doc.add(new KnnFloatVectorField("f", randomNormalizedVector(dim), similarity));
+        w.addDocument(doc);
+      }
+      w.forceMerge(1);
+      try (IndexReader reader = DirectoryReader.open(w)) {
+        LeafReader r = getOnlyLeafReader(reader);
+        SegmentReader segmentReader = (SegmentReader) FilterLeafReader.unwrap(r);
+        QuantizedVectorsReader quantizedReader =
+            (QuantizedVectorsReader) segmentReader.getVectorReader().unwrapReaderForField("f");
+        FlatVectorsScorer scorer =
+            new Lucene104ScalarQuantizedVectorScorer(
+                FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
+        assertBulkScoreMatchesScore(
+            scorer.getRandomVectorScorer(
+                similarity,
+                quantizedReader.getQuantizedVectorValues("f"),
+                randomNormalizedVector(dim)),
+            numDocs);
+        SegmentWriteState writeState =
+            new SegmentWriteState(
+                InfoStream.getDefault(),
+                dir,
+                segmentReader.getSegmentInfo().info,
+                r.getFieldInfos(),
+                null,
+                IOContext.DEFAULT);
+        try (CloseableRandomVectorScorerSupplier mergeScorers =
+            quantizedReader.getRandomVectorScorerSupplierForMerge(
+                r.getFieldInfos().fieldInfo("f"), writeState)) {
+          UpdateableRandomVectorScorer mergeScorer = mergeScorers.scorer();
+          mergeScorer.setScoringOrdinal(random().nextInt(numDocs));
+          assertBulkScoreMatchesScore(mergeScorer, numDocs);
+        }
+      }
+    }
+  }
+
+  private static void assertBulkScoreMatchesScore(RandomVectorScorer scorer, int maxOrd)
+      throws IOException {
+    int numNodes = 1 + random().nextInt(2 * maxOrd);
+    // entries past numNodes are invalid ords, so reading them would fail
+    int[] nodes = new int[numNodes + random().nextInt(3)];
+    Arrays.fill(nodes, Integer.MAX_VALUE);
+    for (int i = 0; i < numNodes; i++) {
+      nodes[i] = random().nextInt(maxOrd);
+    }
+    // the last vector ends at the end of the data, where reads past it would fail
+    nodes[random().nextInt(numNodes)] = maxOrd - 1;
+    float[] scores = new float[numNodes];
+    float maxScore = scorer.bulkScore(nodes, scores, numNodes);
+    float expectedMaxScore = Float.NEGATIVE_INFINITY;
+    for (int i = 0; i < numNodes; i++) {
+      float score = scorer.score(nodes[i]);
+      assertEquals(score, scores[i], 0f);
+      expectedMaxScore = Math.max(expectedMaxScore, score);
+    }
+    assertEquals(expectedMaxScore, maxScore, 0f);
   }
 
   public void testSingleVectorCase() throws Exception {
