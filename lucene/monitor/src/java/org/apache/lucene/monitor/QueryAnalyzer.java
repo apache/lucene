@@ -78,7 +78,7 @@ class QueryAnalyzer {
    * @return a QueryTree describing the analyzed query
    */
   QueryTree buildTree(Query luceneQuery, TermWeightor weightor) {
-    QueryBuilder builder = new QueryBuilder(false);
+    QueryBuilder builder = new QueryBuilder();
     luceneQuery.visit(builder);
     return builder.apply(weightor);
   }
@@ -90,13 +90,38 @@ class QueryAnalyzer {
     final List<Function<TermWeightor, QueryTree>> children = new ArrayList<>();
     final Set<Term> negatedTerms = new LinkedHashSet<>();
 
-    QueryBuilder(boolean isNegativeClause) {
+    /** The root builder: positive */
+    QueryBuilder() {
+      this(false);
+    }
+
+    private QueryBuilder(boolean isNegativeClause) {
       this.isNegativeClause = isNegativeClause;
     }
 
     /** Whether the clauses of this builder are combined with OR */
     boolean or() {
       return false;
+    }
+
+    /** A child for clauses combined with AND, in this builder's polarity */
+    private QueryBuilder conjunction() {
+      return addChild(new QueryBuilder(isNegativeClause));
+    }
+
+    /** A child for clauses combined with OR, in this builder's polarity */
+    private QueryBuilder disjunction() {
+      return addChild(new Disjunction(isNegativeClause));
+    }
+
+    /** A child for negated clauses: NOT a AND NOT b = NOT (a OR b), so OR with flipped polarity */
+    private QueryBuilder negation() {
+      return addChild(new Disjunction(!isNegativeClause));
+    }
+
+    private QueryBuilder addChild(QueryBuilder child) {
+      children.add(child);
+      return child;
     }
 
     @Override
@@ -106,9 +131,7 @@ class QueryAnalyzer {
         return QueryVisitor.EMPTY_VISITOR;
       }
       if (occur == BooleanClause.Occur.MUST || occur == BooleanClause.Occur.FILTER) {
-        QueryBuilder n = new QueryBuilder(isNegativeClause);
-        children.add(n);
-        return n;
+        return conjunction();
       }
       if (occur == BooleanClause.Occur.MUST_NOT) {
         // Check if we're in a pure negative disjunction. Lucene matches nothing for a pure
@@ -122,19 +145,14 @@ class QueryAnalyzer {
         if (!isNegationOptimized) {
           return QueryVisitor.EMPTY_VISITOR;
         }
-        // AND_i NOT q_i = NOT(OR_i q_i)
-        Disjunction n = new Disjunction(!isNegativeClause);
-        children.add(n);
-        return n;
+        return negation();
       }
       // It's a disjunction clause.  If the parent has MUST or FILTER clauses, we can
       // ignore it
       if (parent instanceof BooleanQuery bq && hasRequiredClauses(bq)) {
         return QueryVisitor.EMPTY_VISITOR;
       }
-      Disjunction n = new Disjunction(isNegativeClause);
-      children.add(n);
-      return n;
+      return disjunction();
     }
 
     @Override
@@ -197,7 +215,7 @@ class QueryAnalyzer {
 
   private class Disjunction extends QueryBuilder {
 
-    Disjunction(boolean isNegativeClause) {
+    private Disjunction(boolean isNegativeClause) {
       super(isNegativeClause);
     }
 

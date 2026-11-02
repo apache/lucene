@@ -239,6 +239,13 @@ public abstract class NotSlotPresearcherTestBase extends PresearcherTestBase {
             .add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.SHOULD)
             .add(new TermQuery(binary), BooleanClause.Occur.MUST_NOT)
             .build();
-    assertRunAndMatched(1, 1, run(createPresearcher(), query, doc("f", "a")));
+    // the helper query lets the document's real "a" pass the term filter
+    try (Monitor monitor = newMonitor()) {
+      monitor.register(
+          new MonitorQuery("binary", query), new MonitorQuery("helper", parse("*:* -f:a")));
+      MatchingQueries<QueryMatch> matches = monitor.match(doc("f", "a"), QueryMatch.SIMPLE_MATCHER);
+      assertNotNull(matches.matches("binary"));
+      assertEquals(1, matches.getQueriesRun());
+    }
   }
 }

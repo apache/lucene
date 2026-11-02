@@ -18,13 +18,13 @@
 package org.apache.lucene.monitor;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.Query;
@@ -143,14 +143,11 @@ public class MultipassTermFilteredPresearcher extends TermFilteredPresearcher {
     public Query build() {
       Map<String, List<BytesRef>> collectedTerms = new HashMap<>();
       for (Map.Entry<String, BytesRefHash> entry : terms.entrySet()) {
-        collectedTerms.put(entry.getKey(), Arrays.asList(convertHash(entry.getValue())));
+        collectedTerms.put(entry.getKey(), convertHash(entry.getValue()));
       }
       BooleanQuery.Builder parent = new BooleanQuery.Builder();
       for (int i = 0; i < passes; i++) {
-        int pass = i;
-        parent.add(
-            buildPass(collectedTerms, negatableTerms, f -> field(f, pass)),
-            BooleanClause.Occur.MUST);
+        parent.add(toQuery(collectedTerms, negatableTerms, pass(i)), BooleanClause.Occur.MUST);
       }
       return parent.build();
     }
@@ -158,25 +155,40 @@ public class MultipassTermFilteredPresearcher extends TermFilteredPresearcher {
 
   @Override
   public Document buildQueryDocument(QueryTree querytree) {
-
     Document doc = new Document();
-
     for (int i = 0; i < passes; i++) {
-      int pass = i;
-      // we add the index terms once under a suffixed field for the multipass query, and
-      // once under the plan field name for the TermsEnumTokenFilter
-      addPass(doc, collectTermsAndNotSlots(querytree), f -> field(f, pass));
+      for (IndexableField field : toDocument(querytree, pass(i))) {
+        doc.add(field);
+      }
       querytree.advancePhase(minWeight);
     }
-
     return doc;
   }
 
-  private static BytesRef[] convertHash(BytesRefHash hash) {
-    BytesRef[] terms = new BytesRef[hash.size()];
-    for (int i = 0; i < terms.length; i++) {
-      BytesRef t = new BytesRef();
-      terms[i] = hash.get(i, t);
+  /** The fields of pass {@code pass} */
+  private static FieldNameMapper pass(int pass) {
+    return new FieldNameMapper() {
+      @Override
+      public String terms(String field) {
+        return field(field, pass);
+      }
+
+      @Override
+      public String notSlot(String field, int slot) {
+        return notSlotField(field(field, pass), slot);
+      }
+
+      @Override
+      public String notSlotMarker(int slot) {
+        return field(NOTSLOT_MARKER_FIELD, pass) + "_" + slot;
+      }
+    };
+  }
+
+  private static List<BytesRef> convertHash(BytesRefHash hash) {
+    List<BytesRef> terms = new ArrayList<>(hash.size());
+    for (int i = 0; i < hash.size(); i++) {
+      terms.add(hash.get(i, new BytesRef()));
     }
     return terms;
   }
