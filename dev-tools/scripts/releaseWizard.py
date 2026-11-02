@@ -403,9 +403,7 @@ class ReleaseState:
 
   def get_mirrored_versions(self) -> list[str]:
     if state.mirrored_versions is None:
-      releases_str = load("https://projects.apache.org/json/foundation/releases.json", "utf-8")
-      releases: dict[str, str] = json.loads(releases_str)["lucene"]
-      state.mirrored_versions = [r for r in list(map(lambda y: y[12:], filter(lambda x: x.startswith("lucene-java-"), list(releases.keys()))))]
+      state.mirrored_versions = list(list_dist_release_versions())
     return state.mirrored_versions
 
   def get_mirrored_versions_to_delete(self) -> list[str]:
@@ -454,8 +452,9 @@ class ReleaseState:
     elif branch_type == BranchType.stable:
       if not branch.startswith("branch_") and branch.endswith("x"):
         sys.exit("Incompatible branch and branch_type")
-      if not ver.is_minor_release():
-        sys.exit("You can only release minor releases from an existing stable branch")
+      # A major release is allowed here when the stable branch was cut before the .0.0 release
+      if not (ver.is_minor_release() or ver.is_major_release()):
+        sys.exit("You can only release minor or major releases from an existing stable branch")
     elif branch_type == BranchType.unstable:
       if not branch == "main":
         sys.exit("Incompatible branch and branch_type")
@@ -466,9 +465,9 @@ class ReleaseState:
 
   def get_base_branch_name(self) -> str:
     v = Version.parse(self.release_version)
-    if v.is_major_release():
+    if v.is_major_release() and self.script_branch_type != BranchType.stable:
       return "main"
-    if v.is_minor_release():
+    if v.is_major_release() or v.is_minor_release():
       return self.get_stable_branch_name()
     if v.major == Version.parse(self.get_latest_version()).major:
       return self.get_minor_branch_name()
@@ -624,6 +623,8 @@ class ReleaseState:
 
   def get_stable_branch_name(self) -> str:
     if self.release_type == "major":
+      if self.script_branch_type == BranchType.stable:
+        return "branch_%sx" % self.release_version_major
       v = Version.parse(self.get_main_version())
     else:
       v = Version.parse(self.get_latest_version())
