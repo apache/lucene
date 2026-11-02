@@ -7,6 +7,10 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
+* GITHUB#16964: Remove the deprecated FixBrokenOffsetsFilter and FixBrokenOffsetsFilterFactory
+  (SPI name "fixBrokenOffsets"). Fix the token filters that produce broken offsets instead.
+  (Chris Parrinello)
+
 * GITHUB#16963: Remove the deprecated MergePolicy.MergeSpecification#segString(Directory) method.
   Use MergeSpecification#toString() instead. (Christoph Büscher)
 
