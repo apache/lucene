@@ -34,6 +34,10 @@ Other
 
 API Changes
 ---------------------
+* GITHUB#16964: Remove the deprecated FixBrokenOffsetsFilter and FixBrokenOffsetsFilterFactory
+  (SPI name "fixBrokenOffsets"). Fix the token filters that produce broken offsets instead.
+  (Chris Parrinello)
+
 * GITHUB#16966: Remove the deprecated SynonymFilter and SynonymFilterFactory (SPI name "synonym").
   Use SynonymGraphFilter / SynonymGraphFilterFactory (SPI name "synonymGraph") instead, followed by
   FlattenGraphFilter at index time. (Chris Parrinello)

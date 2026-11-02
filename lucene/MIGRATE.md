@@ -28,6 +28,12 @@ with `VisitedSet.create(expectedVisitedNodes, graphSize)`.
 
 ## Migration from Lucene 10.x to Lucene 11.0
 
+### FixBrokenOffsetsFilter has been removed (GITHUB#16964)
+
+The deprecated `FixBrokenOffsetsFilter` and its factory (SPI name `fixBrokenOffsets`) are gone.
+Offsets that go backwards are rejected at index time; fix the upstream token filter or tokenizer
+that produces them instead.
+
 ### SynonymFilter and SynonymFilterFactory have been removed (GITHUB#16966)
 
 The deprecated `SynonymFilter` and its factory (SPI name `synonym`) are gone. Use
