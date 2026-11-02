@@ -22,6 +22,9 @@ Optimizations
 * GITHUB#16806: HNSW searches track the visited nodes of a large graph in a hash set instead of a
   bit set sized to the graph, which makes merges into large segments faster. (Ankur Goel)
 
+* GITHUB#XXXXX: HNSW graph builders reuse their per-level candidate arrays across insertions instead
+  of allocating and regrowing new ones for every inserted node. (Shubham Chaudhary)
+
 Bug Fixes
 ---------------------
 (No changes)
