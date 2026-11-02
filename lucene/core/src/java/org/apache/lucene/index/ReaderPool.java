@@ -102,7 +102,7 @@ final class ReaderPool implements Closeable {
                 segReader,
                 segReader.getLiveDocs(),
                 segReader.getHardLiveDocs(),
-                segReader.numDocs(),
+                segReader.numLeafDocs(),
                 true);
         readerMap.put(
             newReader.getOriginalSegmentInfo(),
