@@ -19,6 +19,12 @@
 
 ## Migration from Lucene 10.x to Lucene 11.0
 
+### MergePolicy.MergeSpecification#segString(Directory) has been removed (GITHUB#16963)
+
+The deprecated `MergePolicy.MergeSpecification#segString(Directory)` method is gone. The `Directory`
+argument was already ignored, so call `MergeSpecification#toString()` instead. Subclasses that
+overrode `segString(Directory)` should override `toString()`.
+
 ### SortField#setOptimizeSortWithIndexedData has been removed (GITHUB#14399)
 
 `SortField#setOptimizeSortWithIndexedData(false)` and `setOptimizeSortWithPoints(false)`, along with

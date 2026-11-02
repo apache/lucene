@@ -503,17 +503,6 @@ public abstract class MergePolicy {
       merges.add(merge);
     }
 
-    /**
-     * Returns a description of the merges in this specification
-     *
-     * @deprecated Use {@link #toString()} instead. The {@code Directory} parameter is ignored and
-     *     will be removed in a future release.
-     */
-    @Deprecated
-    public String segString(Directory dir) {
-      return toString();
-    }
-
     @Override
     public String toString() {
       StringBuilder b = new StringBuilder();
