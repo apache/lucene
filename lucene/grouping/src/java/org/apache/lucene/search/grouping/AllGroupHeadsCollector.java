@@ -154,12 +154,12 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
   public abstract static class GroupHead<T> {
 
     public final T groupValue;
-    public int doc;
+    public long doc;
 
-    protected int docBase;
+    protected long docBase;
 
     /** Create a new GroupHead for the given value */
-    protected GroupHead(T groupValue, int doc, int docBase) {
+    protected GroupHead(T groupValue, int doc, long docBase) {
       this.groupValue = groupValue;
       this.doc = doc + docBase;
       this.docBase = docBase;
@@ -308,7 +308,7 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
     private float topScore;
     private final Object[] sortValues;
 
-    protected ScoringGroupHead(Scorable scorer, T groupValue, int doc, int docBase)
+    protected ScoringGroupHead(Scorable scorer, T groupValue, int doc, long docBase)
         throws IOException {
       super(groupValue, doc, docBase);
       this.scorer = scorer;

@@ -129,7 +129,7 @@ public class TestMemoryAccountingBitsetCollector extends LuceneTestCase {
             // intra-segment concurrency.
             List<LeafSlice> slices = new ArrayList<>();
             for (LeafReaderContext ctx : leaves) {
-              int maxDoc = ctx.reader().maxDoc();
+              int maxDoc = ctx.maxLeafDoc();
               if (maxDoc <= 1) {
                 slices.add(
                     new LeafSlice(

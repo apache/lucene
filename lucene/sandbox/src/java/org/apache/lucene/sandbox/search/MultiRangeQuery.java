@@ -339,7 +339,7 @@ public abstract class MultiRangeQuery extends Query implements Cloneable {
             @Override
             public Scorer get(long leadCost) {
               return new ConstantScoreScorer(
-                  score(), scoreMode, DocIdSetIterator.all(reader.maxDoc()));
+                  score(), scoreMode, DocIdSetIterator.all(reader.maxLeafDoc()));
             }
 
             @Override
@@ -350,7 +350,7 @@ public abstract class MultiRangeQuery extends Query implements Cloneable {
         } else {
           return new ScorerSupplier() {
 
-            final DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values);
+            final DocIdSetBuilder result = new DocIdSetBuilder(reader.maxLeafDoc(), values);
             final PointValues.IntersectVisitor visitor = getIntersectVisitor(result, range);
             long cost = -1;
 

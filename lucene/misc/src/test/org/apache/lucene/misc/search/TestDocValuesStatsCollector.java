@@ -493,6 +493,8 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
     // deleted). However, in case we deleted all documents in a segment before the reader was
     // opened, there will be
     // a mismatch between numDocs (how many we indexed) to reader.maxDoc(), so compensate for that.
-    return numDocsWithoutField - reader.numDeletedDocs() - (numIndexedDocs - reader.maxDoc());
+    return numDocsWithoutField
+        - Math.toIntExact(reader.numDeletedDocs())
+        - (numIndexedDocs - Math.toIntExact(reader.maxDoc()));
   }
 }

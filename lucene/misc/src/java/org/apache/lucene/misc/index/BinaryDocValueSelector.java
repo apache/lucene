@@ -51,7 +51,7 @@ public class BinaryDocValueSelector implements IndexRearranger.DocumentSelector,
   @Override
   public BitSet getFilteredDocs(CodecReader reader) throws IOException {
     BinaryDocValues binaryDocValues = reader.getBinaryDocValues(field);
-    FixedBitSet bits = new FixedBitSet(reader.maxDoc());
+    FixedBitSet bits = new FixedBitSet(reader.maxLeafDoc());
     for (int docid = 0; docid < reader.maxDoc(); docid++) {
       if (binaryDocValues.advanceExact(docid) && keySet.contains(binaryDocValues.binaryValue())) {
         bits.set(docid);
@@ -80,7 +80,7 @@ public class BinaryDocValueSelector implements IndexRearranger.DocumentSelector,
         }
 
         BinaryDocValues binaryDocValues = context.reader().getBinaryDocValues(field);
-        for (int docid = 0; docid < context.reader().maxDoc(); docid++) {
+        for (int docid = 0; docid < context.maxLeafDoc(); docid++) {
           if (liveDocs.get(docid) == true) {
             continue;
           }
@@ -114,7 +114,7 @@ public class BinaryDocValueSelector implements IndexRearranger.DocumentSelector,
         Set<BytesRef> keySet = new HashSet<>();
         BinaryDocValues binaryDocValues = context.reader().getBinaryDocValues(field);
 
-        for (int docid = 0; docid < context.reader().maxDoc(); docid++) {
+        for (int docid = 0; docid < context.maxLeafDoc(); docid++) {
           if (binaryDocValues.advanceExact(docid)) {
             keySet.add(BytesRef.deepCopyOf(binaryDocValues.binaryValue()));
           } else {

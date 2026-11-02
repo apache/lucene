@@ -48,7 +48,7 @@ public abstract class CandidateMatcher<T extends QueryMatch> {
    */
   public CandidateMatcher(IndexSearcher searcher) {
     this.searcher = searcher;
-    int docCount = searcher.getIndexReader().maxDoc();
+    int docCount = Math.toIntExact(searcher.getIndexReader().maxDoc());
     this.matches = new ArrayList<>(docCount);
     for (int i = 0; i < docCount; i++) {
       this.matches.add(new MatchHolder<>());

@@ -139,8 +139,7 @@ public class FacetsCollectorManager implements CollectorManager<FacetsCollector,
         }
       }
     }
-    DocIdSetBuilder docIdSetBuilder =
-        new DocIdSetBuilder(matchingDocs1.context().reader().maxDoc());
+    DocIdSetBuilder docIdSetBuilder = new DocIdSetBuilder(matchingDocs1.context().maxLeafDoc());
     try {
       docIdSetBuilder.add(matchingDocs1.bits().iterator());
       docIdSetBuilder.add(matchingDocs2.bits().iterator());
@@ -250,11 +249,11 @@ public class FacetsCollectorManager implements CollectorManager<FacetsCollector,
       FacetsCollectorManager fcm)
       throws IOException {
 
-    int limit = searcher.getIndexReader().maxDoc();
+    long limit = searcher.getIndexReader().maxDoc();
     if (limit == 0) {
       limit = 1;
     }
-    n = Math.min(n, limit);
+    n = (int) Math.min(n, limit);
 
     if (after != null && after.doc >= limit) {
       throw new IllegalArgumentException(
@@ -274,7 +273,7 @@ public class FacetsCollectorManager implements CollectorManager<FacetsCollector,
       Object[] result = searcher.search(q, multiCollectorManager);
       topDocs =
           new TopDocs(
-              new TotalHits((Integer) result[0], TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
+              new TotalHits((Long) result[0], TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
       facetsCollector = (FacetsCollector) result[1];
     } else {
       final MultiCollectorManager multiCollectorManager;

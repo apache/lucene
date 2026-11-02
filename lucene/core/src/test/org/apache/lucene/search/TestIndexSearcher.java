@@ -312,7 +312,7 @@ public class TestIndexSearcher extends LuceneTestCase {
                           List.of(
                               LeafReaderContextPartition.createFromAndTo(ctx, 0, 1),
                               LeafReaderContextPartition.createFromAndTo(
-                                  ctx, 1, ctx.reader().maxDoc())))));
+                                  ctx, 1, ctx.maxLeafDoc())))));
             }
             return slices.toArray(LeafSlice[]::new);
           }
@@ -320,7 +320,7 @@ public class TestIndexSearcher extends LuceneTestCase {
 
     assumeTrue(
         "Needs at least 2 docs in the same segment",
-        indexSearcher.leafContexts.stream().allMatch(ctx -> ctx.reader().maxDoc() > 1));
+        indexSearcher.leafContexts.stream().allMatch(ctx -> ctx.maxLeafDoc() > 1));
     IllegalStateException e = expectThrows(IllegalStateException.class, indexSearcher::getSlices);
     assertEquals(
         "The same slice targets multiple leaf partitions of the same leaf reader context. A physical segment should rather get partitioned to be searched concurrently from as many slices as the number of leaf partitions it is split into.",

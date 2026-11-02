@@ -137,7 +137,7 @@ public class TestOrdinalData extends FacetTestCase {
         if (scores.advanceExact(ord) == false) {
           continue;
         }
-        FacetLabel label = taxoReader.getPath(ctx.docBase + ord);
+        FacetLabel label = taxoReader.getPath(Math.toIntExact(ctx.docBase) + ord);
         Long score = labelToScore.get(label.components[label.length - 1]);
         if (score == null) {
           throw new IOException("Unexpected score for " + Arrays.toString(label.components));

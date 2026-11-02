@@ -262,7 +262,7 @@ public abstract class ShardSearchingTestBase extends LuceneTestCase {
       }
 
       @Override
-      public TermStats termStats(Term term, int docFreq, long totalTermFreq) throws IOException {
+      public TermStats termStats(Term term, long docFreq, long totalTermFreq) throws IOException {
         assert term != null;
         long distributedDocFreq = 0;
         long distributedTotalTermFreq = 0;

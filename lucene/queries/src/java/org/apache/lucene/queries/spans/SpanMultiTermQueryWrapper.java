@@ -174,7 +174,7 @@ public class SpanMultiTermQueryWrapper<Q extends MultiTermQuery> extends SpanQue
               protected void addClause(
                   List<SpanQuery> topLevel,
                   Term term,
-                  int docCount,
+                  long docCount,
                   float boost,
                   TermStates states) {
                 final SpanTermQuery q = new SpanTermQuery(term, states);
@@ -222,7 +222,7 @@ public class SpanMultiTermQueryWrapper<Q extends MultiTermQuery> extends SpanQue
 
             @Override
             protected void addClause(
-                List<SpanQuery> topLevel, Term term, int docFreq, float boost, TermStates states) {
+                List<SpanQuery> topLevel, Term term, long docFreq, float boost, TermStates states) {
               final SpanTermQuery q = new SpanTermQuery(term, states);
               topLevel.add(q);
             }
@@ -286,11 +286,11 @@ public class SpanMultiTermQueryWrapper<Q extends MultiTermQuery> extends SpanQue
 
     /** Ranks terms by document frequency; the least frequent term is dropped first. */
     public static final Comparator<ScoreTerm> DF_ORDER =
-        Comparator.comparingInt(st -> st.termState.docFreq());
+        Comparator.comparingLong(st -> st.termState.docFreq());
 
     /** Ranks terms by document frequency, breaking ties by total term frequency. */
     public static final Comparator<ScoreTerm> DF_THEN_TTF_ORDER =
-        Comparator.comparingInt((ScoreTerm st) -> st.termState.docFreq())
+        Comparator.comparingLong((ScoreTerm st) -> st.termState.docFreq())
             .thenComparingLong(st -> st.termState.totalTermFreq());
 
     private final int maxSize;
@@ -332,7 +332,7 @@ public class SpanMultiTermQueryWrapper<Q extends MultiTermQuery> extends SpanQue
             protected void addClause(
                 PriorityQueue<ScoreTerm> topLevel,
                 Term term,
-                int docCount,
+                long docCount,
                 float boost,
                 TermStates states) {
               topLevel.insertWithOverflow(new ScoreTerm(term, states));

@@ -124,3 +124,15 @@ invalid:
   - list.toArray(new String[list.size()])
   - list.toArray(new String[n])
   - set.toArray(new Foo[expectedSize])
+---
+id: raw-global-doc-id-narrowing
+invalid:
+  - int leafDoc = (int) (doc - ctx.docBase);
+  - int leafDoc = (int) (doc - docBase);
+valid:
+  # the sanctioned narrowing, range-checked in one place
+  - int leafDoc = ctx.toLeafDocId(doc);
+  # not narrowed to an int
+  - long leafDoc = (long) (doc - docBase);
+  # subtracting something other than a docBase
+  - int delta = (int) (doc - target);

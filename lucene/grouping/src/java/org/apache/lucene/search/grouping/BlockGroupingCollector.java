@@ -84,7 +84,7 @@ public class BlockGroupingCollector extends SimpleCollector {
   private int topGroupDoc;
   private int totalHitCount;
   private int totalGroupCount;
-  private int docBase;
+  private long docBase;
   private int groupEndDocID;
   private DocIdSetIterator lastDocPerGroupBits;
   private Scorable scorer;
@@ -94,7 +94,7 @@ public class BlockGroupingCollector extends SimpleCollector {
   private static final class OneGroup {
     LeafReaderContext readerContext;
     // int groupOrd;
-    int topGroupDoc;
+    long topGroupDoc;
     int[] docs;
     float[] scores;
     int count;
@@ -123,7 +123,7 @@ public class BlockGroupingCollector extends SimpleCollector {
                   }
                   return 0;
                 })
-            .thenComparingInt(
+            .thenComparingLong(
                 g -> g.topGroupDoc) // Break ties by docID; lower docID is always sorted first
             .reversed());
   }

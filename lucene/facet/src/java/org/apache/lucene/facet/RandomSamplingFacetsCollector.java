@@ -156,7 +156,7 @@ public class RandomSamplingFacetsCollector extends FacetsCollector {
 
   /** Create a sampled of the given hits. */
   private MatchingDocs createSample(MatchingDocs docs) {
-    int maxdoc = docs.context().reader().maxDoc();
+    int maxdoc = docs.context().maxLeafDoc();
 
     // TODO: we could try the WAH8DocIdSet here as well, as the results will be sparse
     FixedBitSet sampleDocs = new FixedBitSet(maxdoc);
@@ -236,17 +236,20 @@ public class RandomSamplingFacetsCollector extends FacetsCollector {
     for (int i = 0; i < res.labelValues.length; i++) {
       childPath[res.path.length + 1] = res.labelValues[i].label;
       String fullPath = FacetsConfig.pathToString(childPath, childPath.length);
-      int max = reader.docFreq(new Term(dimConfig.indexFieldName, fullPath));
       int correctedCount = (int) (res.labelValues[i].value.doubleValue() / samplingRate);
-      correctedCount = Math.min(max, correctedCount);
+      // Cap by the term's whole-index doc frequency (a long); the min stays within the int count.
+      correctedCount =
+          (int)
+              Math.min(
+                  reader.docFreq(new Term(dimConfig.indexFieldName, fullPath)), correctedCount);
       fixedLabelValues[i] = new LabelAndValue(res.labelValues[i].label, correctedCount);
     }
 
     // cap the total count on the total number of non-deleted documents in the reader
-    int correctedTotalCount = res.value.intValue();
+    long correctedTotalCount = res.value.longValue();
     if (correctedTotalCount > 0) {
       correctedTotalCount =
-          Math.min(reader.numDocs(), (int) (res.value.doubleValue() / samplingRate));
+          Math.min(reader.numDocs(), (long) (res.value.doubleValue() / samplingRate));
     }
 
     return new FacetResult(

@@ -756,7 +756,10 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
     int maxBlocksProcessedInParallel = RandomizedTest.randomIntBetween(1, 5);
     int maxBlockSize = RandomizedTest.randomFrom(new int[] {2, 10, 100});
     highlighter.highlightDocuments(
-        Arrays.stream(topDocs.scoreDocs).mapToInt(scoreDoc -> scoreDoc.doc).sorted().iterator(),
+        Arrays.stream(topDocs.scoreDocs)
+            .mapToInt(scoreDoc -> Math.toIntExact(scoreDoc.doc))
+            .sorted()
+            .iterator(),
         highlightCollector,
         _ -> Integer.MAX_VALUE,
         maxBlockSize,

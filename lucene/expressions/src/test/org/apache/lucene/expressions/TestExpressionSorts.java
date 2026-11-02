@@ -118,7 +118,7 @@ public class TestExpressionSorts extends LuceneTestCaseJupiter {
   }
 
   void assertQuery(Query query, Sort sort) throws Exception {
-    int size = TestUtil.nextInt(random(), 1, searcher.getIndexReader().maxDoc() / 5);
+    int size = TestUtil.nextInt(random(), 1, (int) (searcher.getIndexReader().maxDoc() / 5));
     TopDocs expected = searcher.search(query, size, sort, random().nextBoolean());
 
     // make our actual sort, mutating original by replacing some of the

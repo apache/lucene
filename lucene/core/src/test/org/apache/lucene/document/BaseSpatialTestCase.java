@@ -299,7 +299,7 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
     final int iters = scaledIterationCount(shapes.length);
 
     Bits liveDocs = MultiBits.getLiveDocs(s.getIndexReader());
-    int maxDoc = s.getIndexReader().maxDoc();
+    int maxDoc = Math.toIntExact(s.getIndexReader().maxDoc());
 
     for (int iter = 0; iter < iters; ++iter) {
       if (VERBOSE) {
@@ -402,7 +402,7 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
     final int iters = scaledIterationCount(shapes.length);
 
     Bits liveDocs = MultiBits.getLiveDocs(s.getIndexReader());
-    int maxDoc = s.getIndexReader().maxDoc();
+    int maxDoc = Math.toIntExact(s.getIndexReader().maxDoc());
 
     for (int iter = 0; iter < iters; ++iter) {
       if (VERBOSE) {
@@ -475,7 +475,7 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
     final int iters = scaledIterationCount(shapes.length);
 
     Bits liveDocs = MultiBits.getLiveDocs(s.getIndexReader());
-    int maxDoc = s.getIndexReader().maxDoc();
+    int maxDoc = Math.toIntExact(s.getIndexReader().maxDoc());
 
     for (int iter = 0; iter < iters; ++iter) {
       if (VERBOSE) {
@@ -548,7 +548,7 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
     final int iters = scaledIterationCount(shapes.length);
 
     Bits liveDocs = MultiBits.getLiveDocs(s.getIndexReader());
-    int maxDoc = s.getIndexReader().maxDoc();
+    int maxDoc = Math.toIntExact(s.getIndexReader().maxDoc());
 
     for (int iter = 0; iter < iters; ++iter) {
       if (VERBOSE) {
@@ -629,7 +629,7 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
     final int iters = scaledIterationCount(shapes.length);
 
     Bits liveDocs = MultiBits.getLiveDocs(s.getIndexReader());
-    int maxDoc = s.getIndexReader().maxDoc();
+    int maxDoc = Math.toIntExact(s.getIndexReader().maxDoc());
 
     for (int iter = 0; iter < iters; ++iter) {
       if (VERBOSE) {

@@ -299,9 +299,9 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
 
       if (split) {
         testReader = DirectoryReader.open(test);
-        maxdoc = testReader.maxDoc();
+        maxdoc = Math.toIntExact(testReader.maxDoc());
       } else {
-        maxdoc = reader.maxDoc();
+        maxdoc = Math.toIntExact(reader.maxDoc());
       }
 
       System.out.println("Starting evaluation on " + maxdoc + " docs...");

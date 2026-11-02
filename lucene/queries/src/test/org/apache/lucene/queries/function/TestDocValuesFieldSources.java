@@ -130,7 +130,7 @@ public class TestDocValuesFieldSources extends LuceneTestCase {
       }
       final FunctionValues values = vs.getValues(null, leave);
       BytesRefBuilder bytes = new BytesRefBuilder();
-      for (int i = 0; i < leave.reader().maxDoc(); ++i) {
+      for (int i = 0; i < leave.maxLeafDoc(); ++i) {
         assertTrue(values.exists(i));
         if (vs instanceof BytesRefFieldSource) {
           assertTrue(values.objectVal(i) instanceof String);

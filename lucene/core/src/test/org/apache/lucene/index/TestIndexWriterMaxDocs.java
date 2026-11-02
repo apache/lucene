@@ -340,6 +340,9 @@ public class TestIndexWriterMaxDocs extends LuceneTestCase {
 
   // Make sure MultiReader is upset if you exceed the limit
   public void testMultiReaderBeyondLimit() throws Exception {
+    // We don't actually index > 2^31 docs (far too slow). Instead we index one small reader and
+    // reuse it many times as sub-readers, so the composite doc-id space crosses Integer.MAX_VALUE
+    // while only ~100k documents are ever written.
     Directory dir = newDirectory();
     Document doc = new Document();
     IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(null));
@@ -350,8 +353,9 @@ public class TestIndexWriterMaxDocs extends LuceneTestCase {
 
     int remainder = IndexWriter.MAX_DOCS % 100000;
 
-    // One too many:
-    remainder++;
+    // Push the composite total a bit past Integer.MAX_VALUE (MAX_DOCS == Integer.MAX_VALUE - 128),
+    // so the long maxDoc() must report a value larger than an int can hold.
+    remainder += 200;
 
     Directory dir2 = newDirectory();
     w = new IndexWriter(dir2, new IndexWriterConfig(null));
@@ -368,11 +372,12 @@ public class TestIndexWriterMaxDocs extends LuceneTestCase {
     Arrays.fill(subReaders, ir);
     subReaders[subReaders.length - 1] = ir2;
 
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          new MultiReader(subReaders);
-        });
+    // A composite reader may hold more than the per-segment MAX_DOCS limit: its doc-id space is a
+    // long. Only a single segment stays bounded by MAX_DOCS.
+    MultiReader mr = new MultiReader(subReaders, false);
+    assertTrue(mr.maxDoc() > Integer.MAX_VALUE);
+    assertEquals((long) IndexWriter.MAX_DOCS + 200, mr.maxDoc());
+    mr.close();
 
     ir.close();
     ir2.close();
@@ -482,11 +487,13 @@ public class TestIndexWriterMaxDocs extends LuceneTestCase {
   }
 
   public void testTooLargeMaxDocs() {
+    // The whole-index limit cannot be raised above the hard maximum (MAX_TOTAL_DOCS). Note that
+    // Integer.MAX_VALUE is now a perfectly valid total, since an index may span more than
+    // Integer.MAX_VALUE documents across its segments.
+    expectThrows(IllegalArgumentException.class, () -> IndexWriter.setMaxDocs(Long.MAX_VALUE));
+    // The per-segment limit cannot be raised above MAX_DOCS (Integer.MAX_VALUE - 128).
     expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          IndexWriter.setMaxDocs(Integer.MAX_VALUE);
-        });
+        IllegalArgumentException.class, () -> IndexWriter.setMaxDocsPerSegment(Integer.MAX_VALUE));
   }
 
   // LUCENE-6299

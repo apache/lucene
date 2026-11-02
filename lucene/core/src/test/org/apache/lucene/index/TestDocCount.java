@@ -67,7 +67,7 @@ public class TestDocCount extends LuceneTestCase {
         continue;
       }
       int docCount = terms.getDocCount();
-      FixedBitSet visited = new FixedBitSet(ir.maxDoc());
+      FixedBitSet visited = new FixedBitSet(Math.toIntExact(ir.maxDoc()));
       TermsEnum te = terms.iterator();
       while (te.next() != null) {
         PostingsEnum de = TestUtil.docs(random(), te, null, PostingsEnum.NONE);

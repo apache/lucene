@@ -164,7 +164,7 @@ public class TestBooleanQueryVisitSubscorers extends LuceneTestCase {
 
     @Override
     public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
-      final int docBase = context.docBase;
+      final int docBase = Math.toIntExact(context.docBase);
       return new FilterLeafCollector(super.getLeafCollector(context)) {
 
         @Override

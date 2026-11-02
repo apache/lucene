@@ -36,7 +36,7 @@ public class CheckJoinIndex {
    */
   public static void check(IndexReader reader, BitSetProducer parentsFilter) throws IOException {
     for (LeafReaderContext context : reader.leaves()) {
-      if (context.reader().maxDoc() == 0) {
+      if (context.maxLeafDoc() == 0) {
         continue;
       }
       final BitSet parents = parentsFilter.getBitSet(context);
@@ -46,7 +46,7 @@ public class CheckJoinIndex {
                 + context.reader()
                 + " does not have any");
       }
-      if (parents.get(context.reader().maxDoc() - 1) == false) {
+      if (parents.get(context.maxLeafDoc() - 1) == false) {
         throw new IllegalStateException(
             "The last document of a segment must always be a parent, but "
                 + context.reader()

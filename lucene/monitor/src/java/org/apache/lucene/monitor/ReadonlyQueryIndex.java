@@ -127,7 +127,7 @@ class ReadonlyQueryIndex extends QueryIndex {
     int numDocs;
     try {
       searcher = manager.acquire();
-      numDocs = searcher.getIndexReader().numDocs();
+      numDocs = Math.toIntExact(searcher.getIndexReader().numDocs());
     } finally {
       if (searcher != null) {
         manager.release(searcher);

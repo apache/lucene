@@ -169,7 +169,7 @@ public class BooleanPerceptronClassifier implements Classifier<Boolean> {
 
   private void updateWeights(
       TermVectors termVectors,
-      int docId,
+      long docId,
       Boolean assignedClass,
       SortedMap<String, Double> weights,
       double modifier,

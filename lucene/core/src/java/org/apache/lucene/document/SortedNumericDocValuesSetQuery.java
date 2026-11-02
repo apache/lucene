@@ -154,7 +154,7 @@ final class SortedNumericDocValuesSetQuery extends Query implements Accountable 
             TwoPhaseIterator.asDocIdSetIterator(iterator),
             score(),
             scoreMode,
-            context.reader().maxDoc());
+            context.maxLeafDoc());
       }
     };
   }

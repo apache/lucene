@@ -606,7 +606,7 @@ public abstract sealed class LuceneTestCaseParent extends Assert
       return;
     }
     int docid = -1;
-    int averageGap = leftReader.maxDoc() / (1 + docFreq);
+    int averageGap = (int) (leftReader.maxDoc() / (1 + docFreq));
     int skipInterval = 16;
 
     while (true) {
@@ -646,7 +646,7 @@ public abstract sealed class LuceneTestCaseParent extends Assert
     }
 
     int docid = -1;
-    int averageGap = leftReader.maxDoc() / (1 + docFreq);
+    int averageGap = (int) (leftReader.maxDoc() / (1 + docFreq));
     int skipInterval = 16;
 
     while (true) {
@@ -771,7 +771,7 @@ public abstract sealed class LuceneTestCaseParent extends Assert
       NumericDocValues leftNorms = MultiDocValues.getNormValues(leftReader, field);
       NumericDocValues rightNorms = MultiDocValues.getNormValues(rightReader, field);
       if (leftNorms != null && rightNorms != null) {
-        assertDocValuesEquals(info, leftReader.maxDoc(), leftNorms, rightNorms);
+        assertDocValuesEquals(info, Math.toIntExact(leftReader.maxDoc()), leftNorms, rightNorms);
       } else {
         assertNull(info, leftNorms);
         assertNull(info, rightNorms);
@@ -877,7 +877,8 @@ public abstract sealed class LuceneTestCaseParent extends Assert
         NumericDocValues leftValues = MultiDocValues.getNumericValues(leftReader, field);
         NumericDocValues rightValues = MultiDocValues.getNumericValues(rightReader, field);
         if (leftValues != null && rightValues != null) {
-          assertDocValuesEquals(info, leftReader.maxDoc(), leftValues, rightValues);
+          assertDocValuesEquals(
+              info, Math.toIntExact(leftReader.maxDoc()), leftValues, rightValues);
         } else {
           assertTrue(
               info + ": left numeric doc values for field=\"" + field + "\" are not null",
@@ -1067,7 +1068,7 @@ public abstract sealed class LuceneTestCaseParent extends Assert
 
             @Override
             public void visit(int docID, byte[] packedValue) throws IOException {
-              int topDocID = ctx.docBase + docID;
+              int topDocID = Math.toIntExact(ctx.docBase) + docID;
               if (docValues.containsKey(topDocID) == false) {
                 docValues.put(topDocID, new HashSet<>());
               }
@@ -1643,9 +1644,9 @@ public abstract sealed class LuceneTestCaseParent extends Assert
     INDEX_PACKAGE_ACCESS.setIndexWriterMaxDocs(limit);
   }
 
-  /** Returns to the default {@link IndexWriter#MAX_DOCS} limit. */
+  /** Returns to the default {@link IndexWriter#MAX_TOTAL_DOCS} whole-index limit. */
   public void restoreIndexWriterMaxDocs() {
-    INDEX_PACKAGE_ACCESS.setIndexWriterMaxDocs(IndexWriter.MAX_DOCS);
+    INDEX_PACKAGE_ACCESS.setIndexWriterMaxDocs(IndexWriter.MAX_TOTAL_DOCS);
   }
 
   private static final IndexPackageAccess INDEX_PACKAGE_ACCESS =

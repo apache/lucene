@@ -943,7 +943,7 @@ public class TestValueSources extends LuceneTestCase {
         final FunctionValues actualVals = actual.getValues(context, leaf);
 
         String msg = expected.toString() + " ?= " + actual.toString() + " -> ";
-        for (int i = 0; i < leaf.reader().maxDoc(); ++i) {
+        for (int i = 0; i < leaf.maxLeafDoc(); ++i) {
           assertEquals(msg + i, expectedVals.exists(i), actualVals.exists(i));
         }
       }

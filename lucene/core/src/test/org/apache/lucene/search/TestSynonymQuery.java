@@ -204,7 +204,7 @@ public class TestSynonymQuery extends LuceneTestCase {
 
     TopScoreDocCollectorManager collectorManager =
         new TopScoreDocCollectorManager(
-            Math.min(reader.numDocs(), totalHitsThreshold), totalHitsThreshold);
+            (int) Math.min(reader.numDocs(), totalHitsThreshold), totalHitsThreshold);
     TopDocs topDocs = searcher.search(query, collectorManager);
     if (topDocs.totalHits.value() < totalHitsThreshold) {
       assertEquals(new TotalHits(11, TotalHits.Relation.EQUAL_TO), topDocs.totalHits);
@@ -261,7 +261,7 @@ public class TestSynonymQuery extends LuceneTestCase {
 
     TopScoreDocCollectorManager collectorManager =
         new TopScoreDocCollectorManager(
-            Math.min(reader.numDocs(), totalHitsThreshold), totalHitsThreshold);
+            (int) Math.min(reader.numDocs(), totalHitsThreshold), totalHitsThreshold);
     TopDocs topDocs = searcher.search(query, collectorManager);
     if (topDocs.totalHits.value() < totalHitsThreshold) {
       assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation());

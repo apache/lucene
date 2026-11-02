@@ -344,7 +344,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "ClassNewInstance:WARN",
     "CloseableProvides:OFF", // we don't use this annotation
     "ClosingStandardOutputStreams:WARN",
-    "CollectionIncompatibleType:OFF", // TODO: new, not checked if applicable to Lucene
+    "CollectionIncompatibleType:ERROR", // catches e.g. Set<Integer>.contains(aLong) autoboxing
     "CollectionToArraySafeParameter:ERROR",
     "CollectionUndefinedEquality:OFF", // TODO: there are problems
     "CollectorShouldNotUseState:WARN",

@@ -370,7 +370,7 @@ public class TestSpellChecker extends LuceneTestCase {
 
   private int numdoc() throws IOException {
     IndexReader rs = DirectoryReader.open(spellindex);
-    int num = rs.numDocs();
+    int num = Math.toIntExact(rs.numDocs());
     assertTrue(num != 0);
     // System.out.println("num docs: " + num);
     rs.close();

@@ -302,7 +302,7 @@ public class TestPostingsOffsets extends LuceneTestCase {
       PostingsEnum docs = null;
       PostingsEnum docsAndPositions = null;
       PostingsEnum docsAndPositionsAndOffsets = null;
-      int[] docIDToID = new int[sub.maxDoc()];
+      int[] docIDToID = new int[sub.maxLeafDoc()];
       NumericDocValues values = DocValues.getNumeric(sub, "id");
       for (int i = 0; i < sub.maxDoc(); i++) {
         assertEquals(i, values.nextDoc());

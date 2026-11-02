@@ -214,7 +214,7 @@ public class TestSearchAfter extends LuceneTestCase {
   }
 
   void assertQuery(Query query, Sort sort) throws Exception {
-    int maxDoc = searcher.getIndexReader().maxDoc();
+    int maxDoc = Math.toIntExact(searcher.getIndexReader().maxDoc());
     TopDocs all;
     int pageSize = TestUtil.nextInt(random(), 1, maxDoc * 2);
     if (VERBOSE) {

@@ -470,7 +470,7 @@ public abstract class RangeFieldQuery extends Query {
             @Override
             public Scorer get(long leadCost) {
               return new ConstantScoreScorer(
-                  score(), scoreMode, DocIdSetIterator.all(reader.maxDoc()));
+                  score(), scoreMode, DocIdSetIterator.all(reader.maxLeafDoc()));
             }
 
             @Override
@@ -481,7 +481,7 @@ public abstract class RangeFieldQuery extends Query {
         } else {
           return new ScorerSupplier() {
 
-            final DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values);
+            final DocIdSetBuilder result = new DocIdSetBuilder(reader.maxLeafDoc(), values);
             final IntersectVisitor visitor = getIntersectVisitor(result);
             long cost = -1;
 

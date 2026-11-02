@@ -129,7 +129,7 @@ public abstract class ReadTask extends PerfTask {
             System.out.println("maxDoc()  = " + reader.maxDoc());
             System.out.println("numDocs() = " + reader.numDocs());
             for (int i = 0; i < hits.scoreDocs.length; i++) {
-              final int docID = hits.scoreDocs[i].doc;
+              final long docID = hits.scoreDocs[i].doc;
               final Document doc = storedFields.document(docID);
               System.out.println(
                   "  "
@@ -169,7 +169,7 @@ public abstract class ReadTask extends PerfTask {
       if (traversalSize > 0) {
         boolean retrieve = withRetrieve();
         for (int m = 0; m < traversalSize; m++) {
-          int id = scoreDocs[m].doc;
+          long id = scoreDocs[m].doc;
           res++;
           if (retrieve) {
             Document document = retrieveDoc(storedFields, id);
@@ -185,7 +185,7 @@ public abstract class ReadTask extends PerfTask {
     return new TopScoreDocCollectorManager(numHits(), withTotalHits() ? Integer.MAX_VALUE : 1);
   }
 
-  protected Document retrieveDoc(StoredFields storedFields, int id) throws IOException {
+  protected Document retrieveDoc(StoredFields storedFields, long id) throws IOException {
     return storedFields.document(id);
   }
 

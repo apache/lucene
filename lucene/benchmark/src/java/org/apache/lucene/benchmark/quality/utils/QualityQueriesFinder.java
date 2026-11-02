@@ -104,7 +104,7 @@ public class QualityQueriesFinder {
         PriorityQueue.usingComparator(numTerms, Comparator.comparingInt(tdf -> tdf.df));
     IndexReader ir = DirectoryReader.open(dir);
     try {
-      int threshold = ir.maxDoc() / 10; // ignore words too common.
+      int threshold = (int) (ir.maxDoc() / 10); // ignore words too common.
       Terms terms = MultiTerms.getTerms(ir, field);
       if (terms != null) {
         TermsEnum termsEnum = terms.iterator();

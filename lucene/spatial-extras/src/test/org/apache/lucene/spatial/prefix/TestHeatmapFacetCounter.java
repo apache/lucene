@@ -274,7 +274,7 @@ public class TestHeatmapFacetCounter extends StrategyTestCase {
     Query filter =
         new IntersectsPrefixTreeQuery(
             pt, strategy.getFieldName(), grid, facetLevel, grid.getMaxLevels());
-    int totalHits = indexSearcher.count(filter);
+    int totalHits = Math.toIntExact(indexSearcher.count(filter));
     cellsValidated++;
     if (totalHits > 0) {
       cellValidatedNonZero++;

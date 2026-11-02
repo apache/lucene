@@ -79,7 +79,7 @@ public class TestIndexWriterMerging extends LuceneTestCase {
     boolean fail = false;
     IndexReader reader = DirectoryReader.open(directory);
 
-    int max = reader.maxDoc();
+    int max = Math.toIntExact(reader.maxDoc());
     StoredFields storedFields = reader.storedFields();
     for (int i = 0; i < max; i++) {
       Document temp = storedFields.document(i);

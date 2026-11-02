@@ -122,9 +122,10 @@ public class TestHighlighterPhrase extends LuceneTestCase {
               true);
       final FixedBitSet bitset =
           indexSearcher.search(
-              phraseQuery, FixedBitSetCollector.createManager(indexReader.maxDoc()));
+              phraseQuery,
+              FixedBitSetCollector.createManager(Math.toIntExact(indexReader.maxDoc())));
       assertEquals(1, bitset.cardinality());
-      final int maxDoc = indexReader.maxDoc();
+      final int maxDoc = Math.toIntExact(indexReader.maxDoc());
       final Highlighter highlighter =
           new Highlighter(
               new SimpleHTMLFormatter(), new SimpleHTMLEncoder(), new QueryScorer(phraseQuery));

@@ -137,7 +137,7 @@ public class NearestFuzzyQuery extends Query {
     try (TokenStream ts = analyzer.tokenStream(f.fieldName, f.queryString)) {
       CharTermAttribute termAtt = ts.addAttribute(CharTermAttribute.class);
 
-      int corpusNumDocs = reader.numDocs();
+      long corpusNumDocs = reader.numDocs();
       HashSet<String> processedTerms = new HashSet<>();
       ts.reset();
       while (ts.incrementToken()) {
@@ -152,7 +152,7 @@ public class NearestFuzzyQuery extends Query {
           FuzzyTermsEnum fe =
               new FuzzyTermsEnum(terms, startTerm, f.maxEdits, f.prefixLength, true);
           // store the df so all variants use same idf
-          int df = reader.docFreq(startTerm);
+          long df = reader.docFreq(startTerm);
           int numVariants = 0;
           int totalVariantDocFreqs = 0;
           BytesRef possibleMatch;
@@ -195,7 +195,7 @@ public class NearestFuzzyQuery extends Query {
     }
   }
 
-  private float idf(int docFreq, int docCount) {
+  private float idf(long docFreq, long docCount) {
     return (float) (Math.log((docCount + 1) / (double) (docFreq + 1)) + 1.0);
   }
 
@@ -207,7 +207,8 @@ public class NearestFuzzyQuery extends Query {
       Terms terms = Terms.getTerms(leafContext.reader(), term.field());
       TermsEnum termsEnum = terms.iterator();
       if (termsEnum.seekExact(term.bytes())) {
-        int freq = 1 - termStates.docFreq(); // we want the total df and ttf to be 1
+        // register() takes the per-leaf df as an int; this artificial df sums to a total of 1.
+        int freq = Math.toIntExact(1 - termStates.docFreq());
         termStates.register(termsEnum.termState(), leafContext.ord, freq, freq);
       }
     }

@@ -1759,7 +1759,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     if (dv != null) {
       assert fi != null;
       assert fi.getDocValuesType() == DocValuesType.NUMERIC;
-      return new AssertingNumericDocValues(dv, maxDoc());
+      return new AssertingNumericDocValues(dv, maxLeafDoc());
     } else {
       assert fi == null || fi.getDocValuesType() != DocValuesType.NUMERIC;
       return null;
@@ -1773,7 +1773,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     if (dv != null) {
       assert fi != null;
       assert fi.getDocValuesType() == DocValuesType.BINARY;
-      return new AssertingBinaryDocValues(dv, maxDoc());
+      return new AssertingBinaryDocValues(dv, maxLeafDoc());
     } else {
       assert fi == null || fi.getDocValuesType() != DocValuesType.BINARY;
       return null;
@@ -1787,7 +1787,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     if (dv != null) {
       assert fi != null;
       assert fi.getDocValuesType() == DocValuesType.SORTED;
-      return new AssertingSortedDocValues(dv, maxDoc());
+      return new AssertingSortedDocValues(dv, maxLeafDoc());
     } else {
       assert fi == null || fi.getDocValuesType() != DocValuesType.SORTED;
       return null;
@@ -1801,7 +1801,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     if (dv != null) {
       assert fi != null;
       assert fi.getDocValuesType() == DocValuesType.SORTED_NUMERIC;
-      return AssertingSortedNumericDocValues.create(dv, maxDoc());
+      return AssertingSortedNumericDocValues.create(dv, maxLeafDoc());
     } else {
       assert fi == null || fi.getDocValuesType() != DocValuesType.SORTED_NUMERIC;
       return null;
@@ -1815,7 +1815,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     if (dv != null) {
       assert fi != null;
       assert fi.getDocValuesType() == DocValuesType.SORTED_SET;
-      return new AssertingSortedSetDocValues(dv, maxDoc());
+      return new AssertingSortedSetDocValues(dv, maxLeafDoc());
     } else {
       assert fi == null || fi.getDocValuesType() != DocValuesType.SORTED_SET;
       return null;
@@ -1842,7 +1842,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     if (dv != null) {
       assert fi != null;
       assert fi.hasNorms();
-      return new AssertingNumericDocValues(dv, maxDoc());
+      return new AssertingNumericDocValues(dv, maxLeafDoc());
     } else {
       assert fi == null || fi.hasNorms() == false;
       return null;
@@ -1855,7 +1855,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     if (values == null) {
       return null;
     }
-    return new AssertingPointValues(values, maxDoc());
+    return new AssertingPointValues(values, maxLeafDoc());
   }
 
   /** Wraps a Bits but with additional asserts */

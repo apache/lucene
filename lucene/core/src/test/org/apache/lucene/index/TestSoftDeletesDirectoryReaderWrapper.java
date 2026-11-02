@@ -298,7 +298,7 @@ public class TestSoftDeletesDirectoryReaderWrapper extends LuceneTestCase {
             new SoftDeletesDirectoryReaderWrapper(reader, softDeletesField);
         int expectedNumDeletes = 0;
         for (int i = 0; i < wrapped.leaves().size(); i++) {
-          expectedNumDeletes += wrapped.leaves().get(i).reader().numDeletedDocs();
+          expectedNumDeletes += wrapped.leaves().get(i).reader().numDeletedLeafDocs();
         }
         assertEquals(numDocs, wrapped.numDocs());
         assertEquals(expectedNumDeletes, wrapped.numDeletedDocs());

@@ -377,7 +377,7 @@ public class IncrementalDocValuesUpdatesBenchmark {
   private static long randomLookup(DirectoryReader reader) throws IOException {
     long checksum = 0;
     for (LeafReaderContext ctx : reader.leaves()) {
-      int maxDoc = ctx.reader().maxDoc();
+      int maxDoc = ctx.maxLeafDoc();
       if (BINARY) {
         BinaryDocValues dv = ctx.reader().getBinaryDocValues("val");
         for (int doc = 0; doc < maxDoc; doc += LOOKUP_STRIDE) {

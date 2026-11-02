@@ -121,13 +121,14 @@ public class TestDataSplitter extends LuceneTestCase {
 
       DirectoryReader trainingReader = DirectoryReader.open(trainingIndex);
       assertEquals(
-          (int) (originalIndex.maxDoc() * (1d - testRatio - crossValidationRatio)),
-          trainingReader.maxDoc(),
-          20);
+          originalIndex.maxLeafDoc() * (1d - testRatio - crossValidationRatio),
+          (double) trainingReader.maxDoc(),
+          20d);
       DirectoryReader testReader = DirectoryReader.open(testIndex);
-      assertEquals((int) (originalIndex.maxDoc() * testRatio), testReader.maxDoc(), 20);
+      assertEquals(originalIndex.maxLeafDoc() * testRatio, (double) testReader.maxDoc(), 20d);
       DirectoryReader cvReader = DirectoryReader.open(crossValidationIndex);
-      assertEquals((int) (originalIndex.maxDoc() * crossValidationRatio), cvReader.maxDoc(), 20);
+      assertEquals(
+          originalIndex.maxLeafDoc() * crossValidationRatio, (double) cvReader.maxDoc(), 20d);
 
       IOUtils.close(trainingReader, testReader, cvReader);
       closeQuietly(trainingReader);

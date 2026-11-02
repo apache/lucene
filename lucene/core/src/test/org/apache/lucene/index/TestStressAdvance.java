@@ -70,7 +70,7 @@ public class TestStressAdvance extends LuceneTestCase {
 
       final DirectoryReader r = w.getReader();
       StoredFields storedFields = r.storedFields();
-      final int[] idToDocID = new int[r.maxDoc()];
+      final int[] idToDocID = new int[Math.toIntExact(r.maxDoc())];
       for (int docID = 0; docID < idToDocID.length; docID++) {
         int id = Integer.parseInt(storedFields.document(docID).get("id"));
         if (aDocs.contains(id)) {

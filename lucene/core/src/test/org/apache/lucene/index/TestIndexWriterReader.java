@@ -280,7 +280,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
 
     assertEquals(200, r1.maxDoc());
 
-    int index2df = r1.docFreq(new Term("indexname", "index2"));
+    long index2df = r1.docFreq(new Term("indexname", "index2"));
 
     assertEquals(100, index2df);
 
@@ -1009,7 +1009,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
                 .setMergedSegmentWarmer(
                     (r) -> {
                       IndexSearcher s = newSearcher(r);
-                      int count = s.count(new TermQuery(new Term("foo", "bar")));
+                      long count = s.count(new TermQuery(new Term("foo", "bar")));
                       assertEquals(20, count);
                       didWarm.set(true);
                     })

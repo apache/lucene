@@ -374,7 +374,7 @@ public class TestBooleanQuery extends LuceneTestCase {
             // advance
             int inc = TestUtil.nextInt(random(), 1, left - 1);
             nextUpto = inc + upto;
-            nextDoc = scorer.iterator().advance(hits.get(nextUpto).doc);
+            nextDoc = scorer.iterator().advance(Math.toIntExact(hits.get(nextUpto).doc));
           }
 
           if (nextUpto == hits.size()) {
@@ -422,7 +422,8 @@ public class TestBooleanQuery extends LuceneTestCase {
   }
 
   private static FixedBitSet getMatches(IndexSearcher searcher, Query query) throws IOException {
-    return searcher.search(query, FixedBitSetCollector.createManager(searcher.reader.maxDoc()));
+    return searcher.search(
+        query, FixedBitSetCollector.createManager(Math.toIntExact(searcher.reader.maxDoc())));
   }
 
   public void testFILTERClauseBehavesLikeMUST() throws IOException {
@@ -490,7 +491,7 @@ public class TestBooleanQuery extends LuceneTestCase {
               @Override
               protected void doSetNextReader(LeafReaderContext context) throws IOException {
                 super.doSetNextReader(context);
-                docBase = context.docBase;
+                docBase = Math.toIntExact(context.docBase);
               }
 
               @Override
@@ -991,7 +992,7 @@ public class TestBooleanQuery extends LuceneTestCase {
         IndexSearcher countingIndexSearcher =
             new IndexSearcher(reader) {
               @Override
-              public int count(Query query) throws IOException {
+              public long count(Query query) throws IOException {
                 countInvocations[0]++;
                 return super.count(query);
               }
@@ -1043,7 +1044,7 @@ public class TestBooleanQuery extends LuceneTestCase {
                   .add(new TermQuery(new Term("foo", "large")), BooleanClause.Occur.SHOULD)
                   .build();
 
-          int count = countingIndexSearcher.count(query);
+          long count = countingIndexSearcher.count(query);
 
           assertEquals(largerTermCount + smallerTermCount, count);
           assertEquals(4, countInvocations[0]);
@@ -1065,7 +1066,7 @@ public class TestBooleanQuery extends LuceneTestCase {
                   .add(new TermQuery(new Term("foo", "small")), BooleanClause.Occur.SHOULD)
                   .build();
 
-          int count = countingIndexSearcher.count(query);
+          long count = countingIndexSearcher.count(query);
 
           assertEquals(largerTermCount + smallerTermCount, count);
           assertEquals(4, countInvocations[0]);
@@ -1086,7 +1087,7 @@ public class TestBooleanQuery extends LuceneTestCase {
                   .add(new TermQuery(new Term("foo", "also small")), BooleanClause.Occur.SHOULD)
                   .build();
 
-          int count = countingIndexSearcher.count(query);
+          long count = countingIndexSearcher.count(query);
 
           assertEquals(smallerTermCount, count);
           assertEquals(3, countInvocations[0]);

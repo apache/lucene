@@ -124,7 +124,7 @@ public final class NRTSuggester implements Accountable {
       final CompletionScorer scorer, Bits acceptDocs, final TopSuggestDocsCollector collector)
       throws IOException {
     final double liveDocsRatio =
-        calculateLiveDocRatio(scorer.reader.numDocs(), scorer.reader.maxDoc());
+        calculateLiveDocRatio(scorer.reader.numLeafDocs(), scorer.reader.maxLeafDoc());
     if (liveDocsRatio == -1) {
       return;
     }
@@ -141,7 +141,8 @@ public final class NRTSuggester implements Accountable {
     // maximum number of suggestions that can be collected.
     final int topN = collector.getCountToCollect() * prefixPaths.size();
     final int queueSize =
-        getMaxTopNSearcherQueueSize(topN, scorer.reader.numDocs(), liveDocsRatio, scorer.filtered);
+        getMaxTopNSearcherQueueSize(
+            topN, scorer.reader.numLeafDocs(), liveDocsRatio, scorer.filtered);
 
     final CharsRefBuilder spare = new CharsRefBuilder();
 
