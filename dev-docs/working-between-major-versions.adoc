@@ -28,10 +28,10 @@ https://git-scm.com/docs/git-worktree[Git worktree] is a feature of git that all
 store separate checkouts of the same repository, at the same time. The git metadata is shared between the different
 directories, so any remotes added or local commits made from one worktree are available to all other worktrees as well.
 
-For Lucene, this allows us to have separate directories (worktrees) that manage the checkouts of `main` and `branch_8x`
+For Lucene, this allows us to have separate directories (worktrees) that manage the checkouts of `main` and `branch_11x`
 (or any other major branch). One can make a commit on `main`, then easily switch directories and cherry-pick the commit
-onto `branch_8x` without having to worry about gradle or ant files. This setup also allows the commit to be tested on
-`main` and `branch_8x` simultaneously.
+onto `branch_11x` without having to worry about gradle or ant files. This setup also allows the commit to be tested on
+`main` and `branch_11x` simultaneously.
 
 === Setup
 
@@ -51,7 +51,7 @@ cd lucene
 git clone git@github.com:apache/lucene.git main
 cd main
 # For each branch that you want a separate directory created for, add a worktree
-git worktree add ../10x branch_10x
+git worktree add ../11x branch_11x
 ----
 
 === Using the Worktrees

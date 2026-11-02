@@ -23,15 +23,18 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiReader;
+import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher.LeafReaderContextPartition;
@@ -183,47 +186,47 @@ public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
 
   public void testCanEarlyTerminateOnDocId() {
     assertTrue(
-        TopFieldCollector.canEarlyTerminate(
+        FieldValueHitQueue.canEarlyTerminate(
             new Sort(SortField.FIELD_DOC), new Sort(SortField.FIELD_DOC)));
 
-    assertTrue(TopFieldCollector.canEarlyTerminate(new Sort(SortField.FIELD_DOC), null));
+    assertTrue(FieldValueHitQueue.canEarlyTerminate(new Sort(SortField.FIELD_DOC), null));
 
     assertFalse(
-        TopFieldCollector.canEarlyTerminate(
+        FieldValueHitQueue.canEarlyTerminate(
             new Sort(new SortField("a", SortField.Type.LONG)), null));
 
     assertFalse(
-        TopFieldCollector.canEarlyTerminate(
+        FieldValueHitQueue.canEarlyTerminate(
             new Sort(new SortField("a", SortField.Type.LONG)),
             new Sort(new SortField("b", SortField.Type.LONG))));
 
     assertTrue(
-        TopFieldCollector.canEarlyTerminate(
+        FieldValueHitQueue.canEarlyTerminate(
             new Sort(SortField.FIELD_DOC), new Sort(new SortField("b", SortField.Type.LONG))));
 
     assertTrue(
-        TopFieldCollector.canEarlyTerminate(
+        FieldValueHitQueue.canEarlyTerminate(
             new Sort(SortField.FIELD_DOC),
             new Sort(new SortField("b", SortField.Type.LONG), SortField.FIELD_DOC)));
 
     assertFalse(
-        TopFieldCollector.canEarlyTerminate(
+        FieldValueHitQueue.canEarlyTerminate(
             new Sort(new SortField("a", SortField.Type.LONG)), new Sort(SortField.FIELD_DOC)));
 
     assertFalse(
-        TopFieldCollector.canEarlyTerminate(
+        FieldValueHitQueue.canEarlyTerminate(
             new Sort(new SortField("a", SortField.Type.LONG), SortField.FIELD_DOC),
             new Sort(SortField.FIELD_DOC)));
   }
 
   public void testCanEarlyTerminateOnPrefix() {
     assertTrue(
-        TopFieldCollector.canEarlyTerminate(
+        FieldValueHitQueue.canEarlyTerminate(
             new Sort(new SortField("a", SortField.Type.LONG)),
             new Sort(new SortField("a", SortField.Type.LONG))));
 
     assertTrue(
-        TopFieldCollector.canEarlyTerminate(
+        FieldValueHitQueue.canEarlyTerminate(
             new Sort(
                 new SortField("a", SortField.Type.LONG), new SortField("b", SortField.Type.STRING)),
             new Sort(
@@ -231,29 +234,29 @@ public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
                 new SortField("b", SortField.Type.STRING))));
 
     assertTrue(
-        TopFieldCollector.canEarlyTerminate(
+        FieldValueHitQueue.canEarlyTerminate(
             new Sort(new SortField("a", SortField.Type.LONG)),
             new Sort(
                 new SortField("a", SortField.Type.LONG),
                 new SortField("b", SortField.Type.STRING))));
 
     assertFalse(
-        TopFieldCollector.canEarlyTerminate(
+        FieldValueHitQueue.canEarlyTerminate(
             new Sort(new SortField("a", SortField.Type.LONG, true)), null));
 
     assertFalse(
-        TopFieldCollector.canEarlyTerminate(
+        FieldValueHitQueue.canEarlyTerminate(
             new Sort(new SortField("a", SortField.Type.LONG, true)),
             new Sort(new SortField("a", SortField.Type.LONG, false))));
 
     assertFalse(
-        TopFieldCollector.canEarlyTerminate(
+        FieldValueHitQueue.canEarlyTerminate(
             new Sort(
                 new SortField("a", SortField.Type.LONG), new SortField("b", SortField.Type.STRING)),
             new Sort(new SortField("a", SortField.Type.LONG))));
 
     assertFalse(
-        TopFieldCollector.canEarlyTerminate(
+        FieldValueHitQueue.canEarlyTerminate(
             new Sort(
                 new SortField("a", SortField.Type.LONG), new SortField("b", SortField.Type.STRING)),
             new Sort(
@@ -261,7 +264,7 @@ public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
                 new SortField("c", SortField.Type.STRING))));
 
     assertFalse(
-        TopFieldCollector.canEarlyTerminate(
+        FieldValueHitQueue.canEarlyTerminate(
             new Sort(
                 new SortField("a", SortField.Type.LONG), new SortField("b", SortField.Type.STRING)),
             new Sort(
@@ -281,8 +284,7 @@ public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
     final Sort ascSort = new Sort(new SortField("ndv", SortField.Type.LONG));
 
     // Index A: sorted ndv ASC, many docs with a moderate value (50). Under an ASC search sort this
-    // leaf is prefix-sorted, so the collector decides "search sort is part of index sort" = true
-    // for it and calls disableSkipping().
+    // leaf is prefix-sorted, so its leaf comparator is the early-terminating one.
     Directory dirA = newDirectory();
     IndexWriterConfig iwcA = newIndexWriterConfig().setIndexSort(ascSort);
     try (RandomIndexWriter w = new RandomIndexWriter(random(), dirA, iwcA)) {
@@ -347,5 +349,235 @@ public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
       readerB.close();
       IOUtils.close(dirA, dirB);
     }
+  }
+
+  /** Builds a single segment index sorted by {@code indexSort}, with docs {@code (a(i), b(i))}. */
+  private Directory indexAB(Sort indexSort, java.util.function.LongUnaryOperator a, int numDocs)
+      throws IOException {
+    Directory d = newDirectory();
+    IndexWriterConfig iwc = newIndexWriterConfig().setIndexSort(indexSort);
+    try (RandomIndexWriter w = new RandomIndexWriter(random(), d, iwc)) {
+      for (int i = 0; i < numDocs; i++) {
+        Document doc = new Document();
+        doc.add(NumericDocValuesField.indexedField("a", a.applyAsLong(i)));
+        doc.add(new NumericDocValuesField("b", i));
+        w.addDocument(doc);
+      }
+      w.forceMerge(1);
+    }
+    return d;
+  }
+
+  private TopFieldDocs search(Directory d, Sort sort, int numHits, FieldDoc after)
+      throws IOException {
+    try (DirectoryReader r = DirectoryReader.open(d)) {
+      IndexSearcher searcher = new IndexSearcher(r);
+      return searcher.search(
+          new MatchAllDocsQuery(), new TopFieldCollectorManager(sort, numHits, after, 5));
+    }
+  }
+
+  public void testEffectiveIndexSortSkipsConstantLeadingField() throws IOException {
+    Sort indexSort =
+        new Sort(new SortField("a", SortField.Type.LONG), new SortField("b", SortField.Type.LONG));
+    Sort searchSort = new Sort(new SortField("b", SortField.Type.LONG));
+    int numDocs = 500;
+
+    // "a" is constant, so docs are really ordered by "b" and we can stop early
+    Directory constant = indexAB(indexSort, _ -> 7, numDocs);
+    TopFieldDocs td = search(constant, searchSort, 5, null);
+    assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, td.totalHits.relation());
+    assertTrue(td.totalHits.value() < numDocs);
+    for (int i = 0; i < 5; i++) {
+      assertEquals(i, (long) ((FieldDoc) td.scoreDocs[i]).fields[0]);
+    }
+
+    // "a" varies, so "b" is not globally ordered and every doc has to be visited
+    Directory varying = indexAB(indexSort, i -> i % 2, numDocs);
+    td = search(varying, searchSort, 5, null);
+    assertEquals(numDocs, td.totalHits.value());
+    for (int i = 0; i < 5; i++) {
+      assertEquals(i, (long) ((FieldDoc) td.scoreDocs[i]).fields[0]);
+    }
+    IOUtils.close(constant, varying);
+  }
+
+  public void testWithoutPruningStillEarlyTerminatesOnIndexSort() throws IOException {
+    Sort indexSort = new Sort(new SortField("b", SortField.Type.LONG));
+    Sort searchSort = new Sort(SortField.withoutPruning(new SortField("b", SortField.Type.LONG)));
+    int numDocs = 500;
+    Directory d = indexAB(indexSort, i -> i, numDocs);
+    TopFieldDocs td = search(d, searchSort, 5, null);
+    assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, td.totalHits.relation());
+    assertTrue(td.totalHits.value() < numDocs);
+    for (int i = 0; i < 5; i++) {
+      assertEquals(i, td.scoreDocs[i].doc);
+    }
+    d.close();
+  }
+
+  public void testNoIndexSortEarlyTerminationWithBlocks() throws IOException {
+    Sort indexSort = new Sort(new SortField("b", SortField.Type.LONG));
+    int numBlocks = 200;
+    Directory d = newDirectory();
+    IndexWriterConfig iwc = newIndexWriterConfig().setIndexSort(indexSort).setParentField("parent");
+    try (RandomIndexWriter w = new RandomIndexWriter(random(), d, iwc)) {
+      for (int i = 0; i < numBlocks; i++) {
+        Document child1 = new Document();
+        Document child2 = new Document();
+        Document parent = new Document();
+        parent.add(new NumericDocValuesField("b", i + 1));
+        w.addDocuments(List.of(child1, child2, parent));
+      }
+      w.forceMerge(1);
+    }
+    int numDocs = numBlocks * 3;
+
+    // naively using the index-sort to enforce early termination would return the wrong
+    // results here because the queue would fill with child documents and assume that
+    // all subsequent documents would compare as worse, when in fact later parent documents
+    // should displace the child docs.  Instead we disable sort-based early termination
+    // when blocks are present in the leaf.
+    TopFieldDocs td = search(d, indexSort, 5, null);
+    int[] expectedDocs = {0, 1, 3, 4, 6};
+    for (int i = 0; i < expectedDocs.length; i++) {
+      assertEquals(expectedDocs[i], td.scoreDocs[i].doc);
+    }
+
+    // doc id order is unaffected by blocks
+    td = search(d, new Sort(SortField.FIELD_DOC), 5, null);
+    assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, td.totalHits.relation());
+    assertTrue(td.totalHits.value() < numDocs);
+    d.close();
+  }
+
+  public void testCompetitiveIteratorWithBlocks() throws IOException {
+    Sort indexSort = new Sort(new SortField("b", SortField.Type.LONG));
+    int numBlocks = 200;
+    Directory d = newDirectory();
+    IndexWriterConfig iwc =
+        newIndexWriterConfig()
+            .setIndexSort(indexSort)
+            .setParentField("parent")
+            .setCodec(TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(16)));
+    try (RandomIndexWriter w = new RandomIndexWriter(random(), d, iwc)) {
+      for (int i = 0; i < numBlocks; i++) {
+        Document child1 = new Document();
+        Document child2 = new Document();
+        Document parent = new Document();
+        child1.add(NumericDocValuesField.indexedField("b", 1000 + i));
+        child2.add(NumericDocValuesField.indexedField("b", 1000 + i));
+        parent.add(NumericDocValuesField.indexedField("b", i));
+        w.addDocuments(List.of(child1, child2, parent));
+      }
+      w.forceMerge(1);
+    }
+
+    // the leading docs are children with large values, so index-sort early termination would
+    // miss the parents; value-based pruning through the competitive iterator is still correct
+    TopFieldDocs td = search(d, indexSort, 5, null);
+    assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, td.totalHits.relation());
+    assertTrue(td.totalHits.value() < numBlocks * 3);
+    int[] expectedDocs = {2, 5, 8, 11, 14};
+    assertEquals(expectedDocs.length, td.scoreDocs.length);
+    for (int i = 0; i < expectedDocs.length; i++) {
+      assertEquals(expectedDocs[i], td.scoreDocs[i].doc);
+      assertEquals((long) i, ((FieldDoc) td.scoreDocs[i]).fields[0]);
+    }
+    d.close();
+  }
+
+  public void testPagingOnIndexSort() throws IOException {
+    Sort sort = new Sort(new SortField("b", SortField.Type.LONG));
+    int numDocs = 500;
+    Directory d = indexAB(sort, i -> i, numDocs);
+    FieldDoc after = null;
+    int expected = 0;
+    while (expected < numDocs) {
+      TopFieldDocs td = search(d, sort, 7, after);
+      assertTrue(td.scoreDocs.length > 0);
+      for (ScoreDoc sd : td.scoreDocs) {
+        assertEquals(expected++, (long) ((FieldDoc) sd).fields[0]);
+      }
+      after = (FieldDoc) td.scoreDocs[td.scoreDocs.length - 1];
+    }
+    assertEquals(numDocs, expected);
+    d.close();
+  }
+
+  public void testEarlyTerminationInEverySegment() throws IOException {
+    Sort sort = new Sort(new SortField("b", SortField.Type.LONG));
+    Directory d = newDirectory();
+    IndexWriterConfig iwc = newIndexWriterConfig().setIndexSort(sort);
+    iwc.setMergePolicy(NoMergePolicy.INSTANCE);
+    int numSegments = 4;
+    int docsPerSegment = 500;
+    try (RandomIndexWriter w = new RandomIndexWriter(random(), d, iwc)) {
+      for (int seg = 0; seg < numSegments; seg++) {
+        for (int i = 0; i < docsPerSegment; i++) {
+          Document doc = new Document();
+          doc.add(new NumericDocValuesField("b", i));
+          w.addDocument(doc);
+        }
+        w.commit();
+      }
+    }
+    try (DirectoryReader r = DirectoryReader.open(d)) {
+      int leaves = r.leaves().size();
+      assertTrue(leaves >= numSegments);
+      IndexSearcher searcher = new IndexSearcher(r);
+      TopFieldDocs td =
+          searcher.search(new MatchAllDocsQuery(), new TopFieldCollectorManager(sort, 5, null, 5));
+      assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, td.totalHits.relation());
+      // each segment stops shortly after the threshold, rather than only the first one
+      assertTrue(td.totalHits.value() < leaves * 20);
+      // every segment holds one 0 and one 1 first, so the best 5 are all among those
+      for (int i = 0; i < 5; i++) {
+        assertTrue((long) ((FieldDoc) td.scoreDocs[i]).fields[0] <= 1);
+      }
+    }
+    d.close();
+  }
+
+  /**
+   * Docs are only in sort order within a segment, so the hits threshold being reached says nothing
+   * about whether the current doc beats the bottom of the queue when the queue was filled from an
+   * earlier segment. Here the queue is filled by segment A, the threshold is crossed on the first
+   * doc of segment B, and every doc in B is better than everything in A.
+   */
+  public void testQueueFilledInEarlierSegment() throws IOException {
+    Sort sort = new Sort(new SortField("b", SortField.Type.LONG));
+    int numHits = 5;
+    Directory d = newDirectory();
+    IndexWriterConfig iwc = new IndexWriterConfig().setIndexSort(sort);
+    iwc.setMergePolicy(NoMergePolicy.INSTANCE);
+    try (IndexWriter w = new IndexWriter(d, iwc)) {
+      // segment A: exactly numHits docs, all worse than those in B
+      for (int i = 0; i < numHits; i++) {
+        Document doc = new Document();
+        doc.add(new NumericDocValuesField("b", 1000 + i));
+        w.addDocument(doc);
+      }
+      w.commit();
+      // segment B: the threshold (numHits) is crossed on its first doc
+      for (int i = 0; i < 50; i++) {
+        Document doc = new Document();
+        doc.add(new NumericDocValuesField("b", i));
+        w.addDocument(doc);
+      }
+      w.commit();
+    }
+    try (DirectoryReader r = DirectoryReader.open(d)) {
+      assertEquals(2, r.leaves().size());
+      IndexSearcher searcher = new IndexSearcher(r);
+      TopFieldDocs td =
+          searcher.search(
+              new MatchAllDocsQuery(), new TopFieldCollectorManager(sort, numHits, null, numHits));
+      assertEquals(numHits, td.scoreDocs.length);
+      for (int i = 0; i < numHits; i++) {
+        assertEquals(i, (long) ((FieldDoc) td.scoreDocs[i]).fields[0]);
+      }
+    }
+    d.close();
   }
 }
