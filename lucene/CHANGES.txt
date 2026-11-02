@@ -22,6 +22,11 @@ Optimizations
 * GITHUB#16806: HNSW searches track the visited nodes of a large graph in a hash set instead of a
   bit set sized to the graph, which makes merges into large segments faster. (Ankur Goel)
 
+* GITHUB#XXXXX: HNSW queries track their visited nodes in a FixedBitSet until the graph is about
+  2048 times larger than the expected number of visited nodes, instead of 128 times, as a
+  FixedBitSet marks nodes faster than the hash set. The FixedBitSet of a query is at most 256 KB
+  (2^21 nodes); larger graphs and graph builders keep the 128 times rule. (Shubham Chaudhary)
+
 Bug Fixes
 ---------------------
 (No changes)
