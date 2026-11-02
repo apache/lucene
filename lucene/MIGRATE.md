@@ -28,6 +28,12 @@ with `VisitedSet.create(expectedVisitedNodes, graphSize)`.
 
 ## Migration from Lucene 10.x to Lucene 11.0
 
+### FixBrokenOffsetsFilter has been removed (GITHUB#XXXXX)
+
+The deprecated `FixBrokenOffsetsFilter` and its factory (SPI name `fixBrokenOffsets`) are gone.
+Offsets that go backwards are rejected at index time; fix the upstream token filter or tokenizer
+that produces them instead.
+
 ### MergePolicy.MergeSpecification#segString(Directory) has been removed (GITHUB#16963)
 
 The deprecated `MergePolicy.MergeSpecification#segString(Directory)` method is gone. The `Directory`
