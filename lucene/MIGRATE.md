@@ -28,7 +28,7 @@ with `VisitedSet.create(expectedVisitedNodes, graphSize)`.
 
 ## Migration from Lucene 10.x to Lucene 11.0
 
-### SynonymFilter and SynonymFilterFactory have been removed (GITHUB#XXXXX)
+### SynonymFilter and SynonymFilterFactory have been removed (GITHUB#16966)
 
 The deprecated `SynonymFilter` and its factory (SPI name `synonym`) are gone. Use
 `SynonymGraphFilter` and `SynonymGraphFilterFactory` (SPI name `synonymGraph`), which accept the

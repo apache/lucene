@@ -34,7 +34,7 @@ Other
 
 API Changes
 ---------------------
-* GITHUB#XXXXX: Remove the deprecated SynonymFilter and SynonymFilterFactory (SPI name "synonym").
+* GITHUB#16966: Remove the deprecated SynonymFilter and SynonymFilterFactory (SPI name "synonym").
   Use SynonymGraphFilter / SynonymGraphFilterFactory (SPI name "synonymGraph") instead, followed by
   FlattenGraphFilter at index time. (Chris Parrinello)
 
