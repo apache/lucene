@@ -1597,7 +1597,7 @@ groups:
     - increment_release_version
     vars:
       temp_dir: "{{ [release_folder, 'backcompat'] | path_join }}"
-      version: "{{ set_java_home(main_version) }}"
+      version: "{{ set_java_home('main') }}"
     commands: !Commands
       root_folder: '{{ git_checkout_folder }}'
       commands_text: Run these commands to add back-compat indices to main
@@ -1623,7 +1623,7 @@ groups:
       backward compatibility tests for corner cases. To find them, run grep -r assume
       lucene/backward-codecs/, which should find tests that have been disabled on main
       because there was no released Lucene version to test against.
-      {{ set_java_home(release_version) }}
+      {{ set_java_home(base_branch) }}
   - !Todo
     id: github_change_unresolved
     title: Remove milestone for unresolved

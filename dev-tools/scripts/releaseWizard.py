@@ -62,8 +62,8 @@ from jinja2 import Environment, Undefined
 import scriptutil
 from scriptutil import BranchType, CommitterPgp, Version, download, run
 
-# Lucene-to-Java version mapping
-java_versions = {6: 8, 7: 8, 8: 8, 9: 11, 10: 21, 11: 25}
+# Fallback Lucene-to-Java version mapping, used if minJava cannot be read from the branch
+java_versions = {10: 21, 11: 25}
 editor = None
 
 
@@ -296,6 +296,29 @@ def str_presenter(dumper: yaml.Dumper, data: str) -> yaml.ScalarNode:
   if len(data.split("\n")) > 1:  # check for multiline string
     return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
   return dumper.represent_scalar("tag:yaml.org,2002:str", data)
+
+
+_min_java_cache: dict[str, int] = {}
+
+
+def get_min_java_for_branch(branch: str) -> int | None:
+  """Reads minJava from gradle/libs.versions.toml on the given branch of the Lucene repo.
+  Successful lookups are cached per branch; failures (e.g. a branch not pushed yet) are not,
+  so a newly created branch is picked up without restarting the wizard.
+  """
+  if branch in _min_java_cache:
+    return _min_java_cache[branch]
+  url = "https://raw.githubusercontent.com/apache/lucene/%s/gradle/libs.versions.toml" % branch
+  try:
+    with urllib.request.urlopen(url, timeout=10) as response:
+      match = re.search(r'^minJava\s*=\s*"(\d+)"', response.read().decode("utf-8"), re.MULTILINE)
+  except Exception as e:
+    print("WARNING: Could not determine minimum Java for branch %s (%s), using built-in table" % (branch, e))
+    return None
+  if match is None:
+    return None
+  _min_java_cache[branch] = int(match.group(1))
+  return _min_java_cache[branch]
 
 
 @functools.cache
@@ -616,18 +639,31 @@ class ReleaseState:
     return None
 
   def get_java_home(self) -> str:
-    return self.get_java_home_for_version(self.release_version)
+    return self.get_java_home_for_branch(self.get_base_branch_name())
 
-  def get_java_home_for_version(self, version: str) -> str:
-    v = Version.parse(version)
-    java_ver = java_versions[v.major]
+  def get_fallback_java_for_branch(self, branch: str) -> int:
+    if branch == "main":
+      major = Version.parse(self.get_latest_version()).major + 1
+    else:
+      match = re.fullmatch(r"branch_(\d+)(?:x|_\d+)", branch)
+      if match is None:
+        raise Exception("Cannot determine Lucene major version from branch %s" % branch)
+      major = int(match.group(1))
+    if major not in java_versions:
+      raise Exception("No Java version known for Lucene %s.x, add it to java_versions in releaseWizard.py" % major)
+    return java_versions[major]
+
+  def get_java_home_for_branch(self, branch: str) -> str:
+    java_ver = get_min_java_for_branch(branch)
+    if java_ver is None:
+      java_ver = self.get_fallback_java_for_branch(branch)
     java_home_var = "JAVA%s_HOME" % java_ver
     if java_home_var in os.environ:
       return os.environ[java_home_var]
     raise Exception("Script needs environment variable %s" % java_home_var)
 
-  def get_java_cmd_for_version(self, version: str) -> str:
-    return os.path.join(self.get_java_home_for_version(version), "bin", "java")
+  def get_java_cmd_for_branch(self, branch: str) -> str:
+    return os.path.join(self.get_java_home_for_branch(branch), "bin", "java")
 
   def get_java_cmd(self) -> str:
     return os.path.join(self.get_java_home(), "bin", "java")
@@ -2044,9 +2080,9 @@ def check_artifacts_available(_todo: Todo) -> bool:
   return True
 
 
-def set_java_home(version: str) -> None:
-  os.environ["JAVA_HOME"] = state.get_java_home_for_version(version)
-  os.environ["JAVACMD"] = state.get_java_cmd_for_version(version)
+def set_java_home(branch: str) -> None:
+  os.environ["JAVA_HOME"] = state.get_java_home_for_branch(branch)
+  os.environ["JAVACMD"] = state.get_java_cmd_for_branch(branch)
 
 
 def load_lines(file: str, from_line: int = 0) -> list[str]:
