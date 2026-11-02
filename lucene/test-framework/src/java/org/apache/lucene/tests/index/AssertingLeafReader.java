@@ -1879,6 +1879,13 @@ public class AssertingLeafReader extends FilterLeafReader {
       assertThread("Bits", creationThread);
       return in.length();
     }
+
+    @Override
+    public void applyMask(FixedBitSet bitSet, int offset) {
+      assertThread("Bits", creationThread);
+      assert offset >= 0;
+      in.applyMask(bitSet, offset);
+    }
   }
 
   @Override

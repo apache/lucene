@@ -3,12 +3,48 @@ Lucene Change Log
 For more information on past and future Lucene versions, please see:
 http://s.apache.org/luceneversions
 
+======================= Lucene 12.0.0 =======================
+
+API Changes
+---------------------
+(No changes)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+(No changes)
+
+Optimizations
+---------------------
+(No changes)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+(No changes)
+
 ======================= Lucene 11.0.0 =======================
 
 API Changes
 ---------------------
 * GITHUB#16741: Lower the minimum supported major version from 10 to 9. Indexes created with 9.x
   remain fully supported in Lucene 11, no reindexing required. (Luca Cavanna)
+
+* GITHUB#14399: Sort pruning decisions are now entirely made through the Pruning
+  enum.  The various different locations that made these decisions are consolidated
+  into FieldValueHitQueue, and early termination through examining index sorts is
+  handled by a new IndexSortedLeafFieldComparator class.  Index pruning can be
+  disabled by wrapping the relevant SortField with SortField#withoutPruning, and the
+  deprecated SortField#setOptimizeSortWithIndexedData, #getOptimizeSortWithIndexedData,
+  #setOptimizeSortWithPoints and #getOptimizeSortWithPoints methods are removed, as well
+  as FieldComparator#setSingleSort, FieldComparator#disableSkipping and
+  LeafFieldComparator#disableSkipping. (Alan Woodward)
 
 * GITHUB#16705: KnnVectorValues#prefetch(int ord, int count) replaces prefetch(int ord). It prefetches
   a run of consecutive vectors with a single read and returns true if a prefetch was issued, like
@@ -272,8 +308,17 @@ Optimizations
 * GITHUB#16619: DirectIODirectory's slice() no longer performs a blocking direct read when
   creating a slice; the first read resolves the deferred start position instead. (John Maurice)
 
+* GITHUB#16623: FixedBitSet#copyOf masks LiveDocs in bulk through Bits#applyMask instead of
+  testing every bit, which speeds up the first delete on a segment whose deletes were read from
+  disk, opening soft-deletes readers, and sandbox FAISS KNN search over segments with deletions.
+  (Costin Leau)
+
 Bug Fixes
 ---------------------
+* GITHUB#16867: Apply buffered soft-update/delete terms before the global delete buffer reaches the 2GB
+  addressing limit of its ByteBlockPool, and stall indexing if the limit is hit during a full flush.
+  (Alan Woodward)
+
 * GITHUB#16441: MultiFieldQueryParser + per-field boosts produce wrong Occur under AND default operator (Egor Potemkin, Olivier Jaquemet)
 
 * GITHUB#16443: MultiFieldQueryParser: default operator is not honored between term positions (Egor Potemkin, Olivier Jaquemet)
@@ -340,6 +385,11 @@ Bug Fixes
 
 * GITHUB#16926: RescoreTopNQuery no longer throws when its inner query matches no documents.
   (Greg Miller)
+
+* GITHUB#16947: Disable index-sort early termination for indexes with parent-child docs.  Index sorts
+  only apply to parent documents so naive early termination checks can read the sort value from a child
+  document as meaning no later documents would be competitive, and incorrectly miss parent documents.
+  (Alan Woodward)
 
 * GITHUB#16896: Fix long overflow in GCD-encoded DocValues range transform. (Ke Wei)
 
@@ -429,6 +479,10 @@ Other
 * GITHUB#16082: Added a new JMH microbenchmark for DiversifyingChildrenFloatKnnVectorQuery. (Anna Ruggero via Alessandro Benedetti)
 
 * GITHUB#16170: Add JMH benchmarks for int4BitDotProduct and int4DibitDotProduct. (Vignesh)
+
+* GITHUB#16858: Add join benchmarks to the benchmark module, comparing JoinUtil term, numeric and
+  global ordinals joins with ToParentBlockJoinQuery on a 1:M products/skus dataset, including
+  incremental updates with NRT reopen. (Mikhail Khludnev)
 
 * GITHUB#16279: Add JMH benchmarks comparing read I/O strategies under memory pressure. (neoremind)
 
