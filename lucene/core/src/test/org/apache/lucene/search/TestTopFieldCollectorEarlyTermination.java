@@ -527,7 +527,8 @@ public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
       assertTrue(leaves >= numSegments);
       IndexSearcher searcher = new IndexSearcher(r);
       TopFieldDocs td =
-          searcher.search(MatchAllDocsQuery.INSTANCE, new TopFieldCollectorManager(sort, 5, null, 5));
+          searcher.search(
+              MatchAllDocsQuery.INSTANCE, new TopFieldCollectorManager(sort, 5, null, 5));
       assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, td.totalHits.relation());
       // each segment stops shortly after the threshold, rather than only the first one
       assertTrue(td.totalHits.value() < leaves * 20);
@@ -572,7 +573,8 @@ public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
       IndexSearcher searcher = new IndexSearcher(r);
       TopFieldDocs td =
           searcher.search(
-              MatchAllDocsQuery.INSTANCE, new TopFieldCollectorManager(sort, numHits, null, numHits));
+              MatchAllDocsQuery.INSTANCE,
+              new TopFieldCollectorManager(sort, numHits, null, numHits));
       assertEquals(numHits, td.scoreDocs.length);
       for (int i = 0; i < numHits; i++) {
         assertEquals(i, (long) ((FieldDoc) td.scoreDocs[i]).fields[0]);

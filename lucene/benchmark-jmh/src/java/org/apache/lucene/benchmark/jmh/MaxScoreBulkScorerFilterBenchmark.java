@@ -125,8 +125,7 @@ public class MaxScoreBulkScorerFilterBenchmark {
       bqWithFilter.add(new TermQuery(new Term("text", "word" + t)), BooleanClause.Occur.SHOULD);
     }
     if (filterDensity >= 1.0) {
-      bqWithFilter.add(
-          MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.FILTER);
+      bqWithFilter.add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.FILTER);
     } else {
       bqWithFilter.add(new TermQuery(new Term("filter", "yes")), BooleanClause.Occur.FILTER);
     }

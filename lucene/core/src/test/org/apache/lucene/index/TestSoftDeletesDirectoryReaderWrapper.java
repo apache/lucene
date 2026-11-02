@@ -274,7 +274,8 @@ public class TestSoftDeletesDirectoryReaderWrapper extends LuceneTestCase {
     iwc.setSoftDeletesField(softDeletesField);
     MergePolicy mergePolicy = iwc.mergePolicy;
     iwc.setMergePolicy(
-        new SoftDeletesRetentionMergePolicy(softDeletesField, () -> MatchAllDocsQuery.INSTANCE, mergePolicy));
+        new SoftDeletesRetentionMergePolicy(
+            softDeletesField, () -> MatchAllDocsQuery.INSTANCE, mergePolicy));
     try (Directory dir = newDirectory();
         IndexWriter writer = new IndexWriter(dir, iwc)) {
       int numDocs = 1 + random().nextInt(10);
