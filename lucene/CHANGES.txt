@@ -19,7 +19,8 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+* GITHUB#16806: HNSW searches track the visited nodes of a large graph in a hash set instead of a
+  bit set sized to the graph, which makes merges into large segments faster. (Ankur Goel)
 
 Bug Fixes
 ---------------------

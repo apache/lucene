@@ -17,6 +17,15 @@
 
 # Apache Lucene Migration Guide
 
+## Migration from Lucene 11.x to Lucene 12.0
+
+### HnswGraphSearcher takes a VisitedSet instead of a BitSet (GITHUB#16806)
+
+The constructor `HnswGraphSearcher(NeighborQueue, BitSet)` is now
+`HnswGraphSearcher(NeighborQueue, VisitedSet)`, and the protected field `visited` is a
+`VisitedSet`. This interface has the `set`, `getAndSet` and `clear` methods of `BitSet`; create one
+with `VisitedSet.create(expectedVisitedNodes, graphSize)`.
+
 ## Migration from Lucene 10.x to Lucene 11.0
 
 ### SortField#setOptimizeSortWithIndexedData has been removed (GITHUB#14399)
