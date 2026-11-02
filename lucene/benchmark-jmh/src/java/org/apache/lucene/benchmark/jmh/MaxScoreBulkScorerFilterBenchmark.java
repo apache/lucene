@@ -33,6 +33,7 @@ import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.LeafCollector;
+import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.TermQuery;
@@ -125,7 +126,7 @@ public class MaxScoreBulkScorerFilterBenchmark {
     }
     if (filterDensity >= 1.0) {
       bqWithFilter.add(
-          org.apache.lucene.search.MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.FILTER);
+          MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.FILTER);
     } else {
       bqWithFilter.add(new TermQuery(new Term("filter", "yes")), BooleanClause.Occur.FILTER);
     }
