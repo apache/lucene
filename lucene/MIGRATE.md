@@ -19,6 +19,13 @@
 
 ## Migration from Lucene 10.x to Lucene 11.0
 
+### MatchAllDocsQuery and MatchNoDocsQuery no-args constructors
+
+`MatchAllDocsQuery` and `MatchNoDocsQuery` no-args constructors visibility has been narrowed
+from public to private. Use instead the singleton instances available in the `INSTANCE` field.
+The direct no-args instantiation `new MatchAllDocsQuery()` has to be replaced by static field's
+reference `MatchAllDocsQuery.INSTANCE` and `MatchNoDocsQuery.INSTANCE` for `new MatchNoDocsQuery()`.
+
 ### SortField#setOptimizeSortWithIndexedData has been removed (GITHUB#14399)
 
 `SortField#setOptimizeSortWithIndexedData(false)` and `setOptimizeSortWithPoints(false)`, along with
