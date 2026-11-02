@@ -19,13 +19,17 @@ package org.apache.lucene.search;
 import static org.hamcrest.Matchers.instanceOf;
 
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
+import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
@@ -549,6 +553,144 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
 
     writer.close();
     dir.close();
+  }
+
+  /**
+   * Weight#count must not use the index sort when a document has multiple values: the index sort
+   * only reflects one value per document (the min by default), but the range query matches a
+   * document if any of its values is in range.
+   */
+  public void testCountWithMultiValuedField() throws IOException {
+    for (boolean withMissingDoc : new boolean[] {false, true}) {
+      Directory dir = newDirectory();
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      iwc.setIndexSort(new Sort(new SortedNumericSortField("field", SortField.Type.LONG)));
+      RandomIndexWriter writer = new RandomIndexWriter(random(), dir, iwc);
+
+      if (withMissingDoc) {
+        // sorts as the missing value 0, which is outside the query range
+        writer.addDocument(createMissingValueDocument());
+      }
+      // these sort by their min value (1, 2 and 60) but match [50, 200] through their max value
+      long[][] docs = {{1, 100}, {2, 3}, {60, 70}};
+      for (long[] values : docs) {
+        Document doc = new Document();
+        for (long value : values) {
+          doc.add(new SortedNumericDocValuesField("field", value));
+        }
+        writer.addDocument(doc);
+      }
+      writer.forceMerge(1);
+
+      IndexReader reader = writer.getReader();
+      IndexSearcher searcher = newSearcher(reader, false);
+
+      Query query = createQuery("field", 50, 200);
+      assertEquals(
+          2, searcher.count(SortedNumericDocValuesField.newSlowRangeQuery("field", 50, 200)));
+      assertEquals(2, searcher.count(query));
+
+      // the index sort can't be used and the fallback has no cheap count
+      Weight weight = query.createWeight(searcher, ScoreMode.COMPLETE_NO_SCORES, 1.0f);
+      for (LeafReaderContext context : searcher.getLeafContexts()) {
+        assertEquals(-1, weight.count(context));
+      }
+
+      writer.close();
+      reader.close();
+      dir.close();
+    }
+  }
+
+  /**
+   * With a parent field only the blocks are sorted, by the sort key of their parent, so the values
+   * by doc ID don't follow the sort order. Neither the doc values binary search nor the doc-ID
+   * range derived from the points can be used then.
+   */
+  public void testBlocksChildrenWithoutValue() throws IOException {
+    // blocks [child, parent] with the parents added as 20, 10, 30; sorted by parent value, the
+    // values by doc ID are [missing, 10, missing, 20, missing, 30]
+    for (boolean withPoints : new boolean[] {false, true}) {
+      doTestBlocks(
+          withPoints,
+          new long[][] {{0, -1, 1, 20}, {2, -1, 3, 10}, {4, -1, 5, 30}},
+          new long[] {-1, 20, -1, 10, -1, 30},
+          10,
+          30);
+    }
+  }
+
+  public void testBlocksChildrenWithValue() throws IOException {
+    // blocks [child 2, parent 1] and [child 0, parent 0]: values by doc ID are [0, 0, 2, 1]
+    for (boolean withPoints : new boolean[] {false, true}) {
+      doTestBlocks(
+          withPoints, new long[][] {{0, 2, 1, 1}, {2, 0, 3, 0}}, new long[] {2, 1, 0, 0}, 0, 2);
+    }
+  }
+
+  /**
+   * @param blocks one {child id, child value, parent id, parent value} per block; a negative value
+   *     means the document has no value
+   * @param valuesById the value of each document, by id, with -1 for none
+   */
+  private void doTestBlocks(
+      boolean withPoints, long[][] blocks, long[] valuesById, long minValue, long maxValue)
+      throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    iwc.setParentField("parent");
+    iwc.setIndexSort(new Sort(new SortedNumericSortField("field", SortField.Type.LONG)));
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir, iwc);
+    for (long[] block : blocks) {
+      Document child = new Document();
+      child.add(new StoredField("id", (int) block[0]));
+      addValue(child, block[1], withPoints);
+      Document parent = new Document();
+      parent.add(new StoredField("id", (int) block[2]));
+      addValue(parent, block[3], withPoints);
+      writer.addDocuments(List.of(child, parent));
+    }
+    writer.forceMerge(1);
+    IndexReader reader = writer.getReader();
+    IndexSearcher searcher = newSearcher(reader, false);
+
+    for (long lower = minValue - 1; lower <= maxValue + 1; ++lower) {
+      for (long upper = lower; upper <= maxValue + 1; ++upper) {
+        Set<Integer> expected = new HashSet<>();
+        for (int id = 0; id < valuesById.length; ++id) {
+          if (valuesById[id] >= 0 && valuesById[id] >= lower && valuesById[id] <= upper) {
+            expected.add(id);
+          }
+        }
+        Query query = createQuery("field", lower, upper);
+        Set<Integer> actual = new HashSet<>();
+        for (ScoreDoc scoreDoc : searcher.search(query, 10).scoreDocs) {
+          actual.add(
+              searcher
+                  .storedFields()
+                  .document(scoreDoc.doc)
+                  .getField("id")
+                  .numericValue()
+                  .intValue());
+        }
+        String message = "withPoints=" + withPoints + " [" + lower + "," + upper + "]";
+        assertEquals(message, expected, actual);
+        assertEquals(message, expected.size(), searcher.count(query));
+      }
+    }
+
+    writer.close();
+    reader.close();
+    dir.close();
+  }
+
+  private static void addValue(Document doc, long value, boolean withPoints) {
+    if (value >= 0) {
+      doc.add(new SortedNumericDocValuesField("field", value));
+      if (withPoints) {
+        doc.add(new LongPoint("field", value));
+      }
+    }
   }
 
   public void testIndexSortOptimizationDeactivated(RandomIndexWriter writer) throws IOException {

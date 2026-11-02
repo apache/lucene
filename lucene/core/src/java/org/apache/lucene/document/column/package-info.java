@@ -41,8 +41,8 @@
  *       plus per-doc ordinals for {@link org.apache.lucene.index.DocValuesType#SORTED SORTED} and
  *       {@link org.apache.lucene.index.DocValuesType#SORTED_SET SORTED_SET} doc values, term
  *       inversion, and stored binary or string fields.
- *   <li>{@link org.apache.lucene.document.column.VectorColumn} — KNN vectors (FLOAT32 or BYTE
- *       encoding); vector-only field type.
+ *   <li>{@link org.apache.lucene.document.column.VectorColumn} — KNN vectors (FLOAT32, FLOAT16 or
+ *       BYTE encoding); vector-only field type.
  *   <li>{@link org.apache.lucene.document.column.TokenStreamColumn} — caller-supplied {@link
  *       org.apache.lucene.analysis.TokenStream}s for term inversion (the columnar analogue of a
  *       custom token stream on a {@link org.apache.lucene.document.Field}); inverted-index-only
@@ -59,8 +59,9 @@
  *   <li>A tuple cursor (e.g. {@link org.apache.lucene.document.column.LongTupleCursor}, {@link
  *       org.apache.lucene.document.column.ObjectTupleCursor}) yields {@code (batchDocID, value)}
  *       pairs in non-decreasing doc-id order. Always available.
- *   <li>A bulk values cursor (e.g. {@link org.apache.lucene.document.column.LongValuesCursor})
- *       feeds dense data directly into the underlying writer. Required when {@link
+ *   <li>A bulk values cursor (e.g. {@link org.apache.lucene.document.column.LongValuesCursor},
+ *       {@link org.apache.lucene.document.column.VectorValuesCursor}) feeds dense data directly
+ *       into the underlying writer. Required when {@link
  *       org.apache.lucene.document.column.Column#density()} is {@link
  *       org.apache.lucene.document.column.Column.Density#DENSE DENSE} and consulted only in that
  *       case.

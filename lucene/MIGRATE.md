@@ -17,7 +17,36 @@
 
 # Apache Lucene Migration Guide
 
+## Migration from Lucene 11.x to Lucene 12.0
+
+### HnswGraphSearcher takes a VisitedSet instead of a BitSet (GITHUB#16806)
+
+The constructor `HnswGraphSearcher(NeighborQueue, BitSet)` is now
+`HnswGraphSearcher(NeighborQueue, VisitedSet)`, and the protected field `visited` is a
+`VisitedSet`. This interface has the `set`, `getAndSet` and `clear` methods of `BitSet`; create one
+with `VisitedSet.create(expectedVisitedNodes, graphSize)`.
+
 ## Migration from Lucene 10.x to Lucene 11.0
+
+### MergePolicy.MergeSpecification#segString(Directory) has been removed (GITHUB#16963)
+
+The deprecated `MergePolicy.MergeSpecification#segString(Directory)` method is gone. The `Directory`
+argument was already ignored, so call `MergeSpecification#toString()` instead. Subclasses that
+overrode `segString(Directory)` should override `toString()`.
+
+### SortField#setOptimizeSortWithIndexedData has been removed (GITHUB#14399)
+
+`SortField#setOptimizeSortWithIndexedData(false)` and `setOptimizeSortWithPoints(false)`, along with
+their getters, are gone. Wrap the sort field instead: `SortField.withoutPruning(sortField)`. The
+wrapper is immutable and never lets comparators skip documents using points, terms or doc values
+skippers. Early termination for sorts that are a prefix of the index sort still applies. The
+wrapper is for searching only: it cannot be used as an index sort, and `getIndexSorter()` throws
+`UnsupportedOperationException`.
+
+`FieldComparator#setSingleSort`, `FieldComparator#disableSkipping` and
+`LeafFieldComparator#disableSkipping` were removed too. Custom comparators that relied on
+`setSingleSort` can use the `Pruning` they are constructed with: a single sort field that is not
+paging gets `Pruning.GREATER_THAN_OR_EQUAL_TO`, and has no top value set.
 
 ### Java 25 is the minimum required JDK (GITHUB#14229, GITHUB#15215)
 
