@@ -81,7 +81,7 @@ class Version:
   def is_back_compat_with(self, other: Self) -> bool:
     if not self.on_or_after(other):
       raise Exception("Back compat check disallowed for newer version: %s < %s" % (self, other))
-    return other.major + 1 >= self.major
+    return other.major >= find_min_supported_major()
 
 
 def run(cmd: str, cwd: str | None = None) -> str:
@@ -191,6 +191,18 @@ def find_current_version() -> str:
   match = version_prop_re.search(open("%s/build-options.properties" % top_level_dir).read())
   assert match
   return match.group(1).strip()
+
+
+def find_min_supported_major() -> int:
+  """Reads Version.MIN_SUPPORTED_MAJOR from Version.java in this source checkout."""
+  min_major_re = re.compile(r"\bint\s+MIN_SUPPORTED_MAJOR\s*=\s*(\d+)\s*;")
+  script_path = os.path.dirname(os.path.realpath(__file__))
+  top_level_dir = Path(script_path).resolve().parent.parent
+  version_java = top_level_dir / "lucene" / "core" / "src" / "java" / "org" / "apache" / "lucene" / "util" / "Version.java"
+  match = min_major_re.search(version_java.read_text())
+  if match is None:
+    raise Exception("Could not find MIN_SUPPORTED_MAJOR in %s" % version_java)
+  return int(match.group(1))
 
 
 if __name__ == "__main__":

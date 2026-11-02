@@ -19,7 +19,8 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+* GITHUB#16806: HNSW searches track the visited nodes of a large graph in a hash set instead of a
+  bit set sized to the graph, which makes merges into large segments faster. (Ankur Goel)
 
 Bug Fixes
 ---------------------
@@ -33,6 +34,9 @@ Other
 
 API Changes
 ---------------------
+* GITHUB#16963: Remove the deprecated MergePolicy.MergeSpecification#segString(Directory) method.
+  Use MergeSpecification#toString() instead. (Christoph Büscher)
+
 * GITHUB#16741: Lower the minimum supported major version from 10 to 9. Indexes created with 9.x
   remain fully supported in Lucene 11, no reindexing required. (Luca Cavanna)
 
@@ -313,8 +317,9 @@ Optimizations
   disk, opening soft-deletes readers, and sandbox FAISS KNN search over segments with deletions.
   (Costin Leau)
 
-* GITHUB#16790: Vectorize OptimizedScalarQuantizer with osqCenter, osqGridStats and osqAssign.
-  (Jakub Slowinski)
+* GITHUB#16790: Vectorize OptimizedScalarQuantizer with osqCenter, osqGridStats and osqAssign. (Jakub Slowinski)
+
+* GITHUB#15902: Improve DiversifyingChildren performance by using primitive arrays (Alessandro Benedetti)
 
 Bug Fixes
 ---------------------
@@ -481,6 +486,10 @@ Other
 
 * GITHUB#16170: Add JMH benchmarks for int4BitDotProduct and int4DibitDotProduct. (Vignesh)
 
+* GITHUB#16858: Add join benchmarks to the benchmark module, comparing JoinUtil term, numeric and
+  global ordinals joins with ToParentBlockJoinQuery on a 1:M products/skus dataset, including
+  incremental updates with NRT reopen. (Mikhail Khludnev)
+
 * GITHUB#16279: Add JMH benchmarks comparing read I/O strategies under memory pressure. (neoremind)
 
 ======================= Lucene 10.6.0 =======================
@@ -591,7 +600,8 @@ Improvements
 
 * GITHUB#7820: CheckIndex now reports which segment's .si file could not be read, rather than only that
   a commit point was unreadable. SegmentInfos throws CorruptSegmentInfoException, carrying the segment
-  name and the underlying failure. (Gokul Manoj, Serhiy Bzhezytskyy)
+  name and the underlying failure, when a .si file is missing or corrupt; other I/O failures, such as
+  transient ones, propagate unchanged. (Gokul Manoj, Serhiy Bzhezytskyy, Alex Reelsen)
 
 * GITHUB#16292: Introduce TermGroupFacetCollectorManager to enable concurrent search with grouped
   faceting, removing usages of the deprecated IndexSearcher#search(Query, Collector).
@@ -1003,6 +1013,9 @@ New Features
 
 Improvements
 ---------------------
+
+* GITHUB#15711: DirectoryTaxonomyReader.getBulkPath() now uses getPathFromCache. (Shubham Sharma)
+
 * GITHUB#15948: Improve BayesianScoreQuery and LogOddsFusionQuery with base rate prior,
   weighted Logarithmic Opinion Pooling, and auto parameter estimation. Add
   BayesianScoreEstimator for estimating sigmoid calibration parameters from corpus
@@ -1016,8 +1029,6 @@ Improvements
 
 * GITHUB#15823: Implement method to add all stream elements into a PriorityQueue.
   Call PriorityQueue#addAll with mapped stream in DisjunctionMaxBulkScorer's constructor. (Zhou Hui)
-
-* GITHUB#15711: DirectoryTaxonomyReader.getBulkPath() now uses getPathFromCache. (Shubham Sharma)
 
 * GITHUB#15757: Better skipper-based numeric sort pruning from the start of segments (Alan Woodward)
 
@@ -1121,8 +1132,6 @@ Optimizations
 * GITHUB#15886: Cache frozen FieldType to skip redundant schema validation. (Tim Brooks)
 
 * GITHUB#15942: Skip max score computation when sorting by relevance in BlockGroupingCollector (Binlong Gao)
-
-* GITHUB#15902: Improve DiversifyingChildren performance by using primitive arrays(Alessandro Benedetti)
 
 * GITHUB#15954: Use SkipBlockRangeIterator as the two-phase approximation in SortedNumericDocValuesRangeQuery. (Sagar Upadhyaya)
 
