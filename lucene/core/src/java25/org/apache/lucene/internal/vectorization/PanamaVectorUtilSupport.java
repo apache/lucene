@@ -1624,9 +1624,9 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     stats[4] += sumLanes(accSum);
   }
 
-  // k * k is at most 255^2, so an int lane can sum about 33K of them before it overflows. Below
-  // 2^16 dims, no lane gets that many.
-  private static final int OSQ_GRID_STATS_MAX_DIMS = 1 << 16;
+  // k * k is at most 255^2, so an int can sum about 33K of them before it overflows, and
+  // reduceLanesToLong adds the lanes as ints. Below 2^15 dims, the total fits.
+  private static final int OSQ_GRID_STATS_MAX_DIMS = 1 << 15;
 
   @Override
   public void osqGridStats(float[] vector, float lower, float upper, int points, double[] stats) {
