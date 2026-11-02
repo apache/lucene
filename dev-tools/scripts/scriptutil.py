@@ -14,17 +14,19 @@
 # limitations under the License.
 
 import argparse
+import json
 import os
 import re
 import subprocess
 import sys
 import time
+import urllib.error
 import urllib.request
 from collections.abc import Callable
 from enum import Enum
 from pathlib import Path
 from re import Match, Pattern
-from typing import Self, override
+from typing import Any, Self, cast, override
 
 
 class Version:
@@ -82,6 +84,46 @@ class Version:
     if not self.on_or_after(other):
       raise Exception("Back compat check disallowed for newer version: %s < %s" % (self, other))
     return other.major + 1 >= self.major
+
+
+class CommitterPgp:
+  """Resolves a committer's PGP key from ASF records.
+
+  The committer's ASF id is looked up in a json file downloaded from
+  https://whimsy.apache.org/public/public_ldap_people.json
+  and if the committer has a PGP key, its fingerprint is made available.
+  """
+
+  def __init__(self, asf_id: str, json_content: dict[str, Any] | None = None) -> None:
+    self.asf_id = asf_id
+    self.ldap_url = "https://whimsy.apache.org/public/public_ldap_people.json"
+    self.fingerprint: str | None = None
+    self.fingerprint_short: str | None = None
+    self.ldap_json = json_content or self.load_ldap()
+    self.resolve()
+
+  def load_ldap(self) -> dict[str, Any]:
+    try:
+      with urllib.request.urlopen(self.ldap_url) as f:
+        return cast("dict[str, Any]", json.load(f))
+    except urllib.error.HTTPError as e:
+      msg = f"Failed to load {self.ldap_url}: {e}"
+      raise Exception(msg) from e
+
+  def resolve(self) -> None:
+    """Resolve the PGP key fingerprint for the committer's ASF id"""
+    try:
+      self.fingerprint = self.ldap_json["people"][self.asf_id]["key_fingerprints"][0].replace(" ", "").upper()
+      self.fingerprint_short = self.fingerprint[-8:]
+    except (KeyError, IndexError) as e:
+      msg = f"No PGP key found for {self.asf_id}"
+      raise Exception(msg) from e
+
+  def get_fingerprint(self) -> str | None:
+    return self.fingerprint
+
+  def get_short_fingerprint(self) -> str | None:
+    return self.fingerprint_short
 
 
 def run(cmd: str, cwd: str | None = None) -> str:
