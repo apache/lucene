@@ -181,7 +181,7 @@ public class SortedSetDocValuesRangeQueryBenchmark {
   }
 
   @Benchmark
-  public int searchSortedSetRange(Params params) throws IOException {
+  public long searchSortedSetRange(Params params) throws IOException {
     IndexSearcher searcher = new IndexSearcher(reader);
     return searcher.count(query);
   }

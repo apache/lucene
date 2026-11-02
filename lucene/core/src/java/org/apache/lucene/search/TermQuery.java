@@ -168,7 +168,7 @@ public class TermQuery extends Query {
         public BulkScorer bulkScorer() throws IOException {
           if (scoreMode.needsScores() == false) {
             DocIdSetIterator iterator = get(Long.MAX_VALUE).iterator();
-            int maxDoc = context.reader().maxDoc();
+            int maxDoc = context.maxLeafDoc();
             return ConstantScoreScorerSupplier.fromIterator(iterator, 0f, scoreMode, maxDoc)
                 .bulkScorer();
           }

@@ -267,8 +267,8 @@ public class SeededKnnVectorQuery extends AbstractKnnVectorQuery {
     TopDocsDISI(TopDocs topDocs, LeafReaderContext ctx) {
       sortedDocIds = new int[topDocs.scoreDocs.length];
       for (int i = 0; i < topDocs.scoreDocs.length; i++) {
-        // Remove the doc base as added by the collector
-        sortedDocIds[i] = topDocs.scoreDocs[i].doc - ctx.docBase;
+        // Remove the doc base as added by the collector; the result is leaf-local and fits an int.
+        sortedDocIds[i] = ctx.toLeafDocId(topDocs.scoreDocs[i].doc);
       }
       Arrays.sort(sortedDocIds);
     }

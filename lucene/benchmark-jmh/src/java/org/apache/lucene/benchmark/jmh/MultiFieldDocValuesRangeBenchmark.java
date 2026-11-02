@@ -271,7 +271,7 @@ public class MultiFieldDocValuesRangeBenchmark {
   }
 
   @Benchmark
-  public int searchMultiFieldRange() throws IOException {
+  public long searchMultiFieldRange() throws IOException {
     IndexSearcher searcher = new IndexSearcher(reader);
     return searcher.count(query);
   }

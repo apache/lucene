@@ -44,5 +44,5 @@ public abstract class Rescorer {
 
   /** Explains how the score for the specified document was computed. */
   public abstract Explanation explain(
-      IndexSearcher searcher, Explanation firstPassExplanation, int docID) throws IOException;
+      IndexSearcher searcher, Explanation firstPassExplanation, long docID) throws IOException;
 }

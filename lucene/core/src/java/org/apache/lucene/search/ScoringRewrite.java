@@ -64,7 +64,7 @@ public abstract class ScoringRewrite<B> extends TermCollectingRewrite<B> {
         protected void addClause(
             BooleanQuery.Builder topLevel,
             Term term,
-            int docCount,
+            long docCount,
             float boost,
             TermStates states) {
           final TermQuery tq = new TermQuery(term, states);

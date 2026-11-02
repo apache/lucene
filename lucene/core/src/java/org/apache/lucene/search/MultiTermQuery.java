@@ -180,7 +180,7 @@ public abstract class MultiTermQuery extends Query {
 
     @Override
     protected void addClause(
-        BooleanQuery.Builder topLevel, Term term, int docCount, float boost, TermStates states) {
+        BooleanQuery.Builder topLevel, Term term, long docCount, float boost, TermStates states) {
       final TermQuery tq = new TermQuery(term, states);
       topLevel.add(new BoostQuery(tq, boost), BooleanClause.Occur.SHOULD);
     }
@@ -229,7 +229,7 @@ public abstract class MultiTermQuery extends Query {
     protected void addClause(
         BlendedTermQuery.Builder topLevel,
         Term term,
-        int docCount,
+        long docCount,
         float boost,
         TermStates states) {
       topLevel.add(term, boost, states);
@@ -273,7 +273,7 @@ public abstract class MultiTermQuery extends Query {
 
     @Override
     protected void addClause(
-        BooleanQuery.Builder topLevel, Term term, int docFreq, float boost, TermStates states) {
+        BooleanQuery.Builder topLevel, Term term, long docFreq, float boost, TermStates states) {
       final Query q = new ConstantScoreQuery(new TermQuery(term, states));
       topLevel.add(new BoostQuery(q, boost), BooleanClause.Occur.SHOULD);
     }

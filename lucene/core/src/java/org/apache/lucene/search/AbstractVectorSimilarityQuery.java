@@ -193,7 +193,7 @@ abstract class AbstractVectorSimilarityQuery extends Query {
             // With DECAY_MAX_QUALITY, the intent is to find all vectors above
             // resultSimilarity. The approximate graph search may miss nodes,
             // so use exact search to guarantee completeness.
-            AcceptDocs acceptDocs = AcceptDocs.fromLiveDocs(liveDocs, leafReader.maxDoc());
+            AcceptDocs acceptDocs = AcceptDocs.fromLiveDocs(liveDocs, leafReader.maxLeafDoc());
             return VectorSimilarityScorerSupplier.fromAcceptDocs(
                 boost, createVectorScorer(context), acceptDocs.iterator(), resultSimilarity);
           }
@@ -201,7 +201,7 @@ abstract class AbstractVectorSimilarityQuery extends Query {
           TopDocs results =
               approximateSearch(
                   context,
-                  AcceptDocs.fromLiveDocs(liveDocs, leafReader.maxDoc()),
+                  AcceptDocs.fromLiveDocs(liveDocs, leafReader.maxLeafDoc()),
                   Integer.MAX_VALUE,
                   timeLimitingKnnCollectorManager);
           return VectorSimilarityScorerSupplier.fromScoreDocs(boost, results.scoreDocs);
@@ -217,7 +217,7 @@ abstract class AbstractVectorSimilarityQuery extends Query {
                     }
                   },
                   liveDocs,
-                  leafReader.maxDoc());
+                  leafReader.maxLeafDoc());
 
           int cardinality = acceptDocs.cost();
           if (cardinality == 0) {
@@ -294,7 +294,7 @@ abstract class AbstractVectorSimilarityQuery extends Query {
       }
 
       // Sort in ascending order of docid
-      Arrays.sort(scoreDocs, Comparator.comparingInt(scoreDoc -> scoreDoc.doc));
+      Arrays.sort(scoreDocs, Comparator.comparingLong(scoreDoc -> scoreDoc.doc));
 
       float[] cachedScore = new float[1];
       DocIdSetIterator iterator =
@@ -309,7 +309,8 @@ abstract class AbstractVectorSimilarityQuery extends Query {
                 return NO_MORE_DOCS;
               } else {
                 cachedScore[0] = boost * scoreDocs[index].score;
-                return scoreDocs[index].doc;
+                // these scoreDocs carry leaf-local doc ids, which fit an int
+                return (int) scoreDocs[index].doc;
               }
             }
 
@@ -325,7 +326,7 @@ abstract class AbstractVectorSimilarityQuery extends Query {
                   Arrays.binarySearch(
                       scoreDocs,
                       new ScoreDoc(target, 0),
-                      Comparator.comparingInt(scoreDoc -> scoreDoc.doc));
+                      Comparator.comparingLong(scoreDoc -> scoreDoc.doc));
               if (index < 0) {
                 index = -1 - index;
               }
