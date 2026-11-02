@@ -24,8 +24,8 @@ public final class LeafReaderContext extends IndexReaderContext {
   /** The reader's ord in the top-level's leaves array */
   public final int ord;
 
-  /** The reader's absolute doc base */
-  public final int docBase;
+  /** The global doc id of this leaf's first document in the top-level reader. */
+  public final long docBase;
 
   private final LeafReader reader;
   private final List<LeafReaderContext> leaves;
@@ -35,9 +35,9 @@ public final class LeafReaderContext extends IndexReaderContext {
       CompositeReaderContext parent,
       LeafReader reader,
       int ord,
-      int docBase,
+      long docBase,
       int leafOrd,
-      int leafDocBase) {
+      long leafDocBase) {
     super(parent, ord, docBase);
     this.ord = leafOrd;
     this.docBase = leafDocBase;
@@ -66,6 +66,29 @@ public final class LeafReaderContext extends IndexReaderContext {
   @Override
   public LeafReader reader() {
     return reader;
+  }
+
+  /** Returns the number of documents in this leaf, as an {@code int}. */
+  public int numLeafDocs() {
+    return reader.numLeafDocs();
+  }
+
+  /** Returns one greater than the largest document number in this leaf, as an {@code int}. */
+  public int maxLeafDoc() {
+    return reader.maxLeafDoc();
+  }
+
+  /** Maps a global doc id in this leaf to its leaf-local {@code int} doc id. */
+  public int toLeafDocId(long globalDocId) {
+    assert globalDocId >= docBase && globalDocId < docBase + reader.maxDoc()
+        : "global doc "
+            + globalDocId
+            + " outside leaf ["
+            + docBase
+            + ", "
+            + (docBase + reader.maxDoc())
+            + ")";
+    return (int) (globalDocId - docBase);
   }
 
   @Override

@@ -135,8 +135,8 @@ public abstract class PointValues {
    *
    * @see PointValues#getDocCount()
    */
-  public static int getDocCount(IndexReader reader, String field) {
-    int count = 0;
+  public static long getDocCount(IndexReader reader, String field) {
+    long count = 0;
     for (LeafReaderContext ctx : reader.leaves()) {
       PointValues values = ctx.reader().getPointValues(field);
       if (values != null) {
