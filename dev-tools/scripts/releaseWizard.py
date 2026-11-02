@@ -375,8 +375,9 @@ class ReleaseState:
       state.mirrored_versions = [r for r in list(map(lambda y: y[12:], filter(lambda x: x.startswith("lucene-java-"), list(releases.keys()))))]
     return state.mirrored_versions
 
-  def get_mirrored_versions_to_delete(self) -> list[str]:
-    versions = self.get_mirrored_versions()
+  def get_mirrored_versions_to_delete(self) -> list[str]:      # List the dist directory itself, since that is where the old versions get deleted from
+    listing = run("svn ls https://dist.apache.org/repos/dist/release/lucene/java/")
+    versions = [x.rstrip("/") for x in listing.splitlines() if re.fullmatch(r"\d+\.\d+\.\d+/", x.strip())]
     to_keep = versions
     if state.release_type == "major":
       to_keep = [self.release_version, self.get_latest_version()]
