@@ -122,10 +122,9 @@ public final class LZ4 {
 
       int matchLen = token & 0x0F;
       if (matchLen == 0x0F) {
-        int len = compressed.readByte();
-        if (len == (byte) 0xFF) {
-          dOff = decompressLongMatch(compressed, matchDec, dest, dOff, destEnd);
-          continue;
+        int len;
+        while ((len = compressed.readByte()) == (byte) 0xFF) {
+          matchLen += 0xFF;
         }
         matchLen += len & 0xFF;
       }
@@ -134,6 +133,10 @@ public final class LZ4 {
       // copying a multiple of 8 bytes can make decompression from 5% to 10% faster
       final int fastLen = (matchLen + 7) & 0xFFFFFFF8;
       if (matchDec < matchLen || dOff + fastLen > destEnd) {
+        if (matchLen >= 274 && matchDec < matchLen) {
+          dOff = copyLongOverlap(matchLen, matchDec, dest, dOff);
+          continue;
+        }
         // overlap -> naive incremental copy
         for (int ref = dOff - matchDec, end = dOff + matchLen; dOff < end; ++ref, ++dOff) {
           dest[dOff] = dest[ref];
@@ -148,23 +151,10 @@ public final class LZ4 {
     return dOff;
   }
 
-  private static int decompressLongMatch(
-      DataInput compressed, int matchDec, byte[] dest, int dOff, int destEnd) throws IOException {
-    // The token and the first length-extension byte represent at least 274 bytes.
-    int matchLen = MIN_MATCH + 0x0F + 0xFF;
-    int len;
-    while ((len = compressed.readByte()) == (byte) 0xFF) {
-      matchLen += 0xFF;
-    }
-    matchLen += len & 0xFF;
-    if (matchDec >= matchLen) {
-      final int fastLen = (matchLen + 7) & 0xFFFFFFF8;
-      System.arraycopy(
-          dest, dOff - matchDec, dest, dOff, dOff + fastLen <= destEnd ? fastLen : matchLen);
-    } else if (matchDec == 1) {
+  private static int copyLongOverlap(int matchLen, int matchDec, byte[] dest, int dOff) {
+    if (matchDec == 1) {
       Arrays.fill(dest, dOff, dOff + matchLen, dest[dOff - 1]);
     } else {
-      // Seed one period, then double from initialized, disjoint ranges.
       System.arraycopy(dest, dOff - matchDec, dest, dOff, matchDec);
       int copied = matchDec;
       while (copied < matchLen) {
