@@ -70,7 +70,7 @@ public class VectorUtilBenchmark {
   private short[] shortsB;
   private float[][] quantizeVectors;
   private int quantizeNext;
-  private float[] quantizeCentroid;
+  private float[] quantizeScratch;
   private byte[] quantizeDest;
   private OptimizedScalarQuantizer quantizer;
   private int expectedHalfByteDotProduct;
@@ -125,15 +125,14 @@ public class VectorUtilBenchmark {
       floatsB[i] = random.nextFloat();
       shortsB[i] = Float.floatToFloat16(floatsB[i]);
     }
-    // Rotate through 64 vectors, as the number of descent steps depends on the vector. They are
-    // centered here and the centroid is zero, so scalarQuantize leaves them as they are.
+    // Rotate through 64 vectors, as the number of descent steps depends on the vector.
     quantizeVectors = new float[64][size];
     for (float[] vector : quantizeVectors) {
       for (int i = 0; i < size; ++i) {
-        vector[i] = random.nextFloat() - floatsB[i];
+        vector[i] = random.nextFloat();
       }
     }
-    quantizeCentroid = new float[size];
+    quantizeScratch = new float[size];
     quantizeDest = new byte[size];
     quantizer = new OptimizedScalarQuantizer(VectorSimilarityFunction.DOT_PRODUCT);
 
@@ -322,17 +321,20 @@ public class VectorUtilBenchmark {
     return halfBytesUnpackDest;
   }
 
+  // scalarQuantize centers its input in place, so each call copies the next vector first.
   @Benchmark
   public OptimizedScalarQuantizer.QuantizationResult scalarQuantizeScalar() {
-    return quantizer.scalarQuantize(
-        quantizeVectors[quantizeNext++ & 63], quantizeDest, (byte) 4, quantizeCentroid);
+    System.arraycopy(quantizeVectors[quantizeNext], 0, quantizeScratch, 0, size);
+    quantizeNext = (quantizeNext + 1) % quantizeVectors.length;
+    return quantizer.scalarQuantize(quantizeScratch, quantizeDest, (byte) 4, floatsB);
   }
 
   @Benchmark
   @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public OptimizedScalarQuantizer.QuantizationResult scalarQuantizeVector() {
-    return quantizer.scalarQuantize(
-        quantizeVectors[quantizeNext++ & 63], quantizeDest, (byte) 4, quantizeCentroid);
+    System.arraycopy(quantizeVectors[quantizeNext], 0, quantizeScratch, 0, size);
+    quantizeNext = (quantizeNext + 1) % quantizeVectors.length;
+    return quantizer.scalarQuantize(quantizeScratch, quantizeDest, (byte) 4, floatsB);
   }
 
   @Benchmark
