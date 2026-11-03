@@ -40,12 +40,12 @@ public class TestRegExp extends LuceneTestCase {
     assertFalse(run.run("ad"));
   }
 
-  public void testLegacyAsciiCaseInsensitiveRawFlag() {
-    // raw value of the removed ASCII_CASE_INSENSITIVE flag is still treated as CASE_INSENSITIVE
-    RegExp r = new RegExp("A", RegExp.ALL, 0x0100);
-    assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("a"));
-    r = new RegExp("Σ", RegExp.ALL, 0x0100);
-    assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("ς"));
+  public void testRemovedAsciiCaseInsensitiveRawFlag() {
+    // raw value of the removed ASCII_CASE_INSENSITIVE flag is rejected instead of silently ignored
+    expectThrows(IllegalArgumentException.class, () -> new RegExp("A", RegExp.ALL, 0x0100));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> new RegExp("A", RegExp.ALL, 0x0100 | RegExp.CASE_INSENSITIVE));
   }
 
   public void testUnicodeAsciiInsensitiveFlags() {

@@ -33,6 +33,10 @@ with `VisitedSet.create(expectedVisitedNodes, graphSize)`.
 The flag was deprecated in 10.x and already behaved the same as `RegExp.CASE_INSENSITIVE` (full
 Unicode case folding). Replace it with `RegExp.CASE_INSENSITIVE`.
 
+The flag's raw value `0x0100` is no longer accepted: calls like
+`new RegExp(s, syntax_flags, 0x0100)` to `RegExp(String, int, int)` now throw an
+`IllegalArgumentException` and must be changed to `new RegExp(s, syntax_flags, RegExp.CASE_INSENSITIVE)`.
+
 ### FixBrokenOffsetsFilter has been removed (GITHUB#16964)
 
 The deprecated `FixBrokenOffsetsFilter` and its factory (SPI name `fixBrokenOffsets`) are gone.

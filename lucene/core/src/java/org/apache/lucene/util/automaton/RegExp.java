@@ -415,10 +415,11 @@ public class RegExp {
 
   // -----  Matching flags ( > 0xff <= 0xffff )  ------
 
-  // Question for review: should we drop the constant instead? Keeping it makes raw 0x0100 flag
-  // values from 10.x
-  // (the removed ASCII_CASE_INSENSITIVE) still work, at the cost of permanent legacy code.
-  private static final int LEGACY_ASCII_CASE_INSENSITIVE = 0x0100;
+  /**
+   * Bit of the removed {@code ASCII_CASE_INSENSITIVE} flag. It is not usable any more but stays
+   * reserved so that passing it as a raw value fails loudly instead of being silently ignored.
+   */
+  private static final int REMOVED_ASCII_CASE_INSENSITIVE = 0x0100;
 
   /**
    * Allows case-insensitive matching of most Unicode characters.
@@ -535,6 +536,11 @@ public class RegExp {
 
     if (match_flags > 0 && match_flags <= ALL) {
       throw new IllegalArgumentException("Illegal match flag");
+    }
+
+    if ((match_flags & REMOVED_ASCII_CASE_INSENSITIVE) != 0) {
+      throw new IllegalArgumentException(
+          "The ASCII_CASE_INSENSITIVE match flag (0x0100) has been removed, use CASE_INSENSITIVE");
     }
     flags = syntax_flags | match_flags;
     originalString = s;
@@ -676,7 +682,7 @@ public class RegExp {
         a = Operations.complement(a, Integer.MAX_VALUE);
         break;
       case REGEXP_CHAR:
-        if (isCaseInsensitive()) {
+        if (check(CASE_INSENSITIVE)) {
           a = Automata.makeCaseInsensitiveChar(c);
         } else {
           a = Automata.makeChar(c);
@@ -695,7 +701,7 @@ public class RegExp {
         a = Automata.makeEmpty();
         break;
       case REGEXP_STRING:
-        if (isCaseInsensitive()) {
+        if (check(CASE_INSENSITIVE)) {
           a = Automata.makeCaseInsensitiveString(s);
         } else {
           a = Automata.makeString(s);
@@ -1217,10 +1223,6 @@ public class RegExp {
     return ch;
   }
 
-  private boolean isCaseInsensitive() {
-    return check(CASE_INSENSITIVE | LEGACY_ASCII_CASE_INSENSITIVE);
-  }
-
   private boolean check(int flag) {
     return (flags & flag) != 0;
   }
@@ -1333,7 +1335,7 @@ public class RegExp {
             starts.add(c);
             ends.add(parseCharExp());
           }
-        } else if (isCaseInsensitive()) {
+        } else if (check(CASE_INSENSITIVE)) {
           // single case-insensitive character
           for (int form : toCaseInsensitiveChar(c)) {
             starts.add(form);
