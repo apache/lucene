@@ -1018,7 +1018,7 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
         new OneMergeWrappingMergePolicy(
             new SoftDeletesRetentionMergePolicy(
                 "soft_delete",
-                MatchAllDocsQuery::new,
+                () -> MatchAllDocsQuery.INSTANCE,
                 new LogDocMergePolicy() {
                   @Override
                   public MergeSpecification findMerges(

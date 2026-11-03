@@ -123,8 +123,8 @@ class RandomLuceneQueryGenerator {
 
   private Query randomLeaf() {
     int roll = random.nextInt(20);
-    if (roll == 0) return new MatchAllDocsQuery();
-    if (roll == 1) return new MatchNoDocsQuery();
+    if (roll == 0) return MatchAllDocsQuery.INSTANCE;
+    if (roll == 1) return MatchNoDocsQuery.INSTANCE;
     if (roll == 2) return new ConstantScoreQuery(randomLeafFromField());
     return randomLeafFromField();
   }

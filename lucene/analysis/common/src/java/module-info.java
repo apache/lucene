@@ -214,7 +214,6 @@ module org.apache.lucene.analysis.common {
       org.apache.lucene.analysis.miscellaneous.DelimitedTermFrequencyTokenFilterFactory,
       org.apache.lucene.analysis.miscellaneous.DropIfFlaggedFilterFactory,
       org.apache.lucene.analysis.miscellaneous.FingerprintFilterFactory,
-      org.apache.lucene.analysis.miscellaneous.FixBrokenOffsetsFilterFactory,
       org.apache.lucene.analysis.miscellaneous.HyphenatedWordsFilterFactory,
       org.apache.lucene.analysis.miscellaneous.KeepWordFilterFactory,
       org.apache.lucene.analysis.miscellaneous.KeywordMarkerFilterFactory,
