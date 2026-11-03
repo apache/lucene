@@ -25,7 +25,7 @@ import org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.search.TaskExecutor;
-import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.NoReuseHint;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer.QuantizationResult;
@@ -114,7 +114,7 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
    * records share this layout, so this is the one definition of it.
    */
   static void writeCorrections(
-      IndexOutput output, OptimizedScalarQuantizer.QuantizationResult corrections)
+      DataOutput output, OptimizedScalarQuantizer.QuantizationResult corrections)
       throws IOException {
     output.writeInt(Float.floatToIntBits(corrections.lowerInterval()));
     output.writeInt(Float.floatToIntBits(corrections.upperInterval()));
@@ -127,7 +127,7 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
    * its corrections. The writer and the reader produce query-side records through this method.
    */
   static void writeQueryRecord(
-      IndexOutput out, byte[] scratch, byte[] dest, QuantizationResult corrections)
+      DataOutput out, byte[] scratch, byte[] dest, QuantizationResult corrections)
       throws IOException {
     OptimizedScalarQuantizer.transposeHalfByte(scratch, dest);
     out.writeBytes(dest, dest.length);

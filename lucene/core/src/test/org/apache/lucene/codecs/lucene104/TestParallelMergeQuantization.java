@@ -19,10 +19,13 @@ package org.apache.lucene.codecs.lucene104;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsWriter.ParallelMergeQuantizer;
+import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsWriter.QuantizedFloatVectorValues;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.DirectoryReader;
@@ -33,6 +36,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LogDocMergePolicy;
+import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.store.Directory;
@@ -65,79 +69,70 @@ public class TestParallelMergeQuantization extends LuceneTestCase {
     super.tearDown();
   }
 
-  public void testIndexRecordsSameBytesAsSerial() throws Exception {
+  /** Same records as the serial path, for any encoding and merge order, one write per block. */
+  public void testSameBytesAsSerial() throws Exception {
     int dim = 1 + random().nextInt(200);
     VectorSimilarityFunction sim = randomSimilarity();
+    int blockSize = 1 + random().nextInt(300);
     List<float[]> vectors = randomVectors(1 + random().nextInt(3000), dim, sim);
-    float[] centroid = centroid(vectors, dim, sim);
-    for (ScalarEncoding encoding : ScalarEncoding.values()) {
-      try (Directory dir = newDirectory()) {
-        try (IndexOutput serial = dir.createOutput("serial", IOContext.DEFAULT);
-            IndexOutput parallel = dir.createOutput("parallel", IOContext.DEFAULT)) {
-          Lucene104ScalarQuantizedVectorsWriter.writeVectorData(
-              serial,
-              new Lucene104ScalarQuantizedVectorsWriter.QuantizedFloatVectorValues(
-                  FloatVectorValues.fromFloats(copy(vectors), dim),
-                  new OptimizedScalarQuantizer(sim),
-                  encoding,
-                  centroid));
-          Lucene104ScalarQuantizedVectorsWriter.writeVectorDataInParallel(
-              parallel,
-              FloatVectorValues.fromFloats(copy(vectors), dim),
-              new OptimizedScalarQuantizer(sim),
-              encoding,
-              centroid,
-              new TaskExecutor(executor),
-              2 + random().nextInt(7),
-              1 + random().nextInt(300));
-        }
-        assertArrayEquals(encoding.toString(), readAll(dir, "serial"), readAll(dir, "parallel"));
-      }
+    float[] centroid = randomVectors(1, dim, sim).get(0); // any centroid will do
+    // 3 segments with deletions, concatenated or interleaved as by an index sort
+    int[] segmentOf = new int[vectors.size()];
+    Arrays.setAll(segmentOf, _ -> random().nextInt(3));
+    boolean sorted = random().nextBoolean();
+    if (sorted == false) {
+      Arrays.sort(segmentOf);
     }
-  }
-
-  public void testQueryRecordsSameBytesAsSerial() throws Exception {
-    int dim = 1 + random().nextInt(200);
-    VectorSimilarityFunction sim = randomSimilarity();
-    List<float[]> vectors = randomVectors(1 + random().nextInt(3000), dim, sim);
-    float[] centroid = centroid(vectors, dim, sim);
-    for (ScalarEncoding encoding : ScalarEncoding.values()) {
-      if (encoding.isAsymmetric() == false) {
-        continue;
+    List<FloatVectorValues> segments = new ArrayList<>();
+    List<MergeState.DocMap> docMaps = new ArrayList<>();
+    for (int s = 0; s < 3; s++) {
+      List<float[]> segment = new ArrayList<>();
+      List<Integer> mergedDoc = new ArrayList<>();
+      for (int i = 0; i < vectors.size(); i++) {
+        if (random().nextInt(5) == 0) {
+          segment.add(randomVectors(1, dim, sim).get(0));
+          mergedDoc.add(-1); // deleted
+        }
+        if (segmentOf[i] == s) {
+          segment.add(vectors.get(i));
+          mergedDoc.add(i);
+        }
       }
+      segments.add(FloatVectorValues.fromFloats(segment, dim));
+      docMaps.add(mergedDoc::get);
+    }
+    for (ScalarEncoding encoding : ScalarEncoding.values()) {
+      boolean queries = encoding.isAsymmetric() && random().nextBoolean();
       try (Directory dir = newDirectory()) {
-        DocsWithFieldSet serialDocs = new DocsWithFieldSet();
-        DocsWithFieldSet parallelDocs = new DocsWithFieldSet();
         try (IndexOutput index = dir.createOutput("serial.index", IOContext.DEFAULT);
             IndexOutput query = dir.createOutput("serial.query", IOContext.DEFAULT)) {
-          Lucene104ScalarQuantizedVectorsWriter.writeVectorAndQueryRecords(
-              index,
-              query,
-              FloatVectorValues.fromFloats(copy(vectors), dim),
-              new OptimizedScalarQuantizer(sim),
-              encoding,
-              centroid,
-              serialDocs);
+          FloatVectorValues values =
+              FloatVectorValues.fromFloats(vectors.stream().map(float[]::clone).toList(), dim);
+          OptimizedScalarQuantizer quantizer = new OptimizedScalarQuantizer(sim);
+          if (queries) {
+            Lucene104ScalarQuantizedVectorsWriter.writeVectorAndQueryRecords(
+                index, query, values, quantizer, encoding, centroid, new DocsWithFieldSet());
+          } else {
+            Lucene104ScalarQuantizedVectorsWriter.writeVectorData(
+                index, new QuantizedFloatVectorValues(values, quantizer, encoding, centroid));
+          }
         }
         try (IndexOutput index = dir.createOutput("parallel.index", IOContext.DEFAULT);
             IndexOutput query = dir.createOutput("parallel.query", IOContext.DEFAULT)) {
-          Lucene104ScalarQuantizedVectorsWriter.writeVectorAndQueryRecordsInParallel(
-              index,
-              query,
-              FloatVectorValues.fromFloats(copy(vectors), dim),
-              new OptimizedScalarQuantizer(sim),
-              encoding,
-              centroid,
-              parallelDocs,
-              new TaskExecutor(executor),
-              2 + random().nextInt(7),
-              1 + random().nextInt(300));
+          ParallelMergeQuantizer.create(
+                  new TaskExecutor(executor), 2 + random().nextInt(7), segments, docMaps, sorted)
+              .writeRecords(
+                  index,
+                  queries ? query : null,
+                  new OptimizedScalarQuantizer(sim),
+                  encoding,
+                  centroid,
+                  new DocsWithFieldSet(),
+                  blockSize);
         }
-        for (String side : new String[] {".index", ".query"}) {
-          assertArrayEquals(
-              encoding + side, readAll(dir, "serial" + side), readAll(dir, "parallel" + side));
-        }
-        assertEquals(serialDocs.cardinality(), parallelDocs.cardinality());
+        String message = encoding + " queries=" + queries + " sorted=" + sorted;
+        assertArrayEquals(message, readAll(dir, "serial.index"), readAll(dir, "parallel.index"));
+        assertArrayEquals(message, readAll(dir, "serial.query"), readAll(dir, "parallel.query"));
       }
     }
   }
@@ -157,17 +152,8 @@ public class TestParallelMergeQuantization extends LuceneTestCase {
     boolean formatExecutor = random().nextBoolean();
     try (Directory serial = newDirectory();
         Directory parallel = newDirectory()) {
-      index(
-          serial,
-          new Lucene104HnswScalarQuantizedVectorsFormat(encoding, 8, 20, 1, null),
-          vectors,
-          sim);
-      index(
-          parallel,
-          new Lucene104HnswScalarQuantizedVectorsFormat(
-              encoding, 8, 20, 4, formatExecutor ? executor : null),
-          vectors,
-          sim);
+      index(serial, encoding, 1, null, vectors, sim);
+      index(parallel, encoding, 4, formatExecutor ? executor : null, vectors, sim);
       try (IndexReader a = DirectoryReader.open(serial);
           IndexReader b = DirectoryReader.open(parallel)) {
         QuantizedByteVectorValues x = quantizedValues(getOnlyLeafReader(a));
@@ -185,10 +171,13 @@ public class TestParallelMergeQuantization extends LuceneTestCase {
 
   private static void index(
       Directory dir,
-      Lucene104HnswScalarQuantizedVectorsFormat format,
+      ScalarEncoding encoding,
+      int workers,
+      ExecutorService mergeExec,
       List<float[]> vectors,
       VectorSimilarityFunction sim)
       throws IOException {
+    var format = new Lucene104HnswScalarQuantizedVectorsFormat(encoding, 8, 20, workers, mergeExec);
     // three segments of whole flushes and no merge until forceMerge
     LogDocMergePolicy mergePolicy = new LogDocMergePolicy();
     mergePolicy.setMergeFactor(1000);
@@ -230,29 +219,11 @@ public class TestParallelMergeQuantization extends LuceneTestCase {
     return vectors;
   }
 
-  private static float[] centroid(List<float[]> vectors, int dim, VectorSimilarityFunction sim) {
-    float[] centroid = new float[dim];
-    for (float[] v : vectors) {
-      for (int d = 0; d < dim; d++) {
-        centroid[d] += v[d] / vectors.size();
-      }
-    }
-    return sim == VectorSimilarityFunction.COSINE ? VectorUtil.l2normalize(centroid) : centroid;
-  }
-
   private static byte[] readAll(Directory dir, String name) throws IOException {
     try (IndexInput in = dir.openInput(name, IOContext.DEFAULT)) {
       byte[] b = new byte[(int) in.length()];
       in.readBytes(b, 0, b.length);
       return b;
     }
-  }
-
-  private static List<float[]> copy(List<float[]> in) {
-    List<float[]> out = new ArrayList<>(in.size());
-    for (float[] v : in) {
-      out.add(v.clone());
-    }
-    return out;
   }
 }
