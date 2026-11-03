@@ -62,17 +62,20 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
 
   private static final class LZ4WithPresetDictDecompressor extends Decompressor {
 
+    private int dictCompressedLength;
     private int[] compressedLengths;
+    private byte[] compressed;
     private byte[] buffer;
 
     LZ4WithPresetDictDecompressor() {
       compressedLengths = new int[0];
+      compressed = new byte[0];
       buffer = new byte[0];
     }
 
     private int readCompressedLengths(
         DataInput in, int originalLength, int dictLength, int blockLength) throws IOException {
-      in.readVInt(); // compressed length of the dictionary, unused
+      dictCompressedLength = in.readVInt();
       int totalLength = dictLength;
       int i = 0;
       compressedLengths = ArrayUtil.growNoCopy(compressedLengths, originalLength / blockLength + 1);
@@ -102,7 +105,7 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
       buffer = ArrayUtil.growNoCopy(buffer, dictLength + blockLength);
       bytes.length = 0;
       // Read the dictionary
-      if (LZ4.decompress(in, dictLength, buffer, 0) != dictLength) {
+      if (decompress(in, dictCompressedLength, dictLength, dictLength, buffer, 0) != dictLength) {
         throw new CorruptIndexException("Illegal dict length", in);
       }
 
@@ -131,9 +134,16 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
       if (offsetInBlock < offset + length) {
         bytes.bytes = ArrayUtil.grow(bytes.bytes, bytes.length + offset + length - offsetInBlock);
       }
+      int block = (offsetInBlock - dictLength) / blockLength;
       while (offsetInBlock < offset + length) {
         final int bytesToDecompress = Math.min(blockLength, offset + length - offsetInBlock);
-        LZ4.decompress(in, bytesToDecompress, buffer, dictLength);
+        decompress(
+            in,
+            compressedLengths[block++],
+            Math.min(blockLength, originalLength - offsetInBlock),
+            bytesToDecompress,
+            buffer,
+            dictLength);
         System.arraycopy(buffer, dictLength, bytes.bytes, bytes.length, bytesToDecompress);
         bytes.length += bytesToDecompress;
         offsetInBlock += blockLength;
@@ -142,6 +152,29 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
       bytes.offset = offsetInBytesRef;
       bytes.length = length;
       assert bytes.isValid();
+    }
+
+    /**
+     * Decompresses {@code decompressedLength} bytes of a block that holds {@code blockLength}
+     * bytes. Compressible blocks are read into a byte[] first, since decoding from a heap array is
+     * much faster than reading tokens one by one from the {@link DataInput}. Incompressible blocks
+     * are mostly literals that are already copied in bulk, so they are decoded from the {@link
+     * DataInput} to avoid copying them twice.
+     */
+    private int decompress(
+        DataInput in,
+        int compressedLength,
+        int blockLength,
+        int decompressedLength,
+        byte[] dest,
+        int dOff)
+        throws IOException {
+      if (compressedLength > blockLength - (blockLength >>> 3)) {
+        return LZ4.decompress(in, decompressedLength, dest, dOff);
+      }
+      compressed = ArrayUtil.growNoCopy(compressed, compressedLength);
+      in.readBytes(compressed, 0, compressedLength);
+      return LZ4.decompress(compressed, 0, compressedLength, decompressedLength, dest, dOff);
     }
 
     @Override

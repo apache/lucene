@@ -19,6 +19,7 @@ package org.apache.lucene.util.compress;
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Random;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
@@ -158,6 +159,19 @@ public abstract class LZ4TestCase extends LuceneTestCase {
     assertArrayEquals(
         ArrayUtil.copyOfSubArray(data, offset, offset + length),
         ArrayUtil.copyOfSubArray(restored, restoreOffset, restoreOffset + length));
+
+    // Now restore from a byte[] that holds the compressed bytes at an offset
+    int compressedOffset = TestUtil.nextInt(random(), 0, 10);
+    byte[] compressedCopy = new byte[compressedOffset + compressed.length + random().nextInt(10)];
+    System.arraycopy(compressed, 0, compressedCopy, compressedOffset, compressed.length);
+    restored = new byte[restoreOffset + length + random().nextInt(10)];
+    restoreOffsetEnd =
+        LZ4.decompress(
+            compressedCopy, compressedOffset, compressed.length, length, restored, restoreOffset);
+    assertEquals(length, restoreOffsetEnd - restoreOffset);
+    assertArrayEquals(
+        ArrayUtil.copyOfSubArray(data, offset, offset + length),
+        ArrayUtil.copyOfSubArray(restored, restoreOffset, restoreOffset + length));
   }
 
   private void doTestWithDictionary(byte[] data, LZ4.HashTable hashTable) throws IOException {
@@ -201,6 +215,14 @@ public abstract class LZ4TestCase extends LuceneTestCase {
     byte[] restored = new byte[restoreOffset + dictLen + length + random().nextInt(10)];
     System.arraycopy(data, dictOff, restored, restoreOffset, dictLen);
     LZ4.decompress(new ByteArrayDataInput(compressed), length, restored, dictLen + restoreOffset);
+    assertArrayEquals(
+        ArrayUtil.copyOfSubArray(data, dictOff + dictLen, dictOff + dictLen + length),
+        ArrayUtil.copyOfSubArray(
+            restored, restoreOffset + dictLen, restoreOffset + dictLen + length));
+
+    // Now restore from a byte[]
+    Arrays.fill(restored, restoreOffset + dictLen, restored.length, (byte) 0);
+    LZ4.decompress(compressed, 0, compressed.length, length, restored, dictLen + restoreOffset);
     assertArrayEquals(
         ArrayUtil.copyOfSubArray(data, dictOff + dictLen, dictOff + dictLen + length),
         ArrayUtil.copyOfSubArray(
