@@ -34,7 +34,7 @@ Other
 
 API Changes
 ---------------------
-* Remove deprecated SpanishMinimalStemFilter, SpanishMinimalStemFilterFactory and
+* GITHUB#16969: Remove deprecated SpanishMinimalStemFilter, SpanishMinimalStemFilterFactory and
   SpanishMinimalStemmer. Use SpanishPluralStemFilter instead. (Christoph Büscher)
 
 * GITHUB#16962: Removed usage of deprecated no-args constructors of MatchAllDocsQuery
