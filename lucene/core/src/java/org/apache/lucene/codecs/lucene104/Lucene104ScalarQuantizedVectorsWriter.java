@@ -592,8 +592,11 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
 
   static int mergeAndRecalculateCentroids(
       MergeState mergeState, FieldInfo fieldInfo, float[] mergedCentroid) throws IOException {
+    // The stored centroid scales back to a vector sum only when it is the plain mean. COSINE stores
+    // it unit-length, so its deletions need a full recalculation.
+    boolean canSubtractDeletes = fieldInfo.getVectorSimilarityFunction() != COSINE;
     boolean recalculate = false;
-    int totalVectorCount = 0;
+    int liveVectorCount = 0;
     for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
       KnnVectorsReader knnVectorsReader = mergeState.knnVectorsReaders[i];
       if (knnVectorsReader == null) {
@@ -608,30 +611,87 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
         continue;
       }
       float[] centroid = getCentroid(knnVectorsReader, fieldInfo.name);
-      totalVectorCount += vectorCount;
-      // If there aren't centroids, or previously clustered with more than one cluster
-      // or if there are deleted docs, we must recalculate the centroid
-      if (centroid == null || mergeState.liveDocs[i] != null) {
+      if (centroid == null) {
         recalculate = true;
         break;
       }
+      Bits liveDocs = mergeState.liveDocs[i];
+      int deletedCount = 0;
+      if (liveDocs != null) {
+        if (canSubtractDeletes == false) {
+          recalculate = true;
+          break;
+        }
+        deletedCount = countDeletedVectors(knnVectorsReader, fieldInfo, liveDocs);
+        // Once at least half the segment is deleted, subtracting the deleted vectors reads more of
+        // them than a full rescan reads live vectors, so recalculate instead.
+        if (2 * deletedCount >= vectorCount) {
+          recalculate = true;
+          break;
+        }
+      }
+      // Scale the stored centroid back into the segment's vector sum and add it to the running sum.
       for (int j = 0; j < centroid.length; j++) {
         mergedCentroid[j] += centroid[j] * vectorCount;
       }
+      liveVectorCount += vectorCount - deletedCount;
+      // The scaled-up sum still includes the deleted vectors, so remove them directly rather than
+      // rescanning every live vector in the segment.
+      if (deletedCount > 0) {
+        subtractDeletedVectors(knnVectorsReader, fieldInfo, liveDocs, mergedCentroid);
+      }
     }
-    if (totalVectorCount == 0) {
-      return 0;
-    } else if (recalculate) {
+    if (recalculate) {
       return calculateCentroid(mergeState, fieldInfo, mergedCentroid);
+    } else if (liveVectorCount == 0) {
+      return 0;
     } else {
       for (int j = 0; j < mergedCentroid.length; j++) {
-        mergedCentroid[j] = mergedCentroid[j] / totalVectorCount;
+        mergedCentroid[j] = mergedCentroid[j] / liveVectorCount;
       }
       if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
         VectorUtil.l2normalize(mergedCentroid);
       }
-      return totalVectorCount;
+      return liveVectorCount;
     }
+  }
+
+  /**
+   * Removes {@code reader}'s deleted vectors from {@code sum}, the summed live and deleted vectors.
+   */
+  private static void subtractDeletedVectors(
+      KnnVectorsReader reader, FieldInfo fieldInfo, Bits liveDocs, float[] sum) throws IOException {
+    FloatVectorValues vectorValues = floatingPointVectorValues(reader, fieldInfo);
+    if (vectorValues == null) {
+      return;
+    }
+    KnnVectorValues.DocIndexIterator iterator = vectorValues.iterator();
+    for (int doc = iterator.nextDoc(); doc != NO_MORE_DOCS; doc = iterator.nextDoc()) {
+      if (liveDocs.get(doc)) {
+        continue;
+      }
+      float[] vector = vectorValues.vectorValue(iterator.index());
+      for (int j = 0; j < vector.length; j++) {
+        sum[j] -= vector[j];
+      }
+    }
+  }
+
+  /** Returns the number of the reader's vectors for the field that are deleted. */
+  private static int countDeletedVectors(
+      KnnVectorsReader reader, FieldInfo fieldInfo, Bits liveDocs) throws IOException {
+    FloatVectorValues vectorValues = floatingPointVectorValues(reader, fieldInfo);
+    if (vectorValues == null) {
+      return 0;
+    }
+    int deletedCount = 0;
+    KnnVectorValues.DocIndexIterator iterator = vectorValues.iterator();
+    for (int doc = iterator.nextDoc(); doc != NO_MORE_DOCS; doc = iterator.nextDoc()) {
+      if (liveDocs.get(doc) == false) {
+        deletedCount++;
+      }
+    }
+    return deletedCount;
   }
 
   static int calculateCentroid(MergeState mergeState, FieldInfo fieldInfo, float[] centroid)
