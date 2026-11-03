@@ -38,10 +38,28 @@ that produces them instead.
 
 The deprecated `SynonymFilter` and its factory (SPI name `synonym`) are gone. Use
 `SynonymGraphFilter` and `SynonymGraphFilterFactory` (SPI name `synonymGraph`), which accept the
-same `SynonymMap` and factory arguments. At index time, follow `SynonymGraphFilter` with
-`FlattenGraphFilter`, because the indexer cannot consume a token graph; at query time use the graph
-directly. Token order differs: `SynonymGraphFilter` emits synonyms before the original token at
-the same position.
+same `SynonymMap` and factory arguments. `SynonymFilter.TYPE_SYNONYM` is now
+`SynonymGraphFilter.TYPE_SYNONYM` (same value, `"SYNONYM"`). A `TokenFilterFactory` lookup of the
+name `synonym` now throws `IllegalArgumentException`.
+
+`SynonymGraphFilter` is not a drop-in replacement; its output differs:
+
+* It produces a token graph, with correct position lengths for multi-token synonyms. The indexer
+  cannot consume a graph, so at index time follow it with `FlattenGraphFilter`; at query time use
+  the graph directly.
+* Synonyms are emitted before the original token at the same position, not after it.
+* Position increments and position lengths of multi-token synonyms differ from `SynonymFilter`,
+  which produced incorrect graphs for them. For example, for the input `spider man` with the rule
+  `spider man, spiderman`, `SynonymFilter` emitted `spider, spiderman, man` and
+  `SynonymGraphFilter` emits `spiderman, spider, man` with position lengths `2, 1, 1`.
+
+Existing indexes: the index format is unchanged, but analysis is rebuilt from your configuration
+when an index is opened, so any analyzer that names `synonym` must be changed before upgrading.
+Documents indexed with `SynonymFilter` keep their old positions. Documents indexed afterwards get
+the new ones, so position-dependent queries (phrases, slop, span, interval queries) on fields with
+multi-token synonyms can behave differently between old and new documents. Reindex such fields if
+consistent behavior matters. Applications that must keep the legacy output exactly need to carry
+their own copy of the removed filter.
 
 ### MergePolicy.MergeSpecification#segString(Directory) has been removed (GITHUB#16963)
 
