@@ -601,7 +601,8 @@ public final class VectorUtil {
   /**
    * Subtracts {@code centroid} from {@code vector} in place, for the optimized scalar quantizer,
    * and writes into {@code stats} the dot product of the original vector with {@code centroid},
-   * then the min, max, sum of squares and sum of the result.
+   * then the min, max, sum of squares and sum of the result, and the sum of its squared differences
+   * from its mean.
    *
    * @lucene.experimental
    */
@@ -610,8 +611,8 @@ public final class VectorUtil {
       throw new IllegalArgumentException(
           "vector dimensions differ: " + vector.length + "!=" + centroid.length);
     }
-    if (stats.length != 5) {
-      throw new IllegalArgumentException("stats must have 5 entries: " + stats.length);
+    if (stats.length != 6) {
+      throw new IllegalArgumentException("stats must have 6 entries: " + stats.length);
     }
     IMPL.osqCenter(vector, centroid, stats);
   }

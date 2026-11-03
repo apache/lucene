@@ -164,7 +164,9 @@ public interface VectorUtilSupport {
    * Subtracts {@code centroid} from {@code vector} in place, for {@link
    * org.apache.lucene.util.quantization.OptimizedScalarQuantizer}, and writes into {@code stats}
    * the dot product of the original vector with {@code centroid}, then the min, max, sum of squares
-   * and sum of the result. The sums may be added in any order, with or without fma.
+   * and sum of the result, and the sum of its squared differences from its mean. That last one must
+   * stay accurate when the mean is large next to the spread, as with Welford's algorithm. The sums
+   * may be added in any order, with or without fma.
    */
   void osqCenter(float[] vector, float[] centroid, float[] stats);
 

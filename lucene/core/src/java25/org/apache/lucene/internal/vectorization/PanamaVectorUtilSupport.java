@@ -1602,8 +1602,11 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     FloatVector accMax = FloatVector.broadcast(FLOAT_SPECIES, -Float.MAX_VALUE);
     FloatVector accSq = FloatVector.zero(FLOAT_SPECIES);
     FloatVector accSum = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector accMean = FloatVector.zero(FLOAT_SPECIES);
+    FloatVector accM2 = FloatVector.zero(FLOAT_SPECIES);
     final int bound = FLOAT_SPECIES.loopBound(vector.length);
     int i = 0;
+    int n = 0;
     for (; i < bound; i += FLOAT_SPECIES.length()) {
       FloatVector v = FloatVector.fromArray(FLOAT_SPECIES, vector, i);
       FloatVector c = FloatVector.fromArray(FLOAT_SPECIES, centroid, i);
@@ -1614,14 +1617,28 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       accMax = accMax.max(x);
       accSq = fma(x, x, accSq);
       accSum = accSum.add(x);
+      n++;
+      FloatVector delta = x.sub(accMean);
+      accMean = fma(delta, FloatVector.broadcast(FLOAT_SPECIES, 1f / n), accMean);
+      accM2 = fma(delta, x.sub(accMean), accM2);
     }
     // scalar tail
     DefaultVectorUtilSupport.osqCenterImpl(vector, centroid, i, stats);
+    // Each lane ran Welford over its own n values. Merge the lanes, then the tail (Chan et al.).
+    float mean = sumLanes(accMean) / FLOAT_SPECIES.length();
+    FloatVector meanDiff = accMean.sub(mean);
+    float m2 = sumLanes(accM2) + n * sumLanes(meanDiff.mul(meanDiff));
+    int tail = vector.length - i;
+    if (tail > 0) {
+      float delta = stats[4] / tail - mean;
+      m2 += stats[5] + delta * delta * ((float) i * tail / vector.length);
+    }
     stats[0] += sumLanes(accDot);
     stats[1] = Math.min(stats[1], accMin.reduceLanes(VectorOperators.MIN));
     stats[2] = Math.max(stats[2], accMax.reduceLanes(VectorOperators.MAX));
     stats[3] += sumLanes(accSq);
     stats[4] += sumLanes(accSum);
+    stats[5] = m2;
   }
 
   // k * k is at most 255^2, so an int can sum about 33K of them before it overflows, and

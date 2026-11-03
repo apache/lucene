@@ -287,9 +287,9 @@ public class TestOptimizedScalarQuantizer extends LuceneTestCase {
   }
 
   /**
-   * The quantizer reorders its sums, computes the variance from the mean of squares and the loss in
-   * float, unlike {@link ScalarReference}, so some vectors end on a slightly different interval.
-   * Summed over 200 vectors, the loss must stay within 1% of the reference's.
+   * The quantizer reorders its sums and computes the variance and the loss in float, unlike {@link
+   * ScalarReference}, so some vectors end on a slightly different interval. Summed over 200
+   * vectors, the loss must stay within 1% of the reference's.
    */
   public void testCloseToScalarReference() {
     for (VectorSimilarityFunction similarityFunction : VectorSimilarityFunction.values()) {

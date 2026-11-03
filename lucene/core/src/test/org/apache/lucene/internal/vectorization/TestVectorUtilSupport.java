@@ -384,8 +384,8 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
     }
     float[] v1 = vector.clone();
     float[] v2 = vector.clone();
-    float[] expected = new float[5];
-    float[] actual = new float[5];
+    float[] expected = new float[6];
+    float[] actual = new float[6];
     LUCENE_PROVIDER.getVectorUtilSupport().osqCenter(v1, centroid, expected);
     PANAMA_OR_NATIVE_PROVIDER.getVectorUtilSupport().osqCenter(v2, centroid, actual);
     // Centering, min and max are exact.
@@ -395,9 +395,34 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
     }
     assertEquals(expected[1], actual[1], 0f);
     assertEquals(expected[2], actual[2], 0f);
-    for (int j : new int[] {0, 3, 4}) {
+    for (int j : new int[] {0, 3, 4, 5}) {
       assertEquals(expected[j], actual[j], delta * Math.max(1, Math.abs(expected[j])));
     }
+  }
+
+  public void testOsqCenterLargeMean() {
+    // The mean of squares minus the squared mean breaks down for vectors like this one.
+    float[] vector = new float[size];
+    for (int i = 0; i < size; ++i) {
+      vector[i] = 3000 + (float) random().nextGaussian();
+    }
+    double mean = 0;
+    for (float x : vector) {
+      mean += x;
+    }
+    mean /= size;
+    double m2 = 0;
+    for (float x : vector) {
+      m2 += (x - mean) * (x - mean);
+    }
+    float[] expected = new float[6];
+    float[] actual = new float[6];
+    LUCENE_PROVIDER.getVectorUtilSupport().osqCenter(vector.clone(), new float[size], expected);
+    PANAMA_OR_NATIVE_PROVIDER
+        .getVectorUtilSupport()
+        .osqCenter(vector.clone(), new float[size], actual);
+    assertEquals(m2, expected[5], 0.01 * m2);
+    assertEquals(m2, actual[5], 0.01 * m2);
   }
 
   public void testOsqGridStats() {

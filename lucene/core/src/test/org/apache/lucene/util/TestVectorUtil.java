@@ -758,13 +758,13 @@ public class TestVectorUtil extends LuceneTestCase {
     float[] vector = new float[8];
     expectThrows(
         IllegalArgumentException.class,
-        () -> VectorUtil.osqCenter(vector, new float[7], new float[5]));
+        () -> VectorUtil.osqCenter(vector, new float[7], new float[6]));
     expectThrows(
         IllegalArgumentException.class,
-        () -> VectorUtil.osqCenter(vector, new float[8], new float[4]));
+        () -> VectorUtil.osqCenter(vector, new float[8], new float[5]));
     expectThrows(
         IllegalArgumentException.class,
-        () -> VectorUtil.osqCenter(vector, new float[8], new float[6]));
+        () -> VectorUtil.osqCenter(vector, new float[8], new float[7]));
     expectThrows(
         IllegalArgumentException.class,
         () -> VectorUtil.osqGridStats(vector, -1, 1, 1, new double[5]));

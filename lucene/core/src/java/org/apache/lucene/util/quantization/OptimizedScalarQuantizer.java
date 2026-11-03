@@ -122,15 +122,14 @@ public class OptimizedScalarQuantizer {
     assert similarityFunction != COSINE || VectorUtil.isUnitVector(centroid);
     assert bits.length == destinations.length;
     float[] intervalScratch = new float[2];
-    float[] centerStats = new float[5];
+    float[] centerStats = new float[6];
     VectorUtil.osqCenter(vector, centroid, centerStats);
     float centroidDot = centerStats[0];
     float min = centerStats[1];
     float max = centerStats[2];
     float norm2 = centerStats[3];
     double vecMean = centerStats[4] / (double) vector.length;
-    // Rounding can push the mean of squares minus the squared mean just below zero.
-    double vecVar = Math.max(0, norm2 / (double) vector.length - vecMean * vecMean);
+    double vecVar = centerStats[5] / (double) vector.length;
     double vecStd = Math.sqrt(vecVar);
     QuantizationResult[] results = new QuantizationResult[bits.length];
     for (int i = 0; i < bits.length; ++i) {
@@ -176,15 +175,14 @@ public class OptimizedScalarQuantizer {
     assert bits > 0 && bits <= 8;
     float[] intervalScratch = new float[2];
     int points = 1 << bits;
-    float[] centerStats = new float[5];
+    float[] centerStats = new float[6];
     VectorUtil.osqCenter(vector, centroid, centerStats);
     float centroidDot = centerStats[0];
     float min = centerStats[1];
     float max = centerStats[2];
     float norm2 = centerStats[3];
     double vecMean = centerStats[4] / (double) vector.length;
-    // Rounding can push the mean of squares minus the squared mean just below zero.
-    double vecVar = Math.max(0, norm2 / (double) vector.length - vecMean * vecMean);
+    double vecVar = centerStats[5] / (double) vector.length;
     double vecStd = Math.sqrt(vecVar);
     // Linearly scale the interval to the standard deviation of the vector, ensuring we are within
     // the min/max bounds

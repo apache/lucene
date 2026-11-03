@@ -471,6 +471,8 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
     float max = -Float.MAX_VALUE;
     float sumSq = 0;
     float sum = 0;
+    float mean = 0;
+    float m2 = 0;
     for (int i = start; i < vector.length; i++) {
       dot += vector[i] * centroid[i];
       float x = vector[i] - centroid[i];
@@ -479,12 +481,16 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
       max = Math.max(max, x);
       sumSq += x * x;
       sum += x;
+      float delta = x - mean;
+      mean += delta / (i - start + 1);
+      m2 += delta * (x - mean);
     }
     stats[0] = dot;
     stats[1] = min;
     stats[2] = max;
     stats[3] = sumSq;
     stats[4] = sum;
+    stats[5] = m2;
   }
 
   @Override
