@@ -272,6 +272,9 @@ Improvements
 Optimizations
 ---------------------
 
+* GITHUB#16881: UnifiedHighlighter converts each term to UTF-16 once instead of once per automaton,
+  which speeds up highlighting of queries with many multi-term clauses. (Eugene Rizhkov)
+
 * GITHUB#16794: Concurrent HNSW merges now join the other deletion-free graphs into the base graph
   through their join sets, as serial merges have done since GITHUB#14331, instead of inserting all
   their vectors with a full search. Graphs now match the serial merge: slightly lower recall at the
