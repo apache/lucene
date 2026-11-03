@@ -80,7 +80,8 @@ public abstract class VectorSimilarityFunction extends ValueSource {
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    return Objects.equals(vector1, ((VectorSimilarityFunction) o).vector1)
+    return similarityFunction == ((VectorSimilarityFunction) o).similarityFunction
+        && Objects.equals(vector1, ((VectorSimilarityFunction) o).vector1)
         && Objects.equals(vector2, ((VectorSimilarityFunction) o).vector2);
   }
 
