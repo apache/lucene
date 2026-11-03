@@ -17,6 +17,13 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import org.apache.lucene.codecs.lucene104.Lucene104Codec;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.NumericDocValuesField;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.search.AssertingBulkScorer;
 import org.apache.lucene.tests.search.RandomApproximationQuery.RandomTwoPhaseView;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -26,6 +33,36 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 
 public class TestConstantScoreBulkScorer extends LuceneTestCase {
+
+  public void testNumericRangeWindowStopsAtMaxDoc() throws IOException {
+    int maxDoc = 100;
+    try (Directory dir = newDirectory();
+        IndexWriter writer =
+            new IndexWriter(dir, new IndexWriterConfig().setCodec(new Lucene104Codec()))) {
+      for (int docID = 0; docID < maxDoc; docID++) {
+        Document doc = new Document();
+        doc.add(new NumericDocValuesField("value", docID));
+        writer.addDocument(doc);
+      }
+      writer.forceMerge(1);
+      try (DirectoryReader reader = DirectoryReader.open(writer)) {
+        var values = reader.leaves().getFirst().reader().getNumericDocValues("value");
+        FixedBitSet matches = new FixedBitSet(maxDoc);
+        matches.set(maxDoc - 1);
+        TwoPhaseIterator twoPhase =
+            new BulkTwoPhase(matches, matches) {
+              @Override
+              public void intoBitSet(int upTo, FixedBitSet bits, int offset) throws IOException {
+                values.rangeIntoBitSet(
+                    approximation.docID(), upTo, maxDoc - 1, maxDoc - 1, bits, offset);
+                approximation.advance(upTo);
+              }
+            };
+        BulkScorer scorer = new ConstantScoreBulkScorer(1f, ScoreMode.COMPLETE_NO_SCORES, twoPhase);
+        assertEquals(matches, collect(scorer, maxDoc, null));
+      }
+    }
+  }
 
   /**
    * A two-phase iterator that advertises a bulk {@link TwoPhaseIterator#intoBitSet}. Its
@@ -88,7 +125,7 @@ public class TestConstantScoreBulkScorer extends LuceneTestCase {
         },
         acceptDocs,
         0,
-        DocIdSetIterator.NO_MORE_DOCS);
+        maxDoc);
     return result;
   }
 
