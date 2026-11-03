@@ -87,36 +87,39 @@ class QueryAnalyzer {
   private class QueryBuilder extends QueryVisitor implements Function<TermWeightor, QueryTree> {
 
     final boolean isNegativeClause;
+
+    /**
+     * Whether this builds a disjunction: clauses combined with OR, or, by De Morgan, with AND under
+     * negation
+     */
+    final boolean buildsDisjunction;
+
     final List<Function<TermWeightor, QueryTree>> children = new ArrayList<>();
     final Set<Term> negatedTerms = new LinkedHashSet<>();
 
     /** The root builder: positive */
     QueryBuilder() {
-      this(false);
+      this(false, false);
     }
 
-    private QueryBuilder(boolean isNegativeClause) {
+    private QueryBuilder(boolean isNegativeClause, boolean combinesWithOr) {
       this.isNegativeClause = isNegativeClause;
-    }
-
-    /** Whether the clauses of this builder are combined with OR */
-    boolean or() {
-      return false;
+      this.buildsDisjunction = combinesWithOr ^ isNegativeClause;
     }
 
     /** A child for clauses combined with AND, in this builder's polarity */
     private QueryBuilder conjunction() {
-      return addChild(new QueryBuilder(isNegativeClause));
+      return addChild(new QueryBuilder(isNegativeClause, false));
     }
 
     /** A child for clauses combined with OR, in this builder's polarity */
     private QueryBuilder disjunction() {
-      return addChild(new Disjunction(isNegativeClause));
+      return addChild(new QueryBuilder(isNegativeClause, true));
     }
 
     /** A child for negated clauses: NOT a AND NOT b = NOT (a OR b), so OR with flipped polarity */
     private QueryBuilder negation() {
-      return addChild(new Disjunction(!isNegativeClause));
+      return addChild(new QueryBuilder(!isNegativeClause, true));
     }
 
     private QueryBuilder addChild(QueryBuilder child) {
@@ -189,11 +192,10 @@ class QueryAnalyzer {
 
     @Override
     public QueryTree apply(TermWeightor termWeightor) {
-      boolean isDisjunction = or() ^ isNegativeClause;
       List<Function<TermWeightor, QueryTree>> all = children;
       if (!negatedTerms.isEmpty()) {
         all = new ArrayList<>(children);
-        if (isDisjunction) {
+        if (buildsDisjunction) {
           // NOT a OR NOT b: each term is a NotSlot of its own
           for (Term term : negatedTerms) {
             all.add(w -> QueryTree.notSlot(Set.of(term), w));
@@ -206,22 +208,10 @@ class QueryAnalyzer {
       if (all.isEmpty() && isNegationOptimized) {
         return QueryTree.anyTerm("NO CLAUSES");
       }
-      if (isDisjunction) {
+      if (buildsDisjunction) {
         return QueryTree.disjunction(all, termWeightor);
       }
       return QueryTree.conjunction(all, termWeightor);
-    }
-  }
-
-  private class Disjunction extends QueryBuilder {
-
-    private Disjunction(boolean isNegativeClause) {
-      super(isNegativeClause);
-    }
-
-    @Override
-    boolean or() {
-      return true;
     }
   }
 
