@@ -306,62 +306,45 @@ public class TermFilteredPresearcher extends Presearcher {
 
       @Override
       public Query build() {
-        return toQuery(terms, negatableTerms, DEFAULT);
+        return toQuery(terms, negatableTerms, field -> field);
       }
     };
   }
 
-  /** Maps a document field to the fields its terms and NotSlots are indexed under */
-  interface FieldNameMapper {
-    String terms(String field);
-
-    String notSlot(String field, int slot);
-
-    String notSlotMarker(int slot);
+  /** Renames the fields a query is indexed under, so that a subclass can index it more than once */
+  @FunctionalInterface
+  interface FieldMapper {
+    String map(String field);
   }
-
-  static final FieldNameMapper DEFAULT =
-      new FieldNameMapper() {
-        @Override
-        public String terms(String field) {
-          return field;
-        }
-
-        @Override
-        public String notSlot(String field, int slot) {
-          return notSlotField(field, slot);
-        }
-
-        @Override
-        public String notSlotMarker(int slot) {
-          return NOTSLOT_MARKER_FIELD + "_" + slot;
-        }
-      };
 
   /** The field that holds the terms of NotSlot {@code slot}, for a field named {@code field} */
   static String notSlotField(String field, int slot) {
     return field + NOT_SUFFIX + "_" + slot;
   }
 
-  /** The document query matching queries indexed by {@link #toDocument} under {@code names} */
+  private static String notSlotMarkerField(FieldMapper fields, int slot) {
+    return fields.map(NOTSLOT_MARKER_FIELD) + "_" + slot;
+  }
+
+  /** The document query matching queries indexed by {@link #toDocument} under {@code fields} */
   Query toQuery(
       Map<String, ? extends Collection<BytesRef>> terms,
       Map<String, ? extends Collection<BytesRef>> negatableTerms,
-      FieldNameMapper names) {
+      FieldMapper fields) {
     BooleanQuery.Builder builder = new BooleanQuery.Builder();
     for (Map.Entry<String, ? extends Collection<BytesRef>> entry : terms.entrySet()) {
       builder.add(
-          new TermInSetQuery(names.terms(entry.getKey()), entry.getValue()),
+          new TermInSetQuery(fields.map(entry.getKey()), entry.getValue()),
           BooleanClause.Occur.SHOULD);
     }
     for (int slot = 0; slot < maxNotSlots; slot++) {
       BooleanQuery.Builder notSlot = new BooleanQuery.Builder();
       notSlot.add(
-          new TermQuery(new Term(names.notSlotMarker(slot), NOTSLOT_MARKER)),
+          new TermQuery(new Term(notSlotMarkerField(fields, slot), NOTSLOT_MARKER)),
           BooleanClause.Occur.FILTER);
       for (Map.Entry<String, ? extends Collection<BytesRef>> entry : negatableTerms.entrySet()) {
         notSlot.add(
-            new TermInSetQuery(names.notSlot(entry.getKey(), slot), entry.getValue()),
+            new TermInSetQuery(notSlotField(fields.map(entry.getKey()), slot), entry.getValue()),
             BooleanClause.Occur.MUST_NOT);
       }
       builder.add(notSlot.build(), BooleanClause.Occur.SHOULD);
@@ -391,18 +374,18 @@ public class TermFilteredPresearcher extends Presearcher {
 
   /** Builds a {@link Document} from the terms extracted from a query */
   protected Document buildQueryDocument(QueryTree querytree) {
-    return toDocument(querytree, DEFAULT);
+    return toDocument(querytree, field -> field);
   }
 
   /** Indexes the terms and NotSlots of the current path through a {@link QueryTree} */
-  Document toDocument(QueryTree querytree, FieldNameMapper names) {
+  Document toDocument(QueryTree querytree, FieldMapper fields) {
     Document doc = new Document();
     CollectedTerms collected = collectTermsAndNotSlots(querytree);
     List<Set<Term>> notSlots = collected.notSlots();
     if (notSlots.size() > maxNotSlots) {
       // More NotSlots than the document side checks: the marker alone satisfies the path for
       // every document, so its terms are not needed either
-      addField(doc, names.notSlotMarker(0), NOTSLOT_MARKER);
+      addField(doc, notSlotMarkerField(fields, 0), NOTSLOT_MARKER);
       return doc;
     }
     for (Map.Entry<String, BytesRefHash> entry : collected.terms().entrySet()) {
@@ -412,7 +395,7 @@ public class TermFilteredPresearcher extends Presearcher {
         addField(doc, ANYTOKEN_FIELD, new BytesRef(ANYTOKEN));
         continue;
       }
-      String field = names.terms(entry.getKey());
+      String field = fields.map(entry.getKey());
       addField(doc, field, entry.getValue());
       if (!field.equals(entry.getKey())) {
         // the term filter checks document terms under their own field names
@@ -425,10 +408,10 @@ public class TermFilteredPresearcher extends Presearcher {
         byField.computeIfAbsent(term.field(), _ -> new BytesRefHash()).add(term.bytes());
       }
       for (Map.Entry<String, BytesRefHash> entry : byField.entrySet()) {
-        addRawTerms(doc, names.notSlot(entry.getKey(), slot), entry.getValue());
+        addRawTerms(doc, notSlotField(fields.map(entry.getKey()), slot), entry.getValue());
         addRawTerms(doc, entry.getKey() + NOT_SUFFIX, entry.getValue());
       }
-      addField(doc, names.notSlotMarker(slot), NOTSLOT_MARKER);
+      addField(doc, notSlotMarkerField(fields, slot), NOTSLOT_MARKER);
     }
     return doc;
   }

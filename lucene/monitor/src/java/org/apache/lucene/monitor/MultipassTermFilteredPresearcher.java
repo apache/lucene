@@ -166,23 +166,8 @@ public class MultipassTermFilteredPresearcher extends TermFilteredPresearcher {
   }
 
   /** The fields of pass {@code pass} */
-  private static FieldNameMapper pass(int pass) {
-    return new FieldNameMapper() {
-      @Override
-      public String terms(String field) {
-        return field(field, pass);
-      }
-
-      @Override
-      public String notSlot(String field, int slot) {
-        return notSlotField(field(field, pass), slot);
-      }
-
-      @Override
-      public String notSlotMarker(int slot) {
-        return field(NOTSLOT_MARKER_FIELD, pass) + "_" + slot;
-      }
-    };
+  private static FieldMapper pass(int pass) {
+    return field -> field(field, pass);
   }
 
   private static List<BytesRef> convertHash(BytesRefHash hash) {
