@@ -59,6 +59,12 @@ public final class LZ4 {
   static final int HASH_LOG_HC = 15; // log size of the dictionary for compressHC
   static final int HASH_TABLE_SIZE_HC = 1 << HASH_LOG_HC;
 
+  /**
+   * Minimum length of an overlapping match to expand with bulk copies instead of byte by byte. See
+   * https://github.com/apache/lucene/pull/16746.
+   */
+  static final int MIN_BULK_OVERLAP_LEN = 274;
+
   private static int hash(int i, int hashBits) {
     return (i * -1640531535) >>> (32 - hashBits);
   }
@@ -133,7 +139,7 @@ public final class LZ4 {
       // copying a multiple of 8 bytes can make decompression from 5% to 10% faster
       final int fastLen = (matchLen + 7) & 0xFFFFFFF8;
       if (matchDec < matchLen || dOff + fastLen > destEnd) {
-        if (matchLen >= 274 && matchDec < matchLen) {
+        if (matchLen >= MIN_BULK_OVERLAP_LEN && matchDec < matchLen) {
           dOff = copyLongOverlap(matchLen, matchDec, dest, dOff);
           continue;
         }

@@ -19,9 +19,6 @@ Improvements
 
 Optimizations
 ---------------------
-* GITHUB#16746: Speed up decoding long overlapping LZ4 matches using bulk copies
-  of initialized bytes. (Andre Kurait)
-
 * GITHUB#16806: HNSW searches track the visited nodes of a large graph in a hash set instead of a
   bit set sized to the graph, which makes merges into large segments faster. (Ankur Goel)
 
@@ -271,6 +268,9 @@ Improvements
 
 Optimizations
 ---------------------
+
+* GITHUB#16746: Speed up decoding long overlapping LZ4 matches using bulk copies
+  of initialized bytes. (Andre Kurait)
 
 * GITHUB#16794: Concurrent HNSW merges now join the other deletion-free graphs into the base graph
   through their join sets, as serial merges have done since GITHUB#14331, instead of inserting all
