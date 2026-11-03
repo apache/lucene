@@ -19,7 +19,8 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+* GITHUB#16806: HNSW searches track the visited nodes of a large graph in a hash set instead of a
+  bit set sized to the graph, which makes merges into large segments faster. (Ankur Goel)
 
 Bug Fixes
 ---------------------
@@ -33,6 +34,13 @@ Other
 
 API Changes
 ---------------------
+* GITHUB#16964: Remove the deprecated FixBrokenOffsetsFilter and FixBrokenOffsetsFilterFactory
+  (SPI name "fixBrokenOffsets"). Fix the token filters that produce broken offsets instead.
+  (Chris Parrinello)
+
+* GITHUB#16963: Remove the deprecated MergePolicy.MergeSpecification#segString(Directory) method.
+  Use MergeSpecification#toString() instead. (Christoph Büscher)
+
 * GITHUB#16741: Lower the minimum supported major version from 10 to 9. Indexes created with 9.x
   remain fully supported in Lucene 11, no reindexing required. (Luca Cavanna)
 
