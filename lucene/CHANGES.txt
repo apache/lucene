@@ -22,10 +22,11 @@ Optimizations
 * GITHUB#16806: HNSW searches track the visited nodes of a large graph in a hash set instead of a
   bit set sized to the graph, which makes merges into large segments faster. (Ankur Goel)
 
-* GITHUB#XXXXX: HNSW queries track their visited nodes in a FixedBitSet until the graph is about
-  2048 times larger than the expected number of visited nodes, instead of 128 times, as a
-  FixedBitSet marks nodes faster than the hash set. The FixedBitSet of a query is at most 256 KB
-  (2^21 nodes); larger graphs and graph builders keep the 128 times rule. (Shubham Chaudhary)
+* GITHUB#16956: Merges that reuse an existing HNSW graph no longer read the query vector of every
+  copied node, which slowed the graph copy by 2.4x to 10x in one benchmark. (Ankur Goel)
+
+* GITHUB#16977: Use FixedBitSet more aggressively on HNSW query-side to track visited nodes until the graph is about
+  2048 times larger than the expected number of visited nodes, instead of 128 times. (Shubham Chaudhary)
 
 Bug Fixes
 ---------------------
@@ -39,6 +40,13 @@ Other
 
 API Changes
 ---------------------
+* GITHUB#16962: Removed usage of deprecated no-args constructors of MatchAllDocsQuery
+  and MatchNoDocsQuery. (Andrea Selva)
+
+* GITHUB#16964: Remove the deprecated FixBrokenOffsetsFilter and FixBrokenOffsetsFilterFactory
+  (SPI name "fixBrokenOffsets"). Fix the token filters that produce broken offsets instead.
+  (Chris Parrinello)
+
 * GITHUB#16963: Remove the deprecated MergePolicy.MergeSpecification#segString(Directory) method.
   Use MergeSpecification#toString() instead. (Christoph Büscher)
 
@@ -269,6 +277,12 @@ Improvements
 
 Optimizations
 ---------------------
+
+* GITHUB#16746: Speed up decoding long overlapping LZ4 matches using bulk copies
+  of initialized bytes. (Andre Kurait)
+
+* GITHUB#16881: UnifiedHighlighter converts each term to UTF-16 once instead of once per automaton,
+  which speeds up highlighting of queries with many multi-term clauses. (Eugene Rizhkov)
 
 * GITHUB#16794: Concurrent HNSW merges now join the other deletion-free graphs into the base graph
   through their join sets, as serial merges have done since GITHUB#14331, instead of inserting all
