@@ -34,6 +34,7 @@ with `VisitedSet.create(expectedVisitedNodes, graphSize)`.
 `SpanishMinimalStemmer` were deprecated in favor of `SpanishPluralStemFilter` and are now removed.
 Use `SpanishPluralStemFilter` (SPI name `spanishPluralStem`) instead. Indexes analyzed with the old
 filter may need reindexing, as the stemming results can differ.
+
 ### MatchAllDocsQuery and MatchNoDocsQuery no-args constructors (GITHUB#16962)
 
 `MatchAllDocsQuery` and `MatchNoDocsQuery` no-args constructors visibility has been narrowed
