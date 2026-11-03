@@ -64,6 +64,15 @@ public interface IOContext {
   @SuppressWarnings("ClassInitializationDeadlock") // FIXME: may cause hangs!
   IOContext READONCE = new DefaultIOContext(DataAccessHint.SEQUENTIAL, ReadOnceHint.INSTANCE);
 
+  /**
+   * A default context for reads with {@link ReadAdvice#RANDOM}.
+   *
+   * <p>This context should only be used when the read operations will be performed in the same
+   * thread as the thread that opens the underlying storage.
+   */
+  @SuppressWarnings("ClassInitializationDeadlock") // FIXME: may cause hangs!
+  IOContext RANDOM_READONCE = new DefaultIOContext(DataAccessHint.RANDOM, ReadOnceHint.INSTANCE);
+
   /** Returns an {@link IOContext} for merging with the specified {@link MergeInfo} */
   static IOContext merge(MergeInfo mergeInfo) {
     Objects.requireNonNull(mergeInfo);

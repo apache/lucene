@@ -61,7 +61,7 @@ final class SortingTermVectorsConsumer extends TermVectorsConsumer {
     if (tmpDirectory != null) {
       TermVectorsReader reader =
           TEMP_TERM_VECTORS_FORMAT.vectorsReader(
-              tmpDirectory, state.segmentInfo, state.fieldInfos, IOContext.DEFAULT);
+              tmpDirectory, state.segmentInfo, state.fieldInfos, IOContext.RANDOM_READONCE);
       // Don't pull a merge instance, since merge instances optimize for
       // sequential access while term vectors will likely be accessed in random
       // order here.
