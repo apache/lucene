@@ -44,11 +44,11 @@ name `synonym` now throws `IllegalArgumentException`.
 
 `SynonymGraphFilter` is not a drop-in replacement; its output differs:
 
-* It produces a token graph, with correct position lengths for multi-token synonyms. The indexer
+- It produces a token graph, with correct position lengths for multi-token synonyms. The indexer
   cannot consume a graph, so at index time follow it with `FlattenGraphFilter`; at query time use
   the graph directly.
-* Synonyms are emitted before the original token at the same position, not after it.
-* Position increments and position lengths of multi-token synonyms differ from `SynonymFilter`,
+- Synonyms are emitted before the original token at the same position, not after it.
+- Position increments and position lengths of multi-token synonyms differ from `SynonymFilter`,
   which produced incorrect graphs for them. For example, for the input `spider man` with the rule
   `spider man, spiderman`, `SynonymFilter` emitted `spider, spiderman, man` and
   `SynonymGraphFilter` emits `spiderman, spider, man` with position lengths `2, 1, 1`.
