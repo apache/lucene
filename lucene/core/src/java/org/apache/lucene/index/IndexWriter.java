@@ -277,6 +277,8 @@ public class IndexWriter
 
   // set when a commit is pending (after prepareCommit() & before commit())
   private volatile SegmentInfos pendingCommit;
+  // Highest version of any NRT reader this writer opened, used by finishCommit; guarded by this:
+  private long lastNRTReaderVersion = -1;
   private volatile long pendingSeqNo;
   private volatile long pendingCommitChangeCount;
 
@@ -513,8 +515,7 @@ public class IndexWriter
    *     IndexWriter instance
    * @throws IOException If there is a low-level I/O error
    */
-  StandardDirectoryReader getReader(boolean applyAllDeletes, boolean writeAllDeletes)
-      throws IOException {
+  DirectoryReader getReader(boolean applyAllDeletes, boolean writeAllDeletes) throws IOException {
     ensureOpen();
 
     if (writeAllDeletes && applyAllDeletes == false) {
@@ -614,6 +615,7 @@ public class IndexWriter
             r =
                 StandardDirectoryReader.open(
                     this, readerFactory, segmentInfos, applyAllDeletes, writeAllDeletes);
+            lastNRTReaderVersion = Math.max(lastNRTReaderVersion, r.getVersion());
             if (infoStream.isEnabled("IW")) {
               infoStream.message("IW", "return reader version=" + r.getVersion() + " reader=" + r);
             }
@@ -4311,6 +4313,18 @@ public class IndexWriter
 
             // Carry over generation to our master SegmentInfos:
             segmentInfos.updateGeneration(pendingCommit);
+            // A reader opened while this commit was in progress has the commit's version (or a
+            // higher one) but points at the previous segments_N, which may be deleted now. Bump
+            // the version so that reader isn't current anymore, and reopening it gives a reader
+            // with a new version.
+            // Only bump if such a reader exists, so a reader opened right after the commit usually
+            // keeps the commit's version. Once this writer is closed, isCurrent compares a reader's
+            // version with the latest commit's, so after a bump it reports such a reader as not
+            // current even though it is. That's safe: its data is correct, and a new reader opened
+            // from the directory has the same commit and segments.
+            if (lastNRTReaderVersion >= pendingCommit.getVersion()) {
+              segmentInfos.changed();
+            }
 
             lastCommitChangeCount = pendingCommitChangeCount;
             rollbackSegments = pendingCommit.createBackupSegmentInfos();
@@ -6144,9 +6158,6 @@ public class IndexWriter
     ensureOpen();
     boolean isCurrent =
         infos.getVersion() == segmentInfos.getVersion()
-            // A reader opened while a commit was syncing files has the commit's version but still
-            // references the previous segments_N, which may since have been deleted:
-            && infos.getLastGeneration() == segmentInfos.getLastGeneration()
             && docWriter.anyChanges() == false
             && bufferedUpdatesStream.any() == false
             && readerPool.anyDocValuesChanges() == false;
@@ -6156,12 +6167,12 @@ public class IndexWriter
             "IW",
             "nrtIsCurrent: infoVersion matches: "
                 + (infos.getVersion() == segmentInfos.getVersion())
-                + "; lastGeneration matches: "
-                + (infos.getLastGeneration() == segmentInfos.getLastGeneration())
                 + "; DW changes: "
                 + docWriter.anyChanges()
                 + "; BD changes: "
-                + bufferedUpdatesStream.any());
+                + bufferedUpdatesStream.any()
+                + "; DV changes: "
+                + readerPool.anyDocValuesChanges());
       }
     }
     return isCurrent;

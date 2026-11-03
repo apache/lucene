@@ -463,12 +463,10 @@ public final class StandardDirectoryReader extends DirectoryReader {
       return null;
     }
 
-    StandardDirectoryReader reader = writer.getReader(applyAllDeletes, writeAllDeletes);
+    DirectoryReader reader = writer.getReader(applyAllDeletes, writeAllDeletes);
 
-    // If in fact no changes took place, return null. A commit that was syncing files when this
-    // reader was opened changes the referenced segments_N once it completes, but not the version:
-    if (reader.getVersion() == segmentInfos.getVersion()
-        && reader.segmentInfos.getLastGeneration() == segmentInfos.getLastGeneration()) {
+    // If in fact no changes took place, return null:
+    if (reader.getVersion() == segmentInfos.getVersion()) {
       reader.decRef();
       return null;
     }
@@ -538,8 +536,10 @@ public final class StandardDirectoryReader extends DirectoryReader {
       // current:
       SegmentInfos sis = SegmentInfos.readLatestCommit(directory);
 
-      // we loaded SegmentInfos from the directory
-      return sis.getVersion() == segmentInfos.getVersion();
+      // we loaded SegmentInfos from the directory. Also compare generations: a reader opened while
+      // a commit was in progress can have the commit's version but point at the previous commit.
+      return sis.getVersion() == segmentInfos.getVersion()
+          && sis.getGeneration() == segmentInfos.getLastGeneration();
     } else {
       return writer.nrtIsCurrent(segmentInfos);
     }
