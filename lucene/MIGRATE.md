@@ -28,6 +28,13 @@ with `VisitedSet.create(expectedVisitedNodes, graphSize)`.
 
 ## Migration from Lucene 10.x to Lucene 11.0
 
+### MatchAllDocsQuery and MatchNoDocsQuery no-args constructors (GITHUB#16962)
+
+`MatchAllDocsQuery` and `MatchNoDocsQuery` no-args constructors visibility has been narrowed
+from public to private. Use instead the singleton instances available in the `INSTANCE` field.
+The direct no-args instantiation `new MatchAllDocsQuery()` has to be replaced by static field's
+reference `MatchAllDocsQuery.INSTANCE` and `MatchNoDocsQuery.INSTANCE` for `new MatchNoDocsQuery()`.
+
 ### FixBrokenOffsetsFilter has been removed (GITHUB#16964)
 
 The deprecated `FixBrokenOffsetsFilter` and its factory (SPI name `fixBrokenOffsets`) are gone.
