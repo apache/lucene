@@ -37,6 +37,9 @@ Other
 
 API Changes
 ---------------------
+* GITHUB#16975: Removed the deprecated UnifiedHighlighter constructor, setters and shouldXxx
+  methods. Use UnifiedHighlighter.Builder instead. (Christoph Büscher)
+
 * GITHUB#16962: Removed usage of deprecated no-args constructors of MatchAllDocsQuery
   and MatchNoDocsQuery. (Andrea Selva)
 

@@ -28,6 +28,13 @@ with `VisitedSet.create(expectedVisitedNodes, graphSize)`.
 
 ## Migration from Lucene 10.x to Lucene 11.0
 
+### UnifiedHighlighter must be created through its Builder (GITHUB#16975)
+
+The deprecated `UnifiedHighlighter(IndexSearcher, Analyzer)` constructor, its setters and the
+protected `shouldXxx` methods were removed. Use
+`UnifiedHighlighter.builder(searcher, analyzer).withXxx(...).build()` instead. Subclasses that
+overrode the `shouldXxx` methods should override `getFlags(String)`.
+
 ### MatchAllDocsQuery and MatchNoDocsQuery no-args constructors (GITHUB#16962)
 
 `MatchAllDocsQuery` and `MatchNoDocsQuery` no-args constructors visibility has been narrowed
