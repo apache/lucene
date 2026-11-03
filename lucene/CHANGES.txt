@@ -22,6 +22,9 @@ Optimizations
 * GITHUB#16806: HNSW searches track the visited nodes of a large graph in a hash set instead of a
   bit set sized to the graph, which makes merges into large segments faster. (Ankur Goel)
 
+* GITHUB#16956: Merges that reuse an existing HNSW graph no longer read the query vector of every
+  copied node, which slowed the graph copy by 2.4x to 10x in one benchmark. (Ankur Goel)
+
 Bug Fixes
 ---------------------
 (No changes)
