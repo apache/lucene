@@ -28,10 +28,10 @@ with `VisitedSet.create(expectedVisitedNodes, graphSize)`.
 
 ## Migration from Lucene 10.x to Lucene 11.0
 
-### SpanishMinimalStemFilter has been removed
+### SpanishMinimalStemFilter has been removed (GITHUB#16969)
 
-`SpanishMinimalStemFilter`, `SpanishMinimalStemFilterFactory` (SPI name `spanishMinimalStem`) and
-`SpanishMinimalStemmer` were deprecated in favor of `SpanishPluralStemFilter` and are now removed.
+`SpanishMinimalStemFilter` and `SpanishMinimalStemFilterFactory` (SPI name `spanishMinimalStem`)
+were deprecated in favor of `SpanishPluralStemFilter` and are now removed.
 Use `SpanishPluralStemFilter` (SPI name `spanishPluralStem`) instead. Indexes analyzed with the old
 filter may need reindexing, as the stemming results can differ.
 
