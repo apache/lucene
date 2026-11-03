@@ -433,7 +433,6 @@ public final class JoinUtil {
       boolean multipleValuesPerDocument,
       boolean needsScore,
       LongFloatProcedure scoreAggregator) {
-    Collector collector;
     return new NumericValuesCollector(
         fromField, multipleValuesPerDocument, needsScore, scoreAggregator);
   }

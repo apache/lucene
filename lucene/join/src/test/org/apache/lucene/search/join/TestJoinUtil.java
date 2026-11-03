@@ -2276,7 +2276,6 @@ public class TestJoinUtil extends LuceneTestCase {
         Query fromQuery = new TermQuery(new Term("body", "a"));
         for (boolean mv : new boolean[] {false, true}) {
           String fromField = mv ? "fromMV" : "from";
-          int expectedHits = mv ? 2 * numValues : numValues;
           for (ScoreMode scoreMode : ScoreMode.values()) {
             Query expectedQuery =
                 JoinUtil.createJoinQuery(
