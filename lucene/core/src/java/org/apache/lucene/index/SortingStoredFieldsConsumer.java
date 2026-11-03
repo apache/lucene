@@ -110,7 +110,10 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
     super.flush(state, sortMap);
     StoredFieldsReader reader =
         TEMP_STORED_FIELDS_FORMAT.fieldsReader(
-            tmpDirectory, state.segmentInfo, state.fieldInfos, IOContext.RANDOM_READONCE);
+            tmpDirectory,
+            state.segmentInfo,
+            state.fieldInfos,
+            IOContext.RANDOM_READONCE_SINGLETHREAD);
     // Don't pull a merge instance, since merge instances optimize for
     // sequential access while we consume stored fields in random order here.
     StoredFieldsWriter sortWriter =

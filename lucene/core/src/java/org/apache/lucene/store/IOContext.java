@@ -71,7 +71,8 @@ public interface IOContext {
    * thread as the thread that opens the underlying storage.
    */
   @SuppressWarnings("ClassInitializationDeadlock") // FIXME: may cause hangs!
-  IOContext RANDOM_READONCE = new DefaultIOContext(DataAccessHint.RANDOM, ReadOnceHint.INSTANCE);
+  IOContext RANDOM_READONCE_SINGLETHREAD =
+      new DefaultIOContext(DataAccessHint.RANDOM, ReadOnceHint.INSTANCE);
 
   /** Returns an {@link IOContext} for merging with the specified {@link MergeInfo} */
   static IOContext merge(MergeInfo mergeInfo) {

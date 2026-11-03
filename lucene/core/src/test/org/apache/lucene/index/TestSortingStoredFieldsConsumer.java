@@ -17,6 +17,8 @@
 
 package org.apache.lucene.index;
 
+import static org.hamcrest.Matchers.hasItems;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -181,9 +183,9 @@ public class TestSortingStoredFieldsConsumer extends LuceneTestCase {
     }
     assertEquals(2, tempIndexOpens.size());
     for (IOContext context : tempIndexOpens) {
-      assertTrue(context.hints().contains(ReadOnceHint.INSTANCE));
-      assertTrue(context.hints().contains(FileTypeHint.INDEX));
-      assertTrue(context.hints().contains(DataAccessHint.RANDOM));
+      assertThat(
+          context.hints(),
+          hasItems(ReadOnceHint.INSTANCE, FileTypeHint.INDEX, DataAccessHint.RANDOM));
     }
   }
 }
