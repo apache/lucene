@@ -43,6 +43,7 @@ import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.internal.hppc.ObjectCursor;
 import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.HnswGraph;
@@ -283,6 +284,17 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
         return null;
       }
       return reader.getFloatVectorValues(field);
+    }
+
+    @Override
+    public FloatVectorValues getFloatVectorValues(String field, DataAccessHint access)
+        throws IOException {
+      final FieldInfo info = fieldInfos.fieldInfo(field);
+      final KnnVectorsReader reader;
+      if (info == null || (reader = fields.get(info.number)) == null) {
+        return null;
+      }
+      return reader.getFloatVectorValues(field, access);
     }
 
     @Override

@@ -164,6 +164,11 @@ public interface IOContext {
     return hints().stream().filter(cls::isInstance).map(cls::cast);
   }
 
+  /** Returns all the hints that are not of type {@code cls} */
+  default Stream<FileOpenHint> removeHints(Class<? extends FileOpenHint> cls) {
+    return hints().stream().filter(h -> !cls.isInstance(h));
+  }
+
   /**
    * Returns an IOContext with the given hints.
    *

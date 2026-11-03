@@ -53,12 +53,14 @@ import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.ChecksumIndexInput;
+import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.FileDataHint;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.VectorUtil;
@@ -254,6 +256,18 @@ public class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader
 
   @Override
   public BinarizedVectorValues getFloatVectorValues(String field) throws IOException {
+    return withQuantized(field, () -> rawVectorsReader.getFloatVectorValues(field));
+  }
+
+  @Override
+  public BinarizedVectorValues getFloatVectorValues(String field, DataAccessHint access)
+      throws IOException {
+    return withQuantized(field, () -> rawVectorsReader.getFloatVectorValues(field, access));
+  }
+
+  /** The raw vectors of {@code field} paired with its quantized vectors. */
+  private BinarizedVectorValues withQuantized(String field, IOSupplier<FloatVectorValues> rawValues)
+      throws IOException {
     FieldEntry fi = fields.get(field);
     if (fi == null) {
       return null;
@@ -280,7 +294,7 @@ public class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader
             fi.vectorDataOffset,
             fi.vectorDataLength,
             quantizedVectorData);
-    return new BinarizedVectorValues(rawVectorsReader.getFloatVectorValues(field), bvv);
+    return new BinarizedVectorValues(rawValues.get(), bvv);
   }
 
   @Override

@@ -17,6 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.PriorityQueue;
 
@@ -164,6 +165,81 @@ public class FieldValueHitQueue<T extends FieldValueHitQueue.Entry> extends Prio
 
   public int[] getReverseMul() {
     return lessThan.reverseMul;
+  }
+
+  /**
+   * Returns a single {@link LeafFieldComparator} over all the sort fields. If the segment's index
+   * sort starts with the search sort, the comparator terminates collection once the queue is full
+   * of competitive hits and the hits threshold has been reached.
+   *
+   * @param paging whether a top value has been set on the comparators
+   */
+  LeafFieldComparator getLeafComparator(LeafReaderContext context, boolean paging)
+      throws IOException {
+    LeafFieldComparator[] leafComparators = getComparators(context);
+    int[] reverseMuls = getReverseMul();
+    LeafFieldComparator comparator;
+    int reverseMul;
+    if (leafComparators.length == 1) {
+      comparator = leafComparators[0];
+      reverseMul = reverseMuls[0];
+    } else {
+      comparator = new MultiLeafFieldComparator(leafComparators, reverseMuls);
+      reverseMul = 1;
+    }
+    if (canEarlyTerminate(fields, context.reader())) {
+      comparator = new IndexSortedLeafFieldComparator(comparator, reverseMul, paging);
+    }
+    return comparator;
+  }
+
+  /**
+   * Whether docs in the segment are visited in the order of the search sort: the first search sort
+   * is {@code _doc}, or the search sort is a prefix of the segment's index sort. Index sort fields
+   * that have no effect in this segment are ignored. Segments with document blocks only terminate
+   * early for {@code _doc}.
+   */
+  static boolean canEarlyTerminate(SortField[] searchSort, LeafReader reader) {
+    if (reader.getMetaData().hasBlocks()) {
+      // index sorting only orders parent documents, so child documents break the index sort order
+      return SortField.FIELD_DOC.equals(unwrap(searchSort[0]));
+    }
+    if (canEarlyTerminate(new Sort(searchSort), reader.getMetaData().sort())) {
+      return true;
+    }
+    // leading index sort fields may be no-ops in this segment, in which case docs are ordered by
+    // the remaining ones
+    int primary = Sort.primarySortFieldIndex(reader);
+    return primary > 0 && isPrefix(searchSort, reader.getMetaData().sort().getSort(), primary);
+  }
+
+  /**
+   * Whether the first search sort is {@code _doc}, or the search sort is a prefix of the index
+   * sort, which may be null.
+   */
+  static boolean canEarlyTerminate(Sort searchSort, Sort indexSort) {
+    SortField[] searchFields = searchSort.getSort();
+    if (SortField.FIELD_DOC.equals(unwrap(searchFields[0]))) {
+      return true;
+    }
+    return indexSort != null && isPrefix(searchFields, indexSort.getSort(), 0);
+  }
+
+  private static boolean isPrefix(SortField[] searchSort, SortField[] indexSort, int offset) {
+    if (searchSort.length > indexSort.length - offset) {
+      return false;
+    }
+    for (int i = 0; i < searchSort.length; i++) {
+      if (unwrap(searchSort[i]).equals(indexSort[offset + i]) == false) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  // Disabling pruning on indexed data does not change the order docs are visited in
+  private static SortField unwrap(SortField sortField) {
+    return sortField instanceof NonPruningSortField np ? np.getDelegate() : sortField;
   }
 
   public LeafFieldComparator[] getComparators(LeafReaderContext context) throws IOException {
