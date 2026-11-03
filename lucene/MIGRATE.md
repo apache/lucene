@@ -19,6 +19,13 @@
 
 ## Migration from Lucene 10.x to Lucene 11.0
 
+### SpanishMinimalStemFilter has been removed
+
+`SpanishMinimalStemFilter`, `SpanishMinimalStemFilterFactory` (SPI name `spanishMinimalStem`) and
+`SpanishMinimalStemmer` were deprecated in favor of `SpanishPluralStemFilter` and are now removed.
+Use `SpanishPluralStemFilter` (SPI name `spanishPluralStem`) instead. Indexes analyzed with the old
+filter may need reindexing, as the stemming results can differ.
+
 ### SortField#setOptimizeSortWithIndexedData has been removed (GITHUB#14399)
 
 `SortField#setOptimizeSortWithIndexedData(false)` and `setOptimizeSortWithPoints(false)`, along with
