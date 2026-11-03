@@ -214,7 +214,7 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
     for (boolean sorted : new boolean[] {false, true}) {
       for (double[] values :
           new double[][] {
-              {-5, -3, -4}, {0.0}, {Double.NEGATIVE_INFINITY}, {Double.POSITIVE_INFINITY}
+            {-5, -3, -4}, {0.0}, {Double.NEGATIVE_INFINITY}, {Double.POSITIVE_INFINITY}
           }) {
         try (Directory dir = newDirectory();
             RandomIndexWriter writer = new RandomIndexWriter(random(), dir)) {
