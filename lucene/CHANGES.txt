@@ -269,6 +269,9 @@ Improvements
 Optimizations
 ---------------------
 
+* GITHUB#16700: Speed up QueryRescorer for two-phase queries, such as phrase queries, by only
+  confirming matches for documents being rescored. (Aneesh Nema)
+
 * GITHUB#16794: Concurrent HNSW merges now join the other deletion-free graphs into the base graph
   through their join sets, as serial merges have done since GITHUB#14331, instead of inserting all
   their vectors with a full search. Graphs now match the serial merge: slightly lower recall at the

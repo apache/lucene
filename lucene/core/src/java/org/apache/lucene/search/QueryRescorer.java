@@ -63,6 +63,10 @@ public abstract class QueryRescorer extends Rescorer {
     int endDoc = 0;
     int docBase = 0;
     Scorer scorer = null;
+    DocIdSetIterator iterator = null;
+    TwoPhaseIterator twoPhase = null;
+    int lastCheckedDoc = -1;
+    boolean lastCheckedMatch = false;
 
     while (hitUpto < hits.length) {
       ScoreDoc hit = hits[hitUpto];
@@ -78,21 +82,41 @@ public abstract class QueryRescorer extends Rescorer {
         // We advanced to another segment:
         docBase = readerContext.docBase;
         scorer = weight.scorer(readerContext);
+        lastCheckedDoc = -1;
+        lastCheckedMatch = false;
+        if (scorer == null) {
+          iterator = null;
+          twoPhase = null;
+        } else {
+          twoPhase = scorer.twoPhaseIterator();
+          // Only confirm the first-pass hits. Advancing the iterator of a two-phase scorer would
+          // confirm every approximation match until the next matching document.
+          iterator = twoPhase == null ? scorer.iterator() : twoPhase.approximation();
+        }
       }
 
       if (scorer != null) {
         int targetDoc = docID - docBase;
-        int actualDoc = scorer.docID();
+        int actualDoc = iterator.docID();
         if (actualDoc < targetDoc) {
-          actualDoc = scorer.iterator().advance(targetDoc);
+          actualDoc = iterator.advance(targetDoc);
         }
 
-        if (actualDoc == targetDoc) {
+        boolean secondPassMatches = actualDoc == targetDoc;
+        if (secondPassMatches && twoPhase != null) {
+          if (actualDoc != lastCheckedDoc) {
+            lastCheckedDoc = actualDoc;
+            lastCheckedMatch = twoPhase.matches();
+          }
+          secondPassMatches = lastCheckedMatch;
+        }
+
+        if (secondPassMatches) {
           // Query did match this doc:
           hit.score = combine(hit.score, true, scorer.score());
         } else {
           // Query did not match this doc:
-          assert actualDoc > targetDoc;
+          assert actualDoc >= targetDoc;
           hit.score = combine(hit.score, false, 0.0f);
         }
       } else {
