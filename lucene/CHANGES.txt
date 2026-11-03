@@ -37,6 +37,10 @@ API Changes
 * GITHUB#16962: Removed usage of deprecated no-args constructors of MatchAllDocsQuery
   and MatchNoDocsQuery. (Andrea Selva)
 
+* GITHUB#16964: Remove the deprecated FixBrokenOffsetsFilter and FixBrokenOffsetsFilterFactory
+  (SPI name "fixBrokenOffsets"). Fix the token filters that produce broken offsets instead.
+  (Chris Parrinello)
+
 * GITHUB#16963: Remove the deprecated MergePolicy.MergeSpecification#segString(Directory) method.
   Use MergeSpecification#toString() instead. (Christoph Büscher)
 

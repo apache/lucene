@@ -35,6 +35,12 @@ from public to private. Use instead the singleton instances available in the `IN
 The direct no-args instantiation `new MatchAllDocsQuery()` has to be replaced by static field's
 reference `MatchAllDocsQuery.INSTANCE` and `MatchNoDocsQuery.INSTANCE` for `new MatchNoDocsQuery()`.
 
+### FixBrokenOffsetsFilter has been removed (GITHUB#16964)
+
+The deprecated `FixBrokenOffsetsFilter` and its factory (SPI name `fixBrokenOffsets`) are gone.
+Offsets that go backwards are rejected at index time; fix the upstream token filter or tokenizer
+that produces them instead.
+
 ### MergePolicy.MergeSpecification#segString(Directory) has been removed (GITHUB#16963)
 
 The deprecated `MergePolicy.MergeSpecification#segString(Directory)` method is gone. The `Directory`
