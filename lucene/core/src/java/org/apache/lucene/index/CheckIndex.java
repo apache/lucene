@@ -1865,8 +1865,7 @@ public final class CheckIndex implements Closeable {
                           + ": startOffset "
                           + startOffset
                           + " < lastStartOffset "
-                          + lastOffset
-                          + "; consider using the FixBrokenOffsets tool in Lucene's backward-codecs module to correct your index");
+                          + lastOffset);
                 }
                 if (endOffset < 0) {
                   throw new CheckIndexException(
