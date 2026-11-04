@@ -45,17 +45,15 @@ public abstract class QueryTree {
   /** The weight of this node */
   public abstract double weight();
 
-  /** Collect terms from the most highly-weighted path below this node */
-  public abstract void collectTerms(BiConsumer<String, BytesRef> termCollector);
+  /** Collect terms and NotSlots from the most highly-weighted path below this node */
+  public abstract void collectTerms(TermCollector termCollector);
 
   /**
-   * Collect terms and NotSlots from the most highly-weighted path below this node
-   *
-   * <p>The default implementation collects terms only, through {@link #collectTerms(BiConsumer)}.
-   * Nodes that contain NotSlots override it.
+   * Collect terms from the most highly-weighted path below this node, with NotSlots collected as
+   * the ANYTOKEN
    */
-  public void collectTerms(TermCollector termCollector) {
-    collectTerms((BiConsumer<String, BytesRef>) termCollector);
+  public final void collectTerms(BiConsumer<String, BytesRef> termCollector) {
+    collectTerms(termCollector::accept);
   }
 
   /** Receives the terms of the most highly-weighted path, including NotSlots */
@@ -128,7 +126,7 @@ public abstract class QueryTree {
       }
 
       @Override
-      public void collectTerms(BiConsumer<String, BytesRef> termCollector) {
+      public void collectTerms(TermCollector termCollector) {
         termCollector.accept(field, term);
       }
 
@@ -153,7 +151,7 @@ public abstract class QueryTree {
       }
 
       @Override
-      public void collectTerms(BiConsumer<String, BytesRef> termCollector) {
+      public void collectTerms(TermCollector termCollector) {
         termCollector.accept(
             TermFilteredPresearcher.ANYTOKEN_FIELD, new BytesRef(TermFilteredPresearcher.ANYTOKEN));
       }
@@ -201,12 +199,6 @@ public abstract class QueryTree {
           throw new IllegalArgumentException("NotSlot weights must be greater than 0");
         }
         return weight;
-      }
-
-      @Override
-      public void collectTerms(BiConsumer<String, BytesRef> termCollector) {
-        termCollector.accept(
-            TermFilteredPresearcher.ANYTOKEN_FIELD, new BytesRef(TermFilteredPresearcher.ANYTOKEN));
       }
 
       @Override
@@ -284,11 +276,6 @@ public abstract class QueryTree {
     }
 
     @Override
-    public void collectTerms(BiConsumer<String, BytesRef> termCollector) {
-      children.get(0).collectTerms(termCollector);
-    }
-
-    @Override
     public void collectTerms(TermCollector termCollector) {
       children.get(0).collectTerms(termCollector);
     }
@@ -337,13 +324,6 @@ public abstract class QueryTree {
     @Override
     public double weight() {
       return children.get(0).weight();
-    }
-
-    @Override
-    public void collectTerms(BiConsumer<String, BytesRef> termCollector) {
-      for (QueryTree child : children) {
-        child.collectTerms(termCollector);
-      }
     }
 
     @Override

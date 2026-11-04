@@ -86,7 +86,8 @@ class QueryAnalyzer {
   /** Builds the tree for a group of clauses; under negation its operator flips (De Morgan) */
   private class QueryBuilder extends QueryVisitor implements Function<TermWeightor, QueryTree> {
 
-    final boolean isNegativeClause;
+    /** Whether the query this builder visits is negated */
+    final boolean isNegated;
 
     /**
      * Whether this builds a disjunction: clauses combined with OR, or, by De Morgan, with AND under
@@ -102,24 +103,24 @@ class QueryAnalyzer {
       this(false, false);
     }
 
-    private QueryBuilder(boolean isNegativeClause, boolean combinesWithOr) {
-      this.isNegativeClause = isNegativeClause;
-      this.buildsDisjunction = combinesWithOr ^ isNegativeClause;
+    private QueryBuilder(boolean isNegated, boolean combinesWithOr) {
+      this.isNegated = isNegated;
+      this.buildsDisjunction = combinesWithOr ^ isNegated;
     }
 
     /** A child for clauses combined with AND, in this builder's polarity */
     private QueryBuilder conjunction() {
-      return addChild(new QueryBuilder(isNegativeClause, false));
+      return addChild(new QueryBuilder(isNegated, false));
     }
 
     /** A child for clauses combined with OR, in this builder's polarity */
     private QueryBuilder disjunction() {
-      return addChild(new QueryBuilder(isNegativeClause, true));
+      return addChild(new QueryBuilder(isNegated, true));
     }
 
     /** A child for negated clauses: NOT a AND NOT b = NOT (a OR b), so OR with flipped polarity */
     private QueryBuilder negation() {
-      return addChild(new QueryBuilder(!isNegativeClause, true));
+      return addChild(new QueryBuilder(!isNegated, true));
     }
 
     private QueryBuilder addChild(QueryBuilder child) {
@@ -129,7 +130,7 @@ class QueryAnalyzer {
 
     @Override
     public QueryVisitor getSubVisitor(BooleanClause.Occur occur, Query parent) {
-      if (isNegativeClause && !isExactUnderNegation(parent, occur)) {
+      if (isNegated && !isExactUnderNegation(parent, occur)) {
         children.add(_ -> QueryTree.anyTerm("NOT " + parent));
         return QueryVisitor.EMPTY_VISITOR;
       }
@@ -137,11 +138,13 @@ class QueryAnalyzer {
         return conjunction();
       }
       if (occur == BooleanClause.Occur.MUST_NOT) {
-        // Check if we're in a pure negative disjunction. Lucene matches nothing for a pure
-        // negative query, so under negation it can't be pushed down either.
+        // Lucene matches nothing for a pure negative query such as (-b). Negated, it matches every
+        // document, which its clauses can't express (NOT (-b) is not b), so select the query for
+        // every document. Positive, it is treated as *:* -b, which selects more documents than it
+        // matches. Without NotSlots, it always selects the query for every document.
         if (parent instanceof BooleanQuery bq
             && isPureNegative(bq)
-            && (!isNegationOptimized || isNegativeClause)) {
+            && (!isNegationOptimized || isNegated)) {
           children.add(_ -> QueryTree.anyTerm("PURE NEGATIVE QUERY[" + parent + "]"));
           return QueryVisitor.EMPTY_VISITOR;
         }
@@ -160,7 +163,7 @@ class QueryAnalyzer {
 
     @Override
     public void consumeTerms(Query query, Term... terms) {
-      if (isNegativeClause) {
+      if (isNegated) {
         if (query instanceof TermQuery
             || query instanceof SynonymQuery
             || query instanceof TermInSetQuery
@@ -182,9 +185,9 @@ class QueryAnalyzer {
       // documents than the query matches, so negating it would be unsound
       children.add(
           w -> {
-            QueryTree q = handle(query, w, isNegativeClause);
+            QueryTree q = handle(query, w, isNegated);
             if (q == null) {
-              return QueryTree.anyTerm(isNegativeClause ? "NOT " + query : query.toString());
+              return QueryTree.anyTerm(isNegated ? "NOT " + query : query.toString());
             }
             return q;
           });

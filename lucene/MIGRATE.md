@@ -232,6 +232,13 @@ Query query = new AutomatonQuery(new Term("myfield", pattern), dfa);
 
 Corresponding methods and parameters have been renamed accordingly.
 
+### Monitor's QueryTree subclasses implement collectTerms(TermCollector) (GITHUB#TBD)
+
+`QueryTree#collectTerms(TermCollector)` is now the abstract method, and
+`collectTerms(BiConsumer)` is final. Subclasses, such as trees returned by a `CustomQueryHandler`,
+must override `collectTerms(TermCollector)` instead; `TermCollector` extends
+`BiConsumer<String, BytesRef>`, so the body usually stays the same.
+
 ## Migration from Lucene 10.4 to Lucene 10.5
 
 ### `[Byte|Float]VectorSimilarityQuery` now performs adaptive HNSW graph traversal
