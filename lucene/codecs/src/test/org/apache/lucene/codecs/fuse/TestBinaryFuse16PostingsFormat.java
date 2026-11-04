@@ -16,28 +16,19 @@
  */
 package org.apache.lucene.codecs.fuse;
 
-import org.apache.lucene.codecs.bloom.FuzzySet;
-import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.tests.index.BasePostingsFormatTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
-/** Adapts Lucene's FuzzySet Bloom filter to the MembershipFilter interface. */
-public final class FuzzySetAdapter implements MembershipFilter {
-  private final FuzzySet set;
+/** Integration tests for {@link BinaryFuseFilteringPostingsFormat} with 16-bit fingerprints. */
+public class TestBinaryFuse16PostingsFormat extends BasePostingsFormatTestCase {
 
-  public FuzzySetAdapter(FuzzySet set) {
-    this.set = set;
-  }
-
-  public FuzzySet getSet() {
-    return set;
-  }
+  private final Codec codec =
+      TestUtil.alwaysPostingsFormat(
+          new BinaryFuseFilteringPostingsFormat(TestUtil.getDefaultPostingsFormat(), 16));
 
   @Override
-  public boolean contains(BytesRef term) {
-    return set.contains(term) == FuzzySet.ContainsResult.MAYBE;
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    return set.ramBytesUsed();
+  protected Codec getCodec() {
+    return codec;
   }
 }

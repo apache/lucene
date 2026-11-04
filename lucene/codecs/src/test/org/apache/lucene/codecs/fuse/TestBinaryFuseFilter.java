@@ -25,6 +25,7 @@ import org.apache.lucene.codecs.bloom.FuzzySet;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.StringHelper;
 
@@ -268,6 +269,56 @@ public class TestBinaryFuseFilter extends LuceneTestCase {
     }
     System.out.println(
         "-------------------------------------------------------------------------\n");
+  }
+
+  public void testSmallSizes() {
+    Random rnd = random();
+    for (int size = 1; size <= 2000; size++) {
+      long[] keys = new long[size];
+      for (int i = 0; i < size; i++) {
+        keys[i] = rnd.nextLong();
+      }
+      BinaryFuse8 filter8 = BinaryFuse8.construct(keys.clone());
+      BinaryFuse16 filter16 = BinaryFuse16.construct(keys.clone());
+      for (long key : keys) {
+        assertTrue(filter8.contains(key));
+        assertTrue(filter16.contains(key));
+      }
+    }
+  }
+
+  public void testDuplicates() {
+    Random rnd = random();
+    int distinct = 1 + rnd.nextInt(10_000);
+    long[] keys = new long[distinct + rnd.nextInt(2 * distinct)];
+    for (int i = 0; i < keys.length; i++) {
+      keys[i] = i < distinct ? rnd.nextLong() : keys[rnd.nextInt(distinct)];
+    }
+    long[] original = keys.clone();
+    BinaryFuse8 filter8 = BinaryFuse8.construct(keys.clone());
+    BinaryFuse16 filter16 = BinaryFuse16.construct(keys.clone());
+    for (long key : original) {
+      assertTrue(filter8.contains(key));
+      assertTrue(filter16.contains(key));
+    }
+  }
+
+  public void testHashMatchesMurmur3() {
+    Random rnd = random();
+    for (int i = 0; i < 10_000; i++) {
+      byte[] bytes = new byte[100];
+      rnd.nextBytes(bytes);
+      int offset = rnd.nextInt(10);
+      BytesRef term = new BytesRef(bytes, offset, rnd.nextInt(90));
+      long[] h = StringHelper.murmurhash3_x64_128(term);
+      assertEquals(h[0] ^ Long.rotateLeft(h[1], 32), FuseHash.hash(term));
+    }
+  }
+
+  public void testInvalidFingerprintBits() {
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> new BinaryFuseFilteringPostingsFormat(TestUtil.getDefaultPostingsFormat(), 12));
   }
 
   private static String formatCount(int n) {
