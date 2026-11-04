@@ -40,6 +40,7 @@ import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter.MergeScorerData;
+import org.apache.lucene.document.column.VectorValuesCursor;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
@@ -839,6 +840,32 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       }
       node++;
       lastDocID = docID;
+    }
+
+    /**
+     * Adds the batch to the flat writer, then to the graph. If the batch takes the field past the
+     * tiny-segment threshold, the graph is created and every buffered vector is replayed, in the
+     * same order as {@link #addValue} would insert them.
+     */
+    @Override
+    public void addDenseValues(int firstDocID, VectorValuesCursor<T> values) throws IOException {
+      assert firstDocID > lastDocID;
+      final int count = values.size();
+      if (count == 0) {
+        return;
+      }
+      flatFieldVectorsWriter.addDenseValues(firstDocID, values);
+      final int firstNode = node;
+      node += count;
+      lastDocID = firstDocID + count - 1;
+      if (hnswGraphBuilder != null) {
+        for (int ord = firstNode; ord < node; ord++) {
+          hnswGraphBuilder.addGraphNode(ord);
+        }
+      } else if (shouldCreateGraph(graphThreshold, node)) {
+        initializeGraphBuilder();
+        replayBufferedVectors();
+      }
     }
 
     public DocsWithFieldSet getDocsWithFieldSet() {

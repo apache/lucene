@@ -27,6 +27,7 @@ github:
 
   protected_branches:
     main: {}
+    branch_11x: {}
     branch_10_0: {}
     branch_10_1: {}
     branch_10_2: {}

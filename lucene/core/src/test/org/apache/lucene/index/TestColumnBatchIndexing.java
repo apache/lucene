@@ -60,6 +60,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -882,6 +883,44 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     dir.close();
   }
 
+  public void testDenseVectorValidationFailureRecovers() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = newIndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE);
+    iwc.setRAMBufferSizeMB(16);
+    iwc.setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH);
+    IndexWriter w = new IndexWriter(dir, iwc);
+
+    // the failed batch stays in the same segment as the recovery batch, so flush checks that the
+    // vectors writer was left consistent
+    FieldType vectorType = floatVectorType(2, VectorSimilarityFunction.EUCLIDEAN);
+    float[][] bad = {{1f, 1f}, {2f, 2f}, {Float.NaN, 3f}, {4f, 4f}};
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> w.addBatch(simpleBatch(4, new ArrayDenseFloatVectorColumn("v", vectorType, bad))));
+    float[][] recovery = {{5f, 5f}, {6f, 6f}};
+    w.addBatch(simpleBatch(2, new ArrayDenseFloatVectorColumn("v", vectorType, recovery)));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+    assertEquals(6, leaf.maxDoc());
+    assertEquals(2, leaf.numDocs());
+    Bits liveDocs = leaf.getLiveDocs();
+    FloatVectorValues vv = leaf.getFloatVectorValues("v");
+    KnnVectorValues.DocIndexIterator it = vv.iterator();
+    int live = 0;
+    for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
+      if (liveDocs.get(doc)) {
+        assertEquals(4 + live, doc);
+        assertArrayEquals(recovery[live++], vv.vectorValue(it.index()), 0f);
+      }
+    }
+    assertEquals(2, live);
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
   public void testEmptyBatch() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
@@ -1377,7 +1416,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
         // tag: indexed StringField
         addBinaryTupleColumn(cols, "tag", tagType, docs, from, toExcl, d -> d.tag);
 
-        // vec: float vectors (sparse)
+        // vec: float vectors (dense when every doc in the batch has one)
         addFloatVectorColumn(cols, "vec", vecType, docs, from, toExcl);
 
         w.addBatch(
@@ -1533,6 +1572,14 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     int n = 0;
     for (int i = from; i < toExcl; i++) if (docs[i].vec != null) n++;
     if (n == 0) return;
+    if (n == toExcl - from) {
+      float[][] values = new float[n][];
+      for (int i = from; i < toExcl; i++) {
+        values[i - from] = docs[i].vec;
+      }
+      cols.add(new ArrayDenseFloatVectorColumn(name, type, values));
+      return;
+    }
     int[] docIds = new int[n];
     float[][] values = new float[n][];
     int p = 0;
@@ -1552,6 +1599,14 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     ParityDoc[] docs = new ParityDoc[numDocs];
     for (int i = 0; i < numDocs; i++) {
       docs[i] = randomParityDoc(r);
+    }
+    if (r.nextBoolean()) {
+      // every doc has a vector, so each batch indexes "vec" through a dense column
+      for (ParityDoc d : docs) {
+        if (d.vec == null) {
+          d.vec = new float[] {r.nextFloat(), r.nextFloat()};
+        }
+      }
     }
 
     Directory batchDir = newDirectory();
