@@ -22,6 +22,9 @@ Optimizations
 * GITHUB#16806: HNSW searches track the visited nodes of a large graph in a hash set instead of a
   bit set sized to the graph, which makes merges into large segments faster. (Ankur Goel)
 
+* GITHUB#16956: Merges that reuse an existing HNSW graph no longer read the query vector of every
+  copied node, which slowed the graph copy by 2.4x to 10x in one benchmark. (Ankur Goel)
+
 Bug Fixes
 ---------------------
 (No changes)
@@ -34,6 +37,16 @@ Other
 
 API Changes
 ---------------------
+* GITHUB#16969: Remove deprecated SpanishMinimalStemFilter, SpanishMinimalStemFilterFactory and
+  SpanishMinimalStemmer. Use SpanishPluralStemFilter instead. (Christoph Büscher)
+
+* GITHUB#16962: Removed usage of deprecated no-args constructors of MatchAllDocsQuery
+  and MatchNoDocsQuery. (Andrea Selva)
+
+* GITHUB#16964: Remove the deprecated FixBrokenOffsetsFilter and FixBrokenOffsetsFilterFactory
+  (SPI name "fixBrokenOffsets"). Fix the token filters that produce broken offsets instead.
+  (Chris Parrinello)
+
 * GITHUB#16963: Remove the deprecated MergePolicy.MergeSpecification#segString(Directory) method.
   Use MergeSpecification#toString() instead. (Christoph Büscher)
 
@@ -191,6 +204,9 @@ API Changes
   multiterm) now throw IndexSearcher.TooManyClauses instead of IllegalStateException when
   they expand to more than maxExpansions terms. (Mayya Sharipova)
 
+* GITHUB#16968: Remove deprecated RegExp.ASCII_CASE_INSENSITIVE flag, use
+  RegExp.CASE_INSENSITIVE instead. (Christoph Büscher)
+
 New Features
 ---------------------
 * GITHUB#16723: Support SIMD Faiss library variants with runtime fallback. (Abhinav Chinnala)
@@ -264,6 +280,12 @@ Improvements
 
 Optimizations
 ---------------------
+
+* GITHUB#16746: Speed up decoding long overlapping LZ4 matches using bulk copies
+  of initialized bytes. (Andre Kurait)
+
+* GITHUB#16881: UnifiedHighlighter converts each term to UTF-16 once instead of once per automaton,
+  which speeds up highlighting of queries with many multi-term clauses. (Eugene Rizhkov)
 
 * GITHUB#16794: Concurrent HNSW merges now join the other deletion-free graphs into the base graph
   through their join sets, as serial merges have done since GITHUB#14331, instead of inserting all

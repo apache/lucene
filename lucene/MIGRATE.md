@@ -28,6 +28,35 @@ with `VisitedSet.create(expectedVisitedNodes, graphSize)`.
 
 ## Migration from Lucene 10.x to Lucene 11.0
 
+### RegExp.ASCII_CASE_INSENSITIVE has been removed (GITHUB#16968)
+
+The flag was deprecated in 10.x and already behaved the same as `RegExp.CASE_INSENSITIVE` (full
+Unicode case folding). Replace it with `RegExp.CASE_INSENSITIVE`.
+
+The flag's raw value `0x0100` is no longer accepted: calls like
+`new RegExp(s, syntax_flags, 0x0100)` to `RegExp(String, int, int)` now throw an
+`IllegalArgumentException` and must be changed to `new RegExp(s, syntax_flags, RegExp.CASE_INSENSITIVE)`.
+
+### SpanishMinimalStemFilter has been removed (GITHUB#16969)
+
+`SpanishMinimalStemFilter` and `SpanishMinimalStemFilterFactory` (SPI name `spanishMinimalStem`)
+were deprecated in favor of `SpanishPluralStemFilter` and are now removed.
+Use `SpanishPluralStemFilter` (SPI name `spanishPluralStem`) instead. Indexes analyzed with the old
+filter may need reindexing, as the stemming results can differ.
+
+### MatchAllDocsQuery and MatchNoDocsQuery no-args constructors (GITHUB#16962)
+
+`MatchAllDocsQuery` and `MatchNoDocsQuery` no-args constructors visibility has been narrowed
+from public to private. Use instead the singleton instances available in the `INSTANCE` field.
+The direct no-args instantiation `new MatchAllDocsQuery()` has to be replaced by static field's
+reference `MatchAllDocsQuery.INSTANCE` and `MatchNoDocsQuery.INSTANCE` for `new MatchNoDocsQuery()`.
+
+### FixBrokenOffsetsFilter has been removed (GITHUB#16964)
+
+The deprecated `FixBrokenOffsetsFilter` and its factory (SPI name `fixBrokenOffsets`) are gone.
+Offsets that go backwards are rejected at index time; fix the upstream token filter or tokenizer
+that produces them instead.
+
 ### MergePolicy.MergeSpecification#segString(Directory) has been removed (GITHUB#16963)
 
 The deprecated `MergePolicy.MergeSpecification#segString(Directory)` method is gone. The `Directory`
