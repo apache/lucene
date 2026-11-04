@@ -19,6 +19,7 @@ package org.apache.lucene.index;
 import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
@@ -419,6 +420,11 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
   }
 
   @Override
+  public Executor getMergedSegmentWarmerExecutor() {
+    return super.getMergedSegmentWarmerExecutor();
+  }
+
+  @Override
   public double getRAMBufferSizeMB() {
     return super.getRAMBufferSizeMB();
   }
@@ -458,6 +464,11 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
   @Override
   public IndexWriterConfig setMergedSegmentWarmer(IndexReaderWarmer mergeSegmentWarmer) {
     return (IndexWriterConfig) super.setMergedSegmentWarmer(mergeSegmentWarmer);
+  }
+
+  @Override
+  public IndexWriterConfig setMergedSegmentWarmerExecutor(Executor executor) {
+    return (IndexWriterConfig) super.setMergedSegmentWarmerExecutor(executor);
   }
 
   @Override

@@ -19,6 +19,7 @@ package org.apache.lucene.index;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Set;
+import java.util.concurrent.Executor;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CompoundFormat;
@@ -43,6 +44,7 @@ public class LiveIndexWriterConfig {
   private volatile int maxBufferedDocs;
   private volatile double ramBufferSizeMB;
   private volatile IndexReaderWarmer mergedSegmentWarmer;
+  private volatile Executor mergedSegmentWarmerExecutor;
 
   // modified by IndexWriterConfig
   /** {@link IndexDeletionPolicy} controlling when commit points are deleted. */
@@ -129,6 +131,7 @@ public class LiveIndexWriterConfig {
     ramBufferSizeMB = IndexWriterConfig.DEFAULT_RAM_BUFFER_SIZE_MB;
     maxBufferedDocs = IndexWriterConfig.DEFAULT_MAX_BUFFERED_DOCS;
     mergedSegmentWarmer = null;
+    mergedSegmentWarmerExecutor = null;
     delPolicy = new KeepOnlyLastCommitDeletionPolicy();
     commit = null;
     useCompoundFile = IndexWriterConfig.DEFAULT_USE_COMPOUND_FILE_SYSTEM;
@@ -275,6 +278,38 @@ public class LiveIndexWriterConfig {
   /** Returns the current merged segment warmer. See {@link IndexReaderWarmer}. */
   public IndexReaderWarmer getMergedSegmentWarmer() {
     return mergedSegmentWarmer;
+  }
+
+  /**
+   * Set the {@link Executor} used to run the {@link IndexReaderWarmer} on newly merged segments.
+   * When non-null, the merge thread does not wait for warming: the merge is only published, from
+   * the executor's thread, once the segment is warmed. When {@code null} (the default), segments
+   * are warmed synchronously by the merge thread.
+   *
+   * <p><b>NOTE</b>: the executor must be bounded (for instance a {@link
+   * java.util.concurrent.ThreadPoolExecutor} with a bounded queue and the default abort policy).
+   * Merges are not published until warmed, so with an unbounded executor and a slow warmer, merges
+   * keep being started while finished ones pile up unpublished, holding disk space, memory and open
+   * readers. When the executor throws {@link java.util.concurrent.RejectedExecutionException}, the
+   * segment is warmed synchronously by the merge thread instead, which applies back-pressure on the
+   * merge scheduler.
+   *
+   * <p>The executor must outlive the {@link IndexWriter}: {@link IndexWriter#close()}, {@link
+   * IndexWriter#rollback()} and {@link IndexWriter#waitForMerges()} wait for in-flight warming, so
+   * shutting it down with {@link java.util.concurrent.ExecutorService#shutdownNow()} (which drops
+   * queued tasks) before the writer is closed makes them hang. Queued warmings of merges aborted by
+   * {@link IndexWriter#rollback()} are skipped as soon as they start.
+   *
+   * <p>Takes effect on the next merge.
+   */
+  public LiveIndexWriterConfig setMergedSegmentWarmerExecutor(Executor executor) {
+    this.mergedSegmentWarmerExecutor = executor;
+    return this;
+  }
+
+  /** Returns the executor running the merged segment warmer, or {@code null} if synchronous. */
+  public Executor getMergedSegmentWarmerExecutor() {
+    return mergedSegmentWarmerExecutor;
   }
 
   /** Returns the {@link OpenMode} set by {@link IndexWriterConfig#setOpenMode(OpenMode)}. */
@@ -492,6 +527,7 @@ public class LiveIndexWriterConfig {
     sb.append("ramBufferSizeMB=").append(getRAMBufferSizeMB()).append("\n");
     sb.append("maxBufferedDocs=").append(getMaxBufferedDocs()).append("\n");
     sb.append("mergedSegmentWarmer=").append(getMergedSegmentWarmer()).append("\n");
+    sb.append("mergedSegmentWarmerExecutor=").append(getMergedSegmentWarmerExecutor()).append("\n");
     sb.append("delPolicy=").append(getIndexDeletionPolicy().getClass().getName()).append("\n");
     IndexCommit commit = getIndexCommit();
     sb.append("commit=").append(commit == null ? "null" : commit).append("\n");
