@@ -28,6 +28,15 @@ with `VisitedSet.create(expectedVisitedNodes, graphSize)`.
 
 ## Migration from Lucene 10.x to Lucene 11.0
 
+### Deprecated TokenSources methods have been removed (GITHUB#16985)
+
+The highlighter's `TokenSources` class now only has `getTokenStream(String field, Fields tvFields,
+String text, Analyzer analyzer, int maxStartOffset)` and `getTermVectorTokenStreamOrNull(String
+field, Fields tvFields, int maxStartOffset)`. The `getAnyTokenStream` and
+`getTokenStreamWithOffsets` methods and all other `getTokenStream` overloads are removed.
+Load the document's term vectors once with `reader.termVectors().get(docId)`, get the field value
+from the stored fields, and pass both to `getTokenStream`. Use `-1` as `maxStartOffset` for no limit.
+
 ### Explicit byte and float similarity vector search has been removed (GITHUB#16965)
 
 The `Explicit` variants of `ByteVectorSimilarityQuery` and `FloatVectorSimilarityQuery`

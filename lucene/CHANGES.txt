@@ -37,6 +37,11 @@ Other
 
 API Changes
 ---------------------
+* GITHUB#16985: Remove the deprecated TokenSources methods in the highlighter module
+  (getAnyTokenStream, getTokenStreamWithOffsets and the getTokenStream overloads taking a Terms,
+  IndexReader, Document or plain text). Use TokenSources#getTokenStream(String, Fields, String,
+  Analyzer, int) or TokenSources#getTermVectorTokenStreamOrNull instead. (Christoph Büscher)
+
 * GITHUB#16965: Remove the deprecated classes for explicit vector similarity search:
   ByteVectorSimilarityQuery.Explicit, FloatVectorSimilarityQuery.Explicit and
   ExplicitVectorSimilarityCollector.

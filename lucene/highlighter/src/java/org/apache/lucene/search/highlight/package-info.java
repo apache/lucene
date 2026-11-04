@@ -39,7 +39,7 @@
  *     int id = hits.scoreDocs[i].doc;
  *     Document doc = searcher.doc(id);
  *     String text = doc.get("notv");
- *     TokenStream tokenStream = TokenSources.getAnyTokenStream(searcher.getIndexReader(), id, "notv", analyzer);
+ *     TokenStream tokenStream = TokenSources.getTokenStream("notv", searcher.getIndexReader().termVectors().get(id), text, analyzer, -1);
  *     TextFragment[] frag = highlighter.getBestTextFragments(tokenStream, text, false, 10);//highlighter.getBestFragments(tokenStream, text, 3, "...");
  *     for (int j = 0; j &lt; frag.length; j++) {
  *       if ((frag[j] != null) &amp;&amp; (frag[j].getScore() &gt; 0)) {
@@ -48,7 +48,7 @@
  *     }
  *     //Term vector
  *     text = doc.get("tv");
- *     tokenStream = TokenSources.getAnyTokenStream(searcher.getIndexReader(), hits.scoreDocs[i].doc, "tv", analyzer);
+ *     tokenStream = TokenSources.getTokenStream("tv", searcher.getIndexReader().termVectors().get(id), text, analyzer, -1);
  *     frag = highlighter.getBestTextFragments(tokenStream, text, false, 10);
  *     for (int j = 0; j &lt; frag.length; j++) {
  *       if ((frag[j] != null) &amp;&amp; (frag[j].getScore() &gt; 0)) {
