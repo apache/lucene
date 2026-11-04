@@ -19,12 +19,6 @@
 
 ## Migration from Lucene 11.x to Lucene 12.0
 
-### Explicit byte and float similarity vector search has been removed (GITHUB#16965)
-
-The `Explicit` variants of `ByteVectorSimilarityQuery` and `FloatVectorSimilarityQuery`
-have been removed in favor of the new `Adaptive` implementations.
-Replace any usages of `Explicit` with `Adaptive`.
-
 ### HnswGraphSearcher takes a VisitedSet instead of a BitSet (GITHUB#16806)
 
 The constructor `HnswGraphSearcher(NeighborQueue, BitSet)` is now
@@ -33,6 +27,13 @@ The constructor `HnswGraphSearcher(NeighborQueue, BitSet)` is now
 with `VisitedSet.create(expectedVisitedNodes, graphSize)`.
 
 ## Migration from Lucene 10.x to Lucene 11.0
+
+### Explicit byte and float similarity vector search has been removed (GITHUB#16965)
+
+The `Explicit` variants of `ByteVectorSimilarityQuery` and `FloatVectorSimilarityQuery`
+have been removed. Use `Adaptive` instead. Drop `traversalSimilarity` and pass
+`resultSimilarity` plus an optional `decay` (default `0.5`); the constructors are not
+a drop-in rename.
 
 ### SpanishMinimalStemFilter has been removed (GITHUB#16969)
 
