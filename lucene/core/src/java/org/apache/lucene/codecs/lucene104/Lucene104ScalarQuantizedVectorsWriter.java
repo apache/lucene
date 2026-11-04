@@ -386,7 +386,9 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       return null;
     }
     final float[] mergedCentroid = new float[fieldInfo.getVectorDimension()];
-    int vectorCount = mergeAndRecalculateCentroids(mergeState, fieldInfo, mergedCentroid);
+    int vectorCount =
+        mergeAndRecalculateCentroids(
+            mergeState, fieldInfo, mergedCentroid, mergeExecutor(mergeState), numMergeWorkers);
     if (segmentWriteState.infoStream.isEnabled(QUANTIZED_VECTOR_COMPONENT)) {
       segmentWriteState.infoStream.message(
           QUANTIZED_VECTOR_COMPONENT, "Vectors' count:" + vectorCount);
@@ -574,13 +576,12 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   static final int QUANTIZE_BLOCK_SIZE = 8192;
 
   /**
-   * The executor that quantizes a merged field in parallel, or null to quantize it on the merging
-   * thread. As for the HNSW graph merge, this is the format's executor if it has one and the
-   * merge's own otherwise, and only with more than one merge worker. A field of one block or less
-   * is quantized on the merging thread.
+   * The executor that computes the centroid and quantizes a merged field in parallel, or null to do
+   * both on the merging thread. As for the HNSW graph merge, this is the format's executor if it
+   * has one and the merge's own otherwise, and only with more than one merge worker.
    */
-  private TaskExecutor quantizeExecutor(MergeState mergeState, int vectorCount) {
-    if (numMergeWorkers <= 1 || vectorCount <= QUANTIZE_BLOCK_SIZE) {
+  private TaskExecutor mergeExecutor(MergeState mergeState) {
+    if (numMergeWorkers <= 1) {
       return null;
     }
     if (mergeExec != null) {
@@ -591,11 +592,14 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
         : new TaskExecutor(mergeState.intraMergeTaskExecutor);
   }
 
-  /** Returns the parallel quantizer of a merged field, or null to quantize it serially. */
+  /**
+   * Returns the parallel quantizer of a merged field, or null to quantize it serially. A field of
+   * one block or less is quantized on the merging thread.
+   */
   private ParallelMergeQuantizer parallelMergeQuantizer(
       FieldInfo fieldInfo, MergeState mergeState, int vectorCount) throws IOException {
-    TaskExecutor executor = quantizeExecutor(mergeState, vectorCount);
-    if (executor == null) {
+    TaskExecutor executor = mergeExecutor(mergeState);
+    if (executor == null || vectorCount <= QUANTIZE_BLOCK_SIZE) {
       return null;
     }
     // the segments that MergedVectorValues merges, viewed as mergedFloatVectorValues views them
@@ -945,8 +949,18 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     };
   }
 
+  /**
+   * Computes the centroid of the merged vectors into {@code mergedCentroid} and returns their
+   * count. Recomputing it reads every vector, on up to {@code workers} tasks when {@code executor}
+   * is not null.
+   */
   static int mergeAndRecalculateCentroids(
-      MergeState mergeState, FieldInfo fieldInfo, float[] mergedCentroid) throws IOException {
+      MergeState mergeState,
+      FieldInfo fieldInfo,
+      float[] mergedCentroid,
+      TaskExecutor executor,
+      int workers)
+      throws IOException {
     boolean recalculate = false;
     int totalVectorCount = 0;
     for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
@@ -977,7 +991,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     if (totalVectorCount == 0) {
       return 0;
     } else if (recalculate) {
-      return calculateCentroid(mergeState, fieldInfo, mergedCentroid);
+      return calculateCentroid(mergeState, fieldInfo, mergedCentroid, executor, workers);
     } else {
       for (int j = 0; j < mergedCentroid.length; j++) {
         mergedCentroid[j] = mergedCentroid[j] / totalVectorCount;
@@ -989,46 +1003,92 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     }
   }
 
-  static int calculateCentroid(MergeState mergeState, FieldInfo fieldInfo, float[] centroid)
+  /**
+   * Live vectors that one task sums when a merge recomputes the centroid. Fixed, so that the
+   * centroid does not depend on the number of workers.
+   */
+  static final int CENTROID_CHUNK_SIZE = 1024;
+
+  static int calculateCentroid(
+      MergeState mergeState,
+      FieldInfo fieldInfo,
+      float[] centroid,
+      TaskExecutor executor,
+      int workers)
       throws IOException {
     assert fieldInfo.getVectorEncoding().isFloatingPoint();
-    // clear out the centroid
-    Arrays.fill(centroid, 0);
+    double[] sums = new double[centroid.length];
     int count = 0;
     for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
-      KnnVectorsReader knnVectorsReader = mergeState.knnVectorsReaders[i];
-      if (knnVectorsReader == null) continue;
-      count += accumulateCentroid(knnVectorsReader, fieldInfo, mergeState.liveDocs[i], centroid);
-    }
-    if (count == 0) {
-      return count;
+      KnnVectorsReader reader = mergeState.knnVectorsReaders[i];
+      FloatVectorValues values =
+          reader == null ? null : floatingPointVectorValues(reader, fieldInfo);
+      if (values != null) {
+        count += sumVectors(values, mergeState.liveDocs[i], sums, executor, workers);
+      }
     }
     for (int i = 0; i < centroid.length; i++) {
-      centroid[i] /= count;
+      centroid[i] = count == 0 ? 0 : (float) (sums[i] / count);
     }
-    if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
+    if (count > 0 && fieldInfo.getVectorSimilarityFunction() == COSINE) {
       VectorUtil.l2normalize(centroid);
     }
     return count;
   }
 
-  private static int accumulateCentroid(
-      KnnVectorsReader reader, FieldInfo fieldInfo, Bits liveDocs, float[] centroid)
+  /**
+   * Adds the live vectors of {@code values} to {@code sums} and returns how many there are. The
+   * merging thread splits them in chunks of {@link #CENTROID_CHUNK_SIZE}, up to {@code workers}
+   * tasks read and sum one chunk each, and the merging thread adds the chunk sums in order. So the
+   * result does not depend on the number of workers.
+   */
+  static int sumVectors(
+      FloatVectorValues values, Bits liveDocs, double[] sums, TaskExecutor executor, int workers)
       throws IOException {
-    FloatVectorValues vectorValues = floatingPointVectorValues(reader, fieldInfo);
-    if (vectorValues == null) {
-      return 0;
+    int tasks =
+        executor == null
+            ? 1
+            : Math.clamp(Math.ceilDiv(values.size(), CENTROID_CHUNK_SIZE), 1, workers);
+    int[][] ords = new int[tasks][CENTROID_CHUNK_SIZE];
+    int[] sizes = new int[tasks];
+    double[][] chunkSums = new double[tasks][sums.length];
+    List<Callable<Void>> calls = new ArrayList<>(tasks);
+    for (int t = 0; t < tasks; t++) {
+      int task = t;
+      FloatVectorValues copy = values.copy();
+      calls.add(
+          () -> {
+            Arrays.fill(chunkSums[task], 0);
+            for (int i = 0; i < sizes[task]; i++) {
+              float[] vector = copy.vectorValue(ords[task][i]);
+              for (int j = 0; j < vector.length; j++) {
+                chunkSums[task][j] += vector[j];
+              }
+            }
+            return null;
+          });
     }
+    TaskExecutor taskExecutor = executor == null ? new TaskExecutor(Runnable::run) : executor;
     int count = 0;
-    KnnVectorValues.DocIndexIterator iterator = vectorValues.iterator();
-    for (int doc = iterator.nextDoc(); doc != NO_MORE_DOCS; doc = iterator.nextDoc()) {
-      if (liveDocs != null && liveDocs.get(doc) == false) {
-        continue;
+    KnnVectorValues.DocIndexIterator iterator = values.iterator();
+    int doc = iterator.nextDoc();
+    while (doc != NO_MORE_DOCS) {
+      int chunks = 0;
+      for (; chunks < tasks && doc != NO_MORE_DOCS; chunks++) {
+        int size = 0;
+        for (; size < CENTROID_CHUNK_SIZE && doc != NO_MORE_DOCS; doc = iterator.nextDoc()) {
+          if (liveDocs == null || liveDocs.get(doc)) {
+            ords[chunks][size++] = iterator.index();
+          }
+        }
+        sizes[chunks] = size;
       }
-      count++;
-      float[] vector = vectorValues.vectorValue(iterator.index());
-      for (int j = 0; j < vector.length; j++) {
-        centroid[j] += vector[j];
+      taskExecutor.invokeAll(calls.subList(0, chunks));
+      for (int t = 0; t < chunks; t++) {
+        for (int j = 0; j < sums.length; j++) {
+          sums[j] += chunkSums[t][j];
+        }
+        count += sizes[t];
       }
     }
     return count;
