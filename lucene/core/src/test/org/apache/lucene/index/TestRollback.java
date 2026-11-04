@@ -58,4 +58,41 @@ public class TestRollback extends LuceneTestCase {
     r.close();
     dir.close();
   }
+
+  // A writer opened on an older commit rolls back to that commit's segments. The default deletion
+  // policy deletes that commit when the writer is created, so once the writer merged the segments
+  // away, only the rollback point references their files, which must still exist on rollback.
+  public void testRollbackAfterMergingAwayDeletedStartingCommit() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriter w =
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig()
+                .setIndexDeletionPolicy(NoDeletionPolicy.INSTANCE)
+                .setMergePolicy(new TieredMergePolicy()));
+    for (int i = 0; i < 2; i++) {
+      w.addDocument(new Document());
+      w.commit();
+    }
+    IndexCommit olderCommit = DirectoryReader.listCommits(dir).get(1);
+    w.forceMerge(1);
+    w.close(); // the latest commit has the merged segment only
+
+    w =
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig()
+                .setIndexDeletionPolicy(new KeepOnlyLastCommitDeletionPolicy())
+                .setMergePolicy(new TieredMergePolicy())
+                .setIndexCommit(olderCommit));
+    assertFalse(slowFileExists(dir, olderCommit.getSegmentsFileName()));
+    w.addDocument(new Document());
+    w.forceMerge(1);
+    w.rollback();
+
+    try (DirectoryReader r = DirectoryReader.open(dir)) {
+      assertEquals(2, r.numDocs());
+    }
+    dir.close();
+  }
 }

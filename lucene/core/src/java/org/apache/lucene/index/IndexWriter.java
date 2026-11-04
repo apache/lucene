@@ -272,7 +272,8 @@ public class IndexWriter
   private final AtomicLong changeCount = new AtomicLong();
   private volatile long lastCommitChangeCount; // last changeCount that was committed
 
-  // list of segmentInfo we will fallback to if the commit fails
+  // list of segmentInfo we will fallback to if the commit fails. The deleter holds a reference on
+  // their files, because the deletion policy may delete the commit they come from:
   private List<SegmentCommitInfo> rollbackSegments;
 
   // set when a commit is pending (after prepareCommit() & before commit())
@@ -1053,9 +1054,8 @@ public class IndexWriter
         // Must clone because we don't want the incoming NRT reader to "see" any changes this writer
         // now makes:
         segmentInfos = reader.segmentInfos.clone();
-        SegmentInfos lastCommit;
         try {
-          lastCommit = SegmentInfos.readCommit(directoryOrig, segmentInfos.getSegmentsFileName());
+          SegmentInfos.readCommit(directoryOrig, segmentInfos.getSegmentsFileName());
         } catch (IOException ioe) {
           throw new IllegalArgumentException(
               "the provided reader is stale: its prior commit file \""
@@ -1072,10 +1072,12 @@ public class IndexWriter
           // In case the old writer wrote further segments (which we are now dropping),
           // update SIS metadata so we remain write-once:
           segmentInfos.updateGenerationVersionAndCounter(reader.writer.segmentInfos);
-          lastCommit.updateGenerationVersionAndCounter(reader.writer.segmentInfos);
         }
 
-        rollbackSegments = lastCommit.createBackupSegmentInfos();
+        // Roll back to the reader's segments, like when opening a commit, and not to the reader's
+        // commit: this writer's deletion policy may delete that commit when the deleter is created
+        // below, together with the files of segments only it references:
+        rollbackSegments = segmentInfos.createBackupSegmentInfos();
       } else {
         // Init from either the latest commit point, or an explicit prior commit point:
 
@@ -1184,6 +1186,9 @@ public class IndexWriter
         // We incRef all files when we return an NRT reader from IW, so all files must exist even in
         // the NRT case:
         assert create || filesExist(segmentInfos);
+        // The deletion policy may delete the commit we started from, so keep the files that a
+        // rollback needs:
+        deleter.incRef(segmentFiles(rollbackSegments));
       }
 
       if (deleter.startingCommitDeleted) {
@@ -2673,6 +2678,7 @@ public class IndexWriter
         // these methods throw ACE:
         if (tragedy.get() == null) {
           deleter.checkpoint(segmentInfos, false);
+          deleter.decRef(segmentFiles(rollbackSegments));
           deleter.refresh();
           deleter.close();
         }
@@ -4327,7 +4333,10 @@ public class IndexWriter
             }
 
             lastCommitChangeCount = pendingCommitChangeCount;
+            List<SegmentCommitInfo> previousRollbackSegments = rollbackSegments;
             rollbackSegments = pendingCommit.createBackupSegmentInfos();
+            deleter.incRef(segmentFiles(rollbackSegments));
+            deleter.decRef(segmentFiles(previousRollbackSegments));
 
           } finally {
             notifyAll();
@@ -6134,6 +6143,15 @@ public class IndexWriter
   /** Returns {@code true} if this {@code IndexWriter} is still open. */
   public boolean isOpen() {
     return closing == false && closed == false;
+  }
+
+  /** Returns the files of the given segments. */
+  private static Set<String> segmentFiles(List<SegmentCommitInfo> segments) throws IOException {
+    Set<String> files = new HashSet<>();
+    for (SegmentCommitInfo info : segments) {
+      files.addAll(info.files());
+    }
+    return files;
   }
 
   // Used for testing.  Current points:
