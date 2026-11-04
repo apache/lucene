@@ -410,6 +410,8 @@ Bug Fixes
   document as meaning no later documents would be competitive, and incorrectly miss parent documents.
   (Alan Woodward)
 
+* GITHUB#16971: Fix double DocValuesStats extrema initialization. (Simranjeet Singh)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
