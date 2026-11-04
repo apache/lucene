@@ -28,7 +28,6 @@ public class TestTruncateTokenFilterFactory extends BaseTokenStreamFactoryTestCa
 
   public void testCharTruncating() throws Exception {
     testCharTruncating(TruncateTokenFilterFactory.TRUNCATE_AFTER_CHARS_KEY);
-    testCharTruncating(TruncateTokenFilterFactory.PREFIX_LENGTH_KEY);
     testCharTruncating(null);
   }
 
@@ -58,7 +57,6 @@ public class TestTruncateTokenFilterFactory extends BaseTokenStreamFactoryTestCa
 
   public void testCodePointTruncating() throws Exception {
     testCodePointTruncating(TruncateTokenFilterFactory.TRUNCATE_AFTER_CODEPOINTS_KEY);
-    testCodePointTruncating(TruncateTokenFilterFactory.PREFIX_LENGTH_KEY);
     testCodePointTruncating(null);
   }
 

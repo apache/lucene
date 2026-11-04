@@ -59,7 +59,6 @@ public class TruncateTokenFilterFactory extends TokenFilterFactory {
   /** SPI name */
   public static final String NAME = "truncate";
 
-  @Deprecated public static final String PREFIX_LENGTH_KEY = "prefixLength";
   public static final String TRUNCATE_AFTER_CODEPOINTS_KEY = "truncateAfterCodePoints";
   public static final String TRUNCATE_AFTER_CHARS_KEY = "truncateAfterChars";
 
@@ -71,14 +70,17 @@ public class TruncateTokenFilterFactory extends TokenFilterFactory {
     Map<String, BiFunction<TokenStream, Integer, TruncateTokenFilter>> paramMapping =
         Map.of(
             TRUNCATE_AFTER_CODEPOINTS_KEY, TruncateTokenFilter::truncateAfterCodePoints,
-            TRUNCATE_AFTER_CHARS_KEY, TruncateTokenFilter::truncateAfterChars,
-            PREFIX_LENGTH_KEY, this::legacyPrefixLengthFactory);
+            TRUNCATE_AFTER_CHARS_KEY, TruncateTokenFilter::truncateAfterChars);
     var avail = paramMapping.keySet().stream().filter(args::containsKey).toList();
     if (avail.size() > 1) {
       throw new IllegalArgumentException(
           "Can only give one of the following parameters: " + paramMapping.keySet());
     }
-    String param = avail.stream().findFirst().orElse(PREFIX_LENGTH_KEY);
+    String truncationMode =
+        luceneMatchVersion.onOrAfter(Version.LUCENE_10_5_0)
+            ? TRUNCATE_AFTER_CODEPOINTS_KEY
+            : TRUNCATE_AFTER_CHARS_KEY;
+    String param = avail.stream().findFirst().orElse(truncationMode);
     this.truncateAfter = getInt(args, param, 5);
     this.factory = paramMapping.get(param);
     if (truncateAfter < 1) {
@@ -88,12 +90,6 @@ public class TruncateTokenFilterFactory extends TokenFilterFactory {
     if (!args.isEmpty()) {
       throw new IllegalArgumentException("Unknown parameter(s): " + args);
     }
-  }
-
-  private TruncateTokenFilter legacyPrefixLengthFactory(TokenStream input, int prefixChars) {
-    return (luceneMatchVersion.onOrAfter(Version.LUCENE_10_5_0))
-        ? TruncateTokenFilter.truncateAfterCodePoints(input, prefixChars)
-        : TruncateTokenFilter.truncateAfterChars(input, prefixChars);
   }
 
   /** Default ctor for compatibility with SPI */

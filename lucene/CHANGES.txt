@@ -37,6 +37,10 @@ Other
 
 API Changes
 ---------------------
+* GITHUB#16nnn: Remove the deprecated contructor in TruncateTokenFilter.
+  Its usage has been replaced by static factory methods TruncateTokenFilter.truncateAfterChars
+  for bakward compatibility or TruncateTokenFilter.truncateAfterCodePoints. (Andrea Selva)
+
 * GITHUB#16965: Remove the deprecated classes for explicit vector similarity search:
   ByteVectorSimilarityQuery.Explicit, FloatVectorSimilarityQuery.Explicit and
   ExplicitVectorSimilarityCollector.
