@@ -28,6 +28,13 @@ with `VisitedSet.create(expectedVisitedNodes, graphSize)`.
 
 ## Migration from Lucene 10.x to Lucene 11.0
 
+### Explicit byte and float similarity vector search has been removed (GITHUB#16965)
+
+The `Explicit` variants of `ByteVectorSimilarityQuery` and `FloatVectorSimilarityQuery`
+have been removed. Use `Adaptive` instead. Drop `traversalSimilarity` and pass
+`resultSimilarity` plus an optional `decay` (default `0.5`); the constructors are not
+a drop-in rename.
+
 ### RegExp.ASCII_CASE_INSENSITIVE has been removed (GITHUB#16968)
 
 The flag was deprecated in 10.x and already behaved the same as `RegExp.CASE_INSENSITIVE` (full
