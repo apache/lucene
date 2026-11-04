@@ -19,6 +19,15 @@
 
 ## Migration from Lucene 10.x to Lucene 11.0
 
+### RegExp.ASCII_CASE_INSENSITIVE has been removed (GITHUB#16968)
+
+The flag was deprecated in 10.x and already behaved the same as `RegExp.CASE_INSENSITIVE` (full
+Unicode case folding). Replace it with `RegExp.CASE_INSENSITIVE`.
+
+The flag's raw value `0x0100` is no longer accepted: calls like
+`new RegExp(s, syntax_flags, 0x0100)` to `RegExp(String, int, int)` now throw an
+`IllegalArgumentException` and must be changed to `new RegExp(s, syntax_flags, RegExp.CASE_INSENSITIVE)`.
+
 ### SpanishMinimalStemFilter has been removed (GITHUB#16969)
 
 `SpanishMinimalStemFilter` and `SpanishMinimalStemFilterFactory` (SPI name `spanishMinimalStem`)
