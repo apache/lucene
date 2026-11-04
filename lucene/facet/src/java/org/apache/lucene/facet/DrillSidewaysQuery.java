@@ -31,6 +31,7 @@ import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
@@ -48,6 +49,9 @@ class DrillSidewaysQuery<K extends Collector, R> extends Query {
 
   final List<? extends CollectorManager<K, R>> drillSidewaysCollectorManagers;
   final List<List<K>> managedDrillSidewaysCollectors;
+
+  // Finished once the search completed, as a leaf may be scored in several bulk scorer calls:
+  private final List<LeafCollector> managedDrillSidewaysLeafCollectors;
 
   final Query[] drillDownQueries;
 
@@ -69,6 +73,7 @@ class DrillSidewaysQuery<K extends Collector, R> extends Query {
         baseQuery,
         drillSidewaysCollectorManagers,
         Collections.synchronizedList(new ArrayList<>()),
+        Collections.synchronizedList(new ArrayList<>()),
         drillDownQueries,
         scoreSubDocsAtOnce);
   }
@@ -82,6 +87,7 @@ class DrillSidewaysQuery<K extends Collector, R> extends Query {
       Query baseQuery,
       List<? extends CollectorManager<K, R>> drillSidewaysCollectorManagers,
       List<List<K>> managedDrillSidewaysCollectors,
+      List<LeafCollector> managedDrillSidewaysLeafCollectors,
       Query[] drillDownQueries,
       boolean scoreSubDocsAtOnce) {
     this.baseQuery = Objects.requireNonNull(baseQuery);
@@ -89,6 +95,18 @@ class DrillSidewaysQuery<K extends Collector, R> extends Query {
     this.drillDownQueries = drillDownQueries;
     this.scoreSubDocsAtOnce = scoreSubDocsAtOnce;
     this.managedDrillSidewaysCollectors = managedDrillSidewaysCollectors;
+    this.managedDrillSidewaysLeafCollectors = managedDrillSidewaysLeafCollectors;
+  }
+
+  /**
+   * Calls {@link LeafCollector#finish()} on the leaf collectors of the drill sideways collectors.
+   * Must be called once the search completed. IndexSearcher only finishes the leaf collectors of
+   * the main collector.
+   */
+  void finishDrillSidewaysLeafCollectors() throws IOException {
+    for (LeafCollector leafCollector : managedDrillSidewaysLeafCollectors) {
+      leafCollector.finish();
+    }
   }
 
   @Override
@@ -113,6 +131,7 @@ class DrillSidewaysQuery<K extends Collector, R> extends Query {
           newQuery,
           drillSidewaysCollectorManagers,
           managedDrillSidewaysCollectors,
+          managedDrillSidewaysLeafCollectors,
           drillDownQueries,
           scoreSubDocsAtOnce);
     }
@@ -163,18 +182,13 @@ class DrillSidewaysQuery<K extends Collector, R> extends Query {
           K sidewaysCollector = drillSidewaysCollectorManagers.get(dim).newCollector();
           sidewaysCollectors.add(dim, sidewaysCollector);
 
-          dims[dim] =
-              new DrillSidewaysScorer.DocsAndCost(
-                  scorer, sidewaysCollector.getLeafCollector(context));
+          LeafCollector sidewaysLeafCollector = sidewaysCollector.getLeafCollector(context);
+          managedDrillSidewaysLeafCollectors.add(sidewaysLeafCollector);
+          dims[dim] = new DrillSidewaysScorer.DocsAndCost(scorer, sidewaysLeafCollector);
         }
 
-        // If baseScorer is null or the dim nullCount > 1, then we have nothing to score. We return
-        // a null scorer in this case, but we need to make sure #finish gets called on all facet
-        // collectors since IndexSearcher won't handle this for us:
+        // If baseScorer is null or the dim nullCount > 1, then we have nothing to score:
         if (baseScorerSupplier == null || nullCount > 1) {
-          for (DrillSidewaysScorer.DocsAndCost dim : dims) {
-            dim.sidewaysLeafCollector.finish();
-          }
           return null;
         }
 

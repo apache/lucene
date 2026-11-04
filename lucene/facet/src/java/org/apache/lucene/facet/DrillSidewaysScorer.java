@@ -55,10 +55,24 @@ class DrillSidewaysScorer extends BulkScorer {
 
   private final LeafReaderContext context;
 
-  final boolean scoreSubDocsAtOnce;
+  /** How hits and near-misses are found. */
+  enum Strategy {
+    /** Iterates over the base query and checks the dims on each of its docs. */
+    QUERY_FIRST,
+    /** Fills windows of doc IDs with the first two dims, then checks the base query and others. */
+    DRILL_DOWN_ADVANCE,
+    /** Fills windows of doc IDs with the base query, then checks all dims. */
+    UNION
+  }
+
+  // pkg-private for testing
+  final Strategy strategy;
 
   private static final int CHUNK = 2048;
   private static final int MASK = CHUNK - 1;
+
+  // null if the strategy is QUERY_FIRST
+  private final Window window;
 
   private int collectDocID = -1;
   private float collectScore;
@@ -78,23 +92,6 @@ class DrillSidewaysScorer extends BulkScorer {
     } else {
       this.baseApproximation = baseIterator;
     }
-    this.scoreSubDocsAtOnce = scoreSubDocsAtOnce;
-  }
-
-  @Override
-  public long cost() {
-    return baseIterator.cost();
-  }
-
-  @Override
-  public int score(LeafCollector collector, Bits acceptDocs, int min, int maxDoc)
-      throws IOException {
-    if (min != 0) {
-      throw new IllegalArgumentException("min must be 0, got " + min);
-    }
-    if (maxDoc != Integer.MAX_VALUE) {
-      throw new IllegalArgumentException("maxDoc must be Integer.MAX_VALUE");
-    }
 
     // some scorers, eg ReqExlScorer, can hit NPE if cost is called after nextDoc
     long baseQueryCost = baseIterator.cost();
@@ -111,48 +108,63 @@ class DrillSidewaysScorer extends BulkScorer {
       drillDownAdvancedCost = dims[1].approximation.cost();
     }
 
-    // Position dims scorers to their first matching doc:
-    for (DocsAndCost dim : dims) {
-      dim.approximation.nextDoc();
+    if (scoreSubDocsAtOnce || baseQueryCost < drillDownCost / 10) {
+      strategy = Strategy.QUERY_FIRST;
+    } else if (numDims > 1 && drillDownAdvancedCost < baseQueryCost / 10) {
+      strategy = Strategy.DRILL_DOWN_ADVANCE;
+    } else {
+      strategy = Strategy.UNION;
     }
+    window = strategy == Strategy.QUERY_FIRST ? null : new Window();
+  }
 
-    /*
-    System.out.println("\nbaseDocID=" + baseScorer.docID() + " est=" + estBaseHitCount);
-    System.out.println("  maxDoc=" + context.reader().maxDoc());
-    System.out.println("  maxCost=" + maxCost);
-    System.out.println("  dims[0].freq=" + dims[0].freq);
-    if (numDims > 1) {
-      System.out.println("  dims[1].freq=" + dims[1].freq);
-    }
-    */
+  @Override
+  public long cost() {
+    return baseIterator.cost();
+  }
 
-    try {
-      if (scoreSubDocsAtOnce || baseQueryCost < drillDownCost / 10) {
-        // System.out.println("queryFirst: baseScorer=" + baseScorer + " disis.length=" +
-        // disis.length
-        // + " bits.length=" + bits.length);
-        // position base scorer to the first matching doc
-        baseApproximation.nextDoc();
-        doQueryFirstScoring(acceptDocs, collector, dims);
-      } else if (numDims > 1 && drillDownAdvancedCost < baseQueryCost / 10) {
-        // System.out.println("drillDownAdvance");
-        // position base scorer to the first matching doc
-        baseIterator.nextDoc();
-        doDrillDownAdvanceScoring(acceptDocs, collector, dims);
-      } else {
-        // System.out.println("union");
-        // position base scorer to the first matching doc
-        baseIterator.nextDoc();
-        doUnionScoring(acceptDocs, collector, dims);
+  @Override
+  public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
+    final int maxDoc = context.reader().maxDoc();
+    max = Math.min(max, maxDoc);
+    int next = max;
+    if (min < max) {
+      // The iterators may already be past min after scoring the previous range:
+      for (DocsAndCost dim : dims) {
+        advanceIfBehind(min, dim.approximation);
       }
-    } finally {
+
       // TODO: What's the right behavior when a collector throws CollectionTerminatedException?
       // Should we stop scoring immediately (what we're doing now), or should we keep scoring until
       // all collectors throw? Should users be able to specify somehow?
-      finish(dims);
-    }
 
-    return Integer.MAX_VALUE;
+      // Hits and near-misses match the base query, so the next one is on or after the base
+      // iterator when scoring stops:
+      next =
+          switch (strategy) {
+            case QUERY_FIRST -> {
+              advanceIfBehind(min, baseApproximation);
+              doQueryFirstScoring(acceptDocs, collector, dims, max);
+              yield baseApproximation.docID();
+            }
+            case DRILL_DOWN_ADVANCE -> {
+              advanceIfBehind(min, baseIterator);
+              doDrillDownAdvanceScoring(acceptDocs, collector, dims, min, max);
+              // The base iterator is advanced lazily, but hits and near-misses also match the
+              // first or the second dim, whose iterators are on or after max:
+              int nextDimsDoc =
+                  Math.min(dims[0].approximation.docID(), dims[1].approximation.docID());
+              yield Math.max(baseIterator.docID(), nextDimsDoc);
+            }
+            case UNION -> {
+              advanceIfBehind(min, baseIterator);
+              doUnionScoring(acceptDocs, collector, dims, min, max);
+              yield baseIterator.docID();
+            }
+          };
+      assert next >= max : "next=" + next + " max=" + max;
+    }
+    return next >= maxDoc ? DocIdSetIterator.NO_MORE_DOCS : next;
   }
 
   /**
@@ -160,9 +172,9 @@ class DrillSidewaysScorer extends BulkScorer {
    * likely a common scenario.
    */
   private void doQueryFirstScoringSingleDim(
-      Bits acceptDocs, LeafCollector collector, DocsAndCost dim) throws IOException {
+      Bits acceptDocs, LeafCollector collector, DocsAndCost dim, int max) throws IOException {
     int docID = baseApproximation.docID();
-    while (docID != DocIdSetIterator.NO_MORE_DOCS) {
+    while (docID < max) {
       assert docID == baseApproximation.docID();
 
       if (acceptDocs != null && acceptDocs.get(docID) == false) {
@@ -194,14 +206,14 @@ class DrillSidewaysScorer extends BulkScorer {
    * Used when base query is highly constraining vs the drilldowns, or when the docs must be scored
    * at once (i.e., like BooleanScorer2, not BooleanScorer).
    */
-  private void doQueryFirstScoring(Bits acceptDocs, LeafCollector collector, DocsAndCost[] dims)
-      throws IOException {
+  private void doQueryFirstScoring(
+      Bits acceptDocs, LeafCollector collector, DocsAndCost[] dims, int max) throws IOException {
     collector = ScoreCachingWrappingScorer.wrap(collector);
     setScorer(collector, baseScorer);
 
     // Specialize the single-dim use-case as we have a more efficient implementation for that:
     if (dims.length == 1) {
-      doQueryFirstScoringSingleDim(acceptDocs, collector, dims[0]);
+      doQueryFirstScoringSingleDim(acceptDocs, collector, dims[0], max);
       return;
     }
 
@@ -236,7 +248,7 @@ class DrillSidewaysScorer extends BulkScorer {
     int docID = baseApproximation.docID();
 
     nextDoc:
-    while (docID != DocIdSetIterator.NO_MORE_DOCS) {
+    while (docID < max) {
       assert docID == baseApproximation.docID();
 
       if (acceptDocs != null && acceptDocs.get(docID) == false) {
@@ -332,27 +344,24 @@ class DrillSidewaysScorer extends BulkScorer {
 
   /** Used when drill downs are highly constraining vs baseQuery. */
   private void doDrillDownAdvanceScoring(
-      Bits acceptDocs, LeafCollector collector, DocsAndCost[] dims) throws IOException {
+      Bits acceptDocs, LeafCollector collector, DocsAndCost[] dims, int min, int max)
+      throws IOException {
     setScorer(collector, new Score());
 
-    final int maxDoc = context.reader().maxDoc();
     final int numDims = dims.length;
+    final int[] filledSlots = window.filledSlots;
+    final int[] docIDs = window.docIDs;
+    final float[] scores = window.scores;
+    final int[] missingDims = window.missingDims;
+    final int[] counts = window.counts;
+    final FixedBitSet seen = window.seen;
 
     // if (DEBUG) {
     //  System.out.println("  doDrillDownAdvanceScoring");
     // }
 
-    // TODO: maybe a class like BS, instead of parallel arrays
-    int[] filledSlots = new int[CHUNK];
-    int[] docIDs = new int[CHUNK];
-    float[] scores = new float[CHUNK];
-    int[] missingDims = new int[CHUNK];
-    int[] counts = new int[CHUNK];
-
-    docIDs[0] = -1;
-    int nextChunkStart = CHUNK;
-
-    final FixedBitSet seen = new FixedBitSet(CHUNK);
+    // Windows are aligned on CHUNK so that slots are in the order of doc IDs:
+    int nextChunkStart = Math.min((min & ~MASK) + CHUNK, max);
 
     while (true) {
       // if (DEBUG) {
@@ -393,8 +402,8 @@ class DrillSidewaysScorer extends BulkScorer {
       dc = dims[1];
       docID = dc.approximation.docID();
       while (docID < nextChunkStart) {
-        if (acceptDocs == null
-            || acceptDocs.get(docID) && (dc.twoPhase == null || dc.twoPhase.matches())) {
+        if ((acceptDocs == null || acceptDocs.get(docID))
+            && (dc.twoPhase == null || dc.twoPhase.matches())) {
           int slot = docID & MASK;
 
           if (docIDs[slot] != docID) {
@@ -473,10 +482,10 @@ class DrillSidewaysScorer extends BulkScorer {
       seen.clear(0, CHUNK);
 
       if (filledCount == 0) {
-        if (nextChunkStart >= maxDoc) {
+        if (nextChunkStart >= max) {
           break;
         }
-        nextChunkStart += CHUNK;
+        nextChunkStart = Math.min(nextChunkStart + CHUNK, max);
         continue;
       }
 
@@ -532,38 +541,35 @@ class DrillSidewaysScorer extends BulkScorer {
         }
       }
 
-      if (nextChunkStart >= maxDoc) {
+      if (nextChunkStart >= max) {
         break;
       }
 
-      nextChunkStart += CHUNK;
+      nextChunkStart = Math.min(nextChunkStart + CHUNK, max);
     }
   }
 
-  private void doUnionScoring(Bits acceptDocs, LeafCollector collector, DocsAndCost[] dims)
+  private void doUnionScoring(
+      Bits acceptDocs, LeafCollector collector, DocsAndCost[] dims, int min, int max)
       throws IOException {
     // if (DEBUG) {
     //  System.out.println("  doUnionScoring");
     // }
     setScorer(collector, new Score());
 
-    final int maxDoc = context.reader().maxDoc();
     final int numDims = dims.length;
-
-    // TODO: maybe a class like BS, instead of parallel arrays
-    int[] filledSlots = new int[CHUNK];
-    int[] docIDs = new int[CHUNK];
-    float[] scores = new float[CHUNK];
-    int[] missingDims = new int[CHUNK];
-    int[] counts = new int[CHUNK];
-
-    docIDs[0] = -1;
+    final int[] filledSlots = window.filledSlots;
+    final int[] docIDs = window.docIDs;
+    final float[] scores = window.scores;
+    final int[] missingDims = window.missingDims;
+    final int[] counts = window.counts;
 
     // NOTE: this is basically a specialized version of
     // BooleanScorer, to the minShouldMatch=N-1 case, but
     // carefully tracking which dimension failed to match
 
-    int nextChunkStart = CHUNK;
+    // Windows are aligned on CHUNK like in doDrillDownAdvanceScoring:
+    int nextChunkStart = Math.min((min & ~MASK) + CHUNK, max);
 
     while (true) {
       // if (DEBUG) {
@@ -596,10 +602,10 @@ class DrillSidewaysScorer extends BulkScorer {
       }
 
       if (filledCount == 0) {
-        if (nextChunkStart >= maxDoc) {
+        if (nextChunkStart >= max) {
           break;
         }
-        nextChunkStart += CHUNK;
+        nextChunkStart = Math.min(nextChunkStart + CHUNK, max);
         continue;
       }
 
@@ -686,11 +692,11 @@ class DrillSidewaysScorer extends BulkScorer {
         }
       }
 
-      if (nextChunkStart >= maxDoc) {
+      if (nextChunkStart >= max) {
         break;
       }
 
-      nextChunkStart += CHUNK;
+      nextChunkStart = Math.min(nextChunkStart + CHUNK, max);
     }
   }
 
@@ -734,19 +740,27 @@ class DrillSidewaysScorer extends BulkScorer {
     sidewaysCollector.collect(collectDocID);
   }
 
-  private void finish(DocsAndCost[] dims) throws IOException {
-    // Note: We _only_ call #finish on the facets collectors we're managing here, but not the
-    // "main" collector. This is because IndexSearcher handles calling #finish on the main
-    // collector.
-    for (DocsAndCost dim : dims) {
-      dim.sidewaysLeafCollector.finish();
-    }
-  }
-
   private void setScorer(LeafCollector mainCollector, Scorable scorer) throws IOException {
     mainCollector.setScorer(scorer);
     for (DocsAndCost dim : dims) {
       dim.sidewaysLeafCollector.setScorer(scorer);
+    }
+  }
+
+  /** Per-window state of the DRILL_DOWN_ADVANCE and UNION strategies, reused across calls. */
+  // TODO: maybe a class like BS, instead of parallel arrays
+  private static final class Window {
+    final int[] filledSlots = new int[CHUNK];
+    final int[] docIDs = new int[CHUNK];
+    final float[] scores = new float[CHUNK];
+    final int[] missingDims = new int[CHUNK];
+    final int[] counts = new int[CHUNK];
+    // only used by DRILL_DOWN_ADVANCE
+    final FixedBitSet seen = new FixedBitSet(CHUNK);
+
+    Window() {
+      // slots are zero-initialized, so doc 0 must not match its slot before it is filled
+      docIDs[0] = -1;
     }
   }
 
