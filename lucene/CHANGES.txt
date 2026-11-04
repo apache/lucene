@@ -346,6 +346,10 @@ Optimizations
 
 * GITHUB#15902: Improve DiversifyingChildren performance by using primitive arrays (Alessandro Benedetti)
 
+* GITHUB#16970: SortingStoredFieldsConsumer reads its temporary files using a single-threaded
+  IOContext, allowing MMapDirectory to open them with confined areas and avoiding JVM-wide
+  handshakes when the files are closed. (Alan Woodward)
+
 Bug Fixes
 ---------------------
 * GITHUB#16983: UnifiedHighlighter.Builder#withFlags is no longer ignored when building the
