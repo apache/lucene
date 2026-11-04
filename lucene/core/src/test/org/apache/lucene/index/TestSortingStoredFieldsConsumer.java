@@ -39,7 +39,6 @@ import org.apache.lucene.search.SortField;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.FlushInfo;
@@ -153,13 +152,13 @@ public class TestSortingStoredFieldsConsumer extends LuceneTestCase {
    * The temporary stored fields are read back on the flushing thread only, so their index must be
    * opened read-once to let directories confine it to that thread.
    */
-  public void testTempIndexFilesOpenedReadOnce() throws IOException {
+  public void testTempFilesOpenedReadOnce() throws IOException {
     List<IOContext> tempIndexOpens = new ArrayList<>();
     try (Directory dir =
         new FilterDirectory(new ByteBuffersDirectory()) {
           @Override
           public IndexInput openInput(String name, IOContext context) throws IOException {
-            if ((name.contains(".fdx") || name.contains(".tvx")) && name.endsWith(".tmp")) {
+            if (name.endsWith(".tmp") && name.matches(".*\\.(fdx|fdt|tvx|tvd)__.*")) {
               tempIndexOpens.add(context);
             }
             return super.openInput(name, context);
@@ -181,11 +180,9 @@ public class TestSortingStoredFieldsConsumer extends LuceneTestCase {
         writer.commit();
       }
     }
-    assertEquals(2, tempIndexOpens.size());
+    assertEquals(4, tempIndexOpens.size()); // fdx, fdt, tvx and tvd
     for (IOContext context : tempIndexOpens) {
-      assertThat(
-          context.hints(),
-          hasItems(ReadOnceHint.INSTANCE, FileTypeHint.INDEX, DataAccessHint.RANDOM));
+      assertThat(context.hints(), hasItems(ReadOnceHint.INSTANCE, DataAccessHint.RANDOM));
     }
   }
 }

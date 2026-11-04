@@ -16,10 +16,12 @@
  */
 package org.apache.lucene.store;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -65,14 +67,12 @@ public interface IOContext {
   IOContext READONCE = new DefaultIOContext(DataAccessHint.SEQUENTIAL, ReadOnceHint.INSTANCE);
 
   /**
-   * A default context for reads with {@link ReadAdvice#RANDOM}.
-   *
-   * <p>This context should only be used when the read operations will be performed in the same
-   * thread as the thread that opens the underlying storage.
+   * A default context for reads that are all performed in the same thread as the one that opens the
+   * underlying storage, which lets the directory confine the input to that thread. It carries no
+   * {@link DataAccessHint}, so callers can set the access pattern with {@link #overrideHints}.
    */
   @SuppressWarnings("ClassInitializationDeadlock") // FIXME: may cause hangs!
-  IOContext RANDOM_READONCE_SINGLETHREAD =
-      new DefaultIOContext(DataAccessHint.RANDOM, ReadOnceHint.INSTANCE);
+  IOContext READONCE_SINGLETHREAD = new DefaultIOContext(ReadOnceHint.INSTANCE);
 
   /** Returns an {@link IOContext} for merging with the specified {@link MergeInfo} */
   static IOContext merge(MergeInfo mergeInfo) {
@@ -199,5 +199,24 @@ public interface IOContext {
     Set<FileOpenHint> merged = new HashSet<>(hints());
     Collections.addAll(merged, hints);
     return withHints(merged.toArray(FileOpenHint[]::new));
+  }
+
+  /**
+   * Returns an IOContext with the given hints added to the ones it already has. A hint type that is
+   * already present is overridden by a hint of the same type passed in here.
+   *
+   * <p>Unlike {@link #union}, a hint of the same type as a given hint is replaced rather than
+   * rejected, and unlike {@link #withHints}, existing hints of other types are preserved.
+   *
+   * @throws IllegalArgumentException if two of the given hints are of the same type
+   */
+  default IOContext overrideHints(FileOpenHint... hints) {
+    Set<Class<?>> overridden =
+        Arrays.stream(hints).map(Object::getClass).collect(Collectors.toSet());
+    return withHints(
+        Stream.concat(
+                hints().stream().filter(hint -> overridden.contains(hint.getClass()) == false),
+                Arrays.stream(hints))
+            .toArray(FileOpenHint[]::new));
   }
 }
