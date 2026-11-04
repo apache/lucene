@@ -307,6 +307,11 @@ public abstract class PointRangeQuery extends Query {
               if (values.getDocCount() == reader.maxDoc()
                   && values.getDocCount() == values.size()
                   && cost() > reader.maxDoc() / 2) {
+                // Since we use (pointTree.size() + 1) / 2 to estimate count in cross case, whether
+                // use InverseIntersectVisitor only depends on whether pointTree.size() is odd
+                // number or not, e.g. odd number use InverseIntersectVisitor, even number use
+                // IntersectVisitor.
+
                 // If all docs have exactly one value and the cost is greater
                 // than half the leaf size then maybe we can make things faster
                 // by computing the set of documents that do NOT match the range
