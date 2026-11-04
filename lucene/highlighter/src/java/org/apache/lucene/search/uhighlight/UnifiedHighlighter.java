@@ -79,8 +79,9 @@ import org.apache.lucene.util.InPlaceMergeSorter;
  * using a separate {@link PassageScorer}. Passages are finally formatted into highlighted snippets
  * with a {@link PassageFormatter}.
  *
- * <p>You can customize the behavior by calling some of the setters, or by subclassing and
- * overriding some methods. Some important hooks:
+ * <p>You can customize the behavior by configuring a {@link Builder} (see {@link
+ * #builder(IndexSearcher, Analyzer)}), or by subclassing and overriding some methods. Some
+ * important hooks:
  *
  * <ul>
  *   <li>{@link #getBreakIterator(String)}: Customize how the text is divided into passages.
@@ -89,7 +90,7 @@ import org.apache.lucene.util.InPlaceMergeSorter;
  *   <li>{@link #getPassageSortComparator(String)}: Customize how snippets are formatted.
  * </ul>
  *
- * <p>This is thread-safe, notwithstanding the setters.
+ * <p>This is thread-safe.
  *
  * @lucene.experimental
  */
