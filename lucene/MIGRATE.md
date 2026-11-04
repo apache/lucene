@@ -31,9 +31,32 @@ with `VisitedSet.create(expectedVisitedNodes, graphSize)`.
 ### UnifiedHighlighter must be created through its Builder (GITHUB#16975)
 
 The deprecated `UnifiedHighlighter(IndexSearcher, Analyzer)` constructor, its setters and the
-protected `shouldXxx` methods were removed. Use
+protected `shouldXxx` methods were removed. Use the Builder via
 `UnifiedHighlighter.builder(searcher, analyzer).withXxx(...).build()` instead. Subclasses that
 overrode the `shouldXxx` methods should override `getFlags(String)`.
+
+### Explicit byte and float similarity vector search has been removed (GITHUB#16965)
+
+The `Explicit` variants of `ByteVectorSimilarityQuery` and `FloatVectorSimilarityQuery`
+have been removed. Use `Adaptive` instead. Drop `traversalSimilarity` and pass
+`resultSimilarity` plus an optional `decay` (default `0.5`); the constructors are not
+a drop-in rename.
+
+### RegExp.ASCII_CASE_INSENSITIVE has been removed (GITHUB#16968)
+
+The flag was deprecated in 10.x and already behaved the same as `RegExp.CASE_INSENSITIVE` (full
+Unicode case folding). Replace it with `RegExp.CASE_INSENSITIVE`.
+
+The flag's raw value `0x0100` is no longer accepted: calls like
+`new RegExp(s, syntax_flags, 0x0100)` to `RegExp(String, int, int)` now throw an
+`IllegalArgumentException` and must be changed to `new RegExp(s, syntax_flags, RegExp.CASE_INSENSITIVE)`.
+
+### SpanishMinimalStemFilter has been removed (GITHUB#16969)
+
+`SpanishMinimalStemFilter` and `SpanishMinimalStemFilterFactory` (SPI name `spanishMinimalStem`)
+were deprecated in favor of `SpanishPluralStemFilter` and are now removed.
+Use `SpanishPluralStemFilter` (SPI name `spanishPluralStem`) instead. Indexes analyzed with the old
+filter may need reindexing, as the stemming results can differ.
 
 ### MatchAllDocsQuery and MatchNoDocsQuery no-args constructors (GITHUB#16962)
 

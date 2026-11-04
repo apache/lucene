@@ -37,8 +37,17 @@ Other
 
 API Changes
 ---------------------
+
 * GITHUB#16975: Removed the deprecated UnifiedHighlighter constructor, setters and shouldXxx
   methods. Use UnifiedHighlighter.Builder instead. (Christoph Büscher)
+
+* GITHUB#16965: Remove the deprecated classes for explicit vector similarity search:
+  ByteVectorSimilarityQuery.Explicit, FloatVectorSimilarityQuery.Explicit and
+  ExplicitVectorSimilarityCollector.
+  Use the more performant Adaptive queries instead. (Andrea Selva)
+
+* GITHUB#16969: Remove deprecated SpanishMinimalStemFilter, SpanishMinimalStemFilterFactory and
+  SpanishMinimalStemmer. Use SpanishPluralStemFilter instead. (Christoph Büscher)
 
 * GITHUB#16962: Removed usage of deprecated no-args constructors of MatchAllDocsQuery
   and MatchNoDocsQuery. (Andrea Selva)
@@ -204,6 +213,9 @@ API Changes
   multiterm) now throw IndexSearcher.TooManyClauses instead of IllegalStateException when
   they expand to more than maxExpansions terms. (Mayya Sharipova)
 
+* GITHUB#16968: Remove deprecated RegExp.ASCII_CASE_INSENSITIVE flag, use
+  RegExp.CASE_INSENSITIVE instead. (Christoph Büscher)
+
 New Features
 ---------------------
 * GITHUB#16723: Support SIMD Faiss library variants with runtime fallback. (Abhinav Chinnala)
@@ -278,6 +290,9 @@ Improvements
 Optimizations
 ---------------------
 
+* GITHUB#16746: Speed up decoding long overlapping LZ4 matches using bulk copies
+  of initialized bytes. (Andre Kurait)
+
 * GITHUB#16881: UnifiedHighlighter converts each term to UTF-16 once instead of once per automaton,
   which speeds up highlighting of queries with many multi-term clauses. (Eugene Rizhkov)
 
@@ -337,6 +352,9 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#16983: UnifiedHighlighter.Builder#withFlags is no longer ignored when building the
+  highlighter. (Christoph Büscher)
+
 * GITHUB#16867: Apply buffered soft-update/delete terms before the global delete buffer reaches the 2GB
   addressing limit of its ByteBlockPool, and stall indexing if the limit is hit during a full flush.
   (Alan Woodward)

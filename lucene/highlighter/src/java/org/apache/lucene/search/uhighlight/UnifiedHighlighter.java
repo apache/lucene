@@ -191,6 +191,11 @@ public class UnifiedHighlighter {
      * <p>Here the user can either specify the set of {@link HighlightFlag}s to be applied or use
      * the boolean flags to populate final list of {@link HighlightFlag}s.
      *
+     * <p>The given flags are validated like the boolean options: {@link
+     * HighlightFlag#WEIGHT_MATCHES} is only applied if {@link HighlightFlag#MULTI_TERM_QUERY},
+     * {@link HighlightFlag#PHRASES} and {@link HighlightFlag#PASSAGE_RELEVANCY_OVER_SPEED} are also
+     * present, otherwise it is dropped.
+     *
      * @param values - set of {@link HighlightFlag} values.
      */
     public Builder withFlags(Set<HighlightFlag> values) {
@@ -422,6 +427,15 @@ public class UnifiedHighlighter {
    * @return {@link HighlightFlag}s.
    */
   protected Set<HighlightFlag> evaluateFlags(Builder uhBuilder) {
+    final Set<HighlightFlag> builderFlags = uhBuilder.flags;
+    if (builderFlags != null) {
+      // Explicitly provided flags still go through the consistency checks of the boolean variant.
+      return evaluateFlags(
+          builderFlags.contains(HighlightFlag.MULTI_TERM_QUERY),
+          builderFlags.contains(HighlightFlag.PHRASES),
+          builderFlags.contains(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED),
+          builderFlags.contains(HighlightFlag.WEIGHT_MATCHES));
+    }
     return evaluateFlags(
         uhBuilder.handleMultiTermQuery,
         uhBuilder.highlightPhrasesStrictly,
